@@ -58,16 +58,17 @@ poetry shell
 ### Running the Application
 
 1. Development mode with Poetry:
+Run the app from the app-service directory to ensure usage of env files.
 
 ```bash
-poetry run python main.py
+poetry run python app/main.py
 ```
 
 2. Alternative - activate shell first, then run:
 
 ```bash
 poetry shell
-python main.py
+python app/main.py
 ```
 
 ## API Endpoints

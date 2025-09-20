@@ -1,8 +1,10 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
     app_name: str = "Shiksha Copilot API"
     version: str = "1.0.0"
     debug: bool = False
@@ -25,10 +27,6 @@ class Settings(BaseSettings):
     # Blob Store Configuration
     blob_store_connection_string: Optional[str] = None
     blob_store_url: Optional[str] = None
-
-    class Config:
-        env_file = ".env"
-        extra = "ignore"  # Allow extra fields to be ignored
 
 
 settings = Settings()
