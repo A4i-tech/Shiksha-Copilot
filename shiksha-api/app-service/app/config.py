@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
+    transport: str = "http"
 
     # Logging Configuration
     log_level: str = "INFO"

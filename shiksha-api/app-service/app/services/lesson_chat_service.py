@@ -205,7 +205,7 @@ class LessonChatService:
         logger.debug(f"Created new RAGOps and cached for: {index_persist_dir}")
         return rag_ops
 
-    def cleanup(self) -> None:
+    async def cleanup(self) -> None:
         """Clear the RAGOps cache and associated index files."""
         # Clean up index files for all cached RAGOps instances
         for rag_ops in self._rag_ops_cache.values():
