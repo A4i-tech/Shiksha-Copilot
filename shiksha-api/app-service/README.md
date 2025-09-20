@@ -114,16 +114,17 @@ QDRANT_API_KEY=your_qdrant_api_key
 ### Running the Application
 
 1. Development mode with Poetry:
+Run the app from the app-service directory to ensure usage of env files.
 
 ```bash
-poetry run python -m app.main
+poetry run python app/main.py
 ```
 
 2. Alternative - activate shell first, then run:
 
 ```bash
 poetry shell
-python -m app.main
+python app/main.py
 ```
 
 3. Using uvicorn directly:
