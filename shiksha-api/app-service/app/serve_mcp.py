@@ -1,30 +1,13 @@
-from contextlib import asynccontextmanager
+import asyncio
 from app.config import settings
 from app.routers import chat_router_mcp
 from mcp.server.fastmcp import FastMCP
-
-@asynccontextmanager
-async def lifespan(app: FastMCP):
-    """Lifespan context manager for proper startup and shutdown"""
-    # Startup
-    yield
-    # Shutdown
-    from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
-    from app.services.lesson_chat_service import LESSON_CHAT_SERVICE_INSTANCE
-
-    try:
-        await GENERAL_CHAT_SERVICE_INSTANCE.cleanup()
-        await LESSON_CHAT_SERVICE_INSTANCE.cleanup()
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
-
 
 app = FastMCP(
     name=settings.app_name,
     host=settings.host,
     port=settings.port,
-    debug=settings.debug,
-    lifespan=lifespan
+    debug=settings.debug
 )
 
 # Include tools
@@ -45,14 +28,26 @@ async def mcp_app_name() -> str: return settings.app_name
 @app.tool(name="health", description="Get the health status")
 async def mcp_health() -> str: return "healthy"
 
+run_args = {}
 if settings.transport == "mcp-http":
     print("Running MCP (streamable-http)")
-    app.run(transport="streamable-http")
+    run_args = dict(transport="streamable-http")
 elif settings.transport == "mcp-sse":
     print("Running MCP (sse)")
-    app.run(transport="mcp")
+    run_args = dict(transport="mcp")
 elif settings.transport == "mcp-stdio":
     print("Running MCP (stdio)")
-    app.run(transport="stdio")
+    run_args = dict(transport="stdio")
 else:
     raise ValueError("Unexpected transport: " + settings.transport)
+
+try:
+    app.run(**run_args)
+finally:
+    from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
+    from app.services.lesson_chat_service import LESSON_CHAT_SERVICE_INSTANCE
+    try:
+        asyncio.run(GENERAL_CHAT_SERVICE_INSTANCE.cleanup())
+        asyncio.run(LESSON_CHAT_SERVICE_INSTANCE.cleanup())
+    except Exception as e:
+        print(f"Error during cleanup: {e}")

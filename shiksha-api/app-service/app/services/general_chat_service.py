@@ -1,6 +1,7 @@
 from typing import List
 from pathlib import Path
 import logging
+import traceback
 
 from azure.ai.projects.aio import AIProjectClient
 from azure.identity import DefaultAzureCredential
@@ -122,6 +123,7 @@ class GeneralChatService:
 
         except Exception as e:
             logger.error(f"Error in Azure AI Project chat: {e}")
+            traceback.print_exc()
             raise
 
     async def _create_agent(self, assistant_system_prompt: str):
@@ -143,6 +145,7 @@ class GeneralChatService:
 
         except Exception as e:
             logger.error(f"Error creating agent: {e}")
+            traceback.print_exc()
             raise
 
     def _format_conversation_messages(self, messages: List[ConversationMessage]) -> str:
