@@ -1,4 +1,8 @@
 # Shiksha Copilot
+[![CI](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/main.yaml/badge.svg)](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/main.yaml)
+[![codecov](https://codecov.io/github/A4i-tech/Shiksha-Copilot/graph/badge.svg?token=1YIYWZEBA1)](https://codecov.io/github/A4i-tech/Shiksha-Copilot)
+[![CodeQL Advanced](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/codeql.yml/badge.svg)](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/codeql.yml)
+
 ## Overview
 [![Shiksha Copilot Overview](https://img.youtube.com/vi/SdbE6J4Gzmg/0.jpg)](https://www.youtube.com/watch?v=SdbE6J4Gzmg "Shiksha Copilot - Click to Watch!")
 
