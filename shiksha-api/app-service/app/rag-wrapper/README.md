@@ -36,7 +36,7 @@ embedding_model = AzureOpenAIEmbedding(
 )
 
 completion_model = AzureOpenAI(
-    model="gpt-35-turbo",
+    model="gpt-4o",
     api_key="your-api-key", 
     azure_endpoint="your-endpoint"
 )
@@ -79,7 +79,7 @@ embedding_model = AzureOpenAIEmbedding(
 )
 
 completion_model = AzureOpenAI(
-    model="gpt-35-turbo",
+    model="gpt-4o",
     deployment_name="your-completion-deployment",
     api_key="your-api-key", 
     azure_endpoint="your-endpoint"
@@ -140,7 +140,7 @@ embedding_model = AzureOpenAIEmbedding(
 )
 
 completion_model = AzureOpenAI(
-    model="gpt-35-turbo",
+    model="gpt-4o",
     api_key="your-api-key", 
     azure_endpoint="your-endpoint"
 )

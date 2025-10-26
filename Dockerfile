@@ -15,16 +15,17 @@ ENV PYTHON_ENV="staging" \
     BLOB_STORE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=dummyaccount;AccountKey=dummyaccountkey1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab==;EndpointSuffix=core.windows.net"
 
 RUN apt-get update && apt-get install -y \
-    ffmpeg curl build-essential git && \
+    curl build-essential git && \
     rm -rf /var/lib/apt/lists/*
 
 RUN pip install poetry
 
-WORKDIR /src
+WORKDIR /src/app-service
+
 COPY shiksha-api/ /src/
 
-WORKDIR /src/app-service
 RUN poetry install --no-root --no-interaction --no-ansi
 
 EXPOSE 5000
+
 CMD ["sh", "-c", "poetry run python3 -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]

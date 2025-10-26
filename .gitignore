@@ -4,3 +4,18 @@ shiksha-ingestion/.env
 shiksha-ingestion/pipeline_steps/__pycache__/
 shiksha-ingestion/scert_action_verbs_prohibited.json
 shiksha-ingestion/scert_action_verbs.json
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/

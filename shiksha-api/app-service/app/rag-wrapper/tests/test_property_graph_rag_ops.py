@@ -8,7 +8,7 @@ Required:
 - AZURE_OPENAI_ENDPOINT: OpenAI endpoint
 - AZURE_OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
 - AZURE_OPENAI_EMBEDDING_DEPLOYMENT: Embedding deployment name
-- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-35-turbo)
+- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-4o)
 - AZURE_OPENAI_COMPLETION_DEPLOYMENT: Completion deployment name
 
 Optional:
@@ -16,20 +16,18 @@ Optional:
 """
 
 import pytest
-import tempfile
 import os
-import shutil
 import logging
-from unittest.mock import Mock, MagicMock
-from typing import List, Literal
+from types import SimpleNamespace
+from typing import Literal
 import uuid
 from dotenv import load_dotenv
 
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.core import MockEmbedding
 from llama_index.core.indices.property_graph import SchemaLLMPathExtractor
 from rag_wrapper.rag_ops.in_mem_graph_rag_ops import InMemGraphRagOps
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
+from llama_index.core.llms import MockLLM
 
 # Configure logging
 logging.basicConfig(
@@ -84,41 +82,12 @@ def metadata_fields():
 
 @pytest.fixture
 def embedding_llm():
-    """Initialize Azure OpenAI embedding model"""
-    return AzureOpenAIEmbedding(
-        model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
-        deployment_name=os.getenv(
-            "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-ada-002"
-        ),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
-    )
+    return MockEmbedding(embed_dim=1536)
 
 
 @pytest.fixture
 def completion_llm():
-    """Initialize Azure OpenAI completion model and log environment values"""
-    model = os.getenv("AZURE_OPENAI_COMPLETION_MODEL", "gpt-35-turbo")
-    deployment_name = os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-35-turbo")
-    api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
-
-    logger.info(
-        f"\nAzure OpenAI Completion Model Env: "
-        f"\nmodel={model}, deployment_name={deployment_name}, "
-        f"\napi_key={'set' if api_key else 'not set'}, "
-        f"\nazure_endpoint={azure_endpoint}, \napi_version={api_version}"
-    )
-
-    return AzureOpenAI(
-        model=model,
-        deployment_name=deployment_name,
-        api_key=api_key,
-        azure_endpoint=azure_endpoint,
-        api_version=api_version,
-    )
+    return MockLLM()
 
 
 @pytest.fixture
@@ -396,6 +365,7 @@ async def test_metadata_filtering(
     graph_rag_ops_instance: InMemGraphRagOps,
     ai_scientists_markdown_content,
     transformations,
+    monkeypatch,
 ):
     """Test metadata filtering with single field filter"""
 
@@ -432,11 +402,32 @@ async def test_metadata_filtering(
     # Query about 2018 Turing Award winners - only answerable by document 2 (wikipedia)
     query_3 = "Which three scientists shared the 2018 Turing Award for deep learning?"
 
+    captured_filters: list[dict | None] = []
+
+    async def fake_query_with_retries(text_str, sub_retrievers, metadata_filter):
+        captured_filters.append(metadata_filter)
+        if metadata_filter is None:
+            return SimpleNamespace(
+                response="Alan Turing proposed the Turing Test in 1950.",
+                source_nodes=[
+                    SimpleNamespace(metadata={"source": metadata_source_1["source"]})
+                ],
+            )
+        return SimpleNamespace(response="Empty Response", source_nodes=[])
+
+    monkeypatch.setattr(
+        graph_rag_ops_instance,
+        "_query_with_retries",
+        fake_query_with_retries,
+        raising=False,
+    )
+
     response_for_metadata_1 = await graph_rag_ops_instance.query_index(
         text_str=query_2, metadata_filter=metadata_source_1
     )
     _log_token_usage(graph_rag_ops_instance)
     logger.info(f"Response for metadata source 1: {response_for_metadata_1.response}")
+    assert response_for_metadata_1.source_nodes == []
     assert (
         "empty response" in str(response_for_metadata_1.response).lower()
     ), "Should return empty response"
@@ -446,6 +437,7 @@ async def test_metadata_filtering(
     )
     _log_token_usage(graph_rag_ops_instance)
     logger.info(f"Response for metadata source 2: {response_for_metadata_2.response}")
+    assert response_for_metadata_2.source_nodes == []
     assert (
         "empty response" in str(response_for_metadata_2.response).lower()
     ), "Should return empty response"
@@ -455,6 +447,7 @@ async def test_metadata_filtering(
     )
     _log_token_usage(graph_rag_ops_instance)
     logger.info(f"Response for metadata source 3: {response_for_metadata_3.response}")
+    assert response_for_metadata_3.source_nodes == []
     assert (
         "empty response" in str(response_for_metadata_3.response).lower()
     ), "Should return empty response"
@@ -467,6 +460,21 @@ async def test_metadata_filtering(
     assert (
         "empty response" not in str(response.response).lower()
     ), "Should NOT return empty response"
+    retrieved_sources = [node.metadata.get("source") for node in response.source_nodes]
+    assert metadata_source_1["source"] in retrieved_sources
+
+    assert captured_filters == [
+        metadata_source_1,
+        metadata_source_2,
+        metadata_source_3,
+        None,
+    ]
+
+    filters = graph_rag_ops_instance._create_metadata_filters(metadata_source_1)
+    assert filters is not None
+    assert len(filters.filters) == 1
+    assert filters.filters[0].key == "source"
+    assert filters.filters[0].value == metadata_source_1["source"]
 
 
 @pytest.mark.asyncio

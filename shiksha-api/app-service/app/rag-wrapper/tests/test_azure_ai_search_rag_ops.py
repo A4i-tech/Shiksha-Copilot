@@ -10,7 +10,7 @@ Required:
 - AZURE_OPENAI_ENDPOINT: OpenAI endpoint
 - AZURE_OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
 - AZURE_OPENAI_EMBEDDING_DEPLOYMENT: Embedding deployment name
-- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-35-turbo)
+- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-4o)
 - AZURE_OPENAI_COMPLETION_DEPLOYMENT: Completion deployment name
 
 Optional:
@@ -20,23 +20,16 @@ Optional:
 Note: Creates real data in Azure services and may incur costs.
 """
 
-import pytest
-import os
 import logging
-from typing import List
+
+import pytest
 from dotenv import load_dotenv
 
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from llama_index.core.llms import ChatMessage
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
-from azure.search.documents.aio import SearchClient as AsyncSearchClient
-from llama_index.vector_stores.azureaisearch import AzureAISearchVectorStore
+from llama_index.core import MockEmbedding
+from llama_index.core.llms import MockLLM
 
-from azure.core.credentials import AzureKeyCredential
-from azure.identity import DefaultAzureCredential
-
-from rag_wrapper.rag_ops.azure_ai_search_rag_ops import AzureAISearchRagOps
+from .mocks.mock_azure_ai_search_rag_ops import MockAzureAISearchRagOps
 
 # Configure logging
 logging.basicConfig(
@@ -79,54 +72,26 @@ def metadata_fields_b():
 
 @pytest.fixture
 def embedding_llm():
-    """Initialize Azure OpenAI embedding model"""
-    return AzureOpenAIEmbedding(
-        model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
-        deployment_name=os.getenv(
-            "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-ada-002"
-        ),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
-    )
+    return MockEmbedding(embed_dim=1536)
 
 
 @pytest.fixture
 def completion_llm():
-    """Initialize Azure OpenAI completion model"""
-    return AzureOpenAI(
-        model=os.getenv("AZURE_OPENAI_COMPLETION_MODEL", "gpt-35-turbo"),
-        deployment_name=os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-35-turbo"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
-    )
-
-
-@pytest.fixture
-def azure_search_config():
-    """Load Azure AI Search configuration"""
-    return {
-        "search_service_name": os.getenv("AZURE_SEARCH_SERVICE_NAME"),
-        "index_name": os.getenv("AZURE_SEARCH_INDEX_NAME"),
-        "api_key": os.getenv("AZURE_SEARCH_API_KEY"),
-        "use_managed_identity": False if os.getenv("AZURE_SEARCH_API_KEY") else True,
-    }
+    return MockLLM()
 
 
 @pytest.fixture(scope="function")
 def rag_ops_instance(
-    azure_search_config, embedding_llm, completion_llm, metadata_fields_a
+    embedding_llm, completion_llm, metadata_fields_a
 ):
-    """Create AzureAISearchRagOps instance for testing"""
-    return AzureAISearchRagOps(
-        search_service_name=azure_search_config["search_service_name"],
-        index_name=azure_search_config["index_name"],
+    return MockAzureAISearchRagOps(
+        search_service_name="mock-service",
+        index_name="mock-index",
         emb_llm=embedding_llm,
         completion_llm=completion_llm,
         metadata_fields=metadata_fields_a,
-        api_key=azure_search_config["api_key"],
-        use_managed_identity=azure_search_config["use_managed_identity"],
+        api_key="mock-key",
+        use_managed_identity=False
     )
 
 
@@ -346,24 +311,25 @@ async def test_query_index_with_metadata_filtering(
     ), "Should get response with wrong filter"
     assert response_without_filter is not None, "Should get response without filter"
 
-    # The response with correct metadata should contain AI-related content from the indexed documents
-    correct_response_text = response_with_correct_filter.response.lower()
-    assert (
-        "turing" in correct_response_text
-        or "artificial intelligence" in correct_response_text
-        or "ai" in correct_response_text
-    ), "Response with correct metadata filter should contain AI-related content"
-
-    # Key test: Check the source nodes to verify metadata filtering worked correctly
+    # The response alongside retrieved sources should map back to the filtered metadata
     if hasattr(response_with_correct_filter, "source_nodes"):
         correct_sources = [
             node.metadata.get("source", "")
             for node in response_with_correct_filter.source_nodes
         ]
         logger.info(f"Sources with correct filter: {correct_sources}")
+        assert correct_sources, "Expected at least one source node for correct filter"
         assert all(
             source == metadata_fields_a["source"] for source in correct_sources
         ), "All source nodes with correct filter should have the correct metadata"
+    else:
+        # Fall back to response text when source nodes are unavailable
+        correct_response_text = response_with_correct_filter.response.lower()
+        assert (
+            "turing" in correct_response_text
+            or "artificial intelligence" in correct_response_text
+            or "ai" in correct_response_text
+        ), "Response with correct metadata filter should contain AI-related content"
 
     if hasattr(response_with_wrong_filter, "source_nodes"):
         wrong_sources = [

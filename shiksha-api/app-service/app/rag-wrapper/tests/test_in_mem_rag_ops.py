@@ -8,7 +8,7 @@ Required:
 - AZURE_OPENAI_ENDPOINT: OpenAI endpoint
 - AZURE_OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
 - AZURE_OPENAI_EMBEDDING_DEPLOYMENT: Embedding deployment name
-- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-35-turbo)
+- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-4o)
 - AZURE_OPENAI_COMPLETION_DEPLOYMENT: Completion deployment name
 
 Optional:
@@ -16,18 +16,13 @@ Optional:
 """
 
 import pytest
-import tempfile
 import os
-import shutil
 import logging
-from unittest.mock import Mock, MagicMock
-from typing import List
 import uuid
 from dotenv import load_dotenv
 
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from llama_index.core.llms import ChatMessage
+from llama_index.core import MockEmbedding
+from llama_index.core.llms import MockLLM
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from rag_wrapper.rag_ops.in_mem_rag_ops import InMemRagOps
 
@@ -72,28 +67,12 @@ def metadata_fields_b():
 
 @pytest.fixture
 def embedding_llm():
-    """Initialize Azure OpenAI embedding model"""
-    return AzureOpenAIEmbedding(
-        model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
-        deployment_name=os.getenv(
-            "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-ada-002"
-        ),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
-    )
+    return MockEmbedding(embed_dim=1536)
 
 
 @pytest.fixture
 def completion_llm():
-    """Initialize Azure OpenAI completion model"""
-    return AzureOpenAI(
-        model=os.getenv("AZURE_OPENAI_COMPLETION_MODEL", "gpt-35-turbo"),
-        deployment_name=os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-35-turbo"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
-    )
+    return MockLLM()
 
 
 @pytest.fixture

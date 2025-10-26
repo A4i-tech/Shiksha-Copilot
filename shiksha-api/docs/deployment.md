@@ -61,3 +61,25 @@ To test the MCP server, follow the steps:
 2. Set **Transport Type** to `Streamable HTTP` and **URL** to `http://localhost:8000/mcp?user_id=<uuid>`.  Replace `<uuid>` with a 36-character UUID hex string.
 3. Click **Connect**.
 4. Head over to **Tools** tab and click **List tools**. You will see a **shiksha-mcp** connector with 5 tools - General chat endpoint, Lesson-specific chat endpoint, Version, App name, and Health.
+
+## Setup Continuous Deployment (CD) workflow
+A `render-deploy.yaml` in `.github/workflows` deploys passing builds automatically on Render. To setup:
+1. Create a new **Web Service** from https://dashboard.render.com/
+2. Under the **Existing Image** tab, type in the image URL. You can get this from the succeeding docker deploy workflow, under the **Sign the published Docker image** step in **build** job. (e.g., `ghcr.io/a4i-tech/shiksha-copilot`). Visit the link and copy your image URL (e.g., `docker pull ghcr.io/a4i-tech/shiksha-copilot:a4i-main`).
+   > _Do **NOT** use the sha256-suffixed image URL as those are immutable and therefore won't update deployment with your repository's latest changes._
+3. On Render, paste this image URL, then click **Connect**, then paste your environment variables in the next section.
+4. Click **Deploy Web Service**. You should see the deployment logs.
+5. Under the Render project's **Settings** tab, grab your **Service ID** (e.g., `srv-xxxxxxxxxxxxxxxxxxxx`). In your GitHub project's Settings, under **Secrets and variables** → **Actions**, paste this under **Repository secrets** with the name `RENDER_SERVICE_ID`.
+6. From your Render account settings, under **API Keys**, create an API key and paste this in your repository secrets with the name `RENDER_API_KEY`.
+7. You can test the workflow by heading to your GitHub project's Actions tab, then selecting **CI/CD** action and clicking **Run workflow** to test the workflow runs successfully.
+8. Done. Pushes to the branch listed in `.github/workflows/main.yaml` should automatically trigger a deployment on Render.
+
+As an optional step, configure a `MICROSOFT_TEAMS_WEBHOOK` to receive build status notifications on a Microsoft Teams channel:
+1. In a channel where you want to be notified, select **Manage Channels**, then click **Edit** under **Connectors**:
+
+   <img alt="image" src="https://github.com/user-attachments/assets/db7b931c-bc75-494a-96b9-09cb5c1c9df9" />
+2. Configure the **Incoming Webhook** connector
+
+   <img alt="image" src="https://github.com/user-attachments/assets/6d5a9632-0a1d-4e9e-9b39-a795bf153096" />
+3. This step will generate a webhook URL. Paste this as a repository secret named `MICROSOFT_TEAMS_WEBHOOK`.
+4. Done! Build status will be emitted to this channel at the end of workflow.
