@@ -62,6 +62,17 @@ To test the MCP server, follow the steps:
 3. Click **Connect**.
 4. Head over to **Tools** tab and click **List tools**. You will see a **shiksha-mcp** connector with 5 tools - General chat endpoint, Lesson-specific chat endpoint, Version, App name, and Health.
 
+## Setup Continuous Integration (CI)
+CI is preconfigured in this repository and requires little to no setup. The only mandatory step is to configure a `CODECOV_TOKEN` secret for coverage reporting.
+
+> [!IMPORTANT]
+> Create a token at [Codecov](https://app.codecov.io) and set it as `CODECOV_TOKEN` in [**Settings → Secrets and variables → Actions**](../../settings/secrets/actions). This is required for coverage uploads.
+
+After setting the token, CI will:
+- Build and test the service on every push and pull request.
+- Generate and upload coverage reports to Codecov.
+- Publish the Docker image automatically on successful pushes to the main branch.
+
 ## Setup Continuous Deployment (CD) workflow
 A `render-deploy.yaml` in `.github/workflows` deploys passing builds automatically on Render. To setup:
 1. Create a new **Web Service** from https://dashboard.render.com/
