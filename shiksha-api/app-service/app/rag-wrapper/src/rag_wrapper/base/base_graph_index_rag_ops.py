@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 import json
@@ -407,7 +408,8 @@ class BaseGraphIndexRagOps(ABC):
             extractors_to_use = kg_extractors or self.kg_extractors
 
             # Create a new property graph index from documents
-            self.rag_index = PropertyGraphIndex.from_documents(
+            self.rag_index = await asyncio.to_thread(
+                PropertyGraphIndex.from_documents,
                 documents,
                 property_graph_store=self.property_graph_store,
                 vector_store=self.vector_store,
@@ -471,7 +473,7 @@ class BaseGraphIndexRagOps(ABC):
 
             # Insert documents
             for document in documents:
-                self.rag_index.insert(document)
+                await asyncio.to_thread(self.rag_index.insert, document)
 
             self.logger.info(f"Successfully inserted {len(documents)} text chunks")
 
@@ -498,8 +500,7 @@ class BaseGraphIndexRagOps(ABC):
             raise ValueError("Index must be created before deleting documents")
 
         try:
-            for doc_id in doc_ids:
-                self.rag_index.delete(doc_id)
+            await asyncio.gather(*[asyncio.to_thread(self.rag_index.delete, doc_id) for doc_id in doc_ids])
 
             self.logger.info(f"Successfully deleted {len(doc_ids)} documents")
 
