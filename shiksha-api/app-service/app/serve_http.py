@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.routers import chat_router
+from app.routers import chat_router, question_paper_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
