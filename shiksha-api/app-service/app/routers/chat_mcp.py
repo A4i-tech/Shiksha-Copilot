@@ -1,11 +1,12 @@
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
 import logging
 import uuid
 
 from app.services.lesson_chat_service import LESSON_CHAT_SERVICE_INSTANCE
 from app.models.chat import ConversationMessage, LessonChatRequest, MessageRole
-from mcp.server.fastmcp.server import Context
+from fastmcp.server import Context
 from pydantic import Field
 
 def get_user_id(ctx: Context) -> uuid.UUID:
@@ -17,10 +18,10 @@ def get_user_id(ctx: Context) -> uuid.UUID:
             pass
     raise ToolError("Cannot proceed with requets due to missing or malformed 'user_id' param")
 
-def router(app):
+def router(mcp: FastMCP):
     logger = logging.getLogger(__name__)
 
-    @app.tool(
+    @mcp.tool(
         "chat_general",
         title="General chat endpoint",
         description="Handle general chat messages and return AI responses",
@@ -52,7 +53,7 @@ def router(app):
             raise ToolError("Failed to process chat request")
 
 
-    @app.tool(
+    @mcp.tool(
         "chat_lession",
         title="Lesson-specific chat endpoint",
         description="Handle lesson-specific chat messages with contextual understanding."
