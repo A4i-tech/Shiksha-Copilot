@@ -64,14 +64,20 @@ app.include_router(question_paper_router)
 # Include MCP tools
 chat_router_mcp(mcp)
 
-@mcp.tool(name="version", description="Get the version")
-async def mcp_version() -> str: return settings.version
+@mcp.tool("version")
+async def mcp_version() -> str:
+    """Get the version"""
+    return settings.version
 
-@mcp.tool(name="app_name", description="Get the app name")
-async def mcp_app_name() -> str: return settings.app_name
+@mcp.tool("app_name")
+async def mcp_app_name() -> str:
+    """Get the app name"""
+    return settings.app_name
 
-@mcp.tool(name="health", description="Get the health status")
-async def mcp_health() -> str: return "healthy"
+@mcp.tool("health")
+async def mcp_health() -> str:
+    """Get the health status"""
+    return "healthy"
 
 
 @app.get("/")
