@@ -548,7 +548,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       let params = new HttpParams();
       params = params.append(
         'filters[includeVideos]',
-        this.lessonForm.get('videos')?.value
+        !this.showConfirmPopup && this.lessonForm.get('videos')?.value
       );
       params = params.append(
         'filters[levels]',
@@ -677,31 +677,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   confirm(value: string) {
     if (value === 'ok') {
-      // retain videos=true in formfiltervalues
-      const comprehensionLevel = this.checkboxOptions
-        .filter((opt) => opt.checked)
-        .map((val) => val.value);
-      let params = new HttpParams();
-      params = params.append(
-        'filters[includeVideos]',
-        'false'  // get the lesson plan without the error
-      );
-      params = params.append(
-        'filters[levels]',
-        JSON.stringify(comprehensionLevel)
-      );
-      // call api with videos=false to get lesson plan
-      this.contentGenService.getLessonPlanDetails(this.planId, params)
-        .subscribe({
-          next: (val: any) => {
-            this.contentGenService.selectedLessonPlan = val.data[0];
-            this.isGenerate = true;
-            this.router.navigate([this.getLessonType()?.inspectUrl]);
-          },
-          error: (err) => {
-            this.utilityservice.handleError(err);
-          },
-        });
+      //this.lessonForm.get('videos')?.setValue(false);
+      this.on_form_submit();
     }
     this.showConfirmPopup = false;
   }
