@@ -568,6 +568,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
           },
           error: (err) => {
             if (err?.error?.message === 'Video not found!') {
+              this.contentGenService.formfiltervalues = formvalues;
               this.showConfirmPopup = true;
             } else if (err?.error?.message === 'Draft Exists') {
               this.showDraftPopup = true;
@@ -676,8 +677,31 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   confirm(value: string) {
     if (value === 'ok') {
-      this.lessonForm.get('videos')?.setValue(false);
-      this.on_form_submit();
+      // retain videos=true in formfiltervalues
+      const comprehensionLevel = this.checkboxOptions
+        .filter((opt) => opt.checked)
+        .map((val) => val.value);
+      let params = new HttpParams();
+      params = params.append(
+        'filters[includeVideos]',
+        'false'  // get the lesson plan without the error
+      );
+      params = params.append(
+        'filters[levels]',
+        JSON.stringify(comprehensionLevel)
+      );
+      // call api with videos=false to get lesson plan
+      this.contentGenService.getLessonPlanDetails(this.planId, params)
+        .subscribe({
+          next: (val: any) => {
+            this.contentGenService.selectedLessonPlan = val.data[0];
+            this.isGenerate = true;
+            this.router.navigate([this.getLessonType()?.inspectUrl]);
+          },
+          error: (err) => {
+            this.utilityservice.handleError(err);
+          },
+        });
     }
     this.showConfirmPopup = false;
   }
