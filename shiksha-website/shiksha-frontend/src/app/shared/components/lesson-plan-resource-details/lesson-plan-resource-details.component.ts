@@ -677,7 +677,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   confirm(value: string) {
     if (value === 'ok') {
-      //this.lessonForm.get('videos')?.setValue(false);
       this.on_form_submit();
     }
     this.showConfirmPopup = false;
