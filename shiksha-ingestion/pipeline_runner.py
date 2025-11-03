@@ -69,9 +69,11 @@ def get_chapter_identifier(pdf_path: str) -> str:
 
 def main():
     # Set up working directory
-    initial_inputs = {
-        "pdf": "/home/kchourasia/ShikshaOSS/TelanganaBoardBooks/split_pdfs/grade6/math/1.pdf"
-    }
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--textbook", required=True, help="Path to the source textbook (PDF)")
+    args = parser.parse_args()
+
+    initial_inputs = {"pdf": args.textbook}
     # RUN ID: current datetime, in string format using datetime module
     from datetime import datetime
 
