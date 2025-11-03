@@ -51,11 +51,11 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies.ingestion-pipeline]
-path = "/home/kchourasia/ShikshaOSSNew/Shiksha-Copilot/components/ingestion-pipeline"
+path = "../components/ingestion-pipeline"
 develop = true
 
 [tool.poetry.dependencies.vellm-rag-wrapper]
-path = "/home/kchourasia/ShikshaOSSNew/Shiksha-Copilot/components/rag-wrapper"
+path = "../components/rag-wrapper"
 develop = true
 
 [tool.poetry.extras]
