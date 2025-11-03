@@ -1,5 +1,5 @@
 import logging
-from pdf2image import convert_from_path
+from ingestion_pipeline.utils.pdfutils import convert_pdf_to_images
 import torch
 from docling_core.types.doc import DoclingDocument
 from docling_core.types.doc.document import DocTagsDocument
@@ -33,39 +33,39 @@ class SmolDoclingTextExtractor(TextExtractor):
          4. Combining all page outputs into one markdown string.
         """
         # Convert PDF pages to images; adjust dpi as needed
-        pages = convert_from_path(file_path, dpi=200)
-        markdown_outputs = []
-        
-        for idx, page in enumerate(pages):
-            self.logger.debug(f"PAGE EXTRACTION TAKING PLACE {idx + 1}")
-            # Create the chat message prompt for the page
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "image"},
-                        {"type": "text", "text": "Convert this page to docling."}
-                    ]
-                }
-            ]
-            prompt = self.processor.apply_chat_template(messages, add_generation_prompt=True)
-            inputs = self.processor(text=prompt, images=[page], return_tensors="pt")
-            inputs = inputs.to(self.device)
+        with convert_pdf_to_images(file_path, dpi=200) as pages:
+            markdown_outputs = []
             
-            # Generate the output from the model
-            generated_ids = self.model.generate(**inputs, max_new_tokens=8192)
-            prompt_length = inputs.input_ids.shape[1]
-            trimmed_generated_ids = generated_ids[:, prompt_length:]
-            
-            # Decode the model output
-            doctags = self.processor.batch_decode(trimmed_generated_ids, skip_special_tokens=False)[0].lstrip()
-            
-            # Convert the output to a DocTagsDocument and then to a DoclingDocument
-            doctags_doc = DocTagsDocument.from_doctags_and_image_pairs([doctags], [page])
-            doc = DoclingDocument(name="Document")
-            doc.load_from_doctags(doctags_doc)
-            markdown = doc.export_to_markdown()
-            markdown_outputs.append(markdown)
+            for idx, page in enumerate(pages):
+                self.logger.debug(f"PAGE EXTRACTION TAKING PLACE {idx + 1}")
+                # Create the chat message prompt for the page
+                messages = [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "image"},
+                            {"type": "text", "text": "Convert this page to docling."}
+                        ]
+                    }
+                ]
+                prompt = self.processor.apply_chat_template(messages, add_generation_prompt=True)
+                inputs = self.processor(text=prompt, images=[page], return_tensors="pt")
+                inputs = inputs.to(self.device)
+                
+                # Generate the output from the model
+                generated_ids = self.model.generate(**inputs, max_new_tokens=8192)
+                prompt_length = inputs.input_ids.shape[1]
+                trimmed_generated_ids = generated_ids[:, prompt_length:]
+                
+                # Decode the model output
+                doctags = self.processor.batch_decode(trimmed_generated_ids, skip_special_tokens=False)[0].lstrip()
+                
+                # Convert the output to a DocTagsDocument and then to a DoclingDocument
+                doctags_doc = DocTagsDocument.from_doctags_and_image_pairs([doctags], [page])
+                doc = DoclingDocument(name="Document")
+                doc.load_from_doctags(doctags_doc)
+                markdown = doc.export_to_markdown()
+                markdown_outputs.append(markdown)
         
         # Combine the markdown output of all pages into one string
         return "\n\n".join(markdown_outputs)

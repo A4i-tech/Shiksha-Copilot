@@ -2,13 +2,12 @@ import base64
 import io
 import json
 import logging
-from typing import List, Optional, Dict, Any, Union
-import os
+from typing import List, Optional
 
-from pdf2image import convert_from_path
 from PIL import Image
 from litellm import completion
-from ingestion_pipeline.base.data_model import TableOfContent, Section, PageRange
+from ingestion_pipeline.base.data_model import TableOfContent
+from ingestion_pipeline.utils.pdfutils import convert_pdf_to_images
 
 
 class TableOfContentsExtractor:
@@ -227,21 +226,20 @@ Notes:
         # Convert PDF to images
         dpi = kwargs.get("dpi", 200)  # Lower DPI is sufficient for TOC extraction
         self.logger.info(f"Converting PDF to images with DPI {dpi}: {file_path}")
-        images = convert_from_path(file_path, dpi=dpi)
-        
-        # Process page range
-        processed_page_range = None
-        if page_range:
-            start_page, end_page = page_range
-            if start_page > 0 and end_page >= start_page and end_page <= len(images):
-                processed_page_range = list(range(start_page, end_page + 1))
-            else:
-                raise ValueError(f"Invalid page_range: {page_range}. start_page must be > 0, end_page must be >= start_page and <= {len(images)}")
-        
-        # Process TOC pages with LLM
-        return self._process_toc_pages_with_llm(
-            images, 
-            page_range=processed_page_range,
-            total_document_pages=len(images),
-            document_specific_hint=document_specific_hint
-        )
+        with convert_pdf_to_images(file_path, dpi=dpi) as images:
+            # Process page range
+            processed_page_range = None
+            if page_range:
+                start_page, end_page = page_range
+                if start_page > 0 and end_page >= start_page and end_page <= len(images):
+                    processed_page_range = list(range(start_page, end_page + 1))
+                else:
+                    raise ValueError(f"Invalid page_range: {page_range}. start_page must be > 0, end_page must be >= start_page and <= {len(images)}")
+
+            # Process TOC pages with LLM
+            return self._process_toc_pages_with_llm(
+                images, 
+                page_range=processed_page_range,
+                total_document_pages=len(images),
+                document_specific_hint=document_specific_hint
+            )

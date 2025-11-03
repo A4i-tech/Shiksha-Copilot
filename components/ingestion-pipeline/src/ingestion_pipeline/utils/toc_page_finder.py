@@ -1,12 +1,12 @@
 import base64
 import io
 import logging
-from typing import List, Dict, Any, Optional, Tuple
-import os
+from typing import List, Optional, Tuple
 
-from pdf2image import convert_from_path
 from PIL import Image
 from litellm import completion
+
+from ingestion_pipeline.utils.pdfutils import convert_pdf_to_images
 
 
 class TOCPageFinder:
@@ -219,72 +219,66 @@ Respond ONLY with the JSON array of boolean values, no additional text or explan
         # Convert PDF to images (only the pages we need to check)
         dpi = kwargs.get("dpi", 200)  # Lower DPI for faster processing
         self.logger.info(f"Converting first {max_pages_to_check} pages to images with DPI {dpi}: {file_path}")
-        
-        try:
-            # Convert only the pages we need to check
-            images = convert_from_path(
-                file_path, 
-                dpi=dpi, 
-                first_page=1, 
-                last_page=max_pages_to_check
-            )
-        except Exception as e:
-            self.logger.error(f"Error converting PDF to images: {e}")
-            return [], f"Error converting PDF: {str(e)}"
-
-        total_pages = len(images)
-        total_batches = (total_pages + batch_size - 1) // batch_size
-        
-        self.logger.info(f"Analyzing {total_pages} pages in {total_batches} batches of {batch_size}")
 
         # Track results for each page
         page_results = []  # List of (page_number, is_toc) tuples
         analysis_summary = []
-        
-        # Track state for early stopping
-        first_true_found = False
-        toc_complete = False
-        
-        # Process pages in batches
-        for batch_idx in range(total_batches):
-            start_idx = batch_idx * batch_size
-            end_idx = min(start_idx + batch_size, total_pages)
-            batch_images = images[start_idx:end_idx]
-            start_page = start_idx + 1  # 1-indexed
-            
-            self.logger.info(f"Processing batch {batch_idx + 1}/{total_batches} (pages {start_page}-{start_page + len(batch_images) - 1})")
-            
-            # Analyze this batch
-            batch_results = self._analyze_batch_with_llm(
-                batch_images,
-                start_page,
-                batch_idx + 1,
-                total_batches
-            )
-            
-            # Store results for each page in this batch and check for early stopping
-            for i, is_toc in enumerate(batch_results):
-                page_num = start_page + i
-                page_results.append((page_num, is_toc))
+        try:
+            # Convert only the pages we need to check
+            with convert_pdf_to_images(file_path, dpi=dpi, first_page=1, last_page=max_pages_to_check) as images:
+                total_pages = len(images)
+                total_batches = (total_pages + batch_size - 1) // batch_size
                 
-                # Check for early stopping condition
-                if is_toc and not first_true_found:
-                    # Found the first True
-                    first_true_found = True
-                elif not is_toc and first_true_found:
-                    # Found the first False after True - we can stop
-                    toc_complete = True
-                    self.logger.info(f"Found first False after True at page {page_num}. Stopping analysis.")
-                    break
-            
-            analysis_summary.append(
-                f"Batch {batch_idx + 1} (pages {start_page}-{start_page + len(batch_images) - 1}): "
-                f"{batch_results}"
-            )
-            
-            # Exit the batch loop if we've completed TOC detection
-            if toc_complete:
-                break
+                self.logger.info(f"Analyzing {total_pages} pages in {total_batches} batches of {batch_size}")
+                
+                # Track state for early stopping
+                first_true_found = False
+                toc_complete = False
+                
+                # Process pages in batches
+                for batch_idx in range(total_batches):
+                    start_idx = batch_idx * batch_size
+                    end_idx = min(start_idx + batch_size, total_pages)
+                    batch_images = images[start_idx:end_idx]
+                    start_page = start_idx + 1  # 1-indexed
+                    
+                    self.logger.info(f"Processing batch {batch_idx + 1}/{total_batches} (pages {start_page}-{start_page + len(batch_images) - 1})")
+                    
+                    # Analyze this batch
+                    batch_results = self._analyze_batch_with_llm(
+                        batch_images,
+                        start_page,
+                        batch_idx + 1,
+                        total_batches
+                    )
+                    
+                    # Store results for each page in this batch and check for early stopping
+                    for i, is_toc in enumerate(batch_results):
+                        page_num = start_page + i
+                        page_results.append((page_num, is_toc))
+                        
+                        # Check for early stopping condition
+                        if is_toc and not first_true_found:
+                            # Found the first True
+                            first_true_found = True
+                        elif not is_toc and first_true_found:
+                            # Found the first False after True - we can stop
+                            toc_complete = True
+                            self.logger.info(f"Found first False after True at page {page_num}. Stopping analysis.")
+                            break
+                    
+                    analysis_summary.append(
+                        f"Batch {batch_idx + 1} (pages {start_page}-{start_page + len(batch_images) - 1}): "
+                        f"{batch_results}"
+                    )
+                    
+                    # Exit the batch loop if we've completed TOC detection
+                    if toc_complete:
+                        break
+        except Exception as e:
+            self.logger.error(f"Error converting PDF to images: {e}")
+            return [], f"Error converting PDF: {str(e)}"
+
 
         # Find consecutive TOC pages starting from the first True
         toc_pages = []
@@ -310,7 +304,6 @@ Respond ONLY with the JSON array of boolean values, no additional text or explan
             final_summary += "\n\nNo table of contents found in the analyzed pages."
 
         self.logger.info(f"TOC analysis complete. Found TOC on pages: {toc_pages}")
-        
         return toc_pages, final_summary
 
     def get_toc_page_range(self, file_path: str, **kwargs) -> Tuple[Optional[int], Optional[int], str]:

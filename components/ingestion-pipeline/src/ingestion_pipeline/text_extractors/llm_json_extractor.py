@@ -2,13 +2,12 @@ import base64
 import io
 import json
 import logging
-from typing import List, Dict, Any, Optional
-import os
+from typing import List, Dict, Optional
 
-from pdf2image import convert_from_path
 from PIL import Image
 from litellm import completion
 from ingestion_pipeline.base.text_extractor import TextExtractor
+from ingestion_pipeline.utils.pdfutils import convert_pdf_to_images
 
 
 class LLMJSONExtractor(TextExtractor):
@@ -362,14 +361,13 @@ Do NOT wrap the output in any code block or add any extra commentary. The output
         # Convert PDF to images
         dpi = kwargs.get("dpi", 300)  # Higher DPI for better quality
         self.logger.info(f"Converting PDF to images with DPI {dpi}: {file_path}")
-        images = convert_from_path(file_path, dpi=dpi)
-
-        # Process pages in batches with context from previous pages
-        all_sections = self._process_pages_in_batches(
-            images,
-            batch_size=batch_size,
-            document_structure_hint=document_structure_hint,
-        )
+        with convert_pdf_to_images(file_path, dpi=dpi) as images:
+            # Process pages in batches with context from previous pages
+            all_sections = self._process_pages_in_batches(
+                images,
+                batch_size=batch_size,
+                document_structure_hint=document_structure_hint,
+            )
 
         # Return as JSON string
         return json.dumps(all_sections, indent=2, ensure_ascii=False)

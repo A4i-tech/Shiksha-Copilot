@@ -10,15 +10,14 @@ import os
 import tempfile
 import shutil
 import logging
-from typing import List
 
 # Configure logging
 logger = logging.getLogger(__name__)
+from ingestion_pipeline.utils.pdfutils import convert_pdf_to_images
 from magic_pdf.data.data_reader_writer import FileBasedDataWriter, FileBasedDataReader
 from magic_pdf.data.dataset import PymuDocDataset
 from magic_pdf.model.doc_analyze_by_custom_model import doc_analyze
 from magic_pdf.data.read_api import read_local_images
-from pdf2image import convert_from_path
 
 from ingestion_pipeline.base.text_extractor import TextExtractor
 
@@ -177,12 +176,11 @@ class MinerUTextExtractor(TextExtractor):
         # Ensure the output directory exists
         os.makedirs(output_dir, exist_ok=True)
         
-        # Convert PDF pages to images using pdf2image library
-        images = convert_from_path(file_path, dpi=dpi)
-        
-        # Save each page as an image with the format {page_index}.jpg
-        for i, image in enumerate(images):
-            image_path = os.path.join(output_dir, f"{i}.jpg")
-            image.save(image_path, "JPEG")
+        # Convert PDF pages to images
+        with convert_pdf_to_images(file_path, dpi=dpi) as images:
+            # Save each page as an image with the format {page_index}.jpg
+            for i, image in enumerate(images):
+                image_path = os.path.join(output_dir, f"{i}.jpg")
+                image.save(image_path, "JPEG")
             
         return output_dir

@@ -1,13 +1,12 @@
 import base64
 import io
 import logging
-from typing import List, Dict, Any, Optional
-import os
+from typing import List, Optional
 
-from pdf2image import convert_from_path
 from PIL import Image
 from litellm import completion
 from ingestion_pipeline.base.text_extractor import TextExtractor
+from ingestion_pipeline.utils.pdfutils import convert_pdf_to_images
 
 
 class LLMTextExtractor(TextExtractor):
@@ -314,11 +313,10 @@ Output ONLY the transcribed markdown content for the current image. Do NOT wrap 
         # Convert PDF to images
         dpi = kwargs.get("dpi", 300)  # Higher DPI for better quality
         self.logger.info(f"Converting PDF to images with DPI {dpi}: {file_path}")
-        images = convert_from_path(file_path, dpi=dpi)
-
-        # Process pages in batches with context from previous pages
-        return self._process_pages_in_batches(
-            images,
-            batch_size=batch_size,
-            document_structure_hint=document_structure_hint,
-        )
+        with convert_pdf_to_images(file_path, dpi=dpi) as images:
+            # Process pages in batches with context from previous pages
+            return self._process_pages_in_batches(
+                images,
+                batch_size=batch_size,
+                document_structure_hint=document_structure_hint,
+            )
