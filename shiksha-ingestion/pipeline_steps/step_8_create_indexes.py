@@ -1,11 +1,8 @@
-import json
 import logging
 import os
 import re
-from textwrap import dedent
-from typing import Dict, List, Any
+from typing import Dict
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
 from rag_wrapper.rag_ops.qdrant_rag_ops import QdrantRagOps
 from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
@@ -84,8 +81,8 @@ class CreateIndexStep(BasePipelineStep):
         Returns:
             StepResult with status and output paths containing the index_filter
         """
+        markdown_file = input_paths["markdown"]
         try:
-            markdown_file = input_paths["markdown"]
             with open(markdown_file, "r", encoding="utf-8") as file:
                 markdown_content = file.read()
             pages = self._split_by_pages(markdown_content)
@@ -131,6 +128,6 @@ class CreateIndexStep(BasePipelineStep):
         
         except Exception as e:
             logger.error(f"Error processing markdown file {markdown_file}: {e}")
-            return StepResult(status=StepStatus.FAILED, error=str(e))
+            return StepResult(status=StepStatus.FAILED, error=e)
         
         
