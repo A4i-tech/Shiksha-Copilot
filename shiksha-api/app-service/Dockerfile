@@ -1,55 +1,31 @@
-# FastAPI + Python venv for deployment, Poetry for development
-FROM python:3.11-slim
+FROM python:3.11.9-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# System deps
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+ENV PYTHON_ENV="staging" \
+    MONGODB_URI="mongodb+srv://" \
+    AZURE_OPENAI_API_KEY="" \
+    AZURE_OPENAI_API_VERSION="2024-02-15-preview" \
+    AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o" \
+    AZURE_OPENAI_EMBED_MODEL="text-embedding-3-small" \
+    AZURE_OPENAI_ENDPOINT="" \
+    BING_API_KEY="your_bing_search_api_key_here" \
+    BLOB_STORE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=dummyaccount;AccountKey=dummyaccountkey1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab==;EndpointSuffix=core.windows.net"
 
-# Create non-root user
-RUN groupadd --gid 1000 appuser && \
-    useradd --uid 1000 --gid 1000 --shell /bin/bash --create-home appuser
+RUN apt-get update && apt-get install -y \
+    curl build-essential git && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Poetry temporarily for dependency export
-RUN pip install "poetry==1.7.1"
+RUN pip install poetry
 
-WORKDIR /app
+WORKDIR /src/app-service
 
-# Copy Poetry configuration files
-COPY pyproject.toml poetry.lock* ./
+COPY . .
 
-# Copy the local rag-wrapper dependency before generating requirements
-COPY app/rag-wrapper ./app/rag-wrapper
+RUN poetry install --no-root --no-interaction --no-ansi
 
-# Copy all files first
-COPY --chown=appuser:appuser . .
+EXPOSE 5000
 
-# Generate requirements.txt from Poetry (excluding local dependencies) and install in virtual environment
-RUN python -m venv /opt/venv && \
-    . /opt/venv/bin/activate && \
-    poetry export --only=main --format=requirements.txt --output=requirements.txt --without-hashes && \
-    # Remove the local dependency line from requirements.txt as we'll install it separately
-    grep -v "vellm-rag-wrapper" requirements.txt > requirements_clean.txt && \
-    pip install -r requirements_clean.txt && \
-    # Install the local rag-wrapper package
-    pip install -e ./app/rag-wrapper
-
-# Remove Poetry to reduce image size
-RUN pip uninstall -y poetry
-
-# Switch to appuser
-USER appuser
-
-# Make sure we use the virtual environment and add app to Python path
-ENV PATH="/opt/venv/bin:$PATH"
-ENV PYTHONPATH="/app:$PYTHONPATH"
-
-EXPOSE 8000
-
-# Use uvicorn directly from the virtual environment
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "poetry run python3 -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]
