@@ -548,7 +548,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       let params = new HttpParams();
       params = params.append(
         'filters[includeVideos]',
-        this.lessonForm.get('videos')?.value
+        !this.showConfirmPopup && this.lessonForm.get('videos')?.value
       );
       params = params.append(
         'filters[levels]',
@@ -568,6 +568,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
           },
           error: (err) => {
             if (err?.error?.message === 'Video not found!') {
+              this.contentGenService.formfiltervalues = formvalues;
               this.showConfirmPopup = true;
             } else if (err?.error?.message === 'Draft Exists') {
               this.showDraftPopup = true;
@@ -676,7 +677,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   confirm(value: string) {
     if (value === 'ok') {
-      this.lessonForm.get('videos')?.setValue(false);
       this.on_form_submit();
     }
     this.showConfirmPopup = false;

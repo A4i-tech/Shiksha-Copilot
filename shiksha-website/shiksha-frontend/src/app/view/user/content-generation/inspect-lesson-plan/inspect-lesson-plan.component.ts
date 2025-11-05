@@ -148,6 +148,8 @@ export class InspectLessonPlanComponent implements OnInit, OnDestroy {
 
   regenerationLimitReached = false;
 
+  isVideoSelected: boolean = false;
+
 
   unloadHandler = (event: BeforeUnloadEvent) => {
     event.preventDefault();
@@ -229,7 +231,9 @@ export class InspectLessonPlanComponent implements OnInit, OnDestroy {
     {
       return {title:e.title, link:this.utilityService.trustUrl(e.url)}
     })
-    
+      if(this.contentGenService.formfiltervalues && this.contentGenService.formfiltervalues.videos !== undefined) {
+        this.isVideoSelected = this.contentGenService.formfiltervalues.videos === true;
+      }
     }
   }
 
@@ -270,6 +274,9 @@ export class InspectLessonPlanComponent implements OnInit, OnDestroy {
         {
           return {title:e.title, link:this.utilityService.trustUrl(e.url)}
         })
+        if(res.data.isVideoSelected !== undefined) {
+          this.isVideoSelected = res.data.isVideoSelected;
+        }
       },
       error: (err) => {
         this.utilityService.handleError(err);
@@ -415,7 +422,7 @@ export class InspectLessonPlanComponent implements OnInit, OnDestroy {
       lessonId,
       instructionSet: this.tabs,
       learningOutcomes: this.learningOutcomes,
-      isVideoSelected:this.videoUrls.length ? true : false
+      isVideoSelected: this.isVideoSelected
     };
 
     forkJoin([

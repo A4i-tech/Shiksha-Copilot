@@ -344,10 +344,13 @@
         </div>
       </div>     
 
-      <ng-container *ngIf="videoUrls.length">
+      <ng-container *ngIf="isVideoSelected">
       <h3 class="text-base text-content font-semibold" >{{'Videos' | translate}}</h3>
       <div class="border border-shade-100 text-content rounded mb-5 p-4 bg-white  overflow-x-auto">
         <div class="flex gap-4">
+          <div *ngIf="videoUrls.length === 0" class="w-full text-center p-4">
+            <p class="text-content-60">{{'Selected combination does not include videos.' | translate}}</p>
+          </div>
           <div *ngFor="let video of videoUrls" class="min-w-[416px] min-h-[190px]">
             <div class=" bg-white border">
               <div class="bg-shade-80 p-3 rounded">
