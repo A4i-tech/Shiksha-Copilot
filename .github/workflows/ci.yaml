@@ -79,7 +79,6 @@ jobs:
           color: ${{ steps.coverage.outputs.percentage > 80 && 'brightgreen' || steps.coverage.outputs.percentage > 60 && 'yellow' || 'red' }}
 
   push:
-    if: ${{ github.event_name == 'push' && success() }}
     runs-on: ubuntu-latest
     needs: build-test
     outputs:
