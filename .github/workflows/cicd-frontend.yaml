@@ -39,7 +39,7 @@ jobs:
         run: |
           find src/environments -name "environment*.ts" -print -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
           npm ci
-          npm run build -- --configuration development
+          npm run build -- --configuration development --base-href /Shiksha-Copilot/
 
       - name: Check build output
         run: ls -R shiksha-website/shiksha-frontend/dist/shiksha-frontend
