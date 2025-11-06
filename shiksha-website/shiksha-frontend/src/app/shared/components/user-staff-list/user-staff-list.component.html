@@ -20,7 +20,7 @@
 				</button>
 				<button *ngIf="getType()?.type === 'user'" class="btn-primary" (click)="exportUsersListToExcel()" [disabled]="!usersList.length" >
 					<div class="flex items-center gap-2">
-					  <img src="../../.././../assets/icons/upload_light.svg" alt="" />
+					  <img src="assets/icons/upload_light.svg" alt="" />
 					  <span class="text-nowrap">{{'Export' | translate}}</span>
 					</div>
 				  </button>
