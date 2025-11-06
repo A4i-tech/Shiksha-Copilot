@@ -58,10 +58,10 @@ jobs:
         run: |
           IMAGE=$(echo "${{ steps.meta.outputs.tags }}" | grep "sha-" | head -n 1)
           mkdir -p htmlcov
-          touch coverage.xml
+          touch coverage.json
           docker run --rm \
             -v $PWD/htmlcov:/src/app-service/htmlcov \
-            -v $PWD/coverage.xml:/src/app-service/coverage.xml \
+            -v $PWD/coverage.json:/src/app-service/coverage.json \
             --entrypoint poetry "$IMAGE" run pytest
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
@@ -72,13 +72,23 @@ jobs:
           name: coverage-html-shiksha-api-app-service
           path: htmlcov
 
-      - name: Upload coverage to Codecov
-        if: github.ref_name == github.event.repository.default_branch
-        uses: codecov/codecov-action@v4
+      - name: Extract coverage percentage
+        id: coverage
+        run: |
+          COVERAGE=$(jq -r '.totals.percent_covered' coverage.json | awk '{print int($1+0.999)}')
+          echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "Coverage: $COVERAGE%"
+
+      - name: Create coverage badge
+        if: github.ref_name == github.event.repository.default_branch && vars.COVERAGE_GIST_ID != ''
+        uses: schneegans/dynamic-badges-action@v1.7.0
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage.xml
-          fail_ci_if_error: true
+          auth: ${{ secrets.COVERAGE_GIST_TOKEN }}
+          gistID: ${{ vars.COVERAGE_GIST_ID }}
+          filename: api.json
+          label: coverage (api)
+          message: ${{ steps.coverage.outputs.percentage }}%
+          color: ${{ steps.coverage.outputs.percentage > 80 && 'brightgreen' || steps.coverage.outputs.percentage > 60 && 'yellow' || 'red' }}
 
   push:
     if: ${{ github.event_name == 'push' && success() }}

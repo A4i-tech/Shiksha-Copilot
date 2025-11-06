@@ -1,6 +1,6 @@
 # Shiksha Copilot
 [![CI](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/main.yaml/badge.svg)](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/main.yaml)
-[![codecov](https://codecov.io/github/A4i-tech/Shiksha-Copilot/graph/badge.svg?token=1YIYWZEBA1)](https://codecov.io/github/A4i-tech/Shiksha-Copilot)
+[![API Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/mamuqsit/4ff0de608f5f27e84d0588f62c4fb34f/raw/api.json)](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/ci.yaml) <!-- TODO: Replace with a4i-architect's gist -->
 [![CodeQL Advanced](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/codeql.yml/badge.svg)](https://github.com/A4i-tech/Shiksha-Copilot/actions/workflows/codeql.yml)
 
 ## Overview
