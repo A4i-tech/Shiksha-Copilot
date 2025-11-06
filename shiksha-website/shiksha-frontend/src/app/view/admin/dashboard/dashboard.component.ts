@@ -285,10 +285,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   
             // Define your custom images
             const activeUserImage = new Image(20, 20);
-            activeUserImage.src = '../../../../assets/icons/Profile_1.svg';
+              activeUserImage.src = 'assets/icons/Profile_1.svg';
   
             const inactiveUserImage = new Image(20, 20);
-            inactiveUserImage.src = '../../../../assets/icons/Profile_2.svg';
+              inactiveUserImage.src = 'assets/icons/Profile_2.svg';
   
             // Return the custom labels with user counts
             return data.labels!.map((label, index): any => {

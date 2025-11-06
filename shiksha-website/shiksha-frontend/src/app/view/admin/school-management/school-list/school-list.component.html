@@ -28,7 +28,7 @@
           [hasPermission]="['admin']"
         >
           <div class="flex items-center gap-2">
-            <img src="../../.././../../assets/icons/upload.svg" alt="" />
+            <img src="assets/icons/upload.svg" alt="" />
             <span class="text-nowrap">{{'Bulk Upload' | translate}}</span>
           </div>
         </button>
@@ -39,13 +39,13 @@
           [hasPermission]="['admin']"
         >
           <div class="flex items-center gap-2">
-            <img src="../../.././../../assets/icons/add.svg" alt="" />
+            <img src="assets/icons/add.svg" alt="" />
             <span class="text-nowrap">{{'Add School' | translate}}</span>
           </div>
         </button>
         <button class="btn-primary" *ngIf="schoolListData" (click)="exportSchoolList()" [disabled]="!schoolListData.length">
 					<div class="flex items-center gap-2">
-					  <img src="../../.././../assets/icons/upload_light.svg" alt="" />
+					  <img src="assets/icons/upload_light.svg" alt="" />
 					  <span class="text-nowrap">{{'Export' | translate}}</span>
 					</div>
 				  </button>
