@@ -4,13 +4,15 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1",
+		"test": "jest --runInBand",
+		"test:coverage": "jest --coverage --runInBand",
 		"start-dev": "pm2-runtime start app.js --name my-app-dev --env development ",
 		"start-uat": "pm2-runtime start app.js --name my-app-uat --env uat "
 	},
 	"author": "",
 	"license": "ISC",
 	"devDependencies": {
+		"jest": "^29.7.0",
 		"nodemon": "^3.1.0"
 	},
 	"dependencies": {
