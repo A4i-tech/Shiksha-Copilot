@@ -10,6 +10,10 @@ on:
   workflow_dispatch:
 
 jobs:
+  cicd-frontend:
+    uses: ./.github/workflows/cicd-frontend.yaml
+    secrets: inherit
+
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
