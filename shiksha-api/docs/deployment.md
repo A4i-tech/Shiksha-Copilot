@@ -67,7 +67,7 @@ CI is preconfigured in the repository and requires no extra setup. Code coverage
 
 To configure code coverage:
 - Obtain a [personal access token](https://github.com/settings/personal-access-tokens) with "Read and write" permissison for "Gists". Configure this as a repository secret labelled `COVERAGE_GIST_TOKEN`
-- Create a new gist via https://gist.github.com and copy the gist's ID. Configure tthis as a repository variable (_not secret!_) labelled `COVERAGE_GIST_ID`.
+- Create a new gist via https://gist.github.com and copy the gist's ID. Configure this as a repository variable (_not secret!_) labelled `COVERAGE_GIST_ID`.
 - Done! Any pushes to the default branch will update code coverage.
 
 ## Setup Continuous Deployment (CD) workflow
@@ -84,10 +84,6 @@ A `render-deploy.yaml` in `.github/workflows` deploys passing builds automatical
 
 As an optional step, configure a `MICROSOFT_TEAMS_WEBHOOK` to receive build status notifications on a Microsoft Teams channel:
 1. In a channel where you want to be notified, select **Manage Channels**, then click **Edit** under **Connectors**:
-
-   <img alt="image" src="https://github.com/user-attachments/assets/db7b931c-bc75-494a-96b9-09cb5c1c9df9" />
 2. Configure the **Incoming Webhook** connector
-
-   <img alt="image" src="https://github.com/user-attachments/assets/6d5a9632-0a1d-4e9e-9b39-a795bf153096" />
 3. This step will generate a webhook URL. Paste this as a repository secret named `MICROSOFT_TEAMS_WEBHOOK`.
 4. Done! Build status will be emitted to this channel at the end of workflow.
