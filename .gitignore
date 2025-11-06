@@ -8,7 +8,6 @@ shiksha-ingestion/scert_action_verbs.json
 # Unit test / coverage reports
 htmlcov/
 **/coverage/
-**/__tests__/
 .tox/
 .nox/
 .coverage
