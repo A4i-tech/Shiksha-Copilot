@@ -71,7 +71,7 @@ To configure code coverage:
 - Done! Any pushes to the default branch will update code coverage.
 
 ## Setup Continuous Deployment (CD) workflow
-A `render-deploy.yaml` in `.github/workflows` deploys passing builds automatically on Render. To setup:
+A `ci-render.yaml` in `.github/workflows` deploys passing builds automatically on Render. To setup:
 1. Create a new **Web Service** from https://dashboard.render.com/
 2. Under the **Existing Image** tab, type in the image URL. You can get this from the succeeding docker deploy workflow, under the **Sign the published Docker image** step in **build** job. (e.g., `ghcr.io/a4i-tech/shiksha-copilot`). Visit the link and copy your image URL (e.g., `docker pull ghcr.io/a4i-tech/shiksha-copilot:a4i-main`).
    > _Do **NOT** use the sha256-suffixed image URL as those are immutable and therefore won't update deployment with your repository's latest changes._
