@@ -42,7 +42,7 @@ jobs:
 
   notify-success:
     runs-on: ubuntu-latest
-    needs: [ci-api, ci-backend, cd-api, cd-backend]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
     if: success() && github.event_name == 'push'
     steps:
       - name: Notify Teams Success
@@ -88,7 +88,7 @@ jobs:
 
   notify-failure:
     runs-on: ubuntu-latest
-    needs: [ci-api, ci-backend, cd-api, cd-backend]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
     if: failure() && github.event_name == 'push'
     steps:
       - name: Notify Teams Failure
