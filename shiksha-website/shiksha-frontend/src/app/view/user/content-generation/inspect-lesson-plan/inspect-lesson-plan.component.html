@@ -2,19 +2,19 @@
 <div class="flex justify-between items-center">
   <div class="flex gap-2">
     <img
-    src="../../../../../assets/icons/back-arrow.svg"
+    src="assets/icons/back-arrow.svg"
     alt=""
     class="cursor-pointer"
     (click)="backNavigation()"
   />
     <h1 class="text-xl md:text-3xl font-bold text-content">{{'Lesson Plan' | translate}}</h1>
   </div>
-  <button  [hasPermission]="['power']" (click)="chat(selectedLessonPlan?._id, selectedLessonPlan?.lesson?.chapter?._id)" *ngIf="mode === 'view'" class="btn-primary flex gap-2 items-center my-2 md:my-0"><img src="../../../../../assets/icons/chat-light.svg" alt="">{{'Chatbot' | translate}}</button>
+  <button  [hasPermission]="['power']" (click)="chat(selectedLessonPlan?._id, selectedLessonPlan?.lesson?.chapter?._id)" *ngIf="mode === 'view'" class="btn-primary flex gap-2 items-center my-2 md:my-0"><img src="assets/icons/chat-light.svg" alt="">{{'Chatbot' | translate}}</button>
 
 </div>
   <p class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">{{'Info' | translate}}: Lesson Plan Type-5E , {{'Board' | translate}}-{{formvalues.board}} </p>
   <div class=" bg-error-50 text-error text-sm md:text-base p-4 rounded-sm mt-5 font-light grid grid-cols-[auto,1fr] gap-2 items-start">
-    <img class="me-2 align-text-top" src="../../../../../assets/icons/Button_info.svg" alt="">
+    <img class="me-2 align-text-top" src="assets/icons/Button_info.svg" alt="">
     <p class="leading-[18px]">{{'Disclaimer' | translate}}: {{'The content generated in Shiksha copilot is using an AI system and there can be certain instances that the content generated may not be accurate. Please always verify the content before usage' | translate}}.</p>   
   </div>
 
@@ -135,7 +135,7 @@
             (click)="toggleEditMode(tab.type)"
             class="btn-primary flex items-center justify-center cursor-pointer w-24 my-5"
           >
-            <img src="../../../../../assets/icons/edit_light.svg" alt="" />
+            <img src="assets/icons/edit_light.svg" alt="" />
             <span class="ms-1">{{'Edit' | translate}}</span>
           </div>
           <div *ngIf="tabsEditMode[tab.type]" (click)="toggleEditMode(tab.type);"
@@ -215,7 +215,7 @@
                     (click)="toggleEditMode(tab.type)"
                     class="btn-primary flex items-center justify-center cursor-pointer w-24 my-5"
                   >
-                    <img src="../../../../../assets/icons/edit_light.svg" alt="" />
+                    <img src="assets/icons/edit_light.svg" alt="" />
                     <span class="ms-1">{{ "Edit" | translate }}</span>
                   </div>
                   <div
@@ -260,7 +260,7 @@
               <div>
                 <img
                   class="px-10 py-8"
-                  src="../../../../../assets/images/docx.svg"
+                  src="assets/images/docx.svg"
                   alt=""
                 />
                 <div></div>
@@ -268,13 +268,13 @@
               <div class="bg-white p-2 flex items-center gap-2 justify-between">
               <div class="flex items-center gap-1">
                 <div class="p-1 rounded-lg bg-primary-60">
-                  <img src="../../../../../assets/icons/docx-file.svg" alt="">
+                  <img src="assets/icons/docx-file.svg" alt="">
                 </div>
                 <span class="max-w-28 text-nowrap overflow-hidden text-ellipsis">{{utilityService.getSubjectDisplayName(formvalues?.subjects)}}</span>
               </div>
   
                 <div class="p-1 rounded-lg bg-primary-60">
-                  <img src="../../../../../assets/icons/download.svg" alt="">
+                  <img src="assets/icons/download.svg" alt="">
                 </div>
               </div>
             </div>
@@ -287,7 +287,7 @@
             <div>
               <img
                 class="px-10 py-8"
-                src="../../../../../assets/images/ppt.svg"
+                src="assets/images/ppt.svg"
                 alt=""
               />
               <div></div>
@@ -295,13 +295,13 @@
             <div class="bg-white p-2 flex items-center gap-2 justify-between">
             <div class="flex items-center gap-1">
               <div class="p-1 rounded-lg bg-primary-60">
-                <img src="../../../../../assets/icons/ppt-file.svg" alt="">
+                <img src="assets/icons/ppt-file.svg" alt="">
               </div>
               <span class="max-w-28 text-nowrap overflow-hidden text-ellipsis">{{utilityService.getSubjectDisplayName(formvalues?.subjects)}}</span>
             </div>
 
               <div class="p-1 rounded-lg bg-primary-60">
-                <img src="../../../../../assets/icons/download.svg" alt="">
+                <img src="assets/icons/download.svg" alt="">
               </div>
             </div>
           </div>
@@ -314,7 +314,7 @@
           <div>
             <img
               class="px-10 py-8"
-              src="../../../../../assets/images/pdf.svg"
+              src="assets/images/pdf.svg"
               alt=""
             />
             <div></div>
@@ -322,13 +322,13 @@
           <div class="bg-white p-2 flex items-center gap-2 justify-between">
           <div class="flex items-center gap-1">
             <div class="p-1 rounded-lg bg-primary-60">
-              <img src="../../../../../assets/icons/pdf-file.svg" alt="">
+              <img src="assets/icons/pdf-file.svg" alt="">
             </div>
             <span class="max-w-28 text-nowrap overflow-hidden text-ellipsis">{{'5E Table' | translate}}</span>
           </div>
 
             <div class="p-1 rounded-lg bg-primary-60">
-              <img src="../../../../../assets/icons/download.svg" alt="">
+              <img src="assets/icons/download.svg" alt="">
             </div>
           </div>
         </div>
@@ -339,7 +339,7 @@
       </div>
       <div class="bg-warn-50 p-2 my-4" *ngIf="mode !== 'view'">
         <div class="flex items-center gap-2">
-          <img src="../../../../../assets/icons/Info 2.svg" alt="">
+          <img src="assets/icons/Info 2.svg" alt="">
         <small>{{ 'Documents will be available for download once the lesson plan has been saved.' | translate }}</small>
         </div>
       </div>     
@@ -413,14 +413,14 @@
     class="btn-primary-outline"
       [disabled]="!lessonPlanFeedback || lessonPlanFeedback === lessonPlanfeedbackValues[2].value || regenerationLimitReached"
         >
-       <div class="flex items-center gap-2"> <img src="../../../../../assets/icons/Replay.svg" alt="" />
+       <div class="flex items-center gap-2"> <img src="assets/icons/Replay.svg" alt="" />
         <span>{{'Regenerate' | translate}}</span></div>
     </button>
     </div>
 
     <div class="bg-warn-50 p-2 my-4" *ngIf="regenerationLimitReached">
       <div class="flex items-center gap-2">
-        <img src="../../../../../assets/icons/Info 2.svg" alt="">
+        <img src="assets/icons/Info 2.svg" alt="">
       <small>{{ 'You have reached the daily limit of 3 attempts to regenerating the lesson plan. Please try tomorrow' | translate }}</small>
       </div>
     </div>  

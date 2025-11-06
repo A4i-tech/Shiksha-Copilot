@@ -10,11 +10,11 @@
     >
       <img
         class="me-2 align-text-top"
-        src="../../../../../assets/icons/lesson-info.svg"
+        src="assets/icons/lesson-info.svg"
         alt=""
       />
 
-      <!-- <img src="../../../../../assets/icons/closeBtn.svg" alt="" class="absolute cursor-pointer top-0 right-0 m-2"> -->
+      <!-- <img src="assets/icons/closeBtn.svg" alt="" class="absolute cursor-pointer top-0 right-0 m-2"> -->
 
       <div>
         <h6>
@@ -50,11 +50,11 @@
     </h1>
     <div class="flex gap-2 flex-wrap items-center" *ngIf="type === 'generated'">
       <button class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/user/content-generation/lesson-resources">
-        <img src="../../../../../assets/icons/edit_light.svg" alt="" />
+        <img src="assets/icons/edit_light.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Resource" | translate}}</span>
       </button>
       <button class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/user/content-generation/lesson-plan">
-        <img src="../../../../../assets/icons/edit_primary.svg" alt="" />
+        <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Plan" | translate}}</span>
       </button>
     </div>
@@ -69,7 +69,7 @@
       />
       <img
         class="absolute left-2 top-1/2 transform -translate-y-1/2 w-5 h-5"
-        src="../../../../../assets/icons/Search (1).svg"
+        src="assets/icons/Search (1).svg"
         alt=""
       />
     </div>
@@ -81,7 +81,7 @@
   >
     <img
       class="me-2 align-text-top"
-      src="../../../../../assets/icons/lesson-info.svg"
+      src="assets/icons/lesson-info.svg"
       alt=""
     />
     <div>
@@ -113,12 +113,12 @@
             >
               <img
                 *ngIf="item.isLesson"
-                src="../../../../../assets/icons/basil_document-solid.svg"
+                src="assets/icons/basil_document-solid.svg"
                 alt=""
               />
               <img
                 *ngIf="!item.isLesson"
-                src="../../../../../assets/icons/basil_document-solid (1).svg"
+                src="assets/icons/basil_document-solid (1).svg"
                 alt=""
               />
             </div>
@@ -136,7 +136,7 @@
               >
                 <div class="flex items-center gap-1">
                   <img
-                    src="../../../../../assets/icons/draft-light-sm.svg"
+                    src="assets/icons/draft-light-sm.svg"
                     alt=""
                   />
                   <span class="text-sm text-white">{{"Draft" | translate}}</span>
@@ -241,17 +241,17 @@
             >
               <img
                 *ngIf="item.status === 'completed'"
-                src="../../../../../assets/icons/basil_document-solid.svg"
+                src="assets/icons/basil_document-solid.svg"
                 alt=""
               />
               <img
                 *ngIf="item.status === 'running'"
-                src="../../../../assets/icons/file-yellow.svg"
+                src="assets/icons/file-yellow.svg"
                 alt=""
               />
               <img
                 *ngIf="item.status === 'failed'"
-                src="../../../../assets/icons/file-red.svg"
+                src="assets/icons/file-red.svg"
                 alt=""
               />
             </div>
@@ -402,7 +402,7 @@
       class="px-6 py-8 rounded-xl w-[460px] h-[300px] bg-white border flex flex-col items-center"
     >
       <div class="rounded-full bg-warn-50 p-4 my-8">
-        <img src="../../../../assets/icons/no-file.svg" alt="" />
+        <img src="assets/icons/no-file.svg" alt="" />
       </div>
       <h4 class="text-base text-center font-medium">
         {{ "No items found" | translate }}

@@ -10,12 +10,12 @@
 				<button (click)="blukUpload()" [hasPermission]="['admin']"
 						*ngIf="getType()?.type === 'user'"
 						class="btn-outline-primary flex items-center gap-2">
-						<img src="../../../../../assets/icons/Vector (1).svg" alt="">
+						<img src="assets/icons/Vector (1).svg" alt="">
 						<span class="text-nowrap">{{'Bulk Upload' | translate}}</span>
 				</button>
 				<button [hasPermission]="['admin']"
 						class="btn-primary flex items-center gap-2" (click)="openAddUserFormComp()">
-						<img src="../../../../../assets/icons/E add.svg" alt="">
+						<img src="assets/icons/E add.svg" alt="">
 						<span class="text-nowrap">{{(getType()?.type === 'user' ? 'Add New Teacher' : 'Add New Staff') | translate}}</span>						
 				</button>
 				<button *ngIf="getType()?.type === 'user'" class="btn-primary" (click)="exportUsersListToExcel()" [disabled]="!usersList.length" >
@@ -32,7 +32,7 @@
 						<div class="min-w-[45%]">
 							<label for="" class="form-control-label">Search</label>
 							<div class="search-icon w-full flex items-center h-9 ">
-							  <img src="../../../../../assets/icons/Search.svg" alt="" class="mr-2"/>
+							  <img src="assets/icons/Search.svg" alt="" class="mr-2"/>
 							  <input [(ngModel)]="searchText" (input)="searchInputChanged($event)"
 											class="appearance-none rounded pl-10 py-2 px-3 text-content leading-tight focus:outline-none bg-shade-80 w-full  h-9"
 											type="text" placeholder="{{'Search' | translate}}">
@@ -55,8 +55,8 @@
 						[title]="showAdditionalFilters ? 'Remove Additional Filters' : 'Add Additional Filters'"
 						(click)="toggleFilter()"
 						class="btn-primary flex items-center gap-2 w-28" >
-						<img *ngIf="!showAdditionalFilters" src="../../../../assets/icons/filter-plus.svg" alt="">
-						<img *ngIf="showAdditionalFilters" src="../../../../assets/icons/filter-minus.svg" alt="">
+						<img *ngIf="!showAdditionalFilters" src="assets/icons/filter-plus.svg" alt="">
+						<img *ngIf="showAdditionalFilters" src="assets/icons/filter-minus.svg" alt="">
 				</button>
 					</div>
 
@@ -138,7 +138,7 @@
 													<div class="flex justify-center">
 															<div class="relative" [class.open]="isOpen" (click)="toggleDropdown(i, $event)">
 																	<button class="py-2 px-4 rounded inline-flex items-center">
-																			<img class="w-5" src="../../../../../assets/icons/more_vert.svg" alt="" />
+																			<img class="w-5" src="assets/icons/more_vert.svg" alt="" />
 																	</button>
 	
 																	<ul *ngIf="isOpen[i]"
@@ -147,7 +147,7 @@
 																			<li class="h-10 mt-2 hover:bg-shade-80 cursor-pointer" (click)="viewUser(item)">
 																					<a class="block px-4 py-2 text-sm text-content" role="menuitem">
 																							<div class="flex items-center">
-																									<img class="mx-2" src="../../../../../assets/icons/Visibility.svg"
+																									<img class="mx-2" src="assets/icons/Visibility.svg"
 																											alt="" />
 																									<span>{{(getType()?.type === 'user' ? 'View Teacher' : 'View Staff') | translate}}</span>
 																							</div>
@@ -157,7 +157,7 @@
 																			<li class="h-10 hover:bg-shade-80 cursor-pointer" (click)="editUser(item)">
 																					<a class="block px-4 py-2 text-sm text-content" role="menuitem">
 																							<div class="flex items-center">
-																									<img class="mx-2" src="../../../../../assets/icons/Vector.svg" alt="" />
+																									<img class="mx-2" src="assets/icons/Vector.svg" alt="" />
 																									<span>{{(getType()?.type === 'user' ? 'Edit Teacher' : 'Edit Staff') | translate}}</span>
 																							</div>
 																					</a>
@@ -168,7 +168,7 @@
 																					<a class="block px-4 py-2 text-sm text-content" role="menuitem"
 																							(click)="openModalForDeleteConfirm(item)">
 																							<div class="flex items-center">
-																									<img class="mx-2" src="../../../../../assets/icons/Vector (2).svg"
+																									<img class="mx-2" src="assets/icons/Vector (2).svg"
 																											alt="" />
 																									<span class="text-error">{{(getType()?.type === 'user' ? 'Disable Teacher' : 'Disable Staff') | translate}}</span>
 																							</div>
@@ -177,7 +177,7 @@
 																			<li *ngIf="getType()?.type === 'user' && item.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
 																				<a class="block px-4 py-2 text-sm text-content" role="menuitem"  (click)="activateUser(item._id)"	>
 																				  <div class="flex items-center">
-																					<img class="mx-2 w-7" src="../../../../../assets/icons/switch-on.svg"  alt=""/>
+																					<img class="mx-2 w-7" src="assets/icons/switch-on.svg"  alt=""/>
 																					<span class="text-success">{{'Activate User' | translate}}</span>
 																				  </div>
 																				</a>
