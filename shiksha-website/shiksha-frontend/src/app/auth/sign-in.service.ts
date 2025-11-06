@@ -22,13 +22,10 @@ export class SignInService extends BaseRestService {
 
     const hostname = window.location.hostname;
     
-    if (hostname.startsWith('sikshana') || hostname.startsWith('shikshacopilot')) {
-      this.params = this.params.set('type', '0');
-      this.loggedInUserType = applicationUsers.TEACHER;
-    } else if (hostname.startsWith('admin')) {
+    if (hostname.startsWith('admin')) {
       this.loggedInUserType = applicationUsers.ADMIN;
       this.params = this.params.set('type', '1');
-    } else if(hostname.startsWith('localhost')){
+    } else {
       this.loggedInUserType = applicationUsers.TEACHER;
       this.params = this.params.set('type', '0');
     }
