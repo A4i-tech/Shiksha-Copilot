@@ -4,9 +4,9 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main" ]
+    branches: [ "a4i/main", "a4i/staging" ]
   pull_request:
-    branches: [ "a4i/main" ]
+    branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
 
 jobs:
