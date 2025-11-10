@@ -1,11 +1,12 @@
-from mcp.server.fastmcp.exceptions import ToolError
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
 import logging
 import uuid
 
 from app.services.lesson_chat_service import LESSON_CHAT_SERVICE_INSTANCE
 from app.models.chat import ConversationMessage, LessonChatRequest, MessageRole
-from mcp.server.fastmcp.server import Context
+from fastmcp.server import Context
 from pydantic import Field
 
 def get_user_id(ctx: Context) -> uuid.UUID:
@@ -17,15 +18,14 @@ def get_user_id(ctx: Context) -> uuid.UUID:
             pass
     raise ToolError("Cannot proceed with requets due to missing or malformed 'user_id' param")
 
-def router(app):
+def router(mcp: FastMCP):
     logger = logging.getLogger(__name__)
 
-    @app.tool(
-        "chat_general",
-        title="General chat endpoint",
-        description="Handle general chat messages and return AI responses",
-    )
-    async def chat(message: str, context: Context) -> str:
+    @mcp.tool
+    async def chat_general(
+        message: str = Field(description="A general educational query"),
+        context: Context = Field(...)
+    ) -> str:
         """
         General chat endpoint for handling user messages.
 
@@ -52,16 +52,12 @@ def router(app):
             raise ToolError("Failed to process chat request")
 
 
-    @app.tool(
-        "chat_lession",
-        title="Lesson-specific chat endpoint",
-        description="Handle lesson-specific chat messages with contextual understanding."
-    )
-    async def lesson_chat(
+    @mcp.tool
+    async def chat_lesson(
         chapter_id: str = Field(..., description="Identifier with board, medium, grade, subject, number and title"),
         chapter_index: str = Field(..., description="Path to the chapter index for retrieval"),
         message: str = Field(..., description="A query about the lesson"),
-        context: Context = None
+        context: Context = Field(...)
     ) -> str:
         """
         Lesson-specific chat endpoint for handling educational content queries.
