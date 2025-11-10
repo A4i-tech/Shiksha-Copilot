@@ -2,6 +2,19 @@ name: CI Backend
 
 on:
   workflow_call:
+    inputs:
+      publish_staging:
+        description: "Whether to set 'staging' tag on published image"
+        required: true
+        type: boolean
+      publish_latest:
+        description: "Whether to set 'latest' tag on published image"
+        required: true
+        type: boolean
+      update_cov_badge:
+        description: "Whether to update Code Coverage Badge"
+        required: true
+        type: boolean
     outputs:
       coverage_percentage:
         description: "Backend coverage percentage"
@@ -36,7 +49,8 @@ jobs:
           tags: |
             type=sha
             type=ref,event=branch
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=staging,enable=${{ inputs.publish_staging }}
+            type=raw,value=latest,enable=${{ inputs.publish_latest }}
 
       - name: Build backend image (no push)
         uses: docker/build-push-action@v5
@@ -77,7 +91,7 @@ jobs:
           echo "Coverage: $COVERAGE%"
 
       - name: Create backend coverage badge
-        if: github.ref_name == github.event.repository.default_branch && vars.COVERAGE_GIST_ID != ''
+        if: inputs.update_cov_badge && vars.COVERAGE_GIST_ID != ''
         uses: schneegans/dynamic-badges-action@v1.7.0
         with:
           auth: ${{ secrets.COVERAGE_GIST_TOKEN }}

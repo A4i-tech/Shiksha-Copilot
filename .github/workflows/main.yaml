@@ -13,18 +13,28 @@ jobs:
   cicd-frontend:
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
+    with:
+      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   ci-backend:
     uses: ./.github/workflows/ci-backend.yaml
     secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   cd-api:
     needs: ci-api
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
     uses: ./.github/workflows/cd-render.yaml
     with:
       service_id: ${{ vars.RENDER_API_SERVICE_ID }}
@@ -33,7 +43,7 @@ jobs:
 
   cd-backend:
     needs: ci-backend
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
     uses: ./.github/workflows/cd-render.yaml
     with:
       service_id: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
@@ -43,7 +53,7 @@ jobs:
   notify-success:
     runs-on: ubuntu-latest
     needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
-    if: success() && github.event_name == 'push'
+    if: success() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging')
     steps:
       - name: Notify Teams Success
         run: |
@@ -89,7 +99,7 @@ jobs:
   notify-failure:
     runs-on: ubuntu-latest
     needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
-    if: failure() && github.event_name == 'push'
+    if: failure() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging')
     steps:
       - name: Notify Teams Failure
         run: |
