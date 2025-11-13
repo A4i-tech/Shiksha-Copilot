@@ -37,6 +37,7 @@ jobs:
     if: github.event_name == 'push' && github.ref_name == 'a4i/main'
     uses: ./.github/workflows/cd-render.yaml
     with:
+      deploy_name: shiksha-api-staging
       service_id: ${{ vars.RENDER_API_SERVICE_ID }}
     secrets:
       render_api_key: ${{ secrets.RENDER_API_KEY }}
@@ -46,6 +47,7 @@ jobs:
     if: github.event_name == 'push' && github.ref_name == 'a4i/main'
     uses: ./.github/workflows/cd-render.yaml
     with:
+      deploy_name: shiksha-backend-staging
       service_id: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
     secrets:
       render_api_key: ${{ secrets.RENDER_API_KEY }}
