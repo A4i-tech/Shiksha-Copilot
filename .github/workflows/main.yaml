@@ -15,7 +15,7 @@ jobs:
     secrets: inherit
     with:
       deploy_name: shiksha-frontend-staging
-      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
 
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
@@ -35,7 +35,7 @@ jobs:
 
   cd-api:
     needs: ci-api
-    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     uses: ./.github/workflows/cd-render.yaml
     with:
       deploy_name: shiksha-api-staging
@@ -45,7 +45,7 @@ jobs:
 
   cd-backend:
     needs: ci-backend
-    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     uses: ./.github/workflows/cd-render.yaml
     with:
       deploy_name: shiksha-backend-staging
