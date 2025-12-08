@@ -2,7 +2,7 @@
   <div class="flex justify-between items-center">
     <div class="flex gap-2">
       <img
-        src="../../../../../assets/icons/back-arrow.svg"
+        src="assets/icons/back-arrow.svg"
         alt=""
         class="cursor-pointer"
         (click)="backNavigation()"
@@ -17,7 +17,7 @@
       class="btn-primary flex gap-2 items-center my-2 md:my-0"
       (click)="chat(planDetails._id, planDetails?.lesson?.chapter?._id)"
     >
-      <img src="../../../../../assets/icons/chat-light.svg" alt="" />{{
+      <img src="assets/icons/chat-light.svg" alt="" />{{
         "Chatbot" | translate
       }}
     </button>
@@ -39,7 +39,7 @@
         >
           {{ activeTab() | translate}}
           <button *ngIf="!expandedContainer" (click)="expandedContainer = true">
-            <img src="../../../../../assets/icons/left-arrow.svg" alt="" />
+            <img src="assets/icons/left-arrow.svg" alt="" />
           </button>
         </div>
         <ng-container *ngIf="activeTab() === currentType">
@@ -93,8 +93,8 @@
             class="md:hidden"
             src="{{
               isOpen
-                ? '../../../../../assets/icons/up-drop.svg'
-                : '../../../../../assets/icons/down-drop.svg'
+                ? 'assets/icons/up-drop.svg'
+                : 'assets/icons/down-drop.svg'
             }}"
             alt=""
           />
@@ -122,7 +122,7 @@
           *ngIf="expandedContainer"
           (click)="expandedContainer = false"
         >
-          <img src="../../../../../assets/icons/menu.svg" alt="" />
+          <img src="assets/icons/menu.svg" alt="" />
         </button>
         <button
           class="px-4 py-2 -mb-px border-b-2"
@@ -259,7 +259,7 @@
         "
       >
         <div class="flex items-center gap-2">
-          <img src="../../../../../assets/icons/Replay.svg" alt="" />
+          <img src="assets/icons/Replay.svg" alt="" />
           <span>{{ "Regenerate" | translate }}</span>
         </div>
       </button> -->
@@ -267,7 +267,7 @@
 
     <div class="bg-warn-50 p-2 my-4" *ngIf="isLesson && regenerationLimitReached">
       <div class="flex items-center gap-2">
-        <img src="../../../../../assets/icons/Info 2.svg" alt="" />
+        <img src="assets/icons/Info 2.svg" alt="" />
         <small>{{
           "You have reached the daily limit of 3 attempts to regenerating the lesson plan. Please try tomorrow"
             | translate
