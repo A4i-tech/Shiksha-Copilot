@@ -4,9 +4,9 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/staging" ]
+    branches: [ "a4i/main-cicd-enhance", "a4i/staging" ]
   pull_request:
-    branches: [ "a4i/main", "a4i/staging" ]
+    branches: [ "a4i/main-cicd-enhance", "a4i/staging" ]
   workflow_dispatch:
 
 jobs:
@@ -22,16 +22,16 @@ jobs:
     secrets: inherit
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
-      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
-      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance' }}
 
   ci-backend:
     uses: ./.github/workflows/ci-backend.yaml
     secrets: inherit
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
-      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
-      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance' }}
 
   cd-api:
     needs: ci-api
@@ -56,7 +56,7 @@ jobs:
   notify-success:
     runs-on: ubuntu-latest
     needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
-    if: success() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging')
+    if: success() && github.event_name == 'push' && (github.ref_name == 'a4i/main-cicd-enhance' || github.ref_name == 'a4i/staging')
     steps:
       - name: Notify Teams Success
         run: |
@@ -102,7 +102,7 @@ jobs:
   notify-failure:
     runs-on: ubuntu-latest
     needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
-    if: failure() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging')
+    if: failure() && github.event_name == 'push' && (github.ref_name == 'a4i/main-cicd-enhance' || github.ref_name == 'a4i/staging')
     steps:
       - name: Notify Teams Failure
         run: |
