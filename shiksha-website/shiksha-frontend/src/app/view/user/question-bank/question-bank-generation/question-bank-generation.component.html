@@ -395,15 +395,16 @@
       </div>
       <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2">
         <app-question-bank-template
+          *ngIf="currentStep === 2"
           [currentStep]="currentStep"
           [totalMarks]="totalMarks"
           [templateData]="templateData"
           [submittedTemplate]="submittedTemplate"
           [totalTemplateMarks]="totalTemplateMarks"
+          [objectiveChartMapper]="objectiveChartMapper" 
           (totalTemplateMarksUpdate)="totalTemplateMarksChange($event)"
           (backClick)="previousStep()"
-        >
-        </app-question-bank-template>
+        ></app-question-bank-template>
       </div>
       <div
         *ngSwitchCase="3"

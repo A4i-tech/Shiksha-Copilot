@@ -46,7 +46,7 @@ mcp = FastMCP(
     stateless_http=True
 )
 app.state.MCP_APP = mcp.http_app(path="/mcp")
-app.mount("/", app.state.MCP_APP)
+app.mount("/mcp", app.state.MCP_APP)
 
 # CORS middleware
 app.add_middleware(

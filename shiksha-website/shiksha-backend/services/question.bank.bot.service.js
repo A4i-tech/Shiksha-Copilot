@@ -4,8 +4,6 @@ const logger = require("../config/loggers");
 require("dotenv").config();
 const llmBaseUrl = process.env.LLM_API_BASE_URL
 const embeddingsUrl = process.env.LLM_EMBEDDING_URL
-const duralbleUrl = process.env.LLM_DURABLE_URL
-
 
 try {
   axiosRetry(axios, {
@@ -31,12 +29,23 @@ try {
   });
 }
 
-async function postToQuestionBankTemplate(payload) {
+const logPythonError = (error) => {
+  if (error.response && error.response.status === 422) {
+    console.log("==================================================");
+    console.log("PYTHON VALIDATION ERROR:");
+    console.log(JSON.stringify(error.response.data, null, 2));
+    console.log("==================================================");
+  }
+  logger.error("Error in Question Bot Request", {
+    message: error.message,
+    stack: error.stack,
+  });
+}
 
-      const apiUrl =
-    `${llmBaseUrl}/question-paper/template`;
+async function postToQuestionBankTemplate(payload) {
+  const apiUrl = `${llmBaseUrl}/question-paper/questiondistribution`;
   try {
-    logger.info("Sending request to Question Bot API");
+    logger.info("Sending request to Question Bot API (Template/Distribution)");
     const response = await axios.post(apiUrl, payload);
 
     if (response.status !== 200) {
@@ -48,20 +57,15 @@ async function postToQuestionBankTemplate(payload) {
     logger.info("Request successful");
     return response;
   } catch (error) {
-    console.log(error);
-    logger.error("Error in postToQuestionBankBot", {
-      message: error.message,
-      stack: error.stack,
-    });
+    logPythonError(error);
     throw error;
   }
 }
 
 async function postToQuestionBankBluePrint(payload) {
-  const apiUrl =
-       `${llmBaseUrl}/question-paper/questiondistribution`;
+  const apiUrl = `${llmBaseUrl}/question-paper/questiondistribution`;
   try {
-    logger.info("Sending request to Question Bot API");
+    logger.info("Sending request to Question Bot API (Blueprint)");
     const response = await axios.post(apiUrl, payload);
 
     if (response.status !== 200) {
@@ -73,18 +77,13 @@ async function postToQuestionBankBluePrint(payload) {
     logger.info("Request successful");
     return response;
   } catch (error) {
-    console.log(error);
-    logger.error("Error in postToQuestionBankBot", {
-      message: error.message,
-      stack: error.stack,
-    });
+    logPythonError(error);
     throw error;
   }
 }
 
 async function postToQuestionBank(payload) {
-    const apiUrl =
-    `${duralbleUrl}/api/questionpaper`;
+  const apiUrl = `${llmBaseUrl}/question-paper`;
   try {
     logger.info("Sending request to Question Bot API");
     const response = await axios.post(apiUrl, payload);
@@ -98,17 +97,13 @@ async function postToQuestionBank(payload) {
     logger.info("Request successful");
     return response;
   } catch (error) {
-    console.log(error);
-    logger.error("Error in postToQuestionBankBot", {
-      message: error.message,
-      stack: error.stack,
-    });
+    logPythonError(error);
     throw error;
   }
 }
 
 async function postToEmbedding(payload) {
-   const apiUrl = embeddingsUrl;
+  const apiUrl = embeddingsUrl;
   try {
     logger.info("Sending request to Question Bot API");
     const response = await axios.post(apiUrl, payload);
@@ -132,7 +127,6 @@ async function postToEmbedding(payload) {
 }
 
 async function postToEmbeddings(payloads) {
-
   const apiUrl = embeddingsUrl;
   const batchSize = 5;
   const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -170,10 +164,9 @@ async function postToEmbeddings(payloads) {
 }
 
 async function postToQuestionBankParts(payload) {
-      const apiUrl =
-    `${llmBaseUrl}/question-paper/by-parts`;
+  const apiUrl = `${llmBaseUrl}/question-paper/by-parts`;
   try {
-    logger.info("Sending request to Question Bot API");
+    logger.info("Sending request to Question Bot API (Parts)");
     const response = await axios.post(apiUrl, payload);
 
     if (response.status !== 200) {
@@ -185,11 +178,7 @@ async function postToQuestionBankParts(payload) {
     logger.info("Request successful");
     return response;
   } catch (error) {
-    console.log(error);
-    logger.error("Error in postToQuestionBankBot", {
-      message: error.message,
-      stack: error.stack,
-    });
+    logPythonError(error);
     throw error;
   }
 }

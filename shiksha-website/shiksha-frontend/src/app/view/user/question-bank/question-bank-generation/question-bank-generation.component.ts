@@ -617,6 +617,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             question_distribution:e.question_distribution
           }
           });
+
+        this.objectiveChartMapper = {};
+        if (this.questionBankObjectives && this.questionBankObjectives.length) {
+          this.questionBankObjectives.forEach((ele) => {
+            this.objectiveChartMapper[ele.objective] = 0;
+          });
+        }
         
         this.totalTemplateMarks = this.totalMarks;
         if (this.currentStep < this.totalSteps) {
