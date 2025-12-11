@@ -1,4 +1,5 @@
 <div class="p-8 bg-white rounded-sm min-h-[90vh]">
+  <!-- Header Section -->
   <div class="flex justify-between items-center">
     <h1
       class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]"
@@ -6,6 +7,8 @@
       {{ "Question Papers" | translate }}
     </h1>
   </div>
+
+  <!-- Info Banner -->
   <div
     class="rounded-lg border border-primary relative bg-[#E5EDF67D] text-sm md:text-[16px] p-4 md:p-6 mt-5 text-content-100 flex items-center gap-4 md:gap-2"
   >
@@ -25,19 +28,35 @@
     </div>
   </div>
 
+  <!-- Action Bar (Buttons + Search) -->
   <div
     class="flex flex-col md:flex-row gap-2 justify-between items-center mt-4"
   >
-    <button
-      class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary"
-      routerLink="/user/question-paper/generate"
-    >
-      <img src="../../../../../assets/icons/edit_light.svg" alt="" />
-      <span class="text-sm md:text-base">{{
-        "Generate Question Paper" | translate
-      }}</span>
-    </button>
+    <!-- Buttons Wrapper -->
+    <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+      <button
+        class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary"
+        routerLink="/user/question-paper/generate"
+      >
+        <img src="../../../../../assets/icons/edit_light.svg" alt="" />
+        <span class="text-sm md:text-base">{{
+          "Generate Question Paper" | translate
+        }}</span>
+      </button>
 
+      <!-- Added LBA Button -->
+      <button
+        class="btn-secondary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-secondary"
+        routerLink="/user/question-paper/lba-qp"
+      >
+        <img src="../../../../../assets/icons/question-paper.svg" alt="" />
+        <span class="text-sm md:text-base">{{
+          "LBA based QP" | translate
+        }}</span>
+      </button>
+    </div>
+
+    <!-- Search Input -->
     <div class="relative w-full md:w-72">
       <input
         [(ngModel)]="searchText"
@@ -54,12 +73,14 @@
     </div>
   </div>
 
+  <!-- Filter Dropdowns Container -->
   <div
     class="right_boxes w-full md:w-auto mt-2 border rounded-lg p-4 bg-primary-30"
   >
     <ng-container *ngTemplateOutlet="elementGroup"></ng-container>
   </div>
 
+  <!-- List Grid -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
     <div
       class="card px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
@@ -121,6 +142,7 @@
     </div>
   </div>
 
+  <!-- Empty State -->
   <div *ngIf="list.length === 0" class="flex items-center justify-center">
     <div
       class="px-6 py-8 rounded-xl w-[460px] h-[300px] bg-white border flex flex-col items-center"
@@ -135,6 +157,7 @@
   </div>
 </div>
 
+<!-- Filter Template -->
 <ng-template #elementGroup>
   <div class="flex gap-4 md:gap-1 flex-wrap">
     <div class="w-full md:w-28 cursor-pointer md:flex-1">

@@ -1,0 +1,797 @@
+<div class="p-8 bg-white rounded-sm min-h-[90vh]">
+  <!-- Header -->
+  <div class="flex justify-between items-center">
+    <h1 class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]">
+      {{ "LBA Based Question Paper" | translate }}
+    </h1>
+    <button *ngIf="currentStep !== 'config'" class="btn-secondary flex gap-2 items-center" (click)="goBackToConfig()">
+      <img src="../../../../../assets/icons/back-arrow.svg" alt="" />
+      <span>{{ "Back to Config" | translate }}</span>
+    </button>
+  </div>
+
+  <!-- Step indicator -->
+  <div class="flex items-center justify-center mt-6 mb-8">
+    <div class="flex items-center space-x-4">
+      <div class="flex items-center">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center" [class.bg-primary]="currentStep === 'config'"
+          [class.bg-gray-300]="currentStep !== 'config'">
+          <span class="text-sm font-semibold" [class.text-white]="currentStep === 'config'"
+            [class.text-gray-600]="currentStep !== 'config'">1</span>
+        </div>
+        <span class="ml-2 text-sm font-medium" [class.text-primary]="currentStep === 'config'"
+          [class.text-gray-600]="currentStep !== 'config'">{{ "Configuration" | translate }}</span>
+      </div>
+
+      <div class="w-12 h-px bg-gray-300"></div>
+
+      <div class="flex items-center">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center" [class.bg-primary]="currentStep === 'build'"
+          [class.bg-gray-300]="currentStep !== 'build'">
+          <span class="text-sm font-semibold" [class.text-white]="currentStep === 'build'"
+            [class.text-gray-600]="currentStep !== 'build'">2</span>
+        </div>
+        <span class="ml-2 text-sm font-medium" [class.text-primary]="currentStep === 'build'"
+          [class.text-gray-600]="currentStep !== 'build'">{{ "Build Paper" | translate }}</span>
+      </div>
+
+      <div class="w-12 h-px bg-gray-300"></div>
+
+      <div class="flex items-center">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center"
+          [class.bg-primary]="currentStep === 'preview'" [class.bg-gray-300]="currentStep !== 'preview'">
+          <span class="text-sm font-semibold" [class.text-white]="currentStep === 'preview'"
+            [class.text-gray-600]="currentStep !== 'preview'">3</span>
+        </div>
+        <span class="ml-2 text-sm font-medium" [class.text-primary]="currentStep === 'preview'"
+          [class.text-gray-600]="currentStep !== 'preview'">{{ "Preview & Generate" | translate }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuration Step -->
+  <div *ngIf="currentStep === 'config'" class="max-w-4xl mx-auto">
+    <div
+      class="rounded-lg border border-primary relative bg-[#E5EDF67D] text-sm md:text-[16px] p-4 md:p-6 mb-6 text-content-100 flex items-center gap-4 md:gap-2">
+      <img class="align-text-top" src="../../../../../assets/icons/lesson-info.svg" alt="" />
+      <div>
+        <h6>
+          {{
+          "Configure your LBA based question paper with subject, class, and chapter selection"
+          | translate
+          }}
+        </h6>
+      </div>
+    </div>
+
+    <form [formGroup]="configForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Class -->
+      <div class="field">
+        <label class="block text-sm font-medium text-content mb-2">{{
+          "Class" | translate
+          }}</label>
+        <select formControlName="class"
+          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+          <option value="">{{ "Select Class" | translate }}</option>
+          <option *ngFor="let c of classes" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+
+      <!-- Medium -->
+      <div class="field">
+        <label class="block text-sm font-medium text-content mb-2">{{
+          "Medium" | translate
+          }}</label>
+        <select formControlName="medium" [disabled]="!configForm.value.class"
+          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100">
+          <option value="">{{ "Select Medium" | translate }}</option>
+          <option *ngFor="let m of media" [value]="m">{{ m }}</option>
+        </select>
+        <small *ngIf="!configForm.value.class" class="text-gray-500 mt-1">{{
+          "Pick Class first" | translate
+          }}</small>
+      </div>
+
+      <!-- Subject -->
+      <div class="field">
+        <label class="block text-sm font-medium text-content mb-2">{{
+          "Subject" | translate
+          }}</label>
+        <select formControlName="subject" [disabled]="!configForm.value.class || !configForm.value.medium"
+          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:bg-gray-100">
+          <option value="">{{ "Select Subject" | translate }}</option>
+          <option *ngFor="let s of subjects" [value]="s">{{ s }}</option>
+        </select>
+        <small *ngIf="configForm.value.class && !configForm.value.medium" class="text-gray-500 mt-1">{{
+          "Pick Medium
+          next" | translate
+          }}</small>
+      </div>
+
+      <!-- Exam Name -->
+      <div class="field">
+        <label class="block text-sm font-medium text-content mb-2">{{
+          "Exam Name" | translate
+          }}</label>
+        <input formControlName="examName" placeholder="{{ 'e.g. FA1 / Midterm' | translate }}"
+          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
+      </div>
+
+      <!-- Target Marks -->
+      <div class="field">
+        <label class="block text-sm font-medium text-content mb-2">{{
+          "Target Marks" | translate
+          }}</label>
+        <input type="number" formControlName="examMarks"
+          class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
+      </div>
+
+      <!-- Chapters -->
+      <div class="field md:col-span-2">
+        <label class="block text-sm font-medium text-content mb-2">{{
+          "Chapters" | translate
+          }}</label>
+
+        <ng-container *ngIf="
+            configForm.value.class &&
+              configForm.value.medium &&
+              configForm.value.subject;
+            else chooseMeta
+          ">
+          <div *ngIf="chapters?.length; else noChapters" class="space-y-4">
+            <!-- Chapter Selection Dropdown -->
+            <div class="relative">
+              <button type="button"
+                class="w-full p-3 text-left border border-gray-300 rounded-lg flex items-center justify-between focus:ring-2 focus:ring-primary focus:border-transparent"
+                (click)="showChapterDdConfig = !showChapterDdConfig">
+                <span>{{
+                  (configForm.value.chapterNumbers?.length || 0) > 0
+                  ? "Chapters selected: " +
+                  (configForm.value.chapterNumbers?.length || 0)
+                  : "Select chapters"
+                  }}</span>
+                <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-4 h-4" />
+              </button>
+              <div *ngIf="showChapterDdConfig"
+     class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+
+  <!-- Master select row -->
+  <label class="flex items-center space-x-2 p-3 hover:bg-gray-50 cursor-pointer border-b">
+    <input type="checkbox"
+           [checked]="(configForm.value.chapterNumbers?.length || 0) === (chapters?.length || 0) && (chapters?.length || 0) > 0"
+           (change)="toggleAllChaptersConfig($event)"
+           class="rounded border-gray-300 text-primary focus:ring-primary" />
+    <div class="flex-1">
+      <div class="text-sm font-medium">
+        Select All ({{ chapters?.length || 0 }})
+      </div>
+      <div class="text-xs text-gray-500">
+        {{ (configForm.value.chapterNumbers?.length || 0) }} selected
+      </div>
+    </div>
+    <button type="button"
+            class="text-xs text-primary hover:underline"
+            (click)="clearAllChaptersConfig($event)">
+      Clear
+    </button>
+  </label>
+
+  <!-- Individual chapters -->
+  <label *ngFor="let ch of chapters"
+         class="flex items-center space-x-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0">
+    <input type="checkbox"
+           [checked]="configForm.value.chapterNumbers?.includes(ch.chapterNumber)"
+           (change)="toggleChapter($event, ch)"
+           class="rounded border-gray-300 text-primary focus:ring-primary" />
+    <div class="flex-1">
+      <div class="text-sm font-medium">
+        {{ ch.chapterNumber }}. {{ ch.title }}
+      </div>
+      <div class="text-xs text-gray-500">
+        {{ ch.headings.length || 0 }} heading(s)
+      </div>
+    </div>
+  </label>
+</div>
+
+              <!-- <div *ngIf="showChapterDdConfig"
+               
+                class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                <label *ngFor="let ch of chapters"
+                  class="flex items-center space-x-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0">
+                  <input type="checkbox" [checked]="
+                      configForm.value.chapterNumbers?.includes(
+                        ch.chapterNumber
+                      )
+                    " (change)="toggleChapter($event, ch)"
+                    class="rounded border-gray-300 text-primary focus:ring-primary" />
+                  <div class="flex-1">
+                    <div class="text-sm font-medium">
+                      {{ ch.chapterNumber }}. {{ ch.title }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ ch.headings.length || 0 }} heading(s)
+
+                    </div>
+                  </div>
+                </label>
+              </div> -->
+            </div>
+
+            <!-- Heading Selection Dropdown -->
+            <div class="relative" *ngIf="availableHeadings.length">
+              <label class="block text-sm font-medium text-content mb-2">{{
+                "Question Headings" | translate
+                }}</label>
+              <button type="button"
+                class="w-full p-3 text-left border border-gray-300 rounded-lg flex items-center justify-between focus:ring-2 focus:ring-primary focus:border-transparent"
+                (click)="toggleHeadingDropdown()">
+                <span>{{ headingSummary() }}</span>
+                <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-4 h-4" />
+              </button>
+
+              <!-- <div *ngIf="
+               "
+
+              `
+                class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                <label *ngFor="let heading of availableHeadings"
+                  class="flex items-center space-x-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0">
+                  <input type="checkbox" [checked]="isHeadingSelected(heading.name)"
+                    (change)="toggleHeading($event, heading.name)"
+                    class="rounded border-gray-300 text-primary focus:ring-primary" />
+                  <div class="flex-1">
+                    <div class="text-sm font-medium">{{ heading.name }}</div>
+                    <div class="text-xs text-gray-500">
+                      {{ heading.count }} question(s) • Chapter
+                      {{ heading.chapterNum }}
+                    </div>
+                  </div>
+                </label>
+              </div> -->
+            
+              <div *ngIf="showHeadingDropdown"
+     class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+
+  <!-- Master select row -->
+  <label class="flex items-center space-x-2 p-3 hover:bg-gray-50 cursor-pointer border-b">
+    <input type="checkbox"
+           [checked]="isAllHeadingsSelected()"
+           (change)="toggleAllHeadings($event)"
+           class="rounded border-gray-300 text-primary focus:ring-primary" />
+    <div class="flex-1">
+      <div class="text-sm font-medium">Select All ({{ availableHeadings.length }})</div>
+      <div class="text-xs text-gray-500">{{ selectedHeadings.length }} selected</div>
+    </div>
+    <button type="button"
+            class="text-xs text-primary hover:underline"
+            (click)="clearAllHeadings($event)">
+      Clear
+    </button>
+  </label>
+
+  <!-- Individual headings -->
+  
+  <!-- <label *ngFor="let heading of availableHeadings"
+         class="flex items-center space-x-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0">
+    <input type="checkbox"
+           [checked]="isHeadingSelected(heading.name)"
+           (change)="toggleHeading($event, heading.name)"
+           class="rounded border-gray-300 text-primary focus:ring-primary" />
+    <div class="flex-1">
+      <div class="text-sm font-medium">{{ heading.name }}</div>
+      <div class="text-xs text-gray-500">
+        {{ heading.count }} question(s) • Chapter {{ heading.chapterNum }}
+      </div>
+    </div>
+  </label> -->
+<label *ngFor="let heading of availableHeadings"
+       class="flex items-center space-x-2 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0">
+  <input type="checkbox"
+         [checked]="isHeadingSelected(heading.name)"
+         (change)="toggleHeading($event, heading.name)"
+         class="rounded border-gray-300 text-primary focus:ring-primary" />
+  <div class="flex-1">
+    <div class="text-sm font-medium">
+      {{ headingDisplay(heading) }}
+    </div>
+    <div class="text-xs text-gray-500">
+      {{ heading.count }} question(s)
+    </div>
+  </div>
+</label>
+
+
+</div>
+
+
+
+            </div>
+
+          </div>
+
+          <ng-template #noChapters>
+            <div class="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
+              {{ "No chapters found for this combination" | translate }}
+            </div>
+          </ng-template>
+        </ng-container>
+
+        <ng-template #chooseMeta>
+          <div class="p-4 text-center text-gray-500 border border-gray-200 rounded-lg">
+            {{ "Select Class → Medium → Subject to load chapters" | translate }}
+          </div>
+        </ng-template>
+      </div>
+    </form>
+
+    <div class="flex justify-end mt-8">
+      <button (click)="proceedToBuild()" [disabled]="configForm.invalid || isLoading"
+        class="btn-primary btn-small flex gap-2 items-center">
+        <span>{{ "Continue to Build" | translate }}</span>
+        <img src="../../../../../assets/icons/arrow-right.svg" alt="" />
+      </button>
+    </div>
+  </div>
+
+  <!-- Build Step -->
+  <div *ngIf="currentStep === 'build'" class="max-w-7xl mx-auto">
+    <div class="flex flex-col lg:flex-row gap-6">
+      <!-- Left Panel - Question Bank -->
+      <div class="lg:w-1/2">
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 class="text-lg font-semibold mb-4">
+            {{ "Available Questions" | translate }}
+          </h3>
+
+          <!-- Filters -->
+          <!-- <div class="mb-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="font-medium">{{ "Filters" | translate }}</h4>
+              <button (click)="showFilters = !showFilters" class="text-sm text-primary">
+                {{ showFilters ? 'Hide' : 'Show' }} {{ "Filters" | translate }}
+              </button>
+            </div>
+            
+            <div *ngIf="showFilters" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <select formControlName="marks" class="p-2 border border-gray-300 rounded text-sm">
+                <option value="Any">{{ "Any Marks" | translate }}</option>
+                <option value="1">1 {{ "Mark" | translate }}</option>
+                <option value="2">2 {{ "Marks" | translate }}</option>
+                <option value="5">5 {{ "Marks" | translate }}</option>
+              </select>
+              
+              <select formControlName="difficulty" class="p-2 border border-gray-300 rounded text-sm">
+                <option *ngFor="let diff of difficulties" [value]="diff">{{ diff }}</option>
+              </select>
+              
+              <select formControlName="type" class="p-2 border border-gray-300 rounded text-sm">
+                <option *ngFor="let type of answerTypes" [value]="type">{{ type }}</option>
+              </select>
+            </div>
+          </div> -->
+          <div class="mb-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="font-medium">{{ "Filters" | translate }}</h4>
+              <button (click)="showFilters = !showFilters" class="text-sm text-primary">
+                {{ showFilters ? "Hide" : "Show" }} {{ "Filters" | translate }}
+              </button>
+            </div>
+
+            <form *ngIf="showFilters" [formGroup]="buildForm" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <select formControlName="marks" class="p-2 border border-gray-300 rounded text-sm">
+                <option value="Any">{{ "Any Marks" | translate }}</option>
+                <option value="1">1 {{ "Marks" | translate }}</option>
+                <option value="2">2 {{ "Marks" | translate }}</option>
+                <option value="3">3 {{ "Marks" | translate }}</option>
+                <option value="4">4 {{ "Marks" | translate }}</option>
+                <option value="5">5 {{ "Marks" | translate }}</option>
+              </select>
+
+              <select formControlName="difficulty" class="p-2 border border-gray-300 rounded text-sm">
+                <option *ngFor="let diff of difficulties" [value]="diff">
+                  {{ diff }}
+                </option>
+              </select>
+
+              <select formControlName="type" class="p-2 border border-gray-300 rounded text-sm">
+                <option *ngFor="let type of answerTypes" [value]="type">
+                  {{ type }}
+                </option>
+              </select>
+            </form>
+          </div>
+
+          <!-- Chapter Filter -->
+          <div class="mb-4">
+            <div class="relative">
+              <button (click)="toggleBuildChapterDropdown()"
+                class="w-full p-2 text-left border border-gray-300 rounded flex items-center justify-between">
+                <span>{{ chapterSummary() }}</span>
+                <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-4 h-4" />
+              </button>
+              <div *ngIf="showChapterDdBuild"
+                class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
+                <label class="flex items-center p-2 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" [checked]="allChaptersSelected" (change)="
+                      onAllChaptersCheck($event); showChapterDdBuild = false
+                    " class="mr-2" />
+                  <span class="text-sm font-medium">{{
+                    "All Chapters" | translate
+                    }}</span>
+                </label>
+
+                <div class="border-t"></div>
+                <label *ngFor="let ch of chapterOptions" class="flex items-center p-2 hover:bg-gray-50 cursor-pointer">
+                  <input type="checkbox" [checked]="isChapterChecked(ch.num)" (change)="onChapterCheck(ch.num, $event)"
+                    class="mr-2" />
+                  <span class="text-sm">{{ ch.num }}. {{ ch.title }}</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div class="relative mb-4">
+            <input [(ngModel)]="searchText" (input)="onSearchInput($event)"
+              class="w-full pl-8 pr-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+              type="text" placeholder="{{ 'Search Questions' | translate }}" />
+            <img class="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4"
+              src="../../../../../assets/icons/Search (1).svg" alt="" />
+          </div>
+
+          <!-- Question Groups -->
+          <div class="space-y-4 max-h-96 overflow-y-auto">
+            <div *ngIf="isLoading" class="text-center py-4">
+              <span class="text-gray-500">{{
+                "Loading questions..." | translate
+                }}</span>
+            </div>
+
+            <div *ngFor="let group of groupedQuestions; trackBy: trackByGroup"
+              class="border border-gray-200 rounded p-3">
+              <h5 class="font-medium text-primary mb-2">{{ group.heading }}</h5>
+              <div class="space-y-2">
+                <div *ngFor="let question of group.items; trackBy: trackByQuestion"
+                  class="flex items-start space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer" draggable="true"
+                  (dragstart)="onDragStart($event, question)" (dragend)="onDragEnd()"
+                  (click)="onQuestionRowClick(question)" (keydown.enter)="onQuestionRowClick(question)" tabindex="0"
+                  [class.bg-gray-100]="isSelected(question)">
+                  <input type="checkbox" [checked]="isSelected(question)" (change)="toggleQuestion(question, $event)"
+                    (click)="$event.stopPropagation()"
+                    class="mt-1 rounded border-gray-300 text-primary focus:ring-primary" />
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm text-gray-800">
+                      <p *ngIf="question.text" class="line-clamp-2">
+                        {{ question.text }}
+                      </p>
+
+                      <!-- Match the following in available questions -->
+                      <div *ngIf="question.pairs?.length && !question.text" class="mt-1">
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <strong>Column A</strong>
+                            <div *ngFor="
+                                let pair of (question.pairs || []).slice(0, 2);
+                                let i = index
+                              " class="mt-1 text-gray-600">
+                              {{ i + 1 }}. {{ safeSlice(pair.left, 0, 30)
+                              }}{{ (pair.left.length || 0) > 30 ? "..." : "" }}
+                            </div>
+                            <div *ngIf="(question.pairs?.length || 0) > 2" class="text-gray-400">
+                              +{{ (question.pairs?.length || 0) - 2 }} more
+                            </div>
+                          </div>
+                          <div>
+                            <strong>Column B</strong>
+                            <div *ngFor="
+                                let pair of (question.pairs || []).slice(0, 2);
+                                let i = index
+                              " class="mt-1 text-gray-600">
+                              {{ getCharFromIndex(i) }}.
+                              {{ safeSlice(pair.right, 0, 30)
+                              }}{{ (pair.right.length || 0) > 30 ? "..." : "" }}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Other question types -->
+                      <div *ngIf="
+                          question.items?.length &&
+                          !question.text &&
+                          !question.pairs?.length
+                        " class="mt-1 text-xs text-gray-600">
+                        <div *ngFor="
+                            let item of (question.items || []).slice(0, 3)
+                          ">
+                          {{ safeSlice(item, 0, 50)
+                          }}{{ (item?.length || 0) > 50 ? "..." : "" }}
+                        </div>
+                        <div *ngIf="(question.items?.length || 0) > 3" class="text-gray-400">
+                          +{{ (question.items?.length || 0) - 3 }} more items
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2 mt-1">
+                      <span class="text-xs text-gray-500">{{
+                        getQuestionTag(question)
+                        }}</span>
+                      <span class="text-xs text-primary font-medium">{{ getQuestionMarks(question) }}M</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="!isLoading && groupedQuestions.length === 0" class="text-center py-8 text-gray-500">
+              {{ "No questions found" | translate }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel - Selected Questions -->
+      <div class="lg:w-1/2">
+        <div class="bg-white border border-gray-200 rounded-lg p-4">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">
+              {{ "Selected Questions" | translate }}
+            </h3>
+            <div class="flex items-center space-x-2">
+              <button (click)="reorderByMarks('asc')"
+                class="text-xs text-primary hover:text-primary-dark px-2 py-1 border border-primary rounded"
+                title="Sort by marks: 1 → big">
+                {{ "Auto Sort" | translate }}
+              </button>
+
+              <span class="text-sm text-gray-600">{{ totalMarks }} {{ "Marks" | translate }}</span>
+            </div>
+          </div>
+
+          <div class="space-y-4 max-h-96 overflow-y-auto">
+            <div *ngFor="
+                let group of selectedGroups;
+                trackBy: trackByGroup;
+                let i = index
+              " class="border border-gray-200 rounded p-3" (dragover)="onDragOver($event)"
+              (drop)="onDropToGroup($event, i)">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2 flex-1">
+                  <input type="text" [value]="group.heading" (blur)="customizeHeadingName(i, $any($event.target).value)"
+                    (keydown.enter)="
+                      customizeHeadingName(i, $any($event.target).value)
+                    "
+                    class="font-medium text-primary bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-primary rounded px-1"
+                    title="Click to edit heading name" />
+                </div>
+                <div class="flex items-center space-x-1">
+                  <!-- Move up button -->
+                  <button (click)="moveGroupUp(i)" [disabled]="i === 0"
+                    class="text-xs text-gray-500 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed p-1"
+                    title="Move section up">
+                    ↑
+                  </button>
+                  <!-- Move down button -->
+                  <button (click)="moveGroupDown(i)" [disabled]="i === selectedGroups.length - 1"
+                    class="text-xs text-gray-500 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed p-1"
+                    title="Move section down">
+                    ↓
+                  </button>
+                  <button (click)="toggleGroupVisibility(i)" class="text-xs text-gray-500 hover:text-primary px-1">
+                    {{ isGroupHidden(i) ? "Show" : "Hide" }}
+                  </button>
+                  <button (click)="removeGroup(i)" class="text-xs text-red-500 hover:text-red-700 px-1">
+                    {{ "Remove" | translate }}
+                  </button>
+                </div>
+              </div>
+
+              <div *ngIf="!isGroupHidden(i)"
+                class="space-y-2 min-h-[60px] border-2 border-dashed border-gray-300 rounded p-2">
+                <div *ngIf="group.items.length === 0" class="text-center text-gray-400 text-sm py-4">
+                  {{
+                  "Drop questions here or drag from available questions"
+                  | translate
+                  }}
+                </div>
+
+                <div *ngFor="
+                    let question of group.items;
+                    trackBy: trackByQuestion;
+                    let qIndex = index
+                  " class="flex items-start space-x-2 p-2 bg-gray-50 rounded cursor-move" draggable="true"
+                  (dragstart)="onDragStart($event, question, i)">
+                  <button (click)="removeQuestion(question)" class="text-red-500 hover:text-red-700 mt-1">
+                    <img src="../../../../../assets/icons/closeBtn.svg" alt="" class="w-4 h-4" />
+                  </button>
+                  <div class="flex-1 min-w-0">
+                    <div class="text-sm text-gray-800">
+                      <p *ngIf="question.text">{{ question.text }}</p>
+
+                      <!-- Match the following in selected questions -->
+                      <div *ngIf="question.pairs?.length && !question.text" class="mt-1">
+                        <div class="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <strong>Column A</strong>
+                            <div *ngFor="let pair of question.pairs; let i = index"
+                              class="mt-1 p-1 bg-gray-100 rounded">
+                              {{ i + 1 }}. {{ pair.left }}
+                            </div>
+                          </div>
+                          <div>
+                            <strong>Column B</strong>
+                            <div *ngFor="let pair of question.pairs; let i = index"
+                              class="mt-1 p-1 bg-gray-100 rounded">
+                              {{ getCharFromIndex(i) }}. {{ pair.right }}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Other question types in selected -->
+                      <div *ngIf="
+                          question.items?.length &&
+                          !question.text &&
+                          !question.pairs?.length
+                        " class="mt-1 text-xs">
+                        <div *ngFor="let item of question.items" class="mt-1 p-1 bg-gray-100 rounded">
+                          {{ item }}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2 mt-1">
+                      <span class="text-xs text-gray-500">{{
+                        getQuestionTag(question)
+                        }}</span>
+                      <span class="text-xs text-primary font-medium">{{ getQuestionMarks(question) }}M</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="selectedQuestions.length === 0" class="text-center py-8 text-gray-500">
+              {{ "No questions selected" | translate }}
+            </div>
+          </div>
+
+          <div class="mt-6 flex justify-between">
+            <button (click)="addNewSection()" class="btn-secondary btn-small flex gap-2 items-center">
+              <span>Add Section</span>
+            </button>
+
+            <button (click)="proceedToPreview()" [disabled]="!selectedQuestions.length"
+              class="btn-primary btn-small flex gap-2 items-center">
+              <span>Preview Paper</span>
+            </button>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview Step -->
+  <div *ngIf="currentStep === 'preview'" class="max-w-4xl mx-auto">
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-xl font-semibold">
+          {{ "Question Paper Preview" | translate }}
+        </h3>
+        <button (click)="goBackToBuild()" class="btn-secondary flex gap-2 items-center">
+          <img src="../../../../../assets/icons/back-arrow.svg" alt="" />
+          <span>{{ "Edit Questions" | translate }}</span>
+        </button>
+      </div>
+
+      <!-- Paper Header -->
+      <div class="border-b pb-4 mb-6">
+        <h1 class="text-xl font-bold text-center text-gray-800 mb-2">
+          {{ getSchoolName() }}
+        </h1>
+        <h2 class="text-2xl font-bold text-center text-primary">
+          {{ configForm.value.examName }}
+        </h2>
+        <div class="flex justify-between items-center mt-2 text-sm">
+          <span><strong>{{ "Subject" | translate }}:</strong>
+            {{ configForm.value.subject }}</span>
+          <span><strong>{{ "Class" | translate }}:</strong>
+            {{ configForm.value.class }}</span>
+          <span><strong>{{ "Medium" | translate }}:</strong>
+            {{ configForm.value.medium }}</span>
+          <span><strong>{{ "Marks" | translate }}:</strong> {{ totalMarks }}</span>
+        </div>
+        <div class="text-center mt-2 text-sm text-gray-600">
+          {{ "Time: 3 Hours" | translate }}
+        </div>
+      </div>
+
+      <!-- Questions Preview -->
+      <div class="space-y-6">
+        <div *ngFor="
+            let group of selectedGroups;
+            trackBy: trackByGroup;
+            let groupIndex = index
+          " class="border border-gray-200 rounded p-4">
+          <h4 class="font-semibold text-lg mb-3 text-primary">
+            {{ utilityService.intToRoman(groupIndex + 1) }}. {{ group.heading }}
+          </h4>
+          <div class="space-y-3">
+            <div *ngFor="
+                let question of group.items;
+                trackBy: trackByQuestion;
+                let qIndex = index
+              " class="p-3 bg-gray-50 rounded">
+              <div class="flex justify-between items-start mb-2">
+                <span class="font-medium">{{ qIndex + 1 }}. {{ question.text }}</span>
+                <span class="text-sm text-primary font-medium">{{ getQuestionMarks(question) }}M</span>
+              </div>
+
+              <!-- MCQ Options -->
+              <div *ngIf="question.options?.length" class="ml-4 space-y-1">
+                <div *ngFor="let option of question.options" class="text-sm">
+                  {{ option.label }}. {{ option.text }}
+                </div>
+              </div>
+
+              <!-- Match the following -->
+              <div *ngIf="question.pairs?.length" class="ml-4">
+                <div class="grid grid-cols-2 gap-6 text-sm">
+                  <div>
+                    <strong>{{ "Column A" | translate }}</strong>
+                    <div *ngFor="let pair of question.pairs; let i = index" class="mt-2 p-2 bg-gray-50 rounded">
+                      <span class="font-medium">{{ i + 1 }}.</span>
+                      {{ pair.left }}
+                    </div>
+                  </div>
+                  <div>
+                    <strong>{{ "Column B" | translate }}</strong>
+                    <div *ngFor="let pair of question.pairs; let i = index" class="mt-2 p-2 bg-gray-50 rounded">
+                      <span class="font-medium">{{ getCharFromIndex(i) }}.</span>
+                      {{ pair.right }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fill in the blanks or other types -->
+              <div *ngIf="question.items?.length" class="ml-4 text-sm">
+                <div *ngFor="let item of question.items">{{ item }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 flex flex-col items-center gap-3">
+  <label class="flex items-center gap-2 text-sm">
+    <!-- <input type="checkbox" [(ngModel)]="includeAnswerKey" /> -->
+    <span>Included Answer Key in the same document</span>
+  </label>
+
+  <button (click)="generateQuestionPaper()"
+          [disabled]="isLoading || selectedQuestions.length === 0"
+          class="btn-primary flex gap-2 items-center px-8 py-3">
+    <span *ngIf="!isLoading">{{ "Generate Question Paper" | translate }}</span>
+    <span *ngIf="isLoading">{{ "Generating..." | translate }}</span>
+    <img *ngIf="!isLoading" src="../../../../../assets/icons/download.svg" alt="" />
+  </button>
+</div>
+
+
+      <!-- <div class="mt-8 flex justify-center">
+        <button (click)="generateQuestionPaper()" [disabled]="isLoading || selectedQuestions.length === 0"
+          class="btn-primary flex gap-2 items-center px-8 py-3">
+          <span *ngIf="!isLoading">{{
+            "Generate Question Paper" | translate
+            }}</span>
+          <span *ngIf="isLoading">{{ "Generating..." | translate }}</span>
+          <img *ngIf="!isLoading" src="../../../../../assets/icons/download.svg" alt="" />
+        </button>
+      </div> -->
+    </div>
+  </div>
+</div>

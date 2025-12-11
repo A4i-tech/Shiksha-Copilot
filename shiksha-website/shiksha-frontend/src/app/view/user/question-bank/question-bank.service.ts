@@ -113,4 +113,154 @@ export class QuestionBankService extends BaseRestService {
   updateQuestionBankFeedback(id: any, data: any) {
     return this.patch(`feedback/${id}`, data);
   }
+
+  // LBA Question Paper Generation Methods
+
+  /**
+   * Function to get classes for LBA QP
+   * @returns Observable<string[]>
+   */
+  getClasses(): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/classes`).pipe(
+      // unwrap formatted response if present
+      (source => new Observable<string[]>(observer => source.subscribe({
+        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
+        error: (e) => observer.error(e),
+        complete: () => observer.complete()
+      })))
+    );
+  }
+
+  /**
+   * Function to get media for LBA QP
+   * @param filters
+   * @returns Observable<string[]>
+   */
+  getMedia(filters: { class: string }): Observable<string[]> {
+    let params = new HttpParams();
+    if (filters.class) {
+      params = params.set('class', filters.class);
+    }
+    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/media`, { params }).pipe(
+      (source => new Observable<string[]>(observer => source.subscribe({
+        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
+        error: (e) => observer.error(e),
+        complete: () => observer.complete()
+      })))
+    );
+  }
+
+  /**
+   * Function to get subjects for LBA QP
+   * @param filters
+   * @returns Observable<string[]>
+   */
+  getSubjects(filters: { class: string; medium: string }): Observable<string[]> {
+    let params = new HttpParams();
+    if (filters.class) {
+      params = params.set('class', filters.class);
+    }
+    if (filters.medium) {
+      params = params.set('medium', filters.medium);
+    }
+    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/subjects`, { params }).pipe(
+      (source => new Observable<string[]>(observer => source.subscribe({
+        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
+        error: (e) => observer.error(e),
+        complete: () => observer.complete()
+      })))
+    );
+  }
+
+  /**
+   * Function to get chapters for LBA QP
+   * @param filters
+   * @returns Observable<any[]>
+   */
+  getChapters(filters: { class: string; medium: string; subject: string }): Observable<any[]> {
+    let params = new HttpParams();
+    if (filters.class) {
+      params = params.set('class', filters.class);
+    }
+    if (filters.medium) {
+      params = params.set('medium', filters.medium);
+    }
+    if (filters.subject) {
+      params = params.set('subject', filters.subject);
+    }
+    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/chapters`, { params }).pipe(
+      (source => new Observable<any[]>(observer => source.subscribe({
+        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
+        error: (e) => observer.error(e),
+        complete: () => observer.complete()
+      })))
+    );
+  }
+
+  /**
+   * Function to get difficulties for LBA QP
+   * @returns Observable<string[]>
+   */
+  getDifficulties(): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/difficulties`).pipe(
+      (source => new Observable<string[]>(observer => source.subscribe({
+        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
+        error: (e) => observer.error(e),
+        complete: () => observer.complete()
+      })))
+    );
+  }
+
+  /**
+   * Function to get answer types for LBA QP
+   * @returns Observable<string[]>
+   */
+  getAnswerTypes(): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/answerTypes`).pipe(
+      (source => new Observable<string[]>(observer => source.subscribe({
+        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
+        error: (e) => observer.error(e),
+        complete: () => observer.complete()
+      })))
+    );
+  }
+
+  /**
+   * Function to get questions for LBA QP
+   * @param filters
+   * @returns Observable<any[]>
+   */
+  getLBAQuestions(filters: {
+    subject: string;
+    medium: string;
+    class: string;
+    chapterNumbers: string;
+    marks?: string;
+    difficulty?: string;
+    type?: string;
+    search?: string;
+  }): Observable<any[]> {
+    let params = new HttpParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+    return this.http.get<any>(`${this.baseUrl}/lba-qp/questions`, { params }).pipe(
+      (source => new Observable<any[]>(observer => source.subscribe({
+        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
+        error: (e) => observer.error(e),
+        complete: () => observer.complete()
+      })))
+    );
+  }
+
+  /**
+   * Function to generate LBA question paper
+   * @param data
+   * @returns Observable<any>
+   */
+  generateLBAQuestionPaper(data: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/lba-qp/papers`, data);
+  }
 }
