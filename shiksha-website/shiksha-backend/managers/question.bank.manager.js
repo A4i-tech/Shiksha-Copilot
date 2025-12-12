@@ -23,6 +23,16 @@ const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.
 const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
 
+const QUESTION_TYPE_MAPPING = {
+  "MCQ": "Four alternatives are given for each of the following questions, choose the correct alternative",
+  "FILL_BLANKS": "Fill in the blanks with suitable words",
+  "ANSWER_VERY_SHORT": "Answer the following in a word, phrase or sentence",
+  "ANSWER_SHORT": "Answer the following in two or three sentences each",
+  "ANSWER_MEDIUM": "Answer the following questions",
+  "ANSWER_LONG": "Answer the following question in four or five sentences",
+  "MATCHING": "Match the following"
+};
+
 class QuestionBankManager extends BaseManager {
   constructor() {
     super(new QuestionBankDao());
@@ -90,8 +100,8 @@ class QuestionBankManager extends BaseManager {
 
       const payload = {
         ...templatePayload,
-        objective_distribution,
-        template,
+        objective_distribution: objective_distribution || [],
+        template: this._mapTemplateTypes(template || [])
       };
 
       const response = await postToQuestionBankBluePrint(payload);
@@ -131,11 +141,8 @@ class QuestionBankManager extends BaseManager {
       } = req.body;
 
       const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
-
       const unitNames = isMultiChapter ? chapter : subTopic;
-      
       const processedUnitNames = unitNames.map((e)=>e.trim());
-
       const chapterIdsArr = isMultiChapter ? chapterIds : [chapterIds];
 
       const cacheHit = await this.questionBankCacheDao.findInCache(
@@ -177,7 +184,7 @@ class QuestionBankManager extends BaseManager {
       if(notFoundRes.length){
         const payload = {
           ...templatePayload,
-          template: notFoundRes,
+          template: this._mapTemplateTypes(notFoundRes),
           existing_questions: res,
         };
   
@@ -188,10 +195,6 @@ class QuestionBankManager extends BaseManager {
         }
   
         if (!response.data) {
-          throw new Error("Something went wrong with copilot! Please try later");
-        }
-
-        if (response?.data?.questions?.length === 0) {
           throw new Error("Something went wrong with copilot! Please try later");
         }
   
@@ -327,6 +330,18 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
+  _mapTemplateTypes(templateArray) {
+    if (!templateArray || !Array.isArray(templateArray)) return [];
+    
+    return templateArray.map(item => {
+      const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
+      return {
+        ...item,
+        type: mappedType
+      };
+    });
+  }
+
   async _createQuestionBankPayload(reqBody, user) {
     try {
       const {
@@ -334,44 +349,70 @@ class QuestionBankManager extends BaseManager {
         medium,
         grade,
         subject,
-        examinationName,
-        chapterIds,
-        subTopic,
         totalMarks,
         isMultiChapter,
         marksDistribution,
+        chapterIds,
+        subTopic,
+        objective_distribution,
+        template
       } = reqBody;
 
-      const userId = user._id;
-      let payload = {
-        user_id: userId,
-        board,
-        medium,
-        grade,
-        subject,
-        chapters: [],
-        school_name: user?.school?.name,
-        examination_name: examinationName,
-        total_marks: totalMarks,
-        marks_distribution: marksDistribution,
+      let chapterData = [];
+      if (isMultiChapter) {
+        chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(chapterIds);
+      } else {
+        chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(
+          chapterIds,
+          subTopic
+        );
+      }
+
+      const formattedChapters = chapterData.map((chapter) => ({
+        title: chapter.title,
+        
+        index_path: chapter.indexPath || chapter.index_path || "", 
+        
+        learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
+        
+        subtopics: (chapter.subtopics || []).map(sub => ({
+          title: sub.title,
+          learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || []
+        }))
+      }));
+
+      const formattedMarksDist = (marksDistribution || []).map(dist => ({
+        unit_name: dist.unit_name || dist.unitName,
+        percentage_distribution: dist.percentage_distribution || dist.percentageDistribution,
+        marks: dist.marks
+      }));
+
+      const formattedObjectiveDist = (objective_distribution || []).map(obj => ({
+        objective: obj.objective,
+        percentage_distribution: obj.percentage_distribution || obj.percentageDistribution
+      }));
+
+      const payload = {
+        user_id: user._id.toString(),
+        board: board,
+        medium: "English",
+        grade: String(grade),
+        subject: subject,
+        total_marks: Number(totalMarks),
+        
+        chapters: formattedChapters,
+        
+        marks_distribution: formattedMarksDist,
+        objective_distribution: formattedObjectiveDist,
+        template: this._mapTemplateTypes(template || []) 
       };
 
-      if (isMultiChapter) {
-        const chapterData =
-          await chapterAggregation.getChapterByIdsAndFilterObject(chapterIds);
-        payload.chapters = chapterData;
-      } else {
-        const chapterData =
-          await chapterAggregation.getChapterByIdAndSubtopicFilter(
-            chapterIds,
-            subTopic
-          );
-        payload.chapters = chapterData;
-      }
+      console.log("Payload sending to Python:", JSON.stringify(payload, null, 2));
 
       return payload;
     } catch (e) {
-      return e;
+      console.error("Error creating payload:", e);
+      throw e;
     }
   }
 
