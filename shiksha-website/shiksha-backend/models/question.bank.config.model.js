@@ -72,7 +72,4 @@ const QuestionBankConfiguration = mongoose.models.QuestionBankConfiguration || m
   questionBankConfigurationSchema
 );
 
-// REMOVED: QuestionBankConfiguration.createIndexes() 
-// Removing the line above fixes the 'buffering timed out' error.
-
 module.exports = QuestionBankConfiguration;
