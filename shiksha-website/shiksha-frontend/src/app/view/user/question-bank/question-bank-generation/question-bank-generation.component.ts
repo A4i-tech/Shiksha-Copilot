@@ -21,6 +21,7 @@ import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import { distinctUntilChanged } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-question-bank-generation',
@@ -41,6 +42,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   subtopicsDropdownOptions: any[] = [];
   bluePrintChapterDropdownOptions: any[] = [];
   bluePrintObjectiveDropdownOptions: any[] = [];
+  languageDropdownOptions: any[] = [];
 
   boardDropdownconfig: FormDropDownConfig = {
     isBackground: true,
@@ -60,6 +62,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     fieldName: 'Medium',
     bindLable: 'medium',
     bindValue: 'medium',
+    required: true,
+    clearableOff: true,
+  };
+
+  languageDropdownconfig: FormDropDownConfig = {
+    isBackground: true,
+    placeHolderTxt: 'Language',
+    height: 'auto',
+    fieldName: 'Language',
+    bindLable: 'name',
+    bindValue: 'value',
     required: true,
     clearableOff: true,
   };
@@ -156,7 +169,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     private translateService: TranslateService,
     private questionBankService: QuestionBankService,
     private router: Router,
-    private idleService: IdleService
+    private idleService: IdleService,
+    private http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -164,12 +178,18 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
     this.getBoardsList(loggedInUser);
+
+    this.languageDropdownOptions = [
+      { name: 'English', value: 'english' },
+      { name: 'Kannada', value: 'kannada' },
+    ];
   }
 
   initializeForm() {
     this.questionBankConfigForm = this.fb.group({
       medium: [null, [Validators.required]],
       board: [null, [Validators.required]],
+      language: [null, [Validators.required]],
       grade: [null, [Validators.required]],
       subject: [null, [Validators.required]],
       chapter: [null, [Validators.required]],
@@ -287,6 +307,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           }
       }
     }
+  }
+
+  onLanguageChange(val: any) {
   }
 
   onStandardChange(val: any) {
@@ -563,6 +586,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     payload.chapterIds = this.getChapterIds();
     payload.isMultiChapter = this.questionBankTypeValue === 'multiChapter';
     payload.marksDistribution = this.marksDistribution;
+    payload.language = this.f.language.value || 'english'; 
+    
     return payload;
   }
 
@@ -726,16 +751,36 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     this.questionBankService.generateQuestionBank(payload).subscribe({
       next: (res: any) => {
-        this.utilityservice.handleResponse(res);
-        if(res?.data?._id){
-          this.router.navigate([`/user/question-paper/view/${res?.data?._id}`]);
-          this.idleService.stopWatching('question-bank-generation');
+        const selectedLanguage = this.f.language.value;
+        
+        if (selectedLanguage && selectedLanguage !== 'english' && res?.data) {
+          const translationPayload = { json_data: res.data };
+          
+          this.http.post('/question-paper/translate_json', translationPayload).subscribe({
+            next: (transRes: any) => {
+              this.handleSuccessResponse(res);
+            },
+            error: (err) => {
+              console.error('Translation failed', err);
+              this.handleSuccessResponse(res);
+            }
+          });
+        } else {
+          this.handleSuccessResponse(res);
         }
       },
       error: (err) => {
         this.utilityservice.handleError(err);
       },
     });
+  }
+
+  handleSuccessResponse(res: any) {
+    this.utilityservice.handleResponse(res);
+    if (res?.data?._id) {
+      this.router.navigate([`/user/question-paper/view/${res?.data?._id}`]);
+      this.idleService.stopWatching('question-bank-generation');
+    }
   }
 
   ngOnDestroy(): void {

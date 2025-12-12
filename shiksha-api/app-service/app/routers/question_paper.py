@@ -1,5 +1,8 @@
 from typing import List
+from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+
 from app.models.question_paper import (
     QBQuestionDistributionGenerationRequest,
     QBTemplateGenerationRequest,
@@ -29,6 +32,121 @@ router = APIRouter(
     },
 )
 
+class TranslationRequest(BaseModel):
+    """Request model for JSON translation."""
+    json_data: Dict[str, Any] = Field(
+        ...,
+        description="The JSON object to be translated.",
+        example={
+            "title": "Mid-Term Examination: Science",
+            "instructions": "Answer all questions.",
+            "parts": [
+                {
+                    "part_name": "Section A: Multiple Choice",
+                    "questions": [
+                        {
+                            "question_text": "What is the chemical symbol for water?",
+                            "options": ["O2", "H2O", "CO2", "NaCl"],
+                            "answer": "H2O"
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+
+class TranslationResponse(BaseModel):
+    """Response model for JSON translation."""
+    translated_json: Dict[str, Any] = Field(
+        ...,
+        description="The translated JSON object.",
+        example={
+            "title": "Mid-Term Examination: Science",
+            "instructions": "Answer all questions.",
+            "parts": [
+                {
+                    "part_name": "Section A: Multiple Choice",
+                    "questions": [
+                        {
+                            "question_text": "What is the chemical symbol for water?",
+                            "options": ["O2", "H2O", "CO2", "NaCl"],
+                            "answer": "H2O"
+                        }
+                    ]
+                }
+            ]
+        }
+    )
+
+def translate_json_to_kannada(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    (Skeleton) Translates the string values within a JSON object to Kannada.
+    
+    For now, this function is a placeholder and simply returns the original
+    JSON object without performing any translation. The final implementation
+    will need to recursively traverse the JSON structure and translate all
+    string values.
+    """
+    logger.info("Skeleton translation function called. Returning original JSON data.")
+    return data
+
+
+@router.post(
+    "/translate_json",
+    response_model=TranslationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Translate JSON Content to Kannada (Skeleton)",
+    description="""
+    **Accepts a JSON object and returns it without modification.**
+    
+    This is a skeleton endpoint intended for a future translation service. 
+    It currently acts as a placeholder and returns the original JSON object.
+    The final implementation will recursively traverse the input JSON and translate 
+    all its string values into Kannada.
+    """,
+    responses={
+        200: {
+            "description": "Returns the original JSON object successfully.",
+            "model": TranslationResponse,
+        },
+        500: {"description": "An unexpected error occurred while processing the JSON."},
+    },
+    tags=["Utilities"] 
+)
+async def translate_json_content_to_kannada(
+    request: TranslationRequest,
+) -> TranslationResponse:
+    """
+    **Translate JSON Content to Kannada (Skeleton)**
+
+    Accepts a JSON object with the intent of translating its string content to Kannada.
+    Currently, this function is a placeholder and returns the input JSON unchanged.
+
+    **Request Body:**
+    - `json_data`: The JSON object to be "translated."
+
+    **Response:**
+    - `translated_json`: The "translated" JSON object, which for now is identical to the input.
+    
+    **Error Handling:**
+    - Returns a 500 Internal Server Error if any unexpected issue occurs.
+    """
+    try:
+        logger.info("Processing JSON translation request to Kannada (Skeleton).")
+
+        translated_data = translate_json_to_kannada(request.json_data)
+        
+        response = TranslationResponse(translated_json=translated_data)
+        
+        logger.info("Successfully returned original JSON data as placeholder translation.")
+        return response
+
+    except Exception as e:
+        logger.error(f"Error during skeleton JSON translation processing: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process JSON object: {str(e)}",
+        )
 
 @router.post(
     "/by-parts",

@@ -1,3 +1,4 @@
+const axios = require("axios");
 const ChapterDao = require("../dao/chapter.dao");
 const QuestionBankDao = require("../dao/question.bank.dao");
 const formatApiReponse = require("../helper/response");
@@ -138,6 +139,7 @@ class QuestionBankManager extends BaseManager {
         objectiveDistribution,
         questionBankTemplate,
         template,
+        language,
       } = req.body;
 
       const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
@@ -185,7 +187,7 @@ class QuestionBankManager extends BaseManager {
         const payload = {
           ...templatePayload,
           template: this._mapTemplateTypes(notFoundRes),
-          existing_questions: res,
+          existing_questions: this._mapTemplateTypes(res),
         };
   
         const response = await postToQuestionBankParts(payload);
@@ -222,14 +224,56 @@ class QuestionBankManager extends BaseManager {
       }else{
         mergedList = res;
       }
+      if (matchTheFollowingTemplate.length) {
+         for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
+           if(mergedList.length < template.length) {
+             mergedList.splice(matchTheFollowingIndex[i], 0, matchTheFollowingTemplate[i]);
+           }
+         }
+      }
+
+      if (language && language.toLowerCase() !== 'english') {
+        console.log(`Initiating translation to ${language}...`);
+        try {
+          const translationPayload = {
+            json_data: {
+              title: req.body.examinationName || "Question Paper",
+              language: language,
+              parts: [
+                {
+                  part_name: "Questions",
+                  questions: convertToCamelCase(mergedList)
+                }
+              ]
+            }
+          };
+
+          const pythonUrl = process.env.LLM_API_BASE_URL;
+          const transResponse = await axios.post(
+            `${pythonUrl}/question-paper/translate_json`, 
+            translationPayload
+          );
+
+          if (transResponse.data && transResponse.data.translated_json) {
+            const translatedData = transResponse.data.translated_json;
+            if(translatedData.parts && translatedData.parts[0].questions) {
+              mergedList = translatedData.parts[0].questions;
+              console.log("Translation successful. Updating question list.");
+            }
+          }
+        } catch (transErr) {
+          console.error("Translation failed, proceeding with English:", transErr.message);
+        }
+      }
+
 
       let questionBankData = {
         metadata: {
           schoolName: user?.school?.name,
+          language: language 
         },
-        questions: [],
+        questions: convertToCamelCase(mergedList),
       };
-      questionBankData.questions = convertToCamelCase(mergedList);
 
       const questionBank = await this.questionBankDao.saveQuestionBank(
         questionBankData
@@ -248,6 +292,7 @@ class QuestionBankManager extends BaseManager {
         questionBankTemplate,
         bluePrintTemplate: template,
         objectiveDistribution,
+        language 
       });
 
       configData.teacherId = new ObjectId(userId);
@@ -330,6 +375,28 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
+  async translateQuestionPaper(payload) {
+    try {
+      const pythonUrl = process.env.LLM_API_BASE_URL ;
+      const response = await axios.post(
+        `${pythonUrl}/question-paper/translate_json`,
+        payload
+      );
+      return formatApiReponse(
+        true,
+        "Translation processed successfully",
+        response.data
+      );
+    } catch (err) {
+      console.error("Translation Manager Error:", err.message);
+      return formatApiReponse(
+        false, 
+        "Translation failed", 
+        err.response?.data || err.message
+      );
+    }
+  }
+
   _mapTemplateTypes(templateArray) {
     if (!templateArray || !Array.isArray(templateArray)) return [];
     
@@ -343,7 +410,7 @@ class QuestionBankManager extends BaseManager {
   }
 
   async _createQuestionBankPayload(reqBody, user) {
-    try {
+      try {
       const {
         board,
         medium,
@@ -370,11 +437,8 @@ class QuestionBankManager extends BaseManager {
 
       const formattedChapters = chapterData.map((chapter) => ({
         title: chapter.title,
-        
         index_path: chapter.indexPath || chapter.index_path || "", 
-        
         learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-        
         subtopics: (chapter.subtopics || []).map(sub => ({
           title: sub.title,
           learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || []
@@ -399,16 +463,13 @@ class QuestionBankManager extends BaseManager {
         grade: String(grade),
         subject: subject,
         total_marks: Number(totalMarks),
-        
         chapters: formattedChapters,
-        
         marks_distribution: formattedMarksDist,
         objective_distribution: formattedObjectiveDist,
         template: this._mapTemplateTypes(template || []) 
       };
 
       console.log("Payload sending to Python:", JSON.stringify(payload, null, 2));
-
       return payload;
     } catch (e) {
       console.error("Error creating payload:", e);

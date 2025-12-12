@@ -71,7 +71,7 @@ class QuestionBankController extends BaseController {
   }
 
   async generateQuestionBankTemplate(req, res) {
-    try {
+     try {
       const user = req.user;
       const result = await this.questionBankManager.generateQuestionBankTemplate(
         req,
@@ -118,6 +118,26 @@ class QuestionBankController extends BaseController {
         err
       );
       return res.status(400).json(err);
+    }
+  }
+  
+  async translateQuestionPaper(req, res) {
+    try {
+
+      const payload = req.body;
+      
+      const result = await this.questionBankManager.translateQuestionPaper(
+        payload
+      );
+      
+      return res.status(200).json(result);
+    } catch (err) {
+      console.log(
+        "Error --> QuestionBankController -> translateQuestionPaper()",
+        err
+      );
+      const statusCode = err.response ? err.response.status : 500;
+      return res.status(statusCode).json(err);
     }
   }
 

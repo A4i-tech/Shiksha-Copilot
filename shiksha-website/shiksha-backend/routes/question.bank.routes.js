@@ -33,6 +33,13 @@ router.post(
   )
 );
 
+router.post(
+  "/question-bank/translate",
+  isAuthenticated,
+  asyncMiddleware(
+    questionBankController.translateQuestionPaper.bind(questionBankController)
+  )
+);
 
 router.get(
   "/question-bank/list",
@@ -57,16 +64,16 @@ router.patch(
 
 router.post("/question-bank/retry-failed-jobs",
   isAuthenticated,
-	isAdmin,
+  isAdmin,
   asyncMiddleware(
-  questionBankController.retryFailedJobs.bind(questionBankController)
-))
+    questionBankController.retryFailedJobs.bind(questionBankController)
+  ))
 
 router.post("/question-bank/retry-failed-job/:id",
   isAuthenticated,
-	isAdmin,
+  isAdmin,
   asyncMiddleware(
-  questionBankController.retryFailedJob.bind(questionBankController)
-))
+    questionBankController.retryFailedJob.bind(questionBankController)
+  ))
 
 module.exports = router;
