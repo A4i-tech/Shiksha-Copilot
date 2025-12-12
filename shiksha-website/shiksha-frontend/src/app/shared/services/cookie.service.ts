@@ -8,12 +8,13 @@ import { environment } from 'src/environments/environment';
 })
 export class SecureCookieService {
   private secretKey = environment.CRYPTO_SECRET;
+  private expirationMonth = environment.EXP_MONTH;
 
   constructor(private cookieService: CookieService) {}
 
   setObjectCookie(name: string, value: object) {
     const expirationDate = new Date();
-    expirationDate.setMonth(expirationDate.getMonth() + 3); 
+    expirationDate.setMonth(expirationDate.getMonth() + this.expirationMonth); 
     const serializedValue = JSON.stringify(value);
     const encrypted = CryptoJS.AES.encrypt(serializedValue, this.secretKey).toString();
     this.cookieService.set(name, encrypted,{ expires:expirationDate ,path:'/', secure:true, sameSite:'Strict' });
