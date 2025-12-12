@@ -7,15 +7,25 @@ from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
 from app.routers import chat_router, chat_router_mcp, question_paper_router
 
+mcp = FastMCP(
+    name=settings.app_name,
+    instructions="AI-powered educational chat API for Shiksha platform",
+    host=settings.host,
+    port=settings.port,
+    debug=settings.debug,
+    stateless_http=True
+)
+
+mcp_app = mcp.http_app(path="/mcp")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for proper startup and shutdown"""
-    # Startup
+
     assert isinstance(app.state.MCP_APP, StarletteWithLifespan)
     async with app.state.MCP_APP.lifespan(app):
         yield
-    # Shutdown
     from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
     from app.services.lesson_chat_service import LESSON_CHAT_SERVICE_INSTANCE
     from app.services.question_paper_service import QUESTION_PAPER_SERVICE_INSTANCE
@@ -27,7 +37,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Error during cleanup: {e}")
 
-
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
@@ -35,33 +44,23 @@ app = FastAPI(
     debug=settings.debug,
     lifespan=lifespan,
     redirect_slashes=False,
+    routes=[*mcp_app.routes] 
 )
 
-mcp = FastMCP(
-    name=settings.app_name,
-    instructions="AI-powered educational chat API for Shiksha platform",
-    host=settings.host,
-    port=settings.port,
-    debug=settings.debug,
-    stateless_http=True
-)
-app.state.MCP_APP = mcp.http_app(path="/mcp")
-app.mount("/", app.state.MCP_APP)
 
-# CORS middleware
+app.state.MCP_APP = mcp_app
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
 app.include_router(chat_router)
 app.include_router(question_paper_router)
-
-# Include MCP tools
 chat_router_mcp(mcp)
 
 @mcp.tool("version")
@@ -96,7 +95,6 @@ async def health_check():
     return {"status": "healthy", "service": settings.app_name}
 
 
-# Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
     return HTTPException(status_code=500, detail="Internal server error")
