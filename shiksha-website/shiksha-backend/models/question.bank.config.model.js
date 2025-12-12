@@ -92,7 +92,7 @@ const questionBankConfigurationSchema = new Schema(
     },
     examinationName: {
       type: String,
-      required: true,
+      required: false,
     },
     chapterIds: [
       {
@@ -129,5 +129,7 @@ const QuestionBankConfiguration = mongoose.model(
   "QuestionBankConfiguration",
   questionBankConfigurationSchema
 );
+
+QuestionBankConfiguration.createIndexes()
 
 module.exports = QuestionBankConfiguration;
