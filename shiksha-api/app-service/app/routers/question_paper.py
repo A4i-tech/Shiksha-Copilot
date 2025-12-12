@@ -1,7 +1,7 @@
-from typing import List
-from typing import Dict, Any, List
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+from langdetect import detect
 
 from app.models.question_paper import (
     QBQuestionDistributionGenerationRequest,
@@ -32,26 +32,48 @@ router = APIRouter(
     },
 )
 
+# ISO 639-1 Language Code Mapping
+LANGUAGE_MAP = {
+    "english": "en",
+    "kannada": "kn",
+    "hindi": "hi",
+    "telugu": "te",
+    "tamil": "ta",
+    "malayalam": "ml",
+    "marathi": "mr",
+    "bengali": "bn",
+    "gujarati": "gu",
+    "punjabi": "pa",
+    "urdu": "ur"
+}
+
 class TranslationRequest(BaseModel):
     """Request model for JSON translation."""
+    target_language: str = Field(
+        ...,
+        description="The target language to translate to (e.g., 'Kannada', 'Hindi').",
+        json_schema_extra={"example": "Kannada"}
+    )
     json_data: Dict[str, Any] = Field(
         ...,
         description="The JSON object to be translated.",
-        example={
-            "title": "Mid-Term Examination: Science",
-            "instructions": "Answer all questions.",
-            "parts": [
-                {
-                    "part_name": "Section A: Multiple Choice",
-                    "questions": [
-                        {
-                            "question_text": "What is the chemical symbol for water?",
-                            "options": ["O2", "H2O", "CO2", "NaCl"],
-                            "answer": "H2O"
-                        }
-                    ]
-                }
-            ]
+        json_schema_extra={
+            "example": {
+                "title": "Mid-Term Examination: Science",
+                "instructions": "Answer all questions.",
+                "parts": [
+                    {
+                        "part_name": "Section A: Multiple Choice",
+                        "questions": [
+                            {
+                                "question_text": "What is the chemical symbol for water?",
+                                "options": ["O2", "H2O", "CO2", "NaCl"],
+                                "answer": "H2O"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     )
 
@@ -60,27 +82,49 @@ class TranslationResponse(BaseModel):
     translated_json: Dict[str, Any] = Field(
         ...,
         description="The translated JSON object.",
-        example={
-            "title": "Mid-Term Examination: Science",
-            "instructions": "Answer all questions.",
-            "parts": [
-                {
-                    "part_name": "Section A: Multiple Choice",
-                    "questions": [
-                        {
-                            "question_text": "What is the chemical symbol for water?",
-                            "options": ["O2", "H2O", "CO2", "NaCl"],
-                            "answer": "H2O"
-                        }
-                    ]
-                }
-            ]
+        json_schema_extra={
+            "example": {
+                "title": "Mid-Term Examination: Science",
+                "instructions": "Answer all questions.",
+                "parts": [
+                    {
+                        "part_name": "Section A: Multiple Choice",
+                        "questions": [
+                            {
+                                "question_text": "What is the chemical symbol for water?",
+                                "options": ["O2", "H2O", "CO2", "NaCl"],
+                                "answer": "H2O"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     )
 
+def get_sample_text(data: Any) -> str:
+    """Recursively finds the first substantial string to use for language detection."""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Prioritize fields likely to contain full sentences or specific language content
+            if key in ['instructions', 'question_text', 'title', 'question', 'text', 'part_name']:
+                if isinstance(value, str) and len(value.strip().split()) > 2:
+                    return value
+            res = get_sample_text(value)
+            if res:
+                return res
+    elif isinstance(data, list):
+        for item in data:
+            res = get_sample_text(item)
+            if res:
+                return res
+    elif isinstance(data, str) and len(data.strip().split()) > 2:
+        return data
+    return ""
+
 def translate_json_to_kannada(data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    (Skeleton) Translates the string values within a JSON object to Kannada.
+    (Skeleton) Translates the string values within a JSON object to the target language.
     
     For now, this function is a placeholder and simply returns the original
     JSON object without performing any translation. The final implementation
@@ -95,18 +139,20 @@ def translate_json_to_kannada(data: Dict[str, Any]) -> Dict[str, Any]:
     "/translate_json",
     response_model=TranslationResponse,
     status_code=status.HTTP_200_OK,
-    summary="Translate JSON Content to Kannada (Skeleton)",
+    summary="Translate JSON Content (Auto-Detect Source)",
     description="""
-    **Accepts a JSON object and returns it without modification.**
+    **Accepts a JSON object and a target language.**
+    
+    1. Auto-detects the language of the input JSON content.
+    2. Compares detected language with `target_language`.
+    3. Translates only if they are different.
     
     This is a skeleton endpoint intended for a future translation service. 
     It currently acts as a placeholder and returns the original JSON object.
-    The final implementation will recursively traverse the input JSON and translate 
-    all its string values into Kannada.
     """,
     responses={
         200: {
-            "description": "Returns the original JSON object successfully.",
+            "description": "Returns the (potentially) translated JSON object.",
             "model": TranslationResponse,
         },
         500: {"description": "An unexpected error occurred while processing the JSON."},
@@ -117,32 +163,53 @@ async def translate_json_content_to_kannada(
     request: TranslationRequest,
 ) -> TranslationResponse:
     """
-    **Translate JSON Content to Kannada (Skeleton)**
+    **Translate JSON Content to Target Language (Auto-Detect)**
 
-    Accepts a JSON object with the intent of translating its string content to Kannada.
-    Currently, this function is a placeholder and returns the input JSON unchanged.
+    Accepts a JSON object and target language. Logic determines if translation is needed.
 
     **Request Body:**
-    - `json_data`: The JSON object to be "translated."
+    - `target_language`: The desired output language (e.g., 'Kannada', 'English').
+    - `json_data`: The JSON object to be translated.
 
     **Response:**
-    - `translated_json`: The "translated" JSON object, which for now is identical to the input.
+    - `translated_json`: The translated JSON object (or original if languages match).
     
     **Error Handling:**
     - Returns a 500 Internal Server Error if any unexpected issue occurs.
     """
     try:
-        logger.info("Processing JSON translation request to Kannada (Skeleton).")
+        logger.info(f"Processing JSON translation request. Target: {request.target_language}")
 
+        # 1. Detect Source Language
+        sample_text = get_sample_text(request.json_data)
+        source_lang_code = "en"  # Default fallback
+        
+        if sample_text:
+            try:
+                source_lang_code = detect(sample_text)
+            except Exception as e:
+                logger.warning(f"Language detection failed on sample text '{sample_text}': {e}")
+        
+        # 2. Normalize Target Language
+        target_lang_input = request.target_language.lower().strip()
+        target_iso = LANGUAGE_MAP.get(target_lang_input, target_lang_input)
+
+        logger.info(f"Detected Source ISO: '{source_lang_code}', Target ISO: '{target_iso}'")
+
+        # 3. Compare and Decide
+        if source_lang_code == target_iso:
+            logger.info("Source and Target languages match. Skipping translation.")
+            return TranslationResponse(translated_json=request.json_data)
+
+        # 4. Perform Translation (Skeleton)
+        # In a real implementation, you would pass target_iso to the translation function
         translated_data = translate_json_to_kannada(request.json_data)
         
-        response = TranslationResponse(translated_json=translated_data)
-        
-        logger.info("Successfully returned original JSON data as placeholder translation.")
-        return response
+        logger.info("Successfully processed translation request.")
+        return TranslationResponse(translated_json=translated_data)
 
     except Exception as e:
-        logger.error(f"Error during skeleton JSON translation processing: {e}")
+        logger.error(f"Error during JSON translation processing: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process JSON object: {str(e)}",

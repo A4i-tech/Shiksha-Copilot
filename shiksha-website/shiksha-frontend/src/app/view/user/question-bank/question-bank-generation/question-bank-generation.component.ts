@@ -182,6 +182,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.languageDropdownOptions = [
       { name: 'English', value: 'english' },
       { name: 'Kannada', value: 'kannada' },
+      { name: 'Telugu', value: 'telugu' },
+      { name: 'Hindi', value: 'hindi' },
+      { name: 'Tamil', value: 'tamil' },
+      { name: 'Malayalam', value: 'malayalam' },
+      { name: 'Marathi', value: 'marathi' },
+      { name: 'Bengali', value: 'bengali' },
+      { name: 'Urdu', value: 'urdu' },
     ];
   }
 
@@ -752,9 +759,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.questionBankService.generateQuestionBank(payload).subscribe({
       next: (res: any) => {
         const selectedLanguage = this.f.language.value;
-        
-        if (selectedLanguage && selectedLanguage !== 'english' && res?.data) {
-          const translationPayload = { json_data: res.data };
+        if (selectedLanguage && res?.data) {
+          
+          const translationPayload = { 
+            target_language: selectedLanguage, 
+            json_data: res.data 
+          };
           
           this.http.post('/question-paper/translate_json', translationPayload).subscribe({
             next: (transRes: any) => {

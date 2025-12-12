@@ -144,7 +144,7 @@ class QuestionBankManager extends BaseManager {
 
       const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
       const unitNames = isMultiChapter ? chapter : subTopic;
-      const processedUnitNames = unitNames.map((e)=>e.trim());
+      const processedUnitNames = unitNames.map((e) => e.trim());
       const chapterIdsArr = isMultiChapter ? chapterIds : [chapterIds];
 
       const cacheHit = await this.questionBankCacheDao.findInCache(
@@ -183,31 +183,31 @@ class QuestionBankManager extends BaseManager {
 
       let mergedList;
       let newResQuestions;
-      if(notFoundRes.length){
+      if (notFoundRes.length) {
         const payload = {
           ...templatePayload,
           template: this._mapTemplateTypes(notFoundRes),
           existing_questions: this._mapTemplateTypes(res),
         };
-  
+
         const response = await postToQuestionBankParts(payload);
-  
+
         if (response.status !== 200) {
           throw new Error(`Something went wrong with copilot! Please try later`);
         }
-  
+
         if (!response.data) {
           throw new Error("Something went wrong with copilot! Please try later");
         }
-  
+
         let newQuestions = response.data;
-  
+
         const filteredQuestions = filterTemplate(newQuestions.questions);
-  
+
         newResQuestions = filteredQuestions.filteredTemplate;
-  
+
         mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
-  
+
         if (filteredQuestions.matchTheFollowingTemplate.length) {
           for (
             let i = 0;
@@ -221,56 +221,64 @@ class QuestionBankManager extends BaseManager {
             );
           }
         }
-      }else{
+      } else {
         mergedList = res;
       }
       if (matchTheFollowingTemplate.length) {
-         for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-           if(mergedList.length < template.length) {
-             mergedList.splice(matchTheFollowingIndex[i], 0, matchTheFollowingTemplate[i]);
-           }
-         }
+        for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
+          if (mergedList.length < template.length) {
+            mergedList.splice(
+              matchTheFollowingIndex[i],
+              0,
+              matchTheFollowingTemplate[i]
+            );
+          }
+        }
       }
 
-      if (language && language.toLowerCase() !== 'english') {
-        console.log(`Initiating translation to ${language}...`);
+      // Modified Translation Logic: Always check if language is present
+      if (language) {
+        console.log(`Initiating translation check for target language: ${language}...`);
         try {
           const translationPayload = {
+            target_language: language,
             json_data: {
               title: req.body.examinationName || "Question Paper",
               language: language,
               parts: [
                 {
                   part_name: "Questions",
-                  questions: convertToCamelCase(mergedList)
-                }
-              ]
-            }
+                  questions: convertToCamelCase(mergedList),
+                },
+              ],
+            },
           };
 
           const pythonUrl = process.env.LLM_API_BASE_URL;
           const transResponse = await axios.post(
-            `${pythonUrl}/question-paper/translate_json`, 
+            `${pythonUrl}/question-paper/translate_json`,
             translationPayload
           );
 
           if (transResponse.data && transResponse.data.translated_json) {
             const translatedData = transResponse.data.translated_json;
-            if(translatedData.parts && translatedData.parts[0].questions) {
+            if (translatedData.parts && translatedData.parts[0].questions) {
               mergedList = translatedData.parts[0].questions;
-              console.log("Translation successful. Updating question list.");
+              console.log("Translation process completed (Updated or Skipped based on detection).");
             }
           }
         } catch (transErr) {
-          console.error("Translation failed, proceeding with English:", transErr.message);
+          console.error(
+            "Translation failed, proceeding with original content:",
+            transErr.message
+          );
         }
       }
-
 
       let questionBankData = {
         metadata: {
           schoolName: user?.school?.name,
-          language: language 
+          language: language,
         },
         questions: convertToCamelCase(mergedList),
       };
@@ -292,12 +300,12 @@ class QuestionBankManager extends BaseManager {
         questionBankTemplate,
         bluePrintTemplate: template,
         objectiveDistribution,
-        language 
+        language,
       });
 
       configData.teacherId = new ObjectId(userId);
       configData.questionBank = new ObjectId(questionBank._id);
-      configData.topics = processedUnitNames
+      configData.topics = processedUnitNames;
       const questionBankConfig = await this.questionBankDao.create(configData);
 
       if (notFoundQuestions.length) {
@@ -346,19 +354,17 @@ class QuestionBankManager extends BaseManager {
         }).catch((err) => {
           console.error("Failed to enqueue cache update job", err);
         });
-      }else{
+      } else {
         let cacheSummaryData = convertToCamelCase({
           questionBankConfigId: questionBankConfig._id,
           totalQuestionsToFindInCache: cacheSummary.totalDecisions,
           cacheHit: cacheSummary.cacheHitCount,
           cacheMiss: cacheSummary.cacheMissCount,
           unitLevel,
-          isCacheUpdated:true
+          isCacheUpdated: true,
         });
 
-        await this.questionBankCacheSummaryDao.create(
-          cacheSummaryData
-        );
+        await this.questionBankCacheSummaryDao.create(cacheSummaryData);
       }
 
       await session.commitTransaction();
