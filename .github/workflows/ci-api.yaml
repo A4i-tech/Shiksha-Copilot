@@ -56,7 +56,8 @@ jobs:
           push: false
           tags: shiksha-api-local
           load: true
-          cache-from: type=gha
+          cache-from: type=gha,scope=shiksha-api
+          cache-to: type=gha,scope=shiksha-api,mode=max
 
       - name: Run tests inside built image
         run: |
@@ -124,5 +125,5 @@ jobs:
           file: shiksha-api/app-service/Dockerfile
           push: true
           tags: ${{ needs.build-test.outputs.image_tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=shiksha-api
+          cache-to: type=gha,scope=shiksha-api,mode=max
