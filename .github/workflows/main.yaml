@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/staging" ]
+    branches: [ "a4i/main", "a4i/main-cicd-enhance" ]
   pull_request:
-    branches: [ "a4i/main", "a4i/staging" ]
+    branches: [ "a4i/main", "a4i/main-cicd-enhance" ]
   workflow_dispatch:
 
 jobs:
@@ -13,13 +13,13 @@ jobs:
     secrets: inherit
     with:
       deploy_name: shiksha-frontend-staging
-      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance' }}
 
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
     with:
-      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
@@ -27,13 +27,13 @@ jobs:
     uses: ./.github/workflows/ci-backend.yaml
     secrets: inherit
     with:
-      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   cd-api:
     needs: ci-api
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance'
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-api-staging
@@ -43,7 +43,7 @@ jobs:
 
   cd-backend:
     needs: ci-backend
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main-cicd-enhance'
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-backend-staging
@@ -54,7 +54,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
-    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
+    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/main-cicd-enhance') }}
 
     steps:
       - name: Checkout
