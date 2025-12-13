@@ -28,4 +28,4 @@ RUN poetry install --no-root --no-interaction --no-ansi
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "poetry run python3 -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]
+CMD ["sh", "-c", "poetry run python -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]
