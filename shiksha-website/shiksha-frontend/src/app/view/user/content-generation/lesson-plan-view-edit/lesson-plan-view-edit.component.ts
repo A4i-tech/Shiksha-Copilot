@@ -50,6 +50,8 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   selectedTitle: any;
 
+  videosSelected: boolean | null = null;
+
   mode: any;
 
   modeSubscription: Subscription;
@@ -235,6 +237,11 @@ export class LessonPlanViewEditComponent implements OnInit {
     }
   }
 
+  videosEnabled(): boolean {
+    if (this.videosSelected !== null) return this.videosSelected;
+    return this.videoUrls.length > 0;
+  }
+
   ngAfterViewInit(): void {
     this.contentContainer.nativeElement.addEventListener('scroll', () => {
       this.onScroll();
@@ -258,6 +265,9 @@ export class LessonPlanViewEditComponent implements OnInit {
         );
       }
 
+      const selectedInForm = this.contentGenService.formfiltervalues?.videos;
+      if (typeof selectedInForm === 'boolean') this.videosSelected = selectedInForm;
+
       this.setContent();
     }
   }
@@ -276,6 +286,11 @@ export class LessonPlanViewEditComponent implements OnInit {
         this.subjectDetails = this.isLesson
           ? this.planDetails?.lesson
           : this.planDetails?.resource;
+
+        const persistedIsVideoSelected = this.planDetails?.isVideoSelected ?? this.planDetails?.lesson?.isVideoSelected;
+        if (typeof persistedIsVideoSelected === 'boolean') {
+          this.videosSelected = persistedIsVideoSelected;
+        }
 
         if (this.isLesson && this.subjectDetails?.chapter?.board !== 'KSEEB') {
           this.docTypeValues = this.docTypeValues.filter(
@@ -524,7 +539,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         isCompleted,
         lessonId,
         learningOutcomes: this.planDetails?.learningOutcomes,
-        isVideoSelected: this.videoUrls.length ? true : false,
+        isVideoSelected: this.videosEnabled(),
       };
       saveTeacherData.sections = this.getFormattedSectionData();
 
