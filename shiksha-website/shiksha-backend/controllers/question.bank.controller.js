@@ -121,26 +121,6 @@ class QuestionBankController extends BaseController {
     }
   }
   
-  async translateQuestionPaper(req, res) {
-    try {
-
-      const payload = req.body;
-      
-      const result = await this.questionBankManager.translateQuestionPaper(
-        payload
-      );
-      
-      return res.status(200).json(result);
-    } catch (err) {
-      console.log(
-        "Error --> QuestionBankController -> translateQuestionPaper()",
-        err
-      );
-      const statusCode = err.response ? err.response.status : 500;
-      return res.status(statusCode).json(err);
-    }
-  }
-
   async updateFeedback(req, res) {
     try {
       const questionBankId = req.params.id;

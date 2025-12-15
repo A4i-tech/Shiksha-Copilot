@@ -760,22 +760,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       next: (res: any) => {
         const selectedLanguage = this.f.language.value;
         if (selectedLanguage && res?.data) {
-          
-          const translationPayload = { 
-            target_language: selectedLanguage, 
-            json_data: res.data 
-          };
-          
-          this.http.post('/question-paper/translate_json', translationPayload).subscribe({
-            next: (transRes: any) => {
-              this.handleSuccessResponse(res);
-            },
-            error: (err) => {
-              console.error('Translation failed', err);
-              this.handleSuccessResponse(res);
-            }
-          });
-        } else {
           this.handleSuccessResponse(res);
         }
       },
