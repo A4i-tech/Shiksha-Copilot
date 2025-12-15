@@ -1,5 +1,8 @@
-from typing import List
+from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
+from langdetect import detect
+
 from app.models.question_paper import (
     QBQuestionDistributionGenerationRequest,
     QBTemplateGenerationRequest,
@@ -17,18 +20,188 @@ router = APIRouter(
     prefix="/question-paper",
     tags=["Question Paper Generation"],
     responses={
-        400: {
+        status.HTTP_400_BAD_REQUEST: {
             "model": ErrorResponse,
             "description": "Bad Request - Invalid input parameters or configuration",
         },
-        404: {"model": ErrorResponse, "description": "Not Found - Resource not found"},
-        500: {
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse, 
+            "description": "Not Found - Resource not found"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
             "model": ErrorResponse,
             "description": "Internal Server Error - Generation process failed",
         },
     },
 )
 
+# ISO 639-1 Language Code Mapping
+LANGUAGE_MAP = {
+    "english": "en",
+    "kannada": "kn",
+    "hindi": "hi",
+    "telugu": "te",
+    "tamil": "ta",
+    "malayalam": "ml",
+    "marathi": "mr",
+    "bengali": "bn",
+    "gujarati": "gu",
+    "punjabi": "pa",
+    "urdu": "ur"
+}
+
+class TranslationRequest(BaseModel):
+    """Request model for JSON translation."""
+    target_language: str = Field(
+        ...,
+        description="The target language to translate to.",
+        examples=["Kannada", "Hindi"]
+    )
+    json_data: Dict[str, Any] = Field(
+        ...,
+        description="The JSON object to be translated.",
+        json_schema_extra={
+            "example": {
+                "title": "Mid-Term Examination: Science",
+                "instructions": "Answer all questions.",
+                "parts": [
+                    {
+                        "part_name": "Section A: Multiple Choice",
+                        "questions": [
+                            {
+                                "question_text": "What is the chemical symbol for water?",
+                                "options": ["O2", "H2O", "CO2", "NaCl"],
+                                "answer": "H2O"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    )
+
+class TranslationResponse(BaseModel):
+    """Response model for JSON translation."""
+    translated_json: Dict[str, Any] = Field(
+        ...,
+        description="The translated JSON object.",
+        json_schema_extra={
+            "example": {
+                "title": "Mid-Term Examination: Science",
+                "instructions": "Answer all questions.",
+                "parts": [
+                    {
+                        "part_name": "Section A: Multiple Choice",
+                        "questions": [
+                            {
+                                "question_text": "What is the chemical symbol for water?",
+                                "options": ["O2", "H2O", "CO2", "NaCl"],
+                                "answer": "H2O"
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    )
+
+def get_sample_text(data: Any) -> str:
+    """Recursively finds the first substantial string to use for language detection."""
+    if isinstance(data, dict):
+        for key, value in data.items():
+            # Prioritize fields likely to contain full sentences or specific language content
+            if key in ['instructions', 'question_text', 'title', 'question', 'text', 'part_name']:
+                if isinstance(value, str) and len(value.strip().split()) > 2:
+                    return value
+            res = get_sample_text(value)
+            if res:
+                return res
+    elif isinstance(data, list):
+        for item in data:
+            res = get_sample_text(item)
+            if res:
+                return res
+    elif isinstance(data, str) and len(data.strip().split()) > 2:
+        return data
+    return ""
+
+def translate_json(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    (Skeleton) Translates the string values within a JSON object to the target language.
+    
+    For now, this function is a placeholder and simply returns the original
+    JSON object without performing any translation. The final implementation
+    will need to recursively traverse the JSON structure and translate all
+    string values.
+    """
+    logger.info("Skeleton translation function called. Returning original JSON data.")
+    return data
+
+
+@router.post(
+    "/translate_json",
+    status_code=status.HTTP_200_OK,
+    summary="Translate JSON Content (Auto-Detect Source)",
+    responses={
+        status.HTTP_200_OK: {
+            "description": "Returns the (potentially) translated JSON object.",
+            "model": TranslationResponse,
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "An unexpected error occurred while processing the JSON."
+        },
+    },
+    tags=["Utilities"] 
+)
+async def translate_json_content_to_kannada(
+    request: TranslationRequest,
+) -> TranslationResponse:
+    """
+    **Accepts a JSON object and a target language.**
+
+    1. Auto-detects the language of the input JSON content.
+    2. Compares detected language with `target_language`.
+    3. Translates only if they are different.
+
+    This is a skeleton endpoint intended for a future translation service.
+    It currently acts as a placeholder and returns the original JSON object.
+    """
+    try:
+        logger.info(f"Processing JSON translation request. Target: {request.target_language}")
+
+        # Detect Source Language
+        sample_text = get_sample_text(request.json_data)
+        source_lang_code = "en"  # Default fallback
+        
+        if sample_text:
+            try:
+                source_lang_code = detect(sample_text)
+            except Exception as e:
+                logger.warning(f"Language detection failed on sample text '{sample_text}': {e}")
+        
+        # Normalize Target Language
+        target_lang_input = request.target_language.lower().strip()
+        target_iso = LANGUAGE_MAP.get(target_lang_input, target_lang_input)
+
+        logger.info(f"Detected Source ISO: '{source_lang_code}', Target ISO: '{target_iso}'")
+
+        # Compare and Decide
+        if source_lang_code == target_iso:
+            logger.info("Source and Target languages match. Skipping translation.")
+            return TranslationResponse(translated_json=request.json_data)
+
+        # Perform Translation (Skeleton)
+        translated_data = translate_json(request.json_data)
+        
+        logger.info("Successfully processed translation request.")
+        return TranslationResponse(translated_json=translated_data)
+
+    except Exception as e:
+        logger.error(f"Error during JSON translation processing: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process JSON object: {str(e)}",
+        )
 
 @router.post(
     "/by-parts",
@@ -59,7 +232,7 @@ router = APIRouter(
     - Matching type questions
     """,
     responses={
-        200: {
+        status.HTTP_200_OK: {
             "description": "Successfully generated question paper",
             "model": QuestionBankResponse,
             "content": {
@@ -96,10 +269,12 @@ router = APIRouter(
                 }
             },
         },
-        400: {
+        status.HTTP_400_BAD_REQUEST: {
             "description": "Invalid template configuration or missing required fields"
         },
-        500: {"description": "Question generation process failed"},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Question generation process failed"
+        },
     },
 )
 async def generate_question_paper_by_parts(
@@ -107,7 +282,7 @@ async def generate_question_paper_by_parts(
 ):
     """
     **Generate Complete Question Paper by Parts**
-
+    
     Creates a comprehensive question paper using AI generation with specified templates,
     learning outcomes, and question distributions across different sections.
 
@@ -205,7 +380,7 @@ async def generate_question_paper_by_parts(
     - Curriculum alignment and educational standards compliance
     """,
     responses={
-        200: {
+        status.HTTP_200_OK: {
             "description": "Successfully generated question distribution templates",
             "content": {
                 "application/json": {
@@ -227,8 +402,12 @@ async def generate_question_paper_by_parts(
                 }
             },
         },
-        400: {"description": "Invalid distribution parameters or configuration"},
-        500: {"description": "Template generation process failed"},
+        status.HTTP_400_BAD_REQUEST: {
+            "description": "Invalid distribution parameters or configuration"
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Template generation process failed"
+        },
     },
 )
 async def get_question_distribution(
@@ -315,7 +494,7 @@ async def get_question_distribution(
     - Educational format reference
     """,
     responses={
-        200: {
+        status.HTTP_200_OK: {
             "description": "Successfully generated static templates",
             "content": {
                 "application/json": {
@@ -338,8 +517,8 @@ async def get_question_distribution(
                 }
             },
         },
-        400: {"description": "Invalid template configuration"},
-        500: {"description": "Template generation failed"},
+        status.HTTP_400_BAD_REQUEST: {"description": "Invalid template configuration"},
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"description": "Template generation failed"},
     },
 )
 async def get_question_paper_template_v2(
