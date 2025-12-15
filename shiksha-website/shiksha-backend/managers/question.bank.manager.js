@@ -236,6 +236,44 @@ class QuestionBankManager extends BaseManager {
         }
       }
 
+      if (language) {
+        console.log(`Initiating translation check for target language: ${language}...`);
+        try {
+          const translationPayload = {
+            target_language: language,
+            json_data: {
+              title: req.body.examinationName || "Question Paper",
+              language: language,
+              parts: [
+                {
+                  part_name: "Questions",
+                  questions: convertToCamelCase(mergedList),
+                },
+              ],
+            },
+          };
+
+          const pythonUrl = process.env.LLM_API_BASE_URL;
+          const transResponse = await axios.post(
+            `${pythonUrl}/question-paper/translate_json`,
+            translationPayload
+          );
+
+          if (transResponse.data && transResponse.data.translated_json) {
+            const translatedData = transResponse.data.translated_json;
+            if (translatedData.parts && translatedData.parts[0].questions) {
+              mergedList = translatedData.parts[0].questions;
+              console.log("Translation process completed (Updated or Skipped based on detection).");
+            }
+          }
+        } catch (transErr) {
+          console.error(
+            "Translation failed, proceeding with original content:",
+            transErr.message
+          );
+        }
+      }
+
       let questionBankData = {
         metadata: {
           schoolName: user?.school?.name,
@@ -339,6 +377,28 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(false, err?.message, err);
     } finally {
       session.endSession();
+    }
+  }
+
+  async translateQuestionPaper(payload) {
+    try {
+      const pythonUrl = process.env.LLM_API_BASE_URL ;
+      const response = await axios.post(
+        `${pythonUrl}/question-paper/translate_json`,
+        payload
+      );
+      return formatApiReponse(
+        true,
+        "Translation processed successfully",
+        response.data
+      );
+    } catch (err) {
+      console.error("Translation Manager Error:", err.message);
+      return formatApiReponse(
+        false, 
+        "Translation failed", 
+        err.response?.data || err.message
+      );
     }
   }
 
