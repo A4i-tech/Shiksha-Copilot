@@ -71,7 +71,7 @@ class QuestionBankController extends BaseController {
   }
 
   async generateQuestionBankTemplate(req, res) {
-    try {
+     try {
       const user = req.user;
       const result = await this.questionBankManager.generateQuestionBankTemplate(
         req,
@@ -120,7 +120,7 @@ class QuestionBankController extends BaseController {
       return res.status(400).json(err);
     }
   }
-
+  
   async updateFeedback(req, res) {
     try {
       const questionBankId = req.params.id;

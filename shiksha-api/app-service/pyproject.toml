@@ -23,6 +23,7 @@ vellm-rag-wrapper = { path = "app/rag-wrapper", develop = true }
 autogen-ext = { extras = ["azure", "openai"], version = "^0.6.4" }
 pydantic-settings = "^2.10.1"
 fastmcp = "^2.13.0.1"
+langdetect = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"

@@ -68,7 +68,8 @@
         <div class="text-content rounded">
           <form [formGroup]="questionBankConfigForm">
             <div class="bg-white rounded-lg p-3 md:p-8">
-              <div class="grid lg:grid-cols-2 gap-4">
+              <!-- Grid updated to support 3 columns on large screens -->
+              <div class="grid lg:grid-cols-3 gap-4">
                 <div>
                   <app-form-dropdown
                     [dropDownControlName]="'board'"
@@ -86,6 +87,16 @@
                     [dropDownCtrl]="convertToFormControl(f['medium'])"
                     [dropDownValues]="mediumDropdownOptions"
                     [config]="mediumDropdownconfig"
+                    [submitted]="submittedConfig"
+                  ></app-form-dropdown>
+                </div>
+                <div>
+                  <app-form-dropdown
+                    [dropDownControlName]="'language'"
+                    (valueChange)="onLanguageChange($event)"
+                    [dropDownCtrl]="convertToFormControl(f['language'])"
+                    [dropDownValues]="languageDropdownOptions"
+                    [config]="languageDropdownconfig"
                     [submitted]="submittedConfig"
                   ></app-form-dropdown>
                 </div>
@@ -426,7 +437,6 @@
   </div>
 </div>
 
-  <!-- Navigation Buttons -->
 
   <div class="flex justify-end items-center gap-2 mt-0 md:mt-4 absolute md:relative bottom-0 bg-shade-50 w-full p-4 md:p-0 md:px-2 z-10">
     <button
