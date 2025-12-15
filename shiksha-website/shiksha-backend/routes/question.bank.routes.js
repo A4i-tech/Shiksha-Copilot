@@ -33,14 +33,6 @@ router.post(
   )
 );
 
-router.post(
-  "/question-bank/translate",
-  isAuthenticated,
-  asyncMiddleware(
-    questionBankController.translateQuestionPaper.bind(questionBankController)
-  )
-);
-
 router.get(
   "/question-bank/list",
   isAuthenticated,
