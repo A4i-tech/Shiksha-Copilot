@@ -19,3 +19,5 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+*/.env
+tests/tests-env
