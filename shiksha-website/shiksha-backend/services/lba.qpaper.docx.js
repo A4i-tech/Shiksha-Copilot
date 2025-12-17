@@ -1022,8 +1022,8 @@ function normHeading(s = '') {
   const x = String(s).trim().toLowerCase();
   if (x.includes('fill')) return 'Fill in the Blanks';
   if (x.includes('one sentence')) return 'Answer in One Sentence';
-  if (x.includes('2-4') || x.includes('two to four') || x.includes('2 to 4')) return 'Answer In Two To Four Sentences';
-  if (x.includes('6')) return 'Answer In Six Sentences';
+  if (x.includes('2-4') || x.includes('two to four') || x.includes('2 to 4')) return 'Answer in Two to Four Sentences';
+  if (x.includes('6')) return 'Answer in Six Sentences';
   if (x.includes('match')) return 'Match the Following';
   if (x.includes('mcq') || x.includes('multiple choice')) return 'Multiple Choice Questions';
   if (x.includes('true') && x.includes('false')) return 'True or False';

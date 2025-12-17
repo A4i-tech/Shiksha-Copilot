@@ -96,7 +96,7 @@ app.use("/api",lessonPlanTemplateRoutes)
 app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);
 app.use('/api', helpVideosRoutes);
-app.use('/api/lba-qp', lbaRoutes);
+app.use('/api', lbaRoutes);
 app.use('/api', baselineSurveyRoutes);
 
 process.on('unhandledRejection',(reason,promise)=>{
