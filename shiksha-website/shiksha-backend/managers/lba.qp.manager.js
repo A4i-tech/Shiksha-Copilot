@@ -1,100 +1,57 @@
 'use strict';
 
-/**
- * LBA Question Paper Manager
- * Handles business logic for LBA question paper generation and retrieval
- */
-const path = require('path'); 
+const path = require('path');
+const fs = require('fs');
 const lbaQpDao = require('../dao/lba.qp.dao.js');
 const { buildQuestionPaperDocx } = require('../services/lba.qpaper.docx');
 
-// These are needed for insertChaptersAndQuestions helper
 const LBAChapter = require('../models/lba.chapter.model');
 const LBAQuestion = require('../models/lba.question.model');
 
-// ==========================================
-// HELPER: Normalize Inputs
-// ==========================================
-// This ensures that even if Frontend sends Number 6, we convert to String "6"
 const cleanClass = (c) => String(c || '').trim();
 
-/** -------- Meta -------- */
-
 const getClasses = async () => {
-  console.log('[LBA-MGR] getClasses: Called');
   try {
     const classes = await lbaQpDao.getClasses();
-    console.log('[LBA-MGR] getClasses: Raw Result ->', classes);
-    
-    // Sort numerically (6, 7, 8, 9, 10) instead of alphabetically (10, 6, 7)
-    const sorted = (classes || []).sort((a, b) => Number(a) - Number(b));
-    console.log('[LBA-MGR] getClasses: Sorted Result ->', sorted);
-    return sorted;
+    return (classes || []).sort((a, b) => Number(a) - Number(b));
   } catch (err) {
-    console.error('[LBA-MGR-ERR] getClasses:', err);
     throw err;
   }
 };
 
 const getMedia = async (className) => {
-  console.log(`[LBA-MGR] getMedia: Called with className="${className}" (Type: ${typeof className})`);
-  
   if (!className) throw new Error('Class is required');
-
-  // FIX: Force class to string before sending to DAO
   const normalizedClass = cleanClass(className);
-  console.log(`[LBA-MGR] getMedia: Normalized Class -> "${normalizedClass}"`);
 
   try {
     const media = await lbaQpDao.getMedia(normalizedClass);
-    console.log(`[LBA-MGR] getMedia: DAO Result for class ${normalizedClass} ->`, media);
     return (media || []).sort();
   } catch (err) {
-    console.error('[LBA-MGR-ERR] getMedia:', err);
     throw err;
   }
 };
 
 const getSubjects = async (className, medium) => {
-  console.log(`[LBA-MGR] getSubjects: Called with Class="${className}", Medium="${medium}"`);
-
   if (!className || !medium) throw new Error('Class and medium are required');
-
-  // FIX: Normalize inputs
   const normalizedClass = cleanClass(className);
-  // Optional: Capitalize medium if your DB is strict (e.g., "english" -> "English")
-  // const normalizedMedium = medium.charAt(0).toUpperCase() + medium.slice(1).toLowerCase();
   
   try {
     const subjects = await lbaQpDao.getSubjects(normalizedClass, medium);
-    console.log(`[LBA-MGR] getSubjects: DAO Result ->`, subjects);
-    
-    if (!subjects || subjects.length === 0) {
-        console.warn(`[LBA-MGR-WARN] No subjects found. Check if DB has Class: "${normalizedClass}" AND Medium: "${medium}"`);
-    }
-    
     return (subjects || []).sort();
   } catch (err) {
-    console.error('[LBA-MGR-ERR] getSubjects:', err);
     throw err;
   }
 };
 
 const getChapters = async (className, medium, subject) => {
-  console.log(`[LBA-MGR] getChapters: Called with Class="${className}", Medium="${medium}", Subject="${subject}"`);
-
   if (!className || !medium || !subject) {
     throw new Error('Class, medium, and subject are required');
   }
-
   const normalizedClass = cleanClass(className);
 
   try {
-    const chapters = await lbaQpDao.getChapters(normalizedClass, medium, subject);
-    console.log(`[LBA-MGR] getChapters: Found ${chapters?.length || 0} chapters`);
-    return chapters;
+    return await lbaQpDao.getChapters(normalizedClass, medium, subject);
   } catch (err) {
-    console.error('[LBA-MGR-ERR] getChapters:', err);
     throw err;
   }
 };
@@ -104,7 +61,6 @@ const getDifficulties = async () => {
     const diffs = await lbaQpDao.getDifficulties();
     return (diffs || []).filter(Boolean).sort();
   } catch (err) {
-    console.error('[LBA-MGR-ERR] getDifficulties:', err);
     throw err;
   }
 };
@@ -114,16 +70,11 @@ const getAnswerTypes = async () => {
     const types = await lbaQpDao.getAnswerTypes();
     return (types || []).filter(Boolean).sort();
   } catch (err) {
-    console.error('[LBA-MGR-ERR] getAnswerTypes:', err);
     throw err;
   }
 };
 
-/** -------- Questions -------- */
-
 const getQuestions = async (filters) => {
-  console.log('[LBA-MGR] getQuestions: Filters received ->', JSON.stringify(filters));
-
   const {
     subject,
     medium,
@@ -140,7 +91,6 @@ const getQuestions = async (filters) => {
     throw new Error('Subject, medium, class, and chapterNumbers are required');
   }
 
-  // Normalize Class here too
   const cleanFilters = {
     subject,
     medium,
@@ -157,21 +107,15 @@ const getQuestions = async (filters) => {
   };
 
   try {
-    const questions = await lbaQpDao.getQuestions(cleanFilters);
-    console.log(`[LBA-MGR] getQuestions: Found ${questions?.length || 0} results`);
-    return questions;
+    return await lbaQpDao.getQuestions(cleanFilters);
   } catch (err) {
-    console.error('[LBA-MGR-ERR] getQuestions:', err);
     throw err;
   }
 };
 
-/** -------- Papers -------- */
-
-const DOC_URL = (id) => `/api/lba-qp/papers/${id}/download`;
+const DOC_URL = (id) => `/lba-qp/papers/${id}/download`;
 
 const generateQuestionPaper = async (paperData, userDetails) => {
-  console.log('[LBA-MGR] generateQuestionPaper: Called');
   const { config, questions, totalMarks } = paperData || {};
   if (!config || !Array.isArray(questions) || questions.length === 0) {
     throw new Error('Invalid paper data: config and questions are required');
@@ -179,8 +123,8 @@ const generateQuestionPaper = async (paperData, userDetails) => {
 
   const schoolName = userDetails?.school?.name || 'School Name';
 
-  // Persist paper
-  const savedPaper = await lbaQpDao.saveQuestionPaper({
+  // 1. Save to Database
+  const savedPaperDoc = await lbaQpDao.saveQuestionPaper({
     teacherId: userDetails._id,
     config,
     questions,
@@ -189,37 +133,56 @@ const generateQuestionPaper = async (paperData, userDetails) => {
     type: 'LBA',
   });
 
-  // Optionally generate the .docx now
+  // 2. CRITICAL FIX: Convert Mongoose Doc to Plain Object
+  // If we pass the Mongoose doc directly, the DOCX generator crashes and writes the error stack to the file.
+  const plainPaperData = savedPaperDoc.toObject ? savedPaperDoc.toObject() : savedPaperDoc;
+
+  // 3. Generate File
   try {
-    console.log('[LBA-MGR] generateQuestionPaper: Generating DOCX...');
-    await generateWordDocument(savedPaper);
+    await generateWordDocument(plainPaperData);
   } catch (e) {
-    console.warn('[LBA-MGR-WARN] DOCX eager generation failed:', e?.message);
+    console.error('DOCX Generation Error:', e);
+    // Proceed so user gets the ID, but file download might fail 
   }
 
   return {
-    id: savedPaper.id,
-    _id: savedPaper._id,
-    config: savedPaper.config,
-    totalMarks: savedPaper.totalMarks,
-    schoolName: savedPaper.schoolName,
-    createdAt: savedPaper.createdAt,
-    documentUrl: DOC_URL(savedPaper.id),
+    id: savedPaperDoc.id,
+    _id: savedPaperDoc._id,
+    config: savedPaperDoc.config,
+    totalMarks: savedPaperDoc.totalMarks,
+    schoolName: savedPaperDoc.schoolName,
+    createdAt: savedPaperDoc.createdAt,
+    documentUrl: DOC_URL(savedPaperDoc.id),
   };
 };
 
 const generateWordDocument = async (paperData) => {
   try {
     const storageDir = path.join(__dirname, '..', 'storage', 'lba-papers');
+
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+    }
+
     const url = await buildQuestionPaperDocx(paperData, storageDir);
-    return url || DOC_URL(paperData._id?.toString?.() || paperData.id);
+    
+    // Safety Check: If file is too small (e.g., < 2KB), it is likely an error message text file.
+    const filename = `${paperData._id || paperData.id}.docx`;
+    const filePath = path.join(storageDir, filename);
+    
+    if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        if (stats.size < 2000) {
+            console.error(`[Warning] Generated DOCX is only ${stats.size} bytes. This usually indicates a corrupted file or an error message written to disk.`);
+        }
+    }
+
+    return url || DOC_URL(paperData._id || paperData.id);
   } catch (e) {
-    console.error('[LBA-MGR-ERR] Error generating Word document:', e);
-    return null;
+    throw e;
   }
 };
 
-// Stub for future persistence of document URL
 const updateQuestionPaperDocument = async (_paperId, _documentUrl) => {
   return true;
 };
@@ -231,10 +194,7 @@ const getQuestionPaper = async (id) => {
   return paper;
 };
 
-/** -------- Optional helper: bulk insert (used elsewhere) -------- */
-
 const insertChaptersAndQuestions = async (data) => {
-  console.log('[LBA-MGR] insertChaptersAndQuestions: Called with entries ->', data?.length);
   const insertedChapters = [];
   const insertedQuestions = [];
 
@@ -245,14 +205,12 @@ const insertChaptersAndQuestions = async (data) => {
       throw new Error(`Invalid entry: ${JSON.stringify(entry)}`);
     }
 
-    // Create or find chapter
     let chapter = await LBAChapter.findOne({ class: className, medium, subject, title });
     if (!chapter) {
       chapter = await LBAChapter.create({ class: className, medium, subject, chapterNumber, title });
       insertedChapters.push(chapter);
     }
 
-    // Insert questions
     for (const q of questions) {
       const question = await LBAQuestion.create({
         subject,
@@ -284,13 +242,9 @@ const insertChaptersAndQuestions = async (data) => {
   };
 };
 
-/** -------- Feedback -------- */
-
 const saveFeedback = async (feedbackData) => {
   return lbaQpDao.saveFeedback(feedbackData);
 };
-
-/** -------- Exports -------- */
 
 module.exports = {
   getClasses,
