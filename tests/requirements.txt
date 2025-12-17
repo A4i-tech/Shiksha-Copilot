@@ -1,0 +1,7 @@
+pytest
+pytest-playwright
+locust
+requests
+tenacity
+pandas
+dotenv
