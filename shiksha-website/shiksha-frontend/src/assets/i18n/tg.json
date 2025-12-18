@@ -460,5 +460,21 @@
   "Conceptual understanding through pedagogical strategies": "బోధనా వ్యూహాల ద్వారా భావనాత్మక అవగాహన",
   "Recapitulation": "పునశ్చరణ",
   "Homework": "గృహపాఠం",
-  "Concepts and pedagogical strategy": "సంకల్పనలు మరియు బోధనా వ్యూహం"
+  "Concepts and pedagogical strategy": "సంకల్పనలు మరియు బోధనా వ్యూహం",
+  "LBA Based Question Paper": "LBA ఆధారిత ప్రశ్న పత్రం",
+  "Back to Config": "కాన్ఫిగరేషన్‌కు తిరిగి వెళ్లండి",
+  "Build Paper": "పేపర్‌ను రూపొందించండి",
+  "Preview & Generate": "ప్రివ్యూ & జనరేట్",
+  "Configure your LBA based question paper with subject, class, and chapter selection": "సబ్జెక్ట్, తరగతి మరియు అధ్యాయం ఎంపికతో మీ LBA ఆధారిత ప్రశ్న పత్రాన్ని కాన్ఫిగర్ చేయండి",
+  "Question Headings": "ప్రశ్న శీర్షికలు",
+  "Available Questions": "అందుబాటులో ఉన్న ప్రశ్నలు",
+  "Selected Questions": "ఎంచుకున్న ప్రశ్నలు",
+  "Auto Sort": "ఆటో సార్ట్",
+  "Add Section": "విభాగాన్ని జోడించండి",
+  "Question Paper Preview": "ప్రశ్న పత్రం ప్రివ్యూ",
+  "Included Answer Key in the same document": "అదే పత్రంలో జవాబు కీ చేర్చబడింది",
+  "Edit Questions": "ప్రశ్నలను సవరించండి",
+  "Match the following": "జతపరచండి",
+  "Pick Class first": "ముందుగా తరగతిని ఎంచుకోండి",
+  "Pick Medium next": "తరువాత మాధ్యమాన్ని ఎంచుకోండి"
 }
