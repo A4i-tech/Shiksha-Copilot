@@ -453,5 +453,21 @@
   "User Registration": "ಬಳಕೆದಾರ ನೋಂದಣಿ",
   "Dashboard Overview": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಅವಲೋಕನ",
   "Chatbot Assistance": "ಚಾಟ್‌ಬಾಟ್ ಸಹಾಯ",
-  "Lesson Plan Regeneration": "ಪಾಠ ಯೋಜನೆ ಮರುರಚನೆ"
+  "Lesson Plan Regeneration": "ಪಾಠ ಯೋಜನೆ ಮರುರಚನೆ",
+  "LBA Based Question Paper":"LBA ಆಧಾರಿತ ಪ್ರಶ್ನೆ ಪತ್ರಿಕೆ",
+  "Back to Config": "ಸಂರಚನೆಗೆ ಹಿಂತಿರುಗಿ",
+  "Build Paper": "ಪತ್ರಿಕೆಯನ್ನು ನಿರ್ಮಿಸಿ",
+  "Preview & Generate": "ಮುನ್ನೋಟ ಮತ್ತು ರಚಿಸಿ",
+  "Configure your LBA based question paper with subject, class, and chapter selection": "ವಿಷಯ, ತರಗತಿ ಮತ್ತು ಅಧ್ಯಾಯದ ಆಯ್ಕೆಯೊಂದಿಗೆ ನಿಮ್ಮ LBA ಆಧಾರಿತ ಪ್ರಶ್ನೆ ಪತ್ರಿಕೆಯನ್ನು ಸಂರಚಿಸಿ",
+  "Question Headings": "ಪ್ರಶ್ನೆ ಶೀರ್ಷಿಕೆಗಳು",
+  "Available Questions": "ಲಭ್ಯವಿರುವ ಪ್ರಶ್ನೆಗಳು",
+  "Selected Questions": "ಆಯ್ಕೆಮಾಡಿದ ಪ್ರಶ್ನೆಗಳು",
+  "Auto Sort": "ಸ್ವಯಂ ವಿಂಗಡಣೆ",
+  "Add Section": "ವಿಭಾಗವನ್ನು ಸೇರಿಸಿ",
+  "Question Paper Preview": "ಪ್ರಶ್ನೆ ಪತ್ರಿಕೆ ಮುನ್ನೋಟ",
+  "Included Answer Key in the same document": "ಅದೇ ದಾಖಲೆಯಲ್ಲಿ ಉತ್ತರ ಕೀಲಿಯನ್ನು ಸೇರಿಸಲಾಗಿದೆ",
+  "Edit Questions": "ಪ್ರಶ್ನೆಗಳನ್ನು ಸಂಪಾದಿಸಿ",
+  "Match the following": "ಹೊಂದಿಸಿ ಬರೆಯಿರಿ",
+  "Pick Class first": "ಮೊದಲು ತರಗತಿಯನ್ನು ಆರಿಸಿ",
+  "Pick Medium next": "ಮುಂದೆ ಮಾಧ್ಯಮವನ್ನು ಆರಿಸಿ"
 }
