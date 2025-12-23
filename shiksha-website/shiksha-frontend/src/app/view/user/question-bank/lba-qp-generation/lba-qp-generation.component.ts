@@ -146,10 +146,21 @@ export class LBAQPGenerationComponent implements OnInit, OnDestroy {
   private loadUserProfileData(userDetails: any): void {
     let classList = this.utilityService.formatResponse(userDetails.classes);
     
+    // LOG 1: Check what boards/classes exist
+    console.log('LBA DEBUG - User Class List:', classList);
+
     if (classList.length === 1) {
       const board = classList[0];
+      
+      // LOG 2: Check raw mediums before any filtering
+      console.log('LBA DEBUG - Raw Mediums:', board.mediums);
+
+      // Note: The original code HAD this filter. Logs will show if 'kannada' exists here.
       const filteredMediums = board.mediums?.filter((m: any) => m.medium !== 'kannada') || [];
       
+      // LOG 3: Check what remains after filter
+      console.log('LBA DEBUG - Filtered Mediums:', filteredMediums);
+
       if (filteredMediums.length === 1) {
         const medium = filteredMediums[0];
         this.media = [medium.medium];
@@ -199,13 +210,18 @@ export class LBAQPGenerationComponent implements OnInit, OnDestroy {
     }
   }
 
+
   private setupFormListeners(): void {
     this.configForm.get('class')!.valueChanges.subscribe(cls => {
       this.configForm.patchValue({ medium: '', subject: '', chapterNumbers: [] });
       this.chapters = []; this.subjects = []; this.media = [];
       if (cls) {
         this.questionBankService.getMedia({ class: String(cls) }).subscribe({
-          next: (data) => this.media = data || [],
+          next: (data) => {
+             // LOG 4: Check what the API returns for the selected class
+             console.log('LBA DEBUG - API Media Response for Class ' + cls + ':', data);
+             this.media = data || [];
+          },
           error: () => this.utilityService.showError('Failed to load media')
         });
       }

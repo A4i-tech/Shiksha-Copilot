@@ -1,7 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
-import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
+import { UtilityService } from 'src/app/core/services/utility.service';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -9,152 +8,103 @@ import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
   styleUrls: ['./question-bank-blue-print.component.scss'],
 })
 export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
-  // Inputs from Parent
-  @Input() questionBankBluePrintData!: any[];
-  @Input() objectiveChartMapper: any = {};
-  @Input() currentStep: number = 1;
-  @Input() bluePrintChapterDropdownOptions: any[] = [];
-  @Input() bluePrintObjectiveDropdownOptions: any[] = [];
+  @Input() finalSelectedQuestions: any[] = [];
+  @Input() currentStep: number = 3;
+  @Input() totalMarks: number = 0;
+  @Input() examName: string = '';
+  @Input() schoolName: string = '';
+  @Input() subject: string = '';
+  @Input() className: string = '';
 
-  // Outputs to Parent
   @Output() backClick = new EventEmitter<boolean>();
 
-  // Chart Properties
-  objectivesChartData!: ChartData<'doughnut'>;
+  groupedQuestions: any[] = [];
+  sourceChartData!: ChartData<'doughnut'>;
+  hasAIContent: boolean = false;
   totalSteps: number = 3;
-  questionTypeMapper = QUESTION_TYPE_MAPPER;
 
-  // Dropdown Configurations
-  bluePrintChapterDropdownConfig: DropDownConfig = {
-    isBackground: false,
-    placeHolderTxt: 'Topic',
-    height: 'auto',
-    bindLabel: 'name',
-    bindValue: 'name',
-    required: true,
-    clearableOff: true,
-  };
-
-  bluePrintObjectiveDropdownConfig: DropDownConfig = {
-    isBackground: false,
-    placeHolderTxt: 'Objective',
-    height: 'auto',
-    bindLabel: 'objective',
-    bindValue: 'objective',
-    required: true,
-    clearableOff: true,
-  };
-
-  // Chart Options & Tooltip Logic
-  objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
+  sourceChartOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-        },
-      },
-      tooltip: {
-        callbacks: {
-          label: function (tooltipItem) {
-            const value = tooltipItem.raw as number;
-            const dataset = tooltipItem.chart.data.datasets[0];
-            
-            // Calculate sum of all data points
-            const total = dataset.data.reduce((sum: number, val: any) => sum + val, 0);
-            
-            // Calculate percentage
-            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-
-            return tooltipItem.label + ': ' + percentage + '%';
-          },
-        },
-      },
+      legend: { display: true, position: 'bottom', labels: { usePointStyle: true } }
     },
   };
 
+  constructor(public utilityService: UtilityService) {}
+
   ngOnInit(): void {
-    this.updateChartData();
+    this.processData();
   }
 
-  // CRITICAL: Detects when API data arrives and refreshes the chart
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['questionBankBluePrintData'] || changes['objectiveChartMapper']) {
-      this.updateChartData();
+    if (changes['finalSelectedQuestions']) {
+      this.processData();
     }
   }
 
-  // Triggered when user changes a dropdown value
-  bluePrintObjectiveChange() {
-    this.updateChartData();
+  // Helper method to fix the template error
+  getChar(index: number, isUppercase: boolean = true): string {
+    const code = isUppercase ? 65 + index : 97 + index;
+    return String.fromCharCode(code);
   }
 
-  updateChartData() {
-    // 1. Safety Check
-    if (!this.questionBankBluePrintData) {
-      return;
-    }
+  processData() {
+    if (!this.finalSelectedQuestions || this.finalSelectedQuestions.length === 0) return;
+    this.groupQuestionsForPreview();
 
-    // 2. Initialize the Mapper
-    // We try to use the input from the parent first
-    let chartMapper = { ...this.objectiveChartMapper };
-
-    // [SELF-HEALING FIX]
-    // If the parent sent an empty mapper, we extract objectives directly from the data.
-    if (Object.keys(chartMapper).length === 0) {
-      this.questionBankBluePrintData.forEach((item) => {
-        if (item.question_distribution) {
-          item.question_distribution.forEach((dist: any) => {
-            if (dist.objective) {
-              // Create the key with 0 count if it doesn't exist
-              chartMapper[dist.objective] = 0;
-            }
-          });
-        }
-      });
-    }
-
-    // 3. Count the Objectives
-    this.questionBankBluePrintData.forEach((item) => {
-      if (item.question_distribution) {
-        item.question_distribution.forEach((innerObj: any) => {
-          // If the objective exists in our mapper (or we just added it), increment
-          if (innerObj.objective) {
-            // Safety check: ensure key exists before incrementing
-            if (!chartMapper.hasOwnProperty(innerObj.objective)) {
-               chartMapper[innerObj.objective] = 0;
-            }
-            chartMapper[innerObj.objective]++;
-          }
-        });
-      }
+    let aiCount = 0;
+    let lbaCount = 0;
+    this.finalSelectedQuestions.forEach(q => {
+      if (q.source === 'AI') aiCount++;
+      else lbaCount++; 
     });
+    this.hasAIContent = aiCount > 0;
 
-    // 4. Prepare Arrays for Chart.js
-    let labelValues: string[] = [];
-    let dataValues: number[] = [];
-
-    for (let key in chartMapper) {
-      if (chartMapper.hasOwnProperty(key)) {
-        labelValues.push(key);
-        dataValues.push(chartMapper[key]);
-      }
-    }
-
-    // 5. Update the Chart Data Object
-    this.objectivesChartData = {
-      labels: labelValues,
+    this.sourceChartData = {
+      labels: ['AI Generated', 'LBA Database'],
       datasets: [{
-        data: dataValues,
-        backgroundColor: [
-          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'
-        ],
+        data: [aiCount, lbaCount],
+        backgroundColor: ['#3b82f6', '#10b981'],
         hoverOffset: 4
       }],
     };
+  }
+
+  groupQuestionsForPreview() {
+    const groups: { [key: string]: any[] } = {};
+    this.finalSelectedQuestions.forEach(q => {
+      let header = q.groupHeading || q.type || 'Miscellaneous';
+      if (header === 'MCQ') header = 'Choose the correct alternative';
+      else if (header === 'Short Answer') header = 'Answer the following questions in brief';
+      else if (header === 'Long Answer') header = 'Answer the following questions in detail';
+
+      if (!groups[header]) groups[header] = [];
+      groups[header].push(q);
+    });
+
+    this.groupedQuestions = Object.keys(groups).map(key => {
+        const questions = groups[key];
+        return {
+            heading: key,
+            questions: questions,
+            totalMarks: questions.reduce((sum, q) => sum + (q.marks || 1), 0),
+            count: questions.length,
+            marksPerQuestion: questions[0]?.marks || 1
+        };
+    });
+  }
+
+  intToRoman(num: number): string {
+    const lookup: { [key: string]: number } = {M:1000,CM:900,D:500,CD:400,C:100,XC:90,L:50,XL:40,X:10,IX:9,V:5,IV:4,I:1};
+    let roman = '';
+    for ( let i in lookup ) {
+      while ( num >= lookup[i] ) {
+        roman += i;
+        num -= lookup[i];
+      }
+    }
+    return roman;
   }
 
   previousStep() {
