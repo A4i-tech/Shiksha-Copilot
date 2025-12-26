@@ -23,7 +23,7 @@ import { distinctUntilChanged } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
-import { map, switchMap, catchError } from 'rxjs/operators';
+import { map, switchMap, catchError, finalize } from 'rxjs/operators';
 
 // Import Child Component for Step 2 access
 import { QuestionBankTemplateComponent } from './question-bank-template/question-bank-template.component';
@@ -44,7 +44,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   // --- Backend Modes ---
   useLBA: boolean = false;
-  useAI: boolean = true; 
+  useAI: boolean = false; 
 
   // --- Data Pools ---
   allAvailableQuestions: any[] = []; 
@@ -73,7 +73,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
   subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Subject', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'name', required: true, clearableOff: true };
   chapterDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter', height: 'auto', fieldName: 'Chapter', bindLable: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'topics', openOnSelect: true };
-  subTopicDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Sub-Topic', height: 'auto', fieldName: 'Sub-Topic', bindLable: 'topics', bindValue: '_id', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true };
+  subTopicDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Sub-Topic', height: 'auto', fieldName: 'Sub-Topic', bindLable: 'topics', bindValue: 'topics',  selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true };
 
   chapterIds: any[] = [];
   questionBankTypes: any = [
@@ -156,23 +156,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     });
   }
 
-  // --- CENTRAL VALIDATOR LOGIC (Fixes "Required Field" Error) ---
   updateFormValidators() {
-    // 1. SubTopic Logic
-    if (this.questionBankTypeValue === 'singleChapter' && this.useAI) {
-      this.f.subTopic.enable();
+    this.f.subTopic.enable();
+    if (this.questionBankTypeValue === 'singleChapter') {
       this.f.subTopic.setValidators([Validators.required]);
     } else {
-      this.f.subTopic.disable(); // Important: Disabled controls are valid
-      this.f.subTopic.clearValidators();
+      this.f.subTopic.clearValidators(); 
     }
     this.f.subTopic.updateValueAndValidity();
 
-    // 2. LBA Headings Logic
-    this.f.selectedHeadings.clearValidators(); // Manual check used in processStep1
+    // Headings logic remains valid (always accessible)
+    this.f.selectedHeadings.clearValidators(); 
     this.f.selectedHeadings.updateValueAndValidity();
 
-    // 3. Ensure Chapter is enabled
     this.f.chapter.enable();
     this.f.chapter.setValidators([Validators.required]);
     this.f.chapter.updateValueAndValidity();
@@ -280,7 +276,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const board = this.f.board.value;
       const subjectName = val.name || val.data;
 
-      // Objectives Setup
+      // --- 1. Objectives Setup ---
       if (board === 'KSEEB') {
         if (CORE_SUBJECTS.includes(subjectName)) {
           this.questionBankObjectives = standard === 10 ? structuredClone(CORE_OBJECTIVE_MAPPER_10) : structuredClone(CORE_OBJECTIVE_MAPPER);
@@ -293,85 +289,135 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
          this.questionBankObjectives = structuredClone(CORE_OBJECTIVE_MAPPER);
       }
 
-      // Fetch LBA
-      if (this.useLBA || this.useAI) {
-        this.questionBankService.getChapters({ 
-          class: String(standard), 
-          medium: medium, 
-          subject: subjectName 
-        }).subscribe({
-          next: (data) => {
-            this.lbaChapters = data || [];
-            if (!this.useAI) {
-              this.chapterDropdownOptions = this.lbaChapters.map(ch => ({
-                topics: ch.title, 
-                chapterNumber: ch.chapterNumber,
-                _id: ch._id
-              })).sort((a,b) => a.chapterNumber - b.chapterNumber);
-            }
-          },
-          error: () => console.error('Failed to load LBA chapters')
-        });
-      }
+      // --- 2. Unified Data Fetching ---
+      this.isLoadingQuestions = true;
 
-      // Fetch AI
-      if (this.useAI) {
-        const filter = { board, medium, standard, subject: subjectName };
-        this.questionBankService.getChaptersBySem(filter).subscribe({
-          next: (res: any) => {
-            this.chapterDropdownOptions = res.data || [];
-          },
-          error: (err) => console.log("AI Fetch Error:", err),
-        });
-      }
+      console.log(`%c[API Request] Fetching Chapters for Class: ${standard}, Sub: ${subjectName}`, 'color: blue; font-weight: bold');
+
+      this.questionBankService.getChapters({ 
+        class: String(standard), 
+        medium: medium, 
+        subject: subjectName 
+      }).pipe(
+        finalize(() => this.isLoadingQuestions = false)
+      ).subscribe({
+        next: (data: any[]) => {
+          console.log('%c[API Response] Raw Data Received:', 'color: green; font-weight: bold', data);
+          
+          if (data && data.length > 0) {
+            console.log('Sample Chapter [0] Headings:', data[0].headings);
+            console.log('Sample Chapter [0] SubTopics:', data[0].subTopics);
+          } else {
+            console.warn('[API Response] Data array is empty!');
+          }
+
+          // Map all properties
+          this.chapterDropdownOptions = (data || []).map((ch: any) => ({
+             ...ch,
+             topics: ch.topics || ch.title, 
+             headings: ch.headings || [],    
+             subTopics: ch.subTopics || [],  
+             source: 'Unified'
+          })).sort((a, b) => {
+              const numA = a.chapterNumber || 999;
+              const numB = b.chapterNumber || 999;
+              return numA - numB || (a.topics || '').localeCompare(b.topics || '');
+          });
+
+          console.log('[Frontend] Mapped Chapter Options:', this.chapterDropdownOptions);
+          this.lbaChapters = this.chapterDropdownOptions;
+        },
+        error: (err) => {
+          console.error("Error fetching chapters", err);
+          this.utilityservice.showError('Failed to load chapters.');
+        }
+      });
     }
   }
 
   onChapterChange(val: any) {
-    if (this.useAI) this.distributeMarks();
+    this.distributeMarks();
+    this.f.subTopic.reset();
     
-    if (this.questionBankTypeValue === 'singleChapter' && this.useAI) {
-      this.f.subTopic.reset();
-      this.subtopicsDropdownOptions = val.subTopics;
+    let selectedChapterNames: string[] = [];
+
+    // Handle both Single (string) and Multi (array) inputs
+    if (Array.isArray(val)) {
+      selectedChapterNames = val; 
+    } else if (val) {
+      selectedChapterNames = [val.topics || val];
     }
 
-    if (this.useLBA) {
-       this.updateLBAAvailableHeadings();
-    }
+    // 1. Find the full Chapter Objects from the master list
+    const selectedChaptersFullData = this.chapterDropdownOptions.filter(ch => 
+      selectedChapterNames.includes(ch.topics)
+    );
+
+    // 2. Aggregate all subTopics
+    let combinedSubTopics: any[] = [];
+    selectedChaptersFullData.forEach(ch => {
+      if (ch.subTopics && ch.subTopics.length > 0) {
+        combinedSubTopics = [...combinedSubTopics, ...ch.subTopics];
+      }
+    });
+
+    // 3. TRANSFORM DATA (The Critical Fix)
+    // We map everything to { topics: "The Name", _id: "The Name" }
+    // This matches the 'bindLable: topics' in the config.
+    this.subtopicsDropdownOptions = combinedSubTopics.map((st: any) => {
+        // If the subtopic is just a string (e.g. "1.1 Intro")
+        if (typeof st === 'string') {
+            return { 
+              topics: st,  // <--- The Label
+              _id: st      // <--- The Value
+            };
+        }
+        
+        // If the subtopic is already an object (legacy data)
+        return { 
+            topics: st.topics || st.title || st.name || st.text, 
+            _id: st._id || st.topics || st.title 
+        };
+    });
+
+    // 4. Update Headings logic
+    this.updateLBAAvailableHeadings();
   }
 
-  // --- LBA HEADINGS ---
   private updateLBAAvailableHeadings(): void {
+    console.log('%c[Headings Logic] Updating Headings...', 'color: purple; font-weight: bold');
+    
     const rawVal = this.f.chapter.value;
     const selectedTopics = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
     
-    const selectedAIChapters = this.chapterDropdownOptions.filter(ch => selectedTopics.includes(ch.topics));
+    console.log('1. Selected Topic Names (Dropdown Value):', selectedTopics);
+
+    // Filter the merged global options based on selection
+    const selectedChapters = this.chapterDropdownOptions.filter(ch => selectedTopics.includes(ch.topics));
     
+    console.log('2. Full Selected Chapter Objects:', selectedChapters);
+
     const map = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    for (const aiChapter of selectedAIChapters) {
-      let lbaChapter = null;
-      const linkedId = aiChapter.lba_chapter_id || aiChapter.lbaId; 
-      
-      if (linkedId) lbaChapter = this.lbaChapters.find(ch => ch._id === linkedId);
+    for (const chapter of selectedChapters) {
+      if (chapter.headings && chapter.headings.length > 0) {
+        console.log(`   -> Chapter "${chapter.topics}" has ${chapter.headings.length} headings.`);
+        
+        for (const h of chapter.headings) {
+          // Handle both string headings and object headings {name: '...', count: ...}
+          const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
+          const headingCount = (typeof h === 'string' ? 1 : Number(h.count || 0));
 
-      if (!lbaChapter) {
-        const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const aiTitle = norm(aiChapter.topics);
-        lbaChapter = this.lbaChapters.find(ch => {
-          const lbaTitle = norm(ch.title);
-          return lbaTitle === aiTitle || lbaTitle.includes(aiTitle) || aiTitle.includes(lbaTitle);
-        });
-      }
-
-      if (lbaChapter && lbaChapter.headings) {
-        for (const h of lbaChapter.headings) {
-          const key = (h.name || 'Misc').trim(); 
-          if (!map.has(key)) map.set(key, { name: key, count: 0, chapters: new Set<number>() });
-          const agg = map.get(key)!;
-          agg.count += Number(h.count || 0);
-          agg.chapters.add(lbaChapter.chapterNumber);
+          if (!map.has(headingName)) {
+             map.set(headingName, { name: headingName, count: 0, chapters: new Set<number>() });
+          }
+          
+          const agg = map.get(headingName)!;
+          agg.count += headingCount;
+          agg.chapters.add(chapter.chapterNumber || 0);
         }
+      } else {
+        console.warn(`   -> Chapter "${chapter.topics}" has NO headings (Array is empty or undefined).`);
       }
     }
 
@@ -379,6 +425,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       .map(x => ({ name: x.name, count: x.count, chapters: Array.from(x.chapters).sort((a,b)=>a-b) }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
+    console.log('3. Final Calculated Available Headings:', this.availableHeadings);
+
+    // Refresh selected headings
     const names = new Set(this.availableHeadings.map(h => h.name));
     this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h));
     this.f.selectedHeadings.setValue(this.selectedHeadings);
@@ -401,46 +450,79 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   processStep1() {
     this.submittedConfig = true;
 
-    // DEBUG: Identify Invalid Fields
+    // 1. Basic Validation
     if (this.questionBankConfigForm.invalid) {
-      const invalid = Object.keys(this.questionBankConfigForm.controls).filter(key => this.questionBankConfigForm.get(key)?.invalid);
-      console.error('Invalid fields:', invalid);
-      this.utilityservice.showError(`Please fill required fields: ${invalid.join(', ')}`);
+      this.utilityservice.showError('Please fill all required fields');
       return;
     }
 
-    if (this.useLBA && !this.selectedHeadings.length) {
+    // 2. Switch Validation
+    if (!this.useAI && !this.useLBA) {
+      this.utilityservice.showError('Please select at least one Generation Source (AI or LBA)');
+      return;
+    }
+
+    // 3. Specific Validations
+    if (this.useLBA && this.selectedHeadings.length === 0) {
+      // Even if LBA headings are shown "all the time", we must validate them if LBA mode is ON
       this.utilityservice.showError('Please select LBA Headings');
       return;
     }
-    if(this.useAI) {
-       if (this.totalPercentage !== 100 || this.totalMarks !== this.totalDistributedMarks) {
-          this.utilityservice.showError('Check Marks/Objective distribution');
+
+    if (this.useAI) {
+       // Validate marks distribution for AI
+       if (this.totalMarks !== this.totalDistributedMarks) {
+          this.utilityservice.showError('Total marks must match distributed marks');
           return;
        }
     }
 
+    // 4. Generate Pool
     this.isLoadingQuestions = true;
     this.allAvailableQuestions = [];
 
-    const tasks: any[] = [];
-    if (this.useAI) tasks.push(this.generateAIQuestionsPool());
-    if (this.useLBA) tasks.push(this.fetchLBAQuestionsPool());
+    const tasks: any = {}; // Use object for forkJoin for clearer result mapping
 
-    forkJoin(tasks).subscribe({
-      next: (results: any[]) => {
-        this.allAvailableQuestions = results.flat();
-        this.isLoadingQuestions = false;
-        
+    // Condition 1: Add AI Task if Switch is ON
+    if (this.useAI) {
+      tasks.ai = this.generateAIQuestionsPool().pipe(
+        catchError(err => {
+          console.error('AI Gen Failed', err);
+          return of([]); // Return empty on fail so LBA can still succeed
+        })
+      );
+    }
+
+    // Condition 2: Add LBA Task if Switch is ON
+    if (this.useLBA) {
+      tasks.lba = this.fetchLBAQuestionsPool().pipe(
+        catchError(err => {
+          console.error('LBA Fetch Failed', err);
+          return of([]);
+        })
+      );
+    }
+
+    // 5. Execute
+    forkJoin(tasks).pipe(
+      finalize(() => this.isLoadingQuestions = false)
+    ).subscribe({
+      next: (results: any) => {
+        const aiQs = results.ai || [];
+        const lbaQs = results.lba || [];
+
+        // Combine
+        this.allAvailableQuestions = [...aiQs, ...lbaQs];
+
         if (this.allAvailableQuestions.length === 0) {
-           this.utilityservice.showWarning("No questions generated.");
-           return;
+          this.utilityservice.showWarning('No questions could be generated. Please adjust configuration.');
+        } else {
+          // Success: Move to Step 2 (The Question List/Template replacement)
+          this.currentStep = 2;
         }
-        this.currentStep = 2; 
       },
       error: (err) => {
-        this.isLoadingQuestions = false;
-        this.utilityservice.showError("Failed to generate pool.");
+        this.utilityservice.showError('Unexpected error during generation');
       }
     });
   }
@@ -622,6 +704,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   onQuestionTypeChange() {
     this.f.chapter.reset(); 
     this.f.subTopic.reset();
+    this.subtopicsDropdownOptions = []; // Clear subtopics on type switch
     
     if (this.questionBankTypeValue === 'singleChapter') {
       this.chapterDropdownconfig.multi = false; 
@@ -631,7 +714,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.chapterDropdownconfig.openOnSelect = true;
     }
     
-    // Updates validators immediately
     this.updateFormValidators();
   }
   

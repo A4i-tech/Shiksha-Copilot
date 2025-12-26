@@ -44,14 +44,25 @@ const getSubjects = async (className, medium) => {
 };
 
 const getChapters = async (className, medium, subject) => {
-  if (!className || !medium || !subject) {
-    throw new Error('Class, medium, and subject are required');
-  }
-  const normalizedClass = cleanClass(className);
-
   try {
-    return await lbaQpDao.getChapters(normalizedClass, medium, subject);
+    const normalizedClass = cleanClass(className);
+    
+    const query = {
+      class: normalizedClass,
+      medium: { $regex: new RegExp(`^${medium}$`, 'i') }, 
+      subject: { $regex: new RegExp(`^${subject}$`, 'i') }
+    };
+    
+    console.log("Executing Query:", JSON.stringify(query));
+
+    const results = await LBAChapter.find(query)
+      .select('title topics subTopics headings chapterNumber class medium subject year examType')
+      .lean();
+
+    console.log(`Found ${results.length} chapters`);
+    return results;
   } catch (err) {
+    console.error("Manager Error:", err);
     throw err;
   }
 };
