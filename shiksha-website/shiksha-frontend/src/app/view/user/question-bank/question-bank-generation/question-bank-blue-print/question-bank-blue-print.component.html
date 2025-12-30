@@ -1,0 +1,86 @@
+<div class="p-4 md:p-8">
+  <!-- Top Header Info -->
+  <div class="flex flex-col md:flex-row justify-between items-start mb-6 border-b pb-4">
+    <div>
+      <h2 class="text-xl font-bold text-content">Step 3/3: Preview & Blue Print</h2>
+      <p class="text-sm text-gray-500">Exam: <span class="font-semibold text-primary">{{ examName }}</span> | Total Marks: <span class="font-semibold text-primary">{{ totalMarks }}</span></p>
+    </div>
+    <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-2 mt-3 md:mt-0">
+      <img src="../../../../../assets/icons/Info 2.svg" alt="info" class="w-5 h-5" />
+      <small class="text-blue-800 font-medium">Review your distribution and selections before final generation.</small>
+    </div>
+  </div>
+
+  <div class="flex flex-col lg:flex-row gap-8">
+    
+    <!-- LEFT SIDE: GROUPED QUESTION LIST -->
+    <div class="flex-1 max-h-[55vh] overflow-y-auto pr-2">
+      <div *ngFor="let group of groupedBlueprintData; let i = index" class="mb-8 bg-gray-50 rounded-lg border p-4">
+        <div class="flex justify-between items-center border-b pb-2 mb-4">
+          <h3 class="font-bold text-lg text-content">
+            {{ i + 1 }}. {{ questionTypeMapper[group.type] || group.type }}
+          </h3>
+          <span class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+            {{ group.questions.length }} Questions x {{ group.marks_per_question }} Marks
+          </span>
+        </div>
+
+        <div class="space-y-3">
+          <div *ngFor="let q of group.questions; let j = index" class="bg-white p-3 rounded border flex gap-3">
+            <span class="text-gray-400 font-bold text-sm">{{ j + 1 }}.</span>
+            <div class="flex-1">
+              <p class="text-sm text-content mb-2" [innerHTML]="q.text"></p>
+              <div class="flex gap-4">
+                <span class="text-[10px] uppercase tracking-wider font-bold text-gray-400">Topic: {{ q.unit_name }}</span>
+                <span class="text-[10px] uppercase tracking-wider font-bold text-secondary">Obj: {{ q.objective || 'General' }}</span>
+                <!-- Optional: Show Source Tag -->
+                <span *ngIf="q.source" 
+                      class="text-[10px] uppercase tracking-wider font-bold"
+                      [ngClass]="q.source === 'AI' ? 'text-pink-500' : 'text-blue-500'">
+                  Source: {{ q.source }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE: ANALYTICS CHART -->
+    <div class="lg:w-80 flex flex-col items-center">
+      <div class="sticky top-0 w-full bg-white border rounded-xl p-6 shadow-sm">
+        
+        <!-- UPDATED DYNAMIC TITLE -->
+        <h3 class="text-center font-bold text-content mb-4 uppercase tracking-widest text-xs">
+          {{ chartTitle }}
+        </h3>
+
+        <div class="h-64">
+          <canvas
+            *ngIf="objectivesChartData"
+            baseChart
+            [data]="objectivesChartData"
+            [options]="objectivesChartOptions"
+            [legend]="true"
+            [type]="'doughnut'"
+          >
+          </canvas>
+        </div>
+        
+        <div class="mt-6 space-y-2 border-t pt-4">
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Selected Questions:</span>
+                <span class="font-bold">{{ finalSelectedQuestions.length }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Current Marks:</span>
+                <span class="font-bold" [ngClass]="totalMarks === totalMarks ? 'text-primary' : 'text-error'">
+                    {{ totalMarks }} / {{ totalMarks }}
+                </span>
+            </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

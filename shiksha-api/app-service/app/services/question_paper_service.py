@@ -326,11 +326,17 @@ class QuestionPaperService:
 
         logger.info(f"Creating new RAG Adapter for path: {index_path}")
         
+        # 1. Create the instance
         adapter = RagAdapterFactory.create_adapter(
             index_path=index_path,
             completion_llm=self._rag_llm,      # Pass LlamaIndex wrapper
             embedding_llm=self._rag_embed,     # Pass LlamaIndex wrapper
         )
+        
+        # --- FIX START: Initialize the adapter before using it ---
+        logger.info(f"Initializing RAG Adapter for path: {index_path}")
+        await adapter.initialize() 
+        # --- FIX END ---
         
         # 3. Store in Internal Cache
         self._adapter_cache[index_path] = adapter

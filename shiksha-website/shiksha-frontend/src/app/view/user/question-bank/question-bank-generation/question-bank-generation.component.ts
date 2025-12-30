@@ -63,7 +63,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   // --- LBA Specific Data ---
   lbaChapters: any[] = [];
-  availableHeadings: { name: string; count: number; chapters: number[] }[] = [];
+  availableHeadings: { name: string; count?: number; chapters: number[] }[] = [];
   selectedHeadings: string[] = [];
   showHeadingDropdown = false;
 
@@ -108,6 +108,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   currentTotalMarks: number = 0;   
   filterSource: string = 'ALL';     
   searchQuery: string = '';          
+  groupedQuestions: any[] = [];
+  stepArray = Array(this.totalSteps).fill(0)
 
   constructor(
     private fb: FormBuilder,
@@ -144,6 +146,88 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.updateFormValidators();
   }
 
+  // Create paper directly for LBA-only selections
+  generateLBAQuestionPaper(selectedQuestions: any[]) {
+    console.log('[QB-LOG] ============ generateLBAQuestionPaper START ============');
+    if (!selectedQuestions || selectedQuestions.length === 0) {
+      this.utilityservice.showError('No LBA questions selected');
+      return;
+    }
+
+    // Build payload similar to generateMergedQuestionBank but ensure template types
+    const formVal = this.questionBankConfigForm.getRawValue();
+    let payload: any = this.getTemplatePayload();
+    payload.metadata = { examinationName: formVal.examinationName };
+    payload.title = formVal.examinationName;
+
+    // Ensure marksDistribution present
+    if (!payload.marksDistribution || payload.marksDistribution.length === 0) {
+      const unitMap = new Map();
+      selectedQuestions.forEach(q => {
+        const unit = q.unit_name || 'General';
+        if (!unitMap.has(unit)) unitMap.set(unit, { unit_name: unit, marks: 0 });
+        unitMap.get(unit).marks += Number(q.marks || 1);
+      });
+      payload.marksDistribution = Array.from(unitMap.values()).map(d => ({
+        unit_name: d.unit_name,
+        marks: d.marks,
+        percentage_distribution: payload.totalMarks > 0 ? (d.marks / payload.totalMarks) * 100 : 0
+      }));
+      console.log('[QB-LOG] Generated marksDistribution for LBA:', payload.marksDistribution);
+    }
+
+    // Group questions into sections and also prepare template using mapped valid types
+    const grouped = new Map<string, any>();
+    selectedQuestions.forEach(q => {
+      const sectionTypeRaw = q.heading || q.type || 'Question';
+      const mappedType = this.mapHeadingToAIType(sectionTypeRaw);
+      if (!grouped.has(mappedType)) {
+        grouped.set(mappedType, { type: mappedType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
+      }
+      const sec = grouped.get(mappedType);
+      sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1) });
+      sec.numberOfQuestions = sec.questions.length;
+    });
+
+    payload.questions = Array.from(grouped.values());
+
+    // Build template entries (types must be one of allowed values)
+    payload.template = Array.from(grouped.values()).map(s => ({
+      type: s.type,
+      number_of_questions: s.numberOfQuestions,
+      marks_per_question: s.marksPerQuestion,
+      question_distribution: [{ unit_name: selectedQuestions[0]?.unit_name || 'General', objective: selectedQuestions[0]?.objective || 'Knowledge' }]
+    }));
+
+    payload.bluePrint = this.generateSummaryBlueprint(selectedQuestions);
+
+    console.log('[QB-LOG] LBA Final Payload:', JSON.stringify(payload, null, 2));
+
+    this.isLoadingQuestions = true;
+    this.questionBankService.generateQuestionBank(payload).pipe(
+      finalize(() => { this.isLoadingQuestions = false; })
+    ).subscribe({
+      next: (res: any) => {
+        console.log('[QB-LOG] generateQuestionBank (LBA) SUCCESS', res);
+        const finalId = this.extractIdFromResponse(res);
+        if (finalId) {
+          this.utilityservice.showSuccess('Question Paper Created Successfully!');
+          this.router.navigate([`/user/question-paper/view/${finalId}`]);
+        } else {
+          console.warn('[QB-LOG] Paper created but no ID found in response', res);
+          this.utilityservice.showSuccess('Paper created but ID not returned by server.');
+        }
+      },
+      error: (err: any) => {
+        console.error('[QB-LOG] generateQuestionBank (LBA) ERROR:', err);
+        console.error('[QB-LOG] generateQuestionBank (LBA) - err.error:', err?.error);
+        let serverMsgLBA = err?.error?.message || err?.message || '';
+        try { if (!serverMsgLBA && err?.error) serverMsgLBA = JSON.stringify(err.error); } catch(e) { console.error('Stringify failed', e); }
+        this.utilityservice.showError('Failed to create LBA paper: ' + (serverMsgLBA || 'Unknown'));
+      }
+    });
+  }
+
   initializeForm() {
     this.questionBankConfigForm = this.fb.group({
       medium: [null, [Validators.required]],
@@ -153,7 +237,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       subject: [null, [Validators.required]],
       chapter: [null, [Validators.required]],
       subTopic: [null], // Validator added dynamically
-      totalMarks: [100, [Validators.required]],
+      totalMarks: [null, [Validators.required]],
       examinationName: [null, [Validators.required]],
       selectedHeadings: [[]],
     });
@@ -167,7 +251,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   updateFormValidators() {
-    // 1. SubTopic: Only required for AI Single Chapter
     if (this.useAI && this.questionBankTypeValue === 'singleChapter') {
       this.f.subTopic.enable();
       this.f.subTopic.setValidators([Validators.required]);
@@ -177,12 +260,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }
     this.f.subTopic.updateValueAndValidity();
 
-    // 2. Chapter: Always required
     this.f.chapter.enable();
     this.f.chapter.setValidators([Validators.required]);
     this.f.chapter.updateValueAndValidity();
 
-    // 3. Headings: Always required now since it drives both engines
     this.f.selectedHeadings.setValidators([Validators.required, Validators.minLength(1)]);
     this.f.selectedHeadings.updateValueAndValidity();
   }
@@ -190,6 +271,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   onBackendModeChange() {
     this.updateFormValidators();
     if (this.useAI) this.distributeMarks();
+    this.updateLBAAvailableHeadings();
   }
 
   convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
@@ -197,7 +279,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   get f(): any { return this.questionBankConfigForm.controls; }
 
-  // --- 1. BOARDS (Robust Raw Parsing) ---
   getBoardsList(userDetails: any) {
     if (!userDetails || !userDetails.classes) return;
 
@@ -242,7 +323,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }
   }
 
-  // --- 2. MEDIUMS FROM API (Shows all options) ---
   onStandardChange(val: any) {
     this.f.medium.reset();
     this.f.subject.reset();
@@ -302,7 +382,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
          this.questionBankObjectives = structuredClone(CORE_OBJECTIVE_MAPPER);
       }
 
-      // --- 2. Unified Data Fetching ---
       this.isLoadingQuestions = true;
 
       console.log(`%c[API Request] Fetching Chapters for Class: ${standard}, Sub: ${subjectName}`, 'color: blue; font-weight: bold');
@@ -325,13 +404,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           }
 
           // Map all properties
-          this.chapterDropdownOptions = (data || []).map((ch: any) => ({
+           this.chapterDropdownOptions = (data || []).map((ch: any) => ({
              ...ch,
-             topics: ch.topics || ch.title, 
-             headings: ch.headings || [],    
-             subTopics: ch.subTopics || [],  
+             topics: ch.topics || ch.title,
+             _id: ch._id || ch.id || null, // ENSURE we carry the DB ObjectId
+             chapterNumber: ch.chapterNumber,
+             headings: ch.headings || [],
+             subTopics: ch.subTopics || [],
              source: 'Unified'
-          })).sort((a, b) => {
+           })).sort((a, b) => {
               const numA = a.chapterNumber || 999;
               const numB = b.chapterNumber || 999;
               return numA - numB || (a.topics || '').localeCompare(b.topics || '');
@@ -352,21 +433,20 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.distributeMarks();
     this.f.subTopic.reset();
     
+    // 1. Handle selection (Single or Multi)
     let selectedChapterNames: string[] = [];
-
-    // Handle both Single (string) and Multi (array) inputs
     if (Array.isArray(val)) {
       selectedChapterNames = val; 
     } else if (val) {
       selectedChapterNames = [val.topics || val];
     }
 
-    // 1. Find the full Chapter Objects from the master list
+    // 2. Filter to get full chapter data
     const selectedChaptersFullData = this.chapterDropdownOptions.filter(ch => 
       selectedChapterNames.includes(ch.topics)
     );
 
-    // 2. Aggregate all subTopics
+    // 3. Combine subtopics from all selected chapters
     let combinedSubTopics: any[] = [];
     selectedChaptersFullData.forEach(ch => {
       if (ch.subTopics && ch.subTopics.length > 0) {
@@ -374,26 +454,34 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       }
     });
 
-    // 3. TRANSFORM DATA (The Critical Fix)
-    // We map everything to { topics: "The Name", _id: "The Name" }
-    // This matches the 'bindLable: topics' in the config.
+    // 4. Map subtopics to a consistent structure
     this.subtopicsDropdownOptions = combinedSubTopics.map((st: any) => {
-        // If the subtopic is just a string (e.g. "1.1 Intro")
-        if (typeof st === 'string') {
-            return { 
-              topics: st,  // <--- The Label
-              _id: st      // <--- The Value
-            };
-        }
-        
-        // If the subtopic is already an object (legacy data)
-        return { 
-            topics: st.topics || st.title || st.name || st.text, 
-            _id: st._id || st.topics || st.title 
-        };
+      // CASE A: Subtopic is just a string (common in your LBA data)
+      if (typeof st === 'string') {
+          return { topics: st, _id: null };
+      }
+      
+      // CASE B: Subtopic is an object
+      const idVal = st._id || st.id;
+      // Validate if it looks like a Mongo ID
+      const isValidId = idVal && /^[a-fA-F0-9]{24}$/.test(String(idVal));
+
+      return { 
+          topics: st.topics || st.title || st.name || st.text, 
+          _id: isValidId ? String(idVal) : null 
+      };
     });
 
-    // 4. Update Headings logic
+    // 5. CRITICAL FIX: Bind to 'topics' (Name)
+    // This ensures 'marksDistribution' gets the Name ("Adding Fractions"), 
+    // which the AI needs to understand the context.
+    this.subTopicDropdownconfig = {
+      ...this.subTopicDropdownconfig,
+      bindValue: 'topics', 
+      bindLable: 'topics'
+    };
+
+    // 6. Update LBA Headings based on new selection
     this.updateLBAAvailableHeadings();
   }
 
@@ -404,132 +492,164 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const selectedTopics = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
     const selectedChapters = this.chapterDropdownOptions.filter(ch => selectedTopics.includes(ch.topics));
     
-    const map = new Map<string, { name: string; count: number; chapters: Set<number> }>();
+    // Use a Map to prevent duplicates and merge LBA + AI data
+    const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    // 1. Try to get headings from the Database (LBA)
+    // 1. Process LBA Headings (from the database)
     for (const chapter of selectedChapters) {
-      if (chapter.headings && chapter.headings.length > 0) {
-        for (const h of chapter.headings) {
-          const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
-          const headingCount = (typeof h === 'string' ? 1 : Number(h.count || 0));
+      const lbaData = chapter.headings || []; 
+      
+      for (const h of lbaData) {
+        const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
+        const headingCount = (typeof h === 'string' ? 1 : Number(h.count || 0));
 
-          if (!map.has(headingName)) {
-             map.set(headingName, { name: headingName, count: 0, chapters: new Set<number>() });
-          }
-          const agg = map.get(headingName)!;
-          agg.count += headingCount;
-          agg.chapters.add(chapter.chapterNumber || 0);
+        if (!headingMap.has(headingName)) {
+          headingMap.set(headingName, { name: headingName, count: 0, chapters: new Set<number>() });
         }
+        const agg = headingMap.get(headingName)!;
+        agg.count += headingCount;
+        agg.chapters.add(chapter.chapterNumber || 0);
       }
     }
 
-    this.availableHeadings = Array.from(map.values())
-      .map(x => ({ name: x.name, count: x.count, chapters: Array.from(x.chapters).sort((a,b)=>a-b) }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    // 2. FALLBACK: If no LBA headings exist, provide AI Standard Types
-    if (this.availableHeadings.length === 0 && selectedTopics.length > 0) {
-      console.log('%c[Headings Logic] No LBA headings found. Injecting AI Types.', 'color: orange');
-      this.availableHeadings = [
-        { name: 'Multiple Choice Questions', count: 0, chapters: [] },
-        { name: 'Short Answer Questions', count: 0, chapters: [] },
-        { name: 'Long Answer Questions', count: 0, chapters: [] },
-        { name: 'Match the Following', count: 0, chapters: [] }
+    // 2. Inject AI Standard Types
+    // MODIFIED CONDITION: Only inject defaults if we are in AI-only mode.
+    // If LBA is selected (Both or LBA-only), we want the user to choose from the LBA list.
+    if (this.useAI && !this.useLBA) {
+      const aiStandardTypes = [
+        'Multiple Choice Questions',
+        'Short Answer Questions',
+        'Fill in the blanks',
+        'Long Answer Questions',
+        'Match the Following',
+        'Very Short Answer Questions'
       ];
+
+      aiStandardTypes.forEach(typeName => {
+        // Only add it if it wasn't already added by the LBA data
+        if (!headingMap.has(typeName)) {
+          headingMap.set(typeName, { 
+            name: typeName, 
+            count: 0, 
+            chapters: new Set<number>() 
+          });
+        }
+      });
     }
 
-    // 3. Cleanup Selection: Remove selected headings that are no longer available
+    // 3. Convert Map to final Array and sort
+    this.availableHeadings = Array.from(headingMap.values())
+      .map(x => ({ 
+        name: x.name, 
+        count: x.count, 
+        chapters: Array.from(x.chapters).sort((a,b) => a - b) 
+      }))
+      .sort((a, b) => {
+        // Sort priority: Items with counts (LBA) first, then alphabetical
+        if (b.count !== a.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
+      });
+
+    // 4. Sync Selection (Remove selections that are no longer valid)
     const names = new Set(this.availableHeadings.map(h => h.name));
     this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h));
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
 
-  private mapHeadingToAIType(heading: string): string {
-    const h = heading.toLowerCase();
-    
-    if (h.includes('multiple choice') || h.includes('mcq')) 
-      return QUESTION_TYPE_MAPPING_LONG.MCQ;
-    
-    if (h.includes('fill in the blank')) 
-      return QUESTION_TYPE_MAPPING_LONG.FILL_BLANKS;
-    
-    if (h.includes('one sentence') || h.includes('very short')) 
-      return QUESTION_TYPE_MAPPING_LONG.ANSWER_VERY_SHORT;
-    
-    if (h.includes('2-4 sentences') || h.includes('short answer')) 
-      return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
-    
-    if (h.includes('6 sentences') || h.includes('long answer') || h.includes('essay')) 
-      return QUESTION_TYPE_MAPPING_LONG.ANSWER_LONG;
-    
-    if (h.includes('match the following')) 
-      return QUESTION_TYPE_MAPPING_LONG.MATCHING;
-    
-    return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
-  }
 
-  // --- SUBMIT ---
   onSubmit(step: any) {
-    if(step === 1) {
+    switch (step) {
+      case 1:
         this.processStep1();
-    }
-    else if(step === 2) {
-        this.processStep2();
-    }
-    else if(step === 3) {
-        this.generateFinalPaper();
+        break;
+      case 2:
+        // Step 2 is now handled by the template component's nextClick event
+        // This shouldn't be called from onSubmit anymore
+        console.log('[QB-LOG] Step 2 submission should come from template component nextClick event');
+        break;
+      case 3:
+        this.generateMergedQuestionBank();
+        break;
     }
   }
 
-  // --- STEP 1 LOGIC ---
   processStep1() {
-
+    console.log('[QB-LOG] ============ processStep1 START ============');
     this.totalMarks = Number(this.questionBankConfigForm.value.totalMarks);
+    console.log('[QB-LOG] Total Marks:', this.totalMarks);
 
     this.submittedConfig = true;
 
-    // 1. Basic Form Validation (Board, Class, Subject, etc.)
+    // Basic Form Validation
     if (this.questionBankConfigForm.invalid) {
+      console.log('[QB-LOG] Form is INVALID');
       this.utilityservice.showError('Please fill all required fields');
       // Log for debugging
       const invalid = Object.keys(this.f).filter(k => this.f[k].invalid);
       console.log('Form invalid fields:', invalid);
+      console.log('[QB-LOG] ============ processStep1 END (FAILED - Invalid Form) ============');
       return;
     }
 
-    // 2. Generation Mode Validation
+    console.log('[QB-LOG] Form is VALID');
+
+    // Generation Mode Validation
     if (!this.useAI && !this.useLBA) {
+      console.log('[QB-LOG] No generation mode selected (useAI:', this.useAI, ', useLBA:', this.useLBA, ')');
       this.utilityservice.showError('Please select at least one Generation Mode (AI or LBA)');
+      console.log('[QB-LOG] ============ processStep1 END (FAILED - No Generation Mode) ============');
       return;
     }
 
-    // 3. Headings Validation (Always active now)
+    console.log('[QB-LOG] Generation Mode Valid - useAI:', this.useAI, ', useLBA:', this.useLBA);
+
+    //Headings Validation 
     if (!this.selectedHeadings || this.selectedHeadings.length === 0) {
+      console.log('[QB-LOG] No headings selected:', this.selectedHeadings);
       this.utilityservice.showError('Please select at least one Question Type from the LBA Headings');
+      console.log('[QB-LOG] ============ processStep1 END (FAILED - No Headings) ============');
       return;
     }
 
-    // 4. AI-Specific Validation (Marks & Objectives)
+    console.log('[QB-LOG] Selected Headings:', this.selectedHeadings);
+
+    // AI-Specific Validation 
     if (this.useAI) {
+      console.log('[QB-LOG] AI Mode - Validating marks distribution');
+      console.log('[QB-LOG] totalMarks:', this.totalMarks, ', totalDistributedMarks:', this.totalDistributedMarks);
+      console.log('[QB-LOG] totalPercentage:', this.totalPercentage);
       if (this.totalMarks !== this.totalDistributedMarks) {
+        console.log('[QB-LOG] FAILED - Total marks mismatch');
         this.utilityservice.showError('Total marks must match the marks distributed across topics.');
+        console.log('[QB-LOG] ============ processStep1 END (FAILED - Marks Mismatch) ============');
         return;
       }
       if (this.totalPercentage !== 100) {
+        console.log('[QB-LOG] FAILED - Percentage not 100%, actual:', this.totalPercentage);
         this.utilityservice.showError('Objective distribution must equal 100%');
+        console.log('[QB-LOG] ============ processStep1 END (FAILED - Percentage Mismatch) ============');
         return;
       }
     }
 
-    // 5. Start Generation Pool
+    console.log('[QB-LOG] All validations passed! Starting question pool generation');
+    console.log('[QB-LOG] ===== FLOW STARTING =====');
+    console.log('[QB-LOG] useAI:', this.useAI);
+    console.log('[QB-LOG] useLBA:', this.useLBA);
+    console.log('[QB-LOG] selectedHeadings:', this.selectedHeadings);
+    console.log('[QB-LOG] Form Values:', JSON.stringify(this.questionBankConfigForm.getRawValue(), null, 2));
+
+    // Start Generation Pool - combined Step 1 & 2 flow
     this.isLoadingQuestions = true;
     this.allAvailableQuestions = [];
-    this.currentStep = 2; // Move to Step 2 immediately to show loader
+    this.finalSelectedQuestions = []; // Clear previous selections
+    this.currentStep = 2; // Move to selection UI immediately
 
     const tasks: any = {};
 
-    // Condition A: Use AI Generator
+    //  Use AI Generator
     if (this.useAI) {
+      console.log('[QB-LOG] Adding AI generation task');
       tasks.ai = this.generateAIQuestionsPool().pipe(
         catchError(err => {
           console.error('AI Generation Failed', err);
@@ -538,8 +658,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       );
     }
 
-    // Condition B: Use LBA Generator
+    //  Use LBA Generator
     if (this.useLBA) {
+      console.log('[QB-LOG] Adding LBA generation task');
       tasks.lba = this.fetchLBAQuestionsPool().pipe(
         catchError(err => {
           console.error('LBA Fetch Failed', err);
@@ -548,129 +669,427 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       );
     }
 
-    // 6. Execute Tasks in Parallel
+    console.log('[QB-LOG] Executing tasks:', Object.keys(tasks));
+
+    // Execute Tasks
     forkJoin(tasks).pipe(
-      finalize(() => this.isLoadingQuestions = false)
+      finalize(() => {
+        console.log('[QB-LOG] forkJoin finalize - setting isLoadingQuestions to false');
+        this.isLoadingQuestions = false;
+      })
     ).subscribe({
       next: (results: any) => {
+        console.log('========== EXTREME LOGGING: forkJoin Results ==========');
+        console.log('[QB-LOG] forkJoin completed successfully');
+        console.log('[QB-LOG] Full Results Object:', JSON.stringify(results, null, 2));
+        console.log('[QB-LOG] results.ai:', results.ai, ' Type:', Array.isArray(results.ai) ? 'ARRAY' : typeof results.ai);
+        console.log('[QB-LOG] results.lba:', results.lba, ' Type:', Array.isArray(results.lba) ? 'ARRAY' : typeof results.lba);
+        console.log('======================================================');
+        
         const aiQs = results.ai || [];
         const lbaQs = results.lba || [];
 
-        // Combine both sources into the master pool
+        console.log(`[QB-LOG] AI Questions: ${aiQs.length}, LBA Questions: ${lbaQs.length}`);
         this.allAvailableQuestions = [...aiQs, ...lbaQs];
+        console.log(`[QB-LOG] Total Available Questions: ${this.allAvailableQuestions.length}`);
 
         if (this.allAvailableQuestions.length === 0) {
+          console.log('[QB-LOG] NO QUESTIONS FOUND - showing warning');
           this.utilityservice.showWarning('No questions found for the selected criteria.');
-          this.currentStep = 1; // Send back to config if empty
+          this.currentStep = 1; // Go back to config
+          console.log('[QB-LOG] ============ processStep1 END (FAILED - No Questions) ============');
+        } else {
+          console.log('[QB-LOG] Questions generated successfully! Selection UI ready in Step 2');
+          // Auto-focus the templateComponent to ensure it gets the questions
+          setTimeout(() => {
+            if (this.templateComponent) {
+              console.log('[QB-LOG] Template component initialized with questions');
+            }
+          }, 100);
+          console.log('[QB-LOG] ============ processStep1 END (SUCCESS - Now in Step 2) ============');
         }
       },
       error: (err) => {
+        console.error('[QB-LOG] forkJoin ERROR:', err);
         this.utilityservice.showError('An error occurred while generating questions.');
-        this.currentStep = 1;
+        this.currentStep = 1; // Go back to config
+        console.log('[QB-LOG] ============ processStep1 END (ERROR) ============');
       }
     });
   }
 
-  // --- STEP 2 LOGIC (ViewChild) ---
-  processStep2() {
-    // Use 'selectedQuestions' (the ones on the right), NOT 'finalSelectedQuestions'
-    if (!this.selectedQuestions || this.selectedQuestions.length === 0) {
+  processStep2(selections: any[]) {
+    console.log('[QB-LOG] processStep2: Selections received', selections?.length);
+
+    if (!selections || selections.length === 0) {
       this.utilityservice.showWarning('Please select at least one question.');
       return;
     }
+
+    // Map and Store selected questions
+    this.finalSelectedQuestions = selections.map(q => {
+      // CRITICAL: Map the heading/type to a standard AI type so the backend renderer understands it
+      const mappedType = this.mapHeadingToAIType(q.heading || q.type || 'Question');
+
+      return {
+        ...q,
+        type: mappedType, // Backend needs standard types for rendering
+        heading: q.heading || q.type || 'General Section',
+        unit_name: q.unit_name || 'General'
+      };
+    });
+
+    // Generate the summary for the Step 3 Table
+    this.questionBankBluePrintData = this.generateSummaryBlueprint(this.finalSelectedQuestions);
     
-    // Sync the data for Step 3
-    this.finalSelectedQuestions = [...this.selectedQuestions];
+    // Calculate total marks for the final paper based on actual selection
+    this.selectedQuestionsMarks = this.finalSelectedQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    this.totalTemplateMarks = this.selectedQuestionsMarks;
+
+    // Move to Preview & Generate Step
     this.currentStep = 3;
   }
 
-  // --- STEP 3 LOGIC ---
-  generateFinalPaper() {
-    console.log("Generating Final Paper...", this.finalSelectedQuestions);
-    this.utilityservice.showSuccess("Paper Generated Successfully!");
+  generateMergedQuestionBank() {
+    console.log('[QB-LOG] Starting Final Paper Generation');
+    
+    if (this.finalSelectedQuestions.length === 0) {
+      this.utilityservice.showError("No questions selected.");
+      return;
+    }
+
+    this.isLoadingQuestions = true;
+    const formVal = this.questionBankConfigForm.getRawValue();
+    
+    // 1. Prepare the base payload
+    let payload = this.getTemplatePayload();
+    payload.title = formVal.examinationName;
+    payload.metadata = { examinationName: formVal.examinationName };
+    
+    // 2. Group the selected questions into "Sections" (Required by Backend)
+    const sectionsMap = new Map<string, any>();
+
+    this.finalSelectedQuestions.forEach(q => {
+      const type = q.type; // This is the mapped standard type
+      const heading = q.heading; // This is the UI heading (e.g., "Match the Following")
+
+      if (!sectionsMap.has(heading)) {
+        sectionsMap.set(heading, {
+          type: type,
+          heading: heading,
+          marksPerQuestion: Number(q.marks || 1),
+          numberOfQuestions: 0,
+          questions: []
+        });
+      }
+
+      const section = sectionsMap.get(heading);
+      section.questions.push({
+        question: q.text || q.question,
+        options: q.options || [],
+        answer: q.answer || '',
+        marks: Number(q.marks || 1),
+        _id: q._id // Include ID for LBA questions so backend knows source
+      });
+      section.numberOfQuestions = section.questions.length;
+    });
+
+    // 3. Set the questions array and the template (to prevent regeneration)
+    const finalSections = Array.from(sectionsMap.values());
+    payload.questions = finalSections;
+    // Ensure payload.chapters includes all units present in selected questions (prevents backend 400)
+    const selectedUnits = Array.from(new Set(this.finalSelectedQuestions.map(q => q.unit_name || q.unitName || 'General'))).filter(Boolean);
+    payload.chapters = selectedUnits;
+    // Validate chapterIds are valid ObjectId strings before sending to backend
+    const invalidChapterIds = (payload.chapterIds || []).filter((id: any) => !(/^[a-fA-F0-9]{24}$/.test(String(id))));
+    if (invalidChapterIds.length > 0) {
+      this.isLoadingQuestions = false;
+      console.error('[QB-LOG] Invalid chapterIds detected, aborting generate:', invalidChapterIds);
+      this.utilityservice.showError('Invalid Chapter Configuration. Please re-select chapters.');
+      return;
+    }
+    
+    // The 'template' tells the backend exactly how many of each type we have
+    payload.template = finalSections.map(s => ({
+      type: s.type,
+      number_of_questions: s.numberOfQuestions,
+      marks_per_question: s.marksPerQuestion,
+      question_distribution: [{ 
+        unit_name: this.finalSelectedQuestions[0].unit_name, 
+        objective: 'Knowledge' 
+      }]
+    }));
+
+    payload.bluePrint = this.questionBankBluePrintData;
+
+    console.log('[QB-LOG] Final Payload:', payload);
+
+    // 4. Hit the Backend
+    this.questionBankService.generateQuestionBank(payload).pipe(
+      finalize(() => this.isLoadingQuestions = false)
+    ).subscribe({
+      next: (res: any) => {
+        const finalId = this.extractIdFromResponse(res);
+        if (finalId) {
+          this.utilityservice.showSuccess('Question Paper Created Successfully!');
+          this.router.navigate([`/user/question-paper/view/${finalId}`]);
+        } else {
+          console.error("No ID returned from backend", res);
+          this.utilityservice.showError("Paper created but ID not found.");
+          console.warn('[QB-LOG] Full response for debugging:', res);
+        }
+      },
+      error: (err: any) => {
+        console.error('[QB-LOG] API Error (generateMergedQuestionBank):', err);
+        console.error('[QB-LOG] API Error - err.error:', err?.error);
+        console.error('[QB-LOG] API Error - status:', err?.status);
+        let serverMsg = err?.error?.message || err?.message || '';
+        try {
+          if (!serverMsg && err?.error) serverMsg = JSON.stringify(err.error);
+        } catch (e) {
+          console.error('Could not stringify server error body', e);
+        }
+        this.utilityservice.showError(serverMsg || 'Failed to generate paper');
+      }
+    });
   }
 
-  // --- POOL GENERATORS ---
+  // Try multiple common response shapes to extract an ID
+  private extractIdFromResponse(res: any): string | undefined {
+    if (!res) return undefined;
+
+    // Common locations
+    const candidates = [
+      res?.data?._id,
+      res?.data?.id,
+      res?._id,
+      res?.id,
+      res?.data?.questionBankConfigId,
+      res?.data?.questionBank?._id,
+      res?.data?.question_bank_config?._id,
+    ];
+
+    for (const c of candidates) {
+      if (c) return typeof c === 'string' ? c : (c?._id ? String(c._id) : undefined);
+    }
+
+    // Deep scan for any `_id` or `id` string value that looks like a mongo id
+    const isMongoId = (v: any) => typeof v === 'string' && /^[a-fA-F0-9]{24}$/.test(v);
+
+    const scan = (obj: any, depth = 0): string | undefined => {
+      if (!obj || depth > 3) return undefined;
+      if (typeof obj === 'string' && isMongoId(obj)) return obj;
+      if (typeof obj === 'object') {
+        if (obj._id && isMongoId(String(obj._id))) return String(obj._id);
+        if (obj.id && isMongoId(String(obj.id))) return String(obj.id);
+        for (const k of Object.keys(obj)) {
+          const v = obj[k];
+          const found = scan(v, depth + 1);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+
+    return scan(res) || scan(res?.data) || undefined;
+  }
+
   generateAIQuestionsPool() {
+    console.log('[QB-LOG] ============ generateAIQuestionsPool START ============');
     const finalMarks = Number(this.questionBankConfigForm.get('totalMarks')?.value) || 100;
+    console.log('[QB-LOG] Final Marks Required:', finalMarks);
     
-    // 1. Calculate a dynamic pool size for each type
     const dynamicTemplate = this.selectedHeadings.map(heading => {
       const aiType = this.mapHeadingToAIType(heading);
-      const marksPerQ = Number(this.getMarksPerType(aiType));
-      
-      /** 
-       * MATH: 
-       * (Total Marks / Marks Per Question) = Questions needed to reach total with only this type.
-       * Then multiply by 2 to give the user plenty of options to reject.
-       * We cap it at 40 per type to prevent AI timeouts.
-       **/
-      let calculatedCount = Math.ceil((finalMarks / marksPerQ) * 2);
-      
-      // Ensure a minimum of 10 and a maximum of 40 per type for stability
-      const finalCount = Math.max(10, Math.min(calculatedCount, 40));
-
+      const marksPerType = this.getMarksPerType(aiType);
+      const questionsRequired = Math.ceil(finalMarks / marksPerType);
+      // GENERATE 3x TIMES THE REQUIRED QUESTIONS FOR USER SELECTION
+      const questionsToGenerate = questionsRequired * 3;
+      console.log(`[QB-LOG] Template - Heading: ${heading}`);
+      console.log(`[QB-LOG]   Type: ${aiType}, MarksPerQ: ${marksPerType}`);
+      console.log(`[QB-LOG]   Questions Required: ${questionsRequired}, Generating: ${questionsToGenerate} (3x)`);
       return {
         type: aiType,
-        marks_per_question: marksPerQ,
-        number_of_questions: finalCount, 
+        marks_per_question: marksPerType,
+        number_of_questions: questionsToGenerate, 
         question_distribution: []
       };
     });
 
-    let payload = this.getTemplatePayload();
-    payload.totalMarks = finalMarks; 
-    payload.template = dynamicTemplate;
-    payload.objective_distribution = this.questionBankObjectives.map(obj => ({
-      objective: obj.objective,
-      percentage_distribution: Number(obj.percentage_distribution)
-    }));
+    console.log('[QB-LOG] Dynamic Template with 3x generation:', JSON.stringify(dynamicTemplate, null, 2));
 
-    console.log(`%c[AI Pool] Requesting ${dynamicTemplate.length} types with large pool sizes.`, "color: blue");
+    let payload = this.getTemplatePayload();
+    console.log('[QB-LOG] Template Payload:', JSON.stringify(payload, null, 2));
+    payload.template = dynamicTemplate;
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       switchMap((bpRes: any) => {
+        console.log('========== BLUEPRINT RESPONSE LOGGING ==========');
+        console.log('[QB-LOG] Blueprint Response Type:', typeof bpRes);
+        console.log('[QB-LOG] Blueprint Response Keys:', bpRes ? Object.keys(bpRes) : 'NULL');
+        console.log('[QB-LOG] Full Blueprint Response:', JSON.stringify(bpRes, null, 2));
+        console.log('==============================================');
+        
         const blueprint = bpRes.data || bpRes.items || (Array.isArray(bpRes) ? bpRes : null);
+        console.log('[QB-LOG] Blueprint Extracted:', JSON.stringify(blueprint, null, 2));
         if (!blueprint) throw new Error('AI Blueprint failed.');
-        payload.template = blueprint; 
+
+        // Use the blueprint from generateQuestionBankBluePrint
+        console.log('[QB-LOG] Using blueprint from generateQuestionBankBluePrint');
+
+        // Call generateQuestionBank to get actual questions
+        // We'll extract just the questions and ignore the paper creation
+        payload.template = blueprint;
+        console.log('[QB-LOG] About to call generateQuestionBank with payload:', JSON.stringify(payload, null, 2));
+        console.log('[QB-LOG] ⚠️ CALLING generateQuestionBank (to get actual questions, not the template structure)');
         return this.questionBankService.generateQuestionBank(payload);
       }),
       map((finalRes: any) => {
-        const categoryBlocks = finalRes.data?.questions || [];
-        const flatQuestions: any[] = [];
-
-        categoryBlocks.forEach((block: any) => {
-          const innerQuestions = block.questions || [];
-          const blockMarks = Number(block.marks_per_question || 2);
-
-          innerQuestions.forEach((q: any) => {
-            flatQuestions.push({
-              ...q,
-              source: 'AI',
-              text: q.question || q.questionText || q.text || "Content missing",
-              marks: Number(q.marks || blockMarks),
-              options: q.options || [],
-              answer: q.answer || '',
-              _id: q._id || `ai_${Math.random().toString(36).substring(7)}`,
-              unit_name: q.unit_name || "Fractions"
+        console.log('========== EXTREME LOGGING: generateQuestionBank Response ==========');
+        console.log('[QB-LOG] FULL Response Object:', JSON.stringify(finalRes, null, 2));
+        console.log('[QB-LOG] Response Type:', typeof finalRes);
+        console.log('[QB-LOG] Response Keys:', finalRes ? Object.keys(finalRes) : 'NULL/UNDEFINED');
+        console.log('[QB-LOG] finalRes.data:', finalRes?.data);
+        console.log('[QB-LOG] finalRes.questions:', finalRes?.questions);
+        console.log('[QB-LOG] finalRes.items:', finalRes?.items);
+        console.log('[QB-LOG] Array.isArray(finalRes):', Array.isArray(finalRes));
+        console.log('=========================================================================');
+        
+        // Extract questions from generateQuestionBank response
+        let categoryBlocks = [];
+        
+        if (finalRes.data && Array.isArray(finalRes.data)) {
+          categoryBlocks = finalRes.data;
+          console.log('[QB-LOG] ✓ Using finalRes.data directly (array of questions)');
+        } else if (finalRes.data?.questions && Array.isArray(finalRes.data.questions)) {
+          categoryBlocks = finalRes.data.questions;
+          console.log('[QB-LOG] ✓ Using finalRes.data.questions');
+        } else if (finalRes.data?.categoryBlocks && Array.isArray(finalRes.data.categoryBlocks)) {
+          categoryBlocks = finalRes.data.categoryBlocks;
+          console.log('[QB-LOG] ✓ Using finalRes.data.categoryBlocks');
+        } else if (finalRes.questions && Array.isArray(finalRes.questions)) {
+          categoryBlocks = finalRes.questions;
+          console.log('[QB-LOG] ✓ Using finalRes.questions');
+        } else if (finalRes.categoryBlocks && Array.isArray(finalRes.categoryBlocks)) {
+          categoryBlocks = finalRes.categoryBlocks;
+          console.log('[QB-LOG] ✓ Using finalRes.categoryBlocks');
+        } else if (Array.isArray(finalRes)) {
+          categoryBlocks = finalRes;
+          console.log('[QB-LOG] ✓ finalRes is array itself');
+        }
+        
+        console.log('[QB-LOG] FINAL categoryBlocks length:', categoryBlocks.length);
+        if (categoryBlocks.length === 0) {
+          console.warn('[QB-LOG] WARNING: No questions extracted! Check response structure.');
+          console.log('[QB-LOG] DEBUG: Full finalRes structure:', JSON.stringify(finalRes, null, 2));
+          
+          // Try alternative extraction methods
+          console.log('[QB-LOG] Attempting alternative extraction methods...');
+          
+          // Try finalRes.questions_data
+          if (finalRes.questions_data && Array.isArray(finalRes.questions_data)) {
+            categoryBlocks = finalRes.questions_data;
+            console.log('[QB-LOG] ✓ Alternative: Using finalRes.questions_data');
+          }
+          // Try finalRes.data.categoryBlocks
+          else if (finalRes.data?.categoryBlocks && Array.isArray(finalRes.data.categoryBlocks)) {
+            categoryBlocks = finalRes.data.categoryBlocks;
+            console.log('[QB-LOG] ✓ Alternative: Using finalRes.data.categoryBlocks');
+          }
+          // Try finalRes.categoryBlocks
+          else if (finalRes.categoryBlocks && Array.isArray(finalRes.categoryBlocks)) {
+            categoryBlocks = finalRes.categoryBlocks;
+            console.log('[QB-LOG] ✓ Alternative: Using finalRes.categoryBlocks');
+          }
+          // Check if data has anything useful
+          else if (finalRes.data && typeof finalRes.data === 'object' && !Array.isArray(finalRes.data)) {
+            console.log('[QB-LOG] Data is an object, checking its contents...');
+            const dataKeys = Object.keys(finalRes.data);
+            console.log('[QB-LOG] Data object keys:', dataKeys);
+            dataKeys.forEach(key => {
+              if (Array.isArray(finalRes.data[key])) {
+                console.log(`[QB-LOG] Found array at finalRes.data.${key}, length: ${finalRes.data[key].length}`);
+              }
             });
+          }
+        }
+        console.log('[QB-LOG] FINAL categoryBlocks after alternatives:', JSON.stringify(categoryBlocks, null, 2));
+        
+        const flatQuestions: any[] = [];
+        const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
+        console.log('[QB-LOG] Chapter Name:', chapterName);
+
+        categoryBlocks.forEach((block: any, blockIndex: number) => {
+          console.log(`[QB-LOG] Processing Block ${blockIndex}:`, JSON.stringify(block, null, 2));
+          
+          const innerQuestions = block.questions || [];
+          console.log(`[QB-LOG] Block ${blockIndex} Inner Questions Count:`, innerQuestions.length);
+          
+          const blockType = block.type || 'Question';
+          const blockMarks = Number(block.marks_per_question || 1);
+          console.log(`[QB-LOG] Block ${blockIndex} Type: ${blockType}, Marks: ${blockMarks}`);
+
+          innerQuestions.forEach((q: any, qIndex: number) => {
+            console.log(`[QB-LOG] Processing Question ${blockIndex}-${qIndex}:`, JSON.stringify(q, null, 2));
+            let questionText = q.question || q.question_text || q.text || q.content;
+            console.log(`[QB-LOG] Q${blockIndex}-${qIndex} Initial Text: ${questionText}`);
+
+            if (!questionText && q.value1 && q.value2) {
+              questionText = `${q.value1}  ➔  ${q.value2}`;
+              console.log(`[QB-LOG] Q${blockIndex}-${qIndex} Matched value1/value2: ${questionText}`);
+            }
+
+            if (!questionText && blockType.toLowerCase().includes('match')) {
+              questionText = "Match the terms in Column A with Column B";
+              console.log(`[QB-LOG] Q${blockIndex}-${qIndex} Used fallback match text`);
+            }
+
+            if (questionText) {
+              const flatQuestion = {
+                ...q,
+                source: 'AI',
+                text: questionText,
+                marks: Number(q.marks || blockMarks),
+                type: blockType,
+                heading: blockType,
+                unit_name: q.unit_name || chapterName || 'General',
+                objective: q.objective || 'Knowledge',
+                _id: q._id || `ai_${Math.random().toString(36).substring(7)}`
+              };
+              console.log(`[QB-LOG] Q${blockIndex}-${qIndex} Added to flatQuestions`);
+              flatQuestions.push(flatQuestion);
+            } else {
+              console.log(`[QB-LOG] Q${blockIndex}-${qIndex} SKIPPED - No questionText found`);
+            }
           });
         });
 
+        console.log(`[QB-LOG] Pool Generated with 3x options. Total: ${flatQuestions.length}`);
+        console.log('[QB-LOG] All Flat Questions Count:', flatQuestions.length);
         this.allAvailableQuestions = flatQuestions;
-        this.applyFilters(); 
+        
+        // SAVE QUESTIONS TO LOCALSTORAGE AS FALLBACK
+        try {
+          localStorage.setItem('qb_generated_questions', JSON.stringify(flatQuestions));
+          console.log('[QB-LOG] Questions saved to localStorage for fallback');
+        } catch (err) {
+          console.warn('[QB-LOG] Could not save to localStorage:', err);
+        }
+        
+        console.log('[QB-LOG] this.allAvailableQuestions updated, length:', this.allAvailableQuestions.length);
+        this.applyFilters();
+        console.log('[QB-LOG] Filters applied, filteredQuestions length:', this.filteredQuestions.length);
+        console.log('[QB-LOG] ============ generateAIQuestionsPool END ============');
         return flatQuestions;
       })
     );
   }
 
-  // --- TOTALING LOGIC ---
   onSelectionChange() {
     if (!this.templateComponent) return;
 
     const selected = this.templateComponent.selectedQuestions || [];
     
-    // These will now work because we declared them at the top
     this.selectedQuestionsCount = selected.length;
 
     this.selectedQuestionsMarks = selected.reduce((sum: number, q: any) => {
@@ -686,11 +1105,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (t.includes('alternative') || t.includes('choice') || t.includes('mcq')) return 1;
     if (t.includes('two or three sentences') || t.includes('short')) return 2;
     if (t.includes('four or five sentences') || t.includes('long')) return 5;
-    if (t.includes('match')) return 4;
+    if (t.includes('match')) return 1;
     return 2;
   }
 
   fetchLBAQuestionsPool() {
+    console.log('[QB-LOG] ============ fetchLBAQuestionsPool START ============');
     const config = this.questionBankConfigForm.value;
     const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     
@@ -701,6 +1121,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       .filter(ch => selectedTitles.some((t: string) => norm(t) === norm(ch.title) || norm(ch.title).includes(norm(t))))
       .map(ch => ch.chapterNumber);
 
+    console.log('[QB-LOG] LBA Params - selectedChapterNumbers:', selectedChapterNumbers);
+    console.log('[QB-LOG] LBA Params - selectedHeadings:', this.selectedHeadings);
+
     const params: any = {
       subject: config.subject,
       medium: config.medium,
@@ -708,69 +1131,198 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       chapterNumbers: selectedChapterNumbers.join(','),
       headings: this.selectedHeadings.join(',')
     };
+    
+    console.log('[QB-LOG] LBA API Call Params:', JSON.stringify(params, null, 2));
 
     return this.questionBankService.getLBAQuestions(params).pipe(
         map((docs: any[]) => {
-            return (docs || []).map(q => ({
-                ...q,
-                source: 'LBA',
-                text: q.text || q.question_text,
-                marks: q.marksPerQuestion || 1
-            }));
+          console.log('[QB-LOG] LBA API Response:', JSON.stringify(docs, null, 2));
+          console.log('[QB-LOG] LBA Questions Count:', docs ? docs.length : 0);
+          
+          const lbaQuestions = (docs || []).map((q, idx) => {
+            console.log(`[QB-LOG] Processing LBA Question ${idx}:`, JSON.stringify(q, null, 2));
+            
+            // Ensure all required fields are present
+            const processed = {
+              ...q,
+              source: 'LBA',
+              text: q.text || q.question_text || q.question || 'LBA Question',
+              marks: q.marksPerQuestion || q.marks || 1,
+              type: q.type || q.heading || this.selectedHeadings[0] || 'Question',
+              heading: q.heading || q.type || this.selectedHeadings[0] || 'Question',
+              unit_name: q.unit_name || selectedTitles[0] || 'General',
+              objective: q.objective || 'Knowledge',
+              _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
+            };
+            
+            console.log(`[QB-LOG] Processed LBA Question ${idx}:`, JSON.stringify(processed, null, 2));
+            return processed;
+          });
+          
+          console.log('[QB-LOG] All LBA Questions Processed Count:', lbaQuestions.length);
+          console.log('[QB-LOG] ============ fetchLBAQuestionsPool END ============');
+          return lbaQuestions;
         }),
-        catchError(err => { console.error("LBA Fetch Error", err); return of([]); })
+        catchError(err => { 
+          console.error("[QB-LOG] LBA Fetch Error:", err); 
+          return of([]); 
+        })
     );
   }
 
-  // --- UTILS ---
-  getChapterIds(): any {
+  getChapterIds(): string[] {
     const selected = this.f.chapter.value;
-    if (!selected) return this.questionBankTypeValue === 'multiChapter' ? [] : '';
-    
+    if (!selected) return [];
     const selectedArr = Array.isArray(selected) ? selected : [selected];
 
     const ids = selectedArr
-        .map((topicName: string) => {
-            const found = this.chapterDropdownOptions.find(c => c.topics === topicName);
-            return found ? found._id : null;
-        })
-        .filter(id => id !== null);
+      .map((topicName: string) => {
+        const found = this.chapterDropdownOptions.find(c => c.topics === topicName);
+        return found && found._id ? String(found._id) : null;
+      })
+      .filter((id): id is string => id !== null && id !== ''); // This syntax handles the TS type guard
 
-    // CRITICAL FIX: Return string for single, array for multi
-    return this.questionBankTypeValue === 'multiChapter' ? ids : (ids[0] || '');
+    // Explicitly type 'id' here as well to avoid the same error
+    return ids.filter((id: any) => /^[a-fA-F0-9]{24}$/.test(String(id)));
   }
 
   getTemplatePayload(): any {
     const formVal = this.questionBankConfigForm.getRawValue();
     
-    // Ensure subTopic is always an array of strings for the backend
-    let subTopicsArr: string[] = [];
-    if (formVal.subTopic) {
-        subTopicsArr = Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic];
+    // 1. Get validated Chapter IDs
+    const validChapterIds = this.getChapterIds();
+    const primaryChapterId = validChapterIds.length > 0 ? validChapterIds[0] : null;
+
+    // 2. Logic to handle Subtopic Source
+    // The Backend expects valid ObjectIds in 'subTopic'.
+    // If our subtopics are just Strings (Names), the backend filters them out causing 422.
+    // FIX: If we have names, use the Chapter ID as the 'Source' instead.
+    
+    let subTopicsPayload: string[] = [];
+    const rawSubTopics = formVal.subTopic ? (Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic]) : [];
+
+    // Check if the selected subtopics are valid Mongo ObjectIds
+    const hasValidIds = rawSubTopics.some((val: any) => 
+      typeof val === 'string' && /^[a-fA-F0-9]{24}$/.test(val)
+    );
+
+    if (hasValidIds) {
+      // If we have real IDs, use them
+      subTopicsPayload = rawSubTopics.filter((val: any) => /^[a-fA-F0-9]{24}$/.test(val));
+    } else {
+      // If we have Names (strings) or nothing, FALLBACK to the Chapter ID.
+      // This ensures the backend gets a valid ID to look up context.
+      if (primaryChapterId) {
+        console.log('[QB-LOG] Using Chapter ID for subTopic payload (Subtopics are strings)');
+        subTopicsPayload = [primaryChapterId];
+      }
     }
 
-    return {
+    // 3. Construct Payload
+    const payload = {
       board: formVal.board,
       medium: formVal.medium || 'English',
-      grade: Number(formVal.grade),
+      grade: String(formVal.grade),
       subject: formVal.subject,
+      total_marks: Number(formVal.totalMarks),
       totalMarks: Number(formVal.totalMarks),
       examinationName: formVal.examinationName,
+      title: formVal.examinationName,
+      metadata: { examinationName: formVal.examinationName },
       chapter: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
-      subTopic: subTopicsArr,
-      chapterIds: this.getChapterIds(), // Now returns string OR array based on mode
+      chapters: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
+      chapterIds: validChapterIds,
+      chapterId: primaryChapterId,
+      subTopic: subTopicsPayload, // <--- Sends Chapter ID (valid ObjectId)
       isMultiChapter: this.questionBankTypeValue === 'multiChapter',
-      marksDistribution: this.marksDistribution.map(d => ({
+      // marksDistribution still contains the NAMES from the form, so AI knows what to generate
+      marksDistribution: (this.marksDistribution || []).map(d => ({
         unit_name: d.unit_name,
         marks: Number(d.marks),
         percentage_distribution: Number(d.percentage_distribution)
       })),
       template: [],
-      objective_distribution: []
+      objective_distribution: [],
+      bluePrint: this.questionBankBluePrintData || []
     };
+
+    return payload;
   }
-  
-  // -- UI Helpers --
+
+  generateSummaryBlueprint(questions: any[]) {
+    // Create one row in the blueprint table for every question selected
+    // Include source information for pie chart (AI vs LBA)
+    const blueprint = questions.map((q) => ({
+      topic: q.unit_name || 'General',
+      questionType: q.heading || q.type || 'Question',
+      objective: q.objective || 'Knowledge',
+      marks: Number(q.marks || 0),
+      source: q.source || 'Unknown'  // Track AI or LBA
+    }));
+    
+    console.log('[QB-LOG] Blueprint with source tracking:', JSON.stringify(blueprint, null, 2));
+    return blueprint;
+  }
+
+  // Helper to map LBA headings to AI Standard Types
+  private mapHeadingToAIType(heading: string): string {
+    if (!heading || typeof heading !== 'string') return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
+    
+    const h = heading.toLowerCase().trim();
+    
+    // 1. Multiple Choice / Objectives
+    if (h.includes('multiple choice') || h.includes('mcq') || h.includes('objective') || h.includes('alternative')) {
+      return QUESTION_TYPE_MAPPING_LONG.MCQ;
+    }
+    
+    // 2. Fill in the Blanks
+    if (h.includes('fill in') || h.includes('blank')) {
+      return QUESTION_TYPE_MAPPING_LONG.FILL_BLANKS;
+    }
+    
+    // 3. Very Short Answer (1 Mark / 1 Sentence)
+    if (
+      h.includes('one sentence') || 
+      h.includes('1 sentence') || 
+      h.includes('very short') || 
+      h.includes('word, phrase') ||
+      h.includes('1 mark')
+    ) {
+      return QUESTION_TYPE_MAPPING_LONG.ANSWER_VERY_SHORT;
+    }
+    
+    // 4. Short Answer (2-3 Marks / 2-4 Sentences)
+    if (
+      h.includes('two to four') ||  // Matches your LBA log specifically
+      h.includes('two or three') || 
+      h.includes('short answer') || 
+      h.includes('2 marks') || 
+      h.includes('3 marks')
+    ) {
+      return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
+    }
+    
+    // 5. Long Answer (4-5 Marks / 4-6 Sentences)
+    if (
+      h.includes('six sentences') || // Matches your LBA log specifically
+      h.includes('four or five') || 
+      h.includes('long answer') || 
+      h.includes('essay') || 
+      h.includes('4 marks') || 
+      h.includes('5 marks')
+    ) {
+      return QUESTION_TYPE_MAPPING_LONG.ANSWER_LONG;
+    }
+    
+    // 6. Matching
+    if (h.includes('match')) {
+      return QUESTION_TYPE_MAPPING_LONG.MATCHING;
+    }
+    
+    // Default Fallback
+    return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
+  }
+
     selectQuestion(q: any) {
     // Prevent adding the same question twice
     if (this.selectedQuestions.find(existing => existing._id === q._id)) {
@@ -790,7 +1342,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   // Live Math Calculation
   calculateTotal() {
-    // Numerator: Sum of marks of questions on the RIGHT
     this.currentTotalMarks = this.selectedQuestions.reduce((sum, q) => {
       return sum + (Number(q.marks) || 0);
     }, 0);
@@ -821,7 +1372,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     });
   }
 
-  // Check if target marks reached (used for UI coloring)
+  // Check if target marks reached 
   get isTotalMet(): boolean {
     return this.currentTotalMarks === this.totalMarks;
   }
@@ -850,7 +1401,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (this.selectedHeadings.length === this.availableHeadings.length) return `All headings (${this.selectedHeadings.length})`;
     return this.selectedHeadings.length > 2 ? `${this.selectedHeadings.slice(0, 2).join(', ')} +${this.selectedHeadings.length - 2}` : this.selectedHeadings.join(', ');
   }
-  headingDisplay(h: any) { return h.name; }
+  headingDisplay(h: any) { 
+    if (h.count > 0) {
+      return `${h.name} (${h.count})`; 
+    }
+    return h.name; 
+  }
 
   onLanguageChange(val: any) {}
   onSubtopicChange() { if(this.useAI) this.distributeMarks(); }

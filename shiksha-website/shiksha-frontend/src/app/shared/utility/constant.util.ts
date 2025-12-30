@@ -107,11 +107,11 @@ export const CCE_TYPE_MAPPER:any = {
 }
 
 export const QUESTION_TYPE_MAPPING_LONG = {
-  'MCQ': 'Four alternatives are given for each of the following questions, choose the correct alternative',
-  'FILL_BLANKS': 'Fill in the blanks with suitable words',
-  'ANSWER_VERY_SHORT': 'Answer the following in a word, phrase or sentence',
-  'ANSWER_SHORT': 'Answer the following in two or three sentences each',
-  'ANSWER_MEDIUM': 'Answer the following questions',
-  'ANSWER_LONG': 'Answer the following question in four or five sentences',
-  'MATCHING': 'Match the following'
+  "MCQ": "Four alternatives are given for each of the following questions, choose the correct alternative",
+  "FILL_BLANKS": "Fill in the blanks with suitable words",
+  "ANSWER_VERY_SHORT": "Answer the following in a word, phrase or sentence",
+  "ANSWER_SHORT": "Answer the following in two or three sentences each",
+  "ANSWER_MEDIUM": "Answer the following questions",
+  "ANSWER_LONG": "Answer the following question in four or five sentences",
+  "MATCHING": "Match the following"
 };

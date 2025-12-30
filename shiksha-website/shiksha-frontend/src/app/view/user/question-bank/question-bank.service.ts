@@ -149,6 +149,10 @@ export class QuestionBankService extends BaseRestService {
       })))
     );
   }
+  updateQuestionPaper(id: string, data: any): Observable<any> {
+    // Use PUT or PATCH so the backend knows to update the existing record
+    return this.http.put(`${this.baseUrl}/question-bank/${id}`, data);
+  }
 
   /**
    * Function to get subjects for LBA QP

@@ -165,7 +165,7 @@
                         </label>
                         <label *ngFor="let h of availableHeadings" class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b text-sm">
                           <input type="checkbox" [checked]="isHeadingSelected(h.name)" (change)="toggleHeading($event, h.name)" class="mr-2 w-4 h-4" /> 
-                          {{h.name}} <span class="ml-1 text-gray-400">({{h.count}})</span>
+                          {{h.name}} <span *ngIf="(h?.count || 0) > 0" class="ml-1 text-gray-400">({{h.count}})</span>
                         </label>
                      </div>
                   </div>
@@ -231,49 +231,62 @@
                   </table>
                 </div>
               </div>
-
             </div>
           </form>
         </div>
       </div>
       
       <!-- STEP 2: SELECT QUESTIONS FROM POOL -->
-      <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2">
-        <div *ngIf="isLoadingQuestions" class="absolute inset-0 z-50 bg-white/90 flex flex-col items-center justify-center h-[50vh]">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          <p class="mt-4 text-primary font-bold">Gathering Questions from Pool...</p>
-        </div>
-        
+      <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2" class="h-full w-full relative">      
+        <!-- Only show the template when loading is finished -->
         <app-question-bank-template
           *ngIf="!isLoadingQuestions"
           [currentStep]="currentStep"
           [totalMarks]="totalMarks"
           [availableQuestions]="allAvailableQuestions"
           (backClick)="previousStep()"
+          (nextClick)="processStep2($event)"
         ></app-question-bank-template>
       </div>
 
       <!-- STEP 3: PREVIEW & FINAL GENERATE -->
-      <div *ngSwitchCase="3" [@fadeInOut]="currentStep === 3">
-        <app-question-bank-blue-print
-          [currentStep]="currentStep"
-          [finalSelectedQuestions]="finalSelectedQuestions"
-          [totalMarks]="totalMarks"
-          [examName]="questionBankConfigForm.value.examinationName"
-          (backClick)="previousStep()"
-        ></app-question-bank-blue-print>
+      <div *ngSwitchCase="3" [@fadeInOut] class="p-0 bg-white">
+      <app-question-bank-blue-print
+        [finalSelectedQuestions]="finalSelectedQuestions"
+        [examName]="questionBankConfigForm.value.examinationName"
+        [totalMarks]="totalMarks"
+        (backClick)="previousStep()"
+        (generateClick)="onSubmit(3)"
+      ></app-question-bank-blue-print>
+      
+      <!-- Fallback if no questions are selected -->
+      <div *ngIf="!finalSelectedQuestions || finalSelectedQuestions.length === 0" class="text-center p-5">
+        <p>No questions selected for preview.</p>
+        <button class="btn btn-primary" (click)="previousStep()">Go Back</button>
       </div>
-
+    </div>
     </ng-container>
   </div>
 </div>
 
 <!-- FOOTER NAVIGATION BUTTONS -->
-<div class="flex justify-end items-center gap-2 mt-0 md:mt-4 absolute md:relative bottom-0 bg-shade-50 w-full p-4 md:p-0 md:px-2 z-10 border-t md:border-none">
+<div class="flex justify-end items-center gap-2 mt-4 p-4 md:p-0" *ngIf="currentStep !== 2">
   <button *ngIf="currentStep > 1" (click)="previousStep()" class="btn-outline-primary px-6 py-2 rounded-lg font-bold">
     Previous
   </button>
-  <button (click)="onSubmit(currentStep)" class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
-     {{ currentStep === 3 ? "Save & Download" : "Generate Questions" }}
-  </button>
+  
+    <ng-container *ngIf="currentStep !== 3">
+     <button (click)="onSubmit(currentStep)" class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
+       <ng-container [ngSwitch]="currentStep">
+         <span *ngSwitchCase="1">Next: Select Questions</span>
+         <span *ngSwitchCase="2">Next: View Blue Print</span>
+       </ng-container>
+     </button>
+    </ng-container>
+
+    <ng-container *ngIf="currentStep === 3">
+     <button (click)="generateMergedQuestionBank()" [disabled]="isLoadingQuestions" class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
+      {{ isLoadingQuestions ? 'Generating...' : 'Generate Final Paper' }}
+     </button>
+    </ng-container>
 </div>
