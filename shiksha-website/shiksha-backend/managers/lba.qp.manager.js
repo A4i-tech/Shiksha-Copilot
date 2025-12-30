@@ -44,28 +44,70 @@ const getSubjects = async (className, medium) => {
 };
 
 const getChapters = async (className, medium, subject) => {
+  console.log('[DEBUG] --- Unified getChapters with Aggregation ---');
+  
   try {
     const normalizedClass = cleanClass(className);
-    
+    const subjectPattern = (subject || '').replace(/[\s_]/g, '[\\s_]');
+
+    // 1. Find the Chapters first
     const query = {
-      class: normalizedClass,
-      medium: { $regex: new RegExp(`^${medium}$`, 'i') }, 
-      subject: { $regex: new RegExp(`^${subject}$`, 'i') }
+      $or: [
+        { class: normalizedClass },
+        { standard: normalizedClass },
+        { standard: Number(normalizedClass) }
+      ],
+      medium: { $regex: new RegExp(`^${medium}$`, 'i') },
+      subject: { $regex: new RegExp(`^${subjectPattern}$`, 'i') }
     };
-    
-    console.log("Executing Query:", JSON.stringify(query));
 
-    const results = await LBAChapter.find(query)
-      .select('title topics subTopics headings chapterNumber class medium subject year examType')
-      .lean();
+    const chapters = await LBAChapter.find(query).lean();
+    console.log(`[DEBUG] Found ${chapters.length} chapter documents.`);
 
-    console.log(`Found ${results.length} chapters`);
-    return results;
+    if (chapters.length === 0) return [];
+
+    // 2. Get all Chapter IDs to find their headings
+    const chapterIds = chapters.map(c => c._id);
+
+    // 3. AGGREGATE HEADINGS from the LBAQuestion collection
+    // This is the "Different Collection" where the headings actually live
+    const questionStats = await LBAQuestion.aggregate([
+      { $match: { chapterId: { $in: chapterIds } } },
+      { 
+        $group: { 
+          _id: { chapterId: "$chapterId", heading: "$groupHeading" }, 
+          count: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    // 4. Attach the found headings back to their respective chapters
+    const chaptersWithHeadings = chapters.map(ch => {
+      // Find all headings that belong to this specific chapter
+      const chapterHeadings = questionStats
+        .filter(stat => stat._id.chapterId.toString() === ch._id.toString())
+        .map(stat => ({
+          name: stat._id.heading || 'General',
+          count: stat.count
+        }));
+
+      return {
+        ...ch,
+        topics: ch.topics || ch.title,
+        headings: chapterHeadings, // <--- Headings are now injected here
+        subTopics: ch.subTopics || []
+      };
+    });
+
+    console.log(`[DEBUG] Processed ${chaptersWithHeadings.length} chapters with aggregated headings.`);
+    return chaptersWithHeadings;
+
   } catch (err) {
-    console.error("Manager Error:", err);
+    console.error('[DEBUG] !!! aggregation failed:', err);
     throw err;
   }
 };
+
 
 const getDifficulties = async () => {
   try {

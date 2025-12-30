@@ -15,6 +15,7 @@ import {
   CORE_SUBJECTS,
   LANGUAGE_OBJECTIVE_MAPPER,
   TELANGANA_OBJECTIVE_MAPPER,
+  QUESTION_TYPE_MAPPING_LONG
 } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
@@ -98,6 +99,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   objectiveChartMapper: any = {};
   templateData!: any[];
   totalTemplateMarks = 0;
+  
+  selectedQuestionsCount: number = 0;
+  selectedQuestionsMarks: number = 0;
+
+  filteredQuestions: any[] = [];   
+  selectedQuestions: any[] = [];    
+  currentTotalMarks: number = 0;   
+  filterSource: string = 'ALL';     
+  searchQuery: string = '';          
 
   constructor(
     private fb: FormBuilder,
@@ -157,21 +167,24 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   updateFormValidators() {
-    this.f.subTopic.enable();
-    if (this.questionBankTypeValue === 'singleChapter') {
+    // 1. SubTopic: Only required for AI Single Chapter
+    if (this.useAI && this.questionBankTypeValue === 'singleChapter') {
+      this.f.subTopic.enable();
       this.f.subTopic.setValidators([Validators.required]);
     } else {
-      this.f.subTopic.clearValidators(); 
+      this.f.subTopic.clearValidators();
+      this.f.subTopic.disable();
     }
     this.f.subTopic.updateValueAndValidity();
 
-    // Headings logic remains valid (always accessible)
-    this.f.selectedHeadings.clearValidators(); 
-    this.f.selectedHeadings.updateValueAndValidity();
-
+    // 2. Chapter: Always required
     this.f.chapter.enable();
     this.f.chapter.setValidators([Validators.required]);
     this.f.chapter.updateValueAndValidity();
+
+    // 3. Headings: Always required now since it drives both engines
+    this.f.selectedHeadings.setValidators([Validators.required, Validators.minLength(1)]);
+    this.f.selectedHeadings.updateValueAndValidity();
   }
 
   onBackendModeChange() {
@@ -389,35 +402,24 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     
     const rawVal = this.f.chapter.value;
     const selectedTopics = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
-    
-    console.log('1. Selected Topic Names (Dropdown Value):', selectedTopics);
-
-    // Filter the merged global options based on selection
     const selectedChapters = this.chapterDropdownOptions.filter(ch => selectedTopics.includes(ch.topics));
     
-    console.log('2. Full Selected Chapter Objects:', selectedChapters);
-
     const map = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
+    // 1. Try to get headings from the Database (LBA)
     for (const chapter of selectedChapters) {
       if (chapter.headings && chapter.headings.length > 0) {
-        console.log(`   -> Chapter "${chapter.topics}" has ${chapter.headings.length} headings.`);
-        
         for (const h of chapter.headings) {
-          // Handle both string headings and object headings {name: '...', count: ...}
           const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
           const headingCount = (typeof h === 'string' ? 1 : Number(h.count || 0));
 
           if (!map.has(headingName)) {
              map.set(headingName, { name: headingName, count: 0, chapters: new Set<number>() });
           }
-          
           const agg = map.get(headingName)!;
           agg.count += headingCount;
           agg.chapters.add(chapter.chapterNumber || 0);
         }
-      } else {
-        console.warn(`   -> Chapter "${chapter.topics}" has NO headings (Array is empty or undefined).`);
       }
     }
 
@@ -425,12 +427,45 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       .map(x => ({ name: x.name, count: x.count, chapters: Array.from(x.chapters).sort((a,b)=>a-b) }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    console.log('3. Final Calculated Available Headings:', this.availableHeadings);
+    // 2. FALLBACK: If no LBA headings exist, provide AI Standard Types
+    if (this.availableHeadings.length === 0 && selectedTopics.length > 0) {
+      console.log('%c[Headings Logic] No LBA headings found. Injecting AI Types.', 'color: orange');
+      this.availableHeadings = [
+        { name: 'Multiple Choice Questions', count: 0, chapters: [] },
+        { name: 'Short Answer Questions', count: 0, chapters: [] },
+        { name: 'Long Answer Questions', count: 0, chapters: [] },
+        { name: 'Match the Following', count: 0, chapters: [] }
+      ];
+    }
 
-    // Refresh selected headings
+    // 3. Cleanup Selection: Remove selected headings that are no longer available
     const names = new Set(this.availableHeadings.map(h => h.name));
     this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h));
     this.f.selectedHeadings.setValue(this.selectedHeadings);
+  }
+
+  private mapHeadingToAIType(heading: string): string {
+    const h = heading.toLowerCase();
+    
+    if (h.includes('multiple choice') || h.includes('mcq')) 
+      return QUESTION_TYPE_MAPPING_LONG.MCQ;
+    
+    if (h.includes('fill in the blank')) 
+      return QUESTION_TYPE_MAPPING_LONG.FILL_BLANKS;
+    
+    if (h.includes('one sentence') || h.includes('very short')) 
+      return QUESTION_TYPE_MAPPING_LONG.ANSWER_VERY_SHORT;
+    
+    if (h.includes('2-4 sentences') || h.includes('short answer')) 
+      return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
+    
+    if (h.includes('6 sentences') || h.includes('long answer') || h.includes('essay')) 
+      return QUESTION_TYPE_MAPPING_LONG.ANSWER_LONG;
+    
+    if (h.includes('match the following')) 
+      return QUESTION_TYPE_MAPPING_LONG.MATCHING;
+    
+    return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
   }
 
   // --- SUBMIT ---
@@ -448,52 +483,62 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   // --- STEP 1 LOGIC ---
   processStep1() {
+
+    this.totalMarks = Number(this.questionBankConfigForm.value.totalMarks);
+
     this.submittedConfig = true;
 
-    // 1. Basic Validation
+    // 1. Basic Form Validation (Board, Class, Subject, etc.)
     if (this.questionBankConfigForm.invalid) {
       this.utilityservice.showError('Please fill all required fields');
+      // Log for debugging
+      const invalid = Object.keys(this.f).filter(k => this.f[k].invalid);
+      console.log('Form invalid fields:', invalid);
       return;
     }
 
-    // 2. Switch Validation
+    // 2. Generation Mode Validation
     if (!this.useAI && !this.useLBA) {
-      this.utilityservice.showError('Please select at least one Generation Source (AI or LBA)');
+      this.utilityservice.showError('Please select at least one Generation Mode (AI or LBA)');
       return;
     }
 
-    // 3. Specific Validations
-    if (this.useLBA && this.selectedHeadings.length === 0) {
-      // Even if LBA headings are shown "all the time", we must validate them if LBA mode is ON
-      this.utilityservice.showError('Please select LBA Headings');
+    // 3. Headings Validation (Always active now)
+    if (!this.selectedHeadings || this.selectedHeadings.length === 0) {
+      this.utilityservice.showError('Please select at least one Question Type from the LBA Headings');
       return;
     }
 
+    // 4. AI-Specific Validation (Marks & Objectives)
     if (this.useAI) {
-       // Validate marks distribution for AI
-       if (this.totalMarks !== this.totalDistributedMarks) {
-          this.utilityservice.showError('Total marks must match distributed marks');
-          return;
-       }
+      if (this.totalMarks !== this.totalDistributedMarks) {
+        this.utilityservice.showError('Total marks must match the marks distributed across topics.');
+        return;
+      }
+      if (this.totalPercentage !== 100) {
+        this.utilityservice.showError('Objective distribution must equal 100%');
+        return;
+      }
     }
 
-    // 4. Generate Pool
+    // 5. Start Generation Pool
     this.isLoadingQuestions = true;
     this.allAvailableQuestions = [];
+    this.currentStep = 2; // Move to Step 2 immediately to show loader
 
-    const tasks: any = {}; // Use object for forkJoin for clearer result mapping
+    const tasks: any = {};
 
-    // Condition 1: Add AI Task if Switch is ON
+    // Condition A: Use AI Generator
     if (this.useAI) {
       tasks.ai = this.generateAIQuestionsPool().pipe(
         catchError(err => {
-          console.error('AI Gen Failed', err);
-          return of([]); // Return empty on fail so LBA can still succeed
+          console.error('AI Generation Failed', err);
+          return of([]); 
         })
       );
     }
 
-    // Condition 2: Add LBA Task if Switch is ON
+    // Condition B: Use LBA Generator
     if (this.useLBA) {
       tasks.lba = this.fetchLBAQuestionsPool().pipe(
         catchError(err => {
@@ -503,7 +548,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       );
     }
 
-    // 5. Execute
+    // 6. Execute Tasks in Parallel
     forkJoin(tasks).pipe(
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
@@ -511,34 +556,32 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const aiQs = results.ai || [];
         const lbaQs = results.lba || [];
 
-        // Combine
+        // Combine both sources into the master pool
         this.allAvailableQuestions = [...aiQs, ...lbaQs];
 
         if (this.allAvailableQuestions.length === 0) {
-          this.utilityservice.showWarning('No questions could be generated. Please adjust configuration.');
-        } else {
-          // Success: Move to Step 2 (The Question List/Template replacement)
-          this.currentStep = 2;
+          this.utilityservice.showWarning('No questions found for the selected criteria.');
+          this.currentStep = 1; // Send back to config if empty
         }
       },
       error: (err) => {
-        this.utilityservice.showError('Unexpected error during generation');
+        this.utilityservice.showError('An error occurred while generating questions.');
+        this.currentStep = 1;
       }
     });
   }
 
   // --- STEP 2 LOGIC (ViewChild) ---
   processStep2() {
-    if (!this.templateComponent) return;
-
-    const selected = this.templateComponent.selectedQuestions;
-    if (!selected || selected.length === 0) {
-        this.utilityservice.showWarning('Please select at least one question.');
-        return;
+    // Use 'selectedQuestions' (the ones on the right), NOT 'finalSelectedQuestions'
+    if (!this.selectedQuestions || this.selectedQuestions.length === 0) {
+      this.utilityservice.showWarning('Please select at least one question.');
+      return;
     }
-
-    this.finalSelectedQuestions = selected;
-    this.currentStep = 3; 
+    
+    // Sync the data for Step 3
+    this.finalSelectedQuestions = [...this.selectedQuestions];
+    this.currentStep = 3;
   }
 
   // --- STEP 3 LOGIC ---
@@ -549,35 +592,102 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   // --- POOL GENERATORS ---
   generateAIQuestionsPool() {
-    const targetMarks = this.totalMarks * 3; 
-    const autoTemplate = [
-        { type: 'MCQ', marks_per_question: 1, number_of_questions: Math.max(1, Math.floor((targetMarks*0.2))), question_distribution: [] },
-        { type: 'Short Answer', marks_per_question: 2, number_of_questions: Math.max(1, Math.floor((targetMarks*0.4)/2)), question_distribution: [] },
-        { type: 'Long Answer', marks_per_question: 5, number_of_questions: Math.max(1, Math.floor((targetMarks*0.4)/5)), question_distribution: [] }
-    ];
+    const finalMarks = Number(this.questionBankConfigForm.get('totalMarks')?.value) || 100;
+    
+    // 1. Calculate a dynamic pool size for each type
+    const dynamicTemplate = this.selectedHeadings.map(heading => {
+      const aiType = this.mapHeadingToAIType(heading);
+      const marksPerQ = Number(this.getMarksPerType(aiType));
+      
+      /** 
+       * MATH: 
+       * (Total Marks / Marks Per Question) = Questions needed to reach total with only this type.
+       * Then multiply by 2 to give the user plenty of options to reject.
+       * We cap it at 40 per type to prevent AI timeouts.
+       **/
+      let calculatedCount = Math.ceil((finalMarks / marksPerQ) * 2);
+      
+      // Ensure a minimum of 10 and a maximum of 40 per type for stability
+      const finalCount = Math.max(10, Math.min(calculatedCount, 40));
+
+      return {
+        type: aiType,
+        marks_per_question: marksPerQ,
+        number_of_questions: finalCount, 
+        question_distribution: []
+      };
+    });
 
     let payload = this.getTemplatePayload();
-    payload.totalMarks = targetMarks;
-    payload.template = autoTemplate;
-    payload.objective_distribution = this.questionBankObjectives;
+    payload.totalMarks = finalMarks; 
+    payload.template = dynamicTemplate;
+    payload.objective_distribution = this.questionBankObjectives.map(obj => ({
+      objective: obj.objective,
+      percentage_distribution: Number(obj.percentage_distribution)
+    }));
+
+    console.log(`%c[AI Pool] Requesting ${dynamicTemplate.length} types with large pool sizes.`, "color: blue");
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
-       switchMap((bpRes: any) => {
-           payload.template = bpRes.data; 
-           payload.questionBankTemplate = autoTemplate;
-           return this.questionBankService.generateQuestionBank(payload);
-       }),
-       map((finalRes: any) => {
-           return (finalRes.data?.questions || []).map((q: any) => ({
-               ...q,
-               source: 'AI',
-               text: q.question_text || q.text,
-               marks: q.marks || 1,
-               _id: q._id || Math.random().toString(36)
-           }));
-       }),
-       catchError(err => { console.error("AI Gen Error", err); return of([]); })
+      switchMap((bpRes: any) => {
+        const blueprint = bpRes.data || bpRes.items || (Array.isArray(bpRes) ? bpRes : null);
+        if (!blueprint) throw new Error('AI Blueprint failed.');
+        payload.template = blueprint; 
+        return this.questionBankService.generateQuestionBank(payload);
+      }),
+      map((finalRes: any) => {
+        const categoryBlocks = finalRes.data?.questions || [];
+        const flatQuestions: any[] = [];
+
+        categoryBlocks.forEach((block: any) => {
+          const innerQuestions = block.questions || [];
+          const blockMarks = Number(block.marks_per_question || 2);
+
+          innerQuestions.forEach((q: any) => {
+            flatQuestions.push({
+              ...q,
+              source: 'AI',
+              text: q.question || q.questionText || q.text || "Content missing",
+              marks: Number(q.marks || blockMarks),
+              options: q.options || [],
+              answer: q.answer || '',
+              _id: q._id || `ai_${Math.random().toString(36).substring(7)}`,
+              unit_name: q.unit_name || "Fractions"
+            });
+          });
+        });
+
+        this.allAvailableQuestions = flatQuestions;
+        this.applyFilters(); 
+        return flatQuestions;
+      })
     );
+  }
+
+  // --- TOTALING LOGIC ---
+  onSelectionChange() {
+    if (!this.templateComponent) return;
+
+    const selected = this.templateComponent.selectedQuestions || [];
+    
+    // These will now work because we declared them at the top
+    this.selectedQuestionsCount = selected.length;
+
+    this.selectedQuestionsMarks = selected.reduce((sum: number, q: any) => {
+      return sum + (Number(q.marks) || 0);
+    }, 0);
+
+    this.totalTemplateMarks = this.selectedQuestionsMarks;
+  }
+
+
+  private getMarksPerType(type: string): number {
+    const t = type.toLowerCase();
+    if (t.includes('alternative') || t.includes('choice') || t.includes('mcq')) return 1;
+    if (t.includes('two or three sentences') || t.includes('short')) return 2;
+    if (t.includes('four or five sentences') || t.includes('long')) return 5;
+    if (t.includes('match')) return 4;
+    return 2;
   }
 
   fetchLBAQuestionsPool() {
@@ -613,28 +723,108 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   // --- UTILS ---
-  getChapterIds() {
+  getChapterIds(): any {
     const selected = this.f.chapter.value;
-    if (!selected) return [];
+    if (!selected) return this.questionBankTypeValue === 'multiChapter' ? [] : '';
     
     const selectedArr = Array.isArray(selected) ? selected : [selected];
 
-    return selectedArr
-        .map((t: string) => this.chapterDropdownOptions.find(c => c.topics === t)?._id)
-        .filter((id: any) => id);
+    const ids = selectedArr
+        .map((topicName: string) => {
+            const found = this.chapterDropdownOptions.find(c => c.topics === topicName);
+            return found ? found._id : null;
+        })
+        .filter(id => id !== null);
+
+    // CRITICAL FIX: Return string for single, array for multi
+    return this.questionBankTypeValue === 'multiChapter' ? ids : (ids[0] || '');
   }
 
-  getTemplatePayload() {
-    let payload = this.questionBankConfigForm.getRawValue();
-    payload.totalMarks = parseInt(payload.totalMarks);
-    payload.chapterIds = this.getChapterIds();
-    payload.isMultiChapter = this.questionBankTypeValue === 'multiChapter';
-    payload.marksDistribution = this.marksDistribution;
-    payload.language = this.f.language.value || 'english';
-    return payload;
+  getTemplatePayload(): any {
+    const formVal = this.questionBankConfigForm.getRawValue();
+    
+    // Ensure subTopic is always an array of strings for the backend
+    let subTopicsArr: string[] = [];
+    if (formVal.subTopic) {
+        subTopicsArr = Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic];
+    }
+
+    return {
+      board: formVal.board,
+      medium: formVal.medium || 'English',
+      grade: Number(formVal.grade),
+      subject: formVal.subject,
+      totalMarks: Number(formVal.totalMarks),
+      examinationName: formVal.examinationName,
+      chapter: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
+      subTopic: subTopicsArr,
+      chapterIds: this.getChapterIds(), // Now returns string OR array based on mode
+      isMultiChapter: this.questionBankTypeValue === 'multiChapter',
+      marksDistribution: this.marksDistribution.map(d => ({
+        unit_name: d.unit_name,
+        marks: Number(d.marks),
+        percentage_distribution: Number(d.percentage_distribution)
+      })),
+      template: [],
+      objective_distribution: []
+    };
   }
   
   // -- UI Helpers --
+    selectQuestion(q: any) {
+    // Prevent adding the same question twice
+    if (this.selectedQuestions.find(existing => existing._id === q._id)) {
+      this.utilityservice.showWarning('Question already added');
+      return;
+    }
+    
+    this.selectedQuestions.push(q);
+    this.calculateTotal();
+  }
+
+  // Triggered when clicking 'X' on the right
+  removeQuestion(index: number) {
+    this.selectedQuestions.splice(index, 1);
+    this.calculateTotal();
+  }
+
+  // Live Math Calculation
+  calculateTotal() {
+    // Numerator: Sum of marks of questions on the RIGHT
+    this.currentTotalMarks = this.selectedQuestions.reduce((sum, q) => {
+      return sum + (Number(q.marks) || 0);
+    }, 0);
+
+  // Question count on the RIGHT
+  this.selectedQuestionsCount = this.selectedQuestions.length;
+  
+  // Update the labels
+  this.selectedQuestionsMarks = this.currentTotalMarks;
+}
+
+  // Filter and Search Logic
+  setFilter(source: string) {
+    this.filterSource = source;
+    this.applyFilters();
+  }
+
+  onSearch(event: any) {
+    this.searchQuery = event.target.value.toLowerCase();
+    this.applyFilters();
+  }
+
+  applyFilters() {
+    this.filteredQuestions = this.allAvailableQuestions.filter(q => {
+      const matchesSource = this.filterSource === 'ALL' || q.source === this.filterSource;
+      const matchesSearch = q.text.toLowerCase().includes(this.searchQuery);
+      return matchesSource && matchesSearch;
+    });
+  }
+
+  // Check if target marks reached (used for UI coloring)
+  get isTotalMet(): boolean {
+    return this.currentTotalMarks === this.totalMarks;
+  }
   toggleHeadingDropdown() { this.showHeadingDropdown = !this.showHeadingDropdown; }
   toggleAllHeadings(event: Event) {
     const input = event.target as HTMLInputElement;

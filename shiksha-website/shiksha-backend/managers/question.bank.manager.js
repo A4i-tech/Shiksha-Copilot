@@ -101,7 +101,7 @@ class QuestionBankManager extends BaseManager {
 
       const payload = {
         ...templatePayload,
-        objective_distribution: objective_distribution || [],
+        objective_distribution: objective_distribution || req.body.objectiveDistribution || [],
         template: this._mapTemplateTypes(template || [])
       };
 
@@ -131,21 +131,28 @@ class QuestionBankManager extends BaseManager {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
+      // FIX: Standardize variables to handle naming mismatches from Frontend
       const {
         chapter,
         subTopic,
         isMultiChapter,
         chapterIds,
-        objectiveDistribution,
         questionBankTemplate,
         template,
         language,
       } = req.body;
 
+      // FIX: Handle both objectiveDistribution (camel) and objective_distribution (snake)
+      const objectiveDistribution = req.body.objectiveDistribution || req.body.objective_distribution || [];
+
       const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
-      const unitNames = isMultiChapter ? chapter : subTopic;
-      const processedUnitNames = unitNames.map((e) => e.trim());
-      const chapterIdsArr = isMultiChapter ? chapterIds : [chapterIds];
+      const unitNames = isMultiChapter ? (chapter || []) : (subTopic || []);
+      
+      // FIX: Defensive map (handles undefined unitNames)
+      const processedUnitNames = Array.isArray(unitNames) ? unitNames.map((e) => e.trim()) : [];
+      
+      // FIX: Ensure chapterIds is ALWAYS an array even if frontend sends a single string
+      const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
 
       const cacheHit = await this.questionBankCacheDao.findInCache(
         chapterIdsArr,
@@ -153,13 +160,13 @@ class QuestionBankManager extends BaseManager {
         processedUnitNames
       );
 
-      const rawCacheHit = cacheHit.map((doc) => doc.toObject());
+      const rawCacheHit = (cacheHit || []).map((doc) => doc.toObject());
 
       const {
         matchTheFollowingTemplate,
         matchTheFollowingIndex,
         filteredTemplate,
-      } = filterTemplate(template);
+      } = filterTemplate(template || []);
 
       const [res, notFoundRes, notFoundIndices, cacheSummary] =
         await getQuestions(filteredTemplate, cacheHit);
@@ -202,10 +209,20 @@ class QuestionBankManager extends BaseManager {
 
         let newQuestions = response.data;
 
-        const filteredQuestions = filterTemplate(newQuestions.questions);
+        let generatedItems = [];
+        if (newQuestions.questions && Array.isArray(newQuestions.questions)) {
+            generatedItems = newQuestions.questions;
+        } else if (newQuestions.items && Array.isArray(newQuestions.items)) {
+            generatedItems = newQuestions.items;
+        } else if (Array.isArray(newQuestions)) {
+            generatedItems = newQuestions;
+        }
 
+        // We need the ACTUAL questions, not the template slots
+        const filteredQuestions = filterTemplate(generatedItems);
         newResQuestions = filteredQuestions.filteredTemplate;
 
+        // Ensure we aren't just merging the input template back
         mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
 
         if (filteredQuestions.matchTheFollowingTemplate.length) {
@@ -224,9 +241,10 @@ class QuestionBankManager extends BaseManager {
       } else {
         mergedList = res;
       }
+      
       if (matchTheFollowingTemplate.length) {
         for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-          if (mergedList.length < template.length) {
+          if (mergedList.length < (template || []).length) {
             mergedList.splice(
               matchTheFollowingIndex[i],
               0,
@@ -298,7 +316,7 @@ class QuestionBankManager extends BaseManager {
         isMultiChapter,
         questionBankTemplate,
         bluePrintTemplate: template,
-        objectiveDistribution,
+        objectiveDistribution: objectiveDistribution, // Using fixed variable
         language,
       });
 
@@ -308,21 +326,22 @@ class QuestionBankManager extends BaseManager {
       const questionBankConfig = await this.questionBankDao.create(configData);
 
       if (notFoundQuestions.length) {
-        const objectives = objectiveDistribution.map((e) =>
-          e.objective.toLowerCase()
+        // FIX: Defensive mapping for objectives to prevent .map of undefined
+        const objectives = (objectiveDistribution || []).map((e) =>
+          (e.objective || "").toLowerCase()
         );
 
         const processedCache = isMultiChapter
           ? processCacheHits(
               rawCacheHit,
-              chapterIds,
+              chapterIdsArr,
               processedUnitNames,
               unitLevel,
               objectives
             )
           : processCacheHitsForSubtopic(
               rawCacheHit,
-              chapterIds,
+              chapterIdsArr,
               processedUnitNames,
               unitLevel,
               objectives
@@ -367,13 +386,22 @@ class QuestionBankManager extends BaseManager {
       }
 
       await session.commitTransaction();
+
+      // NEW: Combine the config record with the actual questions 
+      // so the frontend Step 2 can display them.
+      const finalResponseData = {
+        ...questionBankConfig.toObject(),
+        questions: mergedList // This is the list the frontend is waiting for
+      };
+
       return formatApiReponse(
         true,
         "Question bank generated successfully!",
-        questionBankConfig
+        finalResponseData
       );
     } catch (err) {
-      await session.abortTransaction();
+      console.error("Generate Question Bank Error:", err);
+      if (session.inAtomicity) await session.abortTransaction();
       return formatApiReponse(false, err?.message, err);
     } finally {
       session.endSession();
@@ -415,7 +443,7 @@ class QuestionBankManager extends BaseManager {
   }
 
   async _createQuestionBankPayload(reqBody, user) {
-      try {
+    try {
       const {
         board,
         medium,
@@ -426,9 +454,11 @@ class QuestionBankManager extends BaseManager {
         marksDistribution,
         chapterIds,
         subTopic,
-        objective_distribution,
         template
       } = reqBody;
+
+      // FIX: Handle both snake_case and camelCase for objective distribution
+      const objective_distribution = reqBody.objective_distribution || reqBody.objectiveDistribution || [];
 
       let chapterData = [];
       if (isMultiChapter) {
@@ -440,7 +470,7 @@ class QuestionBankManager extends BaseManager {
         );
       }
 
-      const formattedChapters = chapterData.map((chapter) => ({
+      const formattedChapters = (chapterData || []).map((chapter) => ({
         title: chapter.title,
         index_path: chapter.indexPath || chapter.index_path || "", 
         learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
@@ -499,7 +529,7 @@ class QuestionBankManager extends BaseManager {
         inProgress: false,
       });
 
-      const jobsToProcess = failedJobs.map((doc) => doc.toObject());
+      const jobsToProcess = (failedJobs || []).map((doc) => doc.toObject());
 
       for (const job of jobsToProcess) {
         const {
@@ -527,6 +557,7 @@ class QuestionBankManager extends BaseManager {
     try {
       console.log(`Running retry for failed job-${jobId}`);
       let failedJob = await QuestionBankCacheSummary.findById(jobId);
+      if (!failedJob) throw new Error("Job not found");
       failedJob = failedJob.toObject();
 
       const { notFoundQuestions, processedCache, unitLevel, notFoundResponse } =
