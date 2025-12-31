@@ -132,7 +132,7 @@ class QuestionBankManager extends BaseManager {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      // FIX: Standardize variables to handle naming mismatches from Frontend
+      // Standardize variables to handle naming mismatches from Frontend
       const {
         chapter,
         subTopic,
@@ -144,7 +144,7 @@ class QuestionBankManager extends BaseManager {
         questions, // Manual questions (LBA)
       } = req.body;
 
-      // FIX: Handle both objectiveDistribution (camel) and objective_distribution (snake)
+      // Handle both objectiveDistribution (camel) and objective_distribution (snake)
       const objectiveDistribution =
         req.body.objectiveDistribution || req.body.objective_distribution || [];
 
@@ -155,21 +155,18 @@ class QuestionBankManager extends BaseManager {
         ? unitNames.map((e) => e.trim())
         : [];
 
-      // FIX: Ensure chapterIds is ALWAYS an array even if frontend sends a single string
+      // chapterIds is always an array even if frontend sends a single string
       const chapterIdsArr = Array.isArray(chapterIds)
         ? chapterIds
         : chapterIds
         ? [chapterIds]
         : [];
 
-      // --- LOGIC FOR GENERATION (AI) VS MANUAL (LBA) ---
       let mergedList = [];
       let notFoundQuestions = [];
       let cacheSummary = {};
       let rawCacheHit = [];
 
-      // If LBA/Manual, we trust the questions array.
-      // If AI, we proceed with cache logic.
       if (questions && questions.length > 0) {
         console.log("[Manager] Manual/LBA Flow detected. Using provided questions.");
         mergedList = questions;
@@ -277,9 +274,9 @@ class QuestionBankManager extends BaseManager {
             }
           }
         }
-      } // End of ELSE (AI Flow)
+      }
 
-      // --- TRANSLATION LOGIC ---
+      // TRANSLATION LOGIC
       if (language) {
         console.log(
           `Initiating translation check for target language: ${language}...`
@@ -322,7 +319,7 @@ class QuestionBankManager extends BaseManager {
         }
       }
 
-      // --- SAVING ---
+      // Saving
       let questionBankData = {
         metadata: {
           schoolName: user?.school?.name,
@@ -358,7 +355,6 @@ class QuestionBankManager extends BaseManager {
       configData.topics = processedUnitNames;
       const questionBankConfig = await this.questionBankDao.create(configData);
 
-      // --- CACHE UPDATES (Only for AI flow) ---
       if (!questions || questions.length === 0) {
         if (notFoundQuestions.length) {
           const objectives = (objectiveDistribution || []).map((e) =>
@@ -518,10 +514,6 @@ class QuestionBankManager extends BaseManager {
           learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
         })),
       }));
-
-      // 2. CRITICAL FIX: SYNCHRONIZE WITH MARKS DISTRIBUTION
-      // The Python AI fails (400) if a unit in marks_distribution is not present in the chapters list.
-      // We explicitly check every unit_name in marksDistribution and ensure it exists in formattedChapters.
       
       const requiredUnits = new Set();
       if (marksDistribution && Array.isArray(marksDistribution)) {
