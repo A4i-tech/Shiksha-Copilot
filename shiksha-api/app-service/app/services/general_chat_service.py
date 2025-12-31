@@ -3,9 +3,7 @@ from pathlib import Path
 import logging
 import traceback
 
-from azure.ai.projects.aio import AIProjectClient
-from azure.identity import DefaultAzureCredential
-from azure.ai.agents.models import BingGroundingTool, MessageRole
+from openai import AzureOpenAI
 
 from app.models.chat import ConversationMessage
 from app.config import settings
@@ -15,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class GeneralChatService:
-    """Service for handling chat interactions using Azure AI Project client."""
+    """Service for handling chat interactions using Azure OpenAI client."""
 
     def __init__(self):
         # Initialize prompt template with the chat prompts file
@@ -24,25 +22,24 @@ class GeneralChatService:
         )
         self.prompt_template = PromptTemplate(str(prompts_file_path))
 
-        # Initialize Azure AI Project client
-        if not settings.azure_project_endpoint:
-            raise ValueError("AZURE_PROJECT_ENDPOINT environment variable is required")
+        # Initialize Azure OpenAI client
+        if not settings.azure_openai_api_key:
+            raise ValueError("AZURE_OPENAI_API_KEY environment variable is required")
+        if not settings.azure_openai_endpoint:
+            raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
+        if not settings.azure_openai_api_version:
+            raise ValueError("AZURE_OPENAI_API_VERSION environment variable is required")
+        if not settings.azure_openai_deployment_name:
+            raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required")
+        if not settings.azure_chat_deployment_name:
+            raise ValueError("AZURE_CHAT_DEPLOYMENT_NAME environment variable is required")
 
-        self.project_client = AIProjectClient(
-            endpoint=settings.azure_project_endpoint,
-            credential=DefaultAzureCredential(),
-        )
-
-        # Initialize Bing Grounding tool if connection ID is provided
-        self.tools = []
-        if settings.azure_bing_grounding_connection_id:
-            bing = BingGroundingTool(
-                connection_id=settings.azure_bing_grounding_connection_id
+        self.client = AzureOpenAI(
+                api_key=settings.azure_openai_api_key,
+                api_version=settings.azure_openai_api_version,
+                azure_endpoint=settings.azure_openai_endpoint,
             )
-            self.tools = bing.definitions
 
-        # Store agent ID for reuse (will be created on first call)
-        self.agent_id = None
 
     async def __call__(
         self,
@@ -63,66 +60,45 @@ class GeneralChatService:
             if system_prompt is None:
                 raise ValueError("General chat prompt not found in chat_prompts.yaml")
 
-            # Create agent if not exists
-            if self.agent_id is None:
-                await self._create_agent(system_prompt)
+            # Format messages for AzureOpenAI client
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for message in messages:
+                formatted_messages.append({"role": message.role.value, "content": message.message})
 
-            # Create a thread for communication
-            thread = await self.project_client.agents.threads.create()
-            logger.info(f"Created thread, ID: {thread.id}")
+            # Combine conversation into a single input string including system prompt.
+            input_text = self._format_conversation_messages(messages)
+            input_text = f"System: {system_prompt}\n\n{input_text}"
 
-            try:
-                # Convert conversation history to a single message
-                message_content = self._format_conversation_messages(messages)
 
-                # Add message to the thread
-                message = await self.project_client.agents.messages.create(
-                    thread_id=thread.id,
-                    role=MessageRole.USER,
-                    content=message_content,
-                )
-                logger.info(f"Created message, ID: {message.id}")
+            response = self.client.responses.create(
+                model=settings.azure_chat_deployment_name,
+                tools=[{"type": "web_search"}],
+                input=input_text
+            )
 
-                # Run the agent
-                run = await self.project_client.agents.runs.create_and_process(
-                    thread_id=thread.id,
-                    agent_id=self.agent_id,
-                )
-                logger.info(f"Run finished with status: {run.status}")
-
-                if run.status == "failed":
-                    logger.error(f"Run failed: {run.last_error}")
-                    return (
-                        "I'm sorry, but I encountered an error processing your request."
-                    )
-
-                # Get the response messages
-                messages_paged = self.project_client.agents.messages.list(
-                    thread_id=thread.id
-                )
-                messages_list = [m async for m in messages_paged]
-
-                if messages_list:
-                    # Get the latest message from the assistant
-                    msg = messages_list[0]
-                    if msg.role == MessageRole.AGENT:
-                        if getattr(msg, "text_messages", None):
-                            last_text = msg.text_messages[-1]
-                            return last_text.text.value.strip()
-
-                # Fallback if no assistant message found
-                return "I'm sorry, but I couldn't find an appropriate response."
-
-            finally:
-                # Clean up: delete the thread
+            # Extract and return the AI-generated response
+            # Responses API provides `output_text` as a convenience aggregated string.
+            output_text = getattr(response, "output_text", None)
+            if output_text:
+                return output_text.strip()
+            # Fallback: try to extract text from response.output
+            if hasattr(response, "output") and response.output:
                 try:
-                    await self.project_client.agents.threads.delete(thread.id)
-                    logger.info("Deleted thread")
-                except Exception as e:
-                    logger.warning(f"Failed to delete thread: {e}")
+                    # output is a list of messages/objects; join text parts
+                    parts = []
+                    for item in response.output:
+                        if isinstance(item, dict) and "content" in item:
+                            for c in item["content"]:
+                                if c.get("type") == "output_text":
+                                    parts.append(c.get("text", ""))
+                    if parts:
+                        return "".join(parts).strip()
+                except Exception:
+                    pass
+            return "I'm sorry, but I couldn't find an appropriate response."
 
         except Exception as e:
-            logger.error(f"Error in Azure AI Project chat: {e}")
+            logger.error(f"Error in Azure OpenAI chat: {e}")
             traceback.print_exc()
             raise
 
