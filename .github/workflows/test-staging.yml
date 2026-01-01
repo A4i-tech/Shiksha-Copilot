@@ -2,7 +2,7 @@ name: Run Tests
 
 on:
   push:
-    branches: [ "a4i/staging" , "101-testing"] 
+    branches: [ "a4i/staging"] 
   workflow_dispatch:
 
 jobs:
@@ -206,11 +206,31 @@ jobs:
               try:
                   with open(filepath, 'r') as f:
                       data = json.load(f)
+                  
                   req_dur = data.get('metrics', {}).get('http_req_duration', {}).get('values', {}).get('p(95)', 'N/A')
                   failed_rate = data.get('metrics', {}).get('http_req_failed', {}).get('values', {}).get('rate', 'N/A')
+                  
+                  thresholds = data.get('metrics', {})
+                  all_passed = True
+                  
+                  if 'http_req_duration' in thresholds:
+                      threshold_result = thresholds['http_req_duration'].get('thresholds', {})
+                      for threshold_name, threshold_data in threshold_result.items():
+                          if not threshold_data.get('ok', True):
+                              all_passed = False
+                  
+                  if 'http_req_failed' in thresholds:
+                      threshold_result = thresholds['http_req_failed'].get('thresholds', {})
+                      for threshold_name, threshold_data in threshold_result.items():
+                          if not threshold_data.get('ok', True):
+                              all_passed = False
+                  
+                  status = "Pass" if all_passed else "Fail"
+                  
                   if isinstance(failed_rate, float): failed_rate = f"{failed_rate*100:.2f}%"
                   if isinstance(req_dur, float): req_dur = f"{req_dur:.2f}ms"
-                  return "Complete", req_dur, failed_rate
+                  
+                  return status, req_dur, failed_rate
               except:
                   return "Error", "N/A", "N/A"
 
