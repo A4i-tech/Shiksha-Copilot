@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "101-testing"]
+    branches: [ "a4i/main", "a4i/staging"]
   pull_request:
-    branches: [ "a4i/main", "101-testing" ]
+    branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
 
 jobs:
@@ -13,13 +13,13 @@ jobs:
     secrets: inherit
     with:
       deploy_name: shiksha-frontend-staging
-      deploy: ${{ github.event_name == 'push' && github.ref_name == '101-testing' }}
+      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
 
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
     with:
-      publish_staging: ${{ github.event_name == 'push' && github.ref_name == '101-testing' }}
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
@@ -27,13 +27,13 @@ jobs:
     uses: ./.github/workflows/ci-backend.yaml
     secrets: inherit
     with:
-      publish_staging: ${{ github.event_name == 'push' && github.ref_name == '101-testing' }}
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   cd-api:
     needs: ci-api
-    if: github.event_name == 'push' && github.ref_name == '101-testing'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-api-staging
@@ -43,7 +43,7 @@ jobs:
 
   cd-backend:
     needs: ci-backend
-    if: github.event_name == 'push' && github.ref_name == '101-testing'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-backend-staging
@@ -54,7 +54,7 @@ jobs:
   health-check:
     name: Wait and Verify Deployment
     needs: [cicd-frontend, cd-api, cd-backend]
-    if: ${{ github.event_name == 'push' && (github.ref_name == '101-testing') }}
+    if: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/staging') }}
     runs-on: ubuntu-latest
     steps:
       - name: Wait and Verify Services
@@ -154,7 +154,7 @@ jobs:
 
   notify:
     runs-on: ubuntu-latest
-    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == '101-testing') }}
+    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
     needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, smoke-tests, regression-tests, performance-tests]
 
     steps:
