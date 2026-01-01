@@ -10,25 +10,48 @@ jobs:
     name: Wait and Verify Deployment
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for Deployment
+      - name: Wait and Verify Services
         run: |
-          echo "Waiting 5 seconds for deployment to propagate..."
+          echo "Initial wait: Sleeping for 2 minutes..."
           sleep 5
 
-      - name: Verify Frontend accessible
-        run: |
-          echo "Checking ${{ secrets.STAGING_URL }}..."
-          curl -f -I --max-time 10 ${{ secrets.STAGING_URL }}
+          RETRIES=3
+          SLEEP_TIME=5
+          
+          # Arrays for URLs and Names
+          URLS=("${{ secrets.STAGING_URL }}" "${{ secrets.STAGING_BACKEND_URL }}" "${{ secrets.STAGING_API_URL }}")
+          NAMES=("Frontend" "Backend" "API")
 
-      - name: Verify Backend accessible
-        run: |
-          echo "Checking ${{ secrets.STAGING_BACKEND_URL }}..."
-          curl -f -I --max-time 10 ${{ secrets.STAGING_BACKEND_URL }}
+          for ((i=1; i<=RETRIES; i++)); do
+            echo "Attempt $i of $RETRIES..."
+            ALL_PASSED=true
+            
+            # Check all URLs in this attempt
+            for ((j=0; j<${#URLS[@]}; j++)); do
+              url="${URLS[$j]}"
+              name="${NAMES[$j]}"
+              echo "Checking $name ($url)..."
+              if ! curl -f -I --max-time 30 "$url"; then
+                echo "❌ $name is unresponsive."
+                ALL_PASSED=false
+              else
+                echo "✅ $name is up."
+              fi
+            done
 
-      - name: Verify API accessible
-        run: |
-          echo "Checking ${{ secrets.STAGING_API_URL }}..."
-          curl -f -I --max-time 10 ${{ secrets.STAGING_API_URL }}
+            if $ALL_PASSED; then
+              echo "🎉 All services are up!"
+              exit 0
+            fi
+
+            if [ $i -lt $RETRIES ]; then
+              echo "⚠️ Some services are down. Sleeping for ${SLEEP_TIME}s before retry..."
+              sleep $SLEEP_TIME
+            else
+              echo "❌ Failed to verify all services after $RETRIES attempts."
+              exit 1
+            fi
+          done
 
   smoke-tests:
     name: Smoke Tests
