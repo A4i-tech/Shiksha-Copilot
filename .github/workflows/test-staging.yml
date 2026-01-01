@@ -2,7 +2,7 @@ name: Run Tests
 
 on:
   push:
-    branches: [ "a4i/staging"] 
+    branches: [ "a4i/staging", "101-testing"] 
   workflow_dispatch:
 
 jobs:
