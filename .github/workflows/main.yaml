@@ -1,167 +1,111 @@
-notify-report:
-    name: Generate Report and Notify
-    if: always() # Run even if tests fail
-    needs: [smoke-tests, regression-tests, performance-tests]
+name: CI
+
+on:
+  push:
+    branches: [ "a4i/main", "a4i/staging" ]
+  pull_request:
+    branches: [ "a4i/main", "a4i/staging" ]
+  workflow_dispatch:
+
+jobs:
+  cicd-frontend:
+    uses: ./.github/workflows/cicd-frontend.yaml
+    secrets: inherit
+    with:
+      deploy_name: shiksha-frontend-staging
+      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+
+  ci-api:
+    uses: ./.github/workflows/ci-api.yaml
+    secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+
+  ci-backend:
+    uses: ./.github/workflows/ci-backend.yaml
+    secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+
+  cd-api:
+    needs: ci-api
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    uses: ./.github/workflows/deploy-render.yaml
+    with:
+      deploy-name: shiksha-api-staging
+      service-id: ${{ vars.RENDER_API_SERVICE_ID }}
+    secrets:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  cd-backend:
+    needs: ci-backend
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    uses: ./.github/workflows/deploy-render.yaml
+    with:
+      deploy-name: shiksha-backend-staging
+      service-id: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
+    secrets:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  notify:
     runs-on: ubuntu-latest
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
+    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
+
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Smoke Report
-        uses: actions/download-artifact@v4
+      - name: Notify Teams (success)
+        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'canceled') }}
+        uses: ./.github/actions/dispatch-teams-workflow
         with:
-          name: smoke-report
-          path: reports/smoke
-        continue-on-error: true
+          workflow-url: ${{ secrets.TEAMS_WORKFLOW_URL }}
+          heading-color: Good
+          services: |
+            [
+              {
+                "name": "Frontend",
+                "description": "${{ needs.cicd-frontend.result == 'success' && 'Built and deployed' || 'Not deployed' }}",
+                "url": "${{ needs.cicd-frontend.outputs.page_url || '' }}"
+              },
+              {
+                "name": "API",
+                "description": "${{ needs.cd-api.result == 'success' && 'Built and deployed' || 'Not deployed' }}",
+                "url": "${{ needs.cd-api.result == 'success' && needs.cd-api.outputs['service-url'] || '' }}"
+              },
+              {
+                "name": "Backend",
+                "description": "${{ needs.cd-backend.result == 'success' && 'Built and deployed' || 'Not deployed' }}",
+                "url": "${{ needs.cd-backend.result == 'success' && needs.cd-backend.outputs['service-url'] || '' }}"
+              }
+            ]
 
-      - name: Download Regression Report
-        uses: actions/download-artifact@v4
+      - name: Notify Teams (failure)
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'canceled') }}
+        uses: ./.github/actions/dispatch-teams-workflow
         with:
-          name: regression-report
-          path: reports/regression
-        continue-on-error: true
-
-      - name: Download k6 Summary
-        uses: actions/download-artifact@v4
-        with:
-          name: k6-summary
-          path: reports/performance
-        continue-on-error: true
-
-      - name: Generate Summary and Notify Teams
-        env:
-          # Using the secret name from your working example
-          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_WEBHOOK }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-          GITHUB_SHA: ${{ github.sha }}
-          GITHUB_ACTOR: ${{ github.actor }}
-        run: |
-          python3 <<EOF
-          import os
-          import json
-          import csv
-          import requests
-          import sys
-
-          # --- Helper Functions ---
-          def parse_pytest_csv(filepath):
-              if not os.path.exists(filepath):
-                  return {"total": 0, "passed": 0, "failed": 0, "status": "Missing"}
-              
-              total = 0
-              passed = 0
-              failed = 0
-              try:
-                  with open(filepath, 'r') as f:
-                      reader = csv.DictReader(f)
-                      for row in reader:
-                          total += 1
-                          status_col = row.get('status', '').lower()
-                          if status_col == 'passed':
-                              passed += 1
-                          elif status_col == 'failed':
-                              failed += 1
-              except Exception as e:
-                  print(f"Error parsing {filepath}: {e}")
-                  return {"total": 0, "passed": 0, "failed": 0, "status": "Error"}
-              
-              status = "Pass" if failed == 0 and total > 0 else "Fail"
-              return {"total": total, "passed": passed, "failed": failed, "status": status}
-          
-          def parse_k6_json(filepath):
-              if not os.path.exists(filepath):
-                  return {"status": "Missing", "p95": "N/A", "fail_rate": "N/A"}
-              
-              try:
-                  with open(filepath, 'r') as f:
-                      data = json.load(f)
-                  
-                  # Parse specific k6 metrics from the summary json
-                  metrics = data.get('metrics', {})
-                  req_dur = metrics.get('http_req_duration', {}).get('values', {}).get('p(95)', 0)
-                  failed_rate = metrics.get('http_req_failed', {}).get('values', {}).get('rate', 0)
-                  
-                  return {
-                      "status": "Complete", 
-                      "p95": f"{req_dur:.2f}ms", 
-                      "fail_rate": f"{failed_rate:.2%}"
-                  }
-              except Exception as e:
-                  print(f"Error parsing k6 json: {e}")
-                  return {"status": "Error", "p95": "N/A", "fail_rate": "N/A"}
-
-          # --- Main Logic ---
-          smoke_stats = parse_pytest_csv('reports/smoke/smoke_report.csv')
-          regression_stats = parse_pytest_csv('reports/regression/regression_report.csv')
-          k6_stats = parse_k6_json('reports/performance/k6_summary.json')
-
-          # Determine Overall Status
-          overall_status = "Success"
-          if smoke_stats['status'] != "Pass" or regression_stats['status'] != "Pass":
-              overall_status = "Failure"
-          
-          # Colors: Green for Success, Red for Failure
-          theme_color = "00FF00" if overall_status == "Success" else "FF0000"
-          title_icon = "✅" if overall_status == "Success" else "❌"
-          title_text = f"{title_icon} Staging Tests {overall_status}"
-
-          # Git Info
-          repo = os.environ.get('GITHUB_REPOSITORY', 'Unknown')
-          run_id = os.environ.get('GITHUB_RUN_ID', '0')
-          ref_name = os.environ.get('GITHUB_REF_NAME', 'Unknown')
-          sha = os.environ.get('GITHUB_SHA', 'Unknown')[:7]
-          actor = os.environ.get('GITHUB_ACTOR', 'Unknown')
-          run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
-
-          # Construct Facts list for the card
-          facts = [
-             {"name": "Branch", "value": ref_name},
-             {"name": "Commit", "value": sha},
-             {"name": "Author", "value": actor},
-             {"name": "Smoke Tests", "value": f"{smoke_stats['status']} (Pass: {smoke_stats['passed']}, Fail: {smoke_stats['failed']})"},
-             {"name": "Regression Tests", "value": f"{regression_stats['status']} (Pass: {regression_stats['passed']}, Fail: {regression_stats['failed']})"},
-             {"name": "Performance", "value": f"{k6_stats['status']} (P95: {k6_stats['p95']}, Fail Rate: {k6_stats['fail_rate']})"}
-          ]
-
-          # Construct JSON Payload (MessageCard format)
-          payload = {
-              "@type": "MessageCard",
-              "@context": "http://schema.org/extensions",
-              "summary": f"Test Execution {overall_status}",
-              "themeColor": theme_color,
-              "title": title_text,
-              "sections": [{
-                  "activityTitle": f"[**{repo}**](https://github.com/{repo})",
-                  "activitySubtitle": f"Run #{run_id}",
-                  "facts": facts,
-                  "markdown": True
-              }],
-              "potentialAction": [{
-                  "@type": "OpenUri",
-                  "name": "View Run Logs",
-                  "targets": [{"os": "default", "uri": run_url}]
-              }]
-          }
-
-          webhook_url = os.environ.get('MICROSOFT_TEAMS_WEBHOOK')
-          
-          if not webhook_url:
-              print("::error::MICROSOFT_TEAMS_WEBHOOK secret is missing or empty.")
-              # We exit 0 to avoid failing the build just because notification failed, 
-              # but you can change to exit 1 if notification is critical.
-              sys.exit(0) 
-          
-          try:
-              headers = {'Content-Type': 'application/json'}
-              response = requests.post(webhook_url, json=payload, headers=headers)
-              response.raise_for_status()
-              print(f"Notification sent successfully. Status: {response.status_code}")
-          except Exception as e:
-              print(f"::error::Failed to send Teams notification: {e}")
-              # Print response text if available for debugging
-              if 'response' in locals():
-                  print(f"Response: {response.text}")
-              sys.exit(1)
-          EOF
+          workflow-url: ${{ secrets.TEAMS_WORKFLOW_URL }}
+          heading-color: Attention
+          services: |
+            [
+              {
+                "name": "Frontend",
+                "description": "${{ needs.cicd-frontend.result }}",
+                "url": "${{ needs.cicd-frontend.outputs.page_url || '' }}"
+              },
+              {
+                "name": "API",
+                "description": "${{ needs.ci-api.result }} / deploy: ${{ needs.cd-api.result }}",
+                "url": "${{ needs.cd-api.outputs['service-url'] || '' }}"
+              },
+              {
+                "name": "Backend",
+                "description": "${{ needs.ci-backend.result }} / deploy: ${{ needs.cd-backend.result }}",
+                "url": "${{ needs.cd-backend.outputs['service-url'] || '' }}"
+              }
+            ]

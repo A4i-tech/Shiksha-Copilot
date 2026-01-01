@@ -11,19 +11,19 @@
             <img
               class="w-8"
               *ngIf="doc.type === 'docx'"
-              src="../../../../../assets/icons/docx-original.svg"
+              src="assets/icons/docx-original.svg"
               alt=""
             />
             <img
               class="w-7"
               *ngIf="doc.type === 'ppt'"
-              src="../../../../../assets/icons/ppt-solid.svg"
+              src="assets/icons/ppt-solid.svg"
               alt=""
             />
             <img
               class="w-8"
               *ngIf="doc.type === 'pdf'"
-              src="../../../../../assets/icons/pdf-original.svg"
+              src="assets/icons/pdf-original.svg"
               alt=""
             />
           </div>
@@ -54,7 +54,7 @@
 </div>
 <div class="bg-warn-50 p-2 my-4" *ngIf="mode !== 'view'">
   <div class="flex items-center gap-2">
-    <img src="../../../../../assets/icons/Info 2.svg" alt="" />
+    <img src="assets/icons/Info 2.svg" alt="" />
     <small>{{
       "Documents will be available for download once the lesson plan has been saved."
         | translate

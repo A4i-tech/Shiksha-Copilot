@@ -1,0 +1,82 @@
+# Simple workflow for deploying static content to GitHub Pages
+name: CD GitHub Pages
+
+on:
+  workflow_call:
+    inputs:
+      deploy:
+        description: "Whether to deploy to GitHub Pages (i.e., perform thee 'CD' step)"
+        required: true
+        type: boolean
+      deploy_name:
+        description: "Name of the deployment"
+        required: true
+        type: string
+    outputs:
+      page_url:
+        description: "GitHub Pages deployment URL (empty when not deployed)"
+        value: ${{ jobs.build.outputs.page_url }}
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
+# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ inputs.deploy && inputs.deploy_name || '' }}
+      url: ${{ inputs.deploy && steps.deployment.outputs.page_url || '' }}
+
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
+
+    env:
+      BACKEND_URL: ${{ vars.FRONTEND_API_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: shiksha-website/shiksha-frontend/package-lock.json
+
+      - name: Build Angular app
+        working-directory: shiksha-website/shiksha-frontend
+        run: |
+          if [ "${{ inputs.deploy }}" = "true" ]; then
+            find src/environments -name "environment*.ts" -print \
+              -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
+          fi
+
+          npm ci
+          npm run build -- --configuration development \
+            ${{ inputs.deploy && '--base-href /Shiksha-Copilot/' || '' }}
+
+      - name: Setup Pages
+        if: inputs.deploy
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        if: inputs.deploy
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: shiksha-website/shiksha-frontend/dist/shiksha-frontend
+
+      - name: Deploy to GitHub Pages
+        if: inputs.deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

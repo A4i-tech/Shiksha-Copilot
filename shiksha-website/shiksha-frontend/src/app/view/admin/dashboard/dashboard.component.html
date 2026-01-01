@@ -5,12 +5,12 @@
     <div class="px-6 py-8 rounded bg-white border ">
         <div class="flex items-center justify-between">
             <div class="flex items-center justify-start">
-                <img src="../../../../assets/icons/dashboard.svg" alt="">
+                <img src="assets/icons/dashboard.svg" alt="">
                 <h2 class="ms-2 text-content md:text-2xl font-bold ">Overview</h2>
             </div>
             <button class="btn-primary h-9  py-2 px-5" (click)="exportDashboardDataToExcel()">
               <div class="flex content-center">
-                <img width="18" src="../../.././../assets/icons/download-2.svg" alt="" />
+                <img width="18" src="assets/icons/download-2.svg" alt="" />
                 <span class="ml-[6px] text-nowrap">{{'Download Report' | translate}}</span>
               </div>
             </button>
@@ -90,13 +90,13 @@
         <div class="">
             <ng-template #noData>
                 <div class="flex flex-col justify-center items-center h-[400px]">
-                    <img width="80" src="../../../../assets/icons/three-bars-chart-svgrepo-com.svg" alt="">
+                    <img width="80" src="assets/icons/three-bars-chart-svgrepo-com.svg" alt="">
                     <p class="text-content-50 mt-2">No Data Available!</p>
                 </div>
             </ng-template>     
             <ng-template #nodonutData>
                 <div class="flex flex-col justify-center items-center h-[400px]">
-                    <img width="100" src="../../../../assets/icons/donut-chart-svgrepo-com.svg" alt="">
+                    <img width="100" src="assets/icons/donut-chart-svgrepo-com.svg" alt="">
                     <p class="text-content-50">No Data Available!</p>
                 </div>
             </ng-template>   
@@ -210,7 +210,7 @@
                         <tbody class="bg-white divide-y divide-gray-200">
                             <tr *ngFor="let item of filteredUsersList | slice:0:3">
                                 <td class="px-4 py-2  whitespace-nowrap flex items-center space-x-4 w-[15rem]">
-                                    <img src="../../../../assets/icons/profile.svg" alt="Profile Pic"
+                                    <img src="assets/icons/profile.svg" alt="Profile Pic"
                                         class="w-12 h-12 rounded-full">
                                     <span class="font-bold">{{item?.name | titlecase}}</span>
                                 </td>

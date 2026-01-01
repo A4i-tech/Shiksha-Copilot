@@ -1,7 +1,7 @@
 <div class="disable-popup-wrapper z-100">
   <div class="flex items-center justify-between mb-2">
     <h1 class="font-bold text-[20px] text-content">{{ modalHeader }}</h1>
-    <img class="w-5 h-5 cursor-pointer" src="../../../../assets/icons/remove.svg" (click)="closeModal()" alt="" />
+    <img class="w-5 h-5 cursor-pointer" src="assets/icons/remove.svg" (click)="closeModal()" alt="" />
   </div>
   <p class="text-sm">{{ modalSubHeader }}</p>
   <table class="table-auto w-full border mt-5 rounded-lg text-content" aria-label="disable-popUp">
@@ -26,7 +26,7 @@
             }}</span>
         </td>
         <td class="p-4 border-r" *ngIf="tableData.data?.more_icon">
-          <img src="../../../../assets/icons/more_vert.svg" alt="" />
+          <img src="assets/icons/more_vert.svg" alt="" />
         </td>
       </tr>
     </tbody>

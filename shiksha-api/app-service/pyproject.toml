@@ -86,7 +86,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "--cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml:coverage.xml --cov-report=html -v --tb=short --strict-markers"
+addopts = "--cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml:coverage.xml --cov-report json:coverage.json --cov-report=html -v --tb=short --strict-markers"
 markers = [
   "unit: marks tests as unit tests",
   "integration: marks tests as integration tests",
