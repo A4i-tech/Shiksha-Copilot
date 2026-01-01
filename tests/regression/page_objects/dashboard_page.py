@@ -1,8 +1,8 @@
-from playwright.sync_api import Page, expect
+from .base_page import BasePage
 
-class DashboardPage:
+class DashboardPage(BasePage):
     def __init__(self, page: Page):
-        self.page = page
+        super().__init__(page)
         
         # Header and User Info
         self.welcome_header = page.locator("h1.text-content")
@@ -40,7 +40,7 @@ class DashboardPage:
 
     def click_generate_lesson_plan(self):
         """Clicks the generate button in the main landing card."""
-        self.generate_lesson_plan_btn.click()
+        self.click_robust(self.generate_lesson_plan_btn)
 
     def get_recent_plan_count(self) -> int:
         """Returns the number of recently generated plan cards visible."""
@@ -48,8 +48,12 @@ class DashboardPage:
 
     def click_view_all(self):
         """Clicks the View All link for recently generated plans."""
-        self.view_all_link.click()
+        self.click_robust(self.view_all_link)
 
     def navigate_next_month(self):
         """Clicks the next month arrow in the calendar."""
-        self.next_month_btn.click()
+        self.click_robust(self.next_month_btn)
+
+    def click_my_schedule(self):
+        """Clicks the My Schedule button."""
+        self.click_robust(self.my_schedule_btn)

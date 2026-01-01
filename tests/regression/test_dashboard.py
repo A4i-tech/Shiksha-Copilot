@@ -67,7 +67,7 @@ def test_schedule_navigation(dashboard, logged_in_page, step):
     import re
     
     with step("Click My Schedule"):
-        dashboard.my_schedule_btn.click()
+        dashboard.click_my_schedule()
     
     with step("Verify Redirection to Schedule"):
         expect(logged_in_page).to_have_url(re.compile(r"user/schedule"))

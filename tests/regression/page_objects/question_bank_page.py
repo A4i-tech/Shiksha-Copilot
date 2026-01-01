@@ -16,7 +16,8 @@ class QuestionBankPage:
         self.total_marks_input = page.locator("input[formControlName='totalMarks']")
 
         # --- Step 2 Elements ---
-        # Warning message shown when marks don't match
+        # Specific locator for the Template Table to avoid strict mode violations
+        self.template_table = page.locator("table[aria-label='question-configuration-list']")
         self.template_warning_msg = page.locator(".text-warn", has_text="Total Template Marks")
 
     def navigate_to_wizard(self, base_url: str):
@@ -49,7 +50,6 @@ class QuestionBankPage:
             return self.page.locator(f"app-form-dropdown[dropdowncontrolname='{control_name}']")
 
     def select_dropdown_option(self, control_name: str, value_text: str = None, index: int = 0):
-        """Universal dropdown handler."""
         dropdown = self._get_dropdown_locator(control_name)
         dropdown.scroll_into_view_if_needed()
         dropdown.click()
@@ -77,7 +77,6 @@ class QuestionBankPage:
         dropdown = parent_locator.locator("app-common-dropdown")
         dropdown.click()
         
-        # Try finding ng-dropdown-panel
         try:
             panel = self.page.locator("ng-dropdown-panel")
             if panel.is_visible(timeout=3000):
@@ -89,7 +88,6 @@ class QuestionBankPage:
         except:
             pass
         
-        # Fallback for simple lists
         if value_to_select:
              self.page.get_by_text(value_to_select, exact=True).first.click()
         else:
@@ -99,25 +97,28 @@ class QuestionBankPage:
     def reset_template_to_single_row(self):
         """
         Deletes extra rows in the template table until only 1 remains.
+        Scoped specifically to the template table.
         """
-        delete_btn_selector = "button.btn-danger"
-        # Wait for table to be ready
-        self.page.locator("table tbody").wait_for(state="visible")
+        # Wait for the specific template table to be visible
+        self.template_table.wait_for(state="visible")
         
-        # Keep deleting while more than 1 row exists (delete btn exists)
-        while self.page.locator(delete_btn_selector).count() > 0:
-            self.page.locator(delete_btn_selector).first.click()
+        # Find delete buttons ONLY inside this table
+        delete_btn = self.template_table.locator("button.btn-danger")
+        
+        # Keep deleting while delete buttons exist (meaning > 1 row)
+        while delete_btn.count() > 0:
+            delete_btn.first.click()
             self.page.wait_for_timeout(500)
 
     def fill_template_row(self, row_index: int, q_type: str, count: str, marks: str):
         """
         Cleans up the table to 1 row, then fills it.
         """
-        # 1. Clean up extra rows
+        # 1. Clean up extra rows first
         self.reset_template_to_single_row()
 
-        # 2. Get the specific row
-        row = self.page.locator("table tbody tr").nth(row_index)
+        # 2. Get the specific row inside the template table
+        row = self.template_table.locator("tbody tr").nth(row_index)
         
         # 3. Select Question Type
         cell_type = row.locator("td").nth(0)
@@ -138,11 +139,10 @@ class QuestionBankPage:
         marks_input.fill(marks)
         marks_input.press("Tab")
         
-        # 6. Wait for warning to be hidden
+        # 6. Wait for warning to be hidden (Total Marks Matched)
         expect(self.template_warning_msg).to_be_hidden(timeout=5000)
 
     def verify_step_2_loaded(self):
-        # FIX: More specific text to avoid matching the table header "Template"
         self.page.locator("h2", has_text="Question Paper Template").wait_for()
 
     def verify_step_3_loaded(self):

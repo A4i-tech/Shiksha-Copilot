@@ -1,8 +1,8 @@
-from playwright.sync_api import Page, expect
+from .base_page import BasePage
 
-class SchedulePage:
+class SchedulePage(BasePage):
     def __init__(self, page: Page):
-        self.page = page
+        super().__init__(page)
         
         # --- Header & Navigation ---
         self.header_title = page.locator("h1", has_text="My Schedules")
@@ -53,7 +53,7 @@ class SchedulePage:
         self.page.wait_for_timeout(2000)
         
         # 3. Click a slot in the future (index 40 is roughly Thursday/Friday mid-day)
-        self.empty_slots.nth(40).click(force=True)
+        self.click_robust(self.empty_slots.nth(40))
 
         # 4. Wait for the popup component to appear in the DOM
         # We wait for the header because the host <app-add-edit-schedule> might be 0x0 size
@@ -62,8 +62,9 @@ class SchedulePage:
     def close_add_schedule_popup(self):
         """Clicks the 'X' button to close the popup."""
         # Ensure the close button is visible
-        self.close_popup_btn.first.wait_for(state="visible")
-        self.close_popup_btn.first.click()
+        btn = self.close_popup_btn.first
+        btn.wait_for(state="visible")
+        self.click_robust(btn)
         
         # Wait for the popup to disappear
         self.popup_header.wait_for(state="hidden", timeout=5000)

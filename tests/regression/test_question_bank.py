@@ -4,7 +4,7 @@ from page_objects.question_bank_page import QuestionBankPage
 
 BASE_URL = os.getenv("STAGING_URL")
 
-# Only Hardcoded Variables needed
+# Only Hardcoded Variables needed for the specific test data
 QP_BOARD = os.getenv("TEST_QP_BOARD", "CBSE")      
 QP_NAME = os.getenv("TEST_QP_EXAM_NAME", "Regression Auto Test")
 QP_MARKS = os.getenv("TEST_QP_MARKS", "10") 
@@ -23,7 +23,7 @@ def test_qb_generate_full_flow(logged_in_page, step):
     with step("Click Create New Question Paper"):
         qb_page.click_create_new_qp()
     
-    # --- Step 1: Configuration (Broken down for logging) ---
+    # --- Step 1: Configuration ---
     
     with step(f"Select Board: {QP_BOARD}"):
         # Mandatory specific selection
@@ -65,6 +65,7 @@ def test_qb_generate_full_flow(logged_in_page, step):
     
     with step("Step 2: Fill Template Row"):
         # We use "AUTO" to let the page object pick the first available question type
+        # We set 1 Question for 10 Marks to match the Total Marks (10)
         qb_page.fill_template_row(0, "AUTO", "1", "10")
     
     with step("Proceed to Step 3"):

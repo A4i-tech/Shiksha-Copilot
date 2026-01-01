@@ -1,8 +1,8 @@
-from playwright.sync_api import Page, expect, Locator
+from .base_page import BasePage
 
-class ChatbotPage:
+class ChatbotPage(BasePage):
     def __init__(self, page: Page):
-        self.page = page
+        super().__init__(page)
         
         
         self.header_title = page.locator("h1") 
@@ -29,7 +29,7 @@ class ChatbotPage:
         self.chat_textarea.fill(text)
         
         expect(self.send_button).to_be_enabled()
-        self.send_button.click()
+        self.click_robust(self.send_button)
 
     def get_latest_bot_response(self) -> str:
         """
