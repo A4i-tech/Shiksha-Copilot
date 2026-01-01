@@ -2,12 +2,18 @@ name: Run Tests
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["CI"]
+    branches: ["a4i/staging"]
+    types:
+      - completed
   push:
     branches: [ "a4i/staging" , "101-testing"] 
 
 jobs:
   health-check:
     name: Wait and Verify Deployment
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Wait and Verify Services
@@ -15,8 +21,8 @@ jobs:
           echo "Initial wait: Sleeping for 2 minutes..."
           sleep 5
 
-          RETRIES=3
-          SLEEP_TIME=5
+          RETRIES=10
+          SLEEP_TIME=15
           
           # Arrays for URLs and Names
           URLS=("${{ secrets.STAGING_URL }}" "${{ secrets.STAGING_BACKEND_URL }}" "${{ secrets.STAGING_API_URL }}")
@@ -178,98 +184,53 @@ jobs:
           path: reports/performance
         continue-on-error: true
 
-      - name: Generate Summary and Notify Teams
-        env:
-          MICROSOFT_TEAMS_URL: ${{ secrets.MICROSOFT_TEAMS_URL }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
+      - name: Process Test Results
+        id: results
         run: |
           python3 <<EOF
-          import os
-          import json
-          import csv
-          import requests
+          import os, json, csv
           
           def parse_pytest_csv(filepath):
               if not os.path.exists(filepath):
-                  return {"total": 0, "passed": 0, "failed": 0, "status": "Missing"}
-              
-              total = 0
-              passed = 0
-              failed = 0
+                  return "Missing", 0, 0, 0
+              total, passed, failed = 0, 0, 0
               try:
                   with open(filepath, 'r') as f:
                       reader = csv.DictReader(f)
                       for row in reader:
                           total += 1
-                          if row.get('status') == 'passed':
-                              passed += 1
-                          elif row.get('status') == 'failed':
-                              failed += 1
-              except Exception as e:
-                  print(f"Error parsing {filepath}: {e}")
-              
+                          if row.get('status') == 'passed': passed += 1
+                          elif row.get('status') == 'failed': failed += 1
+              except: pass
               status = "Pass" if failed == 0 and total > 0 else "Fail"
-              return {"total": total, "passed": passed, "failed": failed, "status": status}
-          
-          def parse_k6_json(filepath):
-              if not os.path.exists(filepath):
-                  return {"status": "Missing", "details": "No report found"}
-              
-              try:
-                  with open(filepath, 'r') as f:
-                      data = json.load(f)
-                  
-                  # Simple check on thresholds if available in metrics, or just basic stats
-                  # k6 JSON usually has 'metrics'
-                  req_dur = data.get('metrics', {}).get('http_req_duration', {}).get('values', {}).get('p(95)', 'N/A')
-                  failed_rate = data.get('metrics', {}).get('http_req_failed', {}).get('values', {}).get('rate', 'N/A')
-                  
-                  return {"status": "Complete", "p95": req_dur, "fail_rate": failed_rate}
-              except Exception as e:
-                  return {"status": "Error", "details": str(e)}
+              return status, total, passed, failed
 
-          smoke_stats = parse_pytest_csv('reports/smoke/smoke_report.csv')
-          regression_stats = parse_pytest_csv('reports/regression/regression_report.csv')
-          k6_stats = parse_k6_json('reports/performance/k6_summary.json')
+          smoke_status, smoke_total, smoke_passed, smoke_failed = parse_pytest_csv('reports/smoke/smoke_report.csv')
+          regr_status, regr_total, regr_passed, regr_failed = parse_pytest_csv('reports/regression/regression_report.csv')
           
-          repo = os.environ['GITHUB_REPOSITORY']
-          run_id = os.environ['GITHUB_RUN_ID']
-          run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
+          overall_status = "Good" if smoke_status == "Pass" and regr_status == "Pass" else "Attention"
           
-          summary_text = (
-              f"**Smoke Tests**: {smoke_stats['status']} (Total: {smoke_stats['total']}, Passed: {smoke_stats['passed']}, Failed: {smoke_stats['failed']})\n\n"
-              f"**Regression Tests**: {regression_stats['status']} (Total: {regression_stats['total']}, Passed: {regression_stats['passed']}, Failed: {regression_stats['failed']})\n\n"
-              f"**Performance**: {k6_stats['status']} (P95: {k6_stats.get('p95')}, Fail Rate: {k6_stats.get('fail_rate')})"
-          )
-          
-          theme_color = "00FF00" if smoke_stats['status'] == "Pass" and regression_stats['status'] == "Pass" else "FF0000"
-          
-          payload = {
-              "@type": "MessageCard",
-              "@context": "http://schema.org/extensions",
-              "themeColor": theme_color,
-              "summary": "Staging Deployment Test Report",
-              "sections": [{
-                  "activityTitle": "Staging Deployment & Tests",
-                  "activitySubtitle": f"Run #{run_id}",
-                  "facts": [
-                      {"name": "Status", "value": summary_text},
-                      {"name": "Verified URLs", "value": "Frontend, Backend, API"}
-                  ],
-                  "markdown": True
-              }],
-              "potentialAction": [{
-                  "@type": "OpenUri",
-                  "name": "View Artifacts & Logs",
-                  "targets": [{"os": "default", "uri": run_url}]
-              }]
-          }
-          
-          webhook_url = os.environ.get('MICROSOFT_TEAMS_URL')
-          if webhook_url:
-              resp = requests.post(webhook_url, json=payload)
-              print(f"Sent notification: {resp.status_code}")
-          else:
-              print("No webhook URL provided.")
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"smoke_desc={smoke_status} (P:{smoke_passed}/F:{smoke_failed}/T:{smoke_total})\n")
+              f.write(f"regr_desc={regr_status} (P:{regr_passed}/F:{regr_failed}/T:{regr_total})\n")
+              f.write(f"heading_color={overall_status}\n")
           EOF
+
+      - name: Notify Teams
+        uses: ./.github/actions/dispatch-teams-workflow
+        with:
+          workflow-url: ${{ secrets.TEAMS_WORKFLOW_URL }}
+          heading-color: ${{ steps.results.outputs.heading_color }}
+          services: |
+            [
+              {
+                "name": "Smoke Tests",
+                "description": "${{ steps.results.outputs.smoke_desc }}",
+                "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              },
+              {
+                "name": "Regression Tests",
+                "description": "${{ steps.results.outputs.regr_desc }}",
+                "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              }
+            ]

@@ -41,12 +41,11 @@ def test_chatbot_send_receive_logic(chatbot, step):
         expect(chatbot.user_message_bubbles.last).to_contain_text(question)
     
     with step("Wait for Bot Response"):
-        pass
-        # answer = chatbot.get_latest_bot_response()
+        answer = chatbot.get_latest_bot_response()
         
-        # # Logic Checks
-        # assert len(answer) > 0, "Bot response was empty"
-        # assert "Paris" in answer or "capital" in answer, f"Unexpected response: {answer}"
+        # Logic Checks
+        assert len(answer) > 0, "Bot response was empty"
+        assert "Paris" in answer or "capital" in answer, f"Unexpected response: {answer}"
 
 def test_chatbot_input_validation(chatbot, step):
     """
