@@ -180,7 +180,7 @@ jobs:
 
       - name: Generate Summary and Notify Teams
         env:
-          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_URL }}
+          MICROSOFT_TEAMS_URL: ${{ secrets.MICROSOFT_TEAMS_URL }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
