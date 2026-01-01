@@ -15,7 +15,7 @@ class DashboardPage:
         # Recently Generated Section
         self.recent_plans_section = page.locator("h3:has-text('Recently Generated/Modified Plans')")
         self.view_all_link = page.locator("p:has-text('View All')")
-        self.recent_plan_cards = page.locator(".grid-cols-1.md:grid-cols-2 .bg-white.border")
+        self.recent_plan_cards = page.locator(".grid-cols-1.md\\:grid-cols-2 .bg-white.border")
         self.no_plans_found_container = page.locator("div:has-text('No plans found')")
         self.empty_state_generate_btn = self.no_plans_found_container.locator("button")
 

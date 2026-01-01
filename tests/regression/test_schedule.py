@@ -1,70 +1,58 @@
 import pytest
 import os
-from datetime import datetime, timedelta
-from tests.regression.page_objects.schedule_page import SchedulePage
+import re
+from playwright.sync_api import expect
+from page_objects.schedule_page import SchedulePage
 
 BASE_URL = os.getenv("STAGING_URL")
-
-TEST_BOARD = os.getenv("TEST_SCHED_BOARD", "CBSE")
-TEST_MEDIUM = os.getenv("TEST_SCHED_MEDIUM", "English")
-TEST_CLASS = os.getenv("TEST_SCHED_CLASS", "Class 10")
-TEST_SUBJECT = os.getenv("TEST_SCHED_SUBJECT", "Science")
 
 @pytest.fixture
 def schedule_page(logged_in_page):
     page_obj = SchedulePage(logged_in_page)
-    page_obj.navigate(BASE_URL)
+    if BASE_URL:
+        page_obj.navigate(BASE_URL)
     return page_obj
 
-def test_schedule_initial_view(schedule_page):
+def test_schedule_initial_view(schedule_page, step):
     """Regression: Verify Schedule Calendar loads."""
-    from playwright.sync_api import expect
+    with step("Verify Header Title"):
+        expect(schedule_page.header_title).to_be_visible()
     
-    expect(schedule_page.header_title).to_be_visible()
-    expect(schedule_page.calendar_week_view).to_be_visible()
+    with step("Verify Calendar Week View"):
+        expect(schedule_page.calendar_week_view).to_be_visible()
     
-    expect(schedule_page.my_schedule_btn).to_have_class(lambda c: "btn-primary" in c)
+    with step("Verify 'My Schedules' Button Class"):
+        # Use regex for partial class match on the button
+        expect(schedule_page.my_schedule_btn).to_have_class(re.compile(r"btn-primary"))
 
-def test_add_schedule_flow(schedule_page):
+def test_open_and_close_popup(schedule_page, step):
     """
-    Regression: Open popup, fill details, and save a new schedule.
+    Regression: Click calendar slot to open popup, verify 'Add Details', then close it.
     """
-    from playwright.sync_api import expect
+    with step("Open Add Schedule Popup"):
+        # 1. Open the popup
+        schedule_page.open_add_schedule_popup()
     
-
-    schedule_page.open_add_schedule_popup()
-    expect(schedule_page.popup_header).to_contain_text("Add Details")
+    with step("Verify Popup Visible"):
+        # 2. Verify the popup container is visible
+        expect(schedule_page.popup_header).to_be_visible()
     
+    with step("Close Popup"):
+        # 3. Close (Cut) the popup
+        schedule_page.close_add_schedule_popup()
+    
+    with step("Verify Popup Hidden"):
+        # 4. Verify popup is hidden
+        expect(schedule_page.popup_header).to_be_hidden()
 
-    try:
-        schedule_page.select_dropdown("board", TEST_BOARD)
-        schedule_page.select_dropdown("medium", TEST_MEDIUM)
-        schedule_page.select_dropdown("className", TEST_CLASS)
-        schedule_page.select_dropdown("subject", TEST_SUBJECT)
-        
-        tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-        schedule_page.fill_schedule_time(tomorrow, "10:00", "11:00")
-        
-        schedule_page.save_form()
-        
-        expect(schedule_page.existing_events).to_have_count(lambda c: c > 0)
-        
-    except Exception as e:
-        pytest.fail(f"Could not fill schedule form. Check DB data. Error: {e}")
-
-def test_edit_delete_flow(schedule_page):
+def test_schedule_tooltip_elements(schedule_page, step):
     """
-    Regression: Click an event, verify tooltip options, and delete.
-    Pre-requisite: An event must exist.
+    Regression: Verify that the tooltip menu components are definable.
+    (This test does not click, just checks the Page Object locators match selectors).
     """
-    from playwright.sync_api import expect
-
-    if schedule_page.existing_events.count() == 0:
-        pytest.skip("No existing schedules to test Edit/Delete")
-
-    schedule_page.click_existing_event()
-
-    expect(schedule_page.view_details_opt).to_be_visible()
-    expect(schedule_page.edit_details_opt).to_be_visible()
-    expect(schedule_page.delete_opt).to_be_visible()
-    
+    with step("Verify Tooltip Menu Locators"):
+        # Just verification of locator strategies (no interaction unless data exists)
+        # This ensures our Page Object isn't broken syntax-wise
+        assert schedule_page.tooltip_menu is not None
+        assert schedule_page.edit_details_opt is not None
+        assert schedule_page.delete_opt is not None

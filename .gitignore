@@ -21,3 +21,4 @@ coverage.xml
 cover/
 */.env
 tests/tests-env
+**/__pycache__/

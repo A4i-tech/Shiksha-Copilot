@@ -1,33 +1,79 @@
 import pytest
 import os
-from tests.regression.page_objects.question_bank_page import QuestionBankPage
+from page_objects.question_bank_page import QuestionBankPage
 
 BASE_URL = os.getenv("STAGING_URL")
-QP_BOARD = os.getenv("TEST_QP_BOARD", "CBSE")      
-QP_MEDIUM = os.getenv("TEST_QP_MEDIUM", "English")
-QP_GRADE = os.getenv("TEST_QP_GRADE", "Class 10")
-QP_SUBJECT = os.getenv("TEST_QP_SUBJECT", "Science")
-QP_NAME = os.getenv("TEST_QP_EXAM_NAME", "Regression Test Exam")
-QP_MARKS = os.getenv("TEST_QP_MARKS", "50")
 
-def test_qb_generate_step1_fill(logged_in_page):
+# Only Hardcoded Variables needed
+QP_BOARD = os.getenv("TEST_QP_BOARD", "CBSE")      
+QP_NAME = os.getenv("TEST_QP_EXAM_NAME", "Regression Auto Test")
+QP_MARKS = os.getenv("TEST_QP_MARKS", "10") 
+
+def test_qb_generate_full_flow(logged_in_page, step):
     """
-    Regression: Fill Step 1 using data from .env file.
+    Regression: Full flow Step 1 -> Step 2 -> Step 3 -> Generate.
+    Uses dynamic dropdown selection (First Option) for everything except Board.
     """
-    qb_page = QuestionBankPage(logged_in_page)
-    qb_page.navigate_to_wizard(BASE_URL)
+    with step("Initialize Page Object"):
+        qb_page = QuestionBankPage(logged_in_page)
     
-    qb_page.fill_configuration_from_env(
-        exam_name=QP_NAME,
-        marks=QP_MARKS,
-        board=QP_BOARD,
-        medium=QP_MEDIUM,
-        grade=QP_GRADE,
-        subject=QP_SUBJECT
-    )
+    with step("Navigate to Question Bank List"):
+        qb_page.navigate_to_list(BASE_URL)
     
-    # Click Next
-    qb_page.next_btn.click()
+    with step("Click Create New Question Paper"):
+        qb_page.click_create_new_qp()
     
-    from playwright.sync_api import expect
-    expect(logged_in_page.locator("text=Step 2")).to_be_visible()
+    # --- Step 1: Configuration (Broken down for logging) ---
+    
+    with step(f"Select Board: {QP_BOARD}"):
+        # Mandatory specific selection
+        qb_page.select_dropdown_option("board", value_text=QP_BOARD)
+        
+    with step("Select Medium (First Option)"):
+        qb_page.select_dropdown_option("medium", index=0)
+
+    with step("Select Language (First Option)"):
+        qb_page.select_dropdown_option("language", index=0)
+
+    with step("Select Grade (First Option)"):
+        qb_page.select_dropdown_option("grade", index=0)
+
+    with step("Select Subject (First Option)"):
+        qb_page.select_dropdown_option("subject", index=0)
+
+    with step("Fill Exam Details"):
+        qb_page.exam_name_input.fill(QP_NAME)
+        qb_page.total_marks_input.fill(QP_MARKS)
+    
+    with step("Select Scope: Single Chapter"):
+        qb_page.select_radio_option("singleChapter")
+
+    with step("Select Chapter (First Option)"):
+        qb_page.select_dropdown_option("chapter", index=0)
+
+    with step("Select SubTopic (First Option)"):
+        # Subtopic often appears only after chapter is selected
+        qb_page.select_dropdown_option("subTopic", index=0)
+
+    with step("Proceed to Step 2"):
+        qb_page.click_next()
+    
+    # --- Step 2: Template ---
+    
+    with step("Step 2: Verify Template Loaded"):
+        qb_page.verify_step_2_loaded()
+    
+    with step("Step 2: Fill Template Row"):
+        # We use "AUTO" to let the page object pick the first available question type
+        qb_page.fill_template_row(0, "AUTO", "1", "10")
+    
+    with step("Proceed to Step 3"):
+        qb_page.click_next()
+    
+    # --- Step 3: Blueprint ---
+
+    with step("Step 3: Verify Blueprint Loaded"):
+        qb_page.verify_step_3_loaded()
+    
+    with step("Generate Question Paper"):
+        qb_page.click_generate()

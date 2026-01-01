@@ -1,0 +1,252 @@
+name: Run Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "a4i/staging" ] 
+
+jobs:
+  health-check:
+    name: Wait and Verify Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Deployment
+        run: |
+          echo "Waiting 300 seconds for deployment to propagate..."
+          sleep 300
+
+      - name: Verify Frontend accessible
+        run: |
+          echo "Checking ${{ secrets.STAGING_URL }}..."
+          curl -f -I --max-time 10 ${{ secrets.STAGING_URL }}
+
+      - name: Verify Backend accessible
+        run: |
+          echo "Checking ${{ secrets.STAGING_BACKEND_URL }}..."
+          curl -f -I --max-time 10 ${{ secrets.STAGING_BACKEND_URL }}
+
+      - name: Verify API accessible
+        run: |
+          echo "Checking ${{ secrets.STAGING_API_URL }}..."
+          curl -f -I --max-time 10 ${{ secrets.STAGING_API_URL }}
+
+  smoke-tests:
+    name: Smoke Tests
+    needs: health-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+
+      - name: Install Playwright Browsers
+        run: playwright install chromium
+
+      - name: Run Smoke Tests
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+        run: |
+          pytest tests/smoke --csv smoke_report.csv
+
+      - name: Upload Smoke Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: smoke-report
+          path: smoke_report.csv
+
+  regression-tests:
+    name: Regression Tests
+    needs: health-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+
+      - name: Install Playwright Browsers
+        run: playwright install chromium
+
+      - name: Run Regression Tests
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+        run: |
+          pytest tests/regression --csv regression_report.csv
+
+      - name: Upload Regression Report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: regression-report
+          path: regression_report.csv
+
+  performance-tests:
+    name: Performance Tests
+    needs: health-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run k6 Load Test
+        uses: grafana/k6-action@v0.3.0
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}/#/auth/signin
+        with:
+          filename: tests/performance/load_test.js
+          flags: --summary-export=k6_summary.json
+
+      - name: Upload k6 Summary
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: k6-summary
+          path: k6_summary.json
+
+  notify-report:
+    name: Generate Report and Notify
+    if: always() # Run even if tests fail
+    needs: [smoke-tests, regression-tests, performance-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Download Smoke Report
+        uses: actions/download-artifact@v3
+        with:
+          name: smoke-report
+          path: reports/smoke
+        continue-on-error: true
+
+      - name: Download Regression Report
+        uses: actions/download-artifact@v3
+        with:
+          name: regression-report
+          path: reports/regression
+        continue-on-error: true
+
+      - name: Download k6 Summary
+        uses: actions/download-artifact@v3
+        with:
+          name: k6-summary
+          path: reports/performance
+        continue-on-error: true
+
+      - name: Generate Summary and Notify Teams
+        env:
+          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_WEBHOOK }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          python3 <<EOF
+          import os
+          import json
+          import csv
+          import requests
+          
+          def parse_pytest_csv(filepath):
+              if not os.path.exists(filepath):
+                  return {"total": 0, "passed": 0, "failed": 0, "status": "Missing"}
+              
+              total = 0
+              passed = 0
+              failed = 0
+              try:
+                  with open(filepath, 'r') as f:
+                      reader = csv.DictReader(f)
+                      for row in reader:
+                          total += 1
+                          if row.get('status') == 'passed':
+                              passed += 1
+                          elif row.get('status') == 'failed':
+                              failed += 1
+              except Exception as e:
+                  print(f"Error parsing {filepath}: {e}")
+              
+              status = "Pass" if failed == 0 and total > 0 else "Fail"
+              return {"total": total, "passed": passed, "failed": failed, "status": status}
+          
+          def parse_k6_json(filepath):
+              if not os.path.exists(filepath):
+                  return {"status": "Missing", "details": "No report found"}
+              
+              try:
+                  with open(filepath, 'r') as f:
+                      data = json.load(f)
+                  
+                  # Simple check on thresholds if available in metrics, or just basic stats
+                  # k6 JSON usually has 'metrics'
+                  req_dur = data.get('metrics', {}).get('http_req_duration', {}).get('values', {}).get('p(95)', 'N/A')
+                  failed_rate = data.get('metrics', {}).get('http_req_failed', {}).get('values', {}).get('rate', 'N/A')
+                  
+                  return {"status": "Complete", "p95": req_dur, "fail_rate": failed_rate}
+              except Exception as e:
+                  return {"status": "Error", "details": str(e)}
+
+          smoke_stats = parse_pytest_csv('reports/smoke/smoke_report.csv')
+          regression_stats = parse_pytest_csv('reports/regression/regression_report.csv')
+          k6_stats = parse_k6_json('reports/performance/k6_summary.json')
+          
+          repo = os.environ['GITHUB_REPOSITORY']
+          run_id = os.environ['GITHUB_RUN_ID']
+          run_url = f"https://github.com/{repo}/actions/runs/{run_id}"
+          
+          summary_text = (
+              f"**Smoke Tests**: {smoke_stats['status']} (Total: {smoke_stats['total']}, Passed: {smoke_stats['passed']}, Failed: {smoke_stats['failed']})\n\n"
+              f"**Regression Tests**: {regression_stats['status']} (Total: {regression_stats['total']}, Passed: {regression_stats['passed']}, Failed: {regression_stats['failed']})\n\n"
+              f"**Performance**: {k6_stats['status']} (P95: {k6_stats.get('p95')}, Fail Rate: {k6_stats.get('fail_rate')})"
+          )
+          
+          theme_color = "00FF00" if smoke_stats['status'] == "Pass" and regression_stats['status'] == "Pass" else "FF0000"
+          
+          payload = {
+              "@type": "MessageCard",
+              "@context": "http://schema.org/extensions",
+              "themeColor": theme_color,
+              "summary": "Staging Deployment Test Report",
+              "sections": [{
+                  "activityTitle": "Staging Deployment & Tests",
+                  "activitySubtitle": f"Run #{run_id}",
+                  "facts": [
+                      {"name": "Status", "value": summary_text},
+                      {"name": "Verified URLs", "value": "Frontend, Backend, API"}
+                  ],
+                  "markdown": True
+              }],
+              "potentialAction": [{
+                  "@type": "OpenUri",
+                  "name": "View Artifacts & Logs",
+                  "targets": [{"os": "default", "uri": run_url}]
+              }]
+          }
+          
+          webhook_url = os.environ.get('MICROSOFT_TEAMS_WEBHOOK')
+          if webhook_url:
+              resp = requests.post(webhook_url, json=payload)
+              print(f"Sent notification: {resp.status_code}")
+          else:
+              print("No webhook URL provided.")
+          EOF

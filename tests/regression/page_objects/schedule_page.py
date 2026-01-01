@@ -4,36 +4,38 @@ class SchedulePage:
     def __init__(self, page: Page):
         self.page = page
         
-        self.header_title = page.locator("h1:has-text('My Schedules')")
-        self.my_schedule_btn = page.locator("button:has-text('My Schedules')")
-        self.others_schedule_btn = page.locator("button:has-text('Others')")
+        # --- Header & Navigation ---
+        self.header_title = page.locator("h1", has_text="My Schedules")
+        self.my_schedule_btn = page.locator("button", has_text="My Schedules").first
         
-        self.prev_week_btn = page.locator("button[mwlCalendarPreviousView]")
-        self.next_week_btn = page.locator("button[mwlCalendarNextView]")
-        self.current_date_display = page.locator("h3.text-content-100")
-        
+        # --- Calendar Grid ---
+        # RESTORED: This was missing in the previous version
         self.calendar_week_view = page.locator("mwl-calendar-week-view")
+        # --- Calendar Grid ---
+        # The library 'angular-calendar' uses .cal-hour-segment for the clickable white boxes
         self.empty_slots = page.locator(".cal-hour-segment") 
-        self.existing_events = page.locator(".schedule-view") 
+        self.existing_events = page.locator(".schedule-view")
 
+        # --- Popup / Modal ---
+        # The popup is rendered via <app-add-edit-schedule>
+        self.popup_container = page.locator("app-add-edit-schedule")
+        self.popup_header = self.popup_container.locator("h1, .modal-title, .title", has_text="Add Details")
+        
+        # Close/Cancel buttons often inside the component
+        self.close_popup_btn = self.popup_container.locator("img[src*='remove'], button.close, [aria-label='Close'], .close-icon, span.cursor-pointer")
+        self.save_btn = self.popup_container.locator("button[type='submit'], button.btn-primary")
+
+        # --- Tooltip / Context Menu ---
+        # Defined as <div id="dialogue"> in the HTML
         self.tooltip_menu = page.locator("#dialogue")
-        self.view_details_opt = self.tooltip_menu.locator("li:has-text('View Details')")
-        self.edit_details_opt = self.tooltip_menu.locator("li:has-text('Edit Details')")
-        self.delete_opt = self.tooltip_menu.locator("li:has-text('Delete')")
-        
-        self.popup_container = page.locator(".form-content")
-        self.popup_header = self.popup_container.locator("h1")
-        self.close_popup_btn = self.popup_container.locator("img[src*='E remove.svg']")
-        
-        self.date_input = self.popup_container.locator("input[formControlName='date']")
-        self.start_time_input = self.popup_container.locator("input[formControlName='fromTime']")
-        self.end_time_input = self.popup_container.locator("input[formControlName='toTime']")
-        
-        self.save_btn = self.popup_container.locator("button[type='submit']")
-        self.cancel_btn = self.popup_container.locator("button:has-text('Cancel')")
-        
-        # Delete Confirmation
-        self.confirm_delete_btn = page.locator("app-delete-detail button.btn-danger")
+        self.view_details_opt = self.tooltip_menu.locator("li", has_text="View Details")
+        self.edit_details_opt = self.tooltip_menu.locator("li.edit")     # matches <li class="... edit">
+        self.delete_opt = self.tooltip_menu.locator("li.delete")         # matches <li class="... delete">
+
+        # --- Delete Confirmation Modal ---
+        # Defined as <app-delete-detail> in the HTML
+        self.delete_confirm_modal = page.locator("app-delete-detail")
+        self.confirm_delete_btn = self.delete_confirm_modal.locator("button.btn-danger, button.delete")
 
     def navigate(self, base_url: str):
         """Goes to the Schedule page."""
@@ -41,36 +43,27 @@ class SchedulePage:
         self.header_title.wait_for()
 
     def open_add_schedule_popup(self):
-        """Clicks an empty slot in the calendar to open the Add Modal."""
-        self.empty_slots.first.click(force=True)
-        self.popup_container.wait_for()
-
-    def select_dropdown(self, control_name: str, value_text: str):
         """
-        Selects a value from the custom app-form-dropdown in the popup.
-        control_name: 'board', 'medium', 'className', 'subject', 'chapter', 'subTopic', 'lessonPlan'
+        Clicks on a time slot (grid cell) in the calendar.
         """
-        dropdown = self.popup_container.locator(f"app-form-dropdown[dropdowncontrolname='{control_name}']")
-        dropdown.click()
-        # Wait for options to appear and click
-        self.page.get_by_text(value_text, exact=True).first.click()
+        # 1. Wait for calendar segments to be visible
+        self.empty_slots.first.wait_for(state="visible", timeout=20000)
+        
+        # 2. IMPORTANT: Wait a moment for Angular to attach click listeners (Hydration)
+        self.page.wait_for_timeout(2000)
+        
+        # 3. Click a slot in the future (index 40 is roughly Thursday/Friday mid-day)
+        self.empty_slots.nth(40).click(force=True)
 
-    def fill_schedule_time(self, date: str, start: str, end: str):
-        """Fills the date and time fields."""
-        self.date_input.fill(date)
-        self.start_time_input.fill(start)
-        self.end_time_input.fill(end)
+        # 4. Wait for the popup component to appear in the DOM
+        # We wait for the header because the host <app-add-edit-schedule> might be 0x0 size
+        self.popup_header.wait_for(state="visible", timeout=15000)
 
-    def save_form(self):
-        self.save_btn.click()
-        self.popup_container.wait_for(state="hidden")
-
-    def click_existing_event(self):
-        """Clicks the first existing event to show tooltip."""
-        self.existing_events.first.click()
-        self.tooltip_menu.wait_for()
-
-    def delete_event(self):
-        """Deletes the currently selected event via tooltip."""
-        self.delete_opt.click()
-        self.confirm_delete_btn.click()
+    def close_add_schedule_popup(self):
+        """Clicks the 'X' button to close the popup."""
+        # Ensure the close button is visible
+        self.close_popup_btn.first.wait_for(state="visible")
+        self.close_popup_btn.first.click()
+        
+        # Wait for the popup to disappear
+        self.popup_header.wait_for(state="hidden", timeout=5000)
