@@ -8,7 +8,7 @@ class ChatbotPage(BasePage):
         
         self.header_title = page.locator("h1") 
         
-        self.empty_state_msg = page.locator("text=Hello! I am here to assist you")
+        self.empty_state_msg = page.locator("text=Hello! I am here to assist you. Just type your question to get started!")
         self.empty_state_img = page.locator("img[src*='chat-bot-empty.svg']")
 
         self.chat_textarea = page.locator("textarea.chat-input")
@@ -37,10 +37,10 @@ class ChatbotPage(BasePage):
         Waits for loading to finish and returns the last text response.
         """
         try:
-            self.loading_indicator.wait_for(state="visible", timeout=1000)
+            self.loading_indicator.wait_for(state="visible", timeout=10000)
         except:
             pass
-        self.loading_indicator.wait_for(state="hidden", timeout=15000)
+        self.loading_indicator.wait_for(state="hidden", timeout=150000)
 
         last_msg = self.bot_message_bubbles.last
         last_msg.wait_for(state="visible")

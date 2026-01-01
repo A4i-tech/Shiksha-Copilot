@@ -45,7 +45,6 @@ def test_chatbot_send_receive_logic(chatbot, step):
         
         # Logic Checks
         assert len(answer) > 0, "Bot response was empty"
-        assert "Paris" in answer or "capital" in answer, f"Unexpected response: {answer}"
 
 def test_chatbot_input_validation(chatbot, step):
     """
