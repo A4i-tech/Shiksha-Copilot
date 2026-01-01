@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload Smoke Report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: smoke-report
           path: smoke_report.csv
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload Regression Report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: regression-report
           path: regression_report.csv
@@ -131,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run k6 Load Test
         uses: grafana/k6-action@v0.3.0
@@ -143,7 +143,7 @@ jobs:
 
       - name: Upload k6 Summary
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: k6-summary
           path: k6_summary.json
@@ -155,24 +155,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download Smoke Report
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: smoke-report
           path: reports/smoke
         continue-on-error: true
 
       - name: Download Regression Report
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: regression-report
           path: reports/regression
         continue-on-error: true
 
       - name: Download k6 Summary
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: k6-summary
           path: reports/performance
