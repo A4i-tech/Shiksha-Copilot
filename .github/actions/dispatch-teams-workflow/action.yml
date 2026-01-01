@@ -25,21 +25,31 @@ runs:
         SERVICES_INPUT='${{ inputs.services }}'
         SERVICES_INPUT="${SERVICES_INPUT:-[]}"
 
-        SERVICES_COLUMNS="$(jq -c '
+        # 1. Transform input JSON into Adaptive Card Column objects
+        # 2. Group them into chunks of 3 (for the 3 columns constraint)
+        # 3. Map groups into ColumnSet objects (rows)
+        BODY_ITEMS="$(echo "$SERVICES_INPUT" | jq -c '
           map({
             type: "Column",
             width: "stretch",
             items: (
               [
                 { type: "TextBlock", text: .name, weight: "Bolder" },
-                { type: "TextBlock", text: .description, spacing: "None" }
+                { type: "TextBlock", text: .description, spacing: "None", wrap: true, size: "Small" }
               ]
               + (if (.url // "") != "" then
-                  [{ type: "TextBlock", text: "[Open](\(.url))", spacing: "None", isSubtle: true }]
+                  [{ type: "TextBlock", text: "[Open](\(.url))", spacing: "None", isSubtle: true, size: "Small" }]
                 else [] end)
             )
-          })
-        ' <<< "$SERVICES_INPUT")"
+          }) 
+          | to_entries 
+          | group_by(.key / 3 | floor) 
+          | map({
+              type: "ColumnSet",
+              spacing: "Medium",
+              columns: map(.value)
+            })
+        ')"
 
         PAYLOAD="$(jq -cn \
           --arg heading "${{ github.event.repository.name }}" \
@@ -49,7 +59,7 @@ runs:
           --arg author "${{ github.event.head_commit.author.name || github.actor }}" \
           --arg time "${{ github.event.head_commit.timestamp }}" \
           --arg commit_url "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}" \
-          --argjson columns "$SERVICES_COLUMNS" \
+          --argjson bodyItems "$BODY_ITEMS" \
           '{
             type: "message",
             attachments: [
@@ -78,12 +88,7 @@ runs:
                     {
                       type: "Container",
                       spacing: "Medium",
-                      items: [
-                        {
-                          type: "ColumnSet",
-                          columns: $columns
-                        }
-                      ]
+                      items: $bodyItems
                     }
                   ]
                 }
