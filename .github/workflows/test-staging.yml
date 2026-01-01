@@ -266,7 +266,7 @@ jobs:
               }]
           }
           
-          webhook_url = os.environ.get('MICROSOFT_TEAMS_WEBHOOK')
+          webhook_url = os.environ.get('MICROSOFT_TEAMS_URL')
           if webhook_url:
               resp = requests.post(webhook_url, json=payload)
               print(f"Sent notification: {resp.status_code}")
