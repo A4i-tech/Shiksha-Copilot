@@ -3,7 +3,7 @@ name: Run Tests
 on:
   workflow_dispatch:
   push:
-    branches: [ "a4i/staging" ] 
+    branches: [ "a4i/staging" , "101-testing"] 
 
 jobs:
   health-check:
@@ -157,7 +157,7 @@ jobs:
 
       - name: Generate Summary and Notify Teams
         env:
-          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_WEBHOOK }}
+          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_URL }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
