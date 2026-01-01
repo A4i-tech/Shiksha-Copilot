@@ -1,7 +1,7 @@
 <div class="p-4 border-b-2 border-shade-80">
   <div class="flex gap-2">
     <img
-    src="../../../../../assets/icons/back-arrow.svg"
+    src="assets/icons/back-arrow.svg"
     alt=""
     class="cursor-pointer"
     (click)="backNavigation()"
@@ -18,7 +18,7 @@
   <p *ngIf="type === 'index'" title="{{'Board' | translate}}-{{chapterDetails?.board}}, {{'Medium' | translate}}-{{chapterDetails?.medium}}, {{'Class' | translate}}-{{chapterDetails?.standard}}, {{'Subject' | translate}}-{{chapterDetails?.subject}}, {{'Chapter' | translate}}-{{chapterDetails?.orderNumber}}. {{chapterDetails?.topics}}" class="hidden md:block text-content-60 text-sm ml-8 text-nowrap overflow-hidden overflow-ellipsis">{{'Board' | translate}}-{{chapterDetails?.board}}, {{'Medium' | translate}}-{{chapterDetails?.medium}}, {{'Class' | translate}}-{{chapterDetails?.standard}}, {{'Subject' | translate}}-{{chapterDetails?.subject}}, {{'Chapter' | translate}}-{{chapterDetails?.orderNumber}}. {{chapterDetails?.topics}}</p>
   <p *ngIf="type === 'index'" class="md:hidden text-content-60 text-sm ml-8 text-nowrap overflow-hidden overflow-ellipsis">{{chapterDetails?.standard}}. {{chapterDetails?.subject}} {{chapterDetails?.orderNumber}}. {{chapterDetails?.topics}}</p>
 <div class="flex items-center gap-1 py-1 mt-2" *ngIf="type === 'general'">
-  <!-- <img src="../../../../../assets/icons/Info 2.svg" alt="">
+  <!-- <img src="assets/icons/Info 2.svg" alt="">
 <small>{{ 'You have a daily chat limit of 20 messages per day' | translate }}.</small> -->
 </div>
 </div>
@@ -26,7 +26,7 @@
   <div class="chat-container px-2 md:px-36 mb-4 md:mb-2 flex flex-col-reverse">
     <div class="flex flex-col items-center relative top-[-40%]" *ngIf="messages.length === 0">
       <img
-        src="../../../../assets/icons/chat-bot-empty.svg"
+        src="assets/icons/chat-bot-empty.svg"
         class="w-28 h-28 relative"
         alt=""
       />
@@ -53,7 +53,7 @@
           ></div>
           <markdown class="chat-markdown" *ngIf="!message.version || message?.version === 2" [data]="message.answer"></markdown>
           <div class="min-w-5 max-w-5">
-          <button  title="{{'Copy to clipboard' | translate}}" (click)="utilityService.copyToClipboard(message.answer, message?.version || 0)"><img src="../../../../assets/icons/copy-clipboard.svg" alt=""> </button>
+          <button  title="{{'Copy to clipboard' | translate}}" (click)="utilityService.copyToClipboard(message.answer, message?.version || 0)"><img src="assets/icons/copy-clipboard.svg" alt=""> </button>
           </div>
           </div>
         </div>
@@ -110,7 +110,7 @@
           [disabled]="isLoading || !chatValue"
           (click)="sendMessage()"
         >
-          <img src="../../../../assets/icons/send.svg" alt="" />
+          <img src="assets/icons/send.svg" alt="" />
         </button>
       </div>
       <div class="flex items-center justify-center gap-1 py-1 mt-1" >

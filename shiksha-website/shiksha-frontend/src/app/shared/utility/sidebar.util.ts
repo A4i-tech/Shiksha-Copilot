@@ -1,4 +1,4 @@
-const assetURl = '../../../assets/icons';
+const assetURl = 'assets/icons';
 export const menuItem = [
   getMenuItems(
     'Dashboard',

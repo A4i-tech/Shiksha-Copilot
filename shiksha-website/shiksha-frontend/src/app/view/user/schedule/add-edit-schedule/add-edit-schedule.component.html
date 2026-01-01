@@ -4,7 +4,7 @@
 		<div class="header flex justify-between items-center px-4 py-3">
 			<h1 class="text-base font-bold leading-[26px] text-content" > {{(mode === 'view' ? "View Details" : mode === "edit" ? "Edit Details" : "Add Details")  | translate }}       </h1>
 			<div class=" bg-shade-50 rounded-full text-center p-1 cursor-pointer" (click)="closePopUP()">
-				<img src="../../../../../assets/icons/E remove.svg" alt="">
+				<img src="assets/icons/E remove.svg" alt="">
 			</div>
 		</div>
 		<hr class="border">
@@ -58,7 +58,7 @@
 			
 						<button class="btn-primary  flex items-center justify-center px-4 self-start" type="button" *ngIf="mode === 'add'" routerLink="/user/content-generation">
 							<span class="ms-1 me-1">{{"Add Lesson Plan" | translate}}</span>
-							<img src="../../../../../assets/icons/E add.svg" alt="">
+							<img src="assets/icons/E add.svg" alt="">
 						</button>
 						<div class="scheduleArray" formArrayName="schedule">
 							<div class="grid md:gap-2 mb-2 md:grid-cols-12 items-start"
@@ -94,11 +94,11 @@
 								<div class="btn-container flex md:col-span-2 gap-2 self-end " *ngIf="mode !== 'view'">
 									<button class="btn-danger flex items-center justify-center   h-[42px]" (click)="deleteScheduleInfo(i)"
 										*ngIf="i!==0">
-										<img src="../../../../../assets/icons/delete.svg" alt="">
+										<img src="assets/icons/delete.svg" alt="">
 									</button>
 									<button class="btn-primary  flex items-center justify-center   h-[42px]" (click)="addNewScheduleInfo()"
 										*ngIf="i===getScheduleControls().length-1">
-										<img src="../../../../../assets/icons/E add.svg" alt="">
+										<img src="assets/icons/E add.svg" alt="">
 									</button>
 			
 								</div>
@@ -114,7 +114,7 @@
 							<button type="button" class="w-20 btn-outline-primary" (click)="closePopUP()">{{"Cancel" | translate}}</button>
 							<button  type="submit" class="btn-primary w-20 flex items-center justify-center" >
 								<span class="mr-1">{{(mode === 'edit' ? "Update" : "Save")  | translate}}</span>
-								<img src="../../../../../assets/icons/Vector (4).svg" alt="">
+								<img src="assets/icons/Vector (4).svg" alt="">
 							</button>
 						</div>
 				</div>

@@ -1,7 +1,7 @@
 <div class="rounded-sm bg-shade-50 p-5">
   <div class="flex gap-2">
     <img
-    src="../../../../../assets/icons/back-arrow.svg"
+    src="assets/icons/back-arrow.svg"
     alt=""
     class="cursor-pointer"
     (click)="backNavigation()"
@@ -23,8 +23,8 @@
           <img
             src="{{
               isOpen
-                ? '../../../../../assets/icons/up-arrow.svg'
-                : '../../../../../assets/icons/down-arrow.svg'
+                ? 'assets/icons/up-arrow.svg'
+                : 'assets/icons/down-arrow.svg'
             }}"
             alt=""
           />
@@ -203,7 +203,7 @@
     <div *ngFor="let doc of docTypes">
       <div class="flex bg-primary-50 p-4 rounded items-center mt-2">
         <div class="flex items-center justify-center bg-primary p-2 rounded-full">
-          <img class="w-10" src="../../../../../assets/icons/white-docx.svg" alt="">
+          <img class="w-10" src="assets/icons/white-docx.svg" alt="">
         </div>
         <div class="ml-4 w-full">
           <p class="text-content text-sm font-semibold">{{doc.name}}</p>

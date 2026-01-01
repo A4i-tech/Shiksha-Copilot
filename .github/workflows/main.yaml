@@ -1,110 +1,111 @@
-# .github/workflows/main.yaml
-
 name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/main-cicd" ]
+    branches: [ "a4i/main", "a4i/staging" ]
+  pull_request:
+    branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
 
 jobs:
-  ci:
-    uses: ./.github/workflows/ci.yaml
+  cicd-frontend:
+    uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
+    with:
+      deploy_name: shiksha-frontend-staging
+      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
 
-  cd:
-    needs: ci
-    uses: ./.github/workflows/cd-render.yaml
+  ci-api:
+    uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
-  notify-success:
+  ci-backend:
+    uses: ./.github/workflows/ci-backend.yaml
+    secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+
+  cd-api:
+    needs: ci-api
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    uses: ./.github/workflows/deploy-render.yaml
+    with:
+      deploy-name: shiksha-api-staging
+      service-id: ${{ vars.RENDER_API_SERVICE_ID }}
+    secrets:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  cd-backend:
+    needs: ci-backend
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    uses: ./.github/workflows/deploy-render.yaml
+    with:
+      deploy-name: shiksha-backend-staging
+      service-id: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
+    secrets:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  notify:
     runs-on: ubuntu-latest
-    needs: [ci, cd]
-    if: success()
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend]
+    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
+
     steps:
-      - name: Notify Teams Success
-        run: |
-          if [ -z "${MICROSOFT_TEAMS_WEBHOOK}" ]; then
-            echo "No webhook configured, skipping notification."
-            exit 0
-          fi
+      - name: Checkout
+        uses: actions/checkout@v4
 
-          curl -H "Content-Type: application/json" \
-               -d "$BODY" \
-               "$MICROSOFT_TEAMS_WEBHOOK"
-        env:
-          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_WEBHOOK }}
-          BODY: |
-            {
-              "@type": "MessageCard",
-              "@context": "http://schema.org/extensions",
-              "summary": "Build Success",
-              "themeColor": "00FF00",
-              "title": "✅ Successful Build",
-              "sections": [{
-                "activityTitle": "[**A4i-tech/Shiksha-Copilot**](https://github.com/A4i-tech/Shiksha-Copilot)",
-                "activitySubtitle": "${{ github.ref_name }}",
-                "facts": [
-                  { "name": "Commit", "value": "[`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" },
-                  { "name": "Author", "value": "[${{ github.actor }}](https://github.com/${{ github.actor }})" },
-                  { "name": "Time", "value": "${{ github.event.head_commit.timestamp }}" },
-                  { "name": "GHCR", "value": "[ghcr.io/${{ github.repository }}](https://ghcr.io/${{ github.repository }})" }
-                ],
-                "markdown": true
-              }],
-              "potentialAction": [
-                {
-                  "@type": "OpenUri",
-                  "name": "View Build Logs",
-                  "targets": [
-                    { "os": "default", "uri": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
-                  ]
-                }
-              ]
-            }
+      - name: Notify Teams (success)
+        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'canceled') }}
+        uses: ./.github/actions/dispatch-teams-workflow
+        with:
+          workflow-url: ${{ secrets.TEAMS_WORKFLOW_URL }}
+          heading-color: Good
+          services: |
+            [
+              {
+                "name": "Frontend",
+                "description": "${{ needs.cicd-frontend.result == 'success' && 'Built and deployed' || 'Not deployed' }}",
+                "url": "${{ needs.cicd-frontend.outputs.page_url || '' }}"
+              },
+              {
+                "name": "API",
+                "description": "${{ needs.cd-api.result == 'success' && 'Built and deployed' || 'Not deployed' }}",
+                "url": "${{ needs.cd-api.result == 'success' && needs.cd-api.outputs['service-url'] || '' }}"
+              },
+              {
+                "name": "Backend",
+                "description": "${{ needs.cd-backend.result == 'success' && 'Built and deployed' || 'Not deployed' }}",
+                "url": "${{ needs.cd-backend.result == 'success' && needs.cd-backend.outputs['service-url'] || '' }}"
+              }
+            ]
 
-  notify-failure:
-    runs-on: ubuntu-latest
-    needs: [ci, cd]
-    if: failure()
-    steps:
-      - name: Notify Teams Failure
-        run: |
-          if [ -z "${MICROSOFT_TEAMS_WEBHOOK}" ]; then
-            echo "No webhook configured, skipping notification."
-            exit 0
-          fi
-
-          curl -H "Content-Type: application/json" \
-               -d "$BODY" \
-               "$MICROSOFT_TEAMS_WEBHOOK"
-        env:
-          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_WEBHOOK }}
-          BODY: |
-            {
-              "@type": "MessageCard",
-              "@context": "http://schema.org/extensions",
-              "summary": "Build Failed",
-              "themeColor": "FF0000",
-              "title": "❌ Build Failed",
-              "sections": [{
-                "activityTitle": "[**A4i-tech/Shiksha-Copilot**](https://github.com/A4i-tech/Shiksha-Copilot)",
-                "activitySubtitle": "${{ github.ref_name }}",
-                "facts": [
-                  { "name": "Commit", "value": "[`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" },
-                  { "name": "Author", "value": "[${{ github.actor }}](https://github.com/${{ github.actor }})" },
-                  { "name": "Time", "value": "${{ github.event.head_commit.timestamp }}" },
-                  { "name": "GHCR", "value": "[ghcr.io/${{ github.repository }}](https://ghcr.io/${{ github.repository }})" }
-                ],
-                "markdown": true
-              }],
-              "potentialAction": [
-                {
-                  "@type": "OpenUri",
-                  "name": "View Build Logs",
-                  "targets": [
-                    { "os": "default", "uri": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
-                  ]
-                }
-              ]
-            }
+      - name: Notify Teams (failure)
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'canceled') }}
+        uses: ./.github/actions/dispatch-teams-workflow
+        with:
+          workflow-url: ${{ secrets.TEAMS_WORKFLOW_URL }}
+          heading-color: Attention
+          services: |
+            [
+              {
+                "name": "Frontend",
+                "description": "${{ needs.cicd-frontend.result }}",
+                "url": "${{ needs.cicd-frontend.outputs.page_url || '' }}"
+              },
+              {
+                "name": "API",
+                "description": "${{ needs.ci-api.result }} / deploy: ${{ needs.cd-api.result }}",
+                "url": "${{ needs.cd-api.outputs['service-url'] || '' }}"
+              },
+              {
+                "name": "Backend",
+                "description": "${{ needs.ci-backend.result }} / deploy: ${{ needs.cd-backend.result }}",
+                "url": "${{ needs.cd-backend.outputs['service-url'] || '' }}"
+              }
+            ]

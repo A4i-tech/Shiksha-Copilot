@@ -30,7 +30,7 @@
                 accept="image/*"
                 (change)="onImageSelect(image_upload)"
               />
-              <img src="../../../../assets/images/gallery.svg" alt="" class="inline-block mb-1">
+              <img src="assets/images/gallery.svg" alt="" class="inline-block mb-1">
               <span class="ml-2">{{(this.sidebarService.profileImg() ? 'Change Image' : 'Choose Image') | translate}}</span>
             </button>
             <button
@@ -170,7 +170,7 @@
       </h2>
       <div
         class="rounded-lg bg-[#E5EDF67D] text-sm md:text-[16px] p-2 mt-5 mb-2 text-content-100 lg:grid grid-cols-[auto,1fr] gap-2 items-start hidden">
-        <img class="me-1 w-5" src="../../../../../assets/icons/lesson-info.svg" alt="">        
+        <img class="me-1 w-5" src="assets/icons/lesson-info.svg" alt="">        
         <small class="text-primary">{{'In the table below, please ensure that there is at least one class data and that all fields are filled.' | translate}}</small>
       </div>
       <table
@@ -270,7 +270,7 @@
                   (click)="openConfirmPopupforDeleteClass(i)"
                 >
                   <img
-                    src="../../.././../../assets/icons/delete.svg"
+                    src="assets/icons/delete.svg"
                     alt="trash"
                     class="inline-block"
                   />
@@ -283,7 +283,7 @@
                   (click)="addNewclasses('add')"
                 >
                   <img
-                    src="../../../../assets/icons/plus.svg"
+                    src="assets/icons/plus.svg"
                     alt="plus"
                     class="inline-block"
                   />
@@ -390,7 +390,7 @@
                           >
                             <div class="flex content-center">
                               <img
-                                src="../../.././../../assets/icons/add.svg"
+                                src="assets/icons/add.svg"
                                 alt=""
                               />
                             </div>
@@ -439,7 +439,7 @@
                       >
                         <div class="flex content-center">
                           <img
-                            src="../../.././../../assets/icons/delete.svg"
+                            src="assets/icons/delete.svg"
                             alt=""
                           />
                           <span class="ml-[6px]">{{ 'Delete' | translate }}</span>
@@ -453,7 +453,7 @@
                       >
                         <div class="flex content-center">
                           <img
-                            src="../../.././../../assets/icons/add.svg"
+                            src="assets/icons/add.svg"
                             alt=""
                           />
                           <span class="ml-[6px]">{{ 'Add' | translate }}</span>
