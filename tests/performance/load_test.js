@@ -1,6 +1,5 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 
 export const options = {
   stages: [
@@ -17,7 +16,7 @@ export const options = {
 export default function () {
   const baseUrl = __ENV.STAGING_URL;
 
-  const res = http.get(baseUrl);
+  const res = http.get(`${baseUrl}/api/v1/resource`);
 
   check(res, { 'status is 200': (r) => r.status === 200 });
   sleep(1);
@@ -29,3 +28,5 @@ export function handleSummary(data) {
     stdout: textSummary(data, { indent: ' ', enableColors: true }),
   };
 }
+
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';

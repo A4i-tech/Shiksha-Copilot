@@ -184,7 +184,7 @@ jobs:
         run: |
           python3 <<EOF
           import os, json, csv
-          
+
           def parse_pytest_csv(filepath):
               if not os.path.exists(filepath):
                   return "Missing", 0, 0, 0
@@ -207,43 +207,66 @@ jobs:
                   with open(filepath, 'r') as f:
                       data = json.load(f)
                   
-                  req_dur = data.get('metrics', {}).get('http_req_duration', {}).get('values', {}).get('p(95)', 'N/A')
-                  failed_rate = data.get('metrics', {}).get('http_req_failed', {}).get('values', {}).get('rate', 'N/A')
+                  # 1. Get Metrics (Handle flattened structure)
+                  metrics = data.get('metrics', {})
                   
-                  thresholds = data.get('metrics', {})
+                  # Duration (p95)
+                  req_dur_metric = metrics.get('http_req_duration', {})
+                  # Try 'values' key first, fallback to flattened keys
+                  if 'values' in req_dur_metric:
+                      req_dur = req_dur_metric['values'].get('p(95)', 0)
+                  else:
+                      req_dur = req_dur_metric.get('p(95)', 0)
+
+                  # Failed Rate
+                  req_fail_metric = metrics.get('http_req_failed', {})
+                  if 'values' in req_fail_metric:
+                      failed_rate = req_fail_metric['values'].get('rate', 0)
+                  else:
+                      # In some formats 'value' holds the rate for Rates
+                      failed_rate = req_fail_metric.get('rate', req_fail_metric.get('value', 0))
+
+                  # 2. Check Thresholds
                   all_passed = True
                   
-                  if 'http_req_duration' in thresholds:
-                      threshold_result = thresholds['http_req_duration'].get('thresholds', {})
-                      for threshold_name, threshold_data in threshold_result.items():
-                          if not threshold_data.get('ok', True):
-                              all_passed = False
-                  
-                  if 'http_req_failed' in thresholds:
-                      threshold_result = thresholds['http_req_failed'].get('thresholds', {})
-                      for threshold_name, threshold_data in threshold_result.items():
-                          if not threshold_data.get('ok', True):
-                              all_passed = False
+                  # Helper to check a single metric's thresholds
+                  def check_metric_thresholds(metric_data):
+                      t_data = metric_data.get('thresholds', {})
+                      for t_name, t_val in t_data.items():
+                          # If t_val is boolean: True = Failed (Breached), False = Pass (Not Breached)
+                          if isinstance(t_val, bool):
+                              if t_val is True: return False
+                          # If t_val is dict: Check 'ok' key
+                          elif isinstance(t_val, dict):
+                              if not t_val.get('ok', True): return False
+                      return True
+
+                  if not check_metric_thresholds(req_dur_metric): all_passed = False
+                  if not check_metric_thresholds(req_fail_metric): all_passed = False
                   
                   status = "Pass" if all_passed else "Fail"
                   
-                  if isinstance(failed_rate, float): failed_rate = f"{failed_rate*100:.2f}%"
-                  if isinstance(req_dur, float): req_dur = f"{req_dur:.2f}ms"
-                  
-                  return status, req_dur, failed_rate
-              except:
+                  return status, f"{req_dur:.2f}ms", f"{failed_rate*100:.2f}%"
+              except Exception as e:
+                  print(f"Error parsing K6 JSON: {e}")
                   return "Error", "N/A", "N/A"
 
           smoke_status, smoke_total, smoke_passed, smoke_failed = parse_pytest_csv('reports/smoke/smoke_report.csv')
           regr_status, regr_total, regr_passed, regr_failed = parse_pytest_csv('reports/regression/regression_report.csv')
           perf_status, p95, fail_rate = parse_k6_json('reports/performance/k6_summary.json')
           
-          overall_status = "Good" if smoke_status == "Pass" and regr_status == "Pass" else "Attention"
+          # Determine overall color
+          if smoke_status == "Pass" and regr_status == "Pass" and perf_status == "Pass":
+              overall_status = "Good"
+          elif "Error" in [smoke_status, regr_status, perf_status]:
+              overall_status = "Danger" # Red for errors
+          else:
+              overall_status = "Attention" # Orange/Yellow for failures
           
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"smoke_desc={smoke_status}\n")
               f.write(f"regr_desc={regr_status}\n")
-              f.write(f"perf_desc={perf_status}\n")
+              f.write(f"perf_desc={perf_status} (p95: {p95})\n")
               f.write(f"heading_color={overall_status}\n")
           EOF
 
