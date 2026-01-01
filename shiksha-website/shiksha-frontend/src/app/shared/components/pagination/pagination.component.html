@@ -6,7 +6,7 @@
 				<nav class="isolate inline-flex space-x-1 rounded-md shadow-sm" aria-label="Pagination">
 					<button (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1"
 						class="relative inline-flex items-center rounded px-2 py-2 text-content-50 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-						<img src="../../../../../assets/icons/Chevron left large.svg" alt="">
+						<img src="assets/icons/Chevron left large.svg" alt="">
 					</button>
 					<button *ngFor="let page of getPageNumbers()" (click)="onPageChange(page)"
 						[class.active]="page === currentPage"
@@ -15,7 +15,7 @@
 					</button>
 					<button (click)="onPageChange(currentPage + 1)" [disabled]="currentPage * pageSize >= totalItems"
 						class="rounded relative inline-flex items-center px-2 py-2 text-content-50 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-						<img src="../../../../../assets/icons/Chevron right large.svg" alt="">
+						<img src="assets/icons/Chevron right large.svg" alt="">
 					</button>
 				</nav>
 			</div>

@@ -4,7 +4,7 @@
   <div class="flex gap-2 items-center mb-4 md:mb-0">
     <img
       *ngIf="currentStep !== 'config'"
-      src="../../../../../assets/icons/back-arrow.svg"
+      src="assets/icons/back-arrow.svg"
       alt="Back"
       class="cursor-pointer"
       (click)="currentStep === 'build' ? goBackToConfig() : goBackToBuild()"
@@ -151,7 +151,7 @@
                      <div class="relative" *ngIf="chapters?.length; else noChaps">
                         <button type="button" (click)="showChapterDdConfig = !showChapterDdConfig" class="w-full p-3 text-left border border-gray-300 rounded-lg flex justify-between items-center bg-white">
                            <span class="truncate">{{ (configForm.value.chapterNumbers?.length || 0) > 0 ? "Chapters selected: " + (configForm.value.chapterNumbers?.length || 0) : "Select chapters" }}</span>
-                           <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-4 h-4"/>
+                           <img src="assets/icons/down-arrow.svg" alt="" class="w-4 h-4"/>
                         </button>
                         <div *ngIf="showChapterDdConfig" class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
                            <label class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b">
@@ -176,7 +176,7 @@
                    <div class="relative" *ngIf="availableHeadings.length; else noHeads">
                       <button type="button" (click)="toggleHeadingDropdown()" class="w-full p-3 text-left border border-gray-300 rounded-lg flex justify-between items-center bg-white">
                          <span class="truncate">{{ headingSummary() }}</span>
-                         <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-4 h-4"/>
+                         <img src="assets/icons/down-arrow.svg" alt="" class="w-4 h-4"/>
                       </button>
                       <div *ngIf="showHeadingDropdown" class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-10 max-h-48 overflow-y-auto">
                          <label class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b">
@@ -230,7 +230,7 @@
                <div class="relative">
                   <button (click)="toggleBuildChapterDropdown()" class="w-full p-2 border rounded text-left text-sm flex justify-between items-center">
                      <span class="truncate">{{ chapterSummary() }}</span>
-                     <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-4 h-4"/>
+                     <img src="assets/icons/down-arrow.svg" alt="" class="w-4 h-4"/>
                   </button>
                   <div *ngIf="showChapterDdBuild" class="absolute top-full left-0 right-0 mt-1 bg-white border rounded shadow z-10 max-h-48 overflow-y-auto">
                      <label class="flex items-center p-2 hover:bg-gray-50 cursor-pointer border-b">
@@ -244,7 +244,7 @@
 
                <div class="relative">
                   <input [(ngModel)]="searchText" (input)="onSearchInput($event)" class="w-full pl-8 pr-2 py-2 border rounded text-sm" placeholder="Search questions..." />
-                  <img class="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4" src="../../../../../assets/icons/Search (1).svg" alt="" />
+                  <img class="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4" src="assets/icons/Search (1).svg" alt="" />
                </div>
             </div>
 

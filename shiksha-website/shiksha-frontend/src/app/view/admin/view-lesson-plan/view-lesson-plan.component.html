@@ -2,7 +2,7 @@
   <div class="flex justify-between items-center">
     <div class="flex gap-2">
       <img
-        src="../../../../../assets/icons/back-arrow.svg"
+        src="assets/icons/back-arrow.svg"
         alt=""
         class="cursor-pointer"
       />
@@ -26,7 +26,7 @@
         >
           {{ activeTab() }}
           <button *ngIf="!expandedContainer" (click)="expandedContainer = true">
-            <img src="../../../../../assets/icons/left-arrow.svg" alt="" />
+            <img src="assets/icons/left-arrow.svg" alt="" />
           </button>
         </div>
         <ng-container>
@@ -56,8 +56,8 @@
             class="md:hidden"
             src="{{
               isOpen
-                ? '../../../../../assets/icons/up-drop.svg'
-                : '../../../../../assets/icons/down-drop.svg'
+                ? 'assets/icons/up-drop.svg'
+                : 'assets/icons/down-drop.svg'
             }}"
             alt=""
           />
@@ -84,7 +84,7 @@
           *ngIf="expandedContainer"
           (click)="expandedContainer = false"
         >
-          <img src="../../../../../assets/icons/menu.svg" alt="" />
+          <img src="assets/icons/menu.svg" alt="" />
         </button>
         <button
           class="px-4 py-2 -mb-px border-b-2 border-primary text-primary font-bold"
