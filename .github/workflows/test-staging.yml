@@ -1,14 +1,9 @@
 name: Run Tests
 
 on:
-  workflow_dispatch:
-  workflow_run:
-    workflows: ["CI"]
-    branches: ["a4i/staging"]
-    types:
-      - completed
   push:
     branches: [ "a4i/staging" , "101-testing"] 
+  workflow_dispatch:
 
 jobs:
   health-check:
@@ -205,14 +200,30 @@ jobs:
               status = "Pass" if failed == 0 and total > 0 else "Fail"
               return status, total, passed, failed
 
+          def parse_k6_json(filepath):
+              if not os.path.exists(filepath):
+                  return "Missing", "N/A", "N/A"
+              try:
+                  with open(filepath, 'r') as f:
+                      data = json.load(f)
+                  req_dur = data.get('metrics', {}).get('http_req_duration', {}).get('values', {}).get('p(95)', 'N/A')
+                  failed_rate = data.get('metrics', {}).get('http_req_failed', {}).get('values', {}).get('rate', 'N/A')
+                  if isinstance(failed_rate, float): failed_rate = f"{failed_rate*100:.2f}%"
+                  if isinstance(req_dur, float): req_dur = f"{req_dur:.2f}ms"
+                  return "Complete", req_dur, failed_rate
+              except:
+                  return "Error", "N/A", "N/A"
+
           smoke_status, smoke_total, smoke_passed, smoke_failed = parse_pytest_csv('reports/smoke/smoke_report.csv')
           regr_status, regr_total, regr_passed, regr_failed = parse_pytest_csv('reports/regression/regression_report.csv')
+          perf_status, p95, fail_rate = parse_k6_json('reports/performance/k6_summary.json')
           
           overall_status = "Good" if smoke_status == "Pass" and regr_status == "Pass" else "Attention"
           
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"smoke_desc={smoke_status} (P:{smoke_passed}/F:{smoke_failed}/T:{smoke_total})\n")
               f.write(f"regr_desc={regr_status} (P:{regr_passed}/F:{regr_failed}/T:{regr_total})\n")
+              f.write(f"perf_desc={perf_status} (P95:{p95}/Fail:{fail_rate})\n")
               f.write(f"heading_color={overall_status}\n")
           EOF
 
@@ -231,6 +242,11 @@ jobs:
               {
                 "name": "Regression Tests",
                 "description": "${{ steps.results.outputs.regr_desc }}",
+                "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              },
+              {
+                "name": "Performance Tests",
+                "description": "${{ steps.results.outputs.perf_desc }}",
                 "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
               }
             ]
