@@ -221,9 +221,9 @@ jobs:
           overall_status = "Good" if smoke_status == "Pass" and regr_status == "Pass" else "Attention"
           
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-              f.write(f"smoke_desc={smoke_status} (P:{smoke_passed}/F:{smoke_failed}/T:{smoke_total})\n")
-              f.write(f"regr_desc={regr_status} (P:{regr_passed}/F:{regr_failed}/T:{regr_total})\n")
-              f.write(f"perf_desc={perf_status} (P95:{p95}/Fail:{fail_rate})\n")
+              f.write(f"smoke_desc={smoke_status}\n")
+              f.write(f"regr_desc={regr_status}\n")
+              f.write(f"perf_desc={perf_status}\n")
               f.write(f"heading_color={overall_status}\n")
           EOF
 
