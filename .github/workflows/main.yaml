@@ -2,27 +2,24 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/staging", "101-testing" ]
+    branches: [ "a4i/main", "101-testing"]
   pull_request:
-    branches: [ "a4i/main", "a4i/staging" ]
+    branches: [ "a4i/main", "101-testing" ]
   workflow_dispatch:
 
 jobs:
-  # --- BUILD & DEPLOY ---
   cicd-frontend:
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
     with:
       deploy_name: shiksha-frontend-staging
-      # Only deploy if specifically on staging branch
-      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      deploy: ${{ github.event_name == 'push' && github.ref_name == '101-testing' }}
 
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
     with:
-      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
-      # Only publish latest if specifically on main
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == '101-testing' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
@@ -30,13 +27,13 @@ jobs:
     uses: ./.github/workflows/ci-backend.yaml
     secrets: inherit
     with:
-      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == '101-testing' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   cd-api:
     needs: ci-api
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    if: github.event_name == 'push' && github.ref_name == '101-testing'
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-api-staging
@@ -46,7 +43,7 @@ jobs:
 
   cd-backend:
     needs: ci-backend
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    if: github.event_name == 'push' && github.ref_name == '101-testing'
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-backend-staging
@@ -54,12 +51,10 @@ jobs:
     secrets:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
-  # --- TEST EXECUTION ---
   health-check:
     name: Wait and Verify Deployment
     needs: [cicd-frontend, cd-api, cd-backend]
-    # Run on Staging OR 101-testing
-    if: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/staging' || github.ref_name == '101-testing') }}
+    if: ${{ github.event_name == 'push' && (github.ref_name == '101-testing') }}
     runs-on: ubuntu-latest
     steps:
       - name: Wait and Verify Services
@@ -157,11 +152,9 @@ jobs:
           name: k6-summary
           path: k6_summary.json
 
-  # --- NOTIFICATION ---
   notify:
     runs-on: ubuntu-latest
-    # Run if Push AND (Main OR Staging OR 101-testing)
-    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging' || github.ref_name == '101-testing') }}
+    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == '101-testing') }}
     needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, smoke-tests, regression-tests, performance-tests]
 
     steps:
@@ -228,7 +221,6 @@ jobs:
           api_status = os.environ.get('API_RES') == 'success'
           be_status = os.environ.get('BE_RES') == 'success'
 
-          # Helper to make descriptions cleaner
           def get_desc(status, res):
               if status: return "Deployed"
               if res == 'skipped': return "Skipped"
@@ -245,11 +237,8 @@ jobs:
           failures = [
              os.environ.get('FE_RES'), os.environ.get('API_RES'), os.environ.get('BE_RES')
           ]
-          # Fail color if any deploy FAILED (ignore skipped) or tests FAIL
           is_fail = 'failure' in failures or 'Fail' in smoke_desc or 'Fail' in regr_desc
           color = "Attention" if is_fail else "Good"
-
-          # 6 items: Top row (Deployments), Bottom row (Tests)
           services = [
               {"name": "Frontend", "description": fe_desc, "url": os.environ.get('FE_URL', '')},
               {"name": "API", "description": api_desc, "url": os.environ.get('API_URL', '')},
