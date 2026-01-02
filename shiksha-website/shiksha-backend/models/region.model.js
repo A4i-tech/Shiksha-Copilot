@@ -10,10 +10,12 @@ const regionSchema = new mongoose.Schema(
 				name :{
 					type:String,
 				},
-				districts: {
-					name: {
-						type: String,
-						required: true,
+				districts: [
+					{
+						name: {
+							type: String,
+							required: true,
+						},
 						blocks: [
 							{
 								name: {
@@ -23,7 +25,7 @@ const regionSchema = new mongoose.Schema(
 							},
 						],
 					},
-				},
+				],
 			},
 		],
 	},

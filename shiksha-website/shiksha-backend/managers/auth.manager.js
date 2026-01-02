@@ -17,14 +17,25 @@ class AuthManager {
         this.adminUserDao = new AdminUserDao();
     }
 
-    async getUserByPhoneAndType(phone, type) {
-        if (type === "0") {
-            return this.userDao.getByPhone(phone);
-        } else if (type === "1") {
-            return this.adminUserDao.getByPhone(phone);
-        } else {
-            throw new Error("Invalid type");
+    /**
+     * Auto-detect user type by searching both User and AdminUser tables
+     * @param {string} phone - Phone number to search
+     * @returns {object} { user: User|AdminUser|null, type: "0"|"1"|null }
+     */
+    async detectUserType(phone) {
+        // Try regular User table first (type=0)
+        const regularUser = await this.userDao.getByPhone(phone);
+        if (regularUser) {
+            return { user: regularUser, type: "0" };
         }
+        
+        // Try AdminUser table (type=1)
+        const adminUser = await this.adminUserDao.getByPhone(phone);
+        if (adminUser) {
+            return { user: adminUser, type: "1" };
+        }
+        
+        return { user: null, type: null };
     }
 
     async updateUserByType(userId, type, updates) {
@@ -40,40 +51,16 @@ class AuthManager {
     async getOtp(req) {
         try {
             let { phone, rememberMe, forgotPassword } = req.body;
-            let { type } = req.query;
 
-            // ================= DEBUG: DUMP DATABASE =================
-            // This block prints all users to the console to find the mismatch
-            if (type === "0") { 
-                try {
-                    console.log("\n========== MONGODB USER DUMP ==========");
-                    // We use the imported User model directly here
-                    const allUsers = await User.find({}, { phone: 1, _id: 1 });
-                    
-                    console.log(`Total Users Found: ${allUsers.length}`);
-                    console.log(`Searching for: '${phone}' (Length: ${phone ? phone.length : 'N/A'})`);
-                    
-                    allUsers.forEach((u, i) => {
-                        const dbPhone = u.phone || "NO_PHONE";
-                        let matchStatus = "";
-                        
-                        if (dbPhone === phone) matchStatus = " <--- EXACT MATCH FOUND!";
-                        else if (dbPhone.trim() === phone.trim()) matchStatus = " <--- MATCH (IF TRIMMED)";
-                        else if (dbPhone.includes(phone)) matchStatus = " <--- PARTIAL MATCH (Missing Country Code?)";
-                        
-                        console.log(`${i+1}. ID: ${u._id} | DB Phone: '${dbPhone}' (Len: ${dbPhone.length})${matchStatus}`);
-                    });
-                    console.log("=======================================\n");
-                } catch (debugErr) {
-                    console.log("DEBUG ERROR: Could not list users.", debugErr.message);
-                }
-            }
-            // ========================================================
-
-            const user = await this.getUserByPhoneAndType(phone, type);
-            if (!user) {
+            // Auto-detect user type by searching both tables
+            const detected = await this.detectUserType(phone);
+            if (!detected.user) {
                 return formatApiReponse(false, "Account does not exist!", {});
             }
+
+            const user = detected.user;
+            const type = detected.type;
+            console.log(`[AUTH] User detected: phone=${phone}, type=${type} (${type === "0" ? "Teacher" : "Admin"})`);
 
             if (user.isDeleted) {
                 return formatApiReponse(false, "User is inactive", {});
@@ -113,13 +100,17 @@ class AuthManager {
 
     async validateOtp(req) {
         try {
-            let { type } = req.query;
             let { phone, otp } = req.body;
-            const user = await this.getUserByPhoneAndType(phone, type);
-
-            if (!user) {
+            
+            // Auto-detect user type by searching both tables
+            const detected = await this.detectUserType(phone);
+            if (!detected.user) {
                 return formatApiReponse(false, "Account does not exist!", null);
             }
+
+            const user = detected.user;
+            const type = detected.type;
+            console.log(`[AUTH] OTP validation for: phone=${phone}, type=${type} (${type === "0" ? "Teacher" : "Admin"})`);
 
             if (user.isDeleted) {
                 return formatApiReponse(false, "User is inactive", {});

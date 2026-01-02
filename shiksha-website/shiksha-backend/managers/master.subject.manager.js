@@ -3,6 +3,7 @@ const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
 const SchoolDao = require("../dao/school.dao");
 const BoardDao = require("../dao/board.dao");
+const { getSemester, formatSubject } = require("../helper/formatter");
 
 class MasterSubjectManager extends BaseManager {
 	constructor() {
@@ -10,6 +11,26 @@ class MasterSubjectManager extends BaseManager {
 		this.masterSubjectDao = new MasterSubjectDao();
 		this.schoolDao = new SchoolDao();
 		this.boardDao = new BoardDao();
+	}
+
+	async create(req) {
+		try {
+			// Auto-derive name and sem from subjectName if not provided
+			const data = { ...req.body };
+			if (data.subjectName) {
+				if (!data.name) {
+					data.name = formatSubject(data.subjectName);
+				}
+				if (data.sem === undefined || data.sem === null) {
+					data.sem = parseInt(getSemester(data.subjectName)) || 0;
+				}
+			}
+			
+			let result = await this.dao.create(data);
+			return formatApiReponse(true, "success!", result);
+		} catch (err) {
+			return formatApiReponse(false, err.message, err);
+		}
 	}
 
 	async getByName(subjectName, user) {

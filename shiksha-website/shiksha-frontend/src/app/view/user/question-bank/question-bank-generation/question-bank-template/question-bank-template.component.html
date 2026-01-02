@@ -40,13 +40,15 @@
            class="bg-white p-3 rounded border hover:shadow-md cursor-pointer transition-all border-l-4 group"
            [ngClass]="{'border-l-blue-500': q.source === 'AI', 'border-l-green-500': q.source === 'LBA'}">
         <div class="flex justify-between items-start mb-1">
-          <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider" 
-                [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI', 'bg-green-100 text-green-700': q.source === 'LBA'}">
-            {{ q.source }}
-          </span>
-          <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }} Marks</span>
+          <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 mr-2">{{ q.text }}</p>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider" 
+                  [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI', 'bg-green-100 text-green-700': q.source === 'LBA'}">
+              {{ q.source }}
+            </span>
+            <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }} Marks</span>
+          </div>
         </div>
-        <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary">{{ q.text }}</p>
       </div>
     </div>
   </div>
@@ -67,16 +69,18 @@
       </div>
 
       <div *ngFor="let q of selectedQuestions; let i = index" 
-           class="bg-white p-3 rounded border relative pr-8">
+           class="bg-white p-3 rounded border relative">
         <button (click)="removeQuestion(i)" class="absolute top-2 right-2 text-gray-300 hover:text-red-500 font-bold text-xl leading-none">&times;</button>
-        <div class="flex gap-2 items-center mb-1">
-          <span class="text-[10px] font-bold px-1 rounded uppercase" 
-                [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI', 'bg-green-100 text-green-700': q.source === 'LBA'}">
-            {{ q.source }}
-          </span>
-           <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }}M</span>
+        <div class="flex justify-between items-start mb-1 pr-6">
+          <p class="text-sm text-gray-800 flex-1 mr-2">{{ q.text }}</p>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <span class="text-[10px] font-bold px-1 rounded uppercase" 
+                  [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI', 'bg-green-100 text-green-700': q.source === 'LBA'}">
+              {{ q.source }}
+            </span>
+            <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }}M</span>
+          </div>
         </div>
-        <p class="text-sm text-gray-800">{{ q.text }}</p>
       </div>
     </div>
     <div class="p-3 border-t bg-gray-50 flex justify-between items-center">

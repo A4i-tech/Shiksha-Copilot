@@ -22,7 +22,7 @@ class SchoolManager extends BaseManager {
   async create(req, session) {
     try {
       await session.startTransaction();
-      let classes = req.body?.classes;
+      let classes = req.body?.classes || [];
       let school = await this.schoolDao.getOne({ schoolId: req.body.schoolId });
 
       if (school) {
@@ -37,33 +37,42 @@ class SchoolManager extends BaseManager {
         return formatApiReponse(false, "Failed to save school info", null);
       }
 
+      // Handle classes - allow empty array (school can be created without classes initially)
       let classCreates = [];
+      
+      if (classes && classes.length > 0) {
+        for (let _class of classes) {
+          if (_class && _class.board && _class.medium) {
+            let classPayload = {
+              ..._class,
+              schoolId: school._id,
+            };
 
-      for (let _class of classes) {
-        let classPayload = {
-          ..._class,
-          schoolId: school._id,
-        };
-
-        classCreates.push(this.classDao.create(classPayload));
+            classCreates.push(this.classDao.create(classPayload));
+          }
+        }
       }
 
-      classes = await Promise.all(classCreates);
-
-      if (classes) {
-        await session.commitTransaction();
-        return formatApiReponse(true, "saved school and class info", {
-          ...school.toObject(),
-          classes: classes,
-        });
+      // If there are classes to create, wait for them; otherwise proceed
+      if (classCreates.length > 0) {
+        classes = await Promise.all(classCreates);
+        
+        // Check if any class creation failed
+        const failedClasses = classes.filter(c => !c);
+        if (failedClasses.length > 0) {
+          await session.abortTransaction();
+          return formatApiReponse(false, "Failed to create some classes", null);
+        }
       }
 
-      await session.abortTransaction();
-
-      return formatApiReponse(false, "", null);
+      await session.commitTransaction();
+      return formatApiReponse(true, classes.length > 0 ? "saved school and class info" : "saved school info", {
+        ...school.toObject(),
+        classes: classes.length > 0 ? classes : [],
+      });
     } catch (err) {
       await session.abortTransaction();
-      return formatApiReponse(false, err?.message, err);
+      return formatApiReponse(false, err?.message || "Failed to create school", err);
     }
   }
 

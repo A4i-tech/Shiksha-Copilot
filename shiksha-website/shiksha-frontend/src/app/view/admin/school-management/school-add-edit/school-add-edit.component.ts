@@ -608,7 +608,14 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
         'name',
         selectedZone
       );
-      this.districtDropdownOptions = this.selectedZoneObj.districts;
+      // districts is now an array
+      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
+        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts) 
+          ? this.selectedZoneObj.districts 
+          : [this.selectedZoneObj.districts]; // Handle legacy object structure
+      } else {
+        this.districtDropdownOptions = [];
+      }
     } else {
       this.f.district?.reset();
     }
@@ -620,12 +627,22 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    */
   setBlockDropdownValues(selectedDistrict: any) {
     if (selectedDistrict) {
-      this.selectedDistrictObj = this.utilityService.filterDropdownValues(
-        this.selectedZoneObj.districts,
-        'name',
-        selectedDistrict
-      );
-      this.blockDropdownOptions = this.selectedDistrictObj.blocks;
+      // districts is now an array, find the matching district
+      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
+        const districts = Array.isArray(this.selectedZoneObj.districts) 
+          ? this.selectedZoneObj.districts 
+          : [this.selectedZoneObj.districts]; // Handle legacy object structure
+        
+        this.selectedDistrictObj = this.utilityService.filterDropdownValues(
+          districts,
+          'name',
+          selectedDistrict
+        );
+        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+      } else {
+        this.selectedDistrictObj = null;
+        this.blockDropdownOptions = [];
+      }
     } else {
       this.f.block?.reset();
     }

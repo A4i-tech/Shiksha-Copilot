@@ -14,9 +14,13 @@ class BaseDao {
 			let processedFilters = { ...filters , ...status }
 			
 			const pipeline = [
-				{ $match: processedFilters },
-				{ $sort: sort },
+				{ $match: processedFilters }
 			];
+			
+			// Only add $sort stage if sort object has keys
+			if (sort && Object.keys(sort).length > 0) {
+				pipeline.push({ $sort: sort });
+			}
 	
 			if (limit > 0) {
 				pipeline.push(

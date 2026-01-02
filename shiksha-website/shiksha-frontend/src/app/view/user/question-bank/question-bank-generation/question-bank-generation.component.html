@@ -71,27 +71,17 @@
           <form [formGroup]="questionBankConfigForm">
             <div class="bg-white rounded-lg p-3 md:p-8">
               
-              <!-- GENERATION MODE SELECTOR (AI / LBA) -->
-              <div class="mb-6 p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                <label class="block text-sm font-bold text-content mb-3">Generation Mode <span class="text-error">*</span></label>
-                <div class="flex gap-6">
-                  <label class="flex items-center cursor-pointer">
-                    <input type="checkbox" [(ngModel)]="useAI" [ngModelOptions]="{standalone: true}" (change)="onBackendModeChange()" class="w-5 h-5 text-primary rounded">
-                    <span class="ml-2 text-sm font-medium">Use AI Generator</span>
-                  </label>
-                  <label class="flex items-center cursor-pointer">
-                    <input type="checkbox" [(ngModel)]="useLBA" [ngModelOptions]="{standalone: true}" (change)="onBackendModeChange()" class="w-5 h-5 text-primary rounded">
-                    <span class="ml-2 text-sm font-medium">Use LBA Generator</span>
-                  </label>
-                </div>
-                <small class="text-error block mt-2" *ngIf="submittedConfig && !useAI && !useLBA">Please select at least one mode</small>
-              </div>
-
-              <!-- PRIMARY FILTERS: BOARD, CLASS, MEDIUM -->
-              <div class="grid lg:grid-cols-3 gap-4">
+              <!-- PRIMARY FILTERS: BOARD, SOURCE GENERATION, CLASS, MEDIUM -->
+              <div class="grid lg:grid-cols-4 gap-4">
                 <div>
                   <app-form-dropdown [dropDownControlName]="'board'" (valueChange)="onBoardChange($event)" [dropDownCtrl]="convertToFormControl(f['board'])" [dropDownValues]="boardDropdownOptions" [config]="boardDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
                 </div>
+                
+                <!-- SOURCE GENERATION MULTI-SELECT DROPDOWN -->
+                <div>
+                  <app-form-dropdown [dropDownControlName]="'sourceGeneration'" (valueChange)="onSourceGenerationChange($event)" [dropDownCtrl]="convertToFormControl(f['sourceGeneration'])" [dropDownValues]="sourceGenerationOptions" [config]="sourceGenerationDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
+                </div>
+                
                 <div>
                   <app-form-dropdown [dropDownControlName]="'grade'" (valueChange)="onStandardChange($event)" [dropDownCtrl]="convertToFormControl(f['grade'])" [dropDownValues]="classDropdownOptions" [config]="classDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
                 </div>
