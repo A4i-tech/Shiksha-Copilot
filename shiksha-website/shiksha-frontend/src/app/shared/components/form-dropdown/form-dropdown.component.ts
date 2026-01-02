@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgSelectModule } from '@ng-select/ng-select';
 import {
@@ -17,7 +17,7 @@ import { TranslateModule } from '@ngx-translate/core';
   templateUrl: './form-dropdown.component.html',
   styleUrls: ['./form-dropdown.component.scss'],
 })
-export class FormDropdownComponent implements OnInit {
+export class FormDropdownComponent implements OnInit, OnChanges {
   @Input() dropDownValues: any[] = [];
 
   @Input() dropDownControlName!: string;
@@ -42,6 +42,29 @@ export class FormDropdownComponent implements OnInit {
     const obj: any = {};
     obj[this.dropDownControlName] = new UntypedFormControl(null);
     this.formGroupTemp = new UntypedFormGroup(obj);
+    this.filterDropDownValues();
+  }
+
+  /**
+   * Angular onchanges lifecycle hook to handle input changes
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['dropDownValues']) {
+      this.filterDropDownValues();
+    }
+  }
+
+  /**
+   * Filter out invalid items from dropDownValues to prevent ng-select errors
+   */
+  private filterDropDownValues(): void {
+    // Ensure dropDownValues is always an array
+    if (!Array.isArray(this.dropDownValues)) {
+      this.dropDownValues = [];
+      return;
+    }
+    // Filter out null/undefined items to prevent ng-select errors
+    this.dropDownValues = this.dropDownValues.filter(item => item != null);
   }
 
   /**
@@ -121,5 +144,32 @@ export class FormDropdownComponent implements OnInit {
 
   public get hasSelections(): boolean {
     return this.dropDownCtrl.value?.length > 0;
+  }
+
+  /**
+   * Get the display label for a value by looking it up in dropDownValues
+   * @param value The value to look up (e.g., abbreviation)
+   * @returns The label to display (e.g., boardName) or the value itself if not found
+   */
+  getLabelForValue(value: any): string {
+    if (value == null || value === '') {
+      return '';
+    }
+
+    // If bindValue and bindLable are configured, look up the label
+    if (this.config.bindValue && this.config.bindLable && this.dropDownValues?.length > 0) {
+      // Find the item in dropDownValues that matches the value
+      const item = this.dropDownValues.find(
+        (item) => item && item[this.config.bindValue!] === value
+      );
+
+      // Return the label if found, otherwise return the value
+      if (item && item[this.config.bindLable]) {
+        return item[this.config.bindLable];
+      }
+    }
+
+    // Fallback: return the value itself (or empty string if value is falsy)
+    return value || '';
   }
 }

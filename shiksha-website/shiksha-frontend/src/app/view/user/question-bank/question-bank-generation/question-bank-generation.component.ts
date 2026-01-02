@@ -60,6 +60,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   chapterDropdownOptions: any[] = [];
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
+  sourceGenerationOptions: any[] = [
+    { name: 'AI Generator', value: 'AI' },
+    { name: 'LBA Generator', value: 'LBA' }
+  ];
 
   // --- LBA Specific Data ---
   lbaChapters: any[] = [];
@@ -69,6 +73,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   // --- Configs ---
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
+  sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'value', openOnSelect: true };
   mediumDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Medium', height: 'auto', fieldName: 'Medium', bindLable: 'medium', bindValue: 'medium', required: true, clearableOff: true };
   languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Language', height: 'auto', fieldName: 'Language', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
@@ -232,6 +237,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.questionBankConfigForm = this.fb.group({
       medium: [null, [Validators.required]],
       board: [null, [Validators.required]],
+      sourceGeneration: [null, [Validators.required]],
       language: [null, [Validators.required]],
       grade: [null, [Validators.required]],
       subject: [null, [Validators.required]],
@@ -266,6 +272,21 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     this.f.selectedHeadings.setValidators([Validators.required, Validators.minLength(1)]);
     this.f.selectedHeadings.updateValueAndValidity();
+  }
+
+  onSourceGenerationChange(selected: any) {
+    console.log('[QB-LOG] Source Generation Changed:', selected);
+    
+    // Update useAI and useLBA based on multi-select dropdown values
+    if (Array.isArray(selected)) {
+      this.useAI = selected.includes('AI');
+      this.useLBA = selected.includes('LBA');
+    } else {
+      this.useAI = false;
+      this.useLBA = false;
+    }
+    
+    this.onBackendModeChange();
   }
 
   onBackendModeChange() {
@@ -579,6 +600,16 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     console.log('[QB-LOG] Total Marks:', this.totalMarks);
 
     this.submittedConfig = true;
+
+    // Update useAI and useLBA from form control before validation
+    const selectedSources = this.f['sourceGeneration'].value;
+    console.log('[QB-LOG] Selected Sources from form:', selectedSources);
+    
+    if (Array.isArray(selectedSources)) {
+      this.useAI = selectedSources.includes('AI');
+      this.useLBA = selectedSources.includes('LBA');
+    }
+    console.log('[QB-LOG] Updated flags - useAI:', this.useAI, ', useLBA:', this.useLBA);
 
     // Basic Form Validation
     if (this.questionBankConfigForm.invalid) {

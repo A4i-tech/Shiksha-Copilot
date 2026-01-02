@@ -52,7 +52,23 @@ export class UtilityService {
    */
   handleError(err: any) {
     if (err.status === 400) {
-      this.showError(err.error.message);
+      // Handle validation errors (array of error messages)
+      if (err.error?.error && Array.isArray(err.error.error)) {
+        const errorMessages = err.error.error.join(', ');
+        this.showError(errorMessages || 'Validation failed. Please check your input.');
+      } else if (err.error?.message) {
+        this.showError(err.error.message);
+      } else if (err.error?.error) {
+        this.showError(err.error.error);
+      } else {
+        this.showError('An error occurred. Please try again.');
+      }
+    } else if (err.status === 401) {
+      this.showError(err.error?.message || 'Unauthorized. Please login again.');
+    } else if (err.status === 500) {
+      this.showError('Server error. Please try again later.');
+    } else {
+      this.showError(err.error?.message || 'An unexpected error occurred.');
     }
   }
 
