@@ -43,71 +43,18 @@ const getSubjects = async (className, medium) => {
   }
 };
 
+// --- FIX: Delegate directly to DAO ---
+// This ensures the "Bulletproof" logic in the DAO is used to find chapters
+// by resolving IDs, names, and handling mixed data types.
 const getChapters = async (className, medium, subject) => {
-  console.log('[DEBUG] --- Unified getChapters with Aggregation ---');
-  
   try {
     const normalizedClass = cleanClass(className);
-    const subjectPattern = (subject || '').replace(/[\s_]/g, '[\\s_]');
-
-    // 1. Find the Chapters first
-    const query = {
-      $or: [
-        { class: normalizedClass },
-        { standard: normalizedClass },
-        { standard: Number(normalizedClass) }
-      ],
-      medium: { $regex: new RegExp(`^${medium}$`, 'i') },
-      subject: { $regex: new RegExp(`^${subjectPattern}$`, 'i') }
-    };
-
-    const chapters = await LBAChapter.find(query).lean();
-    console.log(`[DEBUG] Found ${chapters.length} chapter documents.`);
-
-    if (chapters.length === 0) return [];
-
-    // 2. Get all Chapter IDs to find their headings
-    const chapterIds = chapters.map(c => c._id);
-
-    // 3. AGGREGATE HEADINGS from the LBAQuestion collection
-    // This is the "Different Collection" where the headings actually live
-    const questionStats = await LBAQuestion.aggregate([
-      { $match: { chapterId: { $in: chapterIds } } },
-      { 
-        $group: { 
-          _id: { chapterId: "$chapterId", heading: "$groupHeading" }, 
-          count: { $sum: 1 } 
-        } 
-      }
-    ]);
-
-    // 4. Attach the found headings back to their respective chapters
-    const chaptersWithHeadings = chapters.map(ch => {
-      // Find all headings that belong to this specific chapter
-      const chapterHeadings = questionStats
-        .filter(stat => stat._id.chapterId.toString() === ch._id.toString())
-        .map(stat => ({
-          name: stat._id.heading || 'General',
-          count: stat.count
-        }));
-
-      return {
-        ...ch,
-        topics: ch.topics || ch.title,
-        headings: chapterHeadings, // <--- Headings are now injected here
-        subTopics: ch.subTopics || []
-      };
-    });
-
-    console.log(`[DEBUG] Processed ${chaptersWithHeadings.length} chapters with aggregated headings.`);
-    return chaptersWithHeadings;
-
+    return await lbaQpDao.getChapters(normalizedClass, medium, subject);
   } catch (err) {
-    console.error('[DEBUG] !!! aggregation failed:', err);
+    console.error('[Manager] getChapters failed:', err);
     throw err;
   }
 };
-
 
 const getDifficulties = async () => {
   try {
@@ -186,8 +133,8 @@ const generateQuestionPaper = async (paperData, userDetails) => {
     type: 'LBA',
   });
 
-  // 2. CRITICAL FIX: Convert Mongoose Doc to Plain Object
-  // If we pass the Mongoose doc directly, the DOCX generator crashes and writes the error stack to the file.
+  // 2. Convert Mongoose Doc to Plain Object for DOCX generator
+  // This prevents issues with Mongoose internal properties crashing the generator
   const plainPaperData = savedPaperDoc.toObject ? savedPaperDoc.toObject() : savedPaperDoc;
 
   // 3. Generate File
@@ -195,7 +142,6 @@ const generateQuestionPaper = async (paperData, userDetails) => {
     await generateWordDocument(plainPaperData);
   } catch (e) {
     console.error('DOCX Generation Error:', e);
-    // Proceed so user gets the ID, but file download might fail 
   }
 
   return {
@@ -219,14 +165,13 @@ const generateWordDocument = async (paperData) => {
 
     const url = await buildQuestionPaperDocx(paperData, storageDir);
     
-    // Safety Check: If file is too small (e.g., < 2KB), it is likely an error message text file.
     const filename = `${paperData._id || paperData.id}.docx`;
     const filePath = path.join(storageDir, filename);
     
     if (fs.existsSync(filePath)) {
         const stats = fs.statSync(filePath);
         if (stats.size < 2000) {
-            console.error(`[Warning] Generated DOCX is only ${stats.size} bytes. This usually indicates a corrupted file or an error message written to disk.`);
+            console.error(`[Warning] Generated DOCX is only ${stats.size} bytes.`);
         }
     }
 
@@ -236,10 +181,6 @@ const generateWordDocument = async (paperData) => {
   }
 };
 
-const updateQuestionPaperDocument = async (_paperId, _documentUrl) => {
-  return true;
-};
-
 const getQuestionPaper = async (id) => {
   if (!id) throw new Error('Paper ID is required');
   const paper = await lbaQpDao.getQuestionPaperById(id);
@@ -247,6 +188,11 @@ const getQuestionPaper = async (id) => {
   return paper;
 };
 
+const saveFeedback = async (feedbackData) => {
+  return lbaQpDao.saveFeedback(feedbackData);
+};
+
+// Upload logic stays in manager as it is business logic
 const insertChaptersAndQuestions = async (data) => {
   const insertedChapters = [];
   const insertedQuestions = [];
@@ -293,10 +239,6 @@ const insertChaptersAndQuestions = async (data) => {
     chapters: insertedChapters,
     questions: insertedQuestions,
   };
-};
-
-const saveFeedback = async (feedbackData) => {
-  return lbaQpDao.saveFeedback(feedbackData);
 };
 
 module.exports = {

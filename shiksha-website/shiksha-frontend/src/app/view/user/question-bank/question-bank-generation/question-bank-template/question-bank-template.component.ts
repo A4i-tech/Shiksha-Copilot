@@ -20,7 +20,7 @@ export class QuestionBankTemplateComponent implements OnInit {
   selectedQuestions: any[] = [];
   
   // Filter State
-  filterSource: 'ALL' | 'AI' | 'LBA' = 'ALL';
+  filterSource: 'ALL' | 'AI Questions' | 'Pregenerated Questions' = 'ALL';
   searchText: string = '';
 
   constructor() {}
@@ -31,7 +31,7 @@ export class QuestionBankTemplateComponent implements OnInit {
   }
 
   // --- FILTERING ---
-  setFilter(source: 'ALL' | 'AI' | 'LBA') {
+  setFilter(source: 'ALL' | 'AI Questions' | 'Pregenerated Questions') {
     this.filterSource = source;
     this.applyFilters();
   }

@@ -6,14 +6,17 @@ const LBAChapter = require('../models/lba.chapter.model');
 const LBAQuestion = require('../models/lba.question.model');
 const LBAQuestionPaper = require('../models/lba.question.paper.model');
 const LBAFeedback = require('../models/lba.feedback.model');
+const MasterSubject = require('../models/master.subject.model');
 
 // --- Helpers ---
 
-// creates a Case-Insensitive Regex for exact matching
-// e.g. "english" matches "English", "ENGLISH", "english"
-const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, 'i');
+// Helper to capitalize words (e.g. "english" -> "English")
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return String(str).charAt(0).toUpperCase() + String(str).slice(1).toLowerCase();
+};
 
-// Safely converts input to String (handles nulls)
+const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, 'i');
 const str = (val) => String(val || '').trim();
 
 class LBAQPDao extends BaseDao {
@@ -21,62 +24,167 @@ class LBAQPDao extends BaseDao {
     super();
   }
 
+  /**
+   * Helper: Resolves a Subject ID to its string 'name'
+   */
+  async resolveSubjectName(identifier) {
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      const subjectDoc = await MasterSubject.findById(identifier).select('name').lean();
+      return subjectDoc ? subjectDoc.name : str(identifier);
+    }
+    return str(identifier);
+  }
+
   /** 
    * Get all available classes 
-   * Returns: ["6", "7", "8", "9", "10"]
    */
   async getClasses() {
-    return LBAChapter.distinct('class');
+    let classes = await LBAChapter.distinct('standard'); // Try 'standard' (number) first
+    
+    if (!classes || classes.length === 0) {
+       classes = await LBAChapter.distinct('class'); // Fallback to 'class' (string)
+    }
+
+    console.log(`[LBA-DAO] getClasses found: ${classes.length} classes`);
+
+    return classes
+      .map(c => parseInt(c))
+      .filter(n => !isNaN(n)) 
+      .sort((a, b) => a - b)
+      .map(String);
   }
 
   /** 
    * Get media options for a specific class
-   * Fix: Forces class to String to match DB format
    */
   async getMedia(className) {
-    // DB Query: { class: "6" }
-    return LBAChapter.distinct('medium', { 
-      class: str(className) 
+    console.log(`[LBA-DAO] getMedia called for Class: ${className}`);
+    const rawMedia = await LBAChapter.distinct('medium', { 
+      $or: [
+        { standard: parseInt(className) },
+        { class: str(className) }
+      ]
     });
+
+    const uniqueMedia = new Set(rawMedia.map(m => toTitleCase(m)));
+    return Array.from(uniqueMedia).sort();
   }
 
   /** 
-   * Get subjects for a specific class and medium
-   * Fix: Uses Regex for Medium to handle "english" vs "English"
+   * Get subjects for a specific class
    */
   async getSubjects(className, medium) {
-    return LBAChapter.distinct('subject', { 
-      class: str(className), 
-      medium: regexExact(medium) 
+    console.log(`[LBA-DAO] getSubjects called for Class: ${className}`);
+    const classNum = parseInt(className);
+
+    const subjects = await MasterSubject.find({
+      isDeleted: false,
+      "applicableClasses.classes": classNum
+    })
+    .select('subjectName name _id')
+    .sort({ subjectName: 1 })
+    .lean();
+
+    // Deduplication Logic
+    const uniqueMap = new Map();
+    
+    subjects.forEach(sub => {
+      let displayName = sub.subjectName;
+      // Format to Title Case if needed
+      if (displayName.includes('_') || displayName === displayName.toLowerCase()) {
+         displayName = displayName.split('_').map(word => toTitleCase(word)).join(' ');
+      }
+
+      // Dedupe by Display Name (merges "social_science" and "social_science" docs)
+      const uniqueKey = displayName; 
+
+      if (!uniqueMap.has(uniqueKey)) {
+        uniqueMap.set(uniqueKey, {
+          _id: sub._id,
+          name: displayName,  
+          code: sub.name      
+        });
+      }
     });
+
+    const finalSubjects = Array.from(uniqueMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return finalSubjects;
   }
 
   /**
-   * Get chapters with Heading Counts
-   * Optimization: Uses Aggregation to avoid looping queries
+   * Get chapters 
+   * FIX: Robust query handling ID mismatch and Schema differences
    */
-  async getChapters(className, medium, subject) {
-    const classStr = str(className);
-    const medRx = regexExact(medium);
-    const subRx = regexExact(subject);
+  async getChapters(className, medium, subjectId) {
+    console.log(`[LBA-DAO] getChapters called. Class: ${className}, SubjectID: ${subjectId}`);
+    
+    // 1. Resolve Subject Logic
+    let subjectCode = str(subjectId);
+    let targetSubjectIds = [];
 
-    // 1. Get the Chapters
+    if (mongoose.Types.ObjectId.isValid(subjectId)) {
+       const subjectDoc = await MasterSubject.findById(subjectId).select('name').lean();
+       if (subjectDoc) {
+         subjectCode = subjectDoc.name; // e.g. "social_science"
+         
+         // KEY FIX: Find ALL MasterSubject IDs that share this name.
+         // This bridges the gap if Chapters use a different ID than the Dropdown.
+         const relatedSubjects = await MasterSubject.find({ name: subjectCode }).select('_id').lean();
+         targetSubjectIds = relatedSubjects.map(s => s._id);
+       } else {
+         // If passed ID is not in MasterSubject, use it directly (legacy orphan ID)
+         targetSubjectIds = [new mongoose.Types.ObjectId(subjectId)];
+       }
+    }
+
+    console.log(`[LBA-DAO] Subject Name: "${subjectCode}", Related IDs: ${targetSubjectIds.join(', ')}`);
+
+    // 2. Prepare Query Filters
+    const medRx = regexExact(medium);
+    const standardNum = parseInt(className); // e.g. 6
+    const classStr = str(className);         // e.g. "6"
+
+    const chapterQuery = {
+      isDeleted: false,
+      medium: medRx,
+      $and: [
+        // Handle Class: Check both 'standard' (number) and 'class' (string)
+        { 
+          $or: [ 
+            { standard: standardNum }, 
+            { class: classStr } 
+          ] 
+        },
+        // Handle Subject: Check 'subjectId' (ObjectId list) and legacy 'subject' (string)
+        {
+          $or: [
+            { subjectId: { $in: targetSubjectIds } },
+            { subject: regexExact(subjectCode) }
+          ]
+        }
+      ]
+    };
+
+    // 3. Execute Query
     const chapters = await LBAChapter
-      .find({ class: classStr, medium: medRx, subject: subRx })
-      .sort({ chapterNumber: 1 })
+      .find(chapterQuery)
+      .sort({ orderNumber: 1 }) // Using 'orderNumber' as seen in your DB sample
       .lean();
+
+    console.log(`[LBA-DAO] Chapters found: ${chapters.length}`);
 
     if (!chapters.length) return [];
 
-    const chapterNumbers = chapters.map(ch => ch.chapterNumber);
+    const chapterNumbers = chapters.map(ch => ch.orderNumber || ch.chapterNumber);
 
-    // 2. Count questions per heading for these chapters (ONE DB Call)
+    // 4. Count questions per heading
+    // Questions likely still use the String Subject Name and String Class
     const headingStats = await LBAQuestion.aggregate([
       {
         $match: {
-          class: classStr,
+          $or: [ { class: classStr }, { standard: standardNum } ],
           medium: medRx,
-          subject: subRx,
+          subject: regexExact(subjectCode), 
           'chapter.chapterNumber': { $in: chapterNumbers }
         }
       },
@@ -99,32 +207,32 @@ class LBAQPDao extends BaseDao {
       }
     ]);
 
-    // 3. Map stats back to chapters
+    // 5. Map stats back
     const statsMap = new Map();
     headingStats.forEach(stat => {
       statsMap.set(stat._id, stat.headings.sort((a, b) => a.name.localeCompare(b.name)));
     });
 
     return chapters.map(ch => ({
-      chapterNumber: ch.chapterNumber,
-      title: ch.title || `Chapter ${ch.chapterNumber}`,
       _id: ch._id,
-      headings: statsMap.get(ch.chapterNumber) || []
+      // Handle legacy vs new fields
+      chapterNumber: ch.orderNumber || ch.chapterNumber, 
+      title: ch.topics || ch.title || `Chapter ${ch.orderNumber || ch.chapterNumber}`, 
+      headings: statsMap.get(ch.orderNumber || ch.chapterNumber) || [],
+      subTopics: ch.subTopics
     }));
   }
 
-  /** Get all available difficulties */
   async getDifficulties() {
     return LBAQuestion.distinct('difficulty');
   }
 
-  /** Get all available answer types */
   async getAnswerTypes() {
     return LBAQuestion.distinct('answerType');
   }
 
   /**
-   * Get questions based on filters
+   * Get questions 
    */
   async getQuestions(filters) {
     const {
@@ -132,36 +240,35 @@ class LBAQPDao extends BaseDao {
       medium,
       class: className,
       chapterNumbers,
-      marks,
-      difficulty,
-      type,
-      search,
       headings,
     } = filters || {};
 
+    const resolvedSubjectName = await this.resolveSubjectName(subject);
+
     const query = {
-      class: str(className),
+      // Handle Mixed Class Types
+      $or: [ { class: str(className) }, { standard: parseInt(className) } ],
       medium: regexExact(medium),
-      subject: regexExact(subject),
+      subject: regexExact(resolvedSubjectName),
       'chapter.chapterNumber': { $in: Array.isArray(chapterNumbers) ? chapterNumbers : [] },
     };
 
-    // Optional Filters
     if (headings) {
       const arr = String(headings).split(',').map(s => s.trim()).filter(Boolean);
-      if (arr.length) query.groupHeading = { $in: arr }; // Case sensitive usually, unless collation set
+      if (arr.length) query.groupHeading = { $in: arr }; 
     }
 
-    if (marks && marks !== 'Any') {
-        const m = Number(marks);
+    // Optional Filters
+    if (filters.marks && filters.marks !== 'Any') {
+        const m = Number(filters.marks);
         if(!isNaN(m)) query.marksPerQuestion = m;
     }
-
-    if (difficulty && difficulty !== 'Any') query.difficulty = difficulty;
-    if (type && type !== 'Any') query.answerType = type;
-
-    if (search) {
-      const rx = new RegExp(str(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    if (filters.difficulty && filters.difficulty !== 'Any') query.difficulty = filters.difficulty;
+    if (filters.type && filters.type !== 'Any') query.answerType = filters.type;
+    
+    if (filters.search) {
+      const rx = new RegExp(str(filters.search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      // Search in text OR in chapter title
       query.$or = [{ text: rx }, { 'chapter.title': rx }];
     }
 
@@ -169,13 +276,11 @@ class LBAQPDao extends BaseDao {
       .sort({ 'chapter.chapterNumber': 1, _id: 1 })
       .lean();
 
-    // Helper to format options safely
     const sanitizeOptions = (opts) => {
       if (!Array.isArray(opts)) return [];
-      const alpha = (i) => String.fromCharCode(65 + i); // A, B, C...
+      const alpha = (i) => String.fromCharCode(65 + i); 
       return opts.map((o, i) => {
           if (!o) return null;
-          // Handle simple string options vs object options
           if (typeof o === 'string') return { label: alpha(i), text: o };
           return { label: o.label || alpha(i), text: o.text || '' };
         }).filter(o => o && o.text);
@@ -201,7 +306,6 @@ class LBAQPDao extends BaseDao {
     }));
   }
 
-  /** Save question paper */
   async saveQuestionPaper(paperData) {
     const paper = new LBAQuestionPaper(paperData);
     const saved = await paper.save();
@@ -213,12 +317,10 @@ class LBAQPDao extends BaseDao {
     };
   }
 
-  /** Get question paper by ID */
   async getQuestionPaperById(id) {
     return LBAQuestionPaper.findById(id).populate('teacherId', 'name school');
   }
 
-  /** Save feedback */
   async saveFeedback(feedbackData) {
     const feedback = new LBAFeedback(feedbackData);
     return feedback.save();

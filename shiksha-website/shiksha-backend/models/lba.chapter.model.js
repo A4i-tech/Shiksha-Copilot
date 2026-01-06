@@ -1,23 +1,36 @@
 'use strict';
 const mongoose = require('mongoose');
 
-const lbaChapterSchema = new mongoose.Schema(
+const ChapterSchema = new mongoose.Schema(
   {
-    class: { type: String, index: true },
+    subjectId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Subjects', 
+      required: true,
+      index: true 
+    },
+    topics: { type: String, required: true },
+    subTopics: { type: [String], default: [] },
     medium: { type: String, index: true },
-    subject: { type: String, index: true },
-    chapterNumber: { type: Number, index: true },
-    title: { type: String },
+    standard: { type: Number, index: true }, 
+    board: { type: String, index: true },
+    orderNumber: { type: Number, index: true }, 
+    isDeleted: { type: Boolean, default: false },
+    
+    learningOutcomes: { type: [String], default: [] },
+    
+    topicsLearningOutcomes: [
+      {
+        title: { type: String },
+        learningOutcomes: { type: [String], default: [] }
+      }
+    ],
 
-  
-    topics: { type: String },
-    subTopics: { type: [String], default: [] }, 
-    headings: { type: Array, default: [] } 
+    indexPath: { type: String } 
   },
-  { timestamps: true, strict: false }
+  { timestamps: true } 
 );
 
-// Helpful compound index for your DAO queries
-lbaChapterSchema.index({ class: 1, medium: 1, subject: 1, chapterNumber: 1 });
+ChapterSchema.index({ standard: 1, medium: 1, board: 1, subjectId: 1 });
 
-module.exports = mongoose.model('LBAChapter', lbaChapterSchema, 'lba_chapter');
+module.exports = mongoose.model('Chapters', ChapterSchema, 'chapters');
