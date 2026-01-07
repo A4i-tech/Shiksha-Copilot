@@ -141,7 +141,8 @@ class QuestionBankManager extends BaseManager {
         questionBankTemplate,
         template,
         language,
-        questions, // Manual questions (LBA)
+        questions,
+        isPreview,
       } = req.body;
 
       // Handle both objectiveDistribution (camel) and objective_distribution (snake)
@@ -159,8 +160,8 @@ class QuestionBankManager extends BaseManager {
       const chapterIdsArr = Array.isArray(chapterIds)
         ? chapterIds
         : chapterIds
-        ? [chapterIds]
-        : [];
+          ? [chapterIds]
+          : [];
 
       let mergedList = [];
       let notFoundQuestions = [];
@@ -168,7 +169,7 @@ class QuestionBankManager extends BaseManager {
       let rawCacheHit = [];
 
       if (questions && questions.length > 0) {
-        console.log("[Manager] Manual/LBA Flow detected. Using provided questions.");
+        console.log("[Manager] Manual Flow detected. Using provided questions.");
         mergedList = questions;
       } else {
         // AI GENERATION FLOW
@@ -240,7 +241,29 @@ class QuestionBankManager extends BaseManager {
             generatedItems = newQuestions;
           }
 
-          const filteredQuestions = filterTemplate(generatedItems);
+          // KEY FIX: Flatten responses from Python (which often use { item: { question: '...' }, objective: '...' })
+          const flattenedItems = generatedItems.map(item => {
+            if (item && item.item && typeof item.item === 'object') {
+              const { item: innerItem, ...rest } = item;
+              return { ...rest, ...innerItem };
+            }
+            return item;
+          });
+
+          // KEY FIX: Restructure flat items back into blocks for mergeQuestions
+          // mergeQuestions expects an array of blocks: [{ type: '...', questions: [...] }, ...]
+          let itemPointer = 0;
+          const questionsInBlocks = notFoundRes.map(template => {
+            const numNeeded = template.question_distribution.length;
+            const blockQuestions = flattenedItems.slice(itemPointer, itemPointer + numNeeded);
+            itemPointer += numNeeded;
+            return {
+              type: template.type,
+              questions: blockQuestions
+            };
+          });
+
+          const filteredQuestions = filterTemplate(questionsInBlocks);
           newResQuestions = filteredQuestions.filteredTemplate;
 
           mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
@@ -320,6 +343,15 @@ class QuestionBankManager extends BaseManager {
       }
 
       // Saving
+      if (isPreview === true || isPreview === "true") {
+        if (session.inAtomicity) await session.abortTransaction();
+        return formatApiReponse(
+          true,
+          "Question bank preview generated successfully!",
+          { questions: mergedList }
+        );
+      }
+
       let questionBankData = {
         metadata: {
           schoolName: user?.school?.name,
@@ -334,7 +366,7 @@ class QuestionBankManager extends BaseManager {
 
       // Re-create payload for saving config
       let config = await this._createQuestionBankPayload(req.body, user);
-      
+
       delete config.user_id;
       delete config.chapters;
 
@@ -363,19 +395,19 @@ class QuestionBankManager extends BaseManager {
 
           const processedCache = isMultiChapter
             ? processCacheHits(
-                rawCacheHit,
-                chapterIdsArr,
-                processedUnitNames,
-                unitLevel,
-                objectives
-              )
+              rawCacheHit,
+              chapterIdsArr,
+              processedUnitNames,
+              unitLevel,
+              objectives
+            )
             : processCacheHitsForSubtopic(
-                rawCacheHit,
-                chapterIdsArr,
-                processedUnitNames,
-                unitLevel,
-                objectives
-              );
+              rawCacheHit,
+              chapterIdsArr,
+              processedUnitNames,
+              unitLevel,
+              objectives
+            );
 
           let cacheSummaryData = convertToCamelCase({
             questionBankConfigId: questionBankConfig._id,
@@ -514,7 +546,7 @@ class QuestionBankManager extends BaseManager {
           learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
         })),
       }));
-      
+
       const requiredUnits = new Set();
       if (marksDistribution && Array.isArray(marksDistribution)) {
         marksDistribution.forEach(dist => {
@@ -525,27 +557,27 @@ class QuestionBankManager extends BaseManager {
       // Check inputs as well (Hybrid Flow)
       const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
       allInputTopics.forEach(t => {
-          if (typeof t === 'string' && t.trim().length > 0 && !mongoose.Types.ObjectId.isValid(t)) {
-              requiredUnits.add(t.trim());
-          }
+        if (typeof t === 'string' && t.trim().length > 0 && !mongoose.Types.ObjectId.isValid(t)) {
+          requiredUnits.add(t.trim());
+        }
       });
 
       // Inject Missing Units
       requiredUnits.forEach(unitName => {
         // Check if unitName exists as a Chapter Title OR a Subtopic Title
-        const exists = formattedChapters.some(fc => 
-           fc.title.toLowerCase() === unitName.toLowerCase() || 
-           fc.subtopics.some(sub => sub.title.toLowerCase() === unitName.toLowerCase())
+        const exists = formattedChapters.some(fc =>
+          fc.title.toLowerCase() === unitName.toLowerCase() ||
+          fc.subtopics.some(sub => sub.title.toLowerCase() === unitName.toLowerCase())
         );
 
         if (!exists) {
-           console.log(`[Manager] Injecting missing unit context: ${unitName}`);
-           formattedChapters.push({
-             title: unitName,
-             index_path: "",
-             learning_outcomes: [],
-             subtopics: []
-           });
+          console.log(`[Manager] Injecting missing unit context: ${unitName}`);
+          formattedChapters.push({
+            title: unitName,
+            index_path: "",
+            learning_outcomes: [],
+            subtopics: []
+          });
         }
       });
       // -----------------------------------------------------------

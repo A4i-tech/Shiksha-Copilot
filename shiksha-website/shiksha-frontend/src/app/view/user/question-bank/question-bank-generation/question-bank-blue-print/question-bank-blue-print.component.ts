@@ -11,7 +11,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   @Input() currentStep: number = 3;
   @Input() totalMarks: number = 0;
   @Input() examName: string = '';
-  
+
   // Data from Parent
   @Input() finalSelectedQuestions: any[] = [];
   @Input() bluePrintChapterDropdownOptions: any[] = [];
@@ -20,15 +20,15 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
- 
+
   totalSteps: number = 3;
   questionTypeMapper = QUESTION_TYPE_MAPPER;
-  
+
   // Chart Properties
   objectivesChartData!: ChartData<'doughnut'>;
   // NEW: Dynamic Title
-  chartTitle: string = 'Objective Analysis'; 
-  
+  chartTitle: string = 'Objective Analysis';
+
   groupedBlueprintData: any[] = [];
 
   objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
@@ -71,7 +71,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     this.finalSelectedQuestions.forEach(q => {
       // Group by heading so "Fill in the blanks" stays together
       const sectionName = q.heading || q.type || 'General Questions';
-      
+
       if (!groups[sectionName]) {
         groups[sectionName] = {
           type: sectionName,
@@ -91,39 +91,26 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     const chartMapper: { [key: string]: number } = {};
     let chartColors: string[] = [];
 
-    // Check Sources
-    const hasAI = this.finalSelectedQuestions.some(q => q.source === 'AI');
-    const hasLBA = this.finalSelectedQuestions.some(q => q.source === 'LBA');
+    this.finalSelectedQuestions.forEach(q => {
+      let label = 'Unknown';
+      if (q.source === 'AI Questions') {
+        label = q.objective || 'Knowledge';
+      } else if (q.source === 'Pregenerated Questions') {
+        label = 'Pregenerated';
+      } else {
+        label = q.objective || 'Knowledge';
+      }
+      chartMapper[label] = (chartMapper[label] || 0) + 1;
+    });
 
-    // MODE 1: HYBRID (Show Source Analysis)
-    if (hasAI && hasLBA) {
-      this.chartTitle = 'Generation Source Analysis';
-      
-      // Calculate Counts
-      const aiCount = this.finalSelectedQuestions.filter(q => q.source === 'AI').length;
-      const lbaCount = this.finalSelectedQuestions.filter(q => q.source === 'LBA').length;
+    this.chartTitle = 'Paper Composition Analysis';
 
-      chartMapper['AI Generated'] = aiCount;
-      chartMapper['LBA (Database)'] = lbaCount;
-      
-      // Pink for AI, Blue for LBA
-      chartColors = ['#FF6384', '#36A2EB']; 
-    } 
-    // MODE 2: SINGLE SOURCE (Show Objective Analysis)
-    else {
-      this.chartTitle = 'Objective Analysis';
-      
-      this.finalSelectedQuestions.forEach(q => {
-        const obj = q.objective || 'Knowledge'; // Default to Knowledge if missing
-        chartMapper[obj] = (chartMapper[obj] || 0) + 1;
-      });
-
-      // Standard Rainbow Colors
-      chartColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'];
-    }
+    const labels = Object.keys(chartMapper);
+    const palette = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
+    labels.forEach((_, i) => chartColors.push(palette[i % palette.length]));
 
     this.objectivesChartData = {
-      labels: Object.keys(chartMapper),
+      labels: labels,
       datasets: [{
         data: Object.values(chartMapper),
         backgroundColor: chartColors,

@@ -4,13 +4,13 @@ const path = require('path');
 const fs = require('fs');
 
 // Imports
-const lbaQpManager = require('../managers/lba.qp.manager.js');
+const QpManager = require('../managers/qp.manager.js');
 const formatApiResponse = require('../helper/response.js');
-const LBAChapter = require('../models/lba.chapter.model');
-const LBAQuestion = require('../models/lba.question.model');
+const Chapter = require('../models/chapter.model.js');
+const Question = require('../models/question.model.js');
 
 // Constants
-const STORAGE_DIR = path.join(__dirname, '..', 'storage', 'lba-papers');
+const STORAGE_DIR = path.join(__dirname, '..', 'storage', 'papers');
 
 // ------------------- Utility Functions ------------------- //
 
@@ -41,7 +41,7 @@ function normalizeOptions(optArr = []) {
 
 const getClasses = async (req, res) => {
   try {
-    const result = await lbaQpManager.getClasses();
+    const result = await QpManager.getClasses();
     return res.status(200).json(formatApiResponse(true, 'Classes retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -51,7 +51,7 @@ const getClasses = async (req, res) => {
 const getMedia = async (req, res) => {
   try {
     const { class: className } = req.query;
-    const result = await lbaQpManager.getMedia(className);
+    const result = await QpManager.getMedia(className);
     return res.status(200).json(formatApiResponse(true, 'Medium retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -61,7 +61,7 @@ const getMedia = async (req, res) => {
 const getSubjects = async (req, res) => {
   try {
     const { class: className, medium } = req.query;
-    const result = await lbaQpManager.getSubjects(className, medium);
+    const result = await QpManager.getSubjects(className, medium);
     return res.status(200).json(formatApiResponse(true, 'Subjects retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -72,7 +72,7 @@ const getChapters = async (req, res) => {
   try {
     const { class: className, medium, subject } = req.query;
     // Delegate to manager -> which delegates to DAO
-    const result = await lbaQpManager.getChapters(className, medium, subject);
+    const result = await QpManager.getChapters(className, medium, subject);
     return res.status(200).json(formatApiResponse(true, 'Chapters retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -81,7 +81,7 @@ const getChapters = async (req, res) => {
 
 const getDifficulties = async (req, res) => {
   try {
-    const result = await lbaQpManager.getDifficulties();
+    const result = await QpManager.getDifficulties();
     return res.status(200).json(formatApiResponse(true, 'Difficulties retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -90,7 +90,7 @@ const getDifficulties = async (req, res) => {
 
 const getAnswerTypes = async (req, res) => {
   try {
-    const result = await lbaQpManager.getAnswerTypes();
+    const result = await QpManager.getAnswerTypes();
     return res.status(200).json(formatApiResponse(true, 'Answer types retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -102,7 +102,7 @@ const getAnswerTypes = async (req, res) => {
 const getQuestions = async (req, res) => {
   try {
     const filters = req.query;
-    const result = await lbaQpManager.getQuestions(filters);
+    const result = await QpManager.getQuestions(filters);
     return res.status(200).json(formatApiResponse(true, 'Questions retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -118,7 +118,7 @@ const generateQuestionPaper = async (req, res) => {
       return res.status(401).json(formatApiResponse(false, 'User authentication required', null));
     }
     
-    const result = await lbaQpManager.generateQuestionPaper(paperData, userDetails);
+    const result = await QpManager.generateQuestionPaper(paperData, userDetails);
     return res.status(200).json(formatApiResponse(true, 'Question paper generated successfully', result));
   } catch (error) {
     console.error('Error generating question paper:', error);
@@ -129,7 +129,7 @@ const generateQuestionPaper = async (req, res) => {
 const getQuestionPaper = async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await lbaQpManager.getQuestionPaper(id);
+    const result = await QpManager.getQuestionPaper(id);
     return res.status(200).json(formatApiResponse(true, 'Question paper retrieved successfully', result));
   } catch (error) {
     return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
@@ -143,23 +143,23 @@ const downloadQuestionPaper = async (req, res) => {
     const filePath = path.join(STORAGE_DIR, `${id}.docx`);
 
     const streamFile = (paper) => {
-       const base = `LBA_QP_${safeFilename(paper?.config?.examName)}_${id}.docx`;
+       const base = `QP_${safeFilename(paper?.config?.examName)}_${id}.docx`;
        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
        res.setHeader('Content-Disposition', `attachment; filename="${base}"`);
        return fs.createReadStream(filePath).pipe(res);
     };
 
     if (fs.existsSync(filePath)) {
-      const paper = await lbaQpManager.getQuestionPaper(id).catch(() => null);
+      const paper = await QpManager.getQuestionPaper(id).catch(() => null);
       return streamFile(paper);
     }
 
-    const paper = await lbaQpManager.getQuestionPaper(id);
+    const paper = await QpManager.getQuestionPaper(id);
     if (!paper) {
       return res.status(404).json(formatApiResponse(false, 'Question paper not found', null));
     }
 
-    await lbaQpManager.generateWordDocument(paper);
+    await QpManager.generateWordDocument(paper);
 
     if (fs.existsSync(filePath)) {
       return streamFile(paper);
@@ -171,20 +171,6 @@ const downloadQuestionPaper = async (req, res) => {
   }
 };
 
-const saveFeedback = async (req, res) => {
-  try {
-    const { questionPaperId } = req.params;
-    const feedbackData = {
-      ...req.body,
-      questionPaperId,
-      teacherId: req.user?._id,
-    };
-    const result = await lbaQpManager.saveFeedback(feedbackData);
-    return res.status(200).json(formatApiResponse(true, 'Feedback saved successfully', result));
-  } catch (error) {
-    return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
-  }
-};
 
 const uploadJsonFileFromFile = async (req, res) => {
     // Keep original functionality for JSON uploads
@@ -195,7 +181,7 @@ const uploadJsonFileFromFile = async (req, res) => {
         const jsonData = JSON.parse(fileBuffer);
         const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
         
-        const result = await lbaQpManager.insertChaptersAndQuestions([master]);
+        const result = await QpManager.insertChaptersAndQuestions([master]);
         
         return res.status(200).json(formatApiResponse(
           true,
@@ -204,7 +190,7 @@ const uploadJsonFileFromFile = async (req, res) => {
         ));
 
     } catch (error) {
-        console.error('Error uploading LBA JSON:', error);
+        console.error('Error uploading JSON:', error);
         return res.status(500).json(formatApiResponse(false, 'Internal server error.', { error: error.message }));
     }
 };
@@ -220,6 +206,5 @@ module.exports = {
   generateQuestionPaper,
   getQuestionPaper,
   downloadQuestionPaper,
-  saveFeedback,
   uploadJsonFileFromFile,
 };

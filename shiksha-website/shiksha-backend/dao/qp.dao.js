@@ -2,11 +2,10 @@
 
 const BaseDao = require('./base.dao.js');
 const mongoose = require('mongoose');
-const LBAChapter = require('../models/lba.chapter.model');
-const LBAQuestion = require('../models/lba.question.model');
-const LBAQuestionPaper = require('../models/lba.question.paper.model');
-const LBAFeedback = require('../models/lba.feedback.model');
-const MasterSubject = require('../models/master.subject.model');
+const Chapter = require('../models/chapter.model.js');
+const Question = require('../models/question.model.js');
+const QuestionPaper = require('../models/question.paper.model.js');
+const MasterSubject = require('../models/master.subject.model.js');
 
 // --- Helpers ---
 
@@ -19,7 +18,7 @@ const toTitleCase = (str) => {
 const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, 'i');
 const str = (val) => String(val || '').trim();
 
-class LBAQPDao extends BaseDao {
+class QPDao extends BaseDao {
   constructor() {
     super();
   }
@@ -39,13 +38,13 @@ class LBAQPDao extends BaseDao {
    * Get all available classes 
    */
   async getClasses() {
-    let classes = await LBAChapter.distinct('standard'); // Try 'standard' (number) first
+    let classes = await Chapter.distinct('standard'); // Try 'standard' (number) first
     
     if (!classes || classes.length === 0) {
-       classes = await LBAChapter.distinct('class'); // Fallback to 'class' (string)
+       classes = await Chapter.distinct('class'); // Fallback to 'class' (string)
     }
 
-    console.log(`[LBA-DAO] getClasses found: ${classes.length} classes`);
+    console.log(`[QP-Dao] getClasses found: ${classes.length} classes`);
 
     return classes
       .map(c => parseInt(c))
@@ -58,8 +57,8 @@ class LBAQPDao extends BaseDao {
    * Get media options for a specific class
    */
   async getMedia(className) {
-    console.log(`[LBA-DAO] getMedia called for Class: ${className}`);
-    const rawMedia = await LBAChapter.distinct('medium', { 
+    console.log(`[QP-Dao] getMedia called for Class: ${className}`);
+    const rawMedia = await Chapter.distinct('medium', { 
       $or: [
         { standard: parseInt(className) },
         { class: str(className) }
@@ -74,7 +73,7 @@ class LBAQPDao extends BaseDao {
    * Get subjects for a specific class
    */
   async getSubjects(className, medium) {
-    console.log(`[LBA-DAO] getSubjects called for Class: ${className}`);
+    console.log(`[QP-Dao] getSubjects called for Class: ${className}`);
     const classNum = parseInt(className);
 
     const subjects = await MasterSubject.find({
@@ -95,7 +94,6 @@ class LBAQPDao extends BaseDao {
          displayName = displayName.split('_').map(word => toTitleCase(word)).join(' ');
       }
 
-      // Dedupe by Display Name (merges "social_science" and "social_science" docs)
       const uniqueKey = displayName; 
 
       if (!uniqueMap.has(uniqueKey)) {
@@ -116,7 +114,7 @@ class LBAQPDao extends BaseDao {
    * FIX: Robust query handling ID mismatch and Schema differences
    */
   async getChapters(className, medium, subjectId) {
-    console.log(`[LBA-DAO] getChapters called. Class: ${className}, SubjectID: ${subjectId}`);
+    console.log(`[QP-Dao] getChapters called. Class: ${className}, SubjectID: ${subjectId}`);
     
     // 1. Resolve Subject Logic
     let subjectCode = str(subjectId);
@@ -125,7 +123,7 @@ class LBAQPDao extends BaseDao {
     if (mongoose.Types.ObjectId.isValid(subjectId)) {
        const subjectDoc = await MasterSubject.findById(subjectId).select('name').lean();
        if (subjectDoc) {
-         subjectCode = subjectDoc.name; // e.g. "social_science"
+         subjectCode = subjectDoc.name; 
          
          // KEY FIX: Find ALL MasterSubject IDs that share this name.
          // This bridges the gap if Chapters use a different ID than the Dropdown.
@@ -137,7 +135,7 @@ class LBAQPDao extends BaseDao {
        }
     }
 
-    console.log(`[LBA-DAO] Subject Name: "${subjectCode}", Related IDs: ${targetSubjectIds.join(', ')}`);
+    console.log(`[QP-Dao] Subject Name: "${subjectCode}", Related IDs: ${targetSubjectIds.join(', ')}`);
 
     // 2. Prepare Query Filters
     const medRx = regexExact(medium);
@@ -166,12 +164,12 @@ class LBAQPDao extends BaseDao {
     };
 
     // 3. Execute Query
-    const chapters = await LBAChapter
+    const chapters = await Chapter
       .find(chapterQuery)
       .sort({ orderNumber: 1 }) // Using 'orderNumber' as seen in your DB sample
       .lean();
 
-    console.log(`[LBA-DAO] Chapters found: ${chapters.length}`);
+    console.log(`[QP-Dao] Chapters found: ${chapters.length}`);
 
     if (!chapters.length) return [];
 
@@ -179,7 +177,7 @@ class LBAQPDao extends BaseDao {
 
     // 4. Count questions per heading
     // Questions likely still use the String Subject Name and String Class
-    const headingStats = await LBAQuestion.aggregate([
+    const headingStats = await Question.aggregate([
       {
         $match: {
           $or: [ { class: classStr }, { standard: standardNum } ],
@@ -224,11 +222,11 @@ class LBAQPDao extends BaseDao {
   }
 
   async getDifficulties() {
-    return LBAQuestion.distinct('difficulty');
+    return Question.distinct('difficulty');
   }
 
   async getAnswerTypes() {
-    return LBAQuestion.distinct('answerType');
+    return Question.distinct('answerType');
   }
 
   /**
@@ -272,7 +270,7 @@ class LBAQPDao extends BaseDao {
       query.$or = [{ text: rx }, { 'chapter.title': rx }];
     }
 
-    const docs = await LBAQuestion.find(query)
+    const docs = await Question.find(query)
       .sort({ 'chapter.chapterNumber': 1, _id: 1 })
       .lean();
 
@@ -307,7 +305,7 @@ class LBAQPDao extends BaseDao {
   }
 
   async saveQuestionPaper(paperData) {
-    const paper = new LBAQuestionPaper(paperData);
+    const paper = new QuestionPaper(paperData);
     const saved = await paper.save();
     return {
       _id: saved._id,
@@ -318,13 +316,9 @@ class LBAQPDao extends BaseDao {
   }
 
   async getQuestionPaperById(id) {
-    return LBAQuestionPaper.findById(id).populate('teacherId', 'name school');
+    return QuestionPaper.findById(id).populate('teacherId', 'name school');
   }
 
-  async saveFeedback(feedbackData) {
-    const feedback = new LBAFeedback(feedbackData);
-    return feedback.save();
-  }
 }
 
-module.exports = new LBAQPDao();
+module.exports = new QPDao();

@@ -2,17 +2,16 @@
 
 const path = require('path');
 const fs = require('fs');
-const lbaQpDao = require('../dao/lba.qp.dao.js');
-const { buildQuestionPaperDocx } = require('../services/lba.qpaper.docx');
+const QpDao = require('../dao/qp.dao.js');
 
-const LBAChapter = require('../models/lba.chapter.model');
-const LBAQuestion = require('../models/lba.question.model');
+const Chapter = require('../models/chapter.model.js');
+const Question = require('../models/question.model.js');
 
 const cleanClass = (c) => String(c || '').trim();
 
 const getClasses = async () => {
   try {
-    const classes = await lbaQpDao.getClasses();
+    const classes = await QpDao.getClasses();
     return (classes || []).sort((a, b) => Number(a) - Number(b));
   } catch (err) {
     throw err;
@@ -24,7 +23,7 @@ const getMedia = async (className) => {
   const normalizedClass = cleanClass(className);
 
   try {
-    const media = await lbaQpDao.getMedia(normalizedClass);
+    const media = await QpDao.getMedia(normalizedClass);
     return (media || []).sort();
   } catch (err) {
     throw err;
@@ -36,7 +35,7 @@ const getSubjects = async (className, medium) => {
   const normalizedClass = cleanClass(className);
   
   try {
-    const subjects = await lbaQpDao.getSubjects(normalizedClass, medium);
+    const subjects = await QpDao.getSubjects(normalizedClass, medium);
     return (subjects || []).sort();
   } catch (err) {
     throw err;
@@ -49,7 +48,7 @@ const getSubjects = async (className, medium) => {
 const getChapters = async (className, medium, subject) => {
   try {
     const normalizedClass = cleanClass(className);
-    return await lbaQpDao.getChapters(normalizedClass, medium, subject);
+    return await QpDao.getChapters(normalizedClass, medium, subject);
   } catch (err) {
     console.error('[Manager] getChapters failed:', err);
     throw err;
@@ -58,7 +57,7 @@ const getChapters = async (className, medium, subject) => {
 
 const getDifficulties = async () => {
   try {
-    const diffs = await lbaQpDao.getDifficulties();
+    const diffs = await QpDao.getDifficulties();
     return (diffs || []).filter(Boolean).sort();
   } catch (err) {
     throw err;
@@ -67,7 +66,7 @@ const getDifficulties = async () => {
 
 const getAnswerTypes = async () => {
   try {
-    const types = await lbaQpDao.getAnswerTypes();
+    const types = await QpDao.getAnswerTypes();
     return (types || []).filter(Boolean).sort();
   } catch (err) {
     throw err;
@@ -107,13 +106,13 @@ const getQuestions = async (filters) => {
   };
 
   try {
-    return await lbaQpDao.getQuestions(cleanFilters);
+    return await QpDao.getQuestions(cleanFilters);
   } catch (err) {
     throw err;
   }
 };
 
-const DOC_URL = (id) => `/lba-qp/papers/${id}/download`;
+const DOC_URL = (id) => `/PREGENERATED-qp/papers/${id}/download`;
 
 const generateQuestionPaper = async (paperData, userDetails) => {
   const { config, questions, totalMarks } = paperData || {};
@@ -124,13 +123,13 @@ const generateQuestionPaper = async (paperData, userDetails) => {
   const schoolName = userDetails?.school?.name || 'School Name';
 
   // 1. Save to Database
-  const savedPaperDoc = await lbaQpDao.saveQuestionPaper({
+  const savedPaperDoc = await QpDao.saveQuestionPaper({
     teacherId: userDetails._id,
     config,
     questions,
     totalMarks,
     schoolName,
-    type: 'LBA',
+    type: 'PREGENERATED',
   });
 
   // 2. Convert Mongoose Doc to Plain Object for DOCX generator
@@ -157,7 +156,7 @@ const generateQuestionPaper = async (paperData, userDetails) => {
 
 const generateWordDocument = async (paperData) => {
   try {
-    const storageDir = path.join(__dirname, '..', 'storage', 'lba-papers');
+    const storageDir = path.join(__dirname, '..', 'storage', 'PREGENERATED-papers');
 
     if (!fs.existsSync(storageDir)) {
       fs.mkdirSync(storageDir, { recursive: true });
@@ -183,14 +182,11 @@ const generateWordDocument = async (paperData) => {
 
 const getQuestionPaper = async (id) => {
   if (!id) throw new Error('Paper ID is required');
-  const paper = await lbaQpDao.getQuestionPaperById(id);
+  const paper = await QpDao.getQuestionPaperById(id);
   if (!paper) throw new Error('Question paper not found');
   return paper;
 };
 
-const saveFeedback = async (feedbackData) => {
-  return lbaQpDao.saveFeedback(feedbackData);
-};
 
 // Upload logic stays in manager as it is business logic
 const insertChaptersAndQuestions = async (data) => {
@@ -204,14 +200,14 @@ const insertChaptersAndQuestions = async (data) => {
       throw new Error(`Invalid entry: ${JSON.stringify(entry)}`);
     }
 
-    let chapter = await LBAChapter.findOne({ class: className, medium, subject, title });
+    let chapter = await Chapter.findOne({ class: className, medium, subject, title });
     if (!chapter) {
-      chapter = await LBAChapter.create({ class: className, medium, subject, chapterNumber, title });
+      chapter = await Chapter.create({ class: className, medium, subject, chapterNumber, title });
       insertedChapters.push(chapter);
     }
 
     for (const q of questions) {
-      const question = await LBAQuestion.create({
+      const question = await Question.create({
         subject,
         medium,
         class: className,
@@ -252,6 +248,5 @@ module.exports = {
   generateQuestionPaper,
   getQuestionPaper,
   generateWordDocument,
-  saveFeedback,
   insertChaptersAndQuestions,
 };

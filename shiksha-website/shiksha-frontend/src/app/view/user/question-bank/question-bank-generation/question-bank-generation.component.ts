@@ -45,12 +45,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   // Backend Modes 
   useLBA: boolean = false;
-  useAI: boolean = false; 
+  useAI: boolean = false;
 
   // Data Pools
-  allAvailableQuestions: any[] = []; 
+  allAvailableQuestions: any[] = [];
   isLoadingQuestions: boolean = false;
-  finalSelectedQuestions: any[] = []; 
+  finalSelectedQuestions: any[] = [];
 
   // Dropdown Options
   boardDropdownOptions: any[] = [];
@@ -61,8 +61,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
   sourceGenerationOptions: any[] = [
-    { name: 'AI Questions', value: 'AI'},
-    { name: 'Pregenerated Questions', value: 'LBA'}
+    { name: 'AI Questions', value: 'AI' },
+    { name: 'Pregenerated Questions', value: 'LBA' }
   ];
 
   // LBA Specific Data
@@ -80,7 +80,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
   subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Subject', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   chapterDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter', height: 'auto', fieldName: 'Chapter', bindLable: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'topics', openOnSelect: true };
-  subTopicDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Sub-Topic', height: 'auto', fieldName: 'Sub-Topic', bindLable: 'topics', bindValue: 'topics',  selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true };
+  subTopicDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Sub-Topic', height: 'auto', fieldName: 'Sub-Topic', bindLable: 'topics', bindValue: 'topics', selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true };
 
   chapterIds: any[] = [];
   questionBankTypes: any = [
@@ -95,7 +95,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   totalDistributedMarks = 0;
   totalDistributedPercentage = 0;
   marksDistribution: any[] = [];
-  
+
   currentStep: number = 1;
   totalSteps: number = 3;
   stepNames = ['Configuration', 'Select Questions', 'Preview & Generate'];
@@ -105,15 +105,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   objectiveChartMapper: any = {};
   templateData!: any[];
   totalTemplateMarks = 0;
-  
+
   selectedQuestionsCount: number = 0;
   selectedQuestionsMarks: number = 0;
 
-  filteredQuestions: any[] = [];   
-  selectedQuestions: any[] = [];    
-  currentTotalMarks: number = 0;   
-  filterSource: string = 'ALL';     
-  searchQuery: string = '';          
+  filteredQuestions: any[] = [];
+  selectedQuestions: any[] = [];
+  currentTotalMarks: number = 0;
+  filterSource: string = 'ALL';
+  searchQuery: string = '';
   groupedQuestions: any[] = [];
   stepArray = Array(this.totalSteps).fill(0)
 
@@ -125,11 +125,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     private router: Router,
     private idleService: IdleService,
     private http: HttpClient
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     this.initializeForm();
-    
+
     const data: string = localStorage.getItem('userData') ?? '';
     if (data) {
       this.loggedInUser = JSON.parse(data);
@@ -234,7 +234,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       grade: [null, [Validators.required]],
       subject: [null, [Validators.required]],
       chapter: [null, [Validators.required]],
-      subTopic: [null], 
+      subTopic: [null],
       totalMarks: [null, [Validators.required]],
       examinationName: [null, [Validators.required]],
       selectedHeadings: [[]],
@@ -274,17 +274,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const val = Array.isArray(selected) ? selected : [selected];
     this.useAI = val.includes('AI Questions') || val.includes('AI');
     this.useLBA = val.includes('Pregenerated Questions') || val.includes('LBA');
-    
+
     this.onBackendModeChange();
 
     // RELOAD Subtopics immediately if a chapter is already picked
     const currentChapter = this.f.chapter.value;
     if (currentChapter) {
-        const prevSub = this.f.subTopic.value;
-        this.onChapterChange(currentChapter); 
-        if (prevSub && this.questionBankTypeValue === 'singleChapter') {
-           this.f.subTopic.setValue(prevSub);
-        }
+      const prevSub = this.f.subTopic.value;
+      this.onChapterChange(currentChapter);
+      if (prevSub && this.questionBankTypeValue === 'singleChapter') {
+        this.f.subTopic.setValue(prevSub);
+      }
     }
   }
 
@@ -326,19 +326,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.resetDistribution();
 
     if (val) {
-        const boardName = val.board || val;
-        const rawClasses = this.loggedInUser.classes || [];
-        const uniqueClasses = new Set<any>();
-        
-        rawClasses.forEach((c: any) => {
-            if(c.board === boardName) {
-                uniqueClasses.add(c.class);
-            }
-        });
-        
-        this.classDropdownOptions = Array.from(uniqueClasses)
-            .map(c => ({ class: String(c) }))
-            .sort((a, b) => parseInt(a.class) - parseInt(b.class));
+      const boardName = val.board || val;
+      const rawClasses = this.loggedInUser.classes || [];
+      const uniqueClasses = new Set<any>();
+
+      rawClasses.forEach((c: any) => {
+        if (c.board === boardName) {
+          uniqueClasses.add(c.class);
+        }
+      });
+
+      this.classDropdownOptions = Array.from(uniqueClasses)
+        .map(c => ({ class: String(c) }))
+        .sort((a, b) => parseInt(a.class) - parseInt(b.class));
     }
   }
 
@@ -352,10 +352,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = val.class || val;
 
       this.questionBankService.getMedia({ class: String(selectedClass) }).subscribe({
-         next: (data: any[]) => {
-             this.mediumDropdownOptions = (data || []).map(m => ({ medium: m }));
-         },
-         error: () => console.error("Failed to load media from API")
+        next: (data: any[]) => {
+          this.mediumDropdownOptions = (data || []).map(m => ({ medium: m }));
+        },
+        error: () => console.error("Failed to load media from API")
       });
     }
   }
@@ -371,10 +371,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
       if (grade && medium) {
         this.questionBankService.getSubjects({ class: String(grade), medium: medium }).subscribe({
-           next: (data: any[]) => {
-               this.subjectDropdownOptions = (data || []).map(s => ({ name: s.name || s, value: s._id || s }));
-           },
-           error: () => console.error("Failed to load subjects")
+          next: (data: any[]) => {
+            this.subjectDropdownOptions = (data || []).map(s => ({ name: s.name || s, value: s._id || s }));
+          },
+          error: () => console.error("Failed to load subjects")
         });
       }
     }
@@ -402,31 +402,31 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       } else if (board === 'BSE-TG') {
         this.questionBankObjectives = structuredClone(TELANGANA_OBJECTIVE_MAPPER);
       } else {
-         this.questionBankObjectives = structuredClone(CORE_OBJECTIVE_MAPPER);
+        this.questionBankObjectives = structuredClone(CORE_OBJECTIVE_MAPPER);
       }
 
       this.isLoadingQuestions = true;
 
-      this.questionBankService.getChapters({ 
-        class: String(standard), 
-        medium: medium, 
+      this.questionBankService.getChapters({
+        class: String(standard),
+        medium: medium,
         subject: subjectId // Send ID
       }).pipe(
         finalize(() => this.isLoadingQuestions = false)
       ).subscribe({
         next: (data: any[]) => {
-           this.chapterDropdownOptions = (data || []).map((ch: any) => ({
-             ...ch,
-             topics: ch.topics || ch.title,
-             _id: ch._id || ch.id || null, 
-             chapterNumber: ch.chapterNumber,
-             headings: ch.headings || [],
-             subTopics: ch.subTopics || [],
-             source: 'Unified'
-           })).sort((a, b) => {
-              const numA = a.chapterNumber || 999;
-              const numB = b.chapterNumber || 999;
-              return numA - numB || (a.topics || '').localeCompare(b.topics || '');
+          this.chapterDropdownOptions = (data || []).map((ch: any) => ({
+            ...ch,
+            topics: ch.topics || ch.title,
+            _id: ch._id || ch.id || null,
+            chapterNumber: ch.chapterNumber,
+            headings: ch.headings || [],
+            subTopics: ch.subTopics || [],
+            source: 'Unified'
+          })).sort((a, b) => {
+            const numA = a.chapterNumber || 999;
+            const numB = b.chapterNumber || 999;
+            return numA - numB || (a.topics || '').localeCompare(b.topics || '');
           });
 
           this.lbaChapters = this.chapterDropdownOptions;
@@ -442,17 +442,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   onChapterChange(val: any) {
     this.distributeMarks();
     this.f.subTopic.reset();
-    
+
     // Handle selection 
     let selectedChapterNames: string[] = [];
     if (Array.isArray(val)) {
-      selectedChapterNames = val; 
+      selectedChapterNames = val;
     } else if (val) {
       selectedChapterNames = [val.topics || val];
     }
 
     // Filter to get full chapter data
-    const selectedChaptersFullData = this.chapterDropdownOptions.filter(ch => 
+    const selectedChaptersFullData = this.chapterDropdownOptions.filter(ch =>
       selectedChapterNames.includes(ch.topics)
     );
 
@@ -467,22 +467,22 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // FIX: Map subtopics allowing Strings OR Objects
     this.subtopicsDropdownOptions = combinedSubTopics.map((st: any) => {
       if (typeof st === 'string') {
-          return { topics: st, _id: st }; // Use text as ID for binding
+        return { topics: st, _id: st }; // Use text as ID for binding
       }
-      
+
       const idVal = st._id || st.id;
-      return { 
-          topics: st.topics || st.title || st.name || st.text, 
-          _id: idVal || (st.topics || st.title) 
+      return {
+        topics: st.topics || st.title || st.name || st.text,
+        _id: idVal || (st.topics || st.title)
       };
     });
 
     this.subTopicDropdownconfig = {
       ...this.subTopicDropdownconfig,
-      bindValue: 'topics', 
+      bindValue: 'topics',
       bindLable: 'topics'
     };
-    
+
     // Set flag and update validators
     this.hasSubtopics = this.subtopicsDropdownOptions.length > 0;
     this.updateFormValidators();
@@ -493,13 +493,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const rawVal = this.f.chapter.value;
     const selectedTopics = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
     const selectedChapters = this.chapterDropdownOptions.filter(ch => selectedTopics.includes(ch.topics));
-    
+
     const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
     // Process LBA Headings 
     for (const chapter of selectedChapters) {
-      const lbaData = chapter.headings || []; 
-      
+      const lbaData = chapter.headings || [];
+
       for (const h of lbaData) {
         const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
         const headingCount = (typeof h === 'string' ? 1 : Number(h.count || 0));
@@ -532,10 +532,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }
 
     this.availableHeadings = Array.from(headingMap.values())
-      .map(x => ({ 
-        name: x.name, 
-        count: x.count, 
-        chapters: Array.from(x.chapters).sort((a,b) => a - b) 
+      .map(x => ({
+        name: x.name,
+        count: x.count,
+        chapters: Array.from(x.chapters).sort((a, b) => a - b)
       }))
       .sort((a, b) => {
         if (b.count !== a.count) return b.count - a.count;
@@ -556,8 +556,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
       case 2:
         if (!this.templateComponent || this.templateComponent.selectedQuestions.length === 0) {
-            this.utilityservice.showWarning("Please select at least one question.");
-            return;
+          this.utilityservice.showWarning("Please select at least one question.");
+          return;
         }
         this.processStep2(this.templateComponent.selectedQuestions);
         break;
@@ -570,85 +570,46 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   processStep1() {
     this.totalMarks = Number(this.questionBankConfigForm.value.totalMarks);
-
     this.submittedConfig = true;
-
-    const selectedSources = this.f['sourceGeneration'].value;
-    
-    if (Array.isArray(selectedSources)) {
-      this.useAI = selectedSources.includes('AI Questions');
-      this.useLBA = selectedSources.includes('Pregenerated Questions');
-    }
 
     if (this.questionBankConfigForm.invalid) {
       this.utilityservice.showError('Please fill all required fields');
       return;
     }
 
-    if (!this.useAI && !this.useLBA) {
-      this.utilityservice.showError('Please select at least one Generation Mode (AI or LBA)');
-      return;
-    }
+    const selectedSources = this.f['sourceGeneration'].value;
+    this.useAI = selectedSources.includes('AI Questions') || selectedSources.includes('AI');
+    this.useLBA = selectedSources.includes('Pregenerated Questions') || selectedSources.includes('LBA');
 
-    if (!this.selectedHeadings || this.selectedHeadings.length === 0) {
-      this.utilityservice.showError('Please select at least one Question Type from the LBA Headings');
+    if (!this.useAI && !this.useLBA) {
+      this.utilityservice.showError('Please select at least one Source');
       return;
-    }
-    
-    if (this.useAI) {
-      if (this.totalMarks !== this.totalDistributedMarks) {
-        this.utilityservice.showError('Total marks must match the marks distributed across topics.');
-        return;
-      }
-      if (this.totalPercentage !== 100) {
-        this.utilityservice.showError('Objective distribution must equal 100%');
-        return;
-      }
     }
 
     this.isLoadingQuestions = true;
     this.allAvailableQuestions = [];
-    this.finalSelectedQuestions = []; 
-    this.currentStep = 2; 
 
     const tasks: any = {};
-
-    if (this.useAI) {
-      tasks.ai = this.generateAIQuestionsPool().pipe(
-        catchError(err => {
-          console.error('AI Generation Failed', err);
-          return of([]); 
-        })
-      );
-    }
-
-    if (this.useLBA) {
-      tasks.lba = this.fetchLBAQuestionsPool().pipe(
-        catchError(err => {
-          console.error('LBA Fetch Failed', err);
-          return of([]);
-        })
-      );
-    }
+    if (this.useAI) tasks.ai = this.generateAIQuestionsPool();
+    if (this.useLBA) tasks.lba = this.fetchLBAQuestionsPool();
 
     forkJoin(tasks).pipe(
-      finalize(() => {
-        this.isLoadingQuestions = false;
-      })
+      finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (results: any) => {
         const aiQs = results.ai || [];
         const lbaQs = results.lba || [];
         this.allAvailableQuestions = [...aiQs, ...lbaQs];
 
-        if (this.allAvailableQuestions.length === 0) {
+        if (this.allAvailableQuestions.length > 0) {
+          this.currentStep = 2; // Success: Move to Step 2
+        } else {
           this.utilityservice.showWarning('No questions found for the selected criteria.');
-          this.currentStep = 1; 
         }
       },
       error: (err) => {
-        this.utilityservice.showError('An error occurred while generating questions.');
-        this.currentStep = 1; 
+        console.error("Step 1 Error:", err);
+        this.utilityservice.showError('Failed to fetch questions.');
       }
     });
   }
@@ -664,14 +625,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const mappedType = this.mapHeadingToAIType(q.heading || q.type || 'Question');
       return {
         ...q,
-        type: mappedType, 
+        type: mappedType,
         heading: q.heading || q.type || 'General Section',
         unit_name: q.unit_name || 'General'
       };
     });
 
     this.questionBankBluePrintData = this.generateSummaryBlueprint(this.finalSelectedQuestions);
-    
+
     this.selectedQuestionsMarks = this.finalSelectedQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
     this.totalTemplateMarks = this.selectedQuestionsMarks;
 
@@ -679,7 +640,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   generateMergedQuestionBank() {
-    
     if (!this.finalSelectedQuestions || this.finalSelectedQuestions.length === 0) {
       this.utilityservice.showError("No questions selected.");
       return;
@@ -687,98 +647,52 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     this.isLoadingQuestions = true;
     const formVal = this.questionBankConfigForm.getRawValue();
-    
+
     // 1. Prepare Base Payload
     let payload = this.getTemplatePayload();
     payload.title = formVal.examinationName;
-    payload.metadata = { examinationName: formVal.examinationName };
-    
-    const allUnits = new Set<string>();
-    
-    this.finalSelectedQuestions.forEach(q => {
-      let u = q.unit_name || q.unitName || '';
-      
-      if (u) {
-        u = u.trim(); 
-        q.unit_name = u; 
-        allUnits.add(u);
-      } else {
-        const fallback = (allUnits.size > 0) ? Array.from(allUnits)[0] : 'General';
-        q.unit_name = fallback;
-        allUnits.add(fallback);
-      }
-    });
+    payload.isPreview = false; // ENSURE THIS IS FALSE TO TRIGGER DB SAVE
 
-    payload.chapters = Array.from(allUnits);
-
+    // 2. Organize Selected Questions into Sections
     const sectionsMap = new Map<string, any>();
-
     this.finalSelectedQuestions.forEach(q => {
-      const type = q.type; 
-      const heading = q.heading; 
-
+      const heading = q.heading || 'General';
       if (!sectionsMap.has(heading)) {
         sectionsMap.set(heading, {
-          type: type,
+          type: q.type,
           heading: heading,
           marksPerQuestion: Number(q.marks || 1),
           numberOfQuestions: 0,
           questions: []
         });
       }
-
       const section = sectionsMap.get(heading);
-      
       section.questions.push({
         question: q.text || q.question,
         options: q.options || [],
         answer: q.answer || '',
         marks: Number(q.marks || 1),
         _id: q._id,
-        unit_name: q.unit_name, 
-        objective: q.objective || 'Knowledge' 
+        unit_name: q.unit_name,
+        objective: q.objective || 'Knowledge'
       });
-      
       section.numberOfQuestions = section.questions.length;
     });
 
     const finalSections = Array.from(sectionsMap.values());
     payload.questions = finalSections;
 
-    const invalidChapterIds = (payload.chapterIds || []).filter((id: any) => !(/^[a-fA-F0-9]{24}$/.test(String(id))));
-    if (invalidChapterIds.length > 0) {
-      this.isLoadingQuestions = false;
-      this.utilityservice.showError('Invalid Chapter Configuration.');
-      return;
-    }
-    
-    payload.template = finalSections.map(s => {
-      const distributionMap = new Map<string, any>();
-      s.questions.forEach((sq: any) => {
-        const key = `${sq.unit_name}::${sq.objective}`;
-        if (!distributionMap.has(key)) {
-          distributionMap.set(key, { unit_name: sq.unit_name, objective: sq.objective, count: 0 });
-        }
-        distributionMap.get(key).count++;
-      });
-      const distribution = Array.from(distributionMap.values()).map(d => ({ unit_name: d.unit_name, objective: d.objective }));
+    // 3. Create Template for backend validation
+    payload.template = finalSections.map(s => ({
+      type: s.type,
+      number_of_questions: s.numberOfQuestions,
+      marks_per_question: s.marksPerQuestion,
+      question_distribution: s.questions.map((q: any) => ({ unit_name: q.unit_name, objective: q.objective }))
+    }));
 
-      return {
-        type: s.type,
-        number_of_questions: s.numberOfQuestions,
-        marks_per_question: s.marksPerQuestion,
-        question_distribution: distribution 
-      };
-    });
+    payload.bluePrint = this.questionBankBluePrintData;
 
-    payload.bluePrint = this.questionBankBluePrintData || {}; 
-
-    payload.chapters.forEach((chap: string) => {
-      if (!payload.bluePrint[chap]) {
-        payload.bluePrint[chap] = { questionsByObjective: { 'Knowledge': [], 'Understanding': [], 'Application': [] } };
-      }
-    });
-
+    // 4. CALL BACKEND TO SAVE
     this.questionBankService.generateQuestionBank(payload).pipe(
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
@@ -792,8 +706,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         }
       },
       error: (err: any) => {
-        let serverMsg = err?.error?.message || err?.message || '';
-        this.utilityservice.showError(serverMsg || 'Failed to generate paper');
+        let serverMsg = err?.error?.message || err?.message || 'Failed to generate paper';
+        this.utilityservice.showError(serverMsg);
       }
     });
   }
@@ -828,28 +742,37 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   generateAIQuestionsPool() {
     const finalMarks = Number(this.questionBankConfigForm.get('totalMarks')?.value) || 100;
-    
+
+    // 1. Define what we want to generate
     const dynamicTemplate = this.selectedHeadings.map(heading => {
       const aiType = this.mapHeadingToAIType(heading);
       const marksPerType = this.getMarksPerType(aiType);
-      const questionsRequired = Math.ceil(finalMarks / marksPerType);
-      const questionsToGenerate = questionsRequired * 3;
+      // Request a small pool (e.g., 5 questions per type) to choose from
       return {
         type: aiType,
         marks_per_question: marksPerType,
-        number_of_questions: questionsToGenerate, 
+        number_of_questions: 5,
         question_distribution: []
       };
     });
 
+    // 2. Prepare Payload
     let payload = this.getTemplatePayload();
     payload.template = dynamicTemplate;
+
+    /** 
+     * IMPORTANT: We add this flag so the backend knows this is just for 
+     * the selection pool in Step 2, NOT the final paper.
+     **/
+    payload.isPreview = true;
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       switchMap((bpRes: any) => {
         const blueprint = bpRes.data || bpRes.items || (Array.isArray(bpRes) ? bpRes : null);
         if (!blueprint) throw new Error('AI Blueprint failed.');
         payload.template = blueprint;
+
+        // Call the existing generation service with the isPreview flag
         return this.questionBankService.generateQuestionBank(payload);
       }),
       map((finalRes: any) => {
@@ -858,7 +781,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         else if (finalRes.data?.questions) categoryBlocks = finalRes.data.questions;
         else if (finalRes.categoryBlocks) categoryBlocks = finalRes.categoryBlocks;
         else if (Array.isArray(finalRes)) categoryBlocks = finalRes;
-        
+
         const flatQuestions: any[] = [];
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
 
@@ -868,28 +791,43 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           const blockMarks = Number(block.marks_per_question || 1);
 
           innerQuestions.forEach((q: any) => {
-            let questionText = q.question || q.question_text || q.text || q.content;
-            if (!questionText && q.value1 && q.value2) questionText = `${q.value1}  ➔  ${q.value2}`;
-            if (!questionText && blockType.toLowerCase().includes('match')) questionText = "Match the terms in Column A with Column B";
+            // ROBUST EXTRACTION: Handle nested item, question.question, or flat question/text
+            let questionText = q.text || q.question_text || q.content;
+
+            if (!questionText) {
+              const inner = q.item || q.question;
+              if (inner && typeof inner === 'object') {
+                questionText = inner.question || inner.text;
+              } else if (typeof inner === 'string') {
+                questionText = inner;
+              }
+            }
+
+            if (!questionText && q.question && typeof q.question === 'string') {
+              questionText = q.question;
+            }
 
             if (questionText) {
+              // Aggressively find objective
+              const finalObjective = q.objective || (q.item && q.item.objective) || block.objective || 'Knowledge';
+
               flatQuestions.push({
                 ...q,
+                // Ensure inner properties are also flattened for usage in Step 2/3
+                ...(q.item && typeof q.item === 'object' ? q.item : {}),
                 source: 'AI Questions',
                 text: questionText,
                 marks: Number(q.marks || blockMarks),
                 type: blockType,
                 heading: blockType,
                 unit_name: q.unit_name || chapterName || 'General',
-                objective: q.objective || 'Knowledge',
+                objective: finalObjective,
                 _id: q._id || `ai_${Math.random().toString(36).substring(7)}`
               });
             }
           });
         });
 
-        this.allAvailableQuestions = flatQuestions;
-        this.applyFilters();
         return flatQuestions;
       })
     );
@@ -930,7 +868,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       chapters: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
       chapterIds: validChapterIds,
       chapterId: primaryChapterId,
-      subTopic: subTopicsPayload, 
+      subTopic: subTopicsPayload,
       isMultiChapter: this.questionBankTypeValue === 'multiChapter',
       marksDistribution: (this.marksDistribution || []).map(d => ({
         unit_name: d.unit_name,
@@ -952,7 +890,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (t.includes('match')) return 1;
     return 2;
   }
-  
+
   getChapterIds(): string[] {
     const selected = this.f.chapter.value;
     if (!selected) return [];
@@ -963,8 +901,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const found = this.chapterDropdownOptions.find(c => c.topics === topicName);
         return found && found._id ? String(found._id) : null;
       })
-      .filter((id): id is string => id !== null && id !== ''); 
-    
+      .filter((id): id is string => id !== null && id !== '');
+
     return ids.filter((id: any) => /^[a-fA-F0-9]{24}$/.test(String(id)));
   }
 
@@ -974,7 +912,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       questionType: q.heading || q.type || 'Question',
       objective: q.objective || 'Knowledge',
       marks: Number(q.marks || 0),
-      source: q.source || 'Unknown' 
+      source: q.source || 'Unknown'
     }));
   }
 
@@ -993,7 +931,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   fetchLBAQuestionsPool() {
     const config = this.questionBankConfigForm.value;
     const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    
+
     const rawVal = config.chapter;
     const selectedTitles = Array.isArray(rawVal) ? rawVal : [rawVal];
 
@@ -1011,23 +949,23 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     };
 
     return this.questionBankService.getLBAQuestions(params).pipe(
-        map((docs: any[]) => {
-          return (docs || []).map((q) => ({
-            ...q,
-            source: 'Pregenerated Questions',
-            text: q.text || q.question_text || q.question || 'LBA Question',
-            marks: q.marksPerQuestion || q.marks || 1,
-            type: q.type || q.heading || this.selectedHeadings[0] || 'Question',
-            heading: q.heading || q.type || this.selectedHeadings[0] || 'Question',
-            unit_name: q.unit_name || selectedTitles[0] || 'General',
-            objective: q.objective || 'Knowledge',
-            _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
-          }));
-        }),
-        catchError(err => { 
-          console.error("[QB-LOG] LBA Fetch Error:", err); 
-          return of([]); 
-        })
+      map((docs: any[]) => {
+        return (docs || []).map((q) => ({
+          ...q,
+          source: 'Pregenerated Questions',
+          text: q.text || q.question_text || q.question || 'LBA Question',
+          marks: q.marksPerQuestion || q.marks || 1,
+          type: q.type || q.heading || this.selectedHeadings[0] || 'Question',
+          heading: q.heading || q.type || this.selectedHeadings[0] || 'Question',
+          unit_name: q.unit_name || selectedTitles[0] || 'General',
+          objective: q.objective || 'Knowledge',
+          _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
+        }));
+      }),
+      catchError(err => {
+        console.error("[QB-LOG] LBA Fetch Error:", err);
+        return of([]);
+      })
     );
   }
 
@@ -1083,7 +1021,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   toggleHeading(event: Event, heading: string) {
     const input = event.target as HTMLInputElement;
-    if (input.checked) { if (!this.selectedHeadings.includes(heading)) this.selectedHeadings.push(heading); } 
+    if (input.checked) { if (!this.selectedHeadings.includes(heading)) this.selectedHeadings.push(heading); }
     else { this.selectedHeadings = this.selectedHeadings.filter(h => h !== heading); }
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
@@ -1097,9 +1035,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   headingDisplay(h: any) { return h.count > 0 ? `${h.name} (${h.count})` : h.name; }
 
-  onLanguageChange(val: any) {}
-  onSubtopicChange() { if(this.useAI) this.distributeMarks(); }
-  
+  onLanguageChange(val: any) { }
+  onSubtopicChange() { if (this.useAI) this.distributeMarks(); }
+
   distributeMarks() {
     const rawTopics = this.questionBankTypeValue === 'multiChapter' ? this.f.chapter.value : this.f.subTopic.value;
     const topics = Array.isArray(rawTopics) ? rawTopics : (rawTopics ? [rawTopics] : []);
@@ -1130,17 +1068,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + (parseInt(obj.percentage_distribution) || 0), 0);
   }
   resetDistribution() {
-    this.f.chapter.reset(); this.f.subTopic.reset(); this.marksDistribution = []; 
+    this.f.chapter.reset(); this.f.subTopic.reset(); this.marksDistribution = [];
     this.questionBankObjectives = []; this.selectedHeadings = []; this.availableHeadings = [];
   }
   resetSubjectChange() { this.resetDistribution(); }
-  
+
   onQuestionTypeChange() {
     const currentVal = this.f.chapter.value;
-    
+
     // Clear subtopic initially
     this.f.subTopic.reset();
-    
+
     if (this.questionBankTypeValue === 'singleChapter') {
       // --- SINGLE MODE ---
       this.chapterDropdownconfig = { ...this.chapterDropdownconfig, multi: false, openOnSelect: false };
@@ -1172,14 +1110,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         this.subtopicsDropdownOptions = [];
       }
     }
-    
+
     this.updateFormValidators();
   }
-  
+
   backNavigation() { this.router.navigate(['/user/question-paper']); }
   nextStep() { if (this.currentStep < this.totalSteps) this.currentStep++; }
   previousStep() { if (this.currentStep > 1) this.currentStep--; }
   totalTemplateMarksChange(val: any) { this.totalTemplateMarks = val; }
-  
+
   ngOnDestroy(): void { this.idleService.resetIdler(); }
 }

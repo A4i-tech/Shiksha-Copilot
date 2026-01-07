@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const lbaQuestionPaperSchema = new mongoose.Schema(
+const QuestionPaperSchema = new mongoose.Schema(
   {
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -22,11 +22,11 @@ const lbaQuestionPaperSchema = new mongoose.Schema(
     // documentUrl: String, // URL to generated Word document
     type: {
       type: String,
-      default: 'LBA'
+      default: 'PREGENERATED'
     }
   },
   { timestamps: true }
 );
 
 // Explicitly bind to users_lba_qp collection
-module.exports = mongoose.model('LBAQuestionPaper', lbaQuestionPaperSchema, 'users_lba_qp');
+module.exports = mongoose.model('LBAQuestionPaper', QuestionPaperSchema, 'users_lba_qp');

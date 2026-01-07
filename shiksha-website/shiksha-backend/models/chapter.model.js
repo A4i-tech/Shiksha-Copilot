@@ -1,65 +1,36 @@
-const mongoose = require("mongoose");
-const ObjectId = mongoose.Types.ObjectId;
+'use strict';
+const mongoose = require('mongoose');
 
-const chapterSchema = mongoose.Schema(
-	{
-		subjectId: {
-			type: ObjectId,
-			ref: "MasterSubject",
-			required: true,
-		},
-		topics: {
-			type: String,
-			required: true,
-		},
-		subTopics: [
-			{
-				type: String,
-				required: true,
-			},
-		],
-		medium: {
-			type: String,
-			required: true,
-		},
-		standard: {
-			type: Number,
-			required: true,
-		},
-		board: {
-			type: String,
-			required: true,
-		},
-		orderNumber:{
-			type: Number,
-			required: true,
-		},
-		isDeleted: {
-			type: Boolean,
-			default: false,
-		},
-		indexPath:{
-			type:String
-		},
-		learningOutcomes:[
-			{
-				type:String
-			}
-		],
-		topicsLearningOutcomes:[
-			{
-				title:{
-					type:String
-				},
-				learningOutcomes:[
-					{type:String}
-				]
-			}
-		]
-	},
-	{ timestamps: true }
+const ChapterSchema = new mongoose.Schema(
+  {
+    subjectId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: 'Subjects', 
+      required: true,
+      index: true 
+    },
+    topics: { type: String, required: true },
+    subTopics: { type: [String], default: [] },
+    medium: { type: String, index: true },
+    standard: { type: Number, index: true }, 
+    board: { type: String, index: true },
+    orderNumber: { type: Number, index: true }, 
+    isDeleted: { type: Boolean, default: false },
+    
+    learningOutcomes: { type: [String], default: [] },
+    
+    topicsLearningOutcomes: [
+      {
+        title: { type: String },
+        learningOutcomes: { type: [String], default: [] }
+      }
+    ],
+
+    indexPath: { type: String } 
+  },
+  { timestamps: true } 
 );
 
-const Chapter = mongoose.model("Chapter", chapterSchema);
+ChapterSchema.index({ standard: 1, medium: 1, board: 1, subjectId: 1 });
 
-module.exports = Chapter;
+module.exports = mongoose.model('Chapters', ChapterSchema, 'chapters');

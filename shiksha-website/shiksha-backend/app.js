@@ -32,7 +32,7 @@ const useragent = require('express-useragent');
 const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.routes.js');
 const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
 const helpVideosRoutes = require('./routes/help.videos.routes.js');
-const lbaRoutes = require('./routes/lba.qp.routes.js');
+const qpRoutes = require('./routes/qp.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
 
 dotenv.config();
@@ -96,7 +96,7 @@ app.use("/api",lessonPlanTemplateRoutes)
 app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);
 app.use('/api', helpVideosRoutes);
-app.use('/api', lbaRoutes);
+app.use('/api', qpRoutes);
 app.use('/api', baselineSurveyRoutes);
 
 process.on('unhandledRejection',(reason,promise)=>{

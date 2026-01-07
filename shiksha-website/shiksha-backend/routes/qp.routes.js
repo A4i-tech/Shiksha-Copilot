@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const lbaQpController = require('../controllers/lba.qp.controller.js');
+const lbaQpController = require('../controllers/qp.controller.js');
 const asyncMiddleware = require('../middlewares/asyncMiddleware.js');
 const { isAuthenticated } = require('../middlewares/auth.js');
 const fs = require('fs');
@@ -31,6 +31,5 @@ router.get('/lba-qp/papers/:id', asyncMiddleware(lbaQpController.getQuestionPape
 
 router.get('/lba-qp/papers/:id/download', asyncMiddleware(lbaQpController.downloadQuestionPaper));
 
-router.post('/lba-qp/papers/:questionPaperId/feedback', isAuthenticated, asyncMiddleware(lbaQpController.saveFeedback));
 
 module.exports = router;
