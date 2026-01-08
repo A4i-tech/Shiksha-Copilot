@@ -230,12 +230,12 @@ class QuestionBankManager extends BaseManager {
               `Something went wrong with copilot! Please try later`
             );
           }
+
           if (!response.data) {
             throw new Error(
               "Something went wrong with copilot! Please try later"
             );
           }
-
 
           // DEBUG LOGS
           console.log('[Manager] AI Response received.');
@@ -253,491 +253,461 @@ class QuestionBankManager extends BaseManager {
           console.log('[Manager] generatedItems length:', generatedItems.length);
 
           // KEY FIX: Flatten responses from Python
-          // Case 1: Response IS an array of questions or { item: ... } objects
-          // Case 2: Response contains BLOCKS of questions (e.g., questions: [{ type: '...', questions: [...] }])
-          // DEBUG LOG: Flattening info
-          console.log('[Manager] Start Flattening. Initial items:', generatedItems.length);
-
           const recursiveExtract = (items) => {
             let extracted = [];
             if (!Array.isArray(items)) return extracted;
 
             items.forEach(item => {
               if (item.questions && Array.isArray(item.questions)) {
-                // Nested Block
                 extracted.push(...recursiveExtract(item.questions));
               } else if (item.item) {
-                // Wrapped Item
                 extracted.push(item.item);
               } else {
-                // Direct Question
                 extracted.push(item);
               }
             });
             return extracted;
           };
 
-          flattenedItems = recursiveExtract(generatedItems);
+          const flattenedItems = recursiveExtract(generatedItems);
+          console.log('[Manager] flattenedItems length:', flattenedItems.length);
+          console.log('[Manager] notFoundRes length:', notFoundRes.length);
 
-          console.log('[Manager] Flattening Complete. Final Items:', flattenedItems.length);
-          if (flattenedItems.length > 0) {
-            console.log('[Manager] First Flattened Item:', JSON.stringify(flattenedItems[0], null, 2).substring(0, 200));
+
+          // KEY FIX: Restructure flat items back into blocks for mergeQuestions
+          // mergeQuestions expects an array of blocks: [{ type: '...', questions: [...] }, ...]
+          let itemPointer = 0;
+          const questionsInBlocks = notFoundRes.map(template => {
+            const numNeeded = template.question_distribution.length;
+            const blockQuestions = flattenedItems.slice(itemPointer, itemPointer + numNeeded);
+            console.log(`[Manager] Block needed: ${numNeeded}, got: ${blockQuestions.length} (pointer: ${itemPointer})`);
+            itemPointer += numNeeded;
+            return {
+              type: template.type,
+              questions: blockQuestions
+            };
+          });
+
+          const filteredQuestions = filterTemplate(questionsInBlocks);
+          newResQuestions = filteredQuestions.filteredTemplate;
+
+          mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
+
+          if (filteredQuestions.matchTheFollowingTemplate.length) {
+            for (
+              let i = 0;
+              i < filteredQuestions.matchTheFollowingTemplate.length;
+              i++
+            ) {
+              mergedList.splice(
+                filteredQuestions.matchTheFollowingIndex[i],
+                0,
+                filteredQuestions.matchTheFollowingTemplate[i]
+              );
+            }
           }
-          // It's a block, dive deeper
-          extracted = extracted.concat(recursiveExtract(item.questions));
-        } else if (item.item && typeof item.item === 'object') {
-          // It's a wrapper { item: { question: ... } }
-          const { item: innerItem, ...rest } = item;
-          extracted.push({ ...rest, ...innerItem });
         } else {
-          // It's a direct question object
-          extracted.push(item);
+          mergedList = res;
         }
-      });
-      return extracted;
-    };
 
-    flattenedItems = recursiveExtract(generatedItems);
-
-    console.log('[Manager] flattenedItems length:', flattenedItems.length);
-    console.log('[Manager] notFoundRes length:', notFoundRes.length);
-    if (notFoundRes.length > 0) {
-      console.log('[Manager] First notFoundRes distribution length:', notFoundRes[0].question_distribution.length);
-    }
-
-    // KEY FIX: Restructure flat items back into blocks for mergeQuestions
-    // mergeQuestions expects an array of blocks: [{ type: '...', questions: [...] }, ...]
-    let itemPointer = 0;
-    const questionsInBlocks = notFoundRes.map(template => {
-      const numNeeded = template.question_distribution.length;
-      const blockQuestions = flattenedItems.slice(itemPointer, itemPointer + numNeeded);
-      console.log(`[Manager] Block needed: ${numNeeded}, got: ${blockQuestions.length} (pointer: ${itemPointer})`);
-      itemPointer += numNeeded;
-      return {
-        type: template.type,
-        questions: blockQuestions
-      };
-    });
-
-    const filteredQuestions = filterTemplate(questionsInBlocks);
-    newResQuestions = filteredQuestions.filteredTemplate;
-
-    mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
-
-    if (filteredQuestions.matchTheFollowingTemplate.length) {
-      for (
-        let i = 0;
-        i < filteredQuestions.matchTheFollowingTemplate.length;
-        i++
-      ) {
-        mergedList.splice(
-          filteredQuestions.matchTheFollowingIndex[i],
-          0,
-          filteredQuestions.matchTheFollowingTemplate[i]
-        );
-      }
-    }
-  } else {
-  mergedList = res;
-}
-
-// Re-inject Match following for full list
-if (matchTheFollowingTemplate.length) {
-  for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-    if (mergedList.length < (template || []).length) {
-      mergedList.splice(
-        matchTheFollowingIndex[i],
-        0,
-        matchTheFollowingTemplate[i]
-      );
-    }
-  }
-}
+        // Re-inject Match following for full list
+        if (matchTheFollowingTemplate.length) {
+          for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
+            if (mergedList.length < (template || []).length) {
+              mergedList.splice(
+                matchTheFollowingIndex[i],
+                0,
+                matchTheFollowingTemplate[i]
+              );
+            }
+          }
+        }
       }
 
-// TRANSLATION LOGIC
-if (language) {
-  console.log(
-    `Initiating translation check for target language: ${language}...`
-  );
-  try {
-    const translationPayload = {
-      target_language: language,
-      json_data: {
-        title: req.body.examinationName || "Question Paper",
-        language: language,
-        parts: [
-          {
-            part_name: "Questions",
-            questions: convertToCamelCase(mergedList),
-          },
-        ],
-      },
-    };
-
-    const pythonUrl = process.env.LLM_API_BASE_URL;
-    const transResponse = await axios.post(
-      `${pythonUrl}/question-paper/translate_json`,
-      translationPayload
-    );
-
-    if (transResponse.data && transResponse.data.translated_json) {
-      const translatedData = transResponse.data.translated_json;
-      if (translatedData.parts && translatedData.parts[0].questions) {
-        mergedList = translatedData.parts[0].questions;
+      // TRANSLATION LOGIC
+      if (language) {
         console.log(
-          "Translation process completed (Updated or Skipped based on detection)."
+          `Initiating translation check for target language: ${language}...`
+        );
+        try {
+          const translationPayload = {
+            target_language: language,
+            json_data: {
+              title: req.body.examinationName || "Question Paper",
+              language: language,
+              parts: [
+                {
+                  part_name: "Questions",
+                  questions: convertToCamelCase(mergedList),
+                },
+              ],
+            },
+          };
+
+          const pythonUrl = process.env.LLM_API_BASE_URL;
+          const transResponse = await axios.post(
+            `${pythonUrl}/question-paper/translate_json`,
+            translationPayload
+          );
+
+          if (transResponse.data && transResponse.data.translated_json) {
+            const translatedData = transResponse.data.translated_json;
+            if (translatedData.parts && translatedData.parts[0].questions) {
+              mergedList = translatedData.parts[0].questions;
+              console.log(
+                "Translation process completed (Updated or Skipped based on detection)."
+              );
+            }
+          }
+        } catch (transErr) {
+          console.error(
+            "Translation failed, proceeding with original content:",
+            transErr.message
+          );
+        }
+      }
+
+      // Saving
+      if (isPreview === true || isPreview === "true") {
+        if (session.inAtomicity) await session.abortTransaction();
+        return formatApiReponse(
+          true,
+          "Question bank preview generated successfully!",
+          { questions: mergedList }
         );
       }
+
+      let questionBankData = {
+        metadata: {
+          schoolName: user?.school?.name,
+          language: language,
+        }
+      };
+      const questionBank = await this.questionBankDao.saveQuestionBank(
+        questionBankData
+      );
+
+      // Re-create payload for saving config
+      let config = await this._createQuestionBankPayload(req.body, user);
+
+      delete config.user_id;
+      delete config.chapters;
+
+      const userId = user._id;
+
+      let configData = convertToCamelCase({
+        ...config,
+        chapterIds,
+        isMultiChapter,
+        questionBankTemplate,
+        bluePrintTemplate: template,
+        objectiveDistribution: objectiveDistribution,
+        language,
+      });
+
+      configData.teacherId = new ObjectId(userId);
+      configData.questionBank = new ObjectId(questionBank._id);
+      configData.topics = processedUnitNames;
+      const questionBankConfig = await this.questionBankDao.create(configData);
+
+      if (!questions || questions.length === 0) {
+        if (notFoundQuestions.length) {
+          const objectives = (objectiveDistribution || []).map((e) =>
+            (e.objective || "").toLowerCase()
+          );
+
+          const processedCache = isMultiChapter
+            ? processCacheHits(
+              rawCacheHit,
+              chapterIdsArr,
+              processedUnitNames,
+              unitLevel,
+              objectives
+            )
+            : processCacheHitsForSubtopic(
+              rawCacheHit,
+              chapterIdsArr,
+              processedUnitNames,
+              unitLevel,
+              objectives
+            );
+
+          let cacheSummaryData = convertToCamelCase({
+            questionBankConfigId: questionBankConfig._id,
+            totalQuestionsToFindInCache: cacheSummary.totalDecisions,
+            cacheHit: cacheSummary.cacheHitCount,
+            cacheMiss: cacheSummary.cacheMissCount,
+            notFoundResponse: mergedList, // Saving merged result as reference
+            processedCache,
+            unitLevel,
+          });
+
+          cacheSummaryData.notFoundQuestions = notFoundQuestions;
+
+          const summary = await this.questionBankCacheSummaryDao.create(
+            cacheSummaryData
+          );
+
+          addCacheJob({
+            notFoundQuestions,
+            processedCache,
+            unitLevel,
+            newResQuestions: mergedList, // Updating cache with new questions
+            cacheSummaryId: summary._id.toString(),
+          }).catch((err) => {
+            console.error("Failed to enqueue cache update job", err);
+          });
+        } else {
+          let cacheSummaryData = convertToCamelCase({
+            questionBankConfigId: questionBankConfig._id,
+            totalQuestionsToFindInCache: cacheSummary.totalDecisions,
+            cacheHit: cacheSummary.cacheHitCount,
+            cacheMiss: cacheSummary.cacheMissCount,
+            unitLevel,
+            isCacheUpdated: true,
+          });
+
+          await this.questionBankCacheSummaryDao.create(cacheSummaryData);
+        }
+      }
+
+      await session.commitTransaction();
+
+      const finalResponseData = {
+        ...questionBankConfig.toObject(),
+        questions: mergedList,
+      };
+
+      return formatApiReponse(
+        true,
+        "Question bank generated successfully!",
+        finalResponseData
+      );
+    } catch (err) {
+      console.error("Generate Question Bank Error:", err);
+      if (session.inAtomicity) await session.abortTransaction();
+      return formatApiReponse(false, err?.message, err);
+    } finally {
+      session.endSession();
     }
-  } catch (transErr) {
-    console.error(
-      "Translation failed, proceeding with original content:",
-      transErr.message
-    );
-  }
-}
-
-// Saving
-if (isPreview === true || isPreview === "true") {
-  if (session.inAtomicity) await session.abortTransaction();
-  return formatApiReponse(
-    true,
-    "Question bank preview generated successfully!",
-    { questions: mergedList }
-  );
-}
-
-let questionBankData = {
-  metadata: {
-    schoolName: user?.school?.name,
-    language: language,
-  },
-  const questionBank = await this.questionBankDao.saveQuestionBank(
-    questionBankData
-  );
-
-  // Re-create payload for saving config
-  let config = await this._createQuestionBankPayload(req.body, user);
-
-  delete config.user_id;
-  delete config.chapters;
-
-  const userId = user._id;
-
-  let configData = convertToCamelCase({
-    ...config,
-    chapterIds,
-    isMultiChapter,
-    questionBankTemplate,
-    bluePrintTemplate: template,
-    objectiveDistribution: objectiveDistribution,
-    language,
-  });
-
-  configData.teacherId = new ObjectId(userId);
-  configData.questionBank = new ObjectId(questionBank._id);
-  configData.topics = processedUnitNames;
-  const questionBankConfig = await this.questionBankDao.create(configData);
-
-  if(!questions || questions.length === 0) {
-    if (notFoundQuestions.length) {
-  const objectives = (objectiveDistribution || []).map((e) =>
-    (e.objective || "").toLowerCase()
-  );
-
-  const processedCache = isMultiChapter
-    ? processCacheHits(
-      rawCacheHit,
-      chapterIdsArr,
-      processedUnitNames,
-      unitLevel,
-      objectives
-    )
-    : processCacheHitsForSubtopic(
-      rawCacheHit,
-      chapterIdsArr,
-      processedUnitNames,
-      unitLevel,
-      objectives
-    );
-
-  let cacheSummaryData = convertToCamelCase({
-    questionBankConfigId: questionBankConfig._id,
-    totalQuestionsToFindInCache: cacheSummary.totalDecisions,
-    cacheHit: cacheSummary.cacheHitCount,
-    cacheMiss: cacheSummary.cacheMissCount,
-    notFoundResponse: mergedList, // Saving merged result as reference
-    processedCache,
-    unitLevel,
-  });
-
-  cacheSummaryData.notFoundQuestions = notFoundQuestions;
-
-  const summary = await this.questionBankCacheSummaryDao.create(
-    cacheSummaryData
-  );
-
-  addCacheJob({
-    notFoundQuestions,
-    processedCache,
-    unitLevel,
-    newResQuestions: mergedList, // Updating cache with new questions
-    cacheSummaryId: summary._id.toString(),
-  }).catch((err) => {
-    console.error("Failed to enqueue cache update job", err);
-  });
-} else {
-  let cacheSummaryData = convertToCamelCase({
-    questionBankConfigId: questionBankConfig._id,
-    totalQuestionsToFindInCache: cacheSummary.totalDecisions,
-    cacheHit: cacheSummary.cacheHitCount,
-    cacheMiss: cacheSummary.cacheMissCount,
-    unitLevel,
-    isCacheUpdated: true,
-  });
-
-  await this.questionBankCacheSummaryDao.create(cacheSummaryData);
-}
-    }
-
-await session.commitTransaction();
-
-const finalResponseData = {
-  ...questionBankConfig.toObject(),
-  questions: mergedList,
-};
-
-return formatApiReponse(
-  true,
-  "Question bank generated successfully!",
-  finalResponseData
-);
-  } catch (err) {
-  console.error("Generate Question Bank Error:", err);
-  if (session.inAtomicity) await session.abortTransaction();
-  return formatApiReponse(false, err?.message, err);
-} finally {
-  session.endSession();
-}
   }
 
   async translateQuestionPaper(payload) {
-  try {
-    const pythonUrl = process.env.LLM_API_BASE_URL;
-    const response = await axios.post(
-      `${pythonUrl}/question-paper/translate_json`,
-      payload
-    );
-    return formatApiReponse(
-      true,
-      "Translation processed successfully",
-      response.data
-    );
-  } catch (err) {
-    console.error("Translation Manager Error:", err.message);
-    return formatApiReponse(
-      false,
-      "Translation failed",
-      err.response?.data || err.message
-    );
-  }
-}
-
-_mapTemplateTypes(templateArray) {
-  if (!templateArray || !Array.isArray(templateArray)) return [];
-
-  return templateArray.map((item) => {
-    const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
-    return {
-      ...item,
-      type: mappedType,
-    };
-  });
-}
-  async _createQuestionBankPayload(reqBody, user) {
-  try {
-    const {
-      board,
-      medium,
-      grade,
-      subject,
-      totalMarks,
-      isMultiChapter,
-      marksDistribution,
-      chapterIds,
-      subTopic,
-      template,
-      questions,
-    } = reqBody;
-
-    const objective_distribution = reqBody.objective_distribution || reqBody.objectiveDistribution || [];
-    const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
-    const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
-
-    const validChapterIds = chapterIdsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
-    const validSubTopicIds = subTopicsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
-
-    let chapterData = [];
     try {
-      if (isMultiChapter) {
-        if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
-      } else {
-        if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, validSubTopicIds);
-      }
-    } catch (aggErr) {
-      console.warn("[Manager] Chapter lookup failed:", aggErr.message);
-    }
-
-    // 1. Prepare Base Chapters (From DB)
-    let formattedChapters = (chapterData || []).map((chapter) => ({
-      title: chapter.title,
-      index_path: chapter.indexPath || chapter.index_path || "",
-      learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-      subtopics: (chapter.subtopics || []).map((sub) => ({
-        title: sub.title,
-        learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
-      })),
-    }));
-
-    const requiredUnits = new Set();
-    if (marksDistribution && Array.isArray(marksDistribution)) {
-      marksDistribution.forEach(dist => {
-        if (dist.unit_name) requiredUnits.add(dist.unit_name.trim());
-      });
-    }
-
-    // Check inputs as well (Hybrid Flow)
-    const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
-    allInputTopics.forEach(t => {
-      if (typeof t === 'string' && t.trim().length > 0 && !mongoose.Types.ObjectId.isValid(t)) {
-        requiredUnits.add(t.trim());
-      }
-    });
-
-    // Inject Missing Units
-    requiredUnits.forEach(unitName => {
-      // Check if unitName exists as a Chapter Title OR a Subtopic Title
-      const exists = formattedChapters.some(fc =>
-        fc.title.toLowerCase() === unitName.toLowerCase() ||
-        fc.subtopics.some(sub => sub.title.toLowerCase() === unitName.toLowerCase())
+      const pythonUrl = process.env.LLM_API_BASE_URL;
+      const response = await axios.post(
+        `${pythonUrl}/question-paper/translate_json`,
+        payload
       );
+      return formatApiReponse(
+        true,
+        "Translation processed successfully",
+        response.data
+      );
+    } catch (err) {
+      console.error("Translation Manager Error:", err.message);
+      return formatApiReponse(
+        false,
+        "Translation failed",
+        err.response?.data || err.message
+      );
+    }
+  }
 
-      if (!exists) {
-        console.log(`[Manager] Injecting missing unit context: ${unitName}`);
-        formattedChapters.push({
-          title: unitName,
-          index_path: "",
-          learning_outcomes: [],
-          subtopics: []
+  _mapTemplateTypes(templateArray) {
+    if (!templateArray || !Array.isArray(templateArray)) return [];
+
+    return templateArray.map((item) => {
+      const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
+      return {
+        ...item,
+        type: mappedType,
+      };
+    });
+  }
+  async _createQuestionBankPayload(reqBody, user) {
+    try {
+      const {
+        board,
+        medium,
+        grade,
+        subject,
+        totalMarks,
+        isMultiChapter,
+        marksDistribution,
+        chapterIds,
+        subTopic,
+        template,
+        questions,
+      } = reqBody;
+
+      const objective_distribution = reqBody.objective_distribution || reqBody.objectiveDistribution || [];
+      const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
+      const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
+
+      const validChapterIds = chapterIdsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
+      const validSubTopicIds = subTopicsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
+
+      let chapterData = [];
+      try {
+        if (isMultiChapter) {
+          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
+        } else {
+          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, validSubTopicIds);
+        }
+      } catch (aggErr) {
+        console.warn("[Manager] Chapter lookup failed:", aggErr.message);
+      }
+
+      // 1. Prepare Base Chapters (From DB)
+      let formattedChapters = (chapterData || []).map((chapter) => ({
+        title: chapter.title,
+        index_path: chapter.indexPath || chapter.index_path || "",
+        learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
+        subtopics: (chapter.subtopics || []).map((sub) => ({
+          title: sub.title,
+          learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+        })),
+      }));
+
+      const requiredUnits = new Set();
+      if (marksDistribution && Array.isArray(marksDistribution)) {
+        marksDistribution.forEach(dist => {
+          if (dist.unit_name) requiredUnits.add(dist.unit_name.trim());
         });
       }
-    });
-    // -----------------------------------------------------------
 
-    const formattedMarksDist = (marksDistribution || []).map((dist) => ({
-      unit_name: dist.unit_name || dist.unitName,
-      percentage_distribution: dist.percentage_distribution || dist.percentageDistribution,
-      marks: dist.marks,
-    }));
+      // Check inputs as well (Hybrid Flow)
+      const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
+      allInputTopics.forEach(t => {
+        if (typeof t === 'string' && t.trim().length > 0 && !mongoose.Types.ObjectId.isValid(t)) {
+          requiredUnits.add(t.trim());
+        }
+      });
 
-    const formattedObjectiveDist = (objective_distribution || []).map((obj) => ({
-      objective: obj.objective,
-      percentage_distribution: obj.percentage_distribution || obj.percentageDistribution,
-    }));
+      // Inject Missing Units
+      requiredUnits.forEach(unitName => {
+        // Check if unitName exists as a Chapter Title OR a Subtopic Title
+        const exists = formattedChapters.some(fc =>
+          fc.title.toLowerCase() === unitName.toLowerCase() ||
+          fc.subtopics.some(sub => sub.title.toLowerCase() === unitName.toLowerCase())
+        );
 
-    const payload = {
-      user_id: user._id.toString(),
-      board: board,
-      medium: "English",
-      grade: String(grade),
-      subject: subject,
-      total_marks: Number(totalMarks),
-      chapters: formattedChapters, // Now contains all necessary units
-      marks_distribution: formattedMarksDist,
-      objective_distribution: formattedObjectiveDist,
-      template: this._mapTemplateTypes(template || []),
-    };
+        if (!exists) {
+          console.log(`[Manager] Injecting missing unit context: ${unitName}`);
+          formattedChapters.push({
+            title: unitName,
+            index_path: "",
+            learning_outcomes: [],
+            subtopics: []
+          });
+        }
+      });
+      // -----------------------------------------------------------
 
-    if (questions && questions.length > 0) {
-      payload.questions = questions;
+      const formattedMarksDist = (marksDistribution || []).map((dist) => ({
+        unit_name: dist.unit_name || dist.unitName,
+        percentage_distribution: dist.percentage_distribution || dist.percentageDistribution,
+        marks: dist.marks,
+      }));
+
+      const formattedObjectiveDist = (objective_distribution || []).map((obj) => ({
+        objective: obj.objective,
+        percentage_distribution: obj.percentage_distribution || obj.percentageDistribution,
+      }));
+
+      const payload = {
+        user_id: user._id.toString(),
+        board: board,
+        medium: "English",
+        grade: String(grade),
+        subject: subject,
+        total_marks: Number(totalMarks),
+        chapters: formattedChapters, // Now contains all necessary units
+        marks_distribution: formattedMarksDist,
+        objective_distribution: formattedObjectiveDist,
+        template: this._mapTemplateTypes(template || []),
+      };
+
+      if (questions && questions.length > 0) {
+        payload.questions = questions;
+      }
+
+      return payload;
+    } catch (e) {
+      console.error("Error creating payload:", e);
+      throw e;
     }
-
-    return payload;
-  } catch (e) {
-    console.error("Error creating payload:", e);
-    throw e;
   }
-}
 
   async updateFeedback(questionBankId, feedbackData) {
-  try {
-    await this.questionBankDao.update(questionBankId, feedbackData);
-    return formatApiReponse(true, "Feedback submitted successfully", null);
-  } catch (err) {
-    return formatApiReponse(false, err.message, err);
+    try {
+      await this.questionBankDao.update(questionBankId, feedbackData);
+      return formatApiReponse(true, "Feedback submitted successfully", null);
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
   }
-}
 
   async retryFailedJobs() {
-  try {
-    console.log("Running retry for failed cache updates...");
-    const failedJobs = await QuestionBankCacheSummary.find({
-      isCacheUpdated: false,
-      inProgress: false,
-    });
+    try {
+      console.log("Running retry for failed cache updates...");
+      const failedJobs = await QuestionBankCacheSummary.find({
+        isCacheUpdated: false,
+        inProgress: false,
+      });
 
-    const jobsToProcess = (failedJobs || []).map((doc) => doc.toObject());
+      const jobsToProcess = (failedJobs || []).map((doc) => doc.toObject());
 
-    for (const job of jobsToProcess) {
-      const {
-        notFoundQuestions,
-        processedCache,
-        unitLevel,
-        notFoundResponse,
-      } = job;
+      for (const job of jobsToProcess) {
+        const {
+          notFoundQuestions,
+          processedCache,
+          unitLevel,
+          notFoundResponse,
+        } = job;
+
+        addCacheJob({
+          notFoundQuestions,
+          processedCache,
+          unitLevel,
+          newResQuestions: notFoundResponse,
+          cacheSummaryId: job._id.toString(),
+        });
+      }
+      return formatApiReponse(true, "Failed job processing initiated", null);
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async retryFailedJob(jobId) {
+    try {
+      console.log(`Running retry for failed job-${jobId}`);
+      let failedJob = await QuestionBankCacheSummary.findById(jobId);
+      if (!failedJob) throw new Error("Job not found");
+      failedJob = failedJob.toObject();
+
+      const { notFoundQuestions, processedCache, unitLevel, notFoundResponse } =
+        failedJob;
 
       addCacheJob({
         notFoundQuestions,
         processedCache,
         unitLevel,
         newResQuestions: notFoundResponse,
-        cacheSummaryId: job._id.toString(),
+        cacheSummaryId: failedJob._id.toString(),
       });
+
+      return formatApiReponse(
+        true,
+        `Failed job-${jobId} processing initiated`,
+        null
+      );
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
     }
-    return formatApiReponse(true, "Failed job processing initiated", null);
-  } catch (err) {
-    return formatApiReponse(false, err.message, err);
   }
-}
-
-  async retryFailedJob(jobId) {
-  try {
-    console.log(`Running retry for failed job-${jobId}`);
-    let failedJob = await QuestionBankCacheSummary.findById(jobId);
-    if (!failedJob) throw new Error("Job not found");
-    failedJob = failedJob.toObject();
-
-    const { notFoundQuestions, processedCache, unitLevel, notFoundResponse } =
-      failedJob;
-
-    addCacheJob({
-      notFoundQuestions,
-      processedCache,
-      unitLevel,
-      newResQuestions: notFoundResponse,
-      cacheSummaryId: failedJob._id.toString(),
-    });
-
-    return formatApiReponse(
-      true,
-      `Failed job-${jobId} processing initiated`,
-      null
-    );
-  } catch (err) {
-    return formatApiReponse(false, err.message, err);
-  }
-}
 }
 
 module.exports = QuestionBankManager;
