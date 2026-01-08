@@ -1,0 +1,102 @@
+name: Teams Workflow Notification
+description: Send a compact, readable Teams Adaptive Card via Workflow URL
+
+inputs:
+  workflow-url:
+    required: true
+    description: Teams Workflow URL
+  heading-color:
+    required: false
+    default: Good
+    description: Adaptive Card color for heading (Good | Attention | Accent)
+  services:
+    required: false
+    description: |
+      JSON array of services.
+      Each item: { "name": "Frontend", "description": "Built and deployed", "url": "https://..." }
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        set -euo pipefail
+
+        SERVICES_INPUT='${{ inputs.services }}'
+        SERVICES_INPUT="${SERVICES_INPUT:-[]}"
+
+        # 1. Transform input JSON into Adaptive Card Column objects
+        # 2. Group them into chunks of 3 (for the 3 columns constraint)
+        # 3. Map groups into ColumnSet objects (rows)
+        BODY_ITEMS="$(echo "$SERVICES_INPUT" | jq -c '
+          map({
+            type: "Column",
+            width: "stretch",
+            items: (
+              [
+                { type: "TextBlock", text: .name, weight: "Bolder" },
+                { type: "TextBlock", text: .description, spacing: "None", wrap: true, size: "Small" }
+              ]
+              + (if (.url // "") != "" then
+                  [{ type: "TextBlock", text: "[Open](\(.url))", spacing: "None", isSubtle: true, size: "Small" }]
+                else [] end)
+            )
+          }) 
+          | to_entries 
+          | group_by(.key / 3 | floor) 
+          | map({
+              type: "ColumnSet",
+              spacing: "Medium",
+              columns: map(.value)
+            })
+        ')"
+
+        PAYLOAD="$(jq -cn \
+          --arg heading "${{ github.event.repository.name }}" \
+          --arg heading_color "${{ inputs['heading-color'] }}" \
+          --arg branch "${{ github.ref_name }}" \
+          --arg branch_url "${{ github.server_url }}/${{ github.repository }}/tree/${{ github.ref_name }}" \
+          --arg author "${{ github.event.head_commit.author.name || github.actor }}" \
+          --arg time "${{ github.event.head_commit.timestamp }}" \
+          --arg commit_url "${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}" \
+          --argjson bodyItems "$BODY_ITEMS" \
+          '{
+            type: "message",
+            attachments: [
+              {
+                contentType: "application/vnd.microsoft.card.adaptive",
+                content: {
+                  "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                  type: "AdaptiveCard",
+                  version: "1.4",
+                  body: [
+                    {
+                      type: "TextBlock",
+                      text: $heading,
+                      weight: "Bolder",
+                      size: "Large",
+                      color: $heading_color,
+                      wrap: true
+                    },
+                    {
+                      type: "TextBlock",
+                      text: "[\($branch)](\($branch_url)) · by \($author) · \($time) · [View commit](\($commit_url))",
+                      wrap: true,
+                      isSubtle: true,
+                      spacing: "None"
+                    },
+                    {
+                      type: "Container",
+                      spacing: "Medium",
+                      items: $bodyItems
+                    }
+                  ]
+                }
+              }
+            ]
+          }'
+        )"
+
+        curl -f -H "Content-Type: application/json" \
+          -d "$PAYLOAD" \
+          "${{ inputs['workflow-url'] }}"

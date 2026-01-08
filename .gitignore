@@ -7,6 +7,7 @@ shiksha-ingestion/scert_action_verbs.json
 
 # Unit test / coverage reports
 htmlcov/
+**/coverage/
 .tox/
 .nox/
 .coverage
@@ -19,3 +20,6 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+*/.env
+tests/tests-env
+**/__pycache__/

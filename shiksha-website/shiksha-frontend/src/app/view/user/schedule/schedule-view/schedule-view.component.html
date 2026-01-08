@@ -24,14 +24,14 @@
 			<div class="btn-group flex gap-4 items-center ml-auto min-w-fit">
 				<button class="bg-shade-80 p-1 md:py-1 md:px-4 rounded text-sm md:text-lg text-primary" mwlCalendarPreviousView [view]="view" [(viewDate)]="viewDate"
 					(viewDateChange)="closeOpenMonthViewDay()">
-					<img src="../../../../../assets/icons/Chevron left large.svg" alt="" class="inline-block mb-[2px]"> <span class="hidden md:inline text-base">{{"Previous Week" | translate}}</span>
+					<img src="assets/icons/Chevron left large.svg" alt="" class="inline-block mb-[2px]"> <span class="hidden md:inline text-base">{{"Previous Week" | translate}}</span>
 				</button>
 				<div class="mb-0">
 					<h3 class="mb-0 text-xs md:text-base text-content" >{{ viewDate | calendarDate:(view + 'ViewTitle'):'en':1 }}</h3>
 				</div>
 				<button class="bg-shade-80 p-1 md:py-1 md:px-4 rounded text-primary text-sm md:text-lg" mwlCalendarNextView [view]="view" [(viewDate)]="viewDate" 
 					(viewDateChange)="closeOpenMonthViewDay()">
-					<span class="hidden md:inline text-base">{{"Next week" | translate}}</span><img src="../../../../../assets/icons/Chevron right large.svg" alt="" class="inline-block">
+					<span class="hidden md:inline text-base">{{"Next week" | translate}}</span><img src="assets/icons/Chevron right large.svg" alt="" class="inline-block">
 				</button>
 			</div>
 
@@ -62,7 +62,7 @@
 					sourceEvent: $event.currentTarget},tooltip_modal)" >
 					<!-- <p class="font-bold "  >{{weekEvents.event.start | date:'hh:mm a'}}  </p> -->
 					<div class="font-bold  text-left mb-1 flex items-center gap-1" >
-						<img src="../../../../../assets/icons/user-icon.svg" alt="" width="10" height="10" class="w-[20px] h-[20px] rounded-full">
+						<img src="assets/icons/user-icon.svg" alt="" width="10" height="10" class="w-[20px] h-[20px] rounded-full">
 						<span class="overflow-hidden whitespace-nowrap text-ellipsis">{{weekEvents.event.meta.events.teacher.name}}</span>
 					</div>
 					<span  class="overflow-hidden text-ellipsis whitespace-nowrap ">{{weekEvents.event.meta.class}} &nbsp;</span>
@@ -95,7 +95,7 @@
 							>
 							<a class="block px-4 py-2 text-sm text-content" role="menuitem" >
 									<div class="flex items-center">
-											<img class="mx-2" src="../../../../../assets/icons/lesson-plan-black.svg" alt="" />
+											<img class="mx-2" src="assets/icons/lesson-plan-black.svg" alt="" />
 											<span>{{"View Lesson Plan" | translate}}</span>
 									</div>
 							</a>
@@ -104,7 +104,7 @@
 							>
 							<a class="block px-4 py-2 text-sm text-content" role="menuitem" >
 									<div class="flex items-center">
-											<img class="mx-2" src="../../../../../assets/icons/Visibility.svg" alt="" />
+											<img class="mx-2" src="assets/icons/Visibility.svg" alt="" />
 											<span>{{"View Details" | translate}}</span>
 									</div>
 							</a>
@@ -114,7 +114,7 @@
 							>
 							<a class="block px-4 py-2 text-sm text-content" role="menuitem" >
 									<div class="flex items-center">
-											<img class="mx-2" src="../../../../../assets/icons/Vector.svg" alt="" />
+											<img class="mx-2" src="assets/icons/Vector.svg" alt="" />
 											<span>{{"Edit Details" | translate}}</span>
 									</div>
 							</a>
@@ -124,7 +124,7 @@
 							<a class="block px-4 py-2 text-sm text-content" role="menuitem"
 									(click)="openModalForDeleteConfirm(tooltip_modal)">
 									<div class="flex items-center">
-											<img class="mx-2" src="../../../../../assets/icons/trash.svg" alt="" />
+											<img class="mx-2" src="assets/icons/trash.svg" alt="" />
 											<span class="text-error">{{"Delete" | translate }}</span>
 									</div>
 							</a>

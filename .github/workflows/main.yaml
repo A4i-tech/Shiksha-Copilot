@@ -1,110 +1,261 @@
-# .github/workflows/main.yaml
-
 name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/main-cicd" ]
+    branches: [ "a4i/main", "a4i/staging"]
+  pull_request:
+    branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
 
 jobs:
-  ci:
-    uses: ./.github/workflows/ci.yaml
+  cicd-frontend:
+    uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
+    with:
+      deploy_name: shiksha-frontend-staging
+      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
 
-  cd:
-    needs: ci
-    uses: ./.github/workflows/cd-render.yaml
+  ci-api:
+    uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
-  notify-success:
+  ci-backend:
+    uses: ./.github/workflows/ci-backend.yaml
+    secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+
+  cd-api:
+    needs: ci-api
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    uses: ./.github/workflows/deploy-render.yaml
+    with:
+      deploy-name: shiksha-api-staging
+      service-id: ${{ vars.RENDER_API_SERVICE_ID }}
+    secrets:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  cd-backend:
+    needs: ci-backend
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    uses: ./.github/workflows/deploy-render.yaml
+    with:
+      deploy-name: shiksha-backend-staging
+      service-id: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
+    secrets:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  health-check:
+    name: Wait and Verify Deployment
+    needs: [cicd-frontend, cd-api, cd-backend]
+    if: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/staging') }}
     runs-on: ubuntu-latest
-    needs: [ci, cd]
-    if: success()
     steps:
-      - name: Notify Teams Success
+      - name: Wait and Verify Services
         run: |
-          if [ -z "${MICROSOFT_TEAMS_WEBHOOK}" ]; then
-            echo "No webhook configured, skipping notification."
-            exit 0
-          fi
+          RETRIES=10
+          SLEEP_TIME=15
+          URLS=("${{ secrets.STAGING_URL }}" "${{ secrets.STAGING_BACKEND_URL }}" "${{ secrets.STAGING_API_URL }}")
+          NAMES=("Frontend" "Backend" "API")
 
-          curl -H "Content-Type: application/json" \
-               -d "$BODY" \
-               "$MICROSOFT_TEAMS_WEBHOOK"
-        env:
-          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_WEBHOOK }}
-          BODY: |
-            {
-              "@type": "MessageCard",
-              "@context": "http://schema.org/extensions",
-              "summary": "Build Success",
-              "themeColor": "00FF00",
-              "title": "✅ Successful Build",
-              "sections": [{
-                "activityTitle": "[**A4i-tech/Shiksha-Copilot**](https://github.com/A4i-tech/Shiksha-Copilot)",
-                "activitySubtitle": "${{ github.ref_name }}",
-                "facts": [
-                  { "name": "Commit", "value": "[`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" },
-                  { "name": "Author", "value": "[${{ github.actor }}](https://github.com/${{ github.actor }})" },
-                  { "name": "Time", "value": "${{ github.event.head_commit.timestamp }}" },
-                  { "name": "GHCR", "value": "[ghcr.io/${{ github.repository }}](https://ghcr.io/${{ github.repository }})" }
-                ],
-                "markdown": true
-              }],
-              "potentialAction": [
-                {
-                  "@type": "OpenUri",
-                  "name": "View Build Logs",
-                  "targets": [
-                    { "os": "default", "uri": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
-                  ]
-                }
-              ]
-            }
+          for ((i=1; i<=RETRIES; i++)); do
+            echo "Attempt $i of $RETRIES..."
+            ALL_PASSED=true
+            for ((j=0; j<${#URLS[@]}; j++)); do
+              url="${URLS[$j]}"
+              name="${NAMES[$j]}"
+              if ! curl -f -I --max-time 30 "$url"; then
+                echo "❌ $name is unresponsive."
+                ALL_PASSED=false
+              else
+                echo "✅ $name is up."
+              fi
+            done
+            if $ALL_PASSED; then
+              echo "🎉 All services are up!"
+              exit 0
+            fi
+            sleep $SLEEP_TIME
+          done
+          exit 1
 
-  notify-failure:
+  smoke-tests:
+    name: Smoke Tests
+    needs: health-check
     runs-on: ubuntu-latest
-    needs: [ci, cd]
-    if: failure()
     steps:
-      - name: Notify Teams Failure
-        run: |
-          if [ -z "${MICROSOFT_TEAMS_WEBHOOK}" ]; then
-            echo "No webhook configured, skipping notification."
-            exit 0
-          fi
-
-          curl -H "Content-Type: application/json" \
-               -d "$BODY" \
-               "$MICROSOFT_TEAMS_WEBHOOK"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with: { python-version: '3.9' }
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+          playwright install chromium
+      - name: Run Smoke Tests
         env:
-          MICROSOFT_TEAMS_WEBHOOK: ${{ secrets.MICROSOFT_TEAMS_WEBHOOK }}
-          BODY: |
-            {
-              "@type": "MessageCard",
-              "@context": "http://schema.org/extensions",
-              "summary": "Build Failed",
-              "themeColor": "FF0000",
-              "title": "❌ Build Failed",
-              "sections": [{
-                "activityTitle": "[**A4i-tech/Shiksha-Copilot**](https://github.com/A4i-tech/Shiksha-Copilot)",
-                "activitySubtitle": "${{ github.ref_name }}",
-                "facts": [
-                  { "name": "Commit", "value": "[`${{ github.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" },
-                  { "name": "Author", "value": "[${{ github.actor }}](https://github.com/${{ github.actor }})" },
-                  { "name": "Time", "value": "${{ github.event.head_commit.timestamp }}" },
-                  { "name": "GHCR", "value": "[ghcr.io/${{ github.repository }}](https://ghcr.io/${{ github.repository }})" }
-                ],
-                "markdown": true
-              }],
-              "potentialAction": [
-                {
-                  "@type": "OpenUri",
-                  "name": "View Build Logs",
-                  "targets": [
-                    { "os": "default", "uri": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" }
-                  ]
-                }
-              ]
-            }
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+        run: pytest tests/smoke --csv smoke_report.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-report
+          path: smoke_report.csv
+
+  regression-tests:
+    name: Regression Tests
+    needs: health-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with: { python-version: '3.9' }
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r tests/requirements.txt
+          playwright install chromium
+      - name: Run Regression Tests
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+        run: pytest tests/regression --csv regression_report.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-report
+          path: regression_report.csv
+
+  performance-tests:
+    name: Performance Tests
+    needs: health-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run k6 Load Test
+        uses: grafana/k6-action@v0.3.0
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}/#/auth/signin
+        with:
+          filename: tests/performance/load_test.js
+          flags: --summary-export=k6_summary.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: k6-summary
+          path: k6_summary.json
+
+  notify:
+    runs-on: ubuntu-latest
+    if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, smoke-tests, regression-tests, performance-tests]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Download Smoke Report
+        uses: actions/download-artifact@v4
+        with: { name: smoke-report, path: reports/smoke }
+        continue-on-error: true
+      - name: Download Regression Report
+        uses: actions/download-artifact@v4
+        with: { name: regression-report, path: reports/regression }
+        continue-on-error: true
+      - name: Download k6 Summary
+        uses: actions/download-artifact@v4
+        with: { name: k6-summary, path: reports/performance }
+        continue-on-error: true
+
+      - name: Generate Status JSON
+        id: status
+        env:
+          FE_RES: ${{ needs.cicd-frontend.result }}
+          API_RES: ${{ needs.cd-api.result }}
+          BE_RES: ${{ needs.cd-backend.result }}
+          FE_URL: ${{ needs.cicd-frontend.outputs.page_url }}
+          API_URL: ${{ needs.cd-api.outputs['service-url'] }}
+          BE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
+          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          python3 <<EOF
+          import os, json, csv
+
+          def parse_pytest_csv(filepath):
+              if not os.path.exists(filepath): return "Not Run"
+              total, passed, failed = 0, 0, 0
+              try:
+                  with open(filepath, 'r') as f:
+                      reader = csv.DictReader(f)
+                      for row in reader:
+                          total += 1
+                          if row.get('status') == 'passed': passed += 1
+                          elif row.get('status') == 'failed': failed += 1
+              except: return "Error"
+              if failed == 0 and total > 0: return "Pass"
+              if failed > 0: return f"Fail ({failed}/{total})"
+              return "Empty"
+
+          def parse_k6_json(filepath):
+              if not os.path.exists(filepath): return "Not Run"
+              try:
+                  with open(filepath, 'r') as f: data = json.load(f)
+                  metrics = data.get('metrics', {})
+                  
+                  req_dur = metrics.get('http_req_duration', {})
+                  p95 = req_dur.get('values', {}).get('p(95)', req_dur.get('p(95)', 0))
+                  
+                  req_fail = metrics.get('http_req_failed', {})
+                  rate = req_fail.get('values', {}).get('rate', req_fail.get('rate', 0))
+
+                  return f"p95: {p95:.0f}ms, Err: {rate*100:.1f}%"
+              except: return "Error"
+
+          fe_status = os.environ.get('FE_RES') == 'success'
+          api_status = os.environ.get('API_RES') == 'success'
+          be_status = os.environ.get('BE_RES') == 'success'
+
+          def get_desc(status, res):
+              if status: return "Deployed"
+              if res == 'skipped': return "Skipped"
+              return f"Status: {res}"
+
+          fe_desc = get_desc(fe_status, os.environ.get('FE_RES'))
+          api_desc = get_desc(api_status, os.environ.get('API_RES'))
+          be_desc = get_desc(be_status, os.environ.get('BE_RES'))
+
+          smoke_desc = parse_pytest_csv('reports/smoke/smoke_report.csv')
+          regr_desc = parse_pytest_csv('reports/regression/regression_report.csv')
+          perf_desc = parse_k6_json('reports/performance/k6_summary.json')
+
+          failures = [
+             os.environ.get('FE_RES'), os.environ.get('API_RES'), os.environ.get('BE_RES')
+          ]
+          is_fail = 'failure' in failures or 'Fail' in smoke_desc or 'Fail' in regr_desc
+          color = "Attention" if is_fail else "Good"
+          services = [
+              {"name": "Frontend", "description": fe_desc, "url": os.environ.get('FE_URL', '')},
+              {"name": "API", "description": api_desc, "url": os.environ.get('API_URL', '')},
+              {"name": "Backend", "description": be_desc, "url": os.environ.get('BE_URL', '')},
+              {"name": "Smoke Tests", "description": smoke_desc, "url": os.environ.get('RUN_URL')},
+              {"name": "Regression", "description": regr_desc, "url": os.environ.get('RUN_URL')},
+              {"name": "Performance", "description": perf_desc, "url": os.environ.get('RUN_URL')}
+          ]
+          
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+              f.write(f"heading_color={color}\n")
+              f.write(f"services_json={json.dumps(services)}\n")
+          EOF
+
+      - name: Notify Teams
+        uses: ./.github/actions/dispatch-teams-workflow
+        with:
+          workflow-url: ${{ secrets.TEAMS_WORKFLOW_URL }}
+          heading-color: ${{ steps.status.outputs.heading_color }}
+          services: ${{ steps.status.outputs.services_json }}
