@@ -18,7 +18,7 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionBankDetails: any;
 
-  questionBank:any;
+  questionBank: any;
 
   isOpen = false;
 
@@ -40,20 +40,20 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionTypeMapper = QUESTION_TYPE_MAPPER;
 
-  shuffledColumns:any[] = [];
+  shuffledColumns: any[] = [];
 
-  primaryColumn:any[] = [];
+  primaryColumn: any[] = [];
 
-  questionBankBluePrintData:any;
+  questionBankBluePrintData: any;
 
   docTypes = [
     {
-      name:'Question Paper',
-      type:'qp'
+      name: 'Question Paper',
+      type: 'qp'
     },
     {
-      name:'Blueprint',
-      type:'bp'
+      name: 'Blueprint',
+      type: 'bp'
     }
   ]
 
@@ -61,10 +61,10 @@ export class QuestionBankViewComponent implements OnInit {
     private route: ActivatedRoute,
     private questionBankService: QuestionBankService,
     public utilityService: UtilityService,
-    private router:Router,
-    private idleService:IdleService,
-    private questionBankDownloadService:QuestionBankDownloadService,
-    private bluePrintExportService:BluePrintExportService
+    private router: Router,
+    private idleService: IdleService,
+    private questionBankDownloadService: QuestionBankDownloadService,
+    private bluePrintExportService: BluePrintExportService
   ) {
     this.route.params.subscribe((params) => {
       this.questionBankId = params['id'];
@@ -86,13 +86,20 @@ export class QuestionBankViewComponent implements OnInit {
         next: (val: any) => {
           this.questionBankDetails = val.data;
           this.questionBank = this.questionBankDetails.questionBank
-          const matchTheFollowingData = this.questionBank?.questions?.filter((obj:any) => obj.type === 'Match the following');           
-          if(matchTheFollowingData?.length){
-            const colTwoVal = structuredClone(matchTheFollowingData[0]?.questions.map((ele:any)=> ele.value2))
-            this.primaryColumn = matchTheFollowingData[0]?.questions.map((ele:any)=> ele.value1);
-            this.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal)
+
+          // Process Match the Following sections
+          if (this.questionBank?.questions?.length) {
+            this.questionBank.questions.forEach((section: any) => {
+              if (section.type === 'Match the following' && section.questions?.length) {
+                // Map columns supporting both AI (value1/2) and LBA (text/keyAnswer) formats
+                // LBA: text = Left, keyAnswer = Right
+                const colTwoVal = structuredClone(section.questions.map((ele: any) => ele.value2 || ele.keyAnswer || ele.right || ''));
+                section.primaryColumn = section.questions.map((ele: any) => ele.value1 || ele.text || ele.left || '');
+                section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
+              }
+            });
           }
-          
+
           if (this.questionBankDetails?.questionBank?.feedback) {
             this.questionBankFeedback =
               this.questionBankDetails?.questionBank?.feedback;
@@ -106,51 +113,51 @@ export class QuestionBankViewComponent implements OnInit {
       });
   }
 
-  flattenQuestionData(data:any[]) {
-    const result:any[] = [];
+  flattenQuestionData(data: any[]) {
+    const result: any[] = [];
     data.forEach(section => {
-        const { type, marksPerQuestion, questionDistribution } = section;
+      const { type, marksPerQuestion, questionDistribution } = section;
 
-        questionDistribution.forEach((entry:any) => {
-            result.push({
-                unitName: entry.unitName,
-                type:this.questionTypeMapper[type],
-                objective: entry.objective,
-                marks: marksPerQuestion
-            });
+      questionDistribution.forEach((entry: any) => {
+        result.push({
+          unitName: entry.unitName,
+          type: this.questionTypeMapper[type],
+          objective: entry.objective,
+          marks: marksPerQuestion
         });
+      });
     });
 
     return result;
-}
-
-download(type:any){
-  if(type === 'qp'){
-    this.downloadQp()
-  }else{
-    this.downloadBluePrint()
   }
-}
-  
+
+  download(type: any) {
+    if (type === 'qp') {
+      this.downloadQp()
+    } else {
+      this.downloadBluePrint()
+    }
+  }
+
   downloadQp() {
     this.questionBankDownloadService.downloadQuestionBank(this.questionBankDetails);
     this.utilityService.showSuccess('Question paper downloaded successfully!');
   }
 
-  downloadBluePrint(){
+  downloadBluePrint() {
     const metaData = {
-      schoolName:this.questionBankDetails?.questionBank?.metadata?.schoolName,
-      medium:this.questionBankDetails?.medium,
-      class:this.questionBankDetails?.grade,
-      subject:this.questionBankDetails?.subject,
-      examinationName:this.questionBankDetails?.examinationName,
-      totalMarks:this.questionBankDetails?.totalMarks
+      schoolName: this.questionBankDetails?.questionBank?.metadata?.schoolName,
+      medium: this.questionBankDetails?.medium,
+      class: this.questionBankDetails?.grade,
+      subject: this.questionBankDetails?.subject,
+      examinationName: this.questionBankDetails?.examinationName,
+      totalMarks: this.questionBankDetails?.totalMarks
     }
-    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData,metaData)
+    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData, metaData)
   }
 
-  backNavigation(){
-      this.router.navigate(['/user/question-paper']);
+  backNavigation() {
+    this.router.navigate(['/user/question-paper']);
   }
 
   submitFeedback() {

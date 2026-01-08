@@ -270,22 +270,23 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
 
   onSourceGenerationChange(selected: any) {
-    // Handle string or array input from dropdown
     const val = Array.isArray(selected) ? selected : [selected];
-    this.useAI = val.includes('AI Questions') || val.includes('AI');
-    this.useLBA = val.includes('Pregenerated Questions') || val.includes('LBA');
 
-    this.onBackendModeChange();
+    // Check for "AI Questions" or "AI" in the selected array (handling both strings and objects)
+    this.useAI = val.some((item: any) =>
+      (typeof item === 'string' && (item === 'AI Questions' || item === 'AI')) ||
+      (typeof item === 'object' && (item.value === 'AI' || item.name === 'AI Questions'))
+    );
 
-    // RELOAD Subtopics immediately if a chapter is already picked
-    const currentChapter = this.f.chapter.value;
-    if (currentChapter) {
-      const prevSub = this.f.subTopic.value;
-      this.onChapterChange(currentChapter);
-      if (prevSub && this.questionBankTypeValue === 'singleChapter') {
-        this.f.subTopic.setValue(prevSub);
-      }
-    }
+    // Check for "Pregenerated Questions" or "LBA"
+    this.useLBA = val.some((item: any) =>
+      (typeof item === 'string' && (item === 'Pregenerated Questions' || item === 'LBA')) ||
+      (typeof item === 'object' && (item.value === 'LBA' || item.name === 'Pregenerated Questions'))
+    );
+
+    // Trigger UI update
+    this.updateLBAAvailableHeadings();
+    this.updateFormValidators();
   }
 
   onBackendModeChange() {
@@ -430,6 +431,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           });
 
           this.lbaChapters = this.chapterDropdownOptions;
+          this.updateLBAAvailableHeadings();
         },
         error: (err) => {
           console.error("Error fetching chapters", err);
@@ -496,10 +498,24 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    // Process LBA Headings 
+    // 1. Add AI Standard Types immediately if AI is selected
+    if (this.useAI) {
+      const aiStandardTypes = [
+        'Multiple Choice Questions',
+        'Short Answer Questions',
+        'Fill in the blanks',
+        'Long Answer Questions',
+        'Match the Following',
+        'Very Short Answer Questions'
+      ];
+      aiStandardTypes.forEach(typeName => {
+        headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
+      });
+    }
+
+    // 2. Add LBA Headings (merge with AI if they share names)
     for (const chapter of selectedChapters) {
       const lbaData = chapter.headings || [];
-
       for (const h of lbaData) {
         const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
         const headingCount = (typeof h === 'string' ? 1 : Number(h.count || 0));
@@ -513,35 +529,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Inject AI Standard Types
-    if (this.useAI && !this.useLBA) {
-      const aiStandardTypes = [
-        'Multiple Choice Questions',
-        'Short Answer Questions',
-        'Fill in the blanks',
-        'Long Answer Questions',
-        'Match the Following',
-        'Very Short Answer Questions'
-      ];
-
-      aiStandardTypes.forEach(typeName => {
-        if (!headingMap.has(typeName)) {
-          headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
-        }
-      });
-    }
-
     this.availableHeadings = Array.from(headingMap.values())
       .map(x => ({
         name: x.name,
         count: x.count,
         chapters: Array.from(x.chapters).sort((a, b) => a - b)
       }))
-      .sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return a.name.localeCompare(b.name);
-      });
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
+    // Sync with form control
     const names = new Set(this.availableHeadings.map(h => h.name));
     this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h));
     this.f.selectedHeadings.setValue(this.selectedHeadings);
@@ -599,6 +595,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       next: (results: any) => {
         const aiQs = results.ai || [];
         const lbaQs = results.lba || [];
+
+        console.log('[QB_DEBUG] Step 1 Results - AI Qs:', aiQs.length, 'LBA Qs:', lbaQs.length);
+
         this.allAvailableQuestions = [...aiQs, ...lbaQs];
 
         if (this.allAvailableQuestions.length > 0) {
@@ -788,6 +787,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         categoryBlocks.forEach((block: any) => {
           const innerQuestions = block.questions || [];
           const blockType = block.type || 'Question';
+          // Map internal AI type back to user-friendly heading if possible
+          const friendlyHeading = this.selectedHeadings.find(h => this.mapHeadingToAIType(h) === blockType) || blockType;
           const blockMarks = Number(block.marks_per_question || 1);
 
           innerQuestions.forEach((q: any) => {
@@ -819,7 +820,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
                 text: questionText,
                 marks: Number(q.marks || blockMarks),
                 type: blockType,
-                heading: blockType,
+                heading: friendlyHeading,
                 unit_name: q.unit_name || chapterName || 'General',
                 objective: finalObjective,
                 _id: q._id || `ai_${Math.random().toString(36).substring(7)}`
@@ -955,8 +956,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           source: 'Pregenerated Questions',
           text: q.text || q.question_text || q.question || 'LBA Question',
           marks: q.marksPerQuestion || q.marks || 1,
-          type: q.type || q.heading || this.selectedHeadings[0] || 'Question',
-          heading: q.heading || q.type || this.selectedHeadings[0] || 'Question',
+          type: q.type || q.heading || q.answerType || 'Question',
+          heading: q.heading || q.type || q.answerType || 'Question',
           unit_name: q.unit_name || selectedTitles[0] || 'General',
           objective: q.objective || 'Knowledge',
           _id: q._id || `lba_${Math.random().toString(36).substring(7)}`

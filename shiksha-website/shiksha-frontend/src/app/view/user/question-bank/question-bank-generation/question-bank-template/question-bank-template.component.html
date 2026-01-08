@@ -1,15 +1,16 @@
 <div class="px-4 md:px-8 mt-4">
   <div class="flex items-center gap-2">
-    <img src="../../../../../assets/icons/back-arrow.svg" alt="" class="cursor-pointer" (click)="previousStep()"/>
+    <img src="../../../../../assets/icons/back-arrow.svg" alt="" class="cursor-pointer" (click)="previousStep()" />
     <h2 class="text-base md:text-xl font-bold text-content">Step 2/3: Select Questions</h2>
   </div>
   <p class="text-sm md:text-base text-gray-500">
-    Mix and match questions from AI and Pregenerated questions to build your paper. Target: <span class="font-bold">{{totalMarks}} Marks</span>.
+    Mix and match questions from AI and Pregenerated questions to build your paper. Target: <span
+      class="font-bold">{{totalMarks}} Marks</span>.
   </p>
 </div>
 
 <div class="p-4 md:p-8 h-[70vh] flex flex-col md:flex-row gap-6">
-  
+
   <!-- LEFT: AVAILABLE QUESTIONS -->
   <div class="flex-1 bg-white border rounded-lg flex flex-col shadow-sm overflow-hidden">
     <!-- Header/Filters -->
@@ -17,17 +18,18 @@
       <div class="flex justify-between items-center">
         <h3 class="font-bold text-gray-700">Available Pool</h3>
         <div class="flex gap-2 text-xs">
-          <button (click)="setFilter('ALL')" [class.bg-gray-800]="filterSource==='ALL'" [class.text-white]="filterSource==='ALL'" class="px-2 py-1 rounded border">All</button>
-          <button (click)="setFilter('AI Questions')" [class.bg-blue-600]="filterSource==='AI Questions'" [class.text-white]="filterSource==='AI Questions'" class="px-2 py-1 rounded border">AI Gen</button>
-          <button (click)="setFilter('Pregenerated Questions')" [class.bg-green-600]="filterSource==='Pregenerated Questions'" [class.text-white]="filterSource==='Pregenerated Questions'" class="px-2 py-1 rounded border">Pregenerated</button>
+          <button (click)="setFilter('ALL')" [class.bg-gray-800]="filterSource==='ALL'"
+            [class.text-white]="filterSource==='ALL'" class="px-2 py-1 rounded border">All</button>
+          <button (click)="setFilter('AI Questions')" [class.bg-blue-600]="filterSource==='AI Questions'"
+            [class.text-white]="filterSource==='AI Questions'" class="px-2 py-1 rounded border">AI Gen</button>
+          <button (click)="setFilter('Pregenerated Questions')"
+            [class.bg-green-600]="filterSource==='Pregenerated Questions'"
+            [class.text-white]="filterSource==='Pregenerated Questions'"
+            class="px-2 py-1 rounded border">Pregenerated</button>
         </div>
       </div>
-      <input 
-        type="text" 
-        placeholder="Search questions..." 
-        (input)="onSearch($event)"
-        class="w-full p-2 text-sm border rounded outline-none focus:border-primary"
-      >
+      <input type="text" placeholder="Search questions..." (input)="onSearch($event)"
+        class="w-full p-2 text-sm border rounded outline-none focus:border-primary">
     </div>
 
     <!-- List -->
@@ -35,15 +37,20 @@
       <div *ngIf="filteredQuestions.length === 0" class="text-center py-10 text-gray-400 text-sm">
         No questions found.
       </div>
-      
-      <div *ngFor="let q of filteredQuestions" (click)="selectQuestion(q)" 
-           class="bg-white p-3 rounded border hover:shadow-md cursor-pointer transition-all border-l-4 group"
-           [ngClass]="{'border-l-blue-500': q.source === 'AI Questions', 'border-l-green-500': q.source === 'Pregenerated Questions'}">
+
+      <div *ngFor="let q of filteredQuestions" (click)="selectQuestion(q)"
+        class="bg-white p-3 rounded border hover:shadow-md cursor-pointer transition-all border-l-4 group"
+        [ngClass]="{'border-l-blue-500': q.source === 'AI Questions', 'border-l-green-500': q.source === 'Pregenerated Questions'}">
         <div class="flex justify-between items-start mb-1">
           <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 mr-2">{{ q.text }}</p>
           <div class="flex items-center gap-1 flex-shrink-0">
-            <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider" 
-                  [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated Questions'}">
+            <!-- New Heading Badge -->
+            <span *ngIf="q.heading"
+              class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
+              {{ q.heading }}
+            </span>
+            <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider"
+              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated Questions'}">
               {{ q.source }}
             </span>
             <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }} Marks</span>
@@ -58,24 +65,31 @@
     <div class="p-3 border-b bg-gray-50 flex justify-between items-center">
       <h3 class="font-bold text-gray-700">Selected Questions</h3>
       <div class="text-sm">
-        <span class="font-bold" [ngClass]="isTotalMet ? 'text-green-600' : 'text-primary'">{{ currentTotalMarks }}</span> 
+        <span class="font-bold" [ngClass]="isTotalMet ? 'text-green-600' : 'text-primary'">{{ currentTotalMarks
+          }}</span>
         <span class="text-gray-500"> / {{ totalMarks }} Marks</span>
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto p-2 space-y-2">
-      <div *ngIf="selectedQuestions.length === 0" class="text-center py-10 text-gray-400 text-sm border-2 border-dashed rounded m-4">
+      <div *ngIf="selectedQuestions.length === 0"
+        class="text-center py-10 text-gray-400 text-sm border-2 border-dashed rounded m-4">
         Click questions on the left to add them here.
       </div>
 
-      <div *ngFor="let q of selectedQuestions; let i = index" 
-           class="bg-white p-3 rounded border relative">
-        <button (click)="removeQuestion(i)" class="absolute top-2 right-2 text-gray-300 hover:text-red-500 font-bold text-xl leading-none">&times;</button>
+      <div *ngFor="let q of selectedQuestions; let i = index" class="bg-white p-3 rounded border relative">
+        <button (click)="removeQuestion(i)"
+          class="absolute top-2 right-2 text-gray-300 hover:text-red-500 font-bold text-xl leading-none">&times;</button>
         <div class="flex justify-between items-start mb-1 pr-6">
           <p class="text-sm text-gray-800 flex-1 mr-2">{{ q.text }}</p>
           <div class="flex items-center gap-1 flex-shrink-0">
-            <span class="text-[10px] font-bold px-1 rounded uppercase" 
-                  [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated'}">
+            <!-- New Heading Badge -->
+            <span *ngIf="q.heading"
+              class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
+              {{ q.heading }}
+            </span>
+            <span class="text-[10px] font-bold px-1 rounded uppercase"
+              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated'}">
               {{ q.source }}
             </span>
             <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }}M</span>

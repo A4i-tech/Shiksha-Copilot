@@ -1,14 +1,10 @@
 <!-- MAIN WRAPPER: Flex Column + Fixed Height to keep footer sticky -->
 <div class="flex flex-col h-[calc(100vh-20px)] bg-shade-50 p-4 md:py-0 md:px-2 rounded-sm">
-  
+
   <!-- HEADER -->
   <div class="flex gap-2 shrink-0">
-    <img
-      src="../../../../../assets/icons/back-arrow.svg"
-      alt="Back"
-      class="cursor-pointer"
-      (click)="backNavigation()"
-    />
+    <img src="../../../../../assets/icons/back-arrow.svg" alt="Back" class="cursor-pointer"
+      (click)="backNavigation()" />
     <h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
       {{ "Question Paper Generation" | translate }}
     </h1>
@@ -17,41 +13,30 @@
   <!-- STEPPER PROGRESS BAR -->
   <div class="bg-primary-30 px-2 py-4 md:px-4 rounded-t border mt-0 md:mt-4 shrink-0">
     <div class="flex items-center justify-center relative space-x-2 md:space-x-4">
-      <div
-        *ngFor="let step of [].constructor(totalSteps); let i = index"
-        class="flex items-center gap-2"
-      >
-        <div
-          class="w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all duration-300"
+      <div *ngFor="let step of [].constructor(totalSteps); let i = index" class="flex items-center gap-2">
+        <div class="w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all duration-300"
           [ngClass]="{
             'bg-primary text-white border-primary': currentStep > i + 1,
             'bg-blue-100 text-primary border-primary': currentStep === i + 1,
             'bg-gray-200 text-gray-400 border-gray-300': currentStep < i + 1
-          }"
-        >
+          }">
           {{ i + 1 }}
         </div>
 
         <p class="hidden lg:block font-semibold text-content">
           {{ stepNames[i] }}
         </p>
-        <div
-          *ngIf="i < totalSteps - 1"
-          class="flex-1 h-1 ml-1 transition-all duration-300 w-[24vw] md:w-[21vw]"
+        <div *ngIf="i < totalSteps - 1" class="flex-1 h-1 ml-1 transition-all duration-300 w-[24vw] md:w-[21vw]"
           [ngClass]="{
             'bg-primary': currentStep > i + 1,
             'bg-gray-300': currentStep <= i + 1
-          }"
-        ></div>
+          }"></div>
       </div>
     </div>
 
     <!-- Mobile Step Names -->
     <div class="md:hidden flex items-start justify-between mt-2">
-      <p
-        class="font-semibold text-sm text-content w-16 text-center"
-        *ngFor="let stepName of stepNames"
-      >
+      <p class="font-semibold text-sm text-content w-16 text-center" *ngFor="let stepName of stepNames">
         {{ stepName }}
       </p>
     </div>
@@ -60,65 +45,51 @@
   <!-- MAIN CONTENT CONTAINER -->
   <div class="flex-1 overflow-hidden configuration-container rounded-b bg-white border border-t-0 relative">
     <ng-container [ngSwitch]="currentStep">
-      
+
       <!-- STEP 1: CONFIGURATION (Scrollable) -->
       <div *ngSwitchCase="1" class="h-full overflow-y-auto pb-6" [@fadeInOut]="currentStep === 1">
         <div class="px-4 md:px-8 mt-4">
           <h2 class="text-base md:text-xl font-bold text-content">Step 1/3: Configuration</h2>
         </div>
-        
+
         <div class="text-content rounded">
           <form [formGroup]="questionBankConfigForm">
             <div class="bg-white rounded-lg p-3 md:p-8">
-              
+
               <!-- PRIMARY FILTERS GRID: NOW 4 COLUMNS -->
               <div class="grid lg:grid-cols-4 gap-4">
-                
+
                 <!-- 1. Board -->
                 <div>
-                  <app-form-dropdown 
-                    [dropDownControlName]="'board'" 
-                    (valueChange)="onBoardChange($event)" 
-                    [dropDownCtrl]="convertToFormControl(f['board'])" 
-                    [dropDownValues]="boardDropdownOptions" 
-                    [config]="boardDropdownconfig" 
-                    [submitted]="submittedConfig">
+                  <app-form-dropdown [dropDownControlName]="'board'" (valueChange)="onBoardChange($event)"
+                    [dropDownCtrl]="convertToFormControl(f['board'])" [dropDownValues]="boardDropdownOptions"
+                    [config]="boardDropdownconfig" [submitted]="submittedConfig">
                   </app-form-dropdown>
                 </div>
-                
+
                 <!-- 2. Source Generation (Multi Select Dropdown) -->
                 <div>
-                  <app-form-dropdown 
-                    [dropDownControlName]="'sourceGeneration'" 
-                    (valueChange)="onSourceGenerationChange($event)" 
-                    [dropDownCtrl]="convertToFormControl(f['sourceGeneration'])" 
-                    [dropDownValues]="sourceGenerationOptions" 
-                    [config]="sourceGenerationDropdownconfig" 
+                  <app-form-dropdown [dropDownControlName]="'sourceGeneration'"
+                    (valueChange)="onSourceGenerationChange($event)"
+                    [dropDownCtrl]="convertToFormControl(f['sourceGeneration'])"
+                    [dropDownValues]="sourceGenerationOptions" [config]="sourceGenerationDropdownconfig"
                     [submitted]="submittedConfig">
                   </app-form-dropdown>
                 </div>
 
                 <!-- 3. Grade -->
                 <div>
-                  <app-form-dropdown 
-                    [dropDownControlName]="'grade'" 
-                    (valueChange)="onStandardChange($event)" 
-                    [dropDownCtrl]="convertToFormControl(f['grade'])" 
-                    [dropDownValues]="classDropdownOptions" 
-                    [config]="classDropdownconfig" 
-                    [submitted]="submittedConfig">
+                  <app-form-dropdown [dropDownControlName]="'grade'" (valueChange)="onStandardChange($event)"
+                    [dropDownCtrl]="convertToFormControl(f['grade'])" [dropDownValues]="classDropdownOptions"
+                    [config]="classDropdownconfig" [submitted]="submittedConfig">
                   </app-form-dropdown>
                 </div>
 
                 <!-- 4. Medium -->
                 <div>
-                  <app-form-dropdown 
-                    [dropDownControlName]="'medium'" 
-                    (valueChange)="onMediumChange($event)" 
-                    [dropDownCtrl]="convertToFormControl(f['medium'])" 
-                    [dropDownValues]="mediumDropdownOptions" 
-                    [config]="mediumDropdownconfig" 
-                    [submitted]="submittedConfig">
+                  <app-form-dropdown [dropDownControlName]="'medium'" (valueChange)="onMediumChange($event)"
+                    [dropDownCtrl]="convertToFormControl(f['medium'])" [dropDownValues]="mediumDropdownOptions"
+                    [config]="mediumDropdownconfig" [submitted]="submittedConfig">
                   </app-form-dropdown>
                 </div>
               </div>
@@ -126,23 +97,15 @@
               <!-- SUBJECT & LANGUAGE -->
               <div class="grid lg:grid-cols-2 gap-4 mt-7">
                 <div>
-                  <app-form-dropdown 
-                    [dropDownControlName]="'subject'" 
-                    (valueChange)="onSubjectChange($event)" 
-                    [dropDownCtrl]="convertToFormControl(f['subject'])" 
-                    [dropDownValues]="subjectDropdownOptions" 
-                    [config]="subjectDropdownconfig" 
-                    [submitted]="submittedConfig">
+                  <app-form-dropdown [dropDownControlName]="'subject'" (valueChange)="onSubjectChange($event)"
+                    [dropDownCtrl]="convertToFormControl(f['subject'])" [dropDownValues]="subjectDropdownOptions"
+                    [config]="subjectDropdownconfig" [submitted]="submittedConfig">
                   </app-form-dropdown>
                 </div>
                 <div>
-                  <app-form-dropdown 
-                    [dropDownControlName]="'language'" 
-                    (valueChange)="onLanguageChange($event)" 
-                    [dropDownCtrl]="convertToFormControl(f['language'])" 
-                    [dropDownValues]="languageDropdownOptions" 
-                    [config]="languageDropdownconfig" 
-                    [submitted]="submittedConfig">
+                  <app-form-dropdown [dropDownControlName]="'language'" (valueChange)="onLanguageChange($event)"
+                    [dropDownCtrl]="convertToFormControl(f['language'])" [dropDownValues]="languageDropdownOptions"
+                    [config]="languageDropdownconfig" [submitted]="submittedConfig">
                   </app-form-dropdown>
                 </div>
               </div>
@@ -151,67 +114,60 @@
               <div class="grid lg:grid-cols-2 gap-4 mt-7">
                 <div>
                   <label class="form-control-label font-bold">Examination Name <span class="text-error">*</span></label>
-                  <input type="text" class="form-control border rounded-lg p-2 w-full mt-1" formControlName="examinationName" placeholder="Enter Exam Name" />
-                  <small class="form-control-error" *ngIf="submittedConfig && f['examinationName'].errors?.['required']">Required</small>
+                  <input type="text" class="form-control border rounded-lg p-2 w-full mt-1"
+                    formControlName="examinationName" placeholder="Enter Exam Name" />
+                  <small class="form-control-error"
+                    *ngIf="submittedConfig && f['examinationName'].errors?.['required']">Required</small>
                 </div>
                 <div>
                   <label class="form-control-label font-bold">Total Marks <span class="text-error">*</span></label>
-                  <input type="text" oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 3)" maxlength="3" class="form-control border rounded-lg p-2 w-full mt-1" formControlName="totalMarks" placeholder="Total Marks" />
-                  <small class="form-control-error" *ngIf="submittedConfig && f['totalMarks'].errors?.['required']">Required</small>
+                  <input type="text" oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 3)" maxlength="3"
+                    class="form-control border rounded-lg p-2 w-full mt-1" formControlName="totalMarks"
+                    placeholder="Total Marks" />
+                  <small class="form-control-error"
+                    *ngIf="submittedConfig && f['totalMarks'].errors?.['required']">Required</small>
                 </div>
               </div>
 
               <!-- SCOPE (SINGLE VS MULTI CHAPTER) -->
               <div class="grid lg:grid-cols-2 gap-4 mt-7">
                 <div>
-                   <label class="form-control-label font-bold">Scope <span class="text-error">*</span></label>
-                   <div class="flex gap-4 items-center mt-2">
-                     <div *ngFor="let type of questionBankTypes; let i = index" class="flex items-center">
-                       <input 
-                         type="radio" 
-                         [(ngModel)]="questionBankTypeValue" 
-                         [ngModelOptions]="{ standalone: true }" 
-                         [id]="type.name + i" 
-                         [value]="type.value" 
-                         (change)="onQuestionTypeChange()" 
-                         class="w-4 h-4 cursor-pointer" 
-                       />
-                       <label [for]="type.name + i" class="ms-2 text-sm cursor-pointer">{{ type.name }}</label>
-                     </div>
-                   </div>
+                  <label class="form-control-label font-bold">Scope <span class="text-error">*</span></label>
+                  <div class="flex gap-4 items-center mt-2">
+                    <div *ngFor="let type of questionBankTypes; let i = index" class="flex items-center">
+                      <input type="radio" [(ngModel)]="questionBankTypeValue" [ngModelOptions]="{ standalone: true }"
+                        [id]="type.name + i" [value]="type.value" (change)="onQuestionTypeChange()"
+                        class="w-4 h-4 cursor-pointer" />
+                      <label [for]="type.name + i" class="ms-2 text-sm cursor-pointer">{{ type.name }}</label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               <!-- CHAPTERS, SUBTOPICS & HEADINGS -->
-<!-- CHAPTERS, SUBTOPICS & HEADINGS -->
+              <!-- CHAPTERS, SUBTOPICS & HEADINGS -->
               <div class="grid lg:grid-cols-2 gap-4 mt-7 items-start">
-                
+
                 <!-- 1. Chapter Selection -->
                 <div>
-                  <app-form-dropdown 
-                    [dropDownControlName]="'chapter'" 
-                    [dropDownCtrl]="convertToFormControl(f['chapter'])" 
-                    (valueChange)="onChapterChange($event)" 
-                    [dropDownValues]="chapterDropdownOptions" 
-                    [config]="chapterDropdownconfig" 
+                  <app-form-dropdown [dropDownControlName]="'chapter'"
+                    [dropDownCtrl]="convertToFormControl(f['chapter'])" (valueChange)="onChapterChange($event)"
+                    [dropDownValues]="chapterDropdownOptions" [config]="chapterDropdownconfig"
                     [submitted]="submittedConfig">
                   </app-form-dropdown>
                 </div>
 
                 <!-- 2. Subtopic Section (HIDDEN if not Single Chapter) -->
                 <div *ngIf="questionBankTypeValue === 'singleChapter'">
-                  
+
                   <!-- Case A: Show Dropdown -->
                   <!-- Render if subtopics exist OR if user hasn't selected a chapter yet -->
                   <div *ngIf="hasSubtopics || !f['chapter'].value">
-                      <app-form-dropdown 
-                        [dropDownControlName]="'subTopic'" 
-                        [dropDownCtrl]="convertToFormControl(f['subTopic'])" 
-                        (valueChange)="onSubtopicChange()" 
-                        [dropDownValues]="subtopicsDropdownOptions" 
-                        [config]="subTopicDropdownconfig" 
-                        [submitted]="submittedConfig">
-                      </app-form-dropdown>
+                    <app-form-dropdown [dropDownControlName]="'subTopic'"
+                      [dropDownCtrl]="convertToFormControl(f['subTopic'])" (valueChange)="onSubtopicChange()"
+                      [dropDownValues]="subtopicsDropdownOptions" [config]="subTopicDropdownconfig"
+                      [submitted]="submittedConfig">
+                    </app-form-dropdown>
                   </div>
 
                   <!-- Case B: "No Subtopics" Message -->
@@ -220,41 +176,57 @@
                     <label class="form-control-label font-bold mb-2 block text-gray-400 select-none">
                       Sub-Topic
                     </label>
-                    <div class="w-full px-4 text-left border border-gray-200 rounded-lg flex items-center justify-between bg-gray-50 h-[45px] transition-colors hover:bg-gray-100">
-                       <div class="flex items-center gap-2 overflow-hidden">
-                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                         </svg>
-                         <span class="text-sm text-gray-500 italic truncate">No subtopics - Entire chapter selected</span>
-                       </div>
-                       <span class="hidden sm:inline-block text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-gray-200 shadow-sm">
-                         Info
-                       </span>
+                    <div
+                      class="w-full px-4 text-left border border-gray-200 rounded-lg flex items-center justify-between bg-gray-50 h-[45px] transition-colors hover:bg-gray-100">
+                      <div class="flex items-center gap-2 overflow-hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 shrink-0" fill="none"
+                          viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-sm text-gray-500 italic truncate">No subtopics - Entire chapter
+                          selected</span>
+                      </div>
+                      <span
+                        class="hidden sm:inline-block text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-white px-2 py-0.5 rounded border border-gray-200 shadow-sm">
+                        Info
+                      </span>
                     </div>
                   </div>
                 </div>
                 <!-- 3. Custom Headings Dropdown -->
                 <div>
-                  <label class="form-control-label font-bold mb-2 block">Question Types / Headings <span class="text-error">*</span></label>
+                  <label class="form-control-label font-bold mb-2 block">Question Types / Headings <span
+                      class="text-error">*</span></label>
                   <div class="relative" *ngIf="availableHeadings.length; else noHeads">
-                     <button type="button" (click)="toggleHeadingDropdown()" class="w-full p-3 text-left border border-gray-300 rounded-lg flex justify-between items-center bg-white h-[45px] hover:border-primary transition-colors focus:ring-1 focus:ring-primary">
-                        <span class="truncate text-sm">{{ headingSummary() }}</span>
-                        <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-3 h-3"/>
-                     </button>
-                     <div *ngIf="showHeadingDropdown" class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-52 overflow-y-auto">
-                        <label class="flex items-center p-3 hover:bg-gray-50 border-b cursor-pointer font-semibold text-sm">
-                          <input type="checkbox" [checked]="isAllHeadingsSelected()" (change)="toggleAllHeadings($event)" class="mr-2 w-4 h-4 text-primary rounded focus:ring-primary" /> 
-                          Select All
-                        </label>
-                        <label *ngFor="let h of availableHeadings" class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b text-sm">
-                          <input type="checkbox" [checked]="isHeadingSelected(h.name)" (change)="toggleHeading($event, h.name)" class="mr-2 w-4 h-4 text-primary rounded focus:ring-primary" /> 
-                          {{h.name}} <span *ngIf="(h?.count || 0) > 0" class="ml-1 text-gray-400">({{h.count}})</span>
-                        </label>
-                     </div>
+                    <button type="button" (click)="toggleHeadingDropdown()"
+                      class="w-full p-3 text-left border border-gray-300 rounded-lg flex justify-between items-center bg-white h-[45px] hover:border-primary transition-colors focus:ring-1 focus:ring-primary">
+                      <span class="truncate text-sm">{{ headingSummary() }}</span>
+                      <img src="../../../../../assets/icons/down-arrow.svg" alt="" class="w-3 h-3" />
+                    </button>
+                    <div *ngIf="showHeadingDropdown"
+                      class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-52 overflow-y-auto">
+                      <label
+                        class="flex items-center p-3 hover:bg-gray-50 border-b cursor-pointer font-semibold text-sm">
+                        <input type="checkbox" [checked]="isAllHeadingsSelected()" (change)="toggleAllHeadings($event)"
+                          class="mr-2 w-4 h-4 text-primary rounded focus:ring-primary" />
+                        Select All
+                      </label>
+                      <label *ngFor="let h of availableHeadings"
+                        class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b text-sm">
+                        <input type="checkbox" [checked]="isHeadingSelected(h.name)"
+                          (change)="toggleHeading($event, h.name)"
+                          class="mr-2 w-4 h-4 text-primary rounded focus:ring-primary" />
+                        {{h.name}} <span *ngIf="(h?.count || 0) > 0" class="ml-1 text-gray-400">({{h.count}})</span>
+                      </label>
+                    </div>
                   </div>
-                  <small class="form-control-error" *ngIf="submittedConfig && (!selectedHeadings || selectedHeadings.length === 0)">Required: Please select at least one type</small>
+                  <small class="form-control-error"
+                    *ngIf="submittedConfig && (!selectedHeadings || selectedHeadings.length === 0)">Required: Please
+                    select at least one type</small>
                   <ng-template #noHeads>
-                    <div class="p-3 text-center border rounded bg-gray-50 text-gray-400 text-sm h-[45px] flex items-center justify-center">
+                    <div
+                      class="p-3 text-center border rounded bg-gray-50 text-gray-400 text-sm h-[45px] flex items-center justify-center">
                       Select a chapter first
                     </div>
                   </ng-template>
@@ -265,52 +237,62 @@
               <div class="mt-8 pt-4 border-t" *ngIf="useAI && questionBankObjectives.length">
                 <h2 class="text-base font-bold text-content mb-3">Objectives Weightage (%)</h2>
                 <div class="overflow-x-auto">
-                  <table class="table-auto w-full text-content border" [ngClass]="totalPercentage === 100 ? 'border-primary-10' : 'border-error'">
+                  <table class="table-auto w-full text-content border"
+                    [ngClass]="totalPercentage === 100 ? 'border-primary-10' : 'border-error'">
                     <thead class="text-xs text-content bg-blue-50">
                       <tr>
-                        <th class="px-4 py-2 border text-center font-bold" *ngFor="let obj of questionBankObjectives">{{ obj.objective }}</th>
+                        <th class="px-4 py-2 border text-center font-bold" *ngFor="let obj of questionBankObjectives">{{
+                          obj.objective }}</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
                         <td class="p-2 border" *ngFor="let obj of questionBankObjectives; let i=index">
-                          <input type="text" class="w-full text-center border-none p-2 focus:ring-0 text-sm" [(ngModel)]="obj.percentage_distribution" [ngModelOptions]="{standalone:true}" (ngModelChange)="calculateTotalPercentage(i)" placeholder="%" />
+                          <input type="text" class="w-full text-center border-none p-2 focus:ring-0 text-sm"
+                            [(ngModel)]="obj.percentage_distribution" [ngModelOptions]="{standalone:true}"
+                            (ngModelChange)="calculateTotalPercentage(i)" placeholder="%" />
                         </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
-                <small class="text-error" *ngIf="totalPercentage !== 100">Total distribution must equal 100% (Current: {{totalPercentage}}%)</small>
+                <small class="text-error" *ngIf="totalPercentage !== 100">Total distribution must equal 100% (Current:
+                  {{totalPercentage}}%)</small>
               </div>
 
               <!-- MARKS DISTRIBUTION TABLE -->
               <div class="mt-8 pt-4 border-t" *ngIf="useAI && marksDistribution.length">
                 <h2 class="text-base font-bold text-content mb-3">Topic-wise Marks Distribution</h2>
                 <div class="overflow-x-auto">
-                  <table class="min-w-full table-auto border border-collapse" [ngClass]="totalMarks === totalDistributedMarks ? 'border-primary-10' : 'border-error'">
-                     <thead class="bg-blue-50 text-xs uppercase">
-                       <tr>
-                         <th class="p-3 border text-left">Chapter/Topic Name</th>
-                         <th class="p-3 border text-center w-32">Allocated Marks</th>
-                         <th class="p-3 border text-center w-24">Weightage %</th>
-                       </tr>
-                     </thead>
-                     <tbody>
-                       <tr *ngFor="let c of marksDistribution; let i=index" class="hover:bg-gray-50">
-                         <td class="p-3 border text-sm font-medium">{{c.unit_name}}</td>
-                         <td class="p-3 border">
-                           <input type="text" class="w-full text-center border-none p-1 focus:ring-0" [(ngModel)]="c.marks" [ngModelOptions]="{standalone:true}" (ngModelChange)="updatePercentage(i)" />
-                         </td>
-                         <td class="p-3 border text-center text-sm text-gray-500">{{c.percentage_distribution}}%</td>
-                       </tr>
-                     </tbody>
-                     <tfoot class="bg-gray-50 font-bold">
-                       <tr>
-                         <td class="p-3 border text-right">Total:</td>
-                         <td class="p-3 border text-center" [ngClass]="totalMarks !== totalDistributedMarks ? 'text-error' : 'text-primary'">{{totalDistributedMarks}} / {{totalMarks}}</td>
-                         <td class="p-3 border text-center">{{totalDistributedPercentage}}%</td>
-                       </tr>
-                     </tfoot>
+                  <table class="min-w-full table-auto border border-collapse"
+                    [ngClass]="totalMarks === totalDistributedMarks ? 'border-primary-10' : 'border-error'">
+                    <thead class="bg-blue-50 text-xs uppercase">
+                      <tr>
+                        <th class="p-3 border text-left">Chapter/Topic Name</th>
+                        <th class="p-3 border text-center w-32">Allocated Marks</th>
+                        <th class="p-3 border text-center w-24">Weightage %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let c of marksDistribution; let i=index" class="hover:bg-gray-50">
+                        <td class="p-3 border text-sm font-medium">{{c.unit_name}}</td>
+                        <td class="p-3 border">
+                          <input type="text" class="w-full text-center border-none p-1 focus:ring-0"
+                            [(ngModel)]="c.marks" [ngModelOptions]="{standalone:true}"
+                            (ngModelChange)="updatePercentage(i)" />
+                        </td>
+                        <td class="p-3 border text-center text-sm text-gray-500">{{c.percentage_distribution}}%</td>
+                      </tr>
+                    </tbody>
+                    <tfoot class="bg-gray-50 font-bold">
+                      <tr>
+                        <td class="p-3 border text-right">Total:</td>
+                        <td class="p-3 border text-center"
+                          [ngClass]="totalMarks !== totalDistributedMarks ? 'text-error' : 'text-primary'">
+                          {{totalDistributedMarks}} / {{totalMarks}}</td>
+                        <td class="p-3 border text-center">{{totalDistributedPercentage}}%</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </div>
@@ -318,29 +300,20 @@
           </form>
         </div>
       </div>
-      
+
       <!-- STEP 2: SELECT QUESTIONS (Fixed Height, Internal Scroll) -->
-      <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2" class="h-full w-full">      
-        <app-question-bank-template
-          *ngIf="!isLoadingQuestions"
-          [currentStep]="currentStep"
-          [totalMarks]="totalMarks"
-          [availableQuestions]="allAvailableQuestions"
-          (backClick)="previousStep()"
-        ></app-question-bank-template>
-        
+      <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2" class="h-full w-full">
+        <app-question-bank-template *ngIf="!isLoadingQuestions" [currentStep]="currentStep" [totalMarks]="totalMarks"
+          [availableQuestions]="allAvailableQuestions" (backClick)="previousStep()"></app-question-bank-template>
+
       </div>
 
       <!-- STEP 3: PREVIEW (Scrollable) -->
       <div *ngSwitchCase="3" [@fadeInOut] class="h-full overflow-y-auto p-0 bg-white">
-        <app-question-bank-blue-print
-          [finalSelectedQuestions]="finalSelectedQuestions"
-          [examName]="questionBankConfigForm.value.examinationName"
-          [totalMarks]="totalMarks"
-          (backClick)="previousStep()"
-          (generateClick)="onSubmit(3)"
-        ></app-question-bank-blue-print>
-        
+        <app-question-bank-blue-print [finalSelectedQuestions]="finalSelectedQuestions"
+          [examName]="questionBankConfigForm.value.examinationName" [totalMarks]="totalMarks"
+          (backClick)="previousStep()" (generateClick)="onSubmit(3)"></app-question-bank-blue-print>
+
         <div *ngIf="!finalSelectedQuestions || finalSelectedQuestions.length === 0" class="text-center p-5">
           <p>No questions selected for preview.</p>
           <button class="btn btn-primary" (click)="previousStep()">Go Back</button>
@@ -350,26 +323,28 @@
   </div>
 
   <!-- STICKY FOOTER -->
-  <div class="shrink-0 flex justify-end items-center gap-2 mt-4 py-4 md:p-4 bg-white border-t z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-    
+  <div
+    class="shrink-0 flex justify-end items-center gap-2 mt-4 py-4 md:p-4 bg-white border-t z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+
     <button *ngIf="currentStep > 1" (click)="previousStep()" class="btn-outline-primary px-6 py-2 rounded-lg font-bold">
       Previous
     </button>
-    
+
     <!-- Step 1 Next -->
-    <button *ngIf="currentStep === 1" (click)="onSubmit(1)" class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
+    <button *ngIf="currentStep === 1" (click)="onSubmit(1)"
+      class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
       Next: Select Questions
     </button>
 
     <!-- Step 2 Next: Validates via Parent Component accessing Child Component -->
-    <button *ngIf="currentStep === 2" 
-        (click)="onSubmit(2)" 
-        class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
+    <button *ngIf="currentStep === 2" (click)="onSubmit(2)"
+      class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
       Next: View Blue Print
     </button>
 
     <!-- Step 3 Generate -->
-    <button *ngIf="currentStep === 3" (click)="generateMergedQuestionBank()" [disabled]="isLoadingQuestions" class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
+    <button *ngIf="currentStep === 3" (click)="generateMergedQuestionBank()" [disabled]="isLoadingQuestions"
+      class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
       {{ isLoadingQuestions ? 'Generating...' : 'Generate Final Paper' }}
     </button>
 
