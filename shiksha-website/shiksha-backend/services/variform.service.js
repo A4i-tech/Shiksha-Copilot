@@ -13,7 +13,7 @@ function isVariformConfigured() {
 		'VARIFORM_SMS_TYPE',
 		'VARIFORM_SMS_TEMPLATE'
 	];
-	
+
 	return requiredVars.every(varName => {
 		const value = process.env[varName];
 		if (!value || value.trim() === '') {
@@ -30,8 +30,8 @@ function isVariformConfigured() {
  */
 function isValidUrl(url) {
 	try {
-		new URL(url);
-		return true;
+		const parsed = new URL(url);
+		return ['http:', 'https:'].includes(parsed.protocol);
 	} catch {
 		return false;
 	}

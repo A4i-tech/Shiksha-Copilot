@@ -112,12 +112,12 @@ const getQuestions = async (req, res) => {
 const generateQuestionPaper = async (req, res) => {
   try {
     const paperData = req.body;
-    const userDetails = req.user; 
-    
+    const userDetails = req.user;
+
     if (!userDetails) {
       return res.status(401).json(formatApiResponse(false, 'User authentication required', null));
     }
-    
+
     const result = await QpManager.generateQuestionPaper(paperData, userDetails);
     return res.status(200).json(formatApiResponse(true, 'Question paper generated successfully', result));
   } catch (error) {
@@ -136,63 +136,30 @@ const getQuestionPaper = async (req, res) => {
   }
 };
 
-const downloadQuestionPaper = async (req, res) => {
-  try {
-    const { id } = req.params;
-    ensureDir(STORAGE_DIR);
-    const filePath = path.join(STORAGE_DIR, `${id}.docx`);
-
-    const streamFile = (paper) => {
-       const base = `QP_${safeFilename(paper?.config?.examName)}_${id}.docx`;
-       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-       res.setHeader('Content-Disposition', `attachment; filename="${base}"`);
-       return fs.createReadStream(filePath).pipe(res);
-    };
-
-    if (fs.existsSync(filePath)) {
-      const paper = await QpManager.getQuestionPaper(id).catch(() => null);
-      return streamFile(paper);
-    }
-
-    const paper = await QpManager.getQuestionPaper(id);
-    if (!paper) {
-      return res.status(404).json(formatApiResponse(false, 'Question paper not found', null));
-    }
-
-    await QpManager.generateWordDocument(paper);
-
-    if (fs.existsSync(filePath)) {
-      return streamFile(paper);
-    }
-    return res.status(500).json(formatApiResponse(false, 'Failed to generate document', null));
-  } catch (error) {
-    console.error('downloadQuestionPaper error:', error);
-    return res.status(500).json(formatApiResponse(false, 'Failed to download document', null));
-  }
-};
+// downloadQuestionPaper removed
 
 
 const uploadJsonFileFromFile = async (req, res) => {
-    // Keep original functionality for JSON uploads
-    try {
-        if (!req.file) return res.status(400).json(formatApiResponse(false, 'No file uploaded.', null));
-        
-        const fileBuffer = req.file.buffer.toString('utf-8');
-        const jsonData = JSON.parse(fileBuffer);
-        const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
-        
-        const result = await QpManager.insertChaptersAndQuestions([master]);
-        
-        return res.status(200).json(formatApiResponse(
-          true,
-          `Upload successful. Chapters: ${result.chaptersInserted}, Questions: ${result.questionsInserted}`,
-          result
-        ));
+  // Keep original functionality for JSON uploads
+  try {
+    if (!req.file) return res.status(400).json(formatApiResponse(false, 'No file uploaded.', null));
 
-    } catch (error) {
-        console.error('Error uploading JSON:', error);
-        return res.status(500).json(formatApiResponse(false, 'Internal server error.', { error: error.message }));
-    }
+    const fileBuffer = req.file.buffer.toString('utf-8');
+    const jsonData = JSON.parse(fileBuffer);
+    const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
+
+    const result = await QpManager.insertChaptersAndQuestions([master]);
+
+    return res.status(200).json(formatApiResponse(
+      true,
+      `Upload successful. Chapters: ${result.chaptersInserted}, Questions: ${result.questionsInserted}`,
+      result
+    ));
+
+  } catch (error) {
+    console.error('Error uploading JSON:', error);
+    return res.status(500).json(formatApiResponse(false, 'Internal server error.', { error: error.message }));
+  }
 };
 
 module.exports = {
@@ -205,6 +172,6 @@ module.exports = {
   getQuestions,
   generateQuestionPaper,
   getQuestionPaper,
-  downloadQuestionPaper,
+  // downloadQuestionPaper,
   uploadJsonFileFromFile,
 };

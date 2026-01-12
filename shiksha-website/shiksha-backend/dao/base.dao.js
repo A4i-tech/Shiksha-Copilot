@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+
 class BaseDao {
 	constructor(model) {
 		this.Model = model;
@@ -11,32 +13,32 @@ class BaseDao {
 		status
 	) {
 		try {
-			let processedFilters = { ...filters , ...status }
-			
+			let processedFilters = { ...filters, ...status }
+
 			const pipeline = [
 				{ $match: processedFilters }
 			];
-			
+
 			// Only add $sort stage if sort object has keys
 			if (sort && Object.keys(sort).length > 0) {
 				pipeline.push({ $sort: sort });
 			}
-	
+
 			if (limit > 0) {
 				pipeline.push(
 					{ $skip: (page - 1) * limit },
 					{ $limit: limit }
 				);
 			}
-	
+
 			const results = await this.Model.aggregate(pipeline);
-	
+
 			const totalItems = await this.Model.countDocuments(processedFilters);
-	
+
 			return {
 				page,
 				totalItems,
-				limit: limit > 0 ? limit : totalItems, 
+				limit: limit > 0 ? limit : totalItems,
 				results,
 			};
 		} catch (err) {
@@ -67,6 +69,9 @@ class BaseDao {
 
 	async getById(id) {
 		try {
+			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+				return null;
+			}
 			let result = await this.Model.findOne({ _id: id });
 			return result;
 		} catch (err) {
@@ -88,6 +93,9 @@ class BaseDao {
 
 	async delete(id, session = null) {
 		try {
+			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+				throw new Error("Invalid ID for delete operation");
+			}
 			const result = await this.Model.findByIdAndUpdate(
 				id,
 				{
@@ -104,11 +112,15 @@ class BaseDao {
 			return result;
 		} catch (err) {
 			console.log("Error -> BaseDao -> delete", err);
+			throw err;
 		}
 	}
 
 	async activate(id) {
 		try {
+			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+				throw new Error("Invalid ID for activate operation");
+			}
 			const result = await this.Model.findByIdAndUpdate(
 				id,
 				{
@@ -123,6 +135,7 @@ class BaseDao {
 			return result;
 		} catch (err) {
 			console.log("Error -> BaseDao -> activate", err);
+			throw err;
 		}
 	}
 

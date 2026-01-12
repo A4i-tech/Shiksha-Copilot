@@ -92,7 +92,7 @@ class ChapterAggregation {
               $map: {
                 input: {
                   $filter: {
-                    input: "$topicsLearningOutcomes",
+                    input: { $ifNull: ["$topicsLearningOutcomes", []] },
                     as: "item",
                     cond: {
                       $in: [

@@ -56,8 +56,16 @@ class ChapterDao extends BaseDao {
 				if (key === "standard") {
 					processedFilters[key] = Number(filters[key]);
 				} else if (key == "subject") {
-					let subjectarr = JSON.parse(filters[key]);
-					processedFilters["subject.subjectName"] = {$in:subjectarr};
+					let subjectarr = [];
+					try {
+						subjectarr = JSON.parse(filters[key]);
+					} catch (e) {
+						console.error("Invalid JSON in subject filter:", filters[key]);
+						// Fallback or ignore
+					}
+					if (Array.isArray(subjectarr) && subjectarr.length > 0) {
+						processedFilters["subject.subjectName"] = { $in: subjectarr };
+					}
 				} else {
 					processedFilters[key] = filters[key];
 				}

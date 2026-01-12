@@ -33,7 +33,7 @@ const getMedia = async (className) => {
 const getSubjects = async (className, medium) => {
   if (!className || !medium) throw new Error('Class and medium are required');
   const normalizedClass = cleanClass(className);
-  
+
   try {
     const subjects = await QpDao.getSubjects(normalizedClass, medium);
     return (subjects || []).sort();
@@ -83,7 +83,7 @@ const getQuestions = async (filters) => {
     difficulty,
     type,
     search,
-    headings, 
+    headings,
   } = filters || {};
 
   if (!subject || !medium || !className || !chapterNumbers) {
@@ -112,7 +112,7 @@ const getQuestions = async (filters) => {
   }
 };
 
-const DOC_URL = (id) => `/PREGENERATED-qp/papers/${id}/download`;
+// const DOC_URL = (id) => `/PREGENERATED-qp/papers/${id}/download`;
 
 const generateQuestionPaper = async (paperData, userDetails) => {
   const { config, questions, totalMarks } = paperData || {};
@@ -132,16 +132,10 @@ const generateQuestionPaper = async (paperData, userDetails) => {
     type: 'PREGENERATED',
   });
 
-  // 2. Convert Mongoose Doc to Plain Object for DOCX generator
-  // This prevents issues with Mongoose internal properties crashing the generator
-  const plainPaperData = savedPaperDoc.toObject ? savedPaperDoc.toObject() : savedPaperDoc;
+  // 2. Convert to object if needed (optional since we aren't generating docx anymore)
+  // const plainPaperData = savedPaperDoc.toObject ? savedPaperDoc.toObject() : savedPaperDoc;
 
-  // 3. Generate File
-  try {
-    await generateWordDocument(plainPaperData);
-  } catch (e) {
-    console.error('DOCX Generation Error:', e);
-  }
+  // 3. Generate File - REMOVED LEGACY DOCX GENERATION
 
   return {
     id: savedPaperDoc.id,
@@ -150,34 +144,8 @@ const generateQuestionPaper = async (paperData, userDetails) => {
     totalMarks: savedPaperDoc.totalMarks,
     schoolName: savedPaperDoc.schoolName,
     createdAt: savedPaperDoc.createdAt,
-    documentUrl: DOC_URL(savedPaperDoc.id),
+    // documentUrl: DOC_URL(savedPaperDoc.id), // Removed
   };
-};
-
-const generateWordDocument = async (paperData) => {
-  try {
-    const storageDir = path.join(__dirname, '..', 'storage', 'PREGENERATED-papers');
-
-    if (!fs.existsSync(storageDir)) {
-      fs.mkdirSync(storageDir, { recursive: true });
-    }
-
-    const url = await buildQuestionPaperDocx(paperData, storageDir);
-    
-    const filename = `${paperData._id || paperData.id}.docx`;
-    const filePath = path.join(storageDir, filename);
-    
-    if (fs.existsSync(filePath)) {
-        const stats = fs.statSync(filePath);
-        if (stats.size < 2000) {
-            console.error(`[Warning] Generated DOCX is only ${stats.size} bytes.`);
-        }
-    }
-
-    return url || DOC_URL(paperData._id || paperData.id);
-  } catch (e) {
-    throw e;
-  }
 };
 
 const getQuestionPaper = async (id) => {
@@ -247,6 +215,6 @@ module.exports = {
   getQuestions,
   generateQuestionPaper,
   getQuestionPaper,
-  generateWordDocument,
+  // generateWordDocument,
   insertChaptersAndQuestions,
 };

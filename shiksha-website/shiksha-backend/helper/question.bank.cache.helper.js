@@ -174,113 +174,71 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
       continue;
     }
 
+    // Collect all valid candidates first (Single pass)
+    const validCandidates = [];
+    for (const cacheDoc of cacheDocs) {
+      if (
+        cacheDoc.unitName.toLowerCase() === unitName &&
+        cacheDoc.questionsByObjective[objective]
+      ) {
+        const questionList = cacheDoc.questionsByObjective[objective];
+        for (const questionInCache of questionList) {
+          if (
+            questionInCache.type === template.type &&
+            questionInCache.marks === template.marks_per_question
+          ) {
+            validCandidates.push(questionInCache);
+          }
+        }
+      }
+    }
+
+    if (validCandidates.length === 0) {
+      misses++;
+      notFoundTemplate.question_distribution.push(questionDistribution[i]);
+      notFoundQuestionIndices.push(i);
+      continue;
+    }
+
     let foundQuestion = false;
 
-    for (const cacheDoc of cacheDocs) {
-      if (foundQuestion) break;
+    // Shuffle candidates to try random ones first instead of checking ALL for similarity
+    // This optimization prevents processing all embeddings if we find a good one early
+    const shuffledCandidates = validCandidates.sort(() => 0.5 - Math.random());
 
-      if (
-        cacheDoc.unitName.toLowerCase() === unitName &&
-        cacheDoc.questionsByObjective[objective]
-      ) {
-        const questionList = cacheDoc.questionsByObjective[objective];
+    for (const candidate of shuffledCandidates) {
+      const questionText = preprocess(candidate.question.question);
+      const questionHash = generateHash(questionText);
 
-        // Shuffle or iterate? Original code iterated but picked ONE matching constraints.
-        // Actually original code collected ALL candidates then picked one random.
-        // Let's optimize: Collect valid candidates first.
+      // Optimization: In a real scenario, embeddings should be cached or fetched in bulk.
+      // Here we keep one-by-one but exit early.
+      const embDocs = await questionBankEmbedding.findById(questionHash);
+      if (!embDocs) continue;
 
-        const candidates = [];
-        for (const questionInCache of questionList) {
-          if (
-            questionInCache.type === template.type &&
-            questionInCache.marks === template.marks_per_question
-          ) {
-            candidates.push(questionInCache);
-          }
-        }
+      const emb = embDocs["embeddings"];
+      let isDuplicate = false;
 
-        if (candidates.length === 0) continue;
-
-        // Check similarity for candidates
-        // This effectively tries to find *one* valid candidate among many.
-        // Original code logic:
-        // Iterate cacheDocs. For each doc, iterate questions.
-        // If match type/marks:
-        //    Calculate hash, fetch embedding.
-        //    Check similarity against `includedQuestions`.
-        //    If similar (> threshold), skip.
-        //    If not similar, add to `questionToInclude` and `embedingsToInclude` (locally).
-        //    Set `foundQuestion = true`.
-        //    Continue to next doc? No, logic was:
-        //      Loop cacheDocs
-        //        Loop questions
-        //          Add to `questionToInclude`
-        //      After loops, pick RANDOM from `questionToInclude`.
-
-        // My proposed optimization avoids accumulating ALL valid questions from ALL docs
-        // but strictly following original logic:
-
-        // To strictly follow original logic, we must accumulate candidates from ALL docs.
-      }
-    }
-
-    // Original Logic Reconstruction for fidelity:
-    let questionToInclude = [];
-    let embedingsToInclude = []; // [question, emb] pairs
-
-    for (const cacheDoc of cacheDocs) {
-      if (
-        cacheDoc.unitName.toLowerCase() === unitName &&
-        cacheDoc.questionsByObjective[objective]
-      ) {
-        const questionList = cacheDoc.questionsByObjective[objective];
-        for (const questionInCache of questionList) {
-          if (
-            questionInCache.type === template.type &&
-            questionInCache.marks === template.marks_per_question
-          ) {
-            const questionText = preprocess(questionInCache.question.question);
-            const questionHash = generateHash(questionText);
-            const embDocs = await questionBankEmbedding.findById(questionHash);
-
-            if (!embDocs) continue;
-            const emb = embDocs["embeddings"];
-
-            let isDuplicate = false;
-            if (includedQuestions.length > 0) {
-              const [idx, simiScore] = findMostSimilar(
-                includedQuestions.map((item) => item[1]),
-                emb
-              );
-              if (simiScore > simiThreshold) {
-                isDuplicate = true;
-              }
-            }
-
-            if (!isDuplicate) {
-              embedingsToInclude.push([questionInCache, emb]);
-              questionToInclude.push(questionInCache.question);
-            }
-          }
+      if (includedQuestions.length > 0) {
+        const [idx, simiScore] = findMostSimilar(
+          includedQuestions.map((item) => item[1]),
+          emb
+        );
+        if (simiScore > simiThreshold) {
+          isDuplicate = true;
         }
       }
-    }
 
-    if (questionToInclude.length > 0) {
-      hits++;
-      const randomIndex = getRandomIndex(questionToInclude);
+      if (!isDuplicate) {
+        // Found a valid, non-duplicate question
+        const selectedQuestion = JSON.parse(JSON.stringify(candidate));
+        selectedQuestion.objective = objective.charAt(0).toUpperCase() + objective.slice(1);
 
-      const selectedPair = embedingsToInclude[randomIndex];
-      const selectedCacheItem = selectedPair[0];
-      const selectedEmb = selectedPair[1];
-
-      // Deep clone
-      const selectedQuestion = JSON.parse(JSON.stringify(selectedCacheItem));
-      selectedQuestion.objective = objective.charAt(0).toUpperCase() + objective.slice(1);
-
-      questionTypeResponse.questions.push(selectedQuestion);
-      includedQuestions.push([selectedCacheItem, selectedEmb]);
-      foundQuestion = true;
+        questionTypeResponse.questions.push(selectedQuestion);
+        includedQuestions.push([candidate, emb]);
+        foundQuestion = true;
+        hits++;
+        break; // Stop looking for this slot
+      }
     }
 
     if (!foundQuestion) {
