@@ -21,7 +21,7 @@ class SchoolManager extends BaseManager {
 
   async create(req, session) {
     try {
-      await session.startTransaction();
+      session.startTransaction();
       let classes = req.body?.classes || [];
       let school = await this.schoolDao.getOne({ schoolId: req.body.schoolId });
 

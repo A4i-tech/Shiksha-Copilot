@@ -369,7 +369,7 @@ class QuestionBankManager extends BaseManager {
 
       // Saving
       if (isPreview === true || isPreview === "true") {
-        if (session.inAtomicity) await session.abortTransaction();
+        if (session.inTransaction()) await session.abortTransaction();
         return formatApiReponse(
           true,
           "Question bank preview generated successfully!",
@@ -485,7 +485,7 @@ class QuestionBankManager extends BaseManager {
       );
     } catch (err) {
       console.error("Generate Question Bank Error:", err);
-      if (session.inAtomicity) await session.abortTransaction();
+      if (session.inTransaction()) await session.abortTransaction();
       return formatApiReponse(false, err?.message, err);
     } finally {
       session.endSession();

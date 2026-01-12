@@ -9,7 +9,6 @@ import { applicationUsers } from '../shared/utility/enum.util';
 })
 export class SignInService extends BaseRestService {
   baseUrl = environment.apiUrl;
-  loggedInUserType!:applicationUsers;
 
   /**
    * Class constructor
@@ -18,18 +17,6 @@ export class SignInService extends BaseRestService {
   constructor(http: HttpClient) {
     super(http);
     this.setUri('auth');
-
-    // User type is now auto-detected by backend based on phone number
-    // No need to determine type upfront based on hostname
-    const hostname = window.location.hostname;
-    
-    if (hostname.startsWith('sikshana') || hostname.startsWith('shikshacopilot')) {
-      this.loggedInUserType = applicationUsers.TEACHER;
-    } else if (hostname.startsWith('admin')) {
-      this.loggedInUserType = applicationUsers.ADMIN;
-    } else if(hostname.startsWith('localhost')){
-      this.loggedInUserType = applicationUsers.TEACHER;
-    }
   }
 
   /**
@@ -38,7 +25,7 @@ export class SignInService extends BaseRestService {
    * @param mobile_number
    * @returns
    */
-  validateMobileNumber(reqBody:any) {
+  validateMobileNumber(reqBody: any) {
     return this.post(`get-otp`, reqBody);
   }
 
@@ -60,7 +47,7 @@ export class SignInService extends BaseRestService {
    * Auth me
    * @returns 
    */
-  authMe(){
+  authMe() {
     return this.get('me');
   }
 }

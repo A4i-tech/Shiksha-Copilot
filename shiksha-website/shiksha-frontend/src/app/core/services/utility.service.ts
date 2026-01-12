@@ -67,8 +67,6 @@ export class UtilityService {
       this.showError(err.error?.message || 'Unauthorized. Please login again.');
     } else if (err.status === 500) {
       this.showError('Server error. Please try again later.');
-    } else {
-      this.showError(err.error?.message || 'An unexpected error occurred.');
     }
   }
 
