@@ -595,9 +595,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       next: (results: any) => {
         const aiQs = results.ai || [];
         const lbaQs = results.lba || [];
-
-        console.log('[QB_DEBUG] Step 1 Results - AI Qs:', aiQs.length, 'LBA Qs:', lbaQs.length);
-
         this.allAvailableQuestions = [...aiQs, ...lbaQs];
 
         if (this.allAvailableQuestions.length > 0) {

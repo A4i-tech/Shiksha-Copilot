@@ -132,242 +132,23 @@ class QuestionBankManager extends BaseManager {
     const session = await mongoose.startSession();
     session.startTransaction();
     try {
-      // Standardize variables to handle naming mismatches from Frontend
-      const {
-        chapter,
-        subTopic,
-        isMultiChapter,
-        chapterIds,
-        questionBankTemplate,
-        template,
-        language,
-        questions,
-        isPreview,
-      } = req.body;
-
-      // Handle both objectiveDistribution (camel) and objective_distribution (snake)
-      const objectiveDistribution =
-        req.body.objectiveDistribution || req.body.objective_distribution || [];
-
-      // Determine unit names and level
-      const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
-      const unitNames = isMultiChapter ? chapter || [] : subTopic || [];
-      const processedUnitNames = Array.isArray(unitNames)
-        ? unitNames.map((e) => e.trim())
-        : [];
-
-      // chapterIds is always an array even if frontend sends a single string
-      const chapterIdsArr = Array.isArray(chapterIds)
-        ? chapterIds
-        : chapterIds
-          ? [chapterIds]
-          : [];
-
-      let mergedList = [];
-      let notFoundQuestions = [];
-      let cacheSummary = {};
-      let rawCacheHit = [];
-
       console.log('[Manager] generateQuestionBank called.');
-      if (questions && questions.length > 0) {
-        console.log("[Manager] Manual Flow detected. Using provided questions/sections.");
-        console.log("[Manager] Input Sections Count:", questions.length);
-        const totalInputQs = questions.reduce((acc, sec) => acc + (sec.questions ? sec.questions.length : 0), 0);
-        console.log("[Manager] Total Input Questions Count:", totalInputQs);
 
-        mergedList = questions;
-      } else {
-        // AI GENERATION FLOW
-        const cacheHit = await this.questionBankCacheDao.findInCache(
-          chapterIdsArr,
-          unitLevel,
-          processedUnitNames
-        );
+      const context = this._prepareGenerationContext(req.body);
+      const {
+        language,
+        isPreview,
+        examinationName
+      } = context;
 
-        rawCacheHit = (cacheHit || []).map((doc) => doc.toObject());
+      // 1. Get Questions (Manual or AI + Cache)
+      const aiResult = await this._handleAIQuestionGeneration(context, user, req.body);
+      let { mergedList, notFoundQuestions, cacheSummary, rawCacheHit } = aiResult;
 
-        const {
-          matchTheFollowingTemplate,
-          matchTheFollowingIndex,
-          filteredTemplate,
-        } = filterTemplate(template || []);
+      // 2. Translation
+      mergedList = await this._handleTranslation(language, mergedList, examinationName);
 
-        const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
-          filteredTemplate,
-          cacheHit
-        );
-        cacheSummary = summary;
-        notFoundQuestions = structuredClone(notFoundRes);
-
-        const templatePayload = await this._createQuestionBankPayload(
-          req.body,
-          user
-        );
-
-        // Re-inject Match The Following placeholders
-        if (matchTheFollowingTemplate.length) {
-          for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-            notFoundRes.splice(
-              matchTheFollowingIndex[i],
-              0,
-              matchTheFollowingTemplate[i]
-            );
-          }
-        }
-
-        let newResQuestions;
-        if (notFoundRes.length) {
-          const payload = {
-            ...templatePayload,
-            template: this._mapTemplateTypes(notFoundRes),
-            existing_questions: this._mapTemplateTypes(res),
-          };
-
-          const response = await postToQuestionBankParts(payload);
-
-          if (response.status !== 200) {
-            throw new Error(
-              `Something went wrong with copilot! Please try later`
-            );
-          }
-
-          if (!response.data) {
-            throw new Error(
-              "Something went wrong with copilot! Please try later"
-            );
-          }
-
-          // DEBUG LOGS
-          console.log('[Manager] AI Response received.');
-          let newQuestions = response.data;
-          console.log('[Manager] newQuestions:', JSON.stringify(newQuestions, null, 2));
-
-          let generatedItems = [];
-          if (newQuestions.questions && Array.isArray(newQuestions.questions)) {
-            generatedItems = newQuestions.questions;
-          } else if (newQuestions.items && Array.isArray(newQuestions.items)) {
-            generatedItems = newQuestions.items;
-          } else if (Array.isArray(newQuestions)) {
-            generatedItems = newQuestions;
-          }
-          console.log('[Manager] generatedItems length:', generatedItems.length);
-
-          // KEY FIX: Flatten responses from Python
-          const recursiveExtract = (items) => {
-            let extracted = [];
-            if (!Array.isArray(items)) return extracted;
-
-            items.forEach(item => {
-              if (item.questions && Array.isArray(item.questions)) {
-                extracted.push(...recursiveExtract(item.questions));
-              } else if (item.item) {
-                extracted.push(item.item);
-              } else {
-                extracted.push(item);
-              }
-            });
-            return extracted;
-          };
-
-          const flattenedItems = recursiveExtract(generatedItems);
-          console.log('[Manager] flattenedItems length:', flattenedItems.length);
-          console.log('[Manager] notFoundRes length:', notFoundRes.length);
-
-
-          // KEY FIX: Restructure flat items back into blocks for mergeQuestions
-          // mergeQuestions expects an array of blocks: [{ type: '...', questions: [...] }, ...]
-          let itemPointer = 0;
-          const questionsInBlocks = notFoundRes.map(template => {
-            const numNeeded = template.question_distribution.length;
-            const blockQuestions = flattenedItems.slice(itemPointer, itemPointer + numNeeded);
-            console.log(`[Manager] Block needed: ${numNeeded}, got: ${blockQuestions.length} (pointer: ${itemPointer})`);
-            itemPointer += numNeeded;
-            return {
-              type: template.type,
-              questions: blockQuestions
-            };
-          });
-
-          const filteredQuestions = filterTemplate(questionsInBlocks);
-          newResQuestions = filteredQuestions.filteredTemplate;
-
-          mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
-
-          if (filteredQuestions.matchTheFollowingTemplate.length) {
-            for (
-              let i = 0;
-              i < filteredQuestions.matchTheFollowingTemplate.length;
-              i++
-            ) {
-              mergedList.splice(
-                filteredQuestions.matchTheFollowingIndex[i],
-                0,
-                filteredQuestions.matchTheFollowingTemplate[i]
-              );
-            }
-          }
-        } else {
-          mergedList = res;
-        }
-
-        // Re-inject Match following for full list
-        if (matchTheFollowingTemplate.length) {
-          for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-            if (mergedList.length < (template || []).length) {
-              mergedList.splice(
-                matchTheFollowingIndex[i],
-                0,
-                matchTheFollowingTemplate[i]
-              );
-            }
-          }
-        }
-      }
-
-      // TRANSLATION LOGIC
-      if (language) {
-        console.log(
-          `Initiating translation check for target language: ${language}...`
-        );
-        try {
-          const translationPayload = {
-            target_language: language,
-            json_data: {
-              title: req.body.examinationName || "Question Paper",
-              language: language,
-              parts: [
-                {
-                  part_name: "Questions",
-                  questions: convertToCamelCase(mergedList),
-                },
-              ],
-            },
-          };
-
-          const pythonUrl = process.env.LLM_API_BASE_URL;
-          const transResponse = await axios.post(
-            `${pythonUrl}/question-paper/translate_json`,
-            translationPayload
-          );
-
-          if (transResponse.data && transResponse.data.translated_json) {
-            const translatedData = transResponse.data.translated_json;
-            if (translatedData.parts && translatedData.parts[0].questions) {
-              mergedList = translatedData.parts[0].questions;
-              console.log(
-                "Translation process completed (Updated or Skipped based on detection)."
-              );
-            }
-          }
-        } catch (transErr) {
-          console.error(
-            "Translation failed, proceeding with original content:",
-            transErr.message
-          );
-        }
-      }
-
-      // Saving
+      // 3. Return Preview if requested
       if (isPreview === true || isPreview === "true") {
         if (session.inTransaction()) await session.abortTransaction();
         return formatApiReponse(
@@ -377,112 +158,25 @@ class QuestionBankManager extends BaseManager {
         );
       }
 
-      let questionBankData = {
-        metadata: {
-          schoolName: user?.school?.name,
-          language: language,
-        }
-      };
-      const questionBank = await this.questionBankDao.saveQuestionBank(
-        questionBankData
+      // 4. Save to DB
+      const result = await this._saveQuestionBankTransaction(
+        session,
+        user,
+        context,
+        mergedList,
+        notFoundQuestions,
+        cacheSummary,
+        rawCacheHit
       );
 
-      // Re-create payload for saving config
-      let config = await this._createQuestionBankPayload(req.body, user);
-
-      delete config.user_id;
-      delete config.chapters;
-
-      const userId = user._id;
-
-      let configData = convertToCamelCase({
-        ...config,
-        chapterIds,
-        isMultiChapter,
-        questionBankTemplate,
-        bluePrintTemplate: template,
-        objectiveDistribution: objectiveDistribution,
-        language,
-      });
-
-      configData.teacherId = new ObjectId(userId);
-      configData.questionBank = new ObjectId(questionBank._id);
-      configData.topics = processedUnitNames;
-      const questionBankConfig = await this.questionBankDao.create(configData);
-
-      if (!questions || questions.length === 0) {
-        if (notFoundQuestions.length) {
-          const objectives = (objectiveDistribution || []).map((e) =>
-            (e.objective || "").toLowerCase()
-          );
-
-          const processedCache = isMultiChapter
-            ? processCacheHits(
-              rawCacheHit,
-              chapterIdsArr,
-              processedUnitNames,
-              unitLevel,
-              objectives
-            )
-            : processCacheHitsForSubtopic(
-              rawCacheHit,
-              chapterIdsArr,
-              processedUnitNames,
-              unitLevel,
-              objectives
-            );
-
-          let cacheSummaryData = convertToCamelCase({
-            questionBankConfigId: questionBankConfig._id,
-            totalQuestionsToFindInCache: cacheSummary.totalDecisions,
-            cacheHit: cacheSummary.cacheHitCount,
-            cacheMiss: cacheSummary.cacheMissCount,
-            notFoundResponse: mergedList, // Saving merged result as reference
-            processedCache,
-            unitLevel,
-          });
-
-          cacheSummaryData.notFoundQuestions = notFoundQuestions;
-
-          const summary = await this.questionBankCacheSummaryDao.create(
-            cacheSummaryData
-          );
-
-          addCacheJob({
-            notFoundQuestions,
-            processedCache,
-            unitLevel,
-            newResQuestions: mergedList, // Updating cache with new questions
-            cacheSummaryId: summary._id.toString(),
-          }).catch((err) => {
-            console.error("Failed to enqueue cache update job", err);
-          });
-        } else {
-          let cacheSummaryData = convertToCamelCase({
-            questionBankConfigId: questionBankConfig._id,
-            totalQuestionsToFindInCache: cacheSummary.totalDecisions,
-            cacheHit: cacheSummary.cacheHitCount,
-            cacheMiss: cacheSummary.cacheMissCount,
-            unitLevel,
-            isCacheUpdated: true,
-          });
-
-          await this.questionBankCacheSummaryDao.create(cacheSummaryData);
-        }
-      }
-
       await session.commitTransaction();
-
-      const finalResponseData = {
-        ...questionBankConfig.toObject(),
-        questions: mergedList,
-      };
 
       return formatApiReponse(
         true,
         "Question bank generated successfully!",
-        finalResponseData
+        result
       );
+
     } catch (err) {
       console.error("Generate Question Bank Error:", err);
       if (session.inTransaction()) await session.abortTransaction();
@@ -512,6 +206,350 @@ class QuestionBankManager extends BaseManager {
         err.response?.data || err.message
       );
     }
+  }
+
+  _prepareGenerationContext(reqBody) {
+    const {
+      chapter,
+      subTopic,
+      isMultiChapter,
+      chapterIds,
+      questionBankTemplate,
+      template,
+      language,
+      questions,
+      isPreview,
+      examinationName,
+      objectiveDistribution,
+      objective_distribution
+    } = reqBody;
+
+    // Handle both objectiveDistribution (camel) and objective_distribution (snake)
+    const finalObjectiveDist = objectiveDistribution || objective_distribution || [];
+
+    // Determine unit names and level
+    const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
+    const unitNames = isMultiChapter ? chapter || [] : subTopic || [];
+    const processedUnitNames = Array.isArray(unitNames)
+      ? unitNames.map((e) => e.trim())
+      : [];
+
+    // chapterIds is always an array even if frontend sends a single string
+    const chapterIdsArr = Array.isArray(chapterIds)
+      ? chapterIds
+      : chapterIds
+        ? [chapterIds]
+        : [];
+
+    return {
+      chapter,
+      subTopic,
+      isMultiChapter,
+      chapterIds: chapterIdsArr,
+      questionBankTemplate,
+      template,
+      language,
+      questions,
+      isPreview,
+      examinationName,
+      objectiveDistribution: finalObjectiveDist,
+      processedUnitNames,
+      unitLevel,
+      // Pass other fields needed for payload creation
+      board: reqBody.board,
+      medium: reqBody.medium,
+      grade: reqBody.grade,
+      subject: reqBody.subject,
+      totalMarks: reqBody.totalMarks,
+      marksDistribution: reqBody.marksDistribution
+    };
+  }
+
+  async _handleAIQuestionGeneration(context, user, originalBody) {
+    const {
+      chapterIds,
+      unitLevel,
+      processedUnitNames,
+      template,
+      questions
+    } = context;
+
+    let mergedList = [];
+    let notFoundQuestions = [];
+    let cacheSummary = {};
+    let rawCacheHit = [];
+
+    if (questions && questions.length > 0) {
+      console.log("[Manager] Manual Flow detected. Using provided questions/sections.");
+      mergedList = questions;
+      return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
+    }
+
+    // AI GENERATION FLOW
+    const cacheHit = await this.questionBankCacheDao.findInCache(
+      chapterIds,
+      unitLevel,
+      processedUnitNames
+    );
+
+    rawCacheHit = (cacheHit || []).map((doc) => doc.toObject());
+
+    const {
+      matchTheFollowingTemplate,
+      matchTheFollowingIndex,
+      filteredTemplate,
+    } = filterTemplate(template || []);
+
+    const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
+      filteredTemplate,
+      cacheHit
+    );
+    cacheSummary = summary;
+    notFoundQuestions = structuredClone(notFoundRes);
+
+    const templatePayload = await this._createQuestionBankPayload(
+      originalBody,
+      user
+    );
+
+    // Re-inject Match The Following placeholders
+    if (matchTheFollowingTemplate.length) {
+      for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
+        notFoundRes.splice(
+          matchTheFollowingIndex[i],
+          0,
+          matchTheFollowingTemplate[i]
+        );
+      }
+    }
+
+    let newResQuestions;
+    if (notFoundRes.length) {
+      const payload = {
+        ...templatePayload,
+        template: this._mapTemplateTypes(notFoundRes),
+        existing_questions: this._mapTemplateTypes(res),
+      };
+
+      const response = await postToQuestionBankParts(payload);
+
+      if (response.status !== 200 || !response.data) {
+        throw new Error("Something went wrong with copilot! Please try later");
+      }
+
+      console.log('[Manager] AI Response received.');
+      let newQuestions = response.data;
+
+      let generatedItems = [];
+      if (newQuestions.questions && Array.isArray(newQuestions.questions)) {
+        generatedItems = newQuestions.questions;
+      } else if (newQuestions.items && Array.isArray(newQuestions.items)) {
+        generatedItems = newQuestions.items;
+      } else if (Array.isArray(newQuestions)) {
+        generatedItems = newQuestions;
+      }
+
+      // Flatten responses from Python
+      const recursiveExtract = (items) => {
+        let extracted = [];
+        if (!Array.isArray(items)) return extracted;
+
+        items.forEach(item => {
+          if (item.questions && Array.isArray(item.questions)) {
+            extracted.push(...recursiveExtract(item.questions));
+          } else if (item.item) {
+            extracted.push(item.item);
+          } else {
+            extracted.push(item);
+          }
+        });
+        return extracted;
+      };
+
+      const flattenedItems = recursiveExtract(generatedItems);
+
+      // Restructure flat items back into blocks for mergeQuestions
+      let itemPointer = 0;
+      const questionsInBlocks = notFoundRes.map(template => {
+        const numNeeded = template.question_distribution.length;
+        const blockQuestions = flattenedItems.slice(itemPointer, itemPointer + numNeeded);
+        itemPointer += numNeeded;
+        return {
+          type: template.type,
+          questions: blockQuestions
+        };
+      });
+
+      const filteredQuestions = filterTemplate(questionsInBlocks);
+      newResQuestions = filteredQuestions.filteredTemplate;
+
+      mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
+
+      if (filteredQuestions.matchTheFollowingTemplate.length) {
+        for (let i = 0; i < filteredQuestions.matchTheFollowingTemplate.length; i++) {
+          mergedList.splice(
+            filteredQuestions.matchTheFollowingIndex[i],
+            0,
+            filteredQuestions.matchTheFollowingTemplate[i]
+          );
+        }
+      }
+    } else {
+      mergedList = res;
+    }
+
+    // Re-inject Match following for full list
+    if (matchTheFollowingTemplate.length) {
+      for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
+        if (mergedList.length < (template || []).length) {
+          mergedList.splice(
+            matchTheFollowingIndex[i],
+            0,
+            matchTheFollowingTemplate[i]
+          );
+        }
+      }
+    }
+
+    return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
+  }
+
+  async _handleTranslation(language, mergedList, examinationName) {
+    if (!language) return mergedList;
+
+    console.log(`Initiating translation check for target language: ${language}...`);
+    try {
+      const translationPayload = {
+        target_language: language,
+        json_data: {
+          title: examinationName || "Question Paper",
+          language: language,
+          parts: [
+            {
+              part_name: "Questions",
+              questions: convertToCamelCase(mergedList),
+            },
+          ],
+        },
+      };
+
+      const transResponse = await this.translateQuestionPaper(translationPayload);
+
+      if (transResponse.success && transResponse.data && transResponse.data.translated_json) {
+        const translatedData = transResponse.data.translated_json;
+        if (translatedData.parts && translatedData.parts[0].questions) {
+          console.log("Translation process completed.");
+          return translatedData.parts[0].questions;
+        }
+      }
+    } catch (transErr) {
+      console.error("Translation failed, proceeding with original content:", transErr.message);
+    }
+    return mergedList;
+  }
+
+  async _saveQuestionBankTransaction(session, user, context, mergedList, notFoundQuestions, cacheSummary, rawCacheHit) {
+    const {
+      language,
+      chapterIds,
+      isMultiChapter,
+      questionBankTemplate,
+      template,
+      objectiveDistribution,
+      processedUnitNames,
+      unitLevel
+    } = context;
+
+    let questionBankData = {
+      metadata: {
+        schoolName: user?.school?.name,
+        language: language,
+      },
+      questions: mergedList,
+    };
+
+    const questionBank = await this.questionBankDao.saveQuestionBank(questionBankData);
+
+    let configData = convertToCamelCase({
+      ...context,
+      user_id: undefined,
+      chapters: undefined,
+      chapterIds,
+      isMultiChapter,
+      questionBankTemplate,
+      bluePrintTemplate: template,
+      objectiveDistribution: objectiveDistribution,
+      language,
+    });
+
+    configData.teacherId = new ObjectId(user._id);
+    configData.questionBank = new ObjectId(questionBank._id);
+    configData.topics = processedUnitNames;
+
+    const questionBankConfig = await this.questionBankDao.create(configData);
+
+    // Cache Summary & Update Job
+    if (notFoundQuestions.length) {
+      const objectives = (objectiveDistribution || []).map((e) =>
+        (e.objective || "").toLowerCase()
+      );
+
+      const processedCache = isMultiChapter
+        ? processCacheHits(
+          rawCacheHit,
+          chapterIds,
+          processedUnitNames,
+          unitLevel,
+          objectives
+        )
+        : processCacheHitsForSubtopic(
+          rawCacheHit,
+          chapterIds,
+          processedUnitNames,
+          unitLevel,
+          objectives
+        );
+
+      let cacheSummaryData = convertToCamelCase({
+        questionBankConfigId: questionBankConfig._id,
+        totalQuestionsToFindInCache: cacheSummary.totalDecisions,
+        cacheHit: cacheSummary.cacheHitCount,
+        cacheMiss: cacheSummary.cacheMissCount,
+        notFoundResponse: mergedList,
+        processedCache,
+        unitLevel,
+      });
+
+      cacheSummaryData.notFoundQuestions = notFoundQuestions;
+
+      const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData);
+
+      addCacheJob({
+        notFoundQuestions,
+        processedCache,
+        unitLevel,
+        newResQuestions: mergedList,
+        cacheSummaryId: summary._id.toString(),
+      }).catch((err) => {
+        console.error("Failed to enqueue cache update job", err);
+      });
+    } else {
+      let cacheSummaryData = convertToCamelCase({
+        questionBankConfigId: questionBankConfig._id,
+        totalQuestionsToFindInCache: cacheSummary.totalDecisions,
+        cacheHit: cacheSummary.cacheHitCount,
+        cacheMiss: cacheSummary.cacheMissCount,
+        unitLevel,
+        isCacheUpdated: true,
+      });
+
+      await this.questionBankCacheSummaryDao.create(cacheSummaryData);
+    }
+
+    return {
+      ...questionBankConfig.toObject(),
+      questions: mergedList,
+    };
   }
 
   _mapTemplateTypes(templateArray) {

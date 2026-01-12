@@ -29,6 +29,10 @@ class QuestionBankDao extends BaseDao {
         }
       }
 
+      if (!ObjectId.isValid(teacherId)) {
+        throw new Error("Invalid Teacher ID");
+      }
+
       const pipeline = [
         {
           $match: {
@@ -63,7 +67,7 @@ class QuestionBankDao extends BaseDao {
 
   async saveQuestionBank(data) {
     try {
-      let questionBankmodel = new QuestionBank(data); 
+      let questionBankmodel = new QuestionBank(data);
       const questionBank = await questionBankmodel.save()
       return questionBank;
     } catch (err) {
@@ -73,6 +77,9 @@ class QuestionBankDao extends BaseDao {
 
   async getById(id) {
     try {
+      if (!ObjectId.isValid(id)) {
+        throw new Error("Invalid ID provided for getById");
+      }
       let result = await QuestionBankConfiguration.findOne({
         _id: id,
       }).populate("questionBank");
@@ -85,6 +92,9 @@ class QuestionBankDao extends BaseDao {
 
   async update(id, data) {
     try {
+      if (!ObjectId.isValid(id)) {
+        throw new Error("Invalid ID provided for update");
+      }
       const result = await QuestionBank.findOneAndUpdate(
         {
           _id: id,
