@@ -58,15 +58,7 @@ const getMedia = async (req, res) => {
   }
 };
 
-const getSubjects = async (req, res) => {
-  try {
-    const { class: className, medium } = req.query;
-    const result = await QpManager.getSubjects(className, medium);
-    return res.status(200).json(formatApiResponse(true, 'Subjects retrieved successfully', result));
-  } catch (error) {
-    return res.status(error.statusCode || 500).json(formatApiResponse(false, error.message, null));
-  }
-};
+
 
 const getChapters = async (req, res) => {
   try {
@@ -165,7 +157,7 @@ const uploadJsonFileFromFile = async (req, res) => {
 module.exports = {
   getClasses,
   getMedia,
-  getSubjects,
+
   getChapters,
   getDifficulties,
   getAnswerTypes,

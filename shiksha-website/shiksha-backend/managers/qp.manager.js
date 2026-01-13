@@ -30,17 +30,7 @@ const getMedia = async (className) => {
   }
 };
 
-const getSubjects = async (className, medium) => {
-  if (!className || !medium) throw new Error('Class and medium are required');
-  const normalizedClass = cleanClass(className);
 
-  try {
-    const subjects = await QpDao.getSubjects(normalizedClass, medium);
-    return (subjects || []).sort();
-  } catch (err) {
-    throw err;
-  }
-};
 
 // --- FIX: Delegate directly to DAO ---
 // This ensures the "Bulletproof" logic in the DAO is used to find chapters
@@ -79,6 +69,7 @@ const getQuestions = async (filters) => {
     medium,
     class: className,
     chapterNumbers,
+    chapterIds, // New Filter
     marks,
     difficulty,
     type,
@@ -94,10 +85,11 @@ const getQuestions = async (filters) => {
     subject,
     medium,
     class: cleanClass(className),
-    chapterNumbers: String(chapterNumbers)
+    chapterNumbers: String(chapterNumbers || '')
       .split(',')
       .map((n) => Number(n))
       .filter((n) => Number.isFinite(n)),
+    chapterIds: chapterIds ? String(chapterIds).split(',').map(id => String(id).trim()).filter(Boolean) : [],
     marks: marks === 'Any' ? undefined : marks,
     difficulty: difficulty === 'Any' ? undefined : difficulty,
     type: type === 'Any' ? undefined : type,
@@ -208,7 +200,7 @@ const insertChaptersAndQuestions = async (data) => {
 module.exports = {
   getClasses,
   getMedia,
-  getSubjects,
+
   getChapters,
   getDifficulties,
   getAnswerTypes,

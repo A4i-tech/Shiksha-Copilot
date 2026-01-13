@@ -351,13 +351,22 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     if (val) {
       const selectedClass = val.class || val;
+      const selectedBoard = this.f.board.value;
+      const rawClasses = this.loggedInUser.classes || [];
+      const uniqueMediums = new Set<string>();
 
-      this.questionBankService.getMedia({ class: String(selectedClass) }).subscribe({
-        next: (data: any[]) => {
-          this.mediumDropdownOptions = (data || []).map(m => ({ medium: m }));
-        },
-        error: () => console.error("Failed to load media from API")
+      rawClasses.forEach((c: any) => {
+        if (c.board === selectedBoard && String(c.class) === String(selectedClass)) {
+          if (c.medium) uniqueMediums.add(c.medium);
+        }
       });
+
+      this.mediumDropdownOptions = Array.from(uniqueMediums).map(m => ({ medium: m }));
+
+      if (this.mediumDropdownOptions.length === 1) {
+        this.f.medium.setValue(this.mediumDropdownOptions[0].medium);
+        this.onMediumChange({ medium: this.mediumDropdownOptions[0].medium });
+      }
     }
   }
 
@@ -367,18 +376,37 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.resetDistribution();
 
     if (val) {
-      const medium = val.medium || val;
-      const grade = this.f.grade.value;
+      const selectedMedium = val.medium || val;
+      const selectedClass = this.f.grade.value;
+      const selectedBoard = this.f.board.value;
+      const rawClasses = this.loggedInUser.classes || [];
+      console.log('[Frontend] loggedInUser.classes sample:', rawClasses.length > 0 ? rawClasses[0] : 'Empty');
+      const uniqueSubjects = new Set<string>();
 
-      if (grade && medium) {
-        this.questionBankService.getSubjects({ class: String(grade), medium: medium }).subscribe({
-          next: (data: any[]) => {
-            this.subjectDropdownOptions = (data || []).map(s => ({ name: s.name || s, value: s._id || s }));
-          },
-          error: () => console.error("Failed to load subjects")
-        });
-      }
+      rawClasses.forEach((c: any) => {
+        if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === selectedMedium) {
+          if (c.subject) uniqueSubjects.add(c.subject);
+        }
+      });
+
+      this.subjectDropdownOptions = Array.from(uniqueSubjects)
+        .map(s => ({ name: this.formatSubjectName(s), value: s })) // Format name for display, keep ID/code as value
+        .sort((a, b) => a.name.localeCompare(b.name));
     }
+  }
+
+  formatSubjectName(subject: string): string {
+    if (!subject) return '';
+    // Replace underscores with spaces
+    let formatted = subject.replace(/_/g, ' ');
+    // Remove trailing numbers if they look like IDs (e.g. "social_science_1" -> "social science")
+    // But be careful not to remove valid numbers if part of name. 
+    // Usually these IDs are "name_1", "name_2".
+    formatted = formatted.replace(/_\d+$/, ''); // Handle "science_1" -> "science"
+    formatted = formatted.replace(/\s\d+$/, ''); // Handle "science 1" -> "science"
+
+    // Title Case
+    return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
   }
 
   onSubjectChange(val: any) {
@@ -934,31 +962,48 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const selectedTitles = Array.isArray(rawVal) ? rawVal : [rawVal];
 
     // Filter by topic name string (since dropdown binds 'topics' name)
-    const selectedChapterNumbers = this.lbaChapters
-      .filter(ch => selectedTitles.some((t: string) => norm(t) === norm(ch.title) || norm(ch.title).includes(norm(t))))
-      .map(ch => ch.chapterNumber);
+    // Filter by topic name string (since dropdown binds 'topics' name)
+    const selectedChapters = this.lbaChapters
+      .filter(ch => selectedTitles.some((t: string) => norm(t) === norm(ch.title) || norm(ch.title).includes(norm(t))));
+
+    const selectedChapterNumbers = selectedChapters.map(ch => ch.chapterNumber);
+    const selectedChapterIds = selectedChapters.map(ch => ch._id);
 
     const params: any = {
       subject: config.subject, // This is now the Master Subject ID
       medium: config.medium,
       class: config.grade,
       chapterNumbers: selectedChapterNumbers.join(','),
+      chapterIds: selectedChapterIds.join(','),
       headings: this.selectedHeadings.join(',')
     };
 
+    console.log('[Frontend] getLBAQuestions params:', params);
+
     return this.questionBankService.getLBAQuestions(params).pipe(
       map((docs: any[]) => {
-        return (docs || []).map((q) => ({
-          ...q,
-          source: 'Pregenerated Questions',
-          text: q.text || q.question_text || q.question || 'LBA Question',
-          marks: q.marksPerQuestion || q.marks || 1,
-          type: q.type || q.heading || q.answerType || 'Question',
-          heading: q.heading || q.type || q.answerType || 'Question',
-          unit_name: q.unit_name || selectedTitles[0] || 'General',
-          objective: q.objective || 'Knowledge',
-          _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
-        }));
+        console.log('[Frontend] getLBAQuestions response length:', docs?.length);
+        return (docs || []).map((q) => {
+          let displayText = q.text || q.question_text || q.question;
+
+          if (!displayText) {
+            if (q.pairs && q.pairs.length > 0) displayText = 'Match the following';
+            else if (q.items && q.items.length > 0) displayText = 'Answer the following items';
+            else displayText = q.heading || q.groupHeading || q.type || 'Question';
+          }
+
+          return {
+            ...q,
+            source: 'Pregenerated Questions',
+            text: displayText,
+            marks: q.marksPerQuestion || q.marks || 1,
+            type: q.type || q.heading || q.answerType || 'Question',
+            heading: q.heading || q.type || q.answerType || 'Question',
+            unit_name: q.unit_name || selectedTitles[0] || 'General',
+            objective: q.objective || 'Knowledge',
+            _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
+          };
+        });
       }),
       catchError(err => {
         console.error("[QB-LOG] LBA Fetch Error:", err);

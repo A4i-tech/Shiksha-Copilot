@@ -17,7 +17,7 @@ router.post(
 
 router.get('/lba-qp/meta/classes', asyncMiddleware(lbaQpController.getClasses));
 router.get('/lba-qp/meta/media', asyncMiddleware(lbaQpController.getMedia));
-router.get('/lba-qp/meta/subjects', asyncMiddleware(lbaQpController.getSubjects));
+
 router.get('/lba-qp/meta/chapters', asyncMiddleware(lbaQpController.getChapters));
 router.get('/lba-qp/meta/difficulties', asyncMiddleware(lbaQpController.getDifficulties));
 router.get('/lba-qp/meta/answerTypes', asyncMiddleware(lbaQpController.getAnswerTypes));
