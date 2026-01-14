@@ -65,10 +65,15 @@ class ChapterAggregation {
 
   async getChapterByIdAndSubtopicFilter(chapterId, subTopics) {
     try {
-      // FIX: Handle case where chapterId is an array (pick first) or invalid string
-      const idToUse = Array.isArray(chapterId) ? chapterId[0] : chapterId;
+      if (!Array.isArray(chapterId)) {
+        console.warn(
+          `[ChapterAggregation] getChapterByIdAndSubtopicFilter expects an array. Received: ${typeof chapterId}`
+        );
+        return [];
+      }
 
-      // Defensive check to prevent BSONError crash
+      const idToUse = chapterId[0];
+
       if (!idToUse || !mongoose.Types.ObjectId.isValid(idToUse)) {
         console.warn(
           `[ChapterAggregation] Invalid Chapter ID passed: ${idToUse}. Returning empty array.`
@@ -128,7 +133,6 @@ class ChapterAggregation {
 
   async getChapterByIdsAndFilterObject(chapterIds) {
     try {
-      // FIX: Filter out invalid IDs before mapping to avoid BSONError
       const validIds = (chapterIds || [])
         .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
         .map((id) => new ObjectId(id));

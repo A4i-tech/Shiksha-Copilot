@@ -104,7 +104,7 @@ class MasterResourceManager extends BaseManager {
 		}
 	}
 
-	async getSubtopicResourceList(chapterId,templateIds) {
+	async getSubtopicResourceList(chapterId, templateIds) {
 		try {
 			let result = await this.masterResourceDao.getSubtopicResourceList(
 				chapterId,
@@ -153,7 +153,7 @@ class MasterResourceManager extends BaseManager {
 			);
 
 			if (result) {
-				const ratingAttachedResourcePlan = await attachAggregateRatings(result,resourceId);
+				const ratingAttachedResourcePlan = await attachAggregateRatings(result, resourceId);
 				return formatApiReponse(true, "", ratingAttachedResourcePlan);
 			}
 
@@ -173,12 +173,12 @@ class MasterResourceManager extends BaseManager {
 		try {
 			let lessonPlans = req.body;
 			let failedLessonPlan = [];
-			let createCount=0;
-			let updateCount=0
+			let createCount = 0;
+			let updateCount = 0
 
 			if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
-                lessonPlans = [lessonPlans];
-            }
+				lessonPlans = [lessonPlans];
+			}
 
 			for (let i = 0; i < lessonPlans.length; i++) {
 				let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
@@ -188,14 +188,14 @@ class MasterResourceManager extends BaseManager {
 				let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
 				let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
 				let learningOutcomes = lessonPlans[i].learning_outcomes;
-				let templateDetails = await LessonPlanTemplate.find({workFlowId:lessonPlans[i]?.workflow_id});
+				let templateDetails = await LessonPlanTemplate.find({ workFlowId: lessonPlans[i]?.workflow_id });
 				let templateId = templateDetails[0]?._id || null;
 
 				if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
-				  learningOutcomes = learningOutcomes[0].split('\n').map(outcome => outcome.trim());
+					learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
 				}
 
-				if(!templateId){
+				if (!templateId) {
 					failedLessonPlan.push(lessonPlans[i]);
 					continue;
 				}
@@ -209,42 +209,42 @@ class MasterResourceManager extends BaseManager {
 				});
 
 				if (chapter && lessonPlans[i]?.index_path) {
-                    chapter.indexPath= lessonPlans[i]?.index_path
-                    await chapter.save();
-                }
+					chapter.indexPath = lessonPlans[i]?.index_path
+					await chapter.save();
+				}
 
 				let subject = await this.masterSubjectDao.getByNameAndBoard(
-						subjectName,
-						board
+					subjectName,
+					board
 				);
 				if (!chapter?._id) {
 					if (!subject) {
-						let subjectData = await this.masterSubjectDao.getOne({subjectName});
+						let subjectData = await this.masterSubjectDao.getOne({ subjectName });
 						if (subjectData && !subjectData.boards.includes(board)) {
 							subjectData.boards.push(board);
 							subjectData.applicableClasses.push(
 								{
-										board: board,
-										Classes: [standard]
-									}
+									board: board,
+									Classes: [standard]
+								}
 							)
-							subject = await subjectData.save(); 
-						  }else{
+							subject = await subjectData.save();
+						} else {
 							subject = await this.masterSubjectDao.create({
 								subjectName,
 								boards: [board],
-								sem:getSemester(subjectName),
-								name:formatSubject(subjectName),
+								sem: getSemester(subjectName),
+								name: formatSubject(subjectName),
 								applicableClasses: [
 									{
 										board: board,
 										Classes: [standard]
 									}
-									]
+								]
 							});
-						  }
+						}
 					}
-	 
+
 					let chapterObj = {
 						subjectId: subject._id,
 						topics: title,
@@ -253,29 +253,29 @@ class MasterResourceManager extends BaseManager {
 						board: board,
 						standard: Number(standard),
 						orderNumber: Number(orderNumber),
-						indexPath:lessonPlans[i]?.index_path
+						indexPath: lessonPlans[i]?.index_path
 					};
-	 
+
 					chapter = await this.chapterDao.create(chapterObj);
 				}
 
 				let boardEntry = subject.applicableClasses.find(
-    				(entry) => entry.board === board
-  					);
+					(entry) => entry.board === board
+				);
 
 				if (boardEntry) {
 					if (!boardEntry.classes.includes(standard)) {
-					boardEntry.classes.push(standard);
-					await subject.save();
+						boardEntry.classes.push(standard);
+						await subject.save();
 					}
 				} else {
 					subject.applicableClasses.push({
-					board: board,
-					classes: [standard]
+						board: board,
+						classes: [standard]
 					});
 
 					if (!subject.boards.includes(board)) {
-					subject.boards.push(board);
+						subject.boards.push(board);
 					}
 
 					await subject.save();
@@ -290,7 +290,7 @@ class MasterResourceManager extends BaseManager {
 					subject: subjectName,
 					chapterId: chapter._id,
 					subTopics: lessonPlans[i].subtopics,
-					isAll:lessonPlans[i].lp_level === 'CHAPTER',
+					isAll: lessonPlans[i].lp_level === 'CHAPTER',
 					templateId
 				}
 
@@ -299,20 +299,20 @@ class MasterResourceManager extends BaseManager {
 				let resource;
 
 				const transformedResource = transformSections(lessonPlans[i]?.sections, templateDetails[0]?.sections);
-				
-				if(existingLr && compareChapter(lessonPlans[i]._id,chapter,existingLr)){
+
+				if (existingLr && compareChapter(lessonPlans[i]._id, chapter, existingLr)) {
 					const lrQuery = {
-						_id: existingLr._id,	
+						_id: existingLr._id,
 					}
 
 
 					const lrData = {
-						resources:transformedResource,
-						learningOutcomes:lessonPlans[i]?.learning_outcomes,
+						resources: transformedResource,
+						learningOutcomes: lessonPlans[i]?.learning_outcomes,
 					}
 
-					resource = await this.masterResourceDao.updateByFilter(lrQuery,lrData)
-					updateCount+=1
+					resource = await this.masterResourceDao.updateByFilter(lrQuery, lrData)
+					updateCount += 1
 				} else {
 					let resourcePlanObj = {
 						lessonName: `${subjectName}-${board} Class${standard} ${title}`,
@@ -324,12 +324,12 @@ class MasterResourceManager extends BaseManager {
 						subject: subjectName,
 						chapterId: chapter._id, //fetch id
 						subTopics: lessonPlans[i].subtopics,
-						resources:transformedResource,
+						resources: transformedResource,
 						learningOutcomes,
 						templateId
 					};
 					resource = await this.masterResourceDao.create(resourcePlanObj);
-					createCount+=1
+					createCount += 1
 				}
 			}
 
@@ -352,12 +352,12 @@ class MasterResourceManager extends BaseManager {
 		try {
 			let lessonPlans = req.body;
 			let failedLessonPlan = [];
-			let createCount=0;
-			let updateCount=0
+			let createCount = 0;
+			let updateCount = 0
 
 			if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
-                lessonPlans = [lessonPlans];
-            }
+				lessonPlans = [lessonPlans];
+			}
 
 			for (let i = 0; i < lessonPlans.length; i++) {
 				let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
@@ -367,19 +367,19 @@ class MasterResourceManager extends BaseManager {
 				let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
 				let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
 				let learningOutcomes = lessonPlans[i].learning_outcomes;
-				let templateDetails = await LessonPlanTemplate.find({workFlowId:'karnataka-additional-resources'});
+				let templateDetails = await LessonPlanTemplate.find({ workFlowId: 'karnataka-additional-resources' });
 				let templateId = templateDetails[0]?._id || null;
 
-				if(board !== 'KSEEB'){
+				if (board !== 'KSEEB') {
 					failedLessonPlan.push(lessonPlans[i]);
 					continue;
 				}
 
 				if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
-				  learningOutcomes = learningOutcomes[0].split('\n').map(outcome => outcome.trim());
+					learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
 				}
 
-				if(!templateId){
+				if (!templateId) {
 					failedLessonPlan.push(lessonPlans[i]);
 					continue;
 				}
@@ -393,41 +393,41 @@ class MasterResourceManager extends BaseManager {
 				});
 
 				if (chapter && lessonPlans[i]?.index_path) {
-                    chapter.indexPath= lessonPlans[i]?.index_path
-                    await chapter.save();
-                }
-			let subject = await this.masterSubjectDao.getByNameAndBoard(
-						subjectName,
-						board
-					);
+					chapter.indexPath = lessonPlans[i]?.index_path
+					await chapter.save();
+				}
+				let subject = await this.masterSubjectDao.getByNameAndBoard(
+					subjectName,
+					board
+				);
 				if (!chapter?._id) {
 					if (!subject) {
-						let subjectData = await this.masterSubjectDao.getOne({subjectName});
+						let subjectData = await this.masterSubjectDao.getOne({ subjectName });
 						if (subjectData && !subjectData.boards.includes(board)) {
 							subjectData.boards.push(board);
 							subjectData.applicableClasses.push(
 								{
-										board: board,
-										Classes: [standard]
-									}
+									board: board,
+									Classes: [standard]
+								}
 							)
-							subject = await subjectData.save(); 
-						  }else{
+							subject = await subjectData.save();
+						} else {
 							subject = await this.masterSubjectDao.create({
 								subjectName,
 								boards: [board],
-								sem:getSemester(subjectName),
-								name:formatSubject(subjectName),
+								sem: getSemester(subjectName),
+								name: formatSubject(subjectName),
 								applicableClasses: [
 									{
 										board: board,
 										Classes: [standard]
 									}
-									]
+								]
 							});
-						  }
+						}
 					}
-	 
+
 					let chapterObj = {
 						subjectId: subject._id,
 						topics: title,
@@ -436,33 +436,33 @@ class MasterResourceManager extends BaseManager {
 						board: board,
 						standard: Number(standard),
 						orderNumber: Number(orderNumber),
-						indexPath:lessonPlans[i]?.index_path
+						indexPath: lessonPlans[i]?.index_path
 					};
-	 
+
 					chapter = await this.chapterDao.create(chapterObj);
 				}
 
 				let boardEntry = subject.applicableClasses.find(
-    				(entry) => entry.board === board
-  					);
+					(entry) => entry.board === board
+				);
 
-					if (boardEntry) {
-						if (!boardEntry.classes.includes(standard)) {
+				if (boardEntry) {
+					if (!boardEntry.classes.includes(standard)) {
 						boardEntry.classes.push(standard);
 						await subject.save();
-						}
-					} else {
-						subject.applicableClasses.push({
+					}
+				} else {
+					subject.applicableClasses.push({
 						board: board,
 						classes: [standard]
-						});
+					});
 
-						if (!subject.boards.includes(board)) {
+					if (!subject.boards.includes(board)) {
 						subject.boards.push(board);
-						}
-
-						await subject.save();
 					}
+
+					await subject.save();
+				}
 
 
 				let queryingObj = {
@@ -473,7 +473,7 @@ class MasterResourceManager extends BaseManager {
 					subject: subjectName,
 					chapterId: chapter._id,
 					subTopics: lessonPlans[i].subtopics,
-					isAll:lessonPlans[i].lp_level === 'CHAPTER',
+					isAll: lessonPlans[i].lp_level === 'CHAPTER',
 					templateId
 				}
 
@@ -481,22 +481,22 @@ class MasterResourceManager extends BaseManager {
 
 				let resource;
 
-				const {extracted,additional} = transformOldResources(lessonPlans[i]?.extracted_resources, lessonPlans[i]?.additional_resources);
-				
-				if(existingLr && compareChapter(lessonPlans[i]._id,chapter,existingLr)){
+				const { extracted, additional } = transformOldResources(lessonPlans[i]?.extracted_resources, lessonPlans[i]?.additional_resources);
+
+				if (existingLr && compareChapter(lessonPlans[i]._id, chapter, existingLr)) {
 					const lrQuery = {
-						_id: existingLr._id,	
+						_id: existingLr._id,
 					}
 
 
 					const lrData = {
-						resources:extracted,
-						additionalResources:additional,
-						learningOutcomes:lessonPlans[i]?.learning_outcomes,
+						resources: extracted,
+						additionalResources: additional,
+						learningOutcomes: lessonPlans[i]?.learning_outcomes,
 					}
 
-					resource = await this.masterResourceDao.updateByFilter(lrQuery,lrData)
-					updateCount+=1
+					resource = await this.masterResourceDao.updateByFilter(lrQuery, lrData)
+					updateCount += 1
 				} else {
 					let resourcePlanObj = {
 						lessonName: `${subjectName}-${board} Class${standard} ${title}`,
@@ -508,13 +508,13 @@ class MasterResourceManager extends BaseManager {
 						subject: subjectName,
 						chapterId: chapter._id,
 						subTopics: lessonPlans[i].subtopics,
-						resources:extracted,
-						additionalResources:additional,
+						resources: extracted,
+						additionalResources: additional,
 						learningOutcomes,
 						templateId
 					};
 					resource = await this.masterResourceDao.create(resourcePlanObj);
-					createCount+=1
+					createCount += 1
 				}
 			}
 

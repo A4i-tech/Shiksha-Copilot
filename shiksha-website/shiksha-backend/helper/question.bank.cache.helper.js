@@ -61,6 +61,8 @@ function filterTemplate(qbConfigList) {
   const matchTheFollowingTemplate = [];
   const matchTheFollowingIndex = [];
   for (let i = 0; i < qbConfigList.length; i++) {
+    // Handle both type/Type (case-insensitive check if needed, but usually exact)
+    // Handle snake/camel for properties if they define the "Match the following"
     if (qbConfigList[i].type === "Match the following") {
       matchTheFollowingTemplate.push(qbConfigList[i]);
       matchTheFollowingIndex.push(i);
@@ -152,7 +154,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
 
   const questionTypeResponse = new QuestionTypeResponse(
     template.type,
-    template.marks_per_question
+    template.marks_per_question || template.marksPerQuestion
   );
 
   let notFoundTemplate = { ...template };
@@ -160,11 +162,11 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
   notFoundTemplate.number_of_questions = 0;
   let notFoundQuestionIndices = [];
 
-  const questionDistribution = template.question_distribution;
+  const questionDistribution = template.question_distribution || template.questionDistribution || [];
 
   for (let i = 0; i < questionDistribution.length; i++) {
     total++;
-    const unitName = questionDistribution[i].unit_name.toLowerCase().trim();
+    const unitName = (questionDistribution[i].unit_name || questionDistribution[i].unitName || "").toLowerCase().trim();
     const objective = questionDistribution[i].objective.toLowerCase();
 
     if (!shouldUseCache()) {
@@ -185,7 +187,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
         for (const questionInCache of questionList) {
           if (
             questionInCache.type === template.type &&
-            questionInCache.marks === template.marks_per_question
+            questionInCache.marks === (template.marks_per_question || template.marksPerQuestion)
           ) {
             validCandidates.push(questionInCache);
           }

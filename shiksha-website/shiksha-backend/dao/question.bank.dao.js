@@ -78,10 +78,10 @@ class QuestionBankDao extends BaseDao {
     }
   }
 
-  async saveQuestionBank(data) {
+  async saveQuestionBank(data, session = null) {
     try {
       let questionBankmodel = new QuestionBank(data);
-      const questionBank = await questionBankmodel.save()
+      const questionBank = await questionBankmodel.save(session ? { session } : {});
       return questionBank;
     } catch (err) {
       throw new Error("Error creating question bank: " + err.message);

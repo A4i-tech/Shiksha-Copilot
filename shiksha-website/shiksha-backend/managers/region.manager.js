@@ -15,7 +15,7 @@ class RegionManager extends BaseManager {
 	async getStates() {
 		const response = await this.dao.getAll();
 		const regions = response.results || [];
-		const states = [...new Set(regions.map(region => region.state))];
+		const states = [...new Set((regions || []).map(region => region.state))];
 		return states;
 	}
 

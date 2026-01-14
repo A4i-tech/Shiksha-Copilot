@@ -57,7 +57,7 @@ class UserManager extends BaseManager {
 
       let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
 
-      plainUser.classes = groupedClasseswithSubjects.map((classItem) => {
+      plainUser.classes = (groupedClasseswithSubjects || []).map((classItem) => {
         const board = groupByBoards.find(
           (item) => item._id === classItem.board
         );
@@ -425,7 +425,7 @@ class UserManager extends BaseManager {
       if (search) {
         const searchFields = ["name", "phone"];
 
-        const regexExpressions = searchFields.map((field) => ({
+        const regexExpressions = (searchFields || []).map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
 
@@ -530,16 +530,16 @@ class UserManager extends BaseManager {
   }
 
 
- async activityLog(req){
-  try{
-    const { _id } = req.user;
-    const userActivity = await this.userDao.activityLog(_id,req.body);
+  async activityLog(req) {
+    try {
+      const { _id } = req.user;
+      const userActivity = await this.userDao.activityLog(_id, req.body);
       return formatApiReponse(true, "Logs saved successfully!", userActivity);
+    }
+    catch (err) {
+      return formatApiReponse(false, err.message, e);
+    }
   }
-  catch (err) {
-    return formatApiReponse(false, err.message, e);
-  }
- }
 }
 
 module.exports = UserManager;

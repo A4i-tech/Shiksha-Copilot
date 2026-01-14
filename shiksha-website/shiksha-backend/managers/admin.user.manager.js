@@ -26,7 +26,7 @@ class AdminUserManager extends BaseManager {
 			if (!req.body) {
 				return { success: false, message: "Request body is missing" };
 			}
-			
+
 			if (!req.body.phone) {
 				return { success: false, message: "Phone number is required" };
 			}
@@ -77,11 +77,11 @@ class AdminUserManager extends BaseManager {
 			if (admin) {
 				const isPhoneChanged = admin.phone !== payload.phone;
 				const isRoleChanged = JSON.stringify(admin.role) !== JSON.stringify(payload.role);
-	
+
 				if (isPhoneChanged || isRoleChanged) {
 					payload.isLoginAllowed = false;
 				}
-	
+
 				admin = await this.adminUserDao.update(id, payload);
 				if (admin) {
 					return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, admin.phone);
@@ -98,11 +98,11 @@ class AdminUserManager extends BaseManager {
 				);
 			}
 
-			let originalUserRecord = await  this.adminUserDao.getOne({ _id: id })
+			let originalUserRecord = await this.adminUserDao.getOne({ _id: id })
 
 			const isPhoneChanged = originalUserRecord && originalUserRecord.phone !== payload.phone;
 			if (isPhoneChanged)
-			payload.isLoginAllowed = false;
+				payload.isLoginAllowed = false;
 
 			admin = await this.adminUserDao.update(id, payload);
 
@@ -227,54 +227,54 @@ class AdminUserManager extends BaseManager {
 					"content.topics",
 				];
 
-				const regexExpressions = searchFields.map((field) => ({
+				const regexExpressions = (searchFields || []).map((field) => ({
 					[field]: { $regex: new RegExp(search, "i") },
 				}));
 
 				searchFilter.$or = regexExpressions;
 			}
-		  
-		const contentActivities = await this.regeneratedLogDao.getAllContentActivity(
-			{ ...filter, ...searchFilter }
-		)
-		 
-		  const userId = req?.user?._id;
-	
-		  const userName = req?.user?.name;
-	
-		  const worker = new Worker(
-			path.resolve(__dirname, "../worker/exportcontentactivityworker.js")
-		  );
 
-		  worker.postMessage({
-			contentActivities: contentActivities.results,
-			userId: userId.toString(),
-			userName,
-		  });
-	
-		  worker.on("message", (result) => {
-			console.log("Worker result:", result);
-		  });
-	
-		  worker.on("error", (err) => {
-			console.error("Worker error:", err);
-		  });
-	
-		  worker.on("exit", (code) => {
-			if (code !== 0) {
-			  console.error(`Worker stopped with exit code ${code}`);
-			}
-		  });
-	
-		  return formatApiReponse(
-			true,
-			"Content Activity export initiated, please verify for audit logs!",
-			""
-		  );
+			const contentActivities = await this.regeneratedLogDao.getAllContentActivity(
+				{ ...filter, ...searchFilter }
+			)
+
+			const userId = req?.user?._id;
+
+			const userName = req?.user?.name;
+
+			const worker = new Worker(
+				path.resolve(__dirname, "../worker/exportcontentactivityworker.js")
+			);
+
+			worker.postMessage({
+				contentActivities: contentActivities.results,
+				userId: userId.toString(),
+				userName,
+			});
+
+			worker.on("message", (result) => {
+				console.log("Worker result:", result);
+			});
+
+			worker.on("error", (err) => {
+				console.error("Worker error:", err);
+			});
+
+			worker.on("exit", (code) => {
+				if (code !== 0) {
+					console.error(`Worker stopped with exit code ${code}`);
+				}
+			});
+
+			return formatApiReponse(
+				true,
+				"Content Activity export initiated, please verify for audit logs!",
+				""
+			);
 		} catch (err) {
-		  return formatApiReponse(false, err.message, e);
+			return formatApiReponse(false, err.message, e);
 		}
-	  }
+	}
 
 	async getDashboardMetrics(filters) {
 		try {

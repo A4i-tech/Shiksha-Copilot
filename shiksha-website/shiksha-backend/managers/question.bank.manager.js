@@ -2,6 +2,7 @@ const axios = require("axios");
 const ChapterDao = require("../dao/chapter.dao");
 const QuestionBankDao = require("../dao/question.bank.dao");
 const formatApiReponse = require("../helper/response");
+const { normalizeAIResponse } = require("../schemas/ai.response.schema");
 const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
@@ -24,15 +25,41 @@ const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.
 const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
 
-const QUESTION_TYPE_MAPPING = {
-  MCQ: "Four alternatives are given for each of the following questions, choose the correct alternative",
-  FILL_BLANKS: "Fill in the blanks with suitable words",
-  ANSWER_VERY_SHORT: "Answer the following in a word, phrase or sentence",
-  ANSWER_SHORT: "Answer the following in two or three sentences each",
-  ANSWER_MEDIUM: "Answer the following questions",
-  ANSWER_LONG: "Answer the following question in four or five sentences",
-  MATCHING: "Match the following",
+const QUESTION_TYPE_DETAILS = {
+  MCQ: {
+    instruction: "Four alternatives are given for each of the following questions, choose the correct alternative",
+    description: "Objective Questions (MCQ)"
+  },
+  FILL_BLANKS: {
+    instruction: "Fill in the blanks with suitable words",
+    description: "Fill in the blanks"
+  },
+  ANSWER_VERY_SHORT: {
+    instruction: "Answer the following in a word, phrase or sentence",
+    description: "Very Short Answer"
+  },
+  ANSWER_SHORT: {
+    instruction: "Answer the following in two or three sentences each",
+    description: "Short Answer"
+  },
+  ANSWER_MEDIUM: {
+    instruction: "Answer the following questions",
+    description: "Answer the following questions"
+  },
+  ANSWER_LONG: {
+    instruction: "Answer the following question in four or five sentences",
+    description: "Long Answer"
+  },
+  MATCHING: {
+    instruction: "Match the following",
+    description: "Match the following"
+  },
 };
+
+const QUESTION_TYPE_MAPPING = Object.keys(QUESTION_TYPE_DETAILS).reduce((acc, key) => {
+  acc[key] = QUESTION_TYPE_DETAILS[key].instruction;
+  return acc;
+}, {});
 
 class QuestionBankManager extends BaseManager {
   constructor() {
@@ -129,9 +156,14 @@ class QuestionBankManager extends BaseManager {
   }
 
   async generateQuestionBank(req, user) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    // Standalone MongoDB doesn't support transactions.
+    // Uncomment these lines if running with a Replica Set.
+    // const session = await mongoose.startSession();
+    // session.startTransaction();
+    const session = null;
     try {
+      console.log('[Manager] generateQuestionBank called.');
+
       console.log('[Manager] generateQuestionBank called.');
 
       const context = this._prepareGenerationContext(req.body);
@@ -150,7 +182,7 @@ class QuestionBankManager extends BaseManager {
 
       // 3. Return Preview if requested
       if (isPreview === true || isPreview === "true") {
-        if (session.inTransaction()) await session.abortTransaction();
+        if (session && session.inTransaction()) await session.abortTransaction();
         return formatApiReponse(
           true,
           "Question bank preview generated successfully!",
@@ -169,7 +201,7 @@ class QuestionBankManager extends BaseManager {
         rawCacheHit
       );
 
-      await session.commitTransaction();
+      if (session) await session.commitTransaction();
 
       return formatApiReponse(
         true,
@@ -179,10 +211,10 @@ class QuestionBankManager extends BaseManager {
 
     } catch (err) {
       console.error("Generate Question Bank Error:", err);
-      if (session.inTransaction()) await session.abortTransaction();
+      if (session && session.inTransaction()) await session.abortTransaction();
       return formatApiReponse(false, err?.message, err);
     } finally {
-      session.endSession();
+      if (session) session.endSession();
     }
   }
 
@@ -340,33 +372,8 @@ class QuestionBankManager extends BaseManager {
       console.log('[Manager] AI Response received.');
       let newQuestions = response.data;
 
-      let generatedItems = [];
-      if (newQuestions.questions && Array.isArray(newQuestions.questions)) {
-        generatedItems = newQuestions.questions;
-      } else if (newQuestions.items && Array.isArray(newQuestions.items)) {
-        generatedItems = newQuestions.items;
-      } else if (Array.isArray(newQuestions)) {
-        generatedItems = newQuestions;
-      }
-
-      // Flatten responses from Python
-      const recursiveExtract = (items) => {
-        let extracted = [];
-        if (!Array.isArray(items)) return extracted;
-
-        items.forEach(item => {
-          if (item.questions && Array.isArray(item.questions)) {
-            extracted.push(...recursiveExtract(item.questions));
-          } else if (item.item) {
-            extracted.push(item.item);
-          } else {
-            extracted.push(item);
-          }
-        });
-        return extracted;
-      };
-
-      const flattenedItems = recursiveExtract(generatedItems);
+      // Use Zod schema to normalize and validate response
+      const flattenedItems = normalizeAIResponse(newQuestions);
 
       // Restructure flat items back into blocks for mergeQuestions
       let itemPointer = 0;
@@ -468,7 +475,7 @@ class QuestionBankManager extends BaseManager {
       questions: mergedList,
     };
 
-    const questionBank = await this.questionBankDao.saveQuestionBank(questionBankData);
+    const questionBank = await this.questionBankDao.saveQuestionBank(questionBankData, session);
 
     let configData = convertToCamelCase({
       ...context,
@@ -486,7 +493,7 @@ class QuestionBankManager extends BaseManager {
     configData.questionBank = new ObjectId(questionBank._id);
     configData.topics = processedUnitNames;
 
-    const questionBankConfig = await this.questionBankDao.create(configData);
+    const questionBankConfig = await this.questionBankDao.create(configData, session);
 
     // Cache Summary & Update Job
     if (notFoundQuestions.length) {
@@ -522,7 +529,9 @@ class QuestionBankManager extends BaseManager {
 
       cacheSummaryData.notFoundQuestions = notFoundQuestions;
 
-      const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData);
+      cacheSummaryData.notFoundQuestions = notFoundQuestions;
+
+      const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData, session);
 
       addCacheJob({
         notFoundQuestions,
@@ -543,7 +552,7 @@ class QuestionBankManager extends BaseManager {
         isCacheUpdated: true,
       });
 
-      await this.questionBankCacheSummaryDao.create(cacheSummaryData);
+      await this.questionBankCacheSummaryDao.create(cacheSummaryData, session);
     }
 
     return {
@@ -556,11 +565,36 @@ class QuestionBankManager extends BaseManager {
     if (!templateArray || !Array.isArray(templateArray)) return [];
 
     return templateArray.map((item) => {
+      // mappedType is just the instruction text for backward compatibility
       const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
-      return {
+
+      // Look up full details if possible to get the description
+      const details = QUESTION_TYPE_DETAILS[item.type];
+
+      // Handle both snake_case (legacy/internal) and camelCase (new/frontend)
+      const numQs = item.number_of_questions !== undefined ? item.number_of_questions : item.numberOfQuestions;
+      const marksPerQ = item.marks_per_question !== undefined ? item.marks_per_question : item.marksPerQuestion;
+      const qDist = item.question_distribution || item.questionDistribution;
+
+      const mappedItem = {
         ...item,
         type: mappedType,
+        description: details ? details.description : (item.description || ""),
       };
+
+      // Ensure expected Python snake_case keys are present
+      if (numQs !== undefined) mappedItem.number_of_questions = numQs;
+      if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
+
+      if (qDist && Array.isArray(qDist)) {
+        mappedItem.question_distribution = qDist.map(d => ({
+          ...d,
+          unit_name: d.unit_name || d.unitName,
+          objective: d.objective
+        }));
+      }
+
+      return mappedItem;
     });
   }
   async _createQuestionBankPayload(reqBody, user) {

@@ -48,7 +48,7 @@ class FLNResourceManager extends BaseManager {
       const resource = await this.flnResourceDao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
       if (!resource) return formatApiReponse(false, 'No data found for grade ' + grade, null);
       const lessons = resource.data?.lesson_plan_by_grade?.[grade] || [];
-      const days = [...new Set(lessons.map(l => l.day))].sort((a, b) => a - b);
+      const days = [...new Set((lessons || []).map(l => l.day))].sort((a, b) => a - b);
       return formatApiReponse(true, '', days);
     } catch (err) {
       return formatApiReponse(false, err.message, null);

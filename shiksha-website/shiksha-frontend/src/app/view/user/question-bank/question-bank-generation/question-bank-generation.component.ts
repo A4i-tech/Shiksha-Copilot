@@ -249,12 +249,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   updateFormValidators() {
-    // FIX: Enable ONLY if Single Chapter AND Subtopics exist
     if (this.questionBankTypeValue === 'singleChapter' && this.hasSubtopics) {
       this.f.subTopic.enable();
       this.f.subTopic.setValidators([Validators.required]);
     } else {
-      // If Multi-Chapter OR No Subtopics found -> Disable (make optional)
       this.f.subTopic.clearValidators();
       this.f.subTopic.disable();
     }
@@ -494,7 +492,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       }
     });
 
-    // FIX: Map subtopics allowing Strings OR Objects
     this.subtopicsDropdownOptions = combinedSubTopics.map((st: any) => {
       if (typeof st === 'string') {
         return { topics: st, _id: st }; // Use text as ID for binding
@@ -864,12 +861,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const validChapterIds = this.getChapterIds();
     const primaryChapterId = validChapterIds.length > 0 ? validChapterIds[0] : null;
 
-    // FIX: Get Subject Name for AI context
     const selectedSubjectId = formVal.subject;
     const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === selectedSubjectId);
     const subjectName = selectedSubjectObj ? selectedSubjectObj.name : selectedSubjectId;
 
-    // FIX: Handle Subtopics - Allow Strings/Names or IDs
     let subTopicsPayload: string[] = [];
     const rawSubTopics = formVal.subTopic ? (Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic]) : [];
 
@@ -988,7 +983,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
           if (!displayText) {
             if (q.pairs && q.pairs.length > 0) displayText = 'Match the following';
-            else if (q.items && q.items.length > 0) displayText = 'Answer the following items';
+            else if (q.items && q.items.length > 0) {
+              // Construct text from items if main text is missing
+              const itemTexts = q.items
+                .map((i: any) => i.question || i.text || i.content || '')
+                .filter((t: string) => t && t.trim().length > 0);
+              displayText = itemTexts.length > 0 ? itemTexts.join('\n') : 'Answer the following items';
+            }
             else displayText = q.heading || q.groupHeading || q.type || 'Question';
           }
 
