@@ -1,0 +1,186 @@
+{
+  "users": [
+    {
+      "name": "Test Teacher",
+      "phone": "9876543210",
+      "role": "TEACHER",
+      "language": "EN",
+      "isDeleted": false,
+      "isLoginAllowed": true,
+      "profileCompleted": true
+    },
+    {
+      "name": "Test Principal",
+      "phone": "9876543211",
+      "role": "PRINCIPAL",
+      "language": "EN",
+      "isDeleted": false,
+      "isLoginAllowed": true,
+      "profileCompleted": true
+    },
+    {
+      "name": "Test BRC",
+      "phone": "9876543212",
+      "role": "BRC",
+      "language": "EN",
+      "isDeleted": false,
+      "isLoginAllowed": true,
+      "profileCompleted": true
+    }
+  ],
+  "adminUsers": [
+    {
+      "name": "System Admin",
+      "email": "admin@shiksha.com",
+      "role": "ADMIN",
+      "isDeleted": false,
+      "isLoginAllowed": true
+    },
+    {
+      "name": "Content Manager",
+      "email": "content@shiksha.com",
+      "role": "CONTENT_MANAGER",
+      "isDeleted": false,
+      "isLoginAllowed": true
+    }
+  ],
+  "schools": [
+    {
+      "name": "Test Government High School",
+      "udiseCode": "UDISE001234",
+      "medium": "English",
+      "isDeleted": false
+    },
+    {
+      "name": "Test Public School",
+      "udiseCode": "UDISE001235",
+      "medium": "Kannada",
+      "isDeleted": false
+    }
+  ],
+  "boards": [
+    {
+      "name": "CBSE",
+      "code": "CBSE",
+      "isDeleted": false
+    },
+    {
+      "name": "Karnataka State Board",
+      "code": "KSB",
+      "isDeleted": false
+    }
+  ],
+  "subjects": [
+    {
+      "name": "Mathematics",
+      "code": "MATH",
+      "grade": "10",
+      "isDeleted": false
+    },
+    {
+      "name": "Science",
+      "code": "SCI",
+      "grade": "10",
+      "isDeleted": false
+    },
+    {
+      "name": "English",
+      "code": "ENG",
+      "grade": "10",
+      "isDeleted": false
+    }
+  ],
+  "chapters": [
+    {
+      "name": "Linear Equations",
+      "chapterNumber": 1,
+      "subject": "Mathematics",
+      "grade": "10",
+      "learningOutcomes": [
+        "Solve linear equations in one variable",
+        "Understand the concept of variables and constants",
+        "Apply linear equations to real-world problems"
+      ],
+      "isDeleted": false
+    },
+    {
+      "name": "Chemical Reactions",
+      "chapterNumber": 1,
+      "subject": "Science",
+      "grade": "10",
+      "learningOutcomes": [
+        "Identify different types of chemical reactions",
+        "Write balanced chemical equations",
+        "Understand the law of conservation of mass"
+      ],
+      "isDeleted": false
+    }
+  ],
+  "masterLessons": [
+    {
+      "title": "Introduction to Linear Equations",
+      "subject": "Mathematics",
+      "grade": "10",
+      "duration": "45 minutes",
+      "learningObjectives": [
+        "Define linear equations",
+        "Solve simple linear equations",
+        "Apply to word problems"
+      ],
+      "resources": [
+        "Textbook pages 45-52",
+        "Online calculator",
+        "Practice worksheets"
+      ],
+      "isDeleted": false
+    }
+  ],
+  "questionBanks": [
+    {
+      "board": "CBSE",
+      "medium": "English",
+      "grade": "10",
+      "subject": "Mathematics",
+      "totalMarks": 80,
+      "template": [
+        {
+          "type": "MCQ",
+          "marks_per_question": 1,
+          "number_of_questions": 10
+        },
+        {
+          "type": "ANSWER_SHORT",
+          "marks_per_question": 3,
+          "number_of_questions": 5
+        },
+        {
+          "type": "ANSWER_LONG",
+          "marks_per_question": 5,
+          "number_of_questions": 7
+        }
+      ],
+      "status": "PENDING",
+      "isDeleted": false
+    }
+  ],
+  "chatMessages": [
+    {
+      "message": "Explain photosynthesis",
+      "response": "Photosynthesis is the process by which green plants use sunlight to synthesize nutrients from carbon dioxide and water.",
+      "timestamp": "2024-01-01T10:00:00Z"
+    },
+    {
+      "message": "What is a linear equation?",
+      "response": "A linear equation is an equation in which the highest power of the variable is one.",
+      "timestamp": "2024-01-01T10:05:00Z"
+    }
+  ],
+  "otpRecords": [
+    {
+      "phone": "9876543210",
+      "otp": "123456",
+      "expiresAt": "2024-12-31T23:59:59Z",
+      "isUsed": false
+    }
+  ]
+}
