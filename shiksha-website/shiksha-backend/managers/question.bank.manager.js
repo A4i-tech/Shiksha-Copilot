@@ -746,6 +746,214 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(false, err.message, err);
     }
   }
+
+  // --- Unified Meta & Search Methods ---
+
+  async getClasses() {
+    try {
+      const classes = await this.questionBankDao.getClasses();
+      return formatApiReponse(
+        true,
+        "Classes retrieved successfully",
+        (classes || []).sort((a, b) => Number(a) - Number(b))
+      );
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getMedia(className) {
+    if (!className) throw new Error("Class is required");
+    try {
+      const media = await this.questionBankDao.getMedia(
+        String(className).trim()
+      );
+      return formatApiReponse(
+        true,
+        "Medium retrieved successfully",
+        (media || []).sort()
+      );
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getChapters(className, medium, subject) {
+    try {
+      console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}`);
+      const normalizedClass = String(className || "").trim();
+      const chapters = await this.questionBankDao.getChapters(
+        normalizedClass,
+        medium,
+        subject
+      );
+      console.log(`[Manager] getChapters: found ${chapters?.length || 0} chapters`);
+      return formatApiReponse(true, "Chapters retrieved successfully", chapters);
+    } catch (err) {
+      console.error("[Manager] getChapters failed:", err);
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getDifficulties() {
+    try {
+      const diffs = await this.questionBankDao.getDifficulties();
+      return formatApiReponse(
+        true,
+        "Difficulties retrieved successfully",
+        (diffs || []).filter(Boolean).sort()
+      );
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getAnswerTypes() {
+    try {
+      const types = await this.questionBankDao.getAnswerTypes();
+      return formatApiReponse(
+        true,
+        "Answer types retrieved successfully",
+        (types || []).filter(Boolean).sort()
+      );
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getQuestions(filters) {
+    try {
+      console.log("[Manager] getQuestions filters:", JSON.stringify(filters));
+      const {
+        subject,
+        medium,
+        class: className,
+        chapterNumbers,
+        chapterIds,
+        marks,
+        difficulty,
+        type,
+        search,
+        headings,
+      } = filters || {};
+
+      if (!subject || !medium || !className) {
+        throw new Error("Subject, medium, and class are required");
+      }
+
+      const cleanFilters = {
+        subject,
+        medium,
+        class: String(className || "").trim(),
+        chapterNumbers: chapterNumbers
+          ? String(chapterNumbers)
+            .split(",")
+            .map((n) => Number(n))
+            .filter((n) => Number.isFinite(n))
+          : [],
+        chapterIds: chapterIds
+          ? String(chapterIds)
+            .split(",")
+            .map((id) => String(id).trim())
+            .filter(Boolean)
+          : [],
+        marks: marks === "Any" ? undefined : marks,
+        difficulty: difficulty === "Any" ? undefined : difficulty,
+        type: type === "Any" ? undefined : type,
+        search,
+        headings,
+      };
+
+      console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
+      const result = await this.questionBankDao.getQuestions(cleanFilters);
+      console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
+      return formatApiReponse(true, "Questions retrieved successfully", result);
+    } catch (err) {
+      console.error("[Manager] getQuestions error:", err);
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async insertChaptersAndQuestions(data) {
+    try {
+      const insertedChapters = [];
+      const insertedQuestions = [];
+
+      for (const entry of data || []) {
+        const {
+          class: className,
+          medium,
+          subject,
+          chapterNumber,
+          title,
+          questions,
+        } = entry || {};
+
+        if (
+          !className ||
+          !medium ||
+          !subject ||
+          !title ||
+          !Array.isArray(questions)
+        ) {
+          throw new Error(`Invalid entry: ${JSON.stringify(entry)}`);
+        }
+
+        let chapter = await Chapter.findOne({
+          class: className,
+          medium,
+          subject,
+          title,
+        });
+        if (!chapter) {
+          chapter = await Chapter.create({
+            class: className,
+            medium,
+            subject,
+            chapterNumber,
+            title,
+          });
+          insertedChapters.push(chapter);
+        }
+
+        for (const q of questions) {
+          const question = await Question.create({
+            subject,
+            medium,
+            class: className,
+            chapterId: chapter._id,
+            chapter: {
+              chapterNumber: chapter.chapterNumber,
+              title: chapter.title,
+            },
+            groupHeading: q.groupHeading || "",
+            answerType: q.answerType || "",
+            difficulty: q.difficulty || "",
+            marksPerQuestion: q.marksPerQuestion || 1,
+            text: q.text || "",
+            keyAnswer: q.keyAnswer || "",
+            options: Array.isArray(q.options) ? q.options : [],
+            pairs: Array.isArray(q.pairs) ? q.pairs : [],
+            items: Array.isArray(q.items) ? q.items : [],
+            correctOrderById: Array.isArray(q.correctOrderById)
+              ? q.correctOrderById
+              : [],
+            correctOrderIndices: Array.isArray(q.correctOrderIndices)
+              ? q.correctOrderIndices
+              : [],
+          });
+          insertedQuestions.push(question);
+        }
+      }
+
+      return formatApiReponse(true, "Bulk upload successful", {
+        chaptersInserted: insertedChapters.length,
+        questionsInserted: insertedQuestions.length,
+      });
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
 }
 
 module.exports = QuestionBankManager;

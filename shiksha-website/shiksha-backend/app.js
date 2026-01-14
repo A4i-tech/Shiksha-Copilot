@@ -1,7 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const logger = require("morgan"); 
+const logger = require("morgan");
 const path = require("path");
 const dbService = require("./config/db");
 const userRoutes = require("./routes/user.routes.js");
@@ -32,7 +32,6 @@ const useragent = require('express-useragent');
 const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.routes.js');
 const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
 const helpVideosRoutes = require('./routes/help.videos.routes.js');
-const qpRoutes = require('./routes/qp.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
 
 dotenv.config();
@@ -90,17 +89,16 @@ app.use("/api", lessonFeedbackRoutes);
 app.use("/api", resourceFeedbackRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", auditRoutes);
-app.use("/api",questionBankRoutes)
-app.use("/api",questionBankCacheRoutes)
-app.use("/api",lessonPlanTemplateRoutes)
+app.use("/api", questionBankRoutes)
+app.use("/api", questionBankCacheRoutes)
+app.use("/api", lessonPlanTemplateRoutes)
 app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);
 app.use('/api', helpVideosRoutes);
-app.use('/api', qpRoutes);
 app.use('/api', baselineSurveyRoutes);
 
-process.on('unhandledRejection',(reason,promise)=>{
-	console.log(promise,reason);
+process.on('unhandledRejection', (reason, promise) => {
+	console.log(promise, reason);
 	process.exit(1);
 })
 app.listen(PORT, () => console.log(`App listening on port ${PORT}!`));
