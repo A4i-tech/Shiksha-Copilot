@@ -1,13 +1,3 @@
-"""
-Unit tests for RAG adapters (rag_adapters.py).
-
-Tests cover:
-- BaseRagAdapter abstract interface
-- InMemRagOpsAdapter (blob storage downloads)
-- QdrantRagOpsAdapter (remote vector database)
-- RagAdapterFactory (adapter creation logic)
-"""
-
 import pytest
 import os
 import tempfile

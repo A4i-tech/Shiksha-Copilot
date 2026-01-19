@@ -1,14 +1,3 @@
-"""
-Unit tests for Chat models (chat.py).
-
-Tests cover:
-- MessageRole enum
-- ConversationMessage validation
-- ChatRequest validation
-- LessonChatRequest validation
-- Response models
-"""
-
 import pytest
 from pydantic import ValidationError
 from pathlib import Path

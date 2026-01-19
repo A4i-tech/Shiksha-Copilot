@@ -1,14 +1,3 @@
-"""
-Unit tests for LessonChatService (lesson_chat_service.py).
-
-Tests cover:
-- Service initialization
-- Chapter ID parsing
-- RAG adapter caching
-- Index initiation
-- Chat with context
-"""
-
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from pathlib import Path

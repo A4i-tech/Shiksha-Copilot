@@ -1,13 +1,3 @@
-"""
-Unit tests for PromptTemplate (prompt_template.py).
-
-Tests cover:
-- YAML file loading
-- Prompt retrieval
-- Variable substitution
-- Error handling
-"""
-
 import pytest
 import tempfile
 import os

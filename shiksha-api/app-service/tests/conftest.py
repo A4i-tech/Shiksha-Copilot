@@ -1,7 +1,3 @@
-"""
-Pytest configuration and shared fixtures for Shiksha API tests.
-"""
-
 import pytest
 import os
 import sys
