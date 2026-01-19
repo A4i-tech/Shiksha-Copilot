@@ -41,6 +41,12 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      - name: Run unit tests (before build)
+        working-directory: shiksha-website/shiksha-backend
+        run: |
+          npm ci
+          npm run test:unit:coverage
+
       - name: Extract backend metadata
         id: backend_meta
         uses: docker/metadata-action@v5
@@ -64,7 +70,7 @@ jobs:
           load: true
           cache-from: type=gha
 
-      - name: Run backend tests inside built image
+      - name: Run integration tests inside built image
         run: |
           IMAGE=shiksha-backend-local
           mkdir -p shiksha-website/shiksha-backend/coverage
@@ -74,7 +80,7 @@ jobs:
             -e CI=true \
             -v $PWD/shiksha-website/shiksha-backend/coverage:/usr/src/app/coverage \
             --workdir /usr/src/app \
-            --entrypoint sh "$IMAGE" -c "npm ci && npm run test:coverage -- --passWithNoTests"
+            --entrypoint sh "$IMAGE" -c "npm ci && npm run test:integration:coverage -- --passWithNoTests"
 
       - name: Upload backend coverage
         if: always()
