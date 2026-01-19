@@ -6,6 +6,13 @@ authors = ["Shiksha Development Team <dev@shiksha.org>"]
 readme = "README.md"
 packages = [{ include = "app" }]
 
+[tool.poetry.scripts]
+test = "poetry run pytest"
+test-unit = "poetry run pytest tests/unit/ -m unit"
+test-unit-coverage = "poetry run pytest tests/unit/ -m unit --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json"
+test-integration = "poetry run pytest tests/integration/ -m integration"
+test-integration-coverage = "poetry run pytest tests/integration/ -m integration --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json"
+
 [tool.poetry.dependencies]
 python = "~3.11"
 fastapi = "^0.116.2"

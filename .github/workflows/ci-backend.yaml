@@ -46,6 +46,9 @@ jobs:
         run: |
           npm ci
           npm run test:unit:coverage
+          # Save unit test coverage to a separate directory
+          mkdir -p ../coverage-unit
+          cp -r coverage/* ../coverage-unit/ || true
 
       - name: Extract backend metadata
         id: backend_meta
@@ -73,14 +76,27 @@ jobs:
       - name: Run integration tests inside built image
         run: |
           IMAGE=shiksha-backend-local
-          mkdir -p shiksha-website/shiksha-backend/coverage
-          touch shiksha-website/shiksha-backend/coverage/coverage-summary.json
+          mkdir -p shiksha-website/shiksha-backend/coverage-integration
+          touch shiksha-website/shiksha-backend/coverage-integration/coverage-summary.json
           docker run --rm \
             -e NODE_ENV=development \
             -e CI=true \
-            -v $PWD/shiksha-website/shiksha-backend/coverage:/usr/src/app/coverage \
+            -v $PWD/shiksha-website/shiksha-backend/coverage-integration:/usr/src/app/coverage \
             --workdir /usr/src/app \
             --entrypoint sh "$IMAGE" -c "npm ci && npm run test:integration:coverage -- --passWithNoTests"
+
+      - name: Merge coverage reports
+        working-directory: shiksha-website/shiksha-backend
+        run: |
+          npm ci
+          # Merge unit and integration coverage using nyc
+          npx nyc merge ../coverage-unit coverage-unit.json || echo '{}' > coverage-unit.json
+          npx nyc merge coverage-integration coverage-integration.json || echo '{}' > coverage-integration.json
+          mkdir -p coverage
+          # Run all tests to generate combined coverage
+          npm run test:coverage -- --passWithNoTests || true
+          # Use the combined coverage for reporting
+          cp coverage/coverage-summary.json coverage-summary.json 2>/dev/null || echo '{"total":{"statements":{"pct":0}}}' > coverage-summary.json
 
       - name: Upload backend coverage
         if: always()
@@ -92,7 +108,7 @@ jobs:
       - name: Extract backend coverage percentage
         id: extract_backend_coverage
         run: |
-          COVERAGE=$(jq -r '.total.statements.pct // 0' shiksha-website/shiksha-backend/coverage/coverage-summary.json | awk '{print int($1+0.999)}')
+          COVERAGE=$(jq -r '.total.statements.pct // 0' shiksha-website/shiksha-backend/coverage-summary.json | awk '{print int($1+0.999)}')
           echo "percentage=$COVERAGE" >> "$GITHUB_OUTPUT"
           echo "Coverage: $COVERAGE%"
 
@@ -110,6 +126,7 @@ jobs:
   push:
     runs-on: ubuntu-latest
     needs: build-test
+    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging'
     outputs:
       digest: ${{ steps.push.outputs.digest }}
       tag: ${{ needs.build-test.outputs.image_tag }}
