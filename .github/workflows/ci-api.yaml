@@ -94,11 +94,14 @@ jobs:
           IMAGE=shiksha-api-local
           mkdir -p htmlcov-integration
           mkdir -p shiksha-api/app-service
-          docker run --rm \
-            -v $PWD/htmlcov-integration:/src/app-service/htmlcov \
-            -v $PWD/shiksha-api/app-service/.coverage.integration:/src/app-service/.coverage \
-            -v $PWD/shiksha-api/app-service/coverage-integration.json:/src/app-service/coverage.json \
-            --entrypoint poetry "$IMAGE" run pytest tests/integration/ --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json
+          # Create container, run tests, and copy coverage file out
+          CONTAINER_ID=$(docker create \
+            --entrypoint poetry "$IMAGE" run pytest tests/integration/ --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json)
+          docker start -a $CONTAINER_ID || true
+          docker cp $CONTAINER_ID:/src/app-service/.coverage shiksha-api/app-service/.coverage.integration || true
+          docker cp $CONTAINER_ID:/src/app-service/htmlcov/. htmlcov-integration/ || true
+          docker cp $CONTAINER_ID:/src/app-service/coverage.json shiksha-api/app-service/coverage-integration.json || true
+          docker rm $CONTAINER_ID
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Combine coverage reports
