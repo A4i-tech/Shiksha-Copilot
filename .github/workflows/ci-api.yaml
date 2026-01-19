@@ -49,6 +49,16 @@ jobs:
 
       - name: Run unit tests (before build)
         working-directory: shiksha-api/app-service
+        env:
+          AZURE_OPENAI_API_KEY: dummy-key-for-testing
+          AZURE_OPENAI_ENDPOINT: https://dummy-endpoint.openai.azure.com/
+          AZURE_OPENAI_API_VERSION: 2024-02-15-preview
+          AZURE_OPENAI_DEPLOYMENT_NAME: dummy-deployment
+          AZURE_OPENAI_EMBED_MODEL: dummy-embedding-model
+          BING_API_KEY: dummy-bing-key
+          BLOB_STORE_CONNECTION_STRING: DefaultEndpointsProtocol=https;AccountName=dummyaccount;AccountKey=dummykey;EndpointSuffix=core.windows.net
+          QDRANT_URL: http://localhost:6333
+          QDRANT_API_KEY: dummy-qdrant-key
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           poetry install
