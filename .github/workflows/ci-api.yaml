@@ -63,7 +63,7 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           poetry install
-          poetry run pytest tests/unit/ -m unit --cov=app --cov-report=html --cov-report=xml:coverage-unit.xml --cov-report json:coverage-unit.json
+          poetry run pytest tests/unit/ --cov=app --cov-report=html --cov-report=xml:coverage-unit.xml --cov-report json:coverage-unit.json
           # Save unit test coverage data
           cp .coverage .coverage.unit || true
 
@@ -98,7 +98,7 @@ jobs:
             -v $PWD/htmlcov-integration:/src/app-service/htmlcov \
             -v $PWD/shiksha-api/app-service/.coverage.integration:/src/app-service/.coverage \
             -v $PWD/shiksha-api/app-service/coverage-integration.json:/src/app-service/coverage.json \
-            --entrypoint poetry "$IMAGE" run pytest tests/integration/ -m integration --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json
+            --entrypoint poetry "$IMAGE" run pytest tests/integration/ --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Combine coverage reports
