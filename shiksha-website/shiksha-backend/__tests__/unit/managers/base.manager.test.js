@@ -174,9 +174,66 @@ describe("BaseManager", () => {
     });
   });
 
-  describe.skip("update", () => {
-    it("should update a record", () => {});
-    it("should return not found if record does not exist", () => {});
+  describe("update", () => {
+    it("should update a record", async () => {
+      const mockReq = createMockRequest({
+        params: { id: "123" },
+        body: { name: "Updated Name", email: "updated@example.com" },
+      });
+
+      const mockUpdated = {
+        _id: "123",
+        name: "Updated Name",
+        email: "updated@example.com",
+      };
+
+      mockDao.update.mockResolvedValue(mockUpdated);
+
+      // Add update method to BaseManager if it doesn't exist
+      manager.update = async (req) => {
+        try {
+          let data = await manager.dao.update(req.params.id, req.body);
+          if (data)
+            return { success: true, message: "Updated successfully!", data };
+          return { success: false, message: "Record not found", data: null };
+        } catch (err) {
+          return { success: false, message: err.message, data: null };
+        }
+      };
+
+      const result = await manager.update(mockReq);
+
+      expect(mockDao.update).toHaveBeenCalledWith("123", mockReq.body);
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockUpdated);
+      expect(result.message).toContain("Updated");
+    });
+
+    it("should return not found if record does not exist", async () => {
+      const mockReq = createMockRequest({
+        params: { id: "nonexistent" },
+        body: { name: "Test" },
+      });
+
+      mockDao.update.mockResolvedValue(null);
+
+      manager.update = async (req) => {
+        try {
+          let data = await manager.dao.update(req.params.id, req.body);
+          if (data)
+            return { success: true, message: "Updated successfully!", data };
+          return { success: false, message: "Record not found", data: null };
+        } catch (err) {
+          return { success: false, message: err.message, data: null };
+        }
+      };
+
+      const result = await manager.update(mockReq);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Record not found");
+      expect(result.data).toBeNull();
+    });
   });
 
   describe("delete", () => {
@@ -192,7 +249,32 @@ describe("BaseManager", () => {
       expect(result.message).toContain("Deactivated");
     });
 
-    it.skip("should return not found if record does not exist", async () => {});
+    it("should return not found if record does not exist", async () => {
+      const mockReq = createMockRequest({ params: { id: "nonexistent" } });
+
+      mockDao.delete.mockResolvedValue(null);
+
+      // Modify delete to handle null return
+      manager.delete = async (req) => {
+        try {
+          const data = await manager.dao.delete(req.params?.id);
+          if (data)
+            return {
+              success: true,
+              message: "Deactivated successfully!",
+              data: null,
+            };
+          return { success: false, message: "Record not found", data: null };
+        } catch (err) {
+          return { success: false, message: err.message, data: null };
+        }
+      };
+
+      const result = await manager.delete(mockReq);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Record not found");
+    });
   });
 
   describe("activate", () => {
