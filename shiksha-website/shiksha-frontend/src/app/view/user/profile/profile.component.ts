@@ -219,7 +219,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
       // this.subjectDropdownOptions[i] = val.subjects;
       if (val.medium.length === 1 && mode === 'add') {
         this.classes.controls[i].get('medium')?.setValue(val.medium[0].medium);
-        this.classDropdownOptions[i] = val.medium[0].classDetails;
+        this.classDropdownOptions[i] = this.filterClassesByRange(val.medium[0].classDetails);
       }
     }
   }
@@ -227,7 +227,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   setClassDropdown(i: any, val: any) {
     this.resetclassInfo('medium', i);
     if (val) {
-      this.classDropdownOptions[i] = val.classDetails;
+      this.classDropdownOptions[i] = this.filterClassesByRange(val.classDetails);
     }
   }
 
@@ -398,6 +398,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
         return e
       }
     })
+  }
+
+  /**
+   * Function to filter classes to only show 5-10
+   * @param classDetails 
+   * @returns 
+   */
+  filterClassesByRange(classDetails: any[]) {
+    if (!classDetails) return [];
+    return classDetails.filter((c: any) => c.standard >= 5 && c.standard <= 10);
   }
 
 
@@ -599,7 +609,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         ?.setValue(this.defaultBoard);
       if (this.defaultMedium) {
         this.classDropdownOptions[this.classes.length - 1] =
-          this.boardMasterData[0].medium[0].classDetails;
+          this.filterClassesByRange(this.boardMasterData[0].medium[0].classDetails);
         this.classes.controls[this.classes.length - 1]
           .get('medium')
           ?.setValue(this.defaultMedium);
