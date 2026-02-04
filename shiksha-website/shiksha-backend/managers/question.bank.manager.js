@@ -1,6 +1,8 @@
 const axios = require("axios");
 const ChapterDao = require("../dao/chapter.dao");
 const QuestionBankDao = require("../dao/question.bank.dao");
+const QuestionDao = require("../dao/question.dao");
+const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
 const { normalizeAIResponse } = require("../schemas/ai.response.schema");
 const {
@@ -66,6 +68,8 @@ class QuestionBankManager extends BaseManager {
     super(new QuestionBankDao());
     this.chapterDao = new ChapterDao();
     this.questionBankDao = new QuestionBankDao();
+    this.questionDao = new QuestionDao();
+    this.masterSubjectDao = new MasterSubjectDao();
     this.questionBankCacheDao = new QuestionBankCacheDao();
     this.questionBankCacheSummaryDao = new QuestionBankCacheSummaryDao();
   }
@@ -162,8 +166,6 @@ class QuestionBankManager extends BaseManager {
     // session.startTransaction();
     const session = null;
     try {
-      console.log('[Manager] generateQuestionBank called.');
-
       console.log('[Manager] generateQuestionBank called.');
 
       const context = this._prepareGenerationContext(req.body);
@@ -729,7 +731,15 @@ class QuestionBankManager extends BaseManager {
         inProgress: false,
       });
 
-      const jobsToProcess = (failedJobs || []).map((doc) => doc.toObject());
+      if (!failedJobs || failedJobs.length === 0) {
+        return formatApiReponse(
+          true,
+          "No failed jobs to process",
+          null
+        );
+      }
+
+      const jobsToProcess = failedJobs.map((doc) => doc.toObject());
 
       for (const job of jobsToProcess) {
         const {
@@ -785,7 +795,7 @@ class QuestionBankManager extends BaseManager {
 
   async getClasses() {
     try {
-      const classes = await this.questionBankDao.getClasses();
+      const classes = await this.chapterDao.getClasses();
       return formatApiReponse(
         true,
         "Classes retrieved successfully",
@@ -799,7 +809,7 @@ class QuestionBankManager extends BaseManager {
   async getMedia(className) {
     if (!className) throw new Error("Class is required");
     try {
-      const media = await this.questionBankDao.getMedia(
+      const media = await this.chapterDao.getMedia(
         String(className).trim()
       );
       return formatApiReponse(
@@ -816,10 +826,15 @@ class QuestionBankManager extends BaseManager {
     try {
       console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}`);
       const normalizedClass = String(className || "").trim();
-      const chapters = await this.questionBankDao.getChapters(
+
+      const { subjectCode, targetSubjectIds } =
+        await this.masterSubjectDao.resolveSubjectContext(subject);
+
+      const chapters = await this.chapterDao.getChapters(
         normalizedClass,
         medium,
-        subject
+        subjectCode,
+        targetSubjectIds
       );
       console.log(`[Manager] getChapters: found ${chapters?.length || 0} chapters`);
       return formatApiReponse(true, "Chapters retrieved successfully", chapters);
@@ -831,7 +846,7 @@ class QuestionBankManager extends BaseManager {
 
   async getDifficulties() {
     try {
-      const diffs = await this.questionBankDao.getDifficulties();
+      const diffs = await this.questionDao.getDifficulties();
       return formatApiReponse(
         true,
         "Difficulties retrieved successfully",
@@ -844,7 +859,7 @@ class QuestionBankManager extends BaseManager {
 
   async getAnswerTypes() {
     try {
-      const types = await this.questionBankDao.getAnswerTypes();
+      const types = await this.questionDao.getAnswerTypes();
       return formatApiReponse(
         true,
         "Answer types retrieved successfully",
@@ -875,8 +890,13 @@ class QuestionBankManager extends BaseManager {
         throw new Error("Subject, medium, and class are required");
       }
 
+      const { subjectCode, targetSubjectIds } =
+        await this.masterSubjectDao.resolveSubjectContext(subject);
+
       const cleanFilters = {
         subject,
+        subjectCode,
+        targetSubjectIds,
         medium,
         class: String(className || "").trim(),
         chapterNumbers: chapterNumbers
@@ -899,7 +919,7 @@ class QuestionBankManager extends BaseManager {
       };
 
       console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
-      const result = await this.questionBankDao.getQuestions(cleanFilters);
+      const result = await this.questionDao.getQuestions(cleanFilters);
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", result);
     } catch (err) {

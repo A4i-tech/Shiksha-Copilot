@@ -43,30 +43,37 @@ export const INTERACTION_LOG_THRESHOLD = 10;
 
 export const QUESTION_TYPE = [
     {
+        type: "MCQ",
         name: "Objective Questions (MCQ)",
         value: "Four alternatives are given for each of the following questions, choose the correct alternative"
     },
     {
+        type: "FILL_BLANKS",
         name: "Fill in the blanks with suitable words",
         value: "Fill in the blanks with suitable words"
     },
     {
+        type: "MATCHING",
         name: "Match the following",
         value: "Match the following"
     },
     {
+        type: "ANSWER_VERY_SHORT",
         name: "Very Short Answer",
         value: "Answer the following in a word, phrase or sentence"
     },
     {
+        type: "ANSWER_SHORT",
         name: "Short Answer",
         value: "Answer the following in two or three sentences each"
     },
     {
+        type: "ANSWER_MEDIUM",
         name: "Answer the following questions",
         value: "Answer the following questions"
     },
     {
+        type: "ANSWER_LONG",
         name: "Long Answer",
         value: "Answer the following question in four or five sentences"
     }
@@ -106,22 +113,12 @@ export const CCE_TYPE_MAPPER: any = {
     'English 2': 'cce_tools_english'
 }
 
-export const QUESTION_TYPE_MAPPING_LONG = {
-    "MCQ": "Four alternatives are given for each of the following questions, choose the correct alternative",
-    "FILL_BLANKS": "Fill in the blanks with suitable words",
-    "ANSWER_VERY_SHORT": "Answer the following in a word, phrase or sentence",
-    "ANSWER_SHORT": "Answer the following in two or three sentences each",
-    "ANSWER_MEDIUM": "Answer the following questions",
-    "ANSWER_LONG": "Answer the following question in four or five sentences",
-    "MATCHING": "Match the following"
-};
+export const QUESTION_TYPE_MAPPING_LONG = QUESTION_TYPE.reduce((acc: any, item) => {
+    acc[item.type] = item.value;
+    return acc;
+}, {});
 
-export const QUESTION_TYPE_DESCRIPTIONS: any = {
-    "MCQ": "Objective Questions (MCQ)",
-    "FILL_BLANKS": "Fill in the blanks",
-    "ANSWER_VERY_SHORT": "Very Short Answer",
-    "ANSWER_SHORT": "Short Answer",
-    "ANSWER_MEDIUM": "Answer the following questions",
-    "ANSWER_LONG": "Long Answer",
-    "MATCHING": "Match the following"
-};
+export const QUESTION_TYPE_DESCRIPTIONS: any = QUESTION_TYPE.reduce((acc: any, item) => {
+    acc[item.type] = item.name;
+    return acc;
+}, {});
