@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const mongoose = require("mongoose");
+const { MongoMemoryServer } = require("mongodb-memory-server");
 
 let mongoServer;
 
@@ -22,9 +22,9 @@ const setupTestDB = async () => {
       useUnifiedTopology: true,
     });
 
-    console.log('Test database connected successfully');
+    console.log("Test database connected successfully");
   } catch (error) {
-    console.error('Test database connection error:', error);
+    console.error("Test database connection error:", error);
     throw error;
   }
 };
@@ -41,9 +41,9 @@ const clearTestDB = async () => {
       await collection.deleteMany({});
     }
 
-    console.log('Test database cleared');
+    console.log("Test database cleared");
   } catch (error) {
-    console.error('Error clearing test database:', error);
+    console.error("Error clearing test database:", error);
     throw error;
   }
 };
@@ -53,16 +53,24 @@ const clearTestDB = async () => {
  */
 const closeTestDB = async () => {
   try {
+    // Remove all event listeners to prevent memory leaks
+    mongoose.connection.removeAllListeners();
+
+    // Drop database
     await mongoose.connection.dropDatabase();
+
+    // Close connection
     await mongoose.connection.close();
 
+    // Stop MongoDB Memory Server
     if (mongoServer) {
       await mongoServer.stop();
+      mongoServer = null;
     }
 
-    console.log('Test database connection closed');
+    console.log("Test database connection closed");
   } catch (error) {
-    console.error('Error closing test database:', error);
+    console.error("Error closing test database:", error);
     throw error;
   }
 };
@@ -85,7 +93,7 @@ const seedTestDB = async (data) => {
       }
     }
   } catch (error) {
-    console.error('Error seeding test database:', error);
+    console.error("Error seeding test database:", error);
     throw error;
   }
 };

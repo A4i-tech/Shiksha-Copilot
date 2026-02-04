@@ -1,0 +1,360 @@
+const QuestionBankManager = require("../../../managers/question.bank.manager");
+const QuestionBankDao = require("../../../dao/question.bank.dao");
+const ChapterDao = require("../../../dao/chapter.dao");
+const QuestionBankCacheDao = require("../../../dao/question.bank.cache.dao");
+const QuestionBankCacheSummaryDao = require("../../../dao/question.bank.cache.summary.dao");
+
+jest.mock("../../../dao/question.bank.dao");
+jest.mock("../../../dao/chapter.dao");
+jest.mock("../../../dao/question.bank.cache.dao");
+jest.mock("../../../dao/question.bank.cache.summary.dao");
+jest.mock("../../../services/question.bank.bot.service");
+jest.mock("../../../helper/question.bank.cache.helper");
+jest.mock("../../../aggregation/chapter.aggregation");
+jest.mock("../../../managers/cache.queue.manager", () => ({
+  addCacheJob: jest.fn().mockResolvedValue(undefined),
+}));
+
+describe("QuestionBankManager", () => {
+  let manager;
+  let mockQuestionBankDao;
+  let mockChapterDao;
+  let mockCacheDao;
+  let mockCacheSummaryDao;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    mockQuestionBankDao = {
+      getTeacherQuestionPapers: jest.fn(),
+      saveQuestionBank: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+    };
+
+    mockChapterDao = {};
+
+    mockCacheDao = {
+      findInCache: jest.fn(),
+    };
+
+    mockCacheSummaryDao = {
+      create: jest.fn(),
+    };
+
+    QuestionBankDao.mockImplementation(() => mockQuestionBankDao);
+    ChapterDao.mockImplementation(() => mockChapterDao);
+    QuestionBankCacheDao.mockImplementation(() => mockCacheDao);
+    QuestionBankCacheSummaryDao.mockImplementation(() => mockCacheSummaryDao);
+
+    manager = new QuestionBankManager();
+  });
+
+  describe("constructor", () => {
+    it("should create manager instance successfully", () => {
+      expect(manager).toBeInstanceOf(QuestionBankManager);
+      expect(manager.questionBankDao).toBeDefined();
+      expect(manager.chapterDao).toBeDefined();
+    });
+
+    it("should initialize all DAOs", () => {
+      expect(QuestionBankDao).toHaveBeenCalled();
+      expect(ChapterDao).toHaveBeenCalled();
+    });
+  });
+
+  describe("getTeacherQuestionPapers", () => {
+    it("should get teacher question papers successfully", async () => {
+      const mockPapers = {
+        results: [
+          { _id: "paper-1", examName: "Test Exam 1" },
+          { _id: "paper-2", examName: "Test Exam 2" },
+        ],
+        total: 2,
+      };
+      mockQuestionBankDao.getTeacherQuestionPapers.mockResolvedValue(
+        mockPapers
+      );
+
+      const result = await manager.getTeacherQuestionPapers(
+        "teacher-123",
+        1,
+        10
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockPapers);
+    });
+
+    it("should handle errors", async () => {
+      mockQuestionBankDao.getTeacherQuestionPapers.mockRejectedValue(
+        new Error("Database error")
+      );
+
+      const result = await manager.getTeacherQuestionPapers("teacher-123");
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Database error");
+    });
+  });
+
+  describe("generateQuestionBankTemplate", () => {
+    it("should generate template successfully", async () => {
+      const mockUser = { _id: "user-123", name: "Test User" };
+      const mockReq = {
+        body: {
+          board: "KSEEB",
+          medium: "English",
+          grade: "5",
+          subject: "Mathematics",
+          totalMarks: 100,
+          isMultiChapter: true,
+          chapterIds: ["ch-1", "ch-2"],
+        },
+      };
+
+      const mockTemplateData = {
+        template: [
+          { type: "MCQ", count: 10, marks: 1 },
+          { type: "Short Answer", count: 5, marks: 2 },
+        ],
+      };
+
+      const {
+        postToQuestionBankTemplate,
+      } = require("../../../services/question.bank.bot.service");
+      postToQuestionBankTemplate.mockResolvedValue({
+        status: 200,
+        data: mockTemplateData,
+      });
+
+      const chapterAggregation = require("../../../aggregation/chapter.aggregation");
+      chapterAggregation.getChapterByIdsAndFilterObject = jest
+        .fn()
+        .mockResolvedValue([
+          { title: "Chapter 1", indexPath: "/path", learningOutcomes: [] },
+        ]);
+
+      const result = await manager.generateQuestionBankTemplate(
+        mockReq,
+        mockUser
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockTemplateData);
+    });
+
+    it("should handle errors from copilot", async () => {
+      const mockUser = { _id: "user-123" };
+      const mockReq = { body: {} };
+
+      const {
+        postToQuestionBankTemplate,
+      } = require("../../../services/question.bank.bot.service");
+      postToQuestionBankTemplate.mockResolvedValue({
+        status: 500,
+        data: null,
+      });
+
+      const chapterAggregation = require("../../../aggregation/chapter.aggregation");
+      chapterAggregation.getChapterByIdsAndFilterObject = jest
+        .fn()
+        .mockResolvedValue([]);
+
+      const result = await manager.generateQuestionBankTemplate(
+        mockReq,
+        mockUser
+      );
+
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("_mapTemplateTypes", () => {
+    it("should map template types correctly", () => {
+      const template = [
+        { type: "MCQ", count: 10 },
+        { type: "FILL_BLANKS", count: 5 },
+        { type: "ANSWER_VERY_SHORT", count: 3 },
+      ];
+
+      const result = manager._mapTemplateTypes(template);
+
+      expect(result[0].type).toContain("Four alternatives");
+      expect(result[1].type).toContain("Fill in the blanks");
+      expect(result[2].type).toContain("Answer the following in a word");
+    });
+
+    it("should handle empty array", () => {
+      const result = manager._mapTemplateTypes([]);
+      expect(result).toEqual([]);
+    });
+
+    it("should handle null/undefined", () => {
+      expect(manager._mapTemplateTypes(null)).toEqual([]);
+      expect(manager._mapTemplateTypes(undefined)).toEqual([]);
+    });
+
+    it("should keep unmapped types as-is", () => {
+      const template = [{ type: "CUSTOM_TYPE", count: 5 }];
+      const result = manager._mapTemplateTypes(template);
+      expect(result[0].type).toBe("CUSTOM_TYPE");
+    });
+  });
+
+  describe("generateQuestionBankBluePrint", () => {
+    it("should generate blueprint successfully", async () => {
+      const mockUser = { _id: "user-123" };
+      const mockReq = {
+        body: {
+          board: "KSEEB",
+          medium: "English",
+          grade: "5",
+          subject: "Mathematics",
+          totalMarks: 100,
+          isMultiChapter: true,
+          chapterIds: ["ch-1"],
+          objective_distribution: [
+            { objective: "Knowledge", percentage_distribution: 40 },
+          ],
+          template: [{ type: "MCQ", count: 10 }],
+        },
+      };
+
+      const mockBlueprint = { blueprint: "data" };
+
+      const {
+        postToQuestionBankBluePrint,
+      } = require("../../../services/question.bank.bot.service");
+      postToQuestionBankBluePrint.mockResolvedValue({
+        status: 200,
+        data: mockBlueprint,
+      });
+
+      const chapterAggregation = require("../../../aggregation/chapter.aggregation");
+      chapterAggregation.getChapterByIdsAndFilterObject = jest
+        .fn()
+        .mockResolvedValue([]);
+
+      const result = await manager.generateQuestionBankBluePrint(
+        mockReq,
+        mockUser
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockBlueprint);
+    });
+  });
+
+  describe("updateFeedback", () => {
+    it("should update feedback successfully", async () => {
+      mockQuestionBankDao.update.mockResolvedValue({});
+
+      const result = await manager.updateFeedback("qb-123", {
+        rating: 5,
+        comments: "Great",
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Feedback submitted successfully");
+    });
+
+    it("should handle errors", async () => {
+      mockQuestionBankDao.update.mockRejectedValue(
+        new Error("Update failed")
+      );
+
+      const result = await manager.updateFeedback("qb-123", {});
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Update failed");
+    });
+  });
+
+  describe("retryFailedJobs", () => {
+    it("should retry failed cache update jobs", async () => {
+      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
+      QuestionBankCacheSummary.find = jest.fn().mockResolvedValue([
+        {
+          _id: "summary-1",
+          toObject: jest.fn().mockReturnValue({
+            _id: "summary-1",
+            notFoundQuestions: [],
+            processedCache: [],
+            unitLevel: "CHAPTER",
+            notFoundResponse: [],
+          }),
+        },
+      ]);
+
+      const result = await manager.retryFailedJobs();
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Failed job processing initiated");
+    });
+
+    it("should handle errors", async () => {
+      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
+      QuestionBankCacheSummary.find = jest
+        .fn()
+        .mockRejectedValue(new Error("Query failed"));
+
+      const result = await manager.retryFailedJobs();
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Query failed");
+    });
+  });
+
+  describe("retryFailedJob", () => {
+    it("should retry specific failed job", async () => {
+      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
+      QuestionBankCacheSummary.findById = jest.fn().mockResolvedValue({
+        _id: "summary-1",
+        toObject: jest.fn().mockReturnValue({
+          _id: "summary-1",
+          notFoundQuestions: [],
+          processedCache: [],
+          unitLevel: "CHAPTER",
+          notFoundResponse: [],
+        }),
+      });
+
+      const result = await manager.retryFailedJob("summary-1");
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("processing initiated");
+    });
+  });
+
+  describe("translateQuestionPaper", () => {
+    it("should translate question paper successfully", async () => {
+      const axios = require("axios");
+      jest.spyOn(axios, "post").mockResolvedValue({
+        data: { translated_json: { parts: [] } },
+      });
+
+      const payload = {
+        target_language: "Kannada",
+        json_data: { title: "Test" },
+      };
+
+      const result = await manager.translateQuestionPaper(payload);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe("Translation processed successfully");
+    });
+
+    it("should handle translation errors", async () => {
+      const axios = require("axios");
+      jest.spyOn(axios, "post").mockRejectedValue(new Error("API error"));
+
+      const payload = { target_language: "Kannada" };
+
+      const result = await manager.translateQuestionPaper(payload);
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe("Translation failed");
+    });
+  });
+});
