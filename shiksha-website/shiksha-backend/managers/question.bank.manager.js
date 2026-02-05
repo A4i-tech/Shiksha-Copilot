@@ -4,7 +4,7 @@ const QuestionBankDao = require("../dao/question.bank.dao");
 const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
-const { normalizeAIResponse } = require("../schemas/ai.response.schema");
+const { validatePartsResponse, validateTemplateResponse, validateBlueprintResponse } = require("../schemas/ai.response.schema");
 const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
@@ -374,14 +374,14 @@ class QuestionBankManager extends BaseManager {
       console.log('[Manager] AI Response received.');
       let newQuestions = response.data;
 
-      // Use Zod schema to normalize and validate response
-      const flattenedItems = normalizeAIResponse(newQuestions);
+      // Strict Zod validation - extracts from nested structure
+      const validatedQuestions = validatePartsResponse(newQuestions);
 
-      // Restructure flat items back into blocks for mergeQuestions
+      // Restructure validated items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
         const numNeeded = template.question_distribution.length;
-        const blockQuestions = flattenedItems.slice(itemPointer, itemPointer + numNeeded);
+        const blockQuestions = validatedQuestions.slice(itemPointer, itemPointer + numNeeded);
         itemPointer += numNeeded;
         return {
           type: template.type,
@@ -499,9 +499,11 @@ class QuestionBankManager extends BaseManager {
 
     // Cache Summary & Update Job
     if (notFoundQuestions.length) {
-      const objectives = (objectiveDistribution || []).map((e) =>
-        (e.objective || "").toLowerCase()
-      );
+      const objectives = objectiveDistribution?.length
+        ? objectiveDistribution.map((e) =>
+            (e.objective || "").toLowerCase()
+          )
+        : [];
 
       const processedCache = isMultiChapter
         ? processCacheHits(
@@ -634,15 +636,17 @@ class QuestionBankManager extends BaseManager {
       }
 
       // 1. Prepare Base Chapters (From DB)
-      let formattedChapters = (chapterData || []).map((chapter) => ({
-        title: chapter.title,
-        index_path: chapter.indexPath || chapter.index_path || "",
-        learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-        subtopics: (chapter.subtopics || []).map((sub) => ({
-          title: sub.title,
-          learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
-        })),
-      }));
+      let formattedChapters = chapterData?.length
+        ? chapterData.map((chapter) => ({
+            title: chapter.title,
+            index_path: chapter.indexPath || chapter.index_path || "",
+            learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
+            subtopics: (chapter.subtopics || []).map((sub) => ({
+              title: sub.title,
+              learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+            })),
+          }))
+        : [];
 
       const requiredUnits = new Set();
       if (marksDistribution && Array.isArray(marksDistribution)) {

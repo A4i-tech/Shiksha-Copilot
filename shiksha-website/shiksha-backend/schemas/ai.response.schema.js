@@ -1,85 +1,158 @@
 const { z } = require("zod");
 
-// Recursive schema definition for nested structures
-const BaseItemSchema = z.object({}).passthrough(); // Allow any other properties for now (like 'question', 'answer', etc.)
+// ============ STRICT RESPONSE SCHEMAS - One per use case ============
 
-// Schema for an item that might contain nested items/questions
-const ItemSchema = BaseItemSchema.extend({
-    questions: z.lazy(() => z.array(ItemSchema).optional()),
-    items: z.lazy(() => z.array(ItemSchema).optional()),
-    item: z.lazy(() => ItemSchema.optional()), // Sometimes single item is nested
+// For generating question bank parts (missing questions)
+// AI returns: { metadata: {...}, questions: [{ type, number_of_questions, marks_per_question, questions: [{question, ...}, ...] }, ...] }
+const QuestionBankPartsResponseSchema = z.object({
+  metadata: z.object({
+    user_id: z.string().optional(),
+    subject: z.string().optional(),
+    grade: z.string().optional(),
+    unit_names: z.array(z.string()).optional(),
+    school_name: z.string().optional(),
+    examination_name: z.string().optional(),
+  }).optional(),
+  questions: z.array(
+    z.object({
+      type: z.string().optional(),
+      number_of_questions: z.number().optional(),
+      marks_per_question: z.number().optional(),
+      questions: z.array(
+        z.object({
+          question: z.string().min(1, "Question text required"),
+          answer: z.string().optional(),
+        }).passthrough() // Allow additional fields
+      ).optional(),
+    }).passthrough()
+  ),
 });
 
-// 1. { questions: [...] }
-// 2. { items: [...] }
-// 3. [...] (Array of items)
-const AIResponseSchema = z.union([
-    z.object({ questions: z.array(ItemSchema) }),
-    z.object({ items: z.array(ItemSchema) }),
-    z.array(ItemSchema),
-]);
+// For generating question bank templates
+const QuestionBankTemplateResponseSchema = z.object({
+  template: z.array(
+    z.object({
+      type: z.string(),
+      description: z.string().optional(),
+      number_of_questions: z.number().positive().optional(),
+      marks_per_question: z.number().positive().optional(),
+    })
+  ),
+});
+
+// For blueprint generation
+const QuestionBankBlueprintResponseSchema = z.object({
+  blueprint: z.array(
+    z.object({
+      unit_name: z.string(),
+      objective: z.string().optional(),
+      question_count: z.number().optional(),
+      marks_allocated: z.number().optional(),
+    })
+  ),
+});
+
+// ============ STRICT VALIDATORS WITH EXTRACTION ============
 
 /**
- * Normalizes the AI response into a flat array of question items.
- * Validates against AIResponseSchema and handles recursive extraction.
+ * Validates AI response for question bank parts generation.
+ * Handles nested structure: { metadata: {...}, questions: [{ questions: [{question}, ...], ... }, ...] }
+ * Returns flat array: [{ question, answer, difficulty, marks }, ...]
  * 
- * @param {unknown} responseData - The raw data from the AI service.
- * @returns {Array<object>} - A flat array of question objects.
- * @throws {Error} - If validation fails.
+ * @param {unknown} data - Raw AI response
+ * @returns {Array<object>} - Flat array of questions
+ * @throws {Error} - If validation fails
  */
-function normalizeAIResponse(responseData) {
-    try {
-        // 1. Validate structure
-        const parsedData = AIResponseSchema.parse(responseData);
-
-        // 2. Normalize to an array
-        let rootItems = [];
-        if (Array.isArray(parsedData)) {
-            rootItems = parsedData;
-        } else if (parsedData.questions) {
-            rootItems = parsedData.questions;
-        } else if (parsedData.items) {
-            rootItems = parsedData.items;
-        }
-
-        // 3. Recursive extraction (Flattening)
-        const recursiveExtract = (items) => {
-            let extracted = [];
-            if (!Array.isArray(items)) return extracted;
-
-            for (const item of items) {
-                if (item.questions && Array.isArray(item.questions)) {
-                    extracted.push(...recursiveExtract(item.questions));
-                } else if (item.items && Array.isArray(item.items)) {
-                    // Handle 'items' key if it exists nested
-                    extracted.push(...recursiveExtract(item.items));
-                } else if (item.item && typeof item.item === 'object') {
-                    // Handle 'item' wrapper
-                    extracted.push(item.item);
-                } else {
-                    // It's a leaf item (question)
-                    // valid question should ideally have 'question' text, but we passthrough for now
-                    // We can strip 'questions'/'items'/'item' keys to be clean if needed, 
-                    // but for now we just push the object as is (with potentially unused keys ignored by downstream)
-                    const { questions, items, item: nestedItem, ...cleanItem } = item;
-                    extracted.push(cleanItem);
-                }
-            }
-            return extracted;
-        };
-
-        return recursiveExtract(rootItems);
-
-    } catch (error) {
-        if (error instanceof z.ZodError) {
-            console.error("AI Response Validation Error:", JSON.stringify(error.errors, null, 2));
-            throw new Error(`Invalid AI Response Format: ${error.message}`);
-        }
-        throw error;
+function validatePartsResponse(data) {
+  try {
+    const validated = QuestionBankPartsResponseSchema.parse(data);
+    
+    if (!validated.questions || !Array.isArray(validated.questions)) {
+      throw new Error(`Expected questions array, got: ${typeof validated.questions}`);
     }
+    
+    // Flatten nested questions structure
+    const flattenedQuestions = [];
+    
+    validated.questions.forEach((questionBlock, blockIndex) => {
+      const blockQuestions = questionBlock.questions || [];
+      const marksPerQuestion = questionBlock.marks_per_question || 1;
+      
+      blockQuestions.forEach((q, qIndex) => {
+        if (q.question) {
+          flattenedQuestions.push({
+            question: q.question,
+            answer: q.answer || "",
+            difficulty: "",
+            marks: marksPerQuestion,
+          });
+        }
+      });
+    });
+    
+    return flattenedQuestions;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const details = error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ');
+      throw new Error(
+        `Invalid Parts Response. Expected { metadata, questions: [{ questions: [{question}, ...], ... }] }. Details: ${details}`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Validates AI response for question bank template generation.
+ * Expects: { template: [...] }
+ * 
+ * @param {unknown} data - Raw AI response
+ * @returns {object} - Validated template response
+ * @throws {Error} - If validation fails
+ */
+function validateTemplateResponse(data) {
+  try {
+    return QuestionBankTemplateResponseSchema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const details = error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ');
+      throw new Error(`Invalid Template Response. Details: ${details}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Validates AI response for blueprint generation.
+ * Expects: { blueprint: [...] }
+ * 
+ * @param {unknown} data - Raw AI response
+ * @returns {object} - Validated blueprint response
+ * @throws {Error} - If validation fails
+ */
+function validateBlueprintResponse(data) {
+  try {
+    return QuestionBankBlueprintResponseSchema.parse(data);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const details = error.errors
+        .map(e => `${e.path.join('.')}: ${e.message}`)
+        .join('; ');
+      throw new Error(`Invalid Blueprint Response. Details: ${details}`);
+    }
+    throw error;
+  }
 }
 
 module.exports = {
-    AIResponseSchema,
-    normalizeAIResponse
+  QuestionBankPartsResponseSchema,
+  QuestionBankTemplateResponseSchema,
+  QuestionBankBlueprintResponseSchema,
+  validatePartsResponse,
+  validateTemplateResponse,
+  validateBlueprintResponse,
 };
