@@ -1,17 +1,70 @@
 const axios = require("axios");
 require("dotenv").config();
 
+/**
+ * Check if Variform SMS is properly configured
+ * @returns {boolean} True if all required environment variables are set
+ */
+function isVariformConfigured() {
+	const requiredVars = [
+		'VARIFORM_BEARER_TOKEN',
+		'VARIFORM_SMS_URL',
+		'VARIFORM_SENDER_ID',
+		'VARIFORM_SMS_TYPE',
+		'VARIFORM_SMS_TEMPLATE'
+	];
+
+	return requiredVars.every(varName => {
+		const value = process.env[varName];
+		if (!value || value.trim() === '') {
+			return false;
+		}
+		return true;
+	});
+}
+
+/**
+ * Validate that the SMS URL is a valid URL format
+ * @param {string} url - The URL to validate
+ * @returns {boolean} True if valid URL format
+ */
+function isValidUrl(url) {
+	try {
+		const parsed = new URL(url);
+		return ['http:', 'https:'].includes(parsed.protocol);
+	} catch {
+		return false;
+	}
+}
+
 async function variforrmSMSService(templateId, recipientPhone, data) {
+	// Check if Variform is configured
+	if (!isVariformConfigured()) {
+		const error = new Error('Variform SMS service is not configured. Please set VARIFORM_* environment variables.');
+		error.code = 'VARIFORM_NOT_CONFIGURED';
+		throw error;
+	}
+
 	const bearerToken = process.env.VARIFORM_BEARER_TOKEN;
 	const smsUrl = process.env.VARIFORM_SMS_URL;
+	const senderId = process.env.VARIFORM_SENDER_ID;
+	const smsType = process.env.VARIFORM_SMS_TYPE;
+
+	// Validate URL format
+	if (!isValidUrl(smsUrl)) {
+		const error = new Error(`Invalid VARIFORM_SMS_URL format: "${smsUrl}". Must be a valid URL (e.g., https://api.variform.com)`);
+		error.code = 'INVALID_URL';
+		throw error;
+	}
+
 	const formattedRecipientPhone = `91${recipientPhone}`;
 	const payload = {
-		sender: process.env.VARIFORM_SENDER_ID,
+		sender: senderId,
 		to: formattedRecipientPhone,
 		templateId: templateId,
-		custom:[data],
-		type: process.env.VARIFORM_SMS_TYPE
-	  }
+		custom: [data],
+		type: smsType
+	};
 
 	const config = {
 		headers: {
@@ -29,15 +82,31 @@ async function variforrmSMSService(templateId, recipientPhone, data) {
 
 		return response.data;
 	} catch (error) {
+		let errorMessage = 'Failed to send SMS';
+		let errorCode = 'SMS_SEND_FAILED';
+
 		if (error.response) {
-			console.error("Error sending SMS via Variforrm:", error.response.data);
+			// Server responded with error status
+			const status = error.response.status;
+			const responseData = error.response.data;
+			errorMessage = `Variform SMS API error (${status}): ${JSON.stringify(responseData)}`;
+			errorCode = `API_ERROR_${status}`;
 		} else if (error.request) {
-			console.error("No response received from Variforrm:", error.request);
+			// Request made but no response received
+			errorMessage = `No response from Variform SMS service. Check network connectivity and VARIFORM_SMS_URL: ${smsUrl}`;
+			errorCode = 'NO_RESPONSE';
 		} else {
-			console.error("Error setting up SMS request:", error.message);
+			// Error setting up the request
+			errorMessage = `Error setting up SMS request: ${error.message}`;
+			errorCode = 'REQUEST_SETUP_ERROR';
 		}
-		throw new Error('Something went wrong!');
+
+		const enhancedError = new Error(errorMessage);
+		enhancedError.code = errorCode;
+		enhancedError.originalError = error;
+		throw enhancedError;
 	}
 }
 
 module.exports = variforrmSMSService;
+module.exports.isVariformConfigured = isVariformConfigured;

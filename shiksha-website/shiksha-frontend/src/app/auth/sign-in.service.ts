@@ -9,8 +9,6 @@ import { applicationUsers } from '../shared/utility/enum.util';
 })
 export class SignInService extends BaseRestService {
   baseUrl = environment.apiUrl;
-  params = new HttpParams();
-  loggedInUserType!:applicationUsers;
 
   /**
    * Class constructor
@@ -19,35 +17,27 @@ export class SignInService extends BaseRestService {
   constructor(http: HttpClient) {
     super(http);
     this.setUri('auth');
-
-    const hostname = window.location.hostname;
-    
-    if (hostname.startsWith('admin')) {
-      this.loggedInUserType = applicationUsers.ADMIN;
-      this.params = this.params.set('type', '1');
-    } else {
-      this.loggedInUserType = applicationUsers.TEACHER;
-      this.params = this.params.set('type', '0');
-    }
   }
 
   /**
-   * send the phone  number to validate
+   * send the phone number to validate
+   * Backend auto-detects user type (Admin or Teacher) from phone number
    * @param mobile_number
    * @returns
    */
-  validateMobileNumber(reqBody:any) {
-    return this.post(`get-otp?${this.params}`,reqBody);
+  validateMobileNumber(reqBody: any) {
+    return this.post(`get-otp`, reqBody);
   }
 
   /**
    * validate the otp values
+   * Backend auto-detects user type (Admin or Teacher) from phone number
    * @param otpval
    * @param phoneNumber
    * @returns
    */
   validateOTP(otpval: string, phoneNumber: string) {
-    return this.post(`validate-otp?${this.params}`, {
+    return this.post(`validate-otp`, {
       phone: phoneNumber,
       otp: otpval,
     });
@@ -57,7 +47,7 @@ export class SignInService extends BaseRestService {
    * Auth me
    * @returns 
    */
-  authMe(){
+  authMe() {
     return this.get('me');
   }
 }

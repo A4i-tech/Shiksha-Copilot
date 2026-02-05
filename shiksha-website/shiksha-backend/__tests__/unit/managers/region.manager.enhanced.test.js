@@ -30,7 +30,7 @@ describe('RegionManager', () => {
                 { state: 'Tamil Nadu', zones: [] },
                 { state: 'Karnataka', zones: [] }
             ];
-            mockRegionDao.getAll.mockResolvedValue(mockRegions);
+            mockRegionDao.getAll.mockResolvedValue({ results: mockRegions });
 
             const result = await regionManager.getStates();
 
@@ -40,7 +40,7 @@ describe('RegionManager', () => {
         });
 
         it('should return empty array when no regions', async () => {
-            mockRegionDao.getAll.mockResolvedValue([]);
+            mockRegionDao.getAll.mockResolvedValue({ results: [] });
 
             const result = await regionManager.getStates();
 
@@ -56,7 +56,7 @@ describe('RegionManager', () => {
                     zones: [{ name: 'Zone A' }, { name: 'Zone B' }]
                 }
             ];
-            mockRegionDao.getAll.mockResolvedValue(mockRegions);
+            mockRegionDao.getAll.mockResolvedValue({ results: mockRegions });
 
             const result = await regionManager.getZones('Karnataka');
 
@@ -65,7 +65,7 @@ describe('RegionManager', () => {
         });
 
         it('should return empty array when state not found', async () => {
-            mockRegionDao.getAll.mockResolvedValue([]);
+            mockRegionDao.getAll.mockResolvedValue({ results: [] });
 
             const result = await regionManager.getZones('Unknown State');
 
@@ -80,7 +80,7 @@ describe('RegionManager', () => {
                 { name: 'School 2', block: 'Taluk A' },
                 { name: 'School 3', block: 'Taluk B' }
             ];
-            mockSchoolDao.getAll.mockResolvedValue(mockSchools);
+            mockSchoolDao.getAll.mockResolvedValue({ results: mockSchools });
 
             const result = await regionManager.getSchools('Taluk A');
 

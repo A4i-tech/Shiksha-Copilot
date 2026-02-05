@@ -121,7 +121,7 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getClasses(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/classes`).pipe(
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/classes`).pipe(
       // unwrap formatted response if present
       (source => new Observable<string[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
@@ -141,7 +141,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.class) {
       params = params.set('class', filters.class);
     }
-    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/media`, { params }).pipe(
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/media`, { params }).pipe(
       (source => new Observable<string[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
@@ -149,27 +149,9 @@ export class QuestionBankService extends BaseRestService {
       })))
     );
   }
-
-  /**
-   * Function to get subjects for LBA QP
-   * @param filters
-   * @returns Observable<string[]>
-   */
-  getSubjects(filters: { class: string; medium: string }): Observable<string[]> {
-    let params = new HttpParams();
-    if (filters.class) {
-      params = params.set('class', filters.class);
-    }
-    if (filters.medium) {
-      params = params.set('medium', filters.medium);
-    }
-    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/subjects`, { params }).pipe(
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+  updateQuestionPaper(id: string, data: any): Observable<any> {
+    // Use PUT or PATCH so the backend knows to update the existing record
+    return this.http.put(`${this.baseUrl}/question-bank/${id}`, data);
   }
 
   /**
@@ -188,7 +170,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.subject) {
       params = params.set('subject', filters.subject);
     }
-    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/chapters`, { params }).pipe(
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/chapters`, { params }).pipe(
       (source => new Observable<any[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
@@ -202,7 +184,7 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getDifficulties(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/difficulties`).pipe(
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/difficulties`).pipe(
       (source => new Observable<string[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
@@ -216,7 +198,7 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getAnswerTypes(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/lba-qp/meta/answerTypes`).pipe(
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/answerTypes`).pipe(
       (source => new Observable<string[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
@@ -235,10 +217,12 @@ export class QuestionBankService extends BaseRestService {
     medium: string;
     class: string;
     chapterNumbers: string;
+    chapterIds?: string;
     marks?: string;
     difficulty?: string;
     type?: string;
     search?: string;
+    headings?: string;
   }): Observable<any[]> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -246,7 +230,7 @@ export class QuestionBankService extends BaseRestService {
         params = params.set(key, String(value));
       }
     });
-    return this.http.get<any>(`${this.baseUrl}/lba-qp/questions`, { params }).pipe(
+    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params }).pipe(
       (source => new Observable<any[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
@@ -261,6 +245,6 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<any>
    */
   generateLBAQuestionPaper(data: any): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/lba-qp/papers`, data);
+    return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data);
   }
 }

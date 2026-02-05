@@ -31,7 +31,6 @@ const controllerPaths = [
   "../../../controllers/feedback.lesson.controller.js",
   "../../../controllers/fln.resource.controller.js",
   "../../../controllers/help.videos.controller.js",
-  "../../../controllers/lba.qp.controller.js",
   "../../../controllers/lesson.plan.template.controller.js",
   "../../../controllers/master.class.controller.js",
   "../../../controllers/master.lesson.controller.js",
@@ -166,11 +165,6 @@ const routeCases = [
     file: "help.videos.routes.js",
     method: "post",
     path: "/help-videos/create",
-  },
-  {
-    file: "lba.qp.routes.js",
-    method: "post",
-    path: "/lba-qp/upload-json-file",
   },
   {
     file: "lesson.plan.template.routes.js",

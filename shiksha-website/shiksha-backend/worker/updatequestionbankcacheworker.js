@@ -190,7 +190,8 @@ parentPort.on("message", async (data) => {
               const newQuestion = createQuestionObj(
                 currObj.type,
                 currObj.marksPerQuestion,
-                newResQuestions[i].questions[j]
+                newResQuestions[i].questions[j],
+                currObj.objective
               );
               cacheByObjective.push(newQuestion);
               const processedQuestion = preprocess(
@@ -215,7 +216,8 @@ parentPort.on("message", async (data) => {
             const newQuestion = createQuestionObj(
               currObj.type,
               currObj.marksPerQuestion,
-              newResQuestions[i].questions[j]
+              newResQuestions[i].questions[j],
+              currObj.objective
             );
             questionsToEmbed.push(
               preprocess(newResQuestions[i].questions[j].question)

@@ -4,6 +4,7 @@ const QuestionBankController = require("../controllers/question.bank.controller"
 const asyncMiddleware = require("../middlewares/asyncMiddleware");
 const { isAuthenticated, isAdmin } = require("../middlewares/auth");
 const { validateQuestionBankCreate, validateQuestionBankFeedbackCreate, validateQuestionBankTemplateCreate, validateQuestionBankBluePrintCreate } = require("../validations/question.bank.validation");
+const MulterUploadMiddleware = require('../middlewares/multerUploadMiddleware');
 const questionBankController = new QuestionBankController();
 
 router.post(
@@ -41,6 +42,52 @@ router.get(
   )
 );
 
+// --- Unified Meta & Search Routes (Migrated from qp.routes.js) ---
+
+router.get(
+  "/question-bank/meta/classes",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getClasses.bind(questionBankController))
+);
+
+router.get(
+  "/question-bank/meta/media",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getMedia.bind(questionBankController))
+);
+
+router.get(
+  "/question-bank/meta/chapters",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getChapters.bind(questionBankController))
+);
+
+router.get(
+  "/question-bank/meta/difficulties",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getDifficulties.bind(questionBankController))
+);
+
+router.get(
+  "/question-bank/meta/answerTypes",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getAnswerTypes.bind(questionBankController))
+);
+
+router.get(
+  "/question-bank/questions",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getQuestions.bind(questionBankController))
+);
+
+router.post(
+  "/question-bank/upload-json",
+  isAuthenticated,
+  isAdmin,
+  MulterUploadMiddleware,
+  asyncMiddleware(questionBankController.uploadBulkQuestions.bind(questionBankController))
+);
+
 router.get(
   "/question-bank/:id",
   asyncMiddleware(questionBankController.getById.bind(questionBankController))
@@ -67,5 +114,6 @@ router.post("/question-bank/retry-failed-job/:id",
   asyncMiddleware(
     questionBankController.retryFailedJob.bind(questionBankController)
   ))
+
 
 module.exports = router;

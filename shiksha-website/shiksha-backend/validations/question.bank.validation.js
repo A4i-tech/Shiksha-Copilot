@@ -94,7 +94,6 @@ const questionBankSchemaCreate = Joi.object({
             number_of_questions: Joi.number(),
             marks_per_question: Joi.number(),
             description: Joi.string().optional().allow(""),
-            // FIXED: Allow array items to have extra properties (marks, IDs, etc.)
             question_distribution: Joi.alternatives().try(
                 Joi.array().items(
                     Joi.object().unknown(true) 
@@ -103,7 +102,7 @@ const questionBankSchemaCreate = Joi.object({
             ).optional()
         })
         .required(),
-}).unknown(true); // CRITICAL: Allows extra fields in the root payload
+}).unknown(true); //  Allows extra fields in the root payload
 
 const questionBankFeedbackSchema = Joi.object({
     question: Joi.string().required(),

@@ -12,6 +12,7 @@ describe("variform.service", () => {
     process.env.VARIFORM_SMS_URL = "http://variform";
     process.env.VARIFORM_SENDER_ID = "SID";
     process.env.VARIFORM_SMS_TYPE = "transactional";
+    process.env.VARIFORM_SMS_TEMPLATE = "tpl";
   });
 
   it("sends sms and returns data", async () => {
@@ -40,7 +41,7 @@ describe("variform.service", () => {
     const variformSMSService = require(servicePath);
 
     await expect(variformSMSService("tpl", "999", {})).rejects.toThrow(
-      "Something went wrong!"
+      'Variform SMS API error (undefined): {"msg":"bad"}'
     );
   });
 });

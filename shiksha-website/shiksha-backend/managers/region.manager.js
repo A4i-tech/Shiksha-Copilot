@@ -13,8 +13,9 @@ class RegionManager extends BaseManager {
 	 * @returns {Promise<Array>} Array of states
 	 */
 	async getStates() {
-		const regions = await this.dao.getAll();
-		const states = [...new Set(regions.map(region => region.state))];
+		const response = await this.dao.getAll();
+		const regions = response.results || [];
+		const states = [...new Set((regions || []).map(region => region.state))];
 		return states;
 	}
 
@@ -24,7 +25,8 @@ class RegionManager extends BaseManager {
 	 * @returns {Promise<Array>} Array of zones
 	 */
 	async getZones(state) {
-		const regions = await this.dao.getAll();
+		const response = await this.dao.getAll();
+		const regions = response.results || [];
 		const stateRegion = regions.find(region => region.state === state);
 		if (!stateRegion) {
 			return [];
@@ -38,11 +40,13 @@ class RegionManager extends BaseManager {
 	 * @returns {Promise<Array>} Array of districts
 	 */
 	async getDistricts(zone) {
-		const regions = await this.dao.getAll();
+		const response = await this.dao.getAll();
+		const regions = response.results || [];
 		for (const region of regions) {
 			const zoneData = region.zones.find(z => z.name === zone);
 			if (zoneData) {
-				return [zoneData.districts];
+				// districts is now an array, return it directly
+				return zoneData.districts || [];
 			}
 		}
 		return [];
@@ -54,10 +58,18 @@ class RegionManager extends BaseManager {
 	 * @returns {Promise<Array>} Array of taluks
 	 */
 	async getTaluks(district) {
-		const regions = await this.dao.getAll();
+		const response = await this.dao.getAll();
+		const regions = response.results || [];
 		for (const region of regions) {
 			for (const zone of region.zones) {
-				if (zone.districts.name === district) {
+				// districts is now an array, find the matching district
+				if (Array.isArray(zone.districts)) {
+					const districtObj = zone.districts.find(d => d.name === district);
+					if (districtObj) {
+						return districtObj.blocks || [];
+					}
+				} else if (zone.districts && zone.districts.name === district) {
+					// Handle legacy object structure for backward compatibility
 					return zone.districts.blocks || [];
 				}
 			}
@@ -71,7 +83,8 @@ class RegionManager extends BaseManager {
 	 * @returns {Promise<Array>} Array of schools
 	 */
 	async getSchools(taluk) {
-		const schools = await this.schoolDao.getAll();
+		const response = await this.schoolDao.getAll();
+		const schools = response.results || [];
 		return schools.filter(school => school.block === taluk);
 	}
 }

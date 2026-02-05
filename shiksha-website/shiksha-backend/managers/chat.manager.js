@@ -1,7 +1,7 @@
 const BaseManager = require("./base.manager");
 const ChatDao = require("../dao/chat.dao");
 const formatApiResponse = require("../helper/response");
-const { postToChatBot , postToLessonChatBot } = require("../services/chat.bot.service");
+const { postToChatBot, postToLessonChatBot } = require("../services/chat.bot.service");
 const { CHAT_LIMIT } = require("../config/constants");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
@@ -64,7 +64,7 @@ class ChatManager extends BaseManager {
 				user_id: userId,
 				messages: formattedMessages,
 			});
-			
+
 			if (response.status !== 200) {
 				throw new Error(`Something went wrong with copilot! Please try later`);
 			}
@@ -110,7 +110,7 @@ class ChatManager extends BaseManager {
 		}
 	}
 
-	async _getLessonDetails(recordId, chapterId ,userId) {
+	async _getLessonDetails(recordId, chapterId, userId) {
 		const lessonDetails = await this.teacherLessonPlanDao.getById(recordId);
 		if (!lessonDetails) {
 			throw new Error("Lesson plan not found");
@@ -129,7 +129,7 @@ class ChatManager extends BaseManager {
 		if (masterLessonDetails.chapterId.toString() !== chapterId) {
 			throw new Error("Chapter does not match the lesson");
 		}
-	
+
 		const chapterDetails = await this.chapterDao.getById(chapterId);
 		if (!chapterDetails) {
 			throw new Error("Chapter not found");
@@ -139,7 +139,7 @@ class ChatManager extends BaseManager {
 		if (!subjectDetails) {
 			return formatApiResponse(false, "Subject not found", null);
 		}
-	
+
 		return {
 			lessonDetails,
 			chapterDetails,
@@ -147,12 +147,12 @@ class ChatManager extends BaseManager {
 		};
 	}
 
-	_createChatPayload(chapter, subject , messages ,userId) {
+	_createChatPayload(chapter, subject, messages, userId) {
 		return {
-			    user_id: userId.toString(),
-				chapter_id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${chapter.topics}`,
-				index_path: chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`,
-				messages
+			user_id: userId.toString(),
+			chapter_id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${chapter.topics}`,
+			index_path: chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`,
+			messages
 		};
 	}
 
@@ -160,13 +160,13 @@ class ChatManager extends BaseManager {
 		try {
 
 			const { lessonDetails, chapterDetails, subjectDetails } = await this._getLessonDetails(
-				recordId, chapterId , userId
+				recordId, chapterId, userId
 			);
 
 			const todayStart = new Date();
-            todayStart.setUTCHours(0, 0, 0, 0);
-            const todayEnd = new Date();
-            todayEnd.setUTCHours(23, 59, 59, 999);
+			todayStart.setUTCHours(0, 0, 0, 0);
+			const todayEnd = new Date();
+			todayEnd.setUTCHours(23, 59, 59, 999);
 
 			const totalMessages = await this.getTotalSessionMessagesCount(userId);
 
@@ -185,17 +185,17 @@ class ChatManager extends BaseManager {
 				);
 			}
 
-			let formattedMessages = messageHistory.map((chat) => [
+			let formattedMessages = (messageHistory || []).map((chat) => [
 				{ role: "user", message: chat.message.question },
 				{ role: "system", message: chat.message.answer },
 			])
-			.flat();
+				.flat();
 
 			formattedMessages.reverse();
 
 			formattedMessages.push({ role: "user", message });
-            
-			const payload = this._createChatPayload(chapterDetails ,subjectDetails , formattedMessages ,userId)
+
+			const payload = this._createChatPayload(chapterDetails, subjectDetails, formattedMessages, userId)
 
 			const response = await postToLessonChatBot(payload);
 
@@ -209,8 +209,8 @@ class ChatManager extends BaseManager {
 
 			await this.chatDao.createLessonChats({
 				teacherId: userId,
-				recordId : lessonDetails._id,
-				message: { question : message,	answer: response.data.response, version:2 }
+				recordId: lessonDetails._id,
+				message: { question: message, answer: response.data.response, version: 2 }
 			});
 
 			return formatApiResponse(true, "Lesson chat response", response.data.response);
@@ -222,26 +222,26 @@ class ChatManager extends BaseManager {
 	async listLessonMessages(recordId, chapterId, userId) {
 		try {
 			const { lessonDetails, chapterDetails, subjectDetails } = await this._getLessonDetails(
-				recordId, chapterId , userId
+				recordId, chapterId, userId
 			);
-			
+
 			let messagesHistory = await this.chatDao.getLessonMessages(
 				lessonDetails._id,
 				userId
 			);
 
-			let messages = messagesHistory.map((chat)=> chat.message)
+			let messages = (messagesHistory || []).map((chat) => chat.message)
 
-			return formatApiResponse(true, "Lesson messages fetched successfully", { messages, chapterDetails, subject:subjectDetails });
+			return formatApiResponse(true, "Lesson messages fetched successfully", { messages, chapterDetails, subject: subjectDetails });
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
-		
-}
+
+		}
 
 	}
 
 
-	async getTotalSessionMessagesCount(userId){
+	async getTotalSessionMessagesCount(userId) {
 		const todayStart = new Date();
 		todayStart.setUTCHours(0, 0, 0, 0);
 

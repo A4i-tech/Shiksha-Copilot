@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { QuestionBankGenerationComponent } from './question-bank-generation/question-bank-generation.component';
 import { QuestionBankListComponent } from './question-bank-list/question-bank-list.component';
 import { QuestionBankViewComponent } from './question-bank-view/question-bank-view.component';
-import { LBAQPGenerationComponent } from './lba-qp-generation/lba-qp-generation.component';
 import { questionBankRoutingModule } from './question-bank-routing.module';
 import { TranslateModule } from '@ngx-translate/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -32,7 +31,6 @@ import { QuestionBankBluePrintComponent } from './question-bank-generation/quest
     CommonDropdownComponent,
     DeleteDetailComponent,
     NgChartsModule,
-    LBAQPGenerationComponent
   ],
 })
 export class QuestionBankModule {}

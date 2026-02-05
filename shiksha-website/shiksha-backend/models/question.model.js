@@ -5,15 +5,15 @@ const mongoose = require('mongoose');
 const OptionSchema = new mongoose.Schema(
   {
     label: { type: String },
-    text:  { type: String },
+    text: { type: String },
   },
   { _id: false }
 );
 
 const PairSchema = new mongoose.Schema(
   {
-    left:      { type: String },
-    right:     { type: String },
+    left: { type: String },
+    right: { type: String },
     keyAnswer: { type: String },
   },
   { _id: false }
@@ -66,55 +66,55 @@ function normalizeItems(arr) {
 }
 
 // ---- main schema ----
-const lbaQuestionSchema = new mongoose.Schema(
+const QuestionSchema = new mongoose.Schema(
   {
     subject: { type: String, index: true },
-    medium:  { type: String, index: true },
-    class:   { type: String, index: true },
+    medium: { type: String, index: true },
+    class: { type: String, index: true },
 
-    chapterId: { type: mongoose.Schema.Types.ObjectId, ref: 'LBAChapter' },
+    chapterId: { type: mongoose.Schema.Types.ObjectId, ref: 'Chapter' },
     chapter: {
       chapterNumber: { type: Number, index: true },
       title: String,
     },
 
-    groupHeading:     { type: String, index: true },
-    answerType:       { type: String, index: true },
-    difficulty:       { type: String, index: true },
+    groupHeading: { type: String, index: true },
+    answerType: { type: String, index: true },
+    difficulty: { type: String, index: true },
     marksPerQuestion: { type: Number, index: true },
 
-    text:      { type: String },
+    text: { type: String },
     keyAnswer: { type: String },
 
     options: { type: [OptionSchema], default: [] },
-    pairs:   { type: [PairSchema],   default: [] },
-    items:   { type: [String],       default: [] },
+    pairs: { type: [PairSchema], default: [] },
+    items: { type: [String], default: [] },
 
-    correctOrderById:    { type: [Number], default: [] },
+    correctOrderById: { type: [Number], default: [] },
     correctOrderIndices: { type: [Number], default: [] },
   },
   { timestamps: true, strict: true }
 );
 
 // Query performance
-lbaQuestionSchema.index({
+QuestionSchema.index({
   class: 1, medium: 1, subject: 1, 'chapter.chapterNumber': 1,
 });
-lbaQuestionSchema.index({ groupHeading: 1, answerType: 1, difficulty: 1 });
-// lbaQuestionSchema.index({ marksPerQuestion: 1 });
-// For search in DAO
-lbaQuestionSchema.index({ text: 'text', 'chapter.title': 'text' });
+// Compound index for filtering
+QuestionSchema.index({ marksPerQuestion: 1, difficulty: 1, answerType: 1 });
+// Full text search - added groupHeading
+QuestionSchema.index({ text: 'text', 'chapter.title': 'text', groupHeading: 'text' });
 
 // Sanitize before save
-lbaQuestionSchema.pre('validate', function (next) {
+QuestionSchema.pre('validate', function (next) {
   this.options = normalizeOptions(this.options);
-  this.pairs   = normalizePairs(this.pairs);
-  this.items   = normalizeItems(this.items);
+  this.pairs = normalizePairs(this.pairs);
+  this.items = normalizeItems(this.items);
   next();
 });
 
 // Sanitize on updates (findOneAndUpdate)
-lbaQuestionSchema.pre('findOneAndUpdate', function (next) {
+QuestionSchema.pre('findOneAndUpdate', function (next) {
   const update = this.getUpdate() || {};
 
   const setObj = update.$set ?? update;
@@ -137,4 +137,4 @@ lbaQuestionSchema.pre('findOneAndUpdate', function (next) {
 });
 
 // Use explicit collection name "lba_questions"
-module.exports = mongoose.model('LBAQuestion', lbaQuestionSchema, 'lba_questions');
+module.exports = mongoose.model('Question', QuestionSchema, 'lba_questions');

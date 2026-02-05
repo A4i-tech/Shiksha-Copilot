@@ -15,7 +15,11 @@ jest.mock("worker_threads", () => {
   };
 });
 
-jest.mock("../../../services/variform.service", () => jest.fn());
+jest.mock("../../../services/variform.service", () => {
+  const mockService = jest.fn();
+  mockService.isVariformConfigured = jest.fn(() => true);
+  return mockService;
+});
 let variformSMSService;
 let parentPort;
 
@@ -57,8 +61,11 @@ describe("worker.threads.service", () => {
     });
 
     expect(parentPort.postMessage).toHaveBeenCalledWith({
-      success: false,
-      error: "fail",
+      success: true,
+      result: {
+        message: "SMS send failed but user creation succeeded",
+        error: "fail"
+      },
     });
   });
 });

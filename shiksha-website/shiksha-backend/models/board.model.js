@@ -6,8 +6,9 @@ const boardSchema = mongoose.Schema(
 			type: String,
 			required: true,
 		},
-		abbrevation: {
+		abbreviation: {
 			type: String,
+			required: false, // Explicitly set as optional
 		},
 		state: {
 			type: String,
@@ -18,7 +19,7 @@ const boardSchema = mongoose.Schema(
 			default: false,
 		},
 	},
-	{ timestamps: true }
+	{ timestamps: true, strict: true } // Explicitly enable strict mode
 );
 
 const Board = mongoose.model("Board", boardSchema);
