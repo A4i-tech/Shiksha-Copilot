@@ -830,14 +830,30 @@ class QuestionBankManager extends BaseManager {
       const { subjectCode, targetSubjectIds } =
         await this.masterSubjectDao.resolveSubjectContext(subject);
 
+      // 1. Fetch Chapters (now without headings)
       const chapters = await this.chapterDao.getChapters(
         normalizedClass,
         medium,
         subjectCode,
         targetSubjectIds
       );
+
+      // 2. Fetch Aggregated Stats from QuestionDao
+      const chapterIds = (chapters || []).map((ch) => ch._id);
+      let statsMap = new Map();
+
+      if (chapterIds.length > 0) {
+        statsMap = await this.questionDao.getHeadingStatsByChapterIds(chapterIds);
+      }
+
+      // 3. Merge Stats back into content
+      const enrichedChapters = chapters.map((ch) => ({
+        ...ch,
+        headings: statsMap.get(String(ch._id)) || [{ name: "Misc", count: 0 }],
+      }));
+
       console.log(`[Manager] getChapters: found ${chapters?.length || 0} chapters`);
-      return formatApiReponse(true, "Chapters retrieved successfully", chapters);
+      return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
     } catch (err) {
       console.error("[Manager] getChapters failed:", err);
       return formatApiReponse(false, err.message, err);

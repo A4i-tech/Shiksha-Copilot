@@ -188,6 +188,46 @@ class QuestionDao extends BaseDao {
                 : null,
         }));
     }
+    async getHeadingStatsByChapterIds(chapterIds) {
+        if (!chapterIds || chapterIds.length === 0) {
+            return new Map();
+        }
+
+        const headingStats = await Question.aggregate([
+            {
+                $match: {
+                    chapterId: { $in: chapterIds },
+                },
+            },
+            {
+                $group: {
+                    _id: { chId: "$chapterId", heading: "$groupHeading" },
+                    count: { $sum: 1 },
+                },
+            },
+            {
+                $group: {
+                    _id: "$_id.chId",
+                    headings: {
+                        $push: {
+                            name: { $ifNull: ["$_id.heading", "Misc"] },
+                            count: "$count",
+                        },
+                    },
+                },
+            },
+        ]);
+
+        const statsMap = new Map();
+        headingStats.forEach((stat) => {
+            statsMap.set(
+                String(stat._id),
+                stat.headings.sort((a, b) => a.name.localeCompare(b.name))
+            );
+        });
+
+        return statsMap;
+    }
 }
 
 module.exports = QuestionDao;
