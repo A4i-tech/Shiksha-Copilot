@@ -1,0 +1,134 @@
+const AuthController = require('../../../controllers/auth.controller');
+const AuthManager = require('../../../managers/auth.manager');
+const handleError = require('../../../helper/handleError');
+
+jest.mock('../../../managers/auth.manager');
+jest.mock('../../../helper/handleError');
+
+describe('AuthController', () => {
+    let authController;
+    let mockReq;
+    let mockRes;
+    let mockAuthManager;
+
+    beforeEach(() => {
+        authController = new AuthController();
+        mockReq = {
+            body: {},
+            user: null
+        };
+        mockRes = {
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn().mockReturnThis()
+        };
+        mockAuthManager = {
+            getOtp: jest.fn(),
+            validateOtp: jest.fn(),
+            getUserFromToken: jest.fn()
+        };
+        authController.authManager = mockAuthManager;
+        jest.clearAllMocks();
+    });
+
+    describe('getOtp', () => {
+        it('should return 200 when OTP is sent successfully', async () => {
+            const mockResult = { success: true, message: 'OTP sent', data: null };
+            mockAuthManager.getOtp.mockResolvedValue(mockResult);
+
+            await authController.getOtp(mockReq, mockRes);
+
+            expect(mockAuthManager.getOtp).toHaveBeenCalledWith(mockReq);
+            expect(mockRes.status).toHaveBeenCalledWith(200);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+        });
+
+        it('should handle error when OTP sending fails', async () => {
+            const mockResult = { success: false, message: 'Failed to send OTP', data: null };
+            mockAuthManager.getOtp.mockResolvedValue(mockResult);
+
+            await authController.getOtp(mockReq, mockRes);
+
+            expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
+        });
+
+        it('should return 400 when exception occurs', async () => {
+            const error = new Error('Database error');
+            mockAuthManager.getOtp.mockRejectedValue(error);
+
+            await authController.getOtp(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith(error);
+        });
+    });
+
+    describe('validateOtp', () => {
+        it('should return 200 when OTP is validated successfully', async () => {
+            const mockResult = { success: true, message: 'OTP validated', data: { token: 'mock-token' } };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockAuthManager.validateOtp).toHaveBeenCalledWith(mockReq);
+            expect(mockRes.status).toHaveBeenCalledWith(200);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+        });
+
+        it('should handle error when OTP validation fails', async () => {
+            const mockResult = { success: false, message: 'Invalid OTP', data: null };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
+        });
+
+        it('should return 400 when exception occurs', async () => {
+            const error = new Error('Database error');
+            mockAuthManager.validateOtp.mockRejectedValue(error);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith(error);
+        });
+    });
+
+    describe('getUserFromToken', () => {
+        it('should return 200 when user data is retrieved successfully', async () => {
+            mockReq.user = { id: '123', phone: '1234567890' };
+            const mockResult = { success: true, message: 'User data', data: { id: '123' } };
+            mockAuthManager.getUserFromToken.mockResolvedValue(mockResult);
+
+            await authController.getUserFromToken(mockReq, mockRes);
+
+            expect(mockAuthManager.getUserFromToken).toHaveBeenCalledWith(mockReq);
+            expect(mockRes.status).toHaveBeenCalledWith(200);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+        });
+
+        it('should return 401 when user is not authenticated', async () => {
+            mockReq.user = null;
+
+            await authController.getUserFromToken(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(401);
+            expect(mockRes.json).toHaveBeenCalledWith({
+                success: false,
+                messaage: 'Token Expired!',
+                data: null
+            });
+        });
+
+        it('should return 400 when exception occurs', async () => {
+            mockReq.user = { id: '123' };
+            const error = new Error('Database error');
+            mockAuthManager.getUserFromToken.mockRejectedValue(error);
+
+            await authController.getUserFromToken(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith(error);
+        });
+    });
+});

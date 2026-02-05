@@ -37,6 +37,36 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+
+      - name: Run unit tests (before build)
+        working-directory: shiksha-api/app-service
+        env:
+          AZURE_OPENAI_API_KEY: dummy-key-for-testing
+          AZURE_OPENAI_ENDPOINT: https://dummy-endpoint.openai.azure.com/
+          AZURE_OPENAI_API_VERSION: 2024-02-15-preview
+          AZURE_OPENAI_DEPLOYMENT_NAME: dummy-deployment
+          AZURE_CHAT_DEPLOYMENT_NAME: dummy-chat-deployment
+          AZURE_OPENAI_EMBED_MODEL: text-embedding-ada-002
+          BING_API_KEY: dummy-bing-key
+          BLOB_STORE_CONNECTION_STRING: DefaultEndpointsProtocol=https;AccountName=dummyaccount;AccountKey=dummykey;EndpointSuffix=core.windows.net
+          QDRANT_URL: http://localhost:6333
+          QDRANT_API_KEY: dummy-qdrant-key
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install
+          poetry run pytest tests/unit/ --cov=app --cov-report=html --cov-report=xml:coverage-unit.xml --cov-report json:coverage-unit.json
+          # Save unit test coverage data
+          cp .coverage .coverage.unit || true
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -59,28 +89,46 @@ jobs:
           cache-from: type=gha,scope=shiksha-api
           cache-to: type=gha,scope=shiksha-api,mode=max
 
-      - name: Run tests inside built image
+      - name: Run integration tests inside built image
         run: |
           IMAGE=shiksha-api-local
-          mkdir -p htmlcov
-          touch coverage.json
-          docker run --rm \
-            -v $PWD/htmlcov:/src/app-service/htmlcov \
-            -v $PWD/coverage.json:/src/app-service/coverage.json \
-            --entrypoint poetry "$IMAGE" run pytest
+          mkdir -p htmlcov-integration
+          mkdir -p shiksha-api/app-service
+          # Create container, run tests, and copy coverage file out
+          CONTAINER_ID=$(docker create \
+            --entrypoint poetry "$IMAGE" run pytest tests/integration/ --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json)
+          docker start -a $CONTAINER_ID || true
+          docker cp $CONTAINER_ID:/src/app-service/.coverage shiksha-api/app-service/.coverage.integration || true
+          docker cp $CONTAINER_ID:/src/app-service/htmlcov/. htmlcov-integration/ || true
+          docker cp $CONTAINER_ID:/src/app-service/coverage.json shiksha-api/app-service/coverage-integration.json || true
+          docker rm $CONTAINER_ID
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
-      - name: Upload HTML coverage
+      - name: Combine coverage reports
+        working-directory: shiksha-api/app-service
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          # Combine unit and integration coverage
+          poetry run coverage combine .coverage.unit .coverage.integration 2>/dev/null || poetry run coverage combine .coverage.unit || true
+          # Generate combined reports
+          poetry run coverage json -o coverage.json
+          poetry run coverage html -d ../../htmlcov
+          poetry run coverage xml -o coverage.xml
+
+      - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-html-shiksha-api-app-service
-          path: htmlcov
+          name: coverage-shiksha-api-app-service
+          path: |
+            htmlcov
+            shiksha-api/app-service/coverage.json
+            shiksha-api/app-service/coverage.xml
 
       - name: Extract coverage percentage
         id: coverage
         run: |
-          COVERAGE=$(jq -r '.totals.percent_covered' coverage.json | awk '{print int($1+0.999)}')
+          COVERAGE=$(jq -r '.totals.percent_covered' shiksha-api/app-service/coverage.json | awk '{print int($1+0.999)}')
           echo "percentage=$COVERAGE" >> $GITHUB_OUTPUT
           echo "Coverage: $COVERAGE%"
 
@@ -98,6 +146,7 @@ jobs:
   push:
     runs-on: ubuntu-latest
     needs: build-test
+    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging'
     outputs:
       digest: ${{ steps.push.outputs.digest }}
       tag: ${{ needs.build-test.outputs.image_tag }}
