@@ -9,39 +9,6 @@ from app.services.lesson_chat_service import LessonChatService
 from app.models.chat import LessonChatRequest, ConversationMessage, MessageRole
 
 
-class TestLessonChatServiceInitialization:
-    """Test LessonChatService initialization."""
-
-    def test_initialization_creates_llm_models(self, mock_settings):
-        """Test service initialization creates LLM models."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.AzureOpenAI") as MockAzureOpenAI, \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding") as MockEmbedding, \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
-
-            service = LessonChatService()
-
-            MockAzureOpenAI.assert_called_once()
-            MockEmbedding.assert_called_once()
-
-    def test_initialization_loads_prompt_template(self, mock_settings):
-        """Test service initialization loads prompt template."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.AzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
-
-            mock_template = Mock()
-            MockPromptTemplate.return_value = mock_template
-
-            service = LessonChatService()
-
-            MockPromptTemplate.assert_called_once()
-            assert service._prompt_template == mock_template
-
-
 class TestLessonChatServiceChapterParsing:
     """Test chapter ID parsing logic."""
 

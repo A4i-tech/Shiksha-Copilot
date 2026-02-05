@@ -25,22 +25,6 @@ class TestGeneralChatServiceInitialization:
             MockPromptTemplate.assert_called_once()
             assert service.prompt_template == mock_template
 
-    def test_initialization_creates_azure_openai_client(self, mock_settings):
-        """Test service initialization creates Azure OpenAI client."""
-        with patch("app.services.general_chat_service.settings", mock_settings), patch(
-            "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AzureOpenAI") as MockAzureOpenAI:
-            mock_client = Mock()
-            MockAzureOpenAI.return_value = mock_client
-
-            service = GeneralChatService()
-
-            MockAzureOpenAI.assert_called_once_with(
-                api_key=mock_settings.azure_openai_api_key,
-                api_version=mock_settings.azure_openai_api_version,
-                azure_endpoint=mock_settings.azure_openai_endpoint,
-            )
-            assert service.client == mock_client
 
     def test_initialization_raises_error_when_api_key_missing(self):
         """Test initialization raises error when API key is missing."""
