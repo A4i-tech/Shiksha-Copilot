@@ -31,6 +31,12 @@ jobs:
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
+  shiksha-coverage-summary:
+    needs: [ci-api, ci-backend]
+    if: always()
+    uses: ./.github/workflows/shiksha-coverage-summary.yml
+    secrets: inherit
+
   cd-api:
     needs: ci-api
     if: github.event_name == 'push' && github.ref_name == 'a4i/staging'

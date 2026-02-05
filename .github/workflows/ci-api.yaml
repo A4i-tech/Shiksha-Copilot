@@ -115,12 +115,15 @@ jobs:
           poetry run coverage html -d ../../htmlcov
           poetry run coverage xml -o coverage.xml
 
-      - name: Upload HTML coverage
+      - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-html-shiksha-api-app-service
-          path: htmlcov
+          name: coverage-shiksha-api-app-service
+          path: |
+            htmlcov
+            shiksha-api/app-service/coverage.json
+            shiksha-api/app-service/coverage.xml
 
       - name: Extract coverage percentage
         id: coverage

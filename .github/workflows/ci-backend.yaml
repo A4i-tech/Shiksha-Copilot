@@ -103,7 +103,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-shiksha-backend
-          path: shiksha-website/shiksha-backend/coverage
+          path: |
+            shiksha-website/shiksha-backend/coverage
+            shiksha-website/shiksha-backend/coverage-summary.json
 
       - name: Extract backend coverage percentage
         id: extract_backend_coverage
