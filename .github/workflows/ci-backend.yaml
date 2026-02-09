@@ -66,8 +66,6 @@ jobs:
         with:
           context: shiksha-website/shiksha-backend
           file: shiksha-website/shiksha-backend/Dockerfile
-          build-args: |
-            ALLOW_ORIGIN=${{ vars.BACKEND_ALLOW_ORIGIN }}
           push: false
           tags: shiksha-backend-local
           load: true
@@ -154,8 +152,6 @@ jobs:
         with:
           context: shiksha-website/shiksha-backend
           file: shiksha-website/shiksha-backend/Dockerfile
-          build-args: |
-            ALLOW_ORIGIN=${{ vars.BACKEND_ALLOW_ORIGIN }}
           push: true
           tags: ${{ needs.build-test.outputs.image_tag }}
           cache-from: type=gha
