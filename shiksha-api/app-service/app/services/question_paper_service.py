@@ -5,6 +5,7 @@ import asyncio
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import logging
+import re
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
 from openai import AzureOpenAI
@@ -66,6 +67,12 @@ class QuestionPaperService:
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
         self.max_questions_per_slot = 20
+
+    def _normalize_string(self, s: str) -> str:
+        """Centralized string normalization to collapse whitespace and trim."""
+        if not s:
+            return ""
+        return re.sub(r"\s+", " ", s).strip().lower()
 
     def _load_prompts(self) -> Dict[str, Any]:
         """Load prompts from YAML files."""
@@ -179,20 +186,38 @@ class QuestionPaperService:
             """Finds the correct dictionary key allowing for numbering mismatches."""
             if not unit_metadata:
                 return None
+            
+            normalized_search = self._normalize_string(search_name)
                 
-            # 1. Try Exact Match
-            if search_name in unit_metadata:
-                return search_name
-            
-            # 2. Try stripping prefixes like "1. ", "Unit 1: "
-            if ". " in search_name:
-                cleaned = search_name.split(". ", 1)[1]
-                if cleaned in unit_metadata:
-                    return cleaned
-            
-            # 3. Try checking if key is part of search or vice versa
+            # 1. Try Exact Match (Normalized)
             for key in unit_metadata:
-                if key.lower() in search_name.lower() or search_name.lower() in key.lower():
+                if self._normalize_string(key) == normalized_search:
+                    return key
+            
+            # 2. Try stripping prefixes like "1. ", "Unit 1: " or just "1 "
+            # We will use a regex to look for numeric prefixes in both strings if simple normalization failed
+            
+            def get_core_identifier(s: str) -> str:
+                # Remove "unit" label followed by any numbering, or just numbering at start
+                # e.g. "Unit 1: Name" -> "Name"
+                # "1. Name" -> "Name"
+                s_norm = self._normalize_string(s)
+                # Remove "unit <d> :" or "unit <d>" prefix
+                s_norm = re.sub(r"^unit\s*\d+[:.]?\s*", "", s_norm)
+                # Remove "<d>. " prefix
+                s_norm = re.sub(r"^\d+[:.]\s*", "", s_norm)
+                return s_norm.strip()
+
+            core_search = get_core_identifier(search_name)
+            
+            for key in unit_metadata:
+                if get_core_identifier(key) == core_search:
+                    return key
+            
+            # 3. Try checking if key is part of search or vice versa (Normalized)
+            for key in unit_metadata:
+                norm_key = self._normalize_string(key)
+                if norm_key in normalized_search or normalized_search in norm_key:
                     return key
             
             return None
@@ -454,7 +479,12 @@ class QuestionPaperService:
                 item = generated.get("item")
 
                 # Normalize key
-                key = f"{qtype.value}|{marks_per_question}|{unit_name}|{objective}".lower()
+                norm_type = self._normalize_string(qtype.value)
+                norm_unit = self._normalize_string(unit_name)
+                # Objective can be None or empty
+                norm_objective = self._normalize_string(objective) if objective else "none"
+                
+                key = f"{norm_type}|{marks_per_question}|{norm_unit}|{norm_objective}"
                 if key not in question_directory:
                     question_directory[key] = []
 
@@ -475,7 +505,11 @@ class QuestionPaperService:
                 )
 
                 for q_dist in template.question_distribution or []:
-                    key = f"{template.type.value}|{template.marks_per_question}|{q_dist.unit_name}|{q_dist.objective}".lower()
+                    norm_type = self._normalize_string(template.type.value)
+                    norm_unit = self._normalize_string(q_dist.unit_name)
+                    norm_objective = self._normalize_string(q_dist.objective) if q_dist.objective else "none"
+                    
+                    key = f"{norm_type}|{template.marks_per_question}|{norm_unit}|{norm_objective}"
 
                     if key in question_directory and len(question_directory[key]) > 0:
                         question = question_directory[key].pop(0)
