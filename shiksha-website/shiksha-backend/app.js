@@ -39,24 +39,9 @@ const app = express();
 app.disable("x-powered-by");
 
 app.use(express.json());
-const allowedOrigins = ["allow_your_website_here"];
 
-app.use(
-	cors({
-		origin: function (origin, callback) {
-			if (!origin) return callback(null, true);
-			if (
-				allowedOrigins.includes(origin) ||
-				/^http:\/\/localhost:\d+$/.test(origin)
-			) {
-				return callback(null, true);
-			} else {
-				return callback(new Error("Not allowed by CORS"));
-			}
-		},
-		optionsSuccessStatus: 200,
-	})
-);
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
+app.use(cors({origin: allowedOrigins, optionsSuccessStatus: 200}));
 
 const folderPath = path.join(__dirname, 'public', 'images');
 
