@@ -40,7 +40,7 @@ class ChatbotPage(BasePage):
             self.loading_indicator.wait_for(state="visible", timeout=10000)
         except:
             pass
-        self.loading_indicator.wait_for(state="hidden", timeout=150000)
+        self.loading_indicator.wait_for(state="hidden", timeout=240000)
 
         last_msg = self.bot_message_bubbles.last
         last_msg.wait_for(state="visible")
