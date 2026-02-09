@@ -3,7 +3,7 @@
 
   <!-- HEADER -->
   <div class="flex gap-2 shrink-0">
-    <img src="/assets/icons/back-arrow.svg" alt="Back" class="cursor-pointer" (click)="backNavigation()" />
+    <img src="assets/icons/back-arrow.svg" alt="Back" class="cursor-pointer" (click)="backNavigation()" />
     <h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
       {{ "Question Paper Generation" | translate }}
     </h1>
@@ -201,7 +201,7 @@
                     <button type="button" (click)="toggleHeadingDropdown()"
                       class="w-full p-3 text-left border border-gray-300 rounded-lg flex justify-between items-center bg-white h-[45px] hover:border-primary transition-colors focus:ring-1 focus:ring-primary">
                       <span class="truncate text-sm">{{ headingSummary() }}</span>
-                      <img src="/assets/icons/down-arrow.svg" alt="" class="w-3 h-3" />
+                      <img src="assets/icons/down-arrow.svg" alt="" class="w-3 h-3" />
                     </button>
                     <div *ngIf="showHeadingDropdown"
                       class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded shadow-lg z-20 max-h-52 overflow-y-auto">
