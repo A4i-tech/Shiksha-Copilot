@@ -61,9 +61,9 @@ class QuestionBankPage:
         options.first.wait_for(state="visible", timeout=10000)
         
         if value_text:
-            panel.get_by_text(value_text, exact=False).first.click()
+            panel.get_by_text(value_text, exact=False).first.click(timeout=60000)
         else:
-            options.nth(index).click()
+            options.nth(index).click(timeout=60000)
 
     def select_radio_option(self, value_key: str):
         text_map = {"singleChapter": "Single Chapter", "multiChapter": "Multiple Chapters"}
