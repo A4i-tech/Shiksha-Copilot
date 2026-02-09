@@ -5,6 +5,8 @@ from enum import Enum
 from functools import reduce
 from math import gcd
 from typing import List, Dict, Any, Optional, Union, Tuple
+import json
+import re
 from pydantic import BaseModel, computed_field, validator
 
 
@@ -26,10 +28,48 @@ class TextQuestion(BaseModel):
     question: str = ""
 
 
+
+class McqOption(BaseModel):
+    label: str
+    text: str
+
+
+
 class FourOptionsQuestion(BaseModel):
     question: str = ""
-    options: List[str] = []
+    options: List[McqOption] = []
     answer: str = ""
+
+    @validator("options", pre=True)
+    def convert_strings_to_options(cls, v):
+        if not v:
+             # If strictly required, raise error. But for partial usage, maybe allow?
+             # Given this is for AI generation which MUST produce MCQs, we should be strict.
+             raise ValueError("MCQ options cannot be empty")
+        
+        # If it's a list of strings, convert to McqOption objects
+        if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
+            labels = ["A", "B", "C", "D", "E", "F"]
+            cleaned_options = []
+            for i, opt in enumerate(v):
+                # Clean prefix like "A. ", "a) ", "1. " from the start of the string
+                clean_text = re.sub(r'^[A-Za-z0-9]+[\.\)]\s*', '', opt)
+                
+                label = labels[i] if i < len(labels) else str(i+1)
+                cleaned_options.append({"label": label, "text": clean_text})
+            
+            if len(cleaned_options) < 2:
+                raise ValueError("MCQ must have at least 2 options")
+                
+            return cleaned_options
+            
+        # If it's already objects, check count
+        if isinstance(v, list) and len(v) < 2:
+             raise ValueError("MCQ must have at least 2 options")
+
+        return v
+
+
 
 
 class MatchingListQuestion(BaseModel):
@@ -112,6 +152,17 @@ class QuestionType(str, Enum):
 
     # Prompt/schema hint for LLM
     def schema_dict(self) -> str:
+        if self._model == FourOptionsQuestion:
+             return json.dumps({
+                 "question": "Question text here?",
+                 "options": [
+                     {"label": "A", "text": "Option A"},
+                     {"label": "B", "text": "Option B"},
+                     {"label": "C", "text": "Option C"},
+                     {"label": "D", "text": "Option D"}
+                 ],
+                 "answer": "A"
+             })
         return self._model().model_dump_json()
 
     # Cast generated dict to the right Pydantic model
@@ -130,8 +181,15 @@ class QuestionType(str, Enum):
                 # For MCQ: ensure answer is in options
                 options = obj.get("options", [])
                 answer = obj.get("answer", "")
-                if answer and answer not in options:
-                    return False
+                
+                # Check if options are objects (new format) or strings (old format)
+                if options and isinstance(options[0], dict):
+                    valid_labels = [opt.get("label") for opt in options]
+                    if answer and answer not in valid_labels:
+                        return False
+                elif options and isinstance(options[0], str):
+                     if answer and answer not in options:
+                        return False
 
             return True
         except Exception:

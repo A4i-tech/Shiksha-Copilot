@@ -31,6 +31,12 @@
             <span class="text-gray-400 font-bold text-sm">{{ j + 1 }}.</span>
             <div class="flex-1">
               <p class="text-sm text-content mb-2" [innerHTML]="q.text"></p>
+              <div *ngIf="q.options && q.options.length > 0" class="ml-4 mb-2">
+                <div *ngFor="let option of q.options" class="text-xs text-gray-600">
+                  <span *ngIf="option.label"><b>{{ option.label }}.</b> {{ option.text }}</span>
+                  <span *ngIf="!option.label">{{ option }}</span>
+                </div>
+              </div>
               <div class="flex gap-4">
                 <span class="text-[10px] uppercase tracking-wider font-bold text-gray-400">Topic: {{ q.unit_name
                   }}</span>

@@ -66,22 +66,23 @@ const QuestionBankBlueprintResponseSchema = z.object({
 function validatePartsResponse(data) {
   try {
     const validated = QuestionBankPartsResponseSchema.parse(data);
-    
+
     if (!validated.questions || !Array.isArray(validated.questions)) {
       throw new Error(`Expected questions array, got: ${typeof validated.questions}`);
     }
-    
+
     // Flatten nested questions structure
     const flattenedQuestions = [];
-    
+
     validated.questions.forEach((questionBlock, blockIndex) => {
       const blockQuestions = questionBlock.questions || [];
       const marksPerQuestion = questionBlock.marks_per_question || 1;
-      
+
       blockQuestions.forEach((q, qIndex) => {
         if (q.question) {
           flattenedQuestions.push({
             question: q.question,
+            options: Array.isArray(q.options) ? q.options : [],
             answer: q.answer || "",
             difficulty: "",
             marks: marksPerQuestion,
@@ -89,7 +90,7 @@ function validatePartsResponse(data) {
         }
       });
     });
-    
+
     return flattenedQuestions;
   } catch (error) {
     if (error instanceof z.ZodError) {
