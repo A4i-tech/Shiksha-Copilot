@@ -643,11 +643,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }
 
     this.finalSelectedQuestions = selections.map(q => {
-      const mappedType = this.mapHeadingToAIType(q.heading || q.type || 'Question');
+      const rawHeading = q.heading || q.type || 'Question';
+      const mappedType = this.mapHeadingToAIType(rawHeading);
+      const friendlyHeading = this.mapToFriendlyHeading(rawHeading);
       return {
         ...q,
         type: mappedType,
-        heading: q.heading || q.type || 'General Section',
+        heading: friendlyHeading,
         unit_name: q.unit_name || 'General'
       };
     });
@@ -677,7 +679,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // 2. Organize Selected Questions into Sections
     const sectionsMap = new Map<string, any>();
     this.finalSelectedQuestions.forEach(q => {
-      const heading = q.heading || 'General';
+      const heading = this.mapToFriendlyHeading(q.heading || q.type || 'General');
       if (!sectionsMap.has(heading)) {
         sectionsMap.set(heading, {
           type: q.type,
@@ -949,6 +951,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
   }
 
+  private mapToFriendlyHeading(rawType: string): string {
+    if (!rawType || typeof rawType !== 'string') return 'Question';
+    const h = rawType.toLowerCase().trim().replace(/_/g, ' ');
+    if (h.includes('mcq') || h.includes('multiple choice') || h.includes('alternative') || h.includes('objective')) return 'Multiple Choice Questions';
+    if (h.includes('fill') || h.includes('blank')) return 'Fill in the blanks';
+    if (h.includes('very short') || h.includes('one sentence') || h.includes('word, phrase') || h === 'answer very short') return 'Very Short Answer Questions';
+    if (h.includes('short answer') || h.includes('two or three') || h.includes('two to four') || h === 'answer short') return 'Short Answer Questions';
+    if (h.includes('long answer') || h.includes('four or five') || h === 'answer long') return 'Long Answer Questions';
+    if (h.includes('match')) return 'Match the Following';
+    if (h === 'answer medium' || h.includes('answer the following')) return 'Answer the following questions';
+    return rawType;
+  }
+
   fetchLBAQuestionsPool() {
     const config = this.questionBankConfigForm.value;
     const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -998,8 +1013,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             source: 'Pregenerated Questions',
             text: displayText,
             marks: q.marksPerQuestion || q.marks || 1,
-            type: q.type || q.heading || q.answerType || 'Question',
-            heading: q.heading || q.type || q.answerType || 'Question',
+            type: this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question'),
+            heading: this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question'),
             unit_name: q.unit_name || selectedTitles[0] || 'General',
             objective: q.objective || 'Knowledge',
             _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
