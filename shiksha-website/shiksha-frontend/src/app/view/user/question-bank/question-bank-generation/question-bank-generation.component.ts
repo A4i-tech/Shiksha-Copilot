@@ -188,7 +188,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         grouped.set(mappedType, { type: mappedType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
       }
       const sec = grouped.get(mappedType);
-      sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1) });
+      sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1), value1: q.value1 || q.text || q.question || '', value2: q.value2 || q.keyAnswer || q.answer || '' });
       sec.numberOfQuestions = sec.questions.length;
     });
 
@@ -697,7 +697,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         marks: Number(q.marks || 1),
         _id: q._id,
         unit_name: q.unit_name,
-        objective: q.objective || 'Knowledge'
+        objective: q.objective || 'Knowledge',
+        value1: q.value1 || q.text || q.question || '',
+        value2: q.value2 || q.keyAnswer || q.answer || ''
       });
       section.numberOfQuestions = section.questions.length;
     });
@@ -993,13 +995,57 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return this.questionBankService.getLBAQuestions(params).pipe(
       map((docs: any[]) => {
         console.log('[Frontend] getLBAQuestions response length:', docs?.length);
-        return (docs || []).map((q) => {
-          let displayText = q.text || q.question_text || q.question;
+        return (docs || []).flatMap((q) => {
+          const friendlyType = this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question');
+          const unitName = q.unit_name || selectedTitles[0] || 'General';
+          const baseObj = {
+            source: 'Pregenerated Questions',
+            marks: q.marksPerQuestion || q.marks || 1,
+            type: friendlyType,
+            heading: friendlyType,
+            unit_name: unitName,
+            objective: q.objective || 'Knowledge',
+          };
 
+          // Match the Following: expand pairs into individual value1/value2 entries
+          if (q.pairs && q.pairs.length > 0) {
+            return q.pairs.map((pair: any, idx: number) => ({
+              ...baseObj,
+              text: pair.left || '',
+              value1: pair.left || '',
+              value2: pair.right || pair.keyAnswer || '',
+              _id: q._id ? `${q._id}_pair_${idx}` : `lba_${Math.random().toString(36).substring(7)}`,
+            }));
+          }
+
+          // Match the Following fallback: split "Left item a. Right item" at letter marker
+          if (friendlyType === 'Match the Following') {
+            const rawText = q.text || q.question_text || q.question || '';
+            // Pattern: split at " a. ", " b. ", etc. (single lowercase letter surrounded by spaces and period)
+            const splitMatch = rawText.match(/^(.+?)\s+[a-z]\.\s+(.+)$/i);
+            if (splitMatch) {
+              return [{
+                ...baseObj,
+                text: splitMatch[1].trim(),
+                value1: splitMatch[1].trim(),
+                value2: splitMatch[2].trim(),
+                _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
+              }];
+            }
+            // If no letter marker found, use text/keyAnswer
+            return [{
+              ...baseObj,
+              text: rawText,
+              value1: rawText,
+              value2: q.keyAnswer || q.answer || '',
+              _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
+            }];
+          }
+
+          // Normal questions
+          let displayText = q.text || q.question_text || q.question;
           if (!displayText) {
-            if (q.pairs && q.pairs.length > 0) displayText = 'Match the following';
-            else if (q.items && q.items.length > 0) {
-              // Construct text from items if main text is missing
+            if (q.items && q.items.length > 0) {
               const itemTexts = q.items
                 .map((i: any) => i.question || i.text || i.content || '')
                 .filter((t: string) => t && t.trim().length > 0);
@@ -1008,17 +1054,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             else displayText = q.heading || q.groupHeading || q.type || 'Question';
           }
 
-          return {
+          return [{
             ...q,
-            source: 'Pregenerated Questions',
+            ...baseObj,
             text: displayText,
-            marks: q.marksPerQuestion || q.marks || 1,
-            type: this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question'),
-            heading: this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question'),
-            unit_name: q.unit_name || selectedTitles[0] || 'General',
-            objective: q.objective || 'Knowledge',
             _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
-          };
+          }];
         });
       }),
       catchError(err => {
