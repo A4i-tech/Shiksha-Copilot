@@ -7,7 +7,7 @@ from math import gcd
 from typing import List, Dict, Any, Optional, Union, Tuple
 import json
 import re
-from pydantic import BaseModel, computed_field, validator
+from pydantic import BaseModel, computed_field, field_validator, Field
 
 
 # ==============================
@@ -37,16 +37,11 @@ class McqOption(BaseModel):
 
 class FourOptionsQuestion(BaseModel):
     question: str = ""
-    options: List[McqOption] = []
+    options: List[McqOption] = Field(default=[], min_length=2)
     answer: str = ""
 
-    @validator("options", pre=True)
+    @field_validator("options", mode="before")
     def convert_strings_to_options(cls, v):
-        if not v:
-             # If strictly required, raise error. But for partial usage, maybe allow?
-             # Given this is for AI generation which MUST produce MCQs, we should be strict.
-             raise ValueError("MCQ options cannot be empty")
-        
         # If it's a list of strings, convert to McqOption objects
         if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
             labels = ["A", "B", "C", "D", "E", "F"]
@@ -57,16 +52,8 @@ class FourOptionsQuestion(BaseModel):
                 
                 label = labels[i] if i < len(labels) else str(i+1)
                 cleaned_options.append({"label": label, "text": clean_text})
-            
-            if len(cleaned_options) < 2:
-                raise ValueError("MCQ must have at least 2 options")
                 
             return cleaned_options
-            
-        # If it's already objects, check count
-        if isinstance(v, list) and len(v) < 2:
-             raise ValueError("MCQ must have at least 2 options")
-
         return v
 
 
@@ -282,7 +269,7 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     objective_distribution: List[ObjectiveDistribution]
     template: List[Template]
 
-    @validator("chapters")
+    @field_validator("chapters")
     def check_chapters_not_empty(cls, v):
         if not v or len(v) == 0:
             raise ValueError("The 'chapters' field must contain at least one Chapter.")
