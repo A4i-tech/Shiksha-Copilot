@@ -378,17 +378,25 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
       const rawClasses = this.loggedInUser.classes || [];
-      console.log('[Frontend] loggedInUser.classes sample:', rawClasses.length > 0 ? rawClasses[0] : 'Empty');
-      const uniqueSubjects = new Set<string>();
+
+      const subjectMap = new Map<string, string>(); // Formatted Name -> Raw Value
 
       rawClasses.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === selectedMedium) {
-          if (c.subject) uniqueSubjects.add(c.subject);
+          const rawValue = c.subject;
+          const nameToFormat = c.name || c.subject || '';
+          if (rawValue) {
+            const formatted = this.formatSubjectName(nameToFormat);
+            // Only add if not already present to ensure deduplication by formatted name
+            if (!subjectMap.has(formatted)) {
+              subjectMap.set(formatted, rawValue);
+            }
+          }
         }
       });
 
-      this.subjectDropdownOptions = Array.from(uniqueSubjects)
-        .map(s => ({ name: this.formatSubjectName(s), value: s })) // Format name for display, keep ID/code as value
+      this.subjectDropdownOptions = Array.from(subjectMap.entries())
+        .map(([name, value]) => ({ name, value }))
         .sort((a, b) => a.name.localeCompare(b.name));
     }
   }
@@ -397,14 +405,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (!subject) return '';
     // Replace underscores with spaces
     let formatted = subject.replace(/_/g, ' ');
-    // Remove trailing numbers if they look like IDs (e.g. "social_science_1" -> "social science")
-    // But be careful not to remove valid numbers if part of name. 
-    // Usually these IDs are "name_1", "name_2".
-    formatted = formatted.replace(/_\d+$/, ''); // Handle "science_1" -> "science"
-    formatted = formatted.replace(/\s\d+$/, ''); // Handle "science 1" -> "science"
+
+    // Aggressively remove all trailing numbers/spaces sequences
+    // e.g. "English 2 2" -> "English", "Social Science 1_1" -> "Social Science"
+    formatted = formatted.replace(/(\s\d+)+$/, '');
+    formatted = formatted.replace(/(_\d+)+$/, '');
 
     // Title Case
-    return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
   onSubjectChange(val: any) {
