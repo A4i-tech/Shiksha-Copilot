@@ -50,7 +50,7 @@ class LessonChatService:
     async def __call__(
         self,
         request: LessonChatRequest,
-    ) -> str:
+    ) -> dict:
         """
         Process a lesson chat request and return the response.
 
@@ -58,7 +58,7 @@ class LessonChatService:
             request: The lesson chat request containing messages and index path
 
         Returns:
-            str: The chat response from the RAG system
+            dict: Contains 'response' (str) and 'references' (list of dicts)
         """
         try:
             # Get or create cached RAG adapter instance
@@ -84,13 +84,72 @@ class LessonChatService:
             ] + chat_messages[:-1]
 
             # Get response from RAG system using current message and chat history
-            return await rag_adapter.chat_with_index(
+            result = await rag_adapter.chat_with_index(
                 curr_message=chat_messages[-1].content, chat_history=chat_history
             )
+
+            response_text = result.get("response", "")
+            source_nodes = result.get("source_nodes", [])
+
+            # Format source nodes as references
+            references = self._format_source_references(source_nodes)
+
+            return {"response": response_text, "references": references}
 
         except Exception as e:
             logger.error(f"Error in lesson chat service: {e}", exc_info=True)
             raise
+
+    def _format_source_references(self, source_nodes) -> list:
+        """
+        Format RAG source nodes into a list of reference dicts.
+
+        Args:
+            source_nodes: List of LlamaIndex NodeWithScore objects
+
+        Returns:
+            List of dicts with 'title' and 'text' keys
+        """
+        references = []
+        seen_pages = set()
+
+        for node in source_nodes:
+            metadata = getattr(node, "metadata", {}) or {}
+            if hasattr(node, "node"):
+                metadata = getattr(node.node, "metadata", metadata) or metadata
+
+            page_label = metadata.get("page_label", "")
+            source = metadata.get("source", metadata.get("file_name", ""))
+
+            # Create a meaningful title
+            if page_label:
+                title = f"Page {page_label}"
+                if source:
+                    title += f" - {source}"
+            elif source:
+                title = source
+            else:
+                title = "Source Document"
+
+            # Deduplicate by page
+            dedup_key = f"{source}_{page_label}"
+            if dedup_key in seen_pages:
+                continue
+            seen_pages.add(dedup_key)
+
+            # Get a text snippet from the source node
+            text = ""
+            if hasattr(node, "node") and hasattr(node.node, "text"):
+                text = node.node.text[:200]
+            elif hasattr(node, "text"):
+                text = node.text[:200]
+
+            if text:
+                text = text.strip() + "..."
+
+            references.append({"title": title, "text": text})
+
+        return references
 
     def _extract_details(self, chapter_id: str):
         """

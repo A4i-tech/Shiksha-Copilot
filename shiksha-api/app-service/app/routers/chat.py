@@ -5,6 +5,7 @@ from app.models.chat import (
     LessonChatRequest,
     LessonChatResponse,
     ErrorResponse,
+    Reference,
 )
 from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
 from typing import Dict, Any
@@ -118,7 +119,11 @@ async def chat(
 
         logger.info(f"Successfully processed general chat for user: {request.user_id}")
 
-        return ChatResponse(user_id=request.user_id, response=response_content)
+        return ChatResponse(
+            user_id=request.user_id,
+            response=response_content["response"],
+            references=[Reference(**ref) for ref in response_content.get("references", [])],
+        )
 
     except ValueError as e:
         logger.error(f"Configuration error in general chat: {e}")
@@ -234,7 +239,11 @@ async def lesson_chat(
 
         logger.info(f"Successfully processed lesson chat for user: {request.user_id}")
 
-        return LessonChatResponse(user_id=request.user_id, response=response_content)
+        return LessonChatResponse(
+            user_id=request.user_id,
+            response=response_content["response"],
+            references=[Reference(**ref) for ref in response_content.get("references", [])],
+        )
 
     except ValueError as e:
         logger.error(f"Configuration error in lesson chat: {e}")

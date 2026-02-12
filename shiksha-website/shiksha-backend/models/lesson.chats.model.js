@@ -8,7 +8,7 @@ const lessonChatSchema = new Schema(
 		teacherId: {
 			type: ObjectId,
 			required: true,
-			ref: "User", 
+			ref: "User",
 		},
 		recordId: {
 			type: ObjectId,
@@ -24,12 +24,19 @@ const lessonChatSchema = new Schema(
 				type: String,
 				required: [true, "Answer is required"],
 			},
+			references: [
+				{
+					title: { type: String },
+					url: { type: String },
+					text: { type: String },
+				},
+			],
 			timestamp: {
 				type: Date,
 				default: Date.now,
 			},
-			version:{
-				type:Number
+			version: {
+				type: Number
 			}
 		},
 	},

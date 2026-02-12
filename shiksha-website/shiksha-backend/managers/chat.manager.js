@@ -76,6 +76,7 @@ class ChatManager extends BaseManager {
 			await this.chatDao.addMessage(chatSession._id, {
 				question: message,
 				answer: response.data.response,
+				references: response.data.references || [],
 			});
 
 			chatSession.requestCount += 1;
@@ -85,7 +86,7 @@ class ChatManager extends BaseManager {
 			return formatApiResponse(
 				true,
 				"Response from copilot",
-				response.data.response
+				{ response: response.data.response, references: response.data.references || [] }
 			);
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
@@ -210,10 +211,18 @@ class ChatManager extends BaseManager {
 			await this.chatDao.createLessonChats({
 				teacherId: userId,
 				recordId: lessonDetails._id,
-				message: { question: message, answer: response.data.response, version: 2 }
+				message: {
+					question: message,
+					answer: response.data.response,
+					references: response.data.references || [],
+					version: 2,
+				}
 			});
 
-			return formatApiResponse(true, "Lesson chat response", response.data.response);
+			return formatApiResponse(true, "Lesson chat response", {
+				response: response.data.response,
+				references: response.data.references || [],
+			});
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
 		}

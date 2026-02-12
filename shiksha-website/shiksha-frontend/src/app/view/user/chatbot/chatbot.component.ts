@@ -19,15 +19,16 @@ interface ChatMessages {
   question?: string;
   createdAt?: string;
   _id?: string;
-  version?:number
+  version?: number;
+  references?: { title: string, url?: string, text?: string }[];
 }
 
 @Component({
   selector: 'app-chatbot',
   templateUrl: './chatbot.component.html',
   styleUrls: ['./chatbot.component.scss'],
-  standalone:true,
-  imports:[CommonModule, FormsModule, TranslateModule, ProfileImageComponent,InstructionsPopupComponent, ModalComponent,ChatMarkdownModule]
+  standalone: true,
+  imports: [CommonModule, FormsModule, TranslateModule, ProfileImageComponent, InstructionsPopupComponent, ModalComponent, ChatMarkdownModule]
 })
 export class ChatbotComponent implements OnInit, OnDestroy {
   @ViewChild('textArea') textArea!: ElementRef<any>;
@@ -39,19 +40,19 @@ export class ChatbotComponent implements OnInit, OnDestroy {
 
   isLoading = false;
 
-  typeSubscription:Subscription;
+  typeSubscription: Subscription;
 
-  paramSubscription!:Subscription;
+  paramSubscription!: Subscription;
 
-  type:any;
+  type: any;
 
-  recordId:any;
+  recordId: any;
 
-  chapterId:any;
+  chapterId: any;
 
-  chapterDetails:any;
+  chapterDetails: any;
 
-  showInstructions=false
+  showInstructions = false
 
   instructions = [
     {
@@ -86,16 +87,16 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     private chatbotService: ChatbotService,
     private sanitizer: DomSanitizer,
     public utilityService: UtilityService,
-    public sidebarService:SidebarService,
+    public sidebarService: SidebarService,
     private activatedRoute: ActivatedRoute,
-    private router:Router,
-    public modalService:ModalService
+    private router: Router,
+    public modalService: ModalService
   ) {
-    this.typeSubscription = this.activatedRoute.data.subscribe((data:any)=>{
+    this.typeSubscription = this.activatedRoute.data.subscribe((data: any) => {
       this.type = data.type;
     })
-    
-    if(this.type === 'index'){
+
+    if (this.type === 'index') {
       this.paramSubscription = this.activatedRoute.queryParams.subscribe(params => {
         this.recordId = params['recordId']
         this.chapterId = params['chapterId']
@@ -107,11 +108,11 @@ export class ChatbotComponent implements OnInit, OnDestroy {
    * ngOnInit lifecycle hook of angular used here to initialize chat messages
    */
   ngOnInit(): void {
-    if(this.type === 'general'){
+    if (this.type === 'general') {
       this.getGeneralMessages();
-    } else if(this.type === 'index'){
+    } else if (this.type === 'index') {
       this.getIndexMessages();
-    }else{
+    } else {
       return
     }
   }
@@ -163,23 +164,23 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     });
   }
 
-    /**
-   * Function to get messages
-   */
-    getIndexMessages() {
-      this.chatbotService.getIndexMessages(this.recordId,this.chapterId).subscribe({
-        next: (res) => {
-          this.messages = res.data.messages;
-          this.chapterDetails = res?.data?.chapterDetails;
-          this.chapterDetails.subject = this.utilityService.getSubjectDisplayName(res?.data?.subject);
-          this.isLoading = false;
-        },
-        error: (err) => {
-          this.isLoading = false;
-          this.utilityService.handleError(err);
-        },
-      });
-    }
+  /**
+ * Function to get messages
+ */
+  getIndexMessages() {
+    this.chatbotService.getIndexMessages(this.recordId, this.chapterId).subscribe({
+      next: (res) => {
+        this.messages = res.data.messages;
+        this.chapterDetails = res?.data?.chapterDetails;
+        this.chapterDetails.subject = this.utilityService.getSubjectDisplayName(res?.data?.subject);
+        this.isLoading = false;
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.utilityService.handleError(err);
+      },
+    });
+  }
 
   /**
    * Function to send message
@@ -207,16 +208,16 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       this.textArea.nativeElement.style.height = '36px';
       this.isLoading = true;
 
-      if(this.type === 'general'){
+      if (this.type === 'general') {
         this.sendGeneralMessage(messageObj)
-      }else{
+      } else {
         this.sendIndexMessage(messageObj)
       }
-    
+
     }
   }
 
-  sendGeneralMessage(messageObj:any){
+  sendGeneralMessage(messageObj: any) {
     this.chatbotService.sendGeneralMessage(messageObj).subscribe({
       next: (res) => {
         if (res.data) {
@@ -235,8 +236,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     });
   }
 
-  sendIndexMessage(messageObj:any){
-    this.chatbotService.sendIndexMessage(messageObj,this.recordId,this.chapterId).subscribe({
+  sendIndexMessage(messageObj: any) {
+    this.chatbotService.sendIndexMessage(messageObj, this.recordId, this.chapterId).subscribe({
       next: (res) => {
         if (res.data) {
           this.getIndexMessages();
@@ -254,13 +255,13 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     });
   }
 
-  backNavigation(){
+  backNavigation() {
     this.router.navigate(['/user/content-generation'])
   }
 
   ngOnDestroy(): void {
     this.typeSubscription.unsubscribe();
-    if(this.paramSubscription){
+    if (this.paramSubscription) {
       this.paramSubscription.unsubscribe();
     }
   }

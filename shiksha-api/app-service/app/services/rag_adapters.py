@@ -75,7 +75,7 @@ class BaseRagAdapter(ABC):
 
     async def chat_with_index(
         self, curr_message: str, chat_history: List[ChatMessage]
-    ) -> str:
+    ) -> dict:
         """
         Chat with the RAG index.
 
@@ -84,11 +84,15 @@ class BaseRagAdapter(ABC):
             chat_history: List of previous chat messages
 
         Returns:
-            str: Response from the RAG system
+            dict: Contains 'response' (str) and 'source_nodes' (list) from the RAG system
         """
-        return await self.rag_ops.chat_with_index(
+        result = await self.rag_ops.chat_with_index(
             curr_message, chat_history, metadata_filter=self.metadata_filter
         )
+        # result is the full LlamaIndex AgentChatResponse object
+        response_text = result.response if hasattr(result, 'response') else str(result)
+        source_nodes = getattr(result, 'source_nodes', [])
+        return {"response": response_text, "source_nodes": source_nodes}
 
     async def index_exists(self) -> bool:
         """Check if the index exists."""

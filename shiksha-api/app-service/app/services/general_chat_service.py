@@ -44,7 +44,7 @@ class GeneralChatService:
     async def __call__(
         self,
         messages: List[ConversationMessage],
-    ) -> str:
+    ) -> dict:
         """
         Core chat logic using Azure AI Project client with agents.
 
@@ -52,18 +52,13 @@ class GeneralChatService:
             messages: List of conversation messages
 
         Returns:
-            AI-generated response
+            dict with 'response' (str) and 'references' (list of dicts with title/url)
         """
         try:
             # Get the system prompt from template
             system_prompt = self.prompt_template.get_prompt("general_chat")
             if system_prompt is None:
                 raise ValueError("General chat prompt not found in chat_prompts.yaml")
-
-            # Format messages for AzureOpenAI client
-            formatted_messages = [{"role": "system", "content": system_prompt}]
-            for message in messages:
-                formatted_messages.append({"role": message.role.value, "content": message.message})
 
             # Combine conversation into a single input string including system prompt.
             input_text = self._format_conversation_messages(messages)
@@ -76,31 +71,75 @@ class GeneralChatService:
                 input=input_text
             )
 
-            # Extract and return the AI-generated response
-            # Responses API provides `output_text` as a convenience aggregated string.
+            # Extract the AI-generated response text
             output_text = getattr(response, "output_text", None)
-            if output_text:
-                return output_text.strip()
-            # Fallback: try to extract text from response.output
-            if hasattr(response, "output") and response.output:
-                try:
-                    # output is a list of messages/objects; join text parts
-                    parts = []
-                    for item in response.output:
-                        if isinstance(item, dict) and "content" in item:
-                            for c in item["content"]:
-                                if c.get("type") == "output_text":
-                                    parts.append(c.get("text", ""))
-                    if parts:
-                        return "".join(parts).strip()
-                except Exception:
-                    pass
-            return "I'm sorry, but I couldn't find an appropriate response."
+
+            if not output_text:
+                # Fallback: try to extract text from response.output
+                if hasattr(response, "output") and response.output:
+                    try:
+                        parts = []
+                        for item in response.output:
+                            if isinstance(item, dict) and "content" in item:
+                                for c in item["content"]:
+                                    if c.get("type") == "output_text":
+                                        parts.append(c.get("text", ""))
+                        if parts:
+                            output_text = "".join(parts).strip()
+                    except Exception:
+                        pass
+            if not output_text:
+                output_text = "I'm sorry, but I couldn't find an appropriate response."
+            else:
+                output_text = output_text.strip()
+
+            # Extract URL citation references from the response output
+            references = self._extract_url_citations(response)
+
+            return {"response": output_text, "references": references}
 
         except Exception as e:
             logger.error(f"Error in Azure OpenAI chat: {e}")
             traceback.print_exc()
             raise
+
+    def _extract_url_citations(self, response) -> list:
+        """
+        Extract URL citations from Azure OpenAI Responses API output annotations.
+
+        The Responses API returns output items that may contain 'url_citation'
+        annotations within message content blocks.
+
+        Returns:
+            List of dicts with 'title' and 'url' keys
+        """
+        references = []
+        seen_urls = set()
+
+        if not hasattr(response, "output") or not response.output:
+            return references
+
+        for item in response.output:
+            # Look for message-type output items with content
+            content_list = getattr(item, "content", None)
+            if not content_list:
+                continue
+
+            for content_block in content_list:
+                annotations = getattr(content_block, "annotations", None)
+                if not annotations:
+                    continue
+
+                for annotation in annotations:
+                    ann_type = getattr(annotation, "type", None)
+                    if ann_type == "url_citation":
+                        url = getattr(annotation, "url", None)
+                        title = getattr(annotation, "title", None) or url
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
+                            references.append({"title": title, "url": url})
+
+        return references
 
     async def _create_agent(self, assistant_system_prompt: str):
         """Create an Azure AI agent with the specified system prompt."""
