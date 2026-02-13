@@ -14,6 +14,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   @Output() backClick = new EventEmitter<boolean>();
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
+  @Output() selectionChange = new EventEmitter<any[]>();
 
   // Local State
   filteredQuestions: any[] = [];
@@ -32,6 +33,10 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   constructor() { }
 
   ngOnInit(): void {
+    // Initialize from pre-selected questions if any
+    if (this.preSelectedQuestions && this.preSelectedQuestions.length > 0) {
+      this.selectedQuestions = [...this.preSelectedQuestions];
+    }
     // Initial load
     this.extractFilters();
     this.applyFilters();
@@ -132,12 +137,14 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   // --- SELECTION LOGIC ---
   selectQuestion(q: any) {
     this.selectedQuestions.push(q);
+    this.selectionChange.emit(this.selectedQuestions);
     this.applyFilters(); // Remove from left list
   }
 
   removeQuestion(index: number) {
     const q = this.selectedQuestions[index];
     this.selectedQuestions.splice(index, 1);
+    this.selectionChange.emit(this.selectedQuestions);
     this.applyFilters(); // Add back to left list
   }
 
