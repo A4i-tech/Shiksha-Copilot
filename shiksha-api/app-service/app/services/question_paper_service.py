@@ -181,47 +181,55 @@ class QuestionPaperService:
         unit_metadata = self._get_unit_metadata(request)
         available_units = list(unit_metadata.keys())
 
-        # --- HELPER: Smart Unit Matching ---
-        def find_matching_unit_key(search_name: str) -> Optional[str]:
-            """Finds the correct dictionary key allowing for numbering mismatches."""
-            if not unit_metadata:
-                return None
-            
-            normalized_search = self._normalize_string(search_name)
-                
-            # 1. Try Exact Match (Normalized)
-            for key in unit_metadata:
-                if self._normalize_string(key) == normalized_search:
-                    return key
-            
-            # 2. Try stripping prefixes like "1. ", "Unit 1: " or just "1 "
-            # We will use a regex to look for numeric prefixes in both strings if simple normalization failed
-            
-            def get_core_identifier(s: str) -> str:
-                # Remove "unit" label followed by any numbering, or just numbering at start
-                # e.g. "Unit 1: Name" -> "Name"
-                # "1. Name" -> "Name"
-                s_norm = self._normalize_string(s)
-                # Remove "unit <d> :" or "unit <d>" prefix
-                s_norm = re.sub(r"^unit\s*\d+[:.]?\s*", "", s_norm)
-                # Remove "<d>. " prefix
-                s_norm = re.sub(r"^\d+[:.]\s*", "", s_norm)
-                return s_norm.strip()
-
-            core_search = get_core_identifier(search_name)
-            
-            for key in unit_metadata:
-                if get_core_identifier(key) == core_search:
-                    return key
-            
-            # 3. Try checking if key is part of search or vice versa (Normalized)
-            for key in unit_metadata:
-                norm_key = self._normalize_string(key)
-                if norm_key in normalized_search or normalized_search in norm_key:
-                    return key
-            
+    def _find_best_matching_unit(self, search_name: str, available_names: List[str]) -> Optional[str]:
+        """
+        Finds the best matching unit name from available names, handling prefixes and minor variations.
+        """
+        if not search_name or not available_names:
             return None
-        # -----------------------------------
+
+        normalized_search = self._normalize_string(search_name)
+
+        # 1. Try Exact Match (Normalized)
+        for name in available_names:
+            if self._normalize_string(name) == normalized_search:
+                return name
+
+        # 2. Try Core Identifier Match
+        def get_core_identifier(s: str) -> str:
+            # Remove "unit" label followed by any numbering, or just numbering at start
+            # e.g. "Unit 1: Name" -> "Name"
+            # "1. Name" -> "Name"
+            s_norm = self._normalize_string(s)
+            # Remove "unit <d> :" or "unit <d>" prefix
+            s_norm = re.sub(r"^unit\s*\d+[:.]?\s*", "", s_norm)
+            # Remove "<d>. " prefix
+            s_norm = re.sub(r"^\d+[:.]\s*", "", s_norm)
+            return s_norm.strip()
+
+        core_search = get_core_identifier(search_name)
+        
+        for name in available_names:
+            if get_core_identifier(name) == core_search:
+                return name
+
+        # 3. Try containment (Normalized)
+        # Check if one is a substring of the other (careful with short names)
+        for name in available_names:
+            norm_name = self._normalize_string(name)
+            if norm_name in normalized_search or normalized_search in norm_name:
+                return name
+
+        return None
+
+    def _build_generation_slots(
+        self, request: QuestionBankPartsGenerationRequest
+    ) -> List[Dict[str, Any]]:
+        """Build generation slots from template distributions, grouped by unit with max 20 questions per slot."""
+        
+        # 1. Get unified metadata
+        unit_metadata = self._get_unit_metadata(request)
+        available_units = list(unit_metadata.keys())
 
         # Group questions by unit_name first
         unit_questions = {}
@@ -234,7 +242,7 @@ class QuestionPaperService:
                 # Use specified distribution
                 for dist in template.question_distribution:
                     
-                    matched_unit_name = find_matching_unit_key(dist.unit_name)
+                    matched_unit_name = self._find_best_matching_unit(dist.unit_name, available_units)
                     
                     if matched_unit_name is None:
                         logger.error(f"Unit mismatch. Searched for: '{dist.unit_name}'. Available: {available_units}")
@@ -471,6 +479,11 @@ class QuestionPaperService:
             # Create a question directory to organize questions by their specification
             question_directory = {}
 
+            # Need available units for matching
+            available_units = [chapter.title for chapter in request.chapters]
+            if len(request.chapters) == 1 and request.chapters[0].subtopics:
+                 available_units = [sub.title for sub in request.chapters[0].subtopics]
+
             for i, generated in enumerate(all_generated):
                 qtype = QuestionType(generated.get("type"))
                 unit_name = generated.get("unit_name")
@@ -480,7 +493,17 @@ class QuestionPaperService:
 
                 # Normalize key
                 norm_type = self._normalize_string(qtype.value)
-                norm_unit = self._normalize_string(unit_name)
+                
+                # --- FIX: Use smart matching for unit name ---
+                matched_unit = self._find_best_matching_unit(unit_name, available_units)
+                if matched_unit:
+                    norm_unit = self._normalize_string(matched_unit)
+                else:
+                    # Fallback to normalized input if no match found (might still fail lookup but logs will show why)
+                    logger.warning(f"Could not map generated unit '{unit_name}' to any available unit: {available_units}")
+                    norm_unit = self._normalize_string(unit_name)
+                # ---------------------------------------------
+
                 # Objective can be None or empty
                 norm_objective = self._normalize_string(objective) if objective else "none"
                 
