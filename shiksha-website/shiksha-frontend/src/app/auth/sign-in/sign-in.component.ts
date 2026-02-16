@@ -18,7 +18,7 @@ import { applicationUsers } from 'src/app/shared/utility/enum.util';
   styleUrls: ['./sign-in.component.scss'],
   animations: [scaleAnimation],
 })
-export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
+export class SignInComponent implements OnInit, AfterViewInit, OnDestroy {
   selectedSlide = 0; //track the current slide
   sliderInterval: any;
   phoneNumber!: string; //input variable
@@ -28,24 +28,24 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   timeInterval: any;
   showResendOTP: boolean = false;
   otpValue: string = '';
-  invalidOtp=false;
+  invalidOtp = false;
   images: Carousel[] = images; //utility from the utility folder
 
-  rememberMe= false;
-  storedUserInfo:any;
+  rememberMe = false;
+  storedUserInfo: any;
   otpTriggered = false;
 
   otpInputConfig: NgOtpInputConfig = {
     length: 4,
-    allowNumbersOnly:true,
-    isPasswordInput:true,
-    inputStyles:{
+    allowNumbersOnly: true,
+    isPasswordInput: true,
+    inputStyles: {
       'width': '35px',
       'height': '35px',
-      'font-size':'20px',
+      'font-size': '20px',
       'text-align': 'center',
-      'border':'1px solid #212121',
-      'margin':'0 5px'
+      'border': '1px solid #212121',
+      'margin': '0 5px'
     }
   };
 
@@ -59,11 +59,11 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     public service: SignInService,
     private router: Router,
     private utility: UtilityService,
-    private authService:AuthorizationService,
-    private sidebarService:SidebarService,
+    private authService: AuthorizationService,
+    private sidebarService: SidebarService,
     private translateService: TranslateService,
-    private secureCookieService:SecureCookieService
-  ) {}
+    private secureCookieService: SecureCookieService
+  ) { }
 
   /**
    * autoslide enabled
@@ -71,14 +71,14 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.autoSlide();
     this.getCookies();
-    if(this.authService.isLoggedIn()){
+    if (this.authService.isLoggedIn()) {
       const userData = this.utility.loggedInUserData;
       if (
         userData.role.includes('admin') ||
         userData.role.includes('manager')
       ) {
         this.router.navigate(['/admin']);
-      }  else if (!userData.isProfileCompleted) {
+      } else if (!userData.isProfileCompleted) {
         this.router.navigate(['/user/profile']);
       } else {
         this.router.navigate(['/user']);
@@ -92,9 +92,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     this.phone.nativeElement.focus();
   }
 
-  getCookies(){
+  getCookies() {
     this.storedUserInfo = this.secureCookieService.getObjectCookie('userInfo') || null;
-    if(this.storedUserInfo){
+    if (this.storedUserInfo) {
       this.rememberMe = true;
       this.phoneNumber = this.storedUserInfo.phone;
     }
@@ -107,7 +107,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   handeOtpChange(value: any): void {
     //handle otp chnage
     this.otpValue = value;
-    this.invalidOtp=false;
+    this.invalidOtp = false;
   }
 
   /**
@@ -123,7 +123,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    */
   clearOTPFiled(): void {
     this.ngOtp.setValue(null);
-    this.invalidOtp=false;
+    this.invalidOtp = false;
   }
 
   /**
@@ -191,7 +191,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
       return;
     }
     let phoneNumberString = this.phoneNumber.toString();
-    const numberRegex:RegExp = this.utility.regexPattern.phoneRegex;
+    const numberRegex: RegExp = this.utility.regexPattern.phoneRegex;
     if (
       phoneNumberString.length < 10 ||
       numberRegex.exec(phoneNumberString) === null
@@ -200,15 +200,15 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     } else {
       this.numberErrorMsg = null;
       const reqBody = {
-        phone:this.phoneNumber,
-        rememberMe:this.rememberMe
+        phone: this.phoneNumber,
+        rememberMe: this.rememberMe
       }
-     this.getOtp(reqBody);
-      
+      this.getOtp(reqBody);
+
     }
   }
 
-  getOtp(reqBody:any){
+  getOtp(reqBody: any) {
     this.service.validateMobileNumber(reqBody).subscribe({
       next: (res: any) => {
         this.otpTriggered = res?.data?.otpTriggered;
@@ -217,7 +217,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         this.clearOTPFiled();
         // this.startTimer();
         this.utility.showSuccess(this.otpTriggered ? 'Please enter the PIN sent to your phone number to continue' : 'Please enter your access PIN');
-        if(this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone){
+        if (this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone) {
           this.ngOtp.setValue(this.storedUserInfo.apin)
         }
       },
@@ -227,16 +227,16 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     });
   }
 
-  forgotPin(){
+  forgotPin() {
     const reqBody = {
-      phone:this.phoneNumber,
-      rememberMe:this.rememberMe,
-      forgotPassword:true
+      phone: this.phoneNumber,
+      rememberMe: this.rememberMe,
+      forgotPassword: true
     }
     this.clearOTPFiled();
     this.secureCookieService.deleteCookie("userInfo");
-    this.storedUserInfo=null;
-   this.getOtp(reqBody);
+    this.storedUserInfo = null;
+    this.getOtp(reqBody);
   }
 
   /**
@@ -256,16 +256,16 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
             this.sidebarService.profileImg.set(profileUrl);
 
             if (res?.data.user?.preferredLanguage) {
-                this.translateService.use(res.data.user.preferredLanguage);
+              this.translateService.use(res.data.user.preferredLanguage);
             }
 
-            if(this.rememberMe){
+            if (this.rememberMe) {
               const userInfo = {
-                phone:this.phoneNumber,
-                apin:this.otpValue
+                phone: this.phoneNumber,
+                apin: this.otpValue
               }
-              this.secureCookieService.setObjectCookie("userInfo",userInfo);
-            }else{
+              this.secureCookieService.setObjectCookie("userInfo", userInfo);
+            } else {
               this.secureCookieService.deleteCookie("userInfo");
             }
 
