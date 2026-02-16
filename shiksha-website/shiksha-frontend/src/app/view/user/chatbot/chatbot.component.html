@@ -100,9 +100,12 @@
     >
       <span class="text-[11px] text-white font-bold">C</span>
     </div>
-    <span class="dot"></span>
-    <span class="dot"></span>
-    <span class="dot"></span>
+    <ng-container *ngIf="!loadingStatus">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </ng-container>
+    <span *ngIf="loadingStatus" class="text-xs text-content-50 ml-2 animate-pulse">{{ loadingStatus }}</span>
   </div>
   <div class="relative flex flex-col-reverse">
     <div class="absolute w-full  px-0 md:px-36" [ngClass]="type === 'general' ? 'bottom-[-65px] md:bottom-[-95px]' : 'bottom-[-65px] md:bottom-[-95px]'">
