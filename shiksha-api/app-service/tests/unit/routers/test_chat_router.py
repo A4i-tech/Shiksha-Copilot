@@ -29,7 +29,7 @@ class TestGeneralChatEndpoint:
 
         # Arrange - make it return an awaitable
         async def mock_chat(*args, **kwargs):
-            return "This is a test response"
+            return {"response": "This is a test response", "references": []}
 
         mock_service.side_effect = mock_chat
 
@@ -88,7 +88,7 @@ class TestLessonChatEndpoint:
 
         # Arrange - make it return an awaitable
         async def mock_chat(*args, **kwargs):
-            return "This is a lesson-specific response"
+            return {"response": "This is a lesson-specific response", "references": []}
 
         mock_service.side_effect = mock_chat
 
@@ -113,7 +113,7 @@ class TestLessonChatEndpoint:
 
         # Make it return an awaitable
         async def mock_chat(*args, **kwargs):
-            return "Detailed response"
+            return {"response": "Detailed response", "references": []}
 
         mock_service.side_effect = mock_chat
 

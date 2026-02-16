@@ -73,7 +73,8 @@ class TestGeneralChatServiceCall:
             # Setup Azure OpenAI response - use spec to properly mock attributes
             expected_output = "Photosynthesis is the process by which plants convert light energy into chemical energy."
             mock_response = Mock()
-            mock_response.configure_mock(output_text=expected_output)
+            mock_response.output_text = expected_output
+            mock_response.output = []
             mock_azure_openai_client.responses.create.return_value = mock_response
 
             service = GeneralChatService()
@@ -81,9 +82,11 @@ class TestGeneralChatServiceCall:
 
             result = await service(messages)
 
-            # Result should be the output_text or fallback message
-            assert isinstance(result, str)
-            assert len(result) > 0
+            # Result should be a dictionary with response and references
+            assert isinstance(result, dict)
+            assert "response" in result
+            assert "references" in result
+            assert result["response"] == expected_output
             mock_azure_openai_client.responses.create.assert_called_once()
             call_args = mock_azure_openai_client.responses.create.call_args
 
@@ -108,16 +111,17 @@ class TestGeneralChatServiceCall:
 
             expected_output = "Detailed explanation of photosynthesis..."
             mock_response = Mock()
-            mock_response.configure_mock(output_text=expected_output)
+            mock_response.output_text = expected_output
+            mock_response.output = []
             mock_azure_openai_client.responses.create.return_value = mock_response
 
             service = GeneralChatService()
 
             result = await service(sample_chat_messages)
 
-            # Result should be a string
-            assert isinstance(result, str)
-            assert len(result) > 0
+            # Result should be a dictionary
+            assert isinstance(result, dict)
+            assert result["response"] == expected_output
             # Verify input includes conversation history
             call_args = mock_azure_openai_client.responses.create.call_args
             input_text = call_args[1]["input"]
@@ -142,6 +146,7 @@ class TestGeneralChatServiceCall:
 
             mock_response = Mock()
             mock_response.output_text = "Response"
+            mock_response.output = []
             mock_azure_openai_client.responses.create.return_value = mock_response
 
             service = GeneralChatService()
@@ -179,7 +184,16 @@ class TestGeneralChatServiceCall:
             MockPromptTemplate.return_value = mock_template
 
             # Response without output_text but with output
-            mock_response = Mock(spec=[])  # Empty spec so it doesn't have output_text
+            mock_content = Mock()
+            mock_content.type = "output_text"
+            mock_content.text = "Extracted text"
+            
+            mock_item = Mock()
+            mock_item.content = [mock_content]
+            
+            mock_response = Mock(spec=[])
+            # For the fallback logic in __call__, it iterates over response.output
+            # If it's a list of dicts as per lines 82-85 in service
             mock_response.output = [
                 {"content": [{"type": "output_text", "text": "Extracted text"}]}
             ]
@@ -190,9 +204,9 @@ class TestGeneralChatServiceCall:
 
             result = await service(messages)
 
-            # Should extract from output or return fallback
-            assert isinstance(result, str)
-            assert len(result) > 0
+            # Should extract from output
+            assert isinstance(result, dict)
+            assert result["response"] == "Extracted text"
 
     @pytest.mark.asyncio
     async def test_call_returns_default_message_when_no_content(
@@ -220,7 +234,8 @@ class TestGeneralChatServiceCall:
 
             result = await service(messages)
 
-            assert result == "I'm sorry, but I couldn't find an appropriate response."
+            assert isinstance(result, dict)
+            assert result["response"] == "I'm sorry, but I couldn't find an appropriate response."
 
     @pytest.mark.asyncio
     async def test_call_raises_error_on_azure_failure(
@@ -267,6 +282,7 @@ class TestGeneralChatServiceCall:
 
             mock_response = Mock()
             mock_response.output_text = "Response"
+            mock_response.output = []
             mock_azure_openai_client.responses.create.return_value = mock_response
 
             service = GeneralChatService()
