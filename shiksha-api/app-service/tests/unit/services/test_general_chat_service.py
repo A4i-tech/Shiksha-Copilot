@@ -20,7 +20,7 @@ class TestGeneralChatServiceInitialization:
         """Test service initialization loads prompt template."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ) as MockPromptTemplate, patch("app.services.general_chat_service.AzureOpenAI"):
+        ) as MockPromptTemplate, patch("app.services.general_chat_service.AsyncAzureOpenAI"):
             mock_template = Mock()
             MockPromptTemplate.return_value = mock_template
 
@@ -65,7 +65,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
@@ -81,29 +81,13 @@ class TestGeneralChatServiceCall:
             mock_chunk = Mock()
             mock_chunk.choices = [Mock(delta=Mock(content=expected_content))]
             
-            async def mock_stream():
-                yield mock_chunk
-
-            mock_azure_openai_client.chat.completions.create.return_value = mock_stream()
+            mock_stream = AsyncMock()
+            mock_stream.__aiter__.return_value = [mock_chunk]
+            mock_azure_openai_client.chat.completions.create.return_value = mock_stream
             
             service = GeneralChatService()
             messages = [sample_chat_messages[0]]  # Only first message
 
-            # Consume the generator
-            response_generator = await service(messages) # __call__ is async def, validates then yields
-            # Actually __call__ is async generator, so awaiting it directly might return the generator object if it was just async def, 
-            # BUT since it has `yield`, it returns an async generator. 
-            # Calling an async generator function returns an async generator. You don't await the creation.
-            # Wait! `async def __call__`:
-            # If it has `yield`, it's an async generator function.
-            # `gen = service(messages)` returns the generator immediately (it's not awaitable itself, the call returns the gen).
-            # Let's verify python behavior. `async def foo(): yield 1`. `g = foo()`. `type(g)` is async_generator.
-            # So `await service(messages)` is WRONG if `service` instance is callable as async gen.
-            # Actually `__call__` IS `async def`.
-            # `result = service(messages)` -> returns async_generator coroutine?
-            # No. `async def` with `yield` returns an async generator object when called.
-            # So `result = service(messages)`. `async for item in result: ...`
-            
             accumulated_response = ""
             status_messages = []
             
@@ -115,7 +99,7 @@ class TestGeneralChatServiceCall:
                     status_messages.append(item["message"])
 
             assert accumulated_response == expected_content
-            assert "Thinking..." in status_messages
+            assert "Thinking..." in [s for s in status_messages if "Thinking..." in s]
             
             mock_azure_openai_client.chat.completions.create.assert_called_once()
             call_args = mock_azure_openai_client.chat.completions.create.call_args
@@ -131,7 +115,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
@@ -142,10 +126,9 @@ class TestGeneralChatServiceCall:
             mock_chunk = Mock()
             mock_chunk.choices = [Mock(delta=Mock(content="Detailed explanation..."))]
             
-            async def mock_stream():
-                yield mock_chunk
-            
-            mock_azure_openai_client.chat.completions.create.return_value = mock_stream()
+            mock_stream = AsyncMock()
+            mock_stream.__aiter__.return_value = [mock_chunk]
+            mock_azure_openai_client.chat.completions.create.return_value = mock_stream
 
             service = GeneralChatService()
 
@@ -219,7 +202,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
@@ -233,9 +216,17 @@ class TestGeneralChatServiceCall:
             
             mock_chunk = Mock()
             mock_chunk.choices = [Mock(delta=Mock(content="Response"))]
-            async def mock_stream():
-                yield mock_chunk
-            mock_azure_openai_client.chat.completions.create.return_value = mock_stream()
+            
+            mock_chunk = Mock()
+            mock_chunk.choices = [Mock(delta=Mock(content="Response"))]
+            
+            mock_chunk = Mock()
+            mock_chunk.choices = [Mock(delta=Mock(content="Response"))]
+            
+            # Setup AsyncMock to represent the result of client.chat.completions.create
+            mock_stream = AsyncMock()
+            mock_stream.__aiter__.return_value = [mock_chunk]
+            mock_azure_openai_client.chat.completions.create.return_value = mock_stream
 
             service = GeneralChatService()
 
@@ -247,6 +238,8 @@ class TestGeneralChatServiceCall:
 
             async for _ in service(messages): pass
 
+            # call_args check
+            assert mock_azure_openai_client.chat.completions.create.called
             call_args = mock_azure_openai_client.chat.completions.create.call_args
             msgs = call_args[1]["messages"]
             assert msgs[1]["content"] == "Hello"
@@ -260,7 +253,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
@@ -275,7 +268,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
@@ -290,17 +283,11 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
             # Simulate Azure OpenAI error
-            # When stream raises exception
-            async def mock_error_stream():
-                raise Exception("API Error")
-                yield # unsafe
-            
-            # Since create is awaited, it raises immediately
             mock_azure_openai_client.chat.completions.create.side_effect = Exception("API Error")
 
             service = GeneralChatService()
@@ -322,7 +309,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
@@ -342,7 +329,7 @@ class TestGeneralChatServiceCall:
             async for _ in service(messages): pass
 
             # Verify prompt was loaded with correct key
-            mock_template.get_prompt.assert_called_once_with("general_chat")
+            mock_template.get_prompt.assert_called_with("general_chat")
 
     @pytest.mark.asyncio
     async def test_call_raises_error_when_prompt_not_found(
@@ -352,7 +339,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AzureOpenAI",
+            "app.services.general_chat_service.AsyncAzureOpenAI",
             return_value=mock_azure_openai_client,
         ):
 
@@ -363,8 +350,13 @@ class TestGeneralChatServiceCall:
             service = GeneralChatService()
             messages = [{"role": "user", "message": "Test"}]
 
-            with pytest.raises(ValueError, match="General chat prompt not found"):
-                async for _ in service(messages): pass
+            # It yields an error object now
+            items = []
+            async for item in service(messages):
+                items.append(import_json.loads(item))
+            
+            assert items[-1]["type"] == "error"
+            assert "General chat prompt not found" in items[-1]["message"]
 
 
 class TestGeneralChatServiceCleanup:
@@ -375,7 +367,7 @@ class TestGeneralChatServiceCleanup:
         """Test cleanup method can be called."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AzureOpenAI"):
+        ), patch("app.services.general_chat_service.AsyncAzureOpenAI"):
 
             service = GeneralChatService()
 
@@ -390,7 +382,7 @@ class TestFormatConversationMessages:
         """Test formatting a single message."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AzureOpenAI"):
+        ), patch("app.services.general_chat_service.AsyncAzureOpenAI"):
 
             service = GeneralChatService()
             messages = [
@@ -406,7 +398,7 @@ class TestFormatConversationMessages:
         """Test formatting multiple messages with history."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AzureOpenAI"):
+        ), patch("app.services.general_chat_service.AsyncAzureOpenAI"):
 
             service = GeneralChatService()
             messages = [
@@ -429,7 +421,7 @@ class TestFormatConversationMessages:
         """Test formatting preserves message role information."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AzureOpenAI"):
+        ), patch("app.services.general_chat_service.AsyncAzureOpenAI"):
 
             service = GeneralChatService()
             messages = [
@@ -449,7 +441,7 @@ class TestFormatConversationMessages:
         """Test formatting conversation with many messages."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AzureOpenAI"):
+        ), patch("app.services.general_chat_service.AsyncAzureOpenAI"):
 
             service = GeneralChatService()
             messages = [

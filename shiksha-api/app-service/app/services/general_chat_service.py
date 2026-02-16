@@ -60,40 +60,38 @@ class GeneralChatService:
             dict with 'response' (str) and 'references' (list of dicts with title/url)
         """
         try:
-            # Get the system prompt from template
+            # Load system prompt
             system_prompt = self.prompt_template.get_prompt("general_chat")
-            if system_prompt is None:
+            if not system_prompt:
                 raise ValueError("General chat prompt not found in chat_prompts.yaml")
-
-            # Combine conversation into a single input string including system prompt.
-            input_text = self._format_conversation_messages(messages)
-            input_text = f"System: {system_prompt}\n\n{input_text}"
-
-
-            # Yield status update: Calling LLM
-            yield json.dumps({"type": "status", "message": "Analyzing request..."}) + "\n"
-            await asyncio.sleep(1) # Simulate analysis time
-            
-            # Simulate Web Search (if we had the tool enabled)
-            # This demonstrates the frontend capability to show different states
-            yield json.dumps({"type": "status", "message": "Searching web..."}) + "\n"
-            await asyncio.sleep(2) # Simulate search time
 
             yield json.dumps({"type": "status", "message": "Thinking..."}) + "\n"
 
-            stream = await self.client.chat.completions.create(
+            # Prepare messages with robust formatting
+            try:
+                formatted_messages = [{"role": "system", "content": system_prompt}]
+                for m in messages:
+                    if isinstance(m, dict):
+                        role = m.get("role", "user")
+                        content = m.get("message", "")
+                    else:
+                        role = getattr(m.role, "value", m.role) if hasattr(m, "role") else "user"
+                        content = getattr(m, "message", "") if hasattr(m, "message") else ""
+                    
+                    formatted_messages.append({"role": role, "content": content})
+            except Exception as e:
+                raise Exception(f"Error formatting messages: {e}")
+
+            response = self.client.chat.completions.create(
                 model=settings.azure_chat_deployment_name,
-                messages=[
-                    {"role": "system", "content": system_prompt}
-                ] + [
-                    {
-                        "role": m.get("role", "user") if isinstance(m, dict) else m.role,
-                        "content": m.get("message", "") if isinstance(m, dict) else m.message
-                    }
-                    for m in messages
-                ],
+                messages=formatted_messages,
                 stream=True
             )
+            
+            if asyncio.iscoroutine(response):
+                stream = await response
+            else:
+                stream = response
             
             full_response = ""
             async for chunk in stream:
@@ -101,19 +99,8 @@ class GeneralChatService:
                     content = chunk.choices[0].delta.content
                     full_response += content
                     yield json.dumps({"type": "content", "delta": content}) + "\n"
-                
-                # Check for tool calls if we had them (omitted for now to simplify and ensure streaming works first)
-                
-            # Yield refs if we had any logic to extract them (omitted for standard chat unless we parse them)
-            # The original `_extract_url_citations` worked on `response.output` from Agents API.
-            # Standard chat completion doesn't return `output` with annotations in the same way.
-            # It returns markdown footnotes usually [doc1].
-            
-            # I will assume for now we just stream the text.
-            # If citations are needed, we'd need to parse `context` from the chunk if using OYD.
-            
         except Exception as e:
-            logger.error(f"Error in Azure OpenAI chat: {e}")
+            logger.error(f"Error in Azure OpenAI chat: {e}", exc_info=True)
             yield json.dumps({"type": "error", "message": str(e)}) + "\n"
 
     def _extract_url_citations(self, response: Response) -> list:

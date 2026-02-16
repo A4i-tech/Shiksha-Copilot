@@ -27,11 +27,12 @@ class TestGeneralChatEndpoint:
     async def test_general_chat_success(self, mock_service, client):
         """Test successful general chat request."""
 
-        # Arrange - make it return an awaitable
-        async def mock_chat(*args, **kwargs):
-            return {"response": "This is a test response", "references": []}
+        # Arrange - make it return an async generator
+        async def mock_chat_stream(*args, **kwargs):
+            import json
+            yield json.dumps({"type": "content", "delta": "This is a test response"})
 
-        mock_service.side_effect = mock_chat
+        mock_service.return_value = mock_chat_stream()
 
         request_data = {
             "user_id": "test-user-123",
@@ -43,8 +44,10 @@ class TestGeneralChatEndpoint:
 
         # Assert
         assert response.status_code == 200
-        assert "user_id" in response.json()
-        assert "response" in response.json()
+        assert response.headers["content-type"] == "text/event-stream; charset=utf-8"
+        # TestClient.post returns the full content by default if not streaming=True?
+        # Actually response.text will have the accumulated content
+        assert "This is a test response" in response.text
 
     @patch("app.routers.chat.GENERAL_CHAT_SERVICE_INSTANCE")
     async def test_general_chat_empty_messages(self, mock_service, client):
