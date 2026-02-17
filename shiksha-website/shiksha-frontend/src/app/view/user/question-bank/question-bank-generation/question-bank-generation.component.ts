@@ -340,12 +340,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
       this.updateSourceOptions(boardName);
     } else {
-      // If no board is selected, default to just AI or clear
-      this.sourceGenerationOptions = [{ name: 'AI Questions', value: 'AI' }];
+      this.updateSourceOptions(null);
     }
   }
 
-  updateSourceOptions(boardName: string) {
+  updateSourceOptions(boardName: string | null) {
     if (boardName === 'KSEEB') {
       this.sourceGenerationOptions = [
         { name: 'AI Questions', value: 'AI' },
@@ -355,23 +354,29 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.sourceGenerationOptions = [
         { name: 'AI Questions', value: 'AI' }
       ];
+    }
 
-      // If user had LBA selected and switches to non-KSEEB, we should probably unselect it
-      // or at least ensure the form control doesn't hold an invalid value.
-      const currentSource = this.f.sourceGeneration.value;
-      if (currentSource) {
-        // If it's an array (multi-select)
-        if (Array.isArray(currentSource)) {
-          const newSource = currentSource.filter((s: any) => {
-            const val = s.value || s;
-            return val !== 'LBA' && val !== 'Pregenerated Questions';
-          });
-          if (newSource.length !== currentSource.length) {
-            this.f.sourceGeneration.setValue(newSource);
-            this.onSourceGenerationChange(newSource);
-          }
-        }
-      }
+    // Validate current selection against new options
+    const currentVal = this.f.sourceGeneration.value;
+    if (!currentVal) return;
+
+    // Normalize to array for consistent handling
+    const currentSelections = Array.isArray(currentVal) ? currentVal : [currentVal];
+
+    // Create a Set of valid option names/values for quick lookup
+    // The dropdown uses 'name' as bindValue based on config
+    const validValues = new Set(this.sourceGenerationOptions.map(opt => opt.name));
+
+    const validSelections = currentSelections.filter((sel: any) => {
+      // Handle both object and string forms, just in case
+      const selValue = (typeof sel === 'object' && sel.name) ? sel.name : sel;
+      return validValues.has(selValue);
+    });
+
+    // Update if selections have changed
+    if (validSelections.length !== currentSelections.length) {
+      this.f.sourceGeneration.setValue(validSelections);
+      this.onSourceGenerationChange(validSelections);
     }
   }
 
