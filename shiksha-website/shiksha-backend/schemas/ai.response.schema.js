@@ -22,6 +22,7 @@ const QuestionBankPartsResponseSchema = z.object({
         z.object({
           question: z.string().min(1, "Question text required"),
           answer: z.string().optional(),
+          difficulty: z.string().optional(),
         }).passthrough() // Allow additional fields
       ).optional(),
     }).passthrough()
@@ -84,7 +85,7 @@ function validatePartsResponse(data) {
             question: q.question,
             options: Array.isArray(q.options) ? q.options : [],
             answer: q.answer || "",
-            difficulty: "",
+            difficulty: q.difficulty || "Average",
             marks: marksPerQuestion,
           });
         }

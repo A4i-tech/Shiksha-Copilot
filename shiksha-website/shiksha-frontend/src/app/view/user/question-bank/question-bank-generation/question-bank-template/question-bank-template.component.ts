@@ -8,9 +8,9 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 export class QuestionBankTemplateComponent implements OnInit {
   @Input() currentStep: number = 2;
   @Input() totalMarks: number = 0; // Target marks
-  
+
   // NEW INPUT: The merged pool from Parent
-  @Input() availableQuestions: any[] = []; 
+  @Input() availableQuestions: any[] = [];
 
   @Output() backClick = new EventEmitter<boolean>();
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
@@ -18,12 +18,12 @@ export class QuestionBankTemplateComponent implements OnInit {
   // Local State
   filteredQuestions: any[] = [];
   selectedQuestions: any[] = [];
-  
+
   // Filter State
   filterSource: 'ALL' | 'AI Questions' | 'Pregenerated Questions' = 'ALL';
   searchText: string = '';
 
-  constructor() {}
+  constructor() { }
 
   ngOnInit(): void {
     // Initial load
@@ -40,7 +40,7 @@ export class QuestionBankTemplateComponent implements OnInit {
     this.filteredQuestions = this.availableQuestions.filter(q => {
       // 1. Source Filter
       const matchSource = this.filterSource === 'ALL' || q.source === this.filterSource;
-      
+
       // 2. Search Filter
       const matchSearch = !this.searchText || (q.text && q.text.toLowerCase().includes(this.searchText.toLowerCase()));
 
@@ -85,5 +85,15 @@ export class QuestionBankTemplateComponent implements OnInit {
   proceedToNext() {
     // We send the selected questions to the parent (Step 3)
     this.nextClick.emit(this.selectedQuestions);
+  }
+
+  getDifficultyColor(difficulty: string): string {
+    if (!difficulty) return 'bg-gray-100 text-gray-700 border-gray-200';
+    switch (difficulty.toLowerCase()) {
+      case 'easy': return 'bg-green-100 text-green-700 border-green-200';
+      case 'average': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'difficult': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
   }
 }

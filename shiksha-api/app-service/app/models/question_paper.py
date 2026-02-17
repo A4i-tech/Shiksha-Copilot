@@ -26,6 +26,7 @@ class QuestionBankMetadata(BaseModel):
 
 class TextQuestion(BaseModel):
     question: str = ""
+    difficulty: str = "Average"
 
 
 
@@ -39,6 +40,7 @@ class FourOptionsQuestion(BaseModel):
     question: str = ""
     options: List[McqOption] = Field(default=[], min_length=2)
     answer: str = ""
+    difficulty: str = "Average"
 
     @field_validator("options", mode="before")
     def convert_strings_to_options(cls, v):
@@ -62,6 +64,7 @@ class FourOptionsQuestion(BaseModel):
 class MatchingListQuestion(BaseModel):
     value1: str = ""
     value2: str = ""
+    difficulty: str = "Average"
 
 
 # ==============================
@@ -148,7 +151,8 @@ class QuestionType(str, Enum):
                      {"label": "C", "text": "Option C"},
                      {"label": "D", "text": "Option D"}
                  ],
-                 "answer": "A"
+                 "answer": "A",
+                 "difficulty": "Average"
              })
         return self._model().model_dump_json()
 
