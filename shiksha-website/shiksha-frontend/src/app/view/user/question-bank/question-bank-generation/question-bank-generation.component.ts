@@ -61,8 +61,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
   sourceGenerationOptions: any[] = [
-    { name: 'AI Questions', value: 'AI' },
-    { name: 'Pregenerated Questions', value: 'LBA' }
+    { name: 'AI Questions', value: 'AI' }
   ];
 
   // LBA Specific Data
@@ -338,6 +337,41 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
         .sort((a, b) => parseInt(a.class) - parseInt(b.class));
+
+      this.updateSourceOptions(boardName);
+    } else {
+      // If no board is selected, default to just AI or clear
+      this.sourceGenerationOptions = [{ name: 'AI Questions', value: 'AI' }];
+    }
+  }
+
+  updateSourceOptions(boardName: string) {
+    if (boardName === 'KSEEB') {
+      this.sourceGenerationOptions = [
+        { name: 'AI Questions', value: 'AI' },
+        { name: 'Pregenerated Questions', value: 'LBA' }
+      ];
+    } else {
+      this.sourceGenerationOptions = [
+        { name: 'AI Questions', value: 'AI' }
+      ];
+
+      // If user had LBA selected and switches to non-KSEEB, we should probably unselect it
+      // or at least ensure the form control doesn't hold an invalid value.
+      const currentSource = this.f.sourceGeneration.value;
+      if (currentSource) {
+        // If it's an array (multi-select)
+        if (Array.isArray(currentSource)) {
+          const newSource = currentSource.filter((s: any) => {
+            const val = s.value || s;
+            return val !== 'LBA' && val !== 'Pregenerated Questions';
+          });
+          if (newSource.length !== currentSource.length) {
+            this.f.sourceGeneration.setValue(newSource);
+            this.onSourceGenerationChange(newSource);
+          }
+        }
+      }
     }
   }
 
