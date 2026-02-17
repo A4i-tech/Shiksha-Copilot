@@ -13,6 +13,7 @@ from openai.types.responses.response_output_text import AnnotationURLCitation
 from app.models.chat import ConversationMessage
 from app.config import settings
 from app.utils.prompt_template import PromptTemplate
+from pydantic import validate_call
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class GeneralChatService:
             )
 
 
+    @validate_call
     async def __call__(
         self,
         messages: List[ConversationMessage],
@@ -60,16 +62,11 @@ class GeneralChatService:
             # Format messages
             formatted_messages = [{"role": "system", "content": system_prompt}]
             for m in messages:
-                if isinstance(m, dict):
-                    role = m.get("role", "user")
-                    content = m.get("message", "")
-                else:
-                    role = getattr(m.role, "value", m.role) if hasattr(m, "role") else "user"
-                    content = getattr(m, "message", "") if hasattr(m, "message") else ""
-
+                role = m.role.value
+                content = m.message
                 formatted_messages.append({"role": role, "content": content})
 
-            # ✅ Responses API with web search
+            # Responses API with web search
             stream = await self.client.responses.create(
                 model=settings.azure_chat_deployment_name,
                 input=formatted_messages,
@@ -191,8 +188,7 @@ class GeneralChatService:
         Should be called when the service is being shut down.
         """
         try:
-            if hasattr(self.client, "close"):
-                await self.client.close()
+            await self.client.close()
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 

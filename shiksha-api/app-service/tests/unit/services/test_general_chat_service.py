@@ -3,6 +3,7 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 import json as import_json
 from pathlib import Path
 import sys
+import asyncio
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "app"))
 
@@ -77,13 +78,23 @@ class TestGeneralChatServiceCall:
             # Setup Azure OpenAI response - mock streaming
             expected_content = "Photosynthesis is the process..."
             
-            # Create a mock chunk object
-            mock_chunk = Mock()
-            mock_chunk.choices = [Mock(delta=Mock(content=expected_content))]
+            # Create a mock delta event
+            mock_delta_event = Mock()
+            mock_delta_event.type = "response.output_text.delta"
+            mock_delta_event.delta = expected_content
+
+            # Create a mock completed event
+
+            # Create a mock completed event
+            mock_completed_event = Mock()
+            mock_completed_event.type = "response.completed"
+            # Mock response as direct object
+            mock_response_obj = Mock(output=[])
+            mock_completed_event.response = mock_response_obj
             
             mock_stream = AsyncMock()
-            mock_stream.__aiter__.return_value = [mock_chunk]
-            mock_azure_openai_client.chat.completions.create.return_value = mock_stream
+            mock_stream.__aiter__.return_value = [mock_delta_event, mock_completed_event]
+            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream)
             
             service = GeneralChatService()
             messages = [sample_chat_messages[0]]  # Only first message
@@ -101,11 +112,12 @@ class TestGeneralChatServiceCall:
             assert accumulated_response == expected_content
             assert "Thinking..." in [s for s in status_messages if "Thinking..." in s]
             
-            mock_azure_openai_client.chat.completions.create.assert_called_once()
-            call_args = mock_azure_openai_client.chat.completions.create.call_args
+            mock_azure_openai_client.responses.create.assert_called_once()
+            call_args = mock_azure_openai_client.responses.create.call_args
             
             assert call_args[1]["model"] == mock_settings.azure_chat_deployment_name
             assert call_args[1]["stream"] is True
+            assert call_args[1]["tools"] == [{"type": "web_search"}]
 
     @pytest.mark.asyncio
     async def test_call_with_conversation_history(
@@ -123,12 +135,17 @@ class TestGeneralChatServiceCall:
             mock_template.get_prompt = Mock(return_value="You are a helpful assistant.")
             MockPromptTemplate.return_value = mock_template
 
-            mock_chunk = Mock()
-            mock_chunk.choices = [Mock(delta=Mock(content="Detailed explanation..."))]
+            mock_delta_event = Mock()
+            mock_delta_event.type = "response.output_text.delta"
+            mock_delta_event.delta = "Detailed explanation..."
+
+            mock_completed_event = Mock()
+            mock_completed_event.type = "response.completed"
+            mock_completed_event.response = Mock(output=[])
             
             mock_stream = AsyncMock()
-            mock_stream.__aiter__.return_value = [mock_chunk]
-            mock_azure_openai_client.chat.completions.create.return_value = mock_stream
+            mock_stream.__aiter__.return_value = [mock_delta_event, mock_completed_event]
+            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream)
 
             service = GeneralChatService()
 
@@ -137,8 +154,8 @@ class TestGeneralChatServiceCall:
                 pass
 
             # Verify input structure
-            call_args = mock_azure_openai_client.chat.completions.create.call_args
-            messages_arg = call_args[1]["messages"]
+            call_args = mock_azure_openai_client.responses.create.call_args
+            messages_arg = call_args[1]["input"]
             
             # Check system prompt
             assert messages_arg[0]["role"] == "system"
@@ -214,34 +231,33 @@ class TestGeneralChatServiceCall:
             # Since I implemented the logic in __call__ directly, I should verify it there.
             # I'll update this test to use dicts because that's what API sends.
             
-            mock_chunk = Mock()
-            mock_chunk.choices = [Mock(delta=Mock(content="Response"))]
+            mock_delta_event = Mock()
+            mock_delta_event.type = "response.output_text.delta"
+            mock_delta_event.delta = "Response"
             
-            mock_chunk = Mock()
-            mock_chunk.choices = [Mock(delta=Mock(content="Response"))]
+            mock_completed_event = Mock()
+            mock_completed_event.type = "response.completed"
+            mock_completed_event.response = Mock(output=[])
             
-            mock_chunk = Mock()
-            mock_chunk.choices = [Mock(delta=Mock(content="Response"))]
-            
-            # Setup AsyncMock to represent the result of client.chat.completions.create
+            # Setup AsyncMock to represent the result of client.responses.create
             mock_stream = AsyncMock()
-            mock_stream.__aiter__.return_value = [mock_chunk]
-            mock_azure_openai_client.chat.completions.create.return_value = mock_stream
+            mock_stream.__aiter__.return_value = [mock_delta_event, mock_completed_event]
+            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream)
 
             service = GeneralChatService()
 
             messages = [
-                {"role": "user", "message": "Hello"},
-                {"role": "assistant", "message": "Hi there!"},
-                {"role": "user", "message": "How are you?"}
+                ConversationMessage(role=MessageRole.USER, message="Hello"),
+                ConversationMessage(role=MessageRole.ASSISTANT, message="Hi there!"),
+                ConversationMessage(role=MessageRole.USER, message="How are you?")
             ]
 
             async for _ in service(messages): pass
 
             # call_args check
-            assert mock_azure_openai_client.chat.completions.create.called
-            call_args = mock_azure_openai_client.chat.completions.create.call_args
-            msgs = call_args[1]["messages"]
+            assert mock_azure_openai_client.responses.create.called
+            call_args = mock_azure_openai_client.responses.create.call_args
+            msgs = call_args[1]["input"]
             assert msgs[1]["content"] == "Hello"
             assert msgs[2]["content"] == "Hi there!"
 
@@ -288,7 +304,8 @@ class TestGeneralChatServiceCall:
         ):
 
             # Simulate Azure OpenAI error
-            mock_azure_openai_client.chat.completions.create.side_effect = Exception("API Error")
+            # Simulate Azure OpenAI error
+            mock_azure_openai_client.responses.create = AsyncMock(side_effect=Exception("API Error"))
 
             service = GeneralChatService()
             messages = [{"role": "user", "message": "Test"}]
@@ -317,11 +334,18 @@ class TestGeneralChatServiceCall:
             mock_template.get_prompt = Mock(return_value="Custom system prompt")
             MockPromptTemplate.return_value = mock_template
 
-            mock_chunk = Mock()
-            mock_chunk.choices = [Mock(delta=Mock(content="Response"))]
-            async def mock_stream():
-                yield mock_chunk
-            mock_azure_openai_client.chat.completions.create.return_value = mock_stream()
+            mock_delta_event = Mock()
+            mock_delta_event.type = "response.output_text.delta"
+            mock_delta_event.delta = "Response"
+
+            mock_completed_event = Mock()
+            mock_completed_event.type = "response.completed"
+            mock_completed_event.response = Mock(output=[])
+            
+            async def mock_stream_fn():
+                yield mock_delta_event
+                yield mock_completed_event
+            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream_fn())
 
             service = GeneralChatService()
             messages = [{"role": "user", "message": "Test"}]
