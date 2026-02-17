@@ -49,59 +49,63 @@ class GeneralChatService:
     async def __call__(
         self,
         messages: List[ConversationMessage],
-    ) -> dict:
-        """
-        Core chat logic using Azure AI Project client with agents.
-
-        Args:
-            messages: List of conversation messages
-
-        Returns:
-            dict with 'response' (str) and 'references' (list of dicts with title/url)
-        """
+    ):
         try:
-            # Load system prompt
             system_prompt = self.prompt_template.get_prompt("general_chat")
             if not system_prompt:
                 raise ValueError("General chat prompt not found in chat_prompts.yaml")
 
             yield json.dumps({"type": "status", "message": "Thinking..."}) + "\n"
 
-            # Prepare messages with robust formatting
-            try:
-                formatted_messages = [{"role": "system", "content": system_prompt}]
-                for m in messages:
-                    if isinstance(m, dict):
-                        role = m.get("role", "user")
-                        content = m.get("message", "")
-                    else:
-                        role = getattr(m.role, "value", m.role) if hasattr(m, "role") else "user"
-                        content = getattr(m, "message", "") if hasattr(m, "message") else ""
-                    
-                    formatted_messages.append({"role": role, "content": content})
-            except Exception as e:
-                raise Exception(f"Error formatting messages: {e}")
+            # Format messages
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for m in messages:
+                if isinstance(m, dict):
+                    role = m.get("role", "user")
+                    content = m.get("message", "")
+                else:
+                    role = getattr(m.role, "value", m.role) if hasattr(m, "role") else "user"
+                    content = getattr(m, "message", "") if hasattr(m, "message") else ""
 
-            response = self.client.chat.completions.create(
+                formatted_messages.append({"role": role, "content": content})
+
+            # ✅ Responses API with web search
+            stream = await self.client.responses.create(
                 model=settings.azure_chat_deployment_name,
-                messages=formatted_messages,
-                stream=True
+                input=formatted_messages,
+                tools=[{"type": "web_search"}],
+                stream=True,
             )
-            
-            if asyncio.iscoroutine(response):
-                stream = await response
-            else:
-                stream = response
-            
-            full_response = ""
-            async for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
-                    full_response += content
-                    yield json.dumps({"type": "content", "delta": content}) + "\n"
+
+            final_response_obj = None
+
+            async for event in stream:
+
+                # Streaming text deltas
+                if event.type == "response.output_text.delta":
+                    yield json.dumps({
+                        "type": "content",
+                        "delta": event.delta
+                    }) + "\n"
+
+                # Final completed response (contains citations)
+                elif event.type == "response.completed":
+                    final_response_obj = event.response
+
+            # Extract references AFTER stream ends
+            if final_response_obj:
+                references = self._extract_url_citations(final_response_obj)
+                yield json.dumps({
+                    "type": "references",
+                    "data": references
+                }) + "\n"
+
         except Exception as e:
             logger.error(f"Error in Azure OpenAI chat: {e}", exc_info=True)
-            yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+            yield json.dumps({
+                "type": "error",
+                "message": str(e)
+            }) + "\n"
 
     def _extract_url_citations(self, response: Response) -> list:
         """
