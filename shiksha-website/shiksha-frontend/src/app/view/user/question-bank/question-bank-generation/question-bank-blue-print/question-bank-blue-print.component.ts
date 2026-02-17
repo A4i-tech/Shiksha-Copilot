@@ -119,6 +119,21 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     };
   }
 
+  get uniqueSources(): string[] {
+    const sources = new Set<string>();
+    this.finalSelectedQuestions.forEach(q => {
+      let s = q.source || 'Unknown';
+      if (s === 'AI Questions') s = 'AI';
+      if (s === 'Pregenerated Questions') s = 'LBA'; // Or keep full name? User said "Source" in footer. 
+      // In screenshot 1, it shows "Source: PREGENERATED QUESTION SELECTION"
+      // Wait, let's verify what the source strings are.
+      // In .ts file line 96: q.source === 'AI Questions'.
+      // In .html line 48: {{ q.source }}.
+      if (q.source) sources.add(q.source);
+    });
+    return Array.from(sources);
+  }
+
   previousStep() {
     this.backClick.emit();
   }
