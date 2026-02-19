@@ -739,7 +739,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
             this.avgScoreDataAvailable = this.avgFeedbackDonutChartData?.datasets?.length > 0 && this.avgFeedbackDonutChartData.datasets.some(dataset => dataset.data && dataset.data.length > 0 && dataset.data.some(count => count > 0));
             this.updateChatbotRequestsChartData(data);
             this.chatbotDataAvailable = this.chatbotRequestsBarChartData?.datasets?.length > 0 && this.chatbotRequestsBarChartData.datasets.some(dataset => dataset.data.length > 0);
-            this.allUsersList = data.userCounts.allUsers || [];
+            this.allUsersList = data?.userCounts?.allUsers ?? [];
             this.userMediumMetrics = data.userMediums || [];
             this.filterUsers(this.allUsersList, this.userMediumMetrics, this.selectedMedium);
         },
@@ -802,11 +802,25 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   extractSubLabels(data: any): string[] {
+    if (!data?.lessonPlanCountBySubject || !Array.isArray(data.lessonPlanCountBySubject)) {
+      return [];
+    }
     const labels = data.lessonPlanCountBySubject.map((item: any) => this.utilityService.getSubjectDisplayName(item.subject));
     return labels
   }
 
   createSubDataset(data: any): any {
+    if (!data?.lessonPlanCountBySubject || !Array.isArray(data.lessonPlanCountBySubject)) {
+      return {
+        data: [],
+        label: 'No. of Lesson Plans',
+        backgroundColor: '#8353E2',
+        hoverBackgroundColor: '#8353E2',
+        borderColor:'#FFFFFF',
+        categoryPercentage: 0.8,
+        barPercentage: 0.6,
+      };
+    }
     const numberOfRecords = data.lessonPlanCountBySubject.length;
     return {
       data: data.lessonPlanCountBySubject.map((item: any) => item.lessonPlanCount),
@@ -844,13 +858,15 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     };
     
     // Loop through the mediumLessonPlanCount data and update the counts
-    data.lessonPlanCountByMedium.forEach((item: any) => {
+    if (data?.lessonPlanCountByMedium && Array.isArray(data.lessonPlanCountByMedium)) {
+      data.lessonPlanCountByMedium.forEach((item: any) => {
       const mediumName = this.capitalizeFirstLetter(item.medium);
       const index = mediumMapping[mediumName];
-      if (index !== undefined) {
-        counts[index] = item.lessonPlanCount;
-      }
-    });
+        if (index !== undefined) {
+          counts[index] = item.lessonPlanCount;
+        }
+      });
+    }
     
     return {
       data: counts,
@@ -865,6 +881,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    * Active/inactive users Donut chart   *
    */
   updateStatusDonutChartData(data: any): void {
+    const counts = data?.userCounts?.userCounts;
+    const active = counts?.activeUsers ?? 0;
+    const inactive = counts?.inactiveUsers ?? 0;
+
     const labels = ['Active Users', 'Inactive Users'];
     const dataset = this.createStatusDataset(data);
 
@@ -872,16 +892,17 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       labels: labels,
       datasets: [dataset]
     };
-    this.allUsersCount = data.userCounts.userCounts.activeUsers + data.userCounts.userCounts.inactiveUsers;
-    this.activeUsersCount = data.userCounts.userCounts.activeUsers;
-    this.inactiveUsersCount = data.userCounts.userCounts.inactiveUsers;
+    this.allUsersCount = active + inactive;
+    this.activeUsersCount = active;
+    this.inactiveUsersCount = inactive;
 
     this.statusDataAvailable = this.activeUsersCount > 0 || this.inactiveUsersCount > 0;
   }
 
   createStatusDataset(data: any): any {
+    const counts = data?.userCounts?.userCounts;
     return {
-      data: [data.userCounts.userCounts.activeUsers, data.userCounts.userCounts.inactiveUsers],
+      data: [counts?.activeUsers ?? 0, counts?.inactiveUsers ?? 0],
       backgroundColor: ['#46A0F1', '#E5696D'],
       hoverBackgroundColor:['#46A0F1', '#E5696D'],
       borderColor: ['rgba(0, 0, 0, 0)'],
@@ -934,12 +955,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     };
   
     // Loop through the feedback data and update the counts
-    data.feedbackCount.forEach((item: any) => {
-      const index = feedbackMapping[item._id];
-      if (index !== undefined) {
-        counts[index] = item.count;
-      }
-    });
+    if (data?.feedbackCount && Array.isArray(data.feedbackCount)) {
+      data.feedbackCount.forEach((item: any) => {
+        const index = feedbackMapping[item._id];
+        if (index !== undefined) {
+          counts[index] = item.count;
+        }
+      });
+    }
   
     return {
       data: counts,
@@ -967,6 +990,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   extractChatbotRequestsLabels(data: any): string[] {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     
+    if (!data?.botRequestCount || !Array.isArray(data.botRequestCount) || data.botRequestCount.length === 0) {
+      return [];
+    }
+    
     const labels = data.botRequestCount.map((item: any) => {
       const [year, month] = item.month.split("-");
       const monthIndex = parseInt(month) - 1; // Convert month to zero-based index
@@ -977,6 +1004,17 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   createChatbotRequestsDataset(data: any): any {
+    if (!data?.botRequestCount || !Array.isArray(data.botRequestCount)) {
+      return {
+        data: [],
+        label: 'Edu Chat',
+        backgroundColor: '#379AE6',
+        hoverBackgroundColor: '#379AE6',
+        borderColor:'#FFFFFF',
+        barPercentage:0.8,
+        categoryPercentage:0.5
+      };
+    }
     return {
       data: data.botRequestCount.map((item: any) => item.requestCount),
       label: 'Edu Chat',
@@ -989,6 +1027,17 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }  
 
   createLessonChatRequestsDataset(data: any): any {
+    if (!data?.lessonbotRequestCount || !Array.isArray(data.lessonbotRequestCount)) {
+      return {
+        data: [],
+        label: 'Lesson Chat',
+        backgroundColor: '#ED7D2D',
+        hoverBackgroundColor: '#ED7D2D',
+        borderColor:'#FFFFFF',
+        barPercentage:0.8,
+        categoryPercentage:0.5
+      };
+    }
     return {
       data: data.lessonbotRequestCount.map((item: any) => item.requestCount),
       label: 'Lesson Chat',
