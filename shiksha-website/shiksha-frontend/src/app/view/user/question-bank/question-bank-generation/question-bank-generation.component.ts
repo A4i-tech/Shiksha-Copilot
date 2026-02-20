@@ -378,17 +378,25 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
       const rawClasses = this.loggedInUser.classes || [];
-      console.log('[Frontend] loggedInUser.classes sample:', rawClasses.length > 0 ? rawClasses[0] : 'Empty');
-      const uniqueSubjects = new Set<string>();
+
+      const subjectMap = new Map<string, string>(); // Formatted Name -> Raw Value
 
       rawClasses.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === selectedMedium) {
-          if (c.subject) uniqueSubjects.add(c.subject);
+          const rawValue = c.subject;
+          const nameToFormat = c.name || c.subject || '';
+          if (rawValue) {
+            const formatted = this.formatSubjectName(nameToFormat);
+            // Only add if not already present to ensure deduplication by formatted name
+            if (!subjectMap.has(formatted)) {
+              subjectMap.set(formatted, rawValue);
+            }
+          }
         }
       });
 
-      this.subjectDropdownOptions = Array.from(uniqueSubjects)
-        .map(s => ({ name: this.formatSubjectName(s), value: s })) // Format name for display, keep ID/code as value
+      this.subjectDropdownOptions = Array.from(subjectMap.entries())
+        .map(([name, value]) => ({ name, value }))
         .sort((a, b) => a.name.localeCompare(b.name));
     }
   }
@@ -397,14 +405,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (!subject) return '';
     // Replace underscores with spaces
     let formatted = subject.replace(/_/g, ' ');
-    // Remove trailing numbers if they look like IDs (e.g. "social_science_1" -> "social science")
-    // But be careful not to remove valid numbers if part of name. 
-    // Usually these IDs are "name_1", "name_2".
-    formatted = formatted.replace(/_\d+$/, ''); // Handle "science_1" -> "science"
-    formatted = formatted.replace(/\s\d+$/, ''); // Handle "science 1" -> "science"
+
+    // Aggressively remove all trailing numbers/spaces sequences
+    // e.g. "English 2 2" -> "English", "Social Science 1_1" -> "Social Science"
+    formatted = formatted.replace(/(\s\d+)+$/, '');
+    formatted = formatted.replace(/(_\d+)+$/, '');
 
     // Title Case
-    return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+    return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
   onSubjectChange(val: any) {
@@ -909,11 +917,23 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   private getMarksPerType(type: string): number {
     if (!type) return 1;
     const t = type.toLowerCase();
-    if (t.includes('alternative') || t.includes('choice') || t.includes('mcq')) return 1;
-    if (t.includes('two or three') || t.includes('short')) return 2;
-    if (t.includes('four or five') || t.includes('long')) return 5;
-    if (t.includes('match')) return 1;
-    return 2;
+
+    // 1 Mark Questions
+    if (t.includes('multiple choice') || t.includes('mcq') || t.includes('objective') || t.includes('alternative')) return 1;
+    if (t.includes('fill') || t.includes('blank')) return 1;
+    if (t.includes('match') || t.includes('collocation')) return 1;
+    if (t.includes('very short') || t.includes('one sentence') || t.includes('1 mark') || t.includes('true/false') || t.includes('odd one out') || t.includes('opposites')) return 1;
+
+    // 2 Mark Questions
+    if (t.includes('short answer') || t.includes('two or three') || t.includes('two to four') || t.includes('2 marks') || t.includes('read and answer') || t.includes('comprehension')) return 2;
+
+    // 4 Mark Questions (Common for Long Answer in some boards)
+    if (t.includes('four marks') || t.includes('4 marks') || t.includes('four sentences')) return 4;
+
+    // 5 Mark Questions (Long Answer / Essay)
+    if (t.includes('long answer') || t.includes('five marks') || t.includes('5 marks') || t.includes('essay') || t.includes('letter') || t.includes('paragraph') || t.includes('story') || t.includes('picture') || t.includes('map')) return 5;
+
+    return 2; // Default to 2 marks for unknown medium types
   }
 
   getChapterIds(): string[] {
@@ -944,24 +964,56 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   private mapHeadingToAIType(heading: string): string {
     if (!heading || typeof heading !== 'string') return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
     const h = heading.toLowerCase().trim();
+
+    // 1. MCQ
     if (h.includes('multiple choice') || h.includes('mcq') || h.includes('objective') || h.includes('alternative')) return QUESTION_TYPE_MAPPING_LONG.MCQ;
-    if (h.includes('fill in') || h.includes('blank')) return QUESTION_TYPE_MAPPING_LONG.FILL_BLANKS;
-    if (h.includes('one sentence') || h.includes('very short') || h.includes('1 mark')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_VERY_SHORT;
-    if (h.includes('two to four') || h.includes('short answer') || h.includes('2 marks')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
-    if (h.includes('four or five') || h.includes('long answer') || h.includes('4 marks') || h.includes('5 marks')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_LONG;
-    if (h.includes('match')) return QUESTION_TYPE_MAPPING_LONG.MATCHING;
+
+    // 2. Fill in the blanks
+    if (h.includes('fill') || h.includes('blank')) return QUESTION_TYPE_MAPPING_LONG.FILL_BLANKS;
+
+    // 3. Match
+    if (h.includes('match') || h.includes('collocation')) return QUESTION_TYPE_MAPPING_LONG.MATCHING;
+
+    // 4. Very Short / 1 Mark
+    if (h.includes('very short') || h.includes('one sentence') || h.includes('1 mark') || h.includes('true/false') || h.includes('true / false') || h.includes('odd one out') || h.includes('opposites') || h.includes('word relation') || h.includes('fourth word') || h.includes('syllable') || h.includes('chronological')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_VERY_SHORT;
+
+    // 5. Short Answer - Specific Range Checks FIRST to avoid overlap
+    if (h.includes('short answer') || h.includes('two to four') || h.includes('2-4') || h.includes('read and answer')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
+
+    // 6. Long Answer / 4+ Marks / 4+ Sentences
+    if (h.includes('long answer') || h.includes('four or five') || h.includes('four') || h.includes('4 marks') || h.includes('5 marks') || h.includes('six sentences') || h.includes('6 sentences') || h.includes('essay') || h.includes('letter') || h.includes('paragraph') || h.includes('picture') || h.includes('story') || h.includes('map')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_LONG;
+
+    // 7. Short Answer - Catch-all for remaining 2/3 marks/sentences
+    if (h.includes('two') || h.includes('three') || h.includes('2 marks') || h.includes('3 marks') || h.includes('comprehension')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
+
     return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
   }
 
   private mapToFriendlyHeading(rawType: string): string {
     if (!rawType || typeof rawType !== 'string') return 'Question';
     const h = rawType.toLowerCase().trim().replace(/_/g, ' ');
+
+    // 1. MCQ
     if (h.includes('mcq') || h.includes('multiple choice') || h.includes('alternative') || h.includes('objective')) return 'Multiple Choice Questions';
+
+    // 2. Fill in the blanks
     if (h.includes('fill') || h.includes('blank')) return 'Fill in the blanks';
-    if (h.includes('very short') || h.includes('one sentence') || h.includes('word, phrase') || h === 'answer very short') return 'Very Short Answer Questions';
-    if (h.includes('short answer') || h.includes('two or three') || h.includes('two to four') || h === 'answer short') return 'Short Answer Questions';
-    if (h.includes('long answer') || h.includes('four or five') || h === 'answer long') return 'Long Answer Questions';
-    if (h.includes('match')) return 'Match the Following';
+
+    // 3. Match
+    if (h.includes('match') || h.includes('collocation')) return 'Match the Following';
+
+    // 4. Very Short
+    if (h.includes('very short') || h.includes('one sentence') || h.includes('word, phrase') || h.includes('1 mark') || h.includes('true/false') || h.includes('true / false') || h.includes('odd one out') || h.includes('opposites') || h.includes('word relation') || h.includes('fourth word') || h.includes('syllable') || h.includes('chronological')) return 'Very Short Answer Questions';
+
+    // 5. Short Answer - Specific Range Checks
+    if (h.includes('short answer') || h.includes('two to four') || h.includes('2-4') || h.includes('read and answer')) return 'Short Answer Questions';
+
+    // 6. Long Answer
+    if (h.includes('long answer') || h.includes('four or five') || h.includes('four') || h.includes('4 marks') || h.includes('5 marks') || h.includes('six sentences') || h.includes('6 sentences') || h.includes('essay') || h.includes('letter') || h.includes('paragraph') || h.includes('picture') || h.includes('story') || h.includes('map')) return 'Long Answer Questions';
+
+    // 7. Short Answer - Catch-all
+    if (h.includes('two') || h.includes('three') || h.includes('2 marks') || h.includes('3 marks') || h.includes('comprehension')) return 'Short Answer Questions';
+
     if (h === 'answer medium' || h.includes('answer the following')) return 'Answer the following questions';
     return rawType;
   }

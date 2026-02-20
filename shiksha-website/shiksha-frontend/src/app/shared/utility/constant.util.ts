@@ -110,7 +110,7 @@ export const CCE_TYPE_MAPPER: any = {
     'Mathematics': 'cce_tools_math_science',
     'Evs': 'cce_tools_math_science',
     'Social Science': 'cce_tools_social',
-    'English 2': 'cce_tools_english'
+    'English': 'cce_tools_english'
 }
 
 export const QUESTION_TYPE_MAPPING_LONG = QUESTION_TYPE.reduce((acc: any, item) => {
