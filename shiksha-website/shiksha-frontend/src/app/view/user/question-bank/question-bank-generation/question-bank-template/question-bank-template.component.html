@@ -19,10 +19,10 @@
       <div class="relative">
         <button (click)="toggleFilterMenu()"
           class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-primary active:bg-gray-50 transition-all shadow-sm bg-white">
-          <img src="assets/icons/ri--filter-line.svg" alt="Filter" class="w-4 h-4" />
+          <img src="assets/icons/ri--filter-line.svg" alt="Filter" class="w-4 h-4" style="filter: invert(1);" />
           <span class="text-sm font-semibold text-gray-700">Filters</span>
           <img src="assets/icons/down-arrow.svg" alt="" class="w-2.5 h-2.5 opacity-50 transition-transform"
-            [class.rotate-180]="isFilterMenuOpen" />
+            [class.rotate-180]="isFilterMenuOpen" style="filter: invert(1);" />
         </button>
 
         <!-- Filter Overlay (closes on click elsewhere) -->

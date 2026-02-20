@@ -4,7 +4,7 @@
 from enum import Enum
 from functools import reduce
 from math import gcd
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Union, Tuple, Literal, TypeAlias
 import json
 import re
 from pydantic import BaseModel, computed_field, field_validator, Field
@@ -24,9 +24,12 @@ class QuestionBankMetadata(BaseModel):
     examination_name: str
 
 
+DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
+
+
 class TextQuestion(BaseModel):
     question: str = ""
-    difficulty: str = "Average"
+    difficulty: DifficultyType = "Average"
 
 
 
@@ -40,7 +43,7 @@ class FourOptionsQuestion(BaseModel):
     question: str = ""
     options: List[McqOption] = Field(default=[], min_length=2)
     answer: str = ""
-    difficulty: str = "Average"
+    difficulty: DifficultyType = "Average"
 
     @field_validator("options", mode="before")
     def convert_strings_to_options(cls, v):
@@ -64,7 +67,7 @@ class FourOptionsQuestion(BaseModel):
 class MatchingListQuestion(BaseModel):
     value1: str = ""
     value2: str = ""
-    difficulty: str = "Average"
+    difficulty: DifficultyType = "Average"
 
 
 # ==============================
