@@ -76,7 +76,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
   sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'name', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'name', openOnSelect: true };
   mediumDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Medium', height: 'auto', fieldName: 'Medium', bindLable: 'medium', bindValue: 'medium', required: true, clearableOff: true };
-  languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Language', height: 'auto', fieldName: 'Language', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
+  languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', height: 'auto', fieldName: 'Translate to', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
   subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Subject', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   chapterDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter', height: 'auto', fieldName: 'Chapter', bindLable: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'topics', openOnSelect: true };
@@ -139,13 +139,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.languageDropdownOptions = [
       { name: 'English', value: 'english' },
       { name: 'Kannada', value: 'kannada' },
-      { name: 'Telugu', value: 'telugu' },
-      { name: 'Hindi', value: 'hindi' },
-      { name: 'Tamil', value: 'tamil' },
-      { name: 'Malayalam', value: 'malayalam' },
-      { name: 'Marathi', value: 'marathi' },
-      { name: 'Bengali', value: 'bengali' },
-      { name: 'Urdu', value: 'urdu' },
+      { name: 'Telugu', value: 'telugu' }
     ];
 
     // Ensure initial validation state is correct
@@ -188,7 +182,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         grouped.set(mappedType, { type: mappedType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
       }
       const sec = grouped.get(mappedType);
-      sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1) });
+      sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1), value1: q.value1 || q.text || q.question || '', value2: q.value2 || q.keyAnswer || q.answer || '' });
       sec.numberOfQuestions = sec.questions.length;
     });
 
@@ -338,6 +332,46 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
         .sort((a, b) => parseInt(a.class) - parseInt(b.class));
+
+      this.updateSourceOptions(boardName);
+    } else {
+      this.updateSourceOptions(null);
+    }
+  }
+
+  updateSourceOptions(boardName: string | null) {
+    if (boardName === 'KSEEB') {
+      this.sourceGenerationOptions = [
+        { name: 'AI Questions', value: 'AI' },
+        { name: 'Pregenerated Questions', value: 'LBA' }
+      ];
+    } else {
+      this.sourceGenerationOptions = [
+        { name: 'AI Questions', value: 'AI' }
+      ];
+    }
+
+    // Validate current selection against new options
+    const currentVal = this.f.sourceGeneration.value;
+    if (!currentVal) return;
+
+    // Normalize to array for consistent handling
+    const currentSelections = Array.isArray(currentVal) ? currentVal : [currentVal];
+
+    // Create a Set of valid option names/values for quick lookup
+    // The dropdown uses 'name' as bindValue based on config
+    const validValues = new Set(this.sourceGenerationOptions.map(opt => opt.name));
+
+    const validSelections = currentSelections.filter((sel: any) => {
+      // Handle both object and string forms, just in case
+      const selValue = (typeof sel === 'object' && sel.name) ? sel.name : sel;
+      return validValues.has(selValue);
+    });
+
+    // Update if selections have changed
+    if (validSelections.length !== currentSelections.length) {
+      this.f.sourceGeneration.setValue(validSelections);
+      this.onSourceGenerationChange(validSelections);
     }
   }
 
@@ -370,19 +404,41 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   onMediumChange(val: any) {
     this.f.subject.reset();
+    this.f.language.reset(); // Reset language when medium changes
     this.subjectDropdownOptions = [];
     this.resetDistribution();
 
     if (val) {
-      const selectedMedium = val.medium || val;
+      const selectedMedium = (val.medium || val || '').toLowerCase(); // Normalize input
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
       const rawClasses = this.loggedInUser.classes || [];
 
+      // Auto-select language based on medium
+      const matchedLanguage = this.languageDropdownOptions.find(
+        opt => opt.name.toLowerCase() === selectedMedium
+      );
+      if (matchedLanguage) {
+        this.f.language.setValue(matchedLanguage.value);
+      } else {
+        // Fallback or leave empty? User requirement implies strong correlation.
+        // If medium is 'english', select 'english'.
+        // If medium is 'kannada', select 'kannada'.
+      }
+
+
       const subjectMap = new Map<string, string>(); // Formatted Name -> Raw Value
 
       rawClasses.forEach((c: any) => {
-        if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === selectedMedium) {
+        // Use the original c.medium for checking against the selected medium value (assuming the dropdown passes the exact string from options)
+        // But since we lowercased selectedMedium above for logic, we should probably compare carefully.
+        // However, onStandardChange populates mediumDropdownOptions from rawClasses[].medium directly. 
+        // So `val.medium` should match exactly one of `c.medium`.
+        // Let's use the raw value from `val` (before we lowercased it for language matching) for filtering classes.
+
+        const rawSelectedMedium = val.medium || val;
+
+        if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === rawSelectedMedium) {
           const rawValue = c.subject;
           const nameToFormat = c.name || c.subject || '';
           if (rawValue) {
@@ -705,7 +761,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         marks: Number(q.marks || 1),
         _id: q._id,
         unit_name: q.unit_name,
-        objective: q.objective || 'Knowledge'
+        objective: q.objective || 'Knowledge',
+        value1: q.value1 || q.text || q.question || '',
+        value2: q.value2 || q.keyAnswer || q.answer || ''
       });
       section.numberOfQuestions = section.questions.length;
     });
@@ -1045,13 +1103,57 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return this.questionBankService.getLBAQuestions(params).pipe(
       map((docs: any[]) => {
         console.log('[Frontend] getLBAQuestions response length:', docs?.length);
-        return (docs || []).map((q) => {
-          let displayText = q.text || q.question_text || q.question;
+        return (docs || []).flatMap((q) => {
+          const friendlyType = this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question');
+          const unitName = q.unit_name || selectedTitles[0] || 'General';
+          const baseObj = {
+            source: 'Pregenerated Questions',
+            marks: q.marksPerQuestion || q.marks || 1,
+            type: friendlyType,
+            heading: friendlyType,
+            unit_name: unitName,
+            objective: q.objective || 'Knowledge',
+          };
 
+          // Match the Following: expand pairs into individual value1/value2 entries
+          if (q.pairs && q.pairs.length > 0) {
+            return q.pairs.map((pair: any, idx: number) => ({
+              ...baseObj,
+              text: pair.left || '',
+              value1: pair.left || '',
+              value2: pair.right || pair.keyAnswer || '',
+              _id: q._id ? `${q._id}_pair_${idx}` : `lba_${Math.random().toString(36).substring(7)}`,
+            }));
+          }
+
+          // Match the Following fallback: split "Left item a. Right item" at letter marker
+          if (friendlyType === 'Match the Following') {
+            const rawText = q.text || q.question_text || q.question || '';
+            // Pattern: split at " a. ", " b. ", etc. (single lowercase letter surrounded by spaces and period)
+            const splitMatch = rawText.match(/^(.+?)\s+[a-z]\.\s+(.+)$/i);
+            if (splitMatch) {
+              return [{
+                ...baseObj,
+                text: splitMatch[1].trim(),
+                value1: splitMatch[1].trim(),
+                value2: splitMatch[2].trim(),
+                _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
+              }];
+            }
+            // If no letter marker found, use text/keyAnswer
+            return [{
+              ...baseObj,
+              text: rawText,
+              value1: rawText,
+              value2: q.keyAnswer || q.answer || '',
+              _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
+            }];
+          }
+
+          // Normal questions
+          let displayText = q.text || q.question_text || q.question;
           if (!displayText) {
-            if (q.pairs && q.pairs.length > 0) displayText = 'Match the following';
-            else if (q.items && q.items.length > 0) {
-              // Construct text from items if main text is missing
+            if (q.items && q.items.length > 0) {
               const itemTexts = q.items
                 .map((i: any) => i.question || i.text || i.content || '')
                 .filter((t: string) => t && t.trim().length > 0);
@@ -1060,18 +1162,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             else displayText = q.heading || q.groupHeading || q.type || 'Question';
           }
 
-          return {
+          return [{
             ...q,
-            source: 'Pregenerated Questions',
+            ...baseObj,
             text: displayText,
-            // PRIORITIZE TYPE-BASED MARKS OVER DB MARKS to ensure fairness as per user request
-            marks: this.getMarksPerType(this.mapToFriendlyHeading(q.heading || q.groupHeading || q.type || q.answerType || 'Question')),
-            type: this.mapToFriendlyHeading(q.heading || q.groupHeading || q.type || q.answerType || 'Question'),
-            heading: this.mapToFriendlyHeading(q.heading || q.groupHeading || q.type || q.answerType || 'Question'),
-            unit_name: q.unit_name || selectedTitles[0] || 'General',
-            objective: q.objective || 'Knowledge',
             _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
-          };
+          }];
         });
       }),
       catchError(err => {

@@ -14,22 +14,96 @@
   <!-- LEFT: AVAILABLE QUESTIONS -->
   <div class="flex-1 bg-white border rounded-lg flex flex-col shadow-sm overflow-hidden">
     <!-- Header/Filters -->
-    <div class="p-3 border-b bg-gray-50 space-y-3">
-      <div class="flex justify-between items-center">
-        <h3 class="font-bold text-gray-700">Available Pool</h3>
-        <div class="flex gap-2 text-xs">
-          <button (click)="setFilter('ALL')" [class.bg-gray-800]="filterSource==='ALL'"
-            [class.text-white]="filterSource==='ALL'" class="px-2 py-1 rounded border">All</button>
-          <button (click)="setFilter('AI Questions')" [class.bg-blue-600]="filterSource==='AI Questions'"
-            [class.text-white]="filterSource==='AI Questions'" class="px-2 py-1 rounded border">AI Gen</button>
-          <button (click)="setFilter('Pregenerated Questions')"
-            [class.bg-green-600]="filterSource==='Pregenerated Questions'"
-            [class.text-white]="filterSource==='Pregenerated Questions'"
-            class="px-2 py-1 rounded border">Pregenerated</button>
+    <div class="p-3 border-b bg-white flex items-center gap-3 relative">
+      <!-- Filter Dropdown Component-like logic -->
+      <div class="relative">
+        <button (click)="toggleFilterMenu()"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-primary active:bg-gray-50 transition-all shadow-sm bg-white">
+          <img src="assets/icons/ri--filter-line.svg" alt="Filter" class="w-4 h-4" style="filter: invert(1);" />
+          <span class="text-sm font-semibold text-gray-700">Filters</span>
+          <img src="assets/icons/down-arrow.svg" alt="" class="w-2.5 h-2.5 opacity-50 transition-transform"
+            [class.rotate-180]="isFilterMenuOpen" style="filter: invert(1);" />
+        </button>
+
+        <!-- Filter Overlay (closes on click elsewhere) -->
+        <div *ngIf="isFilterMenuOpen" (click)="toggleFilterMenu()" class="fixed inset-0 z-20"></div>
+
+        <!-- Filter Menu Content -->
+        <div *ngIf="isFilterMenuOpen"
+          class="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-30 p-4 animate-in fade-in slide-in-from-top-1 duration-200">
+
+          <div class="flex justify-between items-center mb-4 pb-2 border-b">
+            <span class="font-bold text-gray-800">Refine Results</span>
+            <button (click)="resetFilters(); toggleFilterMenu()"
+              class="text-xs text-primary font-bold hover:underline">Clear All</button>
+          </div>
+
+          <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-1 custom-scrollbar">
+            <!-- Source Section -->
+            <div class="space-y-2" *ngIf="availableSources.length">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Source</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button (click)="setFilter('ALL')" class="px-2.5 py-1 text-xs rounded-full border transition-all"
+                  [ngClass]="filterSource === 'ALL' ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'">
+                  All
+                </button>
+                <button *ngFor="let s of availableSources" (click)="setFilter(s)"
+                  class="px-2.5 py-1 text-xs rounded-full border transition-all"
+                  [ngClass]="filterSource === s ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'">
+                  {{ s === 'AI Questions' ? 'AI Gen' : (s === 'Pregenerated Questions' ? 'Pregen' : s) }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Difficulty Section -->
+            <div class="space-y-2" *ngIf="availableDifficulties.length">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Difficulty</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button (click)="setDifficultyFilter('ALL')"
+                  class="px-2.5 py-1 text-xs rounded-full border transition-all"
+                  [ngClass]="filterDifficulty === 'ALL' ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'">
+                  All
+                </button>
+                <button *ngFor="let d of availableDifficulties" (click)="setDifficultyFilter(d)"
+                  class="px-2.5 py-1 text-xs rounded-full border transition-all"
+                  [ngClass]="filterDifficulty === d ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'">
+                  <span class="capitalize">{{ d }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Question Type Section (Headings) -->
+            <div class="space-y-2" *ngIf="availableHeadings.length">
+              <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Question Type</label>
+              <div class="flex flex-col gap-1">
+                <button (click)="setTypeFilter('ALL')"
+                  class="flex items-center justify-between px-2 py-1.5 text-xs rounded-lg transition-all text-left"
+                  [ngClass]="filterQuestionType === 'ALL' ? 'bg-primary-5 text-primary font-bold' : 'hover:bg-gray-50 text-gray-600'">
+                  <span>All Types</span>
+                  <img *ngIf="filterQuestionType === 'ALL'" src="assets/icons/check.svg" class="w-3 h-3" />
+                </button>
+                <button *ngFor="let head of availableHeadings" (click)="setTypeFilter(head)"
+                  class="flex items-center justify-between px-2 py-1.5 text-xs rounded-lg transition-all text-left"
+                  [ngClass]="filterQuestionType === head ? 'bg-primary-5 text-primary font-bold' : 'hover:bg-gray-50 text-gray-600'">
+                  <span class="truncate">{{ head }}</span>
+                  <img *ngIf="filterQuestionType === head" src="assets/icons/check.svg" class="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <input type="text" placeholder="Search questions..." (input)="onSearch($event)"
-        class="w-full p-2 text-sm border rounded outline-none focus:border-primary">
+
+      <!-- Search Bar -->
+      <div class="flex-1 relative group">
+        <img src="assets/icons/search.svg" alt=""
+          class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 group-focus-within:opacity-70 transition-opacity" />
+        <input type="text" [value]="searchText" placeholder="Search questions..." (input)="onSearch($event)"
+          class="w-full pl-9 pr-4 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 bg-white shadow-sm transition-all">
+      </div>
+
+      <!-- Heading -->
+      <h3 class="font-bold text-gray-400 text-xs uppercase tracking-widest ml-auto hidden sm:block">Pool</h3>
     </div>
 
     <!-- List -->
@@ -48,6 +122,10 @@
             <span *ngIf="q.heading"
               class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
               {{ q.heading }}
+            </span>
+            <span *ngIf="q.difficulty" class="text-[10px] font-bold px-1 rounded uppercase tracking-wider border"
+              [ngClass]="getDifficultyColor(q.difficulty)">
+              {{ q.difficulty }}
             </span>
             <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider"
               [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated Questions'}">
@@ -88,9 +166,13 @@
               class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
               {{ q.heading }}
             </span>
+            <span *ngIf="q.difficulty" class="text-[10px] font-bold px-1 rounded uppercase tracking-wider border"
+              [ngClass]="getDifficultyColor(q.difficulty)">
+              {{ q.difficulty }}
+            </span>
             <span class="text-[10px] font-bold px-1 rounded uppercase"
-              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated'}">
-              {{ q.source }}
+              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated Questions'}">
+              {{ q.source === 'AI Questions' ? 'AI Gen' : 'Pregen' }}
             </span>
             <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }}M</span>
           </div>
