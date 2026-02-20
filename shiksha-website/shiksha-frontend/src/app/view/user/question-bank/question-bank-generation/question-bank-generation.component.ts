@@ -75,7 +75,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
   sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'name', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'name', openOnSelect: true };
   mediumDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Medium', height: 'auto', fieldName: 'Medium', bindLable: 'medium', bindValue: 'medium', required: true, clearableOff: true };
-  languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Language', height: 'auto', fieldName: 'Language', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
+  languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', height: 'auto', fieldName: 'Translate to', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
   subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Subject', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   chapterDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter', height: 'auto', fieldName: 'Chapter', bindLable: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'topics', openOnSelect: true };
@@ -138,13 +138,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.languageDropdownOptions = [
       { name: 'English', value: 'english' },
       { name: 'Kannada', value: 'kannada' },
-      { name: 'Telugu', value: 'telugu' },
-      { name: 'Hindi', value: 'hindi' },
-      { name: 'Tamil', value: 'tamil' },
-      { name: 'Malayalam', value: 'malayalam' },
-      { name: 'Marathi', value: 'marathi' },
-      { name: 'Bengali', value: 'bengali' },
-      { name: 'Urdu', value: 'urdu' },
+      { name: 'Telugu', value: 'telugu' }
     ];
 
     // Ensure initial validation state is correct
@@ -409,19 +403,41 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   onMediumChange(val: any) {
     this.f.subject.reset();
+    this.f.language.reset(); // Reset language when medium changes
     this.subjectDropdownOptions = [];
     this.resetDistribution();
 
     if (val) {
-      const selectedMedium = val.medium || val;
+      const selectedMedium = (val.medium || val || '').toLowerCase(); // Normalize input
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
       const rawClasses = this.loggedInUser.classes || [];
 
+      // Auto-select language based on medium
+      const matchedLanguage = this.languageDropdownOptions.find(
+        opt => opt.name.toLowerCase() === selectedMedium
+      );
+      if (matchedLanguage) {
+        this.f.language.setValue(matchedLanguage.value);
+      } else {
+        // Fallback or leave empty? User requirement implies strong correlation.
+        // If medium is 'english', select 'english'.
+        // If medium is 'kannada', select 'kannada'.
+      }
+
+
       const subjectMap = new Map<string, string>(); // Formatted Name -> Raw Value
 
       rawClasses.forEach((c: any) => {
-        if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === selectedMedium) {
+        // Use the original c.medium for checking against the selected medium value (assuming the dropdown passes the exact string from options)
+        // But since we lowercased selectedMedium above for logic, we should probably compare carefully.
+        // However, onStandardChange populates mediumDropdownOptions from rawClasses[].medium directly. 
+        // So `val.medium` should match exactly one of `c.medium`.
+        // Let's use the raw value from `val` (before we lowercased it for language matching) for filtering classes.
+
+        const rawSelectedMedium = val.medium || val;
+
+        if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === rawSelectedMedium) {
           const rawValue = c.subject;
           const nameToFormat = c.name || c.subject || '';
           if (rawValue) {
