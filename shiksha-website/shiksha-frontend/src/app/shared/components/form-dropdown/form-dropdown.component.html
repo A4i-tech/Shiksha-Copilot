@@ -20,9 +20,6 @@
           [checked]="dropDownCtrl.value?.includes(config.selectAllValue ? item[config.selectAllValue] : item)">
         <span class="whitespace-nowrap overflow-x-hidden text-ellipsis">{{ config.selectAllValue ?
           item[config.selectAllValue] : item }}</span>
-        <!-- Info icon is not in tab order; tooltip on hover, option text is primary for screen readers -->
-        <img *ngIf="item?.info" [matTooltip]="getSafeInfo(item)" [attr.aria-label]="getSafeInfo(item) || 'Info'"
-          src="assets/icons/info-primary.svg" class="w-4 h-4 ml-1 cursor-help" alt="">
       </div>
     </ng-template>
 
@@ -40,6 +37,9 @@
     <div class="mt-2 flex-wrap">
       <ng-container *ngFor="let item of dropDownCtrl?.value; let i = index">
         <span class="chip" *ngIf="item">
+          <img *ngIf="getItemForValue(item)?.info" [matTooltip]="getSafeInfo($any(getItemForValue(item)))"
+            [attr.aria-label]="getSafeInfo($any(getItemForValue(item))) || 'Info'" src="assets/icons/info-primary.svg"
+            class="inline-block w-4 h-4 mr-1 cursor-help" alt="">
           <span *ngIf="config?.chipValueType === 'titlecase'">{{
             getLabelForValue(item) | titlecase
             }}</span>

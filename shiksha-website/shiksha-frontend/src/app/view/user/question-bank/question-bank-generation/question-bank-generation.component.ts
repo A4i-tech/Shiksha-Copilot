@@ -61,7 +61,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
   sourceGenerationOptions: FormDropDownOption[] = [
-    { name: 'AI Questions', value: 'AI' },
+    { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
     { name: 'Pregenerated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
   ];
 

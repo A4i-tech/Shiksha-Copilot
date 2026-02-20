@@ -20,7 +20,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
   styleUrls: ['./form-dropdown.component.scss'],
 })
 export class FormDropdownComponent implements OnInit, OnChanges {
-  constructor(private readonly sanitizer: DomSanitizer) {}
+  constructor(private readonly sanitizer: DomSanitizer) { }
   /** Options for the dropdown; items may include optional `info` (string) for tooltip. */
   @Input() dropDownValues: FormDropDownOption[] = [];
 
@@ -186,5 +186,24 @@ export class FormDropdownComponent implements OnInit, OnChanges {
 
     // Fallback: return the value itself (or empty string if value is falsy)
     return value != null && value !== '' ? String(value) : '';
+  }
+
+  /**
+   * Get the original item object for a value by looking it up in dropDownValues
+   * @param value The value to look up
+   * @returns The original option object, or undefined if not found
+   */
+  getItemForValue(value: any): FormDropDownOption | undefined {
+    if (value == null || value === '') {
+      return undefined;
+    }
+
+    if (this.config.bindValue && this.dropDownValues?.length > 0) {
+      return this.dropDownValues.find(
+        (item) => item && item[this.config.bindValue!] === value
+      );
+    }
+
+    return typeof value === 'object' ? value : undefined;
   }
 }
