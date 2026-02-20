@@ -61,8 +61,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
   sourceGenerationOptions: any[] = [
-    { name: 'AI Questions', value: 'AI' },
-    { name: 'Pregenerated Questions', value: 'LBA' }
+    { name: 'AI Questions', value: 'AI' }
   ];
 
   // LBA Specific Data
@@ -338,6 +337,46 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
         .sort((a, b) => parseInt(a.class) - parseInt(b.class));
+
+      this.updateSourceOptions(boardName);
+    } else {
+      this.updateSourceOptions(null);
+    }
+  }
+
+  updateSourceOptions(boardName: string | null) {
+    if (boardName === 'KSEEB') {
+      this.sourceGenerationOptions = [
+        { name: 'AI Questions', value: 'AI' },
+        { name: 'Pregenerated Questions', value: 'LBA' }
+      ];
+    } else {
+      this.sourceGenerationOptions = [
+        { name: 'AI Questions', value: 'AI' }
+      ];
+    }
+
+    // Validate current selection against new options
+    const currentVal = this.f.sourceGeneration.value;
+    if (!currentVal) return;
+
+    // Normalize to array for consistent handling
+    const currentSelections = Array.isArray(currentVal) ? currentVal : [currentVal];
+
+    // Create a Set of valid option names/values for quick lookup
+    // The dropdown uses 'name' as bindValue based on config
+    const validValues = new Set(this.sourceGenerationOptions.map(opt => opt.name));
+
+    const validSelections = currentSelections.filter((sel: any) => {
+      // Handle both object and string forms, just in case
+      const selValue = (typeof sel === 'object' && sel.name) ? sel.name : sel;
+      return validValues.has(selValue);
+    });
+
+    // Update if selections have changed
+    if (validSelections.length !== currentSelections.length) {
+      this.f.sourceGeneration.setValue(validSelections);
+      this.onSourceGenerationChange(validSelections);
     }
   }
 
