@@ -56,6 +56,24 @@
           <button  title="{{'Copy to clipboard' | translate}}" (click)="utilityService.copyToClipboard(message.answer, message?.version || 0)"><img src="assets/icons/copy-clipboard.svg" alt=""> </button>
           </div>
           </div>
+          <!-- References Section -->
+          <div class="references-section ml-11 md:ml-14 mt-1 max-w-[80%]" *ngIf="message.references && message.references.length > 0">
+            <details class="references-details">
+              <summary class="references-summary cursor-pointer text-xs text-content-60 hover:text-primary">
+                📚 {{ 'References' | translate }} ({{ message.references.length }})
+              </summary>
+              <div class="references-list mt-1 p-2 bg-shade-80 rounded-md">
+                <div *ngFor="let ref of message.references; let i = index" class="reference-item text-xs mb-1 last:mb-0">
+                  <span class="text-content-60 mr-1">{{ i + 1 }}.</span>
+                  <a *ngIf="ref.url" [href]="ref.url" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">
+                    {{ ref.title }}
+                  </a>
+                  <span *ngIf="!ref.url" class="font-medium text-content">{{ ref.title }}</span>
+                  <p *ngIf="ref.text && !ref.url" class="text-content-50 text-[11px] mt-0.5 leading-tight">{{ ref.text }}</p>
+                </div>
+              </div>
+            </details>
+          </div>
         </div>
 
         <div
@@ -82,9 +100,12 @@
     >
       <span class="text-[11px] text-white font-bold">C</span>
     </div>
-    <span class="dot"></span>
-    <span class="dot"></span>
-    <span class="dot"></span>
+    <ng-container *ngIf="!loadingStatus">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </ng-container>
+    <span *ngIf="loadingStatus" class="text-xs text-content-50 ml-2 animate-pulse">{{ loadingStatus }}</span>
   </div>
   <div class="relative flex flex-col-reverse">
     <div class="absolute w-full  px-0 md:px-36" [ngClass]="type === 'general' ? 'bottom-[-65px] md:bottom-[-95px]' : 'bottom-[-65px] md:bottom-[-95px]'">

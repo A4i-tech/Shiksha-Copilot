@@ -180,7 +180,7 @@ class TestInMemRagOpsAdapter:
         chat_history = [ChatMessage(role="system", content="You are a teacher")]
         result = await adapter.chat_with_index("What is photosynthesis?", chat_history)
 
-        assert result == "Test response"
+        assert result["response"] == "Test response"
         mock_rag_ops.chat_with_index.assert_called_once()
 
 
@@ -271,7 +271,7 @@ class TestQdrantRagOpsAdapter:
         chat_history = [ChatMessage(role="system", content="You are a teacher")]
         result = await adapter.chat_with_index("What is respiration?", chat_history)
 
-        assert result == "Filtered response"
+        assert result["response"] == "Filtered response"
         # Verify metadata filter was passed
         call_args = mock_rag_ops.chat_with_index.call_args
         assert call_args[1]["metadata_filter"] == {"chapter_id": "6"}

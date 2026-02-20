@@ -1,7 +1,7 @@
 const BaseManager = require("./base.manager");
 const ChatDao = require("../dao/chat.dao");
 const formatApiResponse = require("../helper/response");
-const { postToChatBot, postToLessonChatBot } = require("../services/chat.bot.service");
+const { postToChatBot, postToLessonChatBot, postToChatBotStream } = require("../services/chat.bot.service");
 const { CHAT_LIMIT } = require("../config/constants");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
@@ -76,6 +76,7 @@ class ChatManager extends BaseManager {
 			await this.chatDao.addMessage(chatSession._id, {
 				question: message,
 				answer: response.data.response,
+				references: response.data.references || [],
 			});
 
 			chatSession.requestCount += 1;
@@ -85,10 +86,115 @@ class ChatManager extends BaseManager {
 			return formatApiResponse(
 				true,
 				"Response from copilot",
-				response.data.response
+				{ response: response.data.response, references: response.data.references || [] }
 			);
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
+		}
+	}
+
+	async sendMessageStream(userId, message) {
+		try {
+			const today = new Date();
+			today.setUTCHours(0, 0, 0, 0);
+			let chatSession = await this.chatDao.getActiveSession(userId, today);
+
+			if (!chatSession) {
+				chatSession = await this.chatDao.create({
+					userId,
+					sessionDate: today,
+					requestCount: 0,
+				});
+				await this.chatDao.createMessage({
+					chatHistoryId: chatSession._id,
+					messages: [],
+				});
+			}
+
+			const totalMessages = await this.getTotalSessionMessagesCount(userId);
+
+			if (totalMessages >= CHAT_LIMIT) {
+				return { success: false, message: "Session closed due to request limit exceeded" };
+			}
+
+			let existingMessages = await this.chatDao.getMessagesBySessionId(
+				chatSession._id
+			);
+
+			let formattedMessages = existingMessages.messages
+				.map((m) => [
+					{ role: "user", message: m.question },
+					{ role: "system", message: m.answer },
+				])
+				.flat();
+			formattedMessages.reverse();
+
+			formattedMessages.push({ role: "user", message });
+
+			const response = await postToChatBotStream({
+				user_id: userId,
+				messages: formattedMessages,
+			});
+
+			// Handle DB persistence asynchronously
+			const stream = response.data;
+			let buffer = '';
+			let fullAnswer = '';
+			let references = [];
+
+			stream.on('data', (chunk) => {
+				try {
+					buffer += chunk.toString();
+					const lines = buffer.split('\n');
+					buffer = lines.pop();
+
+					for (const line of lines) {
+						if (line.trim() === '') continue;
+						if (line.startsWith('data: ')) {
+							const dataStr = line.slice(6);
+							if (dataStr === '[DONE]') continue;
+							try {
+								const data = JSON.parse(dataStr);
+								if (data.type === 'content') {
+									fullAnswer += data.delta;
+								} else if (data.type === 'references') {
+									references = data.data;
+								}
+							} catch (e) {
+								// console.error('Error parsing SSE data for DB save', e);
+								// Sometime chunks might be malformed if cut in middle of JSON, but buffer handles lines.
+								// However, if JSON itself contains \n it might break? 
+								// Standard SSE sends one line per event data. My Python implementation sends json.dumps() + "\n". 
+								// json.dumps usually escapes newlines unless ensure_ascii=False etc. 
+								// So splitting by \n is generally safe for this specific implementation.
+							}
+						}
+					}
+				} catch (err) {
+					console.error("Error in stream data handler", err);
+				}
+			});
+
+			stream.on('end', async () => {
+				try {
+					if (fullAnswer) {
+						await this.chatDao.addMessage(chatSession._id, {
+							question: message,
+							answer: fullAnswer,
+							references: references
+						});
+						chatSession.requestCount += 1;
+						await chatSession.save();
+					}
+				} catch (dbError) {
+					console.error("Error saving chat to DB after stream", dbError);
+				}
+			});
+
+			return { success: true, stream: response.data };
+
+		} catch (err) {
+			return { success: false, message: err.message, error: err };
 		}
 	}
 
@@ -210,10 +316,18 @@ class ChatManager extends BaseManager {
 			await this.chatDao.createLessonChats({
 				teacherId: userId,
 				recordId: lessonDetails._id,
-				message: { question: message, answer: response.data.response, version: 2 }
+				message: {
+					question: message,
+					answer: response.data.response,
+					references: response.data.references || [],
+					version: 2,
+				}
 			});
 
-			return formatApiResponse(true, "Lesson chat response", response.data.response);
+			return formatApiResponse(true, "Lesson chat response", {
+				response: response.data.response,
+				references: response.data.references || [],
+			});
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
 		}

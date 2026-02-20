@@ -4,10 +4,16 @@ import logging
 import traceback
 
 from openai import AsyncAzureOpenAI
+import json
+import asyncio
+from openai.types.responses import ResponseOutputMessage, ResponseOutputText
+from openai.types.responses.response import Response
+from openai.types.responses.response_output_text import AnnotationURLCitation
 
 from app.models.chat import ConversationMessage
 from app.config import settings
 from app.utils.prompt_template import PromptTemplate
+from pydantic import validate_call
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +35,10 @@ class GeneralChatService:
             raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
         if not settings.azure_openai_api_version:
             raise ValueError("AZURE_OPENAI_API_VERSION environment variable is required")
-        
-        # Determine deployment name with fallback
-        self.deployment_name = settings.azure_chat_deployment_name
-        if not self.deployment_name:
-            if settings.azure_openai_deployment_name:
-                logger.warning("AZURE_CHAT_DEPLOYMENT_NAME not set, using AZURE_OPENAI_DEPLOYMENT_NAME as fallback.")
-                self.deployment_name = settings.azure_openai_deployment_name
-            else:
-                raise ValueError("AZURE_CHAT_DEPLOYMENT_NAME or AZURE_OPENAI_DEPLOYMENT_NAME is required")
+        if not settings.azure_openai_deployment_name:
+            raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required")
+        if not settings.azure_chat_deployment_name:
+            raise ValueError("AZURE_CHAT_DEPLOYMENT_NAME environment variable is required")
 
         self.client = AsyncAzureOpenAI(
                 api_key=settings.azure_openai_api_key,
@@ -46,55 +47,107 @@ class GeneralChatService:
             )
 
 
+    @validate_call
     async def __call__(
         self,
         messages: List[ConversationMessage],
-    ) -> str:
-        """
-        Core chat logic using Azure AI Project client with agents.
-
-        Args:
-            messages: List of conversation messages
-
-        Returns:
-            AI-generated response
-        """
+    ):
         try:
-            # Get the system prompt from template
             system_prompt = self.prompt_template.get_prompt("general_chat")
-            if system_prompt is None:
+            if not system_prompt:
                 raise ValueError("General chat prompt not found in chat_prompts.yaml")
 
-            # Format messages for AzureOpenAI client
-            formatted_messages = [{"role": "system", "content": system_prompt}]
-            for message in messages:
-                formatted_messages.append({"role": message.role.value, "content": message.message})
+            yield json.dumps({"type": "status", "message": "Thinking..."}) + "\n"
 
-            response = await self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=formatted_messages,
-                temperature=0.7
+            # Format messages
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for m in messages:
+                role = m.role.value
+                content = m.message
+                formatted_messages.append({"role": role, "content": content})
+
+            # Responses API with web search
+            stream = await self.client.responses.create(
+                model=settings.azure_chat_deployment_name,
+                input=formatted_messages,
+                tools=[{"type": "web_search"}],
+                stream=True,
             )
 
-            # Extract and return the AI-generated response
-            if response.choices and response.choices[0].message.content:
-                return response.choices[0].message.content.strip()
-            
-            return "I'm sorry, but I couldn't find an appropriate response."
+            final_response_obj = None
+
+            async for event in stream:
+
+                # Streaming text deltas
+                if event.type == "response.output_text.delta":
+                    yield json.dumps({
+                        "type": "content",
+                        "delta": event.delta
+                    }) + "\n"
+
+                # Final completed response (contains citations)
+                elif event.type == "response.completed":
+                    final_response_obj = event.response
+
+            # Extract references AFTER stream ends
+            if final_response_obj:
+                references = self._extract_url_citations(final_response_obj)
+                yield json.dumps({
+                    "type": "references",
+                    "data": references
+                }) + "\n"
 
         except Exception as e:
-            logger.error(f"Error in Azure OpenAI chat: {e}")
-            traceback.print_exc()
-            raise
+            logger.error(f"Error in Azure OpenAI chat: {e}", exc_info=True)
+            yield json.dumps({
+                "type": "error",
+                "message": str(e)
+            }) + "\n"
+
+    def _extract_url_citations(self, response: Response) -> list:
+        """
+        Extract URL citations from Azure OpenAI Responses API output annotations.
+
+        The Responses API returns output items that may contain 'url_citation'
+        annotations within message content blocks.
+
+        Returns:
+            List of dicts with 'title' and 'url' keys
+        """
+        references = []
+        seen_urls = set()
+
+        if not response.output:
+            return references
+
+        for item in response.output:
+            if not isinstance(item, ResponseOutputMessage):
+                continue
+            
+            for content_block in item.content:
+                if not isinstance(content_block, ResponseOutputText):
+                    continue
+                
+                # Check for annotations
+                if not content_block.annotations:
+                    continue
+
+                for annotation in content_block.annotations:
+                    if isinstance(annotation, AnnotationURLCitation):
+                        url = annotation.url
+                        title = annotation.title or url
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
+                            references.append({"title": title, "url": url})
+
+        return references
 
     async def cleanup(self):
         """
         Cleanup method for the service.
         """
         try:
-            # Native client doesn't need explicit cleanup in this context,
-            # but we keep the method for interface consistency with lifespan.
-            logger.info("General Chat Service cleanup completed")
+            await self.client.close()
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 

@@ -11,12 +11,31 @@ class ChatController extends BaseController {
     async sendMessage(req, res) {
         try {
             const { message } = req.body;
-            const userId  = req.user._id;
-            const result = await this.chatManager.sendMessage(userId, message);
+            const userId = req.user._id;
+
+            // Use streaming manager method
+            const result = await this.chatManager.sendMessageStream(userId, message);
+
             if (!result.success) {
-                return res.status(404).json({ message: result.message, data:result.data });
+                return res.status(404).json({ message: result.message, data: result.error });
             }
-            return res.status(200).json({ message: result.message, data:result.data });
+
+            // Set headers for SSE
+            // The Python backend returns 'text/event-stream'.
+            // We should forward that content type.
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+
+            // Pipe the stream
+            result.stream.pipe(res);
+
+            // Handle stream errors
+            result.stream.on('error', (err) => {
+                console.error('Stream error in controller', err);
+                res.end(); // End response on error
+            });
+
         } catch (err) {
             console.log('Error --> ChatController -> sendMessage()', err);
             return handleError(err, res);
@@ -25,12 +44,12 @@ class ChatController extends BaseController {
 
     async listMessages(req, res) {
         try {
-            const userId  = req.user._id;
+            const userId = req.user._id;
             const result = await this.chatManager.listMessages(userId);
             if (!result.success) {
-                return res.status(404).json({ message: result.message, data:result.data });
+                return res.status(404).json({ message: result.message, data: result.data });
             }
-            return res.status(200).json({ message: result.message, data:result.data });
+            return res.status(200).json({ message: result.message, data: result.data });
         } catch (err) {
             console.log('Error --> ChatController -> listMessages()', err);
             return handleError(err, res);
@@ -39,10 +58,10 @@ class ChatController extends BaseController {
 
     async sendLessonMessage(req, res) {
         try {
-            const { recordId , chapterId } = req.params;
+            const { recordId, chapterId } = req.params;
             const userId = req.user._id;
             const { message } = req.body;
-            const result = await this.chatManager.sendLessonMessage(userId, recordId, chapterId , message);
+            const result = await this.chatManager.sendLessonMessage(userId, recordId, chapterId, message);
             if (!result.success) {
                 return res.status(404).json({ message: result.message, data: result.data });
             }
@@ -55,9 +74,9 @@ class ChatController extends BaseController {
 
     async listLessonMessages(req, res) {
         try {
-            const { recordId , chapterId } = req.params;
+            const { recordId, chapterId } = req.params;
             const userId = req.user._id;
-            const result = await this.chatManager.listLessonMessages(recordId,chapterId ,userId);
+            const result = await this.chatManager.listLessonMessages(recordId, chapterId, userId);
             if (!result.success) {
                 return res.status(404).json({ message: result.message, data: result.data });
             }

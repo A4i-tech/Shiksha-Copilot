@@ -87,14 +87,15 @@ class TestLessonChatServiceCall:
             # Mock adapter response
             mock_adapter = AsyncMock()
             mock_adapter.initiate_index = AsyncMock()
-            mock_adapter.chat_with_index = AsyncMock(return_value="Test response")
+            mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
             mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
 
             service = LessonChatService()
 
             result = await service(sample_lesson_chat_request)
 
-            assert result == "Test response"
+            assert isinstance(result, dict)
+            assert result["response"] == "Test response"
             mock_rag_adapter_cache.get_or_create_adapter.assert_called_once()
 
     @pytest.mark.asyncio
@@ -113,7 +114,7 @@ class TestLessonChatServiceCall:
 
             mock_adapter = AsyncMock()
             mock_adapter.initiate_index = AsyncMock()
-            mock_adapter.chat_with_index = AsyncMock(return_value="Test response")
+            mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
             mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
 
             service = LessonChatService()
@@ -138,7 +139,7 @@ class TestLessonChatServiceCall:
 
             mock_adapter = AsyncMock()
             mock_adapter.initiate_index = AsyncMock()
-            mock_adapter.chat_with_index = AsyncMock(return_value="Test response")
+            mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
             mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
 
             service = LessonChatService()
@@ -170,7 +171,7 @@ class TestLessonChatServiceCall:
 
             mock_adapter = AsyncMock()
             mock_adapter.initiate_index = AsyncMock()
-            mock_adapter.chat_with_index = AsyncMock(return_value="Test response")
+            mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
             mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
 
             service = LessonChatService()

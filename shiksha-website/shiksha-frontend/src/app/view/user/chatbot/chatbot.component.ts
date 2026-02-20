@@ -19,39 +19,41 @@ interface ChatMessages {
   question?: string;
   createdAt?: string;
   _id?: string;
-  version?:number
+  version?: number;
+  references?: { title: string, url?: string, text?: string }[];
 }
 
 @Component({
   selector: 'app-chatbot',
   templateUrl: './chatbot.component.html',
   styleUrls: ['./chatbot.component.scss'],
-  standalone:true,
-  imports:[CommonModule, FormsModule, TranslateModule, ProfileImageComponent,InstructionsPopupComponent, ModalComponent,ChatMarkdownModule]
+  standalone: true,
+  imports: [CommonModule, FormsModule, TranslateModule, ProfileImageComponent, InstructionsPopupComponent, ModalComponent, ChatMarkdownModule]
 })
 export class ChatbotComponent implements OnInit, OnDestroy {
   @ViewChild('textArea') textArea!: ElementRef<any>;
   @ViewChild('header') header!: ElementRef<any>;
 
   messages: ChatMessages[] = [];
+  loadingStatus: string = '';
 
   chatValue: any;
 
   isLoading = false;
 
-  typeSubscription:Subscription;
+  typeSubscription: Subscription;
 
-  paramSubscription!:Subscription;
+  paramSubscription!: Subscription;
 
-  type:any;
+  type: any;
 
-  recordId:any;
+  recordId: any;
 
-  chapterId:any;
+  chapterId: any;
 
-  chapterDetails:any;
+  chapterDetails: any;
 
-  showInstructions=false
+  showInstructions = false
 
   instructions = [
     {
@@ -86,16 +88,16 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     private chatbotService: ChatbotService,
     private sanitizer: DomSanitizer,
     public utilityService: UtilityService,
-    public sidebarService:SidebarService,
+    public sidebarService: SidebarService,
     private activatedRoute: ActivatedRoute,
-    private router:Router,
-    public modalService:ModalService
+    private router: Router,
+    public modalService: ModalService
   ) {
-    this.typeSubscription = this.activatedRoute.data.subscribe((data:any)=>{
+    this.typeSubscription = this.activatedRoute.data.subscribe((data: any) => {
       this.type = data.type;
     })
-    
-    if(this.type === 'index'){
+
+    if (this.type === 'index') {
       this.paramSubscription = this.activatedRoute.queryParams.subscribe(params => {
         this.recordId = params['recordId']
         this.chapterId = params['chapterId']
@@ -107,11 +109,11 @@ export class ChatbotComponent implements OnInit, OnDestroy {
    * ngOnInit lifecycle hook of angular used here to initialize chat messages
    */
   ngOnInit(): void {
-    if(this.type === 'general'){
+    if (this.type === 'general') {
       this.getGeneralMessages();
-    } else if(this.type === 'index'){
+    } else if (this.type === 'index') {
       this.getIndexMessages();
-    }else{
+    } else {
       return
     }
   }
@@ -163,23 +165,23 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     });
   }
 
-    /**
-   * Function to get messages
-   */
-    getIndexMessages() {
-      this.chatbotService.getIndexMessages(this.recordId,this.chapterId).subscribe({
-        next: (res) => {
-          this.messages = res.data.messages;
-          this.chapterDetails = res?.data?.chapterDetails;
-          this.chapterDetails.subject = this.utilityService.getSubjectDisplayName(res?.data?.subject);
-          this.isLoading = false;
-        },
-        error: (err) => {
-          this.isLoading = false;
-          this.utilityService.handleError(err);
-        },
-      });
-    }
+  /**
+ * Function to get messages
+ */
+  getIndexMessages() {
+    this.chatbotService.getIndexMessages(this.recordId, this.chapterId).subscribe({
+      next: (res) => {
+        this.messages = res.data.messages;
+        this.chapterDetails = res?.data?.chapterDetails;
+        this.chapterDetails.subject = this.utilityService.getSubjectDisplayName(res?.data?.subject);
+        this.isLoading = false;
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.utilityService.handleError(err);
+      },
+    });
+  }
 
   /**
    * Function to send message
@@ -207,36 +209,138 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       this.textArea.nativeElement.style.height = '36px';
       this.isLoading = true;
 
-      if(this.type === 'general'){
+      if (this.type === 'general') {
         this.sendGeneralMessage(messageObj)
-      }else{
+      } else {
         this.sendIndexMessage(messageObj)
       }
-    
+
     }
   }
 
-  sendGeneralMessage(messageObj:any){
+  sendGeneralMessage(messageObj: any) {
+    // initialize empty message holder
+    const responseMessage: ChatMessages = {
+      question: '',
+      answer: '',
+      createdAt: new Date().toISOString(),
+      _id: 'temp-id',
+      references: []
+    };
+    this.messages.unshift(responseMessage);
+
+    // We already unshifted the question in sendMessage, but wait.
+    // sendMessage unshifts:
+    /*
+      const questionObj: ChatMessages = {
+        question: this.chatValue,
+        answer: '',
+        createdAt: '',
+        _id: '',
+      };
+      this.messages.unshift(questionObj);
+    */
+    // So the top message is the user question.
+    // We need to append the answer to THIS message or add a new one?
+    // The UI likely shows question and answer in same block or separate?
+    // Looking at `messages` structure: `{ answer?: string; question?: string; ... }`
+    // It seems each item in `messages` array is a Q&A pair.
+    // So `messages[0]` is the current Q&A being built.
+
     this.chatbotService.sendGeneralMessage(messageObj).subscribe({
-      next: (res) => {
-        if (res.data) {
-          this.getGeneralMessages();
+      next: (data) => {
+        const currentMessage = this.messages[0];
+
+        if (data.type === 'status') {
+          // Show status. For now, maybe prepend to answer or distinct UI?
+          // The user execution requested "loading states".
+          // I will set a temporary property or simply use the answer field with a spinner/text if empty.
+          // However, to be cleaner, let's use a separate property if possible, or just log it for now 
+          // and update the answer text if it's "Thinking...".
+          // Actually, let's append status to a "status" field if we had one.
+          // Since we don't, I will use `isLoading` coupled with a status tracking variable if needed.
+          // But `isLoading` is boolean.
+          // Let's just assume `answer` is the content.
+          // If we receive "status", we could show it as a placeholder?
+          // Let's strictly handle 'content' for answer.
+          // For 'status', I'll update a local variable `loadingStatus` and display it in template if I could edit HTML.
+          // Since I am editing TS, I will create a variable `loadingStatus`.
+          this.loadingStatus = data.message;
+        } else if (data.type === 'content') {
+          this.loadingStatus = ''; // Clear status when content starts
+          currentMessage.answer = (currentMessage.answer || '') + data.delta;
+        } else if (data.type === 'references') {
+          currentMessage.references = data.data;
+        } else if (data.type === 'error') {
+          this.utilityService.showError(data.message);
         }
       },
       error: (err) => {
-        if (err.status === 404) {
-          this.messages.shift();
-          this.utilityService.showError(err?.error?.message);
-        } else {
-          this.utilityService.handleError(err);
-        }
         this.isLoading = false;
+        this.loadingStatus = '';
+        this.utilityService.handleError(err);
       },
+      complete: () => {
+        this.isLoading = false;
+        this.loadingStatus = '';
+        if (this.messages[0]?.answer) {
+          const extractedRefs = this.extractReferences(this.messages[0].answer);
+          if (extractedRefs.length > 0) {
+            // Merge with existing references if any, avoiding duplicates
+            const existingRefs = this.messages[0].references || [];
+            const existingUrls = new Set(existingRefs.map(r => r.url));
+
+            extractedRefs.forEach(ref => {
+              if (!existingUrls.has(ref.url)) {
+                existingRefs.push(ref);
+                existingUrls.add(ref.url);
+              }
+            });
+            this.messages[0].references = existingRefs;
+          }
+        }
+      }
     });
   }
 
-  sendIndexMessage(messageObj:any){
-    this.chatbotService.sendIndexMessage(messageObj,this.recordId,this.chapterId).subscribe({
+  extractReferences(text: string) {
+    const references: { title: string, url: string, text?: string }[] = [];
+    const seenUrls = new Set<string>();
+
+    // Pass 1: Extract Markdown links [Title](URL)
+    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g;
+    let match;
+    while ((match = markdownLinkRegex.exec(text)) !== null) {
+      const title = match[1];
+      let url = match[2];
+      // Clean potential trailing punctuation if regex grabbed it
+      if (url.endsWith(')')) url = url.slice(0, -1);
+
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        references.push({ title, url });
+      }
+    }
+
+    // Pass 2: Extract bare URLs
+    const urlRegex = /(https?:\/\/[^\s\)]+)/g;
+    let urlMatch;
+    while ((urlMatch = urlRegex.exec(text)) !== null) {
+      let url = urlMatch[1];
+      // Clean common trailing punctuation from bare URLs
+      url = url.replace(/[.,;)]$/, '');
+
+      if (url && !seenUrls.has(url)) {
+        seenUrls.add(url);
+        references.push({ title: url, url });
+      }
+    }
+
+    return references;
+  }
+
+  sendIndexMessage(messageObj: any) {
+    this.chatbotService.sendIndexMessage(messageObj, this.recordId, this.chapterId).subscribe({
       next: (res) => {
         if (res.data) {
           this.getIndexMessages();
@@ -254,13 +358,13 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     });
   }
 
-  backNavigation(){
+  backNavigation() {
     this.router.navigate(['/user/content-generation'])
   }
 
   ngOnDestroy(): void {
     this.typeSubscription.unsubscribe();
-    if(this.paramSubscription){
+    if (this.paramSubscription) {
       this.paramSubscription.unsubscribe();
     }
   }

@@ -260,7 +260,7 @@ class BaseVectorIndexRagOps(ABC):
             self.logger.debug(
                 f"Chat response generated for message: {curr_message[:50]}..."
             )
-            return response.response
+            return response
 
         except Exception as e:
             self.logger.error(f"Chat failed for message '{curr_message[:50]}...': {e}")

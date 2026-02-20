@@ -51,6 +51,39 @@
         margin-bottom: 1em;
       }
     }
+
+    .references-section {
+      .references-details {
+        summary {
+          list-style: none;
+          &::-webkit-details-marker {
+            display: none;
+          }
+          &::before {
+            content: '▶ ';
+            font-size: 8px;
+            vertical-align: middle;
+            transition: transform 0.2s;
+          }
+        }
+
+        &[open] summary::before {
+          content: '▼ ';
+        }
+      }
+
+      .references-list {
+        border-left: 2px solid var(--primary-DEFAULT);
+      }
+
+      .reference-item {
+        line-height: 1.4;
+
+        a {
+          word-break: break-word;
+        }
+      }
+    }
   }
   .chat-input {
     height: 36px;
