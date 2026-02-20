@@ -20,7 +20,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   selectedQuestions: any[] = [];
 
   // Filter State
-  filterSource: 'ALL' | 'AI Questions' | 'Pregenerated Questions' = 'ALL';
+  filterSource: 'ALL' | 'AI Questions' | 'Pre-generated Questions' = 'ALL';
   filterDifficulty: string = 'ALL';
   filterQuestionType: string = 'ALL';
   searchText: string = '';

@@ -4,7 +4,7 @@
     <h2 class="text-base md:text-xl font-bold text-content">Step 2/3: Select Questions</h2>
   </div>
   <p class="text-sm md:text-base text-gray-500">
-    Mix and match questions from AI and Pregenerated questions to build your paper. Target: <span
+    Mix and match questions from AI and Pre-generated questions to build your paper. Target: <span
       class="font-bold">{{totalMarks}} Marks</span>.
   </p>
 </div>
@@ -50,7 +50,7 @@
                 <button *ngFor="let s of availableSources" (click)="setFilter(s)"
                   class="px-2.5 py-1 text-xs rounded-full border transition-all"
                   [ngClass]="filterSource === s ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'">
-                  {{ s === 'AI Questions' ? 'AI Gen' : (s === 'Pregenerated Questions' ? 'Pregen' : s) }}
+                  {{ s === 'AI Questions' ? 'AI Gen' : (s === 'Pre-generated Questions' ? 'Pre-gen' : s) }}
                 </button>
               </div>
             </div>
@@ -114,7 +114,7 @@
 
       <div *ngFor="let q of filteredQuestions" (click)="selectQuestion(q)"
         class="bg-white p-3 rounded border hover:shadow-md cursor-pointer transition-all border-l-4 group"
-        [ngClass]="{'border-l-blue-500': q.source === 'AI Questions', 'border-l-green-500': q.source === 'Pregenerated Questions'}">
+        [ngClass]="{'border-l-blue-500': q.source === 'AI Questions', 'border-l-green-500': q.source === 'Pre-generated Questions'}">
         <div class="flex justify-between items-start mb-1">
           <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 mr-2">{{ q.text }}</p>
           <div class="flex items-center gap-1 flex-shrink-0">
@@ -128,7 +128,7 @@
               {{ q.difficulty }}
             </span>
             <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider"
-              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated Questions'}">
+              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pre-generated Questions'}">
               {{ q.source }}
             </span>
             <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }} Marks</span>
@@ -171,8 +171,8 @@
               {{ q.difficulty }}
             </span>
             <span class="text-[10px] font-bold px-1 rounded uppercase"
-              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pregenerated Questions'}">
-              {{ q.source === 'AI Questions' ? 'AI Gen' : 'Pregen' }}
+              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pre-generated Questions'}">
+              {{ q.source === 'AI Questions' ? 'AI Gen' : 'Pre-gen' }}
             </span>
             <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }}M</span>
           </div>

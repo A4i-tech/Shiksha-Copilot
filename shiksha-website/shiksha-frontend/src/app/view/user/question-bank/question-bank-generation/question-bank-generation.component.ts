@@ -62,7 +62,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   languageDropdownOptions: any[] = [];
   sourceGenerationOptions: FormDropDownOption[] = [
     { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
-    { name: 'Pregenerated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
+    { name: 'Pre-generated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
   ];
 
   // LBA Specific Data
@@ -270,10 +270,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       (typeof item === 'object' && (item.value === 'AI' || item.name === 'AI Questions'))
     );
 
-    // Check for "Pregenerated Questions" or "LBA"
+    // Check for "Pre-generated Questions" or "LBA"
     this.useLBA = val.some((item: any) =>
-      (typeof item === 'string' && (item === 'Pregenerated Questions' || item === 'LBA')) ||
-      (typeof item === 'object' && (item.value === 'LBA' || item.name === 'Pregenerated Questions'))
+      (typeof item === 'string' && (item === 'Pre-generated Questions' || item === 'LBA')) ||
+      (typeof item === 'object' && (item.value === 'LBA' || item.name === 'Pre-generated Questions'))
     );
 
     // Trigger UI update
@@ -342,12 +342,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   updateSourceOptions(boardName: string | null) {
     if (boardName === 'KSEEB') {
       this.sourceGenerationOptions = [
-        { name: 'AI Questions', value: 'AI' },
-        { name: 'Pregenerated Questions', value: 'LBA' }
+        { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
+        { name: 'Pre-generated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
       ];
     } else {
       this.sourceGenerationOptions = [
-        { name: 'AI Questions', value: 'AI' }
+        { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' }
       ];
     }
 
@@ -664,7 +664,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const selectedSources = this.f['sourceGeneration'].value;
     this.useAI = selectedSources.includes('AI Questions') || selectedSources.includes('AI');
-    this.useLBA = selectedSources.includes('Pregenerated Questions') || selectedSources.includes('LBA');
+    this.useLBA = selectedSources.includes('Pre-generated Questions') || selectedSources.includes('LBA');
 
     if (!this.useAI && !this.useLBA) {
       this.utilityservice.showError('Please select at least one Source');
@@ -1107,7 +1107,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           const friendlyType = this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question');
           const unitName = q.unit_name || selectedTitles[0] || 'General';
           const baseObj = {
-            source: 'Pregenerated Questions',
+            source: 'Pre-generated Questions',
             marks: q.marksPerQuestion || q.marks || 1,
             type: friendlyType,
             heading: friendlyType,
