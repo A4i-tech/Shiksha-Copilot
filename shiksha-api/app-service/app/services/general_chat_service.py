@@ -28,7 +28,7 @@ class GeneralChatService:
         )
         self.prompt_template = PromptTemplate(str(prompts_file_path))
 
-        # Initialize Azure OpenAI client
+        # Check configuration
         if not settings.azure_openai_api_key:
             raise ValueError("AZURE_OPENAI_API_KEY environment variable is required")
         if not settings.azure_openai_endpoint:
@@ -142,50 +142,9 @@ class GeneralChatService:
 
         return references
 
-    async def _create_agent(self, assistant_system_prompt: str):
-        """Create an Azure AI agent with the specified system prompt."""
-        try:
-            if not settings.azure_openai_deployment_name:
-                raise ValueError(
-                    "AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required"
-                )
-
-            agent = await self.project_client.agents.create_agent(
-                model=settings.azure_openai_deployment_name,
-                name="shiksha-copilot-general-chat-agent",
-                instructions=assistant_system_prompt,
-                tools=self.tools,
-            )
-            self.agent_id = agent.id
-            logger.info(f"Created agent, ID: {agent.id}")
-
-        except Exception as e:
-            logger.error(f"Error creating agent: {e}")
-            traceback.print_exc()
-            raise
-
-    def _format_conversation_messages(self, messages: List[ConversationMessage]) -> str:
-        """Format conversation messages into a single string for the agent."""
-        if len(messages) > 1:
-            # Include all previous messages as context
-            chat_context = "\n".join(
-                [
-                    f"Role: {msg.role.value}\nMessage: {msg.message}"
-                    for msg in messages[:-1]
-                ]
-            )
-            current_message = messages[-1].message
-            return (
-                f"Chat History:\n{chat_context}\n\nCurrent Message: {current_message}"
-            )
-        else:
-            # Single message, no context needed
-            return messages[0].message
-
     async def cleanup(self):
         """
-        Cleanup method to properly close the project client connection.
-        Should be called when the service is being shut down.
+        Cleanup method for the service.
         """
         try:
             await self.client.close()

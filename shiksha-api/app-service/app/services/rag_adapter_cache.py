@@ -101,7 +101,7 @@ class NativeQdrantRagAdapter:
             logger.error(f"Retrieval failed: {e}")
             return ""
 
-    async def chat_with_index(self, curr_message: str, chat_history: List[Dict[str, str]]) -> str:
+    async def chat_with_index(self, curr_message: str, chat_history: List[Any]) -> str:
         """
         Performs RAG: Retrieve Context -> Append to System Prompt -> Chat.
         """
@@ -110,8 +110,15 @@ class NativeQdrantRagAdapter:
             context_text = await self._retrieve_context(curr_message)
             
             # 2. Prepare Messages
-            # We clone the history so we don't mutate the original list
-            messages = list(chat_history)
+            # We clone the history and ensure they are dictionaries
+            messages = []
+            for m in chat_history:
+                if hasattr(m, "role") and hasattr(m, "content"):
+                    messages.append({"role": m.role, "content": m.content})
+                elif isinstance(m, dict):
+                    messages.append(m.copy())
+                else:
+                    logger.warning(f"Unexpected message format in history: {type(m)}")
             
             # 3. Inject Context into the System Prompt or as a new System message
             if context_text:
