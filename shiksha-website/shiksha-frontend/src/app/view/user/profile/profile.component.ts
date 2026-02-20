@@ -26,8 +26,8 @@ import { TranslateService } from '@ngx-translate/core';
 export class ProfileComponent implements OnInit, OnDestroy {
   showDeleteClassDetailsConfirm!: boolean;
   showDeleteResourceConfirm!: boolean;
-  selectedClassIndex!: any;
-  selectedResIndex!: any;
+  selectedClassIndex!:any;
+  selectedResIndex!:any;
   languageConfig = languege;
 
   langDropDownConfig: FormDropDownConfig = {
@@ -141,9 +141,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   defaultMedium = null;
 
-  showDeleteProfileImageConfirm = false;
+  showDeleteProfileImageConfirm =false;
 
-  currentSubjects: any[] = [];
+  currentSubjects:any[]=[];
 
   constructor(
     private fb: FormBuilder,
@@ -153,18 +153,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private router: Router,
     public sidebarService: SidebarService,
     private translateService: TranslateService
-  ) { }
+  ) {}
 
   /**
    * Angular oninit lifecycle hook used here for form initialization
    */
   ngOnInit(): void {
-    const data: string = localStorage.getItem('userData') ?? '{}';
-    try {
-      this.loggedInUser = JSON.parse(data);
-    } catch (e) {
-      this.loggedInUser = {};
-    }
+    const data: string = localStorage.getItem('userData') ?? '';
+    this.loggedInUser = JSON.parse(data);
     this.createUserForm();
     this.getData();
   }
@@ -185,13 +181,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.setResourceData(resourceRes);
         this.setProfileInfo(profileRes);
       },
-      error: (err) => {
+      error:(err)=>{
         this.utilityService.handleError(err)
       }
     });
   }
 
-  setClassesByBoard(val: any) {
+  setClassesByBoard(val:any) {
     this.boardMasterData = val.data;
     this.boardDropdownOptions = val.data;
     this.presetValues(this.boardMasterData);
@@ -244,7 +240,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.resetclassInfo('standard', i);
 
     if (val) {
-      this.subjectDropdownOptions[i] = this.filterSubjects(val.standard, this.currentSubjects[i])
+      this.subjectDropdownOptions[i] = this.filterSubjects(val.standard,this.currentSubjects[i])
       this.resetclassInfo('strength', i);
       this.classes.controls[i].get('boysStrength')?.setValue(val.boysStrength);
       this.classes.controls[i]
@@ -288,53 +284,48 @@ export class ProfileComponent implements OnInit, OnDestroy {
   /**
    * Function to get profile info
    */
-  setProfileInfo(val: any) {
-    const schoolFacilities = val?.data?.school?.facilities || [];
-    this.mergeSchoolResource(schoolFacilities);
+  setProfileInfo(val:any) {
+      const schoolFacilities = val?.data?.school?.facilities;
+      this.mergeSchoolResource(schoolFacilities);
 
-    this.userData = val?.data;
-    const keysToRemove = ['classes', 'facilities'];
+        this.userData = val?.data;
+        const keysToRemove = ['classes', 'facilities'];
 
-    const { newObj, removedObj } = this.utilityService.removeKeys(
-      val?.data,
-      keysToRemove
-    );
-    this.patchObj = newObj;
-    this.dependentPatchData = removedObj;
+        const { newObj, removedObj } = this.utilityService.removeKeys(
+          val?.data,
+          keysToRemove
+        );
+        this.patchObj = newObj;
+        this.dependentPatchData = removedObj;
 
-    if (
-      this.dependentPatchData.classes &&
-      this.dependentPatchData.classes.length > 0
-    ) {
-      // Filter out classes that don't belong to the current boards
-      this.dependentPatchData.classes = this.dependentPatchData.classes.filter((cls: any) =>
-        this.boardMasterData.some((board: any) => board._id === cls.board)
-      );
-
-      for (let data of this.dependentPatchData.classes) {
-        if (data) {
-          this.addNewclasses('edit');
+        if (
+          this.dependentPatchData.classes &&
+          this.dependentPatchData.classes.length > 0
+        ) {
+          for (let data of this.dependentPatchData.classes) {
+            if (data) {
+              this.addNewclasses('edit');
+            }
+          }
+          this.patchClasses();
+        } else {
+          this.addNewclasses('add');
         }
-      }
-      this.patchClasses();
-    } else {
-      this.addNewclasses('add');
-    }
 
-    if (
-      this.dependentPatchData.facilities &&
-      this.dependentPatchData.facilities.length > 0
-    ) {
-      this.resourceTypeDropdownOptions = this.resourceMasterData;
-      for (
-        let i = 0;
-        i < this.dependentPatchData.facilities.length - 1;
-        i++
-      ) {
-        this.addResource();
-      }
-      this.patchResourceDropdown();
-    }
+        if (
+          this.dependentPatchData.facilities &&
+          this.dependentPatchData.facilities.length > 0
+        ) {
+          this.resourceTypeDropdownOptions = this.resourceMasterData;
+          for (
+            let i = 0;
+            i < this.dependentPatchData.facilities.length - 1;
+            i++
+          ) {
+            this.addResource();
+          }
+          this.patchResourceDropdown();
+        }
   }
 
   /**
@@ -357,20 +348,20 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.resourceMasterData = val?.data?.results;
   }
 
-  mergeSchoolResource(schoolResource: any) {
-    if (!schoolResource) return;
-    const schoolOthers = schoolResource.filter((ele: any) => ele.type == 'Others').map((item: any) => {
-      return {
-        type: item.otherType,
-        facilities: item.details,
-        otherType: null,
-        typeChipSet: item.typeChipSet,
-        detailsChipSet: item.detailsChipSet
+  mergeSchoolResource(schoolResource:any){
+    const schoolOthers = schoolResource.filter((ele:any)=> ele.type =='Others').map((item:any)=> 
+      {
+        return {
+          type: item.otherType,
+          facilities: item.details,
+          otherType: null,
+          typeChipSet: item.typeChipSet,
+          detailsChipSet: item.detailsChipSet
+          }
       }
-    }
-    )
-    this.resourceTypeDropdownOptions.push(...schoolOthers)
-
+  )
+  this.resourceTypeDropdownOptions.push(...schoolOthers)
+  
     const otherObj = {
       type: 'Others',
     };
@@ -392,27 +383,27 @@ export class ProfileComponent implements OnInit, OnDestroy {
     );
   }
 
-  subjectMapper(i: any, val: any) {
+  subjectMapper(i:any, val:any){
     if (val) {
-      let mapSubjects = val.subjects.sort((a: any, b: any) => a.sem - b.sem)
+      let mapSubjects = val.subjects.sort((a:any,b:any)=> a.sem - b.sem)
       this.classes.controls[i].get('subjectDetails')?.setValue(mapSubjects);
-    }
+    } 
   }
 
-  filterSubjects(standard: any, subjects: any[]) {
-    return subjects.filter((e) => {
-      if (e?.subjects[0]?.applicableClasses?.length) {
+  filterSubjects(standard:any,subjects:any[]){
+    return subjects.filter((e)=> {
+      if(e?.subjects[0]?.applicableClasses?.length){
         return e.subjects[0].applicableClasses.includes(standard)
-      } else {
+      }else{
         return e
       }
     })
   }
 
 
-  setSubjectDropdown(i: any, val: any, standard: any) {
+  setSubjectDropdown(i:any,val:any,standard:any){
     if (val) {
-      this.subjectDropdownOptions[i] = this.filterSubjects(standard, val.subjects);
+      this.subjectDropdownOptions[i] = this.filterSubjects(standard,val.subjects);
     }
   }
   /**
@@ -434,7 +425,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         (e: any) => e.medium === this.dependentPatchData.classes[i].medium
       );
       this.setClassDropdown(i, classes[0]);
-      this.setSubjectDropdown(i, mediums[0], this.dependentPatchData.classes[i].class)
+      this.setSubjectDropdown(i,mediums[0],this.dependentPatchData.classes[i].class)
       this.classes.controls[i]
         ?.get('class')
         ?.setValue(this.dependentPatchData.classes[i].class);
@@ -447,7 +438,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
       this.classes.controls[i]
         ?.get('girlsStrength')
         ?.setValue(this.dependentPatchData.classes[i].girlsStrength);
-      this.classes.controls[i]
+        this.classes.controls[i]
         ?.get('subjectDetails')
         ?.setValue(this.dependentPatchData.classes[i].subjectDetails);
     }
@@ -484,7 +475,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
           ?.setValue(this.dependentPatchData.facilities[i].otherType);
         this.facilities.controls[i]
           .get('details')
-          ?.setValue(this.updatedDetailsMapper(this.dependentPatchData.facilities[i].otherType, this.dependentPatchData.facilities[i].details, i));
+          ?.setValue(this.updatedDetailsMapper(this.dependentPatchData.facilities[i].otherType,this.dependentPatchData.facilities[i].details,i));
         if (this.dependentPatchData.facilities[i].otherType) {
           this.facilities.controls[i]
             .get('otherType')
@@ -501,10 +492,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
   }
 
-  updatedDetailsMapper(type: any, userFacilityDetailsValue: any[], i: any) {
-    if (type === null) {
-      return userFacilityDetailsValue.filter((item) => this.resourceDetailsDropdownOptions[i].includes(item))
-    } else {
+  updatedDetailsMapper(type:any,userFacilityDetailsValue:any[],i:any){
+    if(type === null){
+      return userFacilityDetailsValue.filter((item)=>this.resourceDetailsDropdownOptions[i].includes(item))
+    }else{
       return userFacilityDetailsValue
     }
   }
@@ -515,19 +506,19 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   languageChanged(lang: any) {
     this.service.updatePreferedLanguage(lang).
-      subscribe({
-        next: (res) => {
-          this.loggedInUser.preferredLanguage = lang;
-          this.userPorfileForm.get('preferredLanguage')?.setValue(lang);
-          this.utilityService.handleResponse(res);
-          localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
-          this.translateService.use(lang);
-        },
-        error: (err) => {
-          this.utilityService.handleError(err)
-        }
-      })
-
+    subscribe({
+      next:(res)=>{
+        this.loggedInUser.preferredLanguage = lang;
+        this.userPorfileForm.get('preferredLanguage')?.setValue(lang);
+        this.utilityService.handleResponse(res);
+        localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
+        this.translateService.use(lang);
+      },
+      error:(err)=>{
+        this.utilityService.handleError(err)
+      }
+    })
+    
   }
 
   /**
@@ -584,7 +575,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         subject: [null, [Validators.required]],
         boysStrength: null,
         girlsStrength: null,
-        subjectDetails: [null, [Validators.required]]
+        subjectDetails:[null, [Validators.required]]
       })
     );
     if (mode === 'add') {
@@ -690,27 +681,27 @@ export class ProfileComponent implements OnInit, OnDestroy {
       if (!allowedTypes.includes(image.type)) {
         this.utilityService.showError('Invalid file type. Only PNG, JPG, and JPEG images are allowed.')
         return;
-      }
+    }
       if (image.size > 5 * 1024 * 1024) {
         this.utilityService.showError('File size exceeds 5MB limit')
         return;
       }
 
       this.service.uploadProfileImage(image).
-        subscribe({
-          next: (res) => {
-            this.loggedInUser.profileImage = res?.data?.profileImage;
-            localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
-            // this.sidebarService.profileImg.set(res?.data?.profileImage);
-            const localImageUrl = URL.createObjectURL(image);
-            this.sidebarService.profileImg.set(localImageUrl);
-            this.utilityService.handleResponse(res);
-          },
-          error: (err) => {
-            this.utilityService.handleError(err)
-          }
-        })
-
+      subscribe({
+        next:(res)=>{
+      this.loggedInUser.profileImage = res?.data?.profileImage;
+      localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
+      // this.sidebarService.profileImg.set(res?.data?.profileImage);
+      const localImageUrl = URL.createObjectURL(image);
+      this.sidebarService.profileImg.set(localImageUrl);
+      this.utilityService.handleResponse(res);
+        },
+        error:(err)=>{
+          this.utilityService.handleError(err)
+        }
+      })
+      
     }
   }
 
@@ -720,17 +711,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   removeDP() {
     this.service.removeProfileImage().
-      subscribe({
-        next: (res) => {
-          this.loggedInUser.profileImage = res?.data?.profileImage;
-          localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
-          this.sidebarService.profileImg.set(res?.data?.profileImage);
-          this.utilityService.handleResponse(res);
-        },
-        error: (err) => {
-          this.utilityService.handleError(err);
-        }
-      })
+    subscribe({
+      next:(res)=>{
+      this.loggedInUser.profileImage = res?.data?.profileImage;
+      localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
+      this.sidebarService.profileImg.set(res?.data?.profileImage);
+      this.utilityService.handleResponse(res);
+      },
+      error:(err)=>{
+        this.utilityService.handleError(err);
+      }
+    })
   }
 
   /**
@@ -738,27 +729,27 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * @param classes 
    * @returns 
    */
-  splitClasses(classes: any[]) {
-    const result: any[] = [];
+  splitClasses(classes:any[]) {
+    const result:any[] = [];
     classes.forEach(obj => {
-      const subjectName = obj.subject;
-      const { subjectDetails } = obj;
-      subjectDetails.forEach((detail: any) => {
-        result.push({
-          ...obj,
-          subject: detail.subjectName,
-          sem: detail.sem,
-          name: subjectName
+        const subjectName = obj.subject;
+        const { subjectDetails } = obj;
+        subjectDetails.forEach((detail:any) => {
+            result.push({
+              ...obj,
+              subject: detail.subjectName,
+              sem:detail.sem,
+              name:subjectName
+            });
         });
-      });
     });
-    result.forEach((ele: any) => {
+    result.forEach((ele:any)=>{
       delete ele.subjectDetails
       delete ele.boysStrength
       delete ele.girlsStrength
     })
     return result;
-  }
+}
 
   /**
    * save the profile info and redirect the user to the home page
@@ -775,7 +766,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     const classDetails = this.splitClasses(this.classes.value);
 
-    if (this.utilityService.hasDuplicates(classDetails)) {
+    if(this.utilityService.hasDuplicates(classDetails)){
       this.utilityService.showWarning('Duplicate class-subject mapping found. Please verify.');
       return
     }
@@ -799,7 +790,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  openConfirmPopupforDeleteClass(i: any) {
+  openConfirmPopupforDeleteClass(i:any){
     this.selectedClassIndex = i;
     this.showDeleteClassDetailsConfirm = true;
   }
@@ -811,7 +802,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.showDeleteClassDetailsConfirm = false;
   }
 
-  openConfirmPopupforDeleteResource(i: any) {
+  openConfirmPopupforDeleteResource(i:any){
     this.selectedResIndex = i;
     this.showDeleteResourceConfirm = true;
   }
@@ -823,13 +814,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.showDeleteResourceConfirm = false;
   }
 
-  closeDeleteProfileImage(value: string) {
-    if (value === 'delete') {
+  closeDeleteProfileImage(value:string){
+    if(value === 'delete'){
       this.removeDP()
     }
     this.showDeleteProfileImageConfirm = false;
   }
-
+  
   ngOnDestroy(): void {
     const profileUrl = this.utilityService.loggedInUserData?.profileImage || '';
     this.sidebarService.profileImg.set(profileUrl)
