@@ -8,7 +8,7 @@ import {
 } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
 import {
   CORE_OBJECTIVE_MAPPER,
   CORE_OBJECTIVE_MAPPER_10,
@@ -60,8 +60,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   chapterDropdownOptions: any[] = [];
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
-  sourceGenerationOptions: any[] = [
-    { name: 'AI Questions', value: 'AI' }
+  sourceGenerationOptions: FormDropDownOption[] = [
+    { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
+    { name: 'Pregenerated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
   ];
 
   // LBA Specific Data
