@@ -398,7 +398,8 @@ class QuestionPaperService:
             user_message = (
                 "Generate questions for the following slots in a SINGLE JSON object with an `items` array. "
                 "For each slot, return exactly ONE object with the following fields:\n "
-                "`unit_name`, `type`, `objective`, `marks_per_question` and `item`\n"
+                "`unit_name`, `type`, `objective`, `marks_per_question`, `difficulty` and `item`\n"
+                "`difficulty` should be one of: 'Easy', 'Average', 'Difficult'.\n"
                 "`item` field should adhere to the question's `schema_hint`.\n\n"
                 "Format rules by question type:\n"
                 f"{format_rules_text}\n"
@@ -450,6 +451,11 @@ class QuestionPaperService:
             if not items:
                 logger.warning("No items found in completion response")
                 return []
+            
+            # Post-process items to ensure difficulty text case
+            for item in items:
+                if 'difficulty' in item:
+                    item['difficulty'] = item['difficulty'].capitalize()
 
             return items
 
@@ -489,7 +495,12 @@ class QuestionPaperService:
                 unit_name = generated.get("unit_name")
                 objective = generated.get("objective")
                 marks_per_question = generated.get("marks_per_question")
+                difficulty = generated.get("difficulty", "Average")
                 item = generated.get("item")
+                
+                # Inject difficulty into item if it's a dict
+                if isinstance(item, dict):
+                    item["difficulty"] = difficulty
 
                 # Normalize key
                 norm_type = self._normalize_string(qtype.value)
