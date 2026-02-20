@@ -51,6 +51,15 @@ class UserManager extends BaseManager {
 
       let plainUser = user.toObject();
 
+      if (!user.school) {
+        plainUser.classes = [];
+        return {
+          success: true,
+          data: plainUser,
+          message: "Teacher profile retrieved successfully (No School Assigned)",
+        };
+      }
+
       let groupByBoards = await this.classDao.getGroupClassesByBoard(
         user.school
       );
@@ -58,13 +67,13 @@ class UserManager extends BaseManager {
       let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
 
       plainUser.classes = (groupedClasseswithSubjects || []).map((classItem) => {
-        const board = groupByBoards.find(
+        const board = groupByBoards?.find(
           (item) => item._id === classItem.board
         );
-        const medium = board.medium.find(
+        const medium = board?.medium?.find(
           (item) => item.medium === classItem.medium
         );
-        const standard = medium.classDetails.find(
+        const standard = medium?.classDetails?.find(
           (item) => item.standard === classItem.class
         );
 
@@ -75,8 +84,8 @@ class UserManager extends BaseManager {
           subject: classItem.name,
           medium: classItem.medium,
           subjectDetails: classItem.subjects,
-          boysStrength: standard.boysStrength,
-          girlsStrength: standard.girlsStrength,
+          boysStrength: standard?.boysStrength || 0,
+          girlsStrength: standard?.girlsStrength || 0,
         };
       });
 

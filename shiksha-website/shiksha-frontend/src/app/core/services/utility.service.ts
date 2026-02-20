@@ -19,8 +19,8 @@ export class UtilityService {
     private toastr: ToastrService,
     private datePipe: DatePipe,
     private router: Router,
-    private domSanitizer:DomSanitizer,
-    private clipboardService:ClipboardService
+    private domSanitizer: DomSanitizer,
+    private clipboardService: ClipboardService
   ) {
     // constructor
   }
@@ -31,9 +31,13 @@ export class UtilityService {
   };
 
 
-  get loggedInUserData(){
-    const userInfo : any = localStorage.getItem('userData') ?? null;
-   return JSON.parse(userInfo);
+  get loggedInUserData() {
+    const userInfo: any = localStorage.getItem('userData');
+    try {
+      return userInfo ? JSON.parse(userInfo) : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
@@ -101,7 +105,7 @@ export class UtilityService {
    */
   hasPermission(premissions: string[]) {
     const data: any = localStorage.getItem('userData') ?? null;
-    const loggedInUser = JSON.parse(data) ;
+    const loggedInUser = JSON.parse(data);
     if (loggedInUser) {
       return premissions.some((element) => loggedInUser.role.includes(element));
     }
@@ -187,49 +191,49 @@ export class UtilityService {
   }
 
 
-   /**
-   * format the response to the one format which don't contain the repeated board
-   * @param val 
-   * @returns 
-   */
-   formatResponse(val:any) {
+  /**
+  * format the response to the one format which don't contain the repeated board
+  * @param val 
+  * @returns 
+  */
+  formatResponse(val: any) {
     const groupedData: any[] = [];
 
-    val.forEach((item:any) => {
-        const { board, medium, class: classValue, ...itemWithoutBoardMediumClass } = item;
+    val.forEach((item: any) => {
+      const { board, medium, class: classValue, ...itemWithoutBoardMediumClass } = item;
 
-        let boardEntry = groupedData.find((entry) => entry.board === board);
-        if (!boardEntry) {
-            boardEntry = {
-                board: board,
-                mediums: [],
-            };
-            groupedData.push(boardEntry);
-        }
+      let boardEntry = groupedData.find((entry) => entry.board === board);
+      if (!boardEntry) {
+        boardEntry = {
+          board: board,
+          mediums: [],
+        };
+        groupedData.push(boardEntry);
+      }
 
-        let mediumEntry = boardEntry.mediums.find((entry:any) => entry.medium === medium);
-        if (!mediumEntry) {
-            mediumEntry = {
-                medium: medium,
-                classes: [],
-            };
-            boardEntry.mediums.push(mediumEntry);
-        }
+      let mediumEntry = boardEntry.mediums.find((entry: any) => entry.medium === medium);
+      if (!mediumEntry) {
+        mediumEntry = {
+          medium: medium,
+          classes: [],
+        };
+        boardEntry.mediums.push(mediumEntry);
+      }
 
-        let classEntry = mediumEntry.classes.find((entry:any) => entry.class === classValue);
-        if (!classEntry) {
-            classEntry = {
-                class: classValue,
-                data: [],
-            };
-            mediumEntry.classes.push(classEntry);
-        }
+      let classEntry = mediumEntry.classes.find((entry: any) => entry.class === classValue);
+      if (!classEntry) {
+        classEntry = {
+          class: classValue,
+          data: [],
+        };
+        mediumEntry.classes.push(classEntry);
+      }
 
-        classEntry.data.push(itemWithoutBoardMediumClass);
+      classEntry.data.push(itemWithoutBoardMediumClass);
     });
 
     return groupedData;
-}
+  }
 
   /**
    * Function to reset array values
@@ -344,215 +348,215 @@ export class UtilityService {
    * @param arr 
    * @returns 
    */
-  hasDuplicates(arr:any[]) {
+  hasDuplicates(arr: any[]) {
     const seen = new Set();
     for (const obj of arr) {
-        const objString = JSON.stringify(obj);
-        if (seen.has(objString)) {
-            return true; 
-        } else {
-            seen.add(objString);
-        }
+      const objString = JSON.stringify(obj);
+      if (seen.has(objString)) {
+        return true;
+      } else {
+        seen.add(objString);
+      }
     }
     return false;
-}
+  }
 
-/**
-  * Function to check duplicate board and medium
-  * @param array 
-  * @returns 
-  */
-  hasDuplicateBoardMedium(array:any[]) {
+  /**
+    * Function to check duplicate board and medium
+    * @param array 
+    * @returns 
+    */
+  hasDuplicateBoardMedium(array: any[]) {
     let seen = new Set();
     for (let obj of array) {
-        let key = obj['board'] + '|' + obj['medium'];
-        if (seen.has(key)) {
-            return true;
-        }
-        seen.add(key);
+      let key = obj['board'] + '|' + obj['medium'];
+      if (seen.has(key)) {
+        return true;
+      }
+      seen.add(key);
     }
-  return false;
-}
-
-/**
- * function to format chatper
- * @param data 
- * @returns 
- */
-formatChapterDropdown(data:any){
-  let formattedData = data;
-  if(formattedData){
-    formattedData.forEach((ele:any) => {
-      ele.displayValue = `${ele.orderNumber}. ${ele.topics}`
-    });
+    return false;
   }
-  return formattedData    
-}
 
-formatSubjectDropdown(data:any){
-  let formattedData = data;
-  if(formattedData){
-    formattedData.forEach((ele:any)=>{
-      ele.displayName = this.getSubjectDisplayName(ele)
-    })
-  }
-  return formattedData
-}
-
-getSubjectDisplayName(ele:any){
-  if(ele?.sem){
-  return `${ele.name} Sem${ele.sem}`
-  }else{
-  return `${ele.name}`
-  }
-}
-
-
-private extractVideoId(url: string): string {
-  const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-  const matches = url.match(regex);
-  return matches ? matches[1] : '';
-}
-
- trustUrl(videoUrl: string): SafeResourceUrl {
-  const videoId = this.extractVideoId(videoUrl);
-  if(videoId){
-    return this.domSanitizer.bypassSecurityTrustResourceUrl(`https://www.youtube.com/embed/${videoId}`);
-  }else{
-    return this.domSanitizer.bypassSecurityTrustResourceUrl(videoUrl);
-  }
-}
-
-formatSubjecter(subjectArr:any[]){
-  const formatedSubjects = subjectArr.reduce((acc, obj) => {
-    let existingItem = acc.find((item:any) => item.name === obj.name);
-    if (existingItem) {
-      existingItem.data.push(obj.subject);
-    } else {
-      acc.push({
-        name: obj.name,
-        value:obj.subject,
-        data: [obj.subject]
+  /**
+   * function to format chatper
+   * @param data 
+   * @returns 
+   */
+  formatChapterDropdown(data: any) {
+    let formattedData = data;
+    if (formattedData) {
+      formattedData.forEach((ele: any) => {
+        ele.displayValue = `${ele.orderNumber}. ${ele.topics}`
       });
     }
-    
-    return acc;
-  }, []);
-  return formatedSubjects
-}
-
-intToRoman(num:any) {
-  const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
-  const symbols = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
-
-  let romanNumeral = "";
-
-  for (let i = 0; i < values.length; i++) {
-      while (num >= values[i]) {
-          romanNumeral += symbols[i];
-          num -= values[i];
-      }
+    return formattedData
   }
 
-  return romanNumeral;
-}
+  formatSubjectDropdown(data: any) {
+    let formattedData = data;
+    if (formattedData) {
+      formattedData.forEach((ele: any) => {
+        ele.displayName = this.getSubjectDisplayName(ele)
+      })
+    }
+    return formattedData
+  }
 
-shuffleOptions(arr:any[]) {
-  for (let i = arr.length - 1; i > 0; i--) {
+  getSubjectDisplayName(ele: any) {
+    if (ele?.sem) {
+      return `${ele.name} Sem${ele.sem}`
+    } else {
+      return `${ele.name}`
+    }
+  }
+
+
+  private extractVideoId(url: string): string {
+    const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const matches = url.match(regex);
+    return matches ? matches[1] : '';
+  }
+
+  trustUrl(videoUrl: string): SafeResourceUrl {
+    const videoId = this.extractVideoId(videoUrl);
+    if (videoId) {
+      return this.domSanitizer.bypassSecurityTrustResourceUrl(`https://www.youtube.com/embed/${videoId}`);
+    } else {
+      return this.domSanitizer.bypassSecurityTrustResourceUrl(videoUrl);
+    }
+  }
+
+  formatSubjecter(subjectArr: any[]) {
+    const formatedSubjects = subjectArr.reduce((acc, obj) => {
+      let existingItem = acc.find((item: any) => item.name === obj.name);
+      if (existingItem) {
+        existingItem.data.push(obj.subject);
+      } else {
+        acc.push({
+          name: obj.name,
+          value: obj.subject,
+          data: [obj.subject]
+        });
+      }
+
+      return acc;
+    }, []);
+    return formatedSubjects
+  }
+
+  intToRoman(num: any) {
+    const values = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+    const symbols = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
+
+    let romanNumeral = "";
+
+    for (let i = 0; i < values.length; i++) {
+      while (num >= values[i]) {
+        romanNumeral += symbols[i];
+        num -= values[i];
+      }
+    }
+
+    return romanNumeral;
+  }
+
+  shuffleOptions(arr: any[]) {
+    for (let i = arr.length - 1; i > 0; i--) {
       const randomIndex = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[randomIndex]] = [arr[randomIndex], arr[i]];
+    }
+    return arr;
   }
-  return arr;
-}
 
- copyToClipboard(rawText:any, version:number) {
-  if(version === 1){
-    let formattedText = rawText
-    .replace(/\\n/g, '\n')               
-    .replace(/\\"/g, '"')                
-    .replace(/\*\*(.*?)\*\*/g, '$1')    
-    .replace(/###/g, '')               
-    .trim();
-    this.clipboardService.copy(formattedText);
-  } else{
-    const markedText = marked(rawText)
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = markedText;
-    const processedText = tempDiv.textContent || tempDiv.innerText || '';
-    this.clipboardService.copy(processedText);
-  }
+  copyToClipboard(rawText: any, version: number) {
+    if (version === 1) {
+      let formattedText = rawText
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/###/g, '')
+        .trim();
+      this.clipboardService.copy(formattedText);
+    } else {
+      const markedText = marked(rawText)
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = markedText;
+      const processedText = tempDiv.textContent || tempDiv.innerText || '';
+      this.clipboardService.copy(processedText);
+    }
     this.showSuccess("Copied to clipboard")
- }
-
- getCceTools(type:any, medium:any){
-  if(medium === 'english'){
-    switch (type) {
-      case "cce_tools_math_science":
-        return {
-          "ENGAGE": "Observation",
-          "EXPLORE": "Observation",
-          "ELABORATE": "Observation/Discussion",
-          "EXPLAIN": "Discussion",
-          "EVALUATE": "Questionnaire"
-      }
-  
-      case "cce_tools_social":
-        return {
-          "ENGAGE": "Observation.",
-          "EXPLORE": "Observation",
-          "ELABORATE": "Observation/Discussion",
-          "EXPLAIN": "Discussion",
-          "EVALUATE": "Questionnaire"
-      }
-  
-      case "cce_tools_english":
-        return {
-          "ENGAGE": "Observation",
-          "EXPLORE": "Observation",
-          "ELABORATE": "Read Aloud/Discussion",
-          "EXPLAIN": "Discussion",
-          "EVALUATE": "Questionnaire"
-      }
-    
-      default:
-        return null
-    }
-  }else if(medium==='kannada'){
-    switch (type) {
-      case "cce_tools_math_science":
-        return {
-          "ENGAGE": "ವೀಕ್ಷಣೆ",
-          "EXPLORE": "ವೀಕ್ಷಣೆ",
-          "ELABORATE": "ವೀಕ್ಷಣೆ/ಚರ್ಚೆ",
-          "EXPLAIN": "ಚರ್ಚೆ",
-          "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
-      }
-  
-      case "cce_tools_social":
-        return {
-          "ENGAGE": "ವೀಕ್ಷಣೆ.",
-          "EXPLORE": "ವೀಕ್ಷಣೆ",
-          "ELABORATE": "ವೀಕ್ಷಣೆ/ಚರ್ಚೆ",
-          "EXPLAIN": "ಚರ್ಚೆ",
-          "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
-      }
-  
-      case "cce_tools_english":
-        return {
-          "ENGAGE": "ವೀಕ್ಷಣೆ",
-          "EXPLORE": "ವೀಕ್ಷಣೆ",
-          "ELABORATE": "ಗಟ್ಟಿಯಾಗಿ ಓದಿ/ಚರ್ಚೆ",
-          "EXPLAIN": "ಚರ್ಚೆ",
-          "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
-      }
-    
-      default:
-        return null
-    }
-  }else{
-    return null
   }
- }
+
+  getCceTools(type: any, medium: any) {
+    if (medium === 'english') {
+      switch (type) {
+        case "cce_tools_math_science":
+          return {
+            "ENGAGE": "Observation",
+            "EXPLORE": "Observation",
+            "ELABORATE": "Observation/Discussion",
+            "EXPLAIN": "Discussion",
+            "EVALUATE": "Questionnaire"
+          }
+
+        case "cce_tools_social":
+          return {
+            "ENGAGE": "Observation.",
+            "EXPLORE": "Observation",
+            "ELABORATE": "Observation/Discussion",
+            "EXPLAIN": "Discussion",
+            "EVALUATE": "Questionnaire"
+          }
+
+        case "cce_tools_english":
+          return {
+            "ENGAGE": "Observation",
+            "EXPLORE": "Observation",
+            "ELABORATE": "Read Aloud/Discussion",
+            "EXPLAIN": "Discussion",
+            "EVALUATE": "Questionnaire"
+          }
+
+        default:
+          return null
+      }
+    } else if (medium === 'kannada') {
+      switch (type) {
+        case "cce_tools_math_science":
+          return {
+            "ENGAGE": "ವೀಕ್ಷಣೆ",
+            "EXPLORE": "ವೀಕ್ಷಣೆ",
+            "ELABORATE": "ವೀಕ್ಷಣೆ/ಚರ್ಚೆ",
+            "EXPLAIN": "ಚರ್ಚೆ",
+            "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
+          }
+
+        case "cce_tools_social":
+          return {
+            "ENGAGE": "ವೀಕ್ಷಣೆ.",
+            "EXPLORE": "ವೀಕ್ಷಣೆ",
+            "ELABORATE": "ವೀಕ್ಷಣೆ/ಚರ್ಚೆ",
+            "EXPLAIN": "ಚರ್ಚೆ",
+            "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
+          }
+
+        case "cce_tools_english":
+          return {
+            "ENGAGE": "ವೀಕ್ಷಣೆ",
+            "EXPLORE": "ವೀಕ್ಷಣೆ",
+            "ELABORATE": "ಗಟ್ಟಿಯಾಗಿ ಓದಿ/ಚರ್ಚೆ",
+            "EXPLAIN": "ಚರ್ಚೆ",
+            "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
+          }
+
+        default:
+          return null
+      }
+    } else {
+      return null
+    }
+  }
 
   /**
    * Function called on logout
@@ -560,7 +564,7 @@ shuffleOptions(arr:any[]) {
   logout() {
     localStorage.clear();
     this.router.navigate(['/auth']);
-  }  
+  }
 
   /**
    * Returns only the zones assigned to a manager for a given state.
