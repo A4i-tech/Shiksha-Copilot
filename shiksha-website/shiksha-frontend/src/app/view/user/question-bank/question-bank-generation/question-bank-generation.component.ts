@@ -279,6 +279,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // Trigger UI update
     this.updateLBAAvailableHeadings();
     this.updateFormValidators();
+    if (this.useAI) this.distributeMarks();
   }
 
   onBackendModeChange() {
@@ -340,7 +341,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   updateSourceOptions(boardName: string | null) {
-    if (boardName === 'KSEEB') {
+    if (boardName === 'KSEEB'|| boardName === 'CBSE') {
       this.sourceGenerationOptions = [
         { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
         { name: 'Pre-generated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
@@ -602,8 +603,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       });
     }
 
-    // 2. Add LBA Headings (merge with AI if they share names)
+    // 2. Add LBA Headings (merge with AI if they share names) — skip if LBA not selected
     for (const chapter of selectedChapters) {
+      if (!this.useLBA) continue;
       const lbaData = chapter.headings || [];
       for (const h of lbaData) {
         const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
@@ -836,11 +838,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const dynamicTemplate = this.selectedHeadings.map(heading => {
       const aiType = this.mapHeadingToAIType(heading);
       const marksPerType = this.getMarksPerType(aiType);
-      // Request a small pool (e.g., 5 questions per type) to choose from
+      // Request a pool to choose from
       return {
         type: aiType,
         marks_per_question: marksPerType,
-        number_of_questions: 5,
+        number_of_questions: Math.ceil(finalMarks / marksPerType),
         question_distribution: []
       };
     });
