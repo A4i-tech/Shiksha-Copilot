@@ -262,7 +262,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
 
   onSourceGenerationChange(selected: any) {
-    const val = Array.isArray(selected) ? selected : [selected];
+    // Normalize: handle comma-separated strings from Select All / Remove
+    let val: any[];
+    if (Array.isArray(selected)) {
+      val = selected;
+    } else if (typeof selected === 'string' && selected.includes(',')) {
+      val = selected.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+    } else {
+      val = selected ? [selected] : [];
+    }
 
     // Check for "AI Questions" or "AI" in the selected array (handling both strings and objects)
     this.useAI = val.some((item: any) =>
@@ -341,7 +349,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   updateSourceOptions(boardName: string | null) {
-    if (boardName === 'KSEEB'|| boardName === 'CBSE') {
+    if (boardName === 'KSEEB' || boardName === 'CBSE') {
       this.sourceGenerationOptions = [
         { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
         { name: 'Pre-generated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
@@ -582,14 +590,30 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   private updateLBAAvailableHeadings(): void {
+    // Re-derive source flags from form control to ensure they are always current
+    const sourceVal = this.f.sourceGeneration.value;
+    if (sourceVal) {
+      const sources = Array.isArray(sourceVal)
+        ? sourceVal
+        : (typeof sourceVal === 'string' ? sourceVal.split(',').map((s: string) => s.trim()) : []);
+      this.useAI = sources.some((s: any) =>
+        (typeof s === 'string' && (s === 'AI Questions' || s === 'AI')) ||
+        (typeof s === 'object' && (s?.value === 'AI' || s?.name === 'AI Questions'))
+      );
+      this.useLBA = sources.some((s: any) =>
+        (typeof s === 'string' && (s === 'Pre-generated Questions' || s === 'LBA')) ||
+        (typeof s === 'object' && (s?.value === 'LBA' || s?.name === 'Pre-generated Questions'))
+      );
+    }
+
     const rawVal = this.f.chapter.value;
     const selectedTopics = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
     const selectedChapters = this.chapterDropdownOptions.filter(ch => selectedTopics.includes(ch.topics));
 
     const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    // 1. Add AI Standard Types immediately if AI is selected
-    if (this.useAI) {
+    // 1. Add AI Standard Types only if AI-only is selected 
+    if (this.useAI && !this.useLBA) {
       const aiStandardTypes = [
         'Multiple Choice Questions',
         'Short Answer Questions',
@@ -664,7 +688,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const selectedSources = this.f['sourceGeneration'].value;
+    const rawSources = this.f['sourceGeneration'].value;
+    const selectedSources = Array.isArray(rawSources)
+      ? rawSources
+      : (typeof rawSources === 'string' ? rawSources.split(',').map((s: string) => s.trim()) : []);
     this.useAI = selectedSources.includes('AI Questions') || selectedSources.includes('AI');
     this.useLBA = selectedSources.includes('Pre-generated Questions') || selectedSources.includes('LBA');
 
