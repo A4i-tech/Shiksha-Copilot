@@ -182,7 +182,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         grouped.set(mappedType, { type: mappedType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
       }
       const sec = grouped.get(mappedType);
-      sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1), value1: q.value1 || q.text || q.question || '', value2: q.value2 || q.keyAnswer || q.answer || '' });
+      sec.questions.push({
+        question: q.text || q.question,
+        options: q.options || [],
+        answer: q.answer || '',
+        marks: Number(q.marks || 1),
+        ...(q.pairs ? { pairs: q.pairs } : {})
+      });
       sec.numberOfQuestions = sec.questions.length;
     });
 
@@ -261,28 +267,20 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
 
-  onSourceGenerationChange(selected: any) {
-    // Normalize: handle comma-separated strings from Select All / Remove
-    let val: any[];
-    if (Array.isArray(selected)) {
-      val = selected;
-    } else if (typeof selected === 'string' && selected.includes(',')) {
-      val = selected.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-    } else {
-      val = selected ? [selected] : [];
-    }
+  onSourceGenerationChange(selected: string | string[] | FormDropDownOption | FormDropDownOption[] | null) {
+    const rawSelections = Array.isArray(selected) ? selected : (selected ? [selected] : []);
+    const normalizedSelections: string[] = rawSelections
+      .flatMap((item: string | FormDropDownOption) => {
+        if (typeof item === 'string') return item.split(',');
+        const token = item.value || item.name || '';
+        return token.split(',');
+      })
+      .map((value: string) => value.trim())
+      .filter((value: string) => value.length > 0);
 
-    // Check for "AI Questions" or "AI" in the selected array (handling both strings and objects)
-    this.useAI = val.some((item: any) =>
-      (typeof item === 'string' && (item === 'AI Questions' || item === 'AI')) ||
-      (typeof item === 'object' && (item.value === 'AI' || item.name === 'AI Questions'))
-    );
-
-    // Check for "Pre-generated Questions" or "LBA"
-    this.useLBA = val.some((item: any) =>
-      (typeof item === 'string' && (item === 'Pre-generated Questions' || item === 'LBA')) ||
-      (typeof item === 'object' && (item.value === 'LBA' || item.name === 'Pre-generated Questions'))
-    );
+    // Keep source selection handling strict and string-based.
+    this.useAI = normalizedSelections.includes('AI') || normalizedSelections.includes('AI Questions');
+    this.useLBA = normalizedSelections.includes('LBA') || normalizedSelections.includes('Pre-generated Questions');
 
     // Trigger UI update
     this.updateLBAAvailableHeadings();
@@ -799,8 +797,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         _id: q._id,
         unit_name: q.unit_name,
         objective: q.objective || 'Knowledge',
-        value1: q.value1 || q.text || q.question || '',
-        value2: q.value2 || q.keyAnswer || q.answer || ''
+        ...(q.pairs ? { pairs: q.pairs } : {})
       });
       section.numberOfQuestions = section.questions.length;
     });
@@ -943,15 +940,29 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
               questionText = q.question;
             }
 
+            if (!questionText && q.pairs && q.pairs.length > 0) {
+              // Create a descriptive snippet from the first pair so the user can identify the question in the UI
+              const firstPair = q.pairs[0];
+              const leftPart = firstPair.left ? firstPair.left.substring(0, 30) : '';
+              const rightPart = firstPair.right ? firstPair.right.substring(0, 30) : '';
+              questionText = leftPart || rightPart
+                ? `${leftPart} ... ${rightPart}`.trim()
+                : 'Match the following';
+            }
+
             if (questionText) {
               const typeKey = normalizeTypeKey(blockType);
               const distributionObjective =
                 Array.isArray(blueprintObjectiveByType[typeKey]) && blueprintObjectiveByType[typeKey][idx]
                   ? blueprintObjectiveByType[typeKey][idx].objective
                   : null;
+
               const finalObjective =
                 distributionObjective ||
+                q.objective || (q.item && q.item.objective) || block.objective ||
                 'Knowledge';
+
+              const questionId = q._id || (q.item && q.item._id) || (q.question && typeof q.question === 'object' ? q.question._id : undefined);
 
               flatQuestions.push({
                 ...q,
@@ -959,12 +970,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
                 ...(q.item && typeof q.item === 'object' ? q.item : {}),
                 source: 'AI Questions',
                 text: questionText,
-                marks: Number(q.marks || blockMarks),
+                // Type-driven marks from getMarksPerType()/template take priority over model-returned marks.
+                marks: Number(blockMarks ?? q.marks ?? 1),
                 type: blockType,
                 heading: friendlyHeading,
                 unit_name: q.unit_name || chapterName || 'General',
                 objective: finalObjective,
-                _id: q._id || `ai_${Math.random().toString(36).substring(7)}`
+                _id: questionId || `ai_${Math.random().toString(36).substring(7)}`
               });
             }
           });
@@ -1175,38 +1187,33 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             objective: q.objective || 'Knowledge',
           };
 
-          // Match the Following: expand pairs into individual value1/value2 entries
-          if (q.pairs && q.pairs.length > 0) {
-            return q.pairs.map((pair: any, idx: number) => ({
-              ...baseObj,
-              text: pair.left || '',
-              value1: pair.left || '',
-              value2: pair.right || pair.keyAnswer || '',
-              _id: q._id ? `${q._id}_pair_${idx}` : `lba_${Math.random().toString(36).substring(7)}`,
-            }));
-          }
-
-          // Match the Following fallback: split "Left item a. Right item" at letter marker
           if (friendlyType === 'Match the Following') {
-            const rawText = q.text || q.question_text || q.question || '';
-            // Pattern: split at " a. ", " b. ", etc. (single lowercase letter surrounded by spaces and period)
-            const splitMatch = rawText.match(/^(.+?)\s+[a-z]\.\s+(.+)$/i);
-            if (splitMatch) {
-              return [{
-                ...baseObj,
-                text: splitMatch[1].trim(),
-                value1: splitMatch[1].trim(),
-                value2: splitMatch[2].trim(),
-                _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
-              }];
+            let parsedPairs = Array.isArray(q.pairs)
+              ? q.pairs
+                .map((pair: any) => ({
+                  left: pair?.left || '',
+                  right: pair?.right || pair?.keyAnswer || ''
+                }))
+                .filter((pair: { left: string; right: string }) => pair.left || pair.right)
+              : [];
+
+            if (parsedPairs.length === 0) {
+              const rawText = q.text || q.question_text || q.question || '';
+              const splitMatch = rawText.match(/^(.+?)\s+[a-z]\.\s+(.+)$/i);
+              if (splitMatch) {
+                parsedPairs = [{ left: splitMatch[1].trim(), right: splitMatch[2].trim() }];
+              } else if (rawText || q.keyAnswer || q.answer) {
+                parsedPairs = [{ left: rawText, right: q.keyAnswer || q.answer || '' }];
+              }
             }
-            // If no letter marker found, use text/keyAnswer
+
+            const promptText = q.text || q.question_text || q.question || 'Match the following';
             return [{
+              ...q,
               ...baseObj,
-              text: rawText,
-              value1: rawText,
-              value2: q.keyAnswer || q.answer || '',
-              _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
+              text: promptText,
+              pairs: parsedPairs,
+              _id: q._id,
             }];
           }
 
@@ -1219,14 +1226,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
                 .filter((t: string) => t && t.trim().length > 0);
               displayText = itemTexts.length > 0 ? itemTexts.join('\n') : 'Answer the following items';
             }
-            else displayText = q.heading || q.groupHeading || q.type || 'Question';
+            else displayText = q.text || q.question_text || q.question || 'Question';
           }
 
           return [{
             ...q,
             ...baseObj,
             text: displayText,
-            _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
+            _id: q._id
           }];
         });
       }),

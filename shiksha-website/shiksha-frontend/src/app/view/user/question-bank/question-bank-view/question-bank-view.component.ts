@@ -91,10 +91,10 @@ export class QuestionBankViewComponent implements OnInit {
           if (this.questionBank?.questions?.length) {
             this.questionBank.questions.forEach((section: any) => {
               if (section.type === 'Match the following' && section.questions?.length) {
-                // Map columns supporting both AI (value1/2) and LBA (text/keyAnswer) formats
-                // LBA: text = Left, keyAnswer = Right
-                const colTwoVal = structuredClone(section.questions.map((ele: any) => ele.value2 || ele.keyAnswer || ele.right || ''));
-                section.primaryColumn = section.questions.map((ele: any) => ele.value1 || ele.text || ele.left || '');
+                // Map columns using only the pairs format
+                const allPairs = section.questions.flatMap((q: any) => q.pairs || []);
+                const colTwoVal = structuredClone(allPairs.map((pair: any) => pair.right || ''));
+                section.primaryColumn = allPairs.map((pair: any) => pair.left || '');
                 section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
               }
             });
