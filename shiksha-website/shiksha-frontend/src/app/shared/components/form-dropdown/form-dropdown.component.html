@@ -37,7 +37,7 @@
     <div class="mt-2 flex-wrap">
       <ng-container *ngFor="let item of dropDownCtrl?.value; let i = index">
         <span class="chip" *ngIf="item">
-          <img *ngIf="getItemForValue(item)?.info" [matTooltip]="getSafeInfo($any(getItemForValue(item)))"
+          <img *ngIf="getItemForValue(item)?.info" [title]="getSafeInfo($any(getItemForValue(item)))"
             [attr.aria-label]="getSafeInfo($any(getItemForValue(item))) || 'Info'" src="assets/icons/info-primary.svg"
             class="inline-block w-4 h-4 mr-1 cursor-help" alt="">
           <span *ngIf="config?.chipValueType === 'titlecase'">{{

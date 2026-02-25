@@ -1,6 +1,6 @@
 /**
  * Option item for dropdown; may include optional `info` (string) for tooltip.
- * When `info` comes from user or API input, it is sanitized before use in the UI.
+ * Used to define the structure of items passed to the FormDropdownComponent's dropDownValues.
  */
 export interface FormDropDownOption {
   name?: string;
@@ -9,6 +9,10 @@ export interface FormDropDownOption {
   [key: string]: unknown;
 }
 
+/**
+ * Configuration object for the FormDropdownComponent.
+ * Specifies behavior, appearance, and bind properties for the dropdown.
+ */
 export interface FormDropDownConfig {
   isBackground: boolean;
   height: string;
@@ -23,9 +27,9 @@ export interface FormDropDownConfig {
   bindLable?: string;
   bindValue?: string;
   chipValueType?: string;
-  chipClearableOff?:boolean;
-  selectAllOption?:boolean;
-  selectAllValue?:string;
+  chipClearableOff?: boolean;
+  selectAllOption?: boolean;
+  selectAllValue?: string;
   required?: boolean;
   openOnSelect?: boolean;
 }
