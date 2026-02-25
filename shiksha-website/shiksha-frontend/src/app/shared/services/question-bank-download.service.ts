@@ -37,7 +37,7 @@ export class QuestionBankDownloadService {
                 spacing: {
                   before: 120,
                   after: 120,
-              }
+                }
               }),
               new Paragraph({
                 text: data.examinationName,
@@ -46,7 +46,7 @@ export class QuestionBankDownloadService {
                 spacing: {
                   before: 120,
                   after: 120,
-              }
+                }
               }),
               new Paragraph({
                 children: [
@@ -61,7 +61,7 @@ export class QuestionBankDownloadService {
                 spacing: {
                   before: 120,
                   after: 120,
-              }
+                }
               }),
             ],
           }),
@@ -71,13 +71,13 @@ export class QuestionBankDownloadService {
             children: [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [new TextRun({ children: ["Page ", PageNumber.CURRENT]})],
+                children: [new TextRun({ children: ["Page ", PageNumber.CURRENT] })],
               }),
             ],
           }),
         },
-        properties:{
-          titlePage:true
+        properties: {
+          titlePage: true
         },
         children: this.buildQuestions(data.questionBank.questions)
       }],
@@ -91,7 +91,7 @@ export class QuestionBankDownloadService {
   private buildQuestions(questionsArray: any[]) {
     const content: (Paragraph | Table)[] = [];
     let sectionCount = 1;
-  
+
     for (const section of questionsArray) {
       const roman = this.utilityService.intToRoman(sectionCount);
       content.push(new Paragraph({
@@ -105,40 +105,41 @@ export class QuestionBankDownloadService {
         spacing: {
           before: 120,
           after: 120,
-      }
+        }
       }));
 
-      if(section.type !== 'Match the following'){
-      section.questions.forEach((q: any, index: number) => {
-        if (q.question) {
-          content.push(new Paragraph({
-            text: `${index + 1}. ${q.question}`,
-            spacing: { after: 100 },
-          }));
-          if (q.options) {
-            q.options.forEach((opt: string, i: number) => {
-              content.push(new Paragraph({
-                text: `   ${String.fromCharCode(65 + i)}. ${opt}`,
-                spacing: { after: 120 },
-              }));
-            });
+      if (section.type !== 'Match the following') {
+        section.questions.forEach((q: any, index: number) => {
+          if (q.question) {
+            content.push(new Paragraph({
+              text: `${index + 1}. ${q.question}`,
+              spacing: { after: 100 },
+            }));
+            if (q.options) {
+              q.options.forEach((opt: string, i: number) => {
+                content.push(new Paragraph({
+                  text: `   ${String.fromCharCode(65 + i)}. ${opt}`,
+                  spacing: { after: 120 },
+                }));
+              });
+            }
           }
-        }
-      });
-      } else if(section.type === 'Match the following'){
-          const colOneValue = section.questions.map((e:any)=> e.value1)
-          const colTwoVal = structuredClone(section.questions.map((e:any)=> e.value2))
-          const shuffedColums = this.utilityService.shuffleOptions(colTwoVal)
-          content.push(this.buildMatchTable(colOneValue, shuffedColums));
+        });
+      } else if (section.type === 'Match the following') {
+        const allPairs = section.questions.flatMap((q: any) => q.pairs || []);
+        const colOneValue = allPairs.map((pair: any) => pair.left || '');
+        const colTwoVal = structuredClone(allPairs.map((pair: any) => pair.right || ''));
+        const shuffedColums = this.utilityService.shuffleOptions(colTwoVal)
+        content.push(this.buildMatchTable(colOneValue, shuffedColums));
       }
-  
+
       content.push(new Paragraph({ text: "" }));
       sectionCount++;
     }
-  
+
     return content;
   }
-  
+
 
   private buildMatchTable(col1: string[], col2: string[]) {
     const rows: TableRow[] = [];
@@ -146,8 +147,8 @@ export class QuestionBankDownloadService {
     for (let i = 0; i < col1.length; i++) {
       rows.push(new TableRow({
         children: [
-          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({text: ` ${col1[i]}`,spacing:{before:50, after:50}})] }),
-          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({text:` ${col2[i]}`,spacing:{before:50, after:50}})] }),
+          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: ` ${col1[i]}`, spacing: { before: 50, after: 50 } })] }),
+          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({ text: ` ${col2[i]}`, spacing: { before: 50, after: 50 } })] }),
         ],
       }));
     }
