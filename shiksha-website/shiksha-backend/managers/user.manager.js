@@ -8,6 +8,7 @@ const {
 const { Worker } = require("worker_threads");
 const formatApiReponse = require("../helper/response");
 const path = require("path");
+const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../helper/worker.helper");
 const { MESSAGES } = require("../config/constants");
@@ -50,6 +51,9 @@ class UserManager extends BaseManager {
       let user = await this.userDao.getById(id);
 
       let plainUser = user.toObject();
+
+      // Refresh profile image SAS URL if expired
+      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.userDao.update(id, updates));
 
       let groupByBoards = await this.classDao.getGroupClassesByBoard(
         user.school

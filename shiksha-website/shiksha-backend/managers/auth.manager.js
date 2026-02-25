@@ -9,7 +9,7 @@ const UserDao = require("../dao/user.dao");
 const AdminUserDao = require("../dao/admin.user.dao");
 const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
-const { getPreSignedProfileImageUrl } = require("../services/azure.blob.service");
+const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 
 class AuthManager {
     constructor() {
@@ -28,13 +28,13 @@ class AuthManager {
         if (regularUser) {
             return { user: regularUser, type: "0" };
         }
-        
+
         // Try AdminUser table (type=1)
         const adminUser = await this.adminUserDao.getByPhone(phone);
         if (adminUser) {
             return { user: adminUser, type: "1" };
         }
-        
+
         return { user: null, type: null };
     }
 
@@ -72,7 +72,7 @@ class AuthManager {
                 if (user.otp && forgotPassword) {
                     const decryptedOtpBytes = CryptoJS.AES.decrypt(user.otp, process.env.PIN_SECRET_KEY);
                     const decryptedOtp = decryptedOtpBytes.toString(CryptoJS.enc.Utf8);
-        
+
                     const templateId = process.env.VARIFORM_SMS_TEMPLATE;
                     await authHelper.sendOtp(templateId, phone, decryptedOtp);
                     otpTriggered = true;
@@ -101,7 +101,7 @@ class AuthManager {
     async validateOtp(req) {
         try {
             let { phone, otp } = req.body;
-            
+
             // Auto-detect user type by searching both tables
             const detected = await this.detectUserType(phone);
             if (!detected.user) {
@@ -124,12 +124,15 @@ class AuthManager {
             const decryptedOtpBytes = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY);
             const decryptedOtp = decryptedOtpBytes.toString(CryptoJS.enc.Utf8);
             let isOtpValid = otp === decryptedOtp;
-            
+
             if (isOtpValid) {
                 const token = user.generateAuthToken();
                 await this.updateUserByType(user._id, type, { isLoginAllowed: true });
                 const userObj = user.toObject();
-                
+
+                // Refresh profile image SAS URL if expired
+                await refreshProfileImageIfExpired(userObj, (id, updates) => this.updateUserByType(id, type, updates));
+
                 // Logging logic
                 const agent = req.useragent || {};
                 const deviceType = agent.isMobile ? 'mobile' : agent.isTablet ? 'tablet' : 'desktop';
@@ -162,22 +165,7 @@ class AuthManager {
 
     async getUserFromToken(req) {
         try {
-            let currentEpoch = parseInt(Date.now() / 1000);
-            let imageUrl = "";
-            let user;
-
-            if (req.user.profileImage && req.user.profileImageExpiresIn <= currentEpoch) {
-                imageUrl = await getPreSignedProfileImageUrl(req.user._id);
-                let expireLimit = 5 * 24 * 60 * 60;
-
-                user = await this.userDao.update(req.user._id, {
-                    profileImage: imageUrl,
-                    profileImageExpiresIn: Number(currentEpoch) + Number(expireLimit),
-                });
-
-                req.user.profileImage = user.profileImage;
-                req.user.profileImageExpiresIn = user.profileImageExpiresIn;
-            }
+            await refreshProfileImageIfExpired(req.user, (id, updates) => this.userDao.update(id, updates));
 
             return { success: true, data: req.user, message: "" };
         } catch (err) {
