@@ -172,15 +172,6 @@ class QuestionPaperService:
         
         return metadata
 
-    def _build_generation_slots(
-        self, request: QuestionBankPartsGenerationRequest
-    ) -> List[Dict[str, Any]]:
-        """Build generation slots from template distributions, grouped by unit with max 20 questions per slot."""
-        
-        # 1. Get unified metadata
-        unit_metadata = self._get_unit_metadata(request)
-        available_units = list(unit_metadata.keys())
-
     def _find_best_matching_unit(self, search_name: str, available_names: List[str]) -> Optional[str]:
         """
         Finds the best matching unit name from available names, handling prefixes and minor variations.
