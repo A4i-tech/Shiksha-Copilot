@@ -311,6 +311,7 @@
       <div *ngSwitchCase="3" [@fadeInOut] class="h-full overflow-y-auto p-0 bg-white">
         <app-question-bank-blue-print [finalSelectedQuestions]="finalSelectedQuestions"
           [examName]="questionBankConfigForm.value.examinationName" [totalMarks]="totalMarks"
+          [selectedQuestionsMarks]="selectedQuestionsMarks"
           (backClick)="previousStep()" (generateClick)="onSubmit(3)"></app-question-bank-blue-print>
 
         <div *ngIf="!finalSelectedQuestions || finalSelectedQuestions.length === 0" class="text-center p-5">

@@ -76,8 +76,8 @@
           </div>
           <div class="flex justify-between text-sm">
             <span class="text-gray-500">Current Marks:</span>
-            <span class="font-bold" [ngClass]="totalMarks === totalMarks ? 'text-primary' : 'text-error'">
-              {{ totalMarks }} / {{ totalMarks }}
+            <span class="font-bold" [ngClass]="selectedQuestionsMarks === totalMarks ? 'text-primary' : 'text-error'">
+              {{ selectedQuestionsMarks }} / {{ totalMarks }}
             </span>
           </div>
         </div>
