@@ -9,7 +9,7 @@ const UserDao = require("../dao/user.dao");
 const AdminUserDao = require("../dao/admin.user.dao");
 const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
-const { getPreSignedProfileImageUrl } = require("../services/azure.blob.service");
+const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 
 class AuthManager {
     constructor() {
@@ -131,23 +131,7 @@ class AuthManager {
                 const userObj = user.toObject();
 
                 // Refresh profile image SAS URL if expired
-                const currentEpoch = parseInt(Date.now() / 1000);
-                if (userObj.profileImage && userObj.profileImageExpiresIn <= currentEpoch) {
-                    try {
-                        const freshImageUrl = await getPreSignedProfileImageUrl(user._id);
-                        const expireLimit = 5 * 24 * 60 * 60;
-
-                        await this.updateUserByType(user._id, type, {
-                            profileImage: freshImageUrl,
-                            profileImageExpiresIn: currentEpoch + expireLimit,
-                        });
-
-                        userObj.profileImage = freshImageUrl;
-                        userObj.profileImageExpiresIn = currentEpoch + expireLimit;
-                    } catch (imgErr) {
-                        console.log("Warning: Failed to refresh profile image SAS URL on login", imgErr?.message);
-                    }
-                }
+                await refreshProfileImageIfExpired(userObj, (id, updates) => this.updateUserByType(id, type, updates));
 
                 // Logging logic
                 const agent = req.useragent || {};
@@ -181,22 +165,7 @@ class AuthManager {
 
     async getUserFromToken(req) {
         try {
-            let currentEpoch = parseInt(Date.now() / 1000);
-            let imageUrl = "";
-            let user;
-
-            if (req.user.profileImage && req.user.profileImageExpiresIn <= currentEpoch) {
-                imageUrl = await getPreSignedProfileImageUrl(req.user._id);
-                let expireLimit = 5 * 24 * 60 * 60;
-
-                user = await this.userDao.update(req.user._id, {
-                    profileImage: imageUrl,
-                    profileImageExpiresIn: Number(currentEpoch) + Number(expireLimit),
-                });
-
-                req.user.profileImage = user.profileImage;
-                req.user.profileImageExpiresIn = user.profileImageExpiresIn;
-            }
+            await refreshProfileImageIfExpired(req.user, (id, updates) => this.userDao.update(id, updates));
 
             return { success: true, data: req.user, message: "" };
         } catch (err) {

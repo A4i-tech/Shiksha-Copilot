@@ -24,12 +24,23 @@ jest.mock("@azure/storage-blob", () => {
     constructor() {
       return blobServiceClient;
     }
+    static fromConnectionString() {
+      return blobServiceClient;
+    }
+  }
+
+  class StorageSharedKeyCredential {
+    constructor(accountName, accountKey) {
+      this.accountName = accountName;
+      this.accountKey = accountKey;
+    }
   }
 
   return {
     BlobServiceClient,
     generateBlobSASQueryParameters,
     BlobSASPermissions,
+    StorageSharedKeyCredential,
   };
 });
 
@@ -41,6 +52,8 @@ describe("azure.blob.service", () => {
 
   beforeEach(() => {
     jest.resetModules();
+    // Clear connection string so tests use DefaultAzureCredential path consistently
+    delete process.env.AZURE_STORAGE_CONNECTION_STRING;
     process.env.AZURE_STORAGE_ACCOUNT_NAME = accountName;
     process.env.AZURE_STORAGE_CONTAINER_NAME = containerName;
   });
