@@ -8,6 +8,7 @@ const {
 const { Worker } = require("worker_threads");
 const formatApiReponse = require("../helper/response");
 const path = require("path");
+const { getPreSignedProfileImageUrl } = require("../services/azure.blob.service");
 const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../helper/worker.helper");
 const { MESSAGES } = require("../config/constants");
@@ -50,6 +51,21 @@ class UserManager extends BaseManager {
       let user = await this.userDao.getById(id);
 
       let plainUser = user.toObject();
+
+      // Refresh profile image SAS URL if expired
+      const currentEpoch = parseInt(Date.now() / 1000);
+      if (plainUser.profileImage && plainUser.profileImageExpiresIn <= currentEpoch) {
+        const freshImageUrl = await getPreSignedProfileImageUrl(id);
+        const expireLimit = 5 * 24 * 60 * 60;
+
+        await this.userDao.update(id, {
+          profileImage: freshImageUrl,
+          profileImageExpiresIn: currentEpoch + expireLimit,
+        });
+
+        plainUser.profileImage = freshImageUrl;
+        plainUser.profileImageExpiresIn = currentEpoch + expireLimit;
+      }
 
       let groupByBoards = await this.classDao.getGroupClassesByBoard(
         user.school
