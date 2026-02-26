@@ -1,3 +1,7 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+	globalThis.crypto = webcrypto;
+}
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
@@ -41,7 +45,7 @@ app.disable("x-powered-by");
 app.use(express.json());
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
-app.use(cors({origin: allowedOrigins, optionsSuccessStatus: 200}));
+app.use(cors({ origin: allowedOrigins, optionsSuccessStatus: 200 }));
 
 const folderPath = path.join(__dirname, 'public', 'images');
 
