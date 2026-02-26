@@ -135,7 +135,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   statusDataAvailable: boolean = false;
   avgScoreDataAvailable: boolean = false;
   chatbotDataAvailable: boolean = false;
-  selectedPlanType: string = 'lesson'; 
+  selectedPlanType: string = 'lesson';
   isLesson:boolean = true;
 
   @ViewChild('stateDropDown') statedropdown: any;
@@ -147,10 +147,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   // by user bar chart
   byUserBarChartLegend = false;
-  
-  byUserBarChartPlugins = []; 
 
-  byUserBarChartData!: ChartConfiguration<'bar'>['data'];  
+  byUserBarChartPlugins = [];
+
+  byUserBarChartData!: ChartConfiguration<'bar'>['data'];
 
   byUserBarChartOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
@@ -182,7 +182,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         backgroundColor:'#000000',
         titleMarginBottom: 0,
       }
-    }  
+    }
   };
 
   // by subject bar chart
@@ -256,7 +256,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   //status
   statusDonutChartLegend = true;
-  statusDonutChartPlugins = [];  
+  statusDonutChartPlugins = [];
 
   statusDonutChartData!: ChartData<'doughnut'>;
 
@@ -282,14 +282,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
             const dataset = data.datasets[0];
             const activeUsersCount = dataset.data[0];  // Assuming the first index corresponds to active users
             const inactiveUsersCount = dataset.data[1]; // Assuming the second index corresponds to inactive users
-  
+
             // Define your custom images
             const activeUserImage = new Image(20, 20);
-              activeUserImage.src = 'assets/icons/Profile_1.svg';
-  
+            activeUserImage.src = 'assets/icons/Profile_1.svg';
+
             const inactiveUserImage = new Image(20, 20);
-              inactiveUserImage.src = 'assets/icons/Profile_2.svg';
-  
+            inactiveUserImage.src = 'assets/icons/Profile_2.svg';
+
             // Return the custom labels with user counts
             return data.labels!.map((label, index): any => {
               const userCount = index === 0 ? activeUsersCount : inactiveUsersCount;
@@ -323,7 +323,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       },
     },
   };
-  
+
 
   // Average feedback score donut chart
   avgFeedbackDonutChartLegend = true;
@@ -397,7 +397,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit() {
     this.plantypedropdown.selectedItem = this.planTypeDropdownOptions[0].value;
-  }  
+  }
 
   getRegionsData() {
     this.masterService.getRegions().subscribe({
@@ -415,10 +415,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   setStateDropdownValues(val: any) {
     this.stateDropdownOptions = [
       { state: 'Overall'}, 
-      ...val  
+      ...val
     ];
   }
-  
+
   onStateChange(val: any) {
     if (val && val === 'Overall') {
       this.selectedState = null;
@@ -428,7 +428,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     } else {
       this.selectedState = val;
       this.resetStateChange();
-  
+
       if (val) {
         this.setZoneDropdownValues(val);
       } else {
@@ -438,8 +438,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       }
     }
   }
-  
-  resetStateChange() {    
+
+  resetStateChange() {
     this.zoneDropdownOptions = [];
     this.zonedropdown.selectedItem = null;
     this.selectedZone = null;
@@ -509,7 +509,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   onDistrictChange(val: any): void {
     this.selectedDistrict = val;
-    this.resetDistrictChange();  
+    this.resetDistrictChange();
     if (val) {
       this.setBlockDropdownValues(val);
     } else {
@@ -517,7 +517,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       this.triggerGetDetails(this.isLesson);
       this.resetData();
     }
-  }  
+  }
 
   resetDistrictChange() {
     this.selectedBlock = null;
@@ -543,7 +543,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   onBlockChange(val: any) {
     this.selectedBlock = val;
     this.resetBlockChange();
-  
+
     if (val) {
       const filters = {
         state: this.selectedState,
@@ -551,10 +551,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         zone: this.selectedZone,
         block: this.selectedBlock,
       };
-  
+
       this.userManagementService.getSchoolList(true, filters).subscribe((res: any) => {
         this.schools = res.data['results'];
-  
+
         // Check if there are any schools available for the selected block
         if (this.schools.length === 0) {
           this.resetData();
@@ -564,7 +564,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
             _id: school._id,
             name: school.name,
           }));
-  
+
           // Automatically select the first school if options are available
           if (this.schoolDropdownOptions.length > 0) {
             this.onSchoolChange(this.schooldropdown.selectedItem);
@@ -578,7 +578,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       this.resetData();
     }
   }
-  
+
 
   resetData(){
     this.userDataAvailable = false;
@@ -593,29 +593,29 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   onSchoolChange(val: any): void {
     const selectedSchool = this.schoolDropdownOptions.find(school => school._id === val);
-  
+
     if (selectedSchool) {
       this.selectedSchoolName = selectedSchool.name; // Set the selected school name based on the selected ID
     }
-  
-    this.selectedSchoolId = val;  
-    this.triggerGetDetails(this.isLesson);  
+
+    this.selectedSchoolId = val;
+    this.triggerGetDetails(this.isLesson);
     if (!val) {
       this.resetData();
     }
   }
-  
+
 
   validateDateRange(): boolean {
     if (this.selectedFromDate && this.selectedToDate) {
       const fromDate = new Date(this.selectedFromDate);
       const toDate = new Date(this.selectedToDate);
-  
+
       if (fromDate > toDate) {
         this.utilityService.showError('From Date should be earlier than or equal to To Date');
         return false;
       }
-  
+
       if (toDate < fromDate) {
         this.utilityService.showError('To Date should be later than or equal to From Date');
         return false;
@@ -623,36 +623,36 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     }
     return true;
   }
-  
+
   triggerGetDetails(isLesson: boolean): void {
     const params = {
-        state: this.selectedState,
-        zone: this.selectedZone,
-        district: this.selectedDistrict,
-        block: this.selectedBlock,
-        schoolId: this.selectedSchoolId,
-        fromDate: this.selectedFromDate,
-        toDate: this.selectedToDate
+      state: this.selectedState,
+      zone: this.selectedZone,
+      district: this.selectedDistrict,
+      block: this.selectedBlock,
+      schoolId: this.selectedSchoolId,
+      fromDate: this.selectedFromDate,
+      toDate: this.selectedToDate
     };
 
     this.getDetails(isLesson, params);
   }
 
-  
+
   onFrmDateSelection(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.selectedFromDate = input.value;
 
     if (this.selectedFromDate) {
-        if (this.validateDateRange()) {
-            this.triggerGetDetails(this.isLesson);
-        }
-    } else {
-        this.selectedToDate = null; 
+      if (this.validateDateRange()) {
         this.triggerGetDetails(this.isLesson);
+      }
+    } else {
+      this.selectedToDate = null;
+      this.triggerGetDetails(this.isLesson);
     }
   }
-  
+
   clearFrmDate(): void {
     this.selectedFromDate = null;
     this.triggerGetDetails(this.isLesson);
@@ -662,24 +662,24 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.selectedToDate = null;
     this.triggerGetDetails(this.isLesson);
   }
-  
+
   onToDateSelection(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.selectedToDate = input.value;
-  
+
     if (this.validateDateRange()) {
       this.triggerGetDetails(this.isLesson);
     }
     else {
       this.triggerGetDetails(this.isLesson);
     }
-  }   
+  }
 
   onPlanTypeChange(selectedValue: any): void {
     this.selectedPlanType = selectedValue;
-    this.isLesson = selectedValue === 'lesson';  
-    this.triggerGetDetails(this.isLesson); 
-}
+    this.isLesson = selectedValue === 'lesson';
+    this.triggerGetDetails(this.isLesson);
+  }
 
 
   getSelectedLocationLevel(): string {
@@ -696,7 +696,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     } else {
       return 'by State';
     }
-  }  
+  }
 
   getDetails(isLesson: boolean, filtersOrSchoolId?: any) {
     let schoolId: string | undefined;
@@ -704,50 +704,55 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
     // Determine if the argument is a schoolId or a filters object
     if (typeof filtersOrSchoolId === 'string') {
-        schoolId = filtersOrSchoolId;
+      schoolId = filtersOrSchoolId;
     } else if (typeof filtersOrSchoolId === 'object') {
-        filters = filtersOrSchoolId;
+      filters = filtersOrSchoolId;
     }
 
     // If a schoolId is provided, clear the filters; otherwise, populate the filters
     if (schoolId) {
-        filters = {};
+      filters = {};
     } else {
-        filters = {
-            state: filters.state || this.selectedState,
-            zone: filters.zone || this.selectedZone,
-            district: this.selectedDistrict,
-            block: this.selectedBlock,
-            schoolId: this.selectedSchoolId,
-            fromDate: this.selectedFromDate,
-            toDate: this.selectedToDate
-        };
+      filters = {
+        state: filters.state || this.selectedState,
+        zone: filters.zone || this.selectedZone,
+        district: this.selectedDistrict,
+        block: this.selectedBlock,
+        schoolId: this.selectedSchoolId,
+        fromDate: this.selectedFromDate,
+        toDate: this.selectedToDate
+      };
     }
 
     // Call the service method with isLesson, schoolId, and filters
     this.adminDashboardService.getData(isLesson, schoolId, filters).subscribe({
-        next: (res: any) => {
-            const data = res.data || {};
-            this.updateUserChartData(data);
-            this.userDataAvailable = this.byUserBarChartData?.datasets?.length > 0 && this.byUserBarChartData.datasets.some(dataset => dataset.data.length > 0);
-            this.updateSubjectChartData(data);
-            this.subDataAvailable = this.bySubjectBarChartData?.datasets?.length > 0 && this.bySubjectBarChartData.datasets.some(dataset => dataset.data.length > 0);
-            this.updateMediumDonutChartData(data);
-            this.mediumDataAvailable = this.byMediumDonutChartData?.datasets?.length > 0 && this.byMediumDonutChartData.datasets.some(dataset => dataset.data && dataset.data.length > 0 && dataset.data.some(count => count > 0));
-            this.updateStatusDonutChartData(data);
-            this.updateAvgFbScoreDonutChartData(data);
-            this.avgScoreDataAvailable = this.avgFeedbackDonutChartData?.datasets?.length > 0 && this.avgFeedbackDonutChartData.datasets.some(dataset => dataset.data && dataset.data.length > 0 && dataset.data.some(count => count > 0));
-            this.updateChatbotRequestsChartData(data);
-            this.chatbotDataAvailable = this.chatbotRequestsBarChartData?.datasets?.length > 0 && this.chatbotRequestsBarChartData.datasets.some(dataset => dataset.data.length > 0);
-            this.allUsersList = data?.userCounts?.allUsers ?? [];
-            this.userMediumMetrics = data.userMediums || [];
-            this.filterUsers(this.allUsersList, this.userMediumMetrics, this.selectedMedium);
-        },
-        error: (err) => {
-            this.utilityService.handleError(err);
+      next: (res: any) => {
+        if (!res.success || !res.data) {
+          this.utilityService.showError("Failed to load dashboard metrics.");
+          this.resetData();
+          return;
         }
+        const data = res.data;
+        this.updateUserChartData(data);
+        this.userDataAvailable = this.byUserBarChartData?.datasets?.length > 0 && this.byUserBarChartData.datasets.some(dataset => dataset.data.length > 0);
+        this.updateSubjectChartData(data);
+        this.subDataAvailable = this.bySubjectBarChartData?.datasets?.length > 0 && this.bySubjectBarChartData.datasets.some(dataset => dataset.data.length > 0);
+        this.updateMediumDonutChartData(data);
+        this.mediumDataAvailable = this.byMediumDonutChartData?.datasets?.length > 0 && this.byMediumDonutChartData.datasets.some(dataset => dataset.data && dataset.data.length > 0 && dataset.data.some(count => count > 0));
+        this.updateStatusDonutChartData(data);
+        this.updateAvgFbScoreDonutChartData(data);
+        this.avgScoreDataAvailable = this.avgFeedbackDonutChartData?.datasets?.length > 0 && this.avgFeedbackDonutChartData.datasets.some(dataset => dataset.data && dataset.data.length > 0 && dataset.data.some(count => count > 0));
+        this.updateChatbotRequestsChartData(data);
+        this.chatbotDataAvailable = this.chatbotRequestsBarChartData?.datasets?.length > 0 && this.chatbotRequestsBarChartData.datasets.some(dataset => dataset.data.length > 0);
+        this.allUsersList = data.userCounts.allUsers;
+        this.userMediumMetrics = data.userMediums;
+        this.filterUsers(this.allUsersList, this.userMediumMetrics, this.selectedMedium);
+      },
+      error: (err) => {
+        this.utilityService.handleError(err);
+      }
     });
-}
+  }
 
 
   capitalizeFirstLetter(label: string): string {
@@ -759,14 +764,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    * Lesson plan by User bar chart   *
    */
 
-  updateUserChartData(data: any): void {    
+  updateUserChartData(data: any): void {
     const labels = this.extractUserLabels(data);
     const dataset = this.createUserDataset(data);
 
     this.byUserBarChartData = {
       labels: labels,
       datasets: [dataset]
-    };    
+    };
   }
 
   extractUserLabels(data: any): string[] {
@@ -783,11 +788,11 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       hoverBackgroundColor:'#379AE6',
       borderColor:'#FFFFFF',
       categoryPercentage: 0.8,
-      barPercentage: 0.6,  
-      ...(numberOfUsers < 6 && { barThickness: 50 })    
+      barPercentage: 0.6,
+      ...(numberOfUsers < 6 && { barThickness: 50 })
     };
-  }  
-  
+  }
+
   /**
    * Lesson plan by subject bar chart   *
    */
@@ -829,7 +834,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       hoverBackgroundColor: '#8353E2',
       borderColor:'#FFFFFF',
       categoryPercentage: 0.8,
-      barPercentage: 0.6,  
+      barPercentage: 0.6,
       ...(numberOfRecords < 6 && { barThickness: 50 })
     };
   }
@@ -850,24 +855,24 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   createMediumDataset(data: any): any {
     // Initialize the counts array with zeros for Kannada and English
     const counts = [0, 0];
-    
+
     // Map medium names to index in the counts array
     const mediumMapping: { [key: string]: number } = {
-      'Kannada': 0, 
+      'Kannada': 0,
       'English': 1
     };
-    
+
     // Loop through the mediumLessonPlanCount data and update the counts
     if (data?.lessonPlanCountByMedium && Array.isArray(data.lessonPlanCountByMedium)) {
       data.lessonPlanCountByMedium.forEach((item: any) => {
-      const mediumName = this.capitalizeFirstLetter(item.medium);
-      const index = mediumMapping[mediumName];
+        const mediumName = this.capitalizeFirstLetter(item.medium);
+        const index = mediumMapping[mediumName];
         if (index !== undefined) {
           counts[index] = item.lessonPlanCount;
         }
       });
     }
-    
+
     return {
       data: counts,
       backgroundColor: ['#ED7D2D', '#F9D8C0'],
@@ -946,14 +951,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   createAvgFbDataset(data: any): any {
     // Initialize the count array with zeros for the three categories
     const counts = [0, 0, 0];
-  
+
     // Map feedback text to index in the counts array
     const feedbackMapping: { [key: string]: number } = {
       'Very good to use in the classroom': 0, // Above Average
       'Needs some improvement to use in the classroom': 1, // Average
       'Does not meet the requirements to use it in the classroom.': 2 // Below Average
     };
-  
+
     // Loop through the feedback data and update the counts
     if (data?.feedbackCount && Array.isArray(data.feedbackCount)) {
       data.feedbackCount.forEach((item: any) => {
@@ -963,7 +968,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         }
       });
     }
-  
+
     return {
       data: counts,
       backgroundColor: ['#379AE6','#82c2f3', '#C3E1F8'],
@@ -979,7 +984,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   updateChatbotRequestsChartData(data: any): void {
     const labels = this.extractChatbotRequestsLabels(data);
     const eduChatDataset = this.createChatbotRequestsDataset(data);
-    const lessonChatDataset = this.createLessonChatRequestsDataset(data);    
+    const lessonChatDataset = this.createLessonChatRequestsDataset(data);
 
     this.chatbotRequestsBarChartData = {
       labels: labels,
@@ -989,11 +994,11 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   extractChatbotRequestsLabels(data: any): string[] {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    
+
     if (!data?.botRequestCount || !Array.isArray(data.botRequestCount) || data.botRequestCount.length === 0) {
       return [];
     }
-    
+
     const labels = data.botRequestCount.map((item: any) => {
       const [year, month] = item.month.split("-");
       const monthIndex = parseInt(month) - 1; // Convert month to zero-based index
@@ -1024,7 +1029,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       barPercentage:0.8,
       categoryPercentage:0.5
     };
-  }  
+  }
 
   createLessonChatRequestsDataset(data: any): any {
     if (!data?.lessonbotRequestCount || !Array.isArray(data.lessonbotRequestCount)) {
@@ -1047,50 +1052,50 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       barPercentage:0.8,
       categoryPercentage:0.5
     };
-  }  
+  }
 
   areFiltersSelected(): boolean {
     // Check if all required filters are selected
-    return this.selectedState != null 
-  }  
-  
-  exportDashboardDataToExcel(): void {    
-  
+    return this.selectedState != null
+  }
+
+  exportDashboardDataToExcel(): void {
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Dashboard Data');
     let rowIndex = 1;
-  
+
     // Add main heading
     this.addMainHeading(worksheet, 'Dashboard', rowIndex, 18);
-  
+
     // Merge cells in the row below the main heading
     rowIndex += 1; // Move to the row after the main heading and add a blank row
     worksheet.mergeCells(rowIndex, 1, rowIndex, 8); // Adjust the column range as needed
-  
+
     // Move to the next row after merging cells
     rowIndex += 1;
-  
+
     // Add filters row
     rowIndex = this.addFiltersRow(worksheet, rowIndex);
-  
+
     // Merge cells in the row after filters
-    worksheet.mergeCells(rowIndex, 1, rowIndex, 8); 
-  
+    worksheet.mergeCells(rowIndex, 1, rowIndex, 8);
+
     // Move to the next row after merging cells
     rowIndex += 1;
-  
+
     // Get the selected plan type from the dropdown (assuming this is a property on the component)
     const selectedPlanType = this.selectedPlanType; // Either 'Lesson' or 'Resource'
-  
+
     // Add sections side by side
     rowIndex = this.addSectionsSideBySide(worksheet, rowIndex, selectedPlanType);
-  
+
     // Apply borders to the entire report based on the actual data
     this.applyFullBorder(worksheet);
-  
+
     // Apply column widths
     this.setColumnWidths(worksheet);
-  
+
     // Save the workbook
     workbook.xlsx.writeBuffer().then((buffer) => {
       const blob = new Blob([buffer], { type: EXCEL_TYPE });
@@ -1099,7 +1104,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     }).catch((error) => {
       this.utilityService.showError(error);
     });
-  }  
+  }
 
   addSectionsSideBySide(
     worksheet: ExcelJS.Worksheet,
@@ -1107,7 +1112,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     selectedPlanType: string
   ): number {
     const columnOffsets = [1, 3, 5];
-  
+
     // Determine the label based on the selected dropdown filter
     let filterLabel = 'State';
     if (this.selectedSchoolId) {
@@ -1121,10 +1126,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     } else if (this.selectedState) {
       filterLabel = 'Zone';
     }
-  
+
     // Determine the number label based on the selected plan type
     const numberLabel = selectedPlanType === 'lesson' ? 'No. of Lesson Plans' : 'No. of Lesson Resources';
-  
+
     // Define the sections based on the selected plan type and filter label
     const sections = selectedPlanType === 'lesson' ? [
       {
@@ -1165,7 +1170,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         subHeading2: numberLabel
       }
     ];
-  
+
     // Add the first group of sections
     sections.forEach((section, index) => {
       this.addSectionToSheet(
@@ -1173,27 +1178,27 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         section.title,
         section.data,
         [section.subHeading1, // First subheading (e.g., State, Subject, Medium)
-          section.subHeading2], // Second subheading (e.g., No. of Lesson Plans or No. of Lesson Resources)
+        section.subHeading2], // Second subheading (e.g., No. of Lesson Plans or No. of Lesson Resources)
         rowIndex,
         columnOffsets[index],
         true
       );
     });
-  
+
     const firstGroupMaxRows = Math.max(
       ...sections.map(section => this.getRowsUsedForSection(section.data))
     );
-  
+
     const nextRowIndex = rowIndex + firstGroupMaxRows + 2;
     this.addMainHeading(worksheet, 'All Users Info', nextRowIndex, 14);
-  
+
     // Merge cells in the row below 'All Users Info' heading
     const allUsersInfoRowIndex = nextRowIndex + 1;
     worksheet.mergeCells(allUsersInfoRowIndex, 1, allUsersInfoRowIndex, 8);
-  
+
     // Move to the next row after merging cells
     const secondGroupStartRowIndex = allUsersInfoRowIndex + 1;
-  
+
     const secondSections = [
       {
         title: 'Users Status Data',
@@ -1215,7 +1220,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         subHeading3: 'No. of Lesson chat',
       }
     ];
-  
+
     // Add the second group of sections
     secondSections.forEach((section, index) => {
       const headings = [section.subHeading1, section.subHeading2];
@@ -1232,15 +1237,15 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         true
       );
     });
-  
+
     const secondGroupMaxRows = Math.max(
       ...secondSections.map(section => this.getRowsUsedForSection(section.data))
     );
-  
+
     return secondGroupStartRowIndex + secondGroupMaxRows;
   }
-  
-      
+
+
   getRowsUsedForSection(chartData: any): number {
     return chartData.labels && chartData.labels.length > 0 ? chartData.labels.length + 3 : 4; // Rows for title, headers, and data
   }
@@ -1254,19 +1259,19 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       { width: 25 }, // Column 5 width  
       { width: 25 },
       { width: 20 },
-      { width: 20 }  
+      { width: 20 }
     ];
   }
 
   addSectionToSheet(
-  worksheet: ExcelJS.Worksheet,
-  sectionTitle: string,
-  chartData: any,
+    worksheet: ExcelJS.Worksheet,
+    sectionTitle: string,
+    chartData: any,
   headingLabels:any[],
-  startRowIndex: number,
-  startColumnIndex: number,
-  mergeCells: boolean = false
-): number {
+    startRowIndex: number,
+    startColumnIndex: number,
+    mergeCells: boolean = false
+  ): number {
     let rowIndex = startRowIndex;
     let colIndex = startColumnIndex;
 
@@ -1292,7 +1297,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       cell.value = header;
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'D3D3D3' } };
     });
-  
+
     headerRow.font = { bold: true };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     rowIndex += 1;
@@ -1307,27 +1312,27 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         rowIndex += 1;
       });
     } else {
-    worksheet.getCell(rowIndex, colIndex).value = 'No Data';
-    worksheet.getCell(rowIndex, colIndex + 1).value = 0;
+      worksheet.getCell(rowIndex, colIndex).value = 'No Data';
+      worksheet.getCell(rowIndex, colIndex + 1).value = 0;
+      rowIndex += 1;
+    }
+
+    // Add a blank row for separation
     rowIndex += 1;
-  }
 
-  // Add a blank row for separation
-  rowIndex += 1;
+    // Apply table formatting (assuming you have this method)
+    this.applyTableFormatting(worksheet, startRowIndex, rowIndex);
 
-  // Apply table formatting (assuming you have this method)
-  this.applyTableFormatting(worksheet, startRowIndex, rowIndex);
-
-  return rowIndex;
+    return rowIndex;
   }
 
   applyTableFormatting(
-  worksheet: ExcelJS.Worksheet,
-  startRowIndex: number,
-  endRowIndex: number
+    worksheet: ExcelJS.Worksheet,
+    startRowIndex: number,
+    endRowIndex: number
   ): void {
-  const headerRow = worksheet.getRow(startRowIndex);
-  headerRow.font = { bold: true };
+    const headerRow = worksheet.getRow(startRowIndex);
+    headerRow.font = { bold: true };
   headerRow.alignment = { horizontal: 'center', vertical:'middle' };
 
     for (let rowIndex = startRowIndex + 1; rowIndex < endRowIndex; rowIndex++) {
@@ -1370,40 +1375,40 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       taluk: this.selectedBlock ? this.selectedBlock : '-',
       school: this.selectedSchoolName ? this.selectedSchoolName : '-',
       planType: this.selectedPlanType === 'lesson' ? 'Lesson Plan' : this.selectedPlanType === 'resource' ? 'Resource Plan' : '-',
-from: this.selectedFromDate ? this.formatDate(this.selectedFromDate) : '-',
+      from: this.selectedFromDate ? this.formatDate(this.selectedFromDate) : '-',
       to: this.selectedToDate ? this.formatDate(this.selectedToDate) : '-',
     };
 
-  let columnIndex = 1;
+    let columnIndex = 1;
 
-  // Define background color for filter headings
-  const headingColor = 'FFFF00'; // Yellow background
+    // Define background color for filter headings
+    const headingColor = 'FFFF00'; // Yellow background
 
-  // Add filter labels and values horizontally
+    // Add filter labels and values horizontally
   (['state', 'zone', 'district', 'taluk', 'school','planType','from', 'to'] as const).forEach((filter) => {
-    const headingCell = worksheet.getCell(rowIndex, columnIndex);
-    headingCell.value = filter.charAt(0).toUpperCase() + filter.slice(1); // Capitalize first letter
-    headingCell.font = { bold: true };
-    headingCell.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: headingColor }
-    };
-    headingCell.border = {
-      top: { style: 'thin', color: { argb: '000000' } },
-      left: { style: 'thin', color: { argb: '000000' } },
-      bottom: { style: 'thin', color: { argb: '000000' } },
-      right: { style: 'thin', color: { argb: '000000' } }
-    };
-    headingCell.alignment = { horizontal: 'center' }; 
+      const headingCell = worksheet.getCell(rowIndex, columnIndex);
+      headingCell.value = filter.charAt(0).toUpperCase() + filter.slice(1); // Capitalize first letter
+      headingCell.font = { bold: true };
+      headingCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: headingColor }
+      };
+      headingCell.border = {
+        top: { style: 'thin', color: { argb: '000000' } },
+        left: { style: 'thin', color: { argb: '000000' } },
+        bottom: { style: 'thin', color: { argb: '000000' } },
+        right: { style: 'thin', color: { argb: '000000' } }
+      };
+      headingCell.alignment = { horizontal: 'center' };
 
       const valueCell = worksheet.getCell(rowIndex + 1, columnIndex);
       valueCell.value = filters[filter];
       valueCell.border = {
-      top: { style: 'thin', color: { argb: '000000' } },
-      left: { style: 'thin', color: { argb: '000000' } },
-      bottom: { style: 'thin', color: { argb: '000000' } },
-      right: { style: 'thin', color: { argb: '000000' } }
+        top: { style: 'thin', color: { argb: '000000' } },
+        left: { style: 'thin', color: { argb: '000000' } },
+        bottom: { style: 'thin', color: { argb: '000000' } },
+        right: { style: 'thin', color: { argb: '000000' } }
       };
       valueCell.alignment = { horizontal: 'center' };
 
@@ -1412,7 +1417,7 @@ from: this.selectedFromDate ? this.formatDate(this.selectedFromDate) : '-',
 
     // Increment rowIndex to account for the filters row and the blank row
     rowIndex += 1;
-  
+
     return ++rowIndex;
   }
 

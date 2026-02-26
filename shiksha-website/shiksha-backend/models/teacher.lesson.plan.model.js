@@ -3,18 +3,18 @@ const Schema = mongoose.Schema;
 const ObjectId = mongoose.Types.ObjectId;
 
 const MediaSchema = new mongoose.Schema({
-  title: { type: String },
-  type: { type: String, enum: ["image", "video"], required: true },
-  link: { type: String, required: true },
-  uploadedAt: { type: Date, default: Date.now }
+	title: { type: String },
+	type: { type: String, enum: ["image", "video"], required: true },
+	link: { type: String, required: true },
+	uploadedAt: { type: Date, default: Date.now }
 });
 
 const SectionSchema = new mongoose.Schema({
-  id: { type: String, required: true },
-  title: { type: String, required: true },
-  content: { type: mongoose.Schema.Types.Mixed, default: "" },
-  outputFormat: { type: String },
-  media: { type: [MediaSchema], default: [] }
+	id: { type: String, required: true },
+	title: { type: String, required: true },
+	content: { type: mongoose.Schema.Types.Mixed, default: "" },
+	outputFormat: { type: String },
+	media: { type: [MediaSchema], default: [] }
 });
 
 const teacherLessonPlan = new Schema(
@@ -33,25 +33,25 @@ const teacherLessonPlan = new Schema(
 			ref: "MasterResource",
 		},
 		baseLessonId: {
-            type: ObjectId,
-            ref: "MasterLesson",
-        },
+			type: ObjectId,
+			ref: "MasterLesson",
+		},
 		isLesson: {
 			type: Boolean,
 			default: true,
 		},
 		status: {
-            type: String,
+			type: String,
             enum: ["running","completed", "failed","pending"],
-            default: "completed",
-        },
-        instanceId: {
-            type: String,
-        },
-        isGenerated: {
-            type: Boolean,
-            default: false,
-        },
+			default: "completed",
+		},
+		instanceId: {
+			type: String,
+		},
+		isGenerated: {
+			type: Boolean,
+			default: false,
+		},
 		resources: {
 			type: Object,
 			default: [],
@@ -83,6 +83,11 @@ const teacherLessonPlan = new Schema(
 		sections: { type: [SectionSchema], default: [] },
 	},
 	{ timestamps: true }
+);
+
+teacherLessonPlan.index(
+	{ teacherId: 1, isCompleted: 1, createdAt: -1, isLesson: 1 },
+	{ name: "idx_dashboard_lesson_plans", background: true }
 );
 
 const TeacherLessonPlan = mongoose.model(

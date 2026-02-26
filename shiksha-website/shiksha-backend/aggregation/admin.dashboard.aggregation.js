@@ -5,7 +5,7 @@ const Chat = require("../models/chat.model");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const LessonChat = require("../models/lesson.chats.model");
 const LessonFeedback = require("../models/feedback.lesson.model");
-const { parseDate } = require("../helper/formatter");
+const { safeParseDate } = require("../helper/formatter");
 const logger = require("../config/loggers");
 
 class DashboardAggregation {
@@ -211,16 +211,6 @@ class DashboardAggregation {
 
 		const { matchConditions, groupByFields } = this._createHierarchicalMatchAndGroup(query, "teacher");
 
-		const safeParseDate = (str, isStartOfDay) => {
-			if (!str || typeof str !== "string") return undefined;
-			try {
-				const d = parseDate(str, isStartOfDay);
-				return d && !isNaN(d.getTime()) ? d : undefined;
-			} catch {
-				return undefined;
-			}
-		};
-
 		let dateMatch = {};
 		const fromDate = safeParseDate(query.fromDate, true);
 		const toDate = safeParseDate(query.toDate, false);
@@ -279,7 +269,7 @@ class DashboardAggregation {
 					as: "teacher"
 				}
 			},
-			{ $unwind: "$teacher" },
+			{ $unwind: { path: "$teacher", preserveNullAndEmptyArrays: true } },
 			// Apply Location Filters on the joined 'teacher' object
 			...(Object.keys(matchConditions).length > 0 ? [{ $match: matchConditions }] : []),
 			{
@@ -408,7 +398,7 @@ class DashboardAggregation {
 					as: "teacher"
 				}
 			},
-			{ $unwind: "$teacher" },
+			{ $unwind: { path: "$teacher", preserveNullAndEmptyArrays: true } },
 			...(Object.keys(matchConditions).length > 0 ? [{ $match: matchConditions }] : []),
 
 			...masterDataStages,
@@ -482,13 +472,10 @@ class DashboardAggregation {
 		];
 
 		// 4. Chat Request Count (Optimized). Time window is second-precision by createdAt; same window used for Chat and LessonChat below.
-		const sixMonthsAgo = new Date();
-		sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-		const now = new Date();
+		const today = new Date();
 
 		// Generate last 6 months array (MongoDB compatible - works on all versions)
 		const months = [];
-		const today = new Date();
 		for (let i = 5; i >= 0; i--) {
 			const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
 			months.push({
@@ -497,13 +484,17 @@ class DashboardAggregation {
 			});
 		}
 
+		// Calculate sixMonthsAgo from the oldest month to drive the gte
+		const oldestMonthSplit = months[0].month.split("-");
+		const sixMonthsAgo = new Date(oldestMonthSplit[0], oldestMonthSplit[1] - 1, 1);
+
 		// Optimized: Start from Chat collection; 6-month window by createdAt.
 		// Apply hierarchy filters by joining with users first
 		const { matchConditions: chatUserMatchConditions } = this._createHierarchicalMatchAndGroup(query, "user");
 		const requestCountPipeline = [
 			{
 				$match: {
-					createdAt: { $gte: sixMonthsAgo, $lte: now }
+					createdAt: { $gte: sixMonthsAgo }
 				}
 			},
 			// Join with users to apply hierarchy filters
@@ -547,40 +538,7 @@ class DashboardAggregation {
 					month: "$_id",
 					requestCount: 1,
 				},
-			},
-			{
-				$group: {
-					_id: null,
-					data: { $push: "$$ROOT" },
-				},
-			},
-			{
-				$project: {
-					_id: 0,
-					data: {
-						$concatArrays: ["$data", months],
-					},
-				},
-			},
-			{
-				$unwind: "$data",
-			},
-			{
-				$group: {
-					_id: "$data.month",
-					requestCount: { $sum: "$data.requestCount" },
-				},
-			},
-			{
-				$sort: { _id: 1 },
-			},
-			{
-				$project: {
-					_id: 0,
-					month: "$_id",
-					requestCount: 1,
-				},
-			},
+			}
 		];
 
 		// 5. Lesson Chat Count (Optimized). Time window by createdAt.
@@ -589,7 +547,7 @@ class DashboardAggregation {
 		const lessonChatCountPipeline = [
 			{
 				$match: {
-					createdAt: { $gte: sixMonthsAgo, $lte: now }
+					createdAt: { $gte: sixMonthsAgo }
 				},
 			},
 			// Join with users directly since LessonChat has teacherId
@@ -638,40 +596,7 @@ class DashboardAggregation {
 					month: "$_id",
 					requestCount: 1,
 				},
-			},
-			{
-				$group: {
-					_id: null,
-					data: { $push: "$$ROOT" },
-				},
-			},
-			{
-				$project: {
-					_id: 0,
-					data: {
-						$concatArrays: ["$data", months],
-					},
-				},
-			},
-			{
-				$unwind: "$data",
-			},
-			{
-				$group: {
-					_id: "$data.month",
-					requestCount: { $sum: "$data.requestCount" },
-				},
-			},
-			{
-				$sort: { _id: 1 },
-			},
-			{
-				$project: {
-					_id: 0,
-					month: "$_id",
-					requestCount: 1,
-				},
-			},
+			}
 		];
 
 		try {
@@ -695,17 +620,22 @@ class DashboardAggregation {
 				LessonChat.aggregate(lessonChatCountPipeline) // Kept LessonChat, but pipeline optimized
 			]);
 
-			// Ensure all arrays are returned (not null/undefined) to prevent frontend errors
+			// Merge Javascript array with result arrays for charts
+			const mergeWithMonths = (data) => months.map(m => {
+				const found = data.find(d => d.month === m.month);
+				return { month: m.month, requestCount: found ? found.requestCount : 0 };
+			});
+
 			return {
 				success: true,
-				userCounts: userMetrics[0] || { userCounts: { activeUsers: 0, inactiveUsers: 0 }, allUsers: [], activeUsers: [], inactiveUsers: [] },
-				userMediums: userMediumMetrics || [],
-				lessonPlanCount: userLessonPlanCount || [],
-				lessonPlanCountBySubject: subjectLessonPlanCount || [],
-				lessonPlanCountByMedium: mediumLessonPlanCount || [],
-				feedbackCount: feedbackCountResult || [],
-				botRequestCount: botRequestCount || [],
-				lessonbotRequestCount: lessonChatCount || []
+				userCounts: userMetrics[0],
+				userMediums: userMediumMetrics,
+				lessonPlanCount: userLessonPlanCount,
+				lessonPlanCountBySubject: subjectLessonPlanCount,
+				lessonPlanCountByMedium: mediumLessonPlanCount,
+				feedbackCount: feedbackCountResult,
+				botRequestCount: mergeWithMonths(botRequestCount || []),
+				lessonbotRequestCount: mergeWithMonths(lessonChatCount || [])
 			};
 
 		} catch (err) {
