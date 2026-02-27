@@ -433,10 +433,27 @@ class QuestionPaperService:
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {index_path}")
-                chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(
-                    curr_message=user_message, chat_history=chat_history
-                )
+                try:
+                    chat_history = [ChatMessage(role="system", content=system_prompt)]
+                    response_content = await rag_adapter.chat_with_index(
+                        curr_message=user_message, chat_history=chat_history
+                    )
+                except Exception as rag_err:
+                    logger.warning(
+                        f"RAG chat_with_index failed for '{index_path}': {rag_err}. "
+                        f"Falling back to direct LLM generation."
+                    )
+                    # Fallback: use direct LLM generation (same as the no-index path)
+                    completion = self.client.chat.completions.create(
+                        model=self.chat_deployment,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_message}
+                        ],
+                        temperature=0.7,
+                        response_format={"type": "json_object"}
+                    )
+                    response_content = completion.choices[0].message.content
 
             # Clean response
             content = response_content.strip("```json").strip("```")
