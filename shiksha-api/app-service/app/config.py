@@ -33,5 +33,10 @@ class Settings(BaseSettings):
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None
 
+    # Translator Configuration
+    translator_key: Optional[str] = None
+    translator_region: Optional[str] = None
+    translator_endpoint: Optional[str] = None
+
 
 settings = Settings()

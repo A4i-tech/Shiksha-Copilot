@@ -974,6 +974,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return {
       board: formVal.board,
       medium: formVal.medium || 'English',
+      language: formVal.language ?? undefined,
       grade: String(formVal.grade),
       subject: subjectName, // Send Name for AI
       subjectId: selectedSubjectId, // Send ID for DB
