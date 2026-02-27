@@ -1,3 +1,7 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto;
+}
 const { parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
 const dbService = require("../config/db.js");
@@ -81,7 +85,7 @@ dbService.getConnection().then(async (client) => {
         parentPort.postMessage({
           success: false,
           message: "Failed to export teacher.",
-          error: uploadError.message,
+          error: e.message,
         });
       }
     } catch (e) {

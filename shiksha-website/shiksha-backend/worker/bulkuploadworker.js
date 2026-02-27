@@ -1,3 +1,7 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto;
+}
 const { parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
 const School = require("../models/school.model");
@@ -53,8 +57,8 @@ dbService.getConnection().then(async (client) => {
       return typeof value === "string"
         ? value.split(",").map((item) => item.trim())
         : Array.isArray(value)
-        ? value
-        : [];
+          ? value
+          : [];
     };
 
     const toUpperCaseArray = (value) => {
@@ -276,7 +280,7 @@ dbService.getConnection().then(async (client) => {
   };
 
   parentPort.on("message", async (data) => {
-    const { fileBuffer, userId , userName } = data;
+    const { fileBuffer, userId, userName } = data;
     const session = await client.startSession();
 
     try {
@@ -355,7 +359,7 @@ dbService.getConnection().then(async (client) => {
             status: "failure",
             logUrl: errorUrl,
             userId,
-            name:userName
+            name: userName
           });
           parentPort.postMessage({
             success: false,
@@ -426,7 +430,7 @@ dbService.getConnection().then(async (client) => {
             status: "success",
             logUrl,
             userId,
-            name:userName
+            name: userName
           });
 
           parentPort.postMessage({
