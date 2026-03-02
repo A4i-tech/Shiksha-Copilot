@@ -357,4 +357,49 @@ describe("QuestionBankManager", () => {
       expect(result.message).toBe("Translation failed");
     });
   });
+
+  describe("getQuestions", () => {
+    it("should get questions successfully without translation", async () => {
+      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([{ text: "Q1" }]);
+      const masterSubjectDao = require("../../../dao/master.subject.dao");
+      manager.masterSubjectDao = {
+        resolveSubjectContext: jest.fn().mockResolvedValue({ subjectCode: "SC", targetSubjectIds: [] })
+      };
+      manager.questionDao = mockQuestionBankDao;
+
+      const filters = {
+        subject: "Science",
+        medium: "English",
+        class: "10"
+      };
+
+      const result = await manager.getQuestions(filters);
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([{ text: "Q1" }]);
+    });
+
+    it("should get questions and translate if targetLanguage is provided", async () => {
+      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([{ text: "Q1" }]);
+      const masterSubjectDao = require("../../../dao/master.subject.dao");
+      manager.masterSubjectDao = {
+        resolveSubjectContext: jest.fn().mockResolvedValue({ subjectCode: "SC", targetSubjectIds: [] })
+      };
+      manager.questionDao = mockQuestionBankDao;
+      manager._handleTranslation = jest.fn().mockResolvedValue([{ text: "Q1 Translated" }]);
+
+      const filters = {
+        subject: "Science",
+        medium: "English",
+        class: "10",
+        targetLanguage: "Kannada"
+      };
+
+      const result = await manager.getQuestions(filters);
+
+      expect(manager._handleTranslation).toHaveBeenCalledWith("Kannada", [{ text: "Q1" }], "LBA Questions");
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual([{ text: "Q1 Translated" }]);
+    });
+  });
 });

@@ -1125,7 +1125,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       class: config.grade,
       chapterNumbers: selectedChapterNumbers.join(','),
       chapterIds: selectedChapterIds.join(','),
-      headings: this.selectedHeadings.join(',')
+      headings: this.selectedHeadings.join(','),
+      targetLanguage: config.language
     };
 
     console.log('[Frontend] getLBAQuestions params:', params);
