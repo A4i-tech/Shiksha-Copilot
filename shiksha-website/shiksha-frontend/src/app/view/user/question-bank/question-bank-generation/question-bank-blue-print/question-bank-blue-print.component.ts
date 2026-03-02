@@ -10,6 +10,7 @@ import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   @Input() currentStep: number = 3;
   @Input() totalMarks: number = 0;
+  @Input() selectedQuestionsMarks: number = 0;
   @Input() examName: string = '';
 
   // Data from Parent
@@ -122,14 +123,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   get uniqueSources(): string[] {
     const sources = new Set<string>();
     this.finalSelectedQuestions.forEach(q => {
-      let s = q.source || 'Unknown';
-      if (s === 'AI Questions') s = 'AI';
-      if (s === 'Pre-generated Questions') s = 'LBA'; // Or keep full name? User said "Source" in footer. 
-      // In screenshot 1, it shows "Source: Pre-genERATED QUESTION SELECTION"
-      // Wait, let's verify what the source strings are.
-      // In .ts file line 96: q.source === 'AI Questions'.
-      // In .html line 48: {{ q.source }}.
-      if (q.source) sources.add(q.source);
+      sources.add(q.source || 'Unknown');
     });
     return Array.from(sources);
   }

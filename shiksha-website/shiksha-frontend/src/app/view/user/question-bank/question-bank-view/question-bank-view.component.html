@@ -100,6 +100,7 @@
                 *ngIf="questionBankData.type === 'Four alternatives are given for each of the following questions, choose the correct alternative'"
                 class="list-alpha">
                 <li *ngFor="let option of questionData.options">
+                  <!-- Options may be object entries ({ text, label? }) or plain strings. -->
                   <span *ngIf="option.text">{{ option.text }}</span>
                   <span *ngIf="!option.text">{{ option }}</span>
                 </li>
