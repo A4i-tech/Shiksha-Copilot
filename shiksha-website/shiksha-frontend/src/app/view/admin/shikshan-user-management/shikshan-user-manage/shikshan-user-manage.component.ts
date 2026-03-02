@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, UntypedFormControl, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
@@ -81,7 +81,7 @@ export class ShikshanUserManageComponent implements OnInit {
   mode!: any;
   userId!: string;
 
-  constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private shikshanaUserService: ShikshanService, private router: Router, private masterService: MasterService,private commonStaffUserService:StaffUserCommonService) { }
+  constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private shikshanaUserService: ShikshanService, private router: Router, private masterService: MasterService, private commonStaffUserService: StaffUserCommonService) { }
 
   ngOnInit(): void {
     this.userRolesDropdownOptions = this.shikshanaUserService.userRoleDropdownOptions;
@@ -101,7 +101,7 @@ export class ShikshanUserManageComponent implements OnInit {
 
   initialize_add_form() {
     this.addForm = this.fb.group({
-      name: [null, [Validators.required,Validators.minLength(3)]],
+      name: [null, [Validators.required, Validators.minLength(3)]],
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
       email: [null, [Validators.required, Validators.email]],
       role: [null, [Validators.required]],
@@ -163,7 +163,7 @@ export class ShikshanUserManageComponent implements OnInit {
 
     // Find the selected state object
     const stateObj = this.regionsData.find((region: any) => region.state === state);
-    
+
     if (stateObj && stateObj.zones) {
       // Transform zones into the correct format for the dropdown
       this.zoneDropdownOptions = stateObj.zones.map((zone: any) => ({
@@ -189,7 +189,7 @@ export class ShikshanUserManageComponent implements OnInit {
 
     const state = this.addForm.get('state')?.value;
     const stateObj = this.regionsData.find((region: any) => region.state === state);
-    
+
     if (!stateObj) {
       this.districtDropdownOptions = [];
       return;
@@ -237,7 +237,7 @@ export class ShikshanUserManageComponent implements OnInit {
       delete formData.zones;
       delete formData.districts;
     }
-    
+
     // Define the type for the formatted data
     interface FormattedData {
       _id?: string;
@@ -250,7 +250,7 @@ export class ShikshanUserManageComponent implements OnInit {
       zones?: string[];
       districts?: string[];
     }
-    
+
     // Format the data according to API requirements
     const formattedData: FormattedData = {
       name: formData.name?.trim(),
@@ -271,36 +271,36 @@ export class ShikshanUserManageComponent implements OnInit {
       formattedData.districts = formData.districts;
     }
     if (this.mode === 'edit') {
-        formattedData._id = this.userId;
-        this.shikshanaUserService.editUserDetails(this.userId, formattedData).subscribe({
-          next: (res: any) => {
-            this.router.navigate(['/admin/shikshana-user/list']);
-            this.utilityService.handleResponse(res);
-          },
-          error: (err) => {
-            console.error('Edit error:', err);
-            console.error('Error details:', err.error);
-            this.utilityService.handleError(err);
-          }
-        });
+      formattedData._id = this.userId;
+      this.shikshanaUserService.editUserDetails(this.userId, formattedData).subscribe({
+        next: (res: any) => {
+          this.router.navigate(['/admin/shikshana-user/list']);
+          this.utilityService.handleResponse(res);
+        },
+        error: (err) => {
+          console.error('Edit error:', err);
+          console.error('Error details:', err.error);
+          this.utilityService.handleError(err);
+        }
+      });
     } else {
-        // For create, we need to send the data to the correct endpoint
-        this.shikshanaUserService.createUser(formattedData).subscribe({
-          next: (res: any) => {
-            this.router.navigate(['/admin/shikshana-user/list']);
-            this.utilityService.handleResponse(res)
-          },
-          error: (err) => {
-            if (err.error?.error) {
-            }
-            this.utilityService.handleError(err);
+      // For create, we need to send the data to the correct endpoint
+      this.shikshanaUserService.createUser(formattedData).subscribe({
+        next: (res: any) => {
+          this.router.navigate(['/admin/shikshana-user/list']);
+          this.utilityService.handleResponse(res)
+        },
+        error: (err) => {
+          if (err.error?.error) {
           }
-        });
+          this.utilityService.handleError(err);
+        }
+      });
     }
   }
 
-  convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
-    return absCtrl as UntypedFormControl;
+  convertToFormControl(absCtrl: AbstractControl | null): FormControl {
+    return absCtrl as FormControl;
   }
   get f(): any {
     return this.addForm.controls;
@@ -319,7 +319,7 @@ export class ShikshanUserManageComponent implements OnInit {
   }
 
   getUserDetails(id: string) {
-    this.commonStaffUserService.getUserDetails(id,'admin').subscribe({
+    this.commonStaffUserService.getUserDetails(id, 'admin').subscribe({
       next: (res: any) => {
         const userData = res.data;
         const roleValue = Array.isArray(userData.role) ? userData.role[0] : userData.role;
@@ -327,16 +327,16 @@ export class ShikshanUserManageComponent implements OnInit {
         if (roleValue === 'manager' && userData.state) {
           this.updateZoneOptions(userData.state);
           this.updateDistrictOptions(userData.zones);
-        this.addForm.patchValue({
-          name: userData.name,
-          phone: userData.phone,
-          email: userData.email,
+          this.addForm.patchValue({
+            name: userData.name,
+            phone: userData.phone,
+            email: userData.email,
             role: roleValue,
-          isDeleted: userData.isDeleted,
-          state: userData.state,
-          zones: userData.zones,
-          districts: userData.districts
-        });
+            isDeleted: userData.isDeleted,
+            state: userData.state,
+            zones: userData.zones,
+            districts: userData.districts
+          });
         } else {
           // For admin or other roles, clear state/zones/districts
           this.addForm.patchValue({

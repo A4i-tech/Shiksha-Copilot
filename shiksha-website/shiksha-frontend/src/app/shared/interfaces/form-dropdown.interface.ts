@@ -1,10 +1,14 @@
 /**
- * Option item for dropdown; may include optional `info` (string) for tooltip.
- * Used to define the structure of items passed to the FormDropdownComponent's dropDownValues.
+ * Specific type for dropdown values to avoid generic 'any' behavior.
+ */
+export type FormDropDownValue = string | number | boolean | Record<string, unknown>;
+
+/**
+ * Option item for dropdown; used to define the structure of items passed to the FormDropdownComponent's dropDownValues.
  */
 export interface FormDropDownOption {
   name?: string;
-  value?: string;
+  value?: FormDropDownValue;
   info?: string;
   [key: string]: unknown;
 }

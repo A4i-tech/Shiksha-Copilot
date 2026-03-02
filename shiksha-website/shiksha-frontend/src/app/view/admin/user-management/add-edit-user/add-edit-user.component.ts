@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, UntypedFormControl, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
@@ -164,8 +164,8 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     })
 
 
-    
-   
+
+
 
 
 
@@ -216,8 +216,8 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       );
       // districts is now an array
       if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts) 
-          ? this.selectedZoneObj.districts 
+        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts)
+          ? this.selectedZoneObj.districts
           : [this.selectedZoneObj.districts]; // Handle legacy object structure
       } else {
         this.districtDropdownOptions = [];
@@ -235,10 +235,10 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     if (selectedDistrict) {
       // districts is now an array, find the matching district
       if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        const districts = Array.isArray(this.selectedZoneObj.districts) 
-          ? this.selectedZoneObj.districts 
+        const districts = Array.isArray(this.selectedZoneObj.districts)
+          ? this.selectedZoneObj.districts
           : [this.selectedZoneObj.districts]; // Handle legacy object structure
-        
+
         this.selectedDistrictObj = this.utilityService.filterDropdownValues(
           districts,
           'name',
@@ -278,25 +278,25 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   }
 
   getSchoolList() {
-    
-      const filters = {
-        state:this.addForm.get('state')?.value,
-        district:this.addForm.get('district')?.value,
-        zone:this.addForm.get('zone')?.value,
-        block:this.addForm.get('block')?.value
-      }
-      this.userManagementService.getSchoolList(false,filters).subscribe((res: any) => {
-        this.schools = res.data['results'];
-        this.schoolNamesDropdownOptions = this.schools.map((school: { _id: string, name: string }) => ({
-          _id: school._id,
-          name: school.name
-        }));
-      });
+
+    const filters = {
+      state: this.addForm.get('state')?.value,
+      district: this.addForm.get('district')?.value,
+      zone: this.addForm.get('zone')?.value,
+      block: this.addForm.get('block')?.value
+    }
+    this.userManagementService.getSchoolList(false, filters).subscribe((res: any) => {
+      this.schools = res.data['results'];
+      this.schoolNamesDropdownOptions = this.schools.map((school: { _id: string, name: string }) => ({
+        _id: school._id,
+        name: school.name
+      }));
+    });
   }
 
   initialize_add_form() {
     this.addForm = this.fb.group({
-      name: [null, [Validators.required,Validators.minLength(5)]],
+      name: [null, [Validators.required, Validators.minLength(5)]],
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
       state: [null, [Validators.required]],
       zone: [null, [Validators.required]],
@@ -314,58 +314,58 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     if (this.addForm.invalid) {
       return
     }
-      const currentSchoolValue = this.f.school?.value;
-      if (this.mode === 'edit') {
-        
-        const updatedData = {
-          ...this.addForm.value,
-          isSchoolChanged:this.savedSchoolId !== this.addForm.value.school
-        }
-        // Check if the school value has changed
-        if (currentSchoolValue !== this.initialSchoolValue){
-          this.userManagementService.editUserDetails(this.userId, updatedData).subscribe({
-            next: (res: any) => {
-              this.router.navigate(['/admin/user-management/list']);
-              this.utilityService.handleResponse(res);
-            },
-            error: (err) => {
-              console.error(err);
-              this.utilityService.handleError(err);
-            }
-          });
-        }
-        else{
-          this.userManagementService.editUserDetails(this.userId, this.addForm.value).subscribe({
-            next: (res: any) => {
-              this.router.navigate(['/admin/user-management/list']);
-              this.utilityService.handleResponse(res);
-            },
-            error: (err) => {
-              console.error(err);
-              this.utilityService.handleError(err);
-            }
-          });
-        }  
-        
+    const currentSchoolValue = this.f.school?.value;
+    if (this.mode === 'edit') {
+
+      const updatedData = {
+        ...this.addForm.value,
+        isSchoolChanged: this.savedSchoolId !== this.addForm.value.school
       }
-      else {
-  
-        this.commonStaffUserService.addUser(this.addForm.value,'user').subscribe({
+      // Check if the school value has changed
+      if (currentSchoolValue !== this.initialSchoolValue) {
+        this.userManagementService.editUserDetails(this.userId, updatedData).subscribe({
           next: (res: any) => {
             this.router.navigate(['/admin/user-management/list']);
             this.utilityService.handleResponse(res);
           },
           error: (err) => {
+            console.error(err);
             this.utilityService.handleError(err);
           }
         });
       }
-    
-   
+      else {
+        this.userManagementService.editUserDetails(this.userId, this.addForm.value).subscribe({
+          next: (res: any) => {
+            this.router.navigate(['/admin/user-management/list']);
+            this.utilityService.handleResponse(res);
+          },
+          error: (err) => {
+            console.error(err);
+            this.utilityService.handleError(err);
+          }
+        });
+      }
+
+    }
+    else {
+
+      this.commonStaffUserService.addUser(this.addForm.value, 'user').subscribe({
+        next: (res: any) => {
+          this.router.navigate(['/admin/user-management/list']);
+          this.utilityService.handleResponse(res);
+        },
+        error: (err) => {
+          this.utilityService.handleError(err);
+        }
+      });
+    }
+
+
   }
 
-  convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
-    return absCtrl as UntypedFormControl;
+  convertToFormControl(absCtrl: AbstractControl | null): FormControl {
+    return absCtrl as FormControl;
   }
 
   get f(): any {
@@ -402,12 +402,12 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     this.addForm.patchValue(newObj);
 
     this.initialSchoolValue = newObj.school; // Set the initial school value
-    
+
   }
 
   getUserDetails(id: string) {
-    this.commonStaffUserService.getUserDetails(id,'user').subscribe({
-      next: (res: any) => {        
+    this.commonStaffUserService.getUserDetails(id, 'user').subscribe({
+      next: (res: any) => {
         const userData = res.data;
         this.savedSchoolId = userData?.school?._id
         this.setFormValue(userData);

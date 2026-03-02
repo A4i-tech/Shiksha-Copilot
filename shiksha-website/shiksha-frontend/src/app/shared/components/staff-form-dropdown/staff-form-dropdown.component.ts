@@ -4,8 +4,8 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import {
   FormsModule,
   ReactiveFormsModule,
-  UntypedFormControl,
-  UntypedFormGroup,
+  FormControl,
+  FormGroup,
 } from '@angular/forms';
 import { FormDropDownConfig } from '../../interfaces/form-dropdown.interface';
 import { TranslateModule } from '@ngx-translate/core';
@@ -22,7 +22,7 @@ export class StafFormDropdownComponent implements OnInit {
 
   @Input() dropDownControlName!: string;
 
-  @Input() dropDownCtrl!: UntypedFormControl;
+  @Input() dropDownCtrl!: FormControl;
 
   @Input() config!: FormDropDownConfig;
 
@@ -33,15 +33,15 @@ export class StafFormDropdownComponent implements OnInit {
   @Output() valueChange: EventEmitter<any> = new EventEmitter<any>();
 
 
-  formGroupTemp!: UntypedFormGroup;
+  formGroupTemp!: FormGroup;
 
   /**
    * Angular oninit lifecycle hook used for initialization
    */
   ngOnInit(): void {
     const obj: any = {};
-    obj[this.dropDownControlName] = new UntypedFormControl(null);
-    this.formGroupTemp = new UntypedFormGroup(obj);
+    obj[this.dropDownControlName] = new FormControl(null);
+    this.formGroupTemp = new FormGroup(obj);
   }
 
   /**
@@ -86,13 +86,13 @@ export class StafFormDropdownComponent implements OnInit {
     let currentVal = this.dropDownCtrl?.value || [];
     const itemValue = this.config.bindValue ? item[this.config.bindValue] : item;
     const index = currentVal.findIndex((i: any) => i === itemValue);
-    
+
     if (index === -1) {
       currentVal.push(itemValue);
     } else {
       currentVal.splice(index, 1);
     }
-    
+
     this.dropDownCtrl.setValue([...currentVal]);
     this.valueChange.emit([...currentVal]);
   }

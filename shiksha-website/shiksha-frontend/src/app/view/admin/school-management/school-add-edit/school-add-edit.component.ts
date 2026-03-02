@@ -3,8 +3,8 @@ import {
   AbstractControl,
   FormBuilder,
   FormGroup,
-  UntypedFormArray,
-  UntypedFormControl,
+  FormArray,
+  FormControl,
   ValidationErrors,
   Validators,
 } from '@angular/forms';
@@ -275,7 +275,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   ngOnInit(): void {
     this.setCurrentAcademicYear();
     this.createAddEditForm();
-   this.queryParamSubscription = this.route.queryParamMap.subscribe((qparams) => {
+    this.queryParamSubscription = this.route.queryParamMap.subscribe((qparams) => {
       this.mode = qparams?.get('mode');
     });
 
@@ -610,8 +610,8 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
       );
       // districts is now an array
       if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts) 
-          ? this.selectedZoneObj.districts 
+        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts)
+          ? this.selectedZoneObj.districts
           : [this.selectedZoneObj.districts]; // Handle legacy object structure
       } else {
         this.districtDropdownOptions = [];
@@ -629,10 +629,10 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     if (selectedDistrict) {
       // districts is now an array, find the matching district
       if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        const districts = Array.isArray(this.selectedZoneObj.districts) 
-          ? this.selectedZoneObj.districts 
+        const districts = Array.isArray(this.selectedZoneObj.districts)
+          ? this.selectedZoneObj.districts
           : [this.selectedZoneObj.districts]; // Handle legacy object structure
-        
+
         this.selectedDistrictObj = this.utilityService.filterDropdownValues(
           districts,
           'name',
@@ -830,7 +830,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
             }, 0);
           }
           break;
-  
+
         default:
           break;
       }
@@ -926,7 +926,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     this.stateDropdownconfig.isBackground = true;
     this.mediumDropdownconfig.chipClearableOff = true;
     this.boardDropdownconfig.chipClearableOff = true;
-    
+
     this.classBoardDropdownconfig.disabled = true;
     this.classMediumDropdownconfig.disabled = true;
     this.classMinDropdownconfig.disabled = true;
@@ -950,14 +950,14 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    * getter for holiday list
    */
   get holidayList() {
-    return this.schoolAddEditForm.get('holidayList') as UntypedFormArray;
+    return this.schoolAddEditForm.get('holidayList') as FormArray;
   }
 
   /**
    * getter for facilities
    */
   get facilities() {
-    return this.schoolAddEditForm.get('facilities') as UntypedFormArray;
+    return this.schoolAddEditForm.get('facilities') as FormArray;
   }
 
   /**
@@ -1019,7 +1019,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    * Function to remove resource control
    * @param index
    */
-  removeResource(index: any) { 
+  removeResource(index: any) {
     if(this.facilities.controls[index].value?.type === 'Others' && this.mode === 'edit'){
       this.showFacilityDeleteConfirm = true;
       this.deleteIndex = index
@@ -1033,18 +1033,18 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     this.showFacilityDeleteConfirm=false;
     if(val === 'delete'){
   this.schoolManagementService.updateFacility(this.schoolId,this.facilities.controls[this.deleteIndex].value).
-    subscribe({
+        subscribe({
       next:(res)=>{
-        this.utilityService.handleResponse(res);
-        this.facilities.removeAt(this.deleteIndex);
-        this.resourceOtherValue = this.resourceOtherValue.splice(this.deleteIndex, 1);
-      },
+            this.utilityService.handleResponse(res);
+            this.facilities.removeAt(this.deleteIndex);
+            this.resourceOtherValue = this.resourceOtherValue.splice(this.deleteIndex, 1);
+          },
       error:(err)=>{
-        this.utilityService.handleError(err)
-      }
-    })
+            this.utilityService.handleError(err)
+          }
+        })
     }
-  
+
   }
 
   /**
@@ -1074,8 +1074,8 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    * @param absCtrl
    * @returns
    */
-  convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
-    return absCtrl as UntypedFormControl;
+  convertToFormControl(absCtrl: AbstractControl | null): FormControl {
+    return absCtrl as FormControl;
   }
 
   /**
