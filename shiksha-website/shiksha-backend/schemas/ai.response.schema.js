@@ -20,14 +20,12 @@ const QuestionBankPartsResponseSchema = z.object({
       marks_per_question: z.number().optional(),
       questions: z.array(
         z.object({
-          question: z.string().optional(),
+          question: z.string().min(1, "Question text cannot be empty").optional(),
           answer: z.string().optional(),
           difficulty: z.string().optional(),
-          value1: z.string().optional(),
-          value2: z.string().optional(),
           options: z.array(z.string()).optional(),
-          text: z.string().optional(),
-          pairs: z.array(z.object({ left: z.string(), right: z.string() })).optional()
+          text: z.string().min(1, "Question text cannot be empty").optional(),
+          pairs: z.array(z.object({ left: z.string().min(1, "Left pair cannot be empty"), right: z.string().min(1, "Right pair cannot be empty") })).optional()
         }).passthrough()
       ).optional(),
     }).passthrough()
@@ -45,14 +43,12 @@ const QuestionBankPartsItemsResponseSchema = z.object({
       marks_per_question: z.number().optional(),
       difficulty: z.string().optional(),
       item: z.object({
-        question: z.string().optional(),
+        question: z.string().min(1, "Question text cannot be empty").optional(),
         answer: z.string().optional(),
         difficulty: z.string().optional(),
-        value1: z.string().optional(),
-        value2: z.string().optional(),
         options: z.array(z.string()).optional(),
-        text: z.string().optional(),
-        pairs: z.array(z.object({ left: z.string(), right: z.string() })).optional()
+        text: z.string().min(1, "Question text cannot be empty").optional(),
+        pairs: z.array(z.object({ left: z.string().min(1, "Left pair cannot be empty"), right: z.string().min(1, "Right pair cannot be empty") })).optional()
       }).passthrough().optional(),
     }).passthrough()
   ),
@@ -98,27 +94,17 @@ function validatePartsResponse(data) {
     if (data && typeof data === "object" && Array.isArray(data.items)) {
       const validatedItems = QuestionBankPartsItemsResponseSchema.parse(data);
       return validatedItems.items.reduce((acc, row) => {
-        const payload = (row.item && typeof row.item === "object") ? row.item : {};
-
-        if (payload.value1 !== undefined && payload.value2 !== undefined) {
+        const payload = (row.item && typeof row.item === "object") ? { ...row.item } : {};
+        const questionText = payload.question || payload.text || "";
+        if (questionText || payload.pairs) {
           acc.push({
             ...payload,
-            pairs: [{ left: payload.value1, right: payload.value2 }],
+            question: questionText,
+            options: Array.isArray(payload.options) ? payload.options : [],
+            answer: payload.answer || "",
             difficulty: row.difficulty || payload.difficulty || "Average",
             marks: row.marks_per_question || payload.marks || 1,
           });
-        } else {
-          const questionText = payload.question || payload.text || "";
-          if (questionText || payload.pairs) {
-            acc.push({
-              ...payload,
-              question: questionText,
-              options: Array.isArray(payload.options) ? payload.options : [],
-              answer: payload.answer || "",
-              difficulty: row.difficulty || payload.difficulty || "Average",
-              marks: row.marks_per_question || payload.marks || 1,
-            });
-          }
         }
         return acc;
       }, []);
@@ -133,30 +119,21 @@ function validatePartsResponse(data) {
     // Flatten nested questions structure
     const flattenedQuestions = [];
 
-    validated.questions.forEach((questionBlock, blockIndex) => {
+    validated.questions.forEach((questionBlock) => {
       const blockQuestions = questionBlock.questions || [];
       const marksPerQuestion = questionBlock.marks_per_question || 1;
 
-      blockQuestions.forEach((q, qIndex) => {
-        if (q.value1 !== undefined && q.value2 !== undefined) {
+      blockQuestions.forEach((q) => {
+        const questionText = q.question || q.text || "";
+        if (questionText || q.pairs) {
           flattenedQuestions.push({
             ...q,
-            pairs: [{ left: q.value1, right: q.value2 }],
+            question: questionText,
+            options: Array.isArray(q.options) ? q.options : [],
+            answer: q.answer || "",
             difficulty: q.difficulty || "Average",
             marks: marksPerQuestion,
           });
-        } else {
-          const questionText = q.question || q.text || "";
-          if (questionText || q.pairs) {
-            flattenedQuestions.push({
-              ...q,
-              question: questionText,
-              options: Array.isArray(q.options) ? q.options : [],
-              answer: q.answer || "",
-              difficulty: q.difficulty || "Average",
-              marks: marksPerQuestion,
-            });
-          }
         }
       });
     });

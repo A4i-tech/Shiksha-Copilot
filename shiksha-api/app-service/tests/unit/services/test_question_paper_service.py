@@ -57,9 +57,12 @@ class TestFlattenExistingQuestions:
 
     def test_flatten_matching_questions(self, service):
         """Test flattening matching-type questions."""
+        mock_pair = MagicMock()
+        mock_pair.left = "Mitochondria"
+        mock_pair.right = "Powerhouse of the cell"
         mock_question = MagicMock()
-        mock_question.value1 = "Mitochondria"
-        mock_question.value2 = "Powerhouse of the cell"
+        mock_question.question = ""
+        mock_question.pairs = [mock_pair]
         mock_response = MagicMock()
         mock_response.questions = [mock_question]
 

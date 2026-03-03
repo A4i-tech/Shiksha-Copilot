@@ -10,7 +10,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from app.models.question_paper import (
     TextQuestion,
     FourOptionsQuestion,
-    MatchingListQuestion,
+    MatchPair,
+    MatchingGroupQuestion,
     QuestionType,
     McqOption
 )
@@ -34,9 +35,9 @@ def test_models():
     q4 = FourOptionsQuestion(question="Select one", options=opts, answer="A", difficulty="Easy")
     assert q4.difficulty == "Easy", f"FourOptionsQuestion difficulty should be Easy, got {q4.difficulty}"
     
-    # Test MatchingListQuestion
-    q5 = MatchingListQuestion(value1="A", value2="B")
-    assert q5.difficulty == "Medium", f"MatchingListQuestion default difficulty should be Medium, got {q5.difficulty}"
+    # Test MatchingGroupQuestion
+    q5 = MatchingGroupQuestion(pairs=[MatchPair(left="A", right="B")])
+    assert q5.difficulty == "Medium", f"MatchingGroupQuestion default difficulty should be Medium, got {q5.difficulty}"
 
     print("Model tests passed!")
 

@@ -64,9 +64,13 @@ class FourOptionsQuestion(BaseModel):
 
 
 
-class MatchingListQuestion(BaseModel):
-    value1: str = ""
-    value2: str = ""
+class MatchPair(BaseModel):
+    left: str = ""
+    right: str = ""
+
+
+class MatchingGroupQuestion(BaseModel):
+    pairs: List[MatchPair] = []
     difficulty: DifficultyType = "Average"
 
 
@@ -109,8 +113,8 @@ class QuestionType(str, Enum):
     )
     MATCH_LIST = (
         "Match the following",
-        "Generate a CORRECTLY matched item-pair",
-        MatchingListQuestion,
+        "Generate a group of correctly matched item-pairs as a pairs array",
+        MatchingGroupQuestion,
     )
 
     def __new__(cls, value, description, pydantic_model):
@@ -202,7 +206,7 @@ class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: int
-    questions: List[Union[TextQuestion, FourOptionsQuestion, MatchingListQuestion]] = []
+    questions: List[Union[TextQuestion, FourOptionsQuestion, MatchingGroupQuestion]] = []
 
 
 class QuestionBankResponse(BaseModel):

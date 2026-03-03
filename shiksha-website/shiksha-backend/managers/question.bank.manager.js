@@ -380,9 +380,7 @@ class QuestionBankManager extends BaseManager {
       // Restructure validated items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
-        const distribution = Array.isArray(template.question_distribution)
-          ? template.question_distribution
-          : (Array.isArray(template.questionDistribution) ? template.questionDistribution : []);
+        const distribution = template.question_distribution ?? [];
         const numNeeded = distribution.length;
         const blockQuestions = validatedQuestions.slice(itemPointer, itemPointer + numNeeded);
         itemPointer += numNeeded;

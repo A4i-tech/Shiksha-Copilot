@@ -112,9 +112,10 @@ class QuestionPaperService:
             for q in qtr.questions:
                 if hasattr(q, "question") and q.question:
                     questions.append(q.question)
-                elif hasattr(q, "value1") and hasattr(q, "value2"):
-                    # For matching questions
-                    questions.append(f"{q.value1} :: {q.value2}")
+                elif hasattr(q, "pairs") and q.pairs:
+                    # For matching questions — stringify each pair
+                    for pair in q.pairs:
+                        questions.append(f"{pair.left} :: {pair.right}")
         return [q for q in questions if q]
 
     def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest) -> str:

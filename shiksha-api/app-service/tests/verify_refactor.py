@@ -1,5 +1,5 @@
 
-from app.models.question_paper import TextQuestion, FourOptionsQuestion, MatchingListQuestion, QuestionType
+from app.models.question_paper import TextQuestion, FourOptionsQuestion, MatchPair, MatchingGroupQuestion, QuestionType
 import json
 
 def test_difficulty_refactoring():
@@ -16,9 +16,9 @@ def test_difficulty_refactoring():
         print(f"FAILED: FourOptionsQuestion default is '{foq.difficulty}', expected 'Average'")
         exit(1)
         
-    mlq = MatchingListQuestion()
+    mlq = MatchingGroupQuestion(pairs=[MatchPair(left="A", right="B")])
     if mlq.difficulty != "Average":
-        print(f"FAILED: MatchingListQuestion default is '{mlq.difficulty}', expected 'Average'")
+        print(f"FAILED: MatchingGroupQuestion default is '{mlq.difficulty}', expected 'Average'")
         exit(1)
         
     print("SUCCESS: Model defaults are correct.")
