@@ -259,11 +259,11 @@ class QuestionBankManager extends BaseManager {
     } = reqBody;
 
     // Handle both objectiveDistribution (camel) and objective_distribution (snake)
-    const finalObjectiveDist = objectiveDistribution || objective_distribution  ;
+    const finalObjectiveDist = objectiveDistribution || objective_distribution;
 
     // Determine unit names and level
     const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
-    const unitNames = isMultiChapter ? chapter   : subTopic  ;
+    const unitNames = isMultiChapter ? chapter : subTopic;
     const processedUnitNames = Array.isArray(unitNames)
       ? unitNames.map((e) => e.trim())
       : [];
@@ -326,7 +326,7 @@ class QuestionBankManager extends BaseManager {
       processedUnitNames
     );
 
-    rawCacheHit = (cacheHit  ).map((doc) => doc.toObject());
+    rawCacheHit = (cacheHit).map((doc) => doc.toObject());
 
     const {
       matchTheFollowingTemplate,
@@ -618,7 +618,7 @@ class QuestionBankManager extends BaseManager {
         questions,
       } = reqBody;
 
-      const objective_distribution = reqBody.objective_distribution || reqBody.objectiveDistribution;
+      const objective_distribution = reqBody.objective_distribution ?? reqBody.objectiveDistribution ?? [];
       const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
       const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
 
@@ -642,9 +642,9 @@ class QuestionBankManager extends BaseManager {
           title: chapter.title,
           index_path: chapter.indexPath || chapter.index_path || "",
           learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes,
-          subtopics: (chapter.subtopics ).map((sub) => ({
+          subtopics: (chapter.subtopics).map((sub) => ({
             title: sub.title,
-            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes ,
+            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes,
           })),
         }))
         : [];
@@ -684,13 +684,13 @@ class QuestionBankManager extends BaseManager {
       });
       // -----------------------------------------------------------
 
-      const formattedMarksDist = (marksDistribution ).map((dist) => ({
+      const formattedMarksDist = (marksDistribution ?? []).map((dist) => ({
         unit_name: dist.unit_name || dist.unitName,
         percentage_distribution: dist.percentage_distribution || dist.percentageDistribution,
         marks: dist.marks,
       }));
 
-      const formattedObjectiveDist = (objective_distribution).map((obj) => ({
+      const formattedObjectiveDist = (objective_distribution ?? []).map((obj) => ({
         objective: obj.objective,
         percentage_distribution: obj.percentage_distribution || obj.percentageDistribution,
       }));
@@ -820,7 +820,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Medium retrieved successfully",
-        (media  ).sort()
+        (media).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -844,7 +844,7 @@ class QuestionBankManager extends BaseManager {
       );
 
       // 2. Fetch Aggregated Stats from QuestionDao
-      const chapterIds = (chapters  ).map((ch) => ch._id);
+      const chapterIds = (chapters).map((ch) => ch._id);
       let statsMap = new Map();
 
       if (chapterIds.length > 0) {
@@ -871,7 +871,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Difficulties retrieved successfully",
-        (diffs  ).filter(Boolean).sort()
+        (diffs).filter(Boolean).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -884,7 +884,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Answer types retrieved successfully",
-        (types  ).filter(Boolean).sort()
+        (types).filter(Boolean).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -966,7 +966,7 @@ class QuestionBankManager extends BaseManager {
       const insertedChapters = [];
       const insertedQuestions = [];
 
-      for (const entry of data  ) {
+      for (const entry of data) {
         const {
           class: className,
           medium,
