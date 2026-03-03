@@ -5,7 +5,8 @@ from app.models.question_paper import (
     QuestionBankMetadata,
     TextQuestion,
     FourOptionsQuestion,
-    MatchingListQuestion,
+    MatchPair,
+    MatchingGroupQuestion,
 )
 
 
@@ -103,26 +104,30 @@ class TestFourOptionsQuestion:
         assert len(question.options) == 2
 
 
-class TestMatchingListQuestion:
-    """Tests for MatchingListQuestion model."""
+class TestMatchingGroupQuestion:
+    """Tests for MatchingGroupQuestion model."""
 
-    def test_valid_matching_question(self):
-        """Test creating valid matching question."""
-        question = MatchingListQuestion(value1="Capital", value2="Country")
-        assert question.value1 == "Capital"
-        assert question.value2 == "Country"
+    def test_valid_matching_group(self):
+        """Test creating valid matching group with pairs."""
+        question = MatchingGroupQuestion(
+            pairs=[MatchPair(left="Capital", right="Country")]
+        )
+        assert len(question.pairs) == 1
+        assert question.pairs[0].left == "Capital"
+        assert question.pairs[0].right == "Country"
 
-    def test_matching_question_empty_defaults(self):
-        """Test matching question with default empty values."""
-        question = MatchingListQuestion()
-        assert question.value1 == ""
-        assert question.value2 == ""
+    def test_matching_group_empty_defaults(self):
+        """Test matching group with default empty pairs."""
+        question = MatchingGroupQuestion()
+        assert question.pairs == []
 
-    def test_matching_question_with_long_values(self):
-        """Test matching question with long string values."""
-        question = MatchingListQuestion(value1="A" * 100, value2="B" * 100)
-        assert len(question.value1) == 100
-        assert len(question.value2) == 100
+    def test_matching_group_with_multiple_pairs(self):
+        """Test matching group with multiple pairs."""
+        question = MatchingGroupQuestion(
+            pairs=[MatchPair(left="A" * 100, right="B" * 100)]
+        )
+        assert len(question.pairs[0].left) == 100
+        assert len(question.pairs[0].right) == 100
 
 
 class TestQuestionType:
@@ -163,7 +168,7 @@ class TestQuestionType:
     def test_question_type_match_list(self):
         """Test match list question type."""
         assert QuestionType.MATCH_LIST.value.startswith("Match the following")
-        assert QuestionType.MATCH_LIST._model == MatchingListQuestion
+        assert QuestionType.MATCH_LIST._model == MatchingGroupQuestion
 
     def test_question_type_has_description(self):
         """Test that all question types have descriptions."""

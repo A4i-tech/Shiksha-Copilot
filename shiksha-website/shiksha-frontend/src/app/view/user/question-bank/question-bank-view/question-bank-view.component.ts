@@ -7,6 +7,23 @@ import { IdleService } from 'src/app/shared/services/idle.service';
 import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
+
+interface MatchPair {
+  left: string;
+  right: string;
+}
+
+interface MatchQuestion {
+  pairs: MatchPair[];
+}
+
+interface QuestionSection {
+  type: string;
+  questions: MatchQuestion[];
+  primaryColumn?: string[];
+  shuffledColumns?: string[];
+}
+
 @Component({
   selector: 'app-question-bank-view',
   templateUrl: './question-bank-view.component.html',
@@ -89,12 +106,12 @@ export class QuestionBankViewComponent implements OnInit {
 
           // Process Match the Following sections
           if (this.questionBank?.questions?.length) {
-            this.questionBank.questions.forEach((section: any) => {
+            this.questionBank.questions.forEach((section: QuestionSection) => {
               if (section.type === 'Match the following' && section.questions?.length) {
                 // Map columns using only the pairs format
-                const allPairs = section.questions.flatMap((q: any) => q.pairs || []);
-                const colTwoVal = structuredClone(allPairs.map((pair: any) => pair.right || ''));
-                section.primaryColumn = allPairs.map((pair: any) => pair.left || '');
+                const allPairs = section.questions.flatMap((q: MatchQuestion) => q.pairs);
+                const colTwoVal = structuredClone(allPairs.map((pair: MatchPair) => pair.right));
+                section.primaryColumn = allPairs.map((pair: MatchPair) => pair.left);
                 section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
               }
             });

@@ -27,20 +27,7 @@ describe('validatePartsResponse', () => {
             });
         });
 
-        it('should convert value1/value2 into a pairs array', () => {
-            const result = validatePartsResponse({
-                questions: [{
-                    type: 'Match the Following',
-                    marks_per_question: 1,
-                    questions: [
-                        { value1: 'Sun', value2: 'Star', difficulty: 'Easy' },
-                    ],
-                }],
-            });
 
-            expect(result).toHaveLength(1);
-            expect(result[0].pairs).toEqual([{ left: 'Sun', right: 'Star' }]);
-        });
 
         it('should pass through questions that already have typed pairs', () => {
             const result = validatePartsResponse({
@@ -142,14 +129,14 @@ describe('validatePartsResponse', () => {
             });
         });
 
-        it('should convert items value1/value2 into pairs', () => {
+        it('should pass through items that already have typed pairs', () => {
             const result = validatePartsResponse({
                 items: [
                     {
                         type: 'Match the Following',
                         marks_per_question: 1,
                         difficulty: 'Easy',
-                        item: { value1: 'Dog', value2: 'Animal' },
+                        item: { pairs: [{ left: 'Dog', right: 'Animal' }] },
                     },
                 ],
             });

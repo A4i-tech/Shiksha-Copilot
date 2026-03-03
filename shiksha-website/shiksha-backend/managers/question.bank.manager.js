@@ -380,9 +380,7 @@ class QuestionBankManager extends BaseManager {
       // Restructure validated items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
-        const distribution = Array.isArray(template.question_distribution)
-          ? template.question_distribution
-          : (Array.isArray(template.questionDistribution) ? template.questionDistribution : []);
+        const distribution = template.question_distribution ?? [];
         const numNeeded = distribution.length;
         const blockQuestions = validatedQuestions.slice(itemPointer, itemPointer + numNeeded);
         itemPointer += numNeeded;
@@ -504,8 +502,8 @@ class QuestionBankManager extends BaseManager {
     if (notFoundQuestions.length) {
       const objectives = objectiveDistribution?.length
         ? objectiveDistribution.map((e) =>
-            (e.objective || "").toLowerCase()
-          )
+          (e.objective || "").toLowerCase()
+        )
         : [];
 
       const processedCache = isMultiChapter
@@ -641,14 +639,14 @@ class QuestionBankManager extends BaseManager {
       // 1. Prepare Base Chapters (From DB)
       let formattedChapters = chapterData?.length
         ? chapterData.map((chapter) => ({
-            title: chapter.title,
-            index_path: chapter.indexPath || chapter.index_path || "",
-            learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-            subtopics: (chapter.subtopics || []).map((sub) => ({
-              title: sub.title,
-              learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
-            })),
-          }))
+          title: chapter.title,
+          index_path: chapter.indexPath || chapter.index_path || "",
+          learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
+          subtopics: (chapter.subtopics || []).map((sub) => ({
+            title: sub.title,
+            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+          })),
+        }))
         : [];
 
       const requiredUnits = new Set();
