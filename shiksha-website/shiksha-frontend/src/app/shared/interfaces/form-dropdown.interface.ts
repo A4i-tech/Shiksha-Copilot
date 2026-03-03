@@ -1,7 +1,7 @@
 /**
  * Specific type for dropdown values to avoid generic 'any' behavior.
  */
-export type FormDropDownValue = string | number | boolean | Record<string, unknown>;
+export type FormDropDownValue = string | number | null;
 
 /**
  * Option item for dropdown; used to define the structure of items passed to the FormDropdownComponent's dropDownValues.

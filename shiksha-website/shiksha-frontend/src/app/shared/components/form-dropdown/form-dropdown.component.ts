@@ -32,7 +32,7 @@ export class FormDropdownComponent implements OnInit, OnChanges {
 
   @Input() mode!: string;
 
-  @Output() valueChange: EventEmitter<FormDropDownValue | FormDropDownValue[]> = new EventEmitter<FormDropDownValue | FormDropDownValue[]>();
+  @Output() valueChange: EventEmitter<FormDropDownValue | FormDropDownValue[] | null> = new EventEmitter<FormDropDownValue | FormDropDownValue[] | null>();
 
 
   formGroupTemp!: FormGroup;
@@ -85,14 +85,14 @@ export class FormDropdownComponent implements OnInit, OnChanges {
    * Function to emit value change
    * @param val
    */
-  valueSelected(val: FormDropDownValue | FormDropDownValue[]) {
+  valueSelected(val: FormDropDownValue | FormDropDownValue[] | null) {
     this.valueChange.emit(val);
   }
 
   public onSelectAll() {
     if (this.config.selectAllValue) {
       const data = this.dropDownValues.map((e) =>
-        this.config?.selectAllValue ? (e[this.config.selectAllValue as keyof FormDropDownOption] as FormDropDownValue) : (e as FormDropDownValue)
+        this.config?.selectAllValue ? (e[this.config.selectAllValue as keyof FormDropDownOption] as FormDropDownValue) : (e as unknown as FormDropDownValue)
       );
       this.dropDownCtrl.setValue(data);
       this.valueChange.emit(data);
@@ -104,8 +104,9 @@ export class FormDropdownComponent implements OnInit, OnChanges {
   }
 
   public onClearAll() {
-    this.dropDownCtrl.setValue([]);
-    this.valueChange.emit([] as FormDropDownValue[]);
+    const emptyValue = this.config.multi ? [] : null;
+    this.dropDownCtrl.setValue(emptyValue);
+    this.valueChange.emit(emptyValue as any);
   }
 
   toggleSelection(item: FormDropDownValue) {
@@ -126,7 +127,7 @@ export class FormDropdownComponent implements OnInit, OnChanges {
     if (target?.checked) {
       if (this.config.selectAllValue) {
         const data = this.dropDownValues.map((e) =>
-          this.config?.selectAllValue ? (e[this.config.selectAllValue as keyof FormDropDownOption] as FormDropDownValue) : (e as FormDropDownValue)
+          this.config?.selectAllValue ? (e[this.config.selectAllValue as keyof FormDropDownOption] as FormDropDownValue) : (e as unknown as FormDropDownValue)
         );
         this.dropDownCtrl.setValue(data);
         this.valueChange.emit(data);

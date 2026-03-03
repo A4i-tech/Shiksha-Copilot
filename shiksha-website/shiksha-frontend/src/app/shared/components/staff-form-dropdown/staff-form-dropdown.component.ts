@@ -30,7 +30,7 @@ export class StafFormDropdownComponent implements OnInit {
 
   @Input() mode!: string;
 
-  @Output() valueChange: EventEmitter<any> = new EventEmitter<any>();
+  @Output() valueChange: EventEmitter<any | null> = new EventEmitter<any | null>();
 
 
   formGroupTemp!: FormGroup;
@@ -78,8 +78,9 @@ export class StafFormDropdownComponent implements OnInit {
   }
 
   public onClearAll() {
-    this.dropDownCtrl.setValue([]);
-    this.valueChange.emit([]);
+    const emptyValue = this.config.multi ? [] : null;
+    this.dropDownCtrl.setValue(emptyValue);
+    this.valueChange.emit(emptyValue);
   }
 
   toggleSelection(item: any) {
