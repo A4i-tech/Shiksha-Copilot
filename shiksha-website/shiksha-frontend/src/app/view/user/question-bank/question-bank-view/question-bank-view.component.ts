@@ -110,9 +110,11 @@ export class QuestionBankViewComponent implements OnInit {
               if (section.type === 'Match the following' && section.questions?.length) {
                 // Map columns using only the pairs format
                 const allPairs = section.questions.flatMap((q: MatchQuestion) => q.pairs);
-                const colTwoVal = structuredClone(allPairs.map((pair: MatchPair) => pair.right));
-                section.primaryColumn = allPairs.map((pair: MatchPair) => pair.left);
-                section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
+                if (allPairs.length) {
+                  const colTwoVal = structuredClone(allPairs.map((pair: MatchPair) => pair.right));
+                  section.primaryColumn = allPairs.map((pair: MatchPair) => pair.left);
+                  section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
+                }
               }
             });
           }

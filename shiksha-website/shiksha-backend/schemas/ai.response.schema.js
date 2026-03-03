@@ -21,13 +21,13 @@ const QuestionBankPartsResponseSchema = z.object({
       questions: z.array(
         z.object({
           question: z.string().min(1, "Question text cannot be empty").optional(),
-          answer: z.string().optional(),
-          difficulty: z.string().optional(),
-          options: z.array(z.string()).optional(),
+          answer: z.string().default(""),
+          difficulty: z.string().default("Average"),
+          options: z.array(z.string()).default([]),
           text: z.string().min(1, "Question text cannot be empty").optional(),
           pairs: z.array(z.object({ left: z.string().min(1, "Left pair cannot be empty"), right: z.string().min(1, "Right pair cannot be empty") })).optional()
         }).passthrough()
-      ).optional(),
+      ).default([]),
     }).passthrough()
   ),
 });
@@ -44,9 +44,9 @@ const QuestionBankPartsItemsResponseSchema = z.object({
       difficulty: z.string().optional(),
       item: z.object({
         question: z.string().min(1, "Question text cannot be empty").optional(),
-        answer: z.string().optional(),
-        difficulty: z.string().optional(),
-        options: z.array(z.string()).optional(),
+        answer: z.string().default(""),
+        difficulty: z.string().default("Average"),
+        options: z.array(z.string()).default([]),
         text: z.string().min(1, "Question text cannot be empty").optional(),
         pairs: z.array(z.object({ left: z.string().min(1, "Left pair cannot be empty"), right: z.string().min(1, "Right pair cannot be empty") })).optional()
       }).passthrough().optional(),
@@ -120,8 +120,8 @@ function validatePartsResponse(data) {
     const flattenedQuestions = [];
 
     validated.questions.forEach((questionBlock) => {
-      const blockQuestions = questionBlock.questions || [];
-      const marksPerQuestion = questionBlock.marks_per_question || 1;
+      const blockQuestions = questionBlock.questions;
+      const marksPerQuestion = questionBlock.marks_per_question ?? 1;
 
       blockQuestions.forEach((q) => {
         const questionText = q.question || q.text || "";
@@ -129,9 +129,9 @@ function validatePartsResponse(data) {
           flattenedQuestions.push({
             ...q,
             question: questionText,
-            options: Array.isArray(q.options) ? q.options : [],
-            answer: q.answer || "",
-            difficulty: q.difficulty || "Average",
+            options: q.options,
+            answer: q.answer,
+            difficulty: q.difficulty,
             marks: marksPerQuestion,
           });
         }
