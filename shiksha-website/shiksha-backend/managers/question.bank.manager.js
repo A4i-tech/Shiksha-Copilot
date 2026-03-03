@@ -133,8 +133,8 @@ class QuestionBankManager extends BaseManager {
       const payload = {
         ...templatePayload,
         objective_distribution:
-          objective_distribution || req.body.objectiveDistribution || [],
-        template: this._mapTemplateTypes(template || []),
+          objective_distribution || req.body.objectiveDistribution,
+        template: this._mapTemplateTypes(template),
       };
 
       const response = await postToQuestionBankBluePrint(payload);
@@ -259,11 +259,11 @@ class QuestionBankManager extends BaseManager {
     } = reqBody;
 
     // Handle both objectiveDistribution (camel) and objective_distribution (snake)
-    const finalObjectiveDist = objectiveDistribution || objective_distribution || [];
+    const finalObjectiveDist = objectiveDistribution || objective_distribution  ;
 
     // Determine unit names and level
     const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
-    const unitNames = isMultiChapter ? chapter || [] : subTopic || [];
+    const unitNames = isMultiChapter ? chapter   : subTopic  ;
     const processedUnitNames = Array.isArray(unitNames)
       ? unitNames.map((e) => e.trim())
       : [];
@@ -326,13 +326,13 @@ class QuestionBankManager extends BaseManager {
       processedUnitNames
     );
 
-    rawCacheHit = (cacheHit || []).map((doc) => doc.toObject());
+    rawCacheHit = (cacheHit  ).map((doc) => doc.toObject());
 
     const {
       matchTheFollowingTemplate,
       matchTheFollowingIndex,
       filteredTemplate,
-    } = filterTemplate(template || []);
+    } = filterTemplate(template);
 
     const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
       filteredTemplate,
@@ -380,7 +380,7 @@ class QuestionBankManager extends BaseManager {
       // Restructure validated items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
-        const distribution = template.question_distribution ?? [];
+        const distribution = template.question_distribution;
         const numNeeded = distribution.length;
         const blockQuestions = validatedQuestions.slice(itemPointer, itemPointer + numNeeded);
         itemPointer += numNeeded;
@@ -411,7 +411,7 @@ class QuestionBankManager extends BaseManager {
     // Re-inject Match following for full list
     if (matchTheFollowingTemplate.length) {
       for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-        if (mergedList.length < (template || []).length) {
+        if (mergedList.length < (template).length) {
           mergedList.splice(
             matchTheFollowingIndex[i],
             0,
@@ -618,7 +618,7 @@ class QuestionBankManager extends BaseManager {
         questions,
       } = reqBody;
 
-      const objective_distribution = reqBody.objective_distribution || reqBody.objectiveDistribution || [];
+      const objective_distribution = reqBody.objective_distribution || reqBody.objectiveDistribution;
       const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
       const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
 
@@ -641,10 +641,10 @@ class QuestionBankManager extends BaseManager {
         ? chapterData.map((chapter) => ({
           title: chapter.title,
           index_path: chapter.indexPath || chapter.index_path || "",
-          learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-          subtopics: (chapter.subtopics || []).map((sub) => ({
+          learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes,
+          subtopics: (chapter.subtopics ).map((sub) => ({
             title: sub.title,
-            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes ,
           })),
         }))
         : [];
@@ -684,13 +684,13 @@ class QuestionBankManager extends BaseManager {
       });
       // -----------------------------------------------------------
 
-      const formattedMarksDist = (marksDistribution || []).map((dist) => ({
+      const formattedMarksDist = (marksDistribution ).map((dist) => ({
         unit_name: dist.unit_name || dist.unitName,
         percentage_distribution: dist.percentage_distribution || dist.percentageDistribution,
         marks: dist.marks,
       }));
 
-      const formattedObjectiveDist = (objective_distribution || []).map((obj) => ({
+      const formattedObjectiveDist = (objective_distribution).map((obj) => ({
         objective: obj.objective,
         percentage_distribution: obj.percentage_distribution || obj.percentageDistribution,
       }));
@@ -705,7 +705,7 @@ class QuestionBankManager extends BaseManager {
         chapters: formattedChapters, // Now contains all necessary units
         marks_distribution: formattedMarksDist,
         objective_distribution: formattedObjectiveDist,
-        template: this._mapTemplateTypes(template || []),
+        template: this._mapTemplateTypes(template),
       };
 
       if (questions && questions.length > 0) {
@@ -804,7 +804,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Classes retrieved successfully",
-        (classes || []).sort((a, b) => Number(a) - Number(b))
+        (classes).sort((a, b) => Number(a) - Number(b))
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -820,7 +820,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Medium retrieved successfully",
-        (media || []).sort()
+        (media  ).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -844,7 +844,7 @@ class QuestionBankManager extends BaseManager {
       );
 
       // 2. Fetch Aggregated Stats from QuestionDao
-      const chapterIds = (chapters || []).map((ch) => ch._id);
+      const chapterIds = (chapters  ).map((ch) => ch._id);
       let statsMap = new Map();
 
       if (chapterIds.length > 0) {
@@ -871,7 +871,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Difficulties retrieved successfully",
-        (diffs || []).filter(Boolean).sort()
+        (diffs  ).filter(Boolean).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -884,7 +884,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Answer types retrieved successfully",
-        (types || []).filter(Boolean).sort()
+        (types  ).filter(Boolean).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -954,7 +954,7 @@ class QuestionBankManager extends BaseManager {
       const insertedChapters = [];
       const insertedQuestions = [];
 
-      for (const entry of data || []) {
+      for (const entry of data  ) {
         const {
           class: className,
           medium,
