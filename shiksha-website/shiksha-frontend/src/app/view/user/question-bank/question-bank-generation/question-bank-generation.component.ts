@@ -666,11 +666,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         break;
 
       case 2:
-        if (!this.templateComponent || this.templateComponent.selectedQuestions.length === 0) {
+        const selections = this.templateComponent?.selectedQuestions?.length
+          ? this.templateComponent.selectedQuestions
+          : this.selectedQuestions;
+        if (!selections || selections.length === 0) {
           this.utilityservice.showWarning("Please select at least one question.");
           return;
         }
-        this.processStep2(this.templateComponent.selectedQuestions);
+        this.processStep2(selections);
         break;
 
       case 3:
@@ -732,7 +735,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   processStep2(selections: any[]) {
     // Sync with latest selections if provided (should be since Step 2 uses selectionChange)
     if (selections && selections.length > 0) {
-      this.selectedQuestions = selections;
+      this.selectedQuestions = [...selections];
     }
 
     if (!this.selectedQuestions || this.selectedQuestions.length === 0) {
