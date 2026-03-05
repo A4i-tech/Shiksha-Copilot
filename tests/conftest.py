@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright, expect
 
 load_dotenv()
 
-STAGING_URL = os.getenv("STAGING_URL")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 USER_PHONE = os.getenv("TEST_USER_PHONE")
 USER_OTP = os.getenv("TEST_USER_OTP")
 
@@ -21,7 +21,7 @@ def browser_context():
         context = browser.new_context()
         page = context.new_page()
 
-        page.goto(f"{STAGING_URL}/#/auth/signin")
+        page.goto(f"{FRONTEND_URL}/#/auth/signin")
 
         phone_input = page.locator("#mNumber")
         phone_input.wait_for(state="visible")

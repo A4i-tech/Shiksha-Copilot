@@ -67,7 +67,7 @@ jobs:
         run: |
           RETRIES=10
           SLEEP_TIME=15
-          URLS=("${{ secrets.STAGING_URL }}" "${{ secrets.STAGING_BACKEND_URL }}" "${{ secrets.STAGING_API_URL }}")
+          URLS=("${{ needs.cicd-frontend.outputs.page_url }}" "${{ needs.cd-backend.outputs['service-url'] }}" "${{ needs.cd-api.outputs['service-url'] }}")
           NAMES=("Frontend" "Backend" "API")
 
           for ((i=1; i<=RETRIES; i++)); do
@@ -93,7 +93,7 @@ jobs:
 
   smoke-tests:
     name: Smoke Tests
-    needs: health-check
+    needs: [cicd-frontend, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +105,7 @@ jobs:
           playwright install chromium
       - name: Run Smoke Tests
         env:
-          STAGING_URL: ${{ secrets.STAGING_URL }}
+          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
         run: pytest tests/smoke --csv smoke_report.csv
@@ -117,7 +117,7 @@ jobs:
 
   regression-tests:
     name: Regression Tests
-    needs: health-check
+    needs: [cicd-frontend, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,7 +129,7 @@ jobs:
           playwright install chromium
       - name: Run Regression Tests
         env:
-          STAGING_URL: ${{ secrets.STAGING_URL }}
+          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
         run: pytest tests/regression --csv regression_report.csv
@@ -141,14 +141,14 @@ jobs:
 
   performance-tests:
     name: Performance Tests
-    needs: health-check
+    needs: [cicd-frontend, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Run k6 Load Test
         uses: grafana/k6-action@v0.3.0
         env:
-          STAGING_URL: ${{ secrets.STAGING_URL }}/#/auth/signin
+          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}/#/auth/signin
         with:
           filename: tests/performance/load_test.js
           flags: --summary-export=k6_summary.json

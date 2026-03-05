@@ -1,3 +1,8 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+    globalThis.crypto = webcrypto;
+}
+
 const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = require("@azure/storage-blob");
 const { DefaultAzureCredential } = require("@azure/identity");
 require("dotenv").config();
