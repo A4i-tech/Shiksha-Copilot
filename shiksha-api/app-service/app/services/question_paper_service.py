@@ -157,14 +157,16 @@ class QuestionPaperService:
             chapter = request.chapters[0]
             # Use subtopics as units
             for subtopic in chapter.subtopics:
+                resolved_path = getattr(subtopic, "index_path", None) or chapter.index_path
                 metadata[subtopic.title] = {
                     "learning_outcomes": subtopic.learning_outcomes,
                     # Fallback to chapter index path if subtopic doesn't have specific one
-                    "index_path": getattr(subtopic, "index_path", None) or chapter.index_path
+                    "index_path": resolved_path
                 }
         else:
             # Use chapters as units
             for chapter in request.chapters:
+                path_exists = Path(chapter.index_path).exists() if chapter.index_path else False
                 metadata[chapter.title] = {
                     "learning_outcomes": chapter.learning_outcomes,
                     "index_path": chapter.index_path
@@ -340,15 +342,20 @@ class QuestionPaperService:
         """Generate format instruction for a specific question type."""
         return f"- For {qtype}: {qtype.description}. Use format: {qtype.schema_dict()}"
 
-    async def _get_or_create_rag_adapter(self, index_path: str) -> BaseRagAdapter:
-        """
-        Internal Cache Manager: Get or create a RAG adapter instance.
-        """
-        # Check Internal Cache
+    async def _get_or_create_rag_adapter(
+        self, index_path: str
+    ) -> Optional[BaseRagAdapter]:
+        """Get an existing RAG adapter or create and cache a new one."""
+        if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not index_path.strip():
+            logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
+            return None
+
+        # 1. Check Internal Cache
         if index_path in self._adapter_cache:
+            logger.debug(f"[RAG_ADAPTER] Cache HIT for path: {index_path}")
             return self._adapter_cache[index_path]
 
-        logger.info(f"Creating new RAG Adapter for path: {index_path}")
+        logger.debug(f"[RAG_ADAPTER] Cache MISS | path='{index_path}'")
         
         # 1. Create the instance
         adapter = RagAdapterFactory.create_adapter(
@@ -358,8 +365,10 @@ class QuestionPaperService:
         )
         
         # --- FIX START: Initialize the adapter before using it ---
-        logger.info(f"Initializing RAG Adapter for path: {index_path}")
-        await adapter.initialize() 
+        await adapter.initialize()
+        
+        # Download index from blob storage if not already cached locally
+        await adapter.initiate_index()
         # --- FIX END ---
         
         # 3. Store in Internal Cache
@@ -428,15 +437,12 @@ class QuestionPaperService:
                 response_content = await rag_adapter.chat_with_index(
                     curr_message=user_message, chat_history=chat_history
                 )
+                # chat_with_index returns {"response": str, "source_nodes": list}
+                response_content = response_content["response"]
 
             # Clean response
             content = response_content.strip("```json").strip("```")
             response_data = json.loads(content)
-
-            print(
-                "********************** RESPONSE DATA **********************",
-                json.dumps(response_data, indent=2),
-            )
 
             items = response_data.get("items")
             if not items:
@@ -582,6 +588,10 @@ class QuestionPaperService:
                 tasks = []
                 for j, slot in enumerate(batch_slots):
                     index_path = slot["index_path"]
+                    logger.debug(
+                        f"[SLOT_PROCESSING] Batch {i}, Slot {j} | "
+                        f"unit='{slot['unit_name']}' | index_path='{index_path}'"
+                    )
                     
                     # Get Native/Qdrant adapter from cache
                     rag_adapter = await self._get_or_create_rag_adapter(index_path)

@@ -155,6 +155,14 @@ class InMemRagOpsAdapter(BaseRagAdapter):
                     f"No files downloaded for index path: {self.index_path}"
                 )
 
+            # LlamaIndex expects 'default__vector_store.json', but older indices might only have 'vector_store.json'
+            legacy_vs_path = os.path.join(self.persist_dir, "vector_store.json")
+            new_vs_path = os.path.join(self.persist_dir, "default__vector_store.json")
+            if os.path.exists(legacy_vs_path) and not os.path.exists(new_vs_path):
+                import shutil
+                shutil.copy(legacy_vs_path, new_vs_path)
+                logger.info("Copied legacy vector_store.json to default__vector_store.json for LlamaIndex compatibility")
+
             logger.info(f"Downloaded {len(downloaded_file_paths)} index files")
             file_paths_str = "\n".join(downloaded_file_paths)
             logger.info(f"Downloaded RAG index files: {file_paths_str}")

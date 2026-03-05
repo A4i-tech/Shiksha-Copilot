@@ -501,8 +501,8 @@ class QuestionBankManager extends BaseManager {
     if (notFoundQuestions.length) {
       const objectives = objectiveDistribution?.length
         ? objectiveDistribution.map((e) =>
-            (e.objective || "").toLowerCase()
-          )
+          (e.objective || "").toLowerCase()
+        )
         : [];
 
       const processedCache = isMultiChapter
@@ -629,7 +629,7 @@ class QuestionBankManager extends BaseManager {
         if (isMultiChapter) {
           if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
         } else {
-          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, validSubTopicIds);
+          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, subTopicsArr);
         }
       } catch (aggErr) {
         console.warn("[Manager] Chapter lookup failed:", aggErr.message);
@@ -638,14 +638,15 @@ class QuestionBankManager extends BaseManager {
       // 1. Prepare Base Chapters (From DB)
       let formattedChapters = chapterData?.length
         ? chapterData.map((chapter) => ({
-            title: chapter.title,
-            index_path: chapter.indexPath || chapter.index_path || "",
-            learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-            subtopics: (chapter.subtopics || []).map((sub) => ({
-              title: sub.title,
-              learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
-            })),
-          }))
+          title: chapter.title,
+          index_path: chapter.indexPath || chapter.index_path || "",
+          learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
+          subtopics: (chapter.subtopics || []).map((sub) => ({
+            title: sub.title,
+            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+            index_path: sub.indexPath || sub.index_path || chapter.indexPath || chapter.index_path || "",
+          })),
+        }))
         : [];
 
       const requiredUnits = new Set();
@@ -666,16 +667,40 @@ class QuestionBankManager extends BaseManager {
       // Inject Missing Units
       requiredUnits.forEach(unitName => {
         // Check if unitName exists as a Chapter Title OR a Subtopic Title
-        const exists = formattedChapters.some(fc =>
-          fc.title.toLowerCase() === unitName.toLowerCase() ||
-          fc.subtopics.some(sub => sub.title.toLowerCase() === unitName.toLowerCase())
-        );
+        let parentChapter = null;
+        const exists = formattedChapters.some(fc => {
+          if (fc.title.toLowerCase() === unitName.toLowerCase()) {
+            parentChapter = fc;
+            return true;
+          }
+          const isSubtopic = fc.subtopics.some(sub => sub.title.toLowerCase() === unitName.toLowerCase());
+          if (isSubtopic) {
+            parentChapter = fc;
+            return true;
+          }
+          return false;
+        });
 
         if (!exists) {
           console.log(`[Manager] Injecting missing unit context: ${unitName}`);
+
+          // Try to find if this unitName is a subtopic in the ORIGINAL chapterData
+          // so we can inherit the parent's index_path
+          let inheritedIndexPath = "";
+          if (chapterData && chapterData.length > 0) {
+            const parent = chapterData.find(ch =>
+              ch.subtopics && ch.subtopics.some(sub =>
+                (sub.title || "").toLowerCase() === unitName.toLowerCase()
+              )
+            );
+            if (parent) {
+              inheritedIndexPath = parent.indexPath || parent.index_path || "";
+            }
+          }
+
           formattedChapters.push({
             title: unitName,
-            index_path: "",
+            index_path: inheritedIndexPath,
             learning_outcomes: [],
             subtopics: []
           });
