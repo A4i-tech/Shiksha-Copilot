@@ -5,7 +5,9 @@ from app.models.question_paper import (
     QBTemplateGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
+    QuestionType,
     Template,
+    get_question_types_for_subject,
 )
 from app.models.chat import ErrorResponse
 from app.services.question_paper_service import QUESTION_PAPER_SERVICE_INSTANCE
@@ -28,6 +30,38 @@ router = APIRouter(
         },
     },
 )
+
+
+_DISPLAY_NAMES = {
+    "MCQ": "Multiple Choice Questions",
+    "FILL_BLANKS": "Fill in the blanks with suitable words",
+    "ANSWER_WORD": "Answer in a word, phrase or sentence",
+    "ANSWER_SHORT": "Answer in two or three sentences",
+    "ANSWER_GENERAL": "Answer the following questions",
+    "ANSWER_LONG": "Answer in four or five sentences",
+    "MATCH_LIST": "Match the following",
+    "GRAMMAR_MCQ": "Grammar: Multiple Choice Questions",
+    "GRAMMAR_FILL_BLANKS": "Grammar: Fill in the blanks",
+    "GRAMMAR_EDITING": "Grammar: Identify and correct the error",
+}
+
+
+def _get_display_name(qt: QuestionType) -> str:
+    return _DISPLAY_NAMES.get(qt.name, qt.name)
+
+
+@router.get(
+    "/question-types",
+    status_code=status.HTTP_200_OK,
+    summary="Get available question types for a subject",
+)
+async def get_question_types(subject: str = ""):
+    """Return question types available for the given subject."""
+    types = get_question_types_for_subject(subject)
+    return [
+        {"key": qt.name, "value": qt.value, "name": _get_display_name(qt)}
+        for qt in types
+    ]
 
 
 @router.post(

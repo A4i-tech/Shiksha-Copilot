@@ -400,6 +400,7 @@
           [templateData]="templateData"
           [submittedTemplate]="submittedTemplate"
           [totalTemplateMarks]="totalTemplateMarks"
+          [subject]="f['subject'].value"
           (totalTemplateMarksUpdate)="totalTemplateMarksChange($event)"
           (backClick)="previousStep()"
         >
