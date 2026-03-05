@@ -116,6 +116,11 @@ class MatchingListQuestion(BaseModel):
     difficulty: DifficultyType = "Average"
 
 
+class GrammarTextQuestion(BaseModel):
+    question: str = ""
+    answer_key: str = ""
+
+
 # ==============================
 # SELF-DESCRIBING QUESTION TYPE
 # ==============================
@@ -158,6 +163,21 @@ class QuestionType(str, Enum):
         "Generate a CORRECTLY matched item-pair",
         MatchingListQuestion,
     )
+    GRAMMAR_MCQ = (
+        "Grammar: Choose the correct option",
+        "Grammar MCQ: Students select the grammatically correct alternative from four options.",
+        FourOptionsQuestion,
+    )
+    GRAMMAR_FILL_BLANKS = (
+        "Grammar: Fill in the blanks with correct words/forms",
+        "Grammar fill-in-the-blank: Students complete sentences using correct grammatical forms.",
+        GrammarTextQuestion,
+    )
+    GRAMMAR_EDITING = (
+        "Grammar: Identify and correct the error in the sentence",
+        "Grammar editing: Students find and correct grammatical errors in given sentences.",
+        GrammarTextQuestion,
+    )
 
     def __new__(cls, value, description, pydantic_model):
         obj = str.__new__(cls, value)
@@ -179,12 +199,29 @@ class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: int
-    questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]] = []
+    questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion, GrammarTextQuestion]] = []
 
 
 class QuestionBankResponse(BaseModel):
     metadata: Optional[QuestionBankMetadata] = None
     questions: List[QuestionTypeResponse] = []
+
+
+# Ordered list is the single source of truth; set is derived for O(1) lookup.
+_GRAMMAR_QUESTION_TYPES_ORDERED: List[QuestionType] = [
+    QuestionType.GRAMMAR_MCQ,
+    QuestionType.GRAMMAR_FILL_BLANKS,
+    QuestionType.GRAMMAR_EDITING,
+]
+GRAMMAR_QUESTION_TYPES = set(_GRAMMAR_QUESTION_TYPES_ORDERED)
+
+
+def get_question_types_for_subject(subject: str) -> List[QuestionType]:
+    """Return the list of question types available for the given subject."""
+    base_types = [qt for qt in QuestionType if qt not in GRAMMAR_QUESTION_TYPES]
+    if "english" in subject.lower():
+        return base_types + _GRAMMAR_QUESTION_TYPES_ORDERED
+    return base_types
 
 
 # ============================

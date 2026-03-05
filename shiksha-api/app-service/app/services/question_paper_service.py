@@ -30,6 +30,7 @@ from app.models.question_paper import (
     QuestionTypeResponse,
     QuestionType,
     Template,
+    GRAMMAR_QUESTION_TYPES,
 )
 from app.config import settings
 
@@ -321,6 +322,14 @@ class QuestionPaperService:
         else:
             unit_los_text = f"Unit Name: {unit_name} (No specific LOs provided)"
 
+        # Build grammar topics text, appending grammar guide if slot has grammar types
+        grammar_topics_text = self._get_grammar_topics(request)
+        slot_types = {q["type"] for q in slot["questions"]}
+        if slot_types & GRAMMAR_QUESTION_TYPES:
+            grammar_guide = self.prompts.get("grammar_question_types_guide", "")
+            if grammar_guide:
+                grammar_topics_text = (grammar_topics_text + "\n\n" + grammar_guide).strip()
+
         # Format the prompt for this specific unit
         return template.format(
             BOARD=request.board,
@@ -334,7 +343,7 @@ class QuestionPaperService:
                 existing_questions, ensure_ascii=False
             ),
             QUESTION_BANK_BLOOM_TAXONOMY_GUIDE=blooms_guide,
-            GRAMMAR_TOPICS=self._get_grammar_topics(request),
+            GRAMMAR_TOPICS=grammar_topics_text,
         )
 
     def _get_format_instruction_for_type(self, qtype: QuestionType) -> str:

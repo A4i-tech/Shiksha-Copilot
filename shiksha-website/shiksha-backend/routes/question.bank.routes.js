@@ -35,6 +35,14 @@ router.post(
 );
 
 router.get(
+  "/question-bank/question-types",
+  isAuthenticated,
+  asyncMiddleware(
+    questionBankController.getQuestionTypes.bind(questionBankController)
+  )
+);
+
+router.get(
   "/question-bank/list",
   isAuthenticated,
   asyncMiddleware(

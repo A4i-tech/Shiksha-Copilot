@@ -146,6 +146,17 @@ class QuestionBankController extends BaseController {
     }
   }
 
+  async getQuestionTypes(req, res) {
+    try {
+      const { subject = '' } = req.query;
+      const result = await this.questionBankManager.getQuestionTypes(subject);
+      return res.status(200).json(result);
+    } catch (err) {
+      console.log("Error --> QuestionBankController -> getQuestionTypes()", err);
+      return res.status(400).json(err);
+    }
+  }
+
   async retryFailedJob(req, res) {
     try {
       const jobId = req.params.id;

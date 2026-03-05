@@ -8,6 +8,7 @@ const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
   postToQuestionBankParts,
+  getQuestionTypesFromLLM,
 } = require("../services/question.bank.bot.service");
 const BaseManager = require("./base.manager");
 const mongoose = require("mongoose");
@@ -795,6 +796,15 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(true, "Failed job processing initiated", null);
     } catch (err) {
       return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getQuestionTypes(subject) {
+    try {
+      const response = await getQuestionTypesFromLLM(subject);
+      return formatApiReponse(true, "", response.data);
+    } catch (err) {
+      return formatApiReponse(false, err?.message, err);
     }
   }
 
