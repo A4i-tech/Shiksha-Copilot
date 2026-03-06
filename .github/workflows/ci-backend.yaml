@@ -22,9 +22,12 @@ on:
       digest:
         description: "Pushed backend image digest"
         value: ${{ jobs.push.outputs.digest }}
-      tag:
-        description: "Pushed backend image tag"
-        value: ${{ jobs.build-test.outputs.image_tag }}
+      tags:
+        description: "Pushed image tags"
+        value: ${{ jobs.build-test.outputs.image_tags }}
+      tag_primary:
+        description: "Pushed image tag (primary)"
+        value: ${{ jobs.build-test.outputs.image_tag_primary }}
 
 env:
   REGISTRY: ghcr.io
@@ -35,7 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       coverage_percentage: ${{ steps.extract_backend_coverage.outputs.percentage }}
-      image_tag: ${{ steps.backend_meta.outputs.tags }}
+      image_tag_primary: ${{ steps.set_tag_primary.outputs.image_tag_primary }}
+      image_tags: ${{ steps.backend_meta.outputs.tags }}
     steps:
       - uses: actions/checkout@v4
 
@@ -60,6 +64,13 @@ jobs:
             type=ref,event=branch
             type=raw,value=staging,enable=${{ inputs.publish_staging }}
             type=raw,value=latest,enable=${{ inputs.publish_latest }}
+
+      - name: Set image name and tag output
+        id: set_tag_primary
+        run: |
+          IMAGE_NAME=$(echo '${{ env.BACKEND_IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
+          echo "BACKEND_IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          echo "image_tag_primary=${{ env.REGISTRY }}/$IMAGE_NAME:${{ steps.backend_meta.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Build backend image (no push)
         uses: docker/build-push-action@v5
@@ -153,6 +164,6 @@ jobs:
           context: shiksha-website/shiksha-backend
           file: shiksha-website/shiksha-backend/Dockerfile
           push: true
-          tags: ${{ needs.build-test.outputs.image_tag }}
+          tags: ${{ needs.build-test.outputs.image_tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

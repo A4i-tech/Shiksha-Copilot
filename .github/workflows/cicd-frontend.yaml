@@ -12,6 +12,10 @@ on:
         description: "Name of the deployment"
         required: true
         type: string
+      api_url:
+        description: "Backend API URL this frontend resource must call"
+        required: true
+        type: string
     outputs:
       page_url:
         description: "GitHub Pages deployment URL (empty when not deployed)"
@@ -41,7 +45,7 @@ jobs:
       page_url: ${{ steps.deployment.outputs.page_url }}
 
     env:
-      BACKEND_URL: ${{ vars.FRONTEND_API_URL }}
+      BACKEND_URL: ${{ inputs.api_url }}
 
     steps:
       - name: Checkout

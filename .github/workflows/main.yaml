@@ -8,13 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  cicd-frontend:
-    uses: ./.github/workflows/cicd-frontend.yaml
-    secrets: inherit
-    with:
-      deploy_name: shiksha-frontend-staging
-      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
-
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
@@ -56,6 +49,47 @@ jobs:
       service-id: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
     secrets:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+
+  cicd-frontend:
+    name: Deploy frontend
+    needs: cd-backend
+    uses: ./.github/workflows/cicd-frontend.yaml
+    secrets: inherit
+    with:
+      deploy_name: shiksha-frontend-staging
+      deploy_target: ${{ needs.cd-backend.result == 'success' && 'github-pages' || '' }}
+      api_url: ${{ needs.cd-backend.result == 'success' && format('{0}/api', needs.cd-backend.outputs['service-url']) || '' }}
+
+  cd-api-prod:
+    name: Deploy api
+    needs: ci-api
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    uses: ./.github/workflows/deploy-azure-webapp.yml
+    with:
+      azure-webapp-name: ${{ vars.AZURE_WEBAPP_NAME_API }}
+      image-tag: ${{ needs.ci-api.outputs['tag_primary'] }}
+    secrets:
+      AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
+
+  cd-backend-prod:
+    name: Deploy backend
+    needs: ci-backend
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    uses: ./.github/workflows/deploy-azure-webapp.yml
+    with:
+      azure-webapp-name: ${{ vars.AZURE_WEBAPP_NAME_BACKEND }}
+      image-tag: ${{ needs.ci-backend.outputs['tag_primary'] }}
+    secrets:
+      AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
+
+  cd-frontend-prod:
+    needs: cd-backend-prod
+    uses: ./.github/workflows/cicd-frontend.yaml
+    secrets: inherit
+    with:
+      deploy_name: shiksha-frontend-prod
+      deploy_target: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' && 'azure-blob' || '' }}
+      api_url: ${{ needs.cd-backend-prod.result == 'success' && format('{0}/api', needs.cd-backend-prod.outputs['service-url']) || '' }}
 
   health-check:
     name: Wait and Verify Deployment

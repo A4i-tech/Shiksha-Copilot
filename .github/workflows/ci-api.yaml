@@ -19,9 +19,12 @@ on:
       digest:
         description: "Pushed image digest"
         value: ${{ jobs.push.outputs.digest }}
-      tag:
-        description: "Pushed image tag"
-        value: ${{ jobs.build-test.outputs.image_tag }}
+      tags:
+        description: "Pushed image tags"
+        value: ${{ jobs.build-test.outputs.image_tags }}
+      tag_primary:
+        description: "Pushed image tag (primary)"
+        value: ${{ jobs.build-test.outputs.image_tag_primary }}
 
 env:
   REGISTRY: ghcr.io
@@ -31,7 +34,8 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
+      image_tag_primary: ${{ steps.set_tag_primary.outputs.image_tag_primary }}
+      image_tags: ${{ steps.meta.outputs.tags }}
     steps:
       - uses: actions/checkout@v4
 
@@ -77,6 +81,13 @@ jobs:
             type=ref,event=branch
             type=raw,value=staging,enable=${{ inputs.publish_staging }}
             type=raw,value=latest,enable=${{ inputs.publish_latest }}
+
+      - name: Set image name and tag output
+        id: set_tag_primary
+        run: |
+          IMAGE_NAME=$(echo '${{ env.API_IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
+          echo "API_IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
+          echo "image_tag_primary=${{ env.REGISTRY }}/$IMAGE_NAME:${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
 
       - name: Build image (no push)
         uses: docker/build-push-action@v5
@@ -173,6 +184,6 @@ jobs:
           context: shiksha-api/app-service
           file: shiksha-api/app-service/Dockerfile
           push: true
-          tags: ${{ needs.build-test.outputs.image_tag }}
+          tags: ${{ needs.build-test.outputs.image_tags }}
           cache-from: type=gha,scope=shiksha-api
           cache-to: type=gha,scope=shiksha-api,mode=max
