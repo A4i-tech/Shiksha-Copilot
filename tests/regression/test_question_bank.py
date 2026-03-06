@@ -58,11 +58,9 @@ def test_qb_board_reset(logged_in_page, step):
 
     with step("Verify Dependent Dropdowns Reset"):
         # After board change, the subject dropdown should be cleared
-        # We verify by checking the ng-select placeholder is visible again
+        # We verify by checking the dropdown contains the placeholder text
         subject_dropdown = qb_page._get_dropdown_locator("subject")
-        placeholder = subject_dropdown.locator(".ng-placeholder")
-        # If placeholder is visible, the dropdown has been reset
-        expect(placeholder).to_be_visible(timeout=5000)
+        expect(subject_dropdown).to_contain_text("Select subject", timeout=5000)
 
 
 def test_qb_ai_vs_lba_source(logged_in_page, step):
@@ -118,7 +116,7 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
 
     with step("Switch to 'LBA' Source"):
         # Clear current source and select LBA
-        qb_page.select_dropdown_option("sourceGeneration", value_text="LBA")
+        qb_page.select_dropdown_option("sourceGeneration", value_text="LBA", clear_first=True)
 
     with step("Verify AI Tables Hidden"):
         objectives_heading = logged_in_page.locator(

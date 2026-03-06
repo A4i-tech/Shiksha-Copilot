@@ -51,7 +51,6 @@ def test_profile_class_details_table(profile, step):
         expect(profile.class_table).to_be_visible()
 
     with step("Verify At Least One Row Exists"):
-        expect(profile.class_table_rows.first).to_be_visible(timeout=15000)
         row_count = profile.get_class_row_count()
         assert row_count >= 1, f"Expected at least 1 class row, got {row_count}"
 
@@ -77,9 +76,8 @@ def test_profile_resources_section(profile, step):
     with step("Verify Resource Type Dropdowns"):
         # At least one resource row should exist with app-form-dropdown
         resource_dropdowns = profile.page.locator(
-            "ng-container[formArrayName='facilities'] app-form-dropdown"
+            "div.resource-block app-form-dropdown"
         )
-        expect(resource_dropdowns.first).to_be_attached(timeout=15000)
         assert resource_dropdowns.count() >= 1, (
             "Expected at least 1 resource type dropdown"
         )
@@ -91,11 +89,9 @@ def test_profile_user_data_populated(profile, step):
     (not empty) after login.
     """
     with step("Check Name Has Value"):
-        expect(profile.name_input).not_to_have_value("", timeout=15000)
         name = profile.get_name_value()
         assert len(name) > 0, "Name field should not be empty for a logged-in user"
 
     with step("Check Phone Has Value"):
-        expect(profile.phone_input).not_to_have_value("", timeout=15000)
         phone = profile.get_phone_value()
         assert len(phone) > 0, "Phone field should not be empty for a logged-in user"

@@ -49,9 +49,17 @@ class QuestionBankPage:
         else:
             return self.page.locator(f"app-form-dropdown[dropdowncontrolname='{control_name}']")
 
-    def select_dropdown_option(self, control_name: str, value_text: str = None, index: int = 0):
+    def select_dropdown_option(self, control_name: str, value_text: str = None, index: int = 0, clear_first: bool = False):
         dropdown = self._get_dropdown_locator(control_name)
         dropdown.scroll_into_view_if_needed()
+        if clear_first:
+            clear_btn = dropdown.locator(".ng-clear-wrapper")
+            try:
+                clear_btn.wait_for(state="visible", timeout=2000)
+                clear_btn.click()
+                self.page.wait_for_timeout(500)
+            except:
+                pass
         dropdown.click()
         
         panel = self.page.locator("ng-dropdown-panel")

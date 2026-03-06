@@ -38,8 +38,8 @@ def test_chatbot_send_receive_logic(chatbot, step):
     
     with step("Send Message"):
         chatbot.send_message(question)
-        expect(chatbot.user_message_bubbles.last).to_contain_text(question)
-    
+        expect(chatbot.user_message_bubbles.first).to_contain_text(question)
+
     with step("Wait for Bot Response"):
         answer = chatbot.get_latest_bot_response()
         
