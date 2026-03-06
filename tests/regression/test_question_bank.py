@@ -52,9 +52,8 @@ def test_qb_board_reset(logged_in_page, step):
         qb_page.select_dropdown_option("subject", index=0)
 
     with step("Change Board to Different Value"):
-        # Re-select board — this should trigger cascade reset
-        # Clicking the board dropdown and selecting a different option
-        qb_page.select_dropdown_option("board", index=0)
+        # Selecting a different option (index=1)
+        qb_page.select_dropdown_option("board", index=1)
 
     with step("Verify Dependent Dropdowns Reset"):
         # After board change, the subject dropdown should be cleared
@@ -114,9 +113,9 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
             "should be visible after chapter selection"
         )
 
-    with step("Switch to 'LBA' Source"):
-        # Clear current source and select LBA
-        qb_page.select_dropdown_option("sourceGeneration", value_text="LBA", clear_first=True)
+    with step("Switch to 'Pregenerated' Source"):
+        # Clear current source and select Pregenerated (LBA)
+        qb_page.select_dropdown_option("sourceGeneration", value_text="Pregenerated", clear_first=True)
 
     with step("Verify AI Tables Hidden"):
         objectives_heading = logged_in_page.locator(

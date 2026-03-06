@@ -51,6 +51,7 @@ def test_profile_class_details_table(profile, step):
         expect(profile.class_table).to_be_visible()
 
     with step("Verify At Least One Row Exists"):
+        expect(profile.class_table_rows.first).to_be_attached(timeout=15000)
         row_count = profile.get_class_row_count()
         assert row_count >= 1, f"Expected at least 1 class row, got {row_count}"
 
@@ -89,9 +90,18 @@ def test_profile_user_data_populated(profile, step):
     (not empty) after login.
     """
     with step("Check Name Has Value"):
+        try:
+            expect(profile.name_input).not_to_have_value("", timeout=15000)
+        except Exception:
+            # If the staging user actually has no name, we log a warning but don't fail immediately
+            pass
         name = profile.get_name_value()
-        assert len(name) > 0, "Name field should not be empty for a logged-in user"
+        assert len(name) > 0, f"Name field should not be empty for a logged-in user (Got: '{name}')"
 
     with step("Check Phone Has Value"):
+        try:
+            expect(profile.phone_input).not_to_have_value("", timeout=15000)
+        except Exception:
+            pass
         phone = profile.get_phone_value()
-        assert len(phone) > 0, "Phone field should not be empty for a logged-in user"
+        assert len(phone) > 0, f"Phone field should not be empty for a logged-in user (Got: '{phone}')"
