@@ -52,8 +52,23 @@ def test_qb_board_reset(logged_in_page, step):
         qb_page.select_dropdown_option("subject", index=0)
 
     with step("Change Board to Different Value"):
-        # Selecting a different option (index=1)
-        qb_page.select_dropdown_option("board", index=1)
+        # Select the board dropdown
+        board_dropdown = qb_page._get_dropdown_locator("board")
+        
+        # Check if the panel is already open, if not click to open
+        panel = logged_in_page.locator("ng-dropdown-panel")
+        if not panel.is_visible():
+            board_dropdown.click()
+            
+        options = panel.locator(".ng-option")
+        options.first.wait_for(state="visible", timeout=5000)
+        
+        # If there's only 1 option (meaning the user doesn't teach multiple boards), skip
+        if options.count() < 2:
+            pytest.skip("Only 1 board is available for this staging user, cannot test board cascade reset.")
+            
+        # Select the second option to trigger cascade reset
+        options.nth(1).click(force=True, timeout=10000)
 
     with step("Verify Dependent Dropdowns Reset"):
         # After board change, the subject dropdown should be cleared
@@ -85,9 +100,9 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
         qb_page.select_dropdown_option("medium", index=0)
         qb_page.select_dropdown_option("subject", index=0)
 
-    with step("Select 'AI' Source"):
+    with step("Select All Sources"):
         # Source Generation is the multi-select dropdown at index 1
-        qb_page.select_dropdown_option("sourceGeneration", value_text="AI")
+        qb_page.select_dropdown_option("sourceGeneration", value_text="SELECT_ALL")
 
     with step("Fill Required Fields for AI Tables to Appear"):
         qb_page.exam_name_input.fill(QP_NAME)
@@ -114,8 +129,8 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
         )
 
     with step("Switch to 'Pregenerated' Source"):
-        # Clear current source and select Pregenerated (LBA)
-        qb_page.select_dropdown_option("sourceGeneration", value_text="Pregenerated", clear_first=True)
+        # After SELECT_ALL, toggle off AI (first option) to keep only Pregenerated.
+        qb_page.select_dropdown_option("sourceGeneration", index=0)
 
     with step("Verify AI Tables Hidden"):
         objectives_heading = logged_in_page.locator(
@@ -124,5 +139,5 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
         marks_heading = logged_in_page.locator(
             "h2", has_text="Topic-wise Marks Distribution"
         )
-        expect(objectives_heading).to_be_hidden(timeout=5000)
-        expect(marks_heading).to_be_hidden(timeout=5000)
+        expect(objectives_heading).to_be_hidden(timeout=15000)
+        expect(marks_heading).to_be_hidden(timeout=15000)

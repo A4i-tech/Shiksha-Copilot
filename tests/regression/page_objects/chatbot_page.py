@@ -12,7 +12,7 @@ class ChatbotPage(BasePage):
         self.empty_state_img = page.locator("img[src*='chat-bot-empty.svg']")
 
         self.chat_textarea = page.locator("textarea.chat-input")
-        self.send_button = page.locator("button.btn-primary")
+        self.send_button = page.locator("button:has(img[src*='send.svg'])")
         self.daily_limit_text = page.locator("text=Daily chat limit")
         
         self.user_message_bubbles = page.locator(".user-chat")
