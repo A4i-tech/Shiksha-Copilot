@@ -221,6 +221,17 @@ class QuestionBankController extends BaseController {
     }
   }
 
+  async getGrammarTopics(req, res) {
+    try {
+      const { grade } = req.query;
+      const result = await this.questionBankManager.getGrammarTopics(grade);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
+
   async getQuestions(req, res) {
     try {
       const filters = req.query;

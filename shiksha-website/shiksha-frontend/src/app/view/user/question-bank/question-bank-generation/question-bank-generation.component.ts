@@ -538,6 +538,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           this.utilityservice.showError('Failed to load chapters.');
         }
       });
+
     }
   }
 
@@ -613,7 +614,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    // 1. Add AI Standard Types only if AI-only is selected 
+    // 1. Add AI Standard Types only if AI-only is selected
     if (this.useAI && !this.useLBA) {
       const aiStandardTypes = [
         'Multiple Choice Questions',
@@ -1322,6 +1323,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
   isHeadingSelected(heading: string) { return this.selectedHeadings.includes(heading); }
+
   isAllHeadingsSelected() { return this.availableHeadings.length > 0 && this.selectedHeadings.length === this.availableHeadings.length; }
   headingSummary() {
     if (!this.availableHeadings.length) return 'Select chapters first';

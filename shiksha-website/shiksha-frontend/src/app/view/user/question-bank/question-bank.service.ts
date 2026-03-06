@@ -1,7 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { map, tap } from 'rxjs/operators';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
 
@@ -269,5 +269,10 @@ export class QuestionBankService extends BaseRestService {
    */
   generateLBAQuestionPaper(data: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data);
+  }
+
+  getGrammarTopics(grade: number | string): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/grammarTopics?grade=${grade}`)
+      .pipe(map(res => res?.data || []));
   }
 }

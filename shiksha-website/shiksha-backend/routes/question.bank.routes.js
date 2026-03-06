@@ -83,6 +83,12 @@ router.get(
 );
 
 router.get(
+  "/question-bank/meta/grammarTopics",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getGrammarTopics.bind(questionBankController))
+);
+
+router.get(
   "/question-bank/questions",
   isAuthenticated,
   asyncMiddleware(questionBankController.getQuestions.bind(questionBankController))

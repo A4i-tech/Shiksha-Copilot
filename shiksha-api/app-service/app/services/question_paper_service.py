@@ -129,24 +129,29 @@ class QuestionPaperService:
 
     def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest) -> str:
         """
-        Reads the NCERT grammar topics YAML and returns a dict
-        mapping grade (int) to list of topics (list of str).
+        Returns a grammar focus instruction string for English subjects,
+        using all topics for the grade from the YAML.
         """
         if "english" in request.subject.lower():
-            # The YAML top‐level key is 'ncert_grammar_topics'
             topics = self.prompts.get("grammar_topics", {})
-
-            # Ensure all grade keys are ints (PyYAML may load them as ints already)
             topic_map = {int(grade): topic_list for grade, topic_list in topics.items()}
+            topics_to_use = topic_map.get(request.grade, [])
 
-            return (
-                "⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit’s content."
-                + "\nCover following topics: "
-                + "; ".join(topic_map[request.grade])
-                if request.grade in topic_map
-                else ""
-            )
+            # Also extract any GRAMMAR: prefixed units from the request chapters
+            grammar_units = [
+                ch.title.replace("GRAMMAR: ", "").strip()
+                for ch in request.chapters
+                if ch.title.startswith("GRAMMAR: ")
+            ]
+            if grammar_units:
+                topics_to_use = grammar_units
 
+            if topics_to_use:
+                return (
+                    "⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit’s content."
+                    + "\nCover following topics: "
+                    + "; ".join(topics_to_use)
+                )
         return ""
 
     def _get_unit_metadata(self, request: QuestionBankPartsGenerationRequest) -> Dict[str, Dict[str, Any]]:

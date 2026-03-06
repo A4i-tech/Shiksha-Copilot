@@ -57,6 +57,87 @@ const QUESTION_TYPE_DETAILS = {
   },
 };
 
+const GRAMMAR_PREFIX = 'GRAMMAR: ';
+
+// Maps grammar topic → unit number for each grade.
+// Unit number matches orderNumber in MongoDB chapters collection.
+// Only units with an actual grammar activity are listed (some units have none).
+// Grades without confirmed syllabus data are marked TODO — update when grid is available.
+const GRAMMAR_TOPICS_BY_GRADE = {
+  // Confirmed from syllabus grid (5th std Second Language English, Parts 1 & 2)
+  5: {
+    "Present Tense Form": 1,       // Love for Animals + The Elephant
+    "Naming Words": 2,             // True Friendship + Friends
+    "Expressing About Self": 2,    // True Friendship (same unit)
+    "Numbers": 3,                  // The Child Who Saved the Forest + Tamarind
+    "Past Tense Form": 4,          // The Boss Who Cares + Believe
+    "Pronouns": 5,                 // Shabale (Sabala) + The Cow
+    "Dialogue Practice": 5,        // Shabale (same unit)
+    "Genders": 6,                  // Dignity of Labour + Results and Roses
+    "Prepositions": 7,             // A Great Coachman + Paper Boats
+    "Noun, Adjective": 8,          // Children of Courage Bravery Awards + My Land
+  },
+  // Confirmed from syllabus grid (6th std Second Language English, Parts 1 & 2)
+  6: {
+    "Exclamatory Sentences": 1,              // Lighthouse + The Rainbow
+    "Articles – 'a', 'an' and 'the'": 2,    // The Scholar's Mother Tongue + Sympathy
+    "Present Tense Forms": 2,               // The Scholar's Mother Tongue (same unit)
+    "Subject-Verb Agreement": 3,            // How do bees make honey? + Kindness to Animals
+    "Regular and Irregular Verbs": 4,       // The King's Ministers + All things bright and beautiful
+    "Framing Yes/No Questions": 4,          // The King's Ministers (same unit)
+    "Frame Wh-Questions": 5,               // A Chat with a Grasshopper + The Fly
+    "Sentence Construction": 5,            // A Chat with a Grasshopper (same unit)
+    "Adverbs": 6,                          // Where There is a Will + The Way to Succeed
+    "Past Tense Forms": 7,                 // Neerja Bhanot + My People
+    "Adding Verbs/Helping Verbs/Articles": 7, // Neerja Bhanot (same unit)
+    // Unit 8: no grammar activity
+  },
+  // Confirmed from syllabus grid (7th std Second Language English, Parts 1 & 2)
+  7: {
+    "Action Words and Uncountable Nouns": 1, // Health (Healthy Life + The Gymnastic Clock)
+    "Interrogatives": 2,                      // Environment (Avoid Plastic Awareness)
+    "Types of Sentences": 3,                  // Gratitude (Ekalavya + Why God Made Teachers)
+    "Past Tense Articles": 4,                 // Bravery (Leg Trap + Froth and Bubble)
+    "Adjectives Adverbs": 5,                  // Generosity (The Wonder Bowl + Abou Ben Adhem)
+    "Relative Pronouns": 6,                   // Courage (Journey to the... + Mountain Climbing)
+    "Prepositions": 7,                        // Love for Grandparents (Nest with Grandparents)
+    "Present Tense": 8,                       // Forgiveness (Wealth and... + The Quarrel)
+  },
+  // Confirmed from syllabus grid (8th std English II Language, Parts 1 & 2)
+  8: {
+    "Determiners": 1,                // A Day in The Ashram
+    "Tense System": 2,               // Sir C. V. Raman
+    "Present Continuous Form": 2,    // The Little Busy Bee (same unit)
+    "Tense Past Perfect Form": 3,    // Jamaican Fragment
+    "Framing Questions": 4,          // The Boy Who Asked For More
+    "Prepositions": 5,               // The Swan And The Princess
+    "Degrees of Comparison": 6,      // All The World Her Stage
+    "Reported Speech": 7,            // The Emperor's New Clothes
+    "Passive Voice": 8,              // Luther Burbank
+  },
+  // Confirmed from syllabus grid (9th Second Language English)
+  9: {
+    "Statements – Positive and Negative Wh-Questions": 1, // The Enchanted Pool + Upagupta
+    "Simple and Compound Sentences": 2,                   // The Three Questions + Gratefulness
+    "Auxiliaries": 3,                                     // My Beginnings + A Girl Called Golden
+    "Simple Present Tense": 4,                            // Whatever We Do + The Wonderful Words
+    "Modals, Types of Sentences – Simple, Compound and Complex": 6, // The Noble Bishop
+    "Modals": 8,                                          // The Song of Freedom + To My Countrymen
+  },
+  // Confirmed from syllabus grid (10th Second Language English, Parts 1 & 2)
+  10: {
+    "Adverbials": 1,               // A Hero + Grandma Climbs a Tree
+    "Sub+Verb Concord": 2,         // There's a Girl by the Tracks + Quality of Mercy
+    "If Clause": 3,                // Gentleman of Rio en Medio + I am the Land
+    "Articles/Determiners": 4,     // Dr. B.R. Ambedkar + The Song of India
+    "Finite and Non-finite": 5,    // The Concert + Jazz Poem 2
+    "Types of Sentences": 6,       // The Discovery + Ballad of the Tempest
+    "Future Time Expression": 7,   // Colours of Silence + The Blind Boy
+    "Reported Speech": 8,          // Science and Hope of Survival + Off to Outer Space
+  },
+};
+
+
 const QUESTION_TYPE_MAPPING = Object.keys(QUESTION_TYPE_DETAILS).reduce((acc, key) => {
   acc[key] = QUESTION_TYPE_DETAILS[key].instruction;
   return acc;
@@ -699,6 +780,40 @@ class QuestionBankManager extends BaseManager {
         }
       });
 
+      // For grammar units: map each topic to its corresponding chapter's index_path.
+      // GRAMMAR_PREFIX<topic> → GRAMMAR_TOPICS_BY_GRADE[grade][topic] = unitNumber → realChapters[unitNumber].indexPath
+      const grammarUnits = Array.from(requiredUnits).filter(u => u.startsWith(GRAMMAR_PREFIX));
+      const grammarIndexPathMap = {}; // unitName → specific chapter indexPath
+
+      if (grammarUnits.length > 0 && subject && grade) {
+        try {
+          const { subjectCode: sCode, targetSubjectIds: sIds } = await this.masterSubjectDao.resolveSubjectContext(subject);
+          const realChapters = await this.chapterDao.getChapters(String(grade), medium || 'English', sCode, sIds);
+          const gradeTopics = GRAMMAR_TOPICS_BY_GRADE[parseInt(grade)] || {};
+          const fallbackIndexPath = (realChapters || []).map(ch => ch.indexPath || '').find(p => p && p.trim() !== '') || '';
+
+          // Build a unitNumber → indexPath lookup from real chapters
+          const unitIndexPathMap = {};
+          (realChapters || []).forEach(ch => {
+            if (ch.chapterNumber && !unitIndexPathMap[ch.chapterNumber]) {
+              unitIndexPathMap[ch.chapterNumber] = ch.indexPath || '';
+            }
+          });
+
+          grammarUnits.forEach(unitName => {
+            const topic = unitName.replace(GRAMMAR_PREFIX, '');
+            const unitNum = gradeTopics[topic];
+            if (!unitNum) {
+              console.warn(`[Manager] Grammar topic not found in syllabus map: "${topic}" (grade ${grade}) — using fallback indexPath`);
+            }
+            const resolvedPath = (unitNum && unitIndexPathMap[unitNum]) || fallbackIndexPath;
+            grammarIndexPathMap[unitName] = resolvedPath;
+          });
+        } catch (e) {
+          console.warn('[Manager] Could not resolve grammar indexPath:', e.message);
+        }
+      }
+
       // Inject Missing Units
       requiredUnits.forEach(unitName => {
         const { found, indexPath } = this._resolveUnitContext(unitName, formattedChapters, chapterData);
@@ -706,7 +821,7 @@ class QuestionBankManager extends BaseManager {
           console.log(`[Manager] Injecting missing unit context: ${unitName}`);
           formattedChapters.push({
             title: unitName,
-            index_path: indexPath,
+            index_path: unitName.startsWith(GRAMMAR_PREFIX) ? (grammarIndexPathMap[unitName] || '') : indexPath,
             learning_outcomes: [],
             subtopics: []
           });
@@ -747,6 +862,12 @@ class QuestionBankManager extends BaseManager {
       console.error("Error creating payload:", e);
       throw e;
     }
+  }
+
+  async getGrammarTopics(grade) {
+    const gradeNum = parseInt(grade);
+    const topicMap = GRAMMAR_TOPICS_BY_GRADE[gradeNum] || {};
+    return formatApiReponse(true, 'Grammar topics retrieved', Object.keys(topicMap));
   }
 
   async updateFeedback(questionBankId, feedbackData) {
@@ -896,6 +1017,24 @@ class QuestionBankManager extends BaseManager {
         ...ch,
         headings: statsMap.get(String(ch._id)) || [{ name: "Misc", count: 0 }],
       }));
+
+      // Append grammar topics as individual chapter entries at the bottom for English subjects
+      const isEnglish = (subjectCode || '').toLowerCase().includes('english');
+      if (isEnglish) {
+        const gradeNum = parseInt(normalizedClass);
+        const grammarMap = GRAMMAR_TOPICS_BY_GRADE[gradeNum] || {};
+        Object.keys(grammarMap).forEach((topic, idx) => {
+          enrichedChapters.push({
+            _id: `grammar-synthetic-${gradeNum}-${idx}`,
+            title: `${GRAMMAR_PREFIX}${topic}`,
+            topics: `${GRAMMAR_PREFIX}${topic}`,
+            chapterNumber: 9999 + idx,
+            subTopics: [],
+            headings: [],
+            isGrammar: true,
+          });
+        });
+      }
 
       console.log(`[Manager] getChapters: found ${chapters?.length || 0} chapters`);
       return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
