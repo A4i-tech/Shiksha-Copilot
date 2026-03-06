@@ -35,8 +35,8 @@ class QuestionBankPage:
     # --- Dropdown Helpers ---
     def _get_dropdown_locator(self, control_name: str):
         control_map = {
-            "board": 0, "medium": 1, "language": 2, "grade": 3,
-            "subject": 4, "chapter": 5, "subTopic": 6
+            "board": 0, "sourceGeneration": 1, "grade": 2, "medium": 3,
+            "subject": 4, "language": 5, "chapter": 6, "subTopic": 7
         }
         self.page.locator("app-form-dropdown").first.wait_for(state="visible")
         
