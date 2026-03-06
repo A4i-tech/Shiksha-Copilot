@@ -53,6 +53,7 @@ jobs:
   cicd-frontend:
     name: Deploy frontend
     needs: cd-backend
+    if: always() && (github.event_name == 'pull_request' && github.base_ref == 'a4i/staging') || (github.event_name == 'push' && github.ref_name == 'a4i/staging')
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
     with:
@@ -85,7 +86,8 @@ jobs:
   cd-frontend-prod:
     needs: cd-backend-prod
     uses: ./.github/workflows/cicd-frontend.yaml
-    secrets: inherit
+    secrets:
+      azure_connection_string: ${{ secrets.AZURE_CONNECTION_STRING_FRONTEND }}
     with:
       deploy_name: shiksha-frontend-prod
       deploy_target: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' && 'azure-blob' || '' }}

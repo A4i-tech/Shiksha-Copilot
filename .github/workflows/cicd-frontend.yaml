@@ -1,13 +1,9 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: CD GitHub Pages
+# Simple workflow for deploying static content
+name: CI/CD Frontend
 
 on:
   workflow_call:
     inputs:
-      deploy:
-        description: "Whether to deploy to GitHub Pages (i.e., perform thee 'CD' step)"
-        required: true
-        type: boolean
       deploy_name:
         description: "Name of the deployment"
         required: true
@@ -16,6 +12,20 @@ on:
         description: "Backend API URL this frontend resource must call"
         required: true
         type: string
+      deploy_target:
+        description: "Deployment target: 'github-pages' or 'azure-blob'. Leave blank to skip deployment."
+        required: false
+        type: string
+        default: ""
+      azure_blob_container:
+        description: "Azure Blob Storage container name (defaults to '$web' for static websites)"
+        required: false
+        type: string
+        default: "$web"
+    secrets:
+      azure_connection_string:
+        description: "Azure Storage connection string (required when deploy_target is 'azure-blob')"
+        required: false
     outputs:
       page_url:
         description: "GitHub Pages deployment URL (empty when not deployed)"
@@ -38,8 +48,8 @@ jobs:
     runs-on: ubuntu-latest
 
     environment:
-      name: ${{ inputs.deploy && inputs.deploy_name || '' }}
-      url: ${{ inputs.deploy && steps.deployment.outputs.page_url || '' }}
+      name: ${{ inputs.deploy_target != '' && inputs.deploy_name || '' }}
+      url: ${{ inputs.deploy_target != '' && steps.deployment.outputs.page_url || '' }}
 
     outputs:
       page_url: ${{ steps.deployment.outputs.page_url }}
@@ -61,26 +71,36 @@ jobs:
       - name: Build Angular app
         working-directory: shiksha-website/shiksha-frontend
         run: |
-          if [ "${{ inputs.deploy }}" = "true" ]; then
+          if [ "${{ inputs.deploy_target }}" != "" ]; then
             find src/environments -name "environment*.ts" -print \
               -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
           fi
 
           npm ci
           npm run build -- --configuration development \
-            ${{ inputs.deploy && '--base-href /Shiksha-Copilot/' || '' }}
+            ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
 
       - name: Setup Pages
-        if: inputs.deploy
+        if: inputs.deploy_target == 'github-pages'
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
-        if: inputs.deploy
+        if: inputs.deploy_target == 'github-pages'
         uses: actions/upload-pages-artifact@v3
         with:
           path: shiksha-website/shiksha-frontend/dist/shiksha-frontend
 
       - name: Deploy to GitHub Pages
-        if: inputs.deploy
+        if: inputs.deploy_target == 'github-pages'
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Deploy to Azure Blob Storage
+        if: inputs.deploy_target == 'azure-blob'
+        uses: LanceMcCarthy/Action-AzureBlobUpload@v3
+        with:
+          connection_string: ${{ secrets.azure_connection_string }}
+          container_name: ${{ inputs.azure_blob_container }}
+          source_folder: shiksha-website/shiksha-frontend/dist/shiksha-frontend
+          clean_destination_folder: true
+          delete_if_exists: true
