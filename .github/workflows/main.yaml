@@ -197,8 +197,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, smoke-tests, regression-tests, performance-tests]
-
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -218,12 +217,12 @@ jobs:
       - name: Generate Status JSON
         id: status
         env:
-          FE_RES: ${{ needs.cicd-frontend.result }}
-          API_RES: ${{ needs.cd-api.result }}
-          BE_RES: ${{ needs.cd-backend.result }}
-          FE_URL: ${{ needs.cicd-frontend.outputs.page_url }}
-          API_URL: ${{ needs.cd-api.outputs['service-url'] }}
-          BE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
+          FE_RES: ${{ (needs.cicd-frontend.result != 'skipped' && needs.cicd-frontend.result) || needs.cd-frontend-prod.result }}
+          API_RES: ${{ (needs.cd-api.result != 'skipped' && needs.cd-api.result) || needs.cd-api-prod.result }}
+          BE_RES: ${{ (needs.cd-backend.result != 'skipped' && needs.cd-backend.result) || needs.cd-backend-prod.result }}
+          FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
+          API_URL: ${{ needs.cd-api.outputs['service-url'] || needs.cd-api-prod.outputs['service-url'] }}
+          BE_URL: ${{ needs.cd-backend.outputs['service-url'] || needs.cd-backend-prod.outputs['service-url'] }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: |
           python3 <<EOF
