@@ -80,19 +80,15 @@ async def mcp_health() -> str:
 
 
 @app.get("/")
-async def root():
-    """Root endpoint for health check"""
-    return {
-        "message": "Welcome to Shiksha Copilot API",
-        "version": settings.version,
-        "status": "healthy",
-    }
-
-
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "service": settings.app_name}
+    return {
+        "status": "healthy",
+        "service": settings.app_name,
+        "build": settings.build,
+        "version": settings.version
+    }
 
 
 @app.exception_handler(Exception)
