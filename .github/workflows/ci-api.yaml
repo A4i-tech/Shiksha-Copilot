@@ -87,7 +87,7 @@ jobs:
         run: |
           IMAGE_NAME=$(echo '${{ env.API_IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
           echo "API_IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-          echo "image_tag_primary=${{ env.REGISTRY }}/$IMAGE_NAME:${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "image_tag_primary=${{ env.REGISTRY }}/$IMAGE_NAME:$(echo '${{ steps.meta.outputs.tags }}' | tr ',' '\n' | grep ':sha-' | head -1 | cut -d: -f2)" >> $GITHUB_OUTPUT
 
       - name: Build image (no push)
         uses: docker/build-push-action@v5
@@ -97,6 +97,7 @@ jobs:
           push: false
           tags: shiksha-api-local
           load: true
+          build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
           cache-from: type=gha,scope=shiksha-api
           cache-to: type=gha,scope=shiksha-api,mode=max
 
@@ -185,5 +186,6 @@ jobs:
           file: shiksha-api/app-service/Dockerfile
           push: true
           tags: ${{ needs.build-test.outputs.image_tags }}
+          build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
           cache-from: type=gha,scope=shiksha-api
           cache-to: type=gha,scope=shiksha-api,mode=max

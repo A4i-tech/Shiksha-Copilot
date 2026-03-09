@@ -70,7 +70,7 @@ jobs:
         run: |
           IMAGE_NAME=$(echo '${{ env.BACKEND_IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
           echo "BACKEND_IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
-          echo "image_tag_primary=${{ env.REGISTRY }}/$IMAGE_NAME:${{ steps.backend_meta.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "image_tag_primary=${{ env.REGISTRY }}/$IMAGE_NAME:$(echo '${{ steps.backend_meta.outputs.tags }}' | tr ',' '\n' | grep ':sha-' | head -1 | cut -d: -f2)" >> $GITHUB_OUTPUT
 
       - name: Build backend image (no push)
         uses: docker/build-push-action@v5
@@ -80,7 +80,9 @@ jobs:
           push: false
           tags: shiksha-backend-local
           load: true
+          build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
           cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Run integration tests inside built image
         run: |
@@ -165,5 +167,6 @@ jobs:
           file: shiksha-website/shiksha-backend/Dockerfile
           push: true
           tags: ${{ needs.build-test.outputs.image_tags }}
+          build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

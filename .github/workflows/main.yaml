@@ -94,37 +94,53 @@ jobs:
       api_url: ${{ needs.cd-backend-prod.result == 'success' && format('{0}/api', needs.cd-backend-prod.outputs['service-url']) || '' }}
 
   health-check:
-    name: Wait and Verify Deployment
-    needs: [cicd-frontend, cd-api, cd-backend]
-    if: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/staging') }}
+    name: Health Check
+    needs: [cicd-frontend, cd-api, cd-backend, cd-frontend-prod, cd-api-prod, cd-backend-prod]
+    if: always() && github.event_name == 'push' && (github.ref_name == 'a4i/staging' || github.ref_name == 'a4i/main')
     runs-on: ubuntu-latest
     steps:
-      - name: Wait and Verify Services
+      - name: Resolve URLs
+        id: urls
         run: |
-          RETRIES=10
-          SLEEP_TIME=15
-          URLS=("${{ needs.cicd-frontend.outputs.page_url }}" "${{ needs.cd-backend.outputs['service-url'] }}" "${{ needs.cd-api.outputs['service-url'] }}")
-          NAMES=("Frontend" "Backend" "API")
+          if [ "${{ github.ref_name }}" = "a4i/staging" ]; then
+            echo "frontend=${{ needs.cicd-frontend.outputs.page_url }}" >> $GITHUB_OUTPUT
+            echo "backend=${{ needs.cd-backend.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+            echo "api=${{ needs.cd-api.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+          else
+            echo "frontend=${{ needs.cd-frontend-prod.outputs.page_url }}" >> $GITHUB_OUTPUT
+            echo "backend=${{ needs.cd-backend-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+            echo "api=${{ needs.cd-api-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+          fi
 
-          for ((i=1; i<=RETRIES; i++)); do
-            echo "Attempt $i of $RETRIES..."
-            ALL_PASSED=true
-            for ((j=0; j<${#URLS[@]}; j++)); do
-              url="${URLS[$j]}"
-              name="${NAMES[$j]}"
-              if ! curl -f -I --max-time 30 "$url"; then
-                echo "❌ $name is unresponsive."
-                ALL_PASSED=false
-              else
-                echo "✅ $name is up."
-              fi
-            done
-            if $ALL_PASSED; then
-              echo "🎉 All services are up!"
-              exit 0
+      - name: Verify Services
+        env:
+          EXPECTED_BUILD: ${{ github.sha }}
+          FRONTEND_URL: ${{ steps.urls.outputs.frontend }}
+          BACKEND_URL: ${{ steps.urls.outputs.backend }}
+          API_URL: ${{ steps.urls.outputs.api }}
+        run: |
+          check_build() {
+            local name=$1 url=$2
+            local build=$(curl -sf --max-time 30 "$url" | jq -r '.build // empty')
+            if [ "$build" = "$EXPECTED_BUILD" ]; then
+              echo "PASS $name on correct build"
+              return 0
+            else
+              echo "FAIL $name build mismatch (got: '${build:-no response}', expected: '$EXPECTED_BUILD')"
+              return 1
             fi
-            sleep $SLEEP_TIME
+          }
+
+          for ((i=1; i<=30; i++)); do
+            echo "--- Attempt $i/30 ---"
+            check_build "Frontend" "$FRONTEND_URL/health.json" && \
+            check_build "Backend"  "$BACKEND_URL/health"      && \
+            check_build "API"      "$API_URL/health"          && \
+            { echo "All services on build $EXPECTED_BUILD"; exit 0; }
+            sleep 15
           done
+
+          echo "Timed out waiting for build $EXPECTED_BUILD"
           exit 1
 
   smoke-tests:
