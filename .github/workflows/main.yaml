@@ -2,14 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/staging", "238-regression-tests"]
+    branches: [ "a4i/main", "a4i/staging"]
   pull_request:
-    branches: [ "a4i/main", "a4i/staging", "238-regression-tests" ]
+    branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
 
 jobs:
   ci-api:
-    if: github.ref_name != '238-regression-tests' && github.head_ref != '238-regression-tests'
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
     with:
@@ -18,7 +17,6 @@ jobs:
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   ci-backend:
-    if: github.ref_name != '238-regression-tests' && github.head_ref != '238-regression-tests'
     uses: ./.github/workflows/ci-backend.yaml
     secrets: inherit
     with:
@@ -28,7 +26,7 @@ jobs:
 
   shiksha-coverage-summary:
     needs: [ci-api, ci-backend]
-    if: always() && github.ref_name != '238-regression-tests' && github.head_ref != '238-regression-tests'
+    if: always()
     uses: ./.github/workflows/shiksha-coverage-summary.yml
     secrets: inherit
 
