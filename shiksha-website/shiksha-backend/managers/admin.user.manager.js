@@ -227,7 +227,7 @@ class AdminUserManager extends BaseManager {
 					"content.topics",
 				];
 
-				const regexExpressions = (searchFields || []).map((field) => ({
+				const regexExpressions = (searchFields).map((field) => ({
 					[field]: { $regex: new RegExp(search, "i") },
 				}));
 

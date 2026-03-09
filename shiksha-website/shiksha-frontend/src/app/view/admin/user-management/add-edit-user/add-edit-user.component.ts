@@ -244,7 +244,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
           'name',
           selectedDistrict
         );
-        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+        this.blockDropdownOptions = this.selectedDistrictObj?.blocks;
       } else {
         this.selectedDistrictObj = null;
         this.blockDropdownOptions = [];

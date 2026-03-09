@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
+import { UniversalQuestion } from 'src/app/shared/interfaces/question-bank.interface';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -10,14 +11,15 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   @Input() totalMarks: number = 0; // Target marks
 
   // NEW INPUT: The merged pool from Parent
-  @Input() availableQuestions: any[] = [];
+  @Input() availableQuestions: UniversalQuestion[] = [];
+  @Input() preSelectedQuestions: UniversalQuestion[] = [];
 
   @Output() backClick = new EventEmitter<boolean>();
-  @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
+  @Output() nextClick = new EventEmitter<UniversalQuestion[]>(); // Emits final selected questions
 
   // Local State
-  filteredQuestions: any[] = [];
-  selectedQuestions: any[] = [];
+  filteredQuestions: UniversalQuestion[] = [];
+  selectedQuestions: UniversalQuestion[] = [];
 
   // Filter State
   filterSource: 'ALL' | 'AI Questions' | 'Pre-generated Questions' = 'ALL';
@@ -79,8 +81,8 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
     this.isFilterMenuOpen = !this.isFilterMenuOpen;
   }
 
-  setFilter(source: any) {
-    this.filterSource = source;
+  setFilter(source: string) {
+    this.filterSource = source as any;
     this.applyFilters();
   }
 
@@ -124,26 +126,26 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
     });
   }
 
-  onSearch(val: any) {
-    this.searchText = val.target.value;
+  onSearch(val: Event) {
+    const target = val.target as HTMLInputElement;
+    this.searchText = target.value;
     this.applyFilters();
   }
 
   // --- SELECTION LOGIC ---
-  selectQuestion(q: any) {
+  selectQuestion(q: UniversalQuestion) {
     this.selectedQuestions.push(q);
     this.applyFilters(); // Remove from left list
   }
 
   removeQuestion(index: number) {
-    const q = this.selectedQuestions[index];
     this.selectedQuestions.splice(index, 1);
     this.applyFilters(); // Add back to left list
   }
 
   // --- TOTALS ---
   get currentTotalMarks(): number {
-    return this.selectedQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
+    return this.selectedQuestions.reduce((sum, q) => sum + (Number(q.marksPerQuestion) || 1), 0);
   }
 
   get isTotalMet(): boolean {

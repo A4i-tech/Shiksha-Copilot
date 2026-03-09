@@ -172,8 +172,10 @@ export class BaselineSurveyComponent {
     }
   }
 
-  private markTouched(group: FormGroup | FormArray) {
-    Object.values(group.controls).forEach(control => {
+  private markTouched(group: AbstractControl) {
+    const controls = (group as any).controls;
+    if (!controls) return;
+    Object.values(controls).forEach((control: any) => {
       control.markAsTouched();
       if (control instanceof FormGroup || control instanceof FormArray) {
         this.markTouched(control);

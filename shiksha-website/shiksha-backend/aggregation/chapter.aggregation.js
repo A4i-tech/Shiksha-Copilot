@@ -133,7 +133,7 @@ class ChapterAggregation {
 
   async getChapterByIdsAndFilterObject(chapterIds) {
     try {
-      const validIds = (chapterIds || [])
+      const validIds = (chapterIds ?? [])
         .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
         .map((id) => new ObjectId(id));
 

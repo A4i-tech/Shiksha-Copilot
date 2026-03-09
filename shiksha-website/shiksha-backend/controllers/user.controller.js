@@ -265,7 +265,7 @@ class UserController extends BaseController {
       // Modernized: Default to manager's zones/districts if not provided or empty
       const userZones = req.user?.zones;
       const userDistricts = req.user?.districts;
-      const userRoles = req.user?.role || [];
+      const userRoles = req.user?.role;
       const isManager = Array.isArray(userRoles) ? userRoles.includes('manager') : userRoles === 'manager';
 
       // Normalize possible empty string/array

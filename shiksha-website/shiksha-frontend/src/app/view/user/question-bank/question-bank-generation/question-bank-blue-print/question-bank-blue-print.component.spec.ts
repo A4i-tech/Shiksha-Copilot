@@ -18,33 +18,25 @@ describe('QuestionBankBluePrintComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       declarations: [
-        QuestionBankBluePrintComponent, 
+        QuestionBankBluePrintComponent,
         MockTranslatePipe // Add the mock pipe
       ],
       // 2. NO_ERRORS_SCHEMA tells Angular to ignore unknown elements 
       // like <canvas baseChart> and <app-common-dropdown>
-      schemas: [NO_ERRORS_SCHEMA] 
+      schemas: [NO_ERRORS_SCHEMA]
     });
     fixture = TestBed.createComponent(QuestionBankBluePrintComponent);
     component = fixture.componentInstance;
 
     // 3. Provide Dummy Data so ngOnInit -> updateChartData doesn't crash
-    component.questionBankBluePrintData = [
+    component.finalSelectedQuestions = [
       {
-        type: 'MCQ',
-        number_of_questions: 5,
-        marks_per_question: 1,
-        question_distribution: [
-          { unit_name: 'Chapter 1', objective: 'Knowledge' }
-        ]
+        text: 'Question 1',
+        marks: 1,
+        objective: 'Knowledge',
+        source: 'AI Questions'
       }
     ];
-
-    component.objectiveChartMapper = {
-      'Knowledge': 0,
-      'Understanding': 0,
-      'Application': 0
-    };
 
     fixture.detectChanges(); // Triggers ngOnInit
   });
@@ -57,9 +49,9 @@ describe('QuestionBankBluePrintComponent', () => {
     // Check if chart data was populated based on the dummy data above
     expect(component.objectivesChartData).toBeDefined();
     expect(component.objectivesChartData.labels).toContain('Knowledge');
-    
+
     // We expect 1 Knowledge count based on the dummy data
     const dataset = component.objectivesChartData.datasets[0];
-    expect(dataset.data).toContain(1); 
+    expect(dataset.data).toContain(1);
   });
 });

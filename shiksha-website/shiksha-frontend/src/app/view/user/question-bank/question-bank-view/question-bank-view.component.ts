@@ -8,21 +8,7 @@ import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 
-interface MatchPair {
-  left: string;
-  right: string;
-}
-
-interface MatchQuestion {
-  pairs: MatchPair[];
-}
-
-interface QuestionSection {
-  type: string;
-  questions: MatchQuestion[];
-  primaryColumn?: string[];
-  shuffledColumns?: string[];
-}
+import { QuestionBank, QuestionBankDetails, QuestionBankSection, MatchPair, QuestionBankItem, BluePrintTemplateSection, QuestionDistributionEntry, QuestionOption } from 'src/app/shared/interfaces/question-bank.interface';
 
 @Component({
   selector: 'app-question-bank-view',
@@ -31,11 +17,11 @@ interface QuestionSection {
   animations: [slideInOutAnimation],
 })
 export class QuestionBankViewComponent implements OnInit {
-  questionBankId: any;
+  questionBankId: string = '';
 
-  questionBankDetails: any;
+  questionBankDetails?: QuestionBankDetails;
 
-  questionBank: any;
+  questionBank?: QuestionBank;
 
   isOpen = false;
 
@@ -57,11 +43,11 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionTypeMapper = QUESTION_TYPE_MAPPER;
 
-  shuffledColumns: any[] = [];
+  shuffledColumns: string[] = [];
 
-  primaryColumn: any[] = [];
+  primaryColumn: string[] = [];
 
-  questionBankBluePrintData: any;
+  questionBankBluePrintData: { unitName: string; type: string; objective: string; marks: number }[] = [];
 
   docTypes = [
     {
@@ -100,16 +86,16 @@ export class QuestionBankViewComponent implements OnInit {
     this.questionBankService
       .getQuestionBankDetails(this.questionBankId)
       .subscribe({
-        next: (val: any) => {
+        next: (val) => {
           this.questionBankDetails = val.data;
           this.questionBank = this.questionBankDetails.questionBank
 
           // Process Match the Following sections
           if (this.questionBank?.questions?.length) {
-            this.questionBank.questions.forEach((section: QuestionSection) => {
+            this.questionBank.questions.forEach((section: QuestionBankSection) => {
               if (section.type === 'Match the following' && section.questions?.length) {
                 // Map columns using only the pairs format
-                const allPairs = section.questions.flatMap((q: MatchQuestion) => q.pairs);
+                const allPairs = section.questions.flatMap((q: QuestionBankItem) => q.pairs ?? []);
                 if (allPairs.length) {
                   const colTwoVal = structuredClone(allPairs.map((pair: MatchPair) => pair.right));
                   section.primaryColumn = allPairs.map((pair: MatchPair) => pair.left);
@@ -132,12 +118,12 @@ export class QuestionBankViewComponent implements OnInit {
       });
   }
 
-  flattenQuestionData(data: any[]) {
-    const result: any[] = [];
+  flattenQuestionData(data: BluePrintTemplateSection[]) {
+    const result: { unitName: string; type: string; objective: string; marks: number }[] = [];
     data.forEach(section => {
       const { type, marksPerQuestion, questionDistribution } = section;
 
-      questionDistribution.forEach((entry: any) => {
+      questionDistribution.forEach((entry: QuestionDistributionEntry) => {
         result.push({
           unitName: entry.unitName,
           type: this.questionTypeMapper[type],
@@ -150,7 +136,11 @@ export class QuestionBankViewComponent implements OnInit {
     return result;
   }
 
-  download(type: any) {
+  isOptionObject(option: string | QuestionOption): option is QuestionOption {
+    return typeof option !== 'string';
+  }
+
+  download(type: string) {
     if (type === 'qp') {
       this.downloadQp()
     } else {
@@ -164,13 +154,14 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   downloadBluePrint() {
+    if (!this.questionBankDetails) return;
     const metaData = {
-      schoolName: this.questionBankDetails?.questionBank?.metadata?.schoolName,
-      medium: this.questionBankDetails?.medium,
-      class: this.questionBankDetails?.grade,
-      subject: this.questionBankDetails?.subject,
-      examinationName: this.questionBankDetails?.examinationName,
-      totalMarks: this.questionBankDetails?.totalMarks
+      schoolName: this.questionBankDetails.questionBank.metadata.schoolName,
+      medium: this.questionBankDetails.medium,
+      class: this.questionBankDetails.grade,
+      subject: this.questionBankDetails.subject,
+      examinationName: this.questionBankDetails.examinationName,
+      totalMarks: this.questionBankDetails.totalMarks
     }
     this.bluePrintExportService.exportToWord(this.questionBankBluePrintData, metaData)
   }

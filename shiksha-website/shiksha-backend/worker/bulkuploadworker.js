@@ -167,7 +167,7 @@ dbService.getConnection().then(async (client) => {
           return;
         }
 
-        const classes = groupedClassData[school.schoolId] || [];
+        const classes = groupedClassData[school.schoolId] ?? [];
         const invalidClasses = classes.filter(
           (c) =>
             !school.boards.includes(c.board.toUpperCase()) ||

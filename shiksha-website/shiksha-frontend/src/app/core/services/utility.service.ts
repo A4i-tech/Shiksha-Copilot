@@ -176,14 +176,11 @@ export class UtilityService {
     }
   }
 
-  formatValue(value: string | string[]): string {
-    if (typeof value === 'string') {
-      return value;
-    } else if (Array.isArray(value)) {
+  formatValue(value: string[]): string {
+    if (Array.isArray(value)) {
       return value.join(', ');
-    } else {
-      return '';
     }
+    return '';
   }
 
 

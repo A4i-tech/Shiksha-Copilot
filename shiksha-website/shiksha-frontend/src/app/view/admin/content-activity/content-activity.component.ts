@@ -235,7 +235,7 @@ export class ContentActivityComponent implements OnInit {
           'name',
           selectedDistrict
         );
-        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+        this.blockDropdownOptions = this.selectedDistrictObj?.blocks ?? [];
       } else {
         this.selectedDistrictObj = null;
         this.blockDropdownOptions = [];

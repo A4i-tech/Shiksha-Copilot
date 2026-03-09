@@ -61,7 +61,7 @@ class UserManager extends BaseManager {
 
       let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
 
-      plainUser.classes = (groupedClasseswithSubjects || []).map((classItem) => {
+      plainUser.classes = (groupedClasseswithSubjects ?? []).map((classItem) => {
         const board = groupByBoards.find(
           (item) => item._id === classItem.board
         );
@@ -429,7 +429,7 @@ class UserManager extends BaseManager {
       if (search) {
         const searchFields = ["name", "phone"];
 
-        const regexExpressions = (searchFields || []).map((field) => ({
+        const regexExpressions = (searchFields).map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
 

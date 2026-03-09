@@ -154,7 +154,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
 
   const questionTypeResponse = new QuestionTypeResponse(
     template.type,
-    template.marks_per_question || template.marksPerQuestion
+    template.marksPerQuestion
   );
 
   let notFoundTemplate = { ...template };
@@ -162,11 +162,11 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
   notFoundTemplate.number_of_questions = 0;
   let notFoundQuestionIndices = [];
 
-  const questionDistribution = template.question_distribution || template.questionDistribution || [];
+  const questionDistribution = template.questionDistribution;
 
   for (let i = 0; i < questionDistribution.length; i++) {
     total++;
-    const unitName = (questionDistribution[i].unit_name || questionDistribution[i].unitName || "").toLowerCase().trim();
+    const unitName = (questionDistribution[i].unitName || "").toLowerCase().trim();
     const objective = questionDistribution[i].objective.toLowerCase();
 
     if (!shouldUseCache()) {
@@ -187,7 +187,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
         for (const questionInCache of questionList) {
           if (
             questionInCache.type === template.type &&
-            questionInCache.marks === (template.marks_per_question || template.marksPerQuestion)
+            questionInCache.marks === template.marksPerQuestion
           ) {
             validCandidates.push(questionInCache);
           }
@@ -344,7 +344,7 @@ function createQuestionObj(type, marks, questionObj, objective) {
   ) {
     question = {
       question: questionObj.question || "",
-      options: questionObj.options || [],
+      options: questionObj.options ?? [],
       answer: questionObj.answer || "",
     };
   } else {

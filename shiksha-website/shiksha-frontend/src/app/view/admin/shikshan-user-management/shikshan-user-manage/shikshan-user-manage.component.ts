@@ -115,7 +115,7 @@ export class ShikshanUserManageComponent implements OnInit {
   getRegionsData() {
     this.masterService.getRegions().subscribe({
       next: (val) => {
-        this.regionsData = val?.data?.results || [];
+        this.regionsData = val?.data?.results ?? [];
         this.stateDropdownOptions = this.regionsData;
         if (this.userId) {
           this.getUserDetails(this.userId);

@@ -739,8 +739,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
             this.avgScoreDataAvailable = this.avgFeedbackDonutChartData?.datasets?.length > 0 && this.avgFeedbackDonutChartData.datasets.some(dataset => dataset.data && dataset.data.length > 0 && dataset.data.some(count => count > 0));
             this.updateChatbotRequestsChartData(data);
             this.chatbotDataAvailable = this.chatbotRequestsBarChartData?.datasets?.length > 0 && this.chatbotRequestsBarChartData.datasets.some(dataset => dataset.data.length > 0);
-            this.allUsersList = data.userCounts.allUsers || [];
-            this.userMediumMetrics = data.userMediums || [];
+            this.allUsersList = data.userCounts.allUsers ?? [];
+            this.userMediumMetrics = data.userMediums ?? [];
             this.filterUsers(this.allUsersList, this.userMediumMetrics, this.selectedMedium);
         },
         error: (err) => {

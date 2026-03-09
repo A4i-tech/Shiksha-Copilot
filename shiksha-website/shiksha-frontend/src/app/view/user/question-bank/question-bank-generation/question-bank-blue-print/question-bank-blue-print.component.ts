@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
+import { ChapterOption, UniversalQuestion, QuestionSummary } from 'src/app/shared/interfaces/question-bank.interface';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -13,10 +14,10 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   @Input() examName: string = '';
 
   // Data from Parent
-  @Input() finalSelectedQuestions: any[] = [];
-  @Input() bluePrintChapterDropdownOptions: any[] = [];
-  @Input() bluePrintObjectiveDropdownOptions: any[] = [];
-  @Input() bluePrintData: any[] = [];
+  @Input() finalSelectedQuestions: UniversalQuestion[] = [];
+  @Input() bluePrintChapterDropdownOptions: ChapterOption[] = [];
+  @Input() bluePrintObjectiveDropdownOptions: any[] = []; // Keeping any if unsure of structure, or define it
+  @Input() bluePrintData: QuestionSummary[] = [];
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
@@ -66,7 +67,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   processDataForView() {
     if (!this.finalSelectedQuestions || this.finalSelectedQuestions.length === 0) return;
 
-    const groups: { [key: string]: any } = {};
+    const groups: { [key: string]: { type: string; marks_per_question: number; questions: UniversalQuestion[] } } = {};
 
     this.finalSelectedQuestions.forEach(q => {
       // Group by heading so "Fill in the blanks" stays together
@@ -75,7 +76,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
       if (!groups[sectionName]) {
         groups[sectionName] = {
           type: sectionName,
-          marks_per_question: q.marks || 0,
+          marks_per_question: Number(q.marksPerQuestion) || 0,
           questions: []
         };
       }

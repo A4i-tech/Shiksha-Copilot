@@ -171,28 +171,20 @@ export class LessonPlanViewEditComponent implements OnInit {
 
         this.otherSections = [
           {
-            title: `${
-              this.isLesson ? 'Lesson Plan Docx' : 'Lesson Resource Docx'
-            }`,
+            title: `${this.isLesson ? 'Lesson Plan Docx' : 'Lesson Resource Docx'
+              }`,
           },
-          // {
-          //   title: `${
-          //     this.isLesson ? 'Lesson Plan PPT' : 'Lesson Resource PPT'
-          //   }`,
-          // },
           {
-            title: `${
-              this.isLesson && this.subjectDetails?.chapter?.board === 'KSEEB'
+            title: `${this.isLesson && this.subjectDetails?.chapter?.board === 'KSEEB'
                 ? '5E Table Docx'
                 : ''
-            }`,
+              }`,
           },
           {
-            title: `${
-              this.isLesson && this.subjectDetails?.chapter?.board === 'KSEEB'
+            title: `${this.isLesson && this.subjectDetails?.chapter?.board === 'KSEEB'
                 ? '5E Table PDF'
                 : ''
-            }`,
+              }`,
           }
         ];
         this.selectedTitle = this.otherSections[0].title;
@@ -200,9 +192,9 @@ export class LessonPlanViewEditComponent implements OnInit {
           e.name = this.otherSections[i].title;
         });
         if (!this.isLesson) {
-         this.docTypeValues = this.docTypeValues.filter(
-          (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
-        );
+          this.docTypeValues = this.docTypeValues.filter(
+            (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
+          );
         }
       } else {
         setTimeout(() => {
@@ -260,7 +252,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       this.subjectDetails = this.planDetails;
 
       if (this.isLesson && this.subjectDetails?.chapter?.board !== 'KSEEB') {
-         this.docTypeValues = this.docTypeValues.filter(
+        this.docTypeValues = this.docTypeValues.filter(
           (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
         );
       }
@@ -294,8 +286,8 @@ export class LessonPlanViewEditComponent implements OnInit {
 
         if (this.isLesson && this.subjectDetails?.chapter?.board !== 'KSEEB') {
           this.docTypeValues = this.docTypeValues.filter(
-          (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
-        );
+            (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
+          );
         }
 
         if(this.mode === 'view'){
@@ -373,7 +365,7 @@ export class LessonPlanViewEditComponent implements OnInit {
     this.activeSectionId = this.sections[0].id;
 
     const videoData =
-      this.planDetails?.videos || this.planDetails?.lesson?.videos || [];
+      (this.planDetails?.videos || this.planDetails?.lesson?.videos);
 
     if (videoData.length)
       this.videoUrls = videoData.map((e: any) => {
@@ -641,20 +633,20 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   removeAggregateRating(resources:any[]): any[] {
-  if (!Array.isArray(resources)) return resources;
+    if (!Array.isArray(resources)) return resources;
 
-  // Find the "activities" resource
-  const activities = resources.find(r => r.id === "activities");
-  if (!activities?.content) return resources;
+    // Find the "activities" resource
+    const activities = resources.find(r => r.id === "activities");
+    if (!activities?.content) return resources;
 
-  // Remove aggregateRating from each activity
-  activities.content = activities.content.map((activity: any) => {
-    const { aggregateRating, ...rest } = activity; // safely removes it if it exists
-    return rest;
-  });
+    // Remove aggregateRating from each activity
+    activities.content = activities.content.map((activity: any) => {
+      const { aggregateRating, ...rest } = activity; // safely removes it if it exists
+      return rest;
+    });
 
-  return resources;
-}
+    return resources;
+  }
 
   isMobile(): boolean {
     return window.innerWidth <= 768;

@@ -76,7 +76,7 @@ class ChatManager extends BaseManager {
 			await this.chatDao.addMessage(chatSession._id, {
 				question: message,
 				answer: response.data.response,
-				references: response.data.references || [],
+				references: response.data.references ,
 			});
 
 			chatSession.requestCount += 1;
@@ -86,7 +86,7 @@ class ChatManager extends BaseManager {
 			return formatApiResponse(
 				true,
 				"Response from copilot",
-				{ response: response.data.response, references: response.data.references || [] }
+				{ response: response.data.response, references: response.data.references  }
 			);
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
@@ -291,7 +291,7 @@ class ChatManager extends BaseManager {
 				);
 			}
 
-			let formattedMessages = (messageHistory || []).map((chat) => [
+			let formattedMessages = (messageHistory ).map((chat) => [
 				{ role: "user", message: chat.message.question },
 				{ role: "system", message: chat.message.answer },
 			])
@@ -319,14 +319,14 @@ class ChatManager extends BaseManager {
 				message: {
 					question: message,
 					answer: response.data.response,
-					references: response.data.references || [],
+					references: response.data.references ,
 					version: 2,
 				}
 			});
 
 			return formatApiResponse(true, "Lesson chat response", {
 				response: response.data.response,
-				references: response.data.references || [],
+				references: response.data.references ,
 			});
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
@@ -344,7 +344,7 @@ class ChatManager extends BaseManager {
 				userId
 			);
 
-			let messages = (messagesHistory || []).map((chat) => chat.message)
+			let messages = (messagesHistory ).map((chat) => chat.message)
 
 			return formatApiResponse(true, "Lesson messages fetched successfully", { messages, chapterDetails, subject: subjectDetails });
 		} catch (err) {

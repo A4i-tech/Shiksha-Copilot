@@ -22,7 +22,7 @@ class SchoolManager extends BaseManager {
   async create(req, session) {
     try {
       session.startTransaction();
-      let classes = req.body?.classes || [];
+      let classes = req.body?.classes;
       let school = await this.schoolDao.getOne({ schoolId: req.body.schoolId });
 
       if (school) {
@@ -127,7 +127,7 @@ class SchoolManager extends BaseManager {
             classData._id,
             classDataWithoutDetails
           );
-          const existingClassDetailIds = (classRecord.classDetails || []).map(
+          const existingClassDetailIds = (classRecord.classDetails).map(
             (detail) => detail._id?.toString()
           );
           const updatedClassDetails = [];
@@ -337,7 +337,7 @@ class SchoolManager extends BaseManager {
       }
 
       const users = await this.userDao.getUsersBySchoolId(schoolId);
-      const userDeactivations = (users || []).map((user) =>
+      const userDeactivations = (users).map((user) =>
         this.userDao.update(user._id, { isDeleted: true })
       );
       await Promise.all(userDeactivations);
@@ -374,7 +374,7 @@ class SchoolManager extends BaseManager {
       if (search) {
         const searchFields = ["name", "phone"];
 
-        const regexExpressions = (searchFields || []).map((field) => ({
+        const regexExpressions = (searchFields).map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
 

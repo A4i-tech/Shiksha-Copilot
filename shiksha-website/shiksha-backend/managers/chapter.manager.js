@@ -124,14 +124,14 @@ class ChapterManager extends BaseManager {
         let standard = chapters[i]._id.match(standardRegex)[1];
         let orderNumber = chapters[i]._id.match(orderNumberRegex)[1];
 
-        let topicsLearningOutcomes = (chapters[i].topics || []).map(item => {
+        let topicsLearningOutcomes = (chapters[i].topics).map(item => {
           return {
             title: item.title.trim(),
             learningOutcomes: item.learning_outcomes
           };
         })
 
-        let subtopics = (chapters[i].topics || []).map(e => e.title.trim());
+        let subtopics = (chapters[i].topics).map(e => e.title.trim());
 
         let updatedChapter = await Chapter.findOneAndUpdate(
           {

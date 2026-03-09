@@ -126,7 +126,7 @@ export class QuestionBankDownloadService {
           }
         });
       } else if (section.type === 'Match the following') {
-        const allPairs = section.questions.flatMap((q: any) => q.pairs || []);
+        const allPairs = section.questions.flatMap((q: any) => q.pairs);
         const colOneValue = allPairs.map((pair: any) => pair.left || '');
         const colTwoVal = structuredClone(allPairs.map((pair: any) => pair.right || ''));
         const shuffedColums = this.utilityService.shuffleOptions(colTwoVal)

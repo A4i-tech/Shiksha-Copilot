@@ -123,6 +123,9 @@ class QuestionBankManager extends BaseManager {
 
   async generateQuestionBankBluePrint(req, user) {
     try {
+      if (req.body.template) {
+        req.body.template = convertToCamelCase(req.body.template);
+      }
       const { objective_distribution, template } = req.body;
 
       const templatePayload = await this._createQuestionBankPayload(
@@ -166,6 +169,9 @@ class QuestionBankManager extends BaseManager {
     // session.startTransaction();
     const session = null;
     try {
+      if (req.body.template) {
+        req.body.template = convertToCamelCase(req.body.template);
+      }
       console.log('[Manager] generateQuestionBank called.');
 
       const context = this._prepareGenerationContext(req.body);
@@ -576,11 +582,6 @@ class QuestionBankManager extends BaseManager {
       // Look up full details if possible to get the description
       const details = QUESTION_TYPE_DETAILS[item.type];
 
-      // Handle both snake_case (legacy/internal) and camelCase (new/frontend)
-      const numQs = item.number_of_questions !== undefined ? item.number_of_questions : item.numberOfQuestions;
-      const marksPerQ = item.marks_per_question !== undefined ? item.marks_per_question : item.marksPerQuestion;
-      const qDist = item.question_distribution || item.questionDistribution;
-
       const mappedItem = {
         ...item,
         type: mappedType,
@@ -588,15 +589,25 @@ class QuestionBankManager extends BaseManager {
       };
 
       // Ensure expected Python snake_case keys are present
-      if (numQs !== undefined) mappedItem.number_of_questions = numQs;
-      if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
+      if (item.numberOfQuestions !== undefined) {
+        mappedItem.number_of_questions = item.numberOfQuestions;
+        delete mappedItem.numberOfQuestions;
+      }
+      if (item.marksPerQuestion !== undefined) {
+        mappedItem.marks_per_question = item.marksPerQuestion;
+        delete mappedItem.marksPerQuestion;
+      }
 
-      if (qDist && Array.isArray(qDist)) {
-        mappedItem.question_distribution = qDist.map(d => ({
-          ...d,
-          unit_name: d.unit_name || d.unitName,
-          objective: d.objective
-        }));
+      if (item.questionDistribution && Array.isArray(item.questionDistribution)) {
+        mappedItem.question_distribution = item.questionDistribution.map(d => {
+          const mappedDist = { ...d, objective: d.objective };
+          if (d.unitName !== undefined) {
+            mappedDist.unit_name = d.unitName;
+            delete mappedDist.unitName;
+          }
+          return mappedDist;
+        });
+        delete mappedItem.questionDistribution;
       }
 
       return mappedItem;

@@ -61,7 +61,9 @@ export class BatchService {
     });
   }
 
-  addBatch(batchData: FormData | Batch): Observable<any> {
+  addBatch(batchData: FormData): Observable<any>;
+  addBatch(batchData: Batch): Observable<any>;
+  addBatch(batchData: any): Observable<any> {
     const headers = this.getAuthHeaders();
     if (batchData instanceof FormData) {
       // For FormData, don't set Content-Type header as it will be set automatically
@@ -122,21 +124,21 @@ export class BatchService {
   }
 
 extractActualFilename(url:any) {
-  try {
-    const parsedUrl = new URL(url);
-    const segments = parsedUrl.pathname.split("/");
-    const fullFilename = segments[segments.length - 1];
+    try {
+      const parsedUrl = new URL(url);
+      const segments = parsedUrl.pathname.split("/");
+      const fullFilename = segments[segments.length - 1];
 
-    if (!fullFilename) return null; // No filename found
+      if (!fullFilename) return null; // No filename found
 
-    if (!fullFilename.includes("_")) return fullFilename;
+      if (!fullFilename.includes("_")) return fullFilename;
 
-    return fullFilename.split("_").slice(1).join("_");
-  } catch (err) {
-    console.error("Invalid URL:", err);
-    return null;
+      return fullFilename.split("_").slice(1).join("_");
+    } catch (err) {
+      console.error("Invalid URL:", err);
+      return null;
+    }
   }
-}
 
 
 

@@ -7,7 +7,7 @@ import { BaselineSurveyComponent } from 'src/app/shared/components/baseline-surv
 export class BaselineSurveyDialogService {
   private dialog = inject(MatDialog);
 
-  private sessionKey(userId: string | number) {
+  private sessionKey(userId: string) {
     const year = new Date().getFullYear();
     return `baseline:shown:${userId}:${year}`;
   }

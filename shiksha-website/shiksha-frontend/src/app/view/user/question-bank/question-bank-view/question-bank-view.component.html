@@ -30,7 +30,7 @@
               </tr>
             </thead>
             <tbody>
-              <ng-container *ngFor="let questionBankObjective of questionBankDetails.bluePrintTemplate; let i=index">
+              <ng-container *ngFor="let questionBankObjective of questionBankDetails?.bluePrintTemplate; let i=index">
                 <tr *ngFor="let objective of questionBankObjective.questionDistribution; let j=index">
                   <td class="border px-2 py-2 capitalize text-sm">
                     {{ objective.unitName }}
@@ -50,7 +50,7 @@
           </table>
           <div class="flex justify-end">
             <span class="mr-4 mt-2" *ngIf="questionBankDetails"><b>{{ 'Total' | translate}}</b> :
-              {{ questionBankDetails?.totalMarks }} {{'Marks' | translate}}</span>
+              {{ questionBankDetails.totalMarks }} {{'Marks' | translate}}</span>
           </div>
         </div>
       </div>
@@ -60,7 +60,7 @@
     <div class="w-full md:col-span-2">
       <div class="question-bank-container p-4 md:px-12 rounded-md border h-[88vh] bg-white overflow-y-auto">
         <h2 class="text-center text-2xl font-bold text-content">
-          {{ questionBankDetails?.questionBank?.metadata.schoolName }}
+          {{ questionBankDetails?.questionBank?.metadata?.schoolName }}
         </h2>
         <h2 class="text-center text-xl mt-2 font-bold text-content">
           {{ questionBankDetails?.examinationName}}
@@ -100,8 +100,8 @@
                 *ngIf="questionBankData.type === 'Four alternatives are given for each of the following questions, choose the correct alternative'"
                 class="list-alpha">
                 <li *ngFor="let option of questionData.options">
-                  <span *ngIf="option.text">{{ option.text }}</span>
-                  <span *ngIf="!option.text">{{ option }}</span>
+                  <span *ngIf="isOptionObject(option)">{{ option.text }}</span>
+                  <span *ngIf="!isOptionObject(option)">{{ option }}</span>
                 </li>
               </ul>
             </div>
@@ -136,7 +136,7 @@
             {{ questionBankFeedbackQuestion | translate }}
           </p>
           <div *ngFor="let feedbackType of questionBankFeedbackValues; let i = index">
-            <input [disabled]="questionBankDetails?.questionBank?.feedback?.feedback" type="radio"
+            <input [disabled]="!!questionBankDetails?.questionBank?.feedback?.feedback" type="radio"
               [id]="feedbackType.name + i" [name]="feedbackType.name + i" [value]="feedbackType.name"
               [(ngModel)]="questionBankFeedback.feedback" class="mt-[3px] md:mt-0" />
             <label [for]="feedbackType.name + i" class="ms-1">{{ feedbackType.name | translate }}
@@ -145,7 +145,7 @@
         </div>
 
         <div>
-          <textarea [disabled]="questionBankDetails?.questionBank?.feedback?.feedback"
+          <textarea [disabled]="!!questionBankDetails?.questionBank?.feedback?.feedback"
             [(ngModel)]="questionBankFeedback.overallFeedback"
             class="p-2 mt-2 border rounded-sm w-fullfocus:outline-none w-full"
             placeholder="{{ 'Leave your comments here' | translate }}" rows="3"></textarea>

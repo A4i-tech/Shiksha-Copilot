@@ -102,8 +102,7 @@ class QuestionDao extends BaseDao {
                 .filter(Boolean);
             if (arr.length) {
                 if (arr.includes("Misc")) {
-                    query.$or = query.$or || [];
-                    query.$and = query.$and || [];
+                    query.$and = query.$and ?? [];
                     query.$and.push({
                         $or: [
                             { groupHeading: { $in: arr } },
@@ -135,7 +134,7 @@ class QuestionDao extends BaseDao {
                 // If query already has an $or (e.g. from class/standard), combine them with $and
                 const existingOr = query.$or;
                 delete query.$or;
-                query.$and = query.$and || [];
+                query.$and = query.$and ?? [];
                 query.$and.push({ $or: existingOr });
                 query.$and.push({ $or: searchOr });
             } else {
@@ -174,12 +173,12 @@ class QuestionDao extends BaseDao {
             difficulty: q.difficulty || "",
             marksPerQuestion: q.marksPerQuestion || q.marks || 1,
             options: sanitizeOptions(q.options),
-            pairs: q.pairs || [],
-            items: q.items || [],
+            pairs: q.pairs ?? [],
+            items: q.items ?? [],
             keyAnswer: q.keyAnswer || q.answer || "",
             answer: q.answer || q.keyAnswer || "",
-            correctOrderById: q.correctOrderById || [],
-            correctOrderIndices: q.correctOrderIndices || [],
+            correctOrderById: q.correctOrderById ?? [],
+            correctOrderIndices: q.correctOrderIndices ?? [],
             chapter: q.chapter
                 ? {
                     chapterNumber: q.chapter.chapterNumber,

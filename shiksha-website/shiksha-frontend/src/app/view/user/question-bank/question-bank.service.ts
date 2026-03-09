@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
+import { QuestionBankDetails, LBAQuestion } from 'src/app/shared/interfaces/question-bank.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -73,7 +74,7 @@ export class QuestionBankService extends BaseRestService {
    * @param id
    * @returns
    */
-  getQuestionBankDetails(id: any) {
+  getQuestionBankDetails(id: string): Observable<{ data: QuestionBankDetails }> {
     return this.get(id);
   }
 
@@ -223,7 +224,7 @@ export class QuestionBankService extends BaseRestService {
     type?: string;
     search?: string;
     headings?: string;
-  }): Observable<any[]> {
+  }): Observable<LBAQuestion[]> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
@@ -231,7 +232,7 @@ export class QuestionBankService extends BaseRestService {
       }
     });
     return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params }).pipe(
-      (source => new Observable<any[]>(observer => source.subscribe({
+      (source => new Observable<LBAQuestion[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
         complete: () => observer.complete()

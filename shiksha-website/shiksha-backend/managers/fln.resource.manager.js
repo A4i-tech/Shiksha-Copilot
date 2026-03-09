@@ -47,8 +47,8 @@ class FLNResourceManager extends BaseManager {
     try {
       const resource = await this.flnResourceDao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
       if (!resource) return formatApiReponse(false, 'No data found for grade ' + grade, null);
-      const lessons = resource.data?.lesson_plan_by_grade?.[grade] || [];
-      const days = [...new Set((lessons || []).map(l => l.day))].sort((a, b) => a - b);
+      const lessons = resource.data?.lesson_plan_by_grade?.[grade];
+      const days = [...new Set((lessons).map(l => l.day))].sort((a, b) => a - b);
       return formatApiReponse(true, '', days);
     } catch (err) {
       return formatApiReponse(false, err.message, null);
@@ -59,7 +59,7 @@ class FLNResourceManager extends BaseManager {
     try {
       const resource = await this.flnResourceDao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
       if (!resource) return formatApiReponse(false, 'No data found for grade ' + grade, null);
-      const lessons = resource.data?.lesson_plan_by_grade?.[grade] || [];
+      const lessons = resource.data?.lesson_plan_by_grade?.[grade];
       const lesson = lessons.find(l => l.day === Number(day));
       if (!lesson) return formatApiReponse(false, 'Lesson not found for grade ' + grade + ' and day ' + day, null);
       return formatApiReponse(true, '', lesson);
@@ -72,7 +72,7 @@ class FLNResourceManager extends BaseManager {
     try {
       const resource = await this.flnResourceDao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
       if (!resource) return formatApiReponse(false, 'No data found for grade ' + grade, null);
-      const lessons = resource.data?.lesson_plan_by_grade?.[grade] || [];
+      const lessons = resource.data?.lesson_plan_by_grade?.[grade];
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Lessons');
       worksheet.columns = [
@@ -97,7 +97,7 @@ class FLNResourceManager extends BaseManager {
           activity: lesson.activity,
           assessment_oral: lesson.assessment_questions?.[0] || '',
           assessment_written: lesson.assessment_questions?.[1] || '',
-          practice_questions: (lesson.practice_questions || []).join('\n'),
+          practice_questions: (lesson.practice_questions).join('\n'),
           teacher_notes: lesson.teacher_notes,
         });
       });

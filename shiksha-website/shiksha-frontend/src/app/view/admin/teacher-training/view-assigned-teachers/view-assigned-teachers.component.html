@@ -45,7 +45,7 @@
       <h3>Absent</h3>
       <p class="stat-value">{{ getAbsentCount() }}</p>
     </div>
-    <button *ngIf="(selectedBatch?.assignedTeachers || []).length > 0" type="button" class="stat-box attendance-sheet-box" (click)="generateAttendanceSheet()">
+    <button *ngIf="(selectedBatch?.assignedTeachers ?? []).length > 0" type="button" class="stat-box attendance-sheet-box" (click)="generateAttendanceSheet()">
       <div class="download-icon">
         <i class="fas fa-file-excel"></i>
       </div>

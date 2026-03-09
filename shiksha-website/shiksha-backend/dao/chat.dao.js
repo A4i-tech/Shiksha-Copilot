@@ -62,7 +62,7 @@ class ChatDao extends BaseDao {
                             $each: [{
                                 question: messageData.question,
                                 answer: messageData.answer,
-                                references: messageData.references || [],
+                                references: messageData.references,
                                 createdAt: new Date()
                             }],
                             $position: 0

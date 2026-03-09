@@ -159,7 +159,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         const res = response as { success: boolean, data?: { results?: Teacher[], totalItems?: number } };
         this.isLoadingTeachers = false;
         if (res.success && res.data) {
-          this.allTeachers = res.data.results || [];
+          this.allTeachers = res.data.results ?? [];
           this.teachersTotalItems = res.data.totalItems || 0;
           this.filterTeachersForSidebar();
         } else {
@@ -341,7 +341,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
     }
 
     const batchId = this.selectedBatch._id!;
-    let updatedAttendance = [...(this.selectedBatch.attendance || [])];
+    let updatedAttendance = [...(this.selectedBatch.attendance ?? [])];
 
     if (isPresent) {
       if (!updatedAttendance.includes(teacherId)) {
@@ -516,7 +516,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         this.isLoadingTeachers = false;
         if (res.success && res.data) {
           // Replace the array with new results (don't append for pagination with search)
-          this.allTeachers = res.data.results || [];
+          this.allTeachers = res.data.results ?? [];
           this.teachersTotalItems = res.data.totalItems || 0;
           this.filterTeachersForSidebar();
         } else {

@@ -58,8 +58,8 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           this.selectedBatch = {
             ...this.selectedBatch,
             ...updatedBatch,
-            assignedTeachers: this.selectedBatch.assignedTeachers || [],
-            attendance: this.selectedBatch.attendance || []
+            assignedTeachers: this.selectedBatch.assignedTeachers,
+            attendance: this.selectedBatch.attendance
           };
         }
       }
@@ -72,8 +72,8 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         // Initialize with complete data
         this.selectedBatch = {
           ...batch,
-          assignedTeachers: batch.assignedTeachers || [],
-          attendance: batch.attendance || []
+          assignedTeachers: batch.assignedTeachers,
+          attendance: batch.attendance
         };
 
         // Clear previous selections
@@ -82,39 +82,6 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
 
         this.batchPhotos = batch?.photoPaths;
         this.batchPdf = {name:this.batchService.extractActualFilename(batch?.attendancePdfPath)}
-
-        // Fetch and populate existing photos
-        // if (batch.photoPaths && batch.photoPaths.length > 0) {
-        //   for (const photoData of batch.photoPaths) {
-        //     if (!photoData || !photoData.path) {
-        //       // Skip invalid entries
-        //       continue;
-        //     }
-        //     try {
-        //       const photoBlob = await this.batchService.getFile(photoData.path).toPromise();
-        //       if (photoBlob) {
-        //         // Use the mimetype fetched from the backend to create the File object
-        //         const photoFile = new File([photoBlob], photoData.path.substring(photoData.path.lastIndexOf('/') + 1), { type: photoData.mimetype });
-        //         (photoFile as FileWithObjectURL).objectURL = this.URL.createObjectURL(photoFile);
-        //         this.selectedPhotos.push(photoFile as FileWithObjectURL);
-        //       }
-        //     } catch (error) {
-        //       console.error(`Error fetching photo from ${photoData.path}:`, error);
-        //     }
-        //   }
-        // }
-
-        // Fetch and populate existing attendance PDF
-        // if (batch.attendancePdfPath) {
-        //   try {
-        //     const pdfBlob = await this.batchService.getFile(batch.attendancePdfPath).toPromise();
-        //     if (pdfBlob) {
-        //       this.selectedPdf = new File([pdfBlob], batch.attendancePdfPath.substring(batch.attendancePdfPath.lastIndexOf('/') + 1), { type: pdfBlob.type });
-        //     }
-        //   } catch (error) {
-        //     console.error(`Error fetching PDF from ${batch.attendancePdfPath}:`, error);
-        //   }
-        // }
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching batch details:', error);
@@ -153,7 +120,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
     }
 
     const batchId = this.selectedBatch._id!;
-    const currentAttendance = [...(this.selectedBatch.attendance || [])];
+    const currentAttendance = [...(this.selectedBatch.attendance ?? [])];
     let updatedAttendance: string[];
 
     if (isPresent) {
@@ -182,7 +149,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         this.selectedBatch = {
           ...this.selectedBatch,
           ...response,
-          assignedTeachers: this.selectedBatch?.assignedTeachers || [],
+          assignedTeachers: this.selectedBatch?.assignedTeachers,
           attendance: updatedAttendance
         };
         this.batchService.updateBatchInList(this.selectedBatch);
@@ -220,7 +187,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
     }
 
     if (confirm(`Are you sure you want to remove ${teacher.name} from ${batch.batchName}?`)) {
-      const currentAttendance = [...(this.selectedBatch?.attendance || [])];
+      const currentAttendance = [...(this.selectedBatch?.attendance ?? [])];
       const updatedAttendance = currentAttendance.filter(id => id !== teacher._id);
       
       this.batchService.removeTeacherFromBatch(batch._id, teacher._id).subscribe({
@@ -314,8 +281,8 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
 
     if (confirm('Are you sure you want to save and submit this batch? Once submitted, it cannot be modified.')) {
       const currentData = {
-        assignedTeachers: this.selectedBatch?.assignedTeachers || [],
-        attendance: this.selectedBatch?.attendance || []
+        assignedTeachers: this.selectedBatch?.assignedTeachers ?? [],
+        attendance: this.selectedBatch?.attendance ?? []
       };
 
       // Only upload files if they are selected
@@ -487,7 +454,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
     }
 
     const batch = this.selectedBatch;
-    const teachers: Teacher[] = batch.assignedTeachers || [];
+    const teachers: Teacher[] = batch.assignedTeachers ?? [];
     const batchName = batch.batchName || '';
     const batchDate = batch.scheduleDate ? new Date(batch.scheduleDate) : null;
     const formattedDate = batchDate ? batchDate.toLocaleDateString() : '';

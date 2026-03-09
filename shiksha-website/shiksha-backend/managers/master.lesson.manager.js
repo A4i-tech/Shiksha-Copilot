@@ -314,7 +314,7 @@ class MasterLessonManger extends BaseManager {
 		const questionBank = evalaute.resources.find(
 			(resource) => resource.section === "questionbank"
 		);
-		let filterLevels = filters.levels || [];
+		let filterLevels = filters.levels;
 		if (questionBank) {
 			try {
 				filterLevels = JSON.parse(filters.levels);
@@ -454,17 +454,6 @@ class MasterLessonManger extends BaseManager {
 		}
 
 		if (result) {
-			// let filteredQuestionBank = await this.getFilteredQuestionBank(lessonId, filters);
-
-			// let instructionSet = (result[0]?.instructionSet || []).map((is) => {
-			//     if (is.type === "Evaluate") {
-			//         is.info[0].content.main = filteredQuestionBank.data;    // Private methods
-			//     }
-			//     return is;
-			// });
-
-			// result[0].instructionSet = instructionSet;
-
 			return formatApiReponse(true, "", result);
 		}
 		return null;

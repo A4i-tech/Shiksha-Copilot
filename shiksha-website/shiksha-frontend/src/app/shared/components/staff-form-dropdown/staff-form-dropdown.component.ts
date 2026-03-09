@@ -83,7 +83,7 @@ export class StafFormDropdownComponent implements OnInit {
   }
 
   toggleSelection(item: any) {
-    let currentVal = this.dropDownCtrl?.value || [];
+    let currentVal = this.dropDownCtrl?.value;
     const itemValue = this.config.bindValue ? item[this.config.bindValue] : item;
     const index = currentVal.findIndex((i: any) => i === itemValue);
     

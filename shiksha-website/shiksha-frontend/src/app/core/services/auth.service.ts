@@ -8,7 +8,7 @@ export interface User {
   _id: string;
   name: string;
   email: string;
-  role: string | string[];
+  role: string[];
   state: string;
   zone?: string;
   district?: string;

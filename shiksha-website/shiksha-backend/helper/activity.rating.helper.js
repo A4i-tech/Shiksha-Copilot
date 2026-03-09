@@ -32,8 +32,8 @@ function collectActivities(resources, activityMap = {}) {
 
 /**
  * Attach aggregate ratings to activities in a resource or array of resources
- * @param {Array|Object} lessonResources - Array of lesson objects or a single lesson object
- * @param {String|ObjectId} masterResourceId - master resource ID for fetching aggregates
+ * @param {Array} lessonResources - Array of lesson objects or a single lesson object
+ * @param {String} masterResourceId - master resource ID for fetching aggregates
  */
 async function attachAggregateRatings(lessonResources, masterResourceId) {
   if (!lessonResources) return lessonResources;

@@ -287,7 +287,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           const extractedRefs = this.extractReferences(this.messages[0].answer);
           if (extractedRefs.length > 0) {
             // Merge with existing references if any, avoiding duplicates
-            const existingRefs = this.messages[0].references || [];
+            const existingRefs = this.messages[0].references ?? [];
             const existingUrls = new Set(existingRefs.map(r => r.url));
 
             extractedRefs.forEach(ref => {
