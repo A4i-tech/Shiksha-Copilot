@@ -77,6 +77,20 @@ class MasterSubjectDao extends BaseDao {
 		}
 	}
 
+	/**
+	 * Find all subjects matching a name pattern, optionally filtered by board.
+	 * @param {RegExp|string} namePattern - regex or string to match name/subjectName
+	 * @param {string} [board] - optional board filter
+	 * @returns {Promise<Array<{_id: ObjectId}>>} matching subject IDs
+	 */
+	async findEnglishSubjectIds(board) {
+		const filter = {
+			$or: [{ name: /english/i }, { subjectName: /english/i }],
+		};
+		if (board) filter.boards = board;
+		return MasterSubject.find(filter).select('_id').lean();
+	}
+
 	async update(id, updates, session = null) {
 		try {
 			const result = await MasterSubject.findOneAndUpdate(

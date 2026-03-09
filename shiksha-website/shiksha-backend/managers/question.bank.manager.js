@@ -784,30 +784,51 @@ class QuestionBankManager extends BaseManager {
       // GRAMMAR_PREFIX<topic> → GRAMMAR_TOPICS_BY_GRADE[grade][topic] = unitNumber → realChapters[unitNumber].indexPath
       const grammarUnits = Array.from(requiredUnits).filter(u => u.startsWith(GRAMMAR_PREFIX));
       const grammarIndexPathMap = {}; // unitName → specific chapter indexPath
+      const grammarSourceChapterMap = {}; // unitName → source chapter title(s)
 
       if (grammarUnits.length > 0 && subject && grade) {
         try {
-          const { subjectCode: sCode, targetSubjectIds: sIds } = await this.masterSubjectDao.resolveSubjectContext(subject);
-          const realChapters = await this.chapterDao.getChapters(String(grade), medium || 'English', sCode, sIds);
+          const { subjectCode: sCode, targetSubjectIds: sIds } = await this.masterSubjectDao.resolveSubjectContext(reqBody.subjectId || subject);
+          let realChapters = await this.chapterDao.getChapters(String(grade), medium || 'English', sCode, sIds);
+
+          // If resolved subject has no indexed chapters, broaden search to all English
+          // subjects for the same board (e.g. "English" → "English 2" on KSEEB).
+          const hasIndexed = (chs) => (chs || []).some(ch => ch.indexPath && ch.indexPath.trim() !== '');
+          if (!hasIndexed(realChapters)) {
+            const englishSubjects = await this.masterSubjectDao.findEnglishSubjectIds(board);
+            if (englishSubjects.length > 0) {
+              const allEnglishIds = englishSubjects.map(s => s._id);
+              const broadChapters = await this.chapterDao.getChapters(String(grade), medium || 'English', sCode, allEnglishIds);
+              if (hasIndexed(broadChapters)) {
+                realChapters = broadChapters;
+              }
+            }
+          }
+
           const gradeTopics = GRAMMAR_TOPICS_BY_GRADE[parseInt(grade)] || {};
           const fallbackIndexPath = (realChapters || []).map(ch => ch.indexPath || '').find(p => p && p.trim() !== '') || '';
 
-          // Build a unitNumber → indexPath lookup from real chapters
+          // Build a unitNumber → indexPath and unitNumber → title lookup from real chapters
           const unitIndexPathMap = {};
+          const unitTitleMap = {};
           (realChapters || []).forEach(ch => {
-            if (ch.chapterNumber && !unitIndexPathMap[ch.chapterNumber]) {
-              unitIndexPathMap[ch.chapterNumber] = ch.indexPath || '';
+            if (ch.chapterNumber) {
+              if (!unitIndexPathMap[ch.chapterNumber]) {
+                unitIndexPathMap[ch.chapterNumber] = ch.indexPath || '';
+              }
+              // Collect all chapter titles for this unit (e.g. prose + poem)
+              if (!unitTitleMap[ch.chapterNumber]) unitTitleMap[ch.chapterNumber] = [];
+              if (ch.title) unitTitleMap[ch.chapterNumber].push(ch.title);
             }
           });
 
           grammarUnits.forEach(unitName => {
             const topic = unitName.replace(GRAMMAR_PREFIX, '');
             const unitNum = gradeTopics[topic];
-            if (!unitNum) {
-              console.warn(`[Manager] Grammar topic not found in syllabus map: "${topic}" (grade ${grade}) — using fallback indexPath`);
-            }
             const resolvedPath = (unitNum && unitIndexPathMap[unitNum]) || fallbackIndexPath;
+            const sourceChapters = (unitNum && unitTitleMap[unitNum]) || [];
             grammarIndexPathMap[unitName] = resolvedPath;
+            grammarSourceChapterMap[unitName] = sourceChapters;
           });
         } catch (e) {
           console.warn('[Manager] Could not resolve grammar indexPath:', e.message);
@@ -819,12 +840,16 @@ class QuestionBankManager extends BaseManager {
         const { found, indexPath } = this._resolveUnitContext(unitName, formattedChapters, chapterData);
         if (!found) {
           console.log(`[Manager] Injecting missing unit context: ${unitName}`);
-          formattedChapters.push({
+          const chapter = {
             title: unitName,
             index_path: unitName.startsWith(GRAMMAR_PREFIX) ? (grammarIndexPathMap[unitName] || '') : indexPath,
             learning_outcomes: [],
             subtopics: []
-          });
+          };
+          if (unitName.startsWith(GRAMMAR_PREFIX) && grammarSourceChapterMap[unitName]?.length) {
+            chapter.grammar_source_chapters = grammarSourceChapterMap[unitName];
+          }
+          formattedChapters.push(chapter);
         }
       });
       // -----------------------------------------------------------

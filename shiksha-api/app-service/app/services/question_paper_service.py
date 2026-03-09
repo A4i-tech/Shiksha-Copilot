@@ -127,32 +127,60 @@ class QuestionPaperService:
                     questions.append(f"{q.value1} :: {q.value2}")
         return [q for q in questions if q]
 
-    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest) -> str:
+    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Dict[str, Any] = None) -> str:
         """
-        Returns a grammar focus instruction string for English subjects,
-        using all topics for the grade from the YAML.
+        Returns a grammar focus instruction string for English subjects.
+        When a slot with grammar_source_chapters is provided, generates a detailed
+        instruction tying the grammar topic to the source textbook chapter content.
         """
-        if "english" in request.subject.lower():
-            topics = self.prompts.get("grammar_topics", {})
-            topic_map = {int(grade): topic_list for grade, topic_list in topics.items()}
-            topics_to_use = topic_map.get(request.grade, [])
+        if "english" not in request.subject.lower():
+            return ""
 
-            # Also extract any GRAMMAR: prefixed units from the request chapters
-            grammar_units = [
-                ch.title.replace("GRAMMAR: ", "").strip()
-                for ch in request.chapters
-                if ch.title.startswith("GRAMMAR: ")
-            ]
-            if grammar_units:
-                topics_to_use = grammar_units
+        topics = self.prompts.get("grammar_topics", {})
+        topic_map = {int(grade): topic_list for grade, topic_list in topics.items()}
+        topics_to_use = topic_map.get(request.grade, [])
 
-            if topics_to_use:
-                return (
-                    "⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit’s content."
-                    + "\nCover following topics: "
-                    + "; ".join(topics_to_use)
-                )
-        return ""
+        # Extract GRAMMAR: prefixed units from request chapters
+        grammar_units = [
+            ch.title.replace("GRAMMAR: ", "").strip()
+            for ch in request.chapters
+            if ch.title.startswith("GRAMMAR: ")
+        ]
+        if grammar_units:
+            topics_to_use = grammar_units
+
+        if not topics_to_use:
+            return ""
+
+        grammar_topic = "; ".join(topics_to_use)
+
+        # If we have source chapter context, build a detailed teacher-style instruction
+        source_chapters = (slot or {}).get("grammar_source_chapters", [])
+        if source_chapters:
+            chapter_names = ", ".join(source_chapters)
+            return (
+                f"⚠ **GRAMMAR IN CONTEXT — {grammar_topic.upper()}**\n\n"
+                f"You are an English teacher preparing a grammar assessment on **{grammar_topic}**.\n"
+                f"The grammar topic \"{grammar_topic}\" is taught as part of the textbook chapter(s): **{chapter_names}**.\n\n"
+                f"**Step-by-step approach:**\n"
+                f"1. **Read the retrieved textbook content** from the chapter(s) above carefully.\n"
+                f"2. **Identify sentences, dialogues, and passages** from the chapter that naturally demonstrate {grammar_topic}.\n"
+                f"3. **Create grammar questions using the chapter’s own language** — characters, situations, vocabulary, and sentence patterns from the text.\n"
+                f"4. For fill-in-the-blanks, pick actual sentences from the chapter or closely paraphrase them, then blank out the grammar element being tested.\n"
+                f"5. For other question types, use the chapter’s context (characters, events, theme) as the setting for the grammar exercise.\n\n"
+                f"**Example approach for \"{grammar_topic}\":**\n"
+                f"- If the chapter has a sentence like \"What a brave boy he was!\", create: \"______ a brave boy he was!\" (Answer: What)\n"
+                f"- If the chapter describes a beautiful scene, create: \"______ beautiful the scene was!\" using the chapter’s own imagery.\n\n"
+                f"**DO NOT** generate generic grammar questions unrelated to the textbook chapter.\n"
+                f"**EVERY question MUST** reference content, vocabulary, characters, or situations from **{chapter_names}**.\n\n"
+                f"**CRITICAL:** In the output JSON, the `unit_name` field MUST be `\"GRAMMAR: {grammar_topic}\"` — NOT the source chapter name."
+            )
+
+        return (
+            "⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit’s content."
+            + "\nCover following topics: "
+            + grammar_topic
+        )
 
     def _get_unit_metadata(self, request: QuestionBankPartsGenerationRequest) -> Dict[str, Dict[str, Any]]:
         """
@@ -183,7 +211,8 @@ class QuestionPaperService:
             for chapter in request.chapters:
                 metadata[chapter.title] = {
                     "learning_outcomes": chapter.learning_outcomes,
-                    "index_path": chapter.index_path
+                    "index_path": chapter.index_path,
+                    "grammar_source_chapters": chapter.grammar_source_chapters or [],
                 }
         
         return metadata
@@ -281,7 +310,8 @@ class QuestionPaperService:
             meta = unit_metadata.get(unit_name)
             unit_los = meta["learning_outcomes"]
             index_path = meta["index_path"]
-            
+            grammar_source_chapters = meta.get("grammar_source_chapters", [])
+
             # Validate Index Path
             if not index_path:
                  logger.warning(f"Index path is missing for unit '{unit_name}'. RAG retrieval will be skipped.")
@@ -289,14 +319,15 @@ class QuestionPaperService:
 
             for i in range(0, len(questions), self.max_questions_per_slot):
                 batch = questions[i : i + self.max_questions_per_slot]
-                slots.append(
-                    {
-                        "unit_name": unit_name,
-                        "learning_outcomes": unit_los,
-                        "questions": batch,
-                        "index_path": index_path,
-                    }
-                )
+                slot = {
+                    "unit_name": unit_name,
+                    "learning_outcomes": unit_los,
+                    "questions": batch,
+                    "index_path": index_path,
+                }
+                if grammar_source_chapters:
+                    slot["grammar_source_chapters"] = grammar_source_chapters
+                slots.append(slot)
 
         return slots
 
@@ -328,7 +359,7 @@ class QuestionPaperService:
             unit_los_text = f"Unit Name: {unit_name} (No specific LOs provided)"
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
-        grammar_topics_text = self._get_grammar_topics(request)
+        grammar_topics_text = self._get_grammar_topics(request, slot)
         slot_types = {q["type"] for q in slot["questions"]}
         if slot_types & GRAMMAR_QUESTION_TYPES:
             grammar_guide = self.prompts.get("grammar_question_types_guide", "")
@@ -455,15 +486,30 @@ class QuestionPaperService:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(
+                rag_result = await rag_adapter.chat_with_index(
                     # rag-adapter does not support structured output, so we pass model json schema for now.
                     curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
-                    chat_history=chat_history
+                    chat_history=chat_history,
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
-                response_content = response_content["response"]
-                content = response_content.strip("```json").strip("```")
-                return GeneratedQuestionItemResponse.model_validate_json(content).items
+                response_content = rag_result["response"] if isinstance(rag_result, dict) else str(rag_result)
+
+            # Clean response
+            content = response_content.strip("```json").strip("```")
+            response_data = json.loads(content)
+
+            items = response_data.get("items")
+            if not items:
+                logger.warning("No items found in completion response")
+                return []
+
+            # Post-process items to ensure difficulty text case
+            for item in items:
+                if 'difficulty' in item:
+                    item['difficulty'] = item['difficulty'].capitalize()
+
+            return items
+
         except Exception as e:
             logger.exception(e)
             return []
@@ -581,8 +627,19 @@ class QuestionPaperService:
             tasks = []
             for j, slot in enumerate(batch_slots):
                 index_path = slot["index_path"]
-                logger.debug(f"[SLOT_PROCESSING] Batch {i}, Slot {j} | unit='{slot['unit_name']}' | index_path='{index_path}'")
-                rag_adapter = await self._get_or_create_rag_adapter(index_path)
+                logger.debug(
+                    f"[SLOT_PROCESSING] Batch {i}, Slot {j} | "
+                    f"unit='{slot['unit_name']}' | index_path='{index_path}'"
+                )
+
+                # Get Native/Qdrant adapter from cache; skip for empty/fallback paths
+                rag_adapter = None
+                if index_path and index_path != "EMPTY_INDEX_PATH_FALLBACK":
+                    try:
+                        rag_adapter = await self._get_or_create_rag_adapter(index_path)
+                    except Exception as e:
+                        logger.warning(f"RAG adapter init failed for '{index_path}', falling back to direct generation: {e}")
+
                 system_prompt = self._format_system_prompt(request, existing_flat, slot)
                 task = self._generate_questions_batch_async(system_prompt, slot, rag_adapter, j * 2)
                 tasks.append(task)

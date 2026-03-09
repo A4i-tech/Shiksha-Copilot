@@ -239,6 +239,7 @@ class Chapter(BaseModel):
     index_path: str
     learning_outcomes: List[str]
     subtopics: Optional[List[ChapterSubtopic]] = None
+    grammar_source_chapters: Optional[List[str]] = None
 
 
 class MarksDistribution(BaseModel):
