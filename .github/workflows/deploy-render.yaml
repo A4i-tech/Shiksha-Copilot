@@ -34,6 +34,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: render-deploy
+      cancel-in-progress: false
     outputs:
       deploy-id: ${{ steps.create.outputs['deploy-id'] }}
       service-url: ${{ steps.service.outputs['service-url'] }}
