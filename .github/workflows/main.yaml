@@ -96,7 +96,19 @@ jobs:
   health-check:
     name: Health Check
     needs: [cicd-frontend, cd-api, cd-backend, cd-frontend-prod, cd-api-prod, cd-backend-prod]
-    if: always() && github.event_name == 'push' && (github.ref_name == 'a4i/staging' || github.ref_name == 'a4i/main')
+    if: |
+      always() &&
+      github.event_name == 'push' && ((
+        github.ref_name == 'a4i/staging' &&
+        needs.cicd-frontend.result == 'success' &&
+        needs.cd-api.result == 'success' &&
+        needs.cd-backend.result == 'success'
+      ) || (
+        github.ref_name == 'a4i/main' &&
+        needs.cd-frontend-prod.result == 'success' &&
+        needs.cd-api-prod.result == 'success' &&
+        needs.cd-backend-prod.result == 'success'
+      ))
     runs-on: ubuntu-latest
     steps:
       - name: Resolve URLs
