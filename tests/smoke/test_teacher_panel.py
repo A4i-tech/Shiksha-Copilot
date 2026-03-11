@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BASE_URL = os.getenv("STAGING_URL")
+BASE_URL = os.getenv("FRONTEND_URL")
 TEACHER_PANEL_ITEMS = [
     "Dashboard", "Content Generation", "Generation Status",
     "Chatbot", "Question Paper Generation", "My Schedules",

@@ -16,6 +16,9 @@ COPY . .
 
 RUN poetry install --no-root --no-interaction --no-ansi
 
+ARG SHIKSHA_COPILOT_BUILD
+ENV SHIKSHA_COPILOT_BUILD=$SHIKSHA_COPILOT_BUILD
+
 EXPOSE 5000
 
 CMD ["sh", "-c", "poetry run python -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]

@@ -4,7 +4,7 @@ import re
 from playwright.sync_api import expect
 from page_objects.schedule_page import SchedulePage
 
-BASE_URL = os.getenv("STAGING_URL")
+BASE_URL = os.getenv("FRONTEND_URL")
 
 @pytest.fixture
 def schedule_page(logged_in_page):
