@@ -3,7 +3,6 @@ const ObjectId = mongoose.Types.ObjectId;
 const User = require("../models/user.model");
 const Chat = require("../models/chat.model");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
-const LessonChat = require("../models/lesson.chats.model");
 const LessonFeedback = require("../models/feedback.lesson.model");
 const { safeParseDate } = require("../helper/formatter");
 const logger = require("../config/loggers");
@@ -344,7 +343,7 @@ class DashboardAggregation {
 					as: "teacher"
 				}
 			},
-			{ $unwind: "$teacher" },
+			{ $unwind: { path: "$teacher", preserveNullAndEmptyArrays: true } },
 			...(Object.keys(matchConditions).length > 0 ? [{ $match: matchConditions }] : []),
 
 			...masterDataStages,
@@ -471,7 +470,8 @@ class DashboardAggregation {
 			},
 		];
 
-		// 4. Chat Request Count (Optimized). Time window is second-precision by createdAt; same window used for Chat and LessonChat below.
+		// 4 & 5. Chat + LessonChat counts combined via $unionWith (MongoDB 4.4+).
+		// Single DB round trip; users $lookup runs once shared by both sources.
 		const today = new Date();
 
 		// Generate last 6 months array (MongoDB compatible - works on all versions)
@@ -488,114 +488,70 @@ class DashboardAggregation {
 		const oldestMonthSplit = months[0].month.split("-");
 		const sixMonthsAgo = new Date(oldestMonthSplit[0], oldestMonthSplit[1] - 1, 1);
 
-		// Optimized: Start from Chat collection; 6-month window by createdAt.
-		// Apply hierarchy filters by joining with users first
 		const { matchConditions: chatUserMatchConditions } = this._createHierarchicalMatchAndGroup(query, "user");
-		const requestCountPipeline = [
+		const combinedChatPipeline = [
+			// ── 1. Chat collection: filter date window + orphan guard ──
 			{
 				$match: {
+					userId: { $exists: true, $ne: null },
 					createdAt: { $gte: sixMonthsAgo }
 				}
 			},
-			// Join with users to apply hierarchy filters
-			{
-				$lookup: {
-					from: "users",
-					localField: "userId",
-					foreignField: "_id",
-					as: "user",
-				},
-			},
-			{
-				$unwind: {
-					path: "$user",
-					preserveNullAndEmptyArrays: false,
-				},
-			},
-			// Apply hierarchy filters on user (fields prefixed with "user.")
-			...(Object.keys(chatUserMatchConditions).length > 0 ? [{ $match: chatUserMatchConditions }] : []),
-			{
-				$addFields: {
-					yearMonth: {
-						$dateToString: { format: "%Y-%m", date: "$createdAt" },
-					},
-				},
-			},
-			{
-				$group: {
-					_id: "$yearMonth",
-					requestCount: { $sum: "$requestCount" },
-				},
-			},
-			{
-				$sort: {
-					_id: 1,
-				},
-			},
-			{
-				$project: {
-					_id: 0,
-					month: "$_id",
-					requestCount: 1,
-				},
-			}
-		];
+			{ $addFields: { _source: "bot", _userId: "$userId" } },
 
-		// 5. Lesson Chat Count (Optimized). Time window by createdAt.
-		// Apply hierarchy filters by joining with users (LessonChat has teacherId directly)
-		const { matchConditions: lessonChatUserMatchConditions } = this._createHierarchicalMatchAndGroup(query, "user");
-		const lessonChatCountPipeline = [
+			// ── 2. Union with LessonChat, normalise fields ──
 			{
-				$match: {
-					createdAt: { $gte: sixMonthsAgo }
-				},
+				$unionWith: {
+					coll: "lessonchats",
+					pipeline: [
+						{
+							$match: {
+								teacherId: { $exists: true, $ne: null },
+								createdAt: { $gte: sixMonthsAgo }
+							}
+						},
+						// Alias teacherId → _userId so the shared users $lookup below is uniform.
+						// LessonChat has no requestCount field; set to 1 so $sum works for both branches.
+						{ $addFields: { _source: "lesson", _userId: "$teacherId", requestCount: 1 } }
+					]
+				}
 			},
-			// Join with users directly since LessonChat has teacherId
+
+			// ── 3. Join users once (shared by both sources) for hierarchy filtering ──
 			{
 				$lookup: {
 					from: "users",
-					localField: "teacherId",
+					localField: "_userId",
 					foreignField: "_id",
-					as: "user",
-				},
+					as: "user"
+				}
 			},
-			{
-				$unwind: {
-					path: "$user",
-					preserveNullAndEmptyArrays: false,
-				},
-			},
-			// Apply hierarchy filters on user (fields prefixed with "user.")
-			...(Object.keys(lessonChatUserMatchConditions).length > 0 ? [{ $match: lessonChatUserMatchConditions }] : []),
+			{ $unwind: { path: "$user", preserveNullAndEmptyArrays: false } },
+			...(Object.keys(chatUserMatchConditions).length > 0 ? [{ $match: chatUserMatchConditions }] : []),
+
+			// ── 4. Tag yearMonth ──
 			{
 				$addFields: {
-					yearMonth: {
-						$dateToString: {
-							format: "%Y-%m",
-							date: "$createdAt",
-						},
-					},
-				},
+					yearMonth: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }
+				}
 			},
+
+			// ── 5. $facet: one branch per source ──
 			{
-				$group: {
-					_id: "$yearMonth",
-					requestCount: {
-						$sum: 1,
-					},
-				},
-			},
-			{
-				$sort: {
-					_id: 1,
-				},
-			},
-			{
-				$project: {
-					_id: 0,
-					month: "$_id",
-					requestCount: 1,
-				},
+				$facet: {
+					botRequests: [
+						{ $match: { _source: "bot" } },
+						{ $group: { _id: "$yearMonth", requestCount: { $sum: "$requestCount" } } },
+						{ $sort: { _id: 1 } },
+						{ $project: { _id: 0, month: "$_id", requestCount: 1 } }
+					],
+					lessonChatRequests: [
+						{ $match: { _source: "lesson" } },
+						{ $group: { _id: "$yearMonth", requestCount: { $sum: 1 } } },
+						{ $sort: { _id: 1 } },
+						{ $project: { _id: 0, month: "$_id", requestCount: 1 } }
+					]
+				}
 			}
 		];
 
@@ -607,20 +563,18 @@ class DashboardAggregation {
 				subjectLessonPlanCount,
 				mediumLessonPlanCount,
 				feedbackCountResult,
-				botRequestCount,
-				lessonChatCount
+				[combinedChatResult]
 			] = await Promise.all([
 				User.aggregate(userCountsPipeline),
 				User.aggregate(userMediumsPipeline),
-				TeacherLessonPlan.aggregate(lessonPlanCount), // CHANGED from User
-				TeacherLessonPlan.aggregate(lessonPlanCountBySubject), // CHANGED from User
-				TeacherLessonPlan.aggregate(lessonPlanCountByMedium), // CHANGED from User
+				TeacherLessonPlan.aggregate(lessonPlanCount),
+				TeacherLessonPlan.aggregate(lessonPlanCountBySubject),
+				TeacherLessonPlan.aggregate(lessonPlanCountByMedium),
 				LessonFeedback.aggregate(feedbackCountBySubject),
-				Chat.aggregate(requestCountPipeline), // CHANGED from User
-				LessonChat.aggregate(lessonChatCountPipeline) // Kept LessonChat, but pipeline optimized
+				Chat.aggregate(combinedChatPipeline)
 			]);
 
-			// Merge Javascript array with result arrays for charts
+			// Merge Javascript array with result arrays for charts (zero-fills missing months)
 			const mergeWithMonths = (data) => months.map(m => {
 				const found = data.find(d => d.month === m.month);
 				return { month: m.month, requestCount: found ? found.requestCount : 0 };
@@ -634,8 +588,8 @@ class DashboardAggregation {
 				lessonPlanCountBySubject: subjectLessonPlanCount,
 				lessonPlanCountByMedium: mediumLessonPlanCount,
 				feedbackCount: feedbackCountResult,
-				botRequestCount: mergeWithMonths(botRequestCount || []),
-				lessonbotRequestCount: mergeWithMonths(lessonChatCount || [])
+				botRequestCount: mergeWithMonths(combinedChatResult?.botRequests ?? []),
+				lessonbotRequestCount: mergeWithMonths(combinedChatResult?.lessonChatRequests ?? [])
 			};
 
 		} catch (err) {
