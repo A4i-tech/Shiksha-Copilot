@@ -16,15 +16,14 @@ class AzureTranslator(TranslatorBase):
         endpoint = (settings.translator_endpoint or "").rstrip("/")
 
         if not key or not region or not endpoint:
-            raise ValueError(
-                "Azure Translator is not configured: set translator_key, "
-                "translator_region, and translator_endpoint"
-            )
+            raise ValueError("Azure Translator is not fully configured.")
 
         self._client = TextTranslationClient(
             endpoint=endpoint,
             credential=AzureKeyCredential(key),
             region=region,
+            connection_timeout=10,
+            read_timeout=60,
         )
 
     async def translate_async(

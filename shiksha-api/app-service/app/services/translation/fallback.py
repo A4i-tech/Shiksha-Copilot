@@ -31,7 +31,8 @@ class FallbackTranslator(TranslatorBase):
             # so we can fall back to the next translator.
             except Exception as e:
                 logger.warning(
-                    "Translator %d failed: %s. Trying next.", i, e
+                    "Translator failed, trying next.",
+                    extra={"translator_index": i, "error": str(e)},
                 )
         return await self.translators[-1].translate_async(text, src_lang, tgt_lang)
 
@@ -47,7 +48,8 @@ class FallbackTranslator(TranslatorBase):
             # so we can fall back to the next translator.
             except Exception as e:
                 logger.warning(
-                    "Translator %d batch failed: %s. Trying next.", i, e
+                    "Translator batch failed, trying next.",
+                    extra={"translator_index": i, "error": str(e)},
                 )
         return await self.translators[-1].translate_batch_async(
             texts, src_lang, tgt_lang

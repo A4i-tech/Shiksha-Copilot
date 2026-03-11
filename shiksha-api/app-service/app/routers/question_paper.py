@@ -166,7 +166,7 @@ async def translate_json_content_to_kannada(
             try:
                 source_lang_code = detect(sample_text)
             except Exception as e:
-                logger.warning(f"Language detection failed on sample text '{sample_text}': {e}")
+                logger.warning("Language detection failed on sample text: %s", e)
         
         # Normalize Target Language
         target_lang_input = request.target_language.lower().strip()

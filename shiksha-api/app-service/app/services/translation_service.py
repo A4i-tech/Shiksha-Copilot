@@ -73,6 +73,18 @@ class TranslationService:
         return []
 
     @classmethod
+    def _next_translated(cls, translations: Iterator[str], original: str) -> str:
+        """Return next translated string, falling back to original if iterator is exhausted."""
+        try:
+            return next(translations)
+        except StopIteration:
+            logger.warning(
+                "Translation iterator exhausted before structure was fully filled; "
+                "using original text as fallback."
+            )
+            return original
+
+    @classmethod
     def _fill_strings(
         cls, data: Any, translations: Iterator[str], depth: int = 0
     ) -> Any:
@@ -87,14 +99,14 @@ class TranslationService:
                 if key in SKIP_KEYS
                 else cls._fill_strings(value, translations, depth + 1)
                 if not isinstance(value, str)
-                else next(translations)
+                else cls._next_translated(translations, value)
                 for key, value in data.items()
             }
         if isinstance(data, list):
             return [
                 cls._fill_strings(item, translations, depth + 1)
                 if not isinstance(item, str)
-                else next(translations)
+                else cls._next_translated(translations, item)
                 for item in data
             ]
         return data
