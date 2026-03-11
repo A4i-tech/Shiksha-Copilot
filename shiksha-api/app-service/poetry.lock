@@ -415,6 +415,23 @@ isodate = ">=0.6.1"
 typing-extensions = ">=4.12.2"
 
 [[package]]
+name = "azure-ai-translation-text"
+version = "1.0.1"
+description = "Microsoft Azure Ai Translation Text Client Library for Python"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "azure-ai-translation-text-1.0.1.tar.gz", hash = "sha256:8fff37f7ea4f82f25ad6328374859d6bad022d2f30fde9b30b5ee4cf1f7c1769"},
+    {file = "azure_ai_translation_text-1.0.1-py3-none-any.whl", hash = "sha256:2c60d1adcda68809dd9f431ec0b8ac1b1977a69037d10751a39c233bc6bc42d8"},
+]
+
+[package.dependencies]
+azure-core = ">=1.30.0"
+isodate = ">=0.6.1"
+typing-extensions = ">=4.6.0"
+
+[[package]]
 name = "azure-common"
 version = "1.1.28"
 description = "Microsoft Azure Client Library for Python (Common)"
@@ -5648,4 +5665,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "cd6ae2c502e4aa42e4ff1ce88c83d17aa4561ebd2802a17c92e57363dfcfb806"
+content-hash = "3316fac7b9e9e13790e014edca19dbd97b08c9274992ce5b177f711a745d18cb"
