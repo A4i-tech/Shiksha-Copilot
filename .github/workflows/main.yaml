@@ -53,7 +53,7 @@ jobs:
   cicd-frontend:
     name: Deploy frontend
     needs: cd-backend
-    if: always() && ((github.event_name == 'pull_request' && github.base_ref == 'a4i/staging') || (github.event_name == 'push' && github.ref_name == 'a4i/staging'))
+    if: (github.event_name == 'pull_request' && github.base_ref == 'a4i/staging') || (github.event_name == 'push' && github.ref_name == 'a4i/staging')
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
     with:
