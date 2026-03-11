@@ -166,7 +166,6 @@ class QuestionPaperService:
         else:
             # Use chapters as units
             for chapter in request.chapters:
-                path_exists = Path(chapter.index_path).exists() if chapter.index_path else False
                 metadata[chapter.title] = {
                     "learning_outcomes": chapter.learning_outcomes,
                     "index_path": chapter.index_path
