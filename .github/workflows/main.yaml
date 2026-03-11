@@ -119,6 +119,8 @@ jobs:
           BACKEND_URL: ${{ steps.urls.outputs.backend }}
           API_URL: ${{ steps.urls.outputs.api }}
         run: |
+          trap 'echo "Cancelled"; exit 1' TERM INT
+
           check_build() {
             local name=$1 url=$2
             local build=$(curl -sf --max-time 30 "$url" | jq -r '.build // empty')
@@ -137,7 +139,7 @@ jobs:
             check_build "Backend"  "$BACKEND_URL/health"      && \
             check_build "API"      "$API_URL/health"          && \
             { echo "All services on build $EXPECTED_BUILD"; exit 0; }
-            sleep 15
+            sleep 15 & wait $!
           done
 
           echo "Timed out waiting for build $EXPECTED_BUILD"
