@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 
@@ -6,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "Shiksha Copilot API"
+    build: Optional[str] = Field(default=None, alias="SHIKSHA_COPILOT_BUILD")
     version: str = "1.0.1"
     debug: bool = False
     host: str = "0.0.0.0"

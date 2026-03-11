@@ -14,7 +14,7 @@ export const options = {
 };
 
 export default function () {
-  const baseUrl = __ENV.STAGING_URL;
+  const baseUrl = __ENV.FRONTEND_URL;
 
   const res = http.get(`${baseUrl}/api/v1/resource`);
 

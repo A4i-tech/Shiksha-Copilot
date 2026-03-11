@@ -8,13 +8,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  cicd-frontend:
-    uses: ./.github/workflows/cicd-frontend.yaml
-    secrets: inherit
-    with:
-      deploy_name: shiksha-frontend-staging
-      deploy: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
-
   ci-api:
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
@@ -57,43 +50,116 @@ jobs:
     secrets:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
+  cicd-frontend:
+    name: Deploy frontend
+    needs: cd-backend
+    if: (github.event_name == 'pull_request' && github.base_ref == 'a4i/staging') || (github.event_name == 'push' && github.ref_name == 'a4i/staging')
+    uses: ./.github/workflows/cicd-frontend.yaml
+    secrets: inherit
+    with:
+      deploy_name: shiksha-frontend-staging
+      deploy_target: ${{ needs.cd-backend.result == 'success' && 'github-pages' || '' }}
+      api_url: ${{ needs.cd-backend.result == 'success' && format('{0}/api', needs.cd-backend.outputs['service-url']) || '' }}
+
+  cd-api-prod:
+    name: Deploy api
+    needs: ci-api
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    uses: ./.github/workflows/deploy-azure-webapp.yml
+    with:
+      azure-webapp-name: ${{ vars.AZURE_WEBAPP_NAME_API }}
+      image-tag: ${{ needs.ci-api.outputs['tag_primary'] }}
+    secrets:
+      AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_API }}
+
+  cd-backend-prod:
+    name: Deploy backend
+    needs: ci-backend
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    uses: ./.github/workflows/deploy-azure-webapp.yml
+    with:
+      azure-webapp-name: ${{ vars.AZURE_WEBAPP_NAME_BACKEND }}
+      image-tag: ${{ needs.ci-backend.outputs['tag_primary'] }}
+    secrets:
+      AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
+
+  cd-frontend-prod:
+    needs: cd-backend-prod
+    uses: ./.github/workflows/cicd-frontend.yaml
+    secrets:
+      azure_connection_string: ${{ secrets.AZURE_CONNECTION_STRING_FRONTEND }}
+    with:
+      deploy_name: shiksha-frontend-prod
+      deploy_target: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' && 'azure-blob' || '' }}
+      api_url: ${{ needs.cd-backend-prod.result == 'success' && format('{0}/api', needs.cd-backend-prod.outputs['service-url']) || '' }}
+
   health-check:
-    name: Wait and Verify Deployment
-    needs: [cicd-frontend, cd-api, cd-backend]
-    if: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/staging') }}
+    name: Health Check
+    needs: [cicd-frontend, cd-api, cd-backend, cd-frontend-prod, cd-api-prod, cd-backend-prod]
+    if: |
+      always() &&
+      github.event_name == 'push' && ((
+        github.ref_name == 'a4i/staging' &&
+        needs.cicd-frontend.result == 'success' &&
+        needs.cd-api.result == 'success' &&
+        needs.cd-backend.result == 'success'
+      ) || (
+        github.ref_name == 'a4i/main' &&
+        needs.cd-frontend-prod.result == 'success' &&
+        needs.cd-api-prod.result == 'success' &&
+        needs.cd-backend-prod.result == 'success'
+      ))
     runs-on: ubuntu-latest
     steps:
-      - name: Wait and Verify Services
+      - name: Resolve URLs
+        id: urls
         run: |
-          RETRIES=10
-          SLEEP_TIME=15
-          URLS=("${{ secrets.STAGING_URL }}" "${{ secrets.STAGING_BACKEND_URL }}" "${{ secrets.STAGING_API_URL }}")
-          NAMES=("Frontend" "Backend" "API")
+          if [ "${{ github.ref_name }}" = "a4i/staging" ]; then
+            echo "frontend=${{ needs.cicd-frontend.outputs.page_url }}" >> $GITHUB_OUTPUT
+            echo "backend=${{ needs.cd-backend.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+            echo "api=${{ needs.cd-api.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+          else
+            echo "frontend=${{ needs.cd-frontend-prod.outputs.page_url }}" >> $GITHUB_OUTPUT
+            echo "backend=${{ needs.cd-backend-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+            echo "api=${{ needs.cd-api-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+          fi
 
-          for ((i=1; i<=RETRIES; i++)); do
-            echo "Attempt $i of $RETRIES..."
-            ALL_PASSED=true
-            for ((j=0; j<${#URLS[@]}; j++)); do
-              url="${URLS[$j]}"
-              name="${NAMES[$j]}"
-              if ! curl -f -I --max-time 30 "$url"; then
-                echo "❌ $name is unresponsive."
-                ALL_PASSED=false
-              else
-                echo "✅ $name is up."
-              fi
-            done
-            if $ALL_PASSED; then
-              echo "🎉 All services are up!"
-              exit 0
+      - name: Verify Services
+        env:
+          EXPECTED_BUILD: ${{ github.sha }}
+          FRONTEND_URL: ${{ steps.urls.outputs.frontend }}
+          BACKEND_URL: ${{ steps.urls.outputs.backend }}
+          API_URL: ${{ steps.urls.outputs.api }}
+        run: |
+          trap 'echo "Cancelled"; exit 1' TERM INT
+
+          check_build() {
+            local name=$1 url=$2
+            local build=$(curl -sf --max-time 30 "$url" | jq -r '.build // empty')
+            if [ "$build" = "$EXPECTED_BUILD" ]; then
+              echo "PASS $name on correct build"
+              return 0
+            else
+              echo "FAIL $name build mismatch (got: '${build:-no response}', expected: '$EXPECTED_BUILD')"
+              return 1
             fi
-            sleep $SLEEP_TIME
+          }
+
+          for ((i=1; i<=30; i++)); do
+            echo "--- Attempt $i/30 ---"
+            check_build "Frontend" "$FRONTEND_URL/health.json" && \
+            check_build "Backend"  "$BACKEND_URL/health"      && \
+            check_build "API"      "$API_URL/health"          && \
+            { echo "All services on build $EXPECTED_BUILD"; exit 0; }
+            sleep 15 & wait $!
           done
+
+          echo "Timed out waiting for build $EXPECTED_BUILD"
           exit 1
 
   smoke-tests:
     name: Smoke Tests
-    needs: health-check
+    needs: [cicd-frontend, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,7 +171,7 @@ jobs:
           playwright install chromium
       - name: Run Smoke Tests
         env:
-          STAGING_URL: ${{ secrets.STAGING_URL }}
+          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
         run: pytest tests/smoke --csv smoke_report.csv
@@ -117,7 +183,7 @@ jobs:
 
   regression-tests:
     name: Regression Tests
-    needs: health-check
+    needs: [cicd-frontend, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,7 +195,7 @@ jobs:
           playwright install chromium
       - name: Run Regression Tests
         env:
-          STAGING_URL: ${{ secrets.STAGING_URL }}
+          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
         run: pytest tests/regression --csv regression_report.csv
@@ -141,14 +207,14 @@ jobs:
 
   performance-tests:
     name: Performance Tests
-    needs: health-check
+    needs: [cicd-frontend, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Run k6 Load Test
         uses: grafana/k6-action@v0.3.0
         env:
-          STAGING_URL: ${{ secrets.STAGING_URL }}/#/auth/signin
+          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}/#/auth/signin
         with:
           filename: tests/performance/load_test.js
           flags: --summary-export=k6_summary.json
@@ -161,8 +227,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, smoke-tests, regression-tests, performance-tests]
-
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -182,12 +247,12 @@ jobs:
       - name: Generate Status JSON
         id: status
         env:
-          FE_RES: ${{ needs.cicd-frontend.result }}
-          API_RES: ${{ needs.cd-api.result }}
-          BE_RES: ${{ needs.cd-backend.result }}
-          FE_URL: ${{ needs.cicd-frontend.outputs.page_url }}
-          API_URL: ${{ needs.cd-api.outputs['service-url'] }}
-          BE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
+          FE_RES: ${{ (needs.cicd-frontend.result != 'skipped' && needs.cicd-frontend.result) || needs.cd-frontend-prod.result }}
+          API_RES: ${{ (needs.cd-api.result != 'skipped' && needs.cd-api.result) || needs.cd-api-prod.result }}
+          BE_RES: ${{ (needs.cd-backend.result != 'skipped' && needs.cd-backend.result) || needs.cd-backend-prod.result }}
+          FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
+          API_URL: ${{ needs.cd-api.outputs['service-url'] || needs.cd-api-prod.outputs['service-url'] }}
+          BE_URL: ${{ needs.cd-backend.outputs['service-url'] || needs.cd-backend-prod.outputs['service-url'] }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: |
           python3 <<EOF

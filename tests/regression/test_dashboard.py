@@ -2,7 +2,7 @@ import pytest
 import os
 from page_objects.dashboard_page import DashboardPage
 
-BASE_URL = os.getenv("STAGING_URL")
+BASE_URL = os.getenv("FRONTEND_URL")
 
 @pytest.fixture
 def dashboard(logged_in_page):
