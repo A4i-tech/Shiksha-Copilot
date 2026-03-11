@@ -22,32 +22,23 @@ async def test_translation_service_bypasses_same_lang():
 @pytest.mark.asyncio
 async def test_translation_service_azure_mock():
     _clear_factory_cache()
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    # One item per batch request (each string may be one chunk)
-    mock_response.json.return_value = [{"translations": [{"text": "నమస్కారం"}]}]
-    mock_response.raise_for_status = MagicMock()
+
+    def _make_translate_result(n):
+        items = []
+        for _ in range(n):
+            item = MagicMock()
+            item.translations = [MagicMock(text="నమస్కారం")]
+            items.append(item)
+        return items
 
     with patch(
-        "app.services.translation.azure.httpx.AsyncClient"
+        "app.services.translation.azure.TextTranslationClient"
     ) as mock_client_cls:
         mock_client = MagicMock()
-        # Return one translation per batch so response length matches request
-        def post_return(*args, **kwargs):
-            body = kwargs.get("json", [])
-            n = len(body) if isinstance(body, list) else 1
-            r = MagicMock()
-            r.status_code = 200
-            r.raise_for_status = MagicMock()
-            r.json.return_value = [
-                {"translations": [{"text": "నమస్కారం"}]} for _ in range(n)
-            ]
-            return r
-        mock_client.post = AsyncMock(side_effect=post_return)
-        mock_client_cls.return_value.__aenter__ = AsyncMock(
-            return_value=mock_client
+        mock_client.translate = AsyncMock(
+            side_effect=lambda body, **kwargs: _make_translate_result(len(body))
         )
-        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_client_cls.return_value = mock_client
 
         with patch("app.services.translation.factory.settings") as mock_factory_settings:
             with patch("app.services.translation.azure.settings") as mock_azure_settings:
@@ -92,23 +83,18 @@ async def test_translation_service_azure_mock():
 async def test_azure_malformed_response_fallback_to_original():
     """When Azure returns empty or missing translations, use original text."""
     _clear_factory_cache()
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = [
-        {"translations": []},
-        {"translations": [{"text": "translated"}]},
-    ]
-    mock_response.raise_for_status = MagicMock()
+
+    item1 = MagicMock()
+    item1.translations = []
+    item2 = MagicMock()
+    item2.translations = [MagicMock(text="translated")]
 
     with patch(
-        "app.services.translation.azure.httpx.AsyncClient"
+        "app.services.translation.azure.TextTranslationClient"
     ) as mock_client_cls:
         mock_client = MagicMock()
-        mock_client.post = AsyncMock(return_value=mock_response)
-        mock_client_cls.return_value.__aenter__ = AsyncMock(
-            return_value=mock_client
-        )
-        mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=None)
+        mock_client.translate = AsyncMock(return_value=[item1, item2])
+        mock_client_cls.return_value = mock_client
 
         with patch("app.services.translation.azure.settings") as mock_settings:
             mock_settings.translator_key = "key"
@@ -150,6 +136,14 @@ async def test_recursion_depth_raises():
 
 
 @pytest.mark.asyncio
+async def test_skip_keys_not_translated():
+    """Fields in SKIP_KEYS (e.g. difficulty) must not be translated."""
+    data = {"question": "What is gravity?", "difficulty": "Easy"}
+    result = await TranslationService.translate_json_async(data, "en", "te")
+    assert result["difficulty"] == "Easy"
+
+
+@pytest.mark.asyncio
 async def test_fallback_translator_uses_secondary_when_primary_fails():
     """When primary raises, FallbackTranslator uses secondary."""
     from app.services.translation.fallback import FallbackTranslator
@@ -163,7 +157,7 @@ async def test_fallback_translator_uses_secondary_when_primary_fails():
             raise RuntimeError("primary batch failed")
 
     fallback = FallbackTranslator(
-        primary=FailingTranslator(), secondary=NoOpTranslator()
+        translators=[FailingTranslator(), NoOpTranslator()]
     )
     result = await fallback.translate_async("hello", "en", "te")
     assert result == "hello"

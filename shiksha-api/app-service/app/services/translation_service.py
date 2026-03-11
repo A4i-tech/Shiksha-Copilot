@@ -7,6 +7,9 @@ logger = logging.getLogger(__name__)
 
 MAX_RECURSION_DEPTH = 50
 TRANSLATION_BATCH_SIZE = 100
+# Keys whose values are semantic identifiers (enums, codes) used for logic/styling,
+# not human-readable content. Translating these would break downstream consumers.
+SKIP_KEYS: frozenset = frozenset({"difficulty"})
 
 
 class TranslationService:
@@ -51,7 +54,9 @@ class TranslationService:
             )
         if isinstance(data, dict):
             out: List[str] = []
-            for value in data.values():
+            for key, value in data.items():
+                if key in SKIP_KEYS:
+                    continue
                 if isinstance(value, str):
                     out.append(value)
                 else:
@@ -78,7 +83,9 @@ class TranslationService:
             )
         if isinstance(data, dict):
             return {
-                key: cls._fill_strings(value, translations, depth + 1)
+                key: value
+                if key in SKIP_KEYS
+                else cls._fill_strings(value, translations, depth + 1)
                 if not isinstance(value, str)
                 else next(translations)
                 for key, value in data.items()
