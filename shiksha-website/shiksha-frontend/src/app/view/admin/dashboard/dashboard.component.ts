@@ -98,7 +98,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     bindLabel: 'name',
     bindValue: 'value',
     labelTxt: 'Plan Type',
-    clearableOff :true,
+    clearableOff: true,
   };
 
   regionsData: any;
@@ -118,9 +118,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   selectedBlock: any;
 
   selectedSchoolId: any;
-  selectedSchoolName:any;
-  selectedFromDate:any;
-  selectedToDate:any;
+  selectedSchoolName: any;
+  selectedFromDate: any;
+  selectedToDate: any;
   schools: any;
   allUsersList: any[] = [];
   filteredUsersList: any[] = [];
@@ -136,14 +136,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   avgScoreDataAvailable: boolean = false;
   chatbotDataAvailable: boolean = false;
   selectedPlanType: string = 'lesson';
-  isLesson:boolean = true;
+  isLesson: boolean = true;
 
   @ViewChild('stateDropDown') statedropdown: any;
   @ViewChild('zoneDropDown') zonedropdown: any;
   @ViewChild('districtDropDown') districtdropdown: any;
   @ViewChild('blockDropDown') blockdropdown: any;
   @ViewChild('schoolDropDown') schooldropdown: any;
-  @ViewChild('planTypeDropDown') plantypedropdown:any;
+  @ViewChild('planTypeDropDown') plantypedropdown: any;
 
   // by user bar chart
   byUserBarChartLegend = false;
@@ -154,7 +154,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   byUserBarChartOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
-    maintainAspectRatio:false,
+    maintainAspectRatio: false,
     scales: {
       x: {
         grid: {
@@ -163,12 +163,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         }
       },
       y: {
-        beginAtZero:true,
-        ticks:{
-          display:true
+        beginAtZero: true,
+        ticks: {
+          display: true
         },
-        grid:{
-          color:'#DEE1E6'
+        grid: {
+          color: '#DEE1E6'
         }
       }
     },
@@ -178,8 +178,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           usePointStyle: true
         },
       },
-      tooltip:{
-        backgroundColor:'#000000',
+      tooltip: {
+        backgroundColor: '#000000',
         titleMarginBottom: 0,
       }
     }
@@ -193,21 +193,21 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   bySubjectBarChartOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
-    maintainAspectRatio:false,
+    maintainAspectRatio: false,
     scales: {
       x: {
         grid: {
           display: false,
-          lineWidth:1
+          lineWidth: 1
         },
       },
       y: {
-        beginAtZero:true,
-        ticks:{
-          display:true
+        beginAtZero: true,
+        ticks: {
+          display: true
         },
-        grid:{
-          color:'#DEE1E6'
+        grid: {
+          color: '#DEE1E6'
         }
       }
     },
@@ -217,8 +217,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           usePointStyle: true
         }
       },
-      tooltip:{
-        backgroundColor:'#000000'
+      tooltip: {
+        backgroundColor: '#000000'
       }
     }
   };
@@ -239,8 +239,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           usePointStyle: true,
         }
       },
-      tooltip:{
-        backgroundColor:'#000000'
+      tooltip: {
+        backgroundColor: '#000000'
       }
     },
     cutout: '70%',
@@ -341,8 +341,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           usePointStyle: true,
         }
       },
-      tooltip:{
-        backgroundColor:'#000000'
+      tooltip: {
+        backgroundColor: '#000000'
       }
     },
     cutout: '70%',
@@ -370,10 +370,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           display: false,
         },
       },
-      y:{
-        beginAtZero:true,
-        grid:{
-          color:'#DEE1E6'
+      y: {
+        beginAtZero: true,
+        grid: {
+          color: '#DEE1E6'
         }
       }
     },
@@ -383,8 +383,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           usePointStyle: true
         }
       },
-      tooltip:{
-        backgroundColor:'#000000'
+      tooltip: {
+        backgroundColor: '#000000'
       }
     }
   };
@@ -396,7 +396,10 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit() {
-    this.plantypedropdown.selectedItem = this.planTypeDropdownOptions[0].value;
+    if (this.plantypedropdown) {
+      this.plantypedropdown.selectedItem = this.planTypeDropdownOptions[0].value;
+    }
+    this.cdr.detectChanges();
   }
 
   getRegionsData() {
@@ -414,7 +417,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   setStateDropdownValues(val: any) {
     this.stateDropdownOptions = [
-      { state: 'Overall'}, 
+      { state: 'Overall' },
       ...val
     ];
   }
@@ -475,7 +478,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     if (val) {
       this.setDistrictDropdownValues(val);
     }
-    else{
+    else {
       this.resetZoneChange();
       this.triggerGetDetails(this.isLesson);
       this.resetData();
@@ -580,7 +583,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
 
-  resetData(){
+  resetData() {
     this.userDataAvailable = false;
     this.subDataAvailable = false;
     this.mediumDataAvailable = false;
@@ -785,8 +788,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       data: data.lessonPlanCount.map((item: any) => item.lessonPlanCount),
       label: 'No. of Lesson Plans',
       backgroundColor: '#379AE6',
-      hoverBackgroundColor:'#379AE6',
-      borderColor:'#FFFFFF',
+      hoverBackgroundColor: '#379AE6',
+      borderColor: '#FFFFFF',
       categoryPercentage: 0.8,
       barPercentage: 0.6,
       ...(numberOfUsers < 6 && { barThickness: 50 })
@@ -821,7 +824,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         label: 'No. of Lesson Plans',
         backgroundColor: '#8353E2',
         hoverBackgroundColor: '#8353E2',
-        borderColor:'#FFFFFF',
+        borderColor: '#FFFFFF',
         categoryPercentage: 0.8,
         barPercentage: 0.6,
       };
@@ -832,7 +835,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       label: 'No. of Lesson Plans',
       backgroundColor: '#8353E2',
       hoverBackgroundColor: '#8353E2',
-      borderColor:'#FFFFFF',
+      borderColor: '#FFFFFF',
       categoryPercentage: 0.8,
       barPercentage: 0.6,
       ...(numberOfRecords < 6 && { barThickness: 50 })
@@ -909,7 +912,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     return {
       data: [counts?.activeUsers ?? 0, counts?.inactiveUsers ?? 0],
       backgroundColor: ['#46A0F1', '#E5696D'],
-      hoverBackgroundColor:['#46A0F1', '#E5696D'],
+      hoverBackgroundColor: ['#46A0F1', '#E5696D'],
       borderColor: ['rgba(0, 0, 0, 0)'],
       borderWidth: 0,
       label: 'User Status'
@@ -930,7 +933,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.filterUsers(this.allUsersList, this.userMediumMetrics, this.selectedMedium);
   }
 
-  navigateToUserMgmt(selectedSchoolId:any) {    
+  navigateToUserMgmt(selectedSchoolId: any) {
     this.route.navigate(['admin/user-management/list']);
   }
 
@@ -971,8 +974,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
     return {
       data: counts,
-      backgroundColor: ['#379AE6','#82c2f3', '#C3E1F8'],
-      hoverBackgroundColor: ['#379AE6','#82c2f3', '#C3E1F8'],
+      backgroundColor: ['#379AE6', '#82c2f3', '#C3E1F8'],
+      hoverBackgroundColor: ['#379AE6', '#82c2f3', '#C3E1F8'],
       borderColor: ['rgba(0, 0, 0, 0)'],
       borderWidth: 0
     };
@@ -988,7 +991,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
     this.chatbotRequestsBarChartData = {
       labels: labels,
-      datasets: [eduChatDataset,lessonChatDataset]
+      datasets: [eduChatDataset, lessonChatDataset]
     };
   }
 
@@ -1015,9 +1018,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         label: 'Edu Chat',
         backgroundColor: '#379AE6',
         hoverBackgroundColor: '#379AE6',
-        borderColor:'#FFFFFF',
-        barPercentage:0.8,
-        categoryPercentage:0.5
+        borderColor: '#FFFFFF',
+        barPercentage: 0.8,
+        categoryPercentage: 0.5
       };
     }
     return {
@@ -1025,9 +1028,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       label: 'Edu Chat',
       backgroundColor: '#379AE6',
       hoverBackgroundColor: '#379AE6',
-      borderColor:'#FFFFFF',
-      barPercentage:0.8,
-      categoryPercentage:0.5
+      borderColor: '#FFFFFF',
+      barPercentage: 0.8,
+      categoryPercentage: 0.5
     };
   }
 
@@ -1038,9 +1041,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         label: 'Lesson Chat',
         backgroundColor: '#ED7D2D',
         hoverBackgroundColor: '#ED7D2D',
-        borderColor:'#FFFFFF',
-        barPercentage:0.8,
-        categoryPercentage:0.5
+        borderColor: '#FFFFFF',
+        barPercentage: 0.8,
+        categoryPercentage: 0.5
       };
     }
     return {
@@ -1048,9 +1051,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       label: 'Lesson Chat',
       backgroundColor: '#ED7D2D',
       hoverBackgroundColor: '#ED7D2D',
-      borderColor:'#FFFFFF',
-      barPercentage:0.8,
-      categoryPercentage:0.5
+      borderColor: '#FFFFFF',
+      barPercentage: 0.8,
+      categoryPercentage: 0.5
     };
   }
 
@@ -1267,7 +1270,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     worksheet: ExcelJS.Worksheet,
     sectionTitle: string,
     chartData: any,
-  headingLabels:any[],
+    headingLabels: any[],
     startRowIndex: number,
     startColumnIndex: number,
     mergeCells: boolean = false
@@ -1283,7 +1286,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
     if (mergeCells) {
-      worksheet.mergeCells(rowIndex, colIndex, rowIndex, colIndex + (headingLabels.length-1));
+      worksheet.mergeCells(rowIndex, colIndex, rowIndex, colIndex + (headingLabels.length - 1));
     }
 
     worksheet.getRow(rowIndex).height = 25;
@@ -1306,7 +1309,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     if (chartData.labels && chartData.labels.length > 0) {
       chartData.labels.forEach((label: string, index: number) => {
         worksheet.getCell(rowIndex, colIndex).value = label;
-        for(let j=0;j<chartData.datasets.length;j++){
+        for (let j = 0; j < chartData.datasets.length; j++) {
           worksheet.getCell(rowIndex, colIndex + j + 1).value = chartData.datasets[j].data[index] ?? 0;
         }
         rowIndex += 1;
@@ -1333,7 +1336,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   ): void {
     const headerRow = worksheet.getRow(startRowIndex);
     headerRow.font = { bold: true };
-  headerRow.alignment = { horizontal: 'center', vertical:'middle' };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
 
     for (let rowIndex = startRowIndex + 1; rowIndex < endRowIndex; rowIndex++) {
       const row = worksheet.getRow(rowIndex);
@@ -1365,9 +1368,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       district: string;
       taluk: string;
       school: string;
-      planType:string;
-      from:string;
-      to:string
+      planType: string;
+      from: string;
+      to: string
     } = {
       state: this.selectedState ? this.selectedState : 'Overall',
       zone: this.selectedZone ? this.selectedZone : '-',
@@ -1385,7 +1388,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     const headingColor = 'FFFF00'; // Yellow background
 
     // Add filter labels and values horizontally
-  (['state', 'zone', 'district', 'taluk', 'school','planType','from', 'to'] as const).forEach((filter) => {
+    (['state', 'zone', 'district', 'taluk', 'school', 'planType', 'from', 'to'] as const).forEach((filter) => {
       const headingCell = worksheet.getCell(rowIndex, columnIndex);
       headingCell.value = filter.charAt(0).toUpperCase() + filter.slice(1); // Capitalize first letter
       headingCell.font = { bold: true };

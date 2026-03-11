@@ -1,3 +1,11 @@
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { NgIdleModule } from '@ng-idle/core';
+import { DatePipe } from '@angular/common';
+import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
+import { RouterTestingModule } from '@angular/router/testing';
+import { ToastrModule } from 'ngx-toastr';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { QuestionBankBluePrintComponent } from './question-bank-blue-print.component';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
@@ -17,34 +25,27 @@ describe('QuestionBankBluePrintComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
+      providers: [DatePipe],
+      imports: [MatSnackBarModule, NgIdleModule.forRoot(), TranslateModule.forRoot(), RouterTestingModule, ToastrModule.forRoot(), HttpClientTestingModule],
       declarations: [
-        QuestionBankBluePrintComponent, 
+        QuestionBankBluePrintComponent,
         MockTranslatePipe // Add the mock pipe
       ],
-      // 2. NO_ERRORS_SCHEMA tells Angular to ignore unknown elements 
-      // like <canvas baseChart> and <app-common-dropdown>
-      schemas: [NO_ERRORS_SCHEMA] 
+      schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA]
     });
     fixture = TestBed.createComponent(QuestionBankBluePrintComponent);
     component = fixture.componentInstance;
 
-    // 3. Provide Dummy Data so ngOnInit -> updateChartData doesn't crash
-    component.questionBankBluePrintData = [
+    // 3. Provide Dummy Data so ngOnInit -> processDataForView -> updateChartData doesn't crash
+    component.finalSelectedQuestions = [
       {
         type: 'MCQ',
-        number_of_questions: 5,
-        marks_per_question: 1,
-        question_distribution: [
-          { unit_name: 'Chapter 1', objective: 'Knowledge' }
-        ]
+        heading: 'Multiple Choice',
+        marks: 1,
+        source: 'AI Questions',
+        objective: 'Knowledge'
       }
     ];
-
-    component.objectiveChartMapper = {
-      'Knowledge': 0,
-      'Understanding': 0,
-      'Application': 0
-    };
 
     fixture.detectChanges(); // Triggers ngOnInit
   });
@@ -57,9 +58,9 @@ describe('QuestionBankBluePrintComponent', () => {
     // Check if chart data was populated based on the dummy data above
     expect(component.objectivesChartData).toBeDefined();
     expect(component.objectivesChartData.labels).toContain('Knowledge');
-    
+
     // We expect 1 Knowledge count based on the dummy data
     const dataset = component.objectivesChartData.datasets[0];
-    expect(dataset.data).toContain(1); 
+    expect(dataset.data).toContain(1);
   });
 });
