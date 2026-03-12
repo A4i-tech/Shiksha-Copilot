@@ -101,6 +101,7 @@ export class QuestionBankViewComponent implements OnInit {
                 // LBA: text = Left, keyAnswer = Right
                 const colTwoVal = structuredClone(section.questions.map((ele: any) => ele.value2 || ele.keyAnswer || ele.right || ''));
                 section.primaryColumn = section.questions.map((ele: any) => ele.value1 || ele.text || ele.left || '');
+                section.originalColumns = [...colTwoVal];
                 section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
               }
             });

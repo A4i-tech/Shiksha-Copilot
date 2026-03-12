@@ -150,8 +150,8 @@ export class QuestionBankDownloadService {
       );
     }
 
-    const col1 = questions.map((q) => q.value1 ?? q.left ?? q.text ?? '');
-    const rawCol2 = questions.map((q) => q.value2 ?? q.right ?? q.keyAnswer ?? '');
+    const col1 = questions.map((q) => (q.value1 ?? q.left ?? q.text ?? '') || '');
+    const rawCol2 = questions.map((q) => (q.value2 ?? q.right ?? q.keyAnswer ?? '') || '');
     const col2 = shuffle ? this.utilityService.shuffleOptions(rawCol2) : rawCol2;
 
     for (let i = 0; i < col1.length; i++) {
