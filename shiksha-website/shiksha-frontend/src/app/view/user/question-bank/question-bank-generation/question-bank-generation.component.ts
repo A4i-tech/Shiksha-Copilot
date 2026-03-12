@@ -794,7 +794,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       section.questions.push({
         question: q.text || q.question,
         options: q.options || [],
-        answer: q.answer || '',
+        keyAnswer: q.keyAnswer ?? '',
         marks: Number(q.marks || 1),
         _id: q._id,
         unit_name: q.unit_name,
@@ -1226,6 +1226,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             ...q,
             ...baseObj,
             text: displayText,
+            keyAnswer: q.keyAnswer ?? '',
             _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
           }];
         });

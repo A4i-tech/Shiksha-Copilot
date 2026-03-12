@@ -84,7 +84,7 @@ function validatePartsResponse(data) {
           flattenedQuestions.push({
             question: q.question,
             options: Array.isArray(q.options) ? q.options : [],
-            answer: q.answer || "",
+            keyAnswer: q.keyAnswer,
             difficulty: q.difficulty || "Average",
             marks: marksPerQuestion,
           });
