@@ -46,6 +46,8 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionBankBluePrintData: any;
 
+  showAnswerKeys: boolean = false;
+
   docTypes = [
     {
       name: 'Question Paper',
@@ -54,6 +56,10 @@ export class QuestionBankViewComponent implements OnInit {
     {
       name: 'Blueprint',
       type: 'bp'
+    },
+    {
+      name: 'Question paper + Answer Key',
+      type: 'ak'
     }
   ]
 
@@ -134,6 +140,8 @@ export class QuestionBankViewComponent implements OnInit {
   download(type: any) {
     if (type === 'qp') {
       this.downloadQp()
+    } else if (type === 'ak') {
+      this.downloadAnswerKey()
     } else {
       this.downloadBluePrint()
     }
@@ -142,6 +150,15 @@ export class QuestionBankViewComponent implements OnInit {
   downloadQp() {
     this.questionBankDownloadService.downloadQuestionBank(this.questionBankDetails);
     this.utilityService.showSuccess('Question paper downloaded successfully!');
+  }
+
+  downloadAnswerKey() {
+    this.questionBankDownloadService.downloadAnswerKey(this.questionBankDetails);
+    this.utilityService.showSuccess('Answer key downloaded successfully!');
+  }
+
+  toggleAnswerKeys() {
+    this.showAnswerKeys = !this.showAnswerKeys;
   }
 
   downloadBluePrint() {

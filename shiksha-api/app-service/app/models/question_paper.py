@@ -29,6 +29,7 @@ DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
 
 class TextQuestion(BaseModel):
     question: str = ""
+    keyAnswer: str = ""
     difficulty: DifficultyType = "Average"
 
 
@@ -42,7 +43,7 @@ class McqOption(BaseModel):
 class FourOptionsQuestion(BaseModel):
     question: str = ""
     options: List[McqOption] = Field(default=[], min_length=2)
-    answer: str = ""
+    keyAnswer: str = ""
     difficulty: DifficultyType = "Average"
 
     @field_validator("options", mode="before")
@@ -155,8 +156,8 @@ class QuestionType(str, Enum):
                      {"label": "C", "text": "Option C"},
                      {"label": "D", "text": "Option D"}
                  ],
-                 "answer": "A",
-                 "difficulty": difficulty_hint
+                 "keyAnswer": "A",
+                 "difficulty": "Average"
              })
         schema = json.loads(self._model().model_dump_json())
         schema["difficulty"] = difficulty_hint
@@ -177,8 +178,8 @@ class QuestionType(str, Enum):
             if self._model == FourOptionsQuestion:
                 # For MCQ: ensure answer is in options
                 options = obj.get("options", [])
-                answer = obj.get("answer", "")
-                
+                answer = obj.get("keyAnswer", "")
+
                 # Check if options are objects (new format) or strings (old format)
                 if options and isinstance(options[0], dict):
                     valid_labels = [opt.get("label") for opt in options]

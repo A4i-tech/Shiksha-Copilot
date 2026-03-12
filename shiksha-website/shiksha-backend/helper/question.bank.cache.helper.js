@@ -345,11 +345,12 @@ function createQuestionObj(type, marks, questionObj, objective) {
     question = {
       question: questionObj.question || "",
       options: questionObj.options || [],
-      answer: questionObj.answer || "",
+      keyAnswer: questionObj.keyAnswer,
     };
   } else {
     question = {
       question: questionObj.question || "",
+      keyAnswer: questionObj.keyAnswer,
     };
   }
 
