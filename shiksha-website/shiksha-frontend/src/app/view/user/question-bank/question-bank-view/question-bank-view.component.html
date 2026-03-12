@@ -153,10 +153,10 @@
                 <tbody>
                   <tr *ngFor="let val of questionBankData.questions; let i=index">
                     <td class="border border-green-200 px-2 py-1 text-sm text-green-800">
-                      {{ val.value1 || val.text || val.left || '' }}
+                      {{ questionBankData.primaryColumn?.[i] || '' }}
                     </td>
                     <td class="border border-green-200 px-2 py-1 text-sm text-green-800 font-medium">
-                      {{ val.value2 || val.keyAnswer || val.right || '' }}
+                      {{ questionBankData.originalColumns?.[i] || '' }}
                     </td>
                   </tr>
                 </tbody>
