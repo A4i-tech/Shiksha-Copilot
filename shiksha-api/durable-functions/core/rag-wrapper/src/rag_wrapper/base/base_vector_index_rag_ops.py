@@ -32,6 +32,12 @@ from llama_index.core.response_synthesizers import (
 )
 
 
+class ContentFilterError(Exception):
+    """Raised when Azure OpenAI content filter blocks the request.
+    Not retryable by tenacity."""
+    pass
+
+
 class BaseVectorIndexRagOps(ABC):
     """
     Abstract base class for RAG operations using LlamaIndex Vector Store.
@@ -74,7 +80,11 @@ class BaseVectorIndexRagOps(ABC):
         self.completion_llm = completion_llm
         self.similarity_top_k = similarity_top_k
         self.response_mode = response_mode
-        self.logger = logging.getLogger(__name__)
+        try:
+            from core.logger import LoggerFactory
+            self.logger = LoggerFactory.get_logger("rag_ops.BaseVectorIndexRagOps")
+        except Exception:
+            self.logger = logging.getLogger(__name__)
         self.token_counter = TokenCountingHandler()
         self._callback_manager = CallbackManager([self.token_counter])
 
@@ -108,13 +118,170 @@ class BaseVectorIndexRagOps(ABC):
             filter_list.append(ExactMatchFilter(key=key, value=value))
         return MetadataFilters(filters=filter_list)
 
+    _SANITIZE_PROMPT = (
+        "You are an academic content editor for school educational materials. "
+        "Below is a text chunk retrieved from a textbook. It may reference "
+        "sensitive topics (violence, abuse, trafficking, etc.) that are part of "
+        "legitimate educational content about laws and social protections.\n\n"
+        "Your task: Rephrase the text to preserve ALL factual and educational "
+        "information — every legal provision, definition, statistic, and concept — "
+        "while using clinical, academic, and age-appropriate language. "
+        "Do NOT remove or omit any facts. Simply ensure the language is neutral, "
+        "professional, and unlikely to trigger automated content safety filters.\n\n"
+        "Return ONLY the rephrased text, nothing else.\n\n"
+        "--- TEXT ---\n"
+    )
+
+    async def _sanitize_nodes(self, nodes: List[Any]) -> List[Any]:
+        """Rephrase each chunk through a configurable sanitization model.
+
+        Uses the SANITIZE_ENDPOINT / SANITIZE_API / SANITIZE_MODEL env vars
+        (Azure AI Inference API format) to rewrite sensitive educational content
+        so that Azure OpenAI's content filter won't block the synthesis step.
+        """
+        import os
+        import aiohttp
+
+        endpoint = os.environ.get("SANITIZE_ENDPOINT", "").strip()
+        api_key = os.environ.get("SANITIZE_API", "").strip()
+        model = os.environ.get("SANITIZE_MODEL", "").strip()
+
+        print(
+            f"[SANITIZE] Starting sanitization for {len(nodes)} nodes, "
+            f"endpoint configured: {bool(endpoint)}",
+            flush=True,
+        )
+        if not endpoint or not api_key:
+            print("[SANITIZE] SANITIZE_ENDPOINT or SANITIZE_API not set — skipping", flush=True)
+            return nodes
+
+        headers = {
+            "Content-Type": "application/json",
+            "api-key": api_key,
+        }
+
+        sanitized_count = 0
+
+        async with aiohttp.ClientSession() as session:
+            for node in nodes:
+                text = None
+                if hasattr(node, "text"):
+                    text = node.text
+                elif hasattr(node, "node") and hasattr(node.node, "text"):
+                    text = node.node.text
+
+                if not text:
+                    continue
+
+                payload = {
+                    "messages": [
+                        {"role": "user", "content": self._SANITIZE_PROMPT + text}
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 2048,
+                }
+                if model:
+                    payload["model"] = model
+
+                try:
+                    async with session.post(
+                        endpoint,
+                        json=payload,
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=30),
+                    ) as resp:
+                        if resp.status != 200:
+                            body = await resp.text()
+                            self.logger.warning(
+                                f"Sanitize API returned {resp.status}: {body[:300]}"
+                            )
+                            continue
+
+                        data = await resp.json()
+                        rephrased = (
+                            data.get("choices", [{}])[0]
+                            .get("message", {})
+                            .get("content", "")
+                        )
+
+                        if rephrased.strip():
+                            if hasattr(node, "text"):
+                                node.text = rephrased.strip()
+                            elif hasattr(node, "node") and hasattr(node.node, "text"):
+                                node.node.text = rephrased.strip()
+                            sanitized_count += 1
+                        else:
+                            self.logger.warning("Sanitize model returned empty response for a chunk")
+
+                except Exception as err:
+                    self.logger.warning(f"Sanitization failed for a chunk: {err}")
+                    continue
+
+        self.logger.info(
+            f"Sanitized {sanitized_count}/{len(nodes)} chunks for content safety"
+        )
+        return nodes
+
     async def _query_with_retries(
         self,
         text_str: str,
         retrieval_query: Optional[str] = None,
         metadata_filter: Optional[Dict[str, str]] = None,
     ):
-        """Internal method with retry logic for robust querying."""
+        """Internal method with retry logic for robust querying.
+
+        Flow: retrieve chunks → sanitize if needed → synthesize response.
+        On content filter errors, retries once with sanitized chunks.
+        """
+
+        async def _retrieve_nodes():
+            """Retrieve nodes from the index.
+
+            Handles Qdrant entries with null text by patching TextNode
+            temporarily during retrieval.
+            """
+            from llama_index.core.schema import TextNode as _TN
+            _orig_init = _TN.__init__
+
+            def _safe_init(self_node, *a, **kw):
+                if "text" in kw and kw["text"] is None:
+                    kw["text"] = ""
+                _orig_init(self_node, *a, **kw)
+
+            _TN.__init__ = _safe_init
+            try:
+                retriever_kwargs = {
+                    "similarity_top_k": self.similarity_top_k,
+                }
+                if metadata_filter:
+                    filters = self._create_metadata_filters(metadata_filter)
+                    retriever_kwargs["filters"] = filters
+
+                retriever = self.rag_index.as_retriever(**retriever_kwargs)
+                qb = QueryBundle(
+                    query_str=text_str,
+                    custom_embedding_strs=[retrieval_query or text_str],
+                )
+                nodes = await retriever.aretrieve(qb)
+                # Filter out nodes with empty text (from null Qdrant entries)
+                nodes = [n for n in nodes if getattr(n, "text", None) or
+                         (hasattr(n, "node") and getattr(n.node, "text", None))]
+                return nodes
+            finally:
+                _TN.__init__ = _orig_init
+
+        async def _synthesize(nodes):
+            """Synthesize a response from nodes."""
+            synthesizer = get_response_synthesizer(
+                llm=self.completion_llm,
+                response_mode=self._get_response_mode(),
+                callback_manager=self._callback_manager,
+            )
+            qb = QueryBundle(
+                query_str=text_str,
+                custom_embedding_strs=[retrieval_query or text_str],
+            )
+            return await synthesizer.asynthesize(query=qb, nodes=nodes)
 
         @retry(
             stop=stop_after_attempt(3),
@@ -130,40 +297,36 @@ class BaseVectorIndexRagOps(ABC):
             before_sleep=self._log_retry_attempt,
         )
         async def _aquery_with_retries():
-            """Internal retry wrapper."""
+            """Internal retry wrapper.
+
+            Tries synthesis directly first. If Azure OpenAI's content filter
+            blocks the request, sanitizes the chunks with the configured
+            sanitization model and retries synthesis once. Other errors are
+            re-raised for tenacity to retry.
+            """
+            # Step 1: Retrieve chunks from vector store
+            print("[RAG] Step 1: Retrieving chunks...", flush=True)
+            nodes = await _retrieve_nodes()
+            print(f"[RAG] Retrieved {len(nodes)} chunks from index", flush=True)
+
+            # Step 2: Try synthesis directly
+            print("[RAG] Step 2: Synthesizing response...", flush=True)
             try:
-                # Create query engine with metadata filters and response synthesizer
-                query_engine_kwargs = {
-                    "response_synthesizer": get_response_synthesizer(
-                        llm=self.completion_llm,
-                        response_mode=self._get_response_mode(),
-                        callback_manager=self._callback_manager,
-                    ),
-                    "similarity_top_k": self.similarity_top_k,
-                }
-
-                # Add metadata filters if provided
-                if metadata_filter:
-                    filters = self._create_metadata_filters(metadata_filter)
-                    query_engine_kwargs["filters"] = filters
-
-                query_engine = self.rag_index.as_query_engine(
-                    llm=self.completion_llm, **query_engine_kwargs
-                )
-
-                # Generate response using the query engine
-                qb = QueryBundle(
-                    query_str=text_str,
-                    custom_embedding_strs=[
-                        retrieval_query or text_str
-                    ],  # fallback if empty
-                )
-                response = await query_engine.aquery(qb)
+                response = await _synthesize(nodes)
+                print("[RAG] Synthesis complete!", flush=True)
                 return response
-
             except Exception as e:
-                self.logger.error(traceback.format_exc())
-                raise e
+                if not self._is_content_filter_error(e):
+                    print(f"[RAG] ERROR: {type(e).__name__}: {e}", flush=True)
+                    raise
+
+            # Step 3: Content filter triggered — sanitize with fallback model and retry
+            print("[RAG] Content filter triggered — sanitizing chunks with sanitize model...", flush=True)
+            nodes = await self._sanitize_nodes(nodes)
+            print("[RAG] Step 4: Re-synthesizing with sanitized content...", flush=True)
+            response = await _synthesize(nodes)
+            print("[RAG] Synthesis complete (post-sanitization)!", flush=True)
+            return response
 
         return await _aquery_with_retries()
 
@@ -413,6 +576,25 @@ class BaseVectorIndexRagOps(ABC):
             raise ValueError("No valid text chunks provided after filtering")
 
         return documents, doc_ids
+
+    @staticmethod
+    def _is_content_filter_error(exc: Exception) -> bool:
+        """Return True if the exception is an Azure OpenAI content filter rejection."""
+        msg = str(exc).lower()
+        # Azure OpenAI content filter signals
+        if "content_filter" in msg or "responsibleaipolicyviolation" in msg:
+            return True
+        # openai SDK BadRequestError with code content_filter
+        code = getattr(exc, "code", None) or getattr(getattr(exc, "error", None), "code", None)
+        if code and "content_filter" in str(code).lower():
+            return True
+        # Unwrap tenacity RetryError
+        cause = getattr(exc, "last_attempt", None)
+        if cause is not None:
+            inner = cause.exception()
+            if inner and inner is not exc:
+                return BaseVectorIndexRagOps._is_content_filter_error(inner)
+        return False
 
     def _log_retry_attempt(self, retry_state):
         """Log retry attempts with detailed information."""

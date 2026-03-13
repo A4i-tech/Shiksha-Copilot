@@ -12,6 +12,7 @@ A Python library for Retrieval-Augmented Generation (RAG) operations using Llama
 - **Multiple Backends**: Support for in-memory, Azure AI Search, and property graph storage backends
 - **Flexible Retrieval**: Configurable sub-retrievers for custom retrieval strategies
 - **Graph Traversal**: Follow entity relationships with configurable path depth for richer context
+- **Content Filter Fallback**: Automatic sanitization of sensitive educational content via a configurable secondary model when the primary LLM's content filter is triggered
 
 ## Installation
 
@@ -229,6 +230,39 @@ Key features:
 - Retry logic for robust operations
 - Support for multiple vector store backends
 - Automatic index initialization when querying
+- **Content filter fallback**: if the primary LLM rejects a request due to its content policy, each retrieved chunk is rephrased by a configurable secondary model (`SANITIZE_ENDPOINT` / `SANITIZE_API` / `SANITIZE_MODEL`) before a second synthesis attempt
+
+**Content filter fallback flow:**
+
+```
+┌──────────────────┐     ┌───────────────┐
+│ _retrieve_nodes() │────▶│ _synthesize() │────▶ OK ✓
+└──────────────────┘     └───────┬───────┘
+                                 │ content filter error
+                                 ▼
+                        ┌──────────────────┐
+                        │ _sanitize_nodes() │  ← rephrases via SANITIZE_ENDPOINT
+                        └────────┬─────────┘
+                                 │
+                                 ▼
+                        ┌───────────────┐
+                        │ _synthesize() │────▶ OK ✓
+                        └───────────────┘
+```
+
+Log markers emitted during this flow:
+
+| Log | Meaning |
+|---|---|
+| `[RAG] Step 1: Retrieving chunks...` | Qdrant retrieval started |
+| `[RAG] Retrieved N chunks from index` | Retrieval done |
+| `[RAG] Step 2: Synthesizing response...` | First synthesis attempt |
+| `[RAG] Synthesis complete!` | Succeeded, no sanitization needed |
+| `[RAG] Content filter triggered — sanitizing chunks with sanitize model...` | Fallback triggered |
+| `[SANITIZE] Starting sanitization for N nodes, endpoint configured: True` | Sanitization in progress |
+| `[SANITIZE] SANITIZE_ENDPOINT or SANITIZE_API not set — skipping` | Env vars missing |
+| `[RAG] Step 4: Re-synthesizing with sanitized content...` | Second synthesis attempt |
+| `[RAG] Synthesis complete (post-sanitization)!` | Succeeded after sanitization |
 
 #### BaseGraphIndexRagOps
 Abstract base class for property graph-based RAG operations using LlamaIndex Property Graph. Provides advanced graph-aware retrieval with:

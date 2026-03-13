@@ -390,6 +390,53 @@ az functionapp config appsettings set --name shiksha-functions --resource-group 
 # Navigate to Function App > Configuration > Application settings
 ```
 
+## Content Filter Fallback (Sanitization Model)
+
+Some educational chapters (e.g., Women Protection Act, trafficking laws) contain sensitive language that Azure OpenAI's content filter may block. The system automatically handles this with a two-attempt flow:
+
+### How It Works
+
+```
+Retrieve chunks from Qdrant
+        ↓
+Synthesize with Azure OpenAI  ──→  Success ✓
+        ↓ (if content filter triggers)
+Sanitize each chunk via SANITIZE_ENDPOINT
+(rephrases to clinical/academic language)
+        ↓
+Re-synthesize with Azure OpenAI  ──→  Success ✓
+```
+
+The sanitization step only runs when needed — normal chapters are unaffected.
+
+### Log Markers
+
+| Log line | Meaning |
+|---|---|
+| `[RAG] Step 1: Retrieving chunks...` | Qdrant retrieval started |
+| `[RAG] Retrieved N chunks from index` | Retrieval complete |
+| `[RAG] Step 2: Synthesizing response...` | First synthesis attempt |
+| `[RAG] Synthesis complete!` | Succeeded without sanitization |
+| `[RAG] Content filter triggered — sanitizing chunks with sanitize model...` | Content filter hit, fallback triggered |
+| `[SANITIZE] Starting sanitization for N nodes, endpoint configured: True` | Sanitization started |
+| `[SANITIZE] SANITIZE_ENDPOINT or SANITIZE_API not set — skipping` | Env vars missing, sanitization skipped |
+| `[RAG] Step 4: Re-synthesizing with sanitized content...` | Second synthesis attempt |
+| `[RAG] Synthesis complete (post-sanitization)!` | Succeeded after sanitization |
+
+### Environment Variables
+
+Add these to your `local.settings.json` or `.env.docker`:
+
+| Variable | Description | Example |
+|---|---|---|
+| `SANITIZE_ENDPOINT` | Azure AI Inference chat completions URL | `https://your-resource.services.ai.azure.com/models/chat/completions?api-version=2024-05-01-preview` |
+| `SANITIZE_API` | API key for the sanitization endpoint | `your-api-key` |
+| `SANITIZE_MODEL` | Model name to send in the request body | `grok-4-fast-non-reasoning` |
+
+If `SANITIZE_ENDPOINT` or `SANITIZE_API` are not set, sanitization is skipped and the original chunks are used for the retry.
+
+The endpoint must accept the [Azure AI Inference chat completions](https://learn.microsoft.com/en-us/azure/ai-studio/reference/reference-model-inference-chat-completions) format (`messages`, `temperature`, `max_tokens`).
+
 ## Security Considerations
 
 - Use Azure Key Vault for sensitive configuration values

@@ -40,10 +40,22 @@ async def main(
 
     try:
         subpath = req.route_params.get("subpath")
+        logger.debug(f"Request subpath: {subpath!r}, method: {req.method}, params: {dict(req.params)}")
         if subpath == "checklist":
             return await generate_checklist(req, starter)
         else:
-            input_data = LessonPlanGenerationInput.model_validate(req.get_json())
+            try:
+                raw_body = req.get_body().decode("utf-8")
+                logger.debug(f"Request body: {raw_body[:2000]}")
+                request_json = req.get_json()
+            except Exception as parse_err:
+                logger.error(f"Failed to parse request body: {parse_err}", exc_info=True)
+                return func.HttpResponse(
+                    body=json.dumps({"error": f"Invalid JSON body: {str(parse_err)}"}),
+                    mimetype="application/json",
+                    status_code=400,
+                )
+            input_data = LessonPlanGenerationInput.model_validate(request_json)
             # Start the orchestration asynchronously for regular mode
             client = df.DurableOrchestrationClient(starter)
             instance_id = await client.start_new(
@@ -79,7 +91,7 @@ async def main(
             )
 
     except Exception as e:
-        logger.error(f"Error starting lesson plan generation: {str(e)}")
+        logger.error(f"Error starting lesson plan generation: {str(e)}", exc_info=True)
         return func.HttpResponse(
             body=json.dumps({"error": str(e)}),
             mimetype="application/json",

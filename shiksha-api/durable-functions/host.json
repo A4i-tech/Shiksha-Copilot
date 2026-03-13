@@ -6,7 +6,7 @@
   },
   "extensions": {
     "durableTask": {
-      "hubName": "DurableFunctionsHub",
+      "hubName": "DurableFunctionsHubV2",
       "storageProvider": {
         "type": "AzureStorage",
         "connectionStringName": "AzureWebJobsStorage"
