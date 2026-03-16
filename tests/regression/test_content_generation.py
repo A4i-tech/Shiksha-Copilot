@@ -4,7 +4,7 @@ import re
 from playwright.sync_api import expect
 from page_objects.content_generation_page import ContentGenerationPage
 
-BASE_URL = os.getenv("STAGING_URL")
+BASE_URL = os.getenv("FRONTEND_URL")
 
 
 @pytest.fixture
