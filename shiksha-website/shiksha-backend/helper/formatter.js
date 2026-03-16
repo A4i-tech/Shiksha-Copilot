@@ -190,17 +190,17 @@ function restructureInstructionSet(data) {
 function restructureCheckList(data) {
 	let formattedCheckList = [];
 	Object.keys(data).forEach((cl) => {
-	  formattedCheckList.push({
-		type: cl,
-		activity: data[cl].activity,
-		materials: data[cl].materials,
-	  });
+		formattedCheckList.push({
+			type: cl,
+			activity: data[cl].activity,
+			materials: data[cl].materials,
+		});
 	});
-  
-	return formattedCheckList;
-  }
 
-  function restructureCheckListforLLM(data) {
+	return formattedCheckList;
+}
+
+function restructureCheckListforLLM(data) {
 	let formattedCheckList = {};
 	for(let type of data)
 	{
@@ -210,345 +210,355 @@ function restructureCheckList(data) {
 		}
 	}
 	return formattedCheckList;
-  }
+}
 
-  function sortDataBySubTopics(data) {
-    let allSubTopicEntry = data.find((i) => i.isAll);
+function sortDataBySubTopics(data) {
+	let allSubTopicEntry = data.find((i) => i.isAll);
 
-    let result = [];
-    if (allSubTopicEntry?._id) {
-        result.push(allSubTopicEntry);
-    }
+	let result = [];
+	if (allSubTopicEntry?._id) {
+		result.push(allSubTopicEntry);
+	}
 
-    let sortSubTopics = data
-        .filter((item) => !item.isAll)
-        .sort((a, b) => {
-            const subTopicAMatch = a.subTopics[0].match(/^\d+(\.\d+)?/);
-            const subTopicBMatch = b.subTopics[0].match(/^\d+(\.\d+)?/);
-            if (!subTopicAMatch || !subTopicBMatch) {
-                return a.subTopics[0].localeCompare(b.subTopics[0]);
-            }
+	let sortSubTopics = data
+		.filter((item) => !item.isAll)
+		.sort((a, b) => {
+			const subTopicAMatch = a.subTopics[0].match(/^\d+(\.\d+)?/);
+			const subTopicBMatch = b.subTopics[0].match(/^\d+(\.\d+)?/);
+			if (!subTopicAMatch || !subTopicBMatch) {
+				return a.subTopics[0].localeCompare(b.subTopics[0]);
+			}
 
-            const subTopicA = subTopicAMatch[0];
-            const subTopicB = subTopicBMatch[0];
-            const partsA = subTopicA.split('.').map(Number);
-            const partsB = subTopicB.split('.').map(Number);
-            for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-                const diff = (partsA[i] || 0) - (partsB[i] || 0);
-                if (diff !== 0) {
-                    return diff;
-                }
-            }
-            return a.subTopics[0].localeCompare(b.subTopics[0]);
-        });
+			const subTopicA = subTopicAMatch[0];
+			const subTopicB = subTopicBMatch[0];
+			const partsA = subTopicA.split('.').map(Number);
+			const partsB = subTopicB.split('.').map(Number);
+			for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+				const diff = (partsA[i] || 0) - (partsB[i] || 0);
+				if (diff !== 0) {
+					return diff;
+				}
+			}
+			return a.subTopics[0].localeCompare(b.subTopics[0]);
+		});
 
-    result = [...result, ...sortSubTopics];
+	result = [...result, ...sortSubTopics];
 
-    return result;
+	return result;
 }
 
 function sortSubTopicsArray(data) {
-    return data.sort((a, b) => {
-        const subTopicA = parseFloat(a.subtopic[0].split(" ")[0]);
-        const subTopicB = parseFloat(b.subtopic[0].split(" ")[0]);
+	return data.sort((a, b) => {
+		const subTopicA = parseFloat(a.subtopic[0].split(" ")[0]);
+		const subTopicB = parseFloat(b.subtopic[0].split(" ")[0]);
 
-        return subTopicA - subTopicB;
+		return subTopicA - subTopicB;
 	})
 }
 
 function sortSubTopicsArrayTeacher(subtopics) {
-    return subtopics
-        .map(subtopic => {
-            const isAnyLessonAll = subtopic.lessons.some(lesson => lesson.isAll);
-            return {
-                ...subtopic,
-                isAnyLessonAll
-            };
-        })
-        .sort((a, b) => {
-            if (a.isAnyLessonAll && !b.isAnyLessonAll) return -1;
-            if (!a.isAnyLessonAll && b.isAnyLessonAll) return 1;
-            
-            const subTopicAMatch = a.subtopic[0].match(/^\d+(\.\d+)?/);
-            const subTopicBMatch = b.subtopic[0].match(/^\d+(\.\d+)?/);
-            
-            if (!subTopicAMatch || !subTopicBMatch) {
-                return a.subtopic[0].localeCompare(b.subtopic[0]);
-            }
-            
-            const subTopicA = subTopicAMatch[0];
-            const subTopicB = subTopicBMatch[0];
-            const partsA = subTopicA.split('.').map(Number);
-            const partsB = subTopicB.split('.').map(Number);
-            
-            for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-                const diff = (partsA[i] || 0) - (partsB[i] || 0);
-                if (diff !== 0) {
-                    return diff;
-                }
-            }
-            
-            return a.subtopic[0].localeCompare(b.subtopic[0]);
-        })
-        .map(({ isAnyLessonAll, ...rest }) => rest);
+	return subtopics
+		.map(subtopic => {
+			const isAnyLessonAll = subtopic.lessons.some(lesson => lesson.isAll);
+			return {
+				...subtopic,
+				isAnyLessonAll
+			};
+		})
+		.sort((a, b) => {
+			if (a.isAnyLessonAll && !b.isAnyLessonAll) return -1;
+			if (!a.isAnyLessonAll && b.isAnyLessonAll) return 1;
+
+			const subTopicAMatch = a.subtopic[0].match(/^\d+(\.\d+)?/);
+			const subTopicBMatch = b.subtopic[0].match(/^\d+(\.\d+)?/);
+
+			if (!subTopicAMatch || !subTopicBMatch) {
+				return a.subtopic[0].localeCompare(b.subtopic[0]);
+			}
+
+			const subTopicA = subTopicAMatch[0];
+			const subTopicB = subTopicBMatch[0];
+			const partsA = subTopicA.split('.').map(Number);
+			const partsB = subTopicB.split('.').map(Number);
+
+			for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+				const diff = (partsA[i] || 0) - (partsB[i] || 0);
+				if (diff !== 0) {
+					return diff;
+				}
+			}
+
+			return a.subtopic[0].localeCompare(b.subtopic[0]);
+		})
+		.map(({ isAnyLessonAll, ...rest }) => rest);
 }
 const parseDate = (dateStr, isStartOfDay = true) => {
     const [ year , month , day] = dateStr.split('-');
-    
-    let date = new Date(`${year}-${month}-${day}`);
-    
-    if (isStartOfDay) {
-        date.setHours(0, 0, 0, 0);  
-    } else {
-        date.setHours(23, 59, 59, 999);
-    }
 
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    date = new Date(date.getTime() + istOffset); 
+	let date = new Date(`${year}-${month}-${day}`);
 
-    return date;
+	if (isStartOfDay) {
+		date.setHours(0, 0, 0, 0);
+	} else {
+		date.setHours(23, 59, 59, 999);
+	}
+
+	const istOffset = 5.5 * 60 * 60 * 1000;
+	date = new Date(date.getTime() + istOffset);
+
+	return date;
+};
+
+const safeParseDate = (str, isStartOfDay) => {
+	if (!str || typeof str !== "string") return undefined;
+	try {
+		const d = parseDate(str, isStartOfDay);
+		return d && !isNaN(d.getTime()) ? d : undefined;
+	} catch {
+		return undefined;
+	}
 };
 
 function formatSubject(subject) {
 	return subject
 		.replace(/_\d+$/, '')
-		.replace(/_\d+/g, '')        
-		.replace(/_/g, ' ')           
-		.replace(/\b\w/g, char => char.toUpperCase()); 
+		.replace(/_\d+/g, '')
+		.replace(/_/g, ' ')
+		.replace(/\b\w/g, char => char.toUpperCase());
 }
 
 function getSemester(subject) {
-	const match = subject.match(/_(\d+)$/); 
-	return match ? match[1] : 0; 
+	const match = subject.match(/_(\d+)$/);
+	return match ? match[1] : 0;
 }
 
 function convertToCamelCase(data) {
 	if (Array.isArray(data)) {
-	  return data.map(item => convertToCamelCase(item));
+		return data.map(item => convertToCamelCase(item));
 	} else if (data !== null && typeof data === 'object') {
-	  if (data instanceof ObjectId) {
-		return data.toHexString();
-	  }
-  
-	  const camelCasedObject = Object.keys(data).reduce((acc, key) => {
-		const newKey = key === '_id' ? '_id' : _.camelCase(key);
-		acc[newKey] = convertToCamelCase(data[key]);
-		return acc;
-	  }, {});
-  
-	  return camelCasedObject;
+		if (data instanceof ObjectId) {
+			return data.toHexString();
+		}
+
+		const camelCasedObject = Object.keys(data).reduce((acc, key) => {
+			const newKey = key === '_id' ? '_id' : _.camelCase(key);
+			acc[newKey] = convertToCamelCase(data[key]);
+			return acc;
+		}, {});
+
+		return camelCasedObject;
 	} else {
-	  return data;
+		return data;
 	}
-  }
-  
+}
+
 
 function formatSections(sections, templateSections) {
-  const formattedSections = sections.map((e) => {
-    const matchingTemplate = templateSections.find(
-      (t) => t.id === e.section_id
-    );
+	const formattedSections = sections.map((e) => {
+		const matchingTemplate = templateSections.find(
+			(t) => t.id === e.section_id
+		);
 
-    return {
-      id: e.section_id,
-      title: e.section_title,
-      content: e.content,
-      outputFormat: matchingTemplate ? matchingTemplate.outputFormat : null,
-    };
-  });
+		return {
+			id: e.section_id,
+			title: e.section_title,
+			content: e.content,
+			outputFormat: matchingTemplate ? matchingTemplate.outputFormat : null,
+		};
+	});
 
-  return formattedSections;
+	return formattedSections;
 }
 
 
 
 function oldFormatStructuredData(data, checklist, templateSections) {
-  const formattedSections = Object.entries(data).map(([key, value]) => {
-    const matchingTemplate = templateSections.find(
-      (t) => t.title.toLowerCase() === key
-    );
+	const formattedSections = Object.entries(data).map(([key, value]) => {
+		const matchingTemplate = templateSections.find(
+			(t) => t.title.toLowerCase() === key
+		);
 
-    return {
-      id: key,
-      title: matchingTemplate ? matchingTemplate.title : null,
-      content: value.content,
-      outputFormat: matchingTemplate ? matchingTemplate.outputFormat : null,
-    };
-  });
+		return {
+			id: key,
+			title: matchingTemplate ? matchingTemplate.title : null,
+			content: value.content,
+			outputFormat: matchingTemplate ? matchingTemplate.outputFormat : null,
+		};
+	});
 
-  const checklistContent = Object.entries(checklist).reduce((acc, [key, value]) => {
-    acc[key.toLowerCase()] = value;
-    return acc;
-  }, {});
+	const checklistContent = Object.entries(checklist).reduce((acc, [key, value]) => {
+		acc[key.toLowerCase()] = value;
+		return acc;
+	}, {});
 
-  const checklistTemplate = templateSections.find(
-    (t) => t.title.toLowerCase() === "checklist"
-  );
+	const checklistTemplate = templateSections.find(
+		(t) => t.title.toLowerCase() === "checklist"
+	);
 
-  formattedSections.push({
-    id: checklistTemplate ? checklistTemplate.id : "section_checklist",
-    title: checklistTemplate ? checklistTemplate.title : "Checklist",
-    content: checklistContent,
-    outputFormat: checklistTemplate ? checklistTemplate.outputFormat : "json_5E_checklist",
-  });
+	formattedSections.push({
+		id: checklistTemplate ? checklistTemplate.id : "section_checklist",
+		title: checklistTemplate ? checklistTemplate.title : "Checklist",
+		content: checklistContent,
+		outputFormat: checklistTemplate ? checklistTemplate.outputFormat : "json_5E_checklist",
+	});
 
-  return formattedSections;
+	return formattedSections;
 }
 
 
 function transformSections(sections, templateSections) {
-  return sections.map(section => {
-    const template = templateSections.find(
-      t => t.id === section.section_id
-    );
+	return sections.map(section => {
+		const template = templateSections.find(
+			t => t.id === section.section_id
+		);
 
-    const outputFormat = template ? template.outputFormat : null;
+		const outputFormat = template ? template.outputFormat : null;
 
-    let formattedContent;
+		let formattedContent;
 
-    // json_1: Question Bank
-    if (outputFormat === "json_1") {
-      formattedContent = Object.entries(section.content || {}).map(([difficulty, levelContent]) => {
-        const items = [];
+		// json_1: Question Bank
+		if (outputFormat === "json_1") {
+			formattedContent = Object.entries(section.content || {}).map(([difficulty, levelContent]) => {
+				const items = [];
 
-        if (levelContent.MCQs) {
-          items.push({
-            type: "MCQs",
-            questions: levelContent.MCQs.content
-          });
-        }
+				if (levelContent.MCQs) {
+					items.push({
+						type: "MCQs",
+						questions: levelContent.MCQs.content
+					});
+				}
 
-        if (levelContent.assessment) {
-          items.push({
-            type: "assessment",
-            questions: levelContent.assessment.content
-          });
-        }
+				if (levelContent.assessment) {
+					items.push({
+						type: "assessment",
+						questions: levelContent.assessment.content
+					});
+				}
 
-        return {
-          difficulty,
-          content: items
-        };
-      });
-    }
+				return {
+					difficulty,
+					content: items
+				};
+			});
+		}
 
-    // json_2: Real World Scenarios
-    else if (outputFormat === "json_2") {
-      formattedContent = Object.entries(section.content || {}).map(([difficulty, topics]) => {
-        const topicList = Object.values(topics).map(topic => ({
-          title: topic.title,
-          question: topic.scenario.question,
-          description: topic.scenario.description
-        }));
+		// json_2: Real World Scenarios
+		else if (outputFormat === "json_2") {
+			formattedContent = Object.entries(section.content || {}).map(([difficulty, topics]) => {
+				const topicList = Object.values(topics).map(topic => ({
+					title: topic.title,
+					question: topic.scenario.question,
+					description: topic.scenario.description
+				}));
 
-        return {
-          difficulty,
-          content: topicList
-        };
-      });
-    }
+				return {
+					difficulty,
+					content: topicList
+				};
+			});
+		}
 
-    // json_3: Activities
-    else if (outputFormat === "json_3") {
-      formattedContent = Object.entries(section.content || {}).map(([activityId, activity]) => ({
-        id: activityId,
-        title: activity.title,
-        preparation: activity.preparation,
-        required_materials: activity.required_materials,
-        obtaining_materials: activity.obtaining_materials,
-        recap: activity.recap
-      }));
-    }
+		// json_3: Activities
+		else if (outputFormat === "json_3") {
+			formattedContent = Object.entries(section.content || {}).map(([activityId, activity]) => ({
+				id: activityId,
+				title: activity.title,
+				preparation: activity.preparation,
+				required_materials: activity.required_materials,
+				obtaining_materials: activity.obtaining_materials,
+				recap: activity.recap
+			}));
+		}
 
-    // Default fallback
-    else {
-      formattedContent = section.content;
-    }
+		// Default fallback
+		else {
+			formattedContent = section.content;
+		}
 
-    return {
+		return {
       id:section.section_id,
       title:section.section_title,
-      outputFormat,
-      content: formattedContent
-    };
-  });
+			outputFormat,
+			content: formattedContent
+		};
+	});
 }
 
 
 function transformResource(resource) {
-  if (!resource) return null;
+	if (!resource) return null;
 
-  const transformQuestionBank = (qb) => {
-    return Object.entries(qb).map(([difficulty, types]) => ({
-      difficulty,
-      content: Object.entries(types).map(([type, data]) => ({
-        type,
-        questions: data.content.map(q => {
-          if (type === "MCQs") {
-            return {
-              question: q.question,
-              options: q.options.map((opt, i) => {
-                const label = String.fromCharCode(65 + i); // A, B, C, D
-                return `${label}) ${opt}`;
-              })
-            };
-          } else {
-            return { question: q.question };
-          }
-        })
-      }))
-    }));
-  };
+	const transformQuestionBank = (qb) => {
+		return Object.entries(qb).map(([difficulty, types]) => ({
+			difficulty,
+			content: Object.entries(types).map(([type, data]) => ({
+				type,
+				questions: data.content.map(q => {
+					if (type === "MCQs") {
+						return {
+							question: q.question,
+							options: q.options.map((opt, i) => {
+								const label = String.fromCharCode(65 + i); // A, B, C, D
+								return `${label}) ${opt}`;
+							})
+						};
+					} else {
+						return { question: q.question };
+					}
+				})
+			}))
+		}));
+	};
 
-  const transformRealWorldScenarios = (rws) => {
-    return Object.entries(rws).map(([difficulty, topics]) => ({
-      difficulty,
-      content: Object.values(topics).map(topic => ({
-        title: topic.title,
-        question: topic.scenario.question,
-        description: topic.scenario.description
-      }))
-    }));
-  };
+	const transformRealWorldScenarios = (rws) => {
+		return Object.entries(rws).map(([difficulty, topics]) => ({
+			difficulty,
+			content: Object.values(topics).map(topic => ({
+				title: topic.title,
+				question: topic.scenario.question,
+				description: topic.scenario.description
+			}))
+		}));
+	};
 
-  const transformActivities = (activities) => {
-    return Object.entries(activities).map(([id, activity]) => ({
-      id,
-      title: activity.title,
-      preparation: activity.preparation,
-      required_materials: activity.required_materials,
-      obtaining_materials: activity.obtaining_materials,
-      recap: activity.recap
-    }));
-  };
+	const transformActivities = (activities) => {
+		return Object.entries(activities).map(([id, activity]) => ({
+			id,
+			title: activity.title,
+			preparation: activity.preparation,
+			required_materials: activity.required_materials,
+			obtaining_materials: activity.obtaining_materials,
+			recap: activity.recap
+		}));
+	};
 
-  return [
-    {
-      id: "question_bank",
-      title: "Question Bank",
-      outputFormat: "json_1",
-      content: transformQuestionBank(resource.questionbank)
-    },
-    {
-      id: "real_world_scenarios",
-      title: "Real World Scenarios",
-      outputFormat: "json_2",
-      content: transformRealWorldScenarios(resource.realworldscenarios)
-    },
-    {
-      id: "activities",
-      title: "Activities",
-      outputFormat: "json_3",
-      content: transformActivities(resource.activities)
-    }
-  ];
+	return [
+		{
+			id: "question_bank",
+			title: "Question Bank",
+			outputFormat: "json_1",
+			content: transformQuestionBank(resource.questionbank)
+		},
+		{
+			id: "real_world_scenarios",
+			title: "Real World Scenarios",
+			outputFormat: "json_2",
+			content: transformRealWorldScenarios(resource.realworldscenarios)
+		},
+		{
+			id: "activities",
+			title: "Activities",
+			outputFormat: "json_3",
+			content: transformActivities(resource.activities)
+		}
+	];
 }
 
 function transformOldResources(extracted_resource, additional_resource) {
-  return {
-    extracted: transformResource(extracted_resource),
-    additional: transformResource(additional_resource)
-  };
+	return {
+		extracted: transformResource(extracted_resource),
+		additional: transformResource(additional_resource)
+	};
 }
 
 function formatTemplate(template){
@@ -751,6 +761,7 @@ module.exports = {
 	sortSubTopicsArray,
 	sortSubTopicsArrayTeacher,
 	parseDate,
+	safeParseDate,
 	restructureCheckListforLLM,
 	formatSubject,
 	getSemester,

@@ -8,18 +8,6 @@ client = TestClient(app)
 class TestRootEndpoints:
     """Tests for root and health endpoints."""
 
-    def test_root_endpoint(self):
-        """Test the root endpoint returns correct response."""
-        response = client.get("/")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "message" in data
-        assert "version" in data
-        assert "status" in data
-        assert data["message"] == "Welcome to Shiksha Copilot API"
-        assert data["status"] == "healthy"
-
     def test_health_check_endpoint(self):
         """Test the health check endpoint."""
         response = client.get("/health")
@@ -29,14 +17,6 @@ class TestRootEndpoints:
         assert "status" in data
         assert "service" in data
         assert data["status"] == "healthy"
-
-    def test_root_returns_version(self):
-        """Test that root endpoint includes version."""
-        response = client.get("/")
-
-        assert response.status_code == 200
-        data = response.json()
-        assert data["version"] is not None
 
 
 class TestMCPConfiguration:

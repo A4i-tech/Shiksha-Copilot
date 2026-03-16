@@ -17,9 +17,14 @@ const chatSchema = new Schema(
             default: 0,
         }
     },
-    { 
+    {
         timestamps: true,
     }
+);
+
+chatSchema.index(
+    { userId: 1, createdAt: -1 },
+    { name: "idx_chat_dashboard", background: true }
 );
 
 const Chat = mongoose.model('Chat', chatSchema);

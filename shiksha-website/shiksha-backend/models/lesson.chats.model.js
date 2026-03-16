@@ -45,6 +45,11 @@ const lessonChatSchema = new Schema(
 	}
 );
 
+lessonChatSchema.index(
+	{ teacherId: 1, createdAt: -1 },
+	{ name: "idx_lesson_chat_dashboard", background: true }
+);
+
 const LessonChat = mongoose.model("LessonChat", lessonChatSchema);
 
 module.exports = LessonChat;

@@ -127,6 +127,11 @@ userSchema.methods.generateAuthToken = function () {
   return token;
 };
 
+userSchema.index(
+  { school: 1, state: 1, zone: 1, district: 1, block: 1 },
+  { name: "idx_user_location_hierarchy", background: true }
+);
+
 const User = mongoose.model("User", userSchema);
 
 module.exports = User;

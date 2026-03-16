@@ -2,7 +2,7 @@ import pytest
 import os
 from page_objects.question_bank_page import QuestionBankPage
 
-BASE_URL = os.getenv("STAGING_URL")
+BASE_URL = os.getenv("FRONTEND_URL")
 
 # Only Hardcoded Variables needed for the specific test data
 QP_BOARD = os.getenv("TEST_QP_BOARD", "CBSE")      
