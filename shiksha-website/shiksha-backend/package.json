@@ -9,7 +9,7 @@
 		"start-uat": "pm2-runtime start app.js --name my-app-uat --env uat "
 	},
 	"author": "",
-	"license": "ISC",
+	"license": "MIT",
 	"devDependencies": {
 		"nodemon": "^3.1.0"
 	},
