@@ -2,7 +2,7 @@
 ## Overview
 [![Shiksha Copilot Overview](https://img.youtube.com/vi/SdbE6J4Gzmg/0.jpg)](https://www.youtube.com/watch?v=SdbE6J4Gzmg "Shiksha Copilot - Click to Watch!")
 
-**Shiksha Copilot** is a transformative educational tool developed under the **VELLM (Universal Empowerment with Large Language Models)** initiative by Microsoft Research India. It is specifically designed to assist educators in streamlining and enriching the process of lesson planning and content creation. Shiksha Copilot acts as an intelligent assistant, empowering teachers to craft meaningful, engaging, and curriculum-aligned learning experiences tailored to the specific needs of their classrooms.
+**Shiksha Copilot** is a transformative educational tool developed under the **VELLM (Universal Empowerment with Large Language Models)** initiative. It is specifically designed to assist educators in streamlining and enriching the process of lesson planning and content creation. Shiksha Copilot acts as an intelligent assistant, empowering teachers to craft meaningful, engaging, and curriculum-aligned learning experiences tailored to the specific needs of their classrooms.
 
 By allowing educators to select the exact curriculum, grade level, subject, and chapter they plan to teach, Shiksha Copilot provides a customized experience that aligns directly with their instructional goals. The system leverages advanced LLMs to generate a variety of pedagogically sound educational artifacts including:
 - Detailed lesson plans
@@ -11,7 +11,7 @@ By allowing educators to select the exact curriculum, grade level, subject, and 
 - Hands-on activities that promote experiential learning
 - Formative and summative assessments for effective evaluation
 
-Once teachers review and validate the generated content, the system automatically compiles it into user-friendly formats such as Microsoft Word (DOCX), PowerPoint (PPT), and student-friendly handouts. Furthermore, teachers can generate comprehensive question banks covering multiple chapters in alignment with standard educational blueprint formats. The system also features a conversational AI interface, enabling users to interact with Shiksha Copilot via natural language queries, ask textbook-related questions, or generate customized educational materials on the fly.
+Once teachers review and validate the generated content, the system automatically compiles it into user-friendly formats such as Word (DOCX), PowerPoint (PPT), and student-friendly handouts. Furthermore, teachers can generate comprehensive question banks covering multiple chapters in alignment with standard educational blueprint formats. The system also features a conversational AI interface, enabling users to interact with Shiksha Copilot via natural language queries, ask textbook-related questions, or generate customized educational materials on the fly.
 
 Please find additional details in [Shiksha-Copilot User FAQ](Transparency_FAQ_Shiksha-Copilot_latest.pdf)
 
@@ -181,9 +181,6 @@ Shiksha Copilot follows a modular architecture with clear separation between off
 - Review privacy, consent, and data usage policies for all components interacting with Shiksha Copilot, including storage and retrieval systems.
 - Comply with local and international data protection regulations (e.g., GDPR, FERPA) when deploying this tool in real-world settings.
 
-## Trademarks
-This repository may contain references to Microsoft trademarks, products, or services. Use of Microsoft trademarks must follow the official [Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general). Unauthorized or misleading use of trademarks, including those of third parties, is prohibited.
-
 ## Privacy & Ethics
 Shiksha Copilot is developed with a strong commitment to privacy-by-design principles and ethical considerations in educational technology:
 
@@ -216,29 +213,17 @@ Shiksha Copilot is developed with a strong commitment to privacy-by-design princ
 By prioritizing these principles, we aim to ensure that Shiksha Copilot serves as a responsible tool that empowers educators while respecting their autonomy, protecting user privacy, and advancing equitable educational outcomes.
 
 ## Contact
-We welcome feedback and collaboration from our audience. If you have suggestions, questions, or observe unexpected/offensive behavior in our technology, please contact us at *kchourasia@microsoft.com*.
+We welcome feedback and collaboration from our audience. If you have suggestions, questions, or observe unexpected/offensive behavior in our technology, please contact us at dev.a4i@iiitb.ac.in.
 If the team receives reports of undesired behavior or identifies issues independently, we will update this repository with appropriate mitigations.
 
 ## Contributing
 
-This project welcomes contributions and suggestions.  Most contributions require you to agree to a
-Contributor License Agreement (CLA) declaring that you have the right to, and actually do, grant us
-the rights to use your contribution. For details, visit https://cla.opensource.microsoft.com.
+This project welcomes contributions and suggestions. For details, please refer to our contribution guidelines.
 
-When you submit a pull request, a CLA bot will automatically determine whether you need to provide
-a CLA and decorate the PR appropriately (e.g., status check, comment). Simply follow the instructions
-provided by the bot. You will only need to do this once across all repos using our CLA.
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
-For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or
-contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
+This project has adopted the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/).
+For more information see the [Code of Conduct FAQ](https://www.contributor-covenant.org/faq/) or
+contact dev.a4i@iiitb.ac.in with any additional questions or comments.
 
 ## Legal Notices
-Microsoft and any contributors grant you a license to the code in this repository under the MIT License. For more details, see the [LICENSE](LICENSE) file.
-
-Microsoft, Windows, Microsoft Azure, and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.
-
-Privacy information can be found at https://go.microsoft.com/fwlink/?LinkId=521839
-
-Microsoft and any contributors reserve all other rights, whether under their respective copyrights, patents, or trademarks, whether by implication, estoppel, or otherwise.
+A4i-tech and any contributors grant you a license to the code in this repository under the MIT License. For more details, see the [LICENSE](LICENSE) file.
 
