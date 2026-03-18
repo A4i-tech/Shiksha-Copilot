@@ -116,9 +116,10 @@ export class QuestionBankDownloadService {
             spacing: { after: 100 },
           }));
           if (q.options) {
-            q.options.forEach((opt: string, i: number) => {
+            q.options.forEach((opt: any, i: number) => {
+              const optText = typeof opt === 'string' ? opt : (opt.text || opt.label || String(opt));
               content.push(new Paragraph({
-                text: `   ${String.fromCharCode(65 + i)}. ${opt}`,
+                text: `   ${String.fromCharCode(65 + i)}. ${optText}`,
                 spacing: { after: 120 },
               }));
             });
