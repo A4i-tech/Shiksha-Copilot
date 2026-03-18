@@ -11,9 +11,11 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   // NEW INPUT: The merged pool from Parent
   @Input() availableQuestions: any[] = [];
+  @Input() preSelectedQuestions: any[] = [];
 
   @Output() backClick = new EventEmitter<boolean>();
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
+  @Output() selectionChange = new EventEmitter<any[]>();
 
   // Local State
   filteredQuestions: any[] = [];
@@ -32,14 +34,32 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   constructor() { }
 
   ngOnInit(): void {
+    this.syncPreSelectedQuestions();
     // Initial load
     this.extractFilters();
     this.applyFilters();
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['preSelectedQuestions']) {
+      this.syncPreSelectedQuestions();
+    }
     this.extractFilters();
     this.applyFilters();
+  }
+
+  private syncPreSelectedQuestions(): void {
+    if (!this.preSelectedQuestions || this.preSelectedQuestions.length === 0) {
+      this.selectedQuestions = [];
+      return;
+    }
+
+    const byId = new Map<string, any>();
+    this.preSelectedQuestions.forEach((q: any) => {
+      const key = q?._id ? String(q._id) : `${q?.text || ''}__${q?.marks || 0}`;
+      if (!byId.has(key)) byId.set(key, q);
+    });
+    this.selectedQuestions = Array.from(byId.values());
   }
 
   extractFilters() {
@@ -132,12 +152,13 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   // --- SELECTION LOGIC ---
   selectQuestion(q: any) {
     this.selectedQuestions.push(q);
+    this.selectionChange.emit([...this.selectedQuestions]);
     this.applyFilters(); // Remove from left list
   }
 
   removeQuestion(index: number) {
-    const q = this.selectedQuestions[index];
     this.selectedQuestions.splice(index, 1);
+    this.selectionChange.emit([...this.selectedQuestions]);
     this.applyFilters(); // Add back to left list
   }
 
