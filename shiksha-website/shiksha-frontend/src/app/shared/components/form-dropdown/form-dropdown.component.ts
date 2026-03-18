@@ -208,9 +208,9 @@ export class FormDropdownComponent implements OnInit, OnChanges {
 
     if (this.config.bindValue && this.dropDownValues?.length > 0) {
       // If value is an object, try to match by its bindValue property
-      if (typeof value === 'object' && (value as any)[this.config.bindValue] !== undefined) {
+      if (typeof value === 'object' && (value as FormDropDownOption)[this.config.bindValue] !== undefined) {
         return this.dropDownValues.find(
-          (item) => item && (item[this.config.bindValue!] as any) === (value as any)[this.config.bindValue!]
+          (item) => item && item[this.config.bindValue!] === (value as FormDropDownOption)[this.config.bindValue!]
         );
       }
 
