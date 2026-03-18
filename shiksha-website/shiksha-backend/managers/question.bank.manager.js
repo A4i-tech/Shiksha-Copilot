@@ -326,7 +326,7 @@ class QuestionBankManager extends BaseManager {
       processedUnitNames
     );
 
-    rawCacheHit = (cacheHit).map((doc) => doc.toObject());
+    rawCacheHit = (cacheHit ?? []).map((doc) => doc.toObject());
 
     const {
       matchTheFollowingTemplate,
@@ -642,7 +642,7 @@ class QuestionBankManager extends BaseManager {
           title: chapter.title,
           index_path: chapter.indexPath || chapter.index_path || "",
           learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes,
-          subtopics: (chapter.subtopics).map((sub) => ({
+          subtopics: (chapter.subtopics ?? []).map((sub) => ({
             title: sub.title,
             learning_outcomes: sub.learningOutcomes || sub.learning_outcomes,
           })),
