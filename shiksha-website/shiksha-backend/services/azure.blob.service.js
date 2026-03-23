@@ -1,13 +1,36 @@
-const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions } = require("@azure/storage-blob");
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+    globalThis.crypto = webcrypto;
+}
+
+const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = require("@azure/storage-blob");
 const { DefaultAzureCredential } = require("@azure/identity");
 require("dotenv").config();
 
+const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME;
 
-const credential = new DefaultAzureCredential();
+// Dual auth: connection string (local dev) or DefaultAzureCredential (production)
+let blobServiceClient;
+let sharedKeyCredential;
 
-const blobServiceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
+if (connectionString) {
+    // Extract account name and key from connection string for SAS generation
+    const parsedAccountName = connectionString.match(/AccountName=([^;]+)/)?.[1];
+    const parsedAccountKey = connectionString.match(/AccountKey=([^;]+)/)?.[1];
+
+    if (parsedAccountName && parsedAccountKey) {
+        sharedKeyCredential = new StorageSharedKeyCredential(parsedAccountName, parsedAccountKey);
+    }
+
+    blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+    console.log("[Azure Blob] Using connection string auth");
+} else {
+    const credential = new DefaultAzureCredential();
+    blobServiceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
+    console.log("[Azure Blob] Using DefaultAzureCredential auth");
+}
 
 async function uploadToStorage(file, fileName, mimeType) {
     try {
@@ -38,19 +61,38 @@ async function getPreSignedUrl(blobName, expiryInSeconds) {
     const expiryTime = new Date(now);
     expiryTime.setSeconds(now.getSeconds() + expiryInSeconds);
 
-    const sasToken = generateBlobSASQueryParameters(
-        {
-            containerName,
-            blobName,
-            permissions: BlobSASPermissions.parse("r"),
-			startsOn: now, 
-            expiresOn: expiryTime,
-        },
-		(await blobServiceClient.getUserDelegationKey(now, expiryTime)),
-		accountName
-    ).toString();
+    let sasToken;
 
-    const blobUrl = `https://${accountName}.blob.core.windows.net/${containerName}/${blobName}?${sasToken}`;
+    if (sharedKeyCredential) {
+        // Account key SAS — works locally without any Azure login
+        sasToken = generateBlobSASQueryParameters(
+            {
+                containerName,
+                blobName,
+                permissions: BlobSASPermissions.parse("r"),
+                startsOn: now,
+                expiresOn: expiryTime,
+            },
+            sharedKeyCredential
+        ).toString();
+    } else {
+        // User delegation SAS — requires DefaultAzureCredential (production)
+        const resolvedAccountName = accountName || connectionString?.match(/AccountName=([^;]+)/)?.[1];
+        sasToken = generateBlobSASQueryParameters(
+            {
+                containerName,
+                blobName,
+                permissions: BlobSASPermissions.parse("r"),
+                startsOn: now,
+                expiresOn: expiryTime,
+            },
+            (await blobServiceClient.getUserDelegationKey(now, expiryTime)),
+            resolvedAccountName
+        ).toString();
+    }
+
+    const resolvedAccountName = accountName || connectionString?.match(/AccountName=([^;]+)/)?.[1];
+    const blobUrl = `https://${resolvedAccountName}.blob.core.windows.net/${containerName}/${blobName}?${sasToken}`;
     return blobUrl;
 }
 
@@ -61,4 +103,15 @@ async function getPreSignedProfileImageUrl(userId) {
     return fileUrl;
 }
 
-module.exports = { uploadToStorage, getPreSignedProfileImageUrl };
+async function getPreSignedFileUrl(filePath) {
+    const parsedUrl = new URL(filePath);
+    const pathname = decodeURIComponent(parsedUrl.pathname);
+    const blobPath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
+    const filename = blobPath.split('/').pop();
+    const linkExpiry = 7 * 24 * 60 * 60;
+    const destinationObject = filename;
+    const fileUrl = await getPreSignedUrl(destinationObject, linkExpiry);
+    return fileUrl;
+}
+
+module.exports = { uploadToStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl };

@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from app.models.chat import (
     ChatRequest,
     ChatResponse,
     LessonChatRequest,
     LessonChatResponse,
     ErrorResponse,
+    Reference,
 )
 from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
 from typing import Dict, Any
@@ -114,11 +116,14 @@ async def chat(
     try:
         logger.info(f"Processing general chat request for user: {request.user_id}")
 
-        response_content = await GENERAL_CHAT_SERVICE_INSTANCE(request.messages)
+        # response_content = await GENERAL_CHAT_SERVICE_INSTANCE(request.messages)
 
         logger.info(f"Successfully processed general chat for user: {request.user_id}")
-
-        return ChatResponse(user_id=request.user_id, response=response_content)
+        
+        return StreamingResponse(
+            GENERAL_CHAT_SERVICE_INSTANCE(request.messages),
+            media_type="text/event-stream"
+        )
 
     except ValueError as e:
         logger.error(f"Configuration error in general chat: {e}")
@@ -234,7 +239,11 @@ async def lesson_chat(
 
         logger.info(f"Successfully processed lesson chat for user: {request.user_id}")
 
-        return LessonChatResponse(user_id=request.user_id, response=response_content)
+        return LessonChatResponse(
+            user_id=request.user_id,
+            response=response_content["response"],
+            references=[Reference(**ref) for ref in response_content.get("references", [])],
+        )
 
     except ValueError as e:
         logger.error(f"Configuration error in lesson chat: {e}")

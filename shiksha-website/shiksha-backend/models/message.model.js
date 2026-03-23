@@ -20,6 +20,13 @@ const messageSchema = new Schema(
 					type: String,
 					required: [true, "Answer is required"],
 				},
+				references: [
+					{
+						title: { type: String },
+						url: { type: String },
+						text: { type: String },
+					},
+				],
 				createdAt: {
 					type: Date,
 					default: Date.now,

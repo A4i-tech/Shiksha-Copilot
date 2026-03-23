@@ -1,7 +1,11 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+	globalThis.crypto = webcrypto;
+}
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
-const logger = require("morgan"); 
+const logger = require("morgan");
 const path = require("path");
 const dbService = require("./config/db");
 const userRoutes = require("./routes/user.routes.js");
@@ -24,34 +28,25 @@ const lessonFeedbackRoutes = require("./routes/feedback.lesson.routes");
 const resourceFeedbackRoutes = require("./routes/teacher.feedback.routes");
 const questionBankRoutes = require("./routes/question.bank.routes.js");
 const questionBankCacheRoutes = require("./routes/question.bank.cache.routes.js");
+const lessonPlanTemplateRoutes = require("./routes/lesson.plan.template.routes.js");
 const chatRoutes = require("./routes/chat.routes");
 const auditRoutes = require("./routes/audit.log.route");
 const conditionalMorganMiddleware = require('./config/morgan');
 const useragent = require('express-useragent');
+const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.routes.js');
+const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
+const helpVideosRoutes = require('./routes/help.videos.routes.js');
+const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
+const systemRoutes = require('./routes/system.routes.js');
 
 dotenv.config();
 const app = express();
 app.disable("x-powered-by");
 
 app.use(express.json());
-const allowedOrigins = ["allow_your_website_here"];
 
-app.use(
-	cors({
-		origin: function (origin, callback) {
-			if (!origin) return callback(null, true);
-			if (
-				allowedOrigins.includes(origin) ||
-				/^http:\/\/localhost:\d+$/.test(origin)
-			) {
-				return callback(null, true);
-			} else {
-				return callback(new Error("Not allowed by CORS"));
-			}
-		},
-		optionsSuccessStatus: 200,
-	})
-);
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
+app.use(cors({ origin: allowedOrigins, optionsSuccessStatus: 200 }));
 
 const folderPath = path.join(__dirname, 'public', 'images');
 
@@ -63,7 +58,7 @@ app.use(useragent.express());
 const PORT = process.env.PORT;
 dbService.connect().then((data) => console.log(data.message));
 
-app.get("/", (req, res) => res.send("Shikshana Backend!"));
+app.use("/", systemRoutes);
 app.use("/api", userRoutes);
 app.use("/api", masterLessonRoutes);
 app.use("/api", boardRoutes);
@@ -84,11 +79,16 @@ app.use("/api", lessonFeedbackRoutes);
 app.use("/api", resourceFeedbackRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", auditRoutes);
-app.use("/api",questionBankRoutes)
-app.use("/api",questionBankCacheRoutes)
+app.use("/api", questionBankRoutes)
+app.use("/api", questionBankCacheRoutes)
+app.use("/api", lessonPlanTemplateRoutes)
+app.use("/api", teacherTrainingBatchRoutes);
+app.use('/api', teacherAbsentRoutes);
+app.use('/api', helpVideosRoutes);
+app.use('/api', baselineSurveyRoutes);
 
-process.on('unhandledRejection',(reason,promise)=>{
-	console.log(promise,reason);
+process.on('unhandledRejection', (reason, promise) => {
+	console.log(promise, reason);
 	process.exit(1);
 })
 app.listen(PORT, () => console.log(`App listening on port ${PORT}!`));

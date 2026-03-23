@@ -28,7 +28,7 @@ export class QuestionBankDownloadService {
     const doc = new Document({
       sections: [{
         headers: {
-          default: new Header({
+          first: new Header({
             children: [
               new Paragraph({
                 text: data.questionBank.metadata.schoolName,
@@ -76,7 +76,10 @@ export class QuestionBankDownloadService {
             ],
           }),
         },
-        children: this.buildQuestions(data.questionBank.questions),
+        properties:{
+          titlePage:true
+        },
+        children: this.buildQuestions(data.questionBank.questions)
       }],
     });
 
@@ -104,7 +107,8 @@ export class QuestionBankDownloadService {
           after: 120,
       }
       }));
-  
+
+      if(section.type !== 'Match the following'){
       section.questions.forEach((q: any, index: number) => {
         if (q.question) {
           content.push(new Paragraph({
@@ -112,19 +116,22 @@ export class QuestionBankDownloadService {
             spacing: { after: 100 },
           }));
           if (q.options) {
-            q.options.forEach((opt: string, i: number) => {
+            q.options.forEach((opt: any, i: number) => {
+              const optText = typeof opt === 'string' ? opt : (opt.text || opt.label || String(opt));
               content.push(new Paragraph({
-                text: `   ${String.fromCharCode(65 + i)}. ${opt}`,
+                text: `   ${String.fromCharCode(65 + i)}. ${optText}`,
                 spacing: { after: 120 },
               }));
             });
           }
-        } else if (q.columnOneValues && q.columnTwoValues) {
-          const colTwoVal = structuredClone(q.columnTwoValues)
-          const shuffedColums = this.utilityService.shuffleOptions(colTwoVal)
-          content.push(this.buildMatchTable(q.columnOneValues, shuffedColums));
         }
       });
+      } else if(section.type === 'Match the following'){
+          const colOneValue = section.questions.map((e:any)=> e.value1)
+          const colTwoVal = structuredClone(section.questions.map((e:any)=> e.value2))
+          const shuffedColums = this.utilityService.shuffleOptions(colTwoVal)
+          content.push(this.buildMatchTable(colOneValue, shuffedColums));
+      }
   
       content.push(new Paragraph({ text: "" }));
       sectionCount++;

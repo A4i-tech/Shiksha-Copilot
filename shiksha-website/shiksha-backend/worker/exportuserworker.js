@@ -1,3 +1,7 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto;
+}
 const { parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
 const dbService = require("../config/db.js");
@@ -18,6 +22,7 @@ dbService.getConnection().then(async (client) => {
         { header: "Phone Number", key: "phoneNumber", width: 15 },
         { header: "Type of Teacher", key: "teacherType", width: 15 },
         { header: "Status of Teacher", key: "teacherStatus", width: 15 },
+        { header: "Training Status", key: "trainingStatus", width: 15 },
       ];
 
       users.forEach((ele) => {
@@ -27,6 +32,7 @@ dbService.getConnection().then(async (client) => {
           phoneNumber: ele.phone,
           teacherType: ele.role[0],
           teacherStatus: ele.isDeleted ? "Inactive" : "Active",
+          trainingStatus: ele.trainingStatus === 'trained' ? 'Trained' : 'Untrained',
         });
       });
 
@@ -79,7 +85,7 @@ dbService.getConnection().then(async (client) => {
         parentPort.postMessage({
           success: false,
           message: "Failed to export teacher.",
-          error: uploadError.message,
+          error: e.message,
         });
       }
     } catch (e) {

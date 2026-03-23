@@ -9,7 +9,7 @@ class ChatDao extends BaseDao {
         super(Chat);
     }
 
-    async getActiveSession(userId,date) {
+    async getActiveSession(userId, date) {
         try {
             return await Chat.findOne({
                 userId: new ObjectId(userId),
@@ -62,9 +62,10 @@ class ChatDao extends BaseDao {
                             $each: [{
                                 question: messageData.question,
                                 answer: messageData.answer,
+                                references: messageData.references || [],
                                 createdAt: new Date()
                             }],
-                            $position: 0  
+                            $position: 0
                         }
                     }
                 }
@@ -76,7 +77,7 @@ class ChatDao extends BaseDao {
 
     async getMessagesBySessionId(chatHistoryId) {
         try {
-            return await Message.findOne({chatHistoryId});
+            return await Message.findOne({ chatHistoryId });
         } catch (err) {
             throw new Error(`Failed to get messages by date for chat session: ${err.message}`);
         }
@@ -93,19 +94,19 @@ class ChatDao extends BaseDao {
     async getLessonMessages(recordId, userId, fromDate = null, toDate = null) {
         try {
             const query = {
-                teacherId: new ObjectId(userId),  
+                teacherId: new ObjectId(userId),
                 recordId
             };
-    
+
             if (fromDate && toDate) {
-                query.createdAt = { 
-                    $gte: fromDate, 
-                    $lte: toDate  
+                query.createdAt = {
+                    $gte: fromDate,
+                    $lte: toDate
                 };
             }
-    
+
             const messages = await LessonChat.find(query).sort({ createdAt: -1 });
-    
+
             return messages;
         } catch (err) {
             throw new Error(`Failed to get lesson messages: ${err.message}`);
@@ -115,15 +116,15 @@ class ChatDao extends BaseDao {
     async getAllLessonMessages(userId, fromDate, toDate) {
         try {
             const query = {
-                teacherId: new ObjectId(userId),  
-                createdAt :{ 
-                    $gte: fromDate, 
-                    $lte: toDate  
+                teacherId: new ObjectId(userId),
+                createdAt: {
+                    $gte: fromDate,
+                    $lte: toDate
                 }
             };
-    
+
             const messages = await LessonChat.find(query).sort({ createdAt: -1 });
-    
+
             return messages;
         } catch (err) {
             throw new Error(`Failed to get lesson messages: ${err.message}`);

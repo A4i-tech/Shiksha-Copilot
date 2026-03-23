@@ -1,3 +1,7 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto;
+}
 const { parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
 const dbService = require("../config/db.js");

@@ -1,3 +1,14 @@
+/**
+ * Option item for dropdown; may include optional `info` (string) for tooltip.
+ * When `info` comes from user or API input, it is sanitized before use in the UI.
+ */
+export interface FormDropDownOption {
+  name?: string;
+  value?: string;
+  info?: string;
+  [key: string]: unknown;
+}
+
 export interface FormDropDownConfig {
   isBackground: boolean;
   height: string;

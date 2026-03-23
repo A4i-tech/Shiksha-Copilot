@@ -4,28 +4,30 @@ function getStartDate(filter, currentDate) {
 	switch (filter) {
 		case "quarter-year":
 			const startDateQuarter = new Date(currentDate);
-			startDateQuarter.setMonth(currentDate.getMonth() - 2);
-			startDateQuarter.setDate(1);
+			startDateQuarter.setUTCMonth(currentDate.getUTCMonth() - 2);
+			startDateQuarter.setUTCDate(1);
+			startDateQuarter.setUTCHours(0, 0, 0, 0);
 			startDate = startDateQuarter;
 			break;
 		case "half-year":
 			const startDateHalfYear = new Date(currentDate);
-			startDateHalfYear.setMonth(currentDate.getMonth() - 5);
-			startDateHalfYear.setDate(1);
+			startDateHalfYear.setUTCMonth(currentDate.getUTCMonth() - 5);
+			startDateHalfYear.setUTCDate(1);
+			startDateHalfYear.setUTCHours(0, 0, 0, 0);
 			startDate = startDateHalfYear;
 			break;
 		case "last-year":
-			startDate = new Date(currentDate.getFullYear() - 1, 0, 1);
+			startDate = new Date(Date.UTC(currentDate.getUTCFullYear() - 1, 0, 1));
 			break;
 		case "current-year":
-			startDate = new Date(currentDate.getFullYear(), 0, 1);
+			startDate = new Date(Date.UTC(currentDate.getUTCFullYear(), 0, 1));
 			break;
 		default:
-			startDate = new Date(
-				currentDate.getFullYear(),
-				currentDate.getMonth() - 5,
+			startDate = new Date(Date.UTC(
+				currentDate.getUTCFullYear(),
+				currentDate.getUTCMonth() - 5,
 				1
-			);
+			));
 	}
 
 	return startDate;
@@ -72,22 +74,42 @@ function uniqueSubsets(arr) {
 
 const isLeapYear = (year) => {
 	return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
-  };
-  
-  function validateIsoDate(value, helpers) {
+};
+
+function validateIsoDate(value, helpers) {
 	const dateString = value.toISOString().split('T')[0];
 	const [year, month, day] = dateString.split('-').map(Number);
-  
+
 	if (month < 1 || month > 12) {
-	  return helpers.error('date.invalid', { value });
+		return helpers.error('date.invalid', { value });
 	}
-  
+
 	const daysInMonth = [31, 28 + (isLeapYear(year) ? 1 : 0), 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
 	if (day < 1 || day > daysInMonth[month - 1]) {
-	  return helpers.error('date.invalid', { value });
+		return helpers.error('date.invalid', { value });
 	}
-  
+
 	return value;
-  }
-module.exports = { getStartDate, getNumMonths, uniqueSubsets , validateIsoDate };
+}
+
+// Advanced filter helpers for multi-value fields (zone, district, etc.)
+function normalizeMultiValueFilter(filter, fields) {
+	fields.forEach(field => {
+		if (filter[field] && !Array.isArray(filter[field])) {
+			filter[field] = [filter[field]];
+		}
+	});
+	return filter;
+}
+
+function buildMongoInQuery(filter, fields) {
+	fields.forEach(field => {
+		if (filter[field] && Array.isArray(filter[field])) {
+			filter[field] = { $in: filter[field] };
+		}
+	});
+	return filter;
+}
+
+module.exports = { getStartDate, getNumMonths, uniqueSubsets, validateIsoDate, normalizeMultiValueFilter, buildMongoInQuery };

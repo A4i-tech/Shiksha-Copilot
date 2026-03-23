@@ -1,95 +1,88 @@
-<div>
-  <div class="flex items-center gap-2">
-    <img
-      src="../../../../../assets/icons/back-arrow.svg"
-      alt=""
-      class="cursor-pointer"
-      (click)="previousStep()"
-    />
-    <h2 class="text-base md:text-xl font-bold text-content">
-      Step {{ currentStep }}/{{ totalSteps }}: Blue Print
-    </h2>
-  </div>
-  <p class="text-sm md:text-base">Review the blue print and generate the question paper.</p>
-</div>
-
-<div class="md:h-[50vh] md:w-[20vw] rounded relative md:sticky md:top-20 md:float-right mt-2 md:mt-0">
-  <div class="bg-warn-50 p-2 rounded">
-    <div class="flex items-start gap-2">
-      <img src="../../../../../assets/icons/Info 2.svg" alt="" />
-      <small>{{
-        "Copilot has generated the optimal distribution, with a possibility of minor deviations from the original selections."
-          | translate
-      }}</small>
+<div class="p-4 md:p-8">
+  <!-- Top Header Info -->
+  <div class="flex flex-col md:flex-row justify-between items-start mb-6 border-b pb-4">
+    <div>
+      <h2 class="text-xl font-bold text-content">Step 3/3: Preview & Blue Print</h2>
+      <p class="text-sm text-gray-500">Exam: <span class="font-semibold text-primary">{{ examName }}</span> | Total
+        Marks: <span class="font-semibold text-primary">{{ totalMarks }}</span></p>
+    </div>
+    <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-2 mt-3 md:mt-0">
+      <img src="assets/icons/Info 2.svg" alt="info" class="w-5 h-5" />
+      <small class="text-blue-800 font-medium">Review your distribution and selections before final generation.</small>
     </div>
   </div>
-  <canvas
-    baseChart
-    [data]="objectivesChartData"
-    [options]="objectivesChartOptions"
-    [legend]="true"
-    [type]="'doughnut'"
-    class="mt-5"
-  >
-  </canvas>
-</div>
 
-<div class="w-full md:w-[50vw]">
-  <div
-    class="h-full px-4 py-3 border rounded mt-4 relative"
-    *ngIf="questionBankBluePrintData && questionBankBluePrintData.length"
-  >
-    <ng-container
-      *ngFor="
-        let questionBankBluePrint of questionBankBluePrintData;
-        let i = index
-      "
-    >
-      <div class="flex items-start justify-between mt-6">
-        <p class="font-bold w-[60vw] md:w-[40vw] text-sm md:text-base">
-          {{ i + 1 }}. {{ questionBankBluePrint.type }}
-        </p>
-        <p class="font-bold text-sm md:text-base min-w-[15vw] md:min-w-[7vw] text-end">
-          {{ questionBankBluePrint.number_of_questions }} X
-          {{ questionBankBluePrint.marks_per_question }} =
-          {{
-            questionBankBluePrint.number_of_questions *
-              questionBankBluePrint.marks_per_question
-          }}
-        </p>
-      </div>
+  <div class="flex flex-col lg:flex-row gap-8">
 
-      <div
-        *ngFor="
-          let distribution of questionBankBluePrint.question_distribution;
-          let j = index
-        "
-      >
-        <div class="grid grid-cols-12 mt-4 gap-4 items-center border rounded p-4 md:p-0 md:border-none">
-          <p class="hidden md:block col-span-12 md:col-span-1">{{ j + 1 }}.</p>
-
-          <div class="col-span-12 md:col-span-6">
-            <label class="md:hidden form-control-label">Topic</label>
-            <app-common-dropdown
-              [dropDownValues]="bluePrintChapterDropdownOptions"
-              [config]="bluePrintChapterDropdownConfig"
-              [(ngModel)]="distribution.unit_name"
-              [ngModelOptions]="{ standalone: true }"
-            ></app-common-dropdown>
+    <!-- LEFT SIDE: GROUPED QUESTION LIST -->
+    <div class="flex-1 flex flex-col">
+      <div class="max-h-[55vh] overflow-y-auto pr-2">
+        <div *ngFor="let group of groupedBlueprintData; let i = index" class="mb-8 bg-gray-50 rounded-lg border p-4">
+          <div class="flex justify-between items-center border-b pb-2 mb-4">
+            <h3 class="font-bold text-lg text-content">
+              {{ i + 1 }}. {{ questionTypeMapper[group.type] || group.type }}
+            </h3>
+            <span class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold">
+              {{ group.questions.length }} Questions x {{ group.marks_per_question }} Marks
+            </span>
           </div>
 
-          <div class="col-span-12 md:col-span-5">
-            <label class="md:hidden form-control-label">Objective</label>
-            <app-common-dropdown
-              [dropDownValues]="bluePrintObjectiveDropdownOptions"
-              [config]="bluePrintObjectiveDropdownConfig"
-              [(ngModel)]="distribution.objective"
-              [ngModelOptions]="{ standalone: true }"
-              (valueUpdate)="bluePrintObjectiveChange()"
-            ></app-common-dropdown>
+          <div class="space-y-3">
+            <div *ngFor="let q of group.questions; let j = index" class="bg-white p-3 rounded border flex gap-3">
+              <span class="text-gray-400 font-bold text-sm">{{ j + 1 }}.</span>
+              <div class="flex-1">
+                <p class="text-sm text-content mb-2" [innerHTML]="q.text"></p>
+                <div *ngIf="q.options && q.options.length > 0" class="ml-4 mb-2">
+                  <div *ngFor="let option of q.options" class="text-xs text-gray-600">
+                    <span *ngIf="option.label"><b>{{ option.label }}.</b> {{ option.text }}</span>
+                    <span *ngIf="!option.label && option.text">{{ option.text }}</span>
+                    <span *ngIf="!option.label && !option.text">{{ option }}</span>
+                  </div>
+                </div>
+                <!-- Removed Topic, Obj, Source per user request -->
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </ng-container>
+      <!-- Source Footer -->
+      <div class="mt-2 pt-2 border-t text-xs font-bold text-gray-500 text-right">
+        Sources included:
+        <span *ngFor="let s of uniqueSources; let last = last" class="text-primary uppercase ml-1">
+          {{ s === 'AI Questions' ? 'AI Gen' : (s === 'Pre-generated Questions' ? 'Pre-gen' : s) }}{{ !last ? ',' : '' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE: ANALYTICS CHART -->
+    <div class="lg:w-80 flex flex-col items-center">
+      <div class="sticky top-0 w-full bg-white border rounded-xl p-6 shadow-sm">
+
+        <!-- UPDATED DYNAMIC TITLE -->
+        <h3 class="text-center font-bold text-content mb-4 uppercase tracking-widest text-xs">
+          {{ chartTitle }}
+        </h3>
+
+        <div class="h-64">
+          <canvas *ngIf="objectivesChartData" baseChart [data]="objectivesChartData" [options]="objectivesChartOptions"
+            [legend]="true" [type]="'doughnut'">
+          </canvas>
+        </div>
+
+        <div class="mt-6 space-y-2 border-t pt-4">
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Selected Questions:</span>
+            <span class="font-bold">{{ finalSelectedQuestions.length }}</span>
+          </div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-500">Current Marks:</span>
+            <span class="font-bold" [ngClass]="selectedQuestionsMarks === totalMarks ? 'text-primary' : 'text-error'">
+              {{ selectedQuestionsMarks }} / {{ totalMarks }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>

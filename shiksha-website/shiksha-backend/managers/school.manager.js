@@ -9,6 +9,7 @@ const schoolAggregation = require("../aggregation/school.aggregation");
 const { Worker } = require("worker_threads");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
 
 class SchoolManager extends BaseManager {
   constructor() {
@@ -20,8 +21,8 @@ class SchoolManager extends BaseManager {
 
   async create(req, session) {
     try {
-      await session.startTransaction();
-      let classes = req.body?.classes;
+      session.startTransaction();
+      let classes = req.body?.classes || [];
       let school = await this.schoolDao.getOne({ schoolId: req.body.schoolId });
 
       if (school) {
@@ -36,33 +37,42 @@ class SchoolManager extends BaseManager {
         return formatApiReponse(false, "Failed to save school info", null);
       }
 
+      // Handle classes - allow empty array (school can be created without classes initially)
       let classCreates = [];
 
-      for (let _class of classes) {
-        let classPayload = {
-          ..._class,
-          schoolId: school._id,
-        };
+      if (classes && classes.length > 0) {
+        for (let _class of classes) {
+          if (_class && _class.board && _class.medium) {
+            let classPayload = {
+              ..._class,
+              schoolId: school._id,
+            };
 
-        classCreates.push(this.classDao.create(classPayload));
+            classCreates.push(this.classDao.create(classPayload));
+          }
+        }
       }
 
-      classes = await Promise.all(classCreates);
+      // If there are classes to create, wait for them; otherwise proceed
+      if (classCreates.length > 0) {
+        classes = await Promise.all(classCreates);
 
-      if (classes) {
-        await session.commitTransaction();
-        return formatApiReponse(true, "saved school and class info", {
-          ...school.toObject(),
-          classes: classes,
-        });
+        // Check if any class creation failed
+        const failedClasses = classes.filter(c => !c);
+        if (failedClasses.length > 0) {
+          await session.abortTransaction();
+          return formatApiReponse(false, "Failed to create some classes", null);
+        }
       }
 
-      await session.abortTransaction();
-
-      return formatApiReponse(false, "", null);
+      await session.commitTransaction();
+      return formatApiReponse(true, classes.length > 0 ? "saved school and class info" : "saved school info", {
+        ...school.toObject(),
+        classes: classes.length > 0 ? classes : [],
+      });
     } catch (err) {
       await session.abortTransaction();
-      return formatApiReponse(false, err?.message, err);
+      return formatApiReponse(false, err?.message || "Failed to create school", err);
     }
   }
 
@@ -261,7 +271,7 @@ class SchoolManager extends BaseManager {
         path.resolve(__dirname, "../worker/bulkuploadworker.js")
       );
 
-      worker.postMessage({ fileBuffer, userId ,userName });
+      worker.postMessage({ fileBuffer, userId, userName });
 
       worker.on("message", (result) => {
         console.log("Worker result:", result);
@@ -292,22 +302,22 @@ class SchoolManager extends BaseManager {
     }
   }
 
-  async updateFacility(id,body) {
+  async updateFacility(id, body) {
     try {
       let data = await this.schoolDao.getById(id);
       let schoolfacilities = data?.facilities;
-      const updatedFacilities = schoolfacilities.filter((ele)=> ele.otherType !== body.otherType);
+      const updatedFacilities = schoolfacilities.filter((ele) => ele.otherType !== body.otherType);
 
-      const school = await this.schoolDao.update(id,{facilities:updatedFacilities})
+      const school = await this.schoolDao.update(id, { facilities: updatedFacilities })
 
       const users = await this.userDao.getUsersBySchoolId(id);
 
-      const hasFacilityUsers = users.filter((ele)=> ele.facilities.some((facility)=> facility.type === body.otherType));
+      const hasFacilityUsers = users.filter((ele) => ele.facilities.some((facility) => facility.type === body.otherType));
 
-      for(let i=0; i<hasFacilityUsers.length; i++){
+      for (let i = 0; i < hasFacilityUsers.length; i++) {
         let user = hasFacilityUsers[i]
-        const updatedUserFacility = user.facilities.filter((ele)=> ele.type !== body.otherType);
-        await this.userDao.update(user._id,{facilities:updatedUserFacility})
+        const updatedUserFacility = user.facilities.filter((ele) => ele.type !== body.otherType);
+        await this.userDao.update(user._id, { facilities: updatedUserFacility })
       }
 
       return formatApiReponse(true, "Resource Deleted!", school);
@@ -327,7 +337,7 @@ class SchoolManager extends BaseManager {
       }
 
       const users = await this.userDao.getUsersBySchoolId(schoolId);
-      const userDeactivations = users.map((user) =>
+      const userDeactivations = (users || []).map((user) =>
         this.userDao.update(user._id, { isDeleted: true })
       );
       await Promise.all(userDeactivations);
@@ -345,74 +355,74 @@ class SchoolManager extends BaseManager {
     }
   }
 
-  async exportSchool(req){
+  async exportSchool(req) {
     try {
       const {
-				page = 1,
-				limit,
-				filter = {},
-				sortBy = "createdAt",
-				sortOrder = "desc",
-				search,
-				includeDeleted,
-			} = req.query;
-			const sortOrderObject =
-				sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
+        page = 1,
+        limit,
+        filter = {},
+        sortBy = "createdAt",
+        sortOrder = "desc",
+        search,
+        includeDeleted,
+      } = req.query;
+      const sortOrderObject =
+        sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-			const searchFilter = {};
+      const searchFilter = {};
 
-			if (search) {
-				const searchFields = ["name", "phone"];
+      if (search) {
+        const searchFields = ["name", "phone"];
 
-				const regexExpressions = searchFields.map((field) => ({
-					[field]: { $regex: new RegExp(search, "i") },
-				}));
-				
-				if (!isNaN(parseInt(search))) {
-					regexExpressions.push({ schoolId: parseInt(search) });
-				}
+        const regexExpressions = (searchFields || []).map((field) => ({
+          [field]: { $regex: new RegExp(search, "i") },
+        }));
 
-				searchFilter.$or = regexExpressions;
-			}
+        if (!isNaN(parseInt(search))) {
+          regexExpressions.push({ schoolId: parseInt(search) });
+        }
 
-			const transformedFilter = { ...filter };
+        searchFilter.$or = regexExpressions;
+      }
 
-			if (transformedFilter._id) {
-				try {
-					transformedFilter._id = new ObjectId(transformedFilter._id);
-				} catch (err) {
-					console.error("Invalid _id format:", transformedFilter._id);
-					return res.status(400).json({ error: "Invalid _id format" });
-				}
-			}
-			const mergedFilter = { ...transformedFilter, ...searchFilter };
+      const transformedFilter = { ...filter };
 
-			let status = {};
+      if (transformedFilter._id) {
+        try {
+          transformedFilter._id = new ObjectId(transformedFilter._id);
+        } catch (err) {
+          console.error("Invalid _id format:", transformedFilter._id);
+          return res.status(400).json({ error: "Invalid _id format" });
+        }
+      }
+      const mergedFilter = { ...transformedFilter, ...searchFilter };
 
-			if (includeDeleted === '2') {
-				status = { isDeleted: true }; 
-			} else if (includeDeleted === '0') {
-				status = { isDeleted: false }; 
-			}
-      
+      let status = {};
+
+      if (includeDeleted === '2') {
+        status = { isDeleted: true };
+      } else if (includeDeleted === '0') {
+        status = { isDeleted: false };
+      }
+
 
       const schools = await this.schoolDao.getAll(
         parseInt(page),
-				parseInt(limit),
-				mergedFilter,
-				sortOrderObject,
-				status,
-				req?.user?._id
+        parseInt(limit),
+        mergedFilter,
+        sortOrderObject,
+        status,
+        req?.user?._id
       );
 
       const userId = req.user._id;
-			const userName = req.user.name;
+      const userName = req.user.name;
 
       const worker = new Worker(
-        path.resolve(__dirname,'../worker/exportschoolworker.js')
+        path.resolve(__dirname, '../worker/exportschoolworker.js')
       );
 
-      worker.postMessage({schools:schools.results,userId:userId.toString(),userName});
+      worker.postMessage({ schools: schools.results, userId: userId.toString(), userName });
 
       worker.on("message", (result) => {
         console.log("Worker result:", result);
@@ -428,10 +438,38 @@ class SchoolManager extends BaseManager {
         }
       });
 
-      return formatApiReponse(true, "School export initiated, please verify for audit logs!","")
-      
+      return formatApiReponse(true, "School export initiated, please verify for audit logs!", "")
+
     }
-    catch(err){
+    catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getAll(
+    page = 1,
+    limit,
+    filters = {},
+    sort = {},
+    status,
+    userId
+  ) {
+    try {
+      // Only for School: advanced filter normalization for zone/district
+      let processedFilters = { ...filters, ...status };
+      processedFilters = normalizeMultiValueFilter(processedFilters, ["zone", "district"]);
+      processedFilters = buildMongoInQuery(processedFilters, ["zone", "district"]);
+      // Call DAO getAll with processed filters
+      let data = await this.dao.getAll(
+        page,
+        limit,
+        processedFilters,
+        sort,
+        {}, // status already merged
+        userId
+      );
+      return formatApiReponse(true, "", data);
+    } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
   }

@@ -1,3 +1,7 @@
+const { webcrypto } = require("crypto");
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto;
+}
 const { workerData, parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../helper/worker.helper");
@@ -58,7 +62,7 @@ async function processRow(
   userData.push(userDataRow);
 }
 
-async function handleValidationErrors(validationErrors, userId ,userName) {
+async function handleValidationErrors(validationErrors, userId, userName) {
   if (validationErrors.length === 0) {
     return { errorFileBuffer: null, errorUrl: "" };
   }
@@ -85,13 +89,13 @@ async function handleValidationErrors(validationErrors, userId ,userName) {
     status: "failure",
     logUrl: errorUrl,
     userId,
-    name:userName
+    name: userName
   });
 
   return { errorFileBuffer, errorUrl };
 }
 
-async function processValidData(userData, client ,userId ,userName) {
+async function processValidData(userData, client, userId, userName) {
   try {
     const totalRecords = userData.length;
     let successCount = 0;
@@ -111,13 +115,13 @@ async function processValidData(userData, client ,userId ,userName) {
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Upload Summary');
-      
+
       worksheet.columns = [
         { header: 'Total Records', key: 'totalRecords', width: 20 },
         { header: 'Success Count', key: 'successCount', width: 20 },
         { header: 'Failure Count', key: 'failureCount', width: 20 },
       ];
-      
+
       worksheet.addRow({
         totalRecords: totalRecords,
         successCount: successCount,
@@ -134,7 +138,7 @@ async function processValidData(userData, client ,userId ,userName) {
         status: "success",
         logUrl: uploadUrl,
         userId,
-        name:userName
+        name: userName
       });
 
       parentPort.postMessage({
@@ -185,13 +189,13 @@ dbService.getConnection().then(async (client) => {
     });
 
     await Promise.all(rowProcessingPromises);
-      await handleValidationErrors(
+    await handleValidationErrors(
       validationErrors,
       workerData.userId,
       workerData.userName
     );
 
-    await processValidData(userData, client, workerData.userId , workerData.userName);
+    await processValidData(userData, client, workerData.userId, workerData.userName);
   } catch (error) {
     console.error("Error processing data in worker:", error);
     parentPort.postMessage({

@@ -3,19 +3,23 @@ from pathlib import Path
 import logging
 import traceback
 
-from azure.ai.projects.aio import AIProjectClient
-from azure.identity import DefaultAzureCredential
-from azure.ai.agents.models import BingGroundingTool, MessageRole
+from openai import AsyncAzureOpenAI
+import json
+import asyncio
+from openai.types.responses import ResponseOutputMessage, ResponseOutputText
+from openai.types.responses.response import Response
+from openai.types.responses.response_output_text import AnnotationURLCitation
 
 from app.models.chat import ConversationMessage
 from app.config import settings
 from app.utils.prompt_template import PromptTemplate
+from pydantic import validate_call
 
 logger = logging.getLogger(__name__)
 
 
 class GeneralChatService:
-    """Service for handling chat interactions using Azure AI Project client."""
+    """Service for handling chat interactions using Azure OpenAI client."""
 
     def __init__(self):
         # Initialize prompt template with the chat prompts file
@@ -24,162 +28,126 @@ class GeneralChatService:
         )
         self.prompt_template = PromptTemplate(str(prompts_file_path))
 
-        # Initialize Azure AI Project client
-        if not settings.azure_project_endpoint:
-            raise ValueError("AZURE_PROJECT_ENDPOINT environment variable is required")
+        # Check configuration
+        if not settings.azure_openai_api_key:
+            raise ValueError("AZURE_OPENAI_API_KEY environment variable is required")
+        if not settings.azure_openai_endpoint:
+            raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
+        if not settings.azure_openai_api_version:
+            raise ValueError("AZURE_OPENAI_API_VERSION environment variable is required")
+        if not settings.azure_openai_deployment_name:
+            raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required")
+        if not settings.azure_chat_deployment_name:
+            raise ValueError("AZURE_CHAT_DEPLOYMENT_NAME environment variable is required")
 
-        self.project_client = AIProjectClient(
-            endpoint=settings.azure_project_endpoint,
-            credential=DefaultAzureCredential(),
-        )
-
-        # Initialize Bing Grounding tool if connection ID is provided
-        self.tools = []
-        if settings.azure_bing_grounding_connection_id:
-            bing = BingGroundingTool(
-                connection_id=settings.azure_bing_grounding_connection_id
+        self.client = AsyncAzureOpenAI(
+                api_key=settings.azure_openai_api_key,
+                api_version=settings.azure_openai_api_version,
+                azure_endpoint=settings.azure_openai_endpoint,
             )
-            self.tools = bing.definitions
 
-        # Store agent ID for reuse (will be created on first call)
-        self.agent_id = None
 
+    @validate_call
     async def __call__(
         self,
         messages: List[ConversationMessage],
-    ) -> str:
-        """
-        Core chat logic using Azure AI Project client with agents.
-
-        Args:
-            messages: List of conversation messages
-
-        Returns:
-            AI-generated response
-        """
+    ):
         try:
-            # Get the system prompt from template
             system_prompt = self.prompt_template.get_prompt("general_chat")
-            if system_prompt is None:
+            if not system_prompt:
                 raise ValueError("General chat prompt not found in chat_prompts.yaml")
 
-            # Create agent if not exists
-            if self.agent_id is None:
-                await self._create_agent(system_prompt)
+            yield json.dumps({"type": "status", "message": "Thinking..."}) + "\n"
 
-            # Create a thread for communication
-            thread = await self.project_client.agents.threads.create()
-            logger.info(f"Created thread, ID: {thread.id}")
+            # Format messages
+            formatted_messages = [{"role": "system", "content": system_prompt}]
+            for m in messages:
+                role = m.role.value
+                content = m.message
+                formatted_messages.append({"role": role, "content": content})
 
-            try:
-                # Convert conversation history to a single message
-                message_content = self._format_conversation_messages(messages)
+            # Responses API with web search
+            stream = await self.client.responses.create(
+                model=settings.azure_chat_deployment_name,
+                input=formatted_messages,
+                tools=[{"type": "web_search"}],
+                stream=True,
+            )
 
-                # Add message to the thread
-                message = await self.project_client.agents.messages.create(
-                    thread_id=thread.id,
-                    role=MessageRole.USER,
-                    content=message_content,
-                )
-                logger.info(f"Created message, ID: {message.id}")
+            final_response_obj = None
 
-                # Run the agent
-                run = await self.project_client.agents.runs.create_and_process(
-                    thread_id=thread.id,
-                    agent_id=self.agent_id,
-                )
-                logger.info(f"Run finished with status: {run.status}")
+            async for event in stream:
 
-                if run.status == "failed":
-                    logger.error(f"Run failed: {run.last_error}")
-                    return (
-                        "I'm sorry, but I encountered an error processing your request."
-                    )
+                # Streaming text deltas
+                if event.type == "response.output_text.delta":
+                    yield json.dumps({
+                        "type": "content",
+                        "delta": event.delta
+                    }) + "\n"
 
-                # Get the response messages
-                messages_paged = self.project_client.agents.messages.list(
-                    thread_id=thread.id
-                )
-                messages_list = [m async for m in messages_paged]
+                # Final completed response (contains citations)
+                elif event.type == "response.completed":
+                    final_response_obj = event.response
 
-                if messages_list:
-                    # Get the latest message from the assistant
-                    msg = messages_list[0]
-                    if msg.role == MessageRole.AGENT:
-                        if getattr(msg, "text_messages", None):
-                            last_text = msg.text_messages[-1]
-                            return last_text.text.value.strip()
-
-                # Fallback if no assistant message found
-                return "I'm sorry, but I couldn't find an appropriate response."
-
-            finally:
-                # Clean up: delete the thread
-                try:
-                    await self.project_client.agents.threads.delete(thread.id)
-                    logger.info("Deleted thread")
-                except Exception as e:
-                    logger.warning(f"Failed to delete thread: {e}")
+            # Extract references AFTER stream ends
+            if final_response_obj:
+                references = self._extract_url_citations(final_response_obj)
+                yield json.dumps({
+                    "type": "references",
+                    "data": references
+                }) + "\n"
 
         except Exception as e:
-            logger.error(f"Error in Azure AI Project chat: {e}")
-            traceback.print_exc()
-            raise
+            logger.error(f"Error in Azure OpenAI chat: {e}", exc_info=True)
+            yield json.dumps({
+                "type": "error",
+                "message": str(e)
+            }) + "\n"
 
-    async def _create_agent(self, assistant_system_prompt: str):
-        """Create an Azure AI agent with the specified system prompt."""
-        try:
-            if not settings.azure_openai_deployment_name:
-                raise ValueError(
-                    "AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required"
-                )
+    def _extract_url_citations(self, response: Response) -> list:
+        """
+        Extract URL citations from Azure OpenAI Responses API output annotations.
 
-            agent = await self.project_client.agents.create_agent(
-                model=settings.azure_openai_deployment_name,
-                name="shiksha-copilot-general-chat-agent",
-                instructions=assistant_system_prompt,
-                tools=self.tools,
-            )
-            self.agent_id = agent.id
-            logger.info(f"Created agent, ID: {agent.id}")
+        The Responses API returns output items that may contain 'url_citation'
+        annotations within message content blocks.
 
-        except Exception as e:
-            logger.error(f"Error creating agent: {e}")
-            traceback.print_exc()
-            raise
+        Returns:
+            List of dicts with 'title' and 'url' keys
+        """
+        references = []
+        seen_urls = set()
 
-    def _format_conversation_messages(self, messages: List[ConversationMessage]) -> str:
-        """Format conversation messages into a single string for the agent."""
-        if len(messages) > 1:
-            # Include all previous messages as context
-            chat_context = "\n".join(
-                [
-                    f"Role: {msg.role.value}\nMessage: {msg.message}"
-                    for msg in messages[:-1]
-                ]
-            )
-            current_message = messages[-1].message
-            return (
-                f"Chat History:\n{chat_context}\n\nCurrent Message: {current_message}"
-            )
-        else:
-            # Single message, no context needed
-            return messages[0].message
+        if not response.output:
+            return references
+
+        for item in response.output:
+            if not isinstance(item, ResponseOutputMessage):
+                continue
+            
+            for content_block in item.content:
+                if not isinstance(content_block, ResponseOutputText):
+                    continue
+                
+                # Check for annotations
+                if not content_block.annotations:
+                    continue
+
+                for annotation in content_block.annotations:
+                    if isinstance(annotation, AnnotationURLCitation):
+                        url = annotation.url
+                        title = annotation.title or url
+                        if url and url not in seen_urls:
+                            seen_urls.add(url)
+                            references.append({"title": title, "url": url})
+
+        return references
 
     async def cleanup(self):
         """
-        Cleanup method to properly close the project client connection.
-        Should be called when the service is being shut down.
+        Cleanup method for the service.
         """
         try:
-            # Delete the agent if it exists
-            if self.agent_id:
-                await self.project_client.agents.delete_agent(self.agent_id)
-                logger.info(f"Deleted agent: {self.agent_id}")
-
-            # Close the project client
-            await self.project_client.close()
-            logger.info("Project client connection closed successfully")
+            await self.client.close()
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
 

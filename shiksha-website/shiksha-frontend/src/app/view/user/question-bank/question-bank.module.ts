@@ -30,7 +30,7 @@ import { QuestionBankBluePrintComponent } from './question-bank-generation/quest
     FormDropdownComponent,
     CommonDropdownComponent,
     DeleteDetailComponent,
-    NgChartsModule
+    NgChartsModule,
   ],
 })
 export class QuestionBankModule {}

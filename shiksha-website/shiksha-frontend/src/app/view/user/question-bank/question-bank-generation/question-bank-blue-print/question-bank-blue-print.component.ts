@@ -1,71 +1,50 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
+import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-question-bank-blue-print',
   templateUrl: './question-bank-blue-print.component.html',
   styleUrls: ['./question-bank-blue-print.component.scss'],
 })
-export class QuestionBankBluePrintComponent implements OnInit {
-  @Input() questionBankBluePrintData!: any[];
+export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
+  @Input() currentStep: number = 3;
+  @Input() totalMarks: number = 0;
+  @Input() selectedQuestionsMarks: number = 0;
+  @Input() examName: string = '';
 
-  @Input() objectiveChartMapper: any = {};
-
-  @Input() currentStep: number = 1;
-
+  // Data from Parent
+  @Input() finalSelectedQuestions: any[] = [];
   @Input() bluePrintChapterDropdownOptions: any[] = [];
-
   @Input() bluePrintObjectiveDropdownOptions: any[] = [];
+  @Input() bluePrintData: any[] = [];
 
-  @Output() backClick = new EventEmitter<boolean>();
-
-  objectivesChartData!: ChartData<'doughnut'>;
+  @Output() backClick = new EventEmitter<void>();
+  @Output() generateClick = new EventEmitter<void>();
 
   totalSteps: number = 3;
+  questionTypeMapper = QUESTION_TYPE_MAPPER;
 
-  bluePrintChapterDropdownConfig: DropDownConfig = {
-    isBackground: false,
-    placeHolderTxt: 'Topic',
-    height: 'auto',
-    bindLabel: 'name',
-    bindValue: 'name',
-    required: true,
-    clearableOff: true,
-  };
+  // Chart Properties
+  objectivesChartData!: ChartData<'doughnut'>;
+  // NEW: Dynamic Title
+  chartTitle: string = 'Objective Analysis';
 
-  bluePrintObjectiveDropdownConfig: DropDownConfig = {
-    isBackground: false,
-    placeHolderTxt: 'Objective',
-    height: 'auto',
-    bindLabel: 'objective',
-    bindValue: 'objective',
-    required: true,
-    clearableOff: true,
-  };
+  groupedBlueprintData: any[] = [];
 
   objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: true,
-        position: 'bottom',
-        labels: {
-          usePointStyle: true,
-        },
-      },
+      legend: { display: true, position: 'bottom', labels: { usePointStyle: true } },
       tooltip: {
         callbacks: {
-          label: function (tooltipItem) {
+          label: (tooltipItem) => {
             const value = tooltipItem.raw as number;
-
-            let total = tooltipItem.dataset.data.reduce(
-              (sum, val) => sum + val,
-              0
-            );
-            let percentage = Math.round((value / total) * 100);
-
-            return tooltipItem.label + ': ' + percentage + '%';
+            const dataset = tooltipItem.chart.data.datasets[0];
+            const total = dataset.data.reduce((sum: number, val: any) => sum + val, 0);
+            const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+            return tooltipItem.label + ': ' + percentage + '% (' + value + ')';
           },
         },
       },
@@ -73,42 +52,83 @@ export class QuestionBankBluePrintComponent implements OnInit {
   };
 
   ngOnInit(): void {
-    this.updateChartData();
+    this.processDataForView();
   }
 
-  bluePrintObjectiveChange() {
-    this.updateChartData();
-  }
-
-  updateChartData() {
-    const chartMapper = this.questionBankBluePrintData.reduce(
-      (acc, item) => {
-        item.question_distribution.forEach((innerObj: any) => {
-          if (acc.hasOwnProperty(innerObj.objective)) {
-            acc[innerObj.objective]++;
-          }
-        });
-        return acc;
-      },
-      { ...this.objectiveChartMapper }
-    );
-
-    let labelValues: any[] = [];
-    let data: any[] = [];
-    for (let key in chartMapper) {
-      if (chartMapper.hasOwnProperty(key)) {
-        labelValues.push(key);
-        data.push(chartMapper[key]);
-      }
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['finalSelectedQuestions']) {
+      this.processDataForView();
     }
+  }
+
+  /**
+   * Transforms flat selected questions into a grouped "Blueprint" view
+   */
+  processDataForView() {
+    if (!this.finalSelectedQuestions || this.finalSelectedQuestions.length === 0) return;
+
+    const groups: { [key: string]: any } = {};
+
+    this.finalSelectedQuestions.forEach(q => {
+      // Group by heading so "Fill in the blanks" stays together
+      const sectionName = q.heading || q.type || 'General Questions';
+
+      if (!groups[sectionName]) {
+        groups[sectionName] = {
+          type: sectionName,
+          marks_per_question: q.marks || 0,
+          questions: []
+        };
+      }
+      groups[sectionName].questions.push(q);
+    });
+
+    this.groupedBlueprintData = Object.values(groups);
+    this.updateChartData();
+  }
+
+  // --- UPDATED FUNCTION ---
+  updateChartData() {
+    const chartMapper: { [key: string]: number } = {};
+    let chartColors: string[] = [];
+
+    this.finalSelectedQuestions.forEach(q => {
+      let label = 'Unknown';
+      if (q.source === 'AI Questions') {
+        label = q.objective || 'Knowledge';
+      } else if (q.source === 'Pre-generated Questions') {
+        label = 'Pre-generated';
+      } else {
+        label = q.objective || 'Knowledge';
+      }
+      chartMapper[label] = (chartMapper[label] || 0) + 1;
+    });
+
+    this.chartTitle = 'Paper Composition Analysis';
+
+    const labels = Object.keys(chartMapper);
+    const palette = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
+    labels.forEach((_, i) => chartColors.push(palette[i % palette.length]));
 
     this.objectivesChartData = {
-      labels: labelValues,
-      datasets: [{ data }],
+      labels: labels,
+      datasets: [{
+        data: Object.values(chartMapper),
+        backgroundColor: chartColors,
+        hoverOffset: 4
+      }],
     };
   }
 
+  get uniqueSources(): string[] {
+    const sources = new Set<string>();
+    this.finalSelectedQuestions.forEach(q => {
+      sources.add(q.source || 'Unknown');
+    });
+    return Array.from(sources);
+  }
+
   previousStep() {
-    this.backClick.emit(true);
+    this.backClick.emit();
   }
 }

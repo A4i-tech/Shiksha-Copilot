@@ -190,7 +190,14 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
         'state',
         selectedStateValue
       );
-      this.zoneDropdownOptions = this.selectedStateObj.zones;
+      // Only show manager's zones if role is manager
+      const loggedInUser = this.utilityService.loggedInUserData;
+      const role = this.addForm.get('role')?.value || (loggedInUser && loggedInUser.role);
+      if (role && (Array.isArray(role) ? role.includes('manager') : role === 'manager') && loggedInUser && loggedInUser.zones) {
+        this.zoneDropdownOptions = this.utilityService.getZonesForManager(this.regionsData, loggedInUser);
+      } else {
+        this.zoneDropdownOptions = this.selectedStateObj.zones;
+      }
     } else {
       this.f.zone?.reset();
     }
@@ -207,7 +214,14 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
         'name',
         selectedZone
       );
-      this.districtDropdownOptions = this.selectedZoneObj.districts;
+      // districts is now an array
+      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
+        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts) 
+          ? this.selectedZoneObj.districts 
+          : [this.selectedZoneObj.districts]; // Handle legacy object structure
+      } else {
+        this.districtDropdownOptions = [];
+      }
     } else {
       this.f.district?.reset();
     }
@@ -219,12 +233,22 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
    */
   setBlockDropdownValues(selectedDistrict: any) {
     if (selectedDistrict) {
-      this.selectedDistrictObj = this.utilityService.filterDropdownValues(
-        this.selectedZoneObj.districts,
-        'name',
-        selectedDistrict
-      );
-      this.blockDropdownOptions = this.selectedDistrictObj.blocks;
+      // districts is now an array, find the matching district
+      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
+        const districts = Array.isArray(this.selectedZoneObj.districts) 
+          ? this.selectedZoneObj.districts 
+          : [this.selectedZoneObj.districts]; // Handle legacy object structure
+        
+        this.selectedDistrictObj = this.utilityService.filterDropdownValues(
+          districts,
+          'name',
+          selectedDistrict
+        );
+        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+      } else {
+        this.selectedDistrictObj = null;
+        this.blockDropdownOptions = [];
+      }
     } else {
       this.f.block?.reset();
     }
@@ -332,7 +356,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
             this.utilityService.handleResponse(res);
           },
           error: (err) => {
-            console.error(err);
             this.utilityService.handleError(err);
           }
         });

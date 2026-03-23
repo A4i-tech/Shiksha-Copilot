@@ -8,10 +8,12 @@ const {
 const { Worker } = require("worker_threads");
 const formatApiReponse = require("../helper/response");
 const path = require("path");
+const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../helper/worker.helper");
 const { MESSAGES } = require("../config/constants");
 const ClassDao = require("../dao/school.class.dao");
+const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
 
 class UserManager extends BaseManager {
   constructor() {
@@ -50,13 +52,16 @@ class UserManager extends BaseManager {
 
       let plainUser = user.toObject();
 
+      // Refresh profile image SAS URL if expired
+      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.userDao.update(id, updates));
+
       let groupByBoards = await this.classDao.getGroupClassesByBoard(
         user.school
       );
 
       let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
 
-      plainUser.classes = groupedClasseswithSubjects.map((classItem) => {
+      plainUser.classes = (groupedClasseswithSubjects || []).map((classItem) => {
         const board = groupByBoards.find(
           (item) => item._id === classItem.board
         );
@@ -424,7 +429,7 @@ class UserManager extends BaseManager {
       if (search) {
         const searchFields = ["name", "phone"];
 
-        const regexExpressions = searchFields.map((field) => ({
+        const regexExpressions = (searchFields || []).map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
 
@@ -500,17 +505,45 @@ class UserManager extends BaseManager {
     }
   }
 
+  async getAll(
+    page = 1,
+    limit,
+    filters = {},
+    sort = {},
+    status,
+    userId
+  ) {
+    try {
+      // Only for User: advanced filter normalization for zone/district
+      let processedFilters = { ...filters, ...status };
+      processedFilters = normalizeMultiValueFilter(processedFilters, ["zone", "district"]);
+      processedFilters = buildMongoInQuery(processedFilters, ["zone", "district"]);
+      // Call DAO getAll with processed filters
+      let data = await this.dao.getAll(
+        page,
+        limit,
+        processedFilters,
+        sort,
+        {}, // status already merged
+        userId
+      );
+      return formatApiReponse(true, "", data);
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
 
- async activityLog(req){
-  try{
-    const { _id } = req.user;
-    const userActivity = await this.userDao.activityLog(_id,req.body);
+
+  async activityLog(req) {
+    try {
+      const { _id } = req.user;
+      const userActivity = await this.userDao.activityLog(_id, req.body);
       return formatApiReponse(true, "Logs saved successfully!", userActivity);
+    }
+    catch (err) {
+      return formatApiReponse(false, err.message, e);
+    }
   }
-  catch (err) {
-    return formatApiReponse(false, err.message, e);
-  }
- }
 }
 
 module.exports = UserManager;

@@ -1,4 +1,4 @@
-const assetURl = '../../../assets/icons';
+const assetURl = 'assets/icons';
 export const menuItem = [
   getMenuItems(
     'Dashboard',
@@ -105,14 +105,21 @@ export const menuItem = [
     ['admin','manager']
   ),
   getMenuItems(
+    'Teacher Training',
+    '/admin/teacher-training',
+    'teacher-training-light.svg',
+    'teacher-training.svg',
+    'teacher-training',
+    ['admin', 'manager']
+  ),
+  getMenuItems(
     'Help',
     '/user/help',
     'help-light.svg',
     'help.svg',
     'help',
     ['standard', 'power']
-  )
-  ,
+  ),
   getMenuItems(
     'FAQ',
     '/faq',

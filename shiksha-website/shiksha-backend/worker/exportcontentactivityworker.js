@@ -15,7 +15,7 @@ dbService.getConnection().then(async (client) => {
       contentActivityWorkSheet.columns = [
         { header: "Teacher Name", key: "userName", width: 30 },
         { header: "Content generated", key: "genContent", width: 50 },
-        { header:"Generated Date", key:"createdAt",width:30},
+        { header: "Generated Date", key: "createdAt", width: 30 },
         { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
       ];
 
@@ -23,7 +23,7 @@ dbService.getConnection().then(async (client) => {
         contentActivityWorkSheet.addRow({
           userName: ele.userName,
           genContent: ele.genContent,
-          createdAt:ele.createdAt,
+          createdAt: ele.createdAt,
           teacherLessonPlanStatus: ele.teacherLessonPlanStatus,
         });
       });
@@ -47,7 +47,7 @@ dbService.getConnection().then(async (client) => {
       try {
         const exportContentActivityFileBuffer = await contentActivityWorkBook.xlsx.writeBuffer();
         const contentActivityFileUrl = await uploadToStorage(
-            exportContentActivityFileBuffer,
+          exportContentActivityFileBuffer,
           uniqueFilename,
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         );
@@ -77,7 +77,7 @@ dbService.getConnection().then(async (client) => {
         parentPort.postMessage({
           success: false,
           message: "Failed to export content activity.",
-          error: uploadError.message,
+          error: e.message,
         });
       }
     } catch (e) {

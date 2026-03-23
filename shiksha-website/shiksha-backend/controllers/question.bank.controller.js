@@ -156,6 +156,92 @@ class QuestionBankController extends BaseController {
       return res.status(400).json(err);
     }
   }
+
+  // --- Unified Meta & Search Controllers ---
+
+  async getClasses(req, res) {
+    try {
+      const result = await this.questionBankManager.getClasses();
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
+  async getMedia(req, res) {
+    try {
+      const { class: className } = req.query;
+      const result = await this.questionBankManager.getMedia(className);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
+  async getChapters(req, res) {
+    try {
+      const { class: className, medium, subject } = req.query;
+      const result = await this.questionBankManager.getChapters(
+        className,
+        medium,
+        subject
+      );
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
+  async getDifficulties(req, res) {
+    try {
+      const result = await this.questionBankManager.getDifficulties();
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
+  async getAnswerTypes(req, res) {
+    try {
+      const result = await this.questionBankManager.getAnswerTypes();
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
+  async getQuestions(req, res) {
+    try {
+      const filters = req.query;
+      const result = await this.questionBankManager.getQuestions(filters);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
+  async uploadBulkQuestions(req, res) {
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ success: false, message: "No file uploaded." });
+      }
+
+      const fileBuffer = req.file.buffer.toString("utf-8");
+      const jsonData = JSON.parse(fileBuffer);
+      const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
+
+      const result = await this.questionBankManager.insertChaptersAndQuestions([
+        master,
+      ]);
+
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error("Error in uploadBulkQuestions:", err);
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  }
 }
 
 module.exports = QuestionBankController;

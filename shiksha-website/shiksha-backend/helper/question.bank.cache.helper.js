@@ -61,6 +61,8 @@ function filterTemplate(qbConfigList) {
   const matchTheFollowingTemplate = [];
   const matchTheFollowingIndex = [];
   for (let i = 0; i < qbConfigList.length; i++) {
+    // Handle both type/Type (case-insensitive check if needed, but usually exact)
+    // Handle snake/camel for properties if they define the "Match the following"
     if (qbConfigList[i].type === "Match the following") {
       matchTheFollowingTemplate.push(qbConfigList[i]);
       matchTheFollowingIndex.push(i);
@@ -82,154 +84,184 @@ function filterTemplate(qbConfigList) {
  * @returns question from cache, not found template, not found index, cache summary
  */
 async function getQuestions(templateList, cacheDocs) {
-try{
-  let res = [];
-  let notFoundRes = [];
-  let notFoundIndices = [];
-  let includedQuestions = [];
+  try {
+    let res = [];
+    let notFoundRes = [];
+    let notFoundIndices = [];
+    let includedQuestions = [];
 
-  const simiThreshold = parseFloat(process.env.SIMILARITY_THRESHOLD) || 0.9;
-  const CACHE_USAGE_RATE = parseFloat(process.env.CACHE_USAGE_RATE) || 0.9;
+    const simiThreshold = parseFloat(process.env.SIMILARITY_THRESHOLD) || 0.9;
+    const CACHE_USAGE_RATE = parseFloat(process.env.CACHE_USAGE_RATE) || 0.9;
+    const shouldUseCache = () => Math.random() <= CACHE_USAGE_RATE;
 
-  const shouldUseCache = () => Math.random() <= CACHE_USAGE_RATE;
+    let totalDecisions = 0;
+    let cacheHitCount = 0;
+    let cacheMissCount = 0;
 
-  let totalDecisions = 0;
-  let cacheHitCount = 0;
-  let cacheMissCount = 0;
+    for (const template of templateList) {
+      const {
+        responseModel,
+        notFound,
+        notFoundIndexData,
+        decisions
+      } = await _processTemplateQuestions(
+        template,
+        cacheDocs,
+        shouldUseCache,
+        simiThreshold,
+        includedQuestions
+      );
 
-  for (const template of templateList) {
-    const questionTypeResponse = new QuestionTypeResponse(
-      template.type,
-      template.marks_per_question
-    );
+      res.push(responseModel);
 
-    let notFoundTemplate = { ...template };
-    notFoundTemplate.question_distribution = [];
-    notFoundTemplate.number_of_questions = 0;
-    let notFoundQuestionIndices = [];
-
-    const questionDistribution = template.question_distribution;
-
-    for (let i = 0; i < questionDistribution.length; i++) {
-      totalDecisions++;
-
-      const unitName = questionDistribution[i].unit_name.toLowerCase().trim();
-      const objective = questionDistribution[i].objective.toLowerCase();
-
-      if (!shouldUseCache()) {
-        cacheMissCount++;
-        notFoundTemplate.question_distribution.push(questionDistribution[i]);
-        notFoundQuestionIndices.push(i);
-        continue;
+      if (notFound.number_of_questions > 0) {
+        notFoundRes.push(notFound);
+        notFoundIndices.push(notFoundIndexData);
+      } else {
+        notFoundIndices.push({});
       }
 
-      let questionToInclude = [];
-      let embedingsToInclude = [];
-      let foundQuestion = false;
+      totalDecisions += decisions.total;
+      cacheHitCount += decisions.hits;
+      cacheMissCount += decisions.misses;
+    }
 
-      for (const cacheDoc of cacheDocs) {
-        if (
-          cacheDoc.unitName.toLowerCase() === unitName &&
-          cacheDoc.questionsByObjective[objective] &&
-          objective in cacheDoc.questionsByObjective
-        ) {
-          const questionList = cacheDoc.questionsByObjective[objective];
+    const hitPercent = totalDecisions ? ((cacheHitCount / totalDecisions) * 100).toFixed(2) : 0;
+    const missPercent = totalDecisions ? ((cacheMissCount / totalDecisions) * 100).toFixed(2) : 0;
 
-          for (const questionInCache of questionList) {
-            if (
-              questionInCache.type === template.type &&
-              questionInCache.marks === template.marks_per_question
-            ) {
-              const questionText = preprocess(
-                questionInCache.question.question
-              );
+    console.log(`📊 Cache Summary:`);
+    console.log(`- Total Questions: ${totalDecisions}`);
+    console.log(`- Cache Hits: ${cacheHitCount} (${hitPercent}%)`);
+    console.log(`- Cache Misses/API Calls: ${cacheMissCount} (${missPercent}%)`);
 
-              const questionHash = generateHash(questionText);
+    const cacheSummary = {
+      totalDecisions,
+      cacheHitCount,
+      cacheMissCount
+    }
 
-              const embDocs = await questionBankEmbedding.findById(
-                questionHash
-              );
-              if (!embDocs) continue;
+    return [res, notFoundRes, notFoundIndices, cacheSummary];
+  }
+  catch (err) {
+    throw new Error("Error getting question from cache: " + err.message);
+  }
+}
 
-              const emb = embDocs["embeddings"];
+async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, simiThreshold, includedQuestions) {
+  let total = 0;
+  let hits = 0;
+  let misses = 0;
 
-              let shouldInclude = true;
-              const allEmbeddedQuestions = [
-                ...includedQuestions,
-                ...embedingsToInclude,
-              ];
+  const questionTypeResponse = new QuestionTypeResponse(
+    template.type,
+    template.marks_per_question || template.marksPerQuestion
+  );
 
-              if (allEmbeddedQuestions.length > 0) {
-                const [idx, simiScore] = findMostSimilar(
-                  allEmbeddedQuestions.map((item) => item[1]),
-                  emb
-                );
-                if (simiScore > simiThreshold) {
-                  shouldInclude = false;
-                }
-              }
+  let notFoundTemplate = { ...template };
+  notFoundTemplate.question_distribution = [];
+  notFoundTemplate.number_of_questions = 0;
+  let notFoundQuestionIndices = [];
 
-              if (shouldInclude) {
-                embedingsToInclude.push([questionInCache, emb]);
-                questionToInclude.push(questionInCache.question);
-                foundQuestion = true;
-              }
-            }
+  const questionDistribution = template.question_distribution || template.questionDistribution || [];
+
+  for (let i = 0; i < questionDistribution.length; i++) {
+    total++;
+    const unitName = (questionDistribution[i].unit_name || questionDistribution[i].unitName || "").toLowerCase().trim();
+    const objective = questionDistribution[i].objective.toLowerCase();
+
+    if (!shouldUseCache()) {
+      misses++;
+      notFoundTemplate.question_distribution.push(questionDistribution[i]);
+      notFoundQuestionIndices.push(i);
+      continue;
+    }
+
+    // Collect all valid candidates first (Single pass)
+    const validCandidates = [];
+    for (const cacheDoc of cacheDocs) {
+      if (
+        cacheDoc.unitName.toLowerCase() === unitName &&
+        cacheDoc.questionsByObjective[objective]
+      ) {
+        const questionList = cacheDoc.questionsByObjective[objective];
+        for (const questionInCache of questionList) {
+          if (
+            questionInCache.type === template.type &&
+            questionInCache.marks === (template.marks_per_question || template.marksPerQuestion)
+          ) {
+            validCandidates.push(questionInCache);
           }
         }
       }
+    }
 
-      if (questionToInclude.length > 0) {
-        cacheHitCount++;
-        const randomIndex = getRandomIndex(questionToInclude);
-        questionTypeResponse.questions.push(questionToInclude[randomIndex]);
-        includedQuestions.push(embedingsToInclude[randomIndex]);
+    if (validCandidates.length === 0) {
+      misses++;
+      notFoundTemplate.question_distribution.push(questionDistribution[i]);
+      notFoundQuestionIndices.push(i);
+      continue;
+    }
+
+    let foundQuestion = false;
+
+    // Shuffle candidates to try random ones first instead of checking ALL for similarity
+    // This optimization prevents processing all embeddings if we find a good one early
+    const shuffledCandidates = validCandidates.sort(() => 0.5 - Math.random());
+
+    for (const candidate of shuffledCandidates) {
+      const questionText = preprocess(candidate.question.question);
+      const questionHash = generateHash(questionText);
+
+      // Optimization: In a real scenario, embeddings should be cached or fetched in bulk.
+      // Here we keep one-by-one but exit early.
+      const embDocs = await questionBankEmbedding.findById(questionHash);
+      if (!embDocs) continue;
+
+      const emb = embDocs["embeddings"];
+      let isDuplicate = false;
+
+      if (includedQuestions.length > 0) {
+        const [idx, simiScore] = findMostSimilar(
+          includedQuestions.map((item) => item[1]),
+          emb
+        );
+        if (simiScore > simiThreshold) {
+          isDuplicate = true;
+        }
       }
 
-      if (!foundQuestion) {
-        cacheMissCount++;
-        notFoundTemplate.question_distribution.push(questionDistribution[i]);
-        notFoundQuestionIndices.push(i);
+      if (!isDuplicate) {
+        // Found a valid, non-duplicate question
+        const selectedQuestion = JSON.parse(JSON.stringify(candidate));
+        selectedQuestion.objective = objective.charAt(0).toUpperCase() + objective.slice(1);
+
+        questionTypeResponse.questions.push(selectedQuestion);
+        includedQuestions.push([candidate, emb]);
+        foundQuestion = true;
+        hits++;
+        break; // Stop looking for this slot
       }
     }
 
-    questionTypeResponse.number_of_questions =
-      questionTypeResponse.questions.length;
-    res.push(questionTypeResponse.modelDump());
-
-    notFoundTemplate.number_of_questions =
-      notFoundTemplate.question_distribution.length;
-
-    if (notFoundTemplate.number_of_questions > 0) {
-      notFoundRes.push(notFoundTemplate);
-      notFoundIndices.push({
-        type: notFoundTemplate.type,
-        indices: notFoundQuestionIndices,
-      });
-    } else if(notFoundTemplate.number_of_questions === 0){
-      notFoundIndices.push({})
+    if (!foundQuestion) {
+      misses++;
+      notFoundTemplate.question_distribution.push(questionDistribution[i]);
+      notFoundQuestionIndices.push(i);
     }
   }
 
-  const hitPercent = ((cacheHitCount / totalDecisions) * 100).toFixed(2);
-  const missPercent = ((cacheMissCount / totalDecisions) * 100).toFixed(2);
+  questionTypeResponse.number_of_questions = questionTypeResponse.questions.length;
+  notFoundTemplate.number_of_questions = notFoundTemplate.question_distribution.length;
 
-  console.log(`📊 Cache Summary:`);
-  console.log(`- Total Questions: ${totalDecisions}`);
-  console.log(`- Cache Hits: ${cacheHitCount} (${hitPercent}%)`);
-  console.log(`- Cache Misses/API Calls: ${cacheMissCount} (${missPercent}%)`);
-
-  const cacheSummary = {
-    totalDecisions,
-    cacheHitCount,
-    cacheMissCount
-  }
-
-  return [res, notFoundRes, notFoundIndices,cacheSummary];
-}
-catch(err){
-  throw new Error("Error getting question from cache", err.message);
-}
+  return {
+    responseModel: questionTypeResponse.modelDump(),
+    notFound: notFoundTemplate,
+    notFoundIndexData: {
+      type: notFoundTemplate.type,
+      indices: notFoundQuestionIndices
+    },
+    decisions: { total, hits, misses }
+  };
 }
 
 /**
@@ -249,7 +281,7 @@ function getRandomIndex(array) {
  * @param {*} indices 
  * @returns merged list of questions
  */
-function mergeQuestions(existingQuestions,newQuestions,indices) {
+function mergeQuestions(existingQuestions, newQuestions, indices) {
   const paddedNewQuestions = [];
   let newQuestionPointer = 0;
 
@@ -303,7 +335,7 @@ function mergeQuestions(existingQuestions,newQuestions,indices) {
 }
 
 
-function createQuestionObj(type, marks, questionObj) {
+function createQuestionObj(type, marks, questionObj, objective) {
   let question;
 
   if (
@@ -325,6 +357,7 @@ function createQuestionObj(type, marks, questionObj) {
     question,
     marks,
     type,
+    objective: objective || questionObj.objective || 'Knowledge'
   };
 }
 

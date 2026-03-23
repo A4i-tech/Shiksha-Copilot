@@ -1,7 +1,7 @@
 <div class="school-add-edit-wrapper">
   <div class="flex content-center">
     <img
-      src="../../../../../assets/icons/back-arrow.svg"
+      src="assets/icons/back-arrow.svg"
       routerLink="/admin/school-management"
       alt=""
       class="cursor-pointer"
@@ -24,7 +24,7 @@
         (click)="blukUpload()"
       >
         <div class="flex content-center">
-          <img src="../../.././../../assets/icons/add.svg" alt="" />
+          <img src="assets/icons/add.svg" alt="" />
           <span class="ml-[6px]">{{'Bulk Upload' | translate}}</span>
         </div>
       </button>
@@ -285,7 +285,7 @@
                         >
                           <div class="flex content-center">
                             <img
-                              src="../../.././../../assets/icons/delete.svg"
+                              src="assets/icons/delete.svg"
                               alt=""
                             />
                             <span class="ml-[6px]">{{'Delete' | translate}}</span>
@@ -299,7 +299,7 @@
                         >
                           <div class="flex content-center">
                             <img
-                              src="../../.././../../assets/icons/add.svg"
+                              src="assets/icons/add.svg"
                               alt=""
                             />
                             <span class="ml-[6px]">{{'Add' | translate}}</span>
@@ -420,7 +420,7 @@
                             >
                               <div class="flex content-center">
                                 <img
-                                  src="../../.././../../assets/icons/add.svg"
+                                  src="assets/icons/add.svg"
                                   alt=""
                                 />
                               </div>
@@ -469,7 +469,7 @@
                         >
                           <div class="flex content-center">
                             <img
-                              src="../../.././../../assets/icons/delete.svg"
+                              src="assets/icons/delete.svg"
                               alt=""
                             />
                             <span class="ml-[6px]">{{'Delete' | translate}}</span>
@@ -483,7 +483,7 @@
                         >
                           <div class="flex content-center">
                             <img
-                              src="../../.././../../assets/icons/add.svg"
+                              src="assets/icons/add.svg"
                               alt=""
                             />
                             <span class="ml-[6px]">{{'Add' | translate}}</span>
@@ -504,7 +504,7 @@
           <button class="btn-primary" (click)="createBoard()">
             <div class="flex items-center gap-2">
               <img
-                src="../../.././../../assets/icons/add.svg"
+                src="assets/icons/add.svg"
                 alt=""
               />
               <span>Add Board/Class Details</span>
@@ -669,7 +669,7 @@
               (click)="removeBoard(i)"
             >
               <div class="flex content-center">
-                <img src="../../.././../../assets/icons/delete.svg" alt="" />
+                <img src="assets/icons/delete.svg" alt="" />
                 <span class="ml-[6px]">{{'Delete' | translate}}</span>
               </div>
             </button>
@@ -680,7 +680,7 @@
               (click)="createBoard()"
             >
               <div class="flex content-center">
-                <img src="../../.././../../assets/icons/add.svg" alt="" />
+                <img src="assets/icons/add.svg" alt="" />
                 <span class="ml-[6px]">{{'Add Board/Class' | translate}}</span>
               </div>
             </button>
@@ -706,7 +706,7 @@
           >
             <div class="flex content-center">
               <span class="mr-[6px]">{{'Edit' | translate}}</span>
-              <img src="../../../../../assets/icons/edit-light.svg" alt="" />
+              <img src="assets/icons/edit-light.svg" alt="" />
             </div>
           </button>
 
@@ -722,7 +722,7 @@
           <button class="btn-primary h-9 ml-2" *ngIf="mode !== 'view'" [hasPermission]="['admin']" >
             <div class="flex content-center">
               <span class="mr-[6px]">{{'Save' | translate}}</span>
-              <img src="../../../../../assets/icons/check.svg" alt="" />
+              <img src="assets/icons/check.svg" alt="" />
             </div>
           </button>
         </div>

@@ -15,7 +15,7 @@
       <div class="flex flex-col md:flex-row gap-6 mx-7 my-7">
         <img
           class="h-[186px]"
-          src="../../../../assets/images/dashboard-computer.png"
+          src="assets/images/dashboard-computer.png"
           alt=""
         />
         <div>
@@ -41,7 +41,7 @@
     <div class="mt-10">
       <div class="flex justify-between">
         <h3 class="text-xl md:text-2xl font-medium text-content-100">
-          {{ "Recently Generated Plans" | translate }}
+          {{ "Recently Generated/Modified Plans" | translate }}
         </h3>
         <p
           class="text-sm font-medium text-primary cursor-pointer"
@@ -81,8 +81,8 @@
               </svg>
             </div>
             <h6 class="text-xs font-normal text-content-70">
-              {{ "Generated on" | translate }}:
-              <span>{{ plan.createdAt | date : "MMM dd,yyyy" }}</span>
+              {{ "Modified On" | translate }}:
+              <span>{{ plan.updatedAt | date : "MMM dd,yyyy" }}</span>
             </h6>
           </div>
 
@@ -113,7 +113,7 @@
           *ngIf="recentPlans.length === 0"
         >
           <div class="rounded-full bg-warn-50 p-4 my-8">
-            <img src="../../../../assets/icons/no-file.svg" alt="" />
+            <img src="assets/icons/no-file.svg" alt="" />
           </div>
           <h4 class="text-base text-center font-medium">
             {{ "No plans found" | translate }}
@@ -181,7 +181,7 @@
             (viewDateChange)="closeOpenMonthViewDay()"
           >
             <img
-              src="../../../../../assets/icons/Chevron left large.svg"
+              src="assets/icons/Chevron left large.svg"
               alt=""
               class="inline-block mb-[2px]"
             />
@@ -195,7 +195,7 @@
             (viewDateChange)="closeOpenMonthViewDay()"
           >
             <img
-              src="../../../../../assets/icons/Chevron right large.svg"
+              src="assets/icons/Chevron right large.svg"
               alt=""
               class="inline-block"
             />

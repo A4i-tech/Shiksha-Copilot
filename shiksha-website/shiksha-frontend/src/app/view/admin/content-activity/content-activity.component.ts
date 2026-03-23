@@ -169,13 +169,28 @@ export class ContentActivityComponent implements OnInit {
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
+    const loggedInUser = this.utilityService.loggedInUserData;
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,
         'state',
         selectedStateValue
       );
-      this.zoneDropdownOptions = this.selectedStateObj.zones;
+      if (
+        loggedInUser &&
+        loggedInUser.role.includes('manager') &&
+        loggedInUser.zones &&
+        loggedInUser.zones.length > 0
+      ) {
+        // Only show manager's zones
+        this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) =>
+          loggedInUser.zones.includes(zone.name)
+        );
+      } else {
+        this.zoneDropdownOptions = this.selectedStateObj.zones;
+      }
+    } else {
+      this.zoneDropdownOptions = [];
     }
   }
 
@@ -191,7 +206,14 @@ export class ContentActivityComponent implements OnInit {
         'name',
         selectedZone
       );
-      this.districtDropdownOptions = this.selectedZoneObj.districts;
+      // districts is now an array
+      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
+        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts) 
+          ? this.selectedZoneObj.districts 
+          : [this.selectedZoneObj.districts]; // Handle legacy object structure
+      } else {
+        this.districtDropdownOptions = [];
+      }
     }
   }
 
@@ -202,12 +224,22 @@ export class ContentActivityComponent implements OnInit {
   setBlockDropdownValues(selectedDistrict: any) {
     this.resetDistrict()
     if (selectedDistrict) {
-      this.selectedDistrictObj = this.utilityService.filterDropdownValues(
-        this.selectedZoneObj.districts,
-        'name',
-        selectedDistrict
-      );
-      this.blockDropdownOptions = this.selectedDistrictObj.blocks;
+      // districts is now an array, find the matching district
+      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
+        const districts = Array.isArray(this.selectedZoneObj.districts) 
+          ? this.selectedZoneObj.districts 
+          : [this.selectedZoneObj.districts]; // Handle legacy object structure
+        
+        this.selectedDistrictObj = this.utilityService.filterDropdownValues(
+          districts,
+          'name',
+          selectedDistrict
+        );
+        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+      } else {
+        this.selectedDistrictObj = null;
+        this.blockDropdownOptions = [];
+      }
     }
   }
 

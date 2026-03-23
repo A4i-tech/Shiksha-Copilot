@@ -26,10 +26,49 @@ export class ChatbotService extends BaseRestService {
    * @returns 
    */
   sendGeneralMessage(messageObj: any): Observable<any> {
-    return this.post('message', messageObj);
+    const url = `${this.baseUrl}/chat/message`;
+    return new Observable(observer => {
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify(messageObj)
+      }).then(async response => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) {
+          throw new Error('Response body is null');
+        }
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          // Process multiple JSON objects in one chunk
+          const lines = chunk.split('\n').filter(line => line.trim() !== '');
+          for (const line of lines) {
+            try {
+              const data = JSON.parse(line);
+              observer.next(data);
+            } catch (e) {
+              console.error('Error parsing JSON chunk', e);
+            }
+          }
+        }
+        observer.complete();
+      }).catch(err => {
+        observer.error(err);
+      });
+    });
   }
 
-  sendIndexMessage(messageObj: any,recordId:any,chapterId:any): Observable<any> {
+  sendIndexMessage(messageObj: any, recordId: any, chapterId: any): Observable<any> {
     return this.http.post(`${this.baseUrl}/lessonchat/message/${recordId}/${chapterId}`, messageObj);
   }
 
@@ -42,7 +81,7 @@ export class ChatbotService extends BaseRestService {
     return this.get('messages');
   }
 
-  getIndexMessages(recordId:any, chapterId:any): Observable<any> {
+  getIndexMessages(recordId: any, chapterId: any): Observable<any> {
     return this.http.get(`${this.baseUrl}/lessonchat/messages/${recordId}/${chapterId}`);
   }
 }

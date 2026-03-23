@@ -1,0 +1,57 @@
+name: Deploy to Azure WebApp
+
+on:
+  workflow_call:
+    inputs:
+      azure-webapp-name:
+        description: 'Name of the Azure WebApp service'
+        required: true
+        type: string
+      image-tag:
+        description: 'Docker image tag to deploy (leave empty for latest production)'
+        required: true
+        type: string
+    outputs:
+      service-url:
+        description: "Azure WebApp service URL"
+        value: ${{ jobs.deploy.outputs['service-url'] }}
+    secrets:
+      AZURE_WEBAPP_PUBLISH_PROFILE:
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: 'read'
+  packages: 'write'
+
+jobs:
+  deploy:
+    environment:
+      name: 'production'
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.validate.outputs.image }}
+      service-url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate deployment
+        run: |
+          FULL_IMAGE="${{ inputs.image-tag }}"
+          echo "🚀 Deploying to production: ${FULL_IMAGE}"
+          echo "Deployment confirmed by: ${{ github.actor }}"
+          echo "image=${FULL_IMAGE}" >> $GITHUB_OUTPUT
+        id: validate
+
+      - name: Deploy to Azure Web App
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ inputs.azure-webapp-name }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          images: ${{ steps.validate.outputs.image }}

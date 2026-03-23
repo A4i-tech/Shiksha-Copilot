@@ -32,9 +32,16 @@ class ChatRequest(BaseModel):
         return v
 
 
+class Reference(BaseModel):
+    title: str = Field(..., description="Title or label for the reference")
+    url: Optional[str] = Field(None, description="URL of the reference source (for web citations)")
+    text: Optional[str] = Field(None, description="Snippet of source text (for RAG references)")
+
+
 class ChatResponse(BaseModel):
     user_id: str = Field(..., description="User identifier")
     response: str = Field(..., description="AI-generated response")
+    references: Optional[List[Reference]] = Field(default_factory=list, description="List of references/citations used in the response")
 
 
 class LessonChatRequest(BaseModel):
@@ -59,6 +66,7 @@ class LessonChatRequest(BaseModel):
 class LessonChatResponse(BaseModel):
     user_id: str = Field(..., description="User identifier")
     response: str = Field(..., description="AI-generated response")
+    references: Optional[List[Reference]] = Field(default_factory=list, description="List of references/citations used in the response")
 
 
 class ErrorResponse(BaseModel):

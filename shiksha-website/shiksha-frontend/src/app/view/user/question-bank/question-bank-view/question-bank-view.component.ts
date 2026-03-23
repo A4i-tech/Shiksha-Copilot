@@ -6,6 +6,7 @@ import { slideInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
+import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 @Component({
   selector: 'app-question-bank-view',
   templateUrl: './question-bank-view.component.html',
@@ -17,7 +18,7 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionBankDetails: any;
 
-  questionBank:any;
+  questionBank: any;
 
   isOpen = false;
 
@@ -39,15 +40,31 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionTypeMapper = QUESTION_TYPE_MAPPER;
 
-  shuffledColumns:any[] = [];
+  shuffledColumns: any[] = [];
+
+  primaryColumn: any[] = [];
+
+  questionBankBluePrintData: any;
+
+  docTypes = [
+    {
+      name: 'Question Paper',
+      type: 'qp'
+    },
+    {
+      name: 'Blueprint',
+      type: 'bp'
+    }
+  ]
 
   constructor(
     private route: ActivatedRoute,
     private questionBankService: QuestionBankService,
     public utilityService: UtilityService,
-    private router:Router,
-    private idleService:IdleService,
-    private questionBankDownloadService:QuestionBankDownloadService
+    private router: Router,
+    private idleService: IdleService,
+    private questionBankDownloadService: QuestionBankDownloadService,
+    private bluePrintExportService: BluePrintExportService
   ) {
     this.route.params.subscribe((params) => {
       this.questionBankId = params['id'];
@@ -69,31 +86,78 @@ export class QuestionBankViewComponent implements OnInit {
         next: (val: any) => {
           this.questionBankDetails = val.data;
           this.questionBank = this.questionBankDetails.questionBank
-          const matchTheFollowingData = this.questionBank?.questions?.filter((obj:any) => obj.type === 'Match the following');           
-          if(matchTheFollowingData?.length){
-            const colTwoVal = structuredClone(matchTheFollowingData[0]?.questions[0]?.columnTwoValues)
-            this.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal)
+
+          // Process Match the Following sections
+          if (this.questionBank?.questions?.length) {
+            this.questionBank.questions.forEach((section: any) => {
+              if (section.type === 'Match the following' && section.questions?.length) {
+                // Map columns supporting both AI (value1/2) and LBA (text/keyAnswer) formats
+                // LBA: text = Left, keyAnswer = Right
+                const colTwoVal = structuredClone(section.questions.map((ele: any) => ele.value2 || ele.keyAnswer || ele.right || ''));
+                section.primaryColumn = section.questions.map((ele: any) => ele.value1 || ele.text || ele.left || '');
+                section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
+              }
+            });
           }
-          
+
           if (this.questionBankDetails?.questionBank?.feedback) {
             this.questionBankFeedback =
               this.questionBankDetails?.questionBank?.feedback;
           }
           this.idleService.planId = this.questionBankDetails?.questionBank?._id;
+          this.questionBankBluePrintData = this.flattenQuestionData(val.data.bluePrintTemplate);
         },
         error: (err) => {
           this.utilityService.handleError(err);
         },
       });
   }
-  
+
+  flattenQuestionData(data: any[]) {
+    const result: any[] = [];
+    data.forEach(section => {
+      const { type, marksPerQuestion, questionDistribution } = section;
+
+      questionDistribution.forEach((entry: any) => {
+        result.push({
+          unitName: entry.unitName,
+          type: this.questionTypeMapper[type],
+          objective: entry.objective,
+          marks: marksPerQuestion
+        });
+      });
+    });
+
+    return result;
+  }
+
+  download(type: any) {
+    if (type === 'qp') {
+      this.downloadQp()
+    } else {
+      this.downloadBluePrint()
+    }
+  }
+
   downloadQp() {
     this.questionBankDownloadService.downloadQuestionBank(this.questionBankDetails);
     this.utilityService.showSuccess('Question paper downloaded successfully!');
   }
 
-  backNavigation(){
-      this.router.navigate(['/user/question-bank']);
+  downloadBluePrint() {
+    const metaData = {
+      schoolName: this.questionBankDetails?.questionBank?.metadata?.schoolName,
+      medium: this.questionBankDetails?.medium,
+      class: this.questionBankDetails?.grade,
+      subject: this.questionBankDetails?.subject,
+      examinationName: this.questionBankDetails?.examinationName,
+      totalMarks: this.questionBankDetails?.totalMarks
+    }
+    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData, metaData)
+  }
+
+  backNavigation() {
+    this.router.navigate(['/user/question-paper']);
   }
 
   submitFeedback() {

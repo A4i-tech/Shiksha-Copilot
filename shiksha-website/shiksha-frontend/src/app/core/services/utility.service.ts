@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Validators } from '@angular/forms';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Router } from '@angular/router';
+import { marked } from 'marked';
 import { ClipboardService } from 'ngx-clipboard';
 import { ToastrService } from 'ngx-toastr';
 
@@ -51,7 +52,21 @@ export class UtilityService {
    */
   handleError(err: any) {
     if (err.status === 400) {
-      this.showError(err.error.message);
+      // Handle validation errors (array of error messages)
+      if (err.error?.error && Array.isArray(err.error.error)) {
+        const errorMessages = err.error.error.join(', ');
+        this.showError(errorMessages || 'Validation failed. Please check your input.');
+      } else if (err.error?.message) {
+        this.showError(err.error.message);
+      } else if (err.error?.error) {
+        this.showError(err.error.error);
+      } else {
+        this.showError('An error occurred. Please try again.');
+      }
+    } else if (err.status === 401) {
+      this.showError(err.error?.message || 'Unauthorized. Please login again.');
+    } else if (err.status === 500) {
+      this.showError('Server error. Please try again later.');
     }
   }
 
@@ -385,7 +400,11 @@ formatSubjectDropdown(data:any){
 }
 
 getSubjectDisplayName(ele:any){
+  if(ele?.sem){
   return `${ele.name} Sem${ele.sem}`
+  }else{
+  return `${ele.name}`
+  }
 }
 
 
@@ -446,7 +465,8 @@ shuffleOptions(arr:any[]) {
   return arr;
 }
 
- copyToClipboard(rawText:any) {
+ copyToClipboard(rawText:any, version:number) {
+  if(version === 1){
     let formattedText = rawText
     .replace(/\\n/g, '\n')               
     .replace(/\\"/g, '"')                
@@ -454,7 +474,84 @@ shuffleOptions(arr:any[]) {
     .replace(/###/g, '')               
     .trim();
     this.clipboardService.copy(formattedText);
+  } else{
+    const markedText = marked(rawText)
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = markedText;
+    const processedText = tempDiv.textContent || tempDiv.innerText || '';
+    this.clipboardService.copy(processedText);
+  }
     this.showSuccess("Copied to clipboard")
+ }
+
+ getCceTools(type:any, medium:any){
+  if(medium === 'english'){
+    switch (type) {
+      case "cce_tools_math_science":
+        return {
+          "ENGAGE": "Observation",
+          "EXPLORE": "Observation",
+          "ELABORATE": "Observation/Discussion",
+          "EXPLAIN": "Discussion",
+          "EVALUATE": "Questionnaire"
+      }
+  
+      case "cce_tools_social":
+        return {
+          "ENGAGE": "Observation.",
+          "EXPLORE": "Observation",
+          "ELABORATE": "Observation/Discussion",
+          "EXPLAIN": "Discussion",
+          "EVALUATE": "Questionnaire"
+      }
+  
+      case "cce_tools_english":
+        return {
+          "ENGAGE": "Observation",
+          "EXPLORE": "Observation",
+          "ELABORATE": "Read Aloud/Discussion",
+          "EXPLAIN": "Discussion",
+          "EVALUATE": "Questionnaire"
+      }
+    
+      default:
+        return null
+    }
+  }else if(medium==='kannada'){
+    switch (type) {
+      case "cce_tools_math_science":
+        return {
+          "ENGAGE": "ವೀಕ್ಷಣೆ",
+          "EXPLORE": "ವೀಕ್ಷಣೆ",
+          "ELABORATE": "ವೀಕ್ಷಣೆ/ಚರ್ಚೆ",
+          "EXPLAIN": "ಚರ್ಚೆ",
+          "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
+      }
+  
+      case "cce_tools_social":
+        return {
+          "ENGAGE": "ವೀಕ್ಷಣೆ.",
+          "EXPLORE": "ವೀಕ್ಷಣೆ",
+          "ELABORATE": "ವೀಕ್ಷಣೆ/ಚರ್ಚೆ",
+          "EXPLAIN": "ಚರ್ಚೆ",
+          "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
+      }
+  
+      case "cce_tools_english":
+        return {
+          "ENGAGE": "ವೀಕ್ಷಣೆ",
+          "EXPLORE": "ವೀಕ್ಷಣೆ",
+          "ELABORATE": "ಗಟ್ಟಿಯಾಗಿ ಓದಿ/ಚರ್ಚೆ",
+          "EXPLAIN": "ಚರ್ಚೆ",
+          "EVALUATE": "ಪ್ರಶ್ನಾವಳಿ"
+      }
+    
+      default:
+        return null
+    }
+  }else{
+    return null
+  }
  }
 
   /**
@@ -464,4 +561,21 @@ shuffleOptions(arr:any[]) {
     localStorage.clear();
     this.router.navigate(['/auth']);
   }  
+
+  /**
+   * Returns only the zones assigned to a manager for a given state.
+   * @param regionsData - The full regions data array
+   * @param user - The logged-in user object (should have .state and .zones)
+   * @returns Array of zone objects assigned to the manager for the user's state
+   */
+  getZonesForManager(regionsData: any[], user: any): any[] {
+    if (!user || !user.state || !user.zones || !Array.isArray(user.zones)) {
+      return [];
+    }
+    const stateObj = regionsData.find((state: any) => state.state === user.state);
+    if (!stateObj || !Array.isArray(stateObj.zones)) {
+      return [];
+    }
+    return stateObj.zones.filter((zone: any) => user.zones.includes(zone.name));
+  }
 }

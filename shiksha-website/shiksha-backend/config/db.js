@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const MONGO_URL = process.env.MONGO_URL;
 const runMigrations = require("../migrations/migration");
 const QuestionBankCache = require("../models/question.bank.cache.model");
+const QuestionBankConfiguration = require("../models/question.bank.config.model");
 
 class DBService {
 	constructor() {
@@ -27,6 +28,7 @@ class DBService {
 	async onConnect() {
 		try {
 			await QuestionBankCache.createIndexes();
+			await QuestionBankConfiguration.createIndexes();
 			await runMigrations();
 			if (!this.isOnConnectExecuted) {
 				this.isOnConnectExecuted = true;
