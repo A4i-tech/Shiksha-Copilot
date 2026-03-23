@@ -223,6 +223,7 @@ export class QuestionBankService extends BaseRestService {
     type?: string;
     search?: string;
     headings?: string;
+    targetLanguage?: string;
   }): Observable<any[]> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {

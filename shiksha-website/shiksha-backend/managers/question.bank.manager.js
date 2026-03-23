@@ -501,8 +501,8 @@ class QuestionBankManager extends BaseManager {
     if (notFoundQuestions.length) {
       const objectives = objectiveDistribution?.length
         ? objectiveDistribution.map((e) =>
-            (e.objective || "").toLowerCase()
-          )
+          (e.objective || "").toLowerCase()
+        )
         : [];
 
       const processedCache = isMultiChapter
@@ -638,14 +638,14 @@ class QuestionBankManager extends BaseManager {
       // 1. Prepare Base Chapters (From DB)
       let formattedChapters = chapterData?.length
         ? chapterData.map((chapter) => ({
-            title: chapter.title,
-            index_path: chapter.indexPath || chapter.index_path || "",
-            learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-            subtopics: (chapter.subtopics || []).map((sub) => ({
-              title: sub.title,
-              learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
-            })),
-          }))
+          title: chapter.title,
+          index_path: chapter.indexPath || chapter.index_path || "",
+          learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
+          subtopics: (chapter.subtopics || []).map((sub) => ({
+            title: sub.title,
+            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+          })),
+        }))
         : [];
 
       const requiredUnits = new Set();
@@ -939,7 +939,19 @@ class QuestionBankManager extends BaseManager {
       };
 
       console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
-      const result = await this.questionDao.getQuestions(cleanFilters);
+      let result = await this.questionDao.getQuestions(cleanFilters);
+
+      // Handle translation if targetLanguage is provided
+      if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
+        try {
+          // result comes back as an array of questions, _handleTranslation takes the same
+          result = await this._handleTranslation(filters.targetLanguage, result, "LBA Questions");
+        } catch (transErr) {
+          console.error("[Manager] LBA Question translation failed:", transErr);
+          // fall back to the untranslated result which is already in `result`
+        }
+      }
+
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", result);
     } catch (err) {

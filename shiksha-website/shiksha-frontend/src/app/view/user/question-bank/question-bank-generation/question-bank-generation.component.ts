@@ -1002,6 +1002,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return {
       board: formVal.board,
       medium: formVal.medium || 'English',
+      language: formVal.language ?? 'English',
       grade: String(formVal.grade),
       subject: subjectName, // Send Name for AI
       subjectId: selectedSubjectId, // Send ID for DB
@@ -1153,7 +1154,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       class: config.grade,
       chapterNumbers: selectedChapterNumbers.join(','),
       chapterIds: selectedChapterIds.join(','),
-      headings: this.selectedHeadings.join(',')
+      headings: this.selectedHeadings.join(','),
+      targetLanguage: config.language
     };
 
     console.log('[Frontend] getLBAQuestions params:', params);

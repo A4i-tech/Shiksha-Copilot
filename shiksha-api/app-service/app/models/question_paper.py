@@ -145,6 +145,7 @@ class QuestionType(str, Enum):
 
     # Prompt/schema hint for LLM
     def schema_dict(self) -> str:
+        difficulty_hint = "Easy | Average | Difficult"
         if self._model == FourOptionsQuestion:
              return json.dumps({
                  "question": "Question text here?",
@@ -155,9 +156,11 @@ class QuestionType(str, Enum):
                      {"label": "D", "text": "Option D"}
                  ],
                  "answer": "A",
-                 "difficulty": "Average"
+                 "difficulty": difficulty_hint
              })
-        return self._model().model_dump_json()
+        schema = json.loads(self._model().model_dump_json())
+        schema["difficulty"] = difficulty_hint
+        return json.dumps(schema)
 
     # Cast generated dict to the right Pydantic model
     def cast(self, obj: dict):
