@@ -8,14 +8,51 @@ class ChapterController extends BaseController {
 		this.chapterManager = new ChapterManager();
 	}
 
+	async getAll(req, res) {
+		try {
+			const {
+				page = 1,
+				limit,
+				filter = {},
+				sortBy = "createdAt",
+				sortOrder = "desc",
+				lang,
+			} = req.query;
+
+			const sortOrderObject =
+				sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
+
+			const result = await this.chapterManager.getAll(
+				parseInt(page),
+				parseInt(limit),
+				{ ...filter },
+				sortOrderObject,
+				{},
+				null,
+				lang
+			);
+
+			if (result.success) {
+				return res.status(200).json(result);
+			}
+
+			handleError(result, res);
+			return;
+		} catch (err) {
+			console.log("Error --> ChapterController -> getAll()", err);
+			return res.status(400).json(err);
+		}
+	}
+
 	async getBySemester(req, res){
 		try {
 			const {
 				filter = {},
+				lang,
 			} = req.query;
 
 			const transformedFilter = { ...filter };
-			const result = await this.chapterManager.getBySemester(transformedFilter);
+			const result = await this.chapterManager.getBySemester(transformedFilter, lang);
 			if (result.success) {
 				return res.status(200).json(result);
 			}
@@ -24,7 +61,7 @@ class ChapterController extends BaseController {
 
 			return;
 		} catch (err) {
-			console.log("Error --> BaseController -> getAll()", err);
+			console.log("Error --> ChapterController -> getBySemester()", err);
 			return res.status(400).json(err);
 		}
 	}

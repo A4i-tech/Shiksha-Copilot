@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
+import { getUserLangCode } from 'src/app/shared/utility/constant.util';
 
 @Injectable({
   providedIn: 'root',
@@ -40,6 +41,7 @@ export class QuestionBankService extends BaseRestService {
       });
     }
 
+    params = params.set('lang', getUserLangCode());
     return this.http.get(`${this.baseUrl}/chapter/get-by-sem`, { params });
   }
 
@@ -170,6 +172,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.subject) {
       params = params.set('subject', filters.subject);
     }
+    params = params.set('lang', getUserLangCode());
     return this.http.get<any>(`${this.baseUrl}/question-bank/meta/chapters`, { params }).pipe(
       (source => new Observable<any[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),

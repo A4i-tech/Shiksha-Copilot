@@ -3,7 +3,7 @@ function createData(isLesson, chapter, subTopic, subject, isAll) {
 
 	if (isLesson) {
 		newData = {
-			name: `${subject?.subjectName}-${chapter.board} Class${chapter.standard} ${chapter.topics}`,
+			name: `${subject?.subjectName}-${chapter.board} Class${chapter.standard} ${resolveI18nEn(chapter.topics)}`,
 			class: chapter.standard,
 			medium: chapter.medium,
 			semester: "1",
@@ -248,7 +248,7 @@ function createData(isLesson, chapter, subTopic, subject, isAll) {
 		};
 	} else {
 		newData = {
-			lessonName: `${subject?.subjectName}-${chapter.board} Class${chapter.standard} ${chapter.topics}`,
+			lessonName: `${subject?.subjectName}-${chapter.board} Class${chapter.standard} ${resolveI18nEn(chapter.topics)}`,
 			class: chapter.standard,
 			medium: chapter.medium,
 			semester: "1",
@@ -326,6 +326,21 @@ function getTemplateWorkflowId(subjectName, type){
 
 }
 
+/**
+ * Resolve an i18n Map/object field to its English value.
+ * Handles Mongoose Maps, plain objects, and legacy plain strings.
+ */
+function resolveI18nEn(field) {
+	if (!field) return field;
+	if (field instanceof Map) {
+		return field.get("en") || field;
+	}
+	if (typeof field === "object" && !Array.isArray(field)) {
+		return field["en"] || field;
+	}
+	return field;
+}
+
 module.exports = {
 	createData,
 	subjectRegex,
@@ -337,6 +352,7 @@ module.exports = {
 	capitalizeFirstLetter,
 	semRegex,
 	nameRegex,
-	getTemplateWorkflowId
+	getTemplateWorkflowId,
+	resolveI18nEn
 };
 

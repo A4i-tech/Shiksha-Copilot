@@ -15,6 +15,23 @@ const toTitleCase = (str) => {
 const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, "i");
 const str = (val) => String(val || "").trim();
 
+/**
+ * Resolve an i18n Map field to a plain value for the given language.
+ * Handles both new Map format ({en: "...", kn: "..."}) and legacy plain strings.
+ */
+function resolveI18n(field, lang) {
+	if (!field) return field;
+	// Mongoose Map → use .get(); plain object → use bracket access
+	if (field instanceof Map) {
+		return field.get(lang) || field.get("en") || field;
+	}
+	if (typeof field === "object" && !Array.isArray(field)) {
+		return field[lang] || field["en"] || field;
+	}
+	// Legacy plain string/array — return as-is
+	return field;
+}
+
 class ChapterDao extends BaseDao {
 	constructor() {
 		super(Chapter);
@@ -40,7 +57,7 @@ class ChapterDao extends BaseDao {
 		return Array.from(uniqueMedia).sort();
 	}
 
-	async getChapters(className, medium, subjectCode, targetSubjectIds) {
+	async getChapters(className, medium, subjectCode, targetSubjectIds, lang = "en") {
 
 		const medRx = regexExact(medium);
 		const standardNum = parseInt(className);
@@ -66,8 +83,13 @@ class ChapterDao extends BaseDao {
 			.sort({ orderNumber: 1 })
 			.lean();
 
-		console.log(`[DAO] getChapters query: ${JSON.stringify(chapterQuery)}`);
+		console.log(`[DAO] getChapters lang=${lang}, query: ${JSON.stringify(chapterQuery)}`);
 		console.log(`[DAO] getChapters: found ${chapters.length} chapters`);
+		if (chapters.length > 0) {
+			const sample = chapters[0];
+			console.log(`[DAO] getChapters sample topics type=${typeof sample.topics}, isMap=${sample.topics instanceof Map}, value=${JSON.stringify(sample.topics)}`);
+			console.log(`[DAO] getChapters resolved title=${JSON.stringify(resolveI18n(sample.topics, lang))}`);
+		}
 
 		if (!chapters.length) return [];
 
@@ -75,18 +97,18 @@ class ChapterDao extends BaseDao {
 			_id: ch._id,
 			chapterNumber: ch.orderNumber || ch.chapterNumber,
 			title:
-				ch.topics ||
+				resolveI18n(ch.topics, lang) ||
 				ch.title ||
 				`Chapter ${ch.orderNumber || ch.chapterNumber}`,
-			subTopics: ch.subTopics,
+			subTopics: resolveI18n(ch.subTopics, lang),
 		}));
 	}
 
-	async getAll(page = 1, limit = 10, filters = {}, sort = {}) {
+	async getAll(page = 1, limit = 10, filters = {}, sort = {}, lang) {
 		try {
 			let processedFilters = {};
 
-			// for kannada medium english subject negating medium filter to refect english lp from english medium 
+			// for kannada medium english subject negating medium filter to refect english lp from english medium
 			if (filters?.medium === "kannada" && filters?.subject?.startsWith("english")) {
 				delete filters.medium;
 			}
@@ -105,7 +127,8 @@ class ChapterDao extends BaseDao {
 				page,
 				limit,
 				processedFilters,
-				sort
+				sort,
+				lang
 			);
 
 			const totalItems =
@@ -123,7 +146,7 @@ class ChapterDao extends BaseDao {
 		}
 	}
 
-	async getChapterBySemester(filters = {}) {
+	async getChapterBySemester(filters = {}, lang) {
 		try {
 			let processedFilters = {};
 
@@ -147,7 +170,8 @@ class ChapterDao extends BaseDao {
 			}
 
 			const results = await chapterAggregation.getChapterBySemester(
-				processedFilters
+				processedFilters,
+				lang
 			);
 
 			return results;

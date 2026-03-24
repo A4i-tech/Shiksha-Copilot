@@ -1,5 +1,6 @@
 const axios = require("axios");
 const ChapterDao = require("../dao/chapter.dao");
+const Chapter = require("../models/chapter.model");
 const QuestionBankDao = require("../dao/question.bank.dao");
 const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
@@ -97,6 +98,7 @@ class QuestionBankManager extends BaseManager {
 
   async generateQuestionBankTemplate(req, user) {
     try {
+      req.body = await QuestionBankManager._normalizeI18nBody(req.body);
       const payload = await this._createQuestionBankPayload(req.body, user);
 
       const response = await postToQuestionBankTemplate(payload);
@@ -123,6 +125,7 @@ class QuestionBankManager extends BaseManager {
 
   async generateQuestionBankBluePrint(req, user) {
     try {
+      req.body = await QuestionBankManager._normalizeI18nBody(req.body);
       const { objective_distribution, template } = req.body;
 
       const templatePayload = await this._createQuestionBankPayload(
@@ -167,6 +170,7 @@ class QuestionBankManager extends BaseManager {
     const session = null;
     try {
       console.log('[Manager] generateQuestionBank called.');
+      req.body = await QuestionBankManager._normalizeI18nBody(req.body);
 
       const context = this._prepareGenerationContext(req.body);
       const {
@@ -565,6 +569,108 @@ class QuestionBankManager extends BaseManager {
     };
   }
 
+  /**
+   * Build a reverse lookup function: localized chapter/subtopic name → English name.
+   * Used to translate unit_name values back to English before sending to the AI.
+   */
+  static async _buildI18nReverseMap(chapterIds) {
+    const localizedToEn = new Map();
+    if (chapterIds && chapterIds.length > 0) {
+      try {
+        const rawChapters = await Chapter.find({ _id: { $in: chapterIds } }).lean();
+        for (const ch of rawChapters) {
+          if (ch.topics && typeof ch.topics === "object" && !Array.isArray(ch.topics)) {
+            const enVal = ch.topics.en || ch.topics;
+            if (typeof enVal === "string") {
+              Object.values(ch.topics).forEach(v => {
+                if (typeof v === "string") localizedToEn.set(v.trim().toLowerCase(), enVal);
+              });
+            }
+          }
+          if (ch.subTopics && typeof ch.subTopics === "object" && !Array.isArray(ch.subTopics)) {
+            const enSubs = Array.isArray(ch.subTopics.en) ? ch.subTopics.en : [];
+            Object.entries(ch.subTopics).forEach(([, subs]) => {
+              if (Array.isArray(subs)) {
+                subs.forEach((sub, i) => {
+                  if (typeof sub === "string" && typeof enSubs[i] === "string") {
+                    localizedToEn.set(sub.trim().toLowerCase(), enSubs[i]);
+                  }
+                });
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("[Manager] i18n reverse map build failed:", err.message);
+      }
+    }
+    return (name) => {
+      if (!name || typeof name !== "string") return name;
+      return localizedToEn.get(name.trim().toLowerCase()) || name;
+    };
+  }
+
+  /**
+   * Normalize request body: translate localized chapter/subtopic names to English.
+   * Call at the start of each entry point so all downstream code uses English names.
+   */
+  static async _normalizeI18nBody(body) {
+    const chapterIds = Array.isArray(body.chapterIds)
+      ? body.chapterIds
+      : body.chapterIds ? [body.chapterIds] : [];
+    const validIds = chapterIds.filter(id => mongoose.Types.ObjectId.isValid(id));
+    if (!validIds.length) return body;
+
+    const toEn = await QuestionBankManager._buildI18nReverseMap(validIds);
+
+    const normalized = { ...body };
+
+    // Translate chapter names
+    if (Array.isArray(normalized.chapter)) {
+      normalized.chapter = normalized.chapter.map(c => typeof c === "string" ? toEn(c) : c);
+    } else if (typeof normalized.chapter === "string") {
+      normalized.chapter = toEn(normalized.chapter);
+    }
+
+    // Translate subTopic names
+    if (Array.isArray(normalized.subTopic)) {
+      normalized.subTopic = normalized.subTopic.map(s => typeof s === "string" ? toEn(s) : s);
+    }
+
+    // Translate marksDistribution unit_name
+    if (Array.isArray(normalized.marksDistribution)) {
+      normalized.marksDistribution = normalized.marksDistribution.map(d => ({
+        ...d,
+        unit_name: toEn(d.unit_name || d.unitName),
+      }));
+    }
+
+    // Translate template question_distribution unit_name
+    if (Array.isArray(normalized.template)) {
+      normalized.template = normalized.template.map(t => {
+        const qDist = t.question_distribution || t.questionDistribution;
+        if (qDist && Array.isArray(qDist)) {
+          return {
+            ...t,
+            question_distribution: qDist.map(d => ({ ...d, unit_name: toEn(d.unit_name || d.unitName) })),
+            questionDistribution: undefined,
+          };
+        }
+        return t;
+      });
+    }
+
+    // Translate questions unit_name (manual flow)
+    if (Array.isArray(normalized.questions)) {
+      normalized.questions = normalized.questions.map(q => ({
+        ...q,
+        unit_name: q.unit_name ? toEn(q.unit_name) : q.unit_name,
+      }));
+    }
+
+    return normalized;
+  }
+
   _mapTemplateTypes(templateArray) {
     if (!templateArray || !Array.isArray(templateArray)) return [];
 
@@ -826,9 +932,9 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async getChapters(className, medium, subject) {
+  async getChapters(className, medium, subject, lang) {
     try {
-      console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}`);
+      console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}, lang=${lang}`);
       const normalizedClass = String(className || "").trim();
 
       const { subjectCode, targetSubjectIds } =
@@ -839,7 +945,8 @@ class QuestionBankManager extends BaseManager {
         normalizedClass,
         medium,
         subjectCode,
-        targetSubjectIds
+        targetSubjectIds,
+        lang
       );
 
       // 2. Fetch Aggregated Stats from QuestionDao

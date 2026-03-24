@@ -20,6 +20,29 @@ class ChapterManager extends BaseManager {
     this.masterSubejectDao = new MasterSubjectDao();
   }
 
+  async getAll(
+    page = 1,
+    limit,
+    filters = {},
+    sort = {},
+    status,
+    userId,
+    lang
+  ) {
+    try {
+      let data = await this.chapterDao.getAll(
+        page,
+        limit,
+        filters,
+        sort,
+        lang
+      );
+      return formatApiReponse(true, "", data);
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
   async scriptFromLp(req) {
     try {
       let lessonPlans = req.body;
@@ -172,10 +195,11 @@ class ChapterManager extends BaseManager {
   }
 
   async getBySemester(
-    filters = {}
+    filters = {},
+    lang
   ) {
     try {
-      let data = await this.chapterDao.getChapterBySemester(filters);
+      let data = await this.chapterDao.getChapterBySemester(filters, lang);
       return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err.message, err);

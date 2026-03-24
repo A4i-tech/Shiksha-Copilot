@@ -180,11 +180,12 @@ class QuestionBankController extends BaseController {
 
   async getChapters(req, res) {
     try {
-      const { class: className, medium, subject } = req.query;
+      const { class: className, medium, subject, lang } = req.query;
       const result = await this.questionBankManager.getChapters(
         className,
         medium,
-        subject
+        subject,
+        lang
       );
       return res.status(200).json(result);
     } catch (err) {

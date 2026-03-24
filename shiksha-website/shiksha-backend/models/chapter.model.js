@@ -1,6 +1,14 @@
 'use strict';
 const mongoose = require('mongoose');
 
+const i18nString = { type: Map, of: String, default: {} };
+const i18nStringArray = { type: Map, of: [String], default: {} };
+
+const topicsLearningOutcomesSchema = new mongoose.Schema({
+  title: i18nString,
+  learningOutcomes: i18nStringArray,
+}, { _id: true });
+
 const ChapterSchema = new mongoose.Schema(
   {
     subjectId: {
@@ -9,22 +17,17 @@ const ChapterSchema = new mongoose.Schema(
       required: true,
       index: true
     },
-    topics: { type: String, required: true },
-    subTopics: { type: [String], default: [] },
+    topics: i18nString,
+    subTopics: i18nStringArray,
     medium: { type: String, index: true },
     standard: { type: Number, index: true },
     board: { type: String, index: true },
     orderNumber: { type: Number, index: true },
     isDeleted: { type: Boolean, default: false },
 
-    learningOutcomes: { type: [String], default: [] },
+    learningOutcomes: i18nStringArray,
 
-    topicsLearningOutcomes: [
-      {
-        title: { type: String },
-        learningOutcomes: { type: [String], default: [] }
-      }
-    ],
+    topicsLearningOutcomes: [topicsLearningOutcomesSchema],
 
     indexPath: { type: String }
   },

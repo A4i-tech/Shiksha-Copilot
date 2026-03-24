@@ -12,6 +12,7 @@ const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterResourceDao = require("../dao/master.resource.dao");
 const Chapter = require("../models/chapter.model");
 const { sortDataBySubTopics, restructureCheckListforLLM, getSemester, formatSubject, formatSections, oldFormatStructuredData } = require("../helper/formatter");
+const { resolveI18nEn } = require("../helper/data.helper");
 const logger = require("../config/loggers");
 const { post5ETables } = require("../services/copilot.bot.service");
 const {
@@ -431,12 +432,12 @@ class MasterLessonManger extends BaseManager {
 				user_name: userName,
 			},
 			lp_info: {
-				id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${chapter.topics}`,
+				id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${resolveI18nEn(chapter.topics)}`,
 				lp_level: masterLesson.isAll ? "CHAPTER" : "SUBTOPIC",
 				grade: chapter.standard,
 				subject: subject.subjectName,
 				chapter_number: chapter.orderNumber,
-				chapter_title: chapter.topics,
+				chapter_title: resolveI18nEn(chapter.topics),
 				topics: masterLesson.subTopics,
 				learning_outcomes: masterLesson.learningOutcomes
 			},
