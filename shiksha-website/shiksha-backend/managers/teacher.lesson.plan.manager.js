@@ -15,6 +15,7 @@ const {
 	formatSections
 } = require("../helper/formatter");
 const { REGENERATION_LIMIT } = require("../config/constants.js");
+const { resolveI18nEn } = require("../helper/data.helper");
 const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
@@ -39,7 +40,8 @@ class TeacherLessonPlanManager extends BaseManager {
 		page = 1,
 		limit = 999,
 		filters = {},
-		sort = {}
+		sort = {},
+		lang
 	) {
 		try {
 			if (filters.type != "all") {
@@ -49,7 +51,8 @@ class TeacherLessonPlanManager extends BaseManager {
 					page,
 					limit,
 					filters,
-					sort
+					sort,
+					lang
 				);
 
 				return formatApiReponse(
@@ -64,7 +67,8 @@ class TeacherLessonPlanManager extends BaseManager {
 					page,
 					limit,
 					filters,
-					sort
+					sort,
+					lang
 				);
 
 				let resources =
@@ -74,7 +78,8 @@ class TeacherLessonPlanManager extends BaseManager {
 						page,
 						limit,
 						filters,
-						sort
+						sort,
+						lang
 					);
 
 				return formatApiReponse(
@@ -127,11 +132,12 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 	}
 
-	async getLessonPlanById(teacherId, lessonPlanId) {
+	async getLessonPlanById(teacherId, lessonPlanId, lang) {
 		try {
 			const lessonPlan = await this.teacherLessonPlanDao.getLessonPlanById(
 				teacherId,
-				lessonPlanId
+				lessonPlanId,
+				lang
 			);
 			if (lessonPlan) {
 				return formatApiReponse(true, "", lessonPlan);
@@ -235,11 +241,12 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 	}
 
-	async getResourcePlanById(teacherId, resourcePlanId) {
+	async getResourcePlanById(teacherId, resourcePlanId, lang) {
 		try {
 			const resourcePlan = await this.teacherLessonPlanDao.getResourcePlanById(
 				teacherId,
-				resourcePlanId
+				resourcePlanId,
+				lang
 			);
 			if (resourcePlan) {
 				const rattingAttachedResourcePlan = await attachAggregateRatings(resourcePlan,resourcePlanId)
@@ -890,8 +897,10 @@ const payloadSections =[]
     const isEnglish = pattern.test(subjectString);
 	let lp_type;
 
+	const topicsEn = resolveI18nEn(chapter.topics);
+
 	if(isEnglish){
-		const match = chapter.topics.match(/(POEM|PROSE)/);
+		const match = (typeof topicsEn === 'string' ? topicsEn : '').match(/(POEM|PROSE)/);
 		lp_type = match ? match[0] : null;
 	}
 
@@ -903,9 +912,9 @@ const payloadSections =[]
 			learning_outcomes: payload.learningOutcomes,
 			lp_type_english: isEnglish ? lp_type : 'NONE',
 			chapter_info: {
-				id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${chapter.topics}`,
+				id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${topicsEn}`,
 				index_path: chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`,
-				chapter_title:chapter.topics
+				chapter_title:topicsEn
 			},
 			subtopics: payload.isAll ? [] : payload?.subTopics,
 			lesson_plan: payload?.lessonPlan || null,

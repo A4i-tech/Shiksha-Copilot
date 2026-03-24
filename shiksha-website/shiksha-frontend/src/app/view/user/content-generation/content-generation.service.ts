@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
+import { getUserLangCode } from 'src/app/shared/utility/constant.util';
 
 @Injectable({
   providedIn: 'root',
@@ -234,6 +235,7 @@ export class ContentGenerationService extends BaseRestService {
     params=params.set('limit','999')
     params=params.set('sortBy','orderNumber')
     params=params.set('sortOrder','asc')
+    params=params.set('lang', getUserLangCode())
     return this.http.get(`${this.baseUrl}/chapter/list`, { params });
   }
 

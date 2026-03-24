@@ -42,13 +42,15 @@ class TeacherLessonPlanController extends BaseController {
 				searchFilter.$or = regexExpressions;
 			}
 
+			const lang = req.user?.preferredLanguage || 'en';
 			const result =
 				await this.teacherLessonPlanManager.getByTeacherAndPagination(
 					teacherId,
 					parseInt(page),
 					parseInt(limit),
 					{ ...filter, ...searchFilter },
-					sortOrderObject
+					sortOrderObject,
+					lang
 				);
 
 			if (result.success) {
@@ -142,10 +144,12 @@ class TeacherLessonPlanController extends BaseController {
 		try {
 			const { lessonPlanId } = req.params;
 			const teacherId = req.user._id;
+			const lang = req.user?.preferredLanguage || 'en';
 
 			const lessonPlan = await this.teacherLessonPlanManager.getLessonPlanById(
 				teacherId,
-				lessonPlanId
+				lessonPlanId,
+				lang
 			);
 
 			if (lessonPlan) {
@@ -163,10 +167,12 @@ class TeacherLessonPlanController extends BaseController {
 		try {
 			const { resourcePlanId } = req.params;
 			const teacherId = req.user._id;
+			const lang = req.user?.preferredLanguage || 'en';
 
 			const resourcePlan = await this.teacherLessonPlanManager.getResourcePlanById(
 				teacherId,
-				resourcePlanId
+				resourcePlanId,
+				lang
 			);
 			if (resourcePlan) {
 				return res.status(200).json(resourcePlan);

@@ -7,6 +7,7 @@ const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const MasterLessonDao = require("../dao/master.lesson.dao");
+const { resolveI18nEn } = require("../helper/data.helper");
 
 class ChatManager extends BaseManager {
 	constructor() {
@@ -256,7 +257,7 @@ class ChatManager extends BaseManager {
 	_createChatPayload(chapter, subject, messages, userId) {
 		return {
 			user_id: userId.toString(),
-			chapter_id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${chapter.topics}`,
+			chapter_id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${resolveI18nEn(chapter.topics)}`,
 			index_path: chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`,
 			messages
 		};
@@ -333,7 +334,7 @@ class ChatManager extends BaseManager {
 		}
 	}
 
-	async listLessonMessages(recordId, chapterId, userId) {
+	async listLessonMessages(recordId, chapterId, userId, lang) {
 		try {
 			const { lessonDetails, chapterDetails, subjectDetails } = await this._getLessonDetails(
 				recordId, chapterId, userId
@@ -346,7 +347,19 @@ class ChatManager extends BaseManager {
 
 			let messages = (messagesHistory || []).map((chat) => chat.message)
 
-			return formatApiResponse(true, "Lesson messages fetched successfully", { messages, chapterDetails, subject: subjectDetails });
+			// Resolve i18n fields for frontend display
+			const resolvedChapter = chapterDetails.toObject ? chapterDetails.toObject() : { ...chapterDetails };
+			const resolve = (field) => {
+				if (!field) return field;
+				if (field instanceof Map) return field.get(lang) || field.get("en") || field;
+				if (typeof field === "object" && !Array.isArray(field)) return field[lang] || field["en"] || field;
+				return field;
+			};
+			resolvedChapter.topics = resolve(chapterDetails.topics);
+			resolvedChapter.subTopics = resolve(chapterDetails.subTopics);
+			resolvedChapter.learningOutcomes = resolve(chapterDetails.learningOutcomes);
+
+			return formatApiResponse(true, "Lesson messages fetched successfully", { messages, chapterDetails: resolvedChapter, subject: subjectDetails });
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
 

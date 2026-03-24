@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
+import { getUserLangCode } from 'src/app/shared/utility/constant.util';
 
 @Injectable({
   providedIn: 'root',
@@ -39,6 +40,7 @@ export class ScheduleService extends BaseRestService{
     .set('limit',"999")
     .set('sortBy','orderNumber')
     .set('sortOrder','asc')
+    .set('lang', getUserLangCode())
     return this.http.get(`${this.baseUrl}/chapter/list`, {
       params:params
     })

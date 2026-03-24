@@ -76,7 +76,8 @@ class ChatController extends BaseController {
         try {
             const { recordId, chapterId } = req.params;
             const userId = req.user._id;
-            const result = await this.chatManager.listLessonMessages(recordId, chapterId, userId);
+            const lang = req.user.preferredLanguage || req.query.lang || 'en';
+            const result = await this.chatManager.listLessonMessages(recordId, chapterId, userId, lang);
             if (!result.success) {
                 return res.status(404).json({ message: result.message, data: result.data });
             }

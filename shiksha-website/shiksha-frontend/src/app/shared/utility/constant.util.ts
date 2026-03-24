@@ -21,6 +21,27 @@ export const LOC_LANGUAGES: any[] = [
     }
 ]
 
+export const LANGUAGE_CODE_MAP: Record<string, string> = {
+    'en': 'en',
+    'kn': 'kn',
+    'hi': 'hi',
+    'te': 'te',
+};
+
+/**
+ * Get the user's preferred language code from localStorage.
+ * Returns the language code (e.g., 'en', 'kn') for use in API calls.
+ */
+export function getUserLangCode(): string {
+    try {
+        const userData = JSON.parse(localStorage.getItem('userData') ?? '{}');
+        const pref = userData?.preferredLanguage;
+        return LANGUAGE_CODE_MAP[pref] ?? 'en';
+    } catch {
+        return 'en';
+    }
+}
+
 export const MEDIUMS = [{ name: 'English', value: 'english' }, { name: 'Kannada', value: 'kannada' }, { name: 'Telugu', value: 'telugu' }]
 
 export const CLASS_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]

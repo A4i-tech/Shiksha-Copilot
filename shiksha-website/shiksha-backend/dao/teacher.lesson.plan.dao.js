@@ -80,7 +80,8 @@ class TeacherLessonPlanDao extends BaseDao {
 		page = 1,
 		limit = 10,
 		filters = {},
-		sort = {}
+		sort = {},
+		lang
 	) {
 		try {
 			const processedFilters = {};
@@ -154,7 +155,8 @@ class TeacherLessonPlanDao extends BaseDao {
 					page,
 					limit,
 					processedFilters,
-					sort
+					sort,
+					lang
 				);
 
 
@@ -225,11 +227,12 @@ class TeacherLessonPlanDao extends BaseDao {
 		}
 	}
 
-	async getLessonPlanById(teacherId, lessonPlanId) {
+	async getLessonPlanById(teacherId, lessonPlanId, lang) {
 		try {
 			const lessonPlan = await teacherLessonPlanAggregation.getLessonPlanById(
 				teacherId,
-				lessonPlanId
+				lessonPlanId,
+				lang
 			);
 			return lessonPlan;
 		} catch (error) {
@@ -238,11 +241,12 @@ class TeacherLessonPlanDao extends BaseDao {
 		}
 	}
 
-	async getResourcePlanById(teacherId, resourcePlanId) {
+	async getResourcePlanById(teacherId, resourcePlanId, lang) {
 		try {
 			const resourcePlan = await teacherLessonPlanAggregation.getResourcePlanById(
 				teacherId,
-				resourcePlanId
+				resourcePlanId,
+				lang
 			);
 			return resourcePlan;
 		} catch (error) {

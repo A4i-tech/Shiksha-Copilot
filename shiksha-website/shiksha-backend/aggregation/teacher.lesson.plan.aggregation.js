@@ -4,8 +4,34 @@ const ObjectId = mongoose.Types.ObjectId;
 const { getStartDate, getNumMonths } = require("../helper/filter.helper");
 const { sortSubTopicsArrayTeacher } = require("../helper/formatter")
 
+/**
+ * Build an $addFields stage to resolve i18n chapter fields within a sub-pipeline.
+ * The chapter is nested at `$chapter.topics`, `$chapter.subTopics`, etc.
+ */
+function _chapterI18nResolve(lang) {
+	const l = lang || "en";
+	if (l === "en") {
+		return {
+			$addFields: {
+				"chapter.topics": { $ifNull: ["$chapter.topics.en", "$chapter.topics"] },
+				"chapter.subTopics": { $ifNull: ["$chapter.subTopics.en", "$chapter.subTopics"] },
+			},
+		};
+	}
+	return {
+		$addFields: {
+			"chapter.topics": {
+				$ifNull: [`$chapter.topics.${l}`, { $ifNull: ["$chapter.topics.en", "$chapter.topics"] }],
+			},
+			"chapter.subTopics": {
+				$ifNull: [`$chapter.subTopics.${l}`, { $ifNull: ["$chapter.subTopics.en", "$chapter.subTopics"] }],
+			},
+		},
+	};
+}
+
 class TeacherLessonPlanAggregation {
-	_lessonLookupStage() {
+	_lessonLookupStage(lang) {
 		return {
 			$lookup: {
 				from: "masterlessons",
@@ -28,6 +54,7 @@ class TeacherLessonPlanAggregation {
 					{
 						$unwind: "$chapter",
 					},
+					_chapterI18nResolve(lang),
 					{
 						$lookup: {
 							from: "mastersubjects",
@@ -75,7 +102,7 @@ class TeacherLessonPlanAggregation {
 		};
 	}
 
-	_resourceLookupStage() {
+	_resourceLookupStage(lang) {
 		return {
 			$lookup: {
 				from: "masterresources",
@@ -98,6 +125,7 @@ class TeacherLessonPlanAggregation {
 					{
 						$unwind: "$chapter",
 					},
+					_chapterI18nResolve(lang),
 					{
 						$lookup: {
 							from: "mastersubjects",
@@ -203,7 +231,7 @@ class TeacherLessonPlanAggregation {
 		}
 	}
 
-	async getByTeacherAndPagination(teacherId, page, limit, filter, sort) {
+	async getByTeacherAndPagination(teacherId, page, limit, filter, sort, lang) {
 		const { isGroupedSubTopics, ...cleanedFilter } = filter;
 		try {
 			let pipeline = [
@@ -226,8 +254,8 @@ class TeacherLessonPlanAggregation {
 					  preserveNullAndEmptyArrays: true 
 					}
 				},
-				this._lessonLookupStage(),
-				this._resourceLookupStage(),
+				this._lessonLookupStage(lang),
+				this._resourceLookupStage(lang),
 				{
 					$unwind: {
 						path: "$lesson",
@@ -426,7 +454,7 @@ class TeacherLessonPlanAggregation {
 		}
 	}
 
-	async getLessonPlanById(teacherId, lessonPlanId) {
+	async getLessonPlanById(teacherId, lessonPlanId, lang) {
 		try {
 			const pipeline = [
 				{
@@ -436,7 +464,7 @@ class TeacherLessonPlanAggregation {
 						isLesson: true,
 					},
 				},
-				this._lessonLookupStage(),
+				this._lessonLookupStage(lang),
 				{
 				$lookup: {
 						from: "lessonplantemplates",
@@ -505,7 +533,7 @@ class TeacherLessonPlanAggregation {
 		}
 	}
 
-	async getResourcePlanById(teacherId, resourcePlanId) {
+	async getResourcePlanById(teacherId, resourcePlanId, lang) {
 		try {
 			const pipeline = [
 				{
@@ -515,7 +543,7 @@ class TeacherLessonPlanAggregation {
 						isLesson: false,
 					},
 				},
-				this._resourceLookupStage(),
+				this._resourceLookupStage(lang),
 				{
 					$lookup: {
 							from: "lessonplantemplates",

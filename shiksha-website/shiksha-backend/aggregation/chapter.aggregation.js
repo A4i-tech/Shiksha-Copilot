@@ -2,8 +2,64 @@ const Chapter = require("../models/chapter.model");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 
+/**
+ * Build a $addFields stage that resolves i18n Map fields to a single language.
+ * For each field, picks `$field.<lang>` with fallback to `$field.en`.
+ */
+function buildI18nResolveStage(lang) {
+  if (!lang || lang === "en") {
+    return {
+      $addFields: {
+        topics: { $ifNull: ["$topics.en", "$topics"] },
+        subTopics: { $ifNull: ["$subTopics.en", "$subTopics"] },
+        learningOutcomes: { $ifNull: ["$learningOutcomes.en", "$learningOutcomes"] },
+        topicsLearningOutcomes: {
+          $map: {
+            input: { $ifNull: ["$topicsLearningOutcomes", []] },
+            as: "tlo",
+            in: {
+              _id: "$$tlo._id",
+              title: { $ifNull: ["$$tlo.title.en", "$$tlo.title"] },
+              learningOutcomes: { $ifNull: ["$$tlo.learningOutcomes.en", "$$tlo.learningOutcomes"] },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  return {
+    $addFields: {
+      topics: {
+        $ifNull: [`$topics.${lang}`, { $ifNull: ["$topics.en", "$topics"] }],
+      },
+      subTopics: {
+        $ifNull: [`$subTopics.${lang}`, { $ifNull: ["$subTopics.en", "$subTopics"] }],
+      },
+      learningOutcomes: {
+        $ifNull: [`$learningOutcomes.${lang}`, { $ifNull: ["$learningOutcomes.en", "$learningOutcomes"] }],
+      },
+      topicsLearningOutcomes: {
+        $map: {
+          input: { $ifNull: ["$topicsLearningOutcomes", []] },
+          as: "tlo",
+          in: {
+            _id: "$$tlo._id",
+            title: {
+              $ifNull: [`$$tlo.title.${lang}`, { $ifNull: ["$$tlo.title.en", "$$tlo.title"] }],
+            },
+            learningOutcomes: {
+              $ifNull: [`$$tlo.learningOutcomes.${lang}`, { $ifNull: ["$$tlo.learningOutcomes.en", "$$tlo.learningOutcomes"] }],
+            },
+          },
+        },
+      },
+    },
+  };
+}
+
 class ChapterAggregation {
-  async getChapterFilter(page, limit, filter, sort) {
+  async getChapterFilter(page, limit, filter, sort, lang) {
     try {
       let pipeline = [
         {
@@ -15,6 +71,7 @@ class ChapterAggregation {
           },
         },
         { $match: { ...filter, isDeleted: false } },
+        buildI18nResolveStage(lang),
         {
           $facet: {
             data: [
@@ -38,7 +95,7 @@ class ChapterAggregation {
     }
   }
 
-  async getChapterBySemester(filter) {
+  async getChapterBySemester(filter, lang) {
     try {
       let pipeline = [
         {
@@ -50,6 +107,7 @@ class ChapterAggregation {
           },
         },
         { $match: filter },
+        buildI18nResolveStage(lang),
       ];
 
       let chapters = await Chapter.aggregate(pipeline);
@@ -63,6 +121,7 @@ class ChapterAggregation {
     }
   }
 
+  // AI-facing: always resolves to English
   async getChapterByIdAndSubtopicFilter(chapterId, subTopics) {
     try {
       if (!Array.isArray(chapterId)) {
@@ -89,9 +148,9 @@ class ChapterAggregation {
         },
         {
           $project: {
-            title: "$topics",
+            title: { $ifNull: ["$topics.en", "$topics"] },
             index_path: "$indexPath",
-            learning_outcomes: "$learningOutcomes",
+            learning_outcomes: { $ifNull: ["$learningOutcomes.en", "$learningOutcomes"] },
             _id: 0,
             subtopics: {
               $map: {
@@ -101,7 +160,7 @@ class ChapterAggregation {
                     as: "item",
                     cond: {
                       $in: [
-                        "$$item.title",
+                        { $ifNull: ["$$item.title.en", "$$item.title"] },
                         Array.isArray(subTopics) ? subTopics : [],
                       ],
                     },
@@ -109,8 +168,8 @@ class ChapterAggregation {
                 },
                 as: "filteredItem",
                 in: {
-                  title: "$$filteredItem.title",
-                  learning_outcomes: "$$filteredItem.learningOutcomes",
+                  title: { $ifNull: ["$$filteredItem.title.en", "$$filteredItem.title"] },
+                  learning_outcomes: { $ifNull: ["$$filteredItem.learningOutcomes.en", "$$filteredItem.learningOutcomes"] },
                 },
               },
             },
@@ -131,6 +190,7 @@ class ChapterAggregation {
     }
   }
 
+  // AI-facing: always resolves to English
   async getChapterByIdsAndFilterObject(chapterIds) {
     try {
       const validIds = (chapterIds || [])
@@ -156,17 +216,25 @@ class ChapterAggregation {
           $addFields: {
             learning_outcomes: {
               $cond: {
-                if: { $eq: [{ $size: "$learningOutcomes" }, 0] },
+                if: {
+                  $eq: [
+                    { $size: { $ifNull: ["$learningOutcomes.en", { $ifNull: ["$learningOutcomes", []] }] } },
+                    0,
+                  ],
+                },
                 then: {
                   $reduce: {
-                    input: "$topicsLearningOutcomes",
+                    input: { $ifNull: ["$topicsLearningOutcomes", []] },
                     initialValue: [],
                     in: {
-                      $concatArrays: ["$$value", "$$this.learningOutcomes"],
+                      $concatArrays: [
+                        "$$value",
+                        { $ifNull: ["$$this.learningOutcomes.en", { $ifNull: ["$$this.learningOutcomes", []] }] },
+                      ],
                     },
                   },
                 },
-                else: "$learningOutcomes",
+                else: { $ifNull: ["$learningOutcomes.en", "$learningOutcomes"] },
               },
             },
           },
@@ -174,7 +242,7 @@ class ChapterAggregation {
         {
           $project: {
             _id: 0,
-            title: "$topics",
+            title: { $ifNull: ["$topics.en", "$topics"] },
             index_path: "$indexPath",
             learning_outcomes: 1,
           },
