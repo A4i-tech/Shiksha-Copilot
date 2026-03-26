@@ -128,7 +128,8 @@ describe("TeacherLessonPlanManager", () => {
         1,
         10,
         { type: "lesson" },
-        {}
+        {},
+        undefined
       );
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(2);

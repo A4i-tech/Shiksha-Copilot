@@ -56,7 +56,8 @@ describe("TeacherLessonPlanController", () => {
         1,
         999,
         {},
-        { createdAt: -1 }
+        { createdAt: -1 },
+        "en"
       );
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
@@ -80,7 +81,8 @@ describe("TeacherLessonPlanController", () => {
         2,
         20,
         { class: "10" },
-        { updatedAt: 1 }
+        { updatedAt: 1 },
+        "en"
       );
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
@@ -101,7 +103,8 @@ describe("TeacherLessonPlanController", () => {
             { "lesson.name": expect.objectContaining({ $regex: expect.any(RegExp) }) }
           ])
         }),
-        { createdAt: -1 }
+        { createdAt: -1 },
+        "en"
       );
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
@@ -223,7 +226,7 @@ describe("TeacherLessonPlanController", () => {
 
       await controller.getLessonPlanById(mockReq, mockRes);
 
-      expect(mockManager.getLessonPlanById).toHaveBeenCalledWith("teacher-123", "lesson-123");
+      expect(mockManager.getLessonPlanById).toHaveBeenCalledWith("teacher-123", "lesson-123", "en");
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockLesson);
     });
@@ -257,7 +260,7 @@ describe("TeacherLessonPlanController", () => {
 
       await controller.getResourcePlanById(mockReq, mockRes);
 
-      expect(mockManager.getResourcePlanById).toHaveBeenCalledWith("teacher-123", "resource-123");
+      expect(mockManager.getResourcePlanById).toHaveBeenCalledWith("teacher-123", "resource-123", "en");
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockResource);
     });
