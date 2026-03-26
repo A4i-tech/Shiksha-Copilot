@@ -6,6 +6,8 @@ const {
 } = require("../../setup/db.setup");
 const mongoose = require("mongoose");
 
+jest.setTimeout(60000); // Increase timeout for MongoDB Memory Server
+
 // Create a test model for testing BaseDao
 const TestSchema = new mongoose.Schema({
   name: String,

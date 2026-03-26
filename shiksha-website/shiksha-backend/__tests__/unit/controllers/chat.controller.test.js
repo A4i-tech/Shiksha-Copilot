@@ -16,6 +16,7 @@ describe('ChatController', () => {
         mockReq = {
             body: {},
             params: {},
+            query: {},
             user: { _id: 'user123' }
         };
         mockRes = {
@@ -118,7 +119,8 @@ describe('ChatController', () => {
             expect(mockChatManager.listLessonMessages).toHaveBeenCalledWith(
                 'record123',
                 'chapter123',
-                'user123'
+                'user123',
+                'en'
             );
             expect(mockRes.status).toHaveBeenCalledWith(200);
         });
