@@ -237,38 +237,41 @@ class BaseVectorIndexRagOps(ABC):
         async def _retrieve_nodes():
             """Retrieve nodes from the index.
 
-            Handles Qdrant entries with null text by patching TextNode
-            temporarily during retrieval.
+            Handles Qdrant entries with null text by post-processing nodes
+            after retrieval instead of monkey-patching.
             """
-            from llama_index.core.schema import TextNode as _TN
-            _orig_init = _TN.__init__
+            retriever_kwargs = {
+                "similarity_top_k": self.similarity_top_k,
+            }
+            if metadata_filter:
+                filters = self._create_metadata_filters(metadata_filter)
+                retriever_kwargs["filters"] = filters
 
-            def _safe_init(self_node, *a, **kw):
-                if "text" in kw and kw["text"] is None:
-                    kw["text"] = ""
-                _orig_init(self_node, *a, **kw)
+            retriever = self.rag_index.as_retriever(**retriever_kwargs)
+            qb = QueryBundle(
+                query_str=text_str,
+                custom_embedding_strs=[retrieval_query or text_str],
+            )
+            nodes = await retriever.aretrieve(qb)
 
-            _TN.__init__ = _safe_init
-            try:
-                retriever_kwargs = {
-                    "similarity_top_k": self.similarity_top_k,
-                }
-                if metadata_filter:
-                    filters = self._create_metadata_filters(metadata_filter)
-                    retriever_kwargs["filters"] = filters
+            # Post-process nodes to handle None text and filter out empty ones
+            processed_nodes = []
+            for n in nodes:
+                # Handle direct node.text
+                if hasattr(n, "text") and n.text is None:
+                    n.text = ""
+                # Handle wrapped node.node.text (for certain Llamaindex wrappers)
+                elif hasattr(n, "node") and getattr(n.node, "text", None) is None:
+                    if hasattr(n.node, "text"):
+                        n.node.text = ""
 
-                retriever = self.rag_index.as_retriever(**retriever_kwargs)
-                qb = QueryBundle(
-                    query_str=text_str,
-                    custom_embedding_strs=[retrieval_query or text_str],
-                )
-                nodes = await retriever.aretrieve(qb)
-                # Filter out nodes with empty text (from null Qdrant entries)
-                nodes = [n for n in nodes if getattr(n, "text", None) or
-                         (hasattr(n, "node") and getattr(n.node, "text", None))]
-                return nodes
-            finally:
-                _TN.__init__ = _orig_init
+                # Filter out empty text nodes (from null Qdrant entries)
+                if getattr(n, "text", None) or (
+                    hasattr(n, "node") and getattr(n.node, "text", None)
+                ):
+                    processed_nodes.append(n)
+
+            return processed_nodes
 
         async def _synthesize(nodes):
             """Synthesize a response from nodes."""

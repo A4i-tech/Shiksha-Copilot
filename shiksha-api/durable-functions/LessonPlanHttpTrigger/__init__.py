@@ -51,7 +51,7 @@ async def main(
             except Exception as parse_err:
                 logger.error(f"Failed to parse request body: {parse_err}", exc_info=True)
                 return func.HttpResponse(
-                    body=json.dumps({"error": f"Invalid JSON body: {str(parse_err)}"}),
+                    body=json.dumps({"error": "Invalid or malformed JSON in request body"}),
                     mimetype="application/json",
                     status_code=400,
                 )
@@ -93,7 +93,7 @@ async def main(
     except Exception as e:
         logger.error(f"Error starting lesson plan generation: {str(e)}", exc_info=True)
         return func.HttpResponse(
-            body=json.dumps({"error": str(e)}),
+            body=json.dumps({"error": "Failed to start lesson plan generation"}),
             mimetype="application/json",
             status_code=400,
         )
