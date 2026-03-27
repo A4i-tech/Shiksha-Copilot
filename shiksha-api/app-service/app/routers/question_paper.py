@@ -12,6 +12,7 @@ from app.models.question_paper import (
 )
 from app.models.chat import ErrorResponse
 from app.services.question_paper_service import QUESTION_PAPER_SERVICE_INSTANCE
+from app.services.translation_service import TranslationService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -125,18 +126,6 @@ def get_sample_text(data: Any) -> str:
         return data
     return ""
 
-def translate_json(data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    (Skeleton) Translates the string values within a JSON object to the target language.
-    
-    For now, this function is a placeholder and simply returns the original
-    JSON object without performing any translation. The final implementation
-    will need to recursively traverse the JSON structure and translate all
-    string values.
-    """
-    logger.info("Skeleton translation function called. Returning original JSON data.")
-    return data
-
 
 @router.post(
     "/translate_json",
@@ -177,7 +166,7 @@ async def translate_json_content_to_kannada(
             try:
                 source_lang_code = detect(sample_text)
             except Exception as e:
-                logger.warning(f"Language detection failed on sample text '{sample_text}': {e}")
+                logger.warning("Language detection failed on sample text: %s", e)
         
         # Normalize Target Language
         target_lang_input = request.target_language.lower().strip()
@@ -190,18 +179,31 @@ async def translate_json_content_to_kannada(
             logger.info("Source and Target languages match. Skipping translation.")
             return TranslationResponse(translated_json=request.json_data)
 
-        # Perform Translation (Skeleton)
-        translated_data = translate_json(request.json_data)
-        
+        # Perform Translation
+        logger.info(
+            "Using TranslationService to translate from %s to %s",
+            source_lang_code,
+            target_iso,
+        )
+        translated_data = await TranslationService.translate_json_async(
+            request.json_data, source_lang_code, target_iso
+        )
+
         logger.info("Successfully processed translation request.")
         return TranslationResponse(translated_json=translated_data)
 
+    except ValueError as e:
+        logger.warning("Translation request validation error: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except Exception as e:
-        logger.error(f"Error during JSON translation processing: {e}")
+        logger.error("Error during JSON translation processing: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process JSON object: {str(e)}",
-        )
+            detail="Translation service temporarily unavailable. Please try again later.",
+        ) from e
 
 @router.post(
     "/by-parts",

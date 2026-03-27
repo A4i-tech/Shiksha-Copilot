@@ -3,7 +3,7 @@ import os
 from page_objects.chatbot_page import ChatbotPage
 from playwright.sync_api import expect
 
-BASE_URL = os.getenv("STAGING_URL")
+BASE_URL = os.getenv("FRONTEND_URL")
 
 @pytest.fixture
 def chatbot(logged_in_page):

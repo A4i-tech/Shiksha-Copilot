@@ -972,7 +972,19 @@ class QuestionBankManager extends BaseManager {
       };
 
       console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
-      const result = await this.questionDao.getQuestions(cleanFilters);
+      let result = await this.questionDao.getQuestions(cleanFilters);
+
+      // Handle translation if targetLanguage is provided
+      if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
+        try {
+          // result comes back as an array of questions, _handleTranslation takes the same
+          result = await this._handleTranslation(filters.targetLanguage, result, "LBA Questions");
+        } catch (transErr) {
+          console.error("[Manager] LBA Question translation failed:", transErr);
+          // fall back to the untranslated result which is already in `result`
+        }
+      }
+
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", result);
     } catch (err) {

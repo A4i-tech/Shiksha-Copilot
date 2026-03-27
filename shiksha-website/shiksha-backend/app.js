@@ -37,6 +37,7 @@ const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.rout
 const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
 const helpVideosRoutes = require('./routes/help.videos.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
+const systemRoutes = require('./routes/system.routes.js');
 
 dotenv.config();
 const app = express();
@@ -57,7 +58,7 @@ app.use(useragent.express());
 const PORT = process.env.PORT;
 dbService.connect().then((data) => console.log(data.message));
 
-app.get("/", (req, res) => res.send("Shikshana Backend!"));
+app.use("/", systemRoutes);
 app.use("/api", userRoutes);
 app.use("/api", masterLessonRoutes);
 app.use("/api", boardRoutes);

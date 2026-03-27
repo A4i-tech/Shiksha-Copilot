@@ -666,11 +666,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         break;
 
       case 2:
-        if (!this.templateComponent || this.templateComponent.selectedQuestions.length === 0) {
+        const selections = this.templateComponent?.selectedQuestions?.length
+          ? this.templateComponent.selectedQuestions
+          : this.selectedQuestions;
+        if (!selections || selections.length === 0) {
           this.utilityservice.showWarning("Please select at least one question.");
           return;
         }
-        this.processStep2(this.templateComponent.selectedQuestions);
+        this.processStep2(selections);
         break;
 
       case 3:
@@ -899,7 +902,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
         const flatQuestions: any[] = [];
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
+        type QuestionDistribution = { unit_name: string; objective: string };
+        const normalizeTypeKey = (val?: string): string =>
+          (val ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
+        // Single source of truth for objective mapping: blueprint template question_distribution.
+        const blueprintObjectiveByType: Record<string, QuestionDistribution[]> = {};
+        for (const tpl of payload.template ?? []) {
+          blueprintObjectiveByType[normalizeTypeKey(tpl.type)] = tpl.question_distribution ?? [];
+        }
         categoryBlocks.forEach((block: any) => {
           const innerQuestions = block.questions || [];
           const blockType = block.type || 'Question';
@@ -907,7 +918,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           const friendlyHeading = this.selectedHeadings.find(h => this.mapHeadingToAIType(h) === blockType) || blockType;
           const blockMarks = Number(block.marks_per_question || 1);
 
-          innerQuestions.forEach((q: any) => {
+          innerQuestions.forEach((q: any, idx: number) => {
             // ROBUST EXTRACTION: Handle nested item, question.question, or flat question/text
             let questionText = q.text || q.question_text || q.content;
 
@@ -925,8 +936,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             }
 
             if (questionText) {
-              // Aggressively find objective
-              const finalObjective = q.objective || (q.item && q.item.objective) || block.objective || 'Knowledge';
+              const typeKey = normalizeTypeKey(blockType);
+              const distributionObjective =
+                Array.isArray(blueprintObjectiveByType[typeKey]) && blueprintObjectiveByType[typeKey][idx]
+                  ? blueprintObjectiveByType[typeKey][idx].objective
+                  : null;
+              const finalObjective =
+                distributionObjective ||
+                'Knowledge';
 
               flatQuestions.push({
                 ...q,
@@ -954,6 +971,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const formVal = this.questionBankConfigForm.getRawValue();
     const validChapterIds = this.getChapterIds();
     const primaryChapterId = validChapterIds.length > 0 ? validChapterIds[0] : null;
+    const objectiveDistribution = (this.questionBankObjectives)
+      .map((obj: any) => ({
+        objective: obj?.objective,
+        percentage_distribution: Number(obj?.percentage_distribution)
+      }))
+      .filter((obj: any) => !!obj.objective);
 
     const selectedSubjectId = formVal.subject;
     const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === selectedSubjectId);
@@ -971,6 +994,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return {
       board: formVal.board,
       medium: formVal.medium || 'English',
+      language: formVal.language ?? 'English',
       grade: String(formVal.grade),
       subject: subjectName, // Send Name for AI
       subjectId: selectedSubjectId, // Send ID for DB
@@ -991,8 +1015,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         percentage_distribution: Number(d.percentage_distribution)
       })),
       template: [],
-      objective_distribution: [],
-      bluePrint: this.questionBankBluePrintData || []
+      objective_distribution: objectiveDistribution,
+      objectiveDistribution: objectiveDistribution,
+      bluePrint: this.questionBankBluePrintData,
     };
   }
 
@@ -1121,7 +1146,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       class: config.grade,
       chapterNumbers: selectedChapterNumbers.join(','),
       chapterIds: selectedChapterIds.join(','),
-      headings: this.selectedHeadings.join(',')
+      headings: this.selectedHeadings.join(','),
+      targetLanguage: config.language
     };
 
     console.log('[Frontend] getLBAQuestions params:', params);

@@ -11,6 +11,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   // NEW INPUT: The merged pool from Parent
   @Input() availableQuestions: any[] = [];
+  @Input() preSelectedQuestions: any[] = [];
 
   // Pre-selected questions passed from the parent to restore selections
   @Input() preSelectedQuestions: any[] = [];
@@ -45,9 +46,26 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
     this.applyFilters();
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['preSelectedQuestions']) {
+      this.syncPreSelectedQuestions();
+    }
     this.extractFilters();
     this.applyFilters();
+  }
+
+  private syncPreSelectedQuestions(): void {
+    if (!this.preSelectedQuestions || this.preSelectedQuestions.length === 0) {
+      this.selectedQuestions = [];
+      return;
+    }
+
+    const byId = new Map<string, any>();
+    this.preSelectedQuestions.forEach((q: any) => {
+      const key = q?._id ? String(q._id) : `${q?.text || ''}__${q?.marks || 0}`;
+      if (!byId.has(key)) byId.set(key, q);
+    });
+    this.selectedQuestions = Array.from(byId.values());
   }
 
   extractFilters() {
@@ -145,7 +163,6 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   }
 
   removeQuestion(index: number) {
-    const q = this.selectedQuestions[index];
     this.selectedQuestions.splice(index, 1);
     this.selectionChange.emit(this.selectedQuestions);
     this.applyFilters(); // Add back to left list

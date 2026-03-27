@@ -1,10 +1,17 @@
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from app.main import app
 
 
 client = TestClient(app)
+
+
+def _mock_translate_same_data(json_data):
+    """Return a coroutine that resolves to the same json_data (no-op translation)."""
+    async def _same(_data, _src, _tgt):
+        return json_data
+    return _same
 
 
 @pytest.fixture
@@ -63,16 +70,20 @@ class TestTranslateJsonEndpoint:
         assert response.status_code == 422  # Validation error
 
     def test_translate_json_invalid_language(self, mock_question_paper_service):
-        """Test translation with unmapped language name."""
+        """Test translation with unmapped language name returns 200 (mocked no-op)."""
         request_data = {
             "target_language": "Unmapped Language",
             "json_data": {"title": "Test"},
         }
-
-        response = client.post("/question-paper/translate_json", json=request_data)
+        with patch(
+            "app.routers.question_paper.TranslationService.translate_json_async",
+            new_callable=AsyncMock,
+            side_effect=_mock_translate_same_data(request_data["json_data"]),
+        ):
+            response = client.post("/question-paper/translate_json", json=request_data)
 
         assert response.status_code == 200
-        # Should still work, just with unmapped language code
+        assert response.json()["translated_json"] == request_data["json_data"]
 
     def test_translate_json_empty_json_data(self, mock_question_paper_service):
         """Test translation with empty JSON data."""
@@ -84,7 +95,7 @@ class TestTranslateJsonEndpoint:
         assert response.json()["translated_json"] == {}
 
     def test_translate_json_nested_structure(self, mock_question_paper_service):
-        """Test translation with deeply nested JSON structure."""
+        """Test translation with deeply nested JSON structure (structure preserved)."""
         request_data = {
             "target_language": "Hindi",
             "json_data": {
@@ -101,8 +112,13 @@ class TestTranslateJsonEndpoint:
                 ]
             },
         }
-
-        response = client.post("/question-paper/translate_json", json=request_data)
+        json_data = request_data["json_data"]
+        with patch(
+            "app.routers.question_paper.TranslationService.translate_json_async",
+            new_callable=AsyncMock,
+            side_effect=_mock_translate_same_data(json_data),
+        ):
+            response = client.post("/question-paper/translate_json", json=request_data)
 
         assert response.status_code == 200
         data = response.json()
@@ -152,15 +168,12 @@ class TestHelperFunctions:
         result = get_sample_text(data)
         assert "longer instruction" in result.lower()
 
-    def test_translate_json_placeholder(self):
-        """Test that translate_json is a placeholder function."""
-        from app.routers.question_paper import translate_json
+    def test_translate_json_placeholder_removed(self):
+        """translate_json helper was removed; translation is done via TranslationService."""
+        from app.routers.question_paper import TranslationService
 
-        input_data = {"key": "value"}
-        result = translate_json(input_data)
-
-        # Should return the same data (skeleton/placeholder function)
-        assert result == input_data
+        assert TranslationService is not None
+        # Endpoint behavior is covered by TestTranslateJsonEndpoint tests
 
 
 class TestLanguageMapping:

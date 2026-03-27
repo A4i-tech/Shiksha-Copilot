@@ -18,6 +18,7 @@ aiofiles = "^23.2.1"
 pyyaml = "^6.0.1"
 autogen-agentchat = "*"
 azure-ai-projects = "*"
+azure-ai-translation-text = "*"
 aiohttp = "^3.9.0"
 vellm-rag-wrapper = { path = "app/rag-wrapper", develop = true }
 autogen-ext = { extras = ["azure", "openai"], version = "^0.6.4" }
