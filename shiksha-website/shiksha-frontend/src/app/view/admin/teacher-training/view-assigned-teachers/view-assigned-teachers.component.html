@@ -1,84 +1,87 @@
-<div class="assigned-teachers-container">
-  <div class="header">
-    <button class="back-button" (click)="goBack()">← Back to Batches</button>
-    <div class="batch-info-main">
-      <h2>{{ selectedBatch?.batchName }}</h2>
-      <p class="batch-description">{{ selectedBatch?.description }}</p>
-    </div>
-    <div class="submit-section">
-      <button 
-        *ngIf="selectedBatch && !selectedBatch.isSubmitted" 
-        (click)="onSaveAndSubmit(selectedBatch._id)"
-        class="submit-button"
-      >
-        Save and Submit
-      </button>
-      <div 
-        *ngIf="selectedBatch && selectedBatch.isSubmitted" 
-        class="submitted-status-container"
-      >
-        <span class="submitted-status">
-          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-          </svg>
+<div class="px-4 pt-4 md:px-0 md:pt-0">
+  <h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px]">
+    Teacher Training
+  </h1>
+
+  <div class="border rounded bg-white mt-6 px-4 py-6 md:px-6 md:py-8">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0">
+        <button class="back-link" type="button" (click)="goBack()">← Back to Batches</button>
+        <h2 class="mt-2 text-content text-2xl md:text-[30px] font-bold md:leading-[48px] break-words">
+          {{ selectedBatch?.batchName || 'Batch Details' }}
+        </h2>
+        <p class="mt-2 text-content-60 break-words">
+          {{ selectedBatch?.description || 'Track attendance, manage participants, and upload supporting documents.' }}
+        </p>
+      </div>
+
+      <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+        <button
+          *ngIf="selectedBatch && !selectedBatch.isSubmitted"
+          type="button"
+          class="btn-primary h-9 w-full sm:w-auto"
+          (click)="onSaveAndSubmit(selectedBatch._id)"
+        >
+          <div class="flex items-center justify-center gap-2">
+            <span>Save and Submit</span>
+          </div>
+        </button>
+
+        <span *ngIf="selectedBatch && selectedBatch.isSubmitted" class="inline-flex items-center justify-center px-3 py-1 rounded-full text-green bg-success-50 w-full sm:w-auto">
           Submitted
         </span>
       </div>
     </div>
-  </div>
 
-  <div class="batch-stats">
-    <button type="button" class="stat-box download-box" (click)="downloadReport()">
-      <div class="download-icon">
-        <i class="fas fa-download"></i>
-      </div>
-      <h3>Total Participants</h3>
-      <p class="stat-value">{{ selectedBatch?.assignedTeachers?.length || 0 }}</p>
-      <div class="download-text">Click to download report</div>
-    </button>
-    
-    <div class="stat-box present">
-      <h3>Present</h3>
-      <p class="stat-value">{{ getPresentCount() }}</p>
-    </div>
-    <div class="stat-box absent">
-      <h3>Absent</h3>
-      <p class="stat-value">{{ getAbsentCount() }}</p>
-    </div>
-    <button *ngIf="(selectedBatch?.assignedTeachers || []).length > 0" type="button" class="stat-box attendance-sheet-box" (click)="generateAttendanceSheet()">
-      <div class="download-icon">
-        <i class="fas fa-file-excel"></i>
-      </div>
-      <h3>Generate Attendance Sheet</h3>
-      <div class="download-text">Download Excel (.xlsx)</div>
-    </button>
-  </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-6">
+      <button type="button" class="metric-card text-left" (click)="downloadReport()">
+        <p class="metric-label">Total Participants</p>
+        <p class="metric-value">{{ selectedBatch?.assignedTeachers?.length || 0 }}</p>
+        <p class="metric-copy">Download batch report</p>
+      </button>
 
-  <div class="content">
-    <table class="assigned-teacher-table" *ngIf="selectedBatch && selectedBatch.assignedTeachers && selectedBatch.assignedTeachers.length > 0">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Phone</th>
-          <th>Zone</th>
-          <th>District</th>
-          <th>Attendance</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let teacher of selectedBatch.assignedTeachers">
-          <td>{{ teacher.name }}</td>
-          <td>{{ teacher.phone }}</td>
-          <td>{{ teacher.zone }}</td>
-          <td>{{ teacher.district }}</td>
-          <td>
-            <input type="checkbox" [checked]="getTeacherAttendanceStatus(teacher._id)" (change)="onAttendanceChange(teacher._id, $any($event.target).checked)" [disabled]="selectedBatch.isSubmitted">
-          </td>
-          <td>
-            <button 
-              class="remove-assigned-teacher-icon" 
-              (click)="onRemoveAssignedTeacher(selectedBatch!, teacher)" 
+      <div class="metric-card">
+        <p class="metric-label">Present</p>
+        <p class="metric-value text-green">{{ getPresentCount() }}</p>
+        <p class="metric-copy">Attendance marked present</p>
+      </div>
+
+      <div class="metric-card">
+        <p class="metric-label">Absent</p>
+        <p class="metric-value text-orange">{{ getAbsentCount() }}</p>
+        <p class="metric-copy">Assigned but not marked present</p>
+      </div>
+
+      <button
+        *ngIf="(selectedBatch?.assignedTeachers || []).length > 0"
+        type="button"
+        class="metric-card text-left"
+        (click)="generateAttendanceSheet()"
+      >
+        <p class="metric-label">Attendance Sheet</p>
+        <p class="metric-copy mt-2">Download Excel (.xlsx)</p>
+      </button>
+    </div>
+
+    <div class="mt-7">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-content text-xl md:text-2xl font-bold">Assigned Teachers</p>
+          <p class="mt-1 text-sm text-content-60">Mark attendance and remove teachers before the batch is submitted.</p>
+        </div>
+      </div>
+
+      <div class="space-y-4 md:hidden mt-4" *ngIf="selectedBatch && selectedBatch.assignedTeachers && selectedBatch.assignedTeachers.length > 0">
+        <div class="rounded-xl border p-4 bg-white shadow-sm" *ngFor="let teacher of selectedBatch.assignedTeachers">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="font-semibold break-words">{{ teacher.name }}</p>
+              <p class="text-sm text-content-60 mt-1 break-all">{{ teacher.phone }}</p>
+            </div>
+            <button
+              class="remove-assigned-teacher-icon"
+              type="button"
+              (click)="onRemoveAssignedTeacher(selectedBatch!, teacher)"
               [disabled]="selectedBatch.isSubmitted"
               [title]="selectedBatch.isSubmitted ? 'Cannot remove teachers from a submitted batch' : 'Remove teacher'"
             >
@@ -89,30 +92,101 @@
                 <line x1="14" y1="11" x2="14" y2="17"></line>
               </svg>
             </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <p *ngIf="!selectedBatch || !selectedBatch.assignedTeachers || selectedBatch.assignedTeachers.length === 0" class="no-teachers-message">No teachers assigned to this batch.</p>
-  </div>
+          </div>
 
-  <!-- File Upload Section -->
-  <div class="container mx-auto px-4 py-8">
-    <div class="mb-8 bg-white rounded-lg shadow-md p-6">
-      <h3 class="text-xl font-semibold mb-4">Proof: Upload Supporting Documents</h3>
-      
-      <!-- Error Message -->
-      <div *ngIf="uploadError" class="mb-4 p-3 bg-red-100 text-red-700 rounded">
+          <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p class="text-xs text-content-60">Zone</p>
+              <p class="break-words">{{ teacher.zone || '-' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-content-60">District</p>
+              <p class="break-words">{{ teacher.district || '-' }}</p>
+            </div>
+            <div class="col-span-2">
+              <label class="attendance-row">
+                <span>Present</span>
+                <input
+                  type="checkbox"
+                  [checked]="getTeacherAttendanceStatus(teacher._id)"
+                  (change)="onAttendanceChange(teacher._id, $any($event.target).checked)"
+                  [disabled]="selectedBatch.isSubmitted"
+                >
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hidden md:block w-full overflow-x-auto mt-4" *ngIf="selectedBatch && selectedBatch.assignedTeachers && selectedBatch.assignedTeachers.length > 0">
+        <table class="table-auto min-w-[900px] w-full border rounded-lg text-content">
+          <thead>
+            <tr class="bg-primary-60 rounded-lg border-b">
+              <th class="text-left p-4 rounded border-r text-sm text-content">Name</th>
+              <th class="text-left p-4 border-r text-sm text-content">Phone</th>
+              <th class="text-left p-4 border-r text-sm text-content">Zone</th>
+              <th class="text-left p-4 border-r text-sm text-content">District</th>
+              <th class="text-left p-4 border-r text-sm text-content">Attendance</th>
+              <th class="text-left p-4 text-sm text-content">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white">
+            <tr *ngFor="let teacher of selectedBatch.assignedTeachers" class="border-b">
+              <td class="text-sm p-4 border-r break-words">{{ teacher.name }}</td>
+              <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.phone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.zone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.district }}</td>
+              <td class="text-sm p-4 border-r text-center">
+                <input
+                  type="checkbox"
+                  [checked]="getTeacherAttendanceStatus(teacher._id)"
+                  (change)="onAttendanceChange(teacher._id, $any($event.target).checked)"
+                  [disabled]="selectedBatch.isSubmitted"
+                >
+              </td>
+              <td class="text-sm p-4 text-center">
+                <button
+                  class="remove-assigned-teacher-icon"
+                  type="button"
+                  (click)="onRemoveAssignedTeacher(selectedBatch!, teacher)"
+                  [disabled]="selectedBatch.isSubmitted"
+                  [title]="selectedBatch.isSubmitted ? 'Cannot remove teachers from a submitted batch' : 'Remove teacher'"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="!selectedBatch || !selectedBatch.assignedTeachers || selectedBatch.assignedTeachers.length === 0" class="text-center text-content-60 py-4 border rounded-xl mt-4">
+        No teachers assigned to this batch.
+      </div>
+    </div>
+
+    <div class="mt-7">
+      <div>
+        <p class="text-content text-xl md:text-2xl font-bold">Proof Documents</p>
+        <p class="mt-1 text-sm text-content-60">Upload photos and the attendance sheet for this batch.</p>
+      </div>
+
+      <div *ngIf="uploadError" class="upload-error mt-4">
         {{ uploadError }}
       </div>
 
-      <!-- Photo Upload -->
-      <div class="mb-6">
-        <label class="block text-gray-700 text-sm font-bold mb-2" for="photoInput">
-          Upload Photos (Max 2)
-        </label>
-        <p class="text-sm text-gray-500 mb-2">Max 2 photos, up to 5MB each. Allowed types: JPG, JPEG, PNG.</p>
-        <div class="flex items-center space-x-4">
+      <div class="upload-section mt-4">
+        <div>
+          <p class="font-semibold text-content">Upload Photos</p>
+          <p class="text-sm text-content-60 mt-1">Maximum 2 images, up to 5MB each. Allowed types: JPG, JPEG, PNG.</p>
+        </div>
+
+        <div class="upload-actions mt-4">
           <input
             id="photoInput"
             type="file"
@@ -124,51 +198,39 @@
             [disabled]="selectedBatch?.isSubmitted"
           />
           <button
+            type="button"
+            class="btn-primary h-9 w-full sm:w-auto"
             (click)="photoInput.click()"
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             [disabled]="selectedBatch?.isSubmitted"
-            [class.opacity-50]="selectedBatch?.isSubmitted"
-            [class.cursor-not-allowed]="selectedBatch?.isSubmitted"
           >
-            Select Photos
+            <div class="flex items-center justify-center gap-2">
+              <span>Select Photos</span>
+            </div>
           </button>
-          <span class="text-sm text-gray-600">
-            {{ selectedPhotos.length }} photos selected
-          </span>
+          <span class="text-sm text-content-60 break-words">{{ selectedPhotos.length }} photos selected</span>
         </div>
-        
-        <!-- Selected Photos Preview -->
-        <div class="mt-4 grid grid-cols-2 gap-4" *ngIf="!selectedBatch?.isSubmitted">
-          <div *ngFor="let photo of selectedPhotos; let i = index" class="relative">
-            <img [src]="photo.objectURL" class="w-full h-32 object-cover rounded" [alt]="'Selected photo ' + (i + 1)" />
-            <button
-              (click)="removePhoto(i)"
-              class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-700"
-              [disabled]="selectedBatch?.isSubmitted"
-              [class.opacity-50]="selectedBatch?.isSubmitted"
-              [class.cursor-not-allowed]="selectedBatch?.isSubmitted"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+
+        <div class="upload-preview-grid mt-4" *ngIf="!selectedBatch?.isSubmitted">
+          <div *ngFor="let photo of selectedPhotos; let i = index" class="upload-preview-card">
+            <img [src]="photo.objectURL" class="upload-preview-image" [alt]="'Selected photo ' + (i + 1)" />
+            <button type="button" (click)="removePhoto(i)" class="upload-remove-btn" [disabled]="selectedBatch?.isSubmitted">×</button>
           </div>
         </div>
 
-        <div class="mt-4 grid grid-cols-2 gap-4" *ngIf="selectedBatch?.isSubmitted">
-          <div *ngFor="let photo of batchPhotos; let i = index" class="relative">
-            <img [src]="photo.path" class="w-full h-32 object-cover rounded" [alt]="'Selected photo ' + (i + 1)" />
+        <div class="upload-preview-grid mt-4" *ngIf="selectedBatch?.isSubmitted">
+          <div *ngFor="let photo of batchPhotos; let i = index" class="upload-preview-card">
+            <img [src]="photo.path" class="upload-preview-image" [alt]="'Selected photo ' + (i + 1)" />
           </div>
         </div>
       </div>
 
-      <!-- PDF Upload -->
-      <div class="mb-6">
-        <label class="block text-gray-700 text-sm font-bold mb-2" for="pdfInput">
-          Upload Attendance Sheet (PDF only)
-        </label>
-        <p class="text-sm text-gray-500 mb-2">Up to 10MB. Only PDF files are allowed.</p>
-        <div class="flex items-center space-x-4">
+      <div class="upload-section mt-4">
+        <div>
+          <p class="font-semibold text-content">Upload Attendance Sheet</p>
+          <p class="text-sm text-content-60 mt-1">PDF only, up to 10MB.</p>
+        </div>
+
+        <div class="upload-actions mt-4">
           <input
             id="pdfInput"
             type="file"
@@ -179,36 +241,32 @@
             [disabled]="selectedBatch?.isSubmitted"
           />
           <button
+            type="button"
+            class="btn-primary h-9 w-full sm:w-auto"
             (click)="pdfInput.click()"
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             [disabled]="selectedBatch?.isSubmitted"
-            [class.opacity-50]="selectedBatch?.isSubmitted"
-            [class.cursor-not-allowed]="selectedBatch?.isSubmitted"
           >
-            Select PDF
+            <div class="flex items-center justify-center gap-2">
+              <span>Select PDF</span>
+            </div>
           </button>
-          <span class="text-sm text-gray-600" *ngIf="!selectedBatch?.isSubmitted">
+
+          <span class="text-sm text-content-60 break-words" *ngIf="!selectedBatch?.isSubmitted">
             {{ selectedPdf ? selectedPdf.name : 'No file selected' }}
           </span>
-          <span class="text-sm text-gray-600" *ngIf="selectedBatch?.isSubmitted">
+          <span class="text-sm text-content-60 break-words" *ngIf="selectedBatch?.isSubmitted">
             {{ batchPdf ? batchPdf.name : 'No file selected' }}
           </span>
+
           <button
             *ngIf="selectedPdf"
+            type="button"
+            class="upload-remove-link"
             (click)="removePdf()"
-            class="text-red-500 hover:text-red-700"
             [disabled]="selectedBatch?.isSubmitted"
-            [class.opacity-50]="selectedBatch?.isSubmitted"
-            [class.cursor-not-allowed]="selectedBatch?.isSubmitted"
           >
             Remove
           </button>
-        </div>
-      </div>
-
-      <div class="row mb-3">
-        <div class="col-md-3">
-          <!-- Removed: <button class="btn btn-primary" (click)="generatePdfReport()">Generate PDF Report</button> -->
         </div>
       </div>
     </div>
