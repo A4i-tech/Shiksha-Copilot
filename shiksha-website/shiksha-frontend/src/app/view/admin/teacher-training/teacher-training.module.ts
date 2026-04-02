@@ -8,6 +8,7 @@ import { ViewAssignedTeachersComponent } from './view-assigned-teachers/view-ass
 import { CommonDropdownComponent } from 'src/app/shared/components/common-dropdown/common-dropdown.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 import { HttpClientModule } from '@angular/common/http';
+import { FormDropdownComponent } from 'src/app/shared/components/form-dropdown/form-dropdown.component';
 
 @NgModule({
   declarations: [
@@ -21,6 +22,7 @@ import { HttpClientModule } from '@angular/common/http';
     ReactiveFormsModule,
     FormsModule,
     CommonDropdownComponent,
+    FormDropdownComponent,
     PaginationComponent,
     HttpClientModule
   ]

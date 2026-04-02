@@ -1,8 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { FormGroup, FormBuilder, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, UntypedFormControl, Validators } from '@angular/forms';
 import { BatchService } from 'src/app/view/admin/teacher-training/batch.service';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
 
 @Component({
   selector: 'app-create-batch',
@@ -12,6 +13,24 @@ import { HttpErrorResponse } from '@angular/common/http';
 export class CreateBatchComponent implements OnInit {
   batchForm!: FormGroup;
   selectedFile: File | null = null;
+  submitted = false;
+  mode = 'add';
+
+  trainingTypeDropdownOptions: FormDropDownOption[] = [
+    { name: 'OFFLINE/ Face to Face', value: 'offline' },
+    { name: 'ONLINE/ Virtual', value: 'online' },
+    { name: 'School-Level', value: 'School-Level' },
+  ];
+
+  trainingTypeDropdownConfig: FormDropDownConfig = {
+    isBackground: true,
+    placeHolderTxt: 'Select mode',
+    height: '44px',
+    fieldName: 'Mode of Training',
+    bindLable: 'name',
+    bindValue: 'value',
+    required: true,
+  };
 
   private fb = inject(FormBuilder);
   private batchService = inject(BatchService);
@@ -22,7 +41,7 @@ export class CreateBatchComponent implements OnInit {
       batchName: ['', Validators.required],
       description: ['', Validators.required],
       scheduleDate: ['', Validators.required],
-      trainingType: ['', Validators.required],
+      trainingType: [this.trainingTypeDropdownOptions[0].value, Validators.required],
       pdfFile: [null]
     });
   }
@@ -42,6 +61,8 @@ export class CreateBatchComponent implements OnInit {
   }
 
   onSubmit(): void {
+    this.submitted = true;
+
     if (this.batchForm.valid) {
       const formData = new FormData();
       formData.append('batchName', this.batchForm.get('batchName')?.value);
@@ -68,5 +89,9 @@ export class CreateBatchComponent implements OnInit {
       console.log('Form is invalid or no file selected.');
       this.batchForm.markAllAsTouched();
     }
+  }
+
+  convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
+    return absCtrl as UntypedFormControl;
   }
 } 

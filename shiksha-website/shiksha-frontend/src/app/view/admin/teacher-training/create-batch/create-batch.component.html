@@ -60,25 +60,14 @@
           </div>
 
           <div>
-            <label class="form-control-label" for="training-type">
-              Mode of Training <span class="text-[16px] text-error">*</span>
-            </label>
-            <select
-              id="training-type"
-              formControlName="trainingType"
-              class="form-control border-0 bg-shade-80"
-            >
-              <option value="">Select mode</option>
-              <option value="offline">OFFLINE/ Face to Face</option>
-              <option value="online">ONLINE/ Virtual</option>
-              <option value="School-Level">School-Level</option>
-            </select>
-            <small
-              class="form-control-error"
-              *ngIf="batchForm.get('trainingType')?.invalid && batchForm.get('trainingType')?.touched"
-            >
-              Training Type is required.
-            </small>
+            <app-form-dropdown
+              [dropDownControlName]="'trainingType'"
+              [dropDownCtrl]="convertToFormControl(batchForm.get('trainingType'))"
+              [dropDownValues]="trainingTypeDropdownOptions"
+              [config]="trainingTypeDropdownConfig"
+              [submitted]="submitted"
+              [mode]="mode"
+            ></app-form-dropdown>
           </div>
 
           <div>
