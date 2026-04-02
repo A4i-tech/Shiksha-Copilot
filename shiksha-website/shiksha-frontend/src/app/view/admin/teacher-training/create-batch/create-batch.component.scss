@@ -1,12 +1,3 @@
-.batch-form {
-  input:disabled,
-  textarea:disabled,
-  select:disabled {
-    background: var(--shade-80);
-    border: none;
-  }
-}
-
 .batch-file-input {
   height: auto;
   padding-top: 0.5rem;

@@ -1,13 +1,4 @@
-.table-header {
-  background-color: #f9fbff;
-}
-
 .school-management-form {
-  input:disabled {
-    background: var(--shade-80);
-    border: none;
-  }
-
   .chip {
     display: inline-block;
     margin-right: 5px;
@@ -23,13 +14,5 @@
     margin-left: 5px;
     font-weight: bold;
     color: #888;
-  }
-
-  .number-type{
-    input[type="number"]::-webkit-inner-spin-button,
-    input[type="number"]::-webkit-outer-spin-button {
-      -webkit-appearance: none;
-      margin: 0;
-    }
   }
 }
