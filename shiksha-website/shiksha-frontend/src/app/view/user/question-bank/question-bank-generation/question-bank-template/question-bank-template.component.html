@@ -9,14 +9,14 @@
   </p>
 </div>
 
-<div class="p-4 md:p-8 h-[70vh] flex flex-col md:flex-row gap-6">
+<div class="p-4 md:p-8 flex flex-col md:flex-row gap-6 md:h-[70vh]">
 
   <!-- LEFT: AVAILABLE QUESTIONS -->
-  <div class="flex-1 bg-white border rounded-lg flex flex-col shadow-sm overflow-hidden">
+  <div class="w-full md:flex-1 min-h-[20rem] bg-white border rounded-lg flex flex-col shadow-sm overflow-visible md:overflow-hidden">
     <!-- Header/Filters -->
-    <div class="p-3 border-b bg-white flex items-center gap-3 relative">
+    <div class="p-3 border-b bg-white flex flex-wrap items-center gap-3 relative">
       <!-- Filter Dropdown Component-like logic -->
-      <div class="relative">
+      <div class="sm:relative">
         <button (click)="toggleFilterMenu()"
           class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-primary active:bg-gray-50 transition-all shadow-sm bg-white">
           <img src="assets/icons/ri--filter-line.svg" alt="Filter" class="w-4 h-4" style="filter: invert(1);" />
@@ -30,7 +30,7 @@
 
         <!-- Filter Menu Content -->
         <div *ngIf="isFilterMenuOpen"
-          class="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-30 p-4 animate-in fade-in slide-in-from-top-1 duration-200">
+          class="absolute top-full left-0 right-0 mt-2 w-auto bg-white border border-gray-200 rounded-xl shadow-xl z-30 p-4 animate-in fade-in slide-in-from-top-1 duration-200 sm:left-0 sm:right-auto sm:w-72">
 
           <div class="flex justify-between items-center mb-4 pb-2 border-b">
             <span class="font-bold text-gray-800">Refine Results</span>
@@ -95,7 +95,7 @@
       </div>
 
       <!-- Search Bar -->
-      <div class="flex-1 relative group">
+      <div class="relative group w-full sm:flex-1">
         <img src="assets/icons/search.svg" alt=""
           class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 group-focus-within:opacity-70 transition-opacity" />
         <input type="text" [value]="searchText" placeholder="Search questions..." (input)="onSearch($event)"
@@ -107,7 +107,7 @@
     </div>
 
     <!-- List -->
-    <div class="flex-1 overflow-y-auto p-2 space-y-2 bg-gray-50/50">
+    <div class="p-2 space-y-2 bg-gray-50/50 md:flex-1 md:overflow-y-auto">
       <div *ngIf="filteredQuestions.length === 0" class="text-center py-10 text-gray-400 text-sm">
         No questions found.
       </div>
@@ -115,9 +115,9 @@
       <div *ngFor="let q of filteredQuestions" (click)="selectQuestion(q)"
         class="bg-white p-3 rounded border hover:shadow-md cursor-pointer transition-all border-l-4 group"
         [ngClass]="{'border-l-blue-500': q.source === 'AI Questions', 'border-l-green-500': q.source === 'Pre-generated Questions'}">
-        <div class="flex justify-between items-start mb-1">
-          <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 mr-2">{{ q.text }}</p>
-          <div class="flex items-center gap-1 flex-shrink-0">
+        <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-1">
+          <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 sm:mr-2">{{ q.text }}</p>
+          <div class="flex flex-wrap items-center gap-1 sm:justify-end">
             <!-- New Heading Badge -->
             <span *ngIf="q.heading"
               class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
@@ -139,8 +139,8 @@
   </div>
 
   <!-- RIGHT: SELECTED QUESTIONS -->
-  <div class="flex-1 bg-white border rounded-lg flex flex-col shadow-sm overflow-hidden relative">
-    <div class="p-3 border-b bg-gray-50 flex justify-between items-center">
+  <div class="w-full md:flex-1 min-h-[20rem] bg-white border rounded-lg flex flex-col shadow-sm overflow-hidden relative">
+    <div class="p-3 border-b bg-gray-50 flex flex-wrap justify-between items-center gap-2">
       <h3 class="font-bold text-gray-700">Selected Questions</h3>
       <div class="text-sm">
         <span class="font-bold" [ngClass]="isTotalMet ? 'text-green-600' : 'text-primary'">{{ currentTotalMarks
@@ -149,7 +149,7 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-2 space-y-2">
+    <div class="p-2 space-y-2 md:flex-1 md:overflow-y-auto">
       <div *ngIf="selectedQuestions.length === 0"
         class="text-center py-10 text-gray-400 text-sm border-2 border-dashed rounded m-4">
         Click questions on the left to add them here.
@@ -158,9 +158,9 @@
       <div *ngFor="let q of selectedQuestions; let i = index" class="bg-white p-3 rounded border relative">
         <button (click)="removeQuestion(i)"
           class="absolute top-2 right-2 text-gray-300 hover:text-red-500 font-bold text-xl leading-none">&times;</button>
-        <div class="flex justify-between items-start mb-1 pr-6">
-          <p class="text-sm text-gray-800 flex-1 mr-2">{{ q.text }}</p>
-          <div class="flex items-center gap-1 flex-shrink-0">
+        <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-1 pr-6">
+          <p class="text-sm text-gray-800 flex-1 sm:mr-2">{{ q.text }}</p>
+          <div class="flex flex-wrap items-center gap-1 sm:justify-end">
             <!-- New Heading Badge -->
             <span *ngIf="q.heading"
               class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
