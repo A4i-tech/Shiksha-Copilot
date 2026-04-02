@@ -145,7 +145,7 @@ input[type='date']::-webkit-calendar-picker-indicator {
 }
 
 .table-header {
-  background-color: #f9fbff;
+  background-color: var(--primary-60);
 }
 
 .search-icon {
@@ -166,15 +166,15 @@ input[type='date']::-webkit-calendar-picker-indicator {
   border: none;
   background: transparent;
   padding: 0;
-  color: #2563eb;
+  color: var(--primary-DEFAULT);
   font-weight: 600;
   cursor: pointer;
 }
 
 .metric-card {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--content-30);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--surface-DEFAULT);
   padding: 16px;
   min-width: 0;
 }
@@ -185,7 +185,7 @@ button.metric-card {
 }
 
 button.metric-card:hover {
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--content-DEFAULT) 8%, transparent);
   transform: translateY(-1px);
 }
 
@@ -195,7 +195,7 @@ button.metric-card:hover {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--content-60);
 }
 
 .metric-value {
@@ -203,13 +203,13 @@ button.metric-card:hover {
   font-size: 2rem;
   line-height: 1;
   font-weight: 700;
-  color: #111827;
+  color: var(--content-DEFAULT);
 }
 
 .metric-copy {
   margin: 8px 0 0;
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--content-60);
 }
 
 .remove-assigned-teacher-icon {
@@ -219,15 +219,15 @@ button.metric-card:hover {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  border: 1px solid #fca5a5;
-  background: #fff5f5;
-  color: #dc2626;
+  border: 1px solid var(--error-100);
+  background: var(--error-50);
+  color: var(--error-DEFAULT);
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .remove-assigned-teacher-icon:hover:not(:disabled) {
-  background: #fee2e2;
+  background: color-mix(in srgb, var(--error-DEFAULT) 14%, white);
   transform: translateY(-1px);
 }
 
@@ -246,22 +246,22 @@ button.metric-card:hover {
   align-items: center;
   justify-content: space-between;
   padding-top: 8px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--content-30);
   font-weight: 600;
 }
 
 .upload-error {
   padding: 12px 14px;
   border-radius: 12px;
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: var(--error-50);
+  color: var(--error-DEFAULT);
+  border: 1px solid var(--error-100);
 }
 
 .upload-section {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--content-30);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--surface-DEFAULT);
   padding: 16px;
 }
 
@@ -281,8 +281,8 @@ button.metric-card:hover {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: #f8fafc;
+  border: 1px solid var(--content-30);
+  background: var(--shade-50);
 }
 
 .upload-preview-image {
@@ -300,8 +300,8 @@ button.metric-card:hover {
   height: 28px;
   border: none;
   border-radius: 999px;
-  background: rgba(220, 38, 38, 0.92);
-  color: #fff;
+  background: var(--error-DEFAULT);
+  color: var(--surface-DEFAULT);
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
@@ -312,7 +312,7 @@ button.metric-card:hover {
   border: none;
   background: transparent;
   padding: 0;
-  color: #dc2626;
+  color: var(--error-DEFAULT);
   font-weight: 600;
   cursor: pointer;
 }

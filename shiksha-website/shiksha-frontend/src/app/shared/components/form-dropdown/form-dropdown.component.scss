@@ -4,15 +4,15 @@
     .ng-select.ng-select-focused:not(.ng-select-opened)
     > .ng-select-container {
     box-shadow: none;
-    border: 1px solid #9095a0;
+    border: 1px solid var(--content-50);
   }
 
   ::ng-deep .with-background.ng-select .ng-select-container {
-    background: #f3f4f6 !important;
+    background: var(--shade-80) !important;
     border: none;
   }
   ::ng-deep .ng-select .ng-select-container {
-    background-color: #fff !important;
+    background-color: var(--surface-DEFAULT) !important;
     height: 100% !important;
     border: 1px solid var(--content-50);
   }
@@ -38,7 +38,7 @@
   ::ng-deep .ng-dropdown-panel.ng-select-bottom {
     border: none;
     margin-top: 5px;
-    box-shadow: 0px 4px 9px 0px #171a1f1f;
+    box-shadow: 0px 4px 9px 0px color-mix(in srgb, var(--content-DEFAULT) 12%, transparent);
   }
 
   ::ng-deep .ng-dropdown-panel {
@@ -88,7 +88,7 @@
     margin-right: 5px;
     margin-bottom: 5px;
     padding: 5px 10px;
-    background-color: #f0f0f0;
+    background-color: var(--shade-80);
     border-radius: 20px;
     font-size: 14px;
   }
@@ -97,7 +97,7 @@
     cursor: pointer;
     margin-left: 5px;
     font-weight: bold;
-    color: #888;
+    color: var(--content-50);
   }
 
   .area-label {

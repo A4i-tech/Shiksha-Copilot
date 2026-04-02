@@ -8,7 +8,7 @@
   position: absolute;
   inset: 0;
   border: none;
-  background: rgba(15, 23, 42, 0.45);
+  background: color-mix(in srgb, var(--content-DEFAULT) 45%, transparent);
   cursor: pointer;
 }
 
@@ -20,14 +20,14 @@
   z-index: 1201;
   width: min(100vw, 560px);
   max-width: 560px;
-  background: #ffffff;
+  background: var(--surface-DEFAULT);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   margin: 0;
   padding: 0;
   border-radius: 0;
-  box-shadow: -16px 0 40px rgba(15, 23, 42, 0.16);
+  box-shadow: -16px 0 40px color-mix(in srgb, var(--content-DEFAULT) 16%, transparent);
 }
 
 .participants-panel-header {
@@ -36,18 +36,18 @@
   align-items: flex-start;
   gap: 12px;
   padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--content-30);
 
   h3 {
     margin: 0;
     font-size: 1.1rem;
     font-weight: 700;
-    color: #111827;
+    color: var(--content-DEFAULT);
   }
 
   p {
     margin: 6px 0 0;
-    color: #64748b;
+    color: var(--content-60);
     font-size: 0.92rem;
   }
 }
@@ -55,7 +55,7 @@
 .participants-close-btn {
   border: none;
   background: transparent;
-  color: #64748b;
+  color: var(--content-60);
   font-weight: 600;
   cursor: pointer;
 }
@@ -65,7 +65,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--content-30);
 }
 
 .search-container {
@@ -83,27 +83,27 @@
   width: 100%;
   min-width: 0;
   padding: 10px 38px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--content-30);
   border-radius: 12px;
   font-size: 0.95rem;
-  background: #f8fafc;
+  background: var(--shade-50);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 
   &:focus {
     outline: none;
-    border-color: #60a5fa;
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    border-color: var(--primary-DEFAULT);
+    background: var(--surface-DEFAULT);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-DEFAULT) 12%, transparent);
   }
 
   &:disabled {
-    background: #f3f4f6;
-    color: #9ca3af;
+    background: var(--shade-80);
+    color: var(--content-50);
     cursor: not-allowed;
   }
 
   &::placeholder {
-    color: #9ca3af;
+    color: var(--content-50);
   }
 }
 
@@ -112,7 +112,7 @@
   left: 12px;
   display: flex;
   align-items: center;
-  color: #9ca3af;
+  color: var(--content-50);
   pointer-events: none;
 }
 
@@ -123,7 +123,7 @@
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  color: #9ca3af;
+  color: var(--content-50);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -141,7 +141,7 @@
   justify-content: center;
   align-items: center;
   padding: 32px 20px;
-  color: #64748b;
+  color: var(--content-60);
   font-style: italic;
 }
 
@@ -153,7 +153,7 @@
 .teachers-pagination {
   margin-top: 16px;
   padding: 16px 20px 0;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--content-30);
 }
 
 .load-more-container {
@@ -165,7 +165,7 @@
 input[type='checkbox'] {
   width: 18px;
   height: 18px;
-  accent-color: #16a34a;
+  accent-color: var(--success-DEFAULT);
   cursor: pointer;
 }
 
