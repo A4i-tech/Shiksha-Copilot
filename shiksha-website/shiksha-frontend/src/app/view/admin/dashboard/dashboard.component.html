@@ -16,34 +16,33 @@
             </button>
         </div>
         
-        <div class="flex md:gap-1 mt-5 ">
-    <div class="w-full cursor-pointer md:flex-1">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-3 mt-5 items-end">
+    <div class="w-full min-w-0 cursor-pointer">
         <app-common-dropdown [dropDownValues]="stateDropdownOptions" #stateDropDown 
             (valueUpdate)="onStateChange($event)" [config]="stateDropdownconfig"></app-common-dropdown>
     </div>
 
-    <!-- Decreased width for Zone dropdown -->
-    <div class="w-3/4 cursor-pointer md:flex-1">
+    <div class="w-full min-w-0 cursor-pointer">
         <app-common-dropdown [dropDownValues]="zoneDropdownOptions" #zoneDropDown (valueCleared)="resetData()"
             (valueUpdate)="onZoneChange($event)" [config]="zoneDropdownconfig"></app-common-dropdown>
     </div>
 
-    <div class="w-full cursor-pointer md:flex-1">
+    <div class="w-full min-w-0 cursor-pointer">
         <app-common-dropdown [dropDownValues]="districtDropdownOptions" #districtDropDown (valueCleared)="resetData()"
             (valueUpdate)="onDistrictChange($event)" [config]="districtDropdownconfig"></app-common-dropdown>
     </div>
 
-    <div class="w-full cursor-pointer md:flex-1">
+    <div class="w-full min-w-0 cursor-pointer">
         <app-common-dropdown [dropDownValues]="blockDropdownOptions" #blockDropDown (valueCleared)="resetData()"
             (valueUpdate)="onBlockChange($event)" [config]="blockDropdownconfig"></app-common-dropdown>
     </div>
 
-    <div class="w-full cursor-pointer md:flex-1">
+    <div class="w-full min-w-0 cursor-pointer">
         <app-common-dropdown [dropDownValues]="schoolDropdownOptions" #schoolDropDown (valueCleared)="resetData()"
             (valueUpdate)="onSchoolChange($event)" [config]="schoolDropdownconfig"></app-common-dropdown>
     </div>
 
-    <div class="w-full cursor-pointer md:flex-1">
+    <div class="w-full min-w-0 cursor-pointer">
         <app-common-dropdown
             [dropDownValues]="planTypeDropdownOptions"
             #planTypeDropDown
@@ -52,7 +51,7 @@
         ></app-common-dropdown>
     </div>
 
-    <div class="relative flex-col">
+    <div class="relative flex-col min-w-0">
         <label class="form-control-label">From</label>
         <div class="relative">
             <input 
@@ -69,7 +68,7 @@
         </div>
     </div>              
     
-    <div class="relative flex-col">
+    <div class="relative flex-col min-w-0">
         <label class="form-control-label">To</label>
         <div class="relative">
             <input 
@@ -267,4 +266,3 @@
 </div>
     
     
-
