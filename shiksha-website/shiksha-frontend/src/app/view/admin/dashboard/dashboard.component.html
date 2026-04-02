@@ -205,7 +205,7 @@
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center justify-between gap-2">
                                         <span class="font-bold text-content break-words">{{item?.name | titlecase}}</span>
-                                        <span class="px-3 py-1 rounded-full text-sm"
+                                        <span class="px-3 py-0.5 sm:py-1 rounded-full text-sm"
                                             [ngClass]="{'text-green bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">
                                             {{!item.isDeleted ? 'Active' : 'Inactive'}}
                                         </span>

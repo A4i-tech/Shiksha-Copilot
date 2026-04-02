@@ -1,21 +1,20 @@
 <div class="batch-table-container">
-  <div class="flex items-center justify-between">
-    <h1 class="text-xl md:text-[30px] font-bold text-content leading-[48px]">
+  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+    <h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px]">
       Teacher Training Batches 
     </h1>
-    <div class="flex gap-2">
+    <div class="flex gap-2 w-full sm:w-auto">
               <button
-          class="btn-primary"
+          class="btn-primary w-full sm:w-auto"
           routerLink="/admin/teacher-training/create-batch"
         >
-          <div class="flex items-center gap-2">
+          <div class="flex items-center justify-center gap-2">
             <img src="assets/icons/add.svg" alt="" />
             <span class="text-nowrap">Create Batch</span>
           </div>
         </button>
     </div>
   </div>
-  <br>
 
   <div *ngIf="teacherStats" class="stats-container">
     <div class="stat-box stat-box-total">
@@ -32,73 +31,122 @@
     </div>
   </div>
 
-  <table class="batch-table" *ngIf="batches && batches.length > 0">
-    <thead>
-      <tr>
-        <th>Batch Name</th>
-        <th>Schedule Date</th>
-        <th>Mode of Training</th>
-        <th *ngIf="isAdmin">Manager</th>
-        <th>View Teacher</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let batch of batches">
-        <td>{{ batch.batchName }}</td>
-        <td>{{ batch.scheduleDate | date }}</td>
-        <td>{{ batch.trainingType }}</td>
-        <td *ngIf="isAdmin">{{ batch.createdBy?.name }}</td>
-        <td>
-          <button class="view-teachers-button" (click)="onViewTeachers(batch)">View Teachers</button>
-        </td>
-        <td>
-          <span [class]="batch.isSubmitted ? 'status-completed' : 'status-ongoing'">
-            {{ batch.isSubmitted ? 'Training Completed' : 'Training Ongoing' }}
-          </span>
-        </td>
-        <td>
-          <div class="actions-cell">
-            <button
-              type="button"
-              class="add-participants-wrapper"
-              (click)="toggleTeachersPanel(batch)"
-              [class.disabled]="batch.isSubmitted"
-              [disabled]="batch.isSubmitted"
-            >
-              <span class="plus-icon">
+  <div class="space-y-4 md:hidden" *ngIf="batches && batches.length > 0">
+    <div class="batch-card" *ngFor="let batch of batches">
+      <div class="batch-card-header">
+        <div class="min-w-0">
+          <h3 class="batch-card-title">{{ batch.batchName }}</h3>
+          <p class="batch-card-meta">{{ batch.scheduleDate | date }}</p>
+        </div>
+        <span [class]="batch.isSubmitted ? 'status-completed' : 'status-ongoing'">
+          {{ batch.isSubmitted ? 'Training Completed' : 'Training Ongoing' }}
+        </span>
+      </div>
+
+      <div class="batch-card-grid">
+        <div>
+          <p class="batch-card-label">Mode of Training</p>
+          <p class="batch-card-value">{{ batch.trainingType }}</p>
+        </div>
+        <div *ngIf="isAdmin">
+          <p class="batch-card-label">Manager</p>
+          <p class="batch-card-value">{{ batch.createdBy?.name || '-' }}</p>
+        </div>
+      </div>
+
+      <div class="batch-card-actions">
+        <button class="view-teachers-button w-full" (click)="onViewTeachers(batch)">View Teachers</button>
+        <button
+          type="button"
+          class="mobile-action-btn mobile-add-btn"
+          (click)="toggleTeachersPanel(batch)"
+          [class.disabled]="batch.isSubmitted"
+          [disabled]="batch.isSubmitted"
+        >
+          Add Participants
+        </button>
+        <button
+          type="button"
+          class="mobile-action-btn mobile-delete-btn"
+          (click)="onDeleteBatch(batch._id)"
+          [class.disabled]="batch.isSubmitted"
+          [disabled]="batch.isSubmitted"
+        >
+          Delete Batch
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="batch-table-wrapper hidden md:block" *ngIf="batches && batches.length > 0">
+    <table class="batch-table">
+      <thead>
+        <tr>
+          <th>Batch Name</th>
+          <th>Schedule Date</th>
+          <th>Mode of Training</th>
+          <th *ngIf="isAdmin">Manager</th>
+          <th>View Teacher</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let batch of batches">
+          <td>{{ batch.batchName }}</td>
+          <td>{{ batch.scheduleDate | date }}</td>
+          <td>{{ batch.trainingType }}</td>
+          <td *ngIf="isAdmin">{{ batch.createdBy?.name }}</td>
+          <td>
+            <button class="view-teachers-button" (click)="onViewTeachers(batch)">View Teachers</button>
+          </td>
+          <td>
+            <span [class]="batch.isSubmitted ? 'status-completed' : 'status-ongoing'">
+              {{ batch.isSubmitted ? 'Training Completed' : 'Training Ongoing' }}
+            </span>
+          </td>
+          <td>
+            <div class="actions-cell">
+              <button
+                type="button"
+                class="add-participants-wrapper"
+                (click)="toggleTeachersPanel(batch)"
+                [class.disabled]="batch.isSubmitted"
+                [disabled]="batch.isSubmitted"
+              >
+                <span class="plus-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="feather feather-plus-circle">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
+                </span>
+                <span class="add-text">Add Participants</span>
+              </button>
+              <button
+                type="button"
+                class="delete-icon"
+                (click)="onDeleteBatch(batch._id)"
+                [class.disabled]="batch.isSubmitted"
+                [disabled]="batch.isSubmitted"
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                   fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                  class="feather feather-plus-circle">
+                  class="feather feather-x-circle">
                   <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="8" x2="12" y2="16"></line>
-                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                  <line x1="15" y1="9" x2="9" y2="15"></line>
+                  <line x1="9" y1="9" x2="15" y2="15"></line>
                 </svg>
-              </span>
-              <span class="add-text">Add Participants</span>
-            </button>
-            <button
-              type="button"
-              class="delete-icon"
-              (click)="onDeleteBatch(batch._id)"
-              [class.disabled]="batch.isSubmitted"
-              [disabled]="batch.isSubmitted"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                class="feather feather-x-circle">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-              </svg>
-                <span class="add-text">Delete Batch</span>
-            </button>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+                  <span class="add-text">Delete Batch</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
   <p *ngIf="!batches || batches.length === 0" class="no-batches-message">No batches found.</p>
 </div>

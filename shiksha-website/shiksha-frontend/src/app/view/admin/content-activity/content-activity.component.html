@@ -1,54 +1,56 @@
-<div>
-    <div class="flex items-center justify-between">
-        <h1 class="text-xl md:text-[30px] font-bold text-content leading-[48px]">
+<div class="px-4 pt-4 md:px-0 md:pt-0">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px]">
             Content Activity
         </h1>
-        <button class="btn-primary" *ngIf="listData" (click)="exportContentActivities()" [disabled]="!listData.length">
-            <div class="flex items-center gap-2">
-              <img src="assets/icons/upload_light.svg" alt="" />
-              <span class="text-nowrap">Export</span>
-            </div>
-          </button>
     </div>
     
-    <div class="border text-content rounded my-5 p-6 bg-white">
-        <div class="flex justify-between items-center">
-            <h2 class="text-content text-[30px] font-bold leading-[48px]"> Content History </h2>
-            <div class="w-[300px]">
-                <div class="search-icon min-w-[100px] flex items-center h-9 ">
-                    <img src="assets/icons/search.svg" alt="" class="mr-2" />
-                    <input [(ngModel)]="searchText" (input)="searchInputChanged($event)"
-                        class="appearance-none rounded pl-10 py-2 px-3 text-content leading-tight focus:outline-none bg-shade-80 w-full md:w-[390px] h-9"
-                        type="text" placeholder="Search">
+    <div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white">
+        <div class="flex flex-col gap-4 sm:gap-5 sm:flex-row sm:justify-between sm:items-start">
+            <h2 class="text-content text-2xl md:text-[30px] font-bold md:leading-[48px]"> Content History </h2>
+            <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+                <div class="w-full sm:w-[300px]">
+                    <div class="search-icon min-w-[100px] flex items-center h-9 ">
+                        <img src="assets/icons/search.svg" alt="" class="mr-2" />
+                        <input [(ngModel)]="searchText" (input)="searchInputChanged($event)"
+                            class="appearance-none rounded pl-10 py-2 px-3 text-content leading-tight focus:outline-none bg-shade-80 w-full h-9"
+                            type="text" placeholder="Search">
+                    </div>
                 </div>
-            </div>
+                <button class="btn-primary w-full sm:w-auto" *ngIf="listData" (click)="exportContentActivities()" [disabled]="!listData.length">
+                    <div class="flex items-center justify-center gap-2">
+                      <img src="assets/icons/upload_light.svg" alt="" />
+                      <span class="text-nowrap">Export</span>
+                    </div>
+                  </button>
+                </div>
         </div>
 
-        <div class="flex md:gap-1 my-8 ">
-            <div class="w-full  cursor-pointer md:flex-1">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 my-4">
+            <div class="w-full min-w-0 cursor-pointer">
                 <app-common-dropdown [dropDownValues]="stateDropdownOptions" #stateDropdown
                     (valueUpdate)="onFilterChange('state', $event)"
                     [config]="stateDropdownconfig"></app-common-dropdown>
             </div>
 
-            <div class="w-full  cursor-pointer md:flex-1">
+            <div class="w-full min-w-0 cursor-pointer">
                 <app-common-dropdown [dropDownValues]="zoneDropdownOptions" #zoneDropdown
                     (valueUpdate)="onFilterChange('zone', $event)" [config]="zoneDropdownconfig"></app-common-dropdown>
             </div>
 
-            <div class="w-full  cursor-pointer md:flex-1">
+            <div class="w-full min-w-0 cursor-pointer">
                 <app-common-dropdown [dropDownValues]="districtDropdownOptions" #districtDropdown
                     (valueUpdate)="onFilterChange('district', $event)"
                     [config]="districtDropdownconfig"></app-common-dropdown>
             </div>
 
-            <div class="w-full  cursor-pointer md:flex-1">
+            <div class="w-full min-w-0 cursor-pointer">
                 <app-common-dropdown [dropDownValues]="blockDropdownOptions" #blockDropdown
                     (valueUpdate)="onFilterChange('block', $event)"
                     [config]="blockDropdownconfig"></app-common-dropdown>
             </div>
 
-            <div class="w-[25vw]  cursor-pointer md:flex-1">
+            <div class="w-full min-w-0 cursor-pointer">
                 <app-common-dropdown [dropDownValues]="schoolDropdownOptions" #schoolDropdown
                     (valueUpdate)="onFilterChange('_id', $event)" [config]="schoolDropdownconfig"></app-common-dropdown>
             </div>
@@ -57,8 +59,42 @@
 
 
 
-        <div class="w-full ">
-            <table class="table-auto w-full border mt-5 rounded-lg text-content" aria-label="User list">
+        <div class="space-y-4 md:hidden">
+            <div *ngIf="!listData || listData.length === 0" class="text-center text-content-60 py-4 border rounded-xl">No items found</div>
+            <div class="rounded-xl border p-4 bg-white shadow-sm" *ngFor="let item of listData">
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <p class="text-xs text-content-60">Teacher</p>
+                        <p class="font-semibold break-words">{{item?.userName | titlecase}}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-content-60">Generated Content</p>
+                        <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.genContentId]" [class.disableLink]="item?.teacherLessonPlanStatus!=='completed'">{{item?.genContent | titlecase}}</a>
+                    </div>
+                    <div>
+                        <p class="text-xs text-content-60">Source Content</p>
+                        <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.contentId]">{{item?.content | titlecase}}</a>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <p class="text-xs text-content-60">Status</p>
+                            <span [ngClass]="{
+                                'success-chip': item?.teacherLessonPlanStatus === 'completed',
+                                'warning-chip': item?.teacherLessonPlanStatus !== 'completed',
+                                'error-chip': item?.teacherLessonPlanStatus === 'failed'}">
+                                {{item?.teacherLessonPlanStatus | titlecase}}</span>
+                        </div>
+                        <div>
+                            <p class="text-xs text-content-60">Updated At</p>
+                            <p>{{item?.updatedAt | date:'d/M/yy, h:mm a'}}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hidden md:block w-full overflow-x-auto">
+            <table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg text-content" aria-label="User list">
                 <thead>
                     <tr class="bg-primary-60 rounded-lg border-b">
                         <th class="text-left p-4 rounded border-r text-sm text-content"

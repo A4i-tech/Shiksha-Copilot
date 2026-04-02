@@ -1,90 +1,139 @@
-<div class="flex justify-center items-center min-h-screen bg-gray-100 py-10">
-  <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-    <h2 class="text-2xl font-bold text-center mb-6 text-gray-800">Create New Batch</h2>
-    <form [formGroup]="batchForm" (ngSubmit)="onSubmit()" class="space-y-5">
-      <div>
-        <label for="batchName" class="block text-sm font-medium text-gray-700">Batch Name</label>
-        <input
-          type="text"
-          id="batchName"
-          formControlName="batchName"
-          class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Enter batch name"
-          required
-        >
-        <div *ngIf="batchForm.get('batchName')?.invalid && batchForm.get('batchName')?.touched" class="text-error">
-          Batch Name is required.
-        </div>
-      </div>
+<div class="create-batch-wrapper px-4 pt-4 md:px-0 md:pt-0">
+  <div class="flex content-center">
+    <img
+      src="assets/icons/back-arrow.svg"
+      routerLink="/admin/teacher-training/view-batch"
+      alt=""
+      class="cursor-pointer"
+    />
+    <h1 class="ml-3 text-[32px] leading-[48px] font-bold text-content">
+      Teacher Training
+    </h1>
+  </div>
 
-      <div>
-        <label for="description" class="block text-sm font-medium text-gray-700">Description</label>
-        <textarea
-          id="description"
-          formControlName="description"
-          rows="3"
-          class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="Provide a brief description"
-          required
-        ></textarea>
-        <div *ngIf="batchForm.get('description')?.invalid && batchForm.get('description')?.touched" class="text-error">
-          Description is required.
-        </div>
-      </div>
-
-      <div>
-        <label for="scheduleDate" class="block text-sm font-medium text-gray-700">Schedule Date</label>
-        <input
-          type="date"
-          id="scheduleDate"
-          formControlName="scheduleDate"
-          class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          required
-        >
-        <div *ngIf="batchForm.get('scheduleDate')?.invalid && batchForm.get('scheduleDate')?.touched" class="text-error">
-          Schedule Date is required.
-        </div>
-      </div>
-
-      <div>
-        <label for="trainingType" class="block text-sm font-medium text-gray-700">Mode of Training</label>
-        <select
-          id="trainingType"
-          formControlName="trainingType"
-          class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-blue-500 focus:border-blue-500"
-          required
-        >
-          <option value="">Select Mode</option>
-          <option value="offline">OFFLINE/ Face to Face </option>
-          <option value="online">ONLINE/ Virtual</option>
-          <option value="School-Level">School-Level</option>
-        </select>
-        <div *ngIf="batchForm.get('trainingType')?.invalid && batchForm.get('trainingType')?.touched" class="text-error">
-          Training Type is required.
-        </div>
-      </div>
-
-      <div>
-        <label for="pdfFile" class="block text-sm font-medium text-gray-700">Upload Permission Letter</label>
-        <input
-          type="file"
-          id="pdfFile"
-          (change)="onFileSelected($event)"
-          class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
-          accept=".pdf"
-        >
-        <div *ngIf="batchForm.get('pdfFile')?.invalid && batchForm.get('pdfFile')?.touched" class="text-error">
-          PDF File is required.
-        </div>
-      </div>
-
-      <button
-        type="submit"
-        [disabled]="batchForm.invalid"
-        class="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
+  <div class="batch-container px-4 py-6 md:px-6 md:py-8 bg-white mt-6 rounded border-content-30 border">
+    <div class="flex justify-between content-center">
+      <p class="text-content text-[32px] leading-[48px] font-bold tracking-tight">
         Create Batch
-      </button>
-    </form>
+      </p>
+    </div>
+
+    <div class="batch-form mt-9">
+      <form [formGroup]="batchForm" (ngSubmit)="onSubmit()">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="form-control-label" for="batch-name">
+              Batch Name <span class="text-[16px] text-error">*</span>
+            </label>
+            <input
+              class="form-control border-0 bg-shade-80"
+              id="batch-name"
+              type="text"
+              placeholder="Enter batch name"
+              autocomplete="off"
+              formControlName="batchName"
+            />
+            <small
+              class="form-control-error"
+              *ngIf="batchForm.get('batchName')?.invalid && batchForm.get('batchName')?.touched"
+            >
+              Batch Name is required.
+            </small>
+          </div>
+
+          <div>
+            <label class="form-control-label" for="schedule-date">
+              Schedule Date <span class="text-[16px] text-error">*</span>
+            </label>
+            <input
+              class="form-control border-0 bg-shade-80"
+              id="schedule-date"
+              type="date"
+              formControlName="scheduleDate"
+            />
+            <small
+              class="form-control-error"
+              *ngIf="batchForm.get('scheduleDate')?.invalid && batchForm.get('scheduleDate')?.touched"
+            >
+              Schedule Date is required.
+            </small>
+          </div>
+
+          <div>
+            <label class="form-control-label" for="training-type">
+              Mode of Training <span class="text-[16px] text-error">*</span>
+            </label>
+            <select
+              id="training-type"
+              formControlName="trainingType"
+              class="form-control border-0 bg-shade-80"
+            >
+              <option value="">Select mode</option>
+              <option value="offline">OFFLINE/ Face to Face</option>
+              <option value="online">ONLINE/ Virtual</option>
+              <option value="School-Level">School-Level</option>
+            </select>
+            <small
+              class="form-control-error"
+              *ngIf="batchForm.get('trainingType')?.invalid && batchForm.get('trainingType')?.touched"
+            >
+              Training Type is required.
+            </small>
+          </div>
+
+          <div>
+            <label class="form-control-label" for="pdf-file">
+              Upload Permission Letter
+            </label>
+            <input
+              id="pdf-file"
+              type="file"
+              (change)="onFileSelected($event)"
+              class="form-control-disabled batch-file-input"
+              accept=".pdf"
+            />
+            <small class="text-content-60 text-xs mt-1 block" *ngIf="selectedFile">
+              Selected: {{ selectedFile.name }}
+            </small>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <label class="form-control-label" for="description">
+            Description <span class="text-[16px] text-error">*</span>
+          </label>
+          <textarea
+            id="description"
+            formControlName="description"
+            rows="4"
+            class="form-control border-0 bg-shade-80 min-h-[110px]"
+            placeholder="Provide a brief description"
+          ></textarea>
+          <small
+            class="form-control-error"
+            *ngIf="batchForm.get('description')?.invalid && batchForm.get('description')?.touched"
+          >
+            Description is required.
+          </small>
+        </div>
+
+        <div class="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-8">
+          <button
+            type="button"
+            class="btn-outline-primary h-9"
+            routerLink="/admin/teacher-training/view-batch"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            [disabled]="batchForm.invalid"
+            class="btn-primary h-9"
+          >
+            Create Batch
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
