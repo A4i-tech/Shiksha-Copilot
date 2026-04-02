@@ -92,6 +92,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   };
 
   isOpen: boolean[] = [];
+  desktopMenuPositions: Record<number, { top: string; left: string }> = {};
 
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
 
@@ -273,10 +274,50 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     this.isOpen[i] = !this.isOpen[i];
   }
 
+  toggleDesktopDropdown(i: number, e: Event) {
+    e.stopPropagation();
+
+    const wasOpen = !!this.isOpen[i];
+    this.isOpen = [];
+    this.desktopMenuPositions = {};
+
+    if (wasOpen) {
+      return;
+    }
+
+    const target = e.currentTarget as HTMLElement | null;
+    if (target) {
+      this.desktopMenuPositions[i] = this.getDesktopMenuPosition(target);
+    }
+
+    this.isOpen[i] = true;
+  }
+
+  private getDesktopMenuPosition(target: HTMLElement): { top: string; left: string } {
+    const rect = target.getBoundingClientRect();
+    const menuWidth = 192;
+    const menuHeight = 220;
+    const viewportPadding = 8;
+    const top =
+      rect.bottom + 4 + menuHeight > window.innerHeight
+        ? Math.max(viewportPadding, rect.top - menuHeight - 4)
+        : rect.bottom + 4;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding)
+    );
+
+    return {
+      top: `${top}px`,
+      left: `${left}px`,
+    };
+  }
+
   @HostListener('click', ['$event'])
   clickInside(event : MouseEvent){
     if((event.target as HTMLElement).closest('.school-list-container')){
       this.isOpen = [];
+      this.desktopMenuPositions = {};
     }
   }
 

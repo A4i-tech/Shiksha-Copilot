@@ -252,26 +252,32 @@ export class UtilityService {
     return arr;
   }
 
-  getPageNumbers(totalItems: number, pageSize: number) {
+  getPageNumbers(totalItems: number, pageSize: number, currentPage: number = 1) {
     const totalPages = Math.ceil(totalItems / pageSize);
     const pages: number[] = [];
 
-    // Show up to 4 pages, then ellipsis, then last two pages
     if (totalPages <= 10) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
-    } else {
-      // Show first four pages
-      for (let i = 1; i <= 4; i++) {
-        pages.push(i);
-      }
+      return pages;
+    }
 
-      // Show ellipsis
+    const windowSize = 4;
+    const windowEnd = Math.max(windowSize, Math.min(currentPage, totalPages));
+    const windowStart = Math.max(1, windowEnd - windowSize + 1);
+
+    for (let i = windowStart; i <= windowEnd; i++) {
+      pages.push(i);
+    }
+
+    if (windowEnd < totalPages - 2) {
       pages.push(-1);
+    }
 
-      // Show last two pages
-      for (let i = totalPages - 1; i <= totalPages; i++) {
+    const trailingStart = Math.max(totalPages - 1, windowEnd + 1);
+    for (let i = trailingStart; i <= totalPages; i++) {
+      if (!pages.includes(i)) {
         pages.push(i);
       }
     }

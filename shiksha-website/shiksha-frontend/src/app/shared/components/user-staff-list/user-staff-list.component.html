@@ -9,16 +9,20 @@
 				<div class="flex flex-col sm:flex-row sm:flex-wrap gap-2 w-full sm:w-auto">
 					<button (click)="blukUpload()" [hasPermission]="['admin']"
 							*ngIf="getType()?.type === 'user'"
-							class="btn-outline-primary flex items-center justify-center gap-2 w-full sm:w-auto">
-							<img src="assets/icons/Vector (1).svg" alt="">
-							<span class="text-nowrap">{{'Bulk Upload' | translate}}</span>
+							class="btn-outline-primary h-9 w-full sm:w-auto">
+							<div class="flex items-center justify-center gap-2">
+								<img src="assets/icons/Vector (1).svg" alt="">
+								<span class="text-nowrap">{{'Bulk Upload' | translate}}</span>
+							</div>
 					</button>
 					<button [hasPermission]="['admin', 'manager']"
-							class="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto" (click)="openAddUserFormComp()">
-							<img src="assets/icons/E add.svg" alt="">
-							<span class="text-nowrap">{{(getType()?.type === 'user' ? 'Add New Teacher' : 'Add New Staff') | translate}}</span>						
+							class="btn-primary h-9 w-full sm:w-auto" (click)="openAddUserFormComp()">
+							<div class="flex items-center justify-center gap-2">
+								<img src="assets/icons/E add.svg" alt="">
+								<span class="text-nowrap">{{(getType()?.type === 'user' ? 'Add New Teacher' : 'Add New Staff') | translate}}</span>
+							</div>
 					</button>
-					<button *ngIf="getType()?.type === 'user'" class="btn-primary w-full sm:w-auto" (click)="exportUsersListToExcel()" [disabled]="!usersList.length" >
+					<button *ngIf="getType()?.type === 'user'" class="btn-primary h-9 w-full sm:w-auto" (click)="exportUsersListToExcel()" [disabled]="!usersList.length" >
 							<div class="flex items-center justify-center gap-2">
 						  <img src="assets/icons/upload_light.svg" alt="" />
 						  <span class="text-nowrap">{{'Export' | translate}}</span>
@@ -201,7 +205,7 @@
 						</div>
 				</div>
 
-					<div class="hidden md:block w-full overflow-x-auto pb-32">
+					<div class="hidden md:block w-full overflow-x-auto">
 							<table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg text-content" aria-label="User list">
 							<thead>
 									<tr class="bg-primary-60 rounded-lg border-b">
@@ -232,13 +236,14 @@
 											<td class="text-sm p-4 relative #dropdownContainer whitespace-nowrap w-32">
 	
 													<div class="flex justify-center">
-															<div class="relative" [class.open]="isOpen" (click)="toggleDropdown(i, $event)">
+															<div class="relative" [class.open]="isOpen" (click)="toggleDesktopDropdown(i, $event)">
 																	<button class="py-2 px-4 rounded inline-flex items-center">
 																			<img class="w-5" src="assets/icons/more_vert.svg" alt="" />
 																	</button>
-	
+
 																	<ul *ngIf="isOpen[i]"
-																			class="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+																			class="fixed w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+																			[ngStyle]="desktopMenuPositions[i]"
 																			role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
 																			<li class="h-10 mt-2 hover:bg-shade-80 cursor-pointer" (click)="viewUser(item)">
 																					<a class="block px-4 py-2 text-sm text-content" role="menuitem">

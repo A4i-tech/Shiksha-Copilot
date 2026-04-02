@@ -1,4 +1,4 @@
-<div class="school-add-edit-wrapper">
+<div class="school-add-edit-wrapper px-4 pt-4 md:px-0 md:pt-0">
   <div class="flex content-center">
     <img
       src="assets/icons/back-arrow.svg"
@@ -6,15 +6,15 @@
       alt=""
       class="cursor-pointer"
     />
-    <h1 class="ml-3 text-[32px] leading-[48px] font-bold text-content">
+    <h1 class="ml-3 text-2xl md:text-[32px] md:leading-[48px] font-bold text-content">
       {{'School Management' | translate}}
     </h1>
   </div>
   <div
-    class="school-container p-8 bg-white mt-6 rounded border-content-30"
+    class="school-container px-4 py-6 md:p-8 bg-white mt-6 rounded border-content-30"
   >
     <div class="flex justify-between content-center">
-      <p class="text-content text-[32px] leading-[48px] font-bold tracking-tight">
+      <p class="text-content text-2xl md:text-[32px] md:leading-[48px] font-bold tracking-tight">
         {{ (mode === "view" ? "View" : mode === "edit" ? "Edit" : "Add") | translate }} {{'School Profile' | translate}}
       </p>
 
@@ -203,8 +203,9 @@
         <div class="mt-7">
           <p class="text-lg font-bold text-content">{{'Holiday List' | translate}}</p>
           <ng-container formArrayName="holidayList">
-            <table class="w-full" aria-label="holiday-list">
-              <thead>
+            <div class="mt-3">
+            <table class="w-full block md:table" aria-label="holiday-list">
+              <thead class="hidden md:table-header-group">
                 <tr
                   class="header font-semibold text-center text-content table-header border-b border-shade"
                 >
@@ -215,13 +216,14 @@
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white">
+              <tbody class="block md:table-row-group bg-white">
                 <tr
-                  class="text-gray-700"
+                  class="block md:table-row text-gray-700 border rounded-xl md:border-0 mb-4 md:mb-0 overflow-hidden"
                   *ngFor="let holiday of holidayList.controls; let i = index"
                 >
                   <ng-container [formGroupName]="i">
-                    <td class="px-4 py-4 text-sm border w-[40%]">
+                    <td class="block md:table-cell px-4 py-4 text-sm border-t first:border-t-0 md:border w-full md:w-[40%]">
+                      <p class="md:hidden text-xs font-semibold text-content-60 mb-2">{{'Date' | translate}}</p>
                       <p *ngIf="mode === 'view'">
                         {{ holiday.get("date")?.value ||  '-'}}
                       </p>
@@ -245,7 +247,8 @@
                         </div>
                       </div>
                     </td>
-                    <td class="px-4 py-4 text-sm border w-[40%]">
+                    <td class="block md:table-cell px-4 py-4 text-sm border-t md:border w-full md:w-[40%]">
+                      <p class="md:hidden text-xs font-semibold text-content-60 mb-2">{{'Reason' | translate}}</p>
                       <p *ngIf="mode === 'view'">
                         {{ holiday.get("reason")?.value ||  '-' }}
                       </p>
@@ -270,15 +273,16 @@
                       </div>
                     </td>
                     <td
-                      class="px-4 py-4 text-sm border w-[20%]"
+                      class="block md:table-cell px-4 py-4 text-sm border-t md:border w-full md:w-[20%]"
                       *ngIf="mode !== 'view'"
                     >
+                      <p class="md:hidden text-xs font-semibold text-content-60 mb-2">{{'Action' | translate}}</p>
                       <div
-                        class="flex gap-2"
+                        class="flex flex-col sm:flex-row gap-2"
                         [ngClass]="i === 0 ? 'justify-center' : 'justify-start'"
                       >
                         <button
-                          class="btn-danger h-9"
+                          class="btn-danger h-9 w-full sm:w-auto"
                           (click)="removeHoliday(i)"
                           *ngIf="i !== 0"
                           type="button"
@@ -292,7 +296,7 @@
                           </div>
                         </button>
                         <button
-                          class="btn-primary h-9"
+                          class="btn-primary h-9 w-full sm:w-auto"
                           (click)="addHoliday()"
                           type="button"
                           *ngIf="i === holidayList.controls.length - 1"
@@ -311,14 +315,16 @@
                 </tr>
               </tbody>
             </table>
+            </div>
           </ng-container>
         </div>
 
         <div class="mt-7">
           <p class="text-lg font-bold text-content">{{'Resources' | translate}}</p>
           <ng-container formArrayName="facilities">
-            <table class="w-full" aria-label="resource">
-              <thead>
+            <div class="mt-3">
+            <table class="w-full block md:table" aria-label="resource">
+              <thead class="hidden md:table-header-group">
                 <tr
                   class="header font-semibold text-center text-content table-header border-b border-shade"
                 >
@@ -329,13 +335,14 @@
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white">
+              <tbody class="block md:table-row-group bg-white">
                 <tr
-                  class="text-gray-700"
+                  class="block md:table-row text-gray-700 border rounded-xl md:border-0 mb-4 md:mb-0 overflow-hidden"
                   *ngFor="let resource of facilities.controls; let i = index"
                 >
                   <ng-container [formGroupName]="i">
-                    <td class="px-4 py-4 border w-[40%] content-start">
+                    <td class="block md:table-cell px-4 py-4 border-t first:border-t-0 md:border w-full md:w-[40%] content-start">
+                      <p class="md:hidden text-xs font-semibold text-content-60 mb-2">{{'Resource Type' | translate}}</p>
                       <p *ngIf="mode === 'view'">
                         {{
                           resource.get("otherType")?.value
@@ -379,7 +386,8 @@
                         </p>
                       </ng-container>
                     </td>
-                    <td class="px-4 py-4 text-sm border w-[40%] content-start">
+                    <td class="block md:table-cell px-4 py-4 text-sm border-t md:border w-full md:w-[40%] content-start">
+                      <p class="md:hidden text-xs font-semibold text-content-60 mb-2">{{'Resource details' | translate}}</p>
                       <p *ngIf="mode === 'view'">
                         {{ resource.get("details")?.value?.length ? resource.get("details")?.value : '-' }}
                       </p>
@@ -399,7 +407,7 @@
                         </div>
 
                         <div *ngIf="!resource.get('detailsChipSet')?.value">
-                          <div class="flex gap-2">
+                          <div class="flex flex-col sm:flex-row gap-2">
                             <input
                               class="form-control h-9"
                               type="text"
@@ -414,7 +422,7 @@
                               "
                             />
                             <button
-                              class="btn-primary h-9"
+                              class="btn-primary h-9 w-full sm:w-auto"
                               (click)="addOtherResource(resource, i, $event)"
                               type="button"
                             >
@@ -454,15 +462,16 @@
                       </div>
                     </td>
                     <td
-                      class="px-4 py-4 text-sm border w-[20%] content-start"
+                      class="block md:table-cell px-4 py-4 text-sm border-t md:border w-full md:w-[20%] content-start"
                       *ngIf="mode !== 'view'"
                     >
+                      <p class="md:hidden text-xs font-semibold text-content-60 mb-2">{{'Action' | translate}}</p>
                       <div
-                        class="flex gap-2"
+                        class="flex flex-col sm:flex-row gap-2"
                         [ngClass]="i === 0 ? 'justify-center' : 'justify-start'"
                       >
                         <button
-                          class="btn-danger h-9"
+                          class="btn-danger h-9 w-full sm:w-auto"
                           (click)="removeResource(i)"
                           *ngIf="i !== 0"
                           type="button"
@@ -476,7 +485,7 @@
                           </div>
                         </button>
                         <button
-                          class="btn-primary h-9"
+                          class="btn-primary h-9 w-full sm:w-auto"
                           (click)="addResource()"
                           type="button"
                           *ngIf="i === facilities.controls.length - 1"
@@ -495,13 +504,14 @@
                 </tr>
               </tbody>
             </table>
+            </div>
           </ng-container>
         </div>
 
         <p class="text-lg font-bold mt-7 text-content" *ngIf="!(mode === 'view' && classes.length === 0)">{{'Add Board/Class Details' | translate}}</p>
 
         <div class="py-6 border rounded flex items-center justify-center" *ngIf="classes.length === 0 && mode === 'edit'">
-          <button class="btn-primary" (click)="createBoard()">
+          <button class="btn-primary w-full sm:w-auto flex items-center justify-center" (click)="createBoard()">
             <div class="flex items-center gap-2">
               <img
                 src="assets/icons/add.svg"
@@ -516,7 +526,7 @@
           class="border rounded p-4 mb-4"
           *ngFor="let board of classes; let i = index"
         >
-          <div class="grid grid-cols-4 gap-6 mt-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mt-4">
             <div>
               <app-common-dropdown
                 [dropDownValues]="classBoardOptions"
@@ -581,7 +591,8 @@
           <ng-container *ngIf="board.classDetails.length">
             <p class="font-bold mt-4">{{'Class Details' | translate}}</p>
 
-            <table class="w-full mt-2 number-type" aria-label="class List">
+            <div class="overflow-x-auto mt-2">
+            <table class="w-full min-w-[420px] number-type" aria-label="class List">
               <tr
                 class="header font-semibold text-center text-content table-header border-b border-shade"
               >
@@ -659,11 +670,12 @@
                 </tr>
               </ng-container>
             </table>
+            </div>
           </ng-container>
 
-          <div class="flex gap-2 mt-4 justify-end" *ngIf="mode !== 'view'">
+          <div class="flex flex-col sm:flex-row gap-2 mt-4 justify-end" *ngIf="mode !== 'view'">
             <button
-              class="btn-danger h-9"
+              class="btn-danger h-9 w-full sm:w-auto"
               type="button"
               *ngIf="i !== 0 && !board?._id"
               (click)="removeBoard(i)"
@@ -674,7 +686,7 @@
               </div>
             </button>
             <button
-              class="btn-primary h-9"
+              class="btn-primary h-9 w-full sm:w-auto"
               type="button"
               *ngIf="i === classes.length - 1"
               (click)="createBoard()"
@@ -687,10 +699,10 @@
           </div>
         </div>
 
-        <div class="flex justify-end mt-9">
+        <div class="flex flex-col sm:flex-row justify-end mt-9 gap-2">
           <button
             *ngIf="mode === 'view'"
-            class="btn-outline-primary h-9 w-[74px]"
+            class="btn-outline-primary h-9 w-full sm:w-[74px]"
             routerLink="/admin/school-management"
             type="button"
           >
@@ -698,7 +710,7 @@
           </button>
 
           <button
-            class="btn-primary h-9 ml-2"
+            class="btn-primary h-9 w-full sm:w-auto"
             *ngIf="mode === 'view'"
             (click)="editSchoolDetails()"
             type="button"
@@ -712,15 +724,15 @@
 
           <button
             *ngIf="mode !== 'view'"
-            class="btn-outline-primary h-9 w-[74px]"
+            class="btn-outline-primary h-9 w-full sm:w-[74px]"
             routerLink="/admin/school-management"
             type="button"
           >
             {{'Cancel' | translate}}
           </button>
 
-          <button class="btn-primary h-9 ml-2" *ngIf="mode !== 'view'" [hasPermission]="['admin']" >
-            <div class="flex content-center">
+          <button class="btn-primary h-9 w-full sm:w-auto" *ngIf="mode !== 'view'" [hasPermission]="['admin']" >
+            <div class="flex items-center justify-center">
               <span class="mr-[6px]">{{'Save' | translate}}</span>
               <img src="assets/icons/check.svg" alt="" />
             </div>

@@ -8,7 +8,7 @@
   <div class="school-list-container px-4 py-6 md:px-6 md:py-8 bg-white mt-6 border rounded">
     <div class="flex flex-col gap-4 sm:gap-5 sm:flex-row sm:justify-between sm:items-start">
       <p class="text-content text-2xl md:text-[30px] md:leading-[48px] font-bold">{{'School List' | translate}}</p>
-      <div class="buttons w-full sm:w-auto flex flex-col gap-2 lg:flex-row lg:items-center">
+      <div class="buttons w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
         <div class="w-full sm:w-auto">
           <div class="search-icon min-w-0 flex items-center h-9 w-full sm:w-[300px]">
             <img src="assets/icons/search.svg" alt="" class="mr-2"/>
@@ -22,8 +22,8 @@
           </div>
         </div>
         <div class="action-btn flex flex-col sm:flex-row sm:flex-wrap gap-2">
-          <button
-          class="btn-outline-primary w-full sm:w-auto"
+        <button
+          class="btn-outline-primary h-9 w-full sm:w-auto"
           (click)="blukUpload()"
           [hasPermission]="['admin']"
         >
@@ -34,7 +34,7 @@
         </button>
     
         <button
-          class="btn-primary w-full sm:w-auto"
+          class="btn-primary h-9 w-full sm:w-auto"
           routerLink="/admin/school-management/add"
           [hasPermission]="['admin']"
         >
@@ -43,7 +43,7 @@
             <span class="text-nowrap">{{'Add School' | translate}}</span>
           </div>
         </button>
-        <button class="btn-primary w-full sm:w-auto" *ngIf="schoolListData" (click)="exportSchoolList()" [disabled]="!schoolListData.length">
+        <button class="btn-primary h-9 w-full sm:w-auto" *ngIf="schoolListData" (click)="exportSchoolList()" [disabled]="!schoolListData.length">
 						<div class="flex items-center justify-center gap-2">
 						  <img src="assets/icons/upload_light.svg" alt="" />
 						  <span class="text-nowrap">{{'Export' | translate}}</span>
@@ -223,7 +223,7 @@
       </div>
     </div>
 
-    <div class="hidden md:block w-full overflow-x-auto pb-32">
+    <div class="hidden md:block w-full overflow-x-auto">
       <table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg" aria-label="school-list">
         <thead>
           <tr
@@ -269,7 +269,7 @@
             </td>
             <td class="px-4 py-6 text-sm border relative">
               <div class="flex justify-center">
-                <div [class.open]="isOpen" (click)="toggleDropdown(i, $event)">
+                <div [class.open]="isOpen" (click)="toggleDesktopDropdown(i, $event)">
                   <button class="py-2 px-4 rounded inline-flex items-center">
                     <img
                       class="w-5"
@@ -280,7 +280,8 @@
   
                   <ul
                     *ngIf="isOpen[i]"
-                    class="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                    class="fixed w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                    [ngStyle]="desktopMenuPositions[i]"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="options-menu"
