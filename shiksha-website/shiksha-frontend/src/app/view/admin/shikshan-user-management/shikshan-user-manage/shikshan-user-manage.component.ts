@@ -104,7 +104,7 @@ export class ShikshanUserManageComponent implements OnInit {
       name: [null, [Validators.required,Validators.minLength(3)]],
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
       email: [null, [Validators.required, Validators.email]],
-      role: [null, [Validators.required]],
+      role: ['manager', [Validators.required]],
       isDeleted: [false, [Validators.required]],
       state: [null],
       zones: [[]],

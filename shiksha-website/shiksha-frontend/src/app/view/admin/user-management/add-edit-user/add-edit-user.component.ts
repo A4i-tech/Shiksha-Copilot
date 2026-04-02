@@ -303,7 +303,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       district: [null, [Validators.required]],
       block: [null, [Validators.required]],
       school: [null, [Validators.required]],
-      role: [null, [Validators.required]],
+      role: [this.mode === 'edit' || this.mode === 'view' ? null : 'standard', [Validators.required]],
     });
     this.getRegionsData();
     this.patchStatus();
