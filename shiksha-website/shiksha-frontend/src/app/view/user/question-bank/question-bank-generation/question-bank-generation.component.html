@@ -197,7 +197,7 @@
                 <div>
                   <label class="form-control-label">Question Types / Headings <span
                       class="text-[16px] text-error">*</span></label>
-                  <div class="relative" *ngIf="availableHeadings.length; else noHeads">
+                  <div #headingDropdownContainer class="relative" *ngIf="availableHeadings.length; else noHeads">
                     <button type="button" (click)="toggleHeadingDropdown()"
                       class="form-control h-9 border-0 bg-shade-80 text-left flex justify-between items-center hover:border-primary transition-colors focus:ring-1 focus:ring-primary">
                       <span class="truncate text-sm">{{ headingSummary() }}</span>

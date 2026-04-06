@@ -1,17 +1,17 @@
 .active {
-    background-color: #46A0F1;
-    color: white;
+    background-color: var(--primary-DEFAULT);
+    color: var(--surface-DEFAULT);
 }
 
 .editable-content[contenteditable="true"] {
-    border: 1px solid #ccc;
+    border: 1px solid var(--content-30);
     padding: 10px;
     border-radius: 4px;
 }
 
 .inspect-wrapper {
     .tabs {
-        box-shadow: rgba(33, 35, 38, 0.1) 0px 10px 10px -10px;
+        box-shadow: color-mix(in srgb, var(--content-DEFAULT) 10%, transparent) 0px 10px 10px -10px;
 
     }
 }

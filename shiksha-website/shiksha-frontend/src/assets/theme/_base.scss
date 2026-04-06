@@ -87,6 +87,17 @@ input[type='date']::-webkit-calendar-picker-indicator {
   background: transparent;
 }
 
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 .table-form-control{
   @apply appearance-none border border-content-50 rounded h-9 w-full py-2 px-3 text-content leading-tight focus:outline-none;
 
@@ -146,6 +157,59 @@ input[type='date']::-webkit-calendar-picker-indicator {
 
 .table-header {
   background-color: var(--primary-60);
+}
+
+.base-table {
+  table,
+  th,
+  td {
+    @media (min-width: 1024px) {
+      border: 1px solid var(--content-30);
+    }
+  }
+}
+
+.error-table {
+  table,
+  th,
+  td {
+    @media (min-width: 1024px) {
+      border: 1px solid var(--warn-80) !important;
+    }
+  }
+}
+
+.marks-base-table {
+  table,
+  th,
+  td {
+    border: 1px solid var(--content-30);
+  }
+}
+
+.marks-error-table {
+  table,
+  th,
+  td {
+    border: 1px solid var(--warn-80) !important;
+  }
+}
+
+.chip {
+  display: inline-block;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  padding: 5px 10px;
+  background-color: var(--shade-80);
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.close-icon {
+  cursor: pointer;
+  margin-left: 5px;
+  font-weight: bold;
+  color: var(--content-50);
 }
 
 .search-icon {
@@ -317,11 +381,41 @@ button.metric-card:hover {
   cursor: pointer;
 }
 
-.number-type {
-  input[type='number']::-webkit-inner-spin-button,
-  input[type='number']::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+.configuration-container,
+.question-bank-container {
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--primary-40);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--primary-DEFAULT);
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-DEFAULT);
+  }
+}
+
+.custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--content-30);
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--content-50);
   }
 }
 
