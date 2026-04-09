@@ -638,6 +638,42 @@ class QuestionBankManager extends BaseManager {
     return { found: false, indexPath: "" };
   }
 
+  _mapTemplateTypes(templateArray) {
+    if (!templateArray || !Array.isArray(templateArray)) return [];
+
+    return templateArray.map((item) => {
+      // mappedType is just the instruction text for backward compatibility
+      const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
+
+      // Look up full details if possible to get the description
+      const details = QUESTION_TYPE_DETAILS[item.type];
+
+      // Handle both snake_case (legacy/internal) and camelCase (new/frontend)
+      const numQs = item.number_of_questions !== undefined ? item.number_of_questions : item.numberOfQuestions;
+      const marksPerQ = item.marks_per_question !== undefined ? item.marks_per_question : item.marksPerQuestion;
+      const qDist = item.question_distribution || item.questionDistribution;
+
+      const mappedItem = {
+        ...item,
+        type: mappedType,
+        description: details ? details.description : (item.description || ""),
+      };
+
+      // Ensure expected Python snake_case keys are present
+      if (numQs !== undefined) mappedItem.number_of_questions = numQs;
+      if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
+
+      if (qDist && Array.isArray(qDist)) {
+        mappedItem.question_distribution = qDist.map(d => ({
+          ...d,
+          unit_name: d.unit_name || d.unitName,
+          objective: d.objective
+        }));
+      }
+
+      return mappedItem;
+    });
+  }
   async _createQuestionBankPayload(reqBody, user) {
     try {
       const {
