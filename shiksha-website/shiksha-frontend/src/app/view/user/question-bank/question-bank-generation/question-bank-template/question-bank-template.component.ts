@@ -11,7 +11,6 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   // NEW INPUT: The merged pool from Parent
   @Input() availableQuestions: any[] = [];
-  @Input() preSelectedQuestions: any[] = [];
 
   // Pre-selected questions passed from the parent to restore selections
   @Input() preSelectedQuestions: any[] = [];

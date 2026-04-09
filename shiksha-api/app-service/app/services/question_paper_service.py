@@ -62,6 +62,7 @@ class QuestionPaperService:
         )
 
         self._adapter_cache: Dict[str, BaseRagAdapter] = {}
+        self._adapter_locks: Dict[str, asyncio.Lock] = {}
 
         # Load YAML prompts
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
@@ -344,36 +345,49 @@ class QuestionPaperService:
     async def _get_or_create_rag_adapter(
         self, index_path: str
     ) -> Optional[BaseRagAdapter]:
-        """Get an existing RAG adapter or create and cache a new one."""
+        """Get an existing RAG adapter or create and cache a new one.
+        
+        Uses a per-index_path asyncio.Lock to prevent race conditions where
+        concurrent callers with the same path each create and initialize a
+        separate adapter before the cache is populated.
+        """
         if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not index_path.strip():
             logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
             return None
 
-        # 1. Check Internal Cache
+        # Fast path: already cached (no lock needed for reads once populated)
         if index_path in self._adapter_cache:
             logger.debug(f"[RAG_ADAPTER] Cache HIT for path: {index_path}")
             return self._adapter_cache[index_path]
 
-        logger.debug(f"[RAG_ADAPTER] Cache MISS | path='{index_path}'")
-        
-        # 1. Create the instance
-        adapter = RagAdapterFactory.create_adapter(
-            index_path=index_path,
-            completion_llm=self._rag_llm,      # Pass LlamaIndex wrapper
-            embedding_llm=self._rag_embed,     # Pass LlamaIndex wrapper
-        )
-        
-        # --- FIX START: Initialize the adapter before using it ---
-        await adapter.initialize()
-        
-        # Download index from blob storage if not already cached locally
-        await adapter.initiate_index()
-        # --- FIX END ---
-        
-        # 3. Store in Internal Cache
-        self._adapter_cache[index_path] = adapter
-        
-        return adapter
+        # Ensure a lock exists for this path
+        if index_path not in self._adapter_locks:
+            self._adapter_locks[index_path] = asyncio.Lock()
+
+        async with self._adapter_locks[index_path]:
+            # Re-check inside the lock: another coroutine may have populated the cache
+            # while this one was waiting to acquire it.
+            if index_path in self._adapter_cache:
+                logger.debug(f"[RAG_ADAPTER] Cache HIT (post-lock) for path: {index_path}")
+                return self._adapter_cache[index_path]
+
+            logger.debug(f"[RAG_ADAPTER] Cache MISS | path='{index_path}'")
+
+            # Create the adapter instance
+            adapter = RagAdapterFactory.create_adapter(
+                index_path=index_path,
+                completion_llm=self._rag_llm,
+                embedding_llm=self._rag_embed,
+            )
+
+            # Initialize and download index from blob storage
+            await adapter.initialize()
+            await adapter.initiate_index()
+
+            # Populate cache inside the lock so no other waiter re-initializes
+            self._adapter_cache[index_path] = adapter
+
+        return self._adapter_cache[index_path]
 
     async def _generate_questions_batch(
         self, system_prompt: str, slot: Dict[str, Any], rag_adapter: Optional[BaseRagAdapter]
