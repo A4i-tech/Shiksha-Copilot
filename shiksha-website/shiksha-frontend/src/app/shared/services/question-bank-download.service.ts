@@ -17,6 +17,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { formatSuperscript } from 'src/app/shared/utility/math-formatting.util';
 
 @Injectable({
   providedIn: 'root',
@@ -112,14 +113,14 @@ export class QuestionBankDownloadService {
       section.questions.forEach((q: any, index: number) => {
         if (q.question) {
           content.push(new Paragraph({
-            text: `${index + 1}. ${q.question}`,
+            text: `${index + 1}. ${formatSuperscript(q.question)}`,
             spacing: { after: 100 },
           }));
           if (q.options) {
             q.options.forEach((opt: any, i: number) => {
               const optText = typeof opt === 'string' ? opt : (opt.text || opt.label || String(opt));
               content.push(new Paragraph({
-                text: `   ${String.fromCharCode(65 + i)}. ${optText}`,
+                text: `   ${String.fromCharCode(65 + i)}. ${formatSuperscript(optText)}`,
                 spacing: { after: 120 },
               }));
             });
@@ -147,8 +148,8 @@ export class QuestionBankDownloadService {
     for (let i = 0; i < col1.length; i++) {
       rows.push(new TableRow({
         children: [
-          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({text: ` ${col1[i]}`,spacing:{before:50, after:50}})] }),
-          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({text:` ${col2[i]}`,spacing:{before:50, after:50}})] }),
+          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({text: ` ${formatSuperscript(col1[i])}`,spacing:{before:50, after:50}})] }),
+          new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({text:` ${formatSuperscript(col2[i])}`,spacing:{before:50, after:50}})] }),
         ],
       }));
     }

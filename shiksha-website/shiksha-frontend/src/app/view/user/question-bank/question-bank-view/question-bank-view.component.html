@@ -91,7 +91,7 @@
           ">
               <div class="flex justify-between items-start mt-2 gap-2">
                 <p class="text-content">
-                  {{ i + 1 }}. {{ questionData.question }}
+                  {{ i + 1 }}. {{ formatSuperscript(questionData.question) }}
                 </p>
               </div>
 
@@ -101,8 +101,8 @@
                 class="list-alpha">
                 <li *ngFor="let option of questionData.options">
                   <!-- Options may be object entries ({ text, label? }) or plain strings. -->
-                  <span *ngIf="option.text">{{ option.text }}</span>
-                  <span *ngIf="!option.text">{{ option }}</span>
+                  <span *ngIf="option.text">{{ formatSuperscript(option.text) }}</span>
+                  <span *ngIf="!option.text">{{ formatSuperscript(option) }}</span>
                 </li>
               </ul>
             </div>
@@ -112,10 +112,10 @@
               <tbody>
                 <tr *ngFor="let val of questionBankData.questions; let i=index">
                   <td class="border px-2 py-2 text-sm">
-                    {{ questionBankData.primaryColumn ? questionBankData.primaryColumn[i] : '' }}
+                    {{ formatSuperscript(questionBankData.primaryColumn ? questionBankData.primaryColumn[i] : '') }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    {{ questionBankData.shuffledColumns ? questionBankData.shuffledColumns[i] : '' }}
+                    {{ formatSuperscript(questionBankData.shuffledColumns ? questionBankData.shuffledColumns[i] : '') }}
                   </td>
                 </tr>
               </tbody>
