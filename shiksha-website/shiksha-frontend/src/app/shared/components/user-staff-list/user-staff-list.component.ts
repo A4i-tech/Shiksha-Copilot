@@ -538,10 +538,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     this.getUsersList(this.filterObj);
   }
 
-  getPageNumbers(): number[] {
-    return this.utility.getPageNumbers(this.totalItems, this.pageSize);
-  }
-
   getType() {
     if (this.lessonContentType) {
       return this.contentListConfig[this.lessonContentType];

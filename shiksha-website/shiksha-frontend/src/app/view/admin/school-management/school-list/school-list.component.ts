@@ -540,10 +540,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     this.getShcoolList(this.filterObj);
   }
 
-  getPageNumbers(): number[] {
-    return this.utilityService.getPageNumbers(this.totalItems, this.pageSize);
-  }
-
 
 
       /**

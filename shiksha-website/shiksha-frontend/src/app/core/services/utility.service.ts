@@ -252,39 +252,6 @@ export class UtilityService {
     return arr;
   }
 
-  getPageNumbers(totalItems: number, pageSize: number, currentPage: number = 1) {
-    const totalPages = Math.ceil(totalItems / pageSize);
-    const pages: number[] = [];
-
-    if (totalPages <= 10) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i);
-      }
-      return pages;
-    }
-
-    const windowSize = 4;
-    const windowEnd = Math.max(windowSize, Math.min(currentPage, totalPages));
-    const windowStart = Math.max(1, windowEnd - windowSize + 1);
-
-    for (let i = windowStart; i <= windowEnd; i++) {
-      pages.push(i);
-    }
-
-    if (windowEnd < totalPages - 2) {
-      pages.push(-1);
-    }
-
-    const trailingStart = Math.max(totalPages - 1, windowEnd + 1);
-    for (let i = trailingStart; i <= totalPages; i++) {
-      if (!pages.includes(i)) {
-        pages.push(i);
-      }
-    }
-
-    return pages;
-  }
-
   setResourceDetailsValue(
     facilityControl: any,
     resourceDetailsDropdown: any,

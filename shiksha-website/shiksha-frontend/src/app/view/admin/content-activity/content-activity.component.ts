@@ -340,10 +340,6 @@ export class ContentActivityComponent implements OnInit {
     this.getContentActivityData(this.filterObj);
   }
 
-  getPageNumbers(): number[] {
-    return this.utilityService.getPageNumbers(this.totalItems, this.pageSize);
-  }
-
   exportContentActivities(){
     if(!this.listData.length){
       return
