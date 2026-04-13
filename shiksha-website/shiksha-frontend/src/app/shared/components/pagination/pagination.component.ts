@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 interface PaginationItem {
   type: 'page' | 'ellipsis';
@@ -13,23 +13,25 @@ interface PaginationItem {
   standalone: true,
   imports:[CommonModule]
 })
-export class PaginationComponent {
+export class PaginationComponent implements OnChanges {
 
   @Input() totalItems: number = 0;
   @Input() pageSize: number = 10;
   @Input() currentPage: number = 1;
   @Output() pageChange = new EventEmitter<number>();
-  
-  get totalPages(): number {
-    return Math.ceil(this.totalItems / this.pageSize);
-  }
 
-  get desktopItems(): PaginationItem[] {
-    return this.buildPaginationItems(1, 1);
-  }
+  private _desktopItems: PaginationItem[] = [];
+  private _mobileItems: PaginationItem[] = [];
 
-  get mobileItems(): PaginationItem[] {
-    return this.buildPaginationItems(1, 0);
+  get totalPages(): number { return Math.ceil(this.totalItems / this.pageSize); }
+  get desktopItems(): PaginationItem[] { return this._desktopItems; }
+  get mobileItems(): PaginationItem[] { return this._mobileItems; }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['totalItems'] || changes['pageSize'] || changes['currentPage']) {
+      this._desktopItems = this.buildPaginationItems(1, 1);
+      this._mobileItems = this.buildPaginationItems(1, 0);
+    }
   }
 
   onPageChange(page: number): void {
