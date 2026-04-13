@@ -15,6 +15,7 @@ import { BULK_UPLOAD_FILE_TYPES } from 'src/app/shared/utility/constant.util';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged} from 'rxjs';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UserManagementService } from '../../user-management/user-management.service';
+import { ActionMenuController } from 'src/app/shared/utility/action-menu-controller.util';
 
 @Component({
   selector: 'app-school-list',
@@ -91,8 +92,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     searchable: true
   };
 
-  isOpen: boolean[] = [];
-  desktopMenuPositions: Record<number, { top: string; left: string }> = {};
+  readonly actionMenu = new ActionMenuController();
 
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
 
@@ -263,62 +263,9 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Function triggered on dropdown toggle
-   * @param i index
-   * @param e event
-   */
-  toggleDropdown(i: any, e: Event) {
-    e.stopPropagation();
-    this.utilityService.resetArrayIfTrueInBetween(this.isOpen,i)
-    this.isOpen[i] = !this.isOpen[i];
-  }
-
-  toggleDesktopDropdown(i: number, e: Event) {
-    e.stopPropagation();
-
-    const wasOpen = !!this.isOpen[i];
-    this.isOpen = [];
-    this.desktopMenuPositions = {};
-
-    if (wasOpen) {
-      return;
-    }
-
-    const target = e.currentTarget as HTMLElement | null;
-    if (target) {
-      this.desktopMenuPositions[i] = this.getDesktopMenuPosition(target);
-    }
-
-    this.isOpen[i] = true;
-  }
-
-  private getDesktopMenuPosition(target: HTMLElement): { top: string; left: string } {
-    const rect = target.getBoundingClientRect();
-    const menuWidth = 192;
-    const menuHeight = 220;
-    const viewportPadding = 8;
-    const top =
-      rect.bottom + 4 + menuHeight > window.innerHeight
-        ? Math.max(viewportPadding, rect.top - menuHeight - 4)
-        : rect.bottom + 4;
-    const left = Math.max(
-      viewportPadding,
-      Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding)
-    );
-
-    return {
-      top: `${top}px`,
-      left: `${left}px`,
-    };
-  }
-
   @HostListener('click', ['$event'])
   clickInside(event : MouseEvent){
-    if((event.target as HTMLElement).closest('.school-list-container')){
-      this.isOpen = [];
-      this.desktopMenuPositions = {};
-    }
+    this.actionMenu.closeAllIfTriggeredInside(event, '.school-list-container');
   }
 
   onFilterChange(type: any, value: any) {
@@ -435,16 +382,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Error while fetching list', err);
       },
-    });
-  }
-
-  /**
-   * Function to set dropdown value
-   */
-  setDropdown() {
-    this.isOpen = [];
-    this.schoolListData.forEach(() => {
-      this.isOpen.push(false);
     });
   }
 

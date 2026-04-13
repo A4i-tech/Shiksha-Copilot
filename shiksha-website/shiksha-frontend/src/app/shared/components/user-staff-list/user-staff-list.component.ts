@@ -22,6 +22,7 @@ import { MasterService } from '../../services/master.service';
 import { SchoolManagementService } from 'src/app/view/admin/school-management/school-management.service';
 import { SchoolList } from '../../interfaces/school-list.interface';
 import { slideInOutAnimation } from '../../utility/animations.util';
+import { ActionMenuController } from '../../utility/action-menu-controller.util';
 
 interface ContentListConfig {
   [key: string]:
@@ -158,8 +159,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   userId!: string;
   @ViewChild('dropdownContainer') dropdownContainer!: ElementRef;
   usersListWithoutPg!:any[];
-  isOpen: boolean[] = [];
-  desktopMenuPositions: Record<number, { top: string; left: string }> = {};
+  readonly actionMenu = new ActionMenuController();
   searchText: any = "";
   currentPage = 1;
   pageSize = 10;
@@ -308,57 +308,9 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     return this.utility.loggedInUserData._id;
   }
 
-  toggleDropdown(i: any, e: Event) {
-    e.stopPropagation();
-    this.utility.resetArrayIfTrueInBetween(this.isOpen,i)
-    this.isOpen[i] = !this.isOpen[i];
-  }
-
-  toggleDesktopDropdown(i: number, e: Event) {
-    e.stopPropagation();
-
-    const wasOpen = !!this.isOpen[i];
-    this.isOpen = [];
-    this.desktopMenuPositions = {};
-
-    if (wasOpen) {
-      return;
-    }
-
-    const target = e.currentTarget as HTMLElement | null;
-    if (target) {
-      this.desktopMenuPositions[i] = this.getDesktopMenuPosition(target);
-    }
-
-    this.isOpen[i] = true;
-  }
-
-  private getDesktopMenuPosition(target: HTMLElement): { top: string; left: string } {
-    const rect = target.getBoundingClientRect();
-    const menuWidth = 192;
-    const menuHeight = 220;
-    const viewportPadding = 8;
-    const top =
-      rect.bottom + 4 + menuHeight > window.innerHeight
-        ? Math.max(viewportPadding, rect.top - menuHeight - 4)
-        : rect.bottom + 4;
-    const left = Math.max(
-      viewportPadding,
-      Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding)
-    );
-
-    return {
-      top: `${top}px`,
-      left: `${left}px`,
-    };
-  }
-
   @HostListener('click', ['$event'])
   clickInside(event : MouseEvent){
-    if((event.target as HTMLElement).closest('.table-section')){
-      this.isOpen = [];
-      this.desktopMenuPositions = {};
-    }
+    this.actionMenu.closeAllIfTriggeredInside(event, '.table-section');
   }
 
   viewUser(item: any) {

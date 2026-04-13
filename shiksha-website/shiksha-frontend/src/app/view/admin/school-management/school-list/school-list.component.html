@@ -115,11 +115,11 @@
             <p class="font-semibold break-all">{{ schoolData?.schoolId }}</p>
           </div>
           <div class="relative shrink-0">
-            <button class="py-1 px-2 rounded inline-flex items-center" (click)="toggleDropdown(i, $event)">
+            <button class="py-1 px-2 rounded inline-flex items-center" (click)="actionMenu.toggleMobileMenu(i, $event)">
               <img class="w-5" src="assets/icons/more_vert.svg" alt="" />
             </button>
             <ul
-              *ngIf="isOpen[i]"
+              *ngIf="actionMenu.openStates[i]"
               class="absolute right-0 top-full mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
               role="menu"
               aria-orientation="vertical"
@@ -269,7 +269,7 @@
             </td>
             <td class="px-4 py-6 text-sm border relative">
               <div class="flex justify-center">
-                <div [class.open]="isOpen" (click)="toggleDesktopDropdown(i, $event)">
+                <div [class.open]="actionMenu.openStates[i]" (click)="actionMenu.toggleDesktopMenu(i, $event)">
                   <button class="py-2 px-4 rounded inline-flex items-center">
                     <img
                       class="w-5"
@@ -279,9 +279,9 @@
                   </button>
   
                   <ul
-                    *ngIf="isOpen[i]"
+                    *ngIf="actionMenu.openStates[i]"
                     class="fixed w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
-                    [ngStyle]="desktopMenuPositions[i]"
+                    [ngStyle]="actionMenu.desktopPositions[i]"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="options-menu"
