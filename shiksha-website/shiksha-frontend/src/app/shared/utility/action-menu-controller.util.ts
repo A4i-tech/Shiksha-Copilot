@@ -58,6 +58,8 @@ export class ActionMenuController {
 
   private getDesktopMenuPosition(target: HTMLElement): ActionMenuPosition {
     const rect = target.getBoundingClientRect();
+    // Keep this estimate in sync with the action-menu templates until the
+    // positioning logic is upgraded to measure the rendered menu height.
     const menuWidth = this.options.menuWidth ?? 192;
     const menuHeight = this.options.menuHeight ?? 220;
     const viewportPadding = this.options.viewportPadding ?? 8;
