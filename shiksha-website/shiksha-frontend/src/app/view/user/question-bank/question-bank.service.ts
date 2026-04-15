@@ -271,8 +271,8 @@ export class QuestionBankService extends BaseRestService {
     return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data);
   }
 
-  getGrammarTopics(grade: number | string): Observable<string[]> {
+  getGrammarTopics(grade: number): Observable<string[]> {
     return this.http.get<any>(`${this.baseUrl}/question-bank/meta/grammarTopics?grade=${grade}`)
-      .pipe(map(res => res?.data || []));
+      .pipe(map(res => res?.data ?? []));
   }
 }

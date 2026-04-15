@@ -85,7 +85,9 @@ class TestGetGrammarTopics:
     def test_grammar_topics_for_english(self, service):
         """Test grammar topics extraction for English."""
         service.prompts = {
-            "grammar_topics": {9: ["Nouns", "Verbs"], 10: ["Tenses", "Articles"]}
+            "grammar_topics": {9: ["Nouns", "Verbs"], 10: ["Tenses", "Articles"]},
+            "grammar_simple_prompt": "⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit's content.\nCover following topics: {GRAMMAR_TOPIC}",
+            "grammar_context_prompt": "⚠ **GRAMMAR IN CONTEXT — {GRAMMAR_TOPIC_UPPER}**\n\nGrammar topic: {GRAMMAR_TOPIC}, Chapters: {CHAPTER_NAMES}",
         }
         request = MagicMock(subject="English", grade=9)
 

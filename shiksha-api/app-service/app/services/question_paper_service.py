@@ -110,6 +110,11 @@ class QuestionPaperService:
             grammar_data = yaml.safe_load(f)
             prompts.update(grammar_data)
 
+        grammar_prompts_path = self.prompt_dir / "grammar_prompt_templates.yaml"
+        with open(grammar_prompts_path, "r", encoding="utf-8") as f:
+            grammar_prompt_data = yaml.safe_load(f)
+            prompts.update(grammar_prompt_data)
+
         logger.info("Successfully loaded prompt templates")
         return prompts
 
@@ -127,7 +132,7 @@ class QuestionPaperService:
                     questions.append(f"{q.value1} :: {q.value2}")
         return [q for q in questions if q]
 
-    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Dict[str, Any] = None) -> str:
+    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Optional[Dict[str, Any]] = None) -> str:
         """
         Returns a grammar focus instruction string for English subjects.
         When a slot with grammar_source_chapters is provided, generates a detailed
@@ -158,29 +163,15 @@ class QuestionPaperService:
         source_chapters = (slot or {}).get("grammar_source_chapters", [])
         if source_chapters:
             chapter_names = ", ".join(source_chapters)
-            return (
-                f"⚠ **GRAMMAR IN CONTEXT — {grammar_topic.upper()}**\n\n"
-                f"You are an English teacher preparing a grammar assessment on **{grammar_topic}**.\n"
-                f"The grammar topic \"{grammar_topic}\" is taught as part of the textbook chapter(s): **{chapter_names}**.\n\n"
-                f"**Step-by-step approach:**\n"
-                f"1. **Read the retrieved textbook content** from the chapter(s) above carefully.\n"
-                f"2. **Identify sentences, dialogues, and passages** from the chapter that naturally demonstrate {grammar_topic}.\n"
-                f"3. **Create grammar questions using the chapter’s own language** — characters, situations, vocabulary, and sentence patterns from the text.\n"
-                f"4. For fill-in-the-blanks, pick actual sentences from the chapter or closely paraphrase them, then blank out the grammar element being tested.\n"
-                f"5. For other question types, use the chapter’s context (characters, events, theme) as the setting for the grammar exercise.\n\n"
-                f"**Example approach for \"{grammar_topic}\":**\n"
-                f"- If the chapter has a sentence like \"What a brave boy he was!\", create: \"______ a brave boy he was!\" (Answer: What)\n"
-                f"- If the chapter describes a beautiful scene, create: \"______ beautiful the scene was!\" using the chapter’s own imagery.\n\n"
-                f"**DO NOT** generate generic grammar questions unrelated to the textbook chapter.\n"
-                f"**EVERY question MUST** reference content, vocabulary, characters, or situations from **{chapter_names}**.\n\n"
-                f"**CRITICAL:** In the output JSON, the `unit_name` field MUST be `\"GRAMMAR: {grammar_topic}\"` — NOT the source chapter name."
+            template = self.prompts.get("grammar_context_prompt", "")
+            return template.format(
+                GRAMMAR_TOPIC=grammar_topic,
+                GRAMMAR_TOPIC_UPPER=grammar_topic.upper(),
+                CHAPTER_NAMES=chapter_names,
             )
 
-        return (
-            "⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit’s content."
-            + "\nCover following topics: "
-            + grammar_topic
-        )
+        template = self.prompts.get("grammar_simple_prompt", "")
+        return template.format(GRAMMAR_TOPIC=grammar_topic)
 
     def _get_unit_metadata(self, request: QuestionBankPartsGenerationRequest) -> Dict[str, Dict[str, Any]]:
         """
