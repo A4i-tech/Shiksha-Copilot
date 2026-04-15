@@ -152,8 +152,10 @@ class TestFormatSystemPrompt:
         """Test system prompt formatting."""
         service.prompts = {
             "question_bank_parts_gen": (
-                "Board: {BOARD}, Grade: {GRADE}, Subject: {SUBJECT}, "
-                "Chapters: {CHAPTERS}, Blooms: {QUESTION_BANK_BLOOM_TAXONOMY_GUIDE}"
+                "Board: {BOARD}, Medium: {MEDIUM}, Grade: {GRADE}, Subject: {SUBJECT}, "
+                "Total: {TOTAL_MARKS}, Chapters: {CHAPTERS}, LOs: {UNIT_WISE_LEARNING_OUTCOMES}, "
+                "Existing: {EXISTING_QUESTIONS_JSON}, Blooms: {QUESTION_BANK_BLOOM_TAXONOMY_GUIDE}, "
+                "Grammar: {GRAMMAR_TOPICS}"
             ),
             "blooms-taxonomy": {"general": "Test Blooms"},
         }
@@ -161,7 +163,7 @@ class TestFormatSystemPrompt:
         request = MagicMock(
             board="CBSE", grade=10, subject="Math", medium="English", total_marks=100
         )
-        slot = {"unit_name": "Chapter 1", "learning_outcomes": ["LO1"]}
+        slot = {"unit_name": "Chapter 1", "learning_outcomes": ["LO1"], "questions": [{"type": "MCQ", "count": 5, "marks": 1}]}
 
         result = service._format_system_prompt(request, [], slot)
 
