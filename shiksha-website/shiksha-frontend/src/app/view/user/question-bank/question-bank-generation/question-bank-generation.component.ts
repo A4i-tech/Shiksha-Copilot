@@ -614,17 +614,34 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    // 1. Add AI Standard Types only if AI-only is selected
+    // 1. Add AI Standard Types when AI is selected
+    const hasGrammar = selectedChapters.some(ch => ch.isGrammar);
+    const hasNonGrammar = selectedChapters.some(ch => !ch.isGrammar);
+
     if (this.useAI && !this.useLBA) {
-      const aiStandardTypes = [
-        'Multiple Choice Questions',
-        'Short Answer Questions',
-        'Fill in the blanks',
-        'Long Answer Questions',
-        'Match the Following',
-        'Very Short Answer Questions'
+      if (hasNonGrammar || selectedChapters.length === 0) {
+        const aiStandardTypes = [
+          'Multiple Choice Questions',
+          'Short Answer Questions',
+          'Fill in the blanks',
+          'Long Answer Questions',
+          'Match the Following',
+          'Very Short Answer Questions'
+        ];
+        aiStandardTypes.forEach(typeName => {
+          headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
+        });
+      }
+    }
+
+    // Always add grammar-specific types when grammar chapters are selected
+    if (hasGrammar) {
+      const grammarTypes = [
+        'Grammar: Multiple Choice Questions',
+        'Grammar: Fill in the blanks',
+        'Grammar: Identify and correct the error'
       ];
-      aiStandardTypes.forEach(typeName => {
+      grammarTypes.forEach(typeName => {
         headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
       });
     }

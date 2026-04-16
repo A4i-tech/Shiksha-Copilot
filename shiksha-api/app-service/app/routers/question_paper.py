@@ -126,8 +126,15 @@ def _get_display_name(qt: QuestionType) -> str:
     return _DISPLAY_NAMES.get(qt.name, qt.name)
 
 
+class QuestionTypeItem(BaseModel):
+    key: str
+    value: str
+    name: str
+
+
 @router.get(
     "/question-types",
+    response_model=List[QuestionTypeItem],
     status_code=status.HTTP_200_OK,
     summary="Get available question types for a subject",
 )
