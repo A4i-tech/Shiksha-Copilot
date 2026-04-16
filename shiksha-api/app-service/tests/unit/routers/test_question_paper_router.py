@@ -10,14 +10,11 @@ client = TestClient(app)
 def _mock_translate_same_data(json_data):
     """Return a coroutine that resolves to the same json_data (no-op translation)."""
     async def _same(_data, _src, _tgt):
-        return json_data
     return _same
 
 
 @pytest.fixture
 def mock_question_paper_service():
-    """Mock the QuestionPaperService."""
-    with patch(
         "app.routers.question_paper.QUESTION_PAPER_SERVICE_INSTANCE"
     ) as mock_service:
         yield mock_service
