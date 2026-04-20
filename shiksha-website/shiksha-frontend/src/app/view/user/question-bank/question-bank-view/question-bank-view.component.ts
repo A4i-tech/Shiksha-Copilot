@@ -7,7 +7,6 @@ import { IdleService } from 'src/app/shared/services/idle.service';
 import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
-import { formatSuperscript } from 'src/app/shared/utility/math-formatting.util';
 @Component({
   selector: 'app-question-bank-view',
   templateUrl: './question-bank-view.component.html',
@@ -41,11 +40,9 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionTypeMapper = QUESTION_TYPE_MAPPER;
 
-  formatSuperscript = formatSuperscript;
+  shuffledColumns: string[] = [];
 
-  shuffledColumns: any[] = [];
-
-  primaryColumn: any[] = [];
+  primaryColumn: string[] = [];
 
   questionBankBluePrintData: any;
 

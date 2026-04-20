@@ -12,6 +12,7 @@ import { DeleteDetailComponent } from 'src/app/shared/components/delete-detail/d
 import { NgChartsModule } from 'ng2-charts';
 import { QuestionBankTemplateComponent } from './question-bank-generation/question-bank-template/question-bank-template.component';
 import { QuestionBankBluePrintComponent } from './question-bank-generation/question-bank-blue-print/question-bank-blue-print.component';
+import { MathFormattingPipe } from 'src/app/shared/pipes/math-formatting.pipe';
 
 @NgModule({
   declarations: [
@@ -20,6 +21,7 @@ import { QuestionBankBluePrintComponent } from './question-bank-generation/quest
     QuestionBankBluePrintComponent,
     QuestionBankListComponent,
     QuestionBankViewComponent,
+    MathFormattingPipe,
   ],
   imports: [
     CommonModule,

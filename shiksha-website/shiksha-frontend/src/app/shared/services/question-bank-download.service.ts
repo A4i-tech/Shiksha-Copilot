@@ -17,12 +17,14 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { DOCX_CONFIG, SUPERSCRIPT_MAP } from '../utility/constant.util';
+import { QuestionDto, QuestionSectionDto } from '../models/question-bank.dto';
 
 @Injectable({
   providedIn: 'root',
 })
 export class QuestionBankDownloadService {
-  constructor(private utilityService:UtilityService) {}
+  constructor(private utilityService: UtilityService) {}
 
   downloadQuestionBank(data: any) {
     const doc = new Document({
@@ -34,19 +36,13 @@ export class QuestionBankDownloadService {
                 text: data.questionBank.metadata.schoolName,
                 heading: HeadingLevel.HEADING_1,
                 alignment: AlignmentType.CENTER,
-                spacing: {
-                  before: 120,
-                  after: 120,
-              }
+                spacing: DOCX_CONFIG.spacing.sectionHeader,
               }),
               new Paragraph({
                 text: data.examinationName,
                 heading: HeadingLevel.HEADING_2,
                 alignment: AlignmentType.CENTER,
-                spacing: {
-                  before: 120,
-                  after: 120,
-              }
+                spacing: DOCX_CONFIG.spacing.sectionHeader,
               }),
               new Paragraph({
                 children: [
@@ -55,13 +51,10 @@ export class QuestionBankDownloadService {
                   new TextRun({ text: "\tMarks: " + data.totalMarks, bold: true }),
                 ],
                 tabStops: [
-                  { type: TabStopType.CENTER, position: 4500 }, // middle of page (approx)
-                  { type: TabStopType.RIGHT, position: 9000 },  // right of page
+                  { type: TabStopType.CENTER, position: 4500 },
+                  { type: TabStopType.RIGHT, position: 9000 },
                 ],
-                spacing: {
-                  before: 120,
-                  after: 120,
-              }
+                spacing: DOCX_CONFIG.spacing.sectionHeader,
               }),
             ],
           }),
@@ -76,8 +69,8 @@ export class QuestionBankDownloadService {
             ],
           }),
         },
-        properties:{
-          titlePage:true
+        properties: {
+          titlePage: true
         },
         children: this.buildQuestions(data.questionBank.questions)
       }],
@@ -88,10 +81,10 @@ export class QuestionBankDownloadService {
     });
   }
 
-  private buildQuestions(questionsArray: any[]) {
+  private buildQuestions(questionsArray: QuestionSectionDto[]) {
     const content: (Paragraph | Table)[] = [];
     let sectionCount = 1;
-  
+
     for (const section of questionsArray) {
       const roman = this.utilityService.intToRoman(sectionCount);
       content.push(new Paragraph({
@@ -102,50 +95,46 @@ export class QuestionBankDownloadService {
         tabStops: [
           { type: TabStopType.RIGHT, position: 9000 },
         ],
-        spacing: {
-          before: 120,
-          after: 120,
-      }
+        spacing: DOCX_CONFIG.spacing.sectionHeader,
       }));
 
-      if(section.type !== 'Match the following'){
-      section.questions.forEach((q: any, index: number) => {
-        if (q.question) {
-          content.push(new Paragraph({
-            children: [
-              new TextRun({ text: `${index + 1}. ` }),
-              ...this.convertToDocxRuns(q.question)
-            ],
-            spacing: { after: 100 },
-          }));
-          if (q.options) {
-            q.options.forEach((opt: any, i: number) => {
-              const optText = typeof opt === 'string' ? opt : (opt.text || opt.label || String(opt));
-              content.push(new Paragraph({
-                children: [
-                  new TextRun({ text: `   ${String.fromCharCode(65 + i)}. ` }),
-                  ...this.convertToDocxRuns(optText)
-                ],
-                spacing: { after: 120 },
-              }));
-            });
+      if (section.type !== 'Match the following') {
+        section.questions.forEach((q: QuestionDto, index: number) => {
+          if (q.question) {
+            content.push(new Paragraph({
+              children: [
+                new TextRun({ text: `${index + 1}. ` }),
+                ...this.convertToDocxRuns(q.question)
+              ],
+              spacing: DOCX_CONFIG.spacing.questionItem,
+            }));
+            if (q.options) {
+              q.options.forEach((opt: string | { text?: string; label?: string }, i: number) => {
+                const optText = typeof opt === 'string' ? opt : (opt.text || opt.label || String(opt));
+                content.push(new Paragraph({
+                  children: [
+                    new TextRun({ text: `${DOCX_CONFIG.indent.optionLeft}${String.fromCharCode(65 + i)}. ` }),
+                    ...this.convertToDocxRuns(optText)
+                  ],
+                  spacing: DOCX_CONFIG.spacing.optionItem,
+                }));
+              });
+            }
           }
-        }
-      });
-      } else if(section.type === 'Match the following'){
-          const colOneValue = section.questions.map((e:any)=> e.value1)
-          const colTwoVal = structuredClone(section.questions.map((e:any)=> e.value2))
-          const shuffedColums = this.utilityService.shuffleOptions(colTwoVal)
-          content.push(this.buildMatchTable(colOneValue, shuffedColums));
+        });
+      } else if (section.type === 'Match the following') {
+        const colOneValue = section.questions.map((e: QuestionDto) => e.value1 || '');
+        const colTwoVal = structuredClone(section.questions.map((e: QuestionDto) => e.value2 || ''));
+        const shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
+        content.push(this.buildMatchTable(colOneValue, shuffledColumns));
       }
-  
+
       content.push(new Paragraph({ text: "" }));
       sectionCount++;
     }
-  
+
     return content;
   }
-  
 
   private buildMatchTable(col1: string[], col2: string[]) {
     const rows: TableRow[] = [];
@@ -154,12 +143,12 @@ export class QuestionBankDownloadService {
       rows.push(new TableRow({
         children: [
           new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({
-            children: [new TextRun({ text: " " }), ...this.convertToDocxRuns(col1[i])],
-            spacing:{before:50, after:50}
+            children: this.convertToDocxRuns(col1[i]),
+            spacing: DOCX_CONFIG.spacing.tableCell,
           })] }),
           new TableCell({ width: { size: 50, type: WidthType.PERCENTAGE }, children: [new Paragraph({
-            children: [new TextRun({ text: " " }), ...this.convertToDocxRuns(col2[i])],
-            spacing:{before:50, after:50}
+            children: this.convertToDocxRuns(col2[i]),
+            spacing: DOCX_CONFIG.spacing.tableCell,
           })] }),
         ],
       }));
@@ -173,26 +162,34 @@ export class QuestionBankDownloadService {
     });
   }
 
-  private convertToDocxRuns(text: string): TextRun[] {
-    if (!text || typeof text !== 'string') return [new TextRun({ text: text != null ? String(text) : '' })];
-    
+  convertToDocxRuns(text: string): TextRun[] {
+    if (!text || typeof text !== 'string') {
+      console.warn('[WARNING] convertToDocxRuns: expected string but received', typeof text);
+      return [new TextRun({ text: text != null ? String(text) : '' })];
+    }
+
     const runs: TextRun[] = [];
     const regex = /\^([a-zA-Z0-9()+\-]+)/g;
     let lastIndex = 0;
-    
+
     let match;
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
         runs.push(new TextRun({ text: text.substring(lastIndex, match.index) }));
       }
-      runs.push(new TextRun({ text: match[1], superScript: true }));
+      const exponent = match[1];
+      const allMapped = [...exponent].every(ch => ch in SUPERSCRIPT_MAP);
+      if (!allMapped) {
+        console.warn('[WARNING] convertToDocxRuns: unmapped superscript characters in exponent:', exponent);
+      }
+      runs.push(new TextRun({ text: exponent, superScript: true }));
       lastIndex = regex.lastIndex;
     }
-    
+
     if (lastIndex < text.length) {
       runs.push(new TextRun({ text: text.substring(lastIndex) }));
     }
-    
+
     return runs;
   }
 }

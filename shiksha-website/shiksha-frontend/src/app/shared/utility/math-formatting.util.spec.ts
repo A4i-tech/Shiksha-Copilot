@@ -25,10 +25,10 @@ describe('math-formatting.util', () => {
     });
 
     it('should handle non-strings safely', () => {
-      expect(formatSuperscript(null)).toBe('');
-      expect(formatSuperscript(undefined)).toBe('');
-      expect(formatSuperscript(123)).toBe('123');
-      expect(formatSuperscript({ text: 'x^2' })).toBe('[object Object]');
+      expect(formatSuperscript(null as any)).toBe('');
+      expect(formatSuperscript(undefined as any)).toBe('');
+      expect(formatSuperscript(123 as any)).toBe('123');
+      expect(formatSuperscript({ text: 'x^2' } as any)).toBe('[object Object]');
     });
 
     it('should handle empty strings', () => {
