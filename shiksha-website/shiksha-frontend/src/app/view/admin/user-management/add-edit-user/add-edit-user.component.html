@@ -15,7 +15,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="form-control-label">{{'Teacher Name' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
-                        <input formControlName="name" type="text" maxlength="255" autocomplete="off" class="form-control h-[44px] border-0 bg-shade-80"
+                        <input formControlName="name" type="text" maxlength="255" autocomplete="off" class="form-control h-[44px]"
                             placeholder="{{'Enter Teacher Name' | translate}}">
                        
                             <small class="form-control-error" *ngIf="submitted && f['name']?.errors?.['required']">{{'Teacher Name is required' | translate}}.</small>
@@ -24,7 +24,7 @@
                     </div>
                     <div>
                         <label class="form-control-label">{{'Mobile Number' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
-                        <input formControlName="phone" type="text" maxlength="10" oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')" autocomplete="off" class="form-control h-[44px] border-0 bg-shade-80"
+                        <input formControlName="phone" type="text" maxlength="10" oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')" autocomplete="off" class="form-control h-[44px]"
                             placeholder="{{'Enter Mobile Number' | translate}}">
                         
                             <small class="form-control-error" *ngIf="submitted && f['phone']?.errors?.['required']">{{'Mobile Number is required' | translate}}.</small>

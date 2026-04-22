@@ -3,7 +3,7 @@
 
   <ng-select
     [items]="dropDownValues"
-    [ngClass]="config.isBackground ? 'with-background' : ''"
+    [ngClass]="config.isBackground && config.disabled ? 'with-background' : ''"
     [style]="{ height: config.height }"
     bindLabel="{{ config.bindLabel ? config.bindLabel : 'name' }}"
     bindValue="{{ config.bindValue ? config.bindValue : 'value' }}"

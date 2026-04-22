@@ -36,7 +36,7 @@
           <div>
             <label class="form-control-label" for="school-name"> {{'Name' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
             <input
-              class="form-control border-0 bg-shade-80"
+              class="form-control"
               id="school-name"
               type="text"
               placeholder="{{'Enter name' | translate}}"
@@ -61,7 +61,7 @@
               {{'DISE Code' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span>
             </label>
             <input
-              class="form-control border-0 bg-shade-80"
+              class="form-control"
               id="school-id"
               type="text"
               oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')"
@@ -157,7 +157,7 @@
               {{'Academic year start date' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span>
             </label>
             <input
-              class="form-control border-0 bg-shade-80"
+              class="form-control"
               id="academic-start-date"
               type="date"
               [min]="minMaxDateValues.currentYearMin | date:'yyyy-MM-dd'"
@@ -178,7 +178,7 @@
               {{'Academic year end date' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span>
             </label>
             <input
-              class="form-control border-0 bg-shade-80"
+              class="form-control"
               id="academic-end-date"
               type="date"
               placeholder="Select date"

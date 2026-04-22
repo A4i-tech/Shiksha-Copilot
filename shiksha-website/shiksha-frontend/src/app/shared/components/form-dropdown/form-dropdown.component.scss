@@ -8,8 +8,7 @@
   }
 
   ::ng-deep .with-background.ng-select .ng-select-container {
-    background: var(--shade-80) !important;
-    border: none;
+    background: var(--surface-muted) !important;
   }
   ::ng-deep .ng-select .ng-select-container {
     background-color: var(--surface-DEFAULT) !important;
@@ -17,10 +16,10 @@
     border: 1px solid var(--content-50);
   }
 
-  ::ng-deep
-    .with-background.ng-select.ng-select-focused:not(.ng-select-opened)
-    > .ng-select-container {
+  ::ng-deep .ng-select.ng-select-disabled > .ng-select-container {
+    background: var(--shade-80) !important;
     border: none;
+    cursor: not-allowed;
   }
 
   ::ng-deep .ng-select .ng-arrow-wrapper .ng-arrow {
