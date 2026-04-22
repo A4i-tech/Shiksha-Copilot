@@ -249,6 +249,7 @@ button.metric-card {
 }
 
 button.metric-card:hover {
+  box-shadow: 0 6px 18px rgba(75, 75, 75, 0.08);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--content-DEFAULT) 8%, transparent);
   transform: translateY(-1px);
 }
@@ -291,6 +292,7 @@ button.metric-card:hover {
 }
 
 .remove-assigned-teacher-icon:hover:not(:disabled) {
+  background: rgb(250, 228, 228);
   background: color-mix(in srgb, var(--error-DEFAULT) 14%, white);
   transform: translateY(-1px);
 }

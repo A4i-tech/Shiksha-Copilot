@@ -9,6 +9,7 @@ h1{
     position: fixed;
     top: 0;
     left: 0;
+    background-color: rgba(75, 75, 75, 0.7);
     background-color: color-mix(in srgb, var(--content-DEFAULT) 70%, transparent);
     z-index: 90;
   }

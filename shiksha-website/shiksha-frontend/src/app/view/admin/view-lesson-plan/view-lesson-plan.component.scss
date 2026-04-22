@@ -11,6 +11,7 @@
 
 .inspect-wrapper {
     .tabs {
+        box-shadow: rgba(75, 75, 75, 0.1) 0px 10px 10px -10px;
         box-shadow: color-mix(in srgb, var(--content-DEFAULT) 10%, transparent) 0px 10px 10px -10px;
 
     }

@@ -8,6 +8,7 @@
   position: absolute;
   inset: 0;
   border: none;
+  background: rgba(75, 75, 75, 0.45);
   background: color-mix(in srgb, var(--content-DEFAULT) 45%, transparent);
   cursor: pointer;
 }
@@ -27,6 +28,7 @@
   margin: 0;
   padding: 0;
   border-radius: 0;
+  box-shadow: -16px 0 40px rgba(75, 75, 75, 0.16);
   box-shadow: -16px 0 40px color-mix(in srgb, var(--content-DEFAULT) 16%, transparent);
 }
 
@@ -93,6 +95,7 @@
     outline: none;
     border-color: var(--primary-DEFAULT);
     background: var(--surface-DEFAULT);
+    box-shadow: 0 0 0 3px rgba(70, 160, 241, 0.12);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-DEFAULT) 12%, transparent);
   }
 

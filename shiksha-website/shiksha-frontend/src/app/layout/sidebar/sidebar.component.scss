@@ -1,4 +1,5 @@
 .mobile-header{
+  box-shadow: 0px 8px 12px -4px rgba(75, 75, 75, 0.08);
   box-shadow: 0px 8px 12px -4px color-mix(in srgb, var(--content-DEFAULT) 8%, transparent);
 }
 .sidebar {
@@ -15,6 +16,7 @@
     &.show {
       position: fixed;
       inset: 0;
+      background-color: rgba(248, 249, 250, 0.5);
       background-color: color-mix(in srgb, var(--surface-muted) 50%, transparent);
     }
     .sidebar {
