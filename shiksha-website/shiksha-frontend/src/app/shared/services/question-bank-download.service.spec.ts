@@ -26,60 +26,64 @@ describe('QuestionBankDownloadService', () => {
     expect(service).toBeTruthy();
   });
 
-  describe('convertToDocxRuns', () => {
+  describe('tokenizeForDocxRuns', () => {
     it('should return a single TextRun for plain text without caret notation', () => {
-      const runs = service.convertToDocxRuns('Hello world');
-      expect(runs.length).toBe(1);
+      const runs = service.tokenizeForDocxRuns('Hello world');
+      expect(runs).toEqual([{text: "Hello world"}])
     });
 
     it('should split text with caret notation into multiple TextRuns', () => {
-      const runs = service.convertToDocxRuns('x^2 + y^3');
-      // 'x' + superscript '2' + ' + y' + superscript '3'
-      expect(runs.length).toBe(4);
+      const runs = service.tokenizeForDocxRuns('x^2 + y^3');
+      expect(runs).toEqual([
+        {text: "x"}, {text: "2", superScript: true},
+        {text: " + y"}, {text: "3", superScript: true},
+      ])
     });
 
     it('should handle text starting with caret notation', () => {
-      const runs = service.convertToDocxRuns('^2abc');
-      // superscript '2' + 'abc' — depends on regex match
-      expect(runs.length).toBeGreaterThanOrEqual(1);
+      const runs = service.tokenizeForDocxRuns('^2abc');
+      expect(runs).toEqual([{text: "2abc", superScript: true}])
     });
 
     it('should handle multi-digit exponents', () => {
-      const runs = service.convertToDocxRuns('10^12');
-      // '10' + superscript '12'
-      expect(runs.length).toBe(2);
+      const runs = service.tokenizeForDocxRuns('10^12');
+      expect(runs).toEqual([
+        {text: "10"}, {text: "12", superScript: true}
+      ])
     });
 
     it('should handle exponents with parentheses', () => {
-      const runs = service.convertToDocxRuns('a^(2+3)');
-      expect(runs.length).toBe(2);
+      const runs = service.tokenizeForDocxRuns('a^(2+3)');
+      expect(runs).toEqual([
+        {text: "a"}, {text: "(2+3)", superScript: true}
+      ])
     });
 
     it('should return fallback TextRun for null input and log warning', () => {
       spyOn(console, 'warn');
-      const runs = service.convertToDocxRuns(null as unknown as string);
-      expect(runs.length).toBe(1);
+      const runs = service.tokenizeForDocxRuns(null as unknown as string);
+      expect(runs).toEqual([{text: ""}])
       expect(console.warn).toHaveBeenCalled();
     });
 
     it('should return fallback TextRun for undefined input and log warning', () => {
       spyOn(console, 'warn');
-      const runs = service.convertToDocxRuns(undefined as unknown as string);
-      expect(runs.length).toBe(1);
+      const runs = service.tokenizeForDocxRuns(undefined as unknown as string);
+      expect(runs).toEqual([{text: ""}])
       expect(console.warn).toHaveBeenCalled();
     });
 
     it('should return fallback TextRun for numeric input and log warning', () => {
       spyOn(console, 'warn');
-      const runs = service.convertToDocxRuns(42 as unknown as string);
-      expect(runs.length).toBe(1);
+      const runs = service.tokenizeForDocxRuns(42 as unknown as string);
+      expect(runs).toEqual([{text: "42"}])
       expect(console.warn).toHaveBeenCalled();
     });
 
     it('should return a single empty TextRun for empty string', () => {
       spyOn(console, 'warn');
-      const runs = service.convertToDocxRuns('');
-      expect(runs.length).toBe(1);
+      const runs = service.tokenizeForDocxRuns('');
+      expect(runs).toEqual([{text: ""}])
       expect(console.warn).toHaveBeenCalled();
     });
 
@@ -100,14 +104,15 @@ describe('QuestionBankDownloadService', () => {
     });
 
     it('should handle text with no exponents returning full text', () => {
-      const runs = service.convertToDocxRuns('simple text');
-      expect(runs.length).toBe(1);
+      const runs = service.tokenizeForDocxRuns('simple text');
+      expect(runs).toEqual([{text: "simple text"}])
     });
 
     it('should handle consecutive carets', () => {
-      const runs = service.convertToDocxRuns('a^2b^3');
-      // 'a' + sup '2' + 'b' + sup '3'
-      expect(runs.length).toBe(4);
+      const runs = service.tokenizeForDocxRuns('a^2b^3');
+      expect(runs).toEqual([
+        {text: "a"}, {text: "2b", superScript: true}, {text: "3", superScript: true}
+      ])
     });
   });
 });

@@ -13,7 +13,8 @@ import {
   TableRow,
   WidthType,
   PageNumber,
-  TabStopType
+  TabStopType,
+  IRunOptions
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -162,34 +163,38 @@ export class QuestionBankDownloadService {
     });
   }
 
-  convertToDocxRuns(text: string): TextRun[] {
+  tokenizeForDocxRuns(text: string): IRunOptions[] {
     if (!text || typeof text !== 'string') {
-      console.warn('[WARNING] convertToDocxRuns: expected string but received', typeof text);
-      return [new TextRun({ text: text != null ? String(text) : '' })];
+      console.warn('[WARNING] tokenizeForDocxRuns: expected string but received', typeof text);
+      return [{ text: text != null ? String(text) : '' }];
     }
 
-    const runs: TextRun[] = [];
+    const runs: IRunOptions[] = [];
     const regex = /\^([a-zA-Z0-9()+\-]+)/g;
     let lastIndex = 0;
 
     let match;
     while ((match = regex.exec(text)) !== null) {
       if (match.index > lastIndex) {
-        runs.push(new TextRun({ text: text.substring(lastIndex, match.index) }));
+        runs.push({ text: text.substring(lastIndex, match.index) });
       }
       const exponent = match[1];
       const allMapped = [...exponent].every(ch => ch in SUPERSCRIPT_MAP);
       if (!allMapped) {
-        console.warn('[WARNING] convertToDocxRuns: unmapped superscript characters in exponent:', exponent);
+        console.warn('[WARNING] tokenizeForDocxRuns: unmapped superscript characters in exponent:', exponent);
       }
-      runs.push(new TextRun({ text: exponent, superScript: true }));
+      runs.push({ text: exponent, superScript: true });
       lastIndex = regex.lastIndex;
     }
 
     if (lastIndex < text.length) {
-      runs.push(new TextRun({ text: text.substring(lastIndex) }));
+      runs.push({ text: text.substring(lastIndex) });
     }
 
     return runs;
+  }
+
+  convertToDocxRuns(text: string): TextRun[] {
+    return this.tokenizeForDocxRuns(text).map(o => new TextRun(o));
   }
 }
