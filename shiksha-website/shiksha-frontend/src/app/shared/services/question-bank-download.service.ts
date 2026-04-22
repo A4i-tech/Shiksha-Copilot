@@ -123,7 +123,7 @@ export class QuestionBankDownloadService {
             }
           }
         });
-      } else if (section.type === 'Match the following') {
+      } else {
         const colOneValue = section.questions.map((e: QuestionDto) => e.value1 || '');
         const colTwoVal = structuredClone(section.questions.map((e: QuestionDto) => e.value2 || ''));
         const shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
