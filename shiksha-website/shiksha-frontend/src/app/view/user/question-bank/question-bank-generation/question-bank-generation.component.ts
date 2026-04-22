@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -38,6 +38,7 @@ import { QuestionBankTemplateComponent } from './question-bank-template/question
 export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   // Step 2 Child Component
   @ViewChild(QuestionBankTemplateComponent) templateComponent!: QuestionBankTemplateComponent;
+  @ViewChild('headingDropdownContainer') headingDropdownContainer?: ElementRef<HTMLElement>;
 
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
@@ -1277,6 +1278,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   get isTotalMet(): boolean { return this.currentTotalMarks === this.totalMarks; }
   toggleHeadingDropdown() { this.showHeadingDropdown = !this.showHeadingDropdown; }
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (!this.showHeadingDropdown) return;
+
+    const target = event.target as Node | null;
+    if (target && this.headingDropdownContainer?.nativeElement.contains(target)) return;
+
+    this.showHeadingDropdown = false;
+  }
   toggleAllHeadings(event: Event) {
     const input = event.target as HTMLInputElement;
     this.selectedHeadings = input.checked ? this.availableHeadings.map(h => h.name) : [];

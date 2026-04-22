@@ -112,17 +112,17 @@
               <!-- EXAM NAME & MARKS -->
               <div class="grid lg:grid-cols-2 gap-4 mt-7">
                 <div>
-                  <label class="form-control-label font-bold">Examination Name <span class="text-error">*</span></label>
-                  <input type="text" class="form-control border rounded-lg p-2 w-full mt-1"
-                    formControlName="examinationName" placeholder="Enter Exam Name" />
+                  <label class="form-control-label">{{ 'Examination Name' | translate }} <span class="text-[16px] text-error">*</span></label>
+                  <input type="text" class="form-control h-9"
+                    formControlName="examinationName" placeholder="{{ 'Examination Name' | translate }}" />
                   <small class="form-control-error"
                     *ngIf="submittedConfig && f['examinationName'].errors?.['required']">Required</small>
                 </div>
                 <div>
-                  <label class="form-control-label font-bold">Total Marks <span class="text-error">*</span></label>
+                  <label class="form-control-label">{{ 'Total Marks' | translate }} <span class="text-[16px] text-error">*</span></label>
                   <input type="text" oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 3)" maxlength="3"
-                    class="form-control border rounded-lg p-2 w-full mt-1" formControlName="totalMarks"
-                    placeholder="Total Marks" />
+                    class="form-control h-9" formControlName="totalMarks"
+                    placeholder="{{ 'Total Marks' | translate }}" />
                   <small class="form-control-error"
                     *ngIf="submittedConfig && f['totalMarks'].errors?.['required']">Required</small>
                 </div>
@@ -131,7 +131,7 @@
               <!-- SCOPE (SINGLE VS MULTI CHAPTER) -->
               <div class="grid lg:grid-cols-2 gap-4 mt-7">
                 <div>
-                  <label class="form-control-label font-bold">Scope <span class="text-error">*</span></label>
+                  <label class="form-control-label font-bold">{{ 'Scope' | translate }} <span class="text-error">*</span></label>
                   <div class="flex gap-4 items-center mt-2">
                     <div *ngFor="let type of questionBankTypes; let i = index" class="flex items-center">
                       <input type="radio" [(ngModel)]="questionBankTypeValue" [ngModelOptions]="{ standalone: true }"
@@ -195,11 +195,11 @@
                 </div>
                 <!-- 3. Custom Headings Dropdown -->
                 <div>
-                  <label class="form-control-label font-bold mb-2 block">Question Types / Headings <span
-                      class="text-error">*</span></label>
-                  <div class="relative" *ngIf="availableHeadings.length; else noHeads">
+                  <label class="form-control-label">Question Types / Headings <span
+                      class="text-[16px] text-error">*</span></label>
+                  <div #headingDropdownContainer class="relative" *ngIf="availableHeadings.length; else noHeads">
                     <button type="button" (click)="toggleHeadingDropdown()"
-                      class="w-full p-3 text-left border border-gray-300 rounded-lg flex justify-between items-center bg-white h-[45px] hover:border-primary transition-colors focus:ring-1 focus:ring-primary">
+                      class="form-control h-9 text-left flex justify-between items-center hover:border-primary transition-colors focus:ring-1 focus:ring-primary">
                       <span class="truncate text-sm">{{ headingSummary() }}</span>
                       <img src="assets/icons/down-arrow.svg" alt="" class="w-3 h-3" />
                     </button>
@@ -225,7 +225,7 @@
                     select at least one type</small>
                   <ng-template #noHeads>
                     <div
-                      class="p-3 text-center border rounded bg-gray-50 text-gray-400 text-sm h-[45px] flex items-center justify-center">
+                      class="form-control h-9 text-center text-gray-400 text-sm flex items-center justify-center">
                       Select a chapter first
                     </div>
                   </ng-template>
@@ -301,7 +301,7 @@
       </div>
 
       <!-- STEP 2: SELECT QUESTIONS (Fixed Height, Internal Scroll) -->
-      <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2" class="h-full w-full">
+      <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2" class="h-full w-full overflow-y-auto md:overflow-hidden">
         <app-question-bank-template *ngIf="!isLoadingQuestions" [currentStep]="currentStep" [totalMarks]="totalMarks"
           [availableQuestions]="allAvailableQuestions" [preSelectedQuestions]="selectedQuestions"
           (selectionChange)="selectedQuestions = $event" (backClick)="previousStep()"></app-question-bank-template>

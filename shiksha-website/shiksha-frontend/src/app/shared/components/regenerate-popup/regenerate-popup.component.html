@@ -30,7 +30,7 @@
     <p class="text-sm my-1 font-bold capitalize">{{ feedback.type }}</p>
     <textarea
       placeholder="Enter Feedback"
-      class="text-sm w-full p-1 rounded bg-shade-80"
+      class="w-full rounded border border-content-50 bg-surface-muted p-2 text-sm text-content focus:outline-none"
       [(ngModel)]="feedback.feedback"
       (ngModelChange)="feedbackUpdated()"
       maxlength="500"

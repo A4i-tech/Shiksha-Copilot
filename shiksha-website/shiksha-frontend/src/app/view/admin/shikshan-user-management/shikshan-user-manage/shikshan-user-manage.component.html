@@ -1,23 +1,23 @@
-<div class="p-3">
+<div class="px-4 pt-4 md:px-0 md:pt-0">
 	<div class="flex items-center">
 		<img class="w-5 h-5 cursor-pointer" src="assets/icons/Vector (3).svg"
 			routerLink="/admin/shikshana-user/list" alt="">
-		<h1 class="text-xl md:text-[30px] font-bold text-content leading-[48px] ml-4">
+		<h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px] ml-4">
 			{{'Staff Management' | translate}}
 		</h1>
 	</div>
-	<div class="border text-content rounded my-5 p-6 bg-white" [ngClass]="{'pointer-events-none': mode === 'view'}">
-		<h2 class="text-content text-[30px] font-bold leading-[48px]">{{ (mode === "view" ? "View" : mode === "edit" ?
+	<div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white" [ngClass]="{'pointer-events-none': mode === 'view'}">
+		<h2 class="text-content text-2xl md:text-[30px] font-bold md:leading-[48px]">{{ (mode === "view" ? "View" : mode === "edit" ?
 			"Edit" : "Add") | translate }} {{'Staff' | translate}}
 		</h2>
 
 		<form [formGroup]="addForm" (ngSubmit)="on_form_submit()">
 			<div class="mt-8">
-				<div class="grid grid-cols-2 gap-4">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
 						<label class="form-control-label">{{'Staff Name' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 						<input formControlName="name" type="text" maxlength="255" autocomplete="off"
-							class="form-control h-[44px] border-0 bg-shade-80" placeholder="{{'Enter staff name' | translate}}">
+							class="form-control h-[44px]" placeholder="{{'Enter staff name' | translate}}">
 						
 							<small class="form-control-error" *ngIf="submitted && addForm.get('name')?.errors?.['required']">{{'Staff name is required.' | translate}}</small>
 						
@@ -27,7 +27,7 @@
 					<div>
 						<label class="form-control-label">{{'Mobile Number' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 						<input formControlName="phone" type="text" maxlength="10" oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')" autocomplete="off"
-							class="form-control h-[44px] border-0 bg-shade-80" placeholder="{{'Enter Mobile Number' | translate}}">
+							class="form-control h-[44px]" placeholder="{{'Enter Mobile Number' | translate}}">
 							<small class="form-control-error" *ngIf="submitted && addForm.get('phone')?.errors?.['required']">{{'Mobile Number is required.' | translate}}</small>
 							<small class="form-control-error"
 								*ngIf="submitted && f['phone'].errors?.['minlength']">{{'Phone number required should be 10 digits' | translate}}</small>
@@ -36,11 +36,11 @@
 					</div>
 				</div>
 
-				<div class="grid grid-cols-2 gap-4 mt-8">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 md:mt-8">
 					<div>
 						<label class="form-control-label">{{'Email' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 						<input formControlName="email" type="email" autocomplete="off"
-							class="form-control h-[44px] border-0 bg-shade-80" placeholder="{{'Enter Email' | translate}}">
+							class="form-control h-[44px]" placeholder="{{'Enter Email' | translate}}">
 							<small class="form-control-error" *ngIf="submitted && addForm.get('email')?.errors?.['required']">{{'Email is required' | translate}}</small>
 							<small class="form-control-error" *ngIf="submitted && addForm.get('email')?.errors?.['email']">{{'Enter valid email' | translate}}.</small>
 					</div>
@@ -52,7 +52,7 @@
 				</div>
 
 				<!--manager drop down-->
-				<div class="grid grid-cols-2 gap-4 mt-8" *ngIf="addForm.get('role')?.value === 'manager'">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 md:mt-8" *ngIf="addForm.get('role')?.value === 'manager'">
 					<div>
 						<app-staff-form-dropdown [dropDownControlName]="'state'" [mode]="mode"
 							[dropDownCtrl]="convertToFormControl(f['state'])" [dropDownValues]="stateDropdownOptions"
@@ -64,7 +64,7 @@
 							[config]="zoneDropdownconfig" [submitted]="submitted"></app-staff-form-dropdown>
 					</div>
 				</div>
-				<div class="col-md-6 mt-8" *ngIf="addForm.get('role')?.value === 'manager'">
+				<div class="mt-6 md:mt-8" *ngIf="addForm.get('role')?.value === 'manager'">
 					<app-staff-form-dropdown [dropDownControlName]="'districts'" [mode]="mode"
 						[dropDownCtrl]="convertToFormControl(f['districts'])" [dropDownValues]="districtDropdownOptions"
 						[config]="districtDropdownconfig" [submitted]="submitted"></app-staff-form-dropdown>
@@ -78,10 +78,10 @@
 					<ng-toggle formControlName="isDeleted" [color]="toggleconfig.color"></ng-toggle>
 				</div>
 			</div>
-			<div class="buttons mt-8 flex items-center justify-end gap-2" *ngIf="mode !== 'view'">
-				<button type="button" class="w-20 btn-outline-primary"
+			<div class="buttons mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2" *ngIf="mode !== 'view'">
+				<button type="button" class="w-full sm:w-20 btn-outline-primary"
 					routerLink="/admin/shikshana-user/list">{{'Cancel' | translate}}</button>
-				<button type="submit" [disabled]="addForm.pristine" class="btn-primary w-20 flex items-center justify-center">
+				<button type="submit" [disabled]="addForm.pristine" class="btn-primary w-full sm:w-20 flex items-center justify-center">
 					<span class="mr-1">{{'Save' | translate}}</span>
 					<img src="assets/icons/Vector (4).svg" alt="">
 				</button>

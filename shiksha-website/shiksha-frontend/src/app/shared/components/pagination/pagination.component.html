@@ -1,24 +1,48 @@
-<div class="pagination" *ngIf="totalItems > 0">
-	<div class="flex items-center justify-between border-gray-200 bg-white px-4 py-3">
-		<div class="flex flex-1 items-center justify-end">	
-			<p class="text-content-50 me-5">Showing {{ getDisplayRange()}} of total {{totalItems}} records</p>	
-			<div>
-				<nav class="isolate inline-flex space-x-1 rounded-md shadow-sm" aria-label="Pagination">
-					<button (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1"
-						class="relative inline-flex items-center rounded px-2 py-2 text-content-50 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-						<img src="assets/icons/Chevron left large.svg" alt="">
-					</button>
-					<button *ngFor="let page of getPageNumbers()" (click)="onPageChange(page)"
-						[class.active]="page === currentPage"
-						class="rounded border relative inline-flex items-center {{ page === currentPage ? 'bg-primary text-white' : 'text-content-50' }} px-4 py-2 text-sm font-semibold focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-						{{ page === -1 ? '...' : page }}
-					</button>
-					<button (click)="onPageChange(currentPage + 1)" [disabled]="currentPage * pageSize >= totalItems"
-						class="rounded relative inline-flex items-center px-2 py-2 text-content-50 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
-						<img src="assets/icons/Chevron right large.svg" alt="">
-					</button>
-				</nav>
+<div class="pagination" *ngIf="totalItems > pageSize">
+		<div class="border-gray-200 bg-white px-4 py-3">
+				<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<p class="text-content-50 text-xs sm:text-sm text-center sm:text-left">Showing {{ getDisplayRange()}} of total {{totalItems}} records</p>
+				<div class="w-full sm:w-auto overflow-x-auto">
+					<nav class="isolate flex w-max min-w-full justify-center gap-1 rounded-md shadow-sm sm:min-w-max" aria-label="Pagination">
+						<button type="button" aria-label="Go to previous page" (click)="onPageChange(currentPage - 1)" [disabled]="currentPage === 1"
+							class="relative inline-flex items-center rounded px-2 py-2 text-content-50 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+							<img src="assets/icons/Chevron left large.svg" alt="">
+						</button>
+						<ng-container *ngTemplateOutlet="paginationItems; context: { items: mobileItems, responsiveClass: 'sm:hidden', sizeClass: 'px-3 py-2 text-xs' }"></ng-container>
+						<ng-container *ngTemplateOutlet="paginationItems; context: { items: desktopItems, responsiveClass: 'hidden sm:inline-flex', sizeClass: 'px-3 sm:px-4 py-2 text-xs sm:text-sm' }"></ng-container>
+						<button type="button" aria-label="Go to next page" (click)="onPageChange(currentPage + 1)" [disabled]="currentPage * pageSize >= totalItems"
+							class="rounded relative inline-flex items-center px-2 py-2 text-content-50 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+							<img src="assets/icons/Chevron right large.svg" alt="">
+						</button>
+					</nav>
+				</div>
 			</div>
 		</div>
-	</div>
 </div>
+
+<ng-template #paginationItems let-items="items" let-responsiveClass="responsiveClass" let-sizeClass="sizeClass">
+	<ng-container *ngFor="let item of items">
+		<button
+			*ngIf="item.type === 'page'"
+			type="button"
+			(click)="onPageChange(item.page!)"
+			[class.active]="item.page === currentPage"
+			[attr.aria-current]="item.page === currentPage ? 'page' : null"
+			[attr.aria-label]="'Go to page ' + item.page"
+			[ngClass]="[
+				responsiveClass,
+				sizeClass,
+				item.page === currentPage ? 'bg-primary text-white' : 'text-content-50'
+			]"
+			class="rounded border relative inline-flex min-w-9 justify-center items-center font-semibold focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+			{{ item.page }}
+		</button>
+		<span
+			*ngIf="item.type === 'ellipsis'"
+			[ngClass]="[responsiveClass, sizeClass, 'text-content-50']"
+			class="rounded border relative inline-flex min-w-9 justify-center items-center font-semibold"
+			aria-hidden="true">
+			...
+		</span>
+	</ng-container>
+</ng-template>

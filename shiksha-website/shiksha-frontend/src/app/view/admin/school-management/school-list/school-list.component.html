@@ -1,52 +1,52 @@
-<div class="school-list-wrapper">
+<div class="school-list-wrapper px-4 pt-4 md:px-0 md:pt-0">
   <div class="flex content-center">
-    <h1 class="text-[30px] leading-[48px] font-bold text-content">
+    <h1 class="text-2xl md:text-[30px] md:leading-[48px] font-bold text-content">
       {{'School Management' | translate}}
     </h1>
   </div>
 
-  <div class="school-list-container p-4 sm:p-8 bg-white mt-6 border rounded">
-    <div class="flex flex-col sm:flex-row justify-between items-center">
-      <p class="text-content text-[30px] leading-[48px] font-bold">{{'School List' | translate}}</p>
-      <div class="buttons  flex items-center justify-between gap-2">
-        <div>
-          <div class="search-icon min-w-[100px] flex items-center h-9 w-[300px]">
-            <img src="assets/icons/Search.svg" alt="" class="mr-2"/>
+  <div class="school-list-container px-4 py-6 md:px-6 md:py-8 bg-white mt-6 border rounded">
+    <div class="flex flex-col gap-4 sm:gap-5 sm:flex-row sm:justify-between sm:items-start">
+      <p class="text-content text-2xl md:text-[30px] md:leading-[48px] font-bold">{{'School List' | translate}}</p>
+      <div class="buttons w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div class="w-full sm:w-auto">
+          <div class="search-icon min-w-0 flex items-center h-9 w-full sm:w-[300px]">
+            <img src="assets/icons/search.svg" alt="" class="mr-2"/>
             <input
               type="text"
-              class="appearance-none rounded py-2 px-3 text-content leading-tight focus:outline-none bg-shade-80 h-full w-full"
+              class="appearance-none border border-content-50 rounded py-2 px-3 text-content leading-tight focus:outline-none bg-surface-muted h-full w-full"
               placeholder="{{'Search School Name/DISE Code' | translate}}"
               [(ngModel)]="searchText"
               (input)="searchInputChanged($event)"
             />
           </div>
         </div>
-        <div class="action-btn flex gap-2">
-          <button
-          class="btn-outline-primary"
+        <div class="action-btn flex flex-col sm:flex-row sm:flex-wrap gap-2">
+        <button
+          class="btn-outline-primary h-9 w-full sm:w-auto"
           (click)="blukUpload()"
           [hasPermission]="['admin']"
         >
-          <div class="flex items-center gap-2">
+          <div class="flex items-center justify-center gap-2">
             <img src="assets/icons/upload.svg" alt="" />
             <span class="text-nowrap">{{'Bulk Upload' | translate}}</span>
           </div>
         </button>
     
         <button
-          class="btn-primary"
+          class="btn-primary h-9 w-full sm:w-auto"
           routerLink="/admin/school-management/add"
           [hasPermission]="['admin']"
         >
-          <div class="flex items-center gap-2">
+          <div class="flex items-center justify-center gap-2">
             <img src="assets/icons/add.svg" alt="" />
             <span class="text-nowrap">{{'Add School' | translate}}</span>
           </div>
         </button>
-        <button class="btn-primary" *ngIf="schoolListData" (click)="exportSchoolList()" [disabled]="!schoolListData.length">
-					<div class="flex items-center gap-2">
-					  <img src="assets/icons/upload_light.svg" alt="" />
-					  <span class="text-nowrap">{{'Export' | translate}}</span>
+        <button class="btn-primary h-9 w-full sm:w-auto" *ngIf="schoolListData" (click)="exportSchoolList()" [disabled]="!schoolListData.length">
+						<div class="flex items-center justify-center gap-2">
+						  <img src="assets/icons/upload_light.svg" alt="" />
+						  <span class="text-nowrap">{{'Export' | translate}}</span>
 					</div>
 				  </button>
         </div>
@@ -56,9 +56,9 @@
    
     
 
-    <div class="mt-7 grid gap-2 grid-cols-1 md:grid-cols-2 lg:flex lg:flex-wrap lg:justify-between mb-12">
+    <div class="mt-7 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 mb-2 md:mb-4">
       
-      <div class="min-w-[78px] flex-1 h-9">
+      <div class="w-full min-w-0">
         <app-common-dropdown
           [dropDownValues]="stateDropdownOptions"
           [config]="stateDropdownconfig"
@@ -66,7 +66,7 @@
         ></app-common-dropdown>
       </div>
     
-      <div class="min-w-[78px] flex-1 h-9">
+      <div class="w-full min-w-0">
         <app-common-dropdown
           #zoneDropdown
           [dropDownValues]="zoneDropdownOptions"
@@ -75,7 +75,7 @@
         ></app-common-dropdown>
       </div>
     
-      <div class="min-w-[92px] flex-1 h-9">
+      <div class="w-full min-w-0">
         <app-common-dropdown
           #districtDropdown
           [dropDownValues]="districtDropdownOptions"
@@ -84,7 +84,7 @@
         ></app-common-dropdown>
       </div>
     
-      <div class="min-w-[78px] flex-1 h-9">
+      <div class="w-full min-w-0">
         <app-common-dropdown
           #blockDropdown
           [dropDownValues]="blockDropdownOptions"
@@ -93,7 +93,7 @@
         ></app-common-dropdown>
       </div>
     
-      <div class="min-w-[82px] flex-1 h-9">
+      <div class="w-full min-w-0">
         <app-common-dropdown
           #schoolDropdown
           [dropDownValues]="schoolDropdownOptions"
@@ -107,8 +107,124 @@
     
     
 
-    <div class="w-full ">
-      <table class="table-auto w-full border mt-5 rounded-lg" aria-label="school-list">
+    <div class="space-y-4 md:hidden">
+      <div *ngFor="let schoolData of schoolListData; let i = index" class="rounded-xl border p-4 bg-white shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <p class="text-xs text-content-60">{{'DISE Code' | translate}}</p>
+            <p class="font-semibold break-all">{{ schoolData?.schoolId }}</p>
+          </div>
+          <div class="relative shrink-0">
+            <button class="py-1 px-2 rounded inline-flex items-center" (click)="actionMenu.toggleMobileMenu(i, $event)">
+              <img class="w-5" src="assets/icons/more_vert.svg" alt="" />
+            </button>
+            <ul
+              *ngIf="actionMenu.openStates[i]"
+              class="absolute right-0 top-full mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+              role="menu"
+              aria-orientation="vertical"
+              aria-labelledby="options-menu"
+            >
+              <li
+                class="h-10 mt-2 hover:bg-shade-80 cursor-pointer"
+                (click)="viewSchool(schoolData._id)"
+              >
+                <a
+                  class="block px-4 py-2 text-sm text-content"
+                  role="menuitem"
+                >
+                  <div class="flex items-center">
+                    <img class="ms-2 me-3" src="assets/icons/Visibility.svg" alt="" />
+                    <span>{{'View School' | translate}}</span>
+                  </div>
+                </a>
+              </li>
+
+              <li
+                class="h-10 hover:bg-shade-80 cursor-pointer"
+                (click)="editSchool(schoolData._id)"
+                [hasPermission]="['admin']"
+              >
+                <a
+                  class="block px-4 py-2 text-sm text-content"
+                  role="menuitem"
+                >
+                  <div class="flex items-center">
+                    <img class="ms-2 me-3" src="assets/icons/Vector.svg" alt="" />
+                    <span>{{'Edit School' | translate}}</span>
+                  </div>
+                </a>
+              </li>
+
+              <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['admin']">
+                <a
+                  class="block px-4 py-2 text-sm text-content"
+                  role="menuitem"
+                  (click)="openModalForDeleteConfirm(schoolData)"
+                >
+                  <div class="flex items-center">
+                    <img class="mx-2" src="assets/icons/Vector (2).svg" alt="" />
+                    <span class="text-error">{{'Disable School' | translate}}</span>
+                  </div>
+                </a>
+              </li>
+              <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+                <a
+                  class="block px-4 py-2 text-sm text-content"
+                  role="menuitem"
+                  (click)="activateSchool(schoolData._id)"
+                >
+                  <div class="flex items-center">
+                    <img class="mx-2 w-7" src="assets/icons/switch-on.svg" alt="" />
+                    <span class="text-success">{{'Activate School' | translate}}</span>
+                  </div>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-4 space-y-3 text-sm">
+          <div>
+            <p class="text-xs text-content-60">{{'School Name' | translate}}</p>
+            <p class="font-semibold break-words">{{ schoolData.name }}</p>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <p class="text-xs text-content-60">{{'District' | translate}}</p>
+              <p class="break-words">{{ schoolData.district || '-' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-content-60">{{'Taluk' | translate}}</p>
+              <p class="break-words">{{ schoolData.block || '-' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-content-60">{{'Zone' | translate}}</p>
+              <p class="break-words">{{ schoolData.zone || '-' }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-content-60">{{'Status' | translate}}</p>
+              <span
+                class="inline-flex px-3 py-0.5 sm:py-1 rounded-full text-sm"
+                [ngClass]="{
+                  'text-green bg-success-50': !schoolData.isDeleted,
+                  'text-error bg-error-50': schoolData.isDeleted
+                }"
+              >
+                {{ !schoolData.isDeleted ? "Active" : "Inactive" }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="!schoolListData || !schoolListData.length" class="text-center text-content-60 py-4 border rounded-xl">
+        {{'No Data Found' | translate}}
+      </div>
+    </div>
+
+    <div class="hidden md:block w-full overflow-x-auto">
+      <table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg" aria-label="school-list">
         <thead>
           <tr
             class="header font-semibold text-left text-content table-header border-b border-shade"
@@ -129,7 +245,7 @@
             <td class="px-4 py-6 text-sm border">
               <p>{{ schoolData?.schoolId }}</p>
             </td>
-            <td class="px-4 py-6 text-sm border max-w-[20vw] break-all">
+            <td class="px-4 py-6 text-sm border max-w-[16rem] break-words">
               <p>{{ schoolData.name }}</p>
             </td>
             <td class="px-4 py-6 text-sm border">
@@ -153,7 +269,7 @@
             </td>
             <td class="px-4 py-6 text-sm border relative">
               <div class="flex justify-center">
-                <div [class.open]="isOpen" (click)="toggleDropdown(i, $event)">
+                <div [class.open]="actionMenu.openStates[i]" (click)="actionMenu.toggleDesktopMenu(i, $event)">
                   <button class="py-2 px-4 rounded inline-flex items-center">
                     <img
                       class="w-5"
@@ -163,8 +279,9 @@
                   </button>
   
                   <ul
-                    *ngIf="isOpen[i]"
-                    class="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                    *ngIf="actionMenu.openStates[i]"
+                    class="fixed w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                    [ngStyle]="actionMenu.desktopPositions[i]"
                     role="menu"
                     aria-orientation="vertical"
                     aria-labelledby="options-menu"

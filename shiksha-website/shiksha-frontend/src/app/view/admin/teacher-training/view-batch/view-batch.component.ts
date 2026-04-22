@@ -3,7 +3,7 @@ import { Batch, BatchService, Teacher } from 'src/app/view/admin/teacher-trainin
 import { TeacherService } from 'src/app/view/admin/teacher-training/teacher.service';
 import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, from, concatMap, toArray, finalize } from 'rxjs';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from 'src/app/core/services/auth.service';
 
@@ -28,12 +28,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
   teachersPageSize = 50; // Load more teachers per page
   teachersTotalItems = 0;
   isLoadingTeachers = false;
-
-  // Resizing properties (only for Add Participants sidebar)
-  isResizing = false;
-  initialX = 0;
-  initialWidth = 0;
-  teachersSidebarWidth = 350; // Initial width for Add Participants sidebar
+  isAssigningTeachers = false;
 
   batchId: string | null = null;
 
@@ -60,12 +55,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       this.batches = batches;
     });
 
-    // Add global mouse event listeners for resizing
-    document.addEventListener('mousemove', this.onMouseMove);
-    document.addEventListener('mouseup', this.onMouseUp);
-
     this.loadBatchDetails();
-    this.loadAllTeachers();
 
     const currentUser = this.authService.getCurrentUser();
     this.isAdmin = !!(currentUser && (Array.isArray(currentUser.role) ? currentUser.role.includes('admin') : currentUser.role === 'admin'));
@@ -107,16 +97,19 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       console.warn('Cannot add participants to a submitted batch.');
       return;
     }
-    if (this.selectedBatch?._id === batch._id) {
-      this.showTeachersPanel = !this.showTeachersPanel;
-    } else {
-      this.selectedBatch = batch;
-      this.showTeachersPanel = true;
-      this.selectedTeachersForAssignment = []; // Clear selections on new batch or open
-      this.teacherSearchTerm = ''; // Reset search term for new batch
-      this.teachersCurrentPage = 1; // Reset to first page when opening panel
-      this.loadTeachersAndFilter();
+    const isSameBatch = this.selectedBatch?._id === batch._id;
+
+    if (isSameBatch && this.showTeachersPanel) {
+      this.closeAddParticipantsSidebar();
+      return;
     }
+
+    this.selectedBatch = batch;
+    this.showTeachersPanel = true;
+    this.selectedTeachersForAssignment = [];
+    this.teacherSearchTerm = '';
+    this.teachersCurrentPage = 1;
+    this.loadTeachersAndFilter();
   }
 
   onTeacherSearch(): void {
@@ -141,8 +134,8 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
     this.showTeachersPanel = false;
     this.selectedBatch = null;
     this.selectedTeachersForAssignment = [];
-    this.teachersSidebarWidth = 350;
-    this.teacherSearchTerm = ''; // Reset search term
+    this.teacherSearchTerm = '';
+    this.isAssigningTeachers = false;
   }
 
   loadTeachersAndFilter(): void {
@@ -382,7 +375,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
 
   assignSelectedTeachersToBatch(): void {
     if (!this.selectedBatch || this.selectedTeachersForAssignment.length === 0) {
-      return; // No batch selected or no teachers chosen
+      return;
     }
 
     if (this.selectedBatch.isSubmitted) {
@@ -391,30 +384,29 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
     }
 
     const batchId = this.selectedBatch._id!;
-    const assignmentPromises: Observable<Batch>[] = [];
+    const selectedTeacherIds = [...this.selectedTeachersForAssignment];
 
+    this.isAssigningTeachers = true;
 
-    this.selectedTeachersForAssignment.forEach(teacher => {
-      assignmentPromises.push(this.batchService.assignTeacherToBatch(batchId, teacher));
-    });
-
-    forkJoin(assignmentPromises).subscribe({
+    from(selectedTeacherIds).pipe(
+      concatMap((teacherId) => this.batchService.assignTeacherToBatch(batchId, teacherId)),
+      toArray(),
+      finalize(() => {
+        this.isAssigningTeachers = false;
+      })
+    ).subscribe({
       next: (updatedBatches: Batch[]) => {
-        // Assuming updatedBatches contains the final state of the batch after each assignment.
-        // We only care about the latest state of the selected batch.
         const latestUpdatedBatch = updatedBatches[updatedBatches.length - 1];
         if (latestUpdatedBatch) {
-          // Update the specific batch in the local array
           const index = this.batches.findIndex(b => b._id === latestUpdatedBatch._id);
           if (index !== -1) {
             this.batches[index] = latestUpdatedBatch;
-            this.selectedBatch = latestUpdatedBatch; // Update selected batch to reflect changes
           }
-          
-          // Re-filter teachers in sidebar to remove newly assigned ones
+          this.selectedBatch = latestUpdatedBatch;
+          this.batchService.setBatches([...this.batches]);
+
+          this.selectedTeachersForAssignment = [];
           this.filterTeachersForSidebar();
-          this.selectedTeachersForAssignment = []; // Clear selections
-          
         }
       },
       error: (error: HttpErrorResponse) => {
@@ -472,68 +464,13 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
     if (this.batchesSubscription) {
       this.batchesSubscription.unsubscribe();
     }
-    document.removeEventListener('mousemove', this.onMouseMove);
-    document.removeEventListener('mouseup', this.onMouseUp);
-  }
-
-  // Resizing methods
-  startResizing = (event: MouseEvent) => {
-    this.isResizing = true;
-    this.initialX = event.clientX;
-    this.initialWidth = this.teachersSidebarWidth; // Only manage teachersSidebarWidth
-    event.preventDefault(); // Prevent text selection during resize
-  }
-
-  onMouseMove = (event: MouseEvent) => {
-    if (!this.isResizing) return;
-
-    const dx = this.initialX - event.clientX;
-    // Only update teachersSidebarWidth
-    this.teachersSidebarWidth = Math.max(300, this.initialWidth + dx); // Enforce minimum width
-  }
-
-  onMouseUp = () => {
-    this.isResizing = false;
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
   };
 
   loadBatchDetails(): void {
     // Implementation of loadBatchDetails method
-  }
-
-  loadAllTeachers(): void {
-    this.isLoadingTeachers = true;
-    
-    // Load teachers with search parameter
-    this.teacherService.getTeachers(
-      undefined, 
-      undefined, 
-      this.teachersCurrentPage, 
-      this.teachersPageSize
-    ).subscribe({
-      next: (response: unknown) => {
-        // Type guard for expected response structure
-        const res = response as { success: boolean, data?: { results?: Teacher[], totalItems?: number } };
-        this.isLoadingTeachers = false;
-        if (res.success && res.data) {
-          // Replace the array with new results (don't append for pagination with search)
-          this.allTeachers = res.data.results || [];
-          this.teachersTotalItems = res.data.totalItems || 0;
-          this.filterTeachersForSidebar();
-        } else {
-          console.error('Unexpected response format for all teachers:', response);
-          this.allTeachers = [];
-          this.filteredTeachers = [];
-          this.teachersTotalItems = 0;
-        }
-      },
-      error: (error: HttpErrorResponse) => {
-        console.error('Error loading all teachers:', error);
-        this.isLoadingTeachers = false;
-        this.allTeachers = [];
-        this.filteredTeachers = [];
-        this.teachersTotalItems = 0;
-      }
-    });
   }
 
   // Handle pagination for teachers
@@ -548,6 +485,10 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       this.teachersCurrentPage++;
       this.loadTeachersAndFilter();
     }
+  }
+
+  isTeacherSelectedForAssignment(teacher: Teacher): boolean {
+    return !!teacher._id && this.selectedTeachersForAssignment.includes(teacher._id);
   }
 
   onSearchKeyPress(event: KeyboardEvent): void {
