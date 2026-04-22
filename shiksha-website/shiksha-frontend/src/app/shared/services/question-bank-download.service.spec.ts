@@ -114,5 +114,14 @@ describe('QuestionBankDownloadService', () => {
         {text: "a"}, {text: "2b", superScript: true}, {text: "3", superScript: true}
       ])
     });
+
+    it('should correctly tokenize a full question text with exponents', () => {
+      const runs = service.tokenizeForDocxRuns('Identify the vertex of the parabola represented by the equation y = 2x^2 - 4x + 1.');
+      expect(runs).toEqual([
+        { text: 'Identify the vertex of the parabola represented by the equation y = 2x' },
+        { text: '2', superScript: true },
+        { text: ' - 4x + 1.' }
+      ]);
+    });
   });
 });
