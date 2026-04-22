@@ -85,8 +85,6 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   regenerationLimitReached = false;
 
-  submitted = false;
-
   isSaved = false;
 
   docTypeValues = [
@@ -516,7 +514,6 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   onSave() {
-    this.submitted = true;
     if (!this.feedback) {
       return;
     }

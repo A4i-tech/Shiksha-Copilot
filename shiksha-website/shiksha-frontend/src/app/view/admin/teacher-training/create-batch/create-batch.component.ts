@@ -13,7 +13,6 @@ import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interface
 export class CreateBatchComponent implements OnInit {
   batchForm!: FormGroup;
   selectedFile: File | null = null;
-  submitted = false;
   mode = 'add';
 
   trainingTypeDropdownOptions: FormDropDownOption[] = [
@@ -61,8 +60,6 @@ export class CreateBatchComponent implements OnInit {
   }
 
   onSubmit(): void {
-    this.submitted = true;
-
     if (this.batchForm.valid) {
       const formData = new FormData();
       formData.append('batchName', this.batchForm.get('batchName')?.value);
