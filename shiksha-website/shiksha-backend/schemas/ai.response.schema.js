@@ -81,10 +81,22 @@ function validatePartsResponse(data) {
 
       blockQuestions.forEach((q, qIndex) => {
         if (q.question) {
+          let safeKeyAnswer = "";
+          if (typeof q.keyAnswer === "string") {
+            safeKeyAnswer = q.keyAnswer;
+          } else if (q.keyAnswer !== undefined && q.keyAnswer !== null) {
+            console.error(
+              `[ai.response.schema.validatePartsResponse] Block ${blockIndex}, Question ${qIndex}: ` +
+                `keyAnswer is not a string (got ${typeof q.keyAnswer}). ` +
+                `Rejecting malformed value to prevent downstream failures.`,
+              { question: q.question }
+            );
+          }
+
           flattenedQuestions.push({
             question: q.question,
             options: Array.isArray(q.options) ? q.options : [],
-            keyAnswer: q.keyAnswer,
+            keyAnswer: safeKeyAnswer,
             difficulty: q.difficulty || "Average",
             marks: marksPerQuestion,
           });

@@ -23,10 +23,12 @@ export interface QuestionBankMetadata {
   schoolName: string;
 }
 
+export type QuestionBankOption = string | { label?: string; text?: string };
+
 export interface QuestionBankQuestion {
   question?: string;
   text?: string;
-  options?: string[];
+  options?: QuestionBankOption[];
   value1?: string;
   value2?: string;
   left?: string;
@@ -151,7 +153,18 @@ export class QuestionBankDownloadService {
     }
 
     const col1 = questions.map((q) => (q.value1 ?? q.left ?? q.text ?? '') || '');
-    const rawCol2 = questions.map((q) => (q.value2 ?? q.right ?? q.keyAnswer ?? '') || '');
+    const rawCol2 = questions.map((q, idx) => {
+      const resolved = q.value2 ?? q.right ?? q.keyAnswer;
+      if (typeof resolved !== 'string' || resolved.trim() === '') {
+        console.warn(
+          `[QuestionBankDownloadService.buildMatchTable] Row ${idx}: no valid right-hand match value found ` +
+            `(value2/right/keyAnswer). Falling back to empty string.`,
+          q
+        );
+        return '';
+      }
+      return resolved;
+    });
     const col2 = shuffle ? this.utilityService.shuffleOptions(rawCol2) : rawCol2;
 
     for (let i = 0; i < col1.length; i++) {
@@ -190,21 +203,31 @@ export class QuestionBankDownloadService {
         })
       );
 
-      // Options (Only for Question Bank normally, but let's check original)
-      if (!showAnswers && q.options) {
-        q.options.forEach((opt, i) => {
+      // Options render in both the standard bank and answer-key layouts so that
+      // objective questions retain context alongside their answers.
+      if (q.options) {
+        q.options.forEach((opt: any, i: number) => {
+          const { label, text } = this.decodeOption(opt, i);
           paragraphs.push(
             new Paragraph({
-              text: `   ${String.fromCharCode(65 + i)}. ${opt}`,
+              text: `   ${label}. ${text}`,
               spacing: { after: 120 },
             })
           );
         });
       }
 
-      // Answer (Only for Answer Key)
       if (showAnswers) {
-        const answer = q.keyAnswer ?? '';
+        let answer = '';
+        if (typeof q.keyAnswer === 'string') {
+          answer = q.keyAnswer;
+        } else if (q.keyAnswer !== undefined && q.keyAnswer !== null) {
+          console.error(
+            `[QuestionBankDownloadService.buildStandardQuestions] Question ${index + 1}: keyAnswer is not a string ` +
+              `(got ${typeof q.keyAnswer}). Falling back to empty string to prevent docx failure.`,
+            q
+          );
+        }
         if (answer) {
           paragraphs.push(
             new Paragraph({
@@ -220,6 +243,33 @@ export class QuestionBankDownloadService {
     });
 
     return paragraphs;
+  }
+
+  /**
+   * Decodes a single MCQ option into { label, text }, mirroring the preview pattern used in
+   * `question-bank-blue-print.component.html` so downloads never render `[object Object]`.
+   * Supports three shapes:
+   *   - { label, text } → label from data, text from data
+   *   - { text }        → label auto-assigned (A, B, C…), text from data
+   *   - primitive       → label auto-assigned, text is the primitive coerced to string
+   */
+  private decodeOption(opt: any, index: number): { label: string; text: string } {
+    const autoLabel = String.fromCharCode(65 + index);
+
+    if (opt && typeof opt === 'object') {
+      const label = typeof opt.label === 'string' && opt.label.trim() !== '' ? opt.label : autoLabel;
+      if (typeof opt.text === 'string') {
+        return { label, text: opt.text };
+      }
+      console.warn(
+        `[QuestionBankDownloadService.decodeOption] Option ${index} is an object without a string 'text' field. ` +
+          `Falling back to empty string.`,
+        opt
+      );
+      return { label, text: '' };
+    }
+
+    return { label: autoLabel, text: opt == null ? '' : String(opt) };
   }
 
   /** Shared Document Shell */
