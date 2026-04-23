@@ -5,9 +5,8 @@ from enum import Enum
 from functools import reduce
 from math import gcd
 from typing import List, Dict, Any, Optional, Union, Tuple, Literal, TypeAlias
-import json
 import re
-from pydantic import BaseModel, computed_field, field_validator, Field
+from pydantic import BaseModel, computed_field, field_validator, Field, model_validator
 
 
 # ==============================
@@ -28,7 +27,9 @@ DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
 
 
 class TextQuestion(BaseModel):
-    question: str = ""
+    question: str = Field(default="")
+    answer: str = Field(default="")
+    keyAnswer: str = Field(default="")
     difficulty: DifficultyType = "Average"
 
 
@@ -40,14 +41,51 @@ class McqOption(BaseModel):
 
 
 class FourOptionsQuestion(BaseModel):
-    question: str = ""
-    options: List[McqOption] = Field(default=[], min_length=2)
-    answer: str = ""
+    question: str = Field(default="", examples=["Question text here?"])
+    options: List[McqOption] = Field(default_factory=list, examples=[[
+        McqOption(label="A", text="Option A"),
+        McqOption(label="B", text="Option B"),
+        McqOption(label="C", text="Option C"),
+        McqOption(label="D", text="Option D")
+    ]])
+    answer: str = Field(default="")
+    keyAnswer: str = Field(default="", examples=["A"])
     difficulty: DifficultyType = "Average"
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_legacy_mcq_shape(cls, values):
+        if not isinstance(values, dict):
+            return values
+
+        values = dict(values)
+
+        if "options" not in values:
+            legacy_options = []
+            for label in ["A", "B", "C", "D", "E", "F"]:
+                option_key = f"option_{label.lower()}"
+                option_text = values.get(option_key)
+                if option_text:
+                    legacy_options.append({"label": label, "text": option_text})
+
+            if legacy_options:
+                values["options"] = legacy_options
+
+        if "keyAnswer" not in values and "correct_option" in values:
+            correct_option = values.get("correct_option")
+            if isinstance(correct_option, str):
+                match = re.match(r"option_([A-Za-z])$", correct_option.strip())
+                values["keyAnswer"] = (
+                    match.group(1).upper() if match else correct_option.strip()
+                )
+
+        return values
 
     @field_validator("options", mode="before")
     def convert_strings_to_options(cls, v):
         # If it's a list of strings, convert to McqOption objects
+        if v is None:
+            return []
         if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
             labels = ["A", "B", "C", "D", "E", "F"]
             cleaned_options = []
@@ -62,11 +100,9 @@ class FourOptionsQuestion(BaseModel):
         return v
 
 
-
-
 class MatchingListQuestion(BaseModel):
-    value1: str = ""
-    value2: str = ""
+    value1: str = Field(default="")
+    value2: str = Field(default="")
     difficulty: DifficultyType = "Average"
 
 
@@ -145,53 +181,11 @@ class QuestionType(str, Enum):
 
     # Prompt/schema hint for LLM
     def schema_dict(self) -> str:
-        difficulty_hint = "Easy | Average | Difficult"
-        if self._model == FourOptionsQuestion:
-             return json.dumps({
-                 "question": "Question text here?",
-                 "options": [
-                     {"label": "A", "text": "Option A"},
-                     {"label": "B", "text": "Option B"},
-                     {"label": "C", "text": "Option C"},
-                     {"label": "D", "text": "Option D"}
-                 ],
-                 "answer": "A",
-                 "difficulty": difficulty_hint
-             })
-        schema = json.loads(self._model().model_dump_json())
-        schema["difficulty"] = difficulty_hint
-        return json.dumps(schema)
+        return self._model.schema_json()
 
     # Cast generated dict to the right Pydantic model
     def cast(self, obj: dict):
-        return self._model(**obj)
-
-    # Lightweight, per-type validation using Pydantic model
-    def validate_obj(self, obj: dict) -> bool:
-        """Validate object against the Pydantic model requirements."""
-        try:
-            # Try to create an instance - this will validate all fields and types
-            self._model(**obj)
-
-            # Additional specific validations
-            if self._model == FourOptionsQuestion:
-                # For MCQ: ensure answer is in options
-                options = obj.get("options", [])
-                answer = obj.get("answer", "")
-                
-                # Check if options are objects (new format) or strings (old format)
-                if options and isinstance(options[0], dict):
-                    valid_labels = [opt.get("label") for opt in options]
-                    if answer and answer not in valid_labels:
-                        return False
-                elif options and isinstance(options[0], str):
-                     if answer and answer not in options:
-                        return False
-
-            return True
-        except Exception:
-            # If Pydantic validation fails, object is invalid
-            return False
+        return self._model.model_validate(obj)
 
     # Back-compat alias
     def get_question_format_dict(self) -> str:
@@ -202,7 +196,7 @@ class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: int
-    questions: List[Union[TextQuestion, FourOptionsQuestion, MatchingListQuestion]] = []
+    questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]] = []
 
 
 class QuestionBankResponse(BaseModel):

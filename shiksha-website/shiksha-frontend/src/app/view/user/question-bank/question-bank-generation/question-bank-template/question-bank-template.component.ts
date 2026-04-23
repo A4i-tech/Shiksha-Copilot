@@ -19,6 +19,8 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
   @Output() selectionChange = new EventEmitter<any[]>();
 
+  // Pre-selected questions from parent (e.g. when navigating back to Step 2)
+
   // Local State
   filteredQuestions: any[] = [];
   selectedQuestions: any[] = [];

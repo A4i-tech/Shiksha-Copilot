@@ -1,7 +1,7 @@
 <div class="rounded-sm bg-shade-50 p-5">
   <div class="flex gap-2">
     <img src="assets/icons/back-arrow.svg" alt="" class="cursor-pointer" (click)="backNavigation()" />
-    <h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
+    <h1 class="text-lg md:text-xl font-bold text-content leading-[48px]">
       {{ "Question Paper" | translate }}
     </h1>
   </div>
@@ -58,11 +58,24 @@
   </div>
   <div class="grid gap-8 mt-4 grid-cols-1 md:grid-cols-3">
     <div class="w-full md:col-span-2">
+      <!-- Answer Key Toggle -->
+      <div class="flex justify-center mb-4">
+        <button
+          class="flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all"
+          [ngClass]="showAnswerKeys ? 'bg-primary text-white shadow-md' : 'bg-white text-primary border border-primary hover:bg-primary-50'"
+          (click)="toggleAnswerKeys()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {{ (showAnswerKeys ? 'Hide Answer Keys' : 'Show Answer Keys') | translate }}
+        </button>
+      </div>
+
       <div class="question-bank-container p-4 md:px-12 rounded-md border h-[88vh] bg-white overflow-y-auto">
-        <h2 class="text-center text-2xl font-bold text-content">
+        <h2 class="text-center text-base font-bold text-content">
           {{ questionBankDetails?.questionBank?.metadata.schoolName }}
         </h2>
-        <h2 class="text-center text-xl mt-2 font-bold text-content">
+        <h2 class="text-center text-sm mt-1 font-bold text-content">
           {{ questionBankDetails?.examinationName}}
         </h2>
 
@@ -105,6 +118,13 @@
                   <span *ngIf="!option.text">{{ option | mathFormatting }}</span>
                 </li>
               </ul>
+
+              <!-- Answer Key Display -->
+              <div *ngIf="showAnswerKeys && questionData.keyAnswer"
+                class="mt-1 mb-3 ml-4 px-3 py-2 bg-green-50 border border-green-200 rounded-md">
+                <span class="text-xs font-bold text-green-700 uppercase tracking-wider">{{ "Answer" | translate }}:</span>
+                <span class="ml-2 text-sm text-green-800 font-medium">{{ questionData.keyAnswer }}</span>
+              </div>
             </div>
           </div>
           <div *ngIf="questionBankData.type === 'Match the following'">
@@ -120,6 +140,28 @@
                 </tr>
               </tbody>
             </table>
+            <!-- Match the Following Answer Key -->
+            <div *ngIf="showAnswerKeys" class="mt-2 mb-3 px-3 py-2 bg-green-50 border border-green-200 rounded-md">
+              <p class="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">{{ "Correct Mapping" | translate }}:</p>
+              <table class="min-w-full table-auto border-collapse">
+                <thead>
+                  <tr>
+                    <th class="border border-green-200 px-2 py-1 text-xs text-green-700 bg-green-100">{{ "Left" | translate }}</th>
+                    <th class="border border-green-200 px-2 py-1 text-xs text-green-700 bg-green-100">{{ "Right (Answer)" | translate }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let val of questionBankData.questions; let i=index">
+                    <td class="border border-green-200 px-2 py-1 text-sm text-green-800">
+                      {{ questionBankData.primaryColumn?.[i] || '' }}
+                    </td>
+                    <td class="border border-green-200 px-2 py-1 text-sm text-green-800 font-medium">
+                      {{ questionBankData.originalColumns?.[i] || '' }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
         </div>
@@ -168,10 +210,10 @@
             <img class="w-10" src="assets/icons/white-docx.svg" alt="">
           </div>
           <div class="ml-4 w-full">
-            <p class="text-content text-sm font-semibold">{{doc.name}}</p>
+            <p class="text-content text-sm font-semibold">{{doc.name | translate}}</p>
             <button
               class="btn-outline-primary mt-2 w-full h-8 text-xs hover:text-white hover:bg-primary transition-all font-semibold"
-              (click)="download(doc.type)">Download {{doc.name}}</button>
+              (click)="download(doc.type)">{{ "Download" | translate }} {{doc.name | translate}}</button>
           </div>
         </div>
       </div>

@@ -147,9 +147,12 @@ class InMemRagOpsAdapter(BaseRagAdapter):
         if not index_exists:
             logger.info(f"Downloading RAG index from blob storage: {self.index_path}")
 
-            downloaded_file_paths = await self._blob_store.download_blobs_to_folder(
-                prefix=self.index_path, target_folder=self.persist_dir
-            )
+            try:
+                downloaded_file_paths = await self._blob_store.download_blobs_to_folder(
+                    prefix=self.index_path, target_folder=self.persist_dir
+                )
+            except ValueError as e:
+                raise RuntimeError(str(e)) from e
 
             if not downloaded_file_paths:
                 raise RuntimeError(
