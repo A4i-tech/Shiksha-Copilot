@@ -6,7 +6,7 @@ from functools import reduce
 from math import gcd
 from typing import List, Dict, Any, Optional, Union, Tuple, Literal, TypeAlias
 import re
-from pydantic import BaseModel, ConfigDict, computed_field, field_validator, Field, model_validator
+from pydantic import BaseModel, computed_field, field_validator, Field
 
 
 # ==============================
@@ -28,6 +28,7 @@ DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
 
 class TextQuestion(BaseModel):
     question: str
+    answer: str = Field(default="")
     keyAnswer: str = Field(default="")
     difficulty: DifficultyType = "Average"
 
@@ -47,6 +48,7 @@ class FourOptionsQuestion(BaseModel):
         McqOption(label="C", text="Option C"),
         McqOption(label="D", text="Option D")
     ]])
+    answer: str = Field(default="")
     keyAnswer: str = Field(default="", examples=["A"])
     difficulty: DifficultyType = "Average"
 
