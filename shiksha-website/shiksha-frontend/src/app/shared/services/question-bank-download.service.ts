@@ -17,13 +17,15 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { DOCX_CONFIG, SUPERSCRIPT_MAP } from '../utility/constant.util';
+import { OptionDto, QuestionSectionDto } from '../models/question-bank.dto';
 
 /** Interfaces for Question Bank Data */
 export interface QuestionBankMetadata {
   schoolName: string;
 }
 
-export type QuestionBankOption = string | { label?: string; text?: string };
+export type QuestionBankOption = string | OptionDto;
 
 export interface QuestionBankQuestion {
   question?: string;
@@ -46,7 +48,7 @@ export interface QuestionBankSection {
 export interface QuestionBankData {
   questionBank: {
     metadata: QuestionBankMetadata;
-    questions: QuestionBankSection[];
+    questions: QuestionBankSection[] | QuestionSectionDto[];
   };
   examinationName: string;
   subject: string;
@@ -54,11 +56,6 @@ export interface QuestionBankData {
   totalMarks: number;
 }
 
-/** Styling Constants */
-const SPACING_HEADER = 120;
-const SPACING_SECTION_BEFORE = 200;
-const SPACING_SECTION_AFTER = 120;
-const SPACING_QUESTION_AFTER = 100;
 const COLOR_ANSWER = '2E7D32';
 
 @Injectable({
@@ -82,12 +79,11 @@ export class QuestionBankDownloadService {
   }
 
   /** Unified content builder for both Bank and Answer Key */
-  private buildContent(sections: QuestionBankSection[], showAnswers: boolean): (Paragraph | Table)[] {
+  private buildContent(sections: QuestionBankSection[] | QuestionSectionDto[], showAnswers: boolean): (Paragraph | Table)[] {
     const content: (Paragraph | Table)[] = [];
     let sectionCount = 1;
 
     for (const section of sections) {
-      // 1. Add Section Header
       const roman = this.utilityService.intToRoman(sectionCount);
       content.push(
         new Paragraph({
@@ -101,18 +97,16 @@ export class QuestionBankDownloadService {
             }),
           ],
           tabStops: [{ type: TabStopType.RIGHT, position: 9000 }],
-          spacing: { before: SPACING_SECTION_BEFORE, after: SPACING_SECTION_AFTER },
+          spacing: DOCX_CONFIG.spacing.sectionHeader,
         })
       );
 
-      // 2. Add Questions
       if (section.type === 'Match the following') {
         content.push(this.buildMatchTable(section.questions, !showAnswers));
       } else {
         content.push(...this.buildStandardQuestions(section.questions, showAnswers));
       }
 
-      // 3. Add Empty Line after section
       content.push(new Paragraph({ text: '' }));
       sectionCount++;
     }
@@ -134,7 +128,7 @@ export class QuestionBankDownloadService {
               children: [
                 new Paragraph({
                   children: [new TextRun({ text: ' Left', bold: true })],
-                  spacing: { before: 50, after: 50 },
+                  spacing: DOCX_CONFIG.spacing.tableCell,
                 }),
               ],
             }),
@@ -143,7 +137,7 @@ export class QuestionBankDownloadService {
               children: [
                 new Paragraph({
                   children: [new TextRun({ text: ' Right (Answer)', bold: true })],
-                  spacing: { before: 50, after: 50 },
+                  spacing: DOCX_CONFIG.spacing.tableCell,
                 }),
               ],
             }),
@@ -165,7 +159,7 @@ export class QuestionBankDownloadService {
       }
       return resolved;
     });
-    const col2 = shuffle ? this.utilityService.shuffleOptions(rawCol2) : rawCol2;
+    const col2 = shuffle ? this.utilityService.shuffleOptions([...rawCol2]) : rawCol2;
 
     for (let i = 0; i < col1.length; i++) {
       rows.push(
@@ -173,11 +167,21 @@ export class QuestionBankDownloadService {
           children: [
             new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [new Paragraph({ text: ` ${col1[i]}`, spacing: { before: 50, after: 50 } })],
+              children: [
+                new Paragraph({
+                  children: this.convertToDocxRuns(col1[i]),
+                  spacing: DOCX_CONFIG.spacing.tableCell,
+                }),
+              ],
             }),
             new TableCell({
               width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [new Paragraph({ text: ` ${col2[i]}`, spacing: { before: 50, after: 50 } })],
+              children: [
+                new Paragraph({
+                  children: this.convertToDocxRuns(col2[i]),
+                  spacing: DOCX_CONFIG.spacing.tableCell,
+                }),
+              ],
             }),
           ],
         })
@@ -198,20 +202,23 @@ export class QuestionBankDownloadService {
       const questionText = q.question ?? q.text ?? '';
       paragraphs.push(
         new Paragraph({
-          text: `${index + 1}. ${questionText}`,
-          spacing: { after: 60 },
+          children: [new TextRun({ text: `${index + 1}. ` }), ...this.convertToDocxRuns(questionText)],
+          spacing: DOCX_CONFIG.spacing.questionItem,
         })
       );
 
       // Options render in both the standard bank and answer-key layouts so that
       // objective questions retain context alongside their answers.
       if (q.options) {
-        q.options.forEach((opt: any, i: number) => {
+        q.options.forEach((opt: QuestionBankOption, i: number) => {
           const { label, text } = this.decodeOption(opt, i);
           paragraphs.push(
             new Paragraph({
-              text: `   ${label}. ${text}`,
-              spacing: { after: 120 },
+              children: [
+                new TextRun({ text: `${DOCX_CONFIG.indent.optionLeft}${label}. ` }),
+                ...this.convertToDocxRuns(text),
+              ],
+              spacing: DOCX_CONFIG.spacing.optionItem,
             })
           );
         });
@@ -235,7 +242,7 @@ export class QuestionBankDownloadService {
                 new TextRun({ text: '   Ans: ', bold: true, color: COLOR_ANSWER }),
                 new TextRun({ text: answer, italics: true, color: COLOR_ANSWER }),
               ],
-              spacing: { after: 120 },
+              spacing: DOCX_CONFIG.spacing.optionItem,
             })
           );
         }
@@ -253,7 +260,7 @@ export class QuestionBankDownloadService {
    *   - { text }        → label auto-assigned (A, B, C…), text from data
    *   - primitive       → label auto-assigned, text is the primitive coerced to string
    */
-  private decodeOption(opt: any, index: number): { label: string; text: string } {
+  private decodeOption(opt: QuestionBankOption | null | undefined, index: number): { label: string; text: string } {
     const autoLabel = String.fromCharCode(65 + index);
 
     if (opt && typeof opt === 'object') {
@@ -284,13 +291,13 @@ export class QuestionBankDownloadService {
                   text: data.questionBank.metadata.schoolName,
                   heading: HeadingLevel.HEADING_1,
                   alignment: AlignmentType.CENTER,
-                  spacing: { before: SPACING_HEADER, after: SPACING_HEADER },
+                  spacing: DOCX_CONFIG.spacing.sectionHeader,
                 }),
                 new Paragraph({
                   text: `${data.examinationName}${subtitleSuffix}`,
                   heading: HeadingLevel.HEADING_2,
                   alignment: AlignmentType.CENTER,
-                  spacing: { before: SPACING_HEADER, after: SPACING_HEADER },
+                  spacing: DOCX_CONFIG.spacing.sectionHeader,
                 }),
                 new Paragraph({
                   children: [
@@ -302,7 +309,7 @@ export class QuestionBankDownloadService {
                     { type: TabStopType.CENTER, position: 4500 },
                     { type: TabStopType.RIGHT, position: 9000 },
                   ],
-                  spacing: { before: SPACING_HEADER, after: SPACING_HEADER },
+                  spacing: DOCX_CONFIG.spacing.sectionHeader,
                 }),
               ],
             }),
@@ -329,5 +336,36 @@ export class QuestionBankDownloadService {
     Packer.toBlob(doc).then((blob) => {
       saveAs(blob, fileName);
     });
+  }
+
+  convertToDocxRuns(text: string): TextRun[] {
+    if (!text || typeof text !== 'string') {
+      console.warn('[WARNING] convertToDocxRuns: expected string but received', typeof text);
+      return [new TextRun({ text: text != null ? String(text) : '' })];
+    }
+
+    const runs: TextRun[] = [];
+    const regex = /\^([a-zA-Z0-9()+\-]+)/g;
+    let lastIndex = 0;
+
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) {
+        runs.push(new TextRun({ text: text.substring(lastIndex, match.index) }));
+      }
+      const exponent = match[1];
+      const allMapped = [...exponent].every(ch => ch in SUPERSCRIPT_MAP);
+      if (!allMapped) {
+        console.warn('[WARNING] convertToDocxRuns: unmapped superscript characters in exponent:', exponent);
+      }
+      runs.push(new TextRun({ text: exponent, superScript: true }));
+      lastIndex = regex.lastIndex;
+    }
+
+    if (lastIndex < text.length) {
+      runs.push(new TextRun({ text: text.substring(lastIndex) }));
+    }
+
+    return runs;
   }
 }

@@ -40,9 +40,9 @@ export class QuestionBankViewComponent implements OnInit {
 
   questionTypeMapper = QUESTION_TYPE_MAPPER;
 
-  shuffledColumns: any[] = [];
+  shuffledColumns: string[] = [];
 
-  primaryColumn: any[] = [];
+  primaryColumn: string[] = [];
 
   questionBankBluePrintData: any;
 
