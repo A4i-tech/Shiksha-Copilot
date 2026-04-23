@@ -6,6 +6,7 @@ like InMemRagOps and QdrantRagOps through a common interface.
 """
 
 import os
+import shutil
 import logging
 import tempfile
 from abc import ABC, abstractmethod
@@ -155,6 +156,22 @@ class InMemRagOpsAdapter(BaseRagAdapter):
                     f"No files downloaded for index path: {self.index_path}"
                 )
 
+            # LlamaIndex expects 'default__vector_store.json', but older indices might only have 'vector_store.json'
+            legacy_vs_path = os.path.join(self.persist_dir, "vector_store.json")
+            new_vs_path = os.path.join(self.persist_dir, "default__vector_store.json")
+            if os.path.exists(legacy_vs_path) and not os.path.exists(new_vs_path):
+                try:
+                    shutil.copy(legacy_vs_path, new_vs_path)
+                    logger.info("Copied legacy vector_store.json to default__vector_store.json for LlamaIndex compatibility")
+                except PermissionError as e:
+                    raise RuntimeError(
+                        f"Permission denied copying legacy vector store to {new_vs_path}: {e}"
+                    ) from e
+                except OSError as e:
+                    raise RuntimeError(
+                        f"Failed to copy legacy vector store to {new_vs_path} (disk full?): {e}"
+                    ) from e
+
             logger.info(f"Downloaded {len(downloaded_file_paths)} index files")
             file_paths_str = "\n".join(downloaded_file_paths)
             logger.info(f"Downloaded RAG index files: {file_paths_str}")
@@ -164,8 +181,6 @@ class InMemRagOpsAdapter(BaseRagAdapter):
     async def cleanup(self) -> None:
         """Clean up downloaded index files."""
         if os.path.exists(self.persist_dir):
-            import shutil
-
             try:
                 shutil.rmtree(self.persist_dir)
                 logger.info(f"Cleaned up index files at: {self.persist_dir}")

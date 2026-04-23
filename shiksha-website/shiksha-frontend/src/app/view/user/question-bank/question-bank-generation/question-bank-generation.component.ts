@@ -734,15 +734,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   processStep2(selections: any[]) {
-    // Sync with latest selections if provided (should be since Step 2 uses selectionChange)
-    if (selections && selections.length > 0) {
-      this.selectedQuestions = [...selections];
-    }
-
-    if (!this.selectedQuestions || this.selectedQuestions.length === 0) {
-      this.utilityservice.showWarning('Please select at least one question.');
-      return;
-    }
+    this.selectedQuestions = selections;
 
     this.finalSelectedQuestions = this.selectedQuestions.map(q => {
       const rawHeading = q.heading || q.type || 'Question';
