@@ -6,7 +6,7 @@ from functools import reduce
 from math import gcd
 from typing import List, Dict, Any, Optional, Union, Tuple, Literal, TypeAlias
 import re
-from pydantic import BaseModel, computed_field, field_validator, Field
+from pydantic import BaseModel, computed_field, field_validator, Field, model_validator
 
 
 # ==============================
@@ -27,7 +27,7 @@ DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
 
 
 class TextQuestion(BaseModel):
-    question: str
+    question: str = Field(default="")
     answer: str = Field(default="")
     keyAnswer: str = Field(default="")
     difficulty: DifficultyType = "Average"
@@ -41,8 +41,8 @@ class McqOption(BaseModel):
 
 
 class FourOptionsQuestion(BaseModel):
-    question: str = Field(..., examples=["Question text here?"])
-    options: List[McqOption] = Field(..., min_length=2, examples=[[
+    question: str = Field(default="", examples=["Question text here?"])
+    options: List[McqOption] = Field(default_factory=list, examples=[[
         McqOption(label="A", text="Option A"),
         McqOption(label="B", text="Option B"),
         McqOption(label="C", text="Option C"),
@@ -52,9 +52,40 @@ class FourOptionsQuestion(BaseModel):
     keyAnswer: str = Field(default="", examples=["A"])
     difficulty: DifficultyType = "Average"
 
+    @model_validator(mode="before")
+    @classmethod
+    def convert_legacy_mcq_shape(cls, values):
+        if not isinstance(values, dict):
+            return values
+
+        values = dict(values)
+
+        if "options" not in values:
+            legacy_options = []
+            for label in ["A", "B", "C", "D", "E", "F"]:
+                option_key = f"option_{label.lower()}"
+                option_text = values.get(option_key)
+                if option_text:
+                    legacy_options.append({"label": label, "text": option_text})
+
+            if legacy_options:
+                values["options"] = legacy_options
+
+        if "keyAnswer" not in values and "correct_option" in values:
+            correct_option = values.get("correct_option")
+            if isinstance(correct_option, str):
+                match = re.match(r"option_([A-Za-z])$", correct_option.strip())
+                values["keyAnswer"] = (
+                    match.group(1).upper() if match else correct_option.strip()
+                )
+
+        return values
+
     @field_validator("options", mode="before")
     def convert_strings_to_options(cls, v):
         # If it's a list of strings, convert to McqOption objects
+        if v is None:
+            return []
         if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
             labels = ["A", "B", "C", "D", "E", "F"]
             cleaned_options = []
@@ -70,8 +101,8 @@ class FourOptionsQuestion(BaseModel):
 
 
 class MatchingListQuestion(BaseModel):
-    value1: str
-    value2: str
+    value1: str = Field(default="")
+    value2: str = Field(default="")
     difficulty: DifficultyType = "Average"
 
 
