@@ -791,16 +791,27 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         });
       }
       const section = sectionsMap.get(heading);
+      if (q.keyAnswer !== undefined && q.keyAnswer !== null && typeof q.keyAnswer !== 'string') {
+        console.error(
+          `[QuestionBankGeneration.buildPayload] Selected question has non-string keyAnswer ` +
+            `(got ${typeof q.keyAnswer}). Coercing to empty string.`,
+          q
+        );
+      }
+      const safeKeyAnswer = typeof q.keyAnswer === 'string' ? q.keyAnswer : '';
+      const rawValue2 = q.value2 ?? safeKeyAnswer ?? q.answer;
+      const safeValue2 = typeof rawValue2 === 'string' ? rawValue2 : '';
+
       section.questions.push({
         question: q.text || q.question,
         options: q.options || [],
-        keyAnswer: q.keyAnswer ?? '',
+        keyAnswer: safeKeyAnswer,
         marks: Number(q.marks || 1),
         _id: q._id,
         unit_name: q.unit_name,
         objective: q.objective || 'Knowledge',
         value1: q.value1 || q.text || q.question || '',
-        value2: q.value2 || q.keyAnswer || q.answer || ''
+        value2: safeValue2
       });
       section.numberOfQuestions = section.questions.length;
     });
@@ -1222,11 +1233,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             else displayText = q.heading || q.groupHeading || q.type || 'Question';
           }
 
+          if (q.keyAnswer !== undefined && q.keyAnswer !== null && typeof q.keyAnswer !== 'string') {
+            console.error(
+              `[QuestionBankGeneration.fetchLBAQuestions] LBA question has non-string keyAnswer ` +
+                `(got ${typeof q.keyAnswer}). Coercing to empty string.`,
+              q
+            );
+          }
+
           return [{
             ...q,
             ...baseObj,
             text: displayText,
-            keyAnswer: q.keyAnswer ?? '',
+            keyAnswer: typeof q.keyAnswer === 'string' ? q.keyAnswer : '',
             _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
           }];
         });

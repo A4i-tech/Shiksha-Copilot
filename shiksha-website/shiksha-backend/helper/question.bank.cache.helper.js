@@ -338,6 +338,16 @@ function mergeQuestions(existingQuestions, newQuestions, indices) {
 function createQuestionObj(type, marks, questionObj, objective) {
   let question;
 
+  if (typeof questionObj.keyAnswer !== "string" || questionObj.keyAnswer.trim() === "") {
+    console.warn(
+      `[question.bank.cache.helper.createQuestionObj] Missing or non-string keyAnswer for type="${type}". ` +
+      `Defaulting to empty string.`,
+      { question: questionObj.question }
+    );
+  }
+
+  const safeKeyAnswer = typeof questionObj.keyAnswer === "string" ? questionObj.keyAnswer : "";
+
   if (
     type ===
     "Four alternatives are given for each of the following questions, choose the correct alternative"
@@ -345,12 +355,12 @@ function createQuestionObj(type, marks, questionObj, objective) {
     question = {
       question: questionObj.question || "",
       options: questionObj.options || [],
-      keyAnswer: questionObj.keyAnswer,
+      keyAnswer: safeKeyAnswer,
     };
   } else {
     question = {
       question: questionObj.question || "",
-      keyAnswer: questionObj.keyAnswer,
+      keyAnswer: safeKeyAnswer,
     };
   }
 

@@ -99,8 +99,25 @@ export class QuestionBankViewComponent implements OnInit {
               if (section.type === 'Match the following' && section.questions?.length) {
                 // Map columns supporting both AI (value1/2) and LBA (text/keyAnswer) formats
                 // LBA: text = Left, keyAnswer = Right
-                const colTwoVal = structuredClone(section.questions.map((ele: any) => ele.value2 || ele.keyAnswer || ele.right || ''));
-                section.primaryColumn = section.questions.map((ele: any) => ele.value1 || ele.text || ele.left || '');
+                const coerceToString = (value: any, context: string, idx: number): string => {
+                  if (typeof value === 'string') return value;
+                  if (value === undefined || value === null) return '';
+                  console.error(
+                    `[QuestionBankView] Match-the-following ${context} at row ${idx} is not a string ` +
+                      `(got ${typeof value}). Coercing to empty string.`,
+                    value
+                  );
+                  return '';
+                };
+
+                const colTwoVal = section.questions.map((ele: any, idx: number) => {
+                  const resolved = ele.value2 ?? ele.keyAnswer ?? ele.right;
+                  return coerceToString(resolved, 'right-hand value', idx);
+                });
+                section.primaryColumn = section.questions.map((ele: any, idx: number) => {
+                  const resolved = ele.value1 ?? ele.text ?? ele.left;
+                  return coerceToString(resolved, 'left-hand value', idx);
+                });
                 section.originalColumns = [...colTwoVal];
                 section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
               }
