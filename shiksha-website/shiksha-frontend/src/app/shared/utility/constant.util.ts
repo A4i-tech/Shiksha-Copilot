@@ -122,3 +122,26 @@ export const QUESTION_TYPE_DESCRIPTIONS: any = QUESTION_TYPE.reduce((acc: any, i
     acc[item.type] = item.name;
     return acc;
 }, {});
+
+export const SUPERSCRIPT_MAP: Record<string, string> = {
+  '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+  '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+  'a': 'ᵃ', 'b': 'ᵇ', 'c': 'ᶜ', 'd': 'ᵈ', 'e': 'ᵉ',
+  'f': 'ᶠ', 'g': 'ᵍ', 'h': 'ʰ', 'i': 'ⁱ', 'j': 'ʲ',
+  'k': 'ᵏ', 'l': 'ˡ', 'm': 'ᵐ', 'n': 'ⁿ', 'o': 'ᵒ',
+  'p': 'ᵖ', 'r': 'ʳ', 's': 'ˢ', 't': 'ᵗ', 'u': 'ᵘ',
+  'v': 'ᵛ', 'w': 'ʷ', 'x': 'ˣ', 'y': 'ʸ', 'z': 'ᶻ',
+  '+': '⁺', '-': '⁻', '(': '⁽', ')': '⁾',
+};
+
+export const DOCX_CONFIG = {
+  spacing: {
+    sectionHeader: { before: 120, after: 120 },
+    questionItem: { after: 100 },
+    optionItem: { after: 120 },
+    tableCell: { before: 50, after: 50 },
+  },
+  indent: {
+    optionLeft: '   ',
+  },
+};
