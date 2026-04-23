@@ -340,7 +340,7 @@ class QuestionPaperService:
 
     def _get_format_instruction_for_type(self, qtype: QuestionType) -> str:
         """Generate format instruction for a specific question type."""
-        return f"- For {qtype}: {qtype.description}. Use format: {qtype.schema_dict()}"
+        return f"- For {qtype.name}: {qtype.description}, conform to JSON schema: {qtype.schema_dict()}"
 
     async def _get_or_create_rag_adapter(
         self, index_path: str
@@ -382,7 +382,13 @@ class QuestionPaperService:
 
             # Initialize and download index from blob storage
             await adapter.initialize()
-            await adapter.initiate_index()
+
+            try:
+                await adapter.initiate_index()
+            except RuntimeError as e:
+                logger.exception(e)
+                logger.warning("Could not populate RAG adapter, skipping RAG layer.")
+                return None
 
             # Populate cache inside the lock so no other waiter re-initializes
             self._adapter_cache[index_path] = adapter

@@ -19,11 +19,7 @@ const QuestionBankPartsResponseSchema = z.object({
       number_of_questions: z.number().optional(),
       marks_per_question: z.number().optional(),
       questions: z.array(
-        z.object({
-          question: z.string().min(1, "Question text required"),
-          answer: z.string().optional(),
-          difficulty: z.string().optional(),
-        }).passthrough() // Allow additional fields
+        z.record(z.string(), z.any())
       ).optional(),
     }).passthrough()
   ),
@@ -107,11 +103,8 @@ function validatePartsResponse(data) {
     return flattenedQuestions;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const details = error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
-        .join('; ');
       throw new Error(
-        `Invalid Parts Response. Expected { metadata, questions: [{ questions: [{question}, ...], ... }] }. Details: ${details}`
+        `Invalid Parts Response. Expected { metadata, questions: [{ questions: [{question}, ...], ... }] }. Details: ${error.message}`
       );
     }
     throw error;
