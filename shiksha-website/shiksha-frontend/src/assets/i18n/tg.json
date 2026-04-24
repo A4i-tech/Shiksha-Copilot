@@ -476,5 +476,14 @@
   "Edit Questions": "ప్రశ్నలను సవరించండి",
   "Match the following": "జతపరచండి",
   "Pick Class first": "ముందుగా తరగతిని ఎంచుకోండి",
-  "Pick Medium next": "తరువాత మాధ్యమాన్ని ఎంచుకోండి"
+  "Pick Medium next": "తరువాత మాధ్యమాన్ని ఎంచుకోండి",
+  "Show Answer Keys": "సమాధాన కీలను చూపించు",
+  "Hide Answer Keys": "సమాధాన కీలను దాచు",
+  "Answer": "సమాధానం",
+  "Correct Mapping": "సరైన జతపరచడం",
+  "Left": "ఎడమ",
+  "Right (Answer)": "కుడి (సమాధానం)",
+  "Blueprint": "బ్లూప్రింట్",
+  "Question paper + Answer Key": "ప్రశ్న పత్రం + సమాధాన కీ",
+  "Download": "డౌన్‌లోడ్"
 }

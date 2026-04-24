@@ -41,7 +41,7 @@
 
   .cal-week-view .cal-day-headers .cal-header span,
   .cal-week-view .cal-header.cal-weekend span {
-    color: #46a0f1 !important;
+    color: var(--primary-DEFAULT) !important;
     font-weight: 700;
     opacity: 1;
   }
@@ -51,7 +51,7 @@
   }
 
   .cal-week-view .cal-day-headers .cal-header {
-    color: #4b4b4b;
+    color: var(--content-DEFAULT);
   }
 
   .cal-week-view .cal-time-label-column {
@@ -59,9 +59,9 @@
     height: 100%;
     position: sticky;
     left: 0;
-    background: #fafafa;
+    background: var(--surface-muted);
     z-index: 9;
-    color: #4b4b4b;
+    color: var(--content-DEFAULT);
   }
   .cal-week-view mwl-calendar-week-view-hour-segment,
   .cal-week-view .cal-hour-segment {

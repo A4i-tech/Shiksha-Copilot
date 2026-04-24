@@ -19,11 +19,7 @@ const QuestionBankPartsResponseSchema = z.object({
       number_of_questions: z.number().optional(),
       marks_per_question: z.number().optional(),
       questions: z.array(
-        z.object({
-          question: z.string().min(1, "Question text required"),
-          answer: z.string().optional(),
-          difficulty: z.string().optional(),
-        }).passthrough() // Allow additional fields
+        z.record(z.string(), z.any())
       ).optional(),
     }).passthrough()
   ),
@@ -81,10 +77,22 @@ function validatePartsResponse(data) {
 
       blockQuestions.forEach((q, qIndex) => {
         if (q.question) {
+          let safeKeyAnswer = "";
+          if (typeof q.keyAnswer === "string") {
+            safeKeyAnswer = q.keyAnswer;
+          } else if (q.keyAnswer !== undefined && q.keyAnswer !== null) {
+            console.error(
+              `[ai.response.schema.validatePartsResponse] Block ${blockIndex}, Question ${qIndex}: ` +
+                `keyAnswer is not a string (got ${typeof q.keyAnswer}). ` +
+                `Rejecting malformed value to prevent downstream failures.`,
+              { question: q.question }
+            );
+          }
+
           flattenedQuestions.push({
             question: q.question,
             options: Array.isArray(q.options) ? q.options : [],
-            answer: q.answer || "",
+            keyAnswer: safeKeyAnswer,
             difficulty: q.difficulty || "Average",
             marks: marksPerQuestion,
           });
@@ -95,11 +103,8 @@ function validatePartsResponse(data) {
     return flattenedQuestions;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const details = error.errors
-        .map(e => `${e.path.join('.')}: ${e.message}`)
-        .join('; ');
       throw new Error(
-        `Invalid Parts Response. Expected { metadata, questions: [{ questions: [{question}, ...], ... }] }. Details: ${details}`
+        `Invalid Parts Response. Expected { metadata, questions: [{ questions: [{question}, ...], ... }] }. Details: ${error.message}`
       );
     }
     throw error;

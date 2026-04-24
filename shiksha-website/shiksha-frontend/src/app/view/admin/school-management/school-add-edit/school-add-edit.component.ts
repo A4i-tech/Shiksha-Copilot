@@ -65,7 +65,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   schoolIdError: boolean = false;
 
   stateDropdownconfig: FormDropDownConfig = {
-    isBackground: false,
+    isBackground: true,
     placeHolderTxt: 'Select state',
     height: '44px',
     fieldName: 'State',
@@ -75,7 +75,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   zoneDropdownconfig: FormDropDownConfig = {
-    isBackground: false,
+    isBackground: true,
     placeHolderTxt: 'Zone',
     height: '44px',
     fieldName: 'Zone',
@@ -85,7 +85,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   districtDropdownconfig: FormDropDownConfig = {
-    isBackground: false,
+    isBackground: true,
     placeHolderTxt: 'Select district',
     height: '44px',
     fieldName: 'District',
@@ -95,7 +95,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   blockDropdownconfig: FormDropDownConfig = {
-    isBackground: false,
+    isBackground: true,
     placeHolderTxt: 'Taluk',
     height: '44px',
     fieldName: 'Taluk',
@@ -105,7 +105,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   boardDropdownconfig: FormDropDownConfig = {
-    isBackground: false,
+    isBackground: true,
     placeHolderTxt: 'Select board',
     height: '44px',
     fieldName: 'Board',
@@ -117,7 +117,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   mediumDropdownconfig: FormDropDownConfig = {
-    isBackground: false,
+    isBackground: true,
     placeHolderTxt: 'Select medium of instruction',
     height: '44px',
     fieldName: 'Medium of instruction',

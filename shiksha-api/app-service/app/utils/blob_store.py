@@ -84,4 +84,4 @@ class BlobStore:
             return downloaded_files
 
         except AzureError as e:
-            raise RuntimeError(f"Failed to download blobs asynchronously: {e}")
+            raise RuntimeError(f"Failed to download blobs asynchronously: {e}") from e

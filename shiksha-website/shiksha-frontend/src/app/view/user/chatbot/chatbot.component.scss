@@ -125,7 +125,7 @@
     .dot {
       width: 8px;
       height: 8px;
-      background-color: #333;
+      background-color: var(--content-DEFAULT);
       border-radius: 50%;
       animation: dotFlashing 1.5s infinite ease-in-out;
 

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -38,6 +38,7 @@ import { QuestionBankTemplateComponent } from './question-bank-template/question
 export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   // Step 2 Child Component
   @ViewChild(QuestionBankTemplateComponent) templateComponent!: QuestionBankTemplateComponent;
+  @ViewChild('headingDropdownContainer') headingDropdownContainer?: ElementRef<HTMLElement>;
 
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
@@ -733,15 +734,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   processStep2(selections: any[]) {
-    // Sync with latest selections if provided (should be since Step 2 uses selectionChange)
-    if (selections && selections.length > 0) {
-      this.selectedQuestions = [...selections];
-    }
-
-    if (!this.selectedQuestions || this.selectedQuestions.length === 0) {
-      this.utilityservice.showWarning('Please select at least one question.');
-      return;
-    }
+    this.selectedQuestions = selections;
 
     this.finalSelectedQuestions = this.selectedQuestions.map(q => {
       const rawHeading = q.heading || q.type || 'Question';
@@ -791,16 +784,27 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         });
       }
       const section = sectionsMap.get(heading);
+      if (q.keyAnswer !== undefined && q.keyAnswer !== null && typeof q.keyAnswer !== 'string') {
+        console.error(
+          `[QuestionBankGeneration.buildPayload] Selected question has non-string keyAnswer ` +
+            `(got ${typeof q.keyAnswer}). Coercing to empty string.`,
+          q
+        );
+      }
+      const safeKeyAnswer = typeof q.keyAnswer === 'string' ? q.keyAnswer : '';
+      const rawValue2 = q.value2 ?? safeKeyAnswer ?? q.answer;
+      const safeValue2 = typeof rawValue2 === 'string' ? rawValue2 : '';
+
       section.questions.push({
         question: q.text || q.question,
         options: q.options || [],
-        answer: q.answer || '',
+        keyAnswer: safeKeyAnswer,
         marks: Number(q.marks || 1),
         _id: q._id,
         unit_name: q.unit_name,
         objective: q.objective || 'Knowledge',
         value1: q.value1 || q.text || q.question || '',
-        value2: q.value2 || q.keyAnswer || q.answer || ''
+        value2: safeValue2
       });
       section.numberOfQuestions = section.questions.length;
     });
@@ -1222,10 +1226,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             else displayText = q.heading || q.groupHeading || q.type || 'Question';
           }
 
+          if (q.keyAnswer !== undefined && q.keyAnswer !== null && typeof q.keyAnswer !== 'string') {
+            console.error(
+              `[QuestionBankGeneration.fetchLBAQuestions] LBA question has non-string keyAnswer ` +
+                `(got ${typeof q.keyAnswer}). Coercing to empty string.`,
+              q
+            );
+          }
+
           return [{
             ...q,
             ...baseObj,
             text: displayText,
+            keyAnswer: typeof q.keyAnswer === 'string' ? q.keyAnswer : '',
             _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
           }];
         });
@@ -1277,6 +1290,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   get isTotalMet(): boolean { return this.currentTotalMarks === this.totalMarks; }
   toggleHeadingDropdown() { this.showHeadingDropdown = !this.showHeadingDropdown; }
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    if (!this.showHeadingDropdown) return;
+
+    const target = event.target as Node | null;
+    if (target && this.headingDropdownContainer?.nativeElement.contains(target)) return;
+
+    this.showHeadingDropdown = false;
+  }
   toggleAllHeadings(event: Event) {
     const input = event.target as HTMLInputElement;
     this.selectedHeadings = input.checked ? this.availableHeadings.map(h => h.name) : [];

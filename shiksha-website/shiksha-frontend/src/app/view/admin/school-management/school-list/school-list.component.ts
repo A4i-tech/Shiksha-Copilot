@@ -15,6 +15,7 @@ import { BULK_UPLOAD_FILE_TYPES } from 'src/app/shared/utility/constant.util';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged} from 'rxjs';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UserManagementService } from '../../user-management/user-management.service';
+import { ActionMenuController } from 'src/app/shared/utility/action-menu-controller.util';
 
 @Component({
   selector: 'app-school-list',
@@ -91,7 +92,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     searchable: true
   };
 
-  isOpen: boolean[] = [];
+  readonly actionMenu = new ActionMenuController();
 
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
 
@@ -262,22 +263,9 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Function triggered on dropdown toggle
-   * @param i index
-   * @param e event
-   */
-  toggleDropdown(i: any, e: Event) {
-    e.stopPropagation();
-    this.utilityService.resetArrayIfTrueInBetween(this.isOpen,i)
-    this.isOpen[i] = !this.isOpen[i];
-  }
-
   @HostListener('click', ['$event'])
   clickInside(event : MouseEvent){
-    if((event.target as HTMLElement).closest('.school-list-container')){
-      this.isOpen = [];
-    }
+    this.actionMenu.closeAllIfTriggeredInside(event, '.school-list-container');
   }
 
   onFilterChange(type: any, value: any) {
@@ -398,16 +386,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Function to set dropdown value
-   */
-  setDropdown() {
-    this.isOpen = [];
-    this.schoolListData.forEach(() => {
-      this.isOpen.push(false);
-    });
-  }
-
-  /**
    * Function to navigate to view school details
    * @param id school id
    */
@@ -497,10 +475,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   onPageChange(page: number): void {  
     this.currentPage = page;
     this.getShcoolList(this.filterObj);
-  }
-
-  getPageNumbers(): number[] {
-    return this.utilityService.getPageNumbers(this.totalItems, this.pageSize);
   }
 
 

@@ -389,10 +389,6 @@ const today = new Date();
     const params = this.getListParams();
     this.getAllList(params);
   }
-  
-  getPageNumbers(): number[] {
-    return this.utilityservice.getPageNumbers(this.totalItems, this.pageSize);
-  }
 
   retry(_id:any,regeneratedId:any){
     const obj = {

@@ -22,6 +22,7 @@ import { MasterService } from '../../services/master.service';
 import { SchoolManagementService } from 'src/app/view/admin/school-management/school-management.service';
 import { SchoolList } from '../../interfaces/school-list.interface';
 import { slideInOutAnimation } from '../../utility/animations.util';
+import { ActionMenuController } from '../../utility/action-menu-controller.util';
 
 interface ContentListConfig {
   [key: string]:
@@ -158,7 +159,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   userId!: string;
   @ViewChild('dropdownContainer') dropdownContainer!: ElementRef;
   usersListWithoutPg!:any[];
-  isOpen: boolean[] = [];
+  readonly actionMenu = new ActionMenuController();
   searchText: any = "";
   currentPage = 1;
   pageSize = 10;
@@ -307,17 +308,9 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     return this.utility.loggedInUserData._id;
   }
 
-  toggleDropdown(i: any, e: Event) {
-    e.stopPropagation();
-    this.utility.resetArrayIfTrueInBetween(this.isOpen,i)
-    this.isOpen[i] = !this.isOpen[i];
-  }
-
   @HostListener('click', ['$event'])
   clickInside(event : MouseEvent){
-    if((event.target as HTMLElement).closest('.table-section')){
-      this.isOpen = [];
-    }
+    this.actionMenu.closeAllIfTriggeredInside(event, '.table-section');
   }
 
   viewUser(item: any) {
@@ -495,10 +488,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   onPageChange(page: number): void {
     this.currentPage = page;
     this.getUsersList(this.filterObj);
-  }
-
-  getPageNumbers(): number[] {
-    return this.utility.getPageNumbers(this.totalItems, this.pageSize);
   }
 
   getType() {

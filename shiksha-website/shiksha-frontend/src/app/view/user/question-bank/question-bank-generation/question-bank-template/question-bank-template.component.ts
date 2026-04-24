@@ -11,11 +11,15 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   // NEW INPUT: The merged pool from Parent
   @Input() availableQuestions: any[] = [];
+
+  // Pre-selected questions passed from the parent to restore selections
   @Input() preSelectedQuestions: any[] = [];
 
   @Output() backClick = new EventEmitter<boolean>();
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
   @Output() selectionChange = new EventEmitter<any[]>();
+
+  // Pre-selected questions from parent (e.g. when navigating back to Step 2)
 
   // Local State
   filteredQuestions: any[] = [];
@@ -34,7 +38,10 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   constructor() { }
 
   ngOnInit(): void {
-    this.syncPreSelectedQuestions();
+    // Initialize from pre-selected questions if any
+    if (this.preSelectedQuestions && this.preSelectedQuestions.length > 0) {
+      this.selectedQuestions = [...this.preSelectedQuestions];
+    }
     // Initial load
     this.extractFilters();
     this.applyFilters();
@@ -152,13 +159,13 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   // --- SELECTION LOGIC ---
   selectQuestion(q: any) {
     this.selectedQuestions.push(q);
-    this.selectionChange.emit([...this.selectedQuestions]);
+    this.selectionChange.emit(this.selectedQuestions);
     this.applyFilters(); // Remove from left list
   }
 
   removeQuestion(index: number) {
     this.selectedQuestions.splice(index, 1);
-    this.selectionChange.emit([...this.selectedQuestions]);
+    this.selectionChange.emit(this.selectedQuestions);
     this.applyFilters(); // Add back to left list
   }
 

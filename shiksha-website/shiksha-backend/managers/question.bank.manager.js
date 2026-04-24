@@ -598,9 +598,55 @@ class QuestionBankManager extends BaseManager {
         }));
       }
 
+      if (Array.isArray(item.questions)) {
+        mappedItem.questions = item.questions.map((question) => {
+          if (question?.question && typeof question.question === "object") {
+            return question.question;
+          }
+          return question;
+        });
+      }
+
       return mappedItem;
     });
   }
+  /**
+   * Resolves the index path for a unit name following a clear priority order:
+   * 1. Chapter title match in formattedChapters → return its index_path (found=true)
+   * 2. Subtopic title match in formattedChapters → return its index_path (found=true)
+   * 3. Subtopic in raw chapterData → inherit parent chapter's index_path (found=false)
+   * 4. Not found anywhere → empty index_path (found=false)
+   */
+  _resolveUnitContext(unitName, formattedChapters, rawChapterData) {
+    const lowerName = unitName.toLowerCase();
+
+    // 1. Check chapter title match
+    const matchedChapter = formattedChapters.find(fc => fc.title.toLowerCase() === lowerName);
+    if (matchedChapter) {
+      return { found: true, indexPath: matchedChapter.index_path };
+    }
+
+    // 2. Check subtopic title match
+    for (const fc of formattedChapters) {
+      const matchedSub = fc.subtopics.find(sub => sub.title.toLowerCase() === lowerName);
+      if (matchedSub) {
+        return { found: true, indexPath: matchedSub.index_path || fc.index_path };
+      }
+    }
+
+    // 3. Inherit index_path from parent chapter in raw DB data
+    if (rawChapterData && rawChapterData.length > 0) {
+      const parent = rawChapterData.find(ch =>
+        ch.subtopics && ch.subtopics.some(sub => (sub.title || "").toLowerCase() === lowerName)
+      );
+      if (parent) {
+        return { found: false, indexPath: parent.indexPath || parent.index_path || "" };
+      }
+    }
+
+    return { found: false, indexPath: "" };
+  }
+
   async _createQuestionBankPayload(reqBody, user) {
     try {
       const {
@@ -629,7 +675,7 @@ class QuestionBankManager extends BaseManager {
         if (isMultiChapter) {
           if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
         } else {
-          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, validSubTopicIds);
+          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, subTopicsArr);
         }
       } catch (aggErr) {
         console.warn("[Manager] Chapter lookup failed:", aggErr.message);
@@ -644,6 +690,7 @@ class QuestionBankManager extends BaseManager {
           subtopics: (chapter.subtopics || []).map((sub) => ({
             title: sub.title,
             learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+            index_path: sub.indexPath || sub.index_path || chapter.indexPath || chapter.index_path || "",
           })),
         }))
         : [];
@@ -665,17 +712,12 @@ class QuestionBankManager extends BaseManager {
 
       // Inject Missing Units
       requiredUnits.forEach(unitName => {
-        // Check if unitName exists as a Chapter Title OR a Subtopic Title
-        const exists = formattedChapters.some(fc =>
-          fc.title.toLowerCase() === unitName.toLowerCase() ||
-          fc.subtopics.some(sub => sub.title.toLowerCase() === unitName.toLowerCase())
-        );
-
-        if (!exists) {
+        const { found, indexPath } = this._resolveUnitContext(unitName, formattedChapters, chapterData);
+        if (!found) {
           console.log(`[Manager] Injecting missing unit context: ${unitName}`);
           formattedChapters.push({
             title: unitName,
-            index_path: "",
+            index_path: indexPath,
             learning_outcomes: [],
             subtopics: []
           });

@@ -176,8 +176,8 @@ class QuestionDao extends BaseDao {
             options: sanitizeOptions(q.options),
             pairs: q.pairs || [],
             items: q.items || [],
-            keyAnswer: q.keyAnswer || q.answer || "",
-            answer: q.answer || q.keyAnswer || "",
+            keyAnswer: q.keyAnswer || q.keyanswer || q.answer || "",
+            answer: q.answer || q.keyAnswer || q.keyanswer || "",
             correctOrderById: q.correctOrderById || [],
             correctOrderIndices: q.correctOrderIndices || [],
             chapter: q.chapter
