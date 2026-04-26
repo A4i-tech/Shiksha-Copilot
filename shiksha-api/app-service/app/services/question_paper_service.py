@@ -250,7 +250,7 @@ class QuestionPaperService:
                         "type": template.type,
                         "objective": dist.objective,
                         "marks_per_question": template.marks_per_question,
-                        "schema_hint": template.type.schema_dict(),
+                        "json_schema": template.type.json_schema(),
                     }
 
                     if dist.unit_name not in unit_questions:
@@ -340,7 +340,7 @@ class QuestionPaperService:
 
     def _get_format_instruction_for_type(self, qtype: QuestionType) -> str:
         """Generate format instruction for a specific question type."""
-        return f"- For {qtype.name}: {qtype.description}, conform to JSON schema: {qtype.schema_dict()}"
+        return f"- For {qtype.name}: {qtype.description}, conform to JSON schema for {qtype}."
 
     async def _get_or_create_rag_adapter(
         self, index_path: str
@@ -416,18 +416,17 @@ class QuestionPaperService:
 
             user_message = (
                 "Generate questions for the following slots in a SINGLE JSON object with an `items` array. "
-                "For each slot, return exactly ONE object with the following fields:\n "
-                "`unit_name`, `type`, `objective`, `marks_per_question`, `difficulty` and `item`\n"
-                "`difficulty` should be one of: 'Easy', 'Average', 'Difficult'.\n"
-                "`item` field should adhere to the question's `schema_hint`.\n"
-                "IMPORTANT: For every question, you MUST include a correct `keyAnswer` field in the `item`. "
-                "For MCQs, `keyAnswer` should be the label of the correct option (e.g. 'A'). "
-                "For fill-in-the-blank questions, `keyAnswer` should be the word or phrase that fills the blank. "
-                "For short and long answer questions, `keyAnswer` should be a concise model answer.\n\n"
-                "Format rules by question type:\n"
-                f"{format_rules_text}\n"
-                f"Question slots:\n{json.dumps(slot_questions, ensure_ascii=False)}"
+                "For each slot, return exactly ONE object with the following fields:\n"
+                "- `unit_name`, `type`, `objective`, `marks_per_question`, `difficulty` and `item`\n"
+                "- `difficulty` should be one of: 'Easy', 'Average', 'Difficult'.\n"
+                "- `item` field should adhere to the question's `json_schema`.\n"
+                "- `keyAnswer` field must be non-empty if the question model supports it.\n\n"
+                "Rules by question type:\n"
+                f"{format_rules_text}\n\n"
+                f"Question slots:\n"
             )
+            for question in slot_questions:
+                user_message += "- " + json.dumps(question, ensure_ascii=False)
 
             print(
                 "********************* SYSTEM PROMPT *********************",

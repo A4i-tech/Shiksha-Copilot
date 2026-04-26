@@ -29,7 +29,12 @@ DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
 class TextQuestion(BaseModel):
     question: str = Field(default="")
     answer: str = Field(default="")
-    keyAnswer: str = Field(default="")
+    keyAnswer: str = Field(default="", description="\n".join([
+        "Answer to be displayed right below the question."
+        "- For MCQs, this should be the label of the correct option (e.g. 'A').",
+        "- For fill-in-the-blank questions, this should be the word or phrase that fills the blank."
+        "- For short and long answer questions, this should be a concise model answer."
+    ]))
     difficulty: DifficultyType = "Average"
 
 
@@ -49,7 +54,7 @@ class FourOptionsQuestion(BaseModel):
         McqOption(label="D", text="Option D")
     ]])
     answer: str = Field(default="")
-    keyAnswer: str = Field(default="", examples=["A"])
+    keyAnswer: str = Field(default="", description="The correct answer choice. This is displayed right below the question.", examples=["A"])
     difficulty: DifficultyType = "Average"
 
     @model_validator(mode="before")
@@ -101,8 +106,13 @@ class FourOptionsQuestion(BaseModel):
 
 
 class MatchingListQuestion(BaseModel):
-    value1: str = Field(default="")
-    value2: str = Field(default="")
+    """
+    Models a single entry in a match-the-following question. While a match-the-following type question
+    often consists of multiple entries, this model represents just one complete entry.
+    """
+
+    value1: str = Field(default="", description="The phrase to display on the left-hand side.")
+    value2: str = Field(default="", description="The phrase to display on the right-hand side.")
     difficulty: DifficultyType = "Average"
 
 
@@ -180,16 +190,12 @@ class QuestionType(str, Enum):
         }
 
     # Prompt/schema hint for LLM
-    def schema_dict(self) -> str:
-        return self._model.schema_json()
+    def json_schema(self) -> dict:
+        return self._model.schema()
 
     # Cast generated dict to the right Pydantic model
     def cast(self, obj: dict):
         return self._model.model_validate(obj)
-
-    # Back-compat alias
-    def get_question_format_dict(self) -> str:
-        return self.schema_dict()
 
 
 class QuestionTypeResponse(BaseModel):
