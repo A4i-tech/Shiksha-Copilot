@@ -96,6 +96,13 @@ function validatePartsResponse(data) {
             difficulty: q.difficulty || "Average",
             marks: marksPerQuestion,
           });
+        } else if (q.value1 && q.value2) {
+          flattenedQuestions.push({
+            value1: q.value1,
+            value2: q.value2,
+            difficulty: q.difficulty || "Average",
+            marks: marksPerQuestion,
+          });
         }
       });
     });

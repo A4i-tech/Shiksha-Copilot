@@ -947,6 +947,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
               questionText = q.question;
             }
 
+            if (!questionText && q.value1 && q.value2) {
+              questionText = q.value1 + " - " + q.value2;
+            }
+
             if (questionText) {
               const typeKey = normalizeTypeKey(blockType);
               const distributionObjective =
@@ -968,6 +972,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
                 heading: friendlyHeading,
                 unit_name: q.unit_name || chapterName || 'General',
                 objective: finalObjective,
+                value1: q.value1,
+                value2: q.value2,
                 _id: q._id || `ai_${Math.random().toString(36).substring(7)}`
               });
             }
