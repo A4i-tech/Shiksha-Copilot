@@ -1,6 +1,6 @@
 import os
 import json
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 import yaml
 import asyncio
 from pathlib import Path
@@ -470,12 +470,14 @@ class QuestionPaperService:
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
                 response_content = await rag_adapter.chat_with_index(
-                    curr_message=user_message, chat_history=chat_history
+                    # rag-adapter does not support structured output, so we pass model json schema for now.
+                    curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
+                    chat_history=chat_history
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
                 response_content = response_content["response"]
                 content = response_content.strip("```json").strip("```")
-                return TypeAdapter(list[GeneratedQuestionItem]).validate_json(content)
+                return GeneratedQuestionItemResponse.model_validate_json(content).items
         except Exception as e:
             logger.exception(f"Error in batch generation: {e}")
             return []
