@@ -17,9 +17,7 @@ class TestLessonChatServiceChapterParsing:
         """Test extracting details from valid chapter ID."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
 
             service = LessonChatService()
@@ -38,9 +36,7 @@ class TestLessonChatServiceChapterParsing:
         """Test extracting details when title has special characters."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
 
             service = LessonChatService()
@@ -54,9 +50,7 @@ class TestLessonChatServiceChapterParsing:
         """Test error raised with invalid chapter ID format."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
 
             service = LessonChatService()
@@ -75,9 +69,7 @@ class TestLessonChatServiceCall:
         """Test service uses cached RAG adapter."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
 
             mock_template = Mock()
@@ -103,9 +95,7 @@ class TestLessonChatServiceCall:
         """Test service initiates index before chatting."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
 
             mock_template = Mock()
@@ -128,9 +118,7 @@ class TestLessonChatServiceCall:
         """Test service builds system message with chapter details."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
 
             mock_template = Mock()
@@ -160,9 +148,7 @@ class TestLessonChatServiceCall:
         """Test service converts messages to LlamaIndex ChatMessage format."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
 
             mock_template = Mock()
@@ -196,9 +182,7 @@ class TestLessonChatServiceCall:
         """Test service handles RAG adapter errors."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
 
             mock_template = Mock()
@@ -224,9 +208,7 @@ class TestLessonChatServiceCleanup:
         """Test cleanup clears RAG adapter cache."""
         with patch("app.services.lesson_chat_service.settings", mock_settings), \
              patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.LlamaAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.NativeAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.AzureOpenAIEmbedding"), \
+             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
              patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
 
             service = LessonChatService()

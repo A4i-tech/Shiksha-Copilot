@@ -36,7 +36,8 @@ class TestTranslateJsonEndpoint:
             },
         }
 
-        response = client.post("/question-paper/translate_json", json=request_data)
+        with patch("app.routers.question_paper.detect", return_value="en"):
+            response = client.post("/question-paper/translate_json", json=request_data)
 
         assert response.status_code == 200
         assert response.json()["translated_json"] == request_data["json_data"]

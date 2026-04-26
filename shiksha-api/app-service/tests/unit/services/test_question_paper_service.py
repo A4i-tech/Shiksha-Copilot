@@ -8,7 +8,7 @@ from app.models.question_paper import QuestionType
 @pytest.fixture
 def service():
     """Create a mocked QuestionPaperService once per test."""
-    with patch("app.services.question_paper_service.AzureOpenAI"), patch(
+    with patch("app.services.question_paper_service.AsyncAzureOpenAI"), patch(
         "app.services.question_paper_service.LlamaAzureOpenAI"
     ), patch("app.services.question_paper_service.AzureOpenAIEmbedding"), patch(
         "app.services.question_paper_service.yaml.safe_load", return_value={}
@@ -231,22 +231,20 @@ class TestOrganizeQuestionsIntoResponse:
 
     def test_organize_questions(self, service):
         """Test organizing generated questions into response."""
-        generated = [
-            {
-                "type": "Four alternatives are given for each of the following questions, choose the correct alternative",
-                "unit_name": "Chapter 1",
-                "objective": "remember",
-                "marks_per_question": 1,
-                "item": {
-                    "question": "What is X?",
-                    "option_a": "A",
-                    "option_b": "B",
-                    "option_c": "C",
-                    "option_d": "D",
-                    "correct_option": "option_a",
-                },
-            }
-        ]
+        generated = [MagicMock(
+            type=QuestionType.MCQ,
+            unit_name="Chapter 1",
+            objective="remember",
+            marks_per_question=1,
+            item={
+                "question": "What is X?",
+                "option_a": "A",
+                "option_b": "B",
+                "option_c": "C",
+                "option_d": "D",
+                "correct_option": "option_a",
+            },
+        )]
 
         distribution = MagicMock()
         distribution.unit_name = "Chapter 1"
@@ -257,14 +255,17 @@ class TestOrganizeQuestionsIntoResponse:
         template.marks_per_question = 1
         template.question_distribution = [distribution]
 
-        request = MagicMock(template=[template])
+        chapter = MagicMock()
+        chapter.title = "Chapter 1"
+        chapter.subtopics = []
+        request = MagicMock(template=[template], chapters=[chapter])
 
-        with patch.object(service, "_flatten_existing_questions", return_value=[]):
-            response = service._organize_questions_into_response(request, generated)
+        response = service._organize_questions_into_response(request, generated)
 
         assert isinstance(response, list)
         assert len(response) > 0
         assert response[0].type == QuestionType.MCQ
+        assert len(response[0].questions) == 1
 
 
 class TestGetOrCreateRagAdapter:
