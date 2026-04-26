@@ -532,7 +532,7 @@ class QBTemplateGenerationRequest(BaseModel):
 
 class GeneratedQuestionItem(BaseModel):
     unit_name: str
-    type: str
+    type: QuestionType
     objective: Optional[str] = None
     marks_per_question: int
     difficulty: DifficultyType

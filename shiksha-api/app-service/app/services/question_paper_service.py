@@ -1,4 +1,3 @@
-import os
 import json
 from pydantic import BaseModel
 import yaml
@@ -429,12 +428,9 @@ class QuestionPaperService:
             format_rules_text = "\n".join(format_rules)
 
             user_message = (
-                "Generate questions for the following slots in a SINGLE JSON object with an `items` array. "
-                "For each slot, return exactly ONE object with the following fields:\n"
-                "- `unit_name`, `type`, `objective`, `marks_per_question`, `difficulty` and `item`\n"
-                "- `difficulty` should be one of: 'Easy', 'Average', 'Difficult'.\n"
-                "- `item` field should adhere to the question's `json_schema`.\n"
-                "- `keyAnswer` field must be non-empty if the question model supports it.\n\n"
+                "Generate questions for the following slots by following the rules listed below. "
+                "Enure `item` field adheres to its respective question's `json_schema`. "
+                "`keyAnswer` field must be non-empty if the question model supports it.\n\n"
                 "Rules by question type:\n"
                 f"{format_rules_text}\n\n"
                 f"Question slots:\n"
@@ -509,7 +505,7 @@ class QuestionPaperService:
              available_units = [sub.title for sub in request.chapters[0].subtopics]
 
         for generated in all_generated:
-            qtype = QuestionType(generated.type)
+            qtype = generated.type
             unit_name = generated.unit_name
             objective = generated.objective
             marks_per_question = generated.marks_per_question
