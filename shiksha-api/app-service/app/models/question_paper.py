@@ -190,8 +190,8 @@ class QuestionType(str, Enum):
         }
 
     # Prompt/schema hint for LLM
-    def json_schema(self) -> dict:
-        return self._model.schema()
+    def model_name(self) -> str:
+        return self._model.__name__
 
     # Cast generated dict to the right Pydantic model
     def cast(self, obj: dict):
@@ -528,3 +528,12 @@ class QBTemplateGenerationRequest(BaseModel):
 
         # Now sum(p) == n, and each p[i] is multiple of d[i]
         return p
+
+
+class GeneratedQuestionItem(BaseModel):
+    unit_name: str
+    type: str
+    objective: Optional[str] = None
+    marks_per_question: int
+    difficulty: DifficultyType
+    item: Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]

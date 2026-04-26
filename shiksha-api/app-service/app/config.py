@@ -1,3 +1,4 @@
+from openai.types import ResponsesModel
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
@@ -20,7 +21,7 @@ class Settings(BaseSettings):
     azure_openai_api_key: Optional[str] = None
     azure_openai_endpoint: Optional[str] = None
     azure_openai_api_version: Optional[str] = None
-    azure_openai_deployment_name: Optional[str] = None
+    azure_openai_deployment_name: Optional[ResponsesModel] = None
     azure_openai_embed_model: Optional[str] = None
     azure_chat_deployment_name : Optional[str] = None
 

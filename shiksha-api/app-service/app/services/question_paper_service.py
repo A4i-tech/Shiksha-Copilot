@@ -1,5 +1,6 @@
 import os
 import json
+from pydantic import BaseModel, TypeAdapter
 import yaml
 import asyncio
 from pathlib import Path
@@ -9,6 +10,7 @@ import re
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
 from openai import AsyncAzureOpenAI
+from openai.types import ResponsesModel
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaAzureOpenAI
@@ -20,6 +22,7 @@ from llama_index.core.llms import ChatMessage
 from app.services.rag_adapters import BaseRagAdapter, RagAdapterFactory
 
 from app.models.question_paper import (
+    GeneratedQuestionItem,
     QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
@@ -34,15 +37,26 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+class TemplateResponse(BaseModel):
+    items: list[Template]
+
+
+class GeneratedQuestionItemResponse(BaseModel):
+    items: list[GeneratedQuestionItem]
+
+
 class QuestionPaperService:
     """Service for handling question paper generation using Azure OpenAI."""
 
+    chat_deployment: ResponsesModel
     def __init__(self):
         self.client = AsyncAzureOpenAI(
             api_key=settings.azure_openai_api_key,
             api_version=settings.azure_openai_api_version,
             azure_endpoint=settings.azure_openai_endpoint,
         )
+        if settings.azure_openai_deployment_name is None:
+            raise RuntimeError("OpenAI deployment model must be specified")
         self.chat_deployment = settings.azure_openai_deployment_name
         self.embedding_deployment = settings.azure_openai_embed_model
 
@@ -250,7 +264,7 @@ class QuestionPaperService:
                         "type": template.type,
                         "objective": dist.objective,
                         "marks_per_question": template.marks_per_question,
-                        "json_schema": template.type.json_schema(),
+                        "model_name": template.type.model_name(),
                     }
 
                     if dist.unit_name not in unit_questions:
@@ -397,7 +411,7 @@ class QuestionPaperService:
 
     async def _generate_questions_batch(
         self, system_prompt: str, slot: Dict[str, Any], rag_adapter: Optional[BaseRagAdapter]
-    ) -> List[Dict[str, Any]]:
+    ) -> list[GeneratedQuestionItem]:
         """
         Generate questions for a batch of slots.
         Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
@@ -426,7 +440,7 @@ class QuestionPaperService:
                 f"Question slots:\n"
             )
             for question in slot_questions:
-                user_message += "- " + json.dumps(question, ensure_ascii=False)
+                user_message += "- " + json.dumps(question, ensure_ascii=False) + "\n"
 
             print(
                 "********************* SYSTEM PROMPT *********************",
@@ -436,22 +450,21 @@ class QuestionPaperService:
                 "********************* USER MESSAGE *********************", user_message
             )
 
-            response_content = ""
-
             if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
-                completion = await self.client.chat.completions.create(
+                response = await self.client.responses.parse(
                     model=self.chat_deployment,
-                    messages=[
+                    input=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_message}
                     ],
+                    text_format=GeneratedQuestionItemResponse,
                     temperature=0.7,
-                    response_format={"type": "json_object"}
                 )
-                response_content = completion.choices[0].message.content
-
+                if response.output_parsed is None:
+                    raise RuntimeError("Did not retrieve a valid response from model")
+                return response.output_parsed.items
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {index_path}")
@@ -461,23 +474,8 @@ class QuestionPaperService:
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
                 response_content = response_content["response"]
-
-            # Clean response
-            content = response_content.strip("```json").strip("```")
-            response_data = json.loads(content)
-
-            items = response_data.get("items")
-            if not items:
-                logger.warning("No items found in completion response")
-                return []
-            
-            # Post-process items to ensure difficulty text case
-            for item in items:
-                if 'difficulty' in item:
-                    item['difficulty'] = item['difficulty'].capitalize()
-
-            return items
-
+                content = response_content.strip("```json").strip("```")
+                return TypeAdapter(list[GeneratedQuestionItem]).validate_json(content)
         except Exception as e:
             logger.exception(f"Error in batch generation: {e}")
             return []
@@ -488,7 +486,7 @@ class QuestionPaperService:
         slot: Dict[str, Any],
         rag_adapter: Optional[BaseRagAdapter],
         delay_seconds: int = 0,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[GeneratedQuestionItem]:
         """Async version of _generate_questions_batch with optional delay."""
         if delay_seconds > 0:
             await asyncio.sleep(delay_seconds)
@@ -497,91 +495,81 @@ class QuestionPaperService:
     def _organize_questions_into_response(
         self,
         request: QuestionBankPartsGenerationRequest,
-        all_generated: List[Dict[str, Any]],
+        all_generated: list[GeneratedQuestionItem],
     ) -> List[QuestionTypeResponse]:
         """Organize all generated questions into the final response structure."""
-        try:
-            # Create a question directory to organize questions by their specification
-            question_directory = {}
+        # Create a question directory to organize questions by their specification
+        question_directory = {}
 
-            # Need available units for matching
-            available_units = [chapter.title for chapter in request.chapters]
-            if len(request.chapters) == 1 and request.chapters[0].subtopics:
-                 available_units = [sub.title for sub in request.chapters[0].subtopics]
+        # Need available units for matching
+        available_units = [chapter.title for chapter in request.chapters]
+        if len(request.chapters) == 1 and request.chapters[0].subtopics:
+             available_units = [sub.title for sub in request.chapters[0].subtopics]
 
-            for i, generated in enumerate(all_generated):
-                qtype = QuestionType(generated.get("type"))
-                unit_name = generated.get("unit_name")
-                objective = generated.get("objective")
-                marks_per_question = generated.get("marks_per_question")
-                difficulty = generated.get("difficulty", "Average")
-                item = generated.get("item")
-                
-                # Inject difficulty into item if it's a dict
-                if isinstance(item, dict):
-                    item["difficulty"] = difficulty
+        for generated in all_generated:
+            qtype = QuestionType(generated.type)
+            unit_name = generated.unit_name
+            objective = generated.objective
+            marks_per_question = generated.marks_per_question
+            item = generated.item
 
-                # Normalize key
-                norm_type = self._normalize_string(qtype.value)
-                
-                # --- FIX: Use smart matching for unit name ---
-                matched_unit = self._find_best_matching_unit(unit_name, available_units)
-                if matched_unit:
-                    norm_unit = self._normalize_string(matched_unit)
+            # Normalize key
+            norm_type = self._normalize_string(qtype.value)
+
+            # --- FIX: Use smart matching for unit name ---
+            matched_unit = self._find_best_matching_unit(unit_name, available_units)
+            if matched_unit:
+                norm_unit = self._normalize_string(matched_unit)
+            else:
+                # Fallback to normalized input if no match found (might still fail lookup but logs will show why)
+                logger.warning(f"Could not map generated unit '{unit_name}' to any available unit: {available_units}")
+                norm_unit = self._normalize_string(unit_name)
+            # ---------------------------------------------
+
+            # Objective can be None or empty
+            norm_objective = self._normalize_string(objective) if objective else "none"
+
+            key = f"{norm_type}|{marks_per_question}|{norm_unit}|{norm_objective}"
+            if key not in question_directory:
+                question_directory[key] = []
+
+            question_directory[key].append(item)
+
+        # Build the final response
+        response_questions = []
+        for template in request.template:
+            questions = []
+
+            for q_dist in template.question_distribution or []:
+                norm_type = self._normalize_string(template.type.value)
+                norm_unit = self._normalize_string(q_dist.unit_name)
+                norm_objective = self._normalize_string(q_dist.objective) if q_dist.objective else "none"
+
+                key = f"{norm_type}|{template.marks_per_question}|{norm_unit}|{norm_objective}"
+
+                if key in question_directory and len(question_directory[key]) > 0:
+                    question = question_directory[key].pop(0)
+                    questions.append(question)
+
+                    if len(question_directory[key]) == 0:
+                        del question_directory[key]
                 else:
-                    # Fallback to normalized input if no match found (might still fail lookup but logs will show why)
-                    logger.warning(f"Could not map generated unit '{unit_name}' to any available unit: {available_units}")
-                    norm_unit = self._normalize_string(unit_name)
-                # ---------------------------------------------
+                    logger.warning(
+                        f"--\nNo question found for Normalized key: {key}"
+                    )
 
-                # Objective can be None or empty
-                norm_objective = self._normalize_string(objective) if objective else "none"
-                
-                key = f"{norm_type}|{marks_per_question}|{norm_unit}|{norm_objective}"
-                if key not in question_directory:
-                    question_directory[key] = []
+            response_questions.append(QuestionTypeResponse(
+                type=template.type,
+                number_of_questions=(
+                    len(template.question_distribution)
+                    if template.question_distribution
+                    else template.number_of_questions
+                ),
+                marks_per_question=template.marks_per_question,
+                questions=questions,
+            ))
 
-                question_directory[key].append(qtype.cast(item))
-
-            # Build the final response
-            response_questions = []
-            for template in request.template:
-                question_type_resp = QuestionTypeResponse(
-                    type=template.type,
-                    number_of_questions=(
-                        len(template.question_distribution)
-                        if template.question_distribution
-                        else template.number_of_questions
-                    ),
-                    marks_per_question=template.marks_per_question,
-                    questions=[],
-                )
-
-                for q_dist in template.question_distribution or []:
-                    norm_type = self._normalize_string(template.type.value)
-                    norm_unit = self._normalize_string(q_dist.unit_name)
-                    norm_objective = self._normalize_string(q_dist.objective) if q_dist.objective else "none"
-                    
-                    key = f"{norm_type}|{template.marks_per_question}|{norm_unit}|{norm_objective}"
-
-                    if key in question_directory and len(question_directory[key]) > 0:
-                        question = question_directory[key].pop(0)
-                        question_type_resp.questions.append(question)
-
-                        if len(question_directory[key]) == 0:
-                            del question_directory[key]
-                    else:
-                        logger.warning(
-                            f"--\nNo question found for Normalized key: {key}"
-                        )
-
-                response_questions.append(question_type_resp)
-
-            return response_questions
-
-        except Exception as e:
-            logger.exception(f"Error organizing questions into response: {e}")
-            raise
+        return response_questions
 
     async def generate_question_bank_by_parts(
         self, request: QuestionBankPartsGenerationRequest
@@ -602,7 +590,7 @@ class QuestionPaperService:
             existing_flat = self._flatten_existing_questions(request.existing_questions)
 
             # Process in parallel batches
-            all_generated = []
+            all_generated: list[GeneratedQuestionItem] = []
             batch_size = 3
 
             for i in range(0, len(slots), batch_size):
@@ -757,9 +745,9 @@ class QuestionPaperService:
             )
 
             # Call Azure OpenAI with Strict System Instructions
-            response = await self.client.chat.completions.create(
+            response = await self.client.responses.parse(
                 model=self.chat_deployment,
-                messages=[
+                input=[
                     {
                         "role": "system",
                         "content": (
@@ -779,53 +767,29 @@ class QuestionPaperService:
                     },
                 ],
                 temperature=0.1,
+                text_format=TemplateResponse
             )
 
-            # Clean Response
-            response_text = response.choices[0].message.content.strip()
-
-            # Remove Markdown code blocks if present
-            if response_text.startswith("```json"):
-                response_text = response_text[7:]
-            if response_text.startswith("```"):
-                response_text = response_text[3:]
-            if response_text.endswith("```"):
-                response_text = response_text[:-3]
-
-            response_text = response_text.strip()
+            if not response.output_parsed:
+                logger.error(f"Failed raw response: {response.output_text}")
+                raise ValueError("The AI model failed to generate a valid JSON structure.")
 
             print(
                 "********************** QUESTION DISTRIBUTION RESPONSE **********************",
-                response_text,
+                response,
             )
 
-            # Parse and Sanitize Data
-            js = json.loads(response_text)
-            
-            cleaned_items = []
-            for item in js:
-                if "description" in item:
-                    del item["description"]
-                
-                if "question_distribution" in item and item["question_distribution"] is None:
-                     item["question_distribution"] = []
-
-                cleaned_items.append(item)
-
-            new_template = [Template(**item) for item in cleaned_items]
+            for item in response.output_parsed.items:
+                if item.question_distribution is None:
+                    item.question_distribution = []
 
             verfication_status, reason = (
-                request.verify_template_for_marks_and_objective_distribution(new_template)
+                request.verify_template_for_marks_and_objective_distribution(response.output_parsed.items)
             )
             logger.info(verfication_status)
             logger.info(reason)
 
-            return new_template
-
-        except json.JSONDecodeError as je:
-            logger.error(f"Failed to decode JSON from LLM response: {je}")
-            logger.error(f"Raw Response: {response_text}")
-            raise ValueError("The AI model failed to generate a valid JSON structure.")
+            return response.output_parsed.items
         except Exception as e:
             logger.exception(f"Error in get_question_distribution: {e}")
             raise

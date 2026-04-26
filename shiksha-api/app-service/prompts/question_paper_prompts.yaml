@@ -133,4 +133,3 @@ question_bank_distribution: |
     - Proportions of cognitive levels in line with {OBJECTIVE_DISTRIBUTION}.
     - Appropriate mappings to the objectives defined above.
     - Avoid placing questions from same unit together under one question type.
-    - Output should ONLY contain the output JSON in the mentioned structure
