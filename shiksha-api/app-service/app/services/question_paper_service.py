@@ -8,7 +8,7 @@ import logging
 import re
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from openai import AzureOpenAI
+from openai import AsyncAzureOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaAzureOpenAI
@@ -38,7 +38,7 @@ class QuestionPaperService:
     """Service for handling question paper generation using Azure OpenAI."""
 
     def __init__(self):
-        self.client = AzureOpenAI(
+        self.client = AsyncAzureOpenAI(
             api_key=settings.azure_openai_api_key,
             api_version=settings.azure_openai_api_version,
             azure_endpoint=settings.azure_openai_endpoint,
@@ -441,7 +441,7 @@ class QuestionPaperService:
             if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
-                completion = self.client.chat.completions.create(
+                completion = await self.client.chat.completions.create(
                     model=self.chat_deployment,
                     messages=[
                         {"role": "system", "content": system_prompt},
@@ -757,7 +757,7 @@ class QuestionPaperService:
             )
 
             # Call Azure OpenAI with Strict System Instructions
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.chat_deployment,
                 messages=[
                     {
