@@ -73,12 +73,11 @@ jobs:
         working-directory: shiksha-website/shiksha-frontend
         run: |
           if [ "${{ inputs.deploy_target }}" != "" ]; then
-            find src/environments -name "environment*.ts" -print \
-              -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
+            sed -i "s|your_backend_url|${BACKEND_URL}|g" src/environments/environment.prod.ts
           fi
 
           npm ci
-          npm run build -- --configuration development \
+          npm run build -- --configuration production \
             ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
 
       - name: Setup Pages
