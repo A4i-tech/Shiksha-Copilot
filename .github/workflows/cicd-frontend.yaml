@@ -8,6 +8,10 @@ on:
         description: "Name of the deployment"
         required: true
         type: string
+      environment:
+        description: "Environment to build the frontend for"
+        required: true
+        type: string
       api_url:
         description: "Backend API URL this frontend resource must call"
         required: true
@@ -73,11 +77,12 @@ jobs:
         working-directory: shiksha-website/shiksha-frontend
         run: |
           if [ "${{ inputs.deploy_target }}" != "" ]; then
-            sed -i "s|your_backend_url|${BACKEND_URL}|g" src/environments/environment.prod.ts
+            find src/environments -name "environment*.ts" -print \
+              -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
           fi
 
           npm ci
-          npm run build -- --configuration production \
+          npm run build -- --configuration ${{ inputs.environment }} \
             ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
 
       - name: Setup Pages
