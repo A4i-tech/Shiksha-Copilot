@@ -1,5 +1,5 @@
 
-const { validatePartsResponse } = require('../schemas/ai.response.schema');
+const { normalizePartsResponse } = require('../schemas/ai.response.schema');
 
 const mockAiResponse = {
     metadata: { user_id: "test", subject: "Math", grade: "10" },
@@ -15,7 +15,7 @@ const mockAiResponse = {
 
 try {
     console.log("Testing Node.js Default Value...");
-    const flattened = validatePartsResponse(mockAiResponse);
+    const flattened = normalizePartsResponse(mockAiResponse);
     const q1 = flattened[0];
 
     if (q1.difficulty === "Average") {

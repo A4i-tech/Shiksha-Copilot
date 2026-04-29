@@ -4,7 +4,7 @@ const QuestionBankDao = require("../dao/question.bank.dao");
 const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
-const { validatePartsResponse, validateTemplateResponse, validateBlueprintResponse } = require("../schemas/ai.response.schema");
+const { normalizePartsResponse } = require("../schemas/ai.response.schema");
 const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
@@ -374,14 +374,14 @@ class QuestionBankManager extends BaseManager {
       console.log('[Manager] AI Response received.');
       let newQuestions = response.data;
 
-      // Strict Zod validation - extracts from nested structure
-      const validatedQuestions = validatePartsResponse(newQuestions);
+      // Normalize Python response from nested blocks into the flat merge shape.
+      const normalizedQuestions = normalizePartsResponse(newQuestions);
 
-      // Restructure validated items into blocks for mergeQuestions
+      // Restructure normalized items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
         const numNeeded = template.question_distribution.length;
-        const blockQuestions = validatedQuestions.slice(itemPointer, itemPointer + numNeeded);
+        const blockQuestions = normalizedQuestions.slice(itemPointer, itemPointer + numNeeded);
         itemPointer += numNeeded;
         return {
           type: template.type,
