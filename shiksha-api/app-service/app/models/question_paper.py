@@ -47,7 +47,7 @@ class McqOption(BaseModel):
 
 class FourOptionsQuestion(BaseModel):
     question: str = Field(default="", examples=["What is the speed of light in vacuum?"])
-    options: List[McqOption] = Field(default_factory=list, examples=[[
+    options: List[McqOption] = Field(default_factory=list, min_length=4, max_length=4, examples=[[
         McqOption(label="A", text="3x10^8 m/s"),
         McqOption(label="B", text="3x10^6 m/s"),
         McqOption(label="C", text="3x10^10 m/s"),
