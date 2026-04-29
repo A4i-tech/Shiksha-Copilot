@@ -415,7 +415,6 @@ class QuestionPaperService:
 
         user_message = (
             "Generate questions for the following slots by following the rules listed below. "
-            "Ensure `item` field adheres to its respective question's `json_schema`. "
             "`keyAnswer` field must be non-empty if the question model supports it.\n\n"
             "Rules by question type:\n"
             f"{format_rules_text}\n\n"
