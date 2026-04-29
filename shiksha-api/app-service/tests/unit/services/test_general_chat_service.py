@@ -102,7 +102,7 @@ class TestGeneralChatServiceCall:
             accumulated_response = ""
             status_messages = []
             
-            async for item_json in service(messages):
+            async for item_json in service(messages, user_id="test-user-1"):
                 item = import_json.loads(item_json)
                 if item["type"] == "content":
                     accumulated_response += item["delta"]
@@ -150,7 +150,7 @@ class TestGeneralChatServiceCall:
             service = GeneralChatService()
 
             # Iterate generator
-            async for _ in service(sample_chat_messages):
+            async for _ in service(sample_chat_messages, user_id="test-user-1"):
                 pass
 
             # Verify input structure
@@ -252,7 +252,7 @@ class TestGeneralChatServiceCall:
                 ConversationMessage(role=MessageRole.USER, message="How are you?")
             ]
 
-            async for _ in service(messages): pass
+            async for _ in service(messages, user_id="test-user-1"): pass
 
             # call_args check
             assert mock_azure_openai_client.responses.create.called
@@ -311,7 +311,7 @@ class TestGeneralChatServiceCall:
             messages = [{"role": "user", "message": "Test"}]
 
             items = []
-            async for item in service(messages):
+            async for item in service(messages, user_id="test-user-1"):
                 items.append(import_json.loads(item))
             
             # Service catches exception and yields error object
@@ -350,7 +350,7 @@ class TestGeneralChatServiceCall:
             service = GeneralChatService()
             messages = [{"role": "user", "message": "Test"}]
 
-            async for _ in service(messages): pass
+            async for _ in service(messages, user_id="test-user-1"): pass
 
             # Verify prompt was loaded with correct key
             mock_template.get_prompt.assert_called_with("general_chat")
@@ -376,7 +376,7 @@ class TestGeneralChatServiceCall:
 
             # It yields an error object now
             items = []
-            async for item in service(messages):
+            async for item in service(messages, user_id="test-user-1"):
                 items.append(import_json.loads(item))
             
             assert items[-1]["type"] == "error"

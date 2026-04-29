@@ -12,6 +12,7 @@ import logging
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
 from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
+from langfuse import observe, get_client
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.core.llms import ChatMessage
@@ -299,11 +300,22 @@ class QuestionPaperService:
 
         return response_questions
 
+    @observe(name="Shiksha-QB")
     async def generate_question_bank_by_parts(self, request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
         """
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
+
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            tags=[
+                "flow:question-bank",
+                f"board:{request.board}",
+                f"grade:{request.grade}",
+                f"subject:{request.subject}",
+            ],
+        )
 
         existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
         tasks = []
@@ -313,7 +325,6 @@ class QuestionPaperService:
             tasks.append(self._generate_questions_batch_async(system_prompt, lr, questions))
 
         if not tasks:
-            raise ValueError("No generation slots could be built from template/distribution.")
 
         all_generated: list[GeneratedSlotQuestion] = []
         for raw_items in await asyncio.gather(*tasks):
@@ -330,10 +341,20 @@ class QuestionPaperService:
         ), questions=response_questions)
 
 
+    @observe(name="Shiksha-QB")
     async def get_question_distribution(self, request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
         """
         Generate question paper template based on unit-wise marks distribution.
         """
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            tags=[
+                "flow:question-bank",
+                f"board:{request.board}",
+                f"grade:{request.grade}",
+                f"subject:{request.subject}",
+            ],
+        )
 
         templates = {local_unique_id(i): t for i, t in enumerate(request.template)}
 

@@ -1,7 +1,7 @@
 from textwrap import dedent
 from typing import Dict, Any, List
 import json
-from openai import AzureOpenAI
+from langfuse.openai import AzureOpenAI
 
 from core.config import Config
 from core.models.workflow_models import SectionOutput
