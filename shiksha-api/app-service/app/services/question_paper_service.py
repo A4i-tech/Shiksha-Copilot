@@ -387,6 +387,7 @@ class QuestionPaperService:
             except RuntimeError as e:
                 logger.exception(e)
                 logger.warning("Could not populate RAG adapter, skipping RAG layer.")
+                await adapter.cleanup()
                 return None
 
             # Populate cache inside the lock so no other waiter re-initializes
