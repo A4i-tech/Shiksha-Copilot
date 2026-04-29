@@ -97,25 +97,20 @@ class QuestionPaperService:
 
         prompts = {}
 
-        try:
-            with open(qp_prompts_path, "r", encoding="utf-8") as f:
-                qp_data = yaml.safe_load(f)
-                prompts.update(qp_data)
+        with open(qp_prompts_path, "r", encoding="utf-8") as f:
+            qp_data = yaml.safe_load(f)
+            prompts.update(qp_data)
 
-            with open(blooms_path, "r", encoding="utf-8") as f:
-                blooms_data = yaml.safe_load(f)
-                prompts.update(blooms_data)
+        with open(blooms_path, "r", encoding="utf-8") as f:
+            blooms_data = yaml.safe_load(f)
+            prompts.update(blooms_data)
 
-            with open(english_grammar_path, "r", encoding="utf-8") as f:
-                grammar_data = yaml.safe_load(f)
-                prompts.update(grammar_data)
+        with open(english_grammar_path, "r", encoding="utf-8") as f:
+            grammar_data = yaml.safe_load(f)
+            prompts.update(grammar_data)
 
-            logger.info("Successfully loaded prompt templates")
-            return prompts
-
-        except Exception as e:
-            logger.error(f"Error loading prompt templates: {e}")
-            raise ValueError(f"Failed to load prompt templates: {e}")
+        logger.info("Successfully loaded prompt templates")
+        return prompts
 
     def _flatten_existing_questions(
         self, existing: List[QuestionTypeResponse]
@@ -306,50 +301,41 @@ class QuestionPaperService:
         slot: Dict[str, Any],
     ) -> str:
         """Format the system prompt using YAML templates for a specific unit slot."""
-        try:
-            # Get the main template
-            template = self.prompts.get("question_bank_parts_gen", "")
+        # Get the main template
+        template = self.prompts.get("question_bank_parts_gen", "")
 
-            # Get unit-specific information from the slot
-            unit_name = slot["unit_name"]
-            learning_outcomes = slot["learning_outcomes"]
+        # Get unit-specific information from the slot
+        unit_name = slot["unit_name"]
+        learning_outcomes = slot["learning_outcomes"]
 
-            # Get Bloom's taxonomy guide
-            blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("general", "")
-            if "english" in request.subject.lower():
-                blooms_guide = self.prompts.get("blooms-taxonomy", {}).get(
-                    "english", ""
-                )
+        # Get Bloom's taxonomy guide
+        blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("general", "")
+        if "english" in request.subject.lower():
+            blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("english", "")
 
-            # Format learning outcomes for this specific unit
-            if learning_outcomes:
-                unit_los_text = f"Unit Name: {unit_name}:\n" + "\n".join(
-                    [f"  - {lo}" for lo in learning_outcomes]
-                )
-            else:
-                unit_los_text = f"Unit Name: {unit_name} (No specific LOs provided)"
-
-            # Format the prompt for this specific unit
-            formatted_prompt = template.format(
-                BOARD=request.board,
-                MEDIUM=request.medium,
-                GRADE=request.grade,
-                SUBJECT=request.subject,
-                TOTAL_MARKS=request.total_marks,
-                CHAPTERS=unit_name,  # Single unit for this batch
-                UNIT_WISE_LEARNING_OUTCOMES=unit_los_text,
-                EXISTING_QUESTIONS_JSON=json.dumps(
-                    existing_questions, ensure_ascii=False
-                ),
-                QUESTION_BANK_BLOOM_TAXONOMY_GUIDE=blooms_guide,
-                GRAMMAR_TOPICS=self._get_grammar_topics(request),
+        # Format learning outcomes for this specific unit
+        if learning_outcomes:
+            unit_los_text = f"Unit Name: {unit_name}:\n" + "\n".join(
+                [f"  - {lo}" for lo in learning_outcomes]
             )
+        else:
+            unit_los_text = f"Unit Name: {unit_name} (No specific LOs provided)"
 
-            return formatted_prompt
-
-        except Exception as e:
-            logger.error(f"Error formatting system prompt: {e}")
-            raise ValueError(f"Failed to format system prompt: {e}")
+        # Format the prompt for this specific unit
+        return template.format(
+            BOARD=request.board,
+            MEDIUM=request.medium,
+            GRADE=request.grade,
+            SUBJECT=request.subject,
+            TOTAL_MARKS=request.total_marks,
+            CHAPTERS=unit_name,  # Single unit for this batch
+            UNIT_WISE_LEARNING_OUTCOMES=unit_los_text,
+            EXISTING_QUESTIONS_JSON=json.dumps(
+                existing_questions, ensure_ascii=False
+            ),
+            QUESTION_BANK_BLOOM_TAXONOMY_GUIDE=blooms_guide,
+            GRAMMAR_TOPICS=self._get_grammar_topics(request),
+        )
 
     def _get_format_instruction_for_type(self, qtype: QuestionType) -> str:
         """Generate format instruction for a specific question type."""
@@ -415,37 +401,29 @@ class QuestionPaperService:
         Generate questions for a batch of slots.
         Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
         """
+        # Build slot directives
+        slot_questions = slot["questions"]
+        index_path = slot.get("index_path")
+
+        # Generate dynamic format rules
+        unique_types = set(q["type"] for q in slot_questions)
+        format_rules = [
+            self._get_format_instruction_for_type(qtype) for qtype in unique_types
+        ]
+        format_rules_text = "\n".join(format_rules)
+
+        user_message = (
+            "Generate questions for the following slots by following the rules listed below. "
+            "Enure `item` field adheres to its respective question's `json_schema`. "
+            "`keyAnswer` field must be non-empty if the question model supports it.\n\n"
+            "Rules by question type:\n"
+            f"{format_rules_text}\n\n"
+            f"Question slots:\n"
+        )
+        for question in slot_questions:
+            user_message += "- " + json.dumps(question, ensure_ascii=False) + "\n"
+
         try:
-            # Build slot directives
-            slot_questions = slot["questions"]
-            index_path = slot.get("index_path")
-
-            # Generate dynamic format rules
-            unique_types = set(q["type"] for q in slot_questions)
-            format_rules = [
-                self._get_format_instruction_for_type(qtype) for qtype in unique_types
-            ]
-            format_rules_text = "\n".join(format_rules)
-
-            user_message = (
-                "Generate questions for the following slots by following the rules listed below. "
-                "Enure `item` field adheres to its respective question's `json_schema`. "
-                "`keyAnswer` field must be non-empty if the question model supports it.\n\n"
-                "Rules by question type:\n"
-                f"{format_rules_text}\n\n"
-                f"Question slots:\n"
-            )
-            for question in slot_questions:
-                user_message += "- " + json.dumps(question, ensure_ascii=False) + "\n"
-
-            print(
-                "********************* SYSTEM PROMPT *********************",
-                system_prompt,
-            )
-            print(
-                "********************* USER MESSAGE *********************", user_message
-            )
-
             if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
@@ -473,7 +451,7 @@ class QuestionPaperService:
                 content = response_content.strip("```json").strip("```")
                 return GeneratedQuestionItemResponse.model_validate_json(content).items
         except Exception as e:
-            logger.exception(f"Error in batch generation: {e}")
+            logger.exception(e)
             return []
 
     async def _generate_questions_batch_async(
@@ -567,87 +545,51 @@ class QuestionPaperService:
 
         return response_questions
 
-    async def generate_question_bank_by_parts(
-        self, request: QuestionBankPartsGenerationRequest
-    ) -> QuestionBankResponse:
+    async def generate_question_bank_by_parts(self, request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
         """
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
-        try:
-            # Build generation slots
-            slots = self._build_generation_slots(request)
-            if not slots:
-                raise ValueError(
-                    "No generation slots could be built from template/distribution."
-                )
+        # Build generation slots
+        slots = self._build_generation_slots(request)
+        if not slots:
+            raise ValueError("No generation slots could be built from template/distribution.")
 
-            # Prepare existing questions
-            existing_flat = self._flatten_existing_questions(request.existing_questions)
+        # Prepare existing questions
+        existing_flat = self._flatten_existing_questions(request.existing_questions)
 
-            # Process in parallel batches
-            all_generated: list[GeneratedQuestionItem] = []
-            batch_size = 3
+        # Process in parallel batches
+        all_generated: list[GeneratedQuestionItem] = []
+        batch_size = 3
 
-            for i in range(0, len(slots), batch_size):
-                batch_slots = slots[i : i + batch_size]
-                tasks = []
-                for j, slot in enumerate(batch_slots):
-                    index_path = slot["index_path"]
-                    logger.debug(
-                        f"[SLOT_PROCESSING] Batch {i}, Slot {j} | "
-                        f"unit='{slot['unit_name']}' | index_path='{index_path}'"
-                    )
-                    
-                    # Get Native/Qdrant adapter from cache
-                    rag_adapter = await self._get_or_create_rag_adapter(index_path)
-                    
-                    # Generate system prompt
-                    system_prompt = self._format_system_prompt(
-                        request, existing_flat, slot
-                    )
+        for i in range(0, len(slots), batch_size):
+            batch_slots = slots[i : i + batch_size]
+            tasks = []
+            for j, slot in enumerate(batch_slots):
+                index_path = slot["index_path"]
+                logger.debug(f"[SLOT_PROCESSING] Batch {i}, Slot {j} | unit='{slot['unit_name']}' | index_path='{index_path}'")
+                rag_adapter = await self._get_or_create_rag_adapter(index_path)
+                system_prompt = self._format_system_prompt(request, existing_flat, slot)
+                task = self._generate_questions_batch_async(system_prompt, slot, rag_adapter, j * 2)
+                tasks.append(task)
 
-                    # Create task
-                    task = self._generate_questions_batch_async(
-                        system_prompt, slot, rag_adapter, j * 2
-                    )
-                    tasks.append(task)
+            # Wait for batch
+            batch_results = await asyncio.gather(*tasks)
 
-                # Wait for batch
-                batch_results = await asyncio.gather(*tasks)
+            for raw_items in batch_results:
+                if raw_items:
+                    all_generated.extend(raw_items)
 
-                for raw_items in batch_results:
-                    if raw_items:
-                        all_generated.extend(raw_items)
+        response_questions = self._organize_questions_into_response(request, all_generated)
+        return QuestionBankResponse(metadata=QuestionBankMetadata(
+            user_id=request.user_id,
+            subject=request.subject,
+            grade=str(request.grade),
+            unit_names=[c.title for c in request.chapters],
+            school_name=request.school_name,
+            examination_name=request.examination_name,
+        ), questions=response_questions)
 
-            # Organize response
-            response_questions = self._organize_questions_into_response(
-                request, all_generated
-            )
-            
-            # safely get school_name (default if missing)
-            req_school_name = getattr(request, "school_name", None)
-            final_school_name = req_school_name if req_school_name else "Shiksha Partner School"
-
-            # safely get examination_name (default if missing)
-            req_exam_name = getattr(request, "examination_name", None)
-            final_exam_name = req_exam_name if req_exam_name else "Class Assessment"
-
-            return QuestionBankResponse(
-                metadata=QuestionBankMetadata(
-                    user_id=request.user_id,
-                    subject=request.subject,
-                    grade=str(request.grade),
-                    unit_names=[c.title for c in request.chapters],
-                    school_name=final_school_name,
-                    examination_name=final_exam_name, 
-                ),
-                questions=response_questions,
-            )
-
-        except Exception as e:
-            logger.error(f"Error in generate_question_bank_by_parts: {e}")
-            raise
 
     async def cleanup(self) -> None:
         """Clear the internal RAG adapter cache and resources."""
@@ -664,7 +606,7 @@ class QuestionPaperService:
         Generate question paper template based on unit-wise marks distribution.
         """
 
-        def prepare_context() -> str:
+        def prepare_context() -> dict[str, Any]:
             units_str = ""
             if len(request.chapters) > 1:
                 units_str = ", ".join(chapter.title for chapter in request.chapters)
@@ -725,62 +667,35 @@ class QuestionPaperService:
                 "OUTPUT_FORMAT": output_structure,
             }
 
-        try:
-            # Prepare Prompt Context
-            prompt_context = prepare_context()
-            prompt_template = self.prompts.get("question_bank_distribution", "")
-            prompt = prompt_template.format(**prompt_context)
+        # Prepare Prompt Context
+        prompt_context = prepare_context()
+        prompt_template = self.prompts.get("question_bank_distribution", "")
+        prompt = prompt_template.format(**prompt_context)
+        # Call Azure OpenAI with Strict System Instructions
+        response = await self.client.responses.parse(
+            model=self.chat_deployment,
+            instructions=(
+                "You are a strict data generation assistant.\n"
+                "You must output only a valid JSON Array based on the user request.\n"
+                "Do not add any conversational text, markdown formatting, or explanations."
+            ),
+            input=prompt,
+            temperature=0.1,
+            text_format=TemplateResponse
+        )
 
-            # Extract Valid Enum Values to enforce constraint
-            valid_types = [t.value for t in QuestionType]
-            valid_types_str = json.dumps(valid_types, indent=2)
+        if not response.output_parsed:
+            logger.error(f"Failed raw response: {response.output_text}")
+            raise RuntimeError("The AI model failed to generate a valid JSON structure.")
 
-            print(
-                "********************** QUESTION DISTRIBUTION PROMPT **********************",
-                prompt,
-            )
+        for item in response.output_parsed.items:
+            if item.question_distribution is None:
+                item.question_distribution = []
 
-            # Call Azure OpenAI with Strict System Instructions
-            response = await self.client.responses.parse(
-                model=self.chat_deployment,
-                instructions=(
-                    "You are a strict data generation assistant.\n"
-                    "You must output only a valid JSON Array based on the user request.\n"
-                    "Do not add any conversational text, markdown formatting, or explanations.\n\n"
-                    "CRITICAL SCHEMA RULES:\n"
-                    "1. The output objects must NOT contain a 'description' field.\n"
-                    "2. The 'type' field must match exactly one of the following strings:\n"
-                    f"{valid_types_str}\n"
-                    "3. 'question_distribution' must be a list of objects with 'unit_name' and 'objective'.\n"
-                ),
-                input=prompt,
-                temperature=0.1,
-                text_format=TemplateResponse
-            )
-
-            if not response.output_parsed:
-                logger.error(f"Failed raw response: {response.output_text}")
-                raise ValueError("The AI model failed to generate a valid JSON structure.")
-
-            print(
-                "********************** QUESTION DISTRIBUTION RESPONSE **********************",
-                response,
-            )
-
-            for item in response.output_parsed.items:
-                if item.question_distribution is None:
-                    item.question_distribution = []
-
-            verfication_status, reason = (
-                request.verify_template_for_marks_and_objective_distribution(response.output_parsed.items)
-            )
-            logger.info(verfication_status)
-            logger.info(reason)
-
-            return response.output_parsed.items
-        except Exception as e:
-            logger.exception(f"Error in get_question_distribution: {e}")
-            raise
+        verfication_status, reason = request.verify_template_for_marks_and_objective_distribution(response.output_parsed.items)
+        logger.info(verfication_status)
+        logger.info(reason)
+        return response.output_parsed.items
 
 
 QUESTION_PAPER_SERVICE_INSTANCE = QuestionPaperService()

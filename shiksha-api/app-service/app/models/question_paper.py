@@ -265,6 +265,8 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     total_marks: int = Field(..., description="Total marks for the question paper")
     template: List[Template] = Field(..., description="Question distribution template specifying types and marks")
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
+    school_name: str = "Shiksha Partner School"
+    examination_name: str = "Class Assessment"
 
 
 class QBQuestionDistributionGenerationRequest(BaseModel):
