@@ -629,23 +629,6 @@ class QuestionPaperService:
                 [t.model_dump() for t in request.template], indent=2
             )
 
-            # Example structure to guide the LLM
-            output_structure = json.dumps(
-                [
-                    Template(
-                        type=QuestionType.ANSWER_SHORT,
-                        number_of_questions=3,
-                        marks_per_question=2,
-                        question_distribution=[
-                            QuestionDistribution(
-                                unit_name="Example Unit Name", objective="Knowledge"
-                            )
-                        ],
-                    ).model_dump()
-                ],
-                indent=4,
-            )
-
             # Get Bloom's taxonomy guide
             blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("general", "")
             if "english" in request.subject.lower():
@@ -664,7 +647,6 @@ class QuestionPaperService:
                 "MARKS_DISTRIBUTION": marks_distribution_str,
                 "OBJECTIVE_DISTRIBUTION": objective_distribution_str,
                 "TEMPLATE_JSON": template_str,
-                "OUTPUT_FORMAT": output_structure,
             }
 
         # Prepare Prompt Context
