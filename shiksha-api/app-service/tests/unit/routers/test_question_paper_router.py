@@ -24,7 +24,7 @@ def mock_question_paper_service():
 
 
 class TestTranslateJsonEndpoint:
-    """Tests for the /question-paper/translate_json endpoint."""
+    """Tests for the /question-paper/translate-json endpoint."""
 
     def test_translate_json_same_language(self, mock_question_paper_service):
         """Test translation when source and target languages match."""
@@ -37,10 +37,10 @@ class TestTranslateJsonEndpoint:
         }
 
         with patch("app.routers.question_paper.detect", return_value="en"):
-            response = client.post("/question-paper/translate_json", json=request_data)
+            response = client.post("/question-paper/translate-json", json=request_data)
 
         assert response.status_code == 200
-        assert response.json()["translated_json"] == request_data["json_data"]
+        assert response.json() == request_data["json_data"]
 
     def test_translate_json_with_language_map(self, mock_question_paper_service):
         """Test translation with mapped language codes."""
@@ -52,12 +52,11 @@ class TestTranslateJsonEndpoint:
             },
         }
 
-        response = client.post("/question-paper/translate_json", json=request_data)
+        response = client.post("/question-paper/translate-json", json=request_data)
 
         assert response.status_code == 200
         data = response.json()
-        assert "translated_json" in data
-        assert isinstance(data["translated_json"], dict)
+        assert isinstance(data, dict)
 
     def test_translate_json_missing_fields(self):
         """Test translation request with missing required fields."""
@@ -66,7 +65,7 @@ class TestTranslateJsonEndpoint:
             # Missing json_data
         }
 
-        response = client.post("/question-paper/translate_json", json=request_data)
+        response = client.post("/question-paper/translate-json", json=request_data)
 
         assert response.status_code == 422  # Validation error
 
@@ -81,19 +80,19 @@ class TestTranslateJsonEndpoint:
             new_callable=AsyncMock,
             side_effect=_mock_translate_same_data(request_data["json_data"]),
         ):
-            response = client.post("/question-paper/translate_json", json=request_data)
+            response = client.post("/question-paper/translate-json", json=request_data)
 
         assert response.status_code == 200
-        assert response.json()["translated_json"] == request_data["json_data"]
+        assert response.json() == request_data["json_data"]
 
     def test_translate_json_empty_json_data(self, mock_question_paper_service):
         """Test translation with empty JSON data."""
         request_data = {"target_language": "English", "json_data": {}}
 
-        response = client.post("/question-paper/translate_json", json=request_data)
+        response = client.post("/question-paper/translate-json", json=request_data)
 
         assert response.status_code == 200
-        assert response.json()["translated_json"] == {}
+        assert response.json() == {}
 
     def test_translate_json_nested_structure(self, mock_question_paper_service):
         """Test translation with deeply nested JSON structure (structure preserved)."""
@@ -119,11 +118,11 @@ class TestTranslateJsonEndpoint:
             new_callable=AsyncMock,
             side_effect=_mock_translate_same_data(json_data),
         ):
-            response = client.post("/question-paper/translate_json", json=request_data)
+            response = client.post("/question-paper/translate-json", json=request_data)
 
         assert response.status_code == 200
         data = response.json()
-        assert data["translated_json"]["parts"][0]["part_name"] == "Part A"
+        assert data["parts"][0]["part_name"] == "Part A"
 
 
 class TestHelperFunctions:
@@ -168,13 +167,6 @@ class TestHelperFunctions:
 
         result = get_sample_text(data)
         assert "longer instruction" in result.lower()
-
-    def test_translate_json_placeholder_removed(self):
-        """translate_json helper was removed; translation is done via TranslationService."""
-        from app.routers.question_paper import TranslationService
-
-        assert TranslationService is not None
-        # Endpoint behavior is covered by TestTranslateJsonEndpoint tests
 
 
 class TestLanguageMapping:

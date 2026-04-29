@@ -220,25 +220,14 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async translateQuestionPaper(payload) {
+  async translateQuestionPaper(target_language, json_data) {
     try {
       const pythonUrl = process.env.LLM_API_BASE_URL;
-      const response = await axios.post(
-        `${pythonUrl}/question-paper/translate_json`,
-        payload
-      );
-      return formatApiReponse(
-        true,
-        "Translation processed successfully",
-        response.data
-      );
+      const response = await axios.post(`${pythonUrl}/question-paper/translate-json`, {target_language, json_data});
+      return formatApiReponse(true, "Translation processed successfully", response.data);
     } catch (err) {
       console.error("Translation Manager Error:", err.message);
-      return formatApiReponse(
-        false,
-        "Translation failed",
-        err.response?.data || err.message
-      );
+      return formatApiReponse(false, "Translation failed", err.response?.data || err.message);
     }
   }
 
@@ -428,27 +417,18 @@ class QuestionBankManager extends BaseManager {
 
     console.log(`Initiating translation check for target language: ${language}...`);
     try {
-      const translationPayload = {
-        target_language: language,
-        json_data: {
-          title: examinationName || "Question Paper",
-          language: language,
-          parts: [
-            {
-              part_name: "Questions",
-              questions: convertToCamelCase(mergedList),
-            },
-          ],
-        },
-      };
+      const transResponse = await this.translateQuestionPaper(language, {
+        title: examinationName || "Question Paper",
+        language: language,
+        parts: [
+          {part_name: "Questions", questions: convertToCamelCase(mergedList)},
+        ],
+      });
 
-      const transResponse = await this.translateQuestionPaper(translationPayload);
-
-      if (transResponse.success && transResponse.data && transResponse.data.translated_json) {
-        const translatedData = transResponse.data.translated_json;
-        if (translatedData.parts && translatedData.parts[0].questions) {
+      if (transResponse.success && transResponse.data) {
+        if (transResponse.data.parts && transResponse.data.parts[0].questions) {
           console.log("Translation process completed.");
-          return translatedData.parts[0].questions;
+          return transResponse.data.parts[0].questions;
         }
       }
     } catch (transErr) {
