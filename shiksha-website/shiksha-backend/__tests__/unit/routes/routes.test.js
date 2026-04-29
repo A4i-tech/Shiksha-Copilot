@@ -36,7 +36,6 @@ const controllerPaths = [
   "../../../controllers/master.lesson.controller.js",
   "../../../controllers/master.resource.controller.js",
   "../../../controllers/master.subject.controller.js",
-  "../../../controllers/question.bank.cache.controller.js",
   "../../../controllers/question.bank.controller.js",
   "../../../controllers/region.controller.js",
   "../../../controllers/schedule.controller.js",
@@ -190,11 +189,6 @@ const routeCases = [
     file: "master.subject.routes.js",
     method: "post",
     path: "/master-subject/create",
-  },
-  {
-    file: "question.bank.cache.routes.js",
-    method: "post",
-    path: "/question-bank-cache/upload-cache",
   },
   {
     file: "question.bank.routes.js",

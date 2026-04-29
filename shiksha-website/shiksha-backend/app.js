@@ -27,7 +27,6 @@ const teacherLessonRoutes = require("./routes/teacher.lesson.plan.routes");
 const lessonFeedbackRoutes = require("./routes/feedback.lesson.routes");
 const resourceFeedbackRoutes = require("./routes/teacher.feedback.routes");
 const questionBankRoutes = require("./routes/question.bank.routes.js");
-const questionBankCacheRoutes = require("./routes/question.bank.cache.routes.js");
 const lessonPlanTemplateRoutes = require("./routes/lesson.plan.template.routes.js");
 const chatRoutes = require("./routes/chat.routes");
 const auditRoutes = require("./routes/audit.log.route");
@@ -80,7 +79,6 @@ app.use("/api", resourceFeedbackRoutes);
 app.use("/api", chatRoutes);
 app.use("/api", auditRoutes);
 app.use("/api", questionBankRoutes)
-app.use("/api", questionBankCacheRoutes)
 app.use("/api", lessonPlanTemplateRoutes)
 app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);

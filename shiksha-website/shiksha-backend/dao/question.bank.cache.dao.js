@@ -7,26 +7,6 @@ class QuestionBankCacheDao extends BaseDao {
     super(QuestionBankCache);
   }
 
-  async uploadCache(data) {
-    try {
-      const result = await QuestionBankCache.insertMany(data);
-      return result;
-    } catch (err) {
-      console.log("Error --> questionBankCacheDao -> uploadCache()", err);
-      throw err;
-    }
-  }
-
-  async uploadEmbedding(data) {
-    try {
-      const result = await QuestionBankEmbedding.insertMany(data);
-      return result;
-    } catch (err) {
-      console.log("Error --> questionBankCacheDao -> uploadEmbedding()", err);
-      throw err;
-    }
-  }
-
   async findInCache(chapterIds, unitLevel, unitNames) {
     try {
       const result = await QuestionBankCache.find({
