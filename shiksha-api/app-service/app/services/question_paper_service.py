@@ -451,10 +451,8 @@ class QuestionPaperService:
                 logger.info("Using Direct LLM Generation (No RAG).")
                 response = await self.client.responses.parse(
                     model=self.chat_deployment,
-                    input=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message}
-                    ],
+                    instructions=system_prompt,
+                    input=user_message,
                     text_format=GeneratedQuestionItemResponse,
                     temperature=0.7,
                 )
@@ -745,25 +743,17 @@ class QuestionPaperService:
             # Call Azure OpenAI with Strict System Instructions
             response = await self.client.responses.parse(
                 model=self.chat_deployment,
-                input=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a strict data generation assistant.\n"
-                            "You must output only a valid JSON Array based on the user request.\n"
-                            "Do not add any conversational text, markdown formatting, or explanations.\n\n"
-                            "CRITICAL SCHEMA RULES:\n"
-                            "1. The output objects must NOT contain a 'description' field.\n"
-                            "2. The 'type' field must match exactly one of the following strings:\n"
-                            f"{valid_types_str}\n"
-                            "3. 'question_distribution' must be a list of objects with 'unit_name' and 'objective'.\n"
-                        ),
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    },
-                ],
+                instructions=(
+                    "You are a strict data generation assistant.\n"
+                    "You must output only a valid JSON Array based on the user request.\n"
+                    "Do not add any conversational text, markdown formatting, or explanations.\n\n"
+                    "CRITICAL SCHEMA RULES:\n"
+                    "1. The output objects must NOT contain a 'description' field.\n"
+                    "2. The 'type' field must match exactly one of the following strings:\n"
+                    f"{valid_types_str}\n"
+                    "3. 'question_distribution' must be a list of objects with 'unit_name' and 'objective'.\n"
+                ),
+                input=prompt,
                 temperature=0.1,
                 text_format=TemplateResponse
             )
