@@ -1,55 +1,4 @@
-const crypto = require("crypto");
-const questionBankEmbedding = require("../models/question.bank.embedding.model");
 const mongoose = require("mongoose");
-
-function cosineSimilarity(vec1, vec2) {
-  const dotProduct = vec1.reduce(
-    (sum, value, idx) => sum + value * vec2[idx],
-    0
-  );
-  const magnitude1 = Math.sqrt(
-    vec1.reduce((sum, value) => sum + value * value, 0)
-  );
-  const magnitude2 = Math.sqrt(
-    vec2.reduce((sum, value) => sum + value * value, 0)
-  );
-  return dotProduct / (magnitude1 * magnitude2);
-}
-
-/**
- * Function to find similarity between list of embedding and new embedding
- * @param {*} A_LIST 
- * @param {*} B 
- * @returns similarity score
- */
-function findMostSimilar(A_LIST, B) {
-  const similarities = A_LIST.map((embedding) =>
-    cosineSimilarity(embedding, B)
-  );
-  const maxIndex = similarities.indexOf(Math.max(...similarities));
-  return [maxIndex, similarities[maxIndex]];
-}
-
-/**
- * Function to generate hash useing sha256
- * @param {*} inputStr 
- * @returns hash value of the inputstr
- */
-function generateHash(inputStr) {
-  return crypto.createHash("sha256").update(inputStr).digest("hex");
-}
-
-/**
- * Function to pre process text, remove space and convert to lowercase
- * @param {*} text 
- * @returns preprocessed text
- */
-function preprocess(text) {
-  return text
-    .replace(/[^a-zA-Z\s]/g, "")
-    .toLowerCase()
-    .trim();
-}
 
 /**
  * Function to filter the template with match the following type
@@ -83,14 +32,12 @@ function filterTemplate(qbConfigList) {
  * @param {*} cacheDocs 
  * @returns question from cache, not found template, not found index, cache summary
  */
-async function getQuestions(templateList, cacheDocs) {
+async function getQuestions(templateList, cacheDocs, options = {}) {
   try {
     let res = [];
     let notFoundRes = [];
     let notFoundIndices = [];
-    let includedQuestions = [];
-
-    const simiThreshold = parseFloat(process.env.SIMILARITY_THRESHOLD) || 0.9;
+    let includedQuestionKeys = [];
     const CACHE_USAGE_RATE = parseFloat(process.env.CACHE_USAGE_RATE) || 0.9;
     const shouldUseCache = () => Math.random() <= CACHE_USAGE_RATE;
 
@@ -108,8 +55,8 @@ async function getQuestions(templateList, cacheDocs) {
         template,
         cacheDocs,
         shouldUseCache,
-        simiThreshold,
-        includedQuestions
+        includedQuestionKeys,
+        options
       );
 
       res.push(responseModel);
@@ -147,10 +94,13 @@ async function getQuestions(templateList, cacheDocs) {
   }
 }
 
-async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, simiThreshold, includedQuestions) {
+async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, includedQuestionKeys, options = {}) {
   let total = 0;
   let hits = 0;
   let misses = 0;
+  const handledPoolKeys = new Set();
+  const returnPool = options.returnPool === true;
+  const poolLimit = parseInt(process.env.CACHE_QUESTION_PER_TYPE) || 10;
 
   const questionTypeResponse = new QuestionTypeResponse(
     template.type,
@@ -168,6 +118,8 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
     total++;
     const unitName = (questionDistribution[i].unit_name || questionDistribution[i].unitName || "").toLowerCase().trim();
     const objective = questionDistribution[i].objective.toLowerCase();
+    const marks = template.marks_per_question || template.marksPerQuestion;
+    const poolKey = `${unitName}|${objective}|${template.type}|${marks}`;
 
     if (!shouldUseCache()) {
       misses++;
@@ -180,14 +132,14 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
     const validCandidates = [];
     for (const cacheDoc of cacheDocs) {
       if (
-        cacheDoc.unitName.toLowerCase() === unitName &&
-        cacheDoc.questionsByObjective[objective]
+        cacheDoc.unitName.toLowerCase() === unitName
       ) {
-        const questionList = cacheDoc.questionsByObjective[objective];
+        const questionList = cacheDoc.questions || [];
         for (const questionInCache of questionList) {
           if (
+            questionInCache.objective === objective &&
             questionInCache.type === template.type &&
-            questionInCache.marks === (template.marks_per_question || template.marksPerQuestion)
+            questionInCache.marks === marks
           ) {
             validCandidates.push(questionInCache);
           }
@@ -202,48 +154,37 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, si
       continue;
     }
 
-    let foundQuestion = false;
+    if (returnPool && handledPoolKeys.has(poolKey)) {
+      hits++;
+      continue;
+    }
 
-    // Shuffle candidates to try random ones first instead of checking ALL for similarity
-    // This optimization prevents processing all embeddings if we find a good one early
+    let foundQuestion = false;
+    let addedFromPool = 0;
+
     const shuffledCandidates = validCandidates.sort(() => 0.5 - Math.random());
 
     for (const candidate of shuffledCandidates) {
-      const questionText = preprocess(candidate.question.question);
-      const questionHash = generateHash(questionText);
+      const questionKey = JSON.stringify(candidate.question || "");
 
-      // Optimization: In a real scenario, embeddings should be cached or fetched in bulk.
-      // Here we keep one-by-one but exit early.
-      const embDocs = await questionBankEmbedding.findById(questionHash);
-      if (!embDocs) continue;
-
-      const emb = embDocs["embeddings"];
-      let isDuplicate = false;
-
-      if (includedQuestions.length > 0) {
-        const [idx, simiScore] = findMostSimilar(
-          includedQuestions.map((item) => item[1]),
-          emb
-        );
-        if (simiScore > simiThreshold) {
-          isDuplicate = true;
-        }
-      }
-
-      if (!isDuplicate) {
-        // Found a valid, non-duplicate question
+      if (!includedQuestionKeys.includes(questionKey)) {
         const selectedQuestion = JSON.parse(JSON.stringify(candidate));
         selectedQuestion.objective = objective.charAt(0).toUpperCase() + objective.slice(1);
 
         questionTypeResponse.questions.push(selectedQuestion);
-        includedQuestions.push([candidate, emb]);
+        includedQuestionKeys.push(questionKey);
         foundQuestion = true;
-        hits++;
-        break; // Stop looking for this slot
+        addedFromPool++;
+        if (!returnPool || addedFromPool >= poolLimit) {
+          break;
+        }
       }
     }
 
-    if (!foundQuestion) {
+    if (foundQuestion) {
+      hits++;
+      handledPoolKeys.add(poolKey);
+    } else {
       misses++;
       notFoundTemplate.question_distribution.push(questionDistribution[i]);
       notFoundQuestionIndices.push(i);
@@ -336,36 +277,8 @@ function mergeQuestions(existingQuestions, newQuestions, indices) {
 
 
 function createQuestionObj(type, marks, questionObj, objective) {
-  let question;
-
-  if (typeof questionObj.keyAnswer !== "string" || questionObj.keyAnswer.trim() === "") {
-    console.warn(
-      `[question.bank.cache.helper.createQuestionObj] Missing or non-string keyAnswer for type="${type}". ` +
-      `Defaulting to empty string.`,
-      { question: questionObj.question }
-    );
-  }
-
-  const safeKeyAnswer = typeof questionObj.keyAnswer === "string" ? questionObj.keyAnswer : "";
-
-  if (
-    type ===
-    "Four alternatives are given for each of the following questions, choose the correct alternative"
-  ) {
-    question = {
-      question: questionObj.question || "",
-      options: questionObj.options || [],
-      keyAnswer: safeKeyAnswer,
-    };
-  } else {
-    question = {
-      question: questionObj.question || "",
-      keyAnswer: safeKeyAnswer,
-    };
-  }
-
   return {
-    question,
+    question: questionObj,
     marks,
     type,
     objective: objective || questionObj.objective || 'Knowledge'
@@ -435,14 +348,7 @@ function processCacheHits(
     if (match) {
       const updatedEntry = JSON.parse(JSON.stringify(match));
 
-      updatedEntry.questionsByObjective =
-        updatedEntry.questionsByObjective || {};
-
-      objectives.forEach((objective) => {
-        if (!updatedEntry.questionsByObjective[objective]) {
-          updatedEntry.questionsByObjective[objective] = [];
-        }
-      });
+      updatedEntry.questions = updatedEntry.questions || [];
 
       result.push(updatedEntry);
     } else {
@@ -450,12 +356,8 @@ function processCacheHits(
         chapterId,
         unitName: chapterName,
         unitLevel,
-        questionsByObjective: {},
+        questions: [],
       };
-
-      objectives.forEach((objective) => {
-        newEntry.questionsByObjective[objective] = [];
-      });
 
       result.push(newEntry);
     }
@@ -485,14 +387,7 @@ function processCacheHitsForSubtopic(
     if (match) {
       const updatedEntry = JSON.parse(JSON.stringify(match));
 
-      updatedEntry.questionsByObjective =
-        updatedEntry.questionsByObjective || {};
-
-      objectives.forEach((objective) => {
-        if (!updatedEntry.questionsByObjective[objective]) {
-          updatedEntry.questionsByObjective[objective] = [];
-        }
-      });
+      updatedEntry.questions = updatedEntry.questions || [];
 
       result.push(updatedEntry);
     } else {
@@ -500,12 +395,8 @@ function processCacheHitsForSubtopic(
         chapterId,
         unitName: chapterName,
         unitLevel,
-        questionsByObjective: {},
+        questions: [],
       };
-
-      objectives.forEach((objective) => {
-        newEntry.questionsByObjective[objective] = [];
-      });
 
       result.push(newEntry);
     }
@@ -566,14 +457,14 @@ class QuestionBankCacheDoc {
     chapterId,
     unitName,
     unitLevel,
-    questionsByObjective,
+    questions,
     version = "v1",
     createdAt = new Date().toISOString()
   ) {
     this.chapterId = chapterId;
     this.unitName = unitName;
     this.unitLevel = unitLevel;
-    this.questionsByObjective = questionsByObjective;
+    this.questions = questions;
     this.version = version;
     this.createdAt = createdAt;
   }
@@ -652,10 +543,6 @@ class QuestionBankPartsGenerationRequest {
 }
 
 module.exports = {
-  cosineSimilarity,
-  findMostSimilar,
-  generateHash,
-  preprocess,
   QuestionType,
   Question,
   TextQuestion,

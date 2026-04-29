@@ -197,22 +197,7 @@ describe("worker modules", () => {
         marks: m,
         question: q.question,
       })),
-      preprocess: jest.fn((t) => t),
-      generateHash: jest.fn((t) => `hash-${t}`),
-      findMostSimilar: jest.fn(() => [0, 0]),
       fixObjectIdsInArray: jest.fn((arr) => arr),
-    }));
-    jest.doMock("../../../services/question.bank.bot.service", () => ({
-      postToEmbedding: jest.fn(() =>
-        Promise.resolve({ status: 200, data: [1, 2] })
-      ),
-      postToEmbeddings: jest.fn(() => Promise.resolve([[1, 2]])),
-    }));
-    jest.doMock("../../../models/question.bank.embedding.model.js", () => ({
-      find: jest.fn(() => Promise.resolve([])),
-      exists: jest.fn(() => Promise.resolve(false)),
-      create: jest.fn(() => Promise.resolve()),
-      insertMany: jest.fn(() => Promise.resolve()),
     }));
     jest.doMock("../../../models/question.bank.cache.model.js", () => {
       function QuestionBankCache(doc) {
@@ -240,7 +225,7 @@ describe("worker modules", () => {
         {
           unitName: "U1",
           unitLevel: "lvl",
-          questionsByObjective: { objective: [] },
+          questions: [],
         },
       ],
       unitLevel: "lvl",

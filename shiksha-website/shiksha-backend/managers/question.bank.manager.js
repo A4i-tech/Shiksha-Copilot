@@ -18,7 +18,6 @@ const { convertToCamelCase } = require("../helper/formatter");
 const QuestionBankCacheDao = require("../dao/question.bank.cache.dao");
 const {
   getQuestions,
-  filterTemplate,
   mergeQuestions,
   processCacheHits,
   processCacheHitsForSubtopic,
@@ -177,7 +176,7 @@ class QuestionBankManager extends BaseManager {
 
       // 1. Get Questions (Manual or AI + Cache)
       const aiResult = await this._handleAIQuestionGeneration(context, user, req.body);
-      let { mergedList, notFoundQuestions, cacheSummary, rawCacheHit } = aiResult;
+      let { mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache } = aiResult;
 
       // 2. Translation
       mergedList = await this._handleTranslation(language, mergedList, examinationName);
@@ -185,6 +184,15 @@ class QuestionBankManager extends BaseManager {
       // 3. Return Preview if requested
       if (isPreview === true || isPreview === "true") {
         if (session && session.inTransaction()) await session.abortTransaction();
+        await this._enqueueCacheUpdate(
+          null,
+          context,
+          mergedList,
+          notFoundQuestions,
+          cacheSummary,
+          rawCacheHit,
+          aiQuestionsForCache
+        );
         return formatApiReponse(
           true,
           "Question bank preview generated successfully!",
@@ -201,6 +209,16 @@ class QuestionBankManager extends BaseManager {
         notFoundQuestions,
         cacheSummary,
         rawCacheHit
+      );
+
+      await this._enqueueCacheUpdate(
+        result._id,
+        context,
+        mergedList,
+        notFoundQuestions,
+        cacheSummary,
+        rawCacheHit,
+        aiQuestionsForCache
       );
 
       if (session) await session.commitTransaction();
@@ -301,6 +319,7 @@ class QuestionBankManager extends BaseManager {
     let notFoundQuestions = [];
     let cacheSummary = {};
     let rawCacheHit = [];
+    let aiQuestionsForCache = [];
 
     if (questions && questions.length > 0) {
       console.log("[Manager] Manual Flow detected. Using provided questions/sections.");
@@ -308,43 +327,37 @@ class QuestionBankManager extends BaseManager {
       return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
     }
 
+    const cacheQuestionFilters = this._buildCacheQuestionFilters(template || []);
+
     // AI GENERATION FLOW
-    const cacheHit = await this.questionBankCacheDao.findInCache(
-      chapterIds,
-      unitLevel,
-      processedUnitNames
-    );
+    const [cacheHit, fullCacheHit] = await Promise.all([
+      this.questionBankCacheDao.findInCache(
+        chapterIds,
+        unitLevel,
+        processedUnitNames,
+        cacheQuestionFilters
+      ),
+      this.questionBankCacheDao.findInCache(
+        chapterIds,
+        unitLevel,
+        processedUnitNames
+      )
+    ]);
 
-    rawCacheHit = (cacheHit || []).map((doc) => doc.toObject());
-
-    const {
-      matchTheFollowingTemplate,
-      matchTheFollowingIndex,
-      filteredTemplate,
-    } = filterTemplate(template || []);
+    rawCacheHit = (fullCacheHit || []).map((doc) => doc.toObject());
 
     const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
-      filteredTemplate,
-      cacheHit
+      template || [],
+      cacheHit,
+      { returnPool: context.isPreview === true || context.isPreview === "true" }
     );
     cacheSummary = summary;
-    notFoundQuestions = structuredClone(notFoundRes);
+    notFoundQuestions = JSON.parse(JSON.stringify(notFoundRes));
 
     const templatePayload = await this._createQuestionBankPayload(
       originalBody,
       user
     );
-
-    // Re-inject Match The Following placeholders
-    if (matchTheFollowingTemplate.length) {
-      for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-        notFoundRes.splice(
-          matchTheFollowingIndex[i],
-          0,
-          matchTheFollowingTemplate[i]
-        );
-      }
-    }
 
     let newResQuestions;
     if (notFoundRes.length) {
@@ -378,38 +391,35 @@ class QuestionBankManager extends BaseManager {
         };
       });
 
-      const filteredQuestions = filterTemplate(questionsInBlocks);
-      newResQuestions = filteredQuestions.filteredTemplate;
+      newResQuestions = questionsInBlocks;
+      aiQuestionsForCache = newResQuestions;
 
       mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
-
-      if (filteredQuestions.matchTheFollowingTemplate.length) {
-        for (let i = 0; i < filteredQuestions.matchTheFollowingTemplate.length; i++) {
-          mergedList.splice(
-            filteredQuestions.matchTheFollowingIndex[i],
-            0,
-            filteredQuestions.matchTheFollowingTemplate[i]
-          );
-        }
-      }
     } else {
       mergedList = res;
     }
 
-    // Re-inject Match following for full list
-    if (matchTheFollowingTemplate.length) {
-      for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-        if (mergedList.length < (template || []).length) {
-          mergedList.splice(
-            matchTheFollowingIndex[i],
-            0,
-            matchTheFollowingTemplate[i]
-          );
-        }
-      }
-    }
+    return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache };
+  }
 
-    return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
+  _buildCacheQuestionFilters(template) {
+    const filters = [];
+
+    (template || []).forEach((item) => {
+      const marks = item.marks_per_question || item.marksPerQuestion;
+      const questionDistribution = item.question_distribution || item.questionDistribution || [];
+
+      questionDistribution.forEach((distribution) => {
+        filters.push({
+          unitName: distribution.unit_name || distribution.unitName,
+          objective: (distribution.objective || "").toLowerCase(),
+          type: item.type,
+          marks,
+        });
+      });
+    });
+
+    return filters;
   }
 
   async _handleTranslation(language, mergedList, examinationName) {
@@ -477,8 +487,22 @@ class QuestionBankManager extends BaseManager {
 
     const questionBankConfig = await this.questionBankDao.create(configData, session);
 
-    // Cache Summary & Update Job
+    return {
+      ...questionBankConfig.toObject(),
+      questions: mergedList,
+    };
+  }
+
+  async _enqueueCacheUpdate(questionBankConfigId, context, mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache) {
     if (notFoundQuestions.length) {
+      const {
+        isMultiChapter,
+        chapterIds,
+        objectiveDistribution,
+        processedUnitNames,
+        unitLevel
+      } = context;
+
       const objectives = objectiveDistribution?.length
         ? objectiveDistribution.map((e) =>
           (e.objective || "").toLowerCase()
@@ -502,11 +526,12 @@ class QuestionBankManager extends BaseManager {
         );
 
       let cacheSummaryData = convertToCamelCase({
-        questionBankConfigId: questionBankConfig._id,
+        questionBankConfigId,
         totalQuestionsToFindInCache: cacheSummary.totalDecisions,
         cacheHit: cacheSummary.cacheHitCount,
         cacheMiss: cacheSummary.cacheMissCount,
         notFoundResponse: mergedList,
+        aiQuestionsForCache,
         processedCache,
         unitLevel,
       });
@@ -515,34 +540,18 @@ class QuestionBankManager extends BaseManager {
 
       cacheSummaryData.notFoundQuestions = notFoundQuestions;
 
-      const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData, session);
+      const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData);
 
       addCacheJob({
         notFoundQuestions,
         processedCache,
         unitLevel,
-        newResQuestions: mergedList,
+        newResQuestions: aiQuestionsForCache,
         cacheSummaryId: summary._id.toString(),
       }).catch((err) => {
         console.error("Failed to enqueue cache update job", err);
       });
-    } else {
-      let cacheSummaryData = convertToCamelCase({
-        questionBankConfigId: questionBankConfig._id,
-        totalQuestionsToFindInCache: cacheSummary.totalDecisions,
-        cacheHit: cacheSummary.cacheHitCount,
-        cacheMiss: cacheSummary.cacheMissCount,
-        unitLevel,
-        isCacheUpdated: true,
-      });
-
-      await this.questionBankCacheSummaryDao.create(cacheSummaryData, session);
     }
-
-    return {
-      ...questionBankConfig.toObject(),
-      questions: mergedList,
-    };
   }
 
   _mapTemplateTypes(templateArray) {
@@ -772,6 +781,7 @@ class QuestionBankManager extends BaseManager {
           notFoundQuestions,
           processedCache,
           unitLevel,
+          aiQuestionsForCache,
           notFoundResponse,
         } = job;
 
@@ -779,7 +789,7 @@ class QuestionBankManager extends BaseManager {
           notFoundQuestions,
           processedCache,
           unitLevel,
-          newResQuestions: notFoundResponse,
+          newResQuestions: aiQuestionsForCache || notFoundResponse,
           cacheSummaryId: job._id.toString(),
         });
       }
@@ -796,14 +806,14 @@ class QuestionBankManager extends BaseManager {
       if (!failedJob) throw new Error("Job not found");
       failedJob = failedJob.toObject();
 
-      const { notFoundQuestions, processedCache, unitLevel, notFoundResponse } =
+      const { notFoundQuestions, processedCache, unitLevel, aiQuestionsForCache, notFoundResponse } =
         failedJob;
 
       addCacheJob({
         notFoundQuestions,
         processedCache,
         unitLevel,
-        newResQuestions: notFoundResponse,
+        newResQuestions: aiQuestionsForCache || notFoundResponse,
         cacheSummaryId: failedJob._id.toString(),
       });
 

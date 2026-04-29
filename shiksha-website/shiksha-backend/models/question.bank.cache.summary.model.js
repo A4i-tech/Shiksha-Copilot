@@ -47,7 +47,6 @@ const questionBankCacheSummarySchema = new Schema({
     questionBankConfigId:{
         type: ObjectId,
         ref: "QuestionBankConfiguration",
-        required: true,
     },
     totalQuestionsToFindInCache:{
         type:Number
@@ -63,6 +62,10 @@ const questionBankCacheSummarySchema = new Schema({
       default:undefined
     },
     notFoundResponse:{
+      type:[questionsSchema],
+      default:undefined
+    },
+    aiQuestionsForCache:{
       type:[questionsSchema],
       default:undefined
     },

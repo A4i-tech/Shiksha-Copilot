@@ -2,112 +2,26 @@ const { parentPort } = require("worker_threads");
 const dbService = require("../config/db.js");
 const {
   createQuestionObj,
-  preprocess,
-  generateHash,
-  findMostSimilar,
   fixObjectIdsInArray,
 } = require("../helper/question.bank.cache.helper");
-const {
-  postToEmbedding,
-  postToEmbeddings,
-} = require("../services/question.bank.bot.service");
-const QuestionBankEmbedding = require("../models/question.bank.embedding.model.js");
 const QuestionBankCache = require("../models/question.bank.cache.model.js");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model.js");
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-const updateEmbeddings = async (questionsToEmbed) => {
-  try {
-    const payloads = [];
-    const bulkEmbedding = [];
-    for (let i = 0; i < questionsToEmbed.length; i++) {
-      payloads.push({
-        text: questionsToEmbed[i],
-      });
-
-      const hashVal = generateHash(questionsToEmbed[i]);
-
-      const embeddingObj = {
-        _id: hashVal,
-        text: questionsToEmbed[i],
-        embeddings: [],
-      };
-
-      bulkEmbedding.push(embeddingObj);
-    }
-
-    const responses = await postToEmbeddings(payloads);
-
-    if (!responses) {
-      throw new Error("Something went wrong with copilot! Please try later");
-    }
-
-    responses.forEach((e, i) => {
-      bulkEmbedding[i].embeddings = e;
-    });
-
-    const incomingIds = bulkEmbedding.map((doc) => doc._id);
-    const existingDocs = await QuestionBankEmbedding.find(
-      { _id: { $in: incomingIds } },
-      { _id: 1 }
-    );
-    const existingIds = new Set(existingDocs.map((doc) => doc._id.toString()));
-    const newEmbeddings = bulkEmbedding.filter(
-      (doc) => !existingIds.has(doc._id.toString())
-    );
-
-    await QuestionBankEmbedding.insertMany(newEmbeddings, { ordered: false });
-  } catch (err) {
-    console.log(err);
-    throw new Error("Error update embeddings", err.message);
-  }
-};
-
-const checkSimilarity = async (cacheQuestions, currQuestion) => {
-  try {
-    const processedQuestion = preprocess(currQuestion.question);
-    const response = await postToEmbedding({ text: processedQuestion });
-
-    if (response.status !== 200) {
-      throw new Error(`Something went wrong with copilot! Please try later`);
-    }
-
-    if (!response.data) {
-      throw new Error("Something went wrong with copilot! Please try later");
-    }
-
-    const currQuestionEmbedding = response.data;
-
-    const embeddingIds = cacheQuestions.map((e) =>
-      generateHash(preprocess(e.question.question))
-    );
-
-    const embeddingDocs = await QuestionBankEmbedding.find({
-      _id: { $in: embeddingIds },
-    });
-
-    const formattedEmbeddings = embeddingDocs.map((doc) => doc.toObject());
-
-    const embeddings = formattedEmbeddings.map((e) => e.embeddings);
-
-    const [idx, simiScore] = findMostSimilar(embeddings, currQuestionEmbedding);
-
-    return { simiScore, currQuestionEmbedding };
-  } catch (err) {
-    throw new Error("Error checkSimilarity", err.message);
-  }
-};
 
 const updateCache = async (newCache) => {
   try {
     const result = await Promise.all(
       newCache.map(async (doc) => {
         if (doc._id) {
+          const questionsToAdd = doc.questionsToAdd || [];
+          if (!questionsToAdd.length) return doc;
+
           return await QuestionBankCache.findByIdAndUpdate(
             doc._id,
             {
-              $set: {
-                questionsByObjective: doc.questionsByObjective,
+              $push: {
+                questions: {
+                  $each: questionsToAdd,
+                },
               },
             },
             {
@@ -116,6 +30,9 @@ const updateCache = async (newCache) => {
             }
           );
         } else {
+          doc.questions = doc.questionsToAdd || doc.questions || [];
+          delete doc.questionsToAdd;
+
           const newDoc = new QuestionBankCache(doc);
           return await newDoc.save();
         }
@@ -152,7 +69,6 @@ parentPort.on("message", async (data) => {
     });
 
     if (notFoundQuestions.length) {
-      const questionsToEmbed = [];
       for (let i = 0; i < notFoundQuestions.length; i++) {
         let currObj = {};
         currObj.type = notFoundQuestions[i].type;
@@ -167,71 +83,38 @@ parentPort.on("message", async (data) => {
               ele.unitName === currObj.unitName && ele.unitLevel === unitLevel
           );
 
-          let cacheByObjective =
-            cache[0].questionsByObjective[currObj.objective];
+          if (!cache.length) {
+            console.warn(
+              `[updatequestionbankcacheworker] Cache entry not found for unit="${currObj.unitName}" and unitLevel="${unitLevel}"`
+            );
+            continue;
+          }
 
-          const cacheQuestions = cacheByObjective.filter(
+          let cacheQuestionsList = cache[0].questions || [];
+          cache[0].questions = cacheQuestionsList;
+          cache[0].questionsToAdd = cache[0].questionsToAdd || [];
+
+          const cacheQuestions = cacheQuestionsList.filter(
             (e) =>
+              e.objective === currObj.objective &&
               e.type === currObj.type && e.marks === currObj.marksPerQuestion
           );
           const cacheQuestionsPerType =
             parseInt(process.env.CACHE_QUESTION_PER_TYPE) || 10;
-          if (
-            cacheQuestions.length &&
-            cacheQuestions.length < cacheQuestionsPerType
-          ) {
-            const { simiScore, currQuestionEmbedding } = await checkSimilarity(
-              cacheQuestions,
-              newResQuestions[i].questions[j]
-            );
-            const simiThreshold =
-              parseFloat(process.env.SIMILARITY_THRESHOLD) || 0.9;
-            if (simiScore < simiThreshold) {
-              const newQuestion = createQuestionObj(
-                currObj.type,
-                currObj.marksPerQuestion,
-                newResQuestions[i].questions[j],
-                currObj.objective
-              );
-              cacheByObjective.push(newQuestion);
-              const processedQuestion = preprocess(
-                newResQuestions[i].questions[j].question
-              );
-              const hashId = generateHash(processedQuestion);
-              const embeddingObj = {
-                _id: hashId,
-                text: processedQuestion,
-                embeddings: currQuestionEmbedding,
-              };
-
-              const exists = await QuestionBankEmbedding.exists({
-                _id: hashId,
-              });
-              if (!exists) {
-                await QuestionBankEmbedding.create(embeddingObj);
-              }
-            }
-            await delay(1000);
-          } else {
+          if (cacheQuestions.length < cacheQuestionsPerType) {
             const newQuestion = createQuestionObj(
               currObj.type,
               currObj.marksPerQuestion,
               newResQuestions[i].questions[j],
               currObj.objective
             );
-            questionsToEmbed.push(
-              preprocess(newResQuestions[i].questions[j].question)
-            );
-            cacheByObjective.push(newQuestion);
+            cacheQuestionsList.push(newQuestion);
+            cache[0].questionsToAdd.push(newQuestion);
           }
         }
       }
 
       const cacheToUpdate = fixObjectIdsInArray(processedCache);
-
-      if (questionsToEmbed.length) {
-        await updateEmbeddings(questionsToEmbed);
-      }
 
       const updatedCache = await updateCache(cacheToUpdate);
 
