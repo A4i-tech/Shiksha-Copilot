@@ -158,24 +158,6 @@ class TestQuestionType:
             assert hasattr(qt, "description")
             assert len(qt.description) > 0
 
-    def test_question_type_get_required_fields_mcq(self):
-        """Test getting required fields for MCQ."""
-        required = QuestionType.MCQ.get_required_fields()
-        # FourOptionsQuestion has no required fields (all have defaults)
-        assert isinstance(required, list)
-
-    def test_question_type_get_required_fields_text(self):
-        """Test getting required fields for text questions."""
-        required = QuestionType.FILL_BLANKS.get_required_fields()
-        # TextQuestion has no required fields (all have defaults)
-        assert isinstance(required, list)
-
-    def test_question_type_get_required_fields_matching(self):
-        """Test getting required fields for matching questions."""
-        required = QuestionType.MATCH_LIST.get_required_fields()
-        # MatchingListQuestion has no required fields (all have defaults)
-        assert isinstance(required, list)
-
     def test_all_question_types_are_unique(self):
         """Test that all question type values are unique."""
         values = [qt.value for qt in QuestionType]

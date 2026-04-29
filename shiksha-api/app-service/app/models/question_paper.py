@@ -166,29 +166,6 @@ class QuestionType(str, Enum):
         obj._model = pydantic_model
         return obj
 
-    # Get required fields from Pydantic model
-    def get_required_fields(self) -> List[str]:
-        """Get list of required fields from the Pydantic model."""
-        model_fields = self._model.model_fields
-        required_fields = []
-        for field_name, field_info in model_fields.items():
-            # Check if field is required (not optional and no default)
-            if field_info.is_required():
-                required_fields.append(field_name)
-        return required_fields
-
-    # Get field types from Pydantic model
-    def get_field_info(self) -> Dict[str, Any]:
-        """Get field information from the Pydantic model."""
-        return {
-            name: {
-                "type": field.annotation,
-                "required": field.is_required(),
-                "default": field.default if not field.is_required() else None,
-            }
-            for name, field in self._model.model_fields.items()
-        }
-
     # Prompt/schema hint for LLM
     def model_name(self) -> str:
         return self._model.__name__
