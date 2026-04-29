@@ -75,39 +75,6 @@ class QuestionBankCacheDao extends BaseDao {
     }
   }
 
-  async updateCache(newCache) {
-    try {
-      const result = await Promise.all(
-        newCache.map(async (doc) => {
-          if (doc._id) {
-            return await QuestionBankCache.findByIdAndUpdate(
-              doc._id,
-              {
-                $set: {
-                  questions: doc.questions,
-                },
-              },
-              {
-                new: true,
-                runValidators: true,
-              }
-            );
-          } else {
-            console.log("created new doc", doc);
-
-            const newDoc = new QuestionBankCache(doc);
-            return await newDoc.save();
-          }
-        })
-      );
-
-      return result;
-    } catch (err) {
-      console.log("Error --> questionBankCacheDao -> findInCache()", err);
-      throw err;
-    }
-  }
-
 }
 
 module.exports = QuestionBankCacheDao;
