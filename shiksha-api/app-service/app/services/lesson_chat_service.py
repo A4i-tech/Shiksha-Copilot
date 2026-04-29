@@ -8,6 +8,7 @@ from app.services.rag_adapters import BaseRagAdapter
 from app.services.rag_adapter_cache import RAG_ADAPTER_CACHE
 from openai import AsyncAzureOpenAI as NativeAsyncAzureOpenAI
 from llama_index.core.llms import ChatMessage
+from langfuse import observe, get_client
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,7 @@ class LessonChatService:
         # Initialize LRU cache for RAG adapter instances (max 32 items)
         self._rag_adapter_cache = RAG_ADAPTER_CACHE
 
+    @observe(name="Shiksha-QA")
     async def __call__(
         self,
         request: LessonChatRequest,
@@ -46,6 +48,16 @@ class LessonChatService:
         Returns:
             dict: Contains 'response' (str) and 'references' (list of dicts)
         """
+        chapter_details = self._extract_details(request.chapter_id)
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            tags=[
+                "chat_type:lesson",
+                f"board:{chapter_details['BOARD']}",
+                f"grade:{chapter_details['GRADE']}",
+                f"subject:{chapter_details['SUBJECT']}",
+            ],
+        )
         try:
             # Get or create cached RAG adapter instance
             rag_adapter = await self._get_or_create_rag_adapter(request.index_path)
@@ -53,9 +65,9 @@ class LessonChatService:
             # Initiate the index (download files for InMem, no-op for Qdrant)
             await rag_adapter.initiate_index()
 
-            # Extract chapter details and build system message
+            # Build system message using already-extracted chapter details
             system_message = self._prompt_template.get_prompt_with_variables(
-                "lesson_chat", **self._extract_details(request.chapter_id)
+                "lesson_chat", **chapter_details
             )
 
             # Convert request messages to chat format

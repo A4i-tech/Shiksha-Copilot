@@ -10,6 +10,10 @@ from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
 from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router
 
+# Initialize Langfuse instrumentation at import time.
+from app.observability.langfuse_setup import init_langfuse
+init_langfuse(app_env=settings.app_env)
+
 mcp = FastMCP(
     name=settings.app_name,
     instructions="AI-powered educational chat API for Shiksha platform",

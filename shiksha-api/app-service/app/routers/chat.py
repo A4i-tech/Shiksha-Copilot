@@ -121,7 +121,7 @@ async def chat(
         logger.info(f"Successfully processed general chat for user: {request.user_id}")
         
         return StreamingResponse(
-            GENERAL_CHAT_SERVICE_INSTANCE(request.messages),
+            GENERAL_CHAT_SERVICE_INSTANCE(request.messages, user_id=request.user_id),
             media_type="text/event-stream"
         )
 

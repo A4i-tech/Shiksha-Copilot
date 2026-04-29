@@ -20,6 +20,10 @@ from core.models.workflow_models import (
     GPTInput,
 )
 from core.models.requests import LessonPlanGenerationInput, LPLevel
+from core.observability.langfuse_setup import init_langfuse
+from core.config import Config
+
+_langfuse = init_langfuse(app_env=Config.APP_ENV)
 
 
 async def main(inputData: Dict[str, Any]) -> Dict[str, Any]:

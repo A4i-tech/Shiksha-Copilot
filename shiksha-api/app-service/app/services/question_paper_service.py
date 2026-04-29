@@ -10,6 +10,7 @@ import re
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
 from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
+from langfuse import observe, get_client
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaAzureOpenAI
@@ -545,15 +546,81 @@ class QuestionPaperService:
 
         return response_questions
 
+<<<<<<< HEAD
     async def generate_question_bank_by_parts(self, request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
+=======
+            # Build the final response
+            response_questions = []
+            for template in request.template:
+                question_type_resp = QuestionTypeResponse(
+                    type=template.type,
+                    number_of_questions=(
+                        len(template.question_distribution)
+                        if template.question_distribution
+                        else template.number_of_questions
+                    ),
+                    marks_per_question=template.marks_per_question,
+                    questions=[],
+                )
+
+                for q_dist in template.question_distribution or []:
+                    norm_type = self._normalize_string(template.type.value)
+                    norm_unit = self._normalize_string(q_dist.unit_name)
+                    norm_objective = self._normalize_string(q_dist.objective) if q_dist.objective else "none"
+                    
+                    key = f"{norm_type}|{template.marks_per_question}|{norm_unit}|{norm_objective}"
+
+                    if key in question_directory and len(question_directory[key]) > 0:
+                        question = question_directory[key].pop(0)
+                        question_type_resp.questions.append(question)
+
+                        if len(question_directory[key]) == 0:
+                            del question_directory[key]
+                    else:
+                        logger.warning(
+                            f"--\nNo question found for Normalized key: {key}"
+                        )
+
+                response_questions.append(question_type_resp)
+
+            return response_questions
+
+        except Exception as e:
+            logger.exception(f"Error organizing questions into response: {e}")
+            raise
+
+    @observe(name="Shiksha-QB")
+    async def generate_question_bank_by_parts(
+        self, request: QuestionBankPartsGenerationRequest
+    ) -> QuestionBankResponse:
+>>>>>>> 85ba5e4 (feat(observability): add Langfuse v3 observability integration (#276))
         """
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
+<<<<<<< HEAD
         # Build generation slots
         slots = self._build_generation_slots(request)
         if not slots:
             raise ValueError("No generation slots could be built from template/distribution.")
+=======
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            tags=[
+                "flow:question-bank",
+                f"board:{request.board}",
+                f"grade:{request.grade}",
+                f"subject:{request.subject}",
+            ],
+        )
+        try:
+            # Build generation slots
+            slots = self._build_generation_slots(request)
+            if not slots:
+                raise ValueError(
+                    "No generation slots could be built from template/distribution."
+                )
+>>>>>>> 85ba5e4 (feat(observability): add Langfuse v3 observability integration (#276))
 
         # Prepare existing questions
         existing_flat = self._flatten_existing_questions(request.existing_questions)
@@ -598,6 +665,7 @@ class QuestionPaperService:
              await adapter.cleanup()
         self._adapter_cache.clear()
 
+    @observe(name="Shiksha-QB")
     async def get_question_distribution(
         self,
         request: QBQuestionDistributionGenerationRequest,
@@ -605,6 +673,15 @@ class QuestionPaperService:
         """
         Generate question paper template based on unit-wise marks distribution.
         """
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            tags=[
+                "flow:question-bank",
+                f"board:{request.board}",
+                f"grade:{request.grade}",
+                f"subject:{request.subject}",
+            ],
+        )
 
         def prepare_context() -> dict[str, Any]:
             units_str = ""

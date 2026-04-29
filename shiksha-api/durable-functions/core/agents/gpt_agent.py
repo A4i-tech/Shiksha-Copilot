@@ -1,6 +1,6 @@
 import json
 from typing import Dict, Union
-from openai import AsyncAzureOpenAI
+from langfuse.openai import AsyncAzureOpenAI
 from core.config import Config
 from core.logger import LoggerFactory
 

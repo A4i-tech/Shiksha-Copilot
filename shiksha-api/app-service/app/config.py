@@ -2,7 +2,7 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt
+from pydantic import Field, PositiveInt, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
@@ -21,6 +21,19 @@ class Settings(BaseSettings):
 
     # Logging Configuration
     log_level: str = "INFO"
+
+    # Application Environment
+    app_env: str = Field(default="local", alias="APP_ENV")
+
+    @field_validator("app_env", mode="before")
+    @classmethod
+    def normalize_app_env(cls, v: str) -> str:
+        return v.lower()
+
+    # Langfuse Configuration (optional — no-op when absent)
+    langfuse_secret_key: Optional[str] = Field(default=None, alias="LANGFUSE_SECRET_KEY")
+    langfuse_public_key: Optional[str] = Field(default=None, alias="LANGFUSE_PUBLIC_KEY")
+    langfuse_host: Optional[str] = Field(default=None, alias="LANGFUSE_HOST")
 
     # Azure OpenAI Configuration
     azure_openai_api_key: Optional[str] = None

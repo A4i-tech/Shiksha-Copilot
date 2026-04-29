@@ -29,15 +29,14 @@ class NativeQdrantRagAdapter:
         self.embedding_model = embedding_model
         self.chat_model = chat_model
         
-        # Initialize Qdrant Client based on settings
-        if settings.qdrant_url and settings.qdrant_api_key:
-            self.qdrant = AsyncQdrantClient(
-                url=settings.qdrant_url,
-                api_key=settings.qdrant_api_key,
-            )
+        # Initialize Qdrant Client — api_key is optional (open instances don't require it)
+        if settings.qdrant_url:
+            kwargs = {"url": settings.qdrant_url}
+            if settings.qdrant_api_key:
+                kwargs["api_key"] = settings.qdrant_api_key
+            self.qdrant = AsyncQdrantClient(**kwargs)
         else:
-            # Fallback for local dev if needed, or raise error
-            logger.warning("Qdrant credentials missing, RAG may fail.")
+            logger.warning("QDRANT_URL not set, RAG will return empty context.")
             self.qdrant = None
 
     async def initialize(self):
@@ -47,6 +46,10 @@ class NativeQdrantRagAdapter:
                 await self.qdrant.get_collection(self.collection_name)
             except Exception as e:
                 logger.error(f"Failed to connect to Qdrant collection {self.collection_name}: {e}")
+
+    async def initiate_index(self):
+        """Alias for initialize() — satisfies BaseRagAdapter interface."""
+        await self.initialize()
 
     async def cleanup(self):
         """Close connections if necessary."""
