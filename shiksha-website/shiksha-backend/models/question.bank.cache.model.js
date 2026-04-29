@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
+const QUESTION_BANK_CACHE_TTL_SECONDS = 60 * 60 * 6;
+
 const questionSchema = new Schema({
   question: {
     question: {
@@ -70,6 +72,11 @@ const questionBankCacheSchema = new Schema(
   },
   { timestamps: true }
 );
+
+questionBankCacheSchema.index({ updatedAt: 1 }, {
+  expireAfterSeconds: QUESTION_BANK_CACHE_TTL_SECONDS,
+  name: "question_bank_cache_updated_at_ttl",
+});
 
 const QuestionBankCache = mongoose.model(
   "QuestionBankCache",
