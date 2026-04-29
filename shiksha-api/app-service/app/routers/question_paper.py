@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from fastapi import APIRouter, Body, HTTPException, status
-from langdetect import detect
+from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
 
 from app.models.question_paper import (
@@ -70,13 +70,17 @@ async def translate_json_content_to_kannada(
 
     # Detect Source Language
     sample_text = get_sample_text(json_data)
-    source_lang_code = "en"  # Default fallback
+    source_lang_code = Detector.UNKNOWN_LANG
 
     if sample_text:
-        source_lang_code = detect(sample_text)
-        if source_lang_code == Detector.UNKNOWN_LANG:
-            logger.warning("Language detection failed on sample text: %s", sample_text)
-            source_lang_code = "en"
+        try:
+            source_lang_code = detect(sample_text)
+        except LangDetectException:
+            source_lang_code = Detector.UNKNOWN_LANG
+
+    if source_lang_code == Detector.UNKNOWN_LANG:
+        logger.warning("Language detection failed on sample text: %s", sample_text)
+        source_lang_code = "en"  # Default fallback
 
     # Normalize Target Language
     target_lang_input = target_language.lower().strip()
