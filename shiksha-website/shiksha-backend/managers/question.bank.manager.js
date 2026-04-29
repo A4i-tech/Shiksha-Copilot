@@ -4,7 +4,6 @@ const QuestionBankDao = require("../dao/question.bank.dao");
 const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
-const { normalizePartsResponse } = require("../schemas/ai.response.schema");
 const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
@@ -374,10 +373,10 @@ class QuestionBankManager extends BaseManager {
       }
 
       console.log('[Manager] AI Response received.');
-      let newQuestions = response.data;
 
       // Normalize Python response from nested blocks into the flat merge shape.
-      const normalizedQuestions = normalizePartsResponse(newQuestions);
+      const normalizedQuestions = [];
+      for(const questionBlock of response.data.questions) normalizedQuestions.push(...questionBlock.questions);
 
       // Restructure normalized items into blocks for mergeQuestions
       let itemPointer = 0;

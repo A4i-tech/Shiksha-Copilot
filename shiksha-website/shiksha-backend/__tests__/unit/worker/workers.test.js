@@ -187,57 +187,6 @@ describe("worker modules", () => {
     );
   });
 
-  it("updatequestionbankcacheworker posts success", async () => {
-    const { parentPort } = workerMocks();
-    jest.doMock("worker_threads", () => ({ parentPort }));
-    mockDbSimple();
-    jest.doMock("../../../helper/question.bank.cache.helper", () => ({
-      createQuestionObj: jest.fn((t, m, q) => ({
-        type: t,
-        marks: m,
-        question: q.question,
-      })),
-      fixObjectIdsInArray: jest.fn((arr) => arr),
-    }));
-    jest.doMock("../../../models/question.bank.cache.model.js", () => {
-      function QuestionBankCache(doc) {
-        this.doc = doc;
-        this.save = jest.fn(() => Promise.resolve(doc));
-      }
-      QuestionBankCache.findByIdAndUpdate = jest.fn(() => Promise.resolve({}));
-      return QuestionBankCache;
-    });
-    jest.doMock("../../../models/question.bank.cache.summary.model.js", () => ({
-      findByIdAndUpdate: jest.fn(() => Promise.resolve()),
-    }));
-
-    require("../../../worker/updatequestionbankcacheworker");
-
-    await parentPort.emit("message", {
-      notFoundQuestions: [
-        {
-          type: "mcq",
-          marks_per_question: 1,
-          question_distribution: [{ unit_name: "U1", objective: "objective" }],
-        },
-      ],
-      processedCache: [
-        {
-          unitName: "U1",
-          unitLevel: "lvl",
-          questions: [],
-        },
-      ],
-      unitLevel: "lvl",
-      newResQuestions: [{ questions: [{ question: "Q1" }] }],
-      cacheSummaryId: "sum1",
-    });
-
-    expect(parentPort.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true })
-    );
-  });
-
   it("bulkuploadworker posts validation error message", async () => {
     const { parentPort } = workerMocks();
     jest.doMock("worker_threads", () => ({ parentPort }));

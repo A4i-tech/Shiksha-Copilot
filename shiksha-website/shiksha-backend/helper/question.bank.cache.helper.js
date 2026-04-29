@@ -168,7 +168,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
       const questionKey = JSON.stringify(candidate.question || "");
 
       if (!includedQuestionKeys.includes(questionKey)) {
-        const selectedQuestion = JSON.parse(JSON.stringify(candidate));
+        const selectedQuestion = JSON.parse(JSON.stringify(candidate.question));
         selectedQuestion.objective = objective.charAt(0).toUpperCase() + objective.slice(1);
 
         questionTypeResponse.questions.push(selectedQuestion);
@@ -273,16 +273,6 @@ function mergeQuestions(existingQuestions, newQuestions, indices) {
   }
 
   return existingQuestions;
-}
-
-
-function createQuestionObj(type, marks, questionObj, objective) {
-  return {
-    question: questionObj,
-    marks,
-    type,
-    objective: objective || questionObj.objective || 'Knowledge'
-  };
 }
 
 function fixId(idObj) {
@@ -557,7 +547,6 @@ module.exports = {
   getQuestions,
   filterTemplate,
   mergeQuestions,
-  createQuestionObj,
   fixObjectIdsInArray,
   processCacheHits,
   processCacheHitsForSubtopic
