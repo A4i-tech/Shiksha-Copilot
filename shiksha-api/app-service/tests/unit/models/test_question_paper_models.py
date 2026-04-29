@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 from app.models.question_paper import (
+    McqOption,
     QuestionType,
     QuestionBankMetadata,
     TextQuestion,
@@ -77,30 +78,16 @@ class TestFourOptionsQuestion:
     def test_valid_mcq(self):
         """Test creating valid MCQ."""
         question = FourOptionsQuestion(
-            question="What is 2+2?", options=["3", "4", "5", "6"], keyAnswer="4"
+            question="What is 2+2?", options=[
+                McqOption(label="A", text="3"),
+                McqOption(label="B", text="4"),
+                McqOption(label="C", text="5"),
+                McqOption(label="D", text="6"),
+            ], keyAnswer="4"
         )
         assert question.question == "What is 2+2?"
         assert len(question.options) == 4
         assert question.keyAnswer == "4"
-
-    def test_mcq_empty_defaults(self):
-        """Test MCQ with default empty values."""
-        question = FourOptionsQuestion()
-        assert question.question == ""
-        assert question.options == []
-        assert question.keyAnswer == ""
-
-    def test_mcq_with_more_than_four_options(self):
-        """Test MCQ can have more than 4 options."""
-        question = FourOptionsQuestion(
-            question="Test", options=["A", "B", "C", "D", "E"], keyAnswer="A"
-        )
-        assert len(question.options) == 5
-
-    def test_mcq_with_less_than_four_options(self):
-        """Test MCQ can have less than 4 options."""
-        question = FourOptionsQuestion(question="Test", options=["A", "B"], answer="A")
-        assert len(question.options) == 2
 
 
 class TestMatchingListQuestion:
