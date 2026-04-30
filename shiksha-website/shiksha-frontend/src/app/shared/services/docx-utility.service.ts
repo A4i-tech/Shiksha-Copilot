@@ -5,6 +5,8 @@ import {
   BorderStyle,
   Header,
   HeadingLevel,
+  ILevelsOptions,
+  INumberingOptions,
   LevelFormat,
   Packer,
   Paragraph,
@@ -19,8 +21,8 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 export class DocxUtilityService {
   constructor(private utilityService:UtilityService, private translateService:TranslateService){}
 
-  getMarkdownParagraphs(content: string = ''): Paragraph[] {
-    const toRuns = (tokens: any[]): TextRun[] => {
+  getMarkdownParagraphs(content: string): Paragraph[] {
+    const toRuns = (tokens: marked.Token[]): TextRun[] => {
       return tokens.flatMap((token) => {
         switch (token.type) {
           case 'strong':
@@ -30,12 +32,18 @@ export class DocxUtilityService {
           case 'br':
             return [new TextRun({ text: '', break: 1 })];
           default:
-            return token.tokens ? toRuns(token.tokens) : [new TextRun(token.text || '')];
+            if("tokens" in token && token.tokens !== undefined){
+              return toRuns(token.tokens);
+            }
+            if("text" in token){
+              return [new TextRun(token.text)];
+            }
+            return [new TextRun("")];
         }
       });
     };
 
-    const toParagraphs = (tokens: any[], level = 0): Paragraph[] => {
+    const toParagraphs = (tokens: marked.Token[], level = 0): Paragraph[] => {
       return tokens.flatMap((token) => {
         if (token.type === 'space') {
           return [];
@@ -44,20 +52,20 @@ export class DocxUtilityService {
         if (token.type === 'list') {
           const reference = token.ordered ? 'markdown-numbered' : 'markdown-bullets';
 
-          return token.items.flatMap((item: any) => [
+          return token.items.flatMap((item) => [
             new Paragraph({
               numbering: { reference, level: Math.min(level, 8) },
-              children: toRuns(item.tokens.filter((t: any) => t.type !== 'list')),
+              children: toRuns(item.tokens.filter(t => t.type !== 'list')),
               spacing: { after: 40 },
             }),
-            ...toParagraphs(item.tokens.filter((t: any) => t.type === 'list'), level + 1),
+            ...toParagraphs(item.tokens.filter(t => t.type === 'list'), level + 1),
           ]);
         }
 
         return [
           new Paragraph({
             heading: token.type === 'heading' ? HeadingLevel[`HEADING_${Math.min(token.depth, 6)}` as keyof typeof HeadingLevel] : undefined,
-            children: toRuns(token.tokens || [token]),
+            children: toRuns("tokens" in token && token.tokens !== undefined ? token.tokens : [token]),
             spacing: { after: 100 },
           }),
         ];
@@ -67,9 +75,9 @@ export class DocxUtilityService {
     return toParagraphs(marked.lexer(content));
   }
 
-  getMarkdownNumbering() {
-    const levels = (format: any, text: (level: number) => string) =>
-      Array.from({ length: 9 }, (_, level) => ({
+  getMarkdownNumbering() : INumberingOptions{
+    const levels = (format: typeof LevelFormat[keyof typeof LevelFormat], text: (level: number) => string) =>
+      Array.from({ length: 9 }, (_, level) : ILevelsOptions => ({
         level,
         format,
         text: text(level),
