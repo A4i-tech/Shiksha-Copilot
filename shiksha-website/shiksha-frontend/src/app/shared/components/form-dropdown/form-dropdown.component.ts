@@ -97,9 +97,11 @@ export class FormDropdownComponent implements OnInit, OnChanges {
       this.dropDownCtrl.setValue(data);
       this.valueChange.emit(data);
     } else {
-      const values = this.dropDownValues as unknown as FormDropDownValue[];
-      this.dropDownCtrl.setValue(values);
-      this.valueChange.emit(values);
+      const data = this.dropDownValues.map(e =>
+        this.config.bindValue ? (e[this.config.bindValue] as FormDropDownValue) : (e as unknown as FormDropDownValue)
+      );
+      this.dropDownCtrl.setValue(data);
+      this.valueChange.emit(data);
     }
   }
 
@@ -132,9 +134,11 @@ export class FormDropdownComponent implements OnInit, OnChanges {
         this.dropDownCtrl.setValue(data);
         this.valueChange.emit(data);
       } else {
-        const values = this.dropDownValues as unknown as FormDropDownValue[];
-        this.dropDownCtrl.setValue(values);
-        this.valueChange.emit(values);
+        const data = this.dropDownValues.map(e =>
+          this.config.bindValue ? (e[this.config.bindValue] as FormDropDownValue) : (e as unknown as FormDropDownValue)
+        );
+        this.dropDownCtrl.setValue(data);
+        this.valueChange.emit(data);
       }
     } else {
       this.dropDownCtrl.setValue([]);

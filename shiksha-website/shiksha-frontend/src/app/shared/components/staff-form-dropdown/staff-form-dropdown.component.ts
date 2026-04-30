@@ -7,7 +7,7 @@ import {
   FormControl,
   FormGroup,
 } from '@angular/forms';
-import { FormDropDownConfig } from '../../interfaces/form-dropdown.interface';
+import { FormDropDownConfig, FormDropDownValue } from '../../interfaces/form-dropdown.interface';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
@@ -30,7 +30,7 @@ export class StafFormDropdownComponent implements OnInit {
 
   @Input() mode!: string;
 
-  @Output() valueChange: EventEmitter<any | null> = new EventEmitter<any | null>();
+  @Output() valueChange: EventEmitter<FormDropDownValue | FormDropDownValue[] | null> = new EventEmitter<FormDropDownValue | FormDropDownValue[] | null>();
 
 
   formGroupTemp!: FormGroup;
@@ -39,7 +39,7 @@ export class StafFormDropdownComponent implements OnInit {
    * Angular oninit lifecycle hook used for initialization
    */
   ngOnInit(): void {
-    const obj: any = {};
+    const obj: Record<string, FormControl> = {};
     obj[this.dropDownControlName] = new FormControl(null);
     this.formGroupTemp = new FormGroup(obj);
   }
@@ -48,10 +48,11 @@ export class StafFormDropdownComponent implements OnInit {
    * Function to remove chip value
    * @param i index
    */
-  removeItem(i:number){
-    let updatedArr:string[] = structuredClone(this.dropDownCtrl?.value);
-    updatedArr = updatedArr.filter(item => item !== this.dropDownCtrl?.value[i]);
-    this.dropDownCtrl?.setValue(updatedArr)
+  removeItem(i: number) {
+    const raw = this.dropDownCtrl?.value;
+    const currentVal: FormDropDownValue[] = Array.isArray(raw) ? [...raw] : [];
+    const updatedArr = currentVal.filter((_, index) => index !== i);
+    this.dropDownCtrl?.setValue(updatedArr);
     this.valueChange.emit(updatedArr);
   }
 
