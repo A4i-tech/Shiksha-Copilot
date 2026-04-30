@@ -14,9 +14,9 @@ export class DocumentExportService {
     headerData: any,
     filename: string = 'output.docx'
   ): void {
-    const docSections = [];
+    const documentContent: Paragraph[] = [];
 
-    for (const section of data) {
+    for (const [index, section] of data.entries()) {
       const sectionContent: Paragraph[] = [];
 
       // Section Title
@@ -24,7 +24,7 @@ export class DocumentExportService {
         new Paragraph({
           text: section.title.toUpperCase(),
           heading: HeadingLevel.HEADING_1,
-          spacing: { after: 300 },
+          spacing: { before: index === 0 ? 0 : 240, after: 240 },
         })
       );
 
@@ -44,23 +44,22 @@ export class DocumentExportService {
           sectionContent.push(...this.formatActivities(section.content));
           break;
         default:
-          sectionContent.push(
-            new Paragraph({ text: 'Unsupported content format.' })
-          );
+          sectionContent.push(new Paragraph({ text: 'Unsupported content format.' }));
       }
 
       // Add spacing between sections
       sectionContent.push(new Paragraph({ text: '', spacing: { after: 300 } }));
 
-      docSections.push({
-        properties: {},
-        children: sectionContent,
-        headers: this.docxUtility.getHeader(headerData),
-      });
+      documentContent.push(...sectionContent);
     }
 
     const doc = new Document({
-      sections: docSections,
+      sections: [
+        {
+          children: documentContent,
+          headers: this.docxUtility.getHeader(headerData),
+        },
+      ],
     });
 
     Packer.toBlob(doc).then((blob) => {
