@@ -1,15 +1,12 @@
 import { Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import {
+  BorderStyle,
   Header,
   HeadingLevel,
   Packer,
   Paragraph,
-  Table,
-  TableCell,
-  TableRow,
   TextRun,
-  WidthType,
 } from 'docx';
 import { UtilityService } from 'src/app/core/services/utility.service';
 
@@ -17,11 +14,6 @@ import { UtilityService } from 'src/app/core/services/utility.service';
   providedIn: 'root',
 })
 export class DocxUtilityService {
-  cellSpace = {
-    indent: { left: 100, right: 100 },
-    spacing: { before: 100, after: 100 },
-  };
-
   constructor(private utilityService:UtilityService, private translateService:TranslateService){}
 
   /**
@@ -107,111 +99,49 @@ export class DocxUtilityService {
    * @returns 
    */
   getHeader(formData: any) {
+    const medium = formData?.medium ? formData.medium.charAt(0).toUpperCase() + formData.medium.slice(1) : '';
+    const chapter = [formData?.orderNumber, formData?.topics].filter(Boolean).join('. ');
+    const subTopics = Array.isArray(formData?.subTopics) ? formData.subTopics.join(', ') : formData?.subTopics || '';
+    const subject = formData?.subjects ? this.utilityService.getSubjectDisplayName(formData.subjects) : '';
     return {
       default: new Header({
         children: [
-          new Table({
-            rows: [
-              new TableRow({
-                children: [
-                  new TableCell({
-                    children: [
-                      new Paragraph({ text: this.translateService.instant('Board'), ...this.cellSpace }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({ text: this.translateService.instant('Medium'), ...this.cellSpace }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({ text: this.translateService.instant('Class'), ...this.cellSpace }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({ text: this.translateService.instant('Subject'), ...this.cellSpace }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({ text: this.translateService.instant('Chapter'), ...this.cellSpace }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({ text: this.translateService.instant('Sub-Topic'), ...this.cellSpace }),
-                    ],
-                  }),
-                ],
-                tableHeader: true,
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        text: formData.board,
-                        ...this.cellSpace,
-                      }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        text:
-                          formData.medium.charAt(0).toUpperCase() +
-                          formData.medium.slice(1),
-                        ...this.cellSpace,
-                      }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        text: formData.class.toString(),
-                        ...this.cellSpace,
-                      }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        text: this.utilityService.getSubjectDisplayName(formData.subjects),
-                        ...this.cellSpace,
-                      }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        text: `${formData.orderNumber}. ${formData.topics}`,
-                        ...this.cellSpace,
-                      }),
-                    ],
-                  }),
-                  new TableCell({
-                    children: [
-                      new Paragraph({
-                        text: formData.subTopics.join(', '),
-                        ...this.cellSpace,
-                      }),
-                    ],
-                  }),
-                ],
-              }),
-            ],
-            width: { size: 100, type: WidthType.PERCENTAGE },
-          }),
-          new Paragraph({ 
-            text: "", 
-            spacing: {
-                after: 200, 
-            },
-        }),
+          this.buildHeaderTitleLine(subject, chapter),
+          this.buildHeaderMetaLine([
+            [this.translateService.instant('Board'), formData?.board],
+            [this.translateService.instant('Medium'), medium],
+            [this.translateService.instant('Class'), formData?.class?.toString()],
+            [this.translateService.instant('Sub-Topic'), subTopics],
+          ]),
         ],
       }),
     };
+  }
+
+  private buildHeaderTitleLine(subject: string, chapter: string) {
+    const items = [subject, chapter].filter(Boolean);
+    return new Paragraph({
+      children: items.flatMap((value, index) => [
+        ...(index > 0 ? [new TextRun({ text: '  |  ', color: '7A7A7A', size: 17 })] : []),
+        new TextRun({ text: value, bold: true, color: '1F2937', size: 18 }),
+      ]),
+      spacing: { before: 0, after: 10 },
+    });
+  }
+
+  private buildHeaderMetaLine(items: [string, any][]) {
+    return new Paragraph({
+      children: items
+        .filter(([, value]) => value !== undefined && value !== null && value !== '')
+        .flatMap(([label, value], index) => [
+          ...(index > 0 ? [new TextRun({ text: '  |  ', color: 'B0B0B0', size: 14 })] : []),
+          new TextRun({ text: `${label}: `, bold: true, color: '5F6368', size: 14 }),
+          new TextRun({ text: value.toString(), color: '374151', size: 14 }),
+        ]),
+      spacing: { before: 0, after: 60 },
+      border: {
+        bottom: { color: 'D0D7DE', space: 4, style: BorderStyle.SINGLE, size: 3 },
+      },
+    });
   }
 }
