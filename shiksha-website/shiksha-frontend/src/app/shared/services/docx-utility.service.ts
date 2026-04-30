@@ -22,6 +22,9 @@ export class DocxUtilityService {
   constructor(private utilityService:UtilityService, private translateService:TranslateService){}
 
   getMarkdownParagraphs(content: string): Paragraph[] {
+    let orderedListInstance = 0;
+    let optionListInstance = 0;
+
     const toRuns = (tokens: marked.Token[]): TextRun[] => {
       return tokens.flatMap((token) => {
         switch (token.type) {
@@ -36,7 +39,10 @@ export class DocxUtilityService {
               return toRuns(token.tokens);
             }
             if("text" in token){
-              return [new TextRun(token.text)];
+              return token.text.split(/\r?\n/).flatMap((line, index) => [
+                ...(index > 0 ? [new TextRun({ break: 1 })] : []),
+                new TextRun(line),
+              ]);
             }
             return [new TextRun("")];
         }
@@ -51,15 +57,37 @@ export class DocxUtilityService {
 
         if (token.type === 'list') {
           const reference = token.ordered ? 'markdown-numbered' : 'markdown-bullets';
+          const instance = token.ordered ? orderedListInstance++ : undefined;
 
-          return token.items.flatMap((item) => [
-            new Paragraph({
-              numbering: { reference, level: Math.min(level, 8) },
-              children: toRuns(item.tokens.filter(t => t.type !== 'list')),
-              spacing: { after: 40 },
-            }),
-            ...toParagraphs(item.tokens.filter(t => t.type === 'list'), level + 1),
-          ]);
+          return token.items.flatMap((item) => {
+            const mcq = token.ordered ? this.parseLetteredOptions(item.text) : null;
+
+            if (mcq) {
+              const optionsInstance = optionListInstance++;
+              return [
+                new Paragraph({
+                  numbering: { reference, level: Math.min(level, 8), instance },
+                  children: [new TextRun(mcq.question)],
+                  spacing: { after: 40 },
+                }),
+                ...mcq.options.map(option => new Paragraph({
+                  numbering: { reference: 'markdown-lettered', level: 0, instance: optionsInstance },
+                  children: [new TextRun(option)],
+                  spacing: { after: 40 },
+                })),
+                ...(mcq.answer ? [new Paragraph({ text: mcq.answer, spacing: { after: 100 } })] : []),
+              ];
+            }
+
+            return [
+              new Paragraph({
+                numbering: token.ordered ? { reference, level: Math.min(level, 8), instance } : { reference, level: Math.min(level, 8) },
+                children: toRuns(item.tokens.filter(t => t.type !== 'list')),
+                spacing: { after: 40 },
+              }),
+              ...toParagraphs(item.tokens.filter(t => t.type === 'list'), level + 1),
+            ];
+          });
         }
 
         return [
@@ -73,6 +101,24 @@ export class DocxUtilityService {
     };
 
     return toParagraphs(marked.lexer(content));
+  }
+
+  private parseLetteredOptions(text: string) {
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const firstOption = lines.findIndex(line => /^a\)\s+/i.test(line));
+    if (firstOption < 1) return null;
+
+    const question = lines.slice(0, firstOption).join(' ');
+    const tail = lines.slice(firstOption);
+    const answer = /^Ans:\s+/i.test(tail[tail.length - 1] || '') ? tail.pop() : '';
+    const options = tail.map((line, index) => {
+      const match = line.match(/^([a-z])\)\s+(.+)$/i);
+      return match?.[1].toLowerCase() === String.fromCharCode(97 + index) ? match[2] : null;
+    });
+
+    return options.length > 1 && options.every(Boolean)
+      ? { question, options: options as string[], answer }
+      : null;
   }
 
   getMarkdownNumbering() : INumberingOptions{
@@ -93,6 +139,7 @@ export class DocxUtilityService {
       config: [
         { reference: 'markdown-bullets', levels: levels(LevelFormat.BULLET, () => '•') },
         { reference: 'markdown-numbered', levels: levels(LevelFormat.DECIMAL, (level) => `%${level + 1}.`) },
+        { reference: 'markdown-lettered', levels: levels(LevelFormat.LOWER_LETTER, () => '%1)') },
       ],
     };
   }
