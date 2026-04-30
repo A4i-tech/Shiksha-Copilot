@@ -57,6 +57,7 @@ const firstPageContent = [
     });
 
     const doc = new Document({
+      numbering: this.docxUtility.getMarkdownNumbering(),
       sections: [
         {
             children: firstPageContent,
@@ -95,9 +96,7 @@ const firstPageContent = [
                 after: 80,
               },
             }),
-            ...topic.content.main.split('\n').map((line: any) => {
-              return this.docxUtility.getFormatedContent(line);
-            }),
+            ...this.docxUtility.getMarkdownParagraphs(topic.content.main),
           ])
           .flat(),
       ],
@@ -140,20 +139,16 @@ const firstPageContent = [
           const questionParagraphs = block.questions.flatMap(
             (question: any, questionIndex: number) => {
               // Paragraph for the question
-              const questionParagraph = question?.question ? new Paragraph({
-                text: `${questionIndex + 1}. ${question.question}`,
-                spacing: {
-                  before: 80,
-                  after: 20,
-                },
-              }) : [];
+              const questionParagraph = question?.question
+                ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`)
+                : [];
 
-              const optionParagraphs = question?.options ? question?.options?.flatMap((options:any)=>{
-                return new Paragraph({
-                  text:`${options}`
-                })
-              }) : [];
-              return [questionParagraph, ...optionParagraphs];
+              const optionParagraphs = question?.options
+                ? this.docxUtility.getMarkdownParagraphs(
+                    question.options.map((options: any) => `- ${options}`).join('\n')
+                  )
+                : [];
+              return [...questionParagraph, ...optionParagraphs];
             }
           );
 
@@ -175,15 +170,11 @@ const firstPageContent = [
           });
 
           // Create paragraphs for each assessment question
-          const questionParagraphs = block.questions.map(
+          const questionParagraphs = block.questions.flatMap(
             (question: any, questionIndex: number) => {
-              return question.question ? new Paragraph({
-                text: `${questionIndex + 1}. ${question.question}`,
-                spacing: {
-                  before: 20,
-                  after: 10,
-                },
-              }):[];
+              return question.question
+                ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`)
+                : [];
             }
           );
 

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { Document, Packer, Paragraph, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 import { DocxUtilityService } from './docx-utility.service';
 
@@ -30,7 +30,7 @@ export class DocumentExportService {
 
       switch (section.outputFormat) {
         case 'plain_text':
-          sectionContent.push(...this.formatPlainText(section.content));
+          sectionContent.push(...this.docxUtility.getMarkdownParagraphs(section.content));
           break;
         case 'json_1':
           sectionContent.push(...this.formatQuestionBank(section.content));
@@ -54,6 +54,7 @@ export class DocumentExportService {
     }
 
     const doc = new Document({
+      numbering: this.docxUtility.getMarkdownNumbering(),
       sections: [
         {
           children: documentContent,
@@ -65,59 +66,6 @@ export class DocumentExportService {
     Packer.toBlob(doc).then((blob) => {
       saveAs(blob, filename);
     });
-  }
-
-  private formatPlainText(content: string): Paragraph[] {
-    const lines = content.split('\n').filter((line) => line.trim() !== '');
-    const paragraphs: Paragraph[] = [];
-
-    lines.forEach((line) => {
-      const spacingAfter = 100;
-      if (line.trim().startsWith('- ')) {
-        const cleaned = line.replace('- ', '');
-        paragraphs.push(
-          new Paragraph({
-            bullet: { level: 0 },
-            children: this.getFormattedContent(cleaned),
-            spacing: { after: spacingAfter },
-          })
-        );
-      } else {
-        paragraphs.push(
-          new Paragraph({
-            children: this.getFormattedContent(line),
-            spacing: { after: spacingAfter },
-          })
-        );
-      }
-    });
-
-    return paragraphs;
-  }
-
-  private getFormattedContent(line: string): TextRun[] {
-    const cleanedLine = line.replace(/#/g, '');
-    const paragraphChildren: TextRun[] = [];
-    const boldRegex = /\*\*(.*?)\*\*/g;
-    let match: RegExpExecArray | null;
-    let lastIndex = 0;
-
-    while ((match = boldRegex.exec(cleanedLine)) !== null) {
-      if (match.index > lastIndex) {
-        paragraphChildren.push(
-          new TextRun(cleanedLine.substring(lastIndex, match.index))
-        );
-      }
-
-      paragraphChildren.push(new TextRun({ text: match[1], bold: true }));
-      lastIndex = boldRegex.lastIndex;
-    }
-
-    if (lastIndex < cleanedLine.length) {
-      paragraphChildren.push(new TextRun(cleanedLine.substring(lastIndex)));
-    }
-
-    return paragraphChildren;
   }
 
   private formatQuestionBank(content: any[]): Paragraph[] {
@@ -143,22 +91,15 @@ export class DocumentExportService {
 
         block.questions.forEach((q: any, index: any) => {
           paragraphs.push(
-            new Paragraph({
-              text: `${index + 1}. ${q.question}`,
-              spacing: { after: 100 },
-            })
+            ...this.docxUtility.getMarkdownParagraphs(`**${index + 1}.** ${q.question}`)
           );
 
           if (q.options) {
-            q.options.forEach((opt: any) => {
-              paragraphs.push(
-                new Paragraph({
-                  children: [new TextRun(opt)],
-                  bullet: { level: 0 },
-                  spacing: { after: 50 },
-                })
-              );
-            });
+            paragraphs.push(
+              ...this.docxUtility.getMarkdownParagraphs(
+                q.options.map((opt: any) => `- ${opt}`).join('\n')
+              )
+            );
           }
 
           // Add small gap after each question
@@ -194,19 +135,8 @@ export class DocumentExportService {
           })
         );
 
-        paragraphs.push(
-          new Paragraph({
-            text: `Q: ${item.question}`,
-            spacing: { after: 100 },
-          })
-        );
-
-        paragraphs.push(
-          new Paragraph({
-            text: item.description,
-            spacing: { after: 200 },
-          })
-        );
+        paragraphs.push(...this.docxUtility.getMarkdownParagraphs(`**Q:** ${item.question}`));
+        paragraphs.push(...this.docxUtility.getMarkdownParagraphs(item.description));
       });
     });
 
@@ -231,12 +161,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(
-        new Paragraph({
-          text: activity.preparation,
-          spacing: { after: 150 },
-        })
-      );
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.preparation));
 
       paragraphs.push(
         new Paragraph({
@@ -244,12 +169,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(
-        new Paragraph({
-          text: activity.required_materials,
-          spacing: { after: 150 },
-        })
-      );
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.required_materials));
 
       paragraphs.push(
         new Paragraph({
@@ -257,12 +177,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(
-        new Paragraph({
-          text: activity.obtaining_materials,
-          spacing: { after: 150 },
-        })
-      );
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.obtaining_materials));
 
       paragraphs.push(
         new Paragraph({
@@ -270,12 +185,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(
-        new Paragraph({
-          text: activity.recap,
-          spacing: { after: 200 },
-        })
-      );
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.recap));
     });
 
     return paragraphs;

@@ -1,13 +1,16 @@
 import { Injectable } from '@angular/core';
 import { TranslateService } from '@ngx-translate/core';
 import {
+  AlignmentType,
   BorderStyle,
   Header,
   HeadingLevel,
+  LevelFormat,
   Packer,
   Paragraph,
   TextRun,
 } from 'docx';
+import { marked } from 'marked';
 import { UtilityService } from 'src/app/core/services/utility.service';
 
 @Injectable({
@@ -16,37 +19,75 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 export class DocxUtilityService {
   constructor(private utilityService:UtilityService, private translateService:TranslateService){}
 
-  /**
-   * Function to format docx data
-   * @param line
-   * @returns
-   */
-  getFormatedContent(line: any) {
-    const cleanedLine = line.replace(/#/g, '');
-
-    const paragraphChildren = [];
-    const boldRegex = /\*\*(.*?)\*\*/g;
-    let match;
-    let lastIndex = 0;
-
-    while ((match = boldRegex.exec(cleanedLine)) !== null) {
-        if (match.index > lastIndex) {
-            paragraphChildren.push(
-                new TextRun(cleanedLine.substring(lastIndex, match.index))
-            );
+  getMarkdownParagraphs(content: string = ''): Paragraph[] {
+    const toRuns = (tokens: any[]): TextRun[] => {
+      return tokens.flatMap((token) => {
+        switch (token.type) {
+          case 'strong':
+            return [new TextRun({ text: token.text, bold: true })];
+          case 'em':
+            return [new TextRun({ text: token.text, italics: true })];
+          case 'br':
+            return [new TextRun({ text: '', break: 1 })];
+          default:
+            return token.tokens ? toRuns(token.tokens) : [new TextRun(token.text || '')];
         }
-        paragraphChildren.push(new TextRun({ text: match[1], bold: true }));
-        lastIndex = boldRegex.lastIndex;
-    }
+      });
+    };
 
-    if (lastIndex < cleanedLine.length) {
-        paragraphChildren.push(new TextRun(cleanedLine.substring(lastIndex)));
-    }
+    const toParagraphs = (tokens: any[], level = 0): Paragraph[] => {
+      return tokens.flatMap((token) => {
+        if (token.type === 'space') {
+          return [];
+        }
 
-    return new Paragraph({
-        children: paragraphChildren,
-    });
-}
+        if (token.type === 'list') {
+          const reference = token.ordered ? 'markdown-numbered' : 'markdown-bullets';
+
+          return token.items.flatMap((item: any) => [
+            new Paragraph({
+              numbering: { reference, level: Math.min(level, 8) },
+              children: toRuns(item.tokens.filter((t: any) => t.type !== 'list')),
+              spacing: { after: 40 },
+            }),
+            ...toParagraphs(item.tokens.filter((t: any) => t.type === 'list'), level + 1),
+          ]);
+        }
+
+        return [
+          new Paragraph({
+            heading: token.type === 'heading' ? HeadingLevel[`HEADING_${Math.min(token.depth, 6)}` as keyof typeof HeadingLevel] : undefined,
+            children: toRuns(token.tokens || [token]),
+            spacing: { after: 100 },
+          }),
+        ];
+      });
+    };
+
+    return toParagraphs(marked.lexer(content));
+  }
+
+  getMarkdownNumbering() {
+    const levels = (format: any, text: (level: number) => string) =>
+      Array.from({ length: 9 }, (_, level) => ({
+        level,
+        format,
+        text: text(level),
+        alignment: AlignmentType.LEFT,
+        style: {
+          paragraph: {
+            indent: { left: 360 + level * 360, hanging: 180 },
+          },
+        },
+      }));
+
+    return {
+      config: [
+        { reference: 'markdown-bullets', levels: levels(LevelFormat.BULLET, () => '•') },
+        { reference: 'markdown-numbered', levels: levels(LevelFormat.DECIMAL, (level) => `%${level + 1}.`) },
+      ],
+    };
+  }
 
   /**
    * Function to download doc file
