@@ -163,6 +163,10 @@ export class DocxUtilityService {
           return [];
         }
 
+        if (token.type === 'hr') {
+          return [new Paragraph("")];
+        }
+
         if (token.type === 'list') {
           const reference = token.ordered ? 'markdown-numbered' : 'markdown-bullets';
           const instance = token.ordered ? orderedListInstance++ : undefined;
