@@ -132,30 +132,30 @@ export class DocxUtilityService {
     });
   }
 
+  private toRuns(tokens: marked.Token[]): ParagraphChild[] {
+    return tokens.flatMap((token) => {
+      switch (token.type) {
+        case 'strong':
+          return this.processMath(token.text, { bold: true });
+        case 'em':
+          return this.processMath(token.text, { italics: true });
+        case 'br':
+          return this.processMath('', { break: 1 });
+        default:
+          if("tokens" in token && token.tokens !== undefined){
+            return this.toRuns(token.tokens);
+          }
+          return token.raw.split(/\r?\n/).flatMap((line, index) => [
+            ...(index > 0 ? [new TextRun({ break: 1 })] : []),
+            ...this.processMath(line, {}),
+          ]);
+      }
+    });
+  };
+
   getMarkdownParagraphs(content: string): Paragraph[] {
     let orderedListInstance = 0;
     let optionListInstance = 0;
-
-    const toRuns = (tokens: marked.Token[]): ParagraphChild[] => {
-      return tokens.flatMap((token) => {
-        switch (token.type) {
-          case 'strong':
-            return this.processMath(token.text, { bold: true });
-          case 'em':
-            return this.processMath(token.text, { italics: true });
-          case 'br':
-            return this.processMath('', { break: 1 });
-          default:
-            if("tokens" in token && token.tokens !== undefined){
-              return toRuns(token.tokens);
-            }
-            return token.raw.split(/\r?\n/).flatMap((line, index) => [
-              ...(index > 0 ? [new TextRun({ break: 1 })] : []),
-              ...this.processMath(line, {}),
-            ]);
-        }
-      });
-    };
 
     const toParagraphs = (tokens: marked.Token[], level = 0): Paragraph[] => {
       return tokens.flatMap((token) => {
@@ -190,7 +190,7 @@ export class DocxUtilityService {
             return [
               new Paragraph({
                 numbering: token.ordered ? { reference, level: Math.min(level, 8), instance } : { reference, level: Math.min(level, 8) },
-                children: toRuns(item.tokens.filter(t => t.type !== 'list')),
+                children: this.toRuns(item.tokens.filter(t => t.type !== 'list')),
                 spacing: { after: 40 },
               }),
               ...toParagraphs(item.tokens.filter(t => t.type === 'list'), level + 1),
@@ -201,7 +201,7 @@ export class DocxUtilityService {
         return [
           new Paragraph({
             heading: token.type === 'heading' ? HeadingLevel[`HEADING_${Math.min(token.depth, 6)}` as keyof typeof HeadingLevel] : undefined,
-            children: toRuns("tokens" in token && token.tokens !== undefined ? token.tokens : [token]),
+            children: this.toRuns("tokens" in token && token.tokens !== undefined ? token.tokens : [token]),
             spacing: { after: 100 },
           }),
         ];
