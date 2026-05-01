@@ -7,13 +7,113 @@ import {
   HeadingLevel,
   ILevelsOptions,
   INumberingOptions,
+  IRunOptions,
   LevelFormat,
+  Math as DocxMath,
+  MathAngledBrackets,
+  MathComponent,
+  MathCurlyBrackets,
+  MathFraction,
+  MathFunction,
+  MathIntegral,
+  MathRadical,
+  MathRoundBrackets,
+  MathRun,
+  MathSquareBrackets,
+  MathSubScript,
+  MathSubSuperScript,
+  MathSuperScript,
+  MathSum,
   Packer,
   Paragraph,
+  ParagraphChild,
   TextRun,
 } from 'docx';
 import { marked } from 'marked';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import temml from "temml";
+
+const tag = (n?: Element) => n?.localName || "";
+const kids = (n: Element) => Array.from(n.children) as Element[];
+const text = (n?: Element) => n?.textContent ?? "";
+const docx = (n?: Element) => n ? mathmlToDocx(n) : [];
+const is = (n: Element, ...tags: string[]) => tags.includes(tag(n));
+
+function nary(node: Element, body?: Element) {
+  const [base, sub, sup] = kids(node), Ctor = text(base).trim() === "∑" ? MathSum : text(base).trim() === "∫" ? MathIntegral : null;
+  return Ctor && new Ctor({ children: docx(body), ...(is(node, "msup", "mover") ? { superScript: docx(sub) } : is(node, "msub", "munder") ? { subScript: docx(sub) } : { subScript: docx(sub), superScript: docx(sup) }) });
+}
+
+function row(node: Element): MathComponent[] {
+  const out: MathComponent[] = [], c = kids(node);
+  for (let i = 0; i < c.length; i++) {
+    const n = c[i], next = c[i + 1], next2 = c[i + 2], op = nary(n, next);
+    if (op) { out.push(op); if (next) i++; continue; }
+    if (tag(n) === "mi" && text(next) === "" && next2) { out.push(new MathFunction({ name: docx(n), children: docx(next2) })); i += 2; continue; }
+    out.push(...mathmlToDocx(n));
+  }
+  return out;
+}
+
+function mathmlToDocx(node: Element): MathComponent[] {
+  switch (tag(node)) {
+    case "math":
+    case "mrow":
+    case "mstyle":
+      return row(node);
+    case "semantics":
+      return docx(kids(node)[0]);
+    case "mi":
+    case "mn":
+    case "mo":
+    case "mtext":
+    case "ms":
+      return [new MathRun(text(node))];
+    case "mspace":
+      return [new MathRun(" ")];
+    case "none":
+    case "annotation":
+      return [];
+    case "mfrac": {
+      const [num, den] = kids(node);
+      return [new MathFraction({ numerator: docx(num), denominator: docx(den) })];
+    }
+    case "msup":
+    case "mover": {
+      const op = nary(node);
+      if (op) return [op];
+      const [base, sup] = kids(node);
+      return [new MathSuperScript({ children: docx(base), superScript: docx(sup) })];
+    }
+    case "msub":
+    case "munder": {
+      const op = nary(node);
+      if (op) return [op];
+      const [base, sub] = kids(node);
+      return [new MathSubScript({ children: docx(base), subScript: docx(sub) })];
+    }
+    case "msubsup":
+    case "munderover": {
+      const op = nary(node);
+      if (op) return [op];
+      const [base, sub, sup] = kids(node);
+      return [new MathSubSuperScript({ children: docx(base), subScript: docx(sub), superScript: docx(sup) })];
+    }
+    case "msqrt":
+      return [new MathRadical({ children: row(node) })];
+    case "mroot": {
+      const [base, degree] = kids(node);
+      return [new MathRadical({ children: docx(base), degree: docx(degree) })];
+    }
+    case "mfenced": {
+      const c = row(node), open = node.getAttribute("open") ?? "(", close = node.getAttribute("close") ?? ")";
+      const Ctor = ({ "()": MathRoundBrackets, "{}": MathCurlyBrackets, "[]": MathSquareBrackets, "⟨⟩": MathAngledBrackets, "<>": MathAngledBrackets } as Record<string, any>)[open + close];
+      return Ctor ? [new Ctor({ children: c })] : [new MathRun(open), ...c, new MathRun(close)];
+    }
+    default:
+      return [new MathRun(text(node))];
+  }
+}
 
 @Injectable({
   providedIn: 'root',
@@ -21,30 +121,38 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 export class DocxUtilityService {
   constructor(private utilityService:UtilityService, private translateService:TranslateService){}
 
+  private processMath(content: string, options: IRunOptions): (TextRun | DocxMath)[] {
+    return content.split(/(\$[^$]+\$)/g).map(part => {
+      if (part.startsWith("$") && part.endsWith("$")) {
+        const mathml = temml.renderToString(part.slice(1, -1), { displayMode: false, throwOnError: false });
+        const doc = new DOMParser().parseFromString(mathml, "application/xml");
+        return new DocxMath({ ...options, children: mathmlToDocx(doc.documentElement) });
+      }
+      return new TextRun({ ...options, text: part });
+    });
+  }
+
   getMarkdownParagraphs(content: string): Paragraph[] {
     let orderedListInstance = 0;
     let optionListInstance = 0;
 
-    const toRuns = (tokens: marked.Token[]): TextRun[] => {
+    const toRuns = (tokens: marked.Token[]): ParagraphChild[] => {
       return tokens.flatMap((token) => {
         switch (token.type) {
           case 'strong':
-            return [new TextRun({ text: token.text, bold: true })];
+            return this.processMath(token.text, { bold: true });
           case 'em':
-            return [new TextRun({ text: token.text, italics: true })];
+            return this.processMath(token.text, { italics: true });
           case 'br':
-            return [new TextRun({ text: '', break: 1 })];
+            return this.processMath('', { break: 1 });
           default:
             if("tokens" in token && token.tokens !== undefined){
               return toRuns(token.tokens);
             }
-            if("text" in token){
-              return token.text.split(/\r?\n/).flatMap((line, index) => [
-                ...(index > 0 ? [new TextRun({ break: 1 })] : []),
-                new TextRun(line),
-              ]);
-            }
-            return [new TextRun("")];
+            return token.raw.split(/\r?\n/).flatMap((line, index) => [
+              ...(index > 0 ? [new TextRun({ break: 1 })] : []),
+              ...this.processMath(line, {}),
+            ]);
         }
       });
     };
