@@ -22,44 +22,11 @@ describe('AuthController', () => {
             json: jest.fn().mockReturnThis()
         };
         mockAuthManager = {
-            getOtp: jest.fn(),
             validateOtp: jest.fn(),
             getUserFromToken: jest.fn()
         };
         authController.authManager = mockAuthManager;
         jest.clearAllMocks();
-    });
-
-    describe('getOtp', () => {
-        it('should return 200 when OTP is sent successfully', async () => {
-            const mockResult = { success: true, message: 'OTP sent', data: null };
-            mockAuthManager.getOtp.mockResolvedValue(mockResult);
-
-            await authController.getOtp(mockReq, mockRes);
-
-            expect(mockAuthManager.getOtp).toHaveBeenCalledWith(mockReq);
-            expect(mockRes.status).toHaveBeenCalledWith(200);
-            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
-        });
-
-        it('should handle error when OTP sending fails', async () => {
-            const mockResult = { success: false, message: 'Failed to send OTP', data: null };
-            mockAuthManager.getOtp.mockResolvedValue(mockResult);
-
-            await authController.getOtp(mockReq, mockRes);
-
-            expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
-        });
-
-        it('should return 400 when exception occurs', async () => {
-            const error = new Error('Database error');
-            mockAuthManager.getOtp.mockRejectedValue(error);
-
-            await authController.getOtp(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(400);
-            expect(mockRes.json).toHaveBeenCalledWith(error);
-        });
     });
 
     describe('validateOtp', () => {

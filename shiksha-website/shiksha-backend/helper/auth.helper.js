@@ -2,7 +2,7 @@ require("dotenv").config();
 const crypto = require('crypto');
 const variforrmSMSService = require('../services/variform.service');
 class AuthHelper {
-	getOtp() {
+	generateOtp() {
         const OTP = crypto.randomInt(1000, 10000).toString();
 		return OTP;
 	}

@@ -17,82 +17,54 @@ class AuthManager {
         this.adminUserDao = new AdminUserDao();
     }
 
-    /**
-     * Auto-detect user type by searching both User and AdminUser tables
-     * @param {string} phone - Phone number to search
-     * @returns {object} { user: User|AdminUser|null, type: "0"|"1"|null }
-     */
-    async detectUserType(phone) {
-        // Try regular User table first (type=0)
-        const regularUser = await this.userDao.getByPhone(phone);
-        if (regularUser) {
-            return { user: regularUser, type: "0" };
-        }
-
-        // Try AdminUser table (type=1)
-        const adminUser = await this.adminUserDao.getByPhone(phone);
-        if (adminUser) {
-            return { user: adminUser, type: "1" };
-        }
-
-        return { user: null, type: null };
-    }
-
-    async updateUserByType(userId, type, updates) {
-        if (type === "0") {
-            await this.userDao.update(userId, updates);
-        } else if (type === "1") {
-            await this.adminUserDao.update(userId, updates);
-        } else {
-            throw new Error("Invalid type");
+    async #getUserByType(phone, userType) {
+        switch (userType) {
+            case "admin": return await this.adminUserDao.getByPhone(phone);
+            case "teacher": return await this.userDao.getByPhone(phone);
+            default: throw new Error(`Unexpected user type: ${userType}`);
         }
     }
 
-    async getOtp(req) {
+    async updateUserByType(userId, userType, updates) {
+        switch (userType) {
+            case "admin": await this.adminUserDao.update(userId, updates);
+            case "teacher": await this.userDao.update(userId, updates);
+            default: throw new Error(`Unexpected user type: ${userType}`);
+        }
+    }
+
+    async getUserTypes(phone) {
+        const [teacher, admin] = await Promise.all([this.#getUserByType(phone, "teacher"), this.#getUserByType(phone, "admin")]);
+        const types = [];
+        if(teacher) types.push("teacher");
+        if(admin) types.push("admin");
+        return formatApiReponse(true, null, types);
+    }
+
+    async forgotPassword(req) {
         try {
-            let { phone, rememberMe, forgotPassword } = req.body;
-
-            // Auto-detect user type by searching both tables
-            const detected = await this.detectUserType(phone);
-            if (!detected.user) {
+            let { phone, userType } = req.body;
+            const user = await this.#getUserByType(phone, userType);
+            if (!user) {
                 return formatApiReponse(false, "Account does not exist!", {});
             }
-
-            const user = detected.user;
-            const type = detected.type;
-            console.log(`[AUTH] User detected: phone=${phone}, type=${type} (${type === "0" ? "Teacher" : "Admin"})`);
 
             if (user.isDeleted) {
                 return formatApiReponse(false, "User is inactive", {});
             }
 
-            let otpTriggered = false;
-
-            if (forgotPassword || (!user.otp && !user.rememberMeToken)) {
-                if (user.otp && forgotPassword) {
-                    const decryptedOtpBytes = CryptoJS.AES.decrypt(user.otp, process.env.PIN_SECRET_KEY);
-                    const decryptedOtp = decryptedOtpBytes.toString(CryptoJS.enc.Utf8);
-
-                    const templateId = process.env.VARIFORM_SMS_TEMPLATE;
-                    await authHelper.sendOtp(templateId, phone, decryptedOtp);
-                    otpTriggered = true;
-                } else {
-                    const otp = authHelper.getOtp();
-                    const templateId = process.env.VARIFORM_SMS_TEMPLATE;
-                    await authHelper.sendOtp(templateId, phone, otp);
-                    const encryptedOtp = CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString();
-                    await this.updateUserByType(user._id, type, { otp: encryptedOtp, rememberMeToken: rememberMe === true });
-                    otpTriggered = true;
-                }
-            } else {
-                await this.updateUserByType(user._id, type, { rememberMeToken: rememberMe === true });
+            let otp;
+            if(!user.otp){
+                // this happens to new teachers - they do not get an otp assigned and must use 'forgot pin'
+                otp = authHelper.generateOtp();
+                const encryptedOtp = CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString();
+                await this.updateUserByType(user._id, type, { otp: encryptedOtp, rememberMeToken: rememberMe === true });
+            }else{
+                otp = CryptoJS.AES.decrypt(user.otp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
             }
 
-            const userObj = user.toObject();
-            delete userObj.otp;
-            delete userObj.rememberMeToken;
-            return formatApiReponse(true, otpTriggered ? "OTP sent successfully" : "Verify your Pin!", { user: user.phone, otpTriggered });
-
+            await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
+            return formatApiReponse(true, "OTP sent successfully", { user: user.phone, otpTriggered });
         } catch (err) {
             return formatApiReponse(false, err?.message || "Internal Server Error", err);
         }
@@ -100,17 +72,12 @@ class AuthManager {
 
     async validateOtp(req) {
         try {
-            let { phone, otp } = req.body;
+            let { phone, userType, otp, rememberMe } = req.body;
 
-            // Auto-detect user type by searching both tables
-            const detected = await this.detectUserType(phone);
-            if (!detected.user) {
+            const user = await this.#getUserByType(phone, userType);
+            if (!user) {
                 return formatApiReponse(false, "Account does not exist!", null);
             }
-
-            const user = detected.user;
-            const type = detected.type;
-            console.log(`[AUTH] OTP validation for: phone=${phone}, type=${type} (${type === "0" ? "Teacher" : "Admin"})`);
 
             if (user.isDeleted) {
                 return formatApiReponse(false, "User is inactive", {});
@@ -127,11 +94,11 @@ class AuthManager {
 
             if (isOtpValid) {
                 const token = user.generateAuthToken();
-                await this.updateUserByType(user._id, type, { isLoginAllowed: true });
+                await this.updateUserByType(user._id, userType, { isLoginAllowed: true, rememberMeToken: rememberMe === true });
                 const userObj = user.toObject();
 
                 // Refresh profile image SAS URL if expired
-                await refreshProfileImageIfExpired(userObj, (id, updates) => this.updateUserByType(id, type, updates));
+                await refreshProfileImageIfExpired(userObj, (id, updates) => this.updateUserByType(id, userType, updates));
 
                 // Logging logic
                 const agent = req.useragent || {};

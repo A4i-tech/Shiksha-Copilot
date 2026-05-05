@@ -1,27 +1,30 @@
 const Joi = require("joi");
 
-const validateGetOtp = (req, res, next) => {
-    // --- LOGS START ---
-    console.log("\n[validateGetOtp] Incoming Request:");
-    console.log("Query Params (URL):", req.query);
-    console.log("Body (Payload):", req.body);
-    // --- LOGS END ---
+const validateUserTypes = (req, res, next) => {
+    const { error } = Joi.object({phone: Joi.string().required()}).validate(req.query, { abortEarly: false });
+    if (error) {
+        const errorMessages = error.details.map((i) => i.message);
+        console.log("[validateUserTypes] Validation Failed:", errorMessages);
+        return res.status(400).json({
+            success: false,
+            data: false,
+            error: errorMessages,
+        });
+    }
+    next();
+};
 
+const validateForgotPassword = (req, res, next) => {
     const data = req.body;
-
     const schema = Joi.object({
         phone: Joi.string().required(),
-        rememberMe: Joi.boolean(),
-        forgotPassword: Joi.boolean()
+        userType: Joi.string().valid("admin", "teacher").required(),
     });
 
     const { error } = schema.validate(data, { abortEarly: false });
-
     if (error) {
-        // Log exactly why it failed
         const errorMessages = error.details.map((i) => i.message);
-        console.log("[validateGetOtp] Validation Failed:", errorMessages);
-
+        console.log("[validateForgotPassword] Validation Failed:", errorMessages);
         return res.status(400).json({
             success: false,
             data: false,
@@ -29,21 +32,16 @@ const validateGetOtp = (req, res, next) => {
         });
     }
 
-    console.log("[validateGetOtp] Validation Passed");
     next();
 };
 
 const validateOtp = (req, res, next) => {
-    // --- LOGS START ---
-    console.log("\n[validateOtp] Incoming Request:");
-    console.log("Body (Payload):", req.body);
-    // --- LOGS END ---
-
     const data = req.body;
 
     const schema = Joi.object({
         phone: Joi.string().required(),
-        otp: Joi.string(),
+        userType: Joi.string().valid("admin", "teacher").required(),
+        otp: Joi.string().required(),
         rememberMe: Joi.boolean(),
     });
 
@@ -65,5 +63,6 @@ const validateOtp = (req, res, next) => {
 
 module.exports = {
     validateOtp,
-    validateGetOtp
+    validateForgotPassword,
+    validateUserTypes
 };

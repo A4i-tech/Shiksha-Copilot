@@ -3,18 +3,24 @@ const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const AuthController = require("../controllers/auth.controller.js");
 const {
-	validateLogin,
 	validateOtp,
-	validateGetOtp
+	validateForgotPassword,
+	validateUserTypes
 } = require("../validations/auth.validation.js");
 const { isAuthenticated } = require("../middlewares/auth.js");
 
 const authController = new AuthController();
 
+router.get(
+	"/auth/user-types",
+	validateUserTypes,
+	asyncMiddleware(authController.getUserTypes.bind(authController))
+);
+
 router.post(
-	"/auth/get-otp",
-	validateGetOtp,
-	asyncMiddleware(authController.getOtp.bind(authController))
+	"/auth/forgot-password",
+	validateForgotPassword,
+	asyncMiddleware(authController.forgotPassword.bind(authController))
 );
 
 router.post(

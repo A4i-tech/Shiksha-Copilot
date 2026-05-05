@@ -34,6 +34,8 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   rememberMe= false;
   storedUserInfo:any;
   otpTriggered = false;
+  userTypes: applicationUsers[] = [];
+  selectedUserType: applicationUsers | null = null;
 
   otpInputConfig: NgOtpInputConfig = {
     length: 4,
@@ -199,27 +201,38 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
       this.numberErrorMsg = 'Invalid phone number.';
     } else {
       this.numberErrorMsg = null;
-      const reqBody = {
-        phone:this.phoneNumber,
-        rememberMe:this.rememberMe
-      }
-     this.getOtp(reqBody);
-      
+      this.service.getUserTypes(this.phoneNumber).subscribe({
+        next: (res: any) => {
+          this.userTypes = res.data;
+          if (!this.userTypes.length) {
+            this.numberErrorMsg = 'Account does not exist.';
+            return;
+          }
+
+          this.selectedUserType = null;
+          this.otpTriggered = false;
+          this.modalStatus = true;
+          this.showResendOTP = false;
+          this.clearOTPFiled();
+          if(this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone){
+            this.ngOtp.setValue(this.storedUserInfo.apin)
+          }
+        },
+        error: (err: any) => this.utility.handleError(err)
+      });
     }
   }
 
-  getOtp(reqBody:any){
-    this.service.validateMobileNumber(reqBody).subscribe({
+  forgotPin(userType: applicationUsers){
+    this.service.forgotPassword({ phone: this.phoneNumber, userType: userType }).subscribe({
       next: (res: any) => {
         this.otpTriggered = res?.data?.otpTriggered;
+        this.selectedUserType = userType;
         this.modalStatus = true;
         this.showResendOTP = false;
         this.clearOTPFiled();
         // this.startTimer();
         this.utility.showSuccess(this.otpTriggered ? 'Please enter the PIN sent to your phone number to continue' : 'Please enter your access PIN');
-        if(this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone){
-          this.ngOtp.setValue(this.storedUserInfo.apin)
-        }
       },
       error: (err: any) => {
         this.utility.handleError(err);
@@ -227,27 +240,16 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     });
   }
 
-  forgotPin(){
-    const reqBody = {
-      phone:this.phoneNumber,
-      rememberMe:this.rememberMe,
-      forgotPassword:true
-    }
-    this.clearOTPFiled();
-    this.secureCookieService.deleteCookie("userInfo");
-    this.storedUserInfo=null;
-   this.getOtp(reqBody);
-  }
-
   /**
    * update the loader and navigate the user on correct otp
    */
-  onVerifyOTP() {
+  onVerifyOTP(userType: applicationUsers) {
     if (this.otpValue) {
       this.service
-        .validateOTP(this.otpValue, this.phoneNumber.toString())
+        .validateOTP(this.otpValue, this.phoneNumber.toString(), userType, this.rememberMe)
         .subscribe({
           next: (res: any) => {
+            this.selectedUserType = userType;
             this.invalidOtp = false;
             this.utility.showSuccess("You've successfully logged in.");
             localStorage.setItem('token', res.data.token);
@@ -311,10 +313,15 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   onResendOTP() {
+    const selectedUserType = this.selectedUserType;
+    if (!selectedUserType) {
+      return; // this should never happen
+    }
+
     this.showResendOTP = false;
     // this.startTimer();
     this.clearOTPFiled();
-    this.forgotPin();
+    this.forgotPin(selectedUserType);
   }
 
   clearErrorMsg() {

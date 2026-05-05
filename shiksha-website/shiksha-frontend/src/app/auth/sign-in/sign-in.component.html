@@ -81,15 +81,15 @@
 					<ng-otp-input (onInputChange)="handeOtpChange($event)" [config]="otpInputConfig" #ngotp
 						[ngClass]="{'error':invalidOtp}"></ng-otp-input>
 				</div>
-				<button class="btn-success font-normal text-sm md:text-lg  text-center w-full" (click)="onVerifyOTP()"
-					[disabled]="otpValue.length!=4"> Verify</button>
-				<ng-container *ngIf="otpTriggered">
-					<a class="text-success underline cursor-pointer md:text-lg text-sm" (click)="onResendOTP()">Resend
-						PIN</a>
-					<!-- <p class="timer" *ngIf="!showResendOTP">{{otpTimer | timeformat }}</p> -->
-				</ng-container>
-				<a class="text-success underline cursor-pointer md:text-lg text-sm" *ngIf="!otpTriggered"
-					(click)="forgotPin()">Forgot PIN</a>
+				<div *ngIf="userTypes.includes(applicationUsersType.ADMIN)" class="w-full flex flex-col gap-0">
+					<button class="btn-success font-normal text-sm md:text-lg text-center w-full" (click)="onVerifyOTP(applicationUsersType.ADMIN)" [disabled]="otpValue.length!=4">Login as Admin</button>
+					<a *ngIf="!otpTriggered" class="text-success underline cursor-pointer text-sm text-center" (click)="forgotPin(applicationUsersType.ADMIN)">Forgot Admin PIN</a>
+				</div>
+				<div *ngIf="userTypes.includes(applicationUsersType.TEACHER)" class="w-full flex flex-col gap-0">
+					<button class="btn-success font-normal text-sm md:text-lg text-center w-full" (click)="onVerifyOTP(applicationUsersType.TEACHER)" [disabled]="otpValue.length!=4">Login as Teacher</button>
+					<a *ngIf="!otpTriggered" class="text-success underline cursor-pointer text-sm text-center" (click)="forgotPin(applicationUsersType.TEACHER)">Forgot Teacher PIN</a>
+				</div>
+				<a *ngIf="otpTriggered" class="text-success underline cursor-pointer text-sm block mt-2 text-center" (click)="onResendOTP()">Resend PIN</a>
 				<p class="text-content font-normal text-sm text-center">Having trouble accessing application?
 					<br>Contact Sikshana Representative</p>
 			</div>

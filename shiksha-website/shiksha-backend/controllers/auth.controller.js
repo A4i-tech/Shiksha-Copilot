@@ -5,24 +5,21 @@ class AuthController {
     constructor() {
         this.authManager = new AuthManager();
     }
+    async getUserTypes(req, res) {
+        const result = await this.authManager.getUserTypes(req.query.phone);
+        return res.status(200).json(result);
+    }
 
-    async getOtp(req, res) {
+    async forgotPassword(req, res) {
         try {
-            console.log("--> [Controller] Calling authManager.getOtp");
-            
-            // Call the Manager
-            let result = await this.authManager.getOtp(req);
-            
-            console.log("--> [Controller] Result received:", JSON.stringify(result));
-
+            let result = await this.authManager.forgotPassword(req);
             if (result.success) {
                 return res.status(200).json(result);
             }
-
             handleError(result, res);
             return;
         } catch (err) {
-            console.log("Error --> AuthController -> getOtp()", err);
+            console.log("Error --> AuthController -> forgotPassword()", err);
             return res.status(400).json(err);
         }
     }
