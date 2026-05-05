@@ -145,7 +145,7 @@ const loadRoute = (file) => {
 const routeCases = [
   { file: "admin.user.routes.js", method: "post", path: "/admin/create" },
   { file: "audit.log.route.js", method: "get", path: "/audit/log" },
-  { file: "auth.routes.js", method: "post", path: "/auth/get-otp" },
+  { file: "auth.routes.js", method: "post", path: "/auth/forgot-password" },
   {
     file: "baselineSurvey.routes.js",
     method: "get",

@@ -8,9 +8,9 @@ describe('AuthHelper', () => {
         jest.clearAllMocks();
     });
 
-    describe('getOtp', () => {
+    describe('generateOtp', () => {
         it('should generate a 4-digit OTP', () => {
-            const otp = authHelper.getOtp();
+            const otp = authHelper.generateOtp();
 
             expect(otp).toBeDefined();
             expect(otp).toHaveLength(4);
@@ -19,8 +19,8 @@ describe('AuthHelper', () => {
         });
 
         it('should generate different OTPs on multiple calls', () => {
-            const otp1 = authHelper.getOtp();
-            const otp2 = authHelper.getOtp();
+            const otp1 = authHelper.generateOtp();
+            const otp2 = authHelper.generateOtp();
 
             expect(typeof otp1).toBe('string');
             expect(typeof otp2).toBe('string');
