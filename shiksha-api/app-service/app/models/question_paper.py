@@ -30,9 +30,9 @@ class TextQuestion(BaseModel):
     question: str = Field(default="")
     answer: str = Field(default="")
     keyAnswer: str = Field(default="", description="\n".join([
-        "Answer to be displayed right below the question."
+        "Answer to be displayed right below the question.",
         "- For MCQs, this should be the label of the correct option (e.g. 'A').",
-        "- For fill-in-the-blank questions, this should be the word or phrase that fills the blank."
+        "- For fill-in-the-blank questions, this should be the word or phrase that fills the blank.",
         "- For short and long answer questions, this should be a concise model answer."
     ]))
     difficulty: DifficultyType = "Average"
