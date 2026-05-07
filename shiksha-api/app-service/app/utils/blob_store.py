@@ -85,3 +85,5 @@ class BlobStore:
 
         except AzureError as e:
             raise RuntimeError(f"Failed to download blobs asynchronously: {e}") from e
+        finally:
+            await container_client.close()

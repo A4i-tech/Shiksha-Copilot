@@ -15,12 +15,12 @@ from pydantic import BaseModel, computed_field, field_validator, Field, model_va
 
 
 class QuestionBankMetadata(BaseModel):
-    user_id: str
-    subject: str
-    grade: str
-    unit_names: List[str]
-    school_name: str
-    examination_name: str
+    user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
+    subject: str = Field(..., description="Subject for question generation", examples=["Science"])
+    grade: str = Field(..., description="Student grade/class level", examples=["10"])
+    unit_names: List[str] = Field(..., examples=[["Light", "Electricity"]])
+    school_name: str = Field(..., examples=["ABC School"])
+    examination_name: str = Field(..., examples=["Mid-term Exam"])
 
 
 DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
@@ -29,7 +29,12 @@ DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
 class TextQuestion(BaseModel):
     question: str = Field(default="")
     answer: str = Field(default="")
-    keyAnswer: str = Field(default="")
+    keyAnswer: str = Field(default="", description="\n".join([
+        "Answer to be displayed right below the question.",
+        "- For MCQs, this should be the label of the correct option (e.g. 'A').",
+        "- For fill-in-the-blank questions, this should be the word or phrase that fills the blank.",
+        "- For short and long answer questions, this should be a concise model answer."
+    ]))
     difficulty: DifficultyType = "Average"
 
 
@@ -41,15 +46,15 @@ class McqOption(BaseModel):
 
 
 class FourOptionsQuestion(BaseModel):
-    question: str = Field(default="", examples=["Question text here?"])
-    options: List[McqOption] = Field(default_factory=list, examples=[[
-        McqOption(label="A", text="Option A"),
-        McqOption(label="B", text="Option B"),
-        McqOption(label="C", text="Option C"),
-        McqOption(label="D", text="Option D")
+    question: str = Field(default="", examples=["What is the speed of light in vacuum?"])
+    options: List[McqOption] = Field(default_factory=list, min_length=4, max_length=4, examples=[[
+        McqOption(label="A", text="3x10^8 m/s"),
+        McqOption(label="B", text="3x10^6 m/s"),
+        McqOption(label="C", text="3x10^10 m/s"),
+        McqOption(label="D", text="3x10^5 m/s")
     ]])
-    answer: str = Field(default="")
-    keyAnswer: str = Field(default="", examples=["A"])
+    answer: str = Field(default="", examples=["3x10^8 m/s"])
+    keyAnswer: str = Field(default="", description="The correct answer choice. This is displayed right below the question.", examples=["A"])
     difficulty: DifficultyType = "Average"
 
     @model_validator(mode="before")
@@ -101,8 +106,13 @@ class FourOptionsQuestion(BaseModel):
 
 
 class MatchingListQuestion(BaseModel):
-    value1: str = Field(default="")
-    value2: str = Field(default="")
+    """
+    Models a single entry in a match-the-following question. While a match-the-following type question
+    often consists of multiple entries, this model represents just one complete entry.
+    """
+
+    value1: str = Field(default="", description="The phrase to display on the left-hand side.")
+    value2: str = Field(default="", description="The phrase to display on the right-hand side.")
     difficulty: DifficultyType = "Average"
 
 
@@ -156,40 +166,13 @@ class QuestionType(str, Enum):
         obj._model = pydantic_model
         return obj
 
-    # Get required fields from Pydantic model
-    def get_required_fields(self) -> List[str]:
-        """Get list of required fields from the Pydantic model."""
-        model_fields = self._model.model_fields
-        required_fields = []
-        for field_name, field_info in model_fields.items():
-            # Check if field is required (not optional and no default)
-            if field_info.is_required():
-                required_fields.append(field_name)
-        return required_fields
-
-    # Get field types from Pydantic model
-    def get_field_info(self) -> Dict[str, Any]:
-        """Get field information from the Pydantic model."""
-        return {
-            name: {
-                "type": field.annotation,
-                "required": field.is_required(),
-                "default": field.default if not field.is_required() else None,
-            }
-            for name, field in self._model.model_fields.items()
-        }
-
     # Prompt/schema hint for LLM
-    def schema_dict(self) -> str:
-        return self._model.schema_json()
+    def model_name(self) -> str:
+        return self._model.__name__
 
     # Cast generated dict to the right Pydantic model
     def cast(self, obj: dict):
         return self._model.model_validate(obj)
-
-    # Back-compat alias
-    def get_question_format_dict(self) -> str:
-        return self.schema_dict()
 
 
 class QuestionTypeResponse(BaseModel):
@@ -250,34 +233,30 @@ class Template(BaseModel):
 
 
 class QuestionBankPartsGenerationRequest(BaseModel):
-    user_id: str
-    board: str
-    medium: str
-    grade: int
-    subject: str
-    chapters: List[Chapter]
-    total_marks: int
-    template: List[Template]
-    existing_questions: List[QuestionTypeResponse] = []
+    user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
+    board: str = Field(..., description="Educational board", examples=["NCERT", "CBSE", "State board"])
+    medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
+    grade: int = Field(..., description="Student grade/class level")
+    subject: str = Field(..., description="Subject for question generation")
+    chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
+    total_marks: int = Field(..., description="Total marks for the question paper")
+    template: List[Template] = Field(..., description="Question distribution template specifying types and marks")
+    existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
+    school_name: str = "Shiksha Partner School"
+    examination_name: str = "Class Assessment"
 
 
 class QBQuestionDistributionGenerationRequest(BaseModel):
-    user_id: str
-    board: str
-    medium: str
-    grade: int
-    subject: str
-    chapters: List[Chapter]
-    total_marks: int
-    marks_distribution: List[MarksDistribution]
-    objective_distribution: List[ObjectiveDistribution]
-    template: List[Template]
-
-    @field_validator("chapters")
-    def check_chapters_not_empty(cls, v):
-        if not v or len(v) == 0:
-            raise ValueError("The 'chapters' field must contain at least one Chapter.")
-        return v
+    user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
+    board: str = Field(..., description="Educational board", examples=["NCERT", "CBSE", "State board"])
+    medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
+    grade: int = Field(..., description="Student grade/class level")
+    subject: str = Field(..., description="Subject for question generation")
+    chapters: List[Chapter] = Field(..., min_length=1, description="List of chapters with learning outcomes and subtopics")
+    total_marks: int = Field(..., description="Total marks for the question paper")
+    marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
+    objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
+    template: List[Template] = Field(..., description="Base template for question types and structure")
 
     def verify_template_for_marks_and_objective_distribution(
         self, new_template: List[Template]
@@ -375,12 +354,12 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
 
 
 class QBTemplateGenerationRequest(BaseModel):
-    user_id: str
-    board: str
-    medium: str
-    grade: int
-    subject: str
-    chapters: List[Chapter]
+    user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
+    board: str = Field(..., description="Educational board", examples=["NCERT", "CBSE", "State board"])
+    medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
+    grade: int = Field(..., description="Student grade/class level")
+    subject: str = Field(..., description="Subject for question generation")
+    chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
     total_marks: int
     marks_distribution: List[MarksDistribution]
 
@@ -522,3 +501,12 @@ class QBTemplateGenerationRequest(BaseModel):
 
         # Now sum(p) == n, and each p[i] is multiple of d[i]
         return p
+
+
+class GeneratedQuestionItem(BaseModel):
+    unit_name: str
+    type: QuestionType
+    objective: Optional[str] = None
+    marks_per_question: int
+    difficulty: DifficultyType
+    item: Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]

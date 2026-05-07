@@ -73,13 +73,6 @@ const mockGenerateQuestionTemplate = jest.fn().mockResolvedValue({
   totalMarks: 80,
 });
 
-// Mock embedding generation for similarity matching
-const mockGenerateEmbedding = jest.fn().mockResolvedValue({
-  success: true,
-  embedding: new Array(1536).fill(0).map(() => Math.random()), // Mock 1536-dim vector
-  model: 'text-embedding-ada-002',
-});
-
 // Mock lesson chat with RAG
 const mockLessonChat = jest.fn().mockResolvedValue({
   success: true,
@@ -144,7 +137,6 @@ const ChatBotService = {
 const QuestionBankBotService = {
   generateQuestionPaper: mockGenerateQuestionPaper,
   generateTemplate: mockGenerateQuestionTemplate,
-  generateEmbedding: mockGenerateEmbedding,
 };
 
 module.exports = {
@@ -155,7 +147,6 @@ module.exports = {
   mockGenerateLessonPlan,
   mockGenerateQuestionPaper,
   mockGenerateQuestionTemplate,
-  mockGenerateEmbedding,
   mockLessonChat,
   mockGenerateBlueprint,
   mockCheckWorkflowStatus,

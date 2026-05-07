@@ -1,5 +1,4 @@
 const QuestionBankCache = require("../models/question.bank.cache.model");
-const QuestionBankEmbedding = require("../models/question.bank.embedding.model");
 const BaseDao = require("./base.dao");
 
 class QuestionBankCacheDao extends BaseDao {
@@ -7,74 +6,68 @@ class QuestionBankCacheDao extends BaseDao {
     super(QuestionBankCache);
   }
 
-  async uploadCache(data) {
+  async findInCache(chapterIds, unitLevel, unitNames, questionFilters = []) {
     try {
-      const result = await QuestionBankCache.insertMany(data);
-      return result;
-    } catch (err) {
-      console.log("Error --> questionBankCacheDao -> uploadCache()", err);
-      throw err;
-    }
-  }
+      const query = {
+        chapterId: { $in: chapterIds },
+        unitLevel: unitLevel,
+        unitName: { $in: unitNames },
+      };
 
-  async uploadEmbedding(data) {
-    try {
-      const result = await QuestionBankEmbedding.insertMany(data);
-      return result;
-    } catch (err) {
-      console.log("Error --> questionBankCacheDao -> uploadEmbedding()", err);
-      throw err;
-    }
-  }
+      if (!questionFilters.length) {
+        return await QuestionBankCache.find(query);
+      }
 
-  async findInCache(chapterIds, unitLevel, unitNames) {
-    try {
-      const result = await QuestionBankCache.find({
-        $and: [
-          {
-            chapterId: { $in: chapterIds },
+      const elemMatches = questionFilters.map((filter) => ({
+        unitName: filter.unitName,
+        questions: {
+          $elemMatch: {
+            objective: filter.objective,
+            type: filter.type,
+            marks: filter.marks,
           },
-          {
-            unitLevel: unitLevel,
-          },
-          {
-            unitName: { $in:unitNames},
-          }
-        ],
-      });
-      return result;
-    } catch (err) {
-      console.log("Error --> questionBankCacheDao -> findInCache()", err);
-      throw err;
-    }
-  }
+        },
+      }));
 
-  async updateCache(newCache) {
-    try {
-      const result = await Promise.all(
-        newCache.map(async (doc) => {
-          if (doc._id) {
-            return await QuestionBankCache.findByIdAndUpdate(
-              doc._id,
-              {
-                $set: {
-                  questionsByObjective: doc.questionsByObjective,
+      const result = await QuestionBankCache.aggregate([
+        {
+          $match: {
+            ...query,
+            $or: elemMatches,
+          },
+        },
+        {
+          $project: {
+            chapterId: 1,
+            unitName: 1,
+            unitLevel: 1,
+            version: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            questions: {
+              $filter: {
+                input: "$questions",
+                as: "question",
+                cond: {
+                  $or: questionFilters.map((filter) => ({
+                    $and: [
+                      { $eq: ["$unitName", filter.unitName] },
+                      { $eq: ["$$question.objective", filter.objective] },
+                      { $eq: ["$$question.type", filter.type] },
+                      { $eq: ["$$question.marks", filter.marks] },
+                    ],
+                  })),
                 },
               },
-              {
-                new: true,
-                runValidators: true,
-              }
-            );
-          } else {
-            console.log("created new doc", doc);
-
-            const newDoc = new QuestionBankCache(doc);
-            return await newDoc.save();
-          }
-        })
-      );
-
+            },
+          },
+        },
+        {
+          $match: {
+            "questions.0": { $exists: true },
+          },
+        },
+      ]);
       return result;
     } catch (err) {
       console.log("Error --> questionBankCacheDao -> findInCache()", err);
@@ -82,41 +75,6 @@ class QuestionBankCacheDao extends BaseDao {
     }
   }
 
-  async getEmbeddings(embeddingIds) {
-    try {
-      const result = await QuestionBankEmbedding.find({
-        _id: { $in: embeddingIds },
-      });
-      return result;
-    } catch (err) {
-      console.log("Error --> questionBankCacheDao -> getEmbeddings()", err);
-      throw err;
-    }
-  }
-
-  async createEmbeddings(data, session = null) {
-    try {
-      let model = new QuestionBankEmbedding(data);
-      let result = await model.save(session ? { session } : {});
-      return result;
-    } catch (err) {
-      console.log("Error -> QuestionBankCacheDao -> createEmbeddings", err);
-      throw err;
-    }
-  }
-
-  async createBulkEmbeddings(data) {
-    try {
-      let result = await QuestionBankEmbedding.insertMany(data);
-      return result;
-    } catch (err) {
-      console.log(
-        "Error -> QuestionBankEmbedding -> createBulkEmbeddings",
-        err
-      );
-      throw err;
-    }
-  }
 }
 
 module.exports = QuestionBankCacheDao;

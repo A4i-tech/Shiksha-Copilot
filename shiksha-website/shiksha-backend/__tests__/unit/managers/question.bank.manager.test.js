@@ -331,7 +331,7 @@ describe("QuestionBankManager", () => {
     it("should translate question paper successfully", async () => {
       const axios = require("axios");
       jest.spyOn(axios, "post").mockResolvedValue({
-        data: { translated_json: { parts: [] } },
+        data: { parts: [] },
       });
 
       const payload = {

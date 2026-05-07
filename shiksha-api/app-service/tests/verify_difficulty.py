@@ -40,13 +40,6 @@ def test_models():
 
     print("Model tests passed!")
 
-def test_schema_dict():
-    print("\nTesting Schema Dict...")
-    schema = QuestionType.MCQ.schema_dict()
-    schema_json = json.loads(schema)
-    assert "difficulty" in schema_json, "QuestionType.MCQ.schema_dict() should include 'difficulty'"
-    assert schema_json["difficulty"] == "Medium", "Default difficulty in schema_dict should be Medium"
-    print("Schema Dict tests passed!")
 
 def test_organize_logic():
     print("\nTesting _organize_questions_into_response Logic Snippet...")
@@ -89,6 +82,5 @@ def test_organize_logic():
 
 if __name__ == "__main__":
     test_models()
-    test_schema_dict()
     test_organize_logic()
     print("\nAll verification tests passed successfully!")
