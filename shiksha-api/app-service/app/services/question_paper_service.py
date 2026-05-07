@@ -115,6 +115,7 @@ class QuestionPaperService:
             grammar_prompt_data = yaml.safe_load(f)
             prompts.update(grammar_prompt_data)
 
+
         logger.info("Successfully loaded prompt templates")
         return prompts
 

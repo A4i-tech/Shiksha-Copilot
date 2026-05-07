@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, Body, HTTPException, status
 from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
+from pydantic import BaseModel
 
 from app.models.question_paper import (
     QBQuestionDistributionGenerationRequest,
