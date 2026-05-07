@@ -618,32 +618,32 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const hasGrammar = selectedChapters.some(ch => ch.isGrammar);
     const hasNonGrammar = selectedChapters.some(ch => !ch.isGrammar);
 
+    const registerTypes = (types: string[]) => {
+      types.forEach(typeName => {
+        headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
+      });
+    };
+
     if (this.useAI && !this.useLBA) {
       if (hasNonGrammar || selectedChapters.length === 0) {
-        const aiStandardTypes = [
+        registerTypes([
           'Multiple Choice Questions',
           'Short Answer Questions',
           'Fill in the blanks',
           'Long Answer Questions',
           'Match the Following',
           'Very Short Answer Questions'
-        ];
-        aiStandardTypes.forEach(typeName => {
-          headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
-        });
+        ]);
       }
     }
 
     // Always add grammar-specific types when grammar chapters are selected
     if (hasGrammar) {
-      const grammarTypes = [
+      registerTypes([
         'Grammar: Multiple Choice Questions',
         'Grammar: Fill in the blanks',
         'Grammar: Identify and correct the error'
-      ];
-      grammarTypes.forEach(typeName => {
-        headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
-      });
+      ]);
     }
 
     // 2. Add LBA Headings (merge with AI if they share names) — skip if LBA not selected

@@ -152,8 +152,8 @@ class QuestionBankController extends BaseController {
       const result = await this.questionBankManager.getQuestionTypes(subject);
       return res.status(200).json(result);
     } catch (err) {
-      console.log("Error --> QuestionBankController -> getQuestionTypes()", err);
-      return res.status(400).json(err);
+      console.error("Error --> QuestionBankController -> getQuestionTypes()", err);
+      return res.status(400).json({ message: err.message || "Failed to fetch question types" });
     }
   }
 
