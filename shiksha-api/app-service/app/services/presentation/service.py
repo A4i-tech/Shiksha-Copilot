@@ -25,16 +25,15 @@ class PresentationService:
 
     @asynccontextmanager
     async def run(self):
-        await self.jobs.ensure_indexes()
-        t1 = asyncio.create_task(self._run_jobs())
-        t2 = asyncio.create_task(self._propagate_jobs())
-        try:
-            yield
-        finally:
-            t1.cancel()
-            t2.cancel()
-            await asyncio.gather(t1, t2, return_exceptions=True)
-            await self.jobs.destroy()
+        async with self.jobs:
+            t1 = asyncio.create_task(self._run_jobs())
+            t2 = asyncio.create_task(self._propagate_jobs())
+            try:
+                yield
+            finally:
+                t1.cancel()
+                t2.cancel()
+                await asyncio.gather(t1, t2, return_exceptions=True)
 
 
     async def _run_jobs(self):

@@ -21,18 +21,25 @@ class JobManager:
         self.log_subscribers: set[asyncio.Queue[dict | None]] = set()
         self.online: dict[bytes, asyncio.Future[None]] = {}
         self._online: dict[bytes, set[bytes]] = {}
-        self._indexes_ready = False
 
-    async def ensure_indexes(self):
-        if self._indexes_ready:
-            return
+    async def __aenter__(self):
         await asyncio.gather(
             self.collection.create_index([("id", ASCENDING)], unique=True),
             self.collection.create_index([("user_id", ASCENDING), ("creation_time", DESCENDING)]),
             self.collection.create_index([("user_id", ASCENDING), ("status", ASCENDING), ("creation_time", DESCENDING)]),
             self.log_collection.create_index([("job_id", ASCENDING), ("timestamp", ASCENDING)]),
         )
-        self._indexes_ready = True
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        self.queue.put_nowait(None)
+        for listener in list(self.listeners):
+            listener.put_nowait(None)
+        self.listeners.clear()
+        for q in list(self.log_subscribers):
+            q.put_nowait(None)
+        self.log_subscribers.clear()
+        await self.client.close()
 
     def on_online(self, job_id: uuid.UUID) -> uuid.UUID:
         id = uuid.uuid4()
@@ -138,13 +145,3 @@ class JobManager:
                 dead.append(listener)
         for listener in dead:
             self.listeners.discard(listener)
-
-    async def destroy(self):
-        self.queue.put_nowait(None)
-        for listener in list(self.listeners):
-            listener.put_nowait(None)
-        self.listeners.clear()
-        for q in list(self.log_subscribers):
-            q.put_nowait(None)
-        self.log_subscribers.clear()
-        await self.client.close()
