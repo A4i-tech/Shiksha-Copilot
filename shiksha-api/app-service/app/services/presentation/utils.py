@@ -1,9 +1,11 @@
 import asyncio
 import hashlib
-import inspect
 from io import BytesIO
 import io
 import os
+import shutil
+import tempfile
+from typing import IO, Literal
 import aiohttp
 import pathlib
 from app.config import settings
@@ -185,3 +187,30 @@ async def save_file_with_hash(storage: Storage, file: UploadFile) -> str:
     final_name = f"{sha256.hexdigest()}{suffix}"
     await storage.write_bytes(storage.path("uploads", final_name), out.getvalue())
     return final_name
+
+
+LibreOfficeOutputFormat = Literal["pdf", "html", "odp", "ppt", "pptx"]
+class LibreOffice:
+
+    def __init__(self) -> None:
+        self.path: str | None = shutil.which("soffice")
+
+    async def _call(self, *args: str) -> bytes:
+        if self.path is None: raise RuntimeError("soffice executable not found in PATH")
+        default_args = ["--headless", "--nologo", "--nofirststartwizard", "--nodefault", "--norestore"]
+        proc = await asyncio.create_subprocess_exec(self.path, *default_args, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        stdout, stderr = await proc.communicate()
+        code = proc.returncode or 0
+        if code != 0: raise RuntimeError(stderr.decode())
+        return stdout
+
+    async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat) -> bytes:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmpdir = pathlib.Path(tmp)
+            in_path = tmpdir / "input.pptx"
+            in_path.write_bytes(data.read())
+            await self._call("--convert-to", output_format, "--outdir", str(tmpdir), str(in_path))
+
+            # soffice creates 'input.xyz'
+            out_path = tmpdir / ("input.%s" % output_format)
+            return out_path.read_bytes()

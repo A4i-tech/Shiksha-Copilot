@@ -5,8 +5,14 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 RUN apt-get update && apt-get install -y \
-    curl build-essential git && \
-    rm -rf /var/lib/apt/lists/*
+    curl \
+    build-essential \
+    git \
+    libreoffice \
+    libreoffice-impress \
+    fonts-dejavu \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN pip install poetry
 

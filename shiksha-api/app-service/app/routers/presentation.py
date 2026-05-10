@@ -1,6 +1,9 @@
 import asyncio
+from collections import defaultdict
 from contextlib import asynccontextmanager
+import io
 import json
+import mimetypes
 import pathlib
 from datetime import datetime
 from typing import Annotated
@@ -11,7 +14,7 @@ from fastapi.responses import Response, StreamingResponse
 
 from app.models.presentation import JobDetail, JobStatus, ToolInfo, UserId
 from app.services.presentation.agent import planner, designer, finalizer, designer_toolset
-from app.services.presentation.utils import save_file_with_hash
+from app.services.presentation.utils import LibreOffice, LibreOfficeOutputFormat, save_file_with_hash
 
 
 @asynccontextmanager
@@ -23,10 +26,23 @@ async def lifespan(app: FastAPI):
 
 router = APIRouter(tags=["Presentation Generation"], prefix="/presentation", lifespan=lifespan)
 XUserIDHeader = Annotated[UserId, Header(alias="X-User-ID")]
+libre_office = LibreOffice()
 
 
 def pres(request: Request) -> PresentationService:
     return request.app.state.pres_svc
+
+
+locks: dict[uuid.UUID, asyncio.Lock] = defaultdict(asyncio.Lock)
+async def one_job(job_id: uuid.UUID):
+    lock = locks[job_id]
+
+    async with lock:
+        try:
+            yield job_id
+        finally:
+            if not lock.locked():
+                locks.pop(job_id, None)
 
 
 @router.post("/job")
@@ -62,23 +78,34 @@ async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentatio
 
 @router.head("/job/{job_id}", include_in_schema=False)
 @router.get("/job/{job_id}")
-async def download_job_pptx(user_id: XUserIDHeader, job_id: uuid.UUID, service: PresentationService = Depends(pres)) -> Response:
+async def download_job_artifact(user_id: XUserIDHeader, job_id: uuid.UUID = Depends(one_job), file_format: LibreOfficeOutputFormat = "pptx", service: PresentationService = Depends(pres)) -> Response:
     """ Download the output PPTX file from a completed job. """
     job = await service.jobs.get(job_id)
     if job is None or job.user_id != user_id:
         raise HTTPException(status_code=404, detail="Job not found")
-    storage_path = service.storage.path("out", pathlib.Path(job.textbook_file).stem, "%s.pptx" % job_id)
-    if not await service.storage.exists(storage_path):
-        raise HTTPException(status_code=404, detail="File not found")
-    content, size = await asyncio.gather(service.storage.read_bytes(storage_path), service.storage.size(storage_path))
-    return Response(
-        content=content,
-        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        headers={
-            "Content-Disposition": f'attachment; filename="{job_id}.pptx"',
+
+    stem = pathlib.Path(job.textbook_file).stem
+    pptx_path = service.storage.path("out", stem, "%s.pptx" % job_id)
+    storage_path = service.storage.path("out", stem, "%s.%s" % (job_id, file_format))
+    media_type, _ = mimetypes.guess_type(storage_path)
+
+    if await service.storage.exists(storage_path):
+        content, size = await asyncio.gather(service.storage.read_bytes(storage_path), service.storage.size(storage_path))
+        return Response(content=content, media_type=media_type, headers={
+            "Content-Disposition": f'attachment; filename="{job_id}.{file_format}"',
             "X-File-Size": str(size)
-        }
-    )
+        })
+
+    if file_format == "pptx":
+        raise HTTPException(status_code=404, detail="File not found")
+
+    content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
+    size = len(content)
+    await service.storage.write_bytes(storage_path, content)
+    return Response(content=content, media_type=media_type, headers={
+        "Content-Disposition": f'attachment; filename="{job_id}.{file_format}"',
+        "X-File-Size": str(size)
+    })
 
 
 @router.get("/tools")
