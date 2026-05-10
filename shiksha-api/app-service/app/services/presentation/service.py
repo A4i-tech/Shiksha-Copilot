@@ -16,9 +16,10 @@ from app.utils.storage import Storage
 
 class PresentationService:
 
-    def __init__(self, storage: Storage, jobs: JobManager):
+    def __init__(self, storage: Storage, jobs: JobManager, do_transform: bool):
         self.storage = storage
         self.jobs = jobs
+        self.do_transform = do_transform
         self.logger = logging.getLogger(__name__)
         self.processing: dict[bytes, asyncio.Task] = {}
 
@@ -125,7 +126,7 @@ class PresentationService:
                     "extraction_time": datetime.now().isoformat(),
                     "figures": list(map(lambda x: x.model_dump(), figures)),
                 }})
-                if "transform_path" not in job.metadata or (job.metadata["transform_path"] is not None and not await self.storage.exists(self.storage.path("out", stem, job.metadata["transform_path"]))):
+                if self.do_transform and ("transform_path" not in job.metadata or (job.metadata["transform_path"] is not None and not await self.storage.exists(self.storage.path("out", stem, job.metadata["transform_path"])))):
                     await self.jobs.update(job.id, {"message": "Simplifying document"})
                     # we are deliberately storing transformation in out/stem/stem instead of out/stem/jobid - if we had
                     # computed transformation for this document during another job, we can skip recomputing for this job.
@@ -285,4 +286,4 @@ class PresentationService:
 def new_default():
     storage = Storage(settings.pres_storage_filesystem, settings.pres_storage_root, settings.pres_storage_options)
     jobs = JobManager(settings.pres_mongodb_url)
-    return PresentationService(storage, jobs)
+    return PresentationService(storage, jobs, settings.pres_do_transform)
