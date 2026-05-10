@@ -15,6 +15,10 @@ from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 
 
+if not os.getenv("OPENAI_API_KEY"):
+    os.environ["OPENAI_API_KEY"] = "sk-xxxx"
+
+
 @pytest.fixture
 def mock_settings():
     """Mock settings for tests."""
