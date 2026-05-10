@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Annotated
 import uuid
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
-from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, UploadFile, HTTPException, Query
+from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
 from app.models.presentation import JobDetail, JobStatus, ToolInfo, UserId
@@ -33,16 +33,10 @@ def pres(request: Request) -> PresentationService:
     return request.app.state.pres_svc
 
 
-locks: dict[uuid.UUID, asyncio.Lock] = defaultdict(asyncio.Lock)
-async def one_job(job_id: uuid.UUID):
-    lock = locks[job_id]
-
-    async with lock:
-        try:
-            yield job_id
-        finally:
-            if not lock.locked():
-                locks.pop(job_id, None)
+def annotate_idle(service: PresentationService, job: JobDetail):
+    if job.status not in {"complete", "error"} and job.id.bytes not in service.processing:
+        job.status = "idle"
+    return job
 
 
 @router.post("/job")
@@ -58,13 +52,17 @@ async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationSe
     job = await service.jobs.get(id)
     if job is not None and job.user_id != user_id:
         raise HTTPException(status_code=404, detail="Job not found")
+    if job is not None:
+        annotate_idle(service, job)
     return job
 
 
 @router.get("/jobs")
 async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None, service: PresentationService = Depends(pres)) -> list[JobDetail]:
     """ List available jobs. """
-    return await service.jobs.list(user_id, offset, limit, status, created_after, created_before)
+    jobs = await service.jobs.list(user_id, offset, limit, status, created_after, created_before)
+    list(map(lambda job: annotate_idle(service, job), jobs))
+    return jobs
 
 
 @router.delete("/job")
@@ -76,34 +74,48 @@ async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentatio
     return await service.jobs.delete(id)
 
 
+locks: dict[tuple[uuid.UUID, LibreOfficeOutputFormat], asyncio.Lock] = defaultdict(asyncio.Lock)
 @router.head("/job/{job_id}", include_in_schema=False)
 @router.get("/job/{job_id}")
-async def download_job_artifact(user_id: XUserIDHeader, job_id: uuid.UUID = Depends(one_job), file_format: LibreOfficeOutputFormat = "pptx", service: PresentationService = Depends(pres)) -> Response:
+async def download_job_artifact(
+    user_id: XUserIDHeader,
+    job_id: uuid.UUID,
+    file_format: LibreOfficeOutputFormat = "pptx",
+    if_none_match: str | None = Header(default=None),
+    service: PresentationService = Depends(pres)
+) -> Response:
     """ Download the output PPTX file from a completed job. """
     job = await service.jobs.get(job_id)
     if job is None or job.user_id != user_id:
         raise HTTPException(status_code=404, detail="Job not found")
 
+    etag = '"%s-%s"' % (job_id, file_format)
+    if if_none_match == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag, "Cache-Control": "private, max-age=31536000, immutable"})
+
     stem = pathlib.Path(job.textbook_file).stem
-    pptx_path = service.storage.path("out", stem, "%s.pptx" % job_id)
     storage_path = service.storage.path("out", stem, "%s.%s" % (job_id, file_format))
     media_type, _ = mimetypes.guess_type(storage_path)
+    async with locks[job_id, file_format]:
+        try:
+            if not await service.storage.exists(storage_path):
+                if file_format == "pptx":
+                    raise HTTPException(status_code=404, detail="File not found")
 
-    if await service.storage.exists(storage_path):
-        content, size = await asyncio.gather(service.storage.read_bytes(storage_path), service.storage.size(storage_path))
-        return Response(content=content, media_type=media_type, headers={
-            "Content-Disposition": f'attachment; filename="{job_id}.{file_format}"',
-            "X-File-Size": str(size)
-        })
+                pptx_path = service.storage.path("out", stem, "%s.pptx" % job_id)
+                content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
+                size = len(content)
+                await service.storage.write_bytes(storage_path, content)
+            else:
+                content, size = await asyncio.gather(service.storage.read_bytes(storage_path), service.storage.size(storage_path))
+        finally:
+            if not locks[job_id, file_format].locked():
+                del locks[job_id, file_format]
 
-    if file_format == "pptx":
-        raise HTTPException(status_code=404, detail="File not found")
-
-    content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
-    size = len(content)
-    await service.storage.write_bytes(storage_path, content)
     return Response(content=content, media_type=media_type, headers={
+        "Cache-Control": "private, max-age=31536000, immutable",
         "Content-Disposition": f'attachment; filename="{job_id}.{file_format}"',
+        "ETag": etag,
         "X-File-Size": str(size)
     })
 

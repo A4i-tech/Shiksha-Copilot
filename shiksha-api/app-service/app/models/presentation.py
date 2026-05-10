@@ -34,6 +34,7 @@ JobStatus = Literal[
     "adding_media",
     "quality_check",
     "complete",
+    "idle",
     "error"
 ]
 
