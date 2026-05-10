@@ -422,6 +422,21 @@
             </div>
 
             <div
+              *ngIf="!hasRequestedPdfPreview && !pdfPreviewUrl && !pdfPreviewError"
+              class="min-h-[520px] rounded-lg border border-dashed bg-shade-50 flex items-center justify-center"
+            >
+              <button
+                type="button"
+                class="btn-outline-primary px-6 py-3 rounded-lg font-bold"
+                [disabled]="!currentJob?.id"
+                [ngClass]="{ 'opacity-50 cursor-not-allowed': !currentJob?.id }"
+                (click)="viewPdfPreview()"
+              >
+                {{ "View PDF" | translate }}
+              </button>
+            </div>
+
+            <div
               *ngIf="isLoadingPdfPreview"
               class="min-h-[520px] rounded-lg border border-dashed bg-shade-50 flex items-center justify-center text-sm text-content-70"
             >

@@ -58,6 +58,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   isLoadingPdfPreview = false;
   pdfPreviewUrl: SafeResourceUrl | null = null;
   pdfPreviewError = '';
+  hasRequestedPdfPreview = false;
   latestToolText = '';
 
   readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
@@ -740,11 +741,6 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       instructions: job.instruction || '',
     }, { emitEvent: false });
 
-    if (job.status === 'complete') {
-      this.loadPdfPreview(job.id);
-      return;
-    }
-
     if (this.currentPdfPreviewJobId && this.currentPdfPreviewJobId !== job.id) {
       this.clearPdfPreview();
     }
@@ -768,6 +764,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     }
 
     this.clearPdfPreview();
+    this.hasRequestedPdfPreview = true;
     this.currentPdfPreviewJobId = jobId;
     this.isLoadingPdfPreview = true;
     this.pdfPreviewError = '';
@@ -797,9 +794,18 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       this.pdfPreviewObjectUrl = null;
     }
 
+    this.hasRequestedPdfPreview = false;
     this.currentPdfPreviewJobId = null;
     this.pdfPreviewUrl = null;
     this.pdfPreviewError = '';
     this.isLoadingPdfPreview = false;
+  }
+
+  viewPdfPreview(): void {
+    if (!this.currentJob?.id || this.isLoadingPdfPreview || this.pdfPreviewUrl) {
+      return;
+    }
+
+    this.loadPdfPreview(this.currentJob.id);
   }
 }
