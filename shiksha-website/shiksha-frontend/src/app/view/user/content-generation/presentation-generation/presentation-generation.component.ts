@@ -59,6 +59,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   pdfPreviewUrl: SafeResourceUrl | null = null;
   pdfPreviewError = '';
   hasRequestedPdfPreview = false;
+  pptxFileSizeLabel = '';
   latestToolText = '';
 
   readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
@@ -502,6 +503,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   resetWizard(fileInput?: HTMLInputElement): void {
     this.closeEventStream();
     this.clearPdfPreview();
+    this.pptxFileSizeLabel = '';
     this.latestToolText = '';
     this.currentRouteJobId = null;
     this.currentJob = null;
@@ -744,6 +746,12 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     if (this.currentPdfPreviewJobId && this.currentPdfPreviewJobId !== job.id) {
       this.clearPdfPreview();
     }
+
+    if (job.status === 'complete' && !this.pptxFileSizeLabel) {
+      this.loadPptxFileSize();
+    } else if (job.status !== 'complete') {
+      this.pptxFileSizeLabel = '';
+    }
   }
 
   private extractLatestToolText(eventData: any): string {
@@ -807,5 +815,23 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     }
 
     this.loadPdfPreview(this.currentJob.id);
+  }
+
+  private loadPptxFileSize(): void {
+    if (!this.currentJob?.id) {
+      return;
+    }
+
+    this.subscriptions.add(
+      this.contentGenerationService.headPresentationFile(this.currentJob.id).subscribe({
+        next: (response: any) => {
+          const fileSize = Number(response.headers.get('content-length') || 0);
+          this.pptxFileSizeLabel = fileSize ? this.formatFileSize(fileSize) : '';
+        },
+        error: () => {
+          this.pptxFileSizeLabel = '';
+        },
+      })
+    );
   }
 }

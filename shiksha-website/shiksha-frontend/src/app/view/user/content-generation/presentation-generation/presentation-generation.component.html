@@ -396,7 +396,7 @@
                     (click)="downloadPresentation()"
                   >
                     <img *ngIf="!isDownloading" src="assets/icons/download-2.svg" alt="" class="w-4 h-4" />
-                    {{ isDownloading ? ("Downloading..." | translate) : ("Download as PPTX" | translate) }}
+                    {{ isDownloading ? ("Downloading..." | translate) : "Download PPTX" + (pptxFileSizeLabel ? " (" + pptxFileSizeLabel + ")" : "") }}
                   </button>
                 </div>
               </div>

@@ -339,4 +339,11 @@ export class ContentGenerationService extends BaseRestService {
       responseType: 'blob',
     });
   }
+
+  headPresentationFile(jobId: string) {
+    return this.http.head(`${this.baseUrl}/presentation/job/${jobId}`, {
+      params: new HttpParams().set('file_format', 'pptx'),
+      observe: 'response',
+    });
+  }
 }
