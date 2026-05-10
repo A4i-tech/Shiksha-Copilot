@@ -3,7 +3,7 @@ import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin, of } from 'rxjs';
 interface ListParams {
   currentPage: number;
   pageSize: number;
@@ -13,9 +13,22 @@ interface ListParams {
   selectedClass?: string;
   selectedSubject?: string;
   searchTerm?: string;
-  selectedMonth?: number,
+  selectedMonth?: string,
+  presentationMonth?: string,
   isCompleted?:string,
-  isGenerated?:string
+  isGenerated?:string,
+  presentationStatus?: string
+}
+
+interface PresentationListItem {
+  id: string;
+  creation_time: string;
+  textbook_file: string;
+  slides: number | null;
+  instruction: string | null;
+  status: string;
+  message: string;
+  metadata: any;
 }
 
 @Component({
@@ -30,7 +43,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   totalItems = 0;
   tableHeaders = ['Date', 'Class', 'Subject', 'Type', 'Chapter', 'Sub Topics', 'Action'];
 
-  typeDropdownOptions: any[] = [{ name: 'Lesson Plan', value: 'lesson' }, { name: 'Resource Plan', value: 'resource' },{ name: 'All', value: 'all' }];
+  typeDropdownOptions: any[] = [{ name: 'Lesson Plan', value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }];
   boardDropdownOptions: any[] = [];
   mediumDropdownOptions: any[] = [];
   classDropdownOptions: any[] = [];
@@ -128,9 +141,11 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
       selectedClass: this.selectedClass,
       selectedSubject: this.selectedSubject,
       selectedMonth: formattedMonth,
+      presentationMonth: this.selectedMonth,
       searchTerm: this.searchText,
       isCompleted:this.isCompleted,
       isGenerated:this.type === 'generated' ? 'false':'true',
+      presentationStatus: this.isCompleted === 'true' ? 'complete' : '',
     };
   }
 
@@ -330,11 +345,22 @@ const today = new Date();
   }
 
   getAllList(params: ListParams) {
-    this.contentGenService.getAllList(params).subscribe({
-      next: (res: any) => {
-        this.list = res.data;
+    const lessonListRequest = params.selectedType === 'presentation' ? of({ data: [] }) : this.contentGenService.getAllList(params);
+    const presentationListRequest = this.shouldFetchPresentations(params) ? this.contentGenService.getPresentationJobs(params) : of([]);
 
-        this.totalItems = res.data?.totalItems;
+    forkJoin({
+      lessonList: lessonListRequest,
+      presentationList: presentationListRequest,
+    }).subscribe({
+      next: (res: any) => {
+        const lessonList = Array.isArray(res.lessonList?.data) ? res.lessonList.data : [];
+        const presentationList = this.filterPresentationJobs(
+          Array.isArray(res.presentationList) ? res.presentationList : [],
+          params
+        ).map((item: PresentationListItem) => this.mapPresentationJob(item));
+
+        this.list = [...lessonList, ...presentationList].sort((a: any, b: any) => this.getItemTimestamp(b) - this.getItemTimestamp(a));
+        this.totalItems = this.list.length;
       },
       error: (err) => {
         console.error(err);
@@ -357,6 +383,10 @@ const today = new Date();
   }
 
   onView(data: any) {
+    if (data.isPresentation) {
+      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      return;
+    }
     if (data.isLesson) {
       this.router.navigate([`/user/content-generation/lesson-plan/${data.lesson._id}`]);
     }
@@ -367,6 +397,10 @@ const today = new Date();
   }
 
   onViewDraft(data:any){
+    if (data.isPresentation) {
+      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      return;
+    }
     if (data.isLesson) {
       this.router.navigate([`/user/content-generation/lesson-plan/draft/${data.lesson._id}`]);
     }
@@ -411,6 +445,47 @@ const today = new Date();
 
   chat(recordId:any, chapterId:any){
     this.router.navigate(['/user/content-generation/lesson-chat'],{queryParams:{recordId,chapterId}})
+  }
+
+  private shouldFetchPresentations(params: ListParams): boolean {
+    return this.type === 'generated' && (params.selectedType === 'all' || params.selectedType === 'presentation');
+  }
+
+  private filterPresentationJobs(list: PresentationListItem[], params: ListParams): PresentationListItem[] {
+    let filteredList = list;
+
+    if (params.isCompleted === 'false') {
+      filteredList = filteredList.filter(item => item.status !== 'complete');
+    }
+
+    if (params.searchTerm) {
+      const searchTerm = params.searchTerm.toLowerCase();
+      filteredList = filteredList.filter(item => {
+        const title = item.metadata?.plan?.outline?.title || '';
+        return [title, item.message, item.textbook_file].some(value => String(value).toLowerCase().includes(searchTerm));
+      });
+    }
+
+    return filteredList;
+  }
+
+  private mapPresentationJob(item: PresentationListItem) {
+    const totalSlides = item.metadata?.quality?.total_slides || item.metadata?.plan?.outline?.total_slides || item.slides;
+    return {
+      ...item,
+      isPresentation: true,
+      isCompleted: item.status === 'complete',
+      updatedAt: item.creation_time,
+      presentationTitle: item.metadata?.plan?.outline?.title || 'Presentation deck',
+      presentationStatusTone: item.status === 'complete' ? 'completed' : item.status === 'error' ? 'failed' : 'running',
+      presentationStatusLabel: item.status === 'complete' ? 'Completed' : item.status === 'error' ? 'Error' : 'In Progress',
+      presentationStatusMessage: item.message || 'Presentation job created',
+      presentationSlideCount: totalSlides,
+    };
+  }
+
+  private getItemTimestamp(item: any): number {
+    return new Date(item.updatedAt || item.regeneratedupdatedAt || item.regeneratedcreatedAt || item.creation_time || 0).getTime();
   }
 
   ngOnDestroy(): void {

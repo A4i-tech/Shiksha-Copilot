@@ -286,4 +286,45 @@ export class ContentGenerationService extends BaseRestService {
   downloadLPDetails(lessonId:any):Observable<any>{
     return this.http.get(`${this.baseUrl}/master-lesson/lesson/tables/${lessonId}`)
   }
+
+  createPresentationJob(formData: FormData): Observable<any> {
+    return this.http.post(`${this.baseUrl}/presentation/job`, formData);
+  }
+
+  getPresentationJob(id: string): Observable<any> {
+    const params = new HttpParams().set('id', id);
+    return this.http.get(`${this.baseUrl}/presentation/job`, { params });
+  }
+
+  deletePresentationJob(id: string): Observable<any> {
+    const params = new HttpParams().set('id', id);
+    return this.http.delete(`${this.baseUrl}/presentation/job`, { params });
+  }
+
+  getPresentationJobs(paramVals: any): Observable<any> {
+    let params = new HttpParams()
+      .set('offset', '0')
+      .set('limit', '100');
+
+    if (paramVals.presentationMonth) {
+      const [year, month] = paramVals.presentationMonth.split('-').map(Number);
+      const createdAfter = new Date(year, month - 1, 1).toISOString();
+      const createdBefore = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+      params = params
+        .set('created_after', createdAfter)
+        .set('created_before', createdBefore);
+    }
+
+    if (paramVals.presentationStatus === 'complete') {
+      params = params.set('status', 'complete');
+    }
+
+    return this.http.get(`${this.baseUrl}/presentation/jobs`, { params });
+  }
+
+  downloadPresentation(jobId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/presentation/job/${jobId}`, {
+      responseType: 'blob',
+    });
+  }
 }
