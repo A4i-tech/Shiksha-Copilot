@@ -1,10 +1,10 @@
 import asyncio
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
-from app.models.presentation import JobDetail
-from pymongo import AsyncMongoClient
+from app.models.presentation import JobDetail, JobStatus, UserId
+from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
 
 
 class JobManager:
@@ -21,6 +21,18 @@ class JobManager:
         self.log_subscribers: set[asyncio.Queue[dict | None]] = set()
         self.online: dict[bytes, asyncio.Future[None]] = {}
         self._online: dict[bytes, set[bytes]] = {}
+        self._indexes_ready = False
+
+    async def ensure_indexes(self):
+        if self._indexes_ready:
+            return
+        await asyncio.gather(
+            self.collection.create_index([("id", ASCENDING)], unique=True),
+            self.collection.create_index([("user_id", ASCENDING), ("creation_time", DESCENDING)]),
+            self.collection.create_index([("user_id", ASCENDING), ("status", ASCENDING), ("creation_time", DESCENDING)]),
+            self.log_collection.create_index([("job_id", ASCENDING), ("timestamp", ASCENDING)]),
+        )
+        self._indexes_ready = True
 
     def on_online(self, job_id: uuid.UUID) -> uuid.UUID:
         id = uuid.uuid4()
@@ -47,8 +59,8 @@ class JobManager:
         while True:
             yield await self.queue.get()
 
-    async def create(self, textbook_file: str, slides: int | None, instruction: str | None, use_pre_generated_outline: bool = True) -> JobDetail:
-        job = JobDetail(textbook_file=textbook_file, slides=slides, instruction=instruction, use_pre_generated_outline=use_pre_generated_outline)
+    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None, use_pre_generated_outline: bool = True) -> JobDetail:
+        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction, use_pre_generated_outline=use_pre_generated_outline)
         doc = job.model_dump()
         doc["id"] = str(job.id)
         await self.collection.insert_one(doc)
@@ -69,6 +81,19 @@ class JobManager:
     async def get(self, job_id: uuid.UUID) -> JobDetail | None:
         doc = await self.collection.find_one({"id": str(job_id)})
         return JobDetail(**doc) if doc else None
+
+    async def list(self, user_id: UserId, offset: int = 0, limit: int = 20, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None) -> list[JobDetail]:
+        filter: dict[str, Any] = {"user_id": user_id}
+        if status is not None:
+            filter["status"] = status
+        if created_after is not None or created_before is not None:
+            filter["creation_time"] = {}
+            if created_after is not None:
+                filter["creation_time"]["$gte"] = created_after if created_after.tzinfo is not None else created_after.replace(tzinfo=timezone.utc)
+            if created_before is not None:
+                filter["creation_time"]["$lte"] = created_before if created_before.tzinfo is not None else created_before.replace(tzinfo=timezone.utc)
+        cursor = self.collection.find(filter, sort=[("creation_time", DESCENDING)], skip=offset, limit=limit)
+        return [JobDetail(**doc) async for doc in cursor]
 
     async def delete(self, job_id: uuid.UUID) -> bool:
         result = await self.collection.delete_one({"id": str(job_id), "status": {"$ne": "complete"}})

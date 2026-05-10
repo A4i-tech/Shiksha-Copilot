@@ -1,9 +1,12 @@
 from datetime import datetime, timezone
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 import uuid
 
 from app.services.presentation import template
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StringConstraints
+
+
+UserId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{24}$")]
 
 
 class CaptionerResponse(BaseModel):
@@ -23,6 +26,16 @@ _SLIDE_TYPES: list[str] = list(template.SLIDE_META.keys())
 _SLIDE_TYPES.remove("welcome")
 _SLIDE_TYPES.remove("thank_you")
 SlideTypeLiteral = Literal[tuple(_SLIDE_TYPES)]
+JobStatus = Literal[
+    "init",
+    "extracting_figures",
+    "planning_structure",
+    "creating_slides",
+    "adding_media",
+    "quality_check",
+    "complete",
+    "error"
+]
 
 class SlideSpec(BaseModel):
     """Specification for a single slide"""
@@ -75,20 +88,12 @@ class ImageSearchResults(BaseModel):
 class JobDetail(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     creation_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    user_id: UserId
     textbook_file: str
     slides: int | None
     instruction: str | None
     use_pre_generated_outline: bool = True
-    status: Literal[
-        "init",
-        "extracting_figures",
-        "planning_structure",
-        "creating_slides",
-        "adding_media",
-        "quality_check",
-        "complete",
-        "error"
-    ] = "init"
+    status: JobStatus = "init"
     message: str = "Pending"
     metadata: dict[str, Any] = Field(default_factory=dict)
 

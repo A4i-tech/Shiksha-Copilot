@@ -25,6 +25,7 @@ class PresentationService:
 
     @asynccontextmanager
     async def run(self):
+        await self.jobs.ensure_indexes()
         t1 = asyncio.create_task(self._run_jobs())
         t2 = asyncio.create_task(self._propagate_jobs())
         try:
