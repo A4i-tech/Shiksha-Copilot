@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { saveAs } from 'file-saver';
 import { Subscription } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -10,6 +11,7 @@ import { ContentGenerationService } from '../content-generation.service';
 
 type PresentationJobStatus =
   | 'init'
+  | 'idle'
   | 'extracting_figures'
   | 'planning_structure'
   | 'creating_slides'
@@ -53,6 +55,10 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   isCreatingJob = false;
   isDownloading = false;
   isTerminatingJob = false;
+  isLoadingPdfPreview = false;
+  pdfPreviewUrl: SafeResourceUrl | null = null;
+  pdfPreviewError = '';
+  latestToolText = '';
 
   readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
   readonly slideOptions = [6, 8, 10, 12, 15, 18, 20];
@@ -61,31 +67,31 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       label: 'More visual content',
       icon: 'assets/icons/videos_p.svg',
       value:
-        'Add more diagrams, images, and visual examples throughout the presentation so students stay engaged.',
+        'Add lots of visual content throughout the presentation, including diagrams, images, icons, and examples, because my students learn better and stay more engaged with strong visuals. Source enough images from online. Use at least 5 image-enabled slide types. Incorporate GIFs for engagement!',
     },
     {
       label: 'Interactive checks',
       icon: 'assets/icons/question-paper.svg',
       value:
-        'Include short questions, quick checks for understanding, and discussion prompts during the lesson.',
+        'Make the slides more interactive by adding short questions, quick checks for understanding, and small discussion prompts that students can answer during the lesson.',
     },
     {
       label: 'Simpler explanations',
       icon: 'assets/icons/edit_primary.svg',
       value:
-        'Use simple language, clear explanations, and step-by-step breakdowns that are easy for students to follow.',
+        'Use simple language, clear explanations, and step-by-step breakdowns so the presentation is easy for students to follow.',
     },
     {
       label: 'Real-world examples',
       icon: 'assets/icons/realworldscenarios_p.svg',
       value:
-        'Include practical examples and classroom-relevant scenarios so students can connect the topic to daily life.',
+        'Include real-world examples, classroom scenarios, and practical applications so students can connect the topic to everyday life.',
     },
     {
       label: 'Recap and revision',
       icon: 'assets/icons/questionbank_p.svg',
       value:
-        'End with a concise recap slide, key takeaways, and a few revision questions.',
+        'End with a concise recap slide, key takeaways, and a few revision questions to help students remember the most important points.',
     },
   ];
   readonly stepNames = [
@@ -131,6 +137,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
 
   private readonly statusSequence: PresentationJobStatus[] = [
     'init',
+    'idle',
     'extracting_figures',
     'planning_structure',
     'creating_slides',
@@ -142,11 +149,15 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   private eventSource: EventSource | null = null;
   private subscriptions = new Subscription();
   private currentRouteJobId: string | null = null;
+  private currentPdfPreviewJobId: string | null = null;
+  private pdfPreviewObjectUrl: string | null = null;
+  private toolNameMap: Record<string, string> = {};
 
   constructor(
     private fb: FormBuilder,
     private activatedRoute: ActivatedRoute,
     private router: Router,
+    private sanitizer: DomSanitizer,
     private utilityService: UtilityService,
     private contentGenerationService: ContentGenerationService
   ) {}
@@ -156,6 +167,19 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       slideCount: [12, [Validators.required, Validators.min(1)]],
       instructions: ['', [Validators.maxLength(1000)]],
     });
+
+    this.subscriptions.add(
+      this.contentGenerationService.getPresentationTools().subscribe({
+        next: (tools: any) => {
+          this.toolNameMap = Object.fromEntries(
+            (tools || []).map((tool: any) => [tool.function_name, tool.name])
+          );
+        },
+        error: (error) => {
+          console.error('Failed to load presentation tool names', error);
+        },
+      })
+    );
 
     this.subscriptions.add(
       this.activatedRoute.paramMap.subscribe((params) => {
@@ -177,6 +201,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.closeEventStream();
+    this.clearPdfPreview();
     this.subscriptions.unsubscribe();
   }
 
@@ -217,6 +242,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   get progressValue(): number {
     const status = this.currentJob?.status || 'init';
     switch (status) {
+      case 'idle':
+        return 12;
       case 'extracting_figures':
         return 20;
       case 'planning_structure':
@@ -378,7 +405,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     formData.append('textbook_file', this.selectedFile);
     formData.append('slides', String(this.presentationForm.value.slideCount));
     formData.append('instruction', this.presentationForm.value.instructions || '');
-    formData.append('use_pre_generated_outline', 'true');
+    formData.append('use_pre_generated_outline', 'false');
 
     this.isCreatingJob = true;
     this.closeEventStream();
@@ -473,6 +500,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
 
   resetWizard(fileInput?: HTMLInputElement): void {
     this.closeEventStream();
+    this.clearPdfPreview();
+    this.latestToolText = '';
     this.currentRouteJobId = null;
     this.currentJob = null;
     this.currentStep = 1;
@@ -586,7 +615,9 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
             this.closeEventStream();
           }
         },
-        error: () => {},
+        error: (error) => {
+          console.error('Failed to load presentation job', error);
+        },
       });
 
     this.subscriptions.add(getJobSubscription);
@@ -601,7 +632,19 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     this.eventSource.onmessage = (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data);
-        if (payload?.type !== 'update' || !payload?.data) {
+        if (!payload?.type || !payload?.data) {
+          return;
+        }
+
+        if (payload.type === 'event') {
+          const toolText = this.extractLatestToolText(payload.data);
+          if (toolText) {
+            this.latestToolText = toolText;
+          }
+          return;
+        }
+
+        if (payload.type !== 'update') {
           return;
         }
 
@@ -647,6 +690,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   private resolveStep(job: PresentationJobDetail): number {
     switch (job.status) {
       case 'init':
+      case 'idle':
       case 'extracting_figures':
       case 'planning_structure':
         return 2;
@@ -695,5 +739,67 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       slideCount: job.slides || this.presentationForm.value.slideCount || 12,
       instructions: job.instruction || '',
     }, { emitEvent: false });
+
+    if (job.status === 'complete') {
+      this.loadPdfPreview(job.id);
+      return;
+    }
+
+    if (this.currentPdfPreviewJobId && this.currentPdfPreviewJobId !== job.id) {
+      this.clearPdfPreview();
+    }
+  }
+
+  private extractLatestToolText(eventData: any): string {
+    if (!eventData || !Array.isArray(eventData.content)) {
+      return '';
+    }
+
+    const latestToolCall = [...eventData.content]
+      .reverse()
+      .find((item: any) => item?.name);
+
+    return latestToolCall?.name ? (this.toolNameMap[latestToolCall.name] || latestToolCall.name) : '';
+  }
+
+  private loadPdfPreview(jobId: string): void {
+    if (this.currentPdfPreviewJobId === jobId && (this.pdfPreviewUrl || this.isLoadingPdfPreview)) {
+      return;
+    }
+
+    this.clearPdfPreview();
+    this.currentPdfPreviewJobId = jobId;
+    this.isLoadingPdfPreview = true;
+    this.pdfPreviewError = '';
+
+    const previewSubscription = this.contentGenerationService
+      .downloadPresentationFile(jobId, 'pdf')
+      .subscribe({
+        next: (blob) => {
+          this.isLoadingPdfPreview = false;
+          this.pdfPreviewObjectUrl = URL.createObjectURL(blob);
+          this.pdfPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+            `${this.pdfPreviewObjectUrl}#view=FitH`
+          );
+        },
+        error: () => {
+          this.isLoadingPdfPreview = false;
+          this.pdfPreviewError = 'PDF preview is not available for this presentation.';
+        },
+      });
+
+    this.subscriptions.add(previewSubscription);
+  }
+
+  private clearPdfPreview(): void {
+    if (this.pdfPreviewObjectUrl) {
+      URL.revokeObjectURL(this.pdfPreviewObjectUrl);
+      this.pdfPreviewObjectUrl = null;
+    }
+
+    this.currentPdfPreviewJobId = null;
+    this.pdfPreviewUrl = null;
+    this.pdfPreviewError = '';
+    this.isLoadingPdfPreview = false;
   }
 }

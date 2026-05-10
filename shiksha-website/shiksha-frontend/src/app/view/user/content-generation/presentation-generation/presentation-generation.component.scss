@@ -2,10 +2,6 @@
   display: block;
 }
 
-.configuration-container {
-  min-height: 0;
-}
-
 .upload-dropzone {
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -20,10 +16,4 @@
   height: 0.75rem;
   border-radius: 9999px;
   flex-shrink: 0;
-}
-
-@media (max-width: 767px) {
-  .configuration-container {
-    overflow: visible;
-  }
 }

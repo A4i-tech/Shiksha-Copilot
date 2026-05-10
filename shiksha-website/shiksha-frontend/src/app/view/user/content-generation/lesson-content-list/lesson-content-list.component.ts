@@ -477,8 +477,8 @@ const today = new Date();
       isCompleted: item.status === 'complete',
       updatedAt: item.creation_time,
       presentationTitle: item.metadata?.plan?.outline?.title || 'Presentation deck',
-      presentationStatusTone: item.status === 'complete' ? 'completed' : item.status === 'error' ? 'failed' : 'running',
-      presentationStatusLabel: item.status === 'complete' ? 'Completed' : item.status === 'error' ? 'Error' : 'In Progress',
+      presentationStatusTone: item.status === 'complete' ? 'completed' : item.status === 'error' ? 'failed' : item.status === 'idle' ? 'idle' : 'running',
+      presentationStatusLabel: item.status === 'complete' ? 'Completed' : item.status === 'error' ? 'Error' : item.status === 'idle' ? 'Idle' : 'In Progress',
       presentationStatusMessage: item.message || 'Presentation job created',
       presentationSlideCount: totalSlides,
     };

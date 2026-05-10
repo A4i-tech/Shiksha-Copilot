@@ -1,6 +1,6 @@
 export const LOGIN_ROUTE = '/auth'
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024;
+export const MAX_FILE_SIZE = 16 * 1024 * 1024;
 
 export const BULK_UPLOAD_FILE_TYPES = [".xlsx"];
 

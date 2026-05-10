@@ -121,6 +121,7 @@
                 [ngClass]="{
                   'bg-[#EB7B4A]': item.presentationStatusTone === 'completed',
                   'bg-[#D85B32]': item.presentationStatusTone === 'failed',
+                  'bg-[#8B93A7]': item.presentationStatusTone === 'idle',
                   'bg-[#F6B155]': item.presentationStatusTone === 'running'
                 }"
               >
@@ -155,6 +156,7 @@
                   [ngClass]="{
                     'text-[#3D8248] bg-[#F1FDF3]': item.presentationStatusTone === 'completed',
                     'text-[#DE3B40] bg-[#FDF2F2]': item.presentationStatusTone === 'failed',
+                    'text-[#566074] bg-[#F3F4F8]': item.presentationStatusTone === 'idle',
                     'text-[#B76E00] bg-[#FFF7E8]': item.presentationStatusTone === 'running'
                   }"
                 >
@@ -163,6 +165,7 @@
                     [ngClass]="{
                       'bg-[#3D8248]': item.presentationStatusTone === 'completed',
                       'bg-[#DE3B40]': item.presentationStatusTone === 'failed',
+                      'bg-[#7B8198]': item.presentationStatusTone === 'idle',
                       'bg-[#F59E0B]': item.presentationStatusTone === 'running'
                     }"
                   >
@@ -173,6 +176,8 @@
                           ? 'assets/icons/completed-sm.svg'
                           : item.presentationStatusTone === 'failed'
                           ? 'assets/icons/failed-sm.svg'
+                          : item.presentationStatusTone === 'idle'
+                          ? 'assets/icons/draft-light-sm.svg'
                           : 'assets/icons/running-sm.svg'
                       "
                       alt=""
