@@ -10,13 +10,9 @@ from app.routers import chat_router, chat_router_mcp, question_paper_router
 mcp = FastMCP(
     name=settings.app_name,
     instructions="AI-powered educational chat API for Shiksha platform",
-    host=settings.host,
-    port=settings.port,
-    debug=settings.debug,
-    stateless_http=True
 )
 
-mcp_app = mcp.http_app(path="/mcp")
+mcp_app = mcp.http_app(path="/mcp", stateless_http=True)
 
 
 @asynccontextmanager

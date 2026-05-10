@@ -8,24 +8,27 @@ packages = [{ include = "app" }]
 
 [tool.poetry.dependencies]
 python = "~3.11"
-fastapi = "^0.116.2"
-uvicorn = { extras = ["standard"], version = "^0.35.0" }
-pydantic = "^2.5.0"
-python-multipart = "^0.0.9"
+fastapi = "^0.136.1"
+uvicorn = "^0.46.0"
+pydantic = "^2.13.4"
 python-dotenv = "^1.0.0"
-httpx = "^0.28.1"
 aiofiles = "^23.2.1"
 pyyaml = "^6.0.1"
-autogen-agentchat = "*"
-azure-ai-projects = "*"
-azure-ai-translation-text = "*"
-aiohttp = "^3.9.0"
+azure-ai-translation-text = "^1.0.1"
+aiohttp = "^3.13.5"
 vellm-rag-wrapper = { path = "app/rag-wrapper", develop = true }
-autogen-ext = { extras = ["azure", "openai"], version = "^0.6.4" }
-pydantic-settings = "^2.10.1"
-fastmcp = "^2.13.0.1"
-langdetect = "*"
+pydantic-settings = "^2.14.1"
+fastmcp = "^3.2.4"
+langdetect = "^1.0.9"
 openai = "^2.32.0"
+python-pptx = "^1.0.2"
+pymongo = "^4.17.0"
+pydantic-ai = "^1.93.0"
+pymupdf = "^1.27.2.3"
+pillow = "^12.2.0"
+pymupdf4llm = "^1.27.2.3"
+fsspec = "^2026.4.0"
+adlfs = "^2026.5.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"

@@ -39,7 +39,6 @@ logging.basicConfig(
 # Suppress DEBUG logs from Azure and other libraries
 logging.getLogger("azure").setLevel(logging.WARNING)
 logging.getLogger("llama_index").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 
