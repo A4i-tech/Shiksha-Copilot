@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastmcp import FastMCP
 from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
-from app.routers import chat_router, chat_router_mcp, question_paper_router
+from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router
 
 mcp = FastMCP(
     name=settings.app_name,
@@ -13,7 +13,6 @@ mcp = FastMCP(
 )
 
 mcp_app = mcp.http_app(path="/mcp", stateless_http=True)
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,6 +55,7 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
+app.include_router(presentation_router)
 app.include_router(question_paper_router)
 chat_router_mcp(mcp)
 

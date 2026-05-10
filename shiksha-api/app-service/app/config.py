@@ -1,6 +1,12 @@
+import pathlib
+from string import Template
+
+from dotenv import load_dotenv
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
+from typing import Any, Optional
+
+import yaml
 
 
 class Settings(BaseSettings):
@@ -40,5 +46,41 @@ class Settings(BaseSettings):
     translator_region: Optional[str] = None
     translator_endpoint: Optional[str] = None
 
+    # Presentation Configuration
+    pres_captioner: str = "openai:gpt-5-nano"
+    pres_planner: str = "openai:gpt-5-nano"
+    pres_designer: str = "openai:gpt-5-nano"
+    pres_finalizer: str = "openai:gpt-5-nano"
+    pres_mongodb_url: str = "mongodb://localhost:27017/shiksha_viz"
+    pres_storage_filesystem: str = "file"
+    pres_storage_root: str = "shiksha-copilot-presentations"
+    pres_storage_options: dict[str, Any] = Field(default_factory=dict)
 
+    # Commons
+    youtube_api_key: str | None = None
+
+
+load_dotenv()
 settings = Settings()
+
+if settings.debug:
+    import logfire
+    logfire.configure()
+    logfire.instrument_pydantic_ai()
+
+root_dir = pathlib.Path(__file__).resolve().parents[1]
+assets_dir = root_dir / "assets"
+
+with (root_dir / "config.yaml").open() as f:
+    _data = yaml.safe_load(f)
+
+CAPTIONER_SYSTEM_PROMPT = Template(_data["captioner-system-prompt"].strip())
+PLANNER_SYSTEM_PROMPT = Template(_data["planner-system-prompt"].strip())
+PLANNER_USER_PROMPT = Template(_data["planner-user-prompt"].strip())
+DESIGNER_SYSTEM_PROMPT = Template(_data["designer-system-prompt"].strip())
+DESIGNER_FIRST_SLIDE_PROMPT = Template(_data["designer-first-slide-prompt"].strip())
+DESIGNER_BODY_SLIDE_PROMPT = Template(_data["designer-body-slide-prompt"].strip())
+FINALIZER_SYSTEM_PROMPT = Template(_data["finalizer-system-prompt"].strip())
+FINALIZER_BROWSE_PROMPT = Template(_data["finalizer-browse-prompt"].strip())
+FINALIZER_REVIEW_PROMPT = Template(_data["finalizer-review-prompt"].strip())
+FINALIZER_ADD_SLIDE_PROMPT = Template(_data["finalizer-add-slide-prompt"].strip())

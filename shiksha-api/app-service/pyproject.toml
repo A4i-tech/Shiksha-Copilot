@@ -29,6 +29,7 @@ pillow = "^12.2.0"
 pymupdf4llm = "^1.27.2.3"
 fsspec = "^2026.4.0"
 adlfs = "^2026.5.0"
+tenacity = "^9.1.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
