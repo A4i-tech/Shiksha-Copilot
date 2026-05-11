@@ -205,11 +205,11 @@ class LibreOffice:
         return stdout
 
     async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat) -> bytes:
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as profile, tempfile.TemporaryDirectory() as tmp:
             tmpdir = pathlib.Path(tmp)
             in_path = tmpdir / "input.pptx"
             in_path.write_bytes(data.read())
-            await self._call("--convert-to", output_format, "--outdir", str(tmpdir), str(in_path))
+            await self._call("-env:UserInstallation=file://" + profile, "--convert-to", output_format, "--outdir", str(tmpdir), str(in_path))
 
             # soffice creates 'input.xyz'
             out_path = tmpdir / ("input.%s" % output_format)
