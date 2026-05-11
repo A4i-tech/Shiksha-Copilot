@@ -271,6 +271,22 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     return ((this.currentStep - 1) / (this.totalSteps - 1)) * 100;
   }
 
+  getStepBadgeClasses(index: number): Record<string, boolean> {
+    const stepNumber = index + 1;
+    return {
+      'bg-primary text-white border-primary': this.currentStep > stepNumber,
+      'bg-blue-100 text-primary border-primary': this.currentStep === stepNumber,
+      'bg-white text-gray-400 border-gray-300': this.currentStep < stepNumber,
+    };
+  }
+
+  getStepLabelClasses(index: number): Record<string, boolean> {
+    return {
+      'text-primary': this.currentStep >= index + 1,
+      'text-content-70': this.currentStep < index + 1,
+    };
+  }
+
   get canDownload(): boolean {
     return this.currentJob?.status === 'complete';
   }
