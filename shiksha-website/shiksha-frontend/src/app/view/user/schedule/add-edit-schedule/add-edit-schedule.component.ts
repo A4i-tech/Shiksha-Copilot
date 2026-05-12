@@ -15,7 +15,7 @@ import {
   FormArray,
   FormBuilder,
   FormGroup,
-  UntypedFormControl,
+  FormControl,
   ValidationErrors,
   Validators,
 } from '@angular/forms';
@@ -31,8 +31,7 @@ import { forkJoin } from 'rxjs';
   providers: [DatePipe],
 })
 export class AddEditScheduleComponent
-  implements AfterViewInit, OnInit, OnChanges
-{
+  implements AfterViewInit, OnInit, OnChanges {
   @Input() cordinate: any;
   @Input() formData: any;
   @Input() cellData: any;
@@ -225,60 +224,60 @@ export class AddEditScheduleComponent
     this.setElementCoordinates(this.pop_ele.nativeElement);
   }
 
-    /**
-   * align the pop up item near to the clicked event
-   */
+  /**
+ * align the pop up item near to the clicked event
+ */
   setElementCoordinates(nativeElement: any): void {
-      if (this.pop_ele) {
+    if (this.pop_ele) {
         nativeElement.style.left = `${
           this.cordinate.rect.left - nativeElement.offsetWidth - 10
         }px`;
-  
-        //  checking top is touching or not
-        if (this.cordinate.rect.top - nativeElement.offsetHeight - 100 < 0) {
-          nativeElement.style.top = `${this.cordinate.rect.bottom}px`;
-        }
-  
-        // checking bottom is touching or not
-        if (
-          this.cordinate.rect.bottom + nativeElement.offsetHeight + 100 >
-          this.vh
-        ) {
+
+      //  checking top is touching or not
+      if (this.cordinate.rect.top - nativeElement.offsetHeight - 100 < 0) {
+        nativeElement.style.top = `${this.cordinate.rect.bottom}px`;
+      }
+
+      // checking bottom is touching or not
+      if (
+        this.cordinate.rect.bottom + nativeElement.offsetHeight + 100 >
+        this.vh
+      ) {
           nativeElement.style.top = `${
             this.cordinate.rect.top - nativeElement.offsetHeight - 50
           }px`;
-        }
-  
-        // checking left is touching or not
+      }
+
+      // checking left is touching or not
         if (this.cordinate.rect.left - (nativeElement.offsetWidth + 254)  < 0) {
-          nativeElement.style.left = `${this.cordinate.rect.right}px`;
-        }
-  
-        // checking right is touching or not
-        if (this.cordinate.rect.right + nativeElement.offsetWidth > this.vw) {
+        nativeElement.style.left = `${this.cordinate.rect.right}px`;
+      }
+
+      // checking right is touching or not
+      if (this.cordinate.rect.right + nativeElement.offsetWidth > this.vw) {
           nativeElement.style.left = `${
             this.cordinate.rect.left - nativeElement.offsetWidth
           }px`;
-        }
-  
-        // checking whether both top and bottom are touching or not
-        if (
-          this.cordinate.rect.top - nativeElement.offsetHeight - 100 < 0 &&
-          this.cordinate.rect.bottom + nativeElement.offsetHeight + 100 > this.vh
-        ) {
-          nativeElement.style.top = '50%';
-          nativeElement.style.transform = 'translateY(-50%)';
-        }
-  
-        // checking whether both right and left touching or not
-        if (
-          this.cordinate.rect.left - nativeElement.offsetWidth < 0 &&
-          this.cordinate.rect.right + nativeElement.offsetWidth > this.vw
-        ) {
-          nativeElement.style.left = `${this.cordinate.rect.right / 2}px`;
-        }
+      }
+
+      // checking whether both top and bottom are touching or not
+      if (
+        this.cordinate.rect.top - nativeElement.offsetHeight - 100 < 0 &&
+        this.cordinate.rect.bottom + nativeElement.offsetHeight + 100 > this.vh
+      ) {
+        nativeElement.style.top = '50%';
+        nativeElement.style.transform = 'translateY(-50%)';
+      }
+
+      // checking whether both right and left touching or not
+      if (
+        this.cordinate.rect.left - nativeElement.offsetWidth < 0 &&
+        this.cordinate.rect.right + nativeElement.offsetWidth > this.vw
+      ) {
+        nativeElement.style.left = `${this.cordinate.rect.right / 2}px`;
       }
     }
+  }
 
   /**
    * for view disable the form and for add add new dateTime form and set the board arrray value
@@ -289,19 +288,19 @@ export class AddEditScheduleComponent
       this.scheduleForm.disable();
     }
     if (this.mode === 'add') {
-      this.addNewScheduleInfo(); 
+      this.addNewScheduleInfo();
       if(this.cellData){
         this.getScheduleControls().controls[0].patchValue({
           date:this.cellData.date,
           fromTime:this.cellData.time,
           toTime:this.cellData.EndHour
-  
+
         });
       }
-     
-      
-      
-      
+
+
+
+
       this.service.getSchoolInfoByID().subscribe({
         next: (val: any) => {
           this.teacherId = val.data._id;
@@ -315,7 +314,7 @@ export class AddEditScheduleComponent
   }
 
 
-// =============== ADD FLOW ==========
+  // =============== ADD FLOW ==========
 
   /**
    * format the response and set the board dropdown array value
@@ -486,11 +485,11 @@ export class AddEditScheduleComponent
     this.lessonPlanID = lessonValue.lessonId;
   }
 
-// ======== ADD FLOW END HERE ===========
+  // ======== ADD FLOW END HERE ===========
 
 
 
-// ======== EDIT FLOW START HERE =========
+  // ======== EDIT FLOW START HERE =========
 
   /**
    * called when edit called, filter the medium based on the board value from boardDropdownArray
@@ -521,7 +520,7 @@ export class AddEditScheduleComponent
    * called when edit called, it will filter the subject based on the class value from classDropdown Array
    * @param value
    * @param dropdownValueArray
-   */  
+   */
   filterSubjectByClass(value: string, dropdownValueArray: any) {
     const subjectValues = dropdownValueArray.filter((item: any) => {
       return value === item.class;
@@ -547,10 +546,10 @@ export class AddEditScheduleComponent
    */
   loadChapterSubtopicAndLesson(){
     let chapterBody = {
-        board: this.editableItem.data.board,
-        medium: this.editableItem.data.medium,
-        standard: this.editableItem.data.class,
-        subject: this.editableItem.data.subject,
+      board: this.editableItem.data.board,
+      medium: this.editableItem.data.medium,
+      standard: this.editableItem.data.class,
+      subject: this.editableItem.data.subject,
     }
     let subTopicBody = {
       ...chapterBody,
@@ -571,13 +570,13 @@ export class AddEditScheduleComponent
     })
   }
 
-   /**
-    * Not Used
-   * for edit purpose setting the formInfo
-   */
-   editFormSetup() {
+  /**
+   * Not Used
+  * for edit purpose setting the formInfo
+  */
+  editFormSetup() {
     this.setFormValues();
-    
+
   }
 
   setFormValues() {
@@ -594,11 +593,11 @@ export class AddEditScheduleComponent
     });
   }
 
-// =========== EDIT FLOW END HERE =============
+  // =========== EDIT FLOW END HERE =============
 
 
 
-// =============== VIEW FLOW HERE =============
+  // =============== VIEW FLOW HERE =============
   viewFormSetUp() {
     this.chapterDropdownValue = [];
     this.chapterDropdownValue.push({
@@ -617,11 +616,11 @@ export class AddEditScheduleComponent
     }
     this.setFormValues();
   }
-// =========== VIEW FLOW END HERE ==============
+  // =========== VIEW FLOW END HERE ==============
 
 
 
-// ========= DELETE FLOW START HERE =============
+  // ========= DELETE FLOW START HERE =============
 
   /**
    * remove the specific formgroup of the formarray
@@ -630,11 +629,11 @@ export class AddEditScheduleComponent
   deleteScheduleInfo(index: number) {
     this.getScheduleControls().removeAt(index);
   }
-// ============ DELETE FLOW END HERE ================
-  
+  // ============ DELETE FLOW END HERE ================
 
-  
-  
+
+
+
 
   /**
    * Not Used
@@ -663,9 +662,9 @@ export class AddEditScheduleComponent
   }
 
 
-  
 
-  
+
+
 
 
 
@@ -688,16 +687,16 @@ export class AddEditScheduleComponent
         this.scheduleForm.get('subTopic')?.setValue(this.editableItem.data.subTopic);
         this.setLessonPlan(this.subTopicDropDownValue[0]);
         this.scheduleForm
-      .get('lessonPlan')
-      ?.setValue(this.editableItem.data.lesson.name);
+          .get('lessonPlan')
+          ?.setValue(this.editableItem.data.lesson.name);
       },
     });
   }
 
-  
+
 
   // ========= UTILITY METHODS =========
- 
+
 
   /**
    * add the retrieved value event to the formarray other word setting the scheduleItems
@@ -717,8 +716,8 @@ export class AddEditScheduleComponent
    * @param absCtrl
    * @returns
    */
-  convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
-    return absCtrl as UntypedFormControl;
+  convertToFormControl(absCtrl: AbstractControl | null): FormControl {
+    return absCtrl as FormControl;
   }
 
   /**
@@ -748,7 +747,7 @@ export class AddEditScheduleComponent
     );
   }
 
-  
+
 
   /**
    * return the formarray of the schedule
@@ -765,7 +764,7 @@ export class AddEditScheduleComponent
     this.getScheduleControls().push(this.newScheduleInfo(null));
   }
 
- 
+
 
   /**
    * send the details to the backend
@@ -825,7 +824,7 @@ export class AddEditScheduleComponent
     this.close.emit();
   }
 
-  
+
   // error handling message functions for start , end and date
   /**
    *  getting errror message for the date formControl
@@ -884,14 +883,14 @@ export class AddEditScheduleComponent
 
   // Validator for start,end and date
   startEndTimeValidator(control: AbstractControl): ValidationErrors | null {
-    const value = control.value as string; 
+    const value = control.value as string;
     if (!value) {
-      return null; 
+      return null;
     }
     const [hour, minute] = value.split(':').map(part => parseInt(part, 10)); // Parsing hour and minute
     // Invalid if hour is before 7, after 18, or at 18:01 or later
     if (hour < 7 || hour > 18 || (hour === 18 && minute > 0)) {
-      return { InvalidStartDate: true }; 
+      return { InvalidStartDate: true };
     }
     return null; // Valid time
   }
@@ -908,16 +907,16 @@ export class AddEditScheduleComponent
     selectedDate.setHours(0, 0, 0, 0);
       if(!value)
       {
-        return null;
-      }
-  
-      
-      const [hour, minute] = value.split(':').map(part => parseInt(part, 10)); // Parsing hour and minute
+      return null;
+    }
+
+
+    const [hour, minute] = value.split(':').map(part => parseInt(part, 10)); // Parsing hour and minute
       if(selectedDate.toString() === now.toString() && (todayHour > hour || (todayHour === hour && todayMin > minute))) {
         return {InvalidTime: true};
-      }
-      return null;
-    
+    }
+    return null;
+
   }
 
 

@@ -3,7 +3,7 @@ import {
   AbstractControl,
   FormBuilder,
   FormGroup,
-  UntypedFormControl,
+  FormControl,
   Validators,
 } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
@@ -297,8 +297,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.updateLBAAvailableHeadings();
   }
 
-  convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
-    return absCtrl as UntypedFormControl;
+  convertToFormControl(absCtrl: AbstractControl | null): FormControl {
+    return absCtrl as FormControl;
   }
   get f(): any { return this.questionBankConfigForm.controls; }
 

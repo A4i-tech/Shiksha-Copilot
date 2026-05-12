@@ -3,7 +3,7 @@ import {
   FormGroup,
   FormBuilder,
   AbstractControl,
-  UntypedFormControl,
+  FormControl,
   Validators,
   ReactiveFormsModule,
   FormsModule,
@@ -225,14 +225,14 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   getRegenrationLimit(){
     this.contentGenService.getRegenerationLimit().
-    subscribe({
+      subscribe({
       next:(val:any)=>{
-        this.regenerationLimitReached = val?.data?.regenerationLimitReached
-      },
+          this.regenerationLimitReached = val?.data?.regenerationLimitReached
+        },
       error:(err)=>{
-        console.log(err);
-      }
-    })
+          console.log(err);
+        }
+      })
   }
 
   getBoards(): string {
@@ -242,13 +242,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   getTemplates(){
     let {board,medium,subject} = this.lessonForm.value;
     let params = new HttpParams()
-      params = params.set('filter[boards]', board);
-      params = params.set('filter[mediums]', medium);
+    params = params.set('filter[boards]', board);
+    params = params.set('filter[mediums]', medium);
       params = params.set('filter[classes]',  this.lessonForm.value.class);
-      params = params.set('filter[subjects]', subject);
-      params = params.set('filter[type]', this.getLessonType()?.type === 'plan' ? 'lesson_plan' : 'lesson_resource');
+    params = params.set('filter[subjects]', subject);
+    params = params.set('filter[type]', this.getLessonType()?.type === 'plan' ? 'lesson_plan' : 'lesson_resource');
 
-      this.contentGenService.getTemplates(params).
+    this.contentGenService.getTemplates(params).
       subscribe({
         next:(val:any)=>{
           this.groupTemplate(val.data)
@@ -360,7 +360,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
         this.f.class.setValue(val.classes[0].class);
         this.idleService.resetIdler();
         this.idleService.startWatching();
-        if (val.classes[0].data.length === 1) {          
+        if (val.classes[0].data.length === 1) {
           this.idleService.resetIdler();
           this.idleService.startWatching();
           this.f.subject.setValue(val.classes[0].data[0].subject);
@@ -505,7 +505,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       this.generateNew = false;
     } else {
       this.submitBtnTxt = this.getLessonType()?.type === 'plan' ? 'Regenerate Lesson Plan':'Regenerate Lesson Resources',
-      this.generateNew = true;
+        this.generateNew = true;
     }
   }
 
@@ -544,8 +544,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       });
   }
 
-  convertToFormControl(absCtrl: AbstractControl | null): UntypedFormControl {
-    return absCtrl as UntypedFormControl;
+  convertToFormControl(absCtrl: AbstractControl | null): FormControl {
+    return absCtrl as FormControl;
   }
   get f(): any {
     return this.lessonForm.controls;
@@ -572,10 +572,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if(this.learningOutcomes?.length === 0){
+    if (this.learningOutcomes?.length === 0) {
       return
     }
-    
+
     if (this.generateNew) {
       this.generateNewPlan();
     } else {
@@ -611,13 +611,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   generatePlan() {
     const comprehensionLevel = this.checkboxOptions
-    .filter((opt) => opt.checked)
-    .map((val) => val.value);
+      .filter((opt) => opt.checked)
+      .map((val) => val.value);
     if(this.getLessonType()?.type !== 'plan'){
-    if (comprehensionLevel.length === 0) {
-      this.utilityservice.showError('Please select comprehension level');
-      return;
-    }
+      if (comprehensionLevel.length === 0) {
+        this.utilityservice.showError('Please select comprehension level');
+        return;
+      }
     }
     if (this.getLessonType()?.type === 'plan') {
       let params = new HttpParams();
