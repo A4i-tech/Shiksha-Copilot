@@ -39,7 +39,7 @@ const text = (n?: Element) => n?.textContent ?? "";
 const docx = (n?: Element) => n ? mathmlToDocx(n) : [];
 const is = (n: Element, ...tags: string[]) => tags.includes(tag(n));
 
-function nary(node: Element, body?: Element) {
+function nary(node: Element, body: Element) {
   const [base, sub, sup] = kids(node), Ctor = text(base).trim() === "∑" ? MathSum : text(base).trim() === "∫" ? MathIntegral : null;
   return Ctor && new Ctor({ children: docx(body), ...(is(node, "msup", "mover") ? { superScript: docx(sub) } : is(node, "msub", "munder") ? { subScript: docx(sub) } : { subScript: docx(sub), superScript: docx(sup) }) });
 }
@@ -47,7 +47,7 @@ function nary(node: Element, body?: Element) {
 function row(node: Element): MathComponent[] {
   const out: MathComponent[] = [], c = kids(node);
   for (let i = 0; i < c.length; i++) {
-    const n = c[i], next = c[i + 1], next2 = c[i + 2], op = nary(n, next);
+    const n = c[i], next = c[i + 1], next2 = c[i + 2], op = next && nary(n, next);
     if (op) { out.push(op); if (next) i++; continue; }
     if (tag(n) === "mi" && text(next) === "" && next2) { out.push(new MathFunction({ name: docx(n), children: docx(next2) })); i += 2; continue; }
     out.push(...mathmlToDocx(n));
@@ -80,22 +80,16 @@ function mathmlToDocx(node: Element): MathComponent[] {
     }
     case "msup":
     case "mover": {
-      const op = nary(node);
-      if (op) return [op];
       const [base, sup] = kids(node);
       return [new MathSuperScript({ children: docx(base), superScript: docx(sup) })];
     }
     case "msub":
     case "munder": {
-      const op = nary(node);
-      if (op) return [op];
       const [base, sub] = kids(node);
       return [new MathSubScript({ children: docx(base), subScript: docx(sub) })];
     }
     case "msubsup":
     case "munderover": {
-      const op = nary(node);
-      if (op) return [op];
       const [base, sub, sup] = kids(node);
       return [new MathSubSuperScript({ children: docx(base), subScript: docx(sub), superScript: docx(sup) })];
     }
