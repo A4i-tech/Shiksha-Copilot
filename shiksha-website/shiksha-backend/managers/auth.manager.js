@@ -64,7 +64,7 @@ class AuthManager {
             }
 
             await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
-            return formatApiReponse(true, "OTP sent successfully", { user: user.phone, otpTriggered });
+            return formatApiReponse(true, "OTP sent successfully", { user: user.phone, otpTriggered: true });
         } catch (err) {
             return formatApiReponse(false, err?.message || "Internal Server Error", err);
         }
