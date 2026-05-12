@@ -27,8 +27,8 @@ class AuthManager {
 
     async updateUserByType(userId, userType, updates) {
         switch (userType) {
-            case "admin": await this.adminUserDao.update(userId, updates);
-            case "teacher": await this.userDao.update(userId, updates);
+            case "admin": return await this.adminUserDao.update(userId, updates);
+            case "teacher": return await this.userDao.update(userId, updates);
             default: throw new Error(`Unexpected user type: ${userType}`);
         }
     }
