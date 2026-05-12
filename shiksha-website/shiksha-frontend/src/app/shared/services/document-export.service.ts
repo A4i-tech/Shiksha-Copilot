@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Document, Packer, Paragraph, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
-import { DocxUtilityService } from './docx-utility.service';
+import { DocxContext, DocxUtilityService } from './docx-utility.service';
 
 @Injectable({
   providedIn: 'root',
@@ -15,6 +15,7 @@ export class DocumentExportService {
     filename: string = 'output.docx'
   ): void {
     const documentContent: Paragraph[] = [];
+    const context = new DocxContext()
 
     for (const [index, section] of data.entries()) {
       const sectionContent: Paragraph[] = [];
@@ -30,18 +31,18 @@ export class DocumentExportService {
 
       switch (section.outputFormat) {
         case 'plain_text':
-          sectionContent.push(...this.docxUtility.getMarkdownParagraphs(section.content));
+          sectionContent.push(...this.docxUtility.getMarkdownParagraphs(section.content, context));
           break;
         case 'json_1':
-          sectionContent.push(...this.formatQuestionBank(section.content));
+          sectionContent.push(...this.formatQuestionBank(section.content, context));
           break;
         case 'json_2':
           sectionContent.push(
-            ...this.formatRealWorldScenarios(section.content)
+            ...this.formatRealWorldScenarios(section.content, context)
           );
           break;
         case 'json_3':
-          sectionContent.push(...this.formatActivities(section.content));
+          sectionContent.push(...this.formatActivities(section.content, context));
           break;
         default:
           sectionContent.push(new Paragraph({ text: 'Unsupported content format.' }));
@@ -68,7 +69,7 @@ export class DocumentExportService {
     });
   }
 
-  private formatQuestionBank(content: any[]): Paragraph[] {
+  private formatQuestionBank(content: any[], context: DocxContext): Paragraph[] {
     const paragraphs: Paragraph[] = [];
 
     content.forEach((level) => {
@@ -91,14 +92,12 @@ export class DocumentExportService {
 
         block.questions.forEach((q: any, index: any) => {
           paragraphs.push(
-            ...this.docxUtility.getMarkdownParagraphs(`**${index + 1}.** ${q.question}`)
+            ...this.docxUtility.getMarkdownParagraphs(`**${index + 1}.** ${q.question}`, context)
           );
 
           if (q.options) {
             paragraphs.push(
-              ...this.docxUtility.getMarkdownParagraphs(
-                q.options.map((opt: any) => `- ${opt}`).join('\n')
-              )
+              ...this.docxUtility.getMarkdownParagraphs(q.options.map((opt: any) => `- ${opt}`).join('\n'), context)
             );
           }
 
@@ -114,7 +113,7 @@ export class DocumentExportService {
     return paragraphs;
   }
 
-  private formatRealWorldScenarios(content: any[]): Paragraph[] {
+  private formatRealWorldScenarios(content: any[], context: DocxContext): Paragraph[] {
     const paragraphs: Paragraph[] = [];
 
     content.forEach((level) => {
@@ -135,15 +134,15 @@ export class DocumentExportService {
           })
         );
 
-        paragraphs.push(...this.docxUtility.getMarkdownParagraphs(`**Q:** ${item.question}`));
-        paragraphs.push(...this.docxUtility.getMarkdownParagraphs(item.description));
+        paragraphs.push(...this.docxUtility.getMarkdownParagraphs(`**Q:** ${item.question}`, context));
+        paragraphs.push(...this.docxUtility.getMarkdownParagraphs(item.description, context));
       });
     });
 
     return paragraphs;
   }
 
-  private formatActivities(content: any[]): Paragraph[] {
+  private formatActivities(content: any[], context: DocxContext): Paragraph[] {
     const paragraphs: Paragraph[] = [];
 
     content.forEach((activity) => {
@@ -161,7 +160,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.preparation));
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.preparation, context));
 
       paragraphs.push(
         new Paragraph({
@@ -169,7 +168,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.required_materials));
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.required_materials, context));
 
       paragraphs.push(
         new Paragraph({
@@ -177,7 +176,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.obtaining_materials));
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.obtaining_materials, context));
 
       paragraphs.push(
         new Paragraph({
@@ -185,7 +184,7 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.recap));
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.recap, context));
     });
 
     return paragraphs;

@@ -115,6 +115,11 @@ function mathmlToDocx(node: Element): MathComponent[] {
   }
 }
 
+export class DocxContext{
+  public listInstances = 0;
+  constructor(){}
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -153,10 +158,7 @@ export class DocxUtilityService {
     });
   };
 
-  getMarkdownParagraphs(content: string): Paragraph[] {
-    let orderedListInstance = 0;
-    let optionListInstance = 0;
-
+  getMarkdownParagraphs(content: string, context: DocxContext): Paragraph[] {
     const toParagraphs = (tokens: marked.Token[], level = 0): Paragraph[] => {
       return tokens.flatMap((token) => {
         if (token.type === 'space') {
@@ -169,22 +171,21 @@ export class DocxUtilityService {
 
         if (token.type === 'list') {
           const reference = token.ordered ? 'markdown-numbered' : 'markdown-bullets';
-          const instance = token.ordered ? orderedListInstance++ : undefined;
+          const instance = context.listInstances++;
 
           return token.items.flatMap((item) => {
             const mcq = token.ordered ? this.parseLetteredOptions(item.text) : null;
 
             if (mcq) {
-              const optionsInstance = optionListInstance++;
               return [
                 new Paragraph({
-                  numbering: { reference, level: Math.min(level, 8), instance },
-                  children: [new TextRun(mcq.question)],
+                  numbering: { reference, level, instance },
+                  children: [new TextRun(`r=${reference},${level},${instance}`), new TextRun(mcq.question)],
                   spacing: { after: 40 },
                 }),
                 ...mcq.options.map(option => new Paragraph({
-                  numbering: { reference: 'markdown-lettered', level: 0, instance: optionsInstance },
-                  children: [new TextRun(option)],
+                  numbering: { reference: 'markdown-lettered', level: 0, instance },
+                  children: [new TextRun(`r=${reference},${level},${instance}`), new TextRun(option)],
                   spacing: { after: 40 },
                 })),
                 ...(mcq.answer ? [new Paragraph({ text: mcq.answer, spacing: { after: 100 } })] : []),
@@ -193,8 +194,8 @@ export class DocxUtilityService {
 
             return [
               new Paragraph({
-                numbering: token.ordered ? { reference, level: Math.min(level, 8), instance } : { reference, level: Math.min(level, 8) },
-                children: this.toRuns(item.tokens.filter(t => t.type !== 'list')),
+                numbering: { reference, level, instance },
+                children: [new TextRun(`r=${reference},${level},${instance}`), ...this.toRuns(item.tokens.filter(t => t.type !== 'list'))],
                 spacing: { after: 40 },
               }),
               ...toParagraphs(item.tokens.filter(t => t.type === 'list'), level + 1),

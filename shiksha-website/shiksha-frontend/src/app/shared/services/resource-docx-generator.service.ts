@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Document, Paragraph, HeadingLevel } from 'docx';
-import { DocxUtilityService } from './docx-utility.service';
+import { DocxContext, DocxUtilityService } from './docx-utility.service';
 import { TranslateService } from '@ngx-translate/core';
 
 @Injectable({
@@ -23,6 +23,7 @@ export class ResourceDocxService {
    */
   generateDocx(data: any, formData: any, learningOutcomes:any[]) {
     const sections = [];
+    const context = new DocxContext();
 
     for (const section of data) {
       const sectionChildren = [];
@@ -69,13 +70,11 @@ export class ResourceDocxService {
                   ? content.questions.flatMap(
                       (question: any, questionIndex: number) => {
                         const questionParagraph = question?.question
-                          ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`)
+                          ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`, context)
                           : [];
 
                         const optionParagraphs = question?.options
-                          ? this.docxUtility.getMarkdownParagraphs(
-                              question.options.map((options: any) => `- ${options}`).join('\n')
-                            )
+                          ? this.docxUtility.getMarkdownParagraphs(question.options.map((options: any) => `- ${options}`).join('\n'), context)
                           : [];
                         return [...questionParagraph, ...optionParagraphs];
                       }
@@ -88,7 +87,7 @@ export class ResourceDocxService {
                   ? content.questions.flatMap(
                       (question: any, questionIndex: number) => {
                         return question.question
-                          ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`)
+                          ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`, context)
                           : [];
                       }
                     )
@@ -134,8 +133,8 @@ export class ResourceDocxService {
                   },
                 });
 
-                const questionParagraph = this.docxUtility.getMarkdownParagraphs(scenario.question);
-                const descriptionParagraph = this.docxUtility.getMarkdownParagraphs(scenario.description);
+                const questionParagraph = this.docxUtility.getMarkdownParagraphs(scenario.question, context);
+                const descriptionParagraph = this.docxUtility.getMarkdownParagraphs(scenario.description, context);
 
                 return [scenarioTitle, ...questionParagraph, ...descriptionParagraph];
               }
@@ -156,19 +155,19 @@ export class ResourceDocxService {
           );
 
           if (item.preparation) {
-            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.preparation));
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.preparation, context));
           }
 
           if (item.required_materials) {
-            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.required_materials));
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.required_materials, context));
           }
 
           if (item.obtaining_materials) {
-            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.obtaining_materials));
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.obtaining_materials, context));
           }
 
           if (item.recap) {
-            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.recap));
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.recap, context));
           }
         }
       }
