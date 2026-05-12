@@ -43,7 +43,7 @@ class AuthManager {
 
     async forgotPassword(req) {
         try {
-            let { phone, userType } = req.body;
+            let { phone, userType, rememberMe } = req.body;
             const user = await this.#getUserByType(phone, userType);
             if (!user) {
                 return formatApiReponse(false, "Account does not exist!", {});
@@ -58,7 +58,7 @@ class AuthManager {
                 // this happens to new teachers - they do not get an otp assigned and must use 'forgot pin'
                 otp = authHelper.generateOtp();
                 const encryptedOtp = CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString();
-                await this.updateUserByType(user._id, type, { otp: encryptedOtp, rememberMeToken: rememberMe === true });
+                await this.updateUserByType(user._id, userType, { otp: encryptedOtp, rememberMeToken: rememberMe === true });
             }else{
                 otp = CryptoJS.AES.decrypt(user.otp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
             }
