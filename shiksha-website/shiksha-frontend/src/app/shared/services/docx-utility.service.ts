@@ -116,7 +116,7 @@ function mathmlToDocx(node: Element): MathComponent[] {
 }
 
 export class DocxContext{
-  public listInstances = 0;
+  public listInstances = 1;
   constructor(){}
 }
 
@@ -170,22 +170,25 @@ export class DocxUtilityService {
         }
 
         if (token.type === 'list') {
-          const reference = token.ordered ? 'markdown-numbered' : 'markdown-bullets';
+          const depth = Math.min(level, 8);
+          const reference = token.ordered ? `markdown-numbered-${depth}` : 'markdown-bullets';
           const instance = context.listInstances++;
 
           return token.items.flatMap((item) => {
             const mcq = token.ordered ? this.parseLetteredOptions(item.text) : null;
 
             if (mcq) {
+              const optionsInstance = context.listInstances++;
+
               return [
                 new Paragraph({
-                  numbering: { reference, level, instance },
-                  children: [new TextRun(`r=${reference},${level},${instance}`), new TextRun(mcq.question)],
+                  numbering: { reference, level: token.ordered ? 0 : depth, instance },
+                  children: [new TextRun(mcq.question)],
                   spacing: { after: 40 },
                 }),
                 ...mcq.options.map(option => new Paragraph({
-                  numbering: { reference: 'markdown-lettered', level: 0, instance },
-                  children: [new TextRun(`r=${reference},${level},${instance}`), new TextRun(option)],
+                  numbering: { reference: `markdown-lettered-${Math.min(level + 1, 8)}`, level: 0, instance: optionsInstance },
+                  children: [new TextRun(option)],
                   spacing: { after: 40 },
                 })),
                 ...(mcq.answer ? [new Paragraph({ text: mcq.answer, spacing: { after: 100 } })] : []),
@@ -194,8 +197,8 @@ export class DocxUtilityService {
 
             return [
               new Paragraph({
-                numbering: { reference, level, instance },
-                children: [new TextRun(`r=${reference},${level},${instance}`), ...this.toRuns(item.tokens.filter(t => t.type !== 'list'))],
+                numbering: { reference, level: token.ordered ? 0 : depth, instance },
+                children: this.toRuns(item.tokens.filter(t => t.type !== 'list')),
                 spacing: { after: 40 },
               }),
               ...toParagraphs(item.tokens.filter(t => t.type === 'list'), level + 1),
@@ -235,15 +238,19 @@ export class DocxUtilityService {
   }
 
   getMarkdownNumbering() : INumberingOptions{
-    const levels = (format: typeof LevelFormat[keyof typeof LevelFormat], text: (level: number) => string) =>
-      Array.from({ length: 9 }, (_, level) : ILevelsOptions => ({
+    const levels = (
+      format: typeof LevelFormat[keyof typeof LevelFormat],
+      text: (level: number) => string,
+      depthOffset = 0,
+    ) => Array.from({ length: 9 }, (_, level) : ILevelsOptions => ({
         level,
         format,
         text: text(level),
+        start: 1,
         alignment: AlignmentType.LEFT,
         style: {
           paragraph: {
-            indent: { left: 360 + level * 360, hanging: 180 },
+            indent: { left: 360 + (depthOffset + level) * 360, hanging: 180 },
           },
         },
       }));
@@ -251,8 +258,14 @@ export class DocxUtilityService {
     return {
       config: [
         { reference: 'markdown-bullets', levels: levels(LevelFormat.BULLET, () => '•') },
-        { reference: 'markdown-numbered', levels: levels(LevelFormat.DECIMAL, (level) => `%${level + 1}.`) },
-        { reference: 'markdown-lettered', levels: levels(LevelFormat.LOWER_LETTER, () => '%1)') },
+        ...Array.from({ length: 9 }, (_, depth) => ({
+          reference: `markdown-numbered-${depth}`,
+          levels: levels(LevelFormat.DECIMAL, () => '%1.', depth).slice(0, 1),
+        })),
+        ...Array.from({ length: 9 }, (_, depth) => ({
+          reference: `markdown-lettered-${depth}`,
+          levels: levels(LevelFormat.LOWER_LETTER, () => '%1)', depth).slice(0, 1),
+        })),
       ],
     };
   }
