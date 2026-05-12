@@ -3448,10 +3448,8 @@ description = "Python Client SDK for the Mistral AI API."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-files = [
-    {file = "mistralai-2.4.5-py3-none-any.whl", hash = "sha256:bf3b6550258ab16dec8547b90e9c18bebf9099f55b7fc25a884bf0bbeffced0f"},
-    {file = "mistralai-2.4.5.tar.gz", hash = "sha256:ef165bb004ec4423cbf19a440bf0983ca0c3fc92ab12a35ebca097bdf418e33a"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 eval-type-backport = ">=0.2.0"
@@ -3468,10 +3466,16 @@ agents = ["authlib (>=1.5.2,<2.0)", "griffe (>=1.7.3,<2.0)", "mcp (>=1.0,<2.0)"]
 gcp = ["google-auth (>=2.27.0)", "requests (>=2.32.3)"]
 realtime = ["websockets (>=13.0)"]
 workflow-payload-encryption = ["cryptography (>=41.0.0,<47.0.0)"]
-workflow-payload-offloading = ["aioboto3 (>=12.4.0,<13.0.0)", "azure-storage-blob[aio] (>=12.28.0,<13.0.0)", "gcloud-aio-storage (>=9.3.0,<10.0.0)"]
+workflow-payload-offloading = ["mistralai[workflow-payload-offloading-azure]", "mistralai[workflow-payload-offloading-gcs]", "mistralai[workflow-payload-offloading-s3]"]
 workflow-payload-offloading-azure = ["azure-storage-blob[aio] (>=12.28.0,<13.0.0)"]
 workflow-payload-offloading-gcs = ["gcloud-aio-storage (>=9.3.0,<10.0.0)"]
 workflow-payload-offloading-s3 = ["aioboto3 (>=12.4.0,<13.0.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/mistralai/client-python.git"
+reference = "v2.4.5"
+resolved_reference = "7ebe84b5a9eee0714f81c687c8cf636eaa12476f"
 
 [[package]]
 name = "more-itertools"
@@ -7007,4 +7011,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "cbbdceecbe7a36da50635feb9b0e8280952710332c561b09bb8727e04c027d93"
+content-hash = "2796250d14a70d774dda850a713ef45b5165b2a44ff462e13c2e7b0c8f501f45"
