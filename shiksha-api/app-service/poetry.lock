@@ -3448,8 +3448,10 @@ description = "Python Client SDK for the Mistral AI API."
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "mistralai-2.4.5-py3-none-any.whl", hash = "sha256:bf3b6550258ab16dec8547b90e9c18bebf9099f55b7fc25a884bf0bbeffced0f"},
+    {file = "mistralai-2.4.5.tar.gz", hash = "sha256:ef165bb004ec4423cbf19a440bf0983ca0c3fc92ab12a35ebca097bdf418e33a"},
+]
 
 [package.dependencies]
 eval-type-backport = ">=0.2.0"
@@ -3466,16 +3468,10 @@ agents = ["authlib (>=1.5.2,<2.0)", "griffe (>=1.7.3,<2.0)", "mcp (>=1.0,<2.0)"]
 gcp = ["google-auth (>=2.27.0)", "requests (>=2.32.3)"]
 realtime = ["websockets (>=13.0)"]
 workflow-payload-encryption = ["cryptography (>=41.0.0,<47.0.0)"]
-workflow-payload-offloading = ["mistralai[workflow-payload-offloading-azure]", "mistralai[workflow-payload-offloading-gcs]", "mistralai[workflow-payload-offloading-s3]"]
+workflow-payload-offloading = ["aioboto3 (>=12.4.0,<13.0.0)", "azure-storage-blob[aio] (>=12.28.0,<13.0.0)", "gcloud-aio-storage (>=9.3.0,<10.0.0)"]
 workflow-payload-offloading-azure = ["azure-storage-blob[aio] (>=12.28.0,<13.0.0)"]
 workflow-payload-offloading-gcs = ["gcloud-aio-storage (>=9.3.0,<10.0.0)"]
 workflow-payload-offloading-s3 = ["aioboto3 (>=12.4.0,<13.0.0)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/mistralai/client-python.git"
-reference = "v2.4.5"
-resolved_reference = "7ebe84b5a9eee0714f81c687c8cf636eaa12476f"
 
 [[package]]
 name = "more-itertools"
@@ -4698,42 +4694,42 @@ timezone = ["tzdata ; python_version >= \"3.9\" and platform_system == \"Windows
 
 [[package]]
 name = "pydantic-ai"
-version = "1.93.0"
+version = "1.95.0"
 description = "Agent Framework / shim to use Pydantic with LLMs"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "pydantic_ai-1.93.0-py3-none-any.whl", hash = "sha256:2a86ea557da1a455080d3635fa5278ff6c2a8d32aea5854aa659b24d86f6755a"},
-    {file = "pydantic_ai-1.93.0.tar.gz", hash = "sha256:46dac515a695c7632afba82ce353ad900b833a3dae176357ac1efa43f00fab59"},
+    {file = "pydantic_ai-1.95.0-py3-none-any.whl", hash = "sha256:0b456ecc03b99ed091f4327d233c1256235c35e55b4b37f616766a3db070208b"},
+    {file = "pydantic_ai-1.95.0.tar.gz", hash = "sha256:164ada3a57a16ad49ae0e891f18ebcb1dc92406a068ccd3558214dbb074da328"},
 ]
 
 [package.dependencies]
-pydantic-ai-slim = {version = "1.93.0", extras = ["ag-ui", "anthropic", "bedrock", "cli", "cohere", "evals", "fastmcp", "google", "groq", "huggingface", "logfire", "mcp", "mistral", "openai", "retries", "spec", "temporal", "ui", "vertexai", "xai"]}
+pydantic-ai-slim = {version = "1.95.0", extras = ["ag-ui", "anthropic", "bedrock", "cli", "cohere", "evals", "fastmcp", "google", "groq", "huggingface", "logfire", "mcp", "mistral", "openai", "retries", "spec", "temporal", "ui", "vertexai", "xai"]}
 
 [package.extras]
 a2a = ["fasta2a (>=0.4.1)"]
-dbos = ["pydantic-ai-slim[dbos] (==1.93.0)"]
-examples = ["pydantic-ai-examples (==1.93.0)"]
-outlines-llamacpp = ["pydantic-ai-slim[outlines-llamacpp] (==1.93.0)"]
-outlines-mlxlm = ["pydantic-ai-slim[outlines-mlxlm] (==1.93.0) ; platform_system == \"Darwin\" and platform_machine == \"arm64\""]
-outlines-sglang = ["pydantic-ai-slim[outlines-sglang] (==1.93.0)"]
-outlines-transformers = ["pydantic-ai-slim[outlines-transformers] (==1.93.0)"]
-outlines-vllm-offline = ["pydantic-ai-slim[outlines-vllm-offline] (==1.93.0)"]
-prefect = ["pydantic-ai-slim[prefect] (==1.93.0)"]
-sentence-transformers = ["pydantic-ai-slim[sentence-transformers] (==1.93.0)"]
-voyageai = ["pydantic-ai-slim[voyageai] (==1.93.0)"]
+dbos = ["pydantic-ai-slim[dbos] (==1.95.0)"]
+examples = ["pydantic-ai-examples (==1.95.0)"]
+outlines-llamacpp = ["pydantic-ai-slim[outlines-llamacpp] (==1.95.0)"]
+outlines-mlxlm = ["pydantic-ai-slim[outlines-mlxlm] (==1.95.0) ; platform_system == \"Darwin\" and platform_machine == \"arm64\""]
+outlines-sglang = ["pydantic-ai-slim[outlines-sglang] (==1.95.0)"]
+outlines-transformers = ["pydantic-ai-slim[outlines-transformers] (==1.95.0)"]
+outlines-vllm-offline = ["pydantic-ai-slim[outlines-vllm-offline] (==1.95.0)"]
+prefect = ["pydantic-ai-slim[prefect] (==1.95.0)"]
+sentence-transformers = ["pydantic-ai-slim[sentence-transformers] (==1.95.0)"]
+voyageai = ["pydantic-ai-slim[voyageai] (==1.95.0)"]
 
 [[package]]
 name = "pydantic-ai-slim"
-version = "1.93.0"
+version = "1.95.0"
 description = "Agent Framework / shim to use Pydantic with LLMs, slim package"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "pydantic_ai_slim-1.93.0-py3-none-any.whl", hash = "sha256:6733e3f19c83f4121fb9fe42aee918bd8f402ce670a519ecc898f108378fadb7"},
-    {file = "pydantic_ai_slim-1.93.0.tar.gz", hash = "sha256:977364ecd3b6a2201e25d917f4efe80895210e44e66cb6983e1fc0477c78910b"},
+    {file = "pydantic_ai_slim-1.95.0-py3-none-any.whl", hash = "sha256:5ede0ab79b981a64e938143ac2a8542b493503864b2aae32f07d879e18b5adf2"},
+    {file = "pydantic_ai_slim-1.95.0.tar.gz", hash = "sha256:2057b2a6280022145a9d00d5b103bfb2a7b54be2f6bffa3fa5e8d41561c59dc1"},
 ]
 
 [package.dependencies]
@@ -4752,13 +4748,13 @@ httpx = ">=0.27"
 huggingface-hub = {version = ">=1.3.4,<2.0.0", optional = true, markers = "extra == \"huggingface\""}
 logfire = {version = ">=4.16.0", extras = ["httpx"], optional = true, markers = "extra == \"logfire\""}
 mcp = {version = ">=1.25.0,<2.0", optional = true, markers = "extra == \"mcp\""}
-mistralai = {version = ">=2.0.0", optional = true, markers = "extra == \"mistral\""}
+mistralai = {version = ">=2.0.0,<2.4.6 || >2.4.6", optional = true, markers = "extra == \"mistral\""}
 openai = {version = ">=2.29.0", optional = true, markers = "extra == \"openai\""}
 opentelemetry-api = ">=1.28.0"
 prompt-toolkit = {version = ">=3", optional = true, markers = "extra == \"cli\""}
 pydantic = ">=2.12"
-pydantic-evals = {version = "1.93.0", optional = true, markers = "extra == \"evals\""}
-pydantic-graph = "1.93.0"
+pydantic-evals = {version = "1.95.0", optional = true, markers = "extra == \"evals\""}
+pydantic-graph = "1.95.0"
 pydantic-handlebars = {version = ">=0.1.0", optional = true, markers = "extra == \"spec\""}
 pyperclip = {version = ">=1.9.0", optional = true, markers = "extra == \"cli\""}
 pyyaml = {version = ">=6.0.2", optional = true, markers = "extra == \"cli\" or extra == \"spec\""}
@@ -4780,7 +4776,7 @@ cli = ["argcomplete (>=3.5.0)", "prompt-toolkit (>=3)", "pyperclip (>=1.9.0)", "
 cohere = ["cohere (>=5.20.6) ; platform_system != \"Emscripten\""]
 dbos = ["dbos (>=2.10.0)"]
 duckduckgo = ["ddgs (>=9.0.0)"]
-evals = ["pydantic-evals (==1.93.0)"]
+evals = ["pydantic-evals (==1.95.0)"]
 exa = ["exa-py (>=2.0.0)"]
 fastmcp = ["fastmcp (>=3.2.4)"]
 google = ["google-genai (>=1.70.0)"]
@@ -4788,7 +4784,7 @@ groq = ["groq (>=0.25.0)"]
 huggingface = ["huggingface-hub (>=1.3.4,<2.0.0)"]
 logfire = ["logfire[httpx] (>=4.16.0)"]
 mcp = ["mcp (>=1.25.0,<2.0)"]
-mistral = ["mistralai (>=2.0.0)"]
+mistral = ["mistralai (>=2.0.0,!=2.4.6)"]
 openai = ["openai (>=2.29.0)", "tiktoken (>=0.12.0)"]
 openrouter = ["openai (>=2.8.0)"]
 outlines-llamacpp = ["outlines[llamacpp] (>=1.0.0,<1.3.0) ; python_version < \"3.14\""]
@@ -4944,21 +4940,21 @@ typing-extensions = ">=4.14.1"
 
 [[package]]
 name = "pydantic-evals"
-version = "1.93.0"
+version = "1.95.0"
 description = "Framework for evaluating stochastic code execution, especially code making use of LLMs"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "pydantic_evals-1.93.0-py3-none-any.whl", hash = "sha256:c698a9bee18b89fcc663fd24aef7f86b4da5d53eb80585542d256d68c110e696"},
-    {file = "pydantic_evals-1.93.0.tar.gz", hash = "sha256:5fda20866ba88e6d8a0b91b1b88e0a2aceb16410b91f326ffaa26bfa9f5486a6"},
+    {file = "pydantic_evals-1.95.0-py3-none-any.whl", hash = "sha256:f80f5ece75186596fa009746aa66925ed3a3ced7825e5365d93ee9a3da24d76c"},
+    {file = "pydantic_evals-1.95.0.tar.gz", hash = "sha256:d314889be91f4d07d0d698f8dfb240f635f7da1919090fc6b287c5b6c5479608"},
 ]
 
 [package.dependencies]
 anyio = ">=0"
 logfire-api = ">=3.14.1"
 pydantic = ">=2.12"
-pydantic-ai-slim = "1.93.0"
+pydantic-ai-slim = "1.95.0"
 pyyaml = ">=6.0.2"
 rich = ">=13.9.4"
 
@@ -4967,14 +4963,14 @@ logfire = ["logfire (>=3.14.1)"]
 
 [[package]]
 name = "pydantic-graph"
-version = "1.93.0"
+version = "1.95.0"
 description = "Graph and state machine library"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "pydantic_graph-1.93.0-py3-none-any.whl", hash = "sha256:ef1b0dcd55a6b5a3544de53a9594216ee8f51ac26bf4be79f7ef310747be598a"},
-    {file = "pydantic_graph-1.93.0.tar.gz", hash = "sha256:17effd900200aa7b72ec0509a79f36d3e161c2a6ef02dda6285a381e867ab195"},
+    {file = "pydantic_graph-1.95.0-py3-none-any.whl", hash = "sha256:c58dbbee18df24daf1a4ac9feceaa935c2d3489b3920fc8bb4147bc5019a8776"},
+    {file = "pydantic_graph-1.95.0.tar.gz", hash = "sha256:66ebe9f6ef49026e84a60e8ebcd708f46e6d35da35d9139dea0268d552ce6b14"},
 ]
 
 [package.dependencies]
@@ -7011,4 +7007,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "2796250d14a70d774dda850a713ef45b5165b2a44ff462e13c2e7b0c8f501f45"
+content-hash = "a78d349eb483fe3d60037bf788c27ee1d24f12ecd3ca03a842dc432705971d08"

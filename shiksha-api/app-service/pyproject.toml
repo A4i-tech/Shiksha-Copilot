@@ -23,14 +23,13 @@ langdetect = "^1.0.9"
 openai = "^2.32.0"
 python-pptx = "^1.0.2"
 pymongo = "^4.17.0"
-pydantic-ai = "^1.93.0"
+pydantic-ai = "^1.95.0"
 pymupdf = "^1.27.2.3"
 pillow = "^12.2.0"
 pymupdf4llm = "^1.27.2.3"
 fsspec = "^2026.4.0"
 adlfs = "^2026.5.0"
 tenacity = "^9.1.4"
-mistralai = { git = "https://github.com/mistralai/client-python.git", tag = "v2.4.5" }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
