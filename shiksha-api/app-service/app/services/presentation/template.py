@@ -672,77 +672,83 @@ class Templates:
         slide: Slide = self.prs.slides.add_slide(blank_slide_layout)
 
         slide.background.fill.solid()
-        slide.background.fill.fore_color.rgb = RGBColor.from_string((data.background_color or "#F8FAFC").replace("#", ""))
-        accent_rgb = RGBColor.from_string((data.accent_color or "#2563EB").replace("#", ""))
+        slide.background.fill.fore_color.rgb = RGBColor.from_string((data.background_color or "#F7F9FC").replace("#", ""))
+        accent_hex = (data.accent_color or "#2563EB").replace("#", "")
+        accent_rgb = RGBColor.from_string(accent_hex)
         heading_rgb = RGBColor.from_string((data.heading_color or "#0F172A").replace("#", ""))
 
-        title_frame = slide.shapes.add_textbox(Inches(self._MARGIN_X), Inches(0.52), Inches(self._CONTENT_WIDTH), Inches(0.72)).text_frame
+        title_frame = slide.shapes.add_textbox(Inches(self._MARGIN_X), Inches(0.88), Inches(4.75), Inches(1.5)).text_frame
         title_frame.text = data.heading
         title_frame.word_wrap = True
-        title_frame.paragraphs[0].font.size = Pt(34 if len(data.heading) < 52 else 30)
+        title_frame.paragraphs[0].font.size = Pt(38 if len(data.heading) < 48 else 32)
         title_frame.paragraphs[0].font.bold = True
         title_frame.paragraphs[0].font.color.rgb = heading_rgb
+        title_frame.paragraphs[0].line_spacing = 0.94
 
-        accent_bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(self._MARGIN_X), Inches(1.32), Inches(1.35), Inches(0.06))
-        accent_bar.fill.solid()
-        accent_bar.fill.fore_color.rgb = accent_rgb
-        accent_bar.line.fill.background()
+        content_rule = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(self._MARGIN_X), Inches(2.65), Inches(0.85), Inches(0.05))
+        content_rule.fill.solid()
+        content_rule.fill.fore_color.rgb = accent_rgb
+        content_rule.line.fill.background()
 
-        content_frame = slide.shapes.add_textbox(Inches(self._MARGIN_X), Inches(2.05), Inches(4.95), Inches(2.5)).text_frame
+        content_frame = slide.shapes.add_textbox(Inches(self._MARGIN_X), Inches(3.1), Inches(4.75), Inches(2.25)).text_frame
         content_frame.margin_left = Inches(0.02)
         content_frame.word_wrap = True
         self._render_content(content_frame, data.content)
         for paragraph in content_frame.paragraphs:
-            paragraph.font.size = Pt(18)
+            paragraph.font.size = Pt(17)
             paragraph.font.color.rgb = RGBColor(51, 65, 85)
-            paragraph.line_spacing = 1.25
+            paragraph.line_spacing = 1.2
 
-        preview_width = min(data.thumbnail_width, self._CONTENT_WIDTH * 0.5)
-        preview_height = preview_width * 9.0 / 16.0 if data.maintain_aspect_ratio else data.thumbnail_height
-        preview_left = self._BASE_SLIDE_WIDTH_INCHES - self._MARGIN_X - preview_width
-        preview_top = 1.65
+        media_area_left = 6.35
+        media_area_top = 1.0
+        media_area_width = 5.7
+        media_area_height = 4.65
+        thumbnail_aspect = self._image_aspect(data.thumbnail_image) or (16.0 / 9.0)
+        portrait_like = thumbnail_aspect < 0.95
+        letterboxed_wide = thumbnail_aspect >= 1.1 and data.maintain_aspect_ratio
 
-        frame = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(preview_left - 0.1), Inches(preview_top - 0.1), Inches(preview_width + 0.2), Inches(preview_height + 0.2))
-        frame.fill.solid()
-        frame.fill.fore_color.rgb = RGBColor(255, 255, 255)
-        frame.line.color.rgb = RGBColor(203, 213, 225)
-        frame.line.width = Pt(1)
-        frame.shadow.inherit = False
-        frame.shadow.visible = True
-        frame.shadow.blur_radius = Pt(8)
-        frame.shadow.distance = Pt(2)
+        if portrait_like:
+            preview_height = media_area_height
+            preview_width = min(media_area_width, preview_height * thumbnail_aspect)
+            image_fit = "contain"
+        elif letterboxed_wide:
+            preview_width = media_area_width
+            preview_height = min(media_area_height, preview_width / thumbnail_aspect)
+            image_fit = "contain"
+        else:
+            preview_width = min(media_area_width, 3.55)
+            preview_height = media_area_height
+            image_fit = "cover"
+
+        preview_left = media_area_left + (media_area_width - preview_width) / 2
+        preview_top = media_area_top + (media_area_height - preview_height) / 2
+
+        media_frame = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(preview_left - 0.05), Inches(preview_top - 0.05), Inches(preview_width + 0.1), Inches(preview_height + 0.1))
+        media_frame.fill.solid()
+        media_frame.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        media_frame.line.fill.background()
+        media_frame.shadow.inherit = False
+        media_frame.shadow.visible = True
+        media_frame.shadow.blur_radius = Pt(8)
+        media_frame.shadow.distance = Pt(2)
 
         try:
-            thumbnail = slide.shapes.add_picture(data.thumbnail_image, Inches(preview_left), Inches(preview_top), width=Inches(preview_width), height=Inches(preview_height))
+            thumbnail = self._add_picture_fit(slide, data.thumbnail_image, Inches(preview_left), Inches(preview_top), Inches(preview_width), Inches(preview_height), image_fit)
         except Exception as e:
             thumbnail = self._create_image_placeholder(slide, Inches(preview_left), Inches(preview_top), Inches(preview_width), Inches(preview_height), f"Error loading video thumbnail:\n{str(e)}")
 
-        overlay = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(preview_left), Inches(preview_top + preview_height - 0.55), Inches(preview_width), Inches(0.55))
-        overlay.fill.solid()
-        overlay.fill.fore_color.rgb = RGBColor(15, 23, 42)
-        overlay.fill.transparency = 0.1
-        overlay.line.fill.background()
-
-        watch_shape = slide.shapes.add_textbox(Inches(preview_left + 0.28), Inches(preview_top + preview_height - 0.43), Inches(preview_width - 0.56), Inches(0.28))
-        watch_frame = watch_shape.text_frame
-        watch_frame.text = "Click to watch video"
-        watch_frame.paragraphs[0].font.size = Pt(13)
-        watch_frame.paragraphs[0].font.bold = True
-        watch_frame.paragraphs[0].font.color.rgb = RGBColor(255, 255, 255)
-        watch_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
-
-        play_bg = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(preview_left + preview_width / 2 - 0.42), Inches(preview_top + preview_height / 2 - 0.42), Inches(0.84), Inches(0.84))
+        play_bg = slide.shapes.add_shape(MSO_SHAPE.OVAL, Inches(preview_left + preview_width / 2 - 0.36), Inches(preview_top + preview_height / 2 - 0.36), Inches(0.72), Inches(0.72))
         play_bg.fill.solid()
         play_bg.fill.fore_color.rgb = accent_rgb
         play_bg.line.fill.background()
 
-        play = slide.shapes.add_shape(MSO_SHAPE.ISOSCELES_TRIANGLE, Inches(preview_left + preview_width / 2 - 0.12), Inches(preview_top + preview_height / 2 - 0.18), Inches(0.32), Inches(0.36))
+        play = slide.shapes.add_shape(MSO_SHAPE.ISOSCELES_TRIANGLE, Inches(preview_left + preview_width / 2 - 0.07), Inches(preview_top + preview_height / 2 - 0.14), Inches(0.22), Inches(0.28))
         play.rotation = 90
         play.fill.solid()
         play.fill.fore_color.rgb = RGBColor(255, 255, 255)
         play.line.fill.background()
 
-        for shape in (frame, thumbnail, overlay, watch_shape, play_bg, play):
+        for shape in (media_frame, thumbnail, play_bg, play):
             shape.click_action.hyperlink.address = str(data.video)
 
         self._publish(slide)
