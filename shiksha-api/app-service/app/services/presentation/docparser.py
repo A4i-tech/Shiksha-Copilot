@@ -71,7 +71,7 @@ async def _actually_read_figures(storage: Storage, textbook: IO[bytes], out_dir:
         if await storage.exists(storage_path):
             return None
         data = io.BytesIO()
-        Image.open(io.BytesIO(content)).save(data, format="PNG")
+        Image.open(io.BytesIO(content)).convert("RGB").save(data, format="PNG")
         await storage.write_bytes(storage_path, data.getvalue())
         return await _caption(data, figure_name, page_text, sem)
 
