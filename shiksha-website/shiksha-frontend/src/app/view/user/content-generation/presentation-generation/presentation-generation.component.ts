@@ -62,7 +62,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   pptxFileSizeLabel = '';
   latestToolText = '';
 
-  readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
+  readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt'];
   readonly slideOptions = [6, 8, 10, 12, 15, 18, 20];
   readonly instructionSuggestions = [
     {
@@ -605,7 +605,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
 
     if (!this.acceptedFileTypes.includes(extension)) {
       this.utilityService.showWarning(
-        'Unsupported file type. Please upload a PDF, DOC, DOCX, PPT, or PPTX file.'
+        'Unsupported file type. Please upload one of: ' + this.acceptedFileTypes.join(", ") + '.'
       );
       return false;
     }
