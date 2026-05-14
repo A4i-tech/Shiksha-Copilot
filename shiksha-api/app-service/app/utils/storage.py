@@ -1,3 +1,4 @@
+import pathlib
 import posixpath
 import tempfile
 from contextlib import asynccontextmanager
@@ -33,7 +34,7 @@ class Storage:
 
     @asynccontextmanager
     async def read(self, path: str) -> AsyncIterator[IO[bytes]]:
-        with tempfile.NamedTemporaryFile() as f:
+        with tempfile.NamedTemporaryFile(suffix=pathlib.Path(path).suffix) as f:
             await self.fs._get_file(posixpath.join(self.root, path), f.name)
             f.seek(0)
             yield f.file
