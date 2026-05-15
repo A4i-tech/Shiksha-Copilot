@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -149,23 +149,42 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     };
   }
 
-  constructor(private contentGenService: ContentGenerationService, private router: Router, private cdr: ChangeDetectorRef, public utilityservice: UtilityService,private activatedRoute: ActivatedRoute) {
+  constructor(private contentGenService: ContentGenerationService, private router: Router, public utilityservice: UtilityService,private activatedRoute: ActivatedRoute) {
    this.typeSubscription = this.activatedRoute.data.subscribe((data: any) => {
       this.type = data.type;
     });
    }
 
   ngOnInit(): void {
-    // const params: ListParams = {
-    //   currentPage: this.currentPage,
-    //   pageSize: this.pageSize
-    // };
-    // this.getAllList(params);
-
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
+    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedInUser.classes);
 
-    // this.getBoardsList(loggedInUser);
+    if (this.boardDropdownOptions.length === 1) {
+      this.selectedBoard = this.boardDropdownOptions[0].board;
+      this.mediumDropdownOptions = this.filterMediumByBoard(this.boardDropdownOptions, this.selectedBoard)[0].mediums;
+    }
+
+    if (this.mediumDropdownOptions.length === 1) {
+      this.selectedMedium = this.mediumDropdownOptions[0].medium;
+      this.classDropdownOptions = this.filterClassByMedium(this.mediumDropdownOptions, this.selectedMedium)[0].classes?.sort((a:any,b:any)=>a.class-b.class);
+    }
+
+    if (this.classDropdownOptions.length === 1) {
+      this.selectedClass = this.classDropdownOptions[0].class;
+      const subjectDropdownValue = this.filterSubjectByClass(this.classDropdownOptions, this.selectedClass)[0].data;
+      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectDropdownValue);
+    }
+
+    if (this.subjectDropdownOptions.length === 1) {
+      this.selectedSubject = this.subjectDropdownOptions[0].subject;
+    }
+
+    const today = new Date();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const year = today.getFullYear();
+    this.selectedMonth = `${year}-${month}`;
+    this.getAllList(this.getListParams());
 
    this.searchSubscription = this.searchTerms.pipe(
       debounceTime(1000), // Adjust the debounce time as needed
@@ -178,51 +197,15 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit(): void {
-  if(this.type === 'generated'){
-    this.typedropdown.selectedItem = this.selectedType;
-    this.statusDropDown.selectedItem = 'all'
-  }
-    this.cdr.detectChanges();
-    const loggedUSer = this.utilityservice.loggedInUserData;
-    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedUSer.classes);
-    
-    if(this.boardDropdownOptions.length === 1){
-      this.boarddropdown.selectedItem = this.boardDropdownOptions[0].board;
-      this.selectedBoard = this.boardDropdownOptions[0].board;
-      this.mediumDropdownOptions = this.filterMediumByBoard(this.boardDropdownOptions,this.boarddropdown.selectedItem)[0].mediums;
-
+    if (this.type === 'generated') {
+      this.typedropdown.selectedItem = this.selectedType;
+      this.statusDropDown.selectedItem = 'all';
     }
 
-    if(this.mediumDropdownOptions.length === 1){
-      this.mediumdropdown.selectedItem = this.mediumDropdownOptions[0].medium;
-      this.selectedMedium = this.mediumDropdownOptions[0].medium;
-      this.classDropdownOptions = this.filterClassByMedium(this.mediumDropdownOptions,this.mediumdropdown.selectedItem)[0].classes?.sort((a:any,b:any)=>a.class-b.class)
-    }
-
-    if(this.classDropdownOptions.length === 1){
-      this.classdropdown.selectedItem = this.classDropdownOptions[0].class;
-      this.selectedClass = this.classDropdownOptions[0].class;
-      const subjectDropdownValue = this.filterSubjectByClass(this.classDropdownOptions,this.classdropdown.selectedItem)[0].data;
-      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectDropdownValue)
-    }
-
-    if(this.subjectDropdownOptions.length === 1){
-      this.subjectdropdown.selectedItem = this.subjectDropdownOptions[0].subject;
-      this.selectedSubject = this.subjectDropdownOptions[0].subject;
-    }
-
-const today = new Date();
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const year = today.getFullYear();
-    this.selectedMonth = `${year}-${month}`;
-    const param = this.getListParams();
-   
-    
-    this.getAllList(param);
-    
-    
-    
-
+    this.boarddropdown.selectedItem = this.selectedBoard ?? null;
+    this.mediumdropdown.selectedItem = this.selectedMedium ?? null;
+    this.classdropdown.selectedItem = this.selectedClass ?? null;
+    this.subjectdropdown.selectedItem = this.selectedSubject ?? null;
   }
 
   filterMediumByBoard(dropdownValue:any,selecteItem:any){
@@ -267,11 +250,11 @@ const today = new Date();
   }
 
   resetBoardChange() {
-    this.mediumdropdown.selectedItem = null;
+    if (this.mediumdropdown) this.mediumdropdown.selectedItem = null;
     this.selectedMedium = null;
-    this.classdropdown.selectedItem = null;
+    if (this.classdropdown) this.classdropdown.selectedItem = null;
     this.selectedClass = null;
-    this.subjectdropdown.selectedItem = null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = null;
     this.selectedSubject = null;
     this.mediumDropdownOptions = [];
     this.classDropdownOptions = [];
@@ -291,16 +274,16 @@ const today = new Date();
   }
 
   resetMediumChange() {
-    this.classdropdown.selectedItem = null;
+    if (this.classdropdown) this.classdropdown.selectedItem = null;
     this.selectedClass = null;
-    this.subjectdropdown.selectedItem = null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = null;
     this.selectedSubject = null;
     this.classDropdownOptions = [];
     this.subjectDropdownOptions = [];
   }
 
   resetClassChange() {
-    this.subjectdropdown.selectedItem = null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = null;
     this.selectedSubject = null;
     this.subjectDropdownOptions = [];
   }
