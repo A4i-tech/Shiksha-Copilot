@@ -426,7 +426,6 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     formData.append('textbook_file', this.selectedFile);
     formData.append('slides', String(this.presentationForm.value.slideCount));
     formData.append('instruction', this.presentationForm.value.instructions || '');
-    formData.append('use_pre_generated_outline', 'false');
 
     this.isCreatingJob = true;
     this.closeEventStream();

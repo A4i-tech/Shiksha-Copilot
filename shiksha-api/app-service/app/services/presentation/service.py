@@ -140,22 +140,17 @@ class PresentationService:
             metadata = job.metadata.get("plan", {})
             if not isinstance(metadata, dict):
                 metadata = {}
-            if job.use_pre_generated_outline and (source_plan := await self.jobs.latest_completed_outline(job.textbook_file)):
-                metadata = source_plan
-                job.metadata["plan"] = metadata
-                await self.jobs.update(job.id, {"metadata.plan": metadata, "message": "Using pre-generated outline from latest completed job"})
+            if transform_path := job.metadata.get("transform_path", None):
+                source_path = self.storage.path("out", stem, transform_path)
             else:
-                if transform_path := job.metadata.get("transform_path", None):
-                    source_path = self.storage.path("out", stem, transform_path)
-                else:
-                    source_path = self.storage.path("uploads", job.textbook_file)
-                async with self.storage.read(source_path) as f:
-                    figures = await docparser.read_figures(self.storage, f, self.storage.path("out", stem, "figures"))
-                    async for event in agent.plan(source_path, f, figures, job.slides, metadata, job.instruction):
-                        if isinstance(event, agent.ShikshaCheckpointEvent):
-                            await self._process_checkpoint(job, event, "plan", None, out_path)
-                        else:
-                            await self.jobs.log(job.id, "event", json.loads(event.model_dump_json()))
+                source_path = self.storage.path("uploads", job.textbook_file)
+            async with self.storage.read(source_path) as f:
+                figures = await docparser.read_figures(self.storage, f, self.storage.path("out", stem, "figures"))
+                async for event in agent.plan(source_path, f, figures, job.slides, metadata, job.instruction):
+                    if isinstance(event, agent.ShikshaCheckpointEvent):
+                        await self._process_checkpoint(job, event, "plan", None, out_path)
+                    else:
+                        await self.jobs.log(job.id, "event", json.loads(event.model_dump_json()))
             await self.jobs.update(job.id, {"status": "creating_slides"})
         elif job.status == "creating_slides":
             await self.jobs.update(job.id, {"message": "Executing presentation outline"})

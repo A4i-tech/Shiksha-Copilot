@@ -93,7 +93,6 @@ class JobDetail(BaseModel):
     textbook_file: str
     slides: int | None
     instruction: str | None
-    use_pre_generated_outline: bool = True
     status: JobStatus = "init"
     message: str = "Pending"
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -40,10 +40,10 @@ def annotate_idle(service: PresentationService, job: JobDetail):
 
 
 @router.post("/job")
-async def create_job(user_id: XUserIDHeader, textbook_file: UploadFile = File(...), slides: int | None = Form(None), instruction: str | None = Form(None), use_pre_generated_outline: bool = Form(True), service: PresentationService = Depends(pres)) -> JobDetail:
+async def create_job(user_id: XUserIDHeader, textbook_file: UploadFile = File(...), slides: int | None = Form(None), instruction: str | None = Form(None), service: PresentationService = Depends(pres)) -> JobDetail:
     """ Schedule a new PPTX generation job. """
     textbook_path = await save_file_with_hash(service.storage, textbook_file)
-    return await service.jobs.create(user_id, textbook_path, slides, instruction, use_pre_generated_outline)
+    return await service.jobs.create(user_id, textbook_path, slides, instruction)
 
 
 @router.get("/job")

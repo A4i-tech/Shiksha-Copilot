@@ -47,8 +47,8 @@ class JobManager:
         while True:
             yield await self.queue.get()
 
-    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None, use_pre_generated_outline: bool = True) -> JobDetail:
-        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction, use_pre_generated_outline=use_pre_generated_outline)
+    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None) -> JobDetail:
+        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction)
         doc = job.model_dump()
         doc["id"] = str(job.id)
         await self.collection.insert_one(doc)
@@ -57,10 +57,6 @@ class JobManager:
         await self.log(job.id, "create", json.loads(job.model_dump_json()), False)
         self.logger.info("Created job for %s", textbook_file)
         return job
-
-    async def latest_completed_outline(self, textbook_file: str) -> dict[str, Any] | None:
-        doc = await self.collection.find_one({"textbook_file": textbook_file, "status": "complete", "metadata.plan.outline": {"$exists": True}}, sort=[("creation_time", -1)])
-        return doc["metadata"]["plan"] if doc else None
 
     async def update(self, job_id: uuid.UUID, fields: dict[str, Any]):
         doc = await self.collection.find_one_and_update({"id": str(job_id)}, {"$set": fields}, return_document=ReturnDocument.AFTER)
