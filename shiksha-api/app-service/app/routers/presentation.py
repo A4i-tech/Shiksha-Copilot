@@ -140,13 +140,12 @@ async def events_handle(request: Request, id: uuid.UUID, service: PresentationSe
     async def stream():
         q = asyncio.Queue()
         service.jobs.log_subscribers.add(q)
-        rtid = service.jobs.on_online(id)
         id_ = str(id)
 
         try:
             async for e in service.jobs.get_logs(id):
                 if await request.is_disconnected(): break
-                if e["id"] == id_: yield f"data: {json.dumps(e)}\n\n"
+                yield f"data: {json.dumps(e)}\n\n"
 
             await service.jobs.pub(id)
             while not await request.is_disconnected():
@@ -157,6 +156,5 @@ async def events_handle(request: Request, id: uuid.UUID, service: PresentationSe
                 yield f"data: {json.dumps(e)}\n\n"
         finally:
             service.jobs.log_subscribers.discard(q)
-            service.jobs.on_offline(id, rtid)
 
     return StreamingResponse(stream(), media_type="text/event-stream")

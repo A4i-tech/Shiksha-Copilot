@@ -19,8 +19,6 @@ class JobManager:
         self.queue: asyncio.Queue[uuid.UUID | None] = asyncio.Queue()
         self.listeners: set[asyncio.Queue[uuid.UUID | None]] = set()
         self.log_subscribers: set[asyncio.Queue[dict | None]] = set()
-        self.online: dict[bytes, asyncio.Future[None]] = {}
-        self._online: dict[bytes, set[bytes]] = {}
 
     async def __aenter__(self):
         await asyncio.gather(
@@ -40,24 +38,6 @@ class JobManager:
             q.put_nowait(None)
         self.log_subscribers.clear()
         await self.client.close()
-
-    def on_online(self, job_id: uuid.UUID) -> uuid.UUID:
-        id = uuid.uuid4()
-        if job_id.bytes not in self._online:
-            self._online[job_id.bytes] = set()
-            self.online[job_id.bytes] = asyncio.Future()
-        self._online[job_id.bytes].add(id.bytes)
-        return id
-
-    def on_offline(self, job_id: uuid.UUID, rtid: uuid.UUID):
-        if job_id.bytes not in self._online:
-            return
-        self._online[job_id.bytes].discard(rtid.bytes)
-        if len(self._online[job_id.bytes]) > 0:
-            return
-        del self._online[job_id.bytes]
-        self.online[job_id.bytes].cancel()
-        del self.online[job_id.bytes]
 
     async def pub(self, job_id: uuid.UUID):
         await self.queue.put(job_id)
