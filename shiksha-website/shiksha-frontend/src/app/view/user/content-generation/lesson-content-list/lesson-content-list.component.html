@@ -98,7 +98,7 @@
   >
     <div
       *ngIf="type === 'status' && isInitialStatusLoading"
-      class="card px-6 py-6 rounded-xl bg-white border flex items-center justify-between gap-4 animate-pulse"
+      class="px-6 py-5 min-h-[96px] rounded-xl bg-white border flex items-center justify-between gap-4 animate-pulse w-full"
     >
       <div class="flex items-center gap-4 flex-1 min-w-0">
         <div class="w-12 h-12 rounded-full bg-slate-200 shrink-0"></div>
@@ -689,15 +689,17 @@
     [ngClass]="type === 'generated' ? 'items-center justify-center' : 'w-full'"
   >
     <div
-      class="px-6 py-8 rounded-xl bg-white border flex flex-col items-center"
-      [ngClass]="type === 'generated' ? 'w-[460px] h-[300px]' : 'w-full'"
+      class="rounded-xl bg-white border"
+      [ngClass]="type === 'generated' ? 'px-6 py-8 w-[460px] h-[300px] flex flex-col items-center' : 'w-full px-6 py-5 flex items-center gap-4'"
     >
-      <div class="rounded-full bg-warn-50 p-4 my-8">
+      <div class="rounded-full bg-warn-50 p-4" [ngClass]="type === 'generated' ? 'my-8' : 'shrink-0'">
         <img src="assets/icons/no-file.svg" alt="" />
       </div>
-      <h4 class="text-base text-center font-medium">
-        {{ "No items found" | translate }}
-      </h4>
+      <div [ngClass]="type === 'generated' ? '' : 'min-w-0'">
+        <h4 class="text-base font-medium" [ngClass]="type === 'generated' ? 'text-center' : ''">
+          {{ "No items found" | translate }}
+        </h4>
+      </div>
     </div>
   </div>
 </div>
