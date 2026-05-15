@@ -37,6 +37,7 @@ interface PresentationListItem {
   styleUrls: ['./lesson-content-list.component.scss']
 })
 export class LessonContentListComponent implements OnInit, AfterViewInit, OnDestroy {
+  private readonly statusAutoRefreshMs = 5000;
 
   currentPage = 1;
   pageSize = 6;
@@ -117,9 +118,11 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   private searchTerms = new Subject<string>();
   classList: any[] = []
   isCompleted:any = '';
+  isInitialStatusLoading = false;
   type:any;
   typeSubscription:Subscription;
   private searchSubscription!: Subscription;
+  private statusRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
 
   @ViewChild('typeDropDown') typedropdown: any;
@@ -184,6 +187,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     const month = (today.getMonth() + 1).toString().padStart(2, '0');
     const year = today.getFullYear();
     this.selectedMonth = `${year}-${month}`;
+    this.isInitialStatusLoading = this.type === 'status';
     this.getAllList(this.getListParams());
 
    this.searchSubscription = this.searchTerms.pipe(
@@ -198,14 +202,14 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
 
   ngAfterViewInit(): void {
     if (this.type === 'generated') {
-      this.typedropdown.selectedItem = this.selectedType;
-      this.statusDropDown.selectedItem = 'all';
+      if (this.typedropdown) this.typedropdown.selectedItem = this.selectedType;
+      if (this.statusDropDown) this.statusDropDown.selectedItem = 'all';
     }
 
-    this.boarddropdown.selectedItem = this.selectedBoard ?? null;
-    this.mediumdropdown.selectedItem = this.selectedMedium ?? null;
-    this.classdropdown.selectedItem = this.selectedClass ?? null;
-    this.subjectdropdown.selectedItem = this.selectedSubject ?? null;
+    if (this.boarddropdown) this.boarddropdown.selectedItem = this.selectedBoard ?? null;
+    if (this.mediumdropdown) this.mediumdropdown.selectedItem = this.selectedMedium ?? null;
+    if (this.classdropdown) this.classdropdown.selectedItem = this.selectedClass ?? null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = this.selectedSubject ?? null;
   }
 
   filterMediumByBoard(dropdownValue:any,selecteItem:any){
@@ -328,6 +332,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   getAllList(params: ListParams) {
+    this.clearStatusAutoRefresh();
     const lessonListRequest = params.selectedType === 'presentation' ? of({ data: [] }) : this.contentGenService.getAllList(params);
     const presentationListRequest = this.shouldFetchPresentations(params) ? this.contentGenService.getPresentationJobs(params) : of([]);
 
@@ -341,11 +346,16 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
           Array.isArray(res.presentationList) ? res.presentationList : [],
           params
         ).map((item: PresentationListItem) => this.mapPresentationJob(item));
-
-        this.list = [...lessonList, ...presentationList].sort((a: any, b: any) => this.getItemTimestamp(b) - this.getItemTimestamp(a));
-        this.totalItems = this.list.length;
+        const nextList = [...lessonList, ...presentationList].sort((a: any, b: any) => this.getItemTimestamp(b) - this.getItemTimestamp(a));
+        if (this.getListSignature(this.list) !== this.getListSignature(nextList)) {
+          this.list = nextList;
+          this.totalItems = nextList.length;
+        }
+        this.isInitialStatusLoading = false;
+        this.scheduleStatusAutoRefresh();
       },
       error: (err) => {
+        this.isInitialStatusLoading = false;
         console.error(err);
         this.utilityservice.handleError(err);
       }
@@ -431,11 +441,17 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   private shouldFetchPresentations(params: ListParams): boolean {
-    return this.type === 'generated' && (params.selectedType === 'all' || params.selectedType === 'presentation');
+    return (this.type === 'generated' || this.type === 'status') && (params.selectedType === 'all' || params.selectedType === 'presentation');
   }
 
   private filterPresentationJobs(list: PresentationListItem[], params: ListParams): PresentationListItem[] {
     let filteredList = list;
+
+    if (this.type === 'generated') {
+      filteredList = filteredList.filter(item => item.status === 'complete');
+    } else if (this.type === 'status') {
+      filteredList = filteredList.filter(item => item.status !== 'complete');
+    }
 
     if (params.isCompleted === 'false') {
       filteredList = filteredList.filter(item => item.status !== 'complete');
@@ -471,7 +487,32 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     return new Date(item.updatedAt || item.regeneratedupdatedAt || item.regeneratedcreatedAt || item.creation_time || 0).getTime();
   }
 
+  private scheduleStatusAutoRefresh() {
+    if (this.type !== 'status') return;
+    this.statusRefreshTimeout = setTimeout(() => this.getAllList(this.getListParams()), this.statusAutoRefreshMs);
+  }
+
+  private clearStatusAutoRefresh() {
+    if (!this.statusRefreshTimeout) return;
+    clearTimeout(this.statusRefreshTimeout);
+    this.statusRefreshTimeout = null;
+  }
+
+  private getListSignature(list: any[]): string {
+    return JSON.stringify(list.map((item: any) => ({
+      id: item.id || item._id,
+      status: item.status,
+      message: item.message,
+      updatedAt: item.updatedAt,
+      regeneratedupdatedAt: item.regeneratedupdatedAt,
+      regeneratedcreatedAt: item.regeneratedcreatedAt,
+      slides: item.presentationSlideCount,
+      isCompleted: item.isCompleted,
+    })));
+  }
+
   ngOnDestroy(): void {
+    this.clearStatusAutoRefresh();
     this.typeSubscription.unsubscribe();
     if (this.searchSubscription) {
       this.searchSubscription.unsubscribe();

@@ -18,49 +18,72 @@
       />
     </svg>
   </button>
-  <div class="relative">
-    <app-profile-image
-      [profileImage]="sidebarService.profileImg()"
-      [size]="'md'"
-      (click)="toggleMenu()"
-      class="cursor-pointer"
-    ></app-profile-image>
-    <div
-      *ngIf="isMenuOpen"
-      class="absolute right-0 mt-2 w-60 bg-white rounded shadow-lg p-4"
+  <div class="flex items-center gap-3">
+    <a
+      *ngIf="utilityService.hasPermission(['power'])"
+      routerLink="/user/generation-status"
+      title="Generation Status"
+      class="relative flex items-center justify-center w-11 h-11 rounded-full border transition-colors"
+      [ngClass]="router.url.includes('/user/generation-status') ? 'bg-[#EDF6FE] border-primary' : 'bg-white border-[#D9E1EC] hover:bg-[#EDF6FE]'"
     >
-      <div class="flex items-center gap-4 bg-[#EDF6FE] mb-2 p-4 rounded-xl">
-        <app-profile-image
-          [profileImage]="this.sidebarService.profileImg()"
-          [size]="'md'"
-        ></app-profile-image>
-        <div>
-          <p
-            class="text-content text-sm font-semibold overflow-hidden whitespace-nowrap text-ellipsis w-[120px]"
-          >
-            {{ utilityService.loggedInUserData?.name | titlecase }}
-          </p>
-          <p
-            class="text-content text-xs font-light overflow-hidden whitespace-nowrap text-ellipsis w-[120px]"
-          >
-            {{
-              utilityService.loggedInUserData?.school?.name ||
-                (utilityService.loggedInUserData?.role.join(" | ") | titlecase)
-            }}
-          </p>
-        </div>
-      </div>
-      <hr>
-      <div
-        class="flex items-center p-3 gap-2 mt-2 hover:bg-[#EDF6FE] rounded-lg cursor-pointer"
-        (click)="openModalForLogoutConfirm()"
+      <img
+        class="w-5 h-5"
+        [ngClass]="{ 'status-activity-spin': activeGenerationCount > 0 && !router.url.includes('/user/generation-status') }"
+        [src]="router.url.includes('/user/generation-status') ? 'assets/icons/generation-status-light.svg' : 'assets/icons/generation-status.svg'"
+        alt="Generation Status"
+      />
+      <span
+        *ngIf="activeGenerationCount > 0 && !router.url.includes('/user/generation-status')"
+        class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 rounded-full bg-[#DE3B40] text-white text-[10px] font-bold flex items-center justify-center shadow-sm"
       >
-        <img
-          class="menu-icon w-5"
-          src="assets/icons/logout.svg"
-          alt=""
-        />
-        <p class="text-sm text-shade">{{ 'Logout' | translate }}</p>
+        {{ activeGenerationCount > 99 ? '99+' : activeGenerationCount }}
+      </span>
+    </a>
+
+    <div class="relative">
+      <app-profile-image
+        [profileImage]="sidebarService.profileImg()"
+        [size]="'md'"
+        (click)="toggleMenu()"
+        class="cursor-pointer"
+      ></app-profile-image>
+      <div
+        *ngIf="isMenuOpen"
+        class="absolute right-0 mt-2 w-60 bg-white rounded shadow-lg p-4"
+      >
+        <div class="flex items-center gap-4 bg-[#EDF6FE] mb-2 p-4 rounded-xl">
+          <app-profile-image
+            [profileImage]="this.sidebarService.profileImg()"
+            [size]="'md'"
+          ></app-profile-image>
+          <div>
+            <p
+              class="text-content text-sm font-semibold overflow-hidden whitespace-nowrap text-ellipsis w-[120px]"
+            >
+              {{ utilityService.loggedInUserData?.name | titlecase }}
+            </p>
+            <p
+              class="text-content text-xs font-light overflow-hidden whitespace-nowrap text-ellipsis w-[120px]"
+            >
+              {{
+                utilityService.loggedInUserData?.school?.name ||
+                  (utilityService.loggedInUserData?.role.join(" | ") | titlecase)
+              }}
+            </p>
+          </div>
+        </div>
+        <hr>
+        <div
+          class="flex items-center p-3 gap-2 mt-2 hover:bg-[#EDF6FE] rounded-lg cursor-pointer"
+          (click)="openModalForLogoutConfirm()"
+        >
+          <img
+            class="menu-icon w-5"
+            src="assets/icons/logout.svg"
+            alt=""
+          />
+          <p class="text-sm text-shade">{{ 'Logout' | translate }}</p>
+        </div>
       </div>
     </div>
   </div>

@@ -3,3 +3,20 @@
     box-shadow: 0px 8px 12px -4px color-mix(in srgb, var(--content-DEFAULT) 4%, transparent);
     background-color: var(--shade-50)
 }
+
+.status-activity-spin {
+    animation: status-activity-spin 2.4s ease-in-out infinite;
+    transform-origin: center;
+}
+
+@keyframes status-activity-spin {
+    0%, 18% {
+        transform: rotate(0deg);
+    }
+    42%, 60% {
+        transform: rotate(180deg);
+    }
+    84%, 100% {
+        transform: rotate(360deg);
+    }
+}

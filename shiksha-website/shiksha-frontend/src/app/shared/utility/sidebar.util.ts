@@ -25,14 +25,6 @@ export const menuItem = [
     ['standard', 'power']
   ),
   getMenuItems(
-    'Generation Status',
-    '/user/generation-status',
-    'generation-status.svg',
-    'generation-status-light.svg',
-    'generation-status',
-    ['power']
-  ),
-  getMenuItems(
     'Chatbot',
     '/user/chatbot',
     'chatbot.svg',
