@@ -13,6 +13,8 @@ const createPresentationProxy = target => createProxyMiddleware({
 		proxyReq: (proxyReq, req) => {
 			if (req.user?._id) {
 				proxyReq.setHeader("X-User-ID", String(req.user._id));
+			} else {
+				proxyReq.removeHeader("X-User-ID");
 			}
 		},
 		proxyRes: (proxyRes) => {

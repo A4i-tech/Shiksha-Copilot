@@ -263,6 +263,14 @@ export class ContentGenerationService extends BaseRestService {
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/lesson/${id}`);
   }
 
+  getLessonPlanPresentation(lessonPlanId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/teacher-lesson-plan/presentation/${lessonPlanId}`);
+  }
+
+  generateLessonPlanPresentation(lessonPlanId: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/presentation/${lessonPlanId}`, {});
+  }
+
   getResourcePlanById(id:any){
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/resource/${id}`);
   }
@@ -324,6 +332,31 @@ export class ContentGenerationService extends BaseRestService {
 
   getPresentationTools(): Observable<any> {
     return this.http.get(`${this.baseUrl}/presentation/tools`);
+  }
+
+  openPresentationEventStream(
+    jobId: string,
+    onMessage: (event: MessageEvent<string>) => void,
+    onError: () => void
+  ): EventSource {
+    const eventSource = new EventSource(`${this.baseUrl}/presentation/events/${jobId}`);
+    eventSource.onmessage = onMessage;
+    eventSource.onerror = onError;
+    return eventSource;
+  }
+
+  closePresentationEventStream(eventSource: EventSource | null | undefined): null {
+    if (eventSource) {
+      eventSource.close();
+    }
+    return null;
+  }
+
+  getPresentationStatusLabel(status?: string): string {
+    if (status === 'complete') return 'Complete';
+    if (status === 'error') return 'Failed';
+    if (status === 'idle') return 'Queued';
+    return 'In Progress';
   }
 
   downloadPresentation(jobId: string): Observable<Blob> {

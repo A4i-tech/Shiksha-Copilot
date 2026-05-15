@@ -1,31 +1,55 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/core';
+import { Router } from '@angular/router';
+import { saveAs } from 'file-saver';
 import { CheckListExportService } from 'src/app/shared/services/checklist-export.service';
 import { ChecklistPdfExportService } from 'src/app/shared/services/checklist-pdf-export.service';
 import { DocumentExportService } from 'src/app/shared/services/document-export.service';
 import { ResourcePptGeneratorService } from 'src/app/shared/services/resource-ppt-generator.service';
+import { ContentGenerationService } from '../content-generation.service';
+import { UtilityService } from 'src/app/core/services/utility.service';
 
 @Component({
   selector: 'app-lesson-plan-documents',
   templateUrl: './lesson-plan-documents.component.html',
   styleUrls: ['./lesson-plan-documents.component.scss'],
 })
-export class LessonPlanDocumentsComponent {
+export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
   @Input() docTypeValues: any[] = [];
 
   @Input() mode: any;
 
   @Input() isLesson: any;
 
+  @Input() planId!: string;
+
   @Input() planDetails: any;
 
   @Input() sections: any[] = [];
+
+  lessonPlanPresentation: any = null;
+  isLoadingLessonPlanPresentation = false;
+  isGeneratingLessonPlanPresentation = false;
+  private lessonPlanPresentationStream: EventSource | null = null;
 
   constructor(
     private documentExportService: DocumentExportService,
     private checklistPdfExportService: ChecklistPdfExportService,
     private resourcePptxService: ResourcePptGeneratorService,
-    private checkListExportService: CheckListExportService
+    private checkListExportService: CheckListExportService,
+    private contentGenerationService: ContentGenerationService,
+    private utilityService: UtilityService,
+    private router: Router
   ) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if ((changes['mode'] || changes['isLesson'] || changes['planId']) && this.mode === 'view' && this.isLesson && this.planId) {
+      this.loadLessonPlanPresentation();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.closeLessonPlanPresentationStream();
+  }
 
   downloadDocument(downloadType: any) {
     if (this.mode !== 'view') {
@@ -94,6 +118,110 @@ export class LessonPlanDocumentsComponent {
       default:
         break;
     }
+  }
+
+  loadLessonPlanPresentation(showLoading = true) {
+    if (showLoading) {
+      this.isLoadingLessonPlanPresentation = true;
+    }
+    this.contentGenerationService.getLessonPlanPresentation(this.planId).subscribe({
+      next: (res) => {
+        this.lessonPlanPresentation = res;
+        this.isLoadingLessonPlanPresentation = false;
+        this.syncLessonPlanPresentationStream();
+      },
+      error: () => {
+        this.lessonPlanPresentation = null;
+        this.isLoadingLessonPlanPresentation = false;
+        this.closeLessonPlanPresentationStream();
+      }
+    });
+  }
+
+  generateLessonPlanPresentation() {
+    if (this.isGeneratingLessonPlanPresentation || !this.planId) {
+      return;
+    }
+
+    this.isGeneratingLessonPlanPresentation = true;
+    this.contentGenerationService.generateLessonPlanPresentation(this.planId).subscribe({
+      next: (res) => {
+        this.lessonPlanPresentation = res?.data || res;
+        this.isGeneratingLessonPlanPresentation = false;
+        this.syncLessonPlanPresentationStream();
+      },
+      error: (err) => {
+        this.isGeneratingLessonPlanPresentation = false;
+        this.utilityService.handleError(err);
+      }
+    });
+  }
+
+  downloadLessonPlanPresentation() {
+    const presentationId = this.lessonPlanPresentation?.id;
+    if (!presentationId) {
+      return;
+    }
+
+    this.contentGenerationService.downloadPresentation(presentationId).subscribe({
+      next: (blob) => {
+        saveAs(blob, `lesson-plan-${this.planId}.pptx`);
+      },
+      error: (err) => {
+        this.utilityService.handleError(err);
+      }
+    });
+  }
+
+  viewLessonPlanPresentation() {
+    const presentationId = this.lessonPlanPresentation?.id;
+    if (!presentationId) {
+      return;
+    }
+    this.router.navigate([`/user/content-generation/presentation/${presentationId}`]);
+  }
+
+  get canDownloadLessonPlanPresentation(): boolean {
+    return this.lessonPlanPresentation?.status === 'complete';
+  }
+
+  get lessonPlanPresentationStatusLabel(): string {
+    return this.contentGenerationService.getPresentationStatusLabel(this.lessonPlanPresentation?.status);
+  }
+
+  private syncLessonPlanPresentationStream() {
+    const presentationId = this.lessonPlanPresentation?.id;
+    const status = this.lessonPlanPresentation?.status;
+
+    if (!presentationId || status === 'complete' || status === 'error') {
+      this.closeLessonPlanPresentationStream();
+      return;
+    }
+
+    if (this.lessonPlanPresentationStream?.url.endsWith(`/presentation/events/${presentationId}`)) {
+      return;
+    }
+
+    this.closeLessonPlanPresentationStream();
+    this.lessonPlanPresentationStream = this.contentGenerationService.openPresentationEventStream(presentationId, (event: MessageEvent<string>) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload?.type !== 'update' || !payload?.data) {
+          return;
+        }
+        this.lessonPlanPresentation = payload.data;
+        this.syncLessonPlanPresentationStream();
+      } catch {
+        // Ignore malformed SSE payloads and keep the stream alive.
+      }
+    }, () => {
+      this.closeLessonPlanPresentationStream();
+      this.loadLessonPlanPresentation(false);
+    });
+  }
+
+  private closeLessonPlanPresentationStream() {
+    this.lessonPlanPresentationStream = this.contentGenerationService.closePresentationEventStream(this.lessonPlanPresentationStream);
   }
 
   checkListDownloader(header: any, type: any) {

@@ -76,7 +76,11 @@ async def _actually_read_figures(storage: Storage, textbook: IO[bytes], out_dir:
         return await _caption(data, figure_name, page_text, sem)
 
     textbook.seek(0)
-    doc = pymupdf.open(textbook)
+    try:
+        doc = pymupdf.open(textbook)
+    except pymupdf.FileDataError:
+        return []
+
     try:
         for page in doc.pages():
             assert isinstance(page, pymupdf.Page)

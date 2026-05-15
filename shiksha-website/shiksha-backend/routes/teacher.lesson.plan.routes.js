@@ -151,6 +151,28 @@ router.get(
 	)
 );
 
+
+router.get(
+	"/teacher-lesson-plan/presentation/:lessonPlanId",
+	isAuthenticated,
+	asyncMiddleware(
+		teacherLessonPlanController.getLessonPlanPresentation.bind(
+			teacherLessonPlanController
+		)
+	)
+);
+
+
+router.post(
+	"/teacher-lesson-plan/presentation/:lessonPlanId",
+	isAuthenticated,
+	asyncMiddleware(
+		teacherLessonPlanController.generateLessonPlanPresentation.bind(
+			teacherLessonPlanController
+		)
+	)
+);
+
 router.get(
 	"/teacher-lesson-plan/resource/:resourcePlanId",
 	isAuthenticated,

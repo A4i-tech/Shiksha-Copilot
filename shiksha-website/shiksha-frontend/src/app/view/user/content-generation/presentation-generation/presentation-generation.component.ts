@@ -649,10 +649,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   private connectToJobStream(jobId: string): void {
     this.closeEventStream();
 
-    const streamUrl = `${this.contentGenerationService.baseUrl}/presentation/events/${jobId}`;
-    this.eventSource = new EventSource(streamUrl);
-
-    this.eventSource.onmessage = (event: MessageEvent<string>) => {
+    this.eventSource = this.contentGenerationService.openPresentationEventStream(jobId, (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data);
         if (!payload?.type || !payload?.data) {
@@ -680,22 +677,17 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       } catch (error) {
         console.error('Failed to parse presentation stream event', error);
       }
-    };
-
-    this.eventSource.onerror = () => {
+    }, () => {
       const readyState = this.eventSource?.readyState;
       if (readyState === EventSource.CLOSED) {
         this.closeEventStream();
         this.fetchJob(jobId);
       }
-    };
+    });
   }
 
   private closeEventStream(): void {
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
-    }
+    this.eventSource = this.contentGenerationService.closePresentationEventStream(this.eventSource);
   }
 
   private shouldKeepStreamOpen(job: PresentationJobDetail): boolean {

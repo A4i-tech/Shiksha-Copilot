@@ -12,9 +12,6 @@ const routes: Routes = [
   {
     path:'',
     component:LessonContentListComponent,
-    data:{
-      type:'generated'
-    }
   },
   {
     path:'lesson-resources',

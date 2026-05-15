@@ -1,0 +1,378 @@
+<div class="p-8 bg-white rounded-sm min-h-[90vh]">
+  <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
+    <h1 class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]">
+      {{ "Generation Status" | translate }}
+    </h1>
+  </div>
+
+  <div class="flex flex-col gap-4 mt-5">
+    <div
+      *ngIf="isInitialStatusLoading"
+      class="px-6 py-5 min-h-[96px] rounded-xl bg-white border flex items-center justify-between gap-4 animate-pulse w-full"
+    >
+      <div class="flex items-center gap-4 flex-1 min-w-0">
+        <div class="w-12 h-12 rounded-full bg-slate-200 shrink-0"></div>
+        <div class="flex-1 min-w-0">
+          <div class="h-5 w-2/3 bg-slate-200 rounded"></div>
+          <div class="flex gap-2 mt-3">
+            <div class="h-6 w-16 bg-slate-200 rounded-full"></div>
+            <div class="h-6 w-20 bg-slate-200 rounded-full"></div>
+            <div class="h-6 w-24 bg-slate-200 rounded-full"></div>
+          </div>
+          <div class="h-4 w-3/4 bg-slate-200 rounded mt-3"></div>
+          <div class="h-4 w-full bg-slate-200 rounded mt-2"></div>
+        </div>
+      </div>
+      <div class="w-40 h-10 bg-slate-200 rounded shrink-0"></div>
+    </div>
+
+    <div
+      class="card px-6 py-5 rounded-xl bg-white border flex flex-col justify-between"
+      *ngFor="let item of list"
+    >
+      <ng-container *ngIf="item.isPresentation; else statusLessonOrResource">
+        <div class="md:hidden">
+          <div class="flex items-start gap-3">
+            <div
+              class="icon flex justify-center items-center shrink-0 w-12 h-12"
+              [ngClass]="{
+                'bg-[#EB7B4A]': item.presentationStatusTone === 'completed',
+                'bg-[#D85B32]': item.presentationStatusTone === 'failed',
+                'bg-[#8B93A7]': item.presentationStatusTone === 'idle',
+                'bg-[#EDF6FE]': item.presentationStatusTone === 'running'
+              }"
+            >
+              <img
+                src="assets/icons/generation-status-light.svg"
+                alt=""
+                [ngClass]="{ 'animate-spin': item.presentationStatusTone === 'running' }"
+              />
+            </div>
+
+            <div class="min-w-0 flex-1">
+              <h4 class="text-sm font-medium leading-6">
+                {{ "Title" | translate }}:
+                <span>{{ item.presentationTitle }}</span>
+              </h4>
+              <div class="flex flex-wrap items-center gap-2 mt-2">
+                <p class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px]">
+                  {{ item.presentationSlideCount || '-' }} {{ "slides" | translate }}
+                </p>
+                <p class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px]">
+                  {{ "Presentation" | translate }}
+                </p>
+                <p
+                  class="px-2 py-1 rounded-full text-[11px] inline-flex items-center gap-1"
+                  [ngClass]="{
+                    'text-[#3D8248] bg-[#F1FDF3]': item.presentationStatusTone === 'completed',
+                    'text-[#DE3B40] bg-[#FDF2F2]': item.presentationStatusTone === 'failed',
+                    'text-[#566074] bg-[#F3F4F8]': item.presentationStatusTone === 'idle',
+                    'text-[#B76E00] bg-[#FFF7E8]': item.presentationStatusTone === 'running'
+                  }"
+                >
+                  <span
+                    class="w-4 h-4 rounded-full inline-flex items-center justify-center shrink-0"
+                    [ngClass]="{
+                      'bg-[#3D8248]': item.presentationStatusTone === 'completed',
+                      'bg-[#DE3B40]': item.presentationStatusTone === 'failed',
+                      'bg-[#7B8198]': item.presentationStatusTone === 'idle',
+                      'bg-[#F59E0B]': item.presentationStatusTone === 'running'
+                    }"
+                  >
+                    <img
+                      class="w-3 h-3"
+                      [src]="
+                        item.presentationStatusTone === 'completed'
+                          ? 'assets/icons/completed-sm.svg'
+                          : item.presentationStatusTone === 'failed'
+                          ? 'assets/icons/failed-sm.svg'
+                          : item.presentationStatusTone === 'idle'
+                          ? 'assets/icons/draft-light-sm.svg'
+                          : 'assets/icons/running-sm.svg'
+                      "
+                      alt=""
+                    />
+                  </span>
+                  <span>{{ item.presentationStatusLabel | translate }}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <h6 class="text-xs font-normal text-content-70">
+              {{ "Status" | translate }} :
+              <span>{{ item.presentationStatusMessage }}</span>
+            </h6>
+            <h6 class="mt-0.5 text-xs font-normal text-content-70 line-clamp-2">
+              {{ "Instructions" | translate }} :
+              <span>{{ item.instruction || ("No extra instructions" | translate) }}</span>
+            </h6>
+          </div>
+          <div class="mt-3">
+            <h6 class="text-xs font-normal text-content-70 mb-2">
+              {{'Created On' | translate}}:
+              <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
+            </h6>
+            <button
+              (click)="onView(item)"
+              class="btn-primary w-full py-2 px-4 rounded"
+            >
+              <h6 class="text-white text-sm font-semibold">
+                {{ "View Progress" | translate }}
+              </h6>
+            </button>
+          </div>
+        </div>
+
+        <div class="hidden md:grid md:grid-cols-[56px_minmax(0,1fr)_auto] gap-4 items-start">
+          <div
+            class="icon flex justify-center items-center shrink-0"
+            [ngClass]="{
+              'bg-[#EB7B4A]': item.presentationStatusTone === 'completed',
+              'bg-[#D85B32]': item.presentationStatusTone === 'failed',
+              'bg-[#8B93A7]': item.presentationStatusTone === 'idle',
+              'bg-[#EDF6FE]': item.presentationStatusTone === 'running'
+            }"
+          >
+            <img
+              src="assets/icons/generation-status-light.svg"
+              alt=""
+              [ngClass]="{ 'animate-spin': item.presentationStatusTone === 'running' }"
+            />
+          </div>
+
+          <div class="min-w-0">
+            <h4 class="text-base font-medium leading-6">
+              {{ "Title" | translate }}:
+              <span>{{ item.presentationTitle }}</span>
+            </h4>
+            <div class="flex flex-wrap items-center gap-2 mt-2">
+              <p class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px]">
+                {{ item.presentationSlideCount || '-' }} {{ "slides" | translate }}
+              </p>
+              <p class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px]">
+                {{ "Presentation" | translate }}
+              </p>
+              <p
+                class="px-2 py-1 rounded-full text-[11px] inline-flex items-center gap-1"
+                [ngClass]="{
+                  'text-[#3D8248] bg-[#F1FDF3]': item.presentationStatusTone === 'completed',
+                  'text-[#DE3B40] bg-[#FDF2F2]': item.presentationStatusTone === 'failed',
+                  'text-[#566074] bg-[#F3F4F8]': item.presentationStatusTone === 'idle',
+                  'text-[#B76E00] bg-[#FFF7E8]': item.presentationStatusTone === 'running'
+                }"
+              >
+                <span
+                  class="w-4 h-4 rounded-full inline-flex items-center justify-center shrink-0"
+                  [ngClass]="{
+                    'bg-[#3D8248]': item.presentationStatusTone === 'completed',
+                    'bg-[#DE3B40]': item.presentationStatusTone === 'failed',
+                    'bg-[#7B8198]': item.presentationStatusTone === 'idle',
+                    'bg-[#F59E0B]': item.presentationStatusTone === 'running'
+                  }"
+                >
+                  <img
+                    class="w-3 h-3"
+                    [src]="
+                      item.presentationStatusTone === 'completed'
+                        ? 'assets/icons/completed-sm.svg'
+                        : item.presentationStatusTone === 'failed'
+                        ? 'assets/icons/failed-sm.svg'
+                        : item.presentationStatusTone === 'idle'
+                        ? 'assets/icons/draft-light-sm.svg'
+                        : 'assets/icons/running-sm.svg'
+                    "
+                    alt=""
+                  />
+                </span>
+                <span>{{ item.presentationStatusLabel | translate }}</span>
+              </p>
+            </div>
+            <h6 class="text-xs font-normal text-content-70 mt-2">
+              {{ "Status" | translate }} :
+              <span>{{ item.presentationStatusMessage }}</span>
+            </h6>
+            <h6 class="mt-0.5 text-xs font-normal text-content-70 line-clamp-2">
+              {{ "Instructions" | translate }} :
+              <span>{{ item.instruction || ("No extra instructions" | translate) }}</span>
+            </h6>
+          </div>
+
+          <div class="flex flex-col items-end gap-2 shrink-0">
+            <h6 class="text-xs font-normal text-content-70 whitespace-nowrap">
+              {{'Created On' | translate}}:
+              <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
+            </h6>
+            <button
+              (click)="onView(item)"
+              class="btn-primary min-w-[160px] py-2 px-4 rounded"
+            >
+              <h6 class="text-white text-sm font-semibold">
+                {{ "View Progress" | translate }}
+              </h6>
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #statusLessonOrResource>
+        <div>
+          <div class="flex justify-between">
+            <div
+              class="icon flex justify-center items-center"
+              [ngClass]="{
+                'bg-purple-100': item.status === 'completed',
+                'bg-yellow-100': item.status === 'running',
+                'bg-red-100': item.status === 'failed'
+              }"
+            >
+              <img
+                *ngIf="item.status === 'completed'"
+                src="assets/icons/basil_document-solid.svg"
+                alt=""
+              />
+              <img
+                *ngIf="item.status === 'running'"
+                src="assets/icons/file-yellow.svg"
+                alt=""
+              />
+              <img
+                *ngIf="item.status === 'failed'"
+                src="assets/icons/file-red.svg"
+                alt=""
+              />
+            </div>
+            <div class="flex flex-col items-end">
+              <h6 class="text-xs font-normal text-content-70">
+                {{
+                  (item.status === "running"
+                    ? "Initiated On"
+                    : item.status === "completed"
+                    ? "Generated On"
+                    : "Last updated On"
+                  ) | translate
+                }}:
+                <span>{{ (item.status === "running" ? item.regeneratedcreatedAt : item.regeneratedupdatedAt )| date : "MMM dd,yyyy" }}</span>
+              </h6>
+              <div
+                class="mt-2 px-2 py-1 rounded-2xl"
+                [ngClass]="{
+                  'bg-green-500': item.status === 'completed',
+                  'bg-warn': item.status === 'running',
+                  'bg-red-500': item.status === 'failed'
+                }"
+                *ngIf="!item.isCompleted"
+              >
+                <div class="flex items-center gap-1">
+                  <img
+                    [src]="
+                      item.status === 'running'
+                        ? 'assets/icons/running-sm.svg'
+                        : item.status === 'completed'
+                        ? 'assets/icons/completed-sm.svg'
+                        : 'assets/icons/failed-sm.svg'
+                    "
+                    alt=""
+                  />
+                  <span
+                    class="text-xs text-white"
+                    *ngIf="item.status !== 'completed'"
+                    >{{ item.status | titlecase | translate}}</span
+                  >
+                  <span
+                    class="text-xs text-white"
+                    *ngIf="item.status === 'completed'"
+                    >{{ "Regenerated" | translate }}</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <h4 class="text-sm font-medium">
+              {{ "Subject" | translate }}:
+              <span>{{
+                item.isLesson ? utilityservice.getSubjectDisplayName(item.lesson.subjects) : utilityservice.getSubjectDisplayName(item.resource.subjects)
+              }}</span>
+            </h4>
+            <div class="flex items-center justify-start my-2">
+              <p class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2">
+                Class
+                {{ item.isLesson ? item.lesson.class : item.resource.class }}
+              </p>
+              <p class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px] inline-block">
+                {{ (item.isLesson ? "Lesson Plan" : "Lesson Resource") | translate }}
+              </p>
+            </div>
+            <h6 class="my-2 text-xs font-normal text-content-70">
+              {{ "Chapter" | translate }} :
+              <span>{{
+                item.isLesson
+                  ? item.lesson.chapter?.orderNumber + ". " + item.lesson.chapter.topics
+                  : item.resource.chapter?.orderNumber + ". " + item.resource.chapter.topics
+              }}</span>
+            </h6>
+            <h6 class="mt-2 text-xs font-normal text-content-70">
+              {{ "Sub-Topic" | translate }} :
+              <ng-container *ngIf="item.isLesson">
+                <span class="" *ngFor="let subtopic of item.lesson.subTopics">
+                  <p class="subtopic-chip px-2 py-1 my-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] me-2 inline-block">
+                    {{ subtopic }}
+                  </p>
+                </span>
+              </ng-container>
+            </h6>
+          </div>
+          <div
+            *ngIf="item.status === 'failed' && item.reason"
+            class="bg-red-50 text-content rounded-lg p-4 text-xs"
+          >
+            {{ item.reason }}
+          </div>
+        </div>
+        <button
+          *ngIf="item.status === 'completed'"
+          (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
+          class="mt-7 w-full py-2 rounded bg-[#A062F7]"
+        >
+          <h6
+            class="text-white text-sm font-semibold"
+            *ngIf="!item.isCompleted; else viewLR"
+          >
+            {{ "Continue Editing" | translate }}
+          </h6>
+          <ng-template #viewLR>
+            <h6 class="text-white text-sm font-semibold">
+              {{
+                (item.isLesson ? "View Lesson Plan" : "View Lesson Resource")
+                  | translate
+              }}
+            </h6>
+          </ng-template>
+        </button>
+      </ng-template>
+    </div>
+  </div>
+
+  <app-pagination
+    [totalItems]="totalItems"
+    [pageSize]="pageSize"
+    [currentPage]="currentPage"
+    (pageChange)="onPageChange($event)"
+  >
+  </app-pagination>
+
+  <div *ngIf="!isInitialStatusLoading && list.length === 0" class="flex w-full">
+    <div class="w-full px-6 py-5 flex items-center gap-4 rounded-xl bg-white border">
+      <div class="rounded-full bg-warn-50 p-4 shrink-0">
+        <img src="assets/icons/no-file.svg" alt="" />
+      </div>
+      <div class="min-w-0">
+        <h4 class="text-base font-medium">
+          {{ "No items found" | translate }}
+        </h4>
+      </div>
+    </div>
+  </div>
+</div>

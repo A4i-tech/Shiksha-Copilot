@@ -40,7 +40,7 @@ def annotate_idle(service: PresentationService, job: JobDetail):
 
 
 @router.post("/job")
-async def create_job(user_id: XUserIDHeader, textbook_file: UploadFile = File(...), slides: int | None = Form(None), instruction: str | None = Form(None), tags: set[str] = Form(set()), service: PresentationService = Depends(pres)) -> JobDetail:
+async def create_job(user_id: XUserIDHeader, textbook_file: UploadFile = File(...), slides: int | None = Form(None), instruction: str | None = Form(None), tags: list[str] = Form(list()), service: PresentationService = Depends(pres)) -> JobDetail:
     """ Schedule a new PPTX generation job. """
     textbook_path = await save_file_with_hash(service.storage, textbook_file)
     return await service.jobs.create(user_id, textbook_path, slides, instruction, tags)
@@ -58,9 +58,9 @@ async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationSe
 
 
 @router.get("/jobs")
-async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), textbook_file: str | None = None, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None, service: PresentationService = Depends(pres)) -> list[JobDetail]:
+async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), textbook_file: str | None = Query(None), status: JobStatus | None = Query(None), created_after: datetime | None = Query(None), created_before: datetime | None = Query(None), tags: list[str] | None = Query(None), service: PresentationService = Depends(pres)) -> list[JobDetail]:
     """ List available jobs. """
-    jobs = await service.jobs.list(user_id, offset, limit, textbook_file, status, created_after, created_before)
+    jobs = await service.jobs.list(user_id, offset, limit, textbook_file, status, created_after, created_before, tags)
     list(map(lambda job: annotate_idle(service, job), jobs))
     return jobs
 
@@ -69,7 +69,7 @@ async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit:
 async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> bool:
     """ Terminate and delete a job. """
     job = await service.jobs.get(id)
-    if job is None or job.user_id != user_id:
+    if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
     return await service.jobs.delete(job)
 

@@ -48,8 +48,8 @@ class JobManager:
         while True:
             yield await self.queue.get()
 
-    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None, tags: set[str]) -> JobDetail:
-        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction, tags=tags)
+    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None, tags: list[str]) -> JobDetail:
+        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction, tags=set(tags))
         await self.collection.insert_one(job.model_dump(mode="json"))
         self._notify_listeners(job.id)
         await self.pub(job.id)
@@ -69,20 +69,20 @@ class JobManager:
         doc = await self.collection.find_one({"id": str(job_id)})
         return JobDetail(**doc) if doc else None
 
-    async def list(self, user_id: UserId, offset: int = 0, limit: int = 20, textbook_file: str | None = None, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None, tags: set[str] | None = None) -> list[JobDetail]:
+    async def list(self, user_id: UserId, offset: int = 0, limit: int = 20, textbook_file: str | None = None, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None, tags: list[str] | None = None) -> list[JobDetail]:
         filter: dict[str, Any] = {"user_id": user_id}
         if textbook_file is not None:
             filter["textbook_file"] = textbook_file
         if status is not None:
             filter["status"] = status
         if tags:
-            filter["tags"] = {"$in": list(tags)}
+            filter["tags"] = {"$in": tags}
         if created_after is not None or created_before is not None:
             filter["creation_time"] = {}
             if created_after is not None:
-                filter["creation_time"]["$gte"] = created_after if created_after.tzinfo is not None else created_after.replace(tzinfo=timezone.utc)
+                filter["creation_time"]["$gte"] = created_after.astimezone(timezone.utc).isoformat()
             if created_before is not None:
-                filter["creation_time"]["$lte"] = created_before if created_before.tzinfo is not None else created_before.replace(tzinfo=timezone.utc)
+                filter["creation_time"]["$lte"] = created_before.astimezone(timezone.utc).isoformat()
         cursor = self.collection.find(filter, sort=[("creation_time", DESCENDING)], skip=offset, limit=limit)
         return [JobDetail(**doc) async for doc in cursor]
 
