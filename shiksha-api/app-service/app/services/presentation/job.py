@@ -26,6 +26,7 @@ class JobManager:
             self.collection.create_index([("id", ASCENDING)], unique=True),
             self.collection.create_index([("user_id", ASCENDING), ("creation_time", DESCENDING)]),
             self.collection.create_index([("user_id", ASCENDING), ("status", ASCENDING), ("creation_time", DESCENDING)]),
+            self.collection.create_index([("tags", ASCENDING)]),
             self.log_collection.create_index([("job_id", ASCENDING), ("timestamp", ASCENDING)]),
         )
         return self
@@ -47,11 +48,9 @@ class JobManager:
         while True:
             yield await self.queue.get()
 
-    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None) -> JobDetail:
-        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction)
-        doc = job.model_dump()
-        doc["id"] = str(job.id)
-        await self.collection.insert_one(doc)
+    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None, tags: set[str]) -> JobDetail:
+        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction, tags=tags)
+        await self.collection.insert_one(job.model_dump(mode="json"))
         self._notify_listeners(job.id)
         await self.pub(job.id)
         await self.log(job.id, "create", json.loads(job.model_dump_json()), False)
@@ -70,12 +69,14 @@ class JobManager:
         doc = await self.collection.find_one({"id": str(job_id)})
         return JobDetail(**doc) if doc else None
 
-    async def list(self, user_id: UserId, offset: int = 0, limit: int = 20, textbook_file: str | None = None, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None) -> list[JobDetail]:
+    async def list(self, user_id: UserId, offset: int = 0, limit: int = 20, textbook_file: str | None = None, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None, tags: set[str] | None = None) -> list[JobDetail]:
         filter: dict[str, Any] = {"user_id": user_id}
         if textbook_file is not None:
             filter["textbook_file"] = textbook_file
         if status is not None:
             filter["status"] = status
+        if tags:
+            filter["tags"] = {"$in": list(tags)}
         if created_after is not None or created_before is not None:
             filter["creation_time"] = {}
             if created_after is not None:

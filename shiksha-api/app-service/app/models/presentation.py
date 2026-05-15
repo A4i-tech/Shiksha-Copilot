@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StringConstraint
 
 
 UserId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{24}$")]
+SYSTEM_USER_ID: UserId = "0" * 24
 
 
 class CaptionerResponse(BaseModel):
@@ -96,6 +97,7 @@ class JobDetail(BaseModel):
     status: JobStatus = "init"
     message: str = "Pending"
     metadata: dict[str, Any] = Field(default_factory=dict)
+    tags: set[str] = Field(default_factory=set)
 
 
 class PresentationOutline(BaseModel):

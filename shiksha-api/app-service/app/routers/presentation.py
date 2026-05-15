@@ -12,7 +12,7 @@ from app.services.presentation.service import PresentationService, new_default a
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 
-from app.models.presentation import JobDetail, JobStatus, ToolInfo, UserId
+from app.models.presentation import SYSTEM_USER_ID, JobDetail, JobStatus, ToolInfo, UserId
 from app.services.presentation.agent import planner, designer, finalizer, designer_toolset
 from app.services.presentation.utils import LibreOffice, LibreOfficeOutputFormat, save_file_with_hash
 
@@ -40,17 +40,17 @@ def annotate_idle(service: PresentationService, job: JobDetail):
 
 
 @router.post("/job")
-async def create_job(user_id: XUserIDHeader, textbook_file: UploadFile = File(...), slides: int | None = Form(None), instruction: str | None = Form(None), service: PresentationService = Depends(pres)) -> JobDetail:
+async def create_job(user_id: XUserIDHeader, textbook_file: UploadFile = File(...), slides: int | None = Form(None), instruction: str | None = Form(None), tags: set[str] = Form(set()), service: PresentationService = Depends(pres)) -> JobDetail:
     """ Schedule a new PPTX generation job. """
     textbook_path = await save_file_with_hash(service.storage, textbook_file)
-    return await service.jobs.create(user_id, textbook_path, slides, instruction)
+    return await service.jobs.create(user_id, textbook_path, slides, instruction, tags)
 
 
 @router.get("/job")
 async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> JobDetail | None:
     """ Get details about a specific job. """
     job = await service.jobs.get(id)
-    if job is not None and job.user_id != user_id:
+    if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
     if job is not None:
         annotate_idle(service, job)
@@ -86,7 +86,7 @@ async def download_job_artifact(
 ) -> Response:
     """ Download the output PPTX file from a completed job. """
     job = await service.jobs.get(job_id)
-    if job is None or job.user_id != user_id:
+    if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
 
     etag = '"%s-%s"' % (job_id, file_format)
