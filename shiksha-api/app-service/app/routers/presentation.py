@@ -58,9 +58,9 @@ async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationSe
 
 
 @router.get("/jobs")
-async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None, service: PresentationService = Depends(pres)) -> list[JobDetail]:
+async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), textbook_file: str | None = None, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None, service: PresentationService = Depends(pres)) -> list[JobDetail]:
     """ List available jobs. """
-    jobs = await service.jobs.list(user_id, offset, limit, status, created_after, created_before)
+    jobs = await service.jobs.list(user_id, offset, limit, textbook_file, status, created_after, created_before)
     list(map(lambda job: annotate_idle(service, job), jobs))
     return jobs
 

@@ -89,8 +89,10 @@ class JobManager:
         doc = await self.collection.find_one({"id": str(job_id)})
         return JobDetail(**doc) if doc else None
 
-    async def list(self, user_id: UserId, offset: int = 0, limit: int = 20, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None) -> list[JobDetail]:
+    async def list(self, user_id: UserId, offset: int = 0, limit: int = 20, textbook_file: str | None = None, status: JobStatus | None = None, created_after: datetime | None = None, created_before: datetime | None = None) -> list[JobDetail]:
         filter: dict[str, Any] = {"user_id": user_id}
+        if textbook_file is not None:
+            filter["textbook_file"] = textbook_file
         if status is not None:
             filter["status"] = status
         if created_after is not None or created_before is not None:
