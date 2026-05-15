@@ -1,10 +1,11 @@
 import asyncio
+import json
 import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 from app.models.presentation import JobDetail, JobStatus, UserId
-from pymongo import ASCENDING, DESCENDING, AsyncMongoClient
+from pymongo import ASCENDING, DESCENDING, AsyncMongoClient, ReturnDocument
 
 
 class JobManager:
@@ -53,6 +54,7 @@ class JobManager:
         await self.collection.insert_one(doc)
         self._notify_listeners(job.id)
         await self.pub(job.id)
+        await self.log(job.id, "create", json.loads(job.model_dump_json()), False)
         self.logger.info("Created job for %s", textbook_file)
         return job
 
@@ -61,9 +63,12 @@ class JobManager:
         return doc["metadata"]["plan"] if doc else None
 
     async def update(self, job_id: uuid.UUID, fields: dict[str, Any]):
-        await self.collection.update_one({"id": str(job_id)}, {"$set": fields})
+        doc = await self.collection.find_one_and_update({"id": str(job_id)}, {"$set": fields}, return_document=ReturnDocument.AFTER)
         self._notify_listeners(job_id)
         await self.pub(job_id)
+        if doc and "status" in fields and fields["status"] == "complete":
+            job = JobDetail(**doc)
+            await self.log(job.id, "complete", json.loads(job.model_dump_json()), False)
 
     async def get(self, job_id: uuid.UUID) -> JobDetail | None:
         doc = await self.collection.find_one({"id": str(job_id)})
@@ -84,17 +89,22 @@ class JobManager:
         cursor = self.collection.find(filter, sort=[("creation_time", DESCENDING)], skip=offset, limit=limit)
         return [JobDetail(**doc) async for doc in cursor]
 
-    async def delete(self, job_id: uuid.UUID) -> bool:
-        result = await self.collection.delete_one({"id": str(job_id), "status": {"$ne": "complete"}})
+    async def get_pending_count(self, user_id: UserId) -> int:
+        return await self.collection.count_documents({"user_id": user_id, "status": {"$ne": "complete"}})
+
+    async def delete(self, job: JobDetail) -> bool:
+        result = await self.collection.delete_one({"id": str(job.id), "status": {"$ne": "complete"}})
         if result.deleted_count == 0:
             return False
-        await self.log_collection.delete_many({"job_id": str(job_id)})
-        await self.pub(job_id)
+        await self.log_collection.delete_many({"job_id": str(job.id)})
+        await self.pub(job.id)
+        await self.log(job.id, "terminate", json.loads(job.model_copy(update={"status": "error"}).model_dump_json()), False)
         return True
 
-    async def log(self, job_id: uuid.UUID, type: str, data: dict):
+    async def log(self, job_id: uuid.UUID, type: str, data: dict, store: bool = True):
         dt_now = datetime.now()
-        await self.log_collection.insert_one({"job_id": str(job_id), "type": type, "data": data, "timestamp": dt_now})
+        if store:
+            await self.log_collection.insert_one({"job_id": str(job_id), "type": type, "data": data, "timestamp": dt_now})
         dead = []
         for q in self.log_subscribers:
             try:

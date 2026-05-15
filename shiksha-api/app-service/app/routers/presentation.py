@@ -69,9 +69,9 @@ async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit:
 async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> bool:
     """ Terminate and delete a job. """
     job = await service.jobs.get(id)
-    if job is not None and job.user_id != user_id:
+    if job is None or job.user_id != user_id:
         raise HTTPException(status_code=404, detail="Job not found")
-    return await service.jobs.delete(id)
+    return await service.jobs.delete(job)
 
 
 locks: dict[tuple[uuid.UUID, LibreOfficeOutputFormat], asyncio.Lock] = defaultdict(asyncio.Lock)
@@ -129,6 +129,33 @@ async def get_tools() -> list[ToolInfo]:
         for toolset in [*agent.toolsets, designer_toolset]
         for tool in toolset.tools.values()
     }.values())
+
+
+@router.get("/events/pending/{user_id}")
+async def events_pending(request: Request, user_id: UserId, service: PresentationService = Depends(pres)):
+    """
+    Subscribe to pending job counter.
+    """
+
+    async def stream():
+        q = asyncio.Queue()
+        service.jobs.log_subscribers.add(q)
+        try:
+            count = await service.jobs.get_pending_count(user_id)
+            yield f"data: {count}\n\n"
+            while not await request.is_disconnected():
+                e = await q.get()
+                if e is None: break
+                assert(isinstance(e, dict))
+                if e["type"] not in {"create", "complete", "terminate"} or e["data"]["user_id"] != str(user_id): continue
+                new_count = await service.jobs.get_pending_count(user_id)
+                if count != new_count:
+                    count = new_count
+                    yield f"data: {count}\n\n"
+        finally:
+            service.jobs.log_subscribers.discard(q)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @router.get("/events/{id}")
