@@ -3,7 +3,7 @@ import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin, of } from 'rxjs';
+import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, forkJoin, of } from 'rxjs';
 interface ListParams {
   currentPage: number;
   pageSize: number;
@@ -349,8 +349,8 @@ const today = new Date();
     const presentationListRequest = this.shouldFetchPresentations(params) ? this.contentGenService.getPresentationJobs(params) : of([]);
 
     forkJoin({
-      lessonList: lessonListRequest,
-      presentationList: presentationListRequest,
+      lessonList: lessonListRequest.pipe(catchError(_ => of(null))),
+      presentationList: presentationListRequest.pipe(catchError(_ => of(null))),
     }).subscribe({
       next: (res: any) => {
         const lessonList = Array.isArray(res.lessonList?.data) ? res.lessonList.data : [];
