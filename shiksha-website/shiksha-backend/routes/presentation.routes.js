@@ -10,9 +10,15 @@ const createPresentationProxy = target => createProxyMiddleware({
 	proxyTimeout: 0,
 	timeout: 0,
 	on: {
-		proxyReq: (proxyReq, req) => {
+		proxyReq: (proxyReq, req, res) => {
+			if (proxyReq.method === "POST" && !req.user?.role.includes('power')){
+				res.statusCode = 403;
+				res.end("Forbidden");
+				proxyReq.destroy();
+				return;
+			}
 			if (req.user?._id) {
-				proxyReq.setHeader("X-User-ID", String(req.user._id));
+				proxyReq.setHeader("X-User-ID", String(req.user?._id));
 			} else {
 				proxyReq.removeHeader("X-User-ID");
 			}
