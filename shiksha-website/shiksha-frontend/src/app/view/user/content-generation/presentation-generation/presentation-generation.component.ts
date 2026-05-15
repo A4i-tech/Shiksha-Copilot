@@ -165,6 +165,10 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    if (this.activatedRoute.snapshot.paramMap.get('id')) {
+      this.currentStep = 0;
+    }
+
     this.presentationForm = this.fb.group({
       slideCount: [12, [Validators.required, Validators.min(1)]],
       instructions: ['', [Validators.maxLength(1000)]],
@@ -196,7 +200,6 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
 
         this.currentRouteJobId = jobId;
         this.fetchJob(jobId);
-        this.connectToJobStream(jobId);
       })
     );
   }
@@ -630,7 +633,9 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
           }
 
           this.applyJobState(job);
-          if (!this.shouldKeepStreamOpen(job)) {
+          if (this.shouldKeepStreamOpen(job)) {
+            this.connectToJobStream(job.id);
+          } else {
             this.closeEventStream();
           }
         },

@@ -29,6 +29,7 @@ export const LOADER_RESTRICTED_URLS = [
     '/chapter/list',
     '/master-lesson/list/',
     '/resource-plan/list/',
+    '/presentation/',
     '/auth/me',
     '/chat/',
     '/lessonchat/'
