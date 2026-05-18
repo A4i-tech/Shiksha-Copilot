@@ -23,6 +23,11 @@ class Storage:
     async def read_text(self, path: str) -> str: return (await self.read_bytes(path)).decode()
     async def write_text(self, path: str, data: str): await self.write_bytes(path, data.encode())
 
+    async def read_stream(self, path: str, chunk_size: int = 1024 * 1024, size: int | None = None) -> AsyncIterator[bytes]:
+        size = size or await self.size(path)
+        full = self.path(self.root, path)
+        for start in range(0, size, chunk_size):
+            yield await self.fs._cat_file(full, start=start, end=start + chunk_size)
 
     async def write_bytes(self, path: str, data: bytes):
         path = posixpath.join(self.root, path)

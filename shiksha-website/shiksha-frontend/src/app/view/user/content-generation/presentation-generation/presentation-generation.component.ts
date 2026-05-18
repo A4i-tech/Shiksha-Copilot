@@ -457,7 +457,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
 
     this.isDownloading = true;
     const downloadSubscription = this.contentGenerationService
-      .downloadPresentation(this.currentJob.id)
+      .downloadPresentationFile(this.currentJob.id, "pptx")
       .subscribe({
         next: (blob) => {
           this.isDownloading = false;

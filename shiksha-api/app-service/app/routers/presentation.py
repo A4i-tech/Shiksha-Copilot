@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 from contextlib import asynccontextmanager
 import io
 import json
@@ -124,14 +123,17 @@ async def download_job_artifact(
             content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
             size = len(content)
             await service.storage.write_bytes(storage_path, content)
+            stream = [content]
         else:
-            content, size = await asyncio.gather(service.storage.read_bytes(storage_path), service.storage.size(storage_path))
+            size = await service.storage.size(storage_path)
+            stream = service.storage.read_stream(storage_path, size)
 
-    return Response(content=content, media_type=media_type, headers={
+    return StreamingResponse(content=stream, media_type=media_type, headers={
         "Cache-Control": "private, max-age=31536000, immutable",
         "Content-Disposition": f'attachment; filename="{job_id}.{file_format}"',
         "ETag": etag,
-        "X-File-Size": str(size)
+        "Content-Length": str(size),
+        "X-File-Size": str(size),
     })
 
 

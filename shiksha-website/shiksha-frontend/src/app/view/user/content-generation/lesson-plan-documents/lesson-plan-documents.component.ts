@@ -163,7 +163,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    this.contentGenerationService.downloadPresentation(presentationId).subscribe({
+    this.contentGenerationService.downloadPresentationFile(presentationId, "pptx").subscribe({
       next: (blob) => {
         saveAs(blob, `lesson-plan-${this.planId}.pptx`);
       },

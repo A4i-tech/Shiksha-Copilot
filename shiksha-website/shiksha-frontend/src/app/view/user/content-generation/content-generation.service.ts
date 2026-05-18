@@ -361,12 +361,6 @@ export class ContentGenerationService extends BaseRestService {
     return 'In Progress';
   }
 
-  downloadPresentation(jobId: string): Observable<Blob> {
-    return this.http.get(`${this.baseUrl}/presentation/job/${jobId}`, {
-      responseType: 'blob',
-    });
-  }
-
   downloadPresentationFile(jobId: string, fileFormat: 'pptx' | 'pdf'): Observable<Blob> {
     const params = new HttpParams().set('file_format', fileFormat);
     return this.http.get(`${this.baseUrl}/presentation/job/${jobId}`, {
