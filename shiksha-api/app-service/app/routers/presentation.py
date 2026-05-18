@@ -107,10 +107,6 @@ async def download_job_artifact(
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    etag = '"%s-%s"' % (job_id, file_format)
-    if if_none_match == etag:
-        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag, "Cache-Control": "private, max-age=31536000, immutable"})
-
     stem = pathlib.Path(job.textbook_file).stem
     storage_path = service.storage.path("out", stem, "%s.%s" % (job_id, file_format))
     media_type, _ = mimetypes.guess_type(storage_path)
@@ -128,13 +124,16 @@ async def download_job_artifact(
             size = await service.storage.size(storage_path)
             stream = service.storage.read_stream(storage_path, size)
 
-    return StreamingResponse(content=stream, media_type=media_type, headers={
-        "Cache-Control": "private, max-age=31536000, immutable",
-        "Content-Disposition": f'attachment; filename="{job_id}.{file_format}"',
+    etag = '"%s-%s"' % (job_id, file_format)
+    headers = {
         "ETag": etag,
+        "Cache-Control": "private, max-age=31536000, immutable",
         "Content-Length": str(size),
-        "X-File-Size": str(size),
-    })
+        "X-File-Size": str(size)
+    }
+    if if_none_match == etag:
+        return Response(status_code=status.HTTP_304_NOT_MODIFIED, headers=headers)
+    return StreamingResponse(content=stream, media_type=media_type, headers=headers)
 
 
 @router.get("/tools")

@@ -836,8 +836,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
 
     this.subscriptions.add(
       this.contentGenerationService.headPresentationFile(this.currentJob.id).subscribe({
-        next: (response: any) => {
-          const fileSize = Number(response.headers.get('content-length') || 0);
+        next: (response) => {
+          const fileSize = Number(response.headers.get('content-length') || response.headers.get('x-file-size') || 0);
           this.pptxFileSizeLabel = fileSize ? this.formatFileSize(fileSize) : '';
         },
         error: () => {

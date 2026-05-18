@@ -226,7 +226,7 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            if (!req.user.role.include("power")) {
+            if (!req.user.role.includes("power")) {
                 return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
             }
 
@@ -248,7 +248,7 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            if (!req.user.role.include("power")) {
+            if (!req.user.role.includes("power")) {
                 return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
             }
 
@@ -376,7 +376,7 @@ class TeacherLessonPlanController extends BaseController {
 	async retryLessonPlan(req, res) {
 		try {
 			const { regeneratedId, _id } = req.body; 
-            if (!req.user.role.include("power")) {
+            if (!req.user.role.includes("power")) {
 				return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
 			}
 	
