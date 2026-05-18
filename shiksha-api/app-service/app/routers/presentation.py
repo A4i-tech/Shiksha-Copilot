@@ -8,6 +8,7 @@ import pathlib
 from datetime import datetime
 from typing import Annotated
 import uuid
+import weakref
 from app.config import settings
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
@@ -82,7 +83,17 @@ async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentatio
     return await service.jobs.delete(job)
 
 
-locks: dict[tuple[uuid.UUID, LibreOfficeOutputFormat], asyncio.Lock] = defaultdict(asyncio.Lock)
+ja_locks: weakref.WeakValueDictionary[tuple[uuid.UUID, LibreOfficeOutputFormat], asyncio.Lock] = weakref.WeakValueDictionary()
+ja_locks_guard = asyncio.Lock()
+async def _ja_lock(key):
+    async with ja_locks_guard:
+        lock = ja_locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            ja_locks[key] = lock
+        return lock
+
+
 @router.head("/job/{job_id}", include_in_schema=False)
 @router.get("/job/{job_id}")
 async def download_job_artifact(
@@ -104,21 +115,17 @@ async def download_job_artifact(
     stem = pathlib.Path(job.textbook_file).stem
     storage_path = service.storage.path("out", stem, "%s.%s" % (job_id, file_format))
     media_type, _ = mimetypes.guess_type(storage_path)
-    async with locks[job_id, file_format]:
-        try:
-            if not await service.storage.exists(storage_path):
-                if file_format == "pptx":
-                    raise HTTPException(status_code=404, detail="File not found")
+    async with await _ja_lock((job_id, file_format)):
+        if not await service.storage.exists(storage_path):
+            if file_format == "pptx":
+                raise HTTPException(status_code=404, detail="File not found")
 
-                pptx_path = service.storage.path("out", stem, "%s.pptx" % job_id)
-                content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
-                size = len(content)
-                await service.storage.write_bytes(storage_path, content)
-            else:
-                content, size = await asyncio.gather(service.storage.read_bytes(storage_path), service.storage.size(storage_path))
-        finally:
-            if not locks[job_id, file_format].locked():
-                del locks[job_id, file_format]
+            pptx_path = service.storage.path("out", stem, "%s.pptx" % job_id)
+            content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
+            size = len(content)
+            await service.storage.write_bytes(storage_path, content)
+        else:
+            content, size = await asyncio.gather(service.storage.read_bytes(storage_path), service.storage.size(storage_path))
 
     return Response(content=content, media_type=media_type, headers={
         "Cache-Control": "private, max-age=31536000, immutable",
