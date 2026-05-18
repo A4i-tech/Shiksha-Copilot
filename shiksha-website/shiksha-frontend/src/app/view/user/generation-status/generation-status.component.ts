@@ -146,7 +146,7 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const stream = this.contentGenService.openPresentationEventStream(item.id, (event: MessageEvent<string>) => {
+      this.contentGenService.openPresentationEventStream(item.id, (event: MessageEvent<string>) => {
         try {
           const payload = JSON.parse(event.data);
           if (payload?.type !== 'update' || !payload?.data) {
@@ -159,9 +159,9 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
       }, () => {
         this.closePresentationStream(item.id);
         this.getAllList(this.getListParams());
+      }).then(stream => {
+        this.presentationStreams.set(item.id, stream);
       });
-
-      this.presentationStreams.set(item.id, stream);
     });
   }
 

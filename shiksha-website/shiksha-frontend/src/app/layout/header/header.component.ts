@@ -70,12 +70,13 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.showLogoutConfirm = false;
   }
 
-  private connectGenerationStatusStream() {
-    const userId = this.utilityService.loggedInUserData?._id;
-    if (!userId) return;
-
+  private async connectGenerationStatusStream() {
     this.clearGenerationStatusStream();
-    this.generationStatusStream = new EventSource(`${environment.apiUrl}/presentation/events/pending/${userId}`);
+
+    const res = await fetch(`${environment.apiUrl}/presentation/events/token`, {method: "POST", headers: {"Authorization": localStorage.getItem('token') || ""}});
+    const token = await res.text();
+
+    this.generationStatusStream = new EventSource(`${environment.apiUrl}/presentation/events/${token}`);
 
     this.generationStatusStream.onmessage = (event: MessageEvent<string>) => {
       const count = Number(event.data);

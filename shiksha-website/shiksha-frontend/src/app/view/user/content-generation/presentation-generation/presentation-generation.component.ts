@@ -646,10 +646,10 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     this.subscriptions.add(getJobSubscription);
   }
 
-  private connectToJobStream(jobId: string): void {
+  private async connectToJobStream(jobId: string) {
     this.closeEventStream();
 
-    this.eventSource = this.contentGenerationService.openPresentationEventStream(jobId, (event: MessageEvent<string>) => {
+    this.eventSource = await this.contentGenerationService.openPresentationEventStream(jobId, (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data);
         if (!payload?.type || !payload?.data) {

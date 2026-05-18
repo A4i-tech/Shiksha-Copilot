@@ -189,7 +189,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     return this.contentGenerationService.getPresentationStatusLabel(this.lessonPlanPresentation?.status);
   }
 
-  private syncLessonPlanPresentationStream() {
+  private async syncLessonPlanPresentationStream() {
     const presentationId = this.lessonPlanPresentation?.id;
     const status = this.lessonPlanPresentation?.status;
 
@@ -198,19 +198,14 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    if (this.lessonPlanPresentationStream?.url.endsWith(`/presentation/events/${presentationId}`)) {
-      return;
-    }
-
     this.closeLessonPlanPresentationStream();
-    this.lessonPlanPresentationStream = this.contentGenerationService.openPresentationEventStream(presentationId, (event: MessageEvent<string>) => {
+    this.lessonPlanPresentationStream = await this.contentGenerationService.openPresentationEventStream(presentationId, (event: MessageEvent<string>) => {
       try {
         const payload = JSON.parse(event.data);
         if (payload?.type !== 'update' || !payload?.data) {
           return;
         }
         this.lessonPlanPresentation = payload.data;
-        this.syncLessonPlanPresentationStream();
       } catch {
         // Ignore malformed SSE payloads and keep the stream alive.
       }

@@ -158,11 +158,15 @@ async def events_pending(request: Request, user_id: UserId, service: Presentatio
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 
-@router.get("/events/{id}")
-async def events_handle(request: Request, id: uuid.UUID, service: PresentationService = Depends(pres)):
+@router.get("/events/{user_id}/{id}")
+async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, service: PresentationService = Depends(pres)):
     """
     Subscribe to job events.
     """
+
+    job = await service.jobs.get(id)
+    if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
+        raise HTTPException(status_code=404, detail="Job not found")
 
     async def stream():
         q = asyncio.Queue()

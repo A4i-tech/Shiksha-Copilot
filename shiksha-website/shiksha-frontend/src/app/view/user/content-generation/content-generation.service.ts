@@ -334,12 +334,14 @@ export class ContentGenerationService extends BaseRestService {
     return this.http.get(`${this.baseUrl}/presentation/tools`);
   }
 
-  openPresentationEventStream(
+  async openPresentationEventStream(
     jobId: string,
     onMessage: (event: MessageEvent<string>) => void,
     onError: () => void
-  ): EventSource {
-    const eventSource = new EventSource(`${this.baseUrl}/presentation/events/${jobId}`);
+  ) {
+    const res = await fetch(`${environment.apiUrl}/presentation/events/token?jobId=${jobId}`, {method: "POST", headers: {"Authorization": localStorage.getItem('token') || ""}});
+    const token = await res.text();
+    const eventSource = new EventSource(`${this.baseUrl}/presentation/events/${token}`);
     eventSource.onmessage = onMessage;
     eventSource.onerror = onError;
     return eventSource;
