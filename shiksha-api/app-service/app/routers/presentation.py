@@ -8,6 +8,7 @@ import pathlib
 from datetime import datetime
 from typing import Annotated
 import uuid
+from app.config import settings
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
@@ -40,9 +41,16 @@ def annotate_idle(service: PresentationService, job: JobDetail):
 
 
 @router.post("/job")
-async def create_job(user_id: XUserIDHeader, textbook_file: UploadFile = File(...), slides: int | None = Form(None), instruction: str | None = Form(None), tags: list[str] = Form(list()), service: PresentationService = Depends(pres)) -> JobDetail:
+async def create_job(
+    user_id: XUserIDHeader,
+    content_length: int = Header(lt=settings.pres_upload_max_filesize),
+    textbook_file: UploadFile = File(...), slides: int | None = Form(None),
+    instruction: str | None = Form(None),
+    tags: list[str] = Form(list()),
+    service: PresentationService = Depends(pres)
+) -> JobDetail:
     """ Schedule a new PPTX generation job. """
-    textbook_path = await save_file_with_hash(service.storage, textbook_file)
+    textbook_path = await save_file_with_hash(service.storage, textbook_file, content_length)
     return await service.jobs.create(user_id, textbook_path, slides, instruction, tags)
 
 

@@ -178,10 +178,14 @@ async def resolve_image(image: str, storage: Storage | None = None, local_dir: s
         return BytesIO(await resp.read())
 
 
-async def save_file_with_hash(storage: Storage, file: UploadFile) -> str:
+async def save_file_with_hash(storage: Storage, file: UploadFile, n: int) -> str:
     out = io.BytesIO()
-    while chunk := await file.read(8192):
+    pending = n
+    while chunk := await file.read(min(pending, 8192)):
         out.write(chunk)
+        pending -= len(chunk)
+        if pending == 0:
+            break
     sha256 = hashlib.sha256(out.getvalue())
     suffix = pathlib.Path(file.filename or "").suffix.lower()
     final_name = f"{sha256.hexdigest()}{suffix}"
