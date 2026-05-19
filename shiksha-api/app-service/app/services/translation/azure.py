@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class AzureTranslator(TranslatorBase):
     def __init__(self):
-        key = settings.translator_key or ""
+        key = settings.translator_key.get_secret_value() if settings.translator_key else ""
         region = settings.translator_region or ""
         endpoint = (settings.translator_endpoint or "").rstrip("/")
 

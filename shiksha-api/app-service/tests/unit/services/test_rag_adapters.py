@@ -223,7 +223,7 @@ class TestQdrantRagOpsAdapter:
                 completion_llm=mock_completion_llm,
                 emb_llm=mock_embedding_llm,
                 url=mock_settings.qdrant_url,
-                api_key=mock_settings.qdrant_api_key,
+                api_key=mock_settings.qdrant_api_key.get_secret_value(),
                 similarity_top_k=5
             )
             assert result == mock_rag_ops

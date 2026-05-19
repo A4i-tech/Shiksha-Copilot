@@ -22,7 +22,7 @@ class TranslatorFactory:
     @classmethod
     def _is_azure_configured(cls) -> bool:
         return bool(
-            (settings.translator_key or "").strip()
+            (settings.translator_key.get_secret_value() if settings.translator_key else "").strip()
             and (settings.translator_region or "").strip()
             and (settings.translator_endpoint or "").strip()
         )

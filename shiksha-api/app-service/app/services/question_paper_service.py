@@ -50,7 +50,7 @@ class QuestionPaperService:
     chat_deployment: ResponsesModel
     def __init__(self):
         self.client = AsyncAzureOpenAI(
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             api_version=settings.azure_openai_api_version,
             azure_endpoint=settings.azure_openai_endpoint,
         )
@@ -62,14 +62,14 @@ class QuestionPaperService:
         self._rag_llm = LlamaAzureOpenAI(
             model=settings.azure_openai_deployment_name,
             deployment_name=settings.azure_openai_deployment_name,
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             api_version=settings.azure_openai_api_version,
             azure_endpoint=settings.azure_openai_endpoint,
         )
         self._rag_embed = AzureOpenAIEmbedding(
             model=settings.azure_openai_embed_model,
             deployment_name=settings.azure_openai_embed_model,
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             azure_endpoint=settings.azure_openai_endpoint,
             api_version=settings.azure_openai_api_version,
         )

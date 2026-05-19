@@ -17,7 +17,7 @@ class ValidatorAgent:
     def __init__(self):
         self.client = AzureOpenAI(
             azure_endpoint=settings.azure_openai_api_base,
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             api_version=settings.azure_openai_api_version,
         )
         self.logger = LoggerFactory.get_agent_logger("ValidatorAgent")

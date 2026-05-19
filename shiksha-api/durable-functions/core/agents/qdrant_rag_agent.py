@@ -32,7 +32,7 @@ class QdrantRAGAgent:
         self._rag_ops = QdrantRagOps(
             url=settings.qdrant_url,
             collection_name=qdrant_collection,
-            api_key=settings.qdrant_api_key,
+            api_key=settings.qdrant_api_key.get_secret_value() if settings.qdrant_api_key else None,
             emb_llm=self._embed_llm,
             completion_llm=self._llm,
         )
@@ -44,7 +44,7 @@ class QdrantRAGAgent:
         return AzureOpenAI(
             model=settings.azure_openai_model,
             deployment_name=settings.azure_openai_model,
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             azure_endpoint=settings.azure_openai_api_base,
             api_version=settings.azure_openai_api_version,
             model_kwargs={"response_format": {"type": "json_object"}},
@@ -56,7 +56,7 @@ class QdrantRAGAgent:
         return AzureOpenAIEmbedding(
             model=settings.azure_openai_embed_model,
             deployment_name=settings.azure_openai_embed_model,
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             azure_endpoint=settings.azure_openai_api_base,
             api_version=settings.azure_openai_api_version,
         )

@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from pydantic import SecretStr
 from app.services.rag_adapter_cache import NativeQdrantRagAdapter
 
 
@@ -18,7 +19,7 @@ class TestNativeQdrantRagAdapter:
         """Mock settings with Qdrant configuration."""
         with patch("app.services.rag_adapter_cache.settings") as mock:
             mock.qdrant_url = "http://localhost:6333"
-            mock.qdrant_api_key = "test-api-key"
+            mock.qdrant_api_key = SecretStr("test-api-key")
             yield mock
 
     @pytest.fixture
@@ -46,7 +47,7 @@ class TestNativeQdrantRagAdapter:
             )
 
             mock_qdrant.assert_called_once_with(
-                url="http://localhost:6333", api_key="test-api-key"
+                url="http://localhost:6333", api_key=SecretStr("test-api-key").get_secret_value()
             )
             assert adapter.collection_name == "test_collection"
             assert adapter.embedding_model == "text-embedding-ada-002"

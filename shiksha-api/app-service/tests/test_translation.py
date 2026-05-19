@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from pydantic import SecretStr
 
 from app.services.translation.factory import TranslatorFactory
 from app.services.translation_service import (
@@ -42,10 +43,10 @@ async def test_translation_service_azure_mock():
 
         with patch("app.services.translation.factory.settings") as mock_factory_settings:
             with patch("app.services.translation.azure.settings") as mock_azure_settings:
-                mock_factory_settings.translator_key = "key"
+                mock_factory_settings.translator_key = SecretStr("key")
                 mock_factory_settings.translator_region = "region"
                 mock_factory_settings.translator_endpoint = "https://api.cognitive.microsoft.com"
-                mock_azure_settings.translator_key = "key"
+                mock_azure_settings.translator_key = SecretStr("key")
                 mock_azure_settings.translator_region = "region"
                 mock_azure_settings.translator_endpoint = "https://api.cognitive.microsoft.com"
                 _clear_factory_cache()
@@ -68,10 +69,10 @@ async def test_translation_service_azure_mock():
     _clear_factory_cache()
     with patch("app.services.translation.factory.settings") as mock_factory_settings:
         with patch("app.services.translation.azure.settings") as mock_azure_settings:
-            mock_factory_settings.translator_key = "key"
+            mock_factory_settings.translator_key = SecretStr("key")
             mock_factory_settings.translator_region = "region"
             mock_factory_settings.translator_endpoint = "https://api.cognitive.microsoft.com"
-            mock_azure_settings.translator_key = "key"
+            mock_azure_settings.translator_key = SecretStr("key")
             mock_azure_settings.translator_region = "region"
             mock_azure_settings.translator_endpoint = "https://api.cognitive.microsoft.com"
             translator = TranslatorFactory.get_translator("te")
@@ -97,7 +98,7 @@ async def test_azure_malformed_response_fallback_to_original():
         mock_client_cls.return_value = mock_client
 
         with patch("app.services.translation.azure.settings") as mock_settings:
-            mock_settings.translator_key = "key"
+            mock_settings.translator_key = SecretStr("key")
             mock_settings.translator_region = "region"
             mock_settings.translator_endpoint = "https://api.cognitive.microsoft.com"
 

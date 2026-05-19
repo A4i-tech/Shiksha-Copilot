@@ -25,7 +25,7 @@ class LessonChatService:
 
         # Initialize Native Azure OpenAI client for the adapter
         self._native_client = NativeAsyncAzureOpenAI(
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             api_version=settings.azure_openai_api_version,
             azure_endpoint=settings.azure_openai_endpoint,
         )

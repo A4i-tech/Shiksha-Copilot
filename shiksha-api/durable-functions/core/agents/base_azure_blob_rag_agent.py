@@ -43,7 +43,7 @@ class BaseAzureBlobRAGAgent(abc.ABC):
         self._llm = AzureOpenAI(
             model=settings.azure_openai_model,
             deployment_name=settings.azure_openai_model,
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             azure_endpoint=settings.azure_openai_api_base,
             api_version=settings.azure_openai_api_version,
             model_kwargs={"response_format": {"type": "json_object"}},
@@ -53,7 +53,7 @@ class BaseAzureBlobRAGAgent(abc.ABC):
         self._embed_llm = AzureOpenAIEmbedding(
             model=settings.azure_openai_embed_model,
             deployment_name=settings.azure_openai_embed_model,
-            api_key=settings.azure_openai_api_key,
+            api_key=settings.azure_openai_api_key.get_secret_value(),
             azure_endpoint=settings.azure_openai_api_base,
             api_version=settings.azure_openai_api_version,
         )

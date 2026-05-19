@@ -19,7 +19,7 @@ class BlobStore:
     """
 
     def __init__(self):
-        connection_string = settings.blob_store_connection_string
+        connection_string = settings.blob_store_connection_string.get_secret_value() if settings.blob_store_connection_string else None
         account_url = settings.blob_store_url
 
         if connection_string:

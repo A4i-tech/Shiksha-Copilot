@@ -29,7 +29,7 @@ class GeneralChatService:
         self.prompt_template = PromptTemplate(str(prompts_file_path))
 
         self.client = AsyncAzureOpenAI(
-                api_key=settings.azure_openai_api_key,
+                api_key=settings.azure_openai_api_key.get_secret_value(),
                 api_version=settings.azure_openai_api_version,
                 azure_endpoint=settings.azure_openai_endpoint,
             )

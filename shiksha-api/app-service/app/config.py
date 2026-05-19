@@ -3,7 +3,7 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt
+from pydantic import Field, PositiveInt, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
@@ -15,40 +15,41 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "Shiksha Copilot API"
-    build: Optional[str] = Field(default=None, alias="SHIKSHA_COPILOT_BUILD")
-    version: str = "1.0.1"
-    debug: bool = False
-    host: str = "0.0.0.0"
-    port: int = 8000
+    # Application
+    app_name: str = Field(default="Shiksha Copilot API", description="Application name")
+    build: Optional[str] = Field(default=None, alias="SHIKSHA_COPILOT_BUILD", description="Build identifier, e.g. git SHA")
+    version: str = Field(default="1.0.1", description="Application version")
+    debug: bool = Field(default=False, description="Enable debug mode")
+    host: str = Field(default="0.0.0.0", description="Host to bind the server to")
+    port: int = Field(default=8000, description="Port to bind the server to")
 
-    # Logging Configuration
-    log_level: str = "INFO"
+    # Logging
+    log_level: str = Field(default="INFO", description="Logging level, e.g. DEBUG, INFO, WARNING")
 
-    # Azure OpenAI Configuration — required
-    azure_openai_api_key: str
-    azure_openai_endpoint: str
-    azure_openai_api_version: str
-    azure_openai_deployment_name: str
-    azure_openai_embed_model: str
-    azure_chat_deployment_name: str
+    # Azure OpenAI — required
+    azure_openai_api_key: SecretStr = Field(description="Azure OpenAI API key")
+    azure_openai_endpoint: str = Field(description="Azure OpenAI endpoint URL, e.g. https://<resource>.openai.azure.com/")
+    azure_openai_api_version: str = Field(description="Azure OpenAI API version, e.g. 2024-08-01-preview")
+    azure_openai_deployment_name: str = Field(description="Azure OpenAI chat deployment name, e.g. gpt-4o")
+    azure_openai_embed_model: str = Field(description="Azure OpenAI embedding deployment name, e.g. text-embedding-ada-002")
+    azure_chat_deployment_name: str = Field(description="Azure OpenAI deployment name used for general chat")
 
-    # Azure AI Project Configuration — optional
-    azure_project_endpoint: Optional[str] = None
-    azure_bing_grounding_connection_id: Optional[str] = None
+    # Azure AI Project — optional
+    azure_project_endpoint: Optional[str] = Field(default=None, description="Azure AI Foundry project endpoint for tracing/evals")
+    azure_bing_grounding_connection_id: Optional[str] = Field(default=None, description="Azure AI connection ID for Bing grounding")
 
-    # Blob Store Configuration — optional
-    blob_store_connection_string: Optional[str] = None
-    blob_store_url: Optional[str] = None
+    # Blob Store — optional
+    blob_store_connection_string: Optional[SecretStr] = Field(default=None, description="Azure Blob Storage connection string")
+    blob_store_url: Optional[str] = Field(default=None, description="Azure Blob Storage URL")
 
     # Qdrant — optional
-    qdrant_url: Optional[str] = None
-    qdrant_api_key: Optional[str] = None
+    qdrant_url: Optional[str] = Field(default=None, description="Qdrant vector store URL, e.g. http://localhost:6333")
+    qdrant_api_key: Optional[SecretStr] = Field(default=None, description="Qdrant API key")
 
-    # Translator Configuration — optional
-    translator_key: Optional[str] = None
-    translator_region: Optional[str] = None
-    translator_endpoint: Optional[str] = None
+    # Translator — optional
+    translator_key: Optional[SecretStr] = Field(default=None, description="Azure Translator API key")
+    translator_region: Optional[str] = Field(default=None, description="Azure Translator region, e.g. eastus")
+    translator_endpoint: Optional[str] = Field(default=None, description="Azure Translator endpoint URL")
 
     # Presentation Configuration
     pres_captioner: str = "openai:gpt-5-nano"

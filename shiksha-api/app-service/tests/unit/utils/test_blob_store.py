@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from pydantic import SecretStr
 from app.utils.blob_store import BlobStore
 from azure.core.exceptions import AzureError
 
@@ -11,7 +12,7 @@ class TestBlobStoreInitialization:
     @patch("app.utils.blob_store.AsyncBlobServiceClient")
     def test_init_with_connection_string(self, mock_async_client, mock_settings):
         """Test initialization with connection string."""
-        mock_settings.blob_store_connection_string = (
+        mock_settings.blob_store_connection_string = SecretStr(
             "DefaultEndpointsProtocol=https;AccountName=test"
         )
         mock_settings.blob_store_url = None
@@ -55,7 +56,7 @@ class TestBlobStoreDownloadBlobs:
     def blob_store(self):
         """Create a BlobStore instance with mocked service."""
         with patch("app.utils.blob_store.settings") as mock_settings:
-            mock_settings.blob_store_connection_string = "test_connection"
+            mock_settings.blob_store_connection_string = SecretStr("test_connection")
             mock_settings.blob_store_url = None
 
             with patch("app.utils.blob_store.AsyncBlobServiceClient"):

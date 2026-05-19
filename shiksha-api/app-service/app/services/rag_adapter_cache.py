@@ -33,7 +33,7 @@ class NativeQdrantRagAdapter:
         if settings.qdrant_url and settings.qdrant_api_key:
             self.qdrant = AsyncQdrantClient(
                 url=settings.qdrant_url,
-                api_key=settings.qdrant_api_key,
+                api_key=settings.qdrant_api_key.get_secret_value(),
             )
         else:
             # Fallback for local dev if needed, or raise error

@@ -4,6 +4,17 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock, AsyncMock, MagicMock
 from typing import List
+from pydantic import SecretStr
+
+
+def pytest_configure(config):
+    """Set required env vars before any app modules are imported during collection."""
+    os.environ.setdefault("AZURE_OPENAI_API_KEY", "test-key-for-pytest")
+    os.environ.setdefault("AZURE_OPENAI_ENDPOINT", "https://test.openai.azure.com")
+    os.environ.setdefault("AZURE_OPENAI_API_VERSION", "2024-02-15-preview")
+    os.environ.setdefault("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4")
+    os.environ.setdefault("AZURE_OPENAI_EMBED_MODEL", "text-embedding-ada-002")
+    os.environ.setdefault("AZURE_CHAT_DEPLOYMENT_NAME", "gpt-4-chat")
 
 # Add app directory to Python path
 app_dir = Path(__file__).parent.parent / "app"
@@ -31,7 +42,7 @@ def mock_settings():
     mock.log_level = "INFO"
 
     # Azure OpenAI settings
-    mock.azure_openai_api_key = "test-api-key"
+    mock.azure_openai_api_key = SecretStr("test-api-key")
     mock.azure_openai_endpoint = "https://test.openai.azure.com"
     mock.azure_openai_api_version = "2024-02-15-preview"
     mock.azure_openai_deployment_name = "gpt-4"
@@ -43,12 +54,12 @@ def mock_settings():
     mock.azure_bing_grounding_connection_id = "test-connection-id"
 
     # Blob Store settings
-    mock.blob_store_connection_string = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test"
+    mock.blob_store_connection_string = SecretStr("DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test")
     mock.blob_store_url = "https://test.blob.core.windows.net"
 
     # Qdrant settings
     mock.qdrant_url = "http://localhost:6333"
-    mock.qdrant_api_key = "test-qdrant-key"
+    mock.qdrant_api_key = SecretStr("test-qdrant-key")
 
     return mock
 
