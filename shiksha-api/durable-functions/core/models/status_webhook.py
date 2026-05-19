@@ -1,7 +1,6 @@
 import datetime
 from enum import Enum
 from typing import Optional, Union
-import os
 import aiohttp
 from pydantic import BaseModel
 from core.config import settings

@@ -31,28 +31,6 @@ class TestGeneralChatServiceInitialization:
             assert service.prompt_template == mock_template
 
 
-    def test_initialization_raises_error_when_api_key_missing(self):
-        """Test initialization raises error when API key is missing."""
-        mock_settings = Mock()
-        mock_settings.azure_openai_api_key = None
-
-        with patch("app.services.general_chat_service.settings", mock_settings), patch(
-            "app.services.general_chat_service.PromptTemplate"
-        ):
-            with pytest.raises(ValueError, match="AZURE_OPENAI_API_KEY"):
-                GeneralChatService()
-
-    def test_initialization_raises_error_when_endpoint_missing(self):
-        """Test initialization raises error when endpoint is missing."""
-        mock_settings = Mock()
-        mock_settings.azure_openai_api_key = "test-key"
-        mock_settings.azure_openai_endpoint = None
-
-        with patch("app.services.general_chat_service.settings", mock_settings), patch(
-            "app.services.general_chat_service.PromptTemplate"
-        ):
-            with pytest.raises(ValueError, match="AZURE_OPENAI_ENDPOINT"):
-                GeneralChatService()
 
 
 class TestGeneralChatServiceCall:

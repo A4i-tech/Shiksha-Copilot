@@ -6,6 +6,9 @@ import azure.durable_functions as df
 from core.models.requests import LessonPlanGenerationInput
 from core.models.status_webhook import GenStatus, StatusEnum, WebhookPoster
 from core.logger import LoggerFactory
+from core.config import log_optional_env_status
+
+log_optional_env_status()
 
 # Get logger for this module
 logger = LoggerFactory.get_function_logger("LessonPlanHttpTrigger")

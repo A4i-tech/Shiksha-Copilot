@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-from config import settings, log_optional_env_status  # validates required envs at startup
+from config import log_optional_env_status  # validates required envs at startup (settings = IngestionSettings() runs at import)
 from ingestion_pipeline.base.pipeline import Pipeline, PipelineRegistry
 from pipeline_steps import (
     TextExtractionLLMStep,
