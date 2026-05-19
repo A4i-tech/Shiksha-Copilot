@@ -3,7 +3,7 @@ from typing import Dict, Any, List
 import json
 from openai import AzureOpenAI
 
-from core.config import Config
+from core.config import settings
 from core.models.workflow_models import SectionOutput
 from core.logger import LoggerFactory
 
@@ -16,9 +16,9 @@ class ValidatorAgent:
 
     def __init__(self):
         self.client = AzureOpenAI(
-            azure_endpoint=Config.AZURE_OPENAI_API_BASE,
-            api_key=Config.AZURE_OPENAI_API_KEY,
-            api_version=Config.AZURE_OPENAI_API_VERSION,
+            azure_endpoint=settings.azure_openai_api_base,
+            api_key=settings.azure_openai_api_key,
+            api_version=settings.azure_openai_api_version,
         )
         self.logger = LoggerFactory.get_agent_logger("ValidatorAgent")
 
@@ -81,7 +81,7 @@ class ValidatorAgent:
             )
             # Make the completion call to OpenAI
             response = self.client.chat.completions.create(
-                model=Config.AZURE_OPENAI_MODEL,
+                model=settings.azure_openai_model,
                 messages=[
                     {
                         "role": "system",

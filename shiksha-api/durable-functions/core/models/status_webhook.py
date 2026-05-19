@@ -4,7 +4,7 @@ from typing import Optional, Union
 import os
 import aiohttp
 from pydantic import BaseModel
-from core.config import Config
+from core.config import settings
 from core.logger import LoggerFactory
 
 
@@ -37,7 +37,7 @@ class GenStatus(BaseModel):
 
 class WebhookPoster:
     def __init__(self):
-        self.webhook_url = Config.WEBHOOK_URL
+        self.webhook_url = settings.webhook_url
         self.logger = LoggerFactory.get_logger("WebhookPoster")
 
     async def post_status(self, gen_status: GenStatus):

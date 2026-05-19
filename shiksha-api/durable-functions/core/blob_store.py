@@ -6,7 +6,7 @@ from azure.identity.aio import DefaultAzureCredential
 from azure.storage.blob.aio import BlobServiceClient as AsyncBlobServiceClient
 import aiofiles
 
-from core.config import Config
+from core.config import settings
 
 
 import asyncio
@@ -23,8 +23,8 @@ class BlobStore:
 
     def __init__(self):
         self._download_lock = asyncio.Lock()
-        connection_string = Config.BLOB_STORE_CONNECTION_STRING
-        account_url = Config.BLOB_STORE_URL
+        connection_string = settings.blob_store_connection_string
+        account_url = settings.blob_store_url
 
         if connection_string:
             # async client from connection string

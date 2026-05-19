@@ -12,7 +12,7 @@ import shutil
 
 from rag_wrapper import InMemRagOps, InMemGraphRagOps
 from core.blob_store import BlobStore
-from core.config import Config
+from core.config import settings
 from core.models.workflow_models import RAGInput
 
 
@@ -41,21 +41,21 @@ class BaseAzureBlobRAGAgent(abc.ABC):
         self.logger = logger or LoggerFactory.get_agent_logger("BaseAzureBlobRAGAgent")
         # Initialize Azure OpenAI LLM with JSON response format for structured output
         self._llm = AzureOpenAI(
-            model=Config.AZURE_OPENAI_MODEL,
-            deployment_name=Config.AZURE_OPENAI_MODEL,
-            api_key=Config.AZURE_OPENAI_API_KEY,
-            azure_endpoint=Config.AZURE_OPENAI_API_BASE,
-            api_version=Config.AZURE_OPENAI_API_VERSION,
+            model=settings.azure_openai_model,
+            deployment_name=settings.azure_openai_model,
+            api_key=settings.azure_openai_api_key,
+            azure_endpoint=settings.azure_openai_api_base,
+            api_version=settings.azure_openai_api_version,
             model_kwargs={"response_format": {"type": "json_object"}},
         )
 
         # Initialize Azure OpenAI embedding model
         self._embed_llm = AzureOpenAIEmbedding(
-            model=Config.AZURE_OPENAI_EMBED_MODEL,
-            deployment_name=Config.AZURE_OPENAI_EMBED_MODEL,
-            api_key=Config.AZURE_OPENAI_API_KEY,
-            azure_endpoint=Config.AZURE_OPENAI_API_BASE,
-            api_version=Config.AZURE_OPENAI_API_VERSION,
+            model=settings.azure_openai_embed_model,
+            deployment_name=settings.azure_openai_embed_model,
+            api_key=settings.azure_openai_api_key,
+            azure_endpoint=settings.azure_openai_api_base,
+            api_version=settings.azure_openai_api_version,
         )
 
         # Sanitize index path for file system usage

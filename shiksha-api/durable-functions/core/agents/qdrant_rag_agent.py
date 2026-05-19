@@ -5,7 +5,7 @@ import shutil
 import abc
 from typing import Dict, Union
 from core.blob_store import BlobStore
-from core.config import Config
+from core.config import settings
 from core.models.workflow_models import RAGInput
 from core.logger import LoggerFactory
 from rag_wrapper.rag_ops.qdrant_rag_ops import QdrantRagOps
@@ -30,9 +30,9 @@ class QdrantRAGAgent:
         self._embed_llm = self._get_embed_llm()
         # Qdrant RAG ops
         self._rag_ops = QdrantRagOps(
-            url=Config.QDRANT_URL,
+            url=settings.qdrant_url,
             collection_name=qdrant_collection,
-            api_key=Config.QDRANT_API_KEY,
+            api_key=settings.qdrant_api_key,
             emb_llm=self._embed_llm,
             completion_llm=self._llm,
         )
@@ -42,11 +42,11 @@ class QdrantRAGAgent:
         from llama_index.llms.azure_openai import AzureOpenAI
 
         return AzureOpenAI(
-            model=Config.AZURE_OPENAI_MODEL,
-            deployment_name=Config.AZURE_OPENAI_MODEL,
-            api_key=Config.AZURE_OPENAI_API_KEY,
-            azure_endpoint=Config.AZURE_OPENAI_API_BASE,
-            api_version=Config.AZURE_OPENAI_API_VERSION,
+            model=settings.azure_openai_model,
+            deployment_name=settings.azure_openai_model,
+            api_key=settings.azure_openai_api_key,
+            azure_endpoint=settings.azure_openai_api_base,
+            api_version=settings.azure_openai_api_version,
             model_kwargs={"response_format": {"type": "json_object"}},
         )
 
@@ -54,11 +54,11 @@ class QdrantRAGAgent:
         from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 
         return AzureOpenAIEmbedding(
-            model=Config.AZURE_OPENAI_EMBED_MODEL,
-            deployment_name=Config.AZURE_OPENAI_EMBED_MODEL,
-            api_key=Config.AZURE_OPENAI_API_KEY,
-            azure_endpoint=Config.AZURE_OPENAI_API_BASE,
-            api_version=Config.AZURE_OPENAI_API_VERSION,
+            model=settings.azure_openai_embed_model,
+            deployment_name=settings.azure_openai_embed_model,
+            api_key=settings.azure_openai_api_key,
+            azure_endpoint=settings.azure_openai_api_base,
+            api_version=settings.azure_openai_api_version,
         )
 
     async def generate(self, rag_input: RAGInput) -> Union[str, Dict]:

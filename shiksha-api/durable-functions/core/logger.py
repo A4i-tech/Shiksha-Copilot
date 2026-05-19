@@ -7,8 +7,9 @@ appropriate log levels, and optimal performance for cloud environments.
 """
 
 import logging
-import os
 import sys
+
+from core.config import settings
 from typing import Optional
 
 
@@ -45,7 +46,7 @@ class LoggerFactory:
             return
 
         # Get log level from environment variable or default to INFO
-        log_level_str = os.environ.get("LOG_LEVEL", "INFO").upper()
+        log_level_str = settings.log_level.upper()
         log_level = getattr(logging, log_level_str, logging.INFO)
 
         # Configure root logger
