@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from config import settings, log_optional_env_status  # validates required envs at startup
 from ingestion_pipeline.base.pipeline import Pipeline, PipelineRegistry
 from pipeline_steps import (
     TextExtractionLLMStep,
@@ -21,6 +22,7 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("pipeline_runner")
+log_optional_env_status()
 
 PIPELINE_CONFIG = {
     "grade": "6",

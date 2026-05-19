@@ -28,18 +28,6 @@ class GeneralChatService:
         )
         self.prompt_template = PromptTemplate(str(prompts_file_path))
 
-        # Check configuration
-        if not settings.azure_openai_api_key:
-            raise ValueError("AZURE_OPENAI_API_KEY environment variable is required")
-        if not settings.azure_openai_endpoint:
-            raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
-        if not settings.azure_openai_api_version:
-            raise ValueError("AZURE_OPENAI_API_VERSION environment variable is required")
-        if not settings.azure_openai_deployment_name:
-            raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required")
-        if not settings.azure_chat_deployment_name:
-            raise ValueError("AZURE_CHAT_DEPLOYMENT_NAME environment variable is required")
-
         self.client = AsyncAzureOpenAI(
                 api_key=settings.azure_openai_api_key,
                 api_version=settings.azure_openai_api_version,

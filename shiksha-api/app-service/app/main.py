@@ -7,8 +7,10 @@ from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
 from fastmcp.server.http import StarletteWithLifespan
-from app.config import settings
+from app.config import settings, log_optional_env_status
 from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router
+
+log_optional_env_status()
 
 mcp = FastMCP(
     name=settings.app_name,

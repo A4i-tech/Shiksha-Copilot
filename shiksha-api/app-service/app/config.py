@@ -1,3 +1,4 @@
+import logging
 import pathlib
 from string import Template
 
@@ -7,6 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -22,26 +25,27 @@ class Settings(BaseSettings):
     # Logging Configuration
     log_level: str = "INFO"
 
-    # Azure OpenAI Configuration
-    azure_openai_api_key: Optional[str] = None
-    azure_openai_endpoint: Optional[str] = None
-    azure_openai_api_version: Optional[str] = None
-    azure_openai_deployment_name: Optional[str] = None
-    azure_openai_embed_model: Optional[str] = None
-    azure_chat_deployment_name : Optional[str] = None
+    # Azure OpenAI Configuration — required
+    azure_openai_api_key: str
+    azure_openai_endpoint: str
+    azure_openai_api_version: str
+    azure_openai_deployment_name: str
+    azure_openai_embed_model: str
+    azure_chat_deployment_name: str
 
-    # Azure AI Project Configuration
+    # Azure AI Project Configuration — optional
     azure_project_endpoint: Optional[str] = None
     azure_bing_grounding_connection_id: Optional[str] = None
 
-    # Blob Store Configuration
+    # Blob Store Configuration — optional
     blob_store_connection_string: Optional[str] = None
     blob_store_url: Optional[str] = None
 
+    # Qdrant — optional
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None
 
-    # Translator Configuration
+    # Translator Configuration — optional
     translator_key: Optional[str] = None
     translator_region: Optional[str] = None
     translator_endpoint: Optional[str] = None
@@ -95,3 +99,20 @@ FINALIZER_SYSTEM_PROMPT = Template(_data["finalizer-system-prompt"].strip())
 FINALIZER_BROWSE_PROMPT = Template(_data["finalizer-browse-prompt"].strip())
 FINALIZER_REVIEW_PROMPT = Template(_data["finalizer-review-prompt"].strip())
 FINALIZER_ADD_SLIDE_PROMPT = Template(_data["finalizer-add-slide-prompt"].strip())
+
+
+def log_optional_env_status() -> None:
+    optional_fields = [
+        "azure_project_endpoint",
+        "azure_bing_grounding_connection_id",
+        "blob_store_connection_string",
+        "blob_store_url",
+        "qdrant_url",
+        "qdrant_api_key",
+        "translator_key",
+        "translator_region",
+        "translator_endpoint",
+    ]
+    for field in optional_fields:
+        if getattr(settings, field) is None:
+            logger.info("Optional env not set: %s", field.upper())
