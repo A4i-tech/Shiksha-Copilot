@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Document, Paragraph, HeadingLevel } from 'docx';
-import { DocxUtilityService } from './docx-utility.service';
+import { DocxContext, DocxUtilityService } from './docx-utility.service';
 import { TranslateService } from '@ngx-translate/core';
 
 @Injectable({
@@ -23,6 +23,7 @@ export class ResourceDocxService {
    */
   generateDocx(data: any, formData: any, learningOutcomes:any[]) {
     const sections = [];
+    const context = new DocxContext();
 
     for (const section of data) {
       const sectionChildren = [];
@@ -68,20 +69,14 @@ export class ResourceDocxService {
                 content.type === 'MCQs'
                   ? content.questions.flatMap(
                       (question: any, questionIndex: number) => {
-                        const questionParagraph = question?.question ? new Paragraph({
-                          text: `${questionIndex + 1}. ${question.question}`,
-                          spacing: {
-                            before: 80,
-                            after: 10,
-                          },
-                        }) : [];
+                        const questionParagraph = question?.question
+                          ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`, context)
+                          : [];
 
-                        const optionParagraphs = question?.options ? question?.options?.flatMap((options:any)=>{
-                          return new Paragraph({
-                            text:`${options}`
-                          })
-                        }) : []
-                        return [questionParagraph, ...optionParagraphs];
+                        const optionParagraphs = question?.options
+                          ? this.docxUtility.getMarkdownParagraphs(question.options.map((options: any) => `- ${options}`).join('\n'), context)
+                          : [];
+                        return [...questionParagraph, ...optionParagraphs];
                       }
                     )
                   : [];
@@ -89,15 +84,11 @@ export class ResourceDocxService {
               // Handle Assessments
               const assessments =
                 content.type === 'assessment'
-                  ? content.questions.map(
+                  ? content.questions.flatMap(
                       (question: any, questionIndex: number) => {
-                        return question.question ? new Paragraph({
-                          text: `${questionIndex + 1}. ${question.question}`,
-                          spacing: {
-                            before: 80,
-                            after: 10,
-                          },
-                        }) : '';
+                        return question.question
+                          ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`, context)
+                          : [];
                       }
                     )
                   : [];
@@ -142,23 +133,10 @@ export class ResourceDocxService {
                   },
                 });
 
-                const questionParagraph = new Paragraph({
-                  text: scenario.question,
-                  spacing: {
-                    before: 20,
-                    after: 10,
-                  },
-                });
+                const questionParagraph = this.docxUtility.getMarkdownParagraphs(scenario.question, context);
+                const descriptionParagraph = this.docxUtility.getMarkdownParagraphs(scenario.description, context);
 
-                const descriptionParagraph = new Paragraph({
-                  text: scenario.description,
-                  spacing: {
-                    before: 10,
-                    after: 20,
-                  },
-                });
-
-                return [scenarioTitle, questionParagraph, descriptionParagraph];
+                return [scenarioTitle, ...questionParagraph, ...descriptionParagraph];
               }
             );
 
@@ -177,44 +155,19 @@ export class ResourceDocxService {
           );
 
           if (item.preparation) {
-            sectionChildren.push(
-              new Paragraph({
-                text: `${item.preparation}`,
-                bullet: {
-                  level: 0,
-                },
-              })
-            );
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.preparation, context));
           }
 
           if (item.required_materials) {
-            sectionChildren.push(
-              new Paragraph({
-                text: `${item.required_materials}`,
-                bullet: {
-                  level: 0,
-                },
-              })
-            );
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.required_materials, context));
           }
 
           if (item.obtaining_materials) {
-            sectionChildren.push(
-              new Paragraph({
-                text: `${item.obtaining_materials}`,
-                bullet: {
-                  level: 0,
-                },
-              })
-            );
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.obtaining_materials, context));
           }
 
           if (item.recap) {
-            sectionChildren.push(
-              new Paragraph({
-                text: `${item.recap}`,
-              })
-            );
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.recap, context));
           }
         }
       }
@@ -226,6 +179,7 @@ export class ResourceDocxService {
     }
 
     const doc = new Document({
+      numbering: this.docxUtility.getMarkdownNumbering(),
       sections: [
         {
             children: this.docxUtility.getLearningOutcomes(learningOutcomes),
