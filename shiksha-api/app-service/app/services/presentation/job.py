@@ -32,12 +32,12 @@ class JobManager:
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        self.queue.put_nowait(None)
+        self._drop_queue(self.queue)
         for listener in list(self.listeners):
-            listener.put_nowait(None)
+            self._drop_queue(listener)
         self.listeners.clear()
         for q in list(self.log_subscribers):
-            q.put_nowait(None)
+            self._drop_queue(q)
         self.log_subscribers.clear()
         await self.client.close()
 
@@ -107,6 +107,7 @@ class JobManager:
             try:
                 q.put_nowait({"id": str(job_id), "type": type, "data": data, "timestamp": dt_now.isoformat()})
             except asyncio.QueueFull:
+                self._drop_queue(q)
                 dead.append(q)
         for q in dead:
             self.log_subscribers.discard(q)
@@ -131,6 +132,20 @@ class JobManager:
             try:
                 listener.put_nowait(job_id)
             except asyncio.QueueFull:
+                self._drop_queue(listener)
                 dead.append(listener)
         for listener in dead:
             self.listeners.discard(listener)
+
+    def _drop_queue(self, q: asyncio.Queue, attempts: int = 64):
+        while attempts > 0:
+            try:
+                q.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+            try:
+                q.put_nowait(None)
+                break
+            except asyncio.QueueFull:
+                pass
+            attempts -= 1

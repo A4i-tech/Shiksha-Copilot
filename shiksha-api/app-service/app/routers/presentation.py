@@ -5,7 +5,7 @@ import json
 import mimetypes
 import pathlib
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, AsyncIterator
 import uuid
 import weakref
 from app.config import settings
@@ -163,6 +163,33 @@ async def get_tools() -> list[ToolInfo]:
     }.values())
 
 
+async def _wait_disconnected(request: Request):
+    while not await request.is_disconnected():
+        await asyncio.sleep(5)
+
+
+async def _safe_stream_job_logs(request: Request, service: PresentationService) -> AsyncIterator[dict]:
+    q = asyncio.Queue(maxsize=512)
+    stop = asyncio.create_task(_wait_disconnected(request))
+    get = asyncio.create_task(q.get())
+    service.jobs.log_subscribers.add(q)
+    try:
+        while True:
+            done, _ = await asyncio.wait({get, stop, request.app.state.sigint}, return_when=asyncio.FIRST_COMPLETED)
+            get.cancel()
+            if stop in done or request.app.state.sigint in done:
+                break
+
+            event = get.result()
+            if event is None: break
+            yield event
+            get = asyncio.create_task(q.get())
+    finally:
+        service.jobs.log_subscribers.discard(q)
+        get.cancel()
+        stop.cancel()
+
+
 @router.get("/events/pending/{user_id}")
 async def events_pending(request: Request, user_id: UserId, service: PresentationService = Depends(pres)):
     """
@@ -170,22 +197,14 @@ async def events_pending(request: Request, user_id: UserId, service: Presentatio
     """
 
     async def stream():
-        q = asyncio.Queue()
-        service.jobs.log_subscribers.add(q)
-        try:
-            count = await service.jobs.get_pending_count(user_id)
-            yield f"data: {count}\n\n"
-            while not await request.is_disconnected():
-                e = await q.get()
-                if e is None: break
-                assert(isinstance(e, dict))
-                if e["type"] not in {"create", "complete", "terminate"} or e["data"]["user_id"] != str(user_id): continue
-                new_count = await service.jobs.get_pending_count(user_id)
-                if count != new_count:
-                    count = new_count
-                    yield f"data: {count}\n\n"
-        finally:
-            service.jobs.log_subscribers.discard(q)
+        count = await service.jobs.get_pending_count(user_id)
+        yield f"data: {count}\n\n"
+        async for e in _safe_stream_job_logs(request, service):
+            if e["type"] not in {"create", "complete", "terminate"} or e["data"]["user_id"] != str(user_id): continue
+            new_count = await service.jobs.get_pending_count(user_id)
+            if count != new_count:
+                count = new_count
+                yield f"data: {count}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
@@ -201,23 +220,14 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
         raise HTTPException(status_code=404, detail="Job not found")
 
     async def stream():
-        q = asyncio.Queue()
-        service.jobs.log_subscribers.add(q)
         id_ = str(id)
+        async for e in service.jobs.get_logs(id):
+            if await request.is_disconnected(): break
+            yield f"data: {json.dumps(e)}\n\n"
 
-        try:
-            async for e in service.jobs.get_logs(id):
-                if await request.is_disconnected(): break
-                yield f"data: {json.dumps(e)}\n\n"
-
-            await service.jobs.pub(id)
-            while not await request.is_disconnected():
-                e = await q.get()
-                if e is None: break
-                assert(isinstance(e, dict))
-                if e["id"] != id_: continue
-                yield f"data: {json.dumps(e)}\n\n"
-        finally:
-            service.jobs.log_subscribers.discard(q)
+        await service.jobs.pub(id)
+        async for e in _safe_stream_job_logs(request, service):
+            if e["id"] != id_: continue
+            yield f"data: {json.dumps(e)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")

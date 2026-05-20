@@ -1,3 +1,6 @@
+import asyncio
+import signal
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -17,6 +20,12 @@ mcp_app = mcp.http_app(path="/mcp", stateless_http=True)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for proper startup and shutdown"""
+
+    app.state.sigint = asyncio.Future()
+    def sigint_handler(sig, frame):
+        app.state.sigint.set_result(True)
+        if callable(prev): prev(sig, frame)
+    prev = signal.signal(signal.SIGINT, sigint_handler)
 
     assert isinstance(app.state.MCP_APP, StarletteWithLifespan)
     async with app.state.MCP_APP.lifespan(app):
