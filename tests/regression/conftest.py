@@ -33,8 +33,7 @@ def browser_context():
         expect(otp_inputs).to_have_count(4)
 
         for i, digit in enumerate(USER_OTP):
-            otp_inputs.nth(i).click()
-            otp_inputs.nth(i).type(digit, delay=100)
+            otp_inputs.nth(i).fill(digit, force=True)
 
         verify_button = page.get_by_role("button", name="Verify")
         verify_button.click()
