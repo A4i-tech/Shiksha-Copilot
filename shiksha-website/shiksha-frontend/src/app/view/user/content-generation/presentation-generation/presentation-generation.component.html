@@ -60,6 +60,14 @@
             <p class="mt-1 text-content-70" *ngIf="showToolText && currentJob?.status !== 'error' && latestToolText">
               {{ latestToolText }}
             </p>
+            <button
+              *ngIf="isTerminalError"
+              (click)="retryJob()"
+              [disabled]="isRetryingJob"
+              class="mt-3 py-2 px-4 rounded border border-primary text-primary text-sm font-semibold disabled:opacity-60"
+            >
+              {{ isRetryingJob ? ('Recovering...' | translate) : ('Recover Job' | translate) }}
+            </button>
           </div>
           <div class="text-sm font-semibold text-primary">{{ progressValue }}%</div>
         </div>
@@ -419,7 +427,7 @@
     </button>
 
     <button
-      *ngIf="(currentStep === 2 || currentStep === 3) && isStreamActive"
+      *ngIf="currentStep === 2 || currentStep === 3"
       type="button"
       class="btn-outline-primary px-6 py-2 rounded-lg font-bold w-full md:w-auto"
       [disabled]="isTerminatingJob || !canTerminateJob"
@@ -436,24 +444,6 @@
       disabled
     >
       {{ "Processing..." | translate }}
-    </button>
-
-    <button
-      *ngIf="(currentStep === 2 || currentStep === 3) && isTerminalError"
-      type="button"
-      class="btn-outline-primary px-6 py-2 rounded-lg font-bold w-full md:w-auto"
-      (click)="backNavigation()"
-    >
-      {{ "Back to Content Generation" | translate }}
-    </button>
-
-    <button
-      *ngIf="(currentStep === 2 || currentStep === 3) && isTerminalError"
-      type="button"
-      class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md w-full md:w-auto"
-      (click)="resetWizard()"
-    >
-      {{ "Start Over" | translate }}
     </button>
 
   </div>

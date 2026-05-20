@@ -1,4 +1,5 @@
 import mimetypes
+import time
 import traceback
 import asyncio
 from contextlib import asynccontextmanager
@@ -6,6 +7,8 @@ import json
 import logging
 import pathlib
 from datetime import datetime
+from typing import Any
+import uuid
 
 from pptx import presentation, Presentation
 
@@ -80,7 +83,12 @@ class PresentationService:
             updates["metadata." + metadata_dir] = event.metadata
         if event.message is not None:
             updates["message"] = event.message
-        await self.jobs.update(job.id, updates)
+
+        kwargs: dict[str, Any] = {}
+        if updates: kwargs["fields_set"] = updates
+        if event.reason == "op": kwargs["fields_unset"] = ["metadata.error"]
+        if len(kwargs) > 0: await self.jobs.update(job.id, **kwargs)
+
         if prs:
             await docparser.save_pptx(self.storage, prs, out_path)
 
@@ -91,28 +99,24 @@ class PresentationService:
         if e:
             self.logger.info("Job raised exception - %s - %s", job.id, str(e))
             traceback.print_exception(e)
-            await self.jobs.update(job.id, {
-                "status": "error",
-                "message": f"Unexpected error: {str(e)}",
-                "metadata.error": {
-                    "error_type": "unexpected_error",
-                    "error_message": str(e),
-                    "recovery_attempted": False,
-                    "timestamp": datetime.now().isoformat()
-                }
-            })
+            await self.jobs.update(job.id, self._error_metadata(job, f"Unexpected error: {str(e)}", str(e)))
         elif task.cancelled():
             self.logger.info("Job cancelled - %s", job.id)
-            await self.jobs.update(job.id, {
-                "status": "error",
-                "message": f"Task was cancelled",
-                "metadata.error": {
-                    "error_type": "unexpected_error",
-                    "error_message": "Task was cancelled",
-                    "recovery_attempted": False,
-                    "timestamp": datetime.now().isoformat()
-                }
-            })
+            await self.jobs.update(job.id, self._error_metadata(job, "Task was cancelled", "Task was cancelled"))
+
+
+    def _error_metadata(self, job: JobDetail, message: str, error_message: str):
+        attempt = job.metadata.get("error", {}).get("attempt", 0) + 1
+        return {
+            "status": "error",
+            "message": message,
+            "metadata.error.error_type": "unexpected_error",
+            "metadata.error.timestamp": datetime.now().isoformat(),
+            "metadata.error.error_message": error_message,
+            "metadata.error.attempt": attempt,
+            "metadata.error.next_attempt": time.time() + min(60, 5 * (2 ** (attempt - 1))),
+            "metadata.error.attempting_recovery": True,
+        }
 
 
     async def _run_job(self, job: JobDetail):
@@ -267,19 +271,22 @@ class PresentationService:
                     }
                 })
         elif job.status == "error":
-            # Check if recovery should be attempted
-            error_metadata = job.metadata.get("error", {})
-            if isinstance(error_metadata, dict) and not error_metadata.get("recovery_attempted", False):
-                self.logger.info(f"Attempting recovery for job {job.id} after 5 seconds")
-                await asyncio.sleep(5)
-                await self.jobs.update(job.id, {
-                    "status": "init",
-                    "message": "Retrying after error - attempting recovery",
-                    "metadata.error.recovery_attempted": True
-                })
-            else:
-                # Recovery already attempted, stay in error state
-                self.logger.error(f"Job {job.id} remains in error state - recovery already attempted")
+            if "error" in job.metadata:
+                if job.metadata["error"]["attempt"] > 5:
+                    self.logger.warning(f"No longer attempting automatic recovery for job {job.id} ({job.metadata['error']['attempt']} attempts)")
+                    if job.metadata["error"]["attempting_recovery"]:
+                        await self.jobs.update(job.id, {"metadata.error.attempting_recovery": False})
+                    return
+
+                if not job.metadata["error"]["attempting_recovery"]:
+                    await self.jobs.update(job.id, {"metadata.error.attempting_recovery": True})
+
+                next_attempt = job.metadata["error"]["next_attempt"]
+                delay = max(1, next_attempt - time.time())
+                self.logger.info(f"Attempting recovery for job {job.id} after {delay} seconds")
+                await asyncio.sleep(delay)
+
+            await self.jobs.update(job.id, {"status": "init", "message": "Retrying after error - attempting recovery"})
 
 
 def new_default():

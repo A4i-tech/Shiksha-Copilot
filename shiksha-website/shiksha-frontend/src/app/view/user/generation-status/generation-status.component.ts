@@ -112,8 +112,8 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
   private mapPresentationJob(item: PresentationListItem) {
     const totalSlides = item.metadata?.quality?.total_slides || item.metadata?.plan?.outline?.total_slides || item.slides;
     const isCompleted = item.status === 'complete';
-    const isTerminalError = item.status === 'error' && !!item.metadata?.error?.recovery_attempted;
-    const isRecovering = item.status === 'error' && !item.metadata?.error?.recovery_attempted;
+    const isRecovering = item.status === 'error' && item.metadata?.error?.attempting_recovery === true;
+    const isTerminalError = item.status === 'error' && item.metadata?.error?.attempting_recovery === false;
 
     return {
       ...item,
@@ -135,7 +135,7 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
   private syncPresentationStreams() {
     const activePresentationIds = new Set(
       this.list
-        .filter((item: any) => item.isPresentation && item.status !== 'complete' && !(item.status === 'error' && !!item.metadata?.error?.recovery_attempted))
+        .filter((item: any) => item.isPresentation && item.status !== 'complete' && !(item.status === 'error' && item.metadata?.error?.attempting_recovery === false))
         .map((item: any) => item.id)
     );
 
@@ -149,7 +149,7 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
       if (
         !item.isPresentation ||
         item.status === 'complete' ||
-        (item.status === 'error' && !!item.metadata?.error?.recovery_attempted) ||
+        (item.status === 'error' && item.metadata?.error?.attempting_recovery === false) ||
         this.presentationStreams.has(item.id)
       ) {
         return;
@@ -186,7 +186,7 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
       this.closePresentationStream(job.id);
     } else {
       nextList[index] = this.mapPresentationJob(job);
-      if (job.status === 'error' && !!job.metadata?.error?.recovery_attempted) {
+      if (job.status === 'error' && job.metadata?.error?.attempting_recovery === false) {
         this.closePresentationStream(job.id);
       }
     }

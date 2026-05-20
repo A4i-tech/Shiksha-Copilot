@@ -356,7 +356,8 @@ async def plan(textbook_path: str, textbook_mime: str, data: IO[bytes], figures:
     outline_metadata["total_slides"] = outline.total_slides
     yield ShikshaCheckpointEvent(
         message=f"Presentation outline created - {outline.total_slides} slides planned across {len(outline.sections)} sections",
-        metadata={"outline": outline_metadata}
+        metadata={"outline": outline_metadata},
+        reason="op"
     )
 
 
@@ -398,7 +399,7 @@ async def design(storage: Storage, prs: presentation.Presentation, data: IO[byte
                 yield event
         if len(prs.slides) <= slide_count:
             raise RuntimeError("No slide was created")
-        yield ShikshaCheckpointEvent(metadata=metadata)
+        yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
 
     # Process each section and its slides from the outline
     while len(metadata["slides_completed"]) <= deps.outline.total_slides:
@@ -412,8 +413,8 @@ async def design(storage: Storage, prs: presentation.Presentation, data: IO[byte
             yield event
             if deps.slide is not None:
                 message = "Creating slide %d/%d: %s (%s)" % (len(metadata["slides_completed"]), deps.outline.total_slides, deps.slide.title, deps.slide.slide_type)
-                yield ShikshaCheckpointEvent(message=message, metadata=metadata)
-        yield ShikshaCheckpointEvent(metadata=metadata)
+                yield ShikshaCheckpointEvent(message=message, metadata=metadata, reason="op")
+        yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
 
     # Final engagement quality report
     total_slides = len(prs.slides)
@@ -450,7 +451,7 @@ async def finalize(prs: presentation.Presentation, metadata: dict[str, Any]):
                 videos.append(event.model_dump_json())
         if len(videos) > 0:
             metadata["videos"] = videos
-            yield ShikshaCheckpointEvent(metadata=metadata)
+            yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
 
     if len(videos) > 0 and "relevant_videos" not in metadata:
         yield ShikshaCheckpointEvent(message="Reviewing collected videos for a video slide")
@@ -470,7 +471,7 @@ async def finalize(prs: presentation.Presentation, metadata: dict[str, Any]):
                 relevant_videos.append(event.model_dump_json())
         if len(relevant_videos) > 0:
             metadata["relevant_videos"] = relevant_videos
-            yield ShikshaCheckpointEvent(metadata=metadata)
+            yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
 
     if "thank_you_slide_created" not in metadata:
         yield ShikshaCheckpointEvent(message="Creating a thank-you slide")
@@ -488,4 +489,4 @@ async def finalize(prs: presentation.Presentation, metadata: dict[str, Any]):
         if len(prs.slides) <= slide_count:
             raise RuntimeError("No slide was created")
         metadata["thank_you_slide_created"] = datetime.now().isoformat()
-        yield ShikshaCheckpointEvent(metadata=metadata)
+        yield ShikshaCheckpointEvent(metadata=metadata, reason="op")

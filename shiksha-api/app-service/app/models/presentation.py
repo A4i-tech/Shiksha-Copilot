@@ -127,6 +127,7 @@ class ShikshaAgentEvent(BaseModel):
 class ShikshaCheckpointEvent(BaseModel):
     metadata: Any = None
     message: str | None = None
+    reason: Literal["info", "op"] = "info"
 
 
 class ToolInfo(BaseModel):

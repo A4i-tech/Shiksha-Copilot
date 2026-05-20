@@ -80,6 +80,18 @@ async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationSe
     return job
 
 
+@router.get("/job/retry")
+async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationService = Depends(pres)) -> bool:
+    """ List available jobs. """
+    job = await service.jobs.get(id)
+    if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job is not None and job.status == "error" and "error" in job.metadata and not job.metadata["error"]["attempting_recovery"]:
+        await service.jobs.update(job.id, fields_unset=["metadata.error"])
+        return True
+    return False
+
+
 @router.get("/jobs")
 async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), textbook_file: str | None = Query(None), status: JobStatus | None = Query(None), created_after: datetime | None = Query(None), created_before: datetime | None = Query(None), tags: list[str] | None = Query(None), service: PresentationService = Depends(pres)) -> list[JobDetail]:
     """ List available jobs. """
@@ -221,10 +233,6 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
 
     async def stream():
         id_ = str(id)
-        async for e in service.jobs.get_logs(id):
-            if await request.is_disconnected(): break
-            yield f"data: {json.dumps(e)}\n\n"
-
         await service.jobs.pub(id)
         async for e in _safe_stream_job_logs(request, service):
             if e["id"] != id_: continue

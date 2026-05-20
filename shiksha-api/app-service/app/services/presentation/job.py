@@ -57,11 +57,14 @@ class JobManager:
         self.logger.info("Created job for %s", textbook_file)
         return job
 
-    async def update(self, job_id: uuid.UUID, fields: dict[str, Any]):
-        doc = await self.collection.find_one_and_update({"id": str(job_id)}, {"$set": fields}, return_document=ReturnDocument.AFTER)
+    async def update(self, job_id: uuid.UUID, fields_set: dict[str, Any] | None = None, fields_unset: list[str] | None = None):
+        updates = {}
+        if fields_set: updates["$set"] = fields_set
+        if fields_unset: updates["$unset"] = dict.fromkeys(fields_unset, 1)
+        doc = await self.collection.find_one_and_update({"id": str(job_id)}, updates, return_document=ReturnDocument.AFTER)
         self._notify_listeners(job_id)
         await self.pub(job_id)
-        if doc and "status" in fields and fields["status"] == "complete":
+        if doc and fields_set and "status" in fields_set and fields_set["status"] == "complete":
             job = JobDetail(**doc)
             await self.log(job.id, "complete", json.loads(job.model_dump_json()), False)
 

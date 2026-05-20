@@ -54,6 +54,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   currentJob: PresentationJobDetail | null = null;
   isCreatingJob = false;
   isDownloading = false;
+  isRetryingJob = false;
   isTerminatingJob = false;
   isLoadingPdfPreview = false;
   pdfPreviewUrl: SafeResourceUrl | null = null;
@@ -305,14 +306,14 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   get isRecovering(): boolean {
     return (
       this.currentJob?.status === 'error' &&
-      !this.currentJob?.metadata?.error?.recovery_attempted
+      this.currentJob?.metadata?.error?.attempting_recovery === true
     );
   }
 
   get isTerminalError(): boolean {
     return (
       this.currentJob?.status === 'error' &&
-      !!this.currentJob?.metadata?.error?.recovery_attempted
+      this.currentJob?.metadata?.error?.attempting_recovery === false
     );
   }
 
@@ -472,6 +473,35 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       });
 
     this.subscriptions.add(downloadSubscription);
+  }
+
+  retryJob(): void {
+    if (!this.currentJob?.id || this.isRetryingJob || this.currentJob.status !== 'error' || this.currentJob.metadata?.error?.attempting_recovery !== false) {
+      return;
+    }
+
+    this.isRetryingJob = true;
+    this.closeEventStream();
+
+    const retryJobSubscription = this.contentGenerationService
+      .retryPresentationJob(this.currentJob.id)
+      .subscribe({
+        next: () => {
+          this.isRetryingJob = false;
+          this.fetchJob(this.currentJob!.id);
+        },
+        error: (error) => {
+          this.isRetryingJob = false;
+          this.utilityService.showError(
+            error?.error?.message || 'Unable to recover the presentation job.'
+          );
+          if (this.currentJob?.id) {
+            this.fetchJob(this.currentJob.id);
+          }
+        },
+      });
+
+    this.subscriptions.add(retryJobSubscription);
   }
 
   terminateJob(): void {
@@ -695,7 +725,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    if (job.status === 'error' && job.metadata?.error?.recovery_attempted) {
+    if (job.status === 'error' && job.metadata?.error?.attempting_recovery === false) {
       return false;
     }
 

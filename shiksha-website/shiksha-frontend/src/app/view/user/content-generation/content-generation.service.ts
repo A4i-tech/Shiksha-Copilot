@@ -309,6 +309,11 @@ export class ContentGenerationService extends BaseRestService {
     return this.http.delete(`${this.baseUrl}/presentation/job`, { params });
   }
 
+  retryPresentationJob(id: string): Observable<boolean> {
+    const params = new HttpParams().set('id', id);
+    return this.http.get<boolean>(`${this.baseUrl}/presentation/job/retry`, { params });
+  }
+
   getPresentationJobs(paramVals: any): Observable<any> {
     let params = new HttpParams()
       .set('offset', '0')
