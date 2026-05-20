@@ -3,7 +3,7 @@ import os
 from playwright.sync_api import expect
 from page_objects.profile_page import ProfilePage
 
-BASE_URL = os.getenv("STAGING_URL")
+BASE_URL = os.getenv("FRONTEND_URL")
 
 
 @pytest.fixture

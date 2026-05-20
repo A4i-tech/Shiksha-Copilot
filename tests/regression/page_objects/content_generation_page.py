@@ -26,9 +26,6 @@ class ContentGenerationPage(BasePage):
         self.board_dropdown = page.locator("app-common-dropdown").nth(2)
 
         # --- View/Edit Page (lesson-plan-view-edit) ---
-        self.view_heading = page.locator("h1").filter(
-            has_text="Lesson Plan|Lesson Resource"
-        )
         self.back_arrow = page.locator("img[src*='back-arrow']")
 
         # Tabs
