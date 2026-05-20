@@ -12,7 +12,7 @@ from app.config import settings
 from app.models.presentation import ImageSearchResult, ImageSearchResults, YouTubeVideoResult
 from app.utils.storage import Storage
 from fastapi import UploadFile
-from pydantic import validate_call
+from pydantic import HttpUrl, validate_call
 import logging
 from html.parser import HTMLParser
 from urllib.parse import urlparse
@@ -58,8 +58,8 @@ def _youtube_process_response(data: dict) -> list[YouTubeVideoResult]:
             description=item["snippet"]["description"],
             channel=item["snippet"]["channelTitle"],
             published_at=item["snippet"]["publishedAt"],
-            url=f"https://www.youtube.com/watch?v={video_id}",
-            thumbnail_url=thumbnail_url,
+            url=HttpUrl(f"https://www.youtube.com/watch?v={video_id}"),
+            thumbnail_url=HttpUrl(thumbnail_url),
         ))
     return out
 
@@ -165,8 +165,8 @@ async def wikimedia_image_search(queries: list[str], max_results_per_query: int,
     retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError)),
     reraise=True,
 )
-async def resolve_image(image: str, storage: Storage | None = None, local_dir: str | None = None) -> str | BytesIO:
-    if not image.startswith("http"):
+async def resolve_image(image: str, is_url: bool, storage: Storage | None = None, local_dir: str | None = None) -> str | BytesIO:
+    if not is_url:
         if not storage or not local_dir:
             raise ValueError("Storage and local directory must be specified to resolve local image (%s)" % image)
         path = storage.path(local_dir, image)
@@ -191,6 +191,27 @@ async def save_file_with_hash(storage: Storage, file: UploadFile, n: int) -> str
     final_name = f"{sha256.hexdigest()}{suffix}"
     await storage.write_bytes(storage.path("uploads", final_name), out.getvalue())
     return final_name
+
+
+# This CNAME is used to form dummy urls from real urls, before sending the url over to agent.
+# NOTE that this CDN is never ACTUALLY hit and can have any value. We just do not want to
+# confuse the agent so we go with a standard "looks real" value.
+_DUMMY_CDN = "cdn.shiksha.local"
+
+
+def randomize_url(url: str, counter: int) -> str:
+    # key really does not matter here, wee aren't aiming for crypto-secure but rather 'random-enough'. determinism
+    # does not matter either - we just need to generate a sufficiently non-sequential stream of values. for instance,
+    # a stream such as ['xxea', 'xxeb', 'xxec'] is sequential (bad) - one char off and the llm has 'guessed' some other
+    # url mapping. the solution below works well for up to 65,536 generations, far more than the amount an agent
+    # would ever request during its runtime.
+    path = hashlib.blake2s(counter.to_bytes(2, "big"), key=b"shiksha-copilot", digest_size=4).hexdigest()
+
+    # retain suffix (.jpg, .gif, etc.) - this is necessary for LLMs to reason about image type. for instance, a user
+    # may make an explicit requirement to 'include GIFs in presentation' where the suffix would come handy.
+    data = urlparse(url)
+    replacement = data.scheme + "://" + _DUMMY_CDN + "/" + path + pathlib.Path(data.path).suffix
+    return replacement
 
 
 LibreOfficeOutputFormat = Literal["pdf", "html", "odp", "ppt", "pptx"]

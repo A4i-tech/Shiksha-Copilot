@@ -3,7 +3,7 @@ from typing import Annotated, Any, Literal
 import uuid
 
 from app.services.presentation import template
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, PositiveInt, StringConstraints
 
 
 UserId = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{24}$")]
@@ -145,5 +145,5 @@ class YouTubeVideoResult(BaseModel):
     description: str
     channel: str
     published_at: str
-    url: str
-    thumbnail_url: str
+    url: HttpUrl
+    thumbnail_url: HttpUrl

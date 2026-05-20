@@ -1,5 +1,5 @@
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import inspect
 from io import BytesIO
@@ -12,7 +12,7 @@ from app.utils.storage import Storage
 from pptx import presentation
 from pptx.util import Length
 
-from pydantic import Field, PositiveInt
+from pydantic import Field, HttpUrl, PositiveInt
 from pydantic_ai import Agent, AgentRunResultEvent, AgentStreamEvent, BinaryContent, FunctionToolCallEvent, FunctionToolResultEvent, FunctionToolset, ModelRetry, PartEndEvent, RunContext, TextContent, TextPart, ThinkingPart, ToolsetTool, WrapperToolset
 from pydantic_ai.capabilities import Thinking
 from pydantic_ai.usage import UsageLimits
@@ -22,7 +22,22 @@ from app.config import DESIGNER_BODY_SLIDE_PROMPT, DESIGNER_FIRST_SLIDE_PROMPT, 
 
 
 @dataclass
-class DesignerDeps:
+class _ImageResolverMixin:
+    _known_urls: dict[str, str] = field(default_factory=dict, init=False)
+
+    def map_url(self, url: str) -> str:
+        if url not in self._known_urls:
+            self._known_urls[url] = utils.randomize_url(url, len(self._known_urls))
+        return self._known_urls[url]
+
+    def resolve_url(self, url: str) -> str:
+        real = next((k for k, v in self._known_urls.items() if v == url), None)
+        if real is None: raise ModelRetry("404 Not Found: %s" % url)
+        return real
+
+
+@dataclass
+class DesignerDeps(_ImageResolverMixin):
     storage: Storage
     prs: presentation.Presentation
     templates: template.Templates
@@ -33,7 +48,7 @@ class DesignerDeps:
 
 
 @dataclass
-class FinalizerDeps:
+class FinalizerDeps(_ImageResolverMixin):
     prs: presentation.Presentation
     templates: template.Templates
     metadata: dict[str, Any]
@@ -42,9 +57,11 @@ class FinalizerDeps:
 def _getdoc(fn: object) -> str: return (inspect.getdoc(fn) or "").replace("\n", " ").replace("  ", " ").strip()
 
 
-async def resolve_image(image: str, storage: Storage | None, local_dir: str | None) -> str | BytesIO:
+async def resolve_image(ctx: _ImageResolverMixin, image: str, storage: Storage | None, local_dir: str | None) -> str | BytesIO:
+    if is_url := image.startswith("http"):
+        image = ctx.resolve_url(image)
     try:
-        return await utils.resolve_image(image, storage, local_dir)
+        return await utils.resolve_image(image, is_url, storage, local_dir)
     except Exception as e:
         raise ModelRetry(str(e)) from e
 
@@ -63,7 +80,7 @@ def ppt_add_body_slide(ctx: RunContext[DesignerDeps], data: template.BodySlideDa
 
 @designer_toolset.tool(description=_getdoc(template.Templates.body_with_image), metadata={"action": "Adding body slide with image"})
 async def ppt_add_body_with_image_slide(ctx: RunContext[DesignerDeps], data: template.BodySlideWithImageData) -> str:
-    data.image_path = await resolve_image(data.image_path, ctx.deps.storage, ctx.deps.figures_dir)
+    data.image_path = await resolve_image(ctx.deps, data.image_path, ctx.deps.storage, ctx.deps.figures_dir)
     ctx.deps.templates.body_with_image(data)
     return "Slide created successfully."
 
@@ -89,7 +106,7 @@ def ppt_add_timeline_slide(ctx: RunContext[DesignerDeps], data: template.Timelin
 
 @designer_toolset.tool(description=_getdoc(template.Templates.image_grid), metadata={"action": "Adding image grid slide"})
 async def ppt_add_image_grid_slide(ctx: RunContext[DesignerDeps], data: template.ImageGridSlideData) -> str:
-    results = await asyncio.gather(*[resolve_image(img.image, ctx.deps.storage, ctx.deps.figures_dir) for img in data.images])
+    results = await asyncio.gather(*[resolve_image(ctx.deps, img.image, ctx.deps.storage, ctx.deps.figures_dir) for img in data.images])
     for img, resolved in zip(data.images, results):
         img.image = resolved
     ctx.deps.templates.image_grid(data)
@@ -112,7 +129,7 @@ def ppt_add_agenda_slide(ctx: RunContext[DesignerDeps], data: template.AgendaSli
 
 @designer_toolset.tool(description=_getdoc(template.Templates.full_image), metadata={"action": "Adding full image slide"})
 async def ppt_add_full_image_slide(ctx: RunContext[DesignerDeps], data: template.FullImageSlideData) -> str:
-    data.image_path = await resolve_image(data.image_path, ctx.deps.storage, ctx.deps.figures_dir)
+    data.image_path = await resolve_image(ctx.deps, data.image_path, ctx.deps.storage, ctx.deps.figures_dir)
     ctx.deps.templates.full_image(data)
     return "Slide created successfully."
 
@@ -199,6 +216,8 @@ async def browse_images(
     if response.message == utils.MSG_NO_RESULTS_FOUND:
         raise ModelRetry("No results. Retry with 1-4 keyword queries only: subject first, no sentences, no image/photo/free/Wikimedia words.")
 
+    for res in response.results:
+        res.url = ctx.deps.map_url(res.url)
     return response
 
 
@@ -256,17 +275,23 @@ designer = Agent(model=settings.pres_designer, name="designer", deps_type=Design
 finalizer = Agent(model=settings.pres_finalizer, name="finalizer", deps_type=FinalizerDeps, retries=3, system_prompt=FINALIZER_SYSTEM_PROMPT.safe_substitute())
 
 
-@finalizer.tool_plain(metadata={"action": "Browsing videos"})
-async def find_videos(query: str, max_results: int = 10) -> list[YouTubeVideoResult]:
+@finalizer.tool(metadata={"action": "Browsing videos"})
+async def find_videos(ctx: RunContext[FinalizerDeps], query: str, max_results: int = 10) -> list[YouTubeVideoResult]:
     """ Search for videos on YouTube. """
     try:
-        return await utils.youtube_video_search(query, max_results)
+        response = await utils.youtube_video_search(query, max_results)
     except ValueError as e:
         raise ModelRetry(str(e)) from e
 
+    for res in response:
+        res.url = HttpUrl(ctx.deps.map_url(str(res.url)))
+        res.thumbnail_url = HttpUrl(ctx.deps.map_url(str(res.thumbnail_url)))
+    return response
+
 @finalizer.tool(description=_getdoc(template.Templates.body_with_video), metadata={"action": "Adding video slide"})
 async def ppt_add_body_video_slide(ctx: RunContext[FinalizerDeps], data: template.BodySlideWithVideoData) -> str:
-    data.thumbnail_image = await resolve_image(data.thumbnail_image, None, None)
+    data.video = HttpUrl(ctx.deps.resolve_url(str(data.video)))
+    data.thumbnail_image = await resolve_image(ctx.deps, data.thumbnail_image, None, None)
     ctx.deps.templates.body_with_video(data)
     return "Slide created successfully."
 
