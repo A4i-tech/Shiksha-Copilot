@@ -143,6 +143,7 @@ async def download_job_artifact(
     headers = {
         "ETag": etag,
         "Cache-Control": "private, max-age=31536000, immutable",
+        "Content-Disposition": "attachment",
         "Content-Length": str(size),
         "X-File-Size": str(size)
     }
