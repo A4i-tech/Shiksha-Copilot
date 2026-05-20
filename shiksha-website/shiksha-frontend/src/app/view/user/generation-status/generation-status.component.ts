@@ -111,14 +111,18 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
 
   private mapPresentationJob(item: PresentationListItem) {
     const totalSlides = item.metadata?.quality?.total_slides || item.metadata?.plan?.outline?.total_slides || item.slides;
+    const isCompleted = item.status === 'complete';
+    const isTerminalError = item.status === 'error' && !!item.metadata?.error?.recovery_attempted;
+    const isRecovering = item.status === 'error' && !item.metadata?.error?.recovery_attempted;
+
     return {
       ...item,
       isPresentation: true,
-      isCompleted: item.status === 'complete',
+      isCompleted,
       updatedAt: item.creation_time,
       presentationTitle: item.metadata?.plan?.outline?.title || 'Presentation deck',
-      presentationStatusTone: item.status === 'complete' ? 'completed' : item.status === 'error' ? 'failed' : item.status === 'idle' ? 'idle' : 'running',
-      presentationStatusLabel: item.status === 'complete' ? 'Completed' : item.status === 'error' ? 'Error' : item.status === 'idle' ? 'Idle' : 'In Progress',
+      presentationStatusTone: isCompleted ? 'completed' : isTerminalError ? 'failed' : item.status === 'idle' ? 'idle' : 'running',
+      presentationStatusLabel: isCompleted ? 'Completed' : isTerminalError ? 'Error' : isRecovering ? 'Recovering' : item.status === 'idle' ? 'Idle' : 'In Progress',
       presentationStatusMessage: item.message || 'Presentation job created',
       presentationSlideCount: totalSlides,
     };
@@ -131,7 +135,7 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
   private syncPresentationStreams() {
     const activePresentationIds = new Set(
       this.list
-        .filter((item: any) => item.isPresentation && item.status !== 'complete' && item.status !== 'error')
+        .filter((item: any) => item.isPresentation && item.status !== 'complete' && !(item.status === 'error' && !!item.metadata?.error?.recovery_attempted))
         .map((item: any) => item.id)
     );
 
@@ -142,7 +146,12 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
     });
 
     this.list.forEach((item: any) => {
-      if (!item.isPresentation || item.status === 'complete' || item.status === 'error' || this.presentationStreams.has(item.id)) {
+      if (
+        !item.isPresentation ||
+        item.status === 'complete' ||
+        (item.status === 'error' && !!item.metadata?.error?.recovery_attempted) ||
+        this.presentationStreams.has(item.id)
+      ) {
         return;
       }
 
@@ -177,7 +186,7 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
       this.closePresentationStream(job.id);
     } else {
       nextList[index] = this.mapPresentationJob(job);
-      if (job.status === 'error') {
+      if (job.status === 'error' && !!job.metadata?.error?.recovery_attempted) {
         this.closePresentationStream(job.id);
       }
     }
