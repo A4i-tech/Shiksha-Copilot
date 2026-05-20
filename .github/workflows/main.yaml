@@ -219,7 +219,7 @@ jobs:
           playwright install chromium
       - name: Run Regression Tests
         env:
-          FRONTEND_URL: ${{ vars.AZURE_FRONTEND_URL }}
+          FRONTEND_URL: ${{ secrets.STAGING_URL }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
         run: pytest tests/regression --csv regression_report.csv -v

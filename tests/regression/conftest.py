@@ -29,17 +29,15 @@ def browser_context():
 
         page.get_by_role("button", name="Continue").click()
 
-        # Wait for PIN modal to slide into view
-        page.get_by_role("heading", name="Enter PIN").wait_for(state="visible", timeout=15000)
-
-        # Focus first hidden input and type full OTP via keyboard — ng-otp-input handles key events
         otp_inputs = page.locator("input.otp-input")
-        otp_inputs.first.evaluate("el => el.focus()")
-        page.keyboard.type(USER_OTP, delay=100)
+        expect(otp_inputs).to_have_count(4)
+
+        for i, digit in enumerate(USER_OTP):
+            otp_inputs.nth(i).click()
+            otp_inputs.nth(i).type(digit, delay=100)
 
         verify_button = page.get_by_role("button", name="Verify")
-        expect(verify_button).to_be_enabled(timeout=5000)
-        verify_button.click(force=True)
+        verify_button.click()
 
         page.wait_for_url("**/dashboard")
 
