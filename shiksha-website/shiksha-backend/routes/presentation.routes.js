@@ -8,8 +8,8 @@ const createPresentationProxy = target => createProxyMiddleware({
 	target,
 	changeOrigin: true,
 	selfHandleResponse: false,
-	proxyTimeout: 0,
-	timeout: 0,
+	proxyTimeout: 300_000,
+	timeout: 310_000,
 	on: {
 		proxyReq: (proxyReq, req, res) => {
 			if (proxyReq.method === "POST" && !req.user.role.includes('power')){
