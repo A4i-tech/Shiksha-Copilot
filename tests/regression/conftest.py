@@ -33,10 +33,12 @@ def browser_context():
         expect(otp_inputs).to_have_count(4)
 
         for i, digit in enumerate(USER_OTP):
-            otp_inputs.nth(i).fill(digit, force=True)
+            otp_inputs.nth(i).evaluate(
+                f"el => {{ el.value = '{digit}'; el.dispatchEvent(new Event('input', {{bubbles: true}})); el.dispatchEvent(new Event('change', {{bubbles: true}})); }}"
+            )
 
         verify_button = page.get_by_role("button", name="Verify")
-        verify_button.click()
+        verify_button.click(force=True)
 
         page.wait_for_url("**/dashboard")
 
