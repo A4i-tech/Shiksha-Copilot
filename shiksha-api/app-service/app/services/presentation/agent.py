@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 import inspect
 from io import BytesIO
 import json
-import mimetypes
 from typing import IO, Annotated, Any, Literal
 
 from app.models.presentation import CaptionerResponse, ImageSearchResults, NextSlideSpec, PresentationOutline, ShikshaAgentEvent, ShikshaCheckpointEvent, SlideSpec, WelcomeSlideInfo, YouTubeVideoResult
@@ -325,21 +324,17 @@ def _adapt_event(event: AgentStreamEvent) -> ShikshaAgentEvent | None:
     return None
 
 
-async def plan(textbook_path: str, data: IO[bytes], figures: list[docparser.FigureInfo], slides: int | None, metadata: dict[str, Any], instruction: str | None):
+async def plan(textbook_path: str, textbook_mime: str, data: IO[bytes], figures: list[docparser.FigureInfo], slides: int | None, metadata: dict[str, Any], instruction: str | None):
     if "outline" in metadata:
         return
 
     yield ShikshaCheckpointEvent(message="Reading document to build presentation spec...")
 
-    mime = mimetypes.guess_type(textbook_path)
-    if not mime or not mime[0]:
-        raise RuntimeError("Cannot infer mime of %s" % textbook_path)
-
     data.seek(0)
-    if mime[0].startswith("text/"):
+    if textbook_mime.startswith("text/"):
         f = TextContent(data.read().decode(), metadata={"source": textbook_path})
     else:
-        f = BinaryContent(data.read(), media_type=mime[0])
+        f = BinaryContent(data.read(), media_type=textbook_mime)
 
     outline = None
     async for raw_event in planner.run_stream_events([f, PLANNER_USER_PROMPT.safe_substitute(

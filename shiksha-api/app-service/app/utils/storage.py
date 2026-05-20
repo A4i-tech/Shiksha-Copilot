@@ -29,12 +29,15 @@ class Storage:
         for start in range(0, size, chunk_size):
             yield await self.fs._cat_file(full, start=start, end=start + chunk_size)
 
-    async def write_bytes(self, path: str, data: bytes):
-        path = posixpath.join(self.root, path)
-        parent = posixpath.dirname(path)
+    async def write_bytes(self, dst: str, src: bytes | pathlib.Path):
+        dst = posixpath.join(self.root, dst)
+        parent = posixpath.dirname(dst)
         if parent:
             await self.fs._makedirs(parent, exist_ok=True)
-        await self.fs._pipe_file(path, data)
+        if isinstance(src, bytes):
+            await self.fs._pipe_file(dst, src)
+        else:
+            await self.fs._put_file(src, dst)
 
 
     @asynccontextmanager

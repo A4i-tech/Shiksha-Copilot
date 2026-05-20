@@ -48,8 +48,8 @@ class JobManager:
         while True:
             yield await self.queue.get()
 
-    async def create(self, user_id: UserId, textbook_file: str, slides: int | None, instruction: str | None, tags: list[str]) -> JobDetail:
-        job = JobDetail(user_id=user_id, textbook_file=textbook_file, slides=slides, instruction=instruction, tags=set(tags))
+    async def create(self, user_id: UserId, textbook_file: str, textbook_mime: str, slides: int | None, instruction: str | None, tags: list[str]) -> JobDetail:
+        job = JobDetail(user_id=user_id, textbook_file=textbook_file, textbook_mime=textbook_mime, slides=slides, instruction=instruction, tags=set(tags))
         await self.collection.insert_one(job.model_dump(mode="json"))
         self._notify_listeners(job.id)
         await self.pub(job.id)

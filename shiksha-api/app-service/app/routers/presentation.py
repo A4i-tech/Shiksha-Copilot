@@ -29,6 +29,16 @@ router = APIRouter(tags=["Presentation Generation"], prefix="/presentation", lif
 XUserIDHeader = Annotated[UserId, Header(alias="X-User-ID")]
 libre_office = LibreOffice()
 
+ALLOWED_MIMES = {
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "text/markdown",
+}
+
 
 def pres(request: Request) -> PresentationService:
     return request.app.state.pres_svc
@@ -50,8 +60,13 @@ async def create_job(
     service: PresentationService = Depends(pres)
 ) -> JobDetail:
     """ Schedule a new PPTX generation job. """
-    textbook_path = await save_file_with_hash(service.storage, textbook_file, content_length)
-    return await service.jobs.create(user_id, textbook_path, slides, instruction, tags)
+    filename = textbook_file.filename
+    if not filename: raise HTTPException(status_code=400, detail="Unsupported file type (cannot read filename)")
+    try:
+        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, content_length, ALLOWED_MIMES)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return await service.jobs.create(user_id, textbook_path, textbook_mime, slides, instruction, tags)
 
 
 @router.get("/job")

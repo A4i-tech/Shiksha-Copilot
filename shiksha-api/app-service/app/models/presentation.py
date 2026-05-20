@@ -92,6 +92,7 @@ class JobDetail(BaseModel):
     creation_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     user_id: UserId
     textbook_file: str
+    textbook_mime: str
     slides: int | None
     instruction: str | None
     status: JobStatus = "init"

@@ -1,3 +1,4 @@
+import mimetypes
 import traceback
 import asyncio
 from contextlib import asynccontextmanager
@@ -142,11 +143,14 @@ class PresentationService:
                 metadata = {}
             if transform_path := job.metadata.get("transform_path", None):
                 source_path = self.storage.path("out", stem, transform_path)
+                source_mime = mimetypes.guess_type(source_path)[0]
+                assert source_mime is not None
             else:
                 source_path = self.storage.path("uploads", job.textbook_file)
+                source_mime = job.textbook_mime
             async with self.storage.read(source_path) as f:
                 figures = await docparser.read_figures(self.storage, f, self.storage.path("out", stem, "figures"))
-                async for event in agent.plan(source_path, f, figures, job.slides, metadata, job.instruction):
+                async for event in agent.plan(source_path, source_mime, f, figures, job.slides, metadata, job.instruction):
                     if isinstance(event, agent.ShikshaCheckpointEvent):
                         await self._process_checkpoint(job, event, "plan", None, out_path)
                     else:

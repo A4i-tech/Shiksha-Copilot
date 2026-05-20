@@ -1,7 +1,6 @@
 import asyncio
 import hashlib
 from io import BytesIO
-import io
 import os
 import shutil
 import tempfile
@@ -12,6 +11,7 @@ from app.config import settings
 from app.models.presentation import ImageSearchResult, ImageSearchResults, YouTubeVideoResult
 from app.utils.storage import Storage
 from fastapi import UploadFile
+import magic
 from pydantic import HttpUrl, validate_call
 import logging
 from html.parser import HTMLParser
@@ -178,19 +178,27 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
-async def save_file_with_hash(storage: Storage, file: UploadFile, n: int) -> str:
-    out = io.BytesIO()
-    pending = n
-    while chunk := await file.read(min(pending, 8192)):
-        out.write(chunk)
-        pending -= len(chunk)
-        if pending == 0:
-            break
-    sha256 = hashlib.sha256(out.getvalue())
-    suffix = pathlib.Path(file.filename or "").suffix.lower()
-    final_name = f"{sha256.hexdigest()}{suffix}"
-    await storage.write_bytes(storage.path("uploads", final_name), out.getvalue())
-    return final_name
+async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, n: int, allowed_mimes: set[str]) -> tuple[str, str]:
+    suffix = pathlib.Path(filename).suffix.lower()
+    sha256 = hashlib.sha256()
+    with tempfile.NamedTemporaryFile(suffix=suffix) as f:
+        pending = n
+        while chunk := await file.read(min(pending, 8192)):
+            f.write(chunk)
+            sha256.update(chunk)
+            pending -= len(chunk)
+            if pending == 0:
+                break
+
+        f.seek(0)
+        mime = magic.from_file(f.name, mime=True)
+        if mime not in allowed_mimes:
+            raise ValueError("Unexpected mime (%s)" % mime)
+
+        f.seek(0)
+        final_name = f"{sha256.hexdigest()}{suffix}"
+        await storage.write_bytes(storage.path("uploads", final_name), pathlib.Path(f.name))
+    return final_name, mime
 
 
 # This CNAME is used to form dummy urls from real urls, before sending the url over to agent.
