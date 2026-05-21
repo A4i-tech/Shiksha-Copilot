@@ -54,9 +54,10 @@ def annotate_idle(service: PresentationService, job: JobDetail):
 async def create_job(
     user_id: XUserIDHeader,
     content_length: int = Header(lt=settings.pres_upload_max_filesize),
-    textbook_file: UploadFile = File(...), slides: int | None = Form(None),
-    instruction: str | None = Form(None),
-    tags: list[str] = Form(list()),
+    textbook_file: UploadFile = File(...),
+    slides: int | None = Form(None, ge=6, le=20),
+    instruction: str | None = Form(None, max_length=1000),
+    tags: list[str] = Form(default_factory=list, max_length=16),
     service: PresentationService = Depends(pres)
 ) -> JobDetail:
     """ Schedule a new PPTX generation job. """
