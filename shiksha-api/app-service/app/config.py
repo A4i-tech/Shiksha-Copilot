@@ -2,7 +2,7 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field
+from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Optional
 
@@ -51,7 +51,11 @@ class Settings(BaseSettings):
     pres_planner: str = "openai:gpt-5-nano"
     pres_designer: str = "openai:gpt-5-nano"
     pres_finalizer: str = "openai:gpt-5-nano"
+    pres_max_auto_retries: PositiveInt = 5
+    pres_max_instruction_size: PositiveInt = 1000
+    pres_max_slide_count: PositiveInt = 20
     pres_mongodb_url: str = "mongodb://localhost:27017/shiksha_viz"
+    pres_sse_buffer_limit: PositiveInt = 512
     pres_storage_filesystem: str = "file"
     pres_storage_root: str = "shiksha-copilot-presentations"
     pres_storage_options: dict[str, Any] = Field(default_factory=dict)

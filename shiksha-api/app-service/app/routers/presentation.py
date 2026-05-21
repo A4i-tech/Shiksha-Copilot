@@ -55,8 +55,8 @@ async def create_job(
     user_id: XUserIDHeader,
     content_length: int = Header(lt=settings.pres_upload_max_filesize),
     textbook_file: UploadFile = File(...),
-    slides: int | None = Form(None, ge=6, le=20),
-    instruction: str | None = Form(None, max_length=1000),
+    slides: int | None = Form(None, ge=1, le=settings.pres_max_slide_count),
+    instruction: str | None = Form(None, max_length=settings.pres_max_instruction_size),
     tags: list[str] = Form(default_factory=list, max_length=16),
     service: PresentationService = Depends(pres)
 ) -> JobDetail:
@@ -182,7 +182,7 @@ async def _wait_disconnected(request: Request):
 
 
 async def _safe_stream_job_logs(request: Request, service: PresentationService) -> AsyncIterator[dict]:
-    q = asyncio.Queue(maxsize=512)
+    q = asyncio.Queue(maxsize=settings.pres_sse_buffer_limit)
     stop = asyncio.create_task(_wait_disconnected(request))
     get = asyncio.create_task(q.get())
     service.jobs.log_subscribers.add(q)

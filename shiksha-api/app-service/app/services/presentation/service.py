@@ -8,7 +8,6 @@ import logging
 import pathlib
 from datetime import datetime
 from typing import Any
-import uuid
 
 from pptx import presentation, Presentation
 
@@ -20,10 +19,11 @@ from app.utils.storage import Storage
 
 class PresentationService:
 
-    def __init__(self, storage: Storage, jobs: JobManager, do_transform: bool):
+    def __init__(self, storage: Storage, jobs: JobManager, do_transform: bool, max_auto_retries: int):
         self.storage = storage
         self.jobs = jobs
         self.do_transform = do_transform
+        self.max_auto_retries = max_auto_retries
         self.logger = logging.getLogger(__name__)
         self.processing: dict[bytes, asyncio.Task] = {}
 
@@ -272,7 +272,7 @@ class PresentationService:
                 })
         elif job.status == "error":
             if "error" in job.metadata:
-                if job.metadata["error"]["attempt"] > 5:
+                if job.metadata["error"]["attempt"] > self.max_auto_retries:
                     self.logger.warning(f"No longer attempting automatic recovery for job {job.id} ({job.metadata['error']['attempt']} attempts)")
                     if job.metadata["error"]["attempting_recovery"]:
                         await self.jobs.update(job.id, {"metadata.error.attempting_recovery": False})
@@ -292,4 +292,4 @@ class PresentationService:
 def new_default():
     storage = Storage(settings.pres_storage_filesystem, settings.pres_storage_root, settings.pres_storage_options)
     jobs = JobManager(settings.pres_mongodb_url)
-    return PresentationService(storage, jobs, settings.pres_do_transform)
+    return PresentationService(storage, jobs, settings.pres_do_transform, settings.pres_max_auto_retries)
