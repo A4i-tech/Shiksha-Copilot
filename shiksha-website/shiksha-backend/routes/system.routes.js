@@ -9,7 +9,7 @@ router.get("/health", (req, res) => res.json({
 	build: process.env.SHIKSHA_COPILOT_BUILD || null,
 }));
 
-router.use("/health-api", createProxyMiddleware({
+router.get("/health-api", createProxyMiddleware({
   target: process.env.LLM_API_BASE_URL,
   changeOrigin: true,
   pathRewrite: () => "/health",
