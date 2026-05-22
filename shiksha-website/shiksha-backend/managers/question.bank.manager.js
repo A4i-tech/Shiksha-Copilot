@@ -4,7 +4,6 @@ const QuestionBankDao = require("../dao/question.bank.dao");
 const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
-const { validatePartsResponse, validateTemplateResponse, validateBlueprintResponse } = require("../schemas/ai.response.schema");
 const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
@@ -18,7 +17,6 @@ const { convertToCamelCase } = require("../helper/formatter");
 const QuestionBankCacheDao = require("../dao/question.bank.cache.dao");
 const {
   getQuestions,
-  filterTemplate,
   mergeQuestions,
   processCacheHits,
   processCacheHitsForSubtopic,
@@ -177,7 +175,7 @@ class QuestionBankManager extends BaseManager {
 
       // 1. Get Questions (Manual or AI + Cache)
       const aiResult = await this._handleAIQuestionGeneration(context, user, req.body);
-      let { mergedList, notFoundQuestions, cacheSummary, rawCacheHit } = aiResult;
+      let { mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache } = aiResult;
 
       // 2. Translation
       mergedList = await this._handleTranslation(language, mergedList, examinationName);
@@ -185,6 +183,15 @@ class QuestionBankManager extends BaseManager {
       // 3. Return Preview if requested
       if (isPreview === true || isPreview === "true") {
         if (session && session.inTransaction()) await session.abortTransaction();
+        await this._enqueueCacheUpdate(
+          null,
+          context,
+          mergedList,
+          notFoundQuestions,
+          cacheSummary,
+          rawCacheHit,
+          aiQuestionsForCache
+        );
         return formatApiReponse(
           true,
           "Question bank preview generated successfully!",
@@ -201,6 +208,16 @@ class QuestionBankManager extends BaseManager {
         notFoundQuestions,
         cacheSummary,
         rawCacheHit
+      );
+
+      await this._enqueueCacheUpdate(
+        result._id,
+        context,
+        mergedList,
+        notFoundQuestions,
+        cacheSummary,
+        rawCacheHit,
+        aiQuestionsForCache
       );
 
       if (session) await session.commitTransaction();
@@ -220,25 +237,14 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async translateQuestionPaper(payload) {
+  async translateQuestionPaper(target_language, json_data) {
     try {
       const pythonUrl = process.env.LLM_API_BASE_URL;
-      const response = await axios.post(
-        `${pythonUrl}/question-paper/translate_json`,
-        payload
-      );
-      return formatApiReponse(
-        true,
-        "Translation processed successfully",
-        response.data
-      );
+      const response = await axios.post(`${pythonUrl}/question-paper/translate-json`, {target_language, json_data});
+      return formatApiReponse(true, "Translation processed successfully", response.data);
     } catch (err) {
       console.error("Translation Manager Error:", err.message);
-      return formatApiReponse(
-        false,
-        "Translation failed",
-        err.response?.data || err.message
-      );
+      return formatApiReponse(false, "Translation failed", err.response?.data || err.message);
     }
   }
 
@@ -312,6 +318,7 @@ class QuestionBankManager extends BaseManager {
     let notFoundQuestions = [];
     let cacheSummary = {};
     let rawCacheHit = [];
+    let aiQuestionsForCache = [];
 
     if (questions && questions.length > 0) {
       console.log("[Manager] Manual Flow detected. Using provided questions/sections.");
@@ -319,43 +326,37 @@ class QuestionBankManager extends BaseManager {
       return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
     }
 
+    const cacheQuestionFilters = this._buildCacheQuestionFilters(template || []);
+
     // AI GENERATION FLOW
-    const cacheHit = await this.questionBankCacheDao.findInCache(
-      chapterIds,
-      unitLevel,
-      processedUnitNames
-    );
+    const [cacheHit, fullCacheHit] = await Promise.all([
+      this.questionBankCacheDao.findInCache(
+        chapterIds,
+        unitLevel,
+        processedUnitNames,
+        cacheQuestionFilters
+      ),
+      this.questionBankCacheDao.findInCache(
+        chapterIds,
+        unitLevel,
+        processedUnitNames
+      )
+    ]);
 
-    rawCacheHit = (cacheHit || []).map((doc) => doc.toObject());
-
-    const {
-      matchTheFollowingTemplate,
-      matchTheFollowingIndex,
-      filteredTemplate,
-    } = filterTemplate(template || []);
+    rawCacheHit = (fullCacheHit || []).map((doc) => doc.toObject());
 
     const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
-      filteredTemplate,
-      cacheHit
+      template || [],
+      cacheHit,
+      { returnPool: context.isPreview === true || context.isPreview === "true" }
     );
     cacheSummary = summary;
-    notFoundQuestions = structuredClone(notFoundRes);
+    notFoundQuestions = JSON.parse(JSON.stringify(notFoundRes));
 
     const templatePayload = await this._createQuestionBankPayload(
       originalBody,
       user
     );
-
-    // Re-inject Match The Following placeholders
-    if (matchTheFollowingTemplate.length) {
-      for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-        notFoundRes.splice(
-          matchTheFollowingIndex[i],
-          0,
-          matchTheFollowingTemplate[i]
-        );
-      }
-    }
 
     let newResQuestions;
     if (notFoundRes.length) {
@@ -372,16 +373,16 @@ class QuestionBankManager extends BaseManager {
       }
 
       console.log('[Manager] AI Response received.');
-      let newQuestions = response.data;
 
-      // Strict Zod validation - extracts from nested structure
-      const validatedQuestions = validatePartsResponse(newQuestions);
+      // Normalize Python response from nested blocks into the flat merge shape.
+      const normalizedQuestions = [];
+      for(const questionBlock of response.data.questions) normalizedQuestions.push(...questionBlock.questions);
 
-      // Restructure validated items into blocks for mergeQuestions
+      // Restructure normalized items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
         const numNeeded = template.question_distribution.length;
-        const blockQuestions = validatedQuestions.slice(itemPointer, itemPointer + numNeeded);
+        const blockQuestions = normalizedQuestions.slice(itemPointer, itemPointer + numNeeded);
         itemPointer += numNeeded;
         return {
           type: template.type,
@@ -389,38 +390,35 @@ class QuestionBankManager extends BaseManager {
         };
       });
 
-      const filteredQuestions = filterTemplate(questionsInBlocks);
-      newResQuestions = filteredQuestions.filteredTemplate;
+      newResQuestions = questionsInBlocks;
+      aiQuestionsForCache = newResQuestions;
 
       mergedList = mergeQuestions(res, newResQuestions, notFoundIndices);
-
-      if (filteredQuestions.matchTheFollowingTemplate.length) {
-        for (let i = 0; i < filteredQuestions.matchTheFollowingTemplate.length; i++) {
-          mergedList.splice(
-            filteredQuestions.matchTheFollowingIndex[i],
-            0,
-            filteredQuestions.matchTheFollowingTemplate[i]
-          );
-        }
-      }
     } else {
       mergedList = res;
     }
 
-    // Re-inject Match following for full list
-    if (matchTheFollowingTemplate.length) {
-      for (let i = 0; i < matchTheFollowingTemplate.length; i++) {
-        if (mergedList.length < (template || []).length) {
-          mergedList.splice(
-            matchTheFollowingIndex[i],
-            0,
-            matchTheFollowingTemplate[i]
-          );
-        }
-      }
-    }
+    return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache };
+  }
 
-    return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
+  _buildCacheQuestionFilters(template) {
+    const filters = [];
+
+    (template || []).forEach((item) => {
+      const marks = item.marks_per_question || item.marksPerQuestion;
+      const questionDistribution = item.question_distribution || item.questionDistribution || [];
+
+      questionDistribution.forEach((distribution) => {
+        filters.push({
+          unitName: distribution.unit_name || distribution.unitName,
+          objective: (distribution.objective || "").toLowerCase(),
+          type: item.type,
+          marks,
+        });
+      });
+    });
+
+    return filters;
   }
 
   async _handleTranslation(language, mergedList, examinationName) {
@@ -428,27 +426,18 @@ class QuestionBankManager extends BaseManager {
 
     console.log(`Initiating translation check for target language: ${language}...`);
     try {
-      const translationPayload = {
-        target_language: language,
-        json_data: {
-          title: examinationName || "Question Paper",
-          language: language,
-          parts: [
-            {
-              part_name: "Questions",
-              questions: convertToCamelCase(mergedList),
-            },
-          ],
-        },
-      };
+      const transResponse = await this.translateQuestionPaper(language, {
+        title: examinationName || "Question Paper",
+        language: language,
+        parts: [
+          {part_name: "Questions", questions: convertToCamelCase(mergedList)},
+        ],
+      });
 
-      const transResponse = await this.translateQuestionPaper(translationPayload);
-
-      if (transResponse.success && transResponse.data && transResponse.data.translated_json) {
-        const translatedData = transResponse.data.translated_json;
-        if (translatedData.parts && translatedData.parts[0].questions) {
+      if (transResponse.success && transResponse.data) {
+        if (transResponse.data.parts && transResponse.data.parts[0].questions) {
           console.log("Translation process completed.");
-          return translatedData.parts[0].questions;
+          return transResponse.data.parts[0].questions;
         }
       }
     } catch (transErr) {
@@ -497,8 +486,22 @@ class QuestionBankManager extends BaseManager {
 
     const questionBankConfig = await this.questionBankDao.create(configData, session);
 
-    // Cache Summary & Update Job
+    return {
+      ...questionBankConfig.toObject(),
+      questions: mergedList,
+    };
+  }
+
+  async _enqueueCacheUpdate(questionBankConfigId, context, mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache) {
     if (notFoundQuestions.length) {
+      const {
+        isMultiChapter,
+        chapterIds,
+        objectiveDistribution,
+        processedUnitNames,
+        unitLevel
+      } = context;
+
       const objectives = objectiveDistribution?.length
         ? objectiveDistribution.map((e) =>
           (e.objective || "").toLowerCase()
@@ -522,11 +525,12 @@ class QuestionBankManager extends BaseManager {
         );
 
       let cacheSummaryData = convertToCamelCase({
-        questionBankConfigId: questionBankConfig._id,
+        questionBankConfigId,
         totalQuestionsToFindInCache: cacheSummary.totalDecisions,
         cacheHit: cacheSummary.cacheHitCount,
         cacheMiss: cacheSummary.cacheMissCount,
         notFoundResponse: mergedList,
+        aiQuestionsForCache,
         processedCache,
         unitLevel,
       });
@@ -535,34 +539,18 @@ class QuestionBankManager extends BaseManager {
 
       cacheSummaryData.notFoundQuestions = notFoundQuestions;
 
-      const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData, session);
+      const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData);
 
       addCacheJob({
         notFoundQuestions,
         processedCache,
         unitLevel,
-        newResQuestions: mergedList,
+        newResQuestions: aiQuestionsForCache,
         cacheSummaryId: summary._id.toString(),
       }).catch((err) => {
         console.error("Failed to enqueue cache update job", err);
       });
-    } else {
-      let cacheSummaryData = convertToCamelCase({
-        questionBankConfigId: questionBankConfig._id,
-        totalQuestionsToFindInCache: cacheSummary.totalDecisions,
-        cacheHit: cacheSummary.cacheHitCount,
-        cacheMiss: cacheSummary.cacheMissCount,
-        unitLevel,
-        isCacheUpdated: true,
-      });
-
-      await this.questionBankCacheSummaryDao.create(cacheSummaryData, session);
     }
-
-    return {
-      ...questionBankConfig.toObject(),
-      questions: mergedList,
-    };
   }
 
   _mapTemplateTypes(templateArray) {
@@ -792,6 +780,7 @@ class QuestionBankManager extends BaseManager {
           notFoundQuestions,
           processedCache,
           unitLevel,
+          aiQuestionsForCache,
           notFoundResponse,
         } = job;
 
@@ -799,7 +788,7 @@ class QuestionBankManager extends BaseManager {
           notFoundQuestions,
           processedCache,
           unitLevel,
-          newResQuestions: notFoundResponse,
+          newResQuestions: aiQuestionsForCache || notFoundResponse,
           cacheSummaryId: job._id.toString(),
         });
       }
@@ -816,14 +805,14 @@ class QuestionBankManager extends BaseManager {
       if (!failedJob) throw new Error("Job not found");
       failedJob = failedJob.toObject();
 
-      const { notFoundQuestions, processedCache, unitLevel, notFoundResponse } =
+      const { notFoundQuestions, processedCache, unitLevel, aiQuestionsForCache, notFoundResponse } =
         failedJob;
 
       addCacheJob({
         notFoundQuestions,
         processedCache,
         unitLevel,
-        newResQuestions: notFoundResponse,
+        newResQuestions: aiQuestionsForCache || notFoundResponse,
         cacheSummaryId: failedJob._id.toString(),
       });
 

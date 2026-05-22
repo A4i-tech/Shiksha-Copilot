@@ -9,7 +9,9 @@ class TestNativeQdrantRagAdapter:
     @pytest.fixture
     def mock_azure_client(self):
         """Create a mock Azure OpenAI client."""
-        return MagicMock()
+        client = MagicMock()
+        client.embeddings.create = AsyncMock()
+        return client
 
     @pytest.fixture
     def mock_settings(self):
@@ -20,9 +22,10 @@ class TestNativeQdrantRagAdapter:
             yield mock
 
     @pytest.fixture
-    @patch("app.services.rag_adapter_cache.QdrantClient")
+    @patch("app.services.rag_adapter_cache.AsyncQdrantClient")
     def adapter(self, mock_qdrant_client, mock_azure_client, mock_settings):
         """Create a NativeQdrantRagAdapter instance."""
+        mock_qdrant_client.return_value = AsyncMock()
         return NativeQdrantRagAdapter(
             client=mock_azure_client,
             collection_name="test_collection",
@@ -34,7 +37,7 @@ class TestNativeQdrantRagAdapter:
         self, mock_azure_client, mock_settings
     ):
         """Test adapter initialization with Qdrant settings."""
-        with patch("app.services.rag_adapter_cache.QdrantClient") as mock_qdrant:
+        with patch("app.services.rag_adapter_cache.AsyncQdrantClient") as mock_qdrant:
             adapter = NativeQdrantRagAdapter(
                 client=mock_azure_client,
                 collection_name="test_collection",
@@ -65,35 +68,28 @@ class TestNativeQdrantRagAdapter:
             assert adapter.qdrant is None
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_initialize_success(self, mock_to_thread, adapter):
+    async def test_initialize_success(self, adapter):
         """Test successful initialization."""
-        mock_to_thread.return_value = MagicMock()
-
         await adapter.initialize()
 
-        mock_to_thread.assert_called_once()
+        adapter.qdrant.get_collection.assert_awaited_once_with("test_collection")
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_initialize_collection_error(self, mock_to_thread, adapter):
+    async def test_initialize_collection_error(self, adapter):
         """Test initialization when collection check fails."""
-        mock_to_thread.side_effect = Exception("Collection not found")
+        adapter.qdrant.get_collection.side_effect = Exception("Collection not found")
 
         # Should not raise, just log error
         await adapter.initialize()
 
-        mock_to_thread.assert_called_once()
+        adapter.qdrant.get_collection.assert_awaited_once_with("test_collection")
 
     @pytest.mark.asyncio
     async def test_cleanup(self, adapter):
         """Test cleanup closes Qdrant connection."""
-        adapter.qdrant = MagicMock()
-        adapter.qdrant.close = MagicMock()
-
         await adapter.cleanup()
 
-        adapter.qdrant.close.assert_called_once()
+        adapter.qdrant.close.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_cleanup_without_qdrant(self, mock_azure_client):
@@ -113,30 +109,28 @@ class TestNativeQdrantRagAdapter:
             await adapter.cleanup()
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_get_embedding(self, mock_to_thread, adapter):
+    async def test_get_embedding(self, adapter):
         """Test generating embeddings."""
         mock_response = MagicMock()
         mock_response.data = [MagicMock(embedding=[0.1, 0.2, 0.3])]
-        mock_to_thread.return_value = mock_response
+        adapter.client.embeddings.create.return_value = mock_response
 
         result = await adapter._get_embedding("test text")
 
         assert result == [0.1, 0.2, 0.3]
-        mock_to_thread.assert_called_once()
+        adapter.client.embeddings.create.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_get_embedding_with_newlines(self, mock_to_thread, adapter):
+    async def test_get_embedding_with_newlines(self, adapter):
         """Test that newlines are cleaned from input text."""
         mock_response = MagicMock()
         mock_response.data = [MagicMock(embedding=[0.1, 0.2])]
-        mock_to_thread.return_value = mock_response
+        adapter.client.embeddings.create.return_value = mock_response
 
         await adapter._get_embedding("test\ntext\nwith\nnewlines")
 
         # Verify the text was cleaned (newlines replaced with spaces)
-        call_args = mock_to_thread.call_args
+        call_args = adapter.client.embeddings.create.call_args
         assert "\n" not in str(call_args)
 
     @pytest.mark.asyncio
@@ -158,8 +152,7 @@ class TestNativeQdrantRagAdapter:
             assert result == ""
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_retrieve_context_success(self, mock_to_thread, adapter):
+    async def test_retrieve_context_success(self, adapter):
         """Test successful context retrieval."""
         # Mock embedding
         mock_embedding_response = MagicMock()
@@ -172,18 +165,17 @@ class TestNativeQdrantRagAdapter:
         mock_hit2.payload = {"content": "Second result"}
         mock_search_results = [mock_hit1, mock_hit2]
 
-        # Setup mock_to_thread to return different values for different calls
-        mock_to_thread.side_effect = [mock_embedding_response, mock_search_results]
+        adapter.client.embeddings.create.return_value = mock_embedding_response
+        adapter.qdrant.search.return_value = mock_search_results
 
         result = await adapter._retrieve_context("test query", top_k=2)
 
         assert "First result" in result
         assert "Second result" in result
-        assert mock_to_thread.call_count == 2
+        adapter.qdrant.search.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_retrieve_context_with_text_key(self, mock_to_thread, adapter):
+    async def test_retrieve_context_with_text_key(self, adapter):
         """Test context retrieval when payload uses 'text' key."""
         mock_embedding_response = MagicMock()
         mock_embedding_response.data = [MagicMock(embedding=[0.1, 0.2])]
@@ -191,17 +183,17 @@ class TestNativeQdrantRagAdapter:
         mock_hit = MagicMock()
         mock_hit.payload = {"text": "Result with text key"}
 
-        mock_to_thread.side_effect = [mock_embedding_response, [mock_hit]]
+        adapter.client.embeddings.create.return_value = mock_embedding_response
+        adapter.qdrant.search.return_value = [mock_hit]
 
         result = await adapter._retrieve_context("query")
 
         assert "Result with text key" in result
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_retrieve_context_error_handling(self, mock_to_thread, adapter):
+    async def test_retrieve_context_error_handling(self, adapter):
         """Test error handling during context retrieval."""
-        mock_to_thread.side_effect = Exception("Search failed")
+        adapter.client.embeddings.create.side_effect = Exception("Search failed")
 
         # Should not raise, should return empty or handle gracefully
         result = await adapter._retrieve_context("query")
@@ -210,17 +202,18 @@ class TestNativeQdrantRagAdapter:
         assert isinstance(result, str)
 
     @pytest.mark.asyncio
-    @patch("app.services.rag_adapter_cache.asyncio.to_thread")
-    async def test_retrieve_context_custom_top_k(self, mock_to_thread, adapter):
+    async def test_retrieve_context_custom_top_k(self, adapter):
         """Test context retrieval with custom top_k value."""
         mock_embedding_response = MagicMock()
         mock_embedding_response.data = [MagicMock(embedding=[0.1])]
 
         mock_hits = [MagicMock(payload={"content": f"Result {i}"}) for i in range(10)]
 
-        mock_to_thread.side_effect = [mock_embedding_response, mock_hits]
+        adapter.client.embeddings.create.return_value = mock_embedding_response
+        adapter.qdrant.search.return_value = mock_hits
 
         result = await adapter._retrieve_context("query", top_k=10)
 
         # Should contain multiple results
         assert len(result) > 0
+        assert adapter.qdrant.search.call_args.kwargs["limit"] == 10

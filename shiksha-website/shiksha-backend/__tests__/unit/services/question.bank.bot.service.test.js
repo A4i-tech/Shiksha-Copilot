@@ -7,7 +7,6 @@ describe("question.bank.bot.service", () => {
     jest.clearAllMocks();
     axios = require("axios");
     process.env.LLM_API_BASE_URL = "http://llm";
-    process.env.LLM_EMBEDDING_URL = "http://embed";
   });
 
   it("posts to question bank template", async () => {
@@ -38,23 +37,6 @@ describe("question.bank.bot.service", () => {
     expect(axios.post).toHaveBeenCalledWith("http://llm/question-paper", {
       q: 1,
     });
-  });
-
-  it("posts to embedding", async () => {
-    axios.post.mockResolvedValue({ status: 200, data: { emb: true } });
-    const service = require("../../../services/question.bank.bot.service");
-    const res = await service.postToEmbedding({ text: "hi" });
-    expect(axios.post).toHaveBeenCalledWith("http://embed", { text: "hi" });
-    expect(res.data).toEqual({ emb: true });
-  });
-
-  it("posts to embeddings in batches", async () => {
-    axios.post.mockResolvedValue({ status: 200, data: { emb: true } });
-    const service = require("../../../services/question.bank.bot.service");
-    const payloads = [{ a: 1 }, { a: 2 }, { a: 3 }];
-    const res = await service.postToEmbeddings(payloads);
-    expect(axios.post).toHaveBeenCalledTimes(3);
-    expect(res).toEqual([{ emb: true }, { emb: true }, { emb: true }]);
   });
 
   it("posts to question bank parts", async () => {

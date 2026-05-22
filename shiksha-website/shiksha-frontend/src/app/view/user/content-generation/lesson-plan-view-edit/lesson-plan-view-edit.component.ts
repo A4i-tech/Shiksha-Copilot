@@ -93,6 +93,11 @@ export class LessonPlanViewEditComponent implements OnInit {
       name: '',
       downloadType: 'planDoc',
     },
+    {
+      type: 'presentation',
+      name: '',
+      downloadType: 'lessonPresentation',
+    },
     // {
     //   type: 'ppt',
     //   name: '',
@@ -179,6 +184,9 @@ export class LessonPlanViewEditComponent implements OnInit {
           //   }`,
           // },
           {
+            title: `${this.isLesson ? 'Lesson Plan Presentation' : ''}`,
+          },
+          {
             title: `${
               this.isLesson && this.subjectDetails?.chapter?.board === 'KSEEB'
                 ? '5E Table Docx'
@@ -199,7 +207,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         });
         if (!this.isLesson) {
          this.docTypeValues = this.docTypeValues.filter(
-          (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
+          (e: any) => !['lessonPresentation', 'planChecklist', 'planChecklistPdf'].includes(e.downloadType)
         );
         }
       } else {

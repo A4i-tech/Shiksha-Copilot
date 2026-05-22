@@ -1,14 +1,12 @@
 import logging
-import asyncio
-import json
 from collections import OrderedDict
-from typing import List, Dict, Any
+from typing import List, Any
 
 # 1. Native Azure Client
-from openai import AzureOpenAI
+from openai import AsyncAzureOpenAI
 
 # 2. Native Qdrant Client (replaces LlamaIndex vector store)
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 
 from app.config import settings
 
@@ -21,7 +19,7 @@ class NativeQdrantRagAdapter:
     """
     def __init__(
         self, 
-        client: AzureOpenAI, 
+        client: AsyncAzureOpenAI,
         collection_name: str, 
         embedding_model: str,
         chat_model: str
@@ -33,7 +31,7 @@ class NativeQdrantRagAdapter:
         
         # Initialize Qdrant Client based on settings
         if settings.qdrant_url and settings.qdrant_api_key:
-            self.qdrant = QdrantClient(
+            self.qdrant = AsyncQdrantClient(
                 url=settings.qdrant_url,
                 api_key=settings.qdrant_api_key,
             )
@@ -46,27 +44,20 @@ class NativeQdrantRagAdapter:
         """Verify connection or collection existence."""
         if self.qdrant:
             try:
-                # Optional: Check if collection exists
-                await asyncio.to_thread(
-                    self.qdrant.get_collection, self.collection_name
-                )
+                await self.qdrant.get_collection(self.collection_name)
             except Exception as e:
                 logger.error(f"Failed to connect to Qdrant collection {self.collection_name}: {e}")
 
     async def cleanup(self):
         """Close connections if necessary."""
         if self.qdrant:
-            self.qdrant.close()
+            await self.qdrant.close()
 
     async def _get_embedding(self, text: str) -> List[float]:
         """Generate embedding using Azure OpenAI native client."""
         # Clean newlines to avoid embedding issues
         text = text.replace("\n", " ")
-        response = await asyncio.to_thread(
-            self.client.embeddings.create,
-            input=[text],
-            model=self.embedding_model
-        )
+        response = await self.client.embeddings.create(input=[text], model=self.embedding_model)
         return response.data[0].embedding
 
     async def _retrieve_context(self, query: str, top_k: int = 5) -> str:
@@ -79,8 +70,7 @@ class NativeQdrantRagAdapter:
             vector = await self._get_embedding(query)
 
             # 2. Search Qdrant
-            search_result = await asyncio.to_thread(
-                self.qdrant.search,
+            search_result = await self.qdrant.search(
                 collection_name=self.collection_name,
                 query_vector=vector,
                 limit=top_k
@@ -138,15 +128,12 @@ class NativeQdrantRagAdapter:
             messages.append({"role": "user", "content": curr_message})
 
             # 5. Call Chat Completion
-            response = await asyncio.to_thread(
-                self.client.chat.completions.create,
+            response = await self.client.responses.create(
                 model=self.chat_model,
-                messages=messages,
+                input=messages,
                 temperature=0.1, # Low temp for factual Q&A
             )
-
-            return response.choices[0].message.content
-
+            return response.output_text
         except Exception as e:
             logger.error(f"Error in Native Qdrant Adapter chat: {e}")
             raise e
@@ -164,7 +151,7 @@ class RagAdapterCache:
     async def get_or_create_adapter(
         self,
         index_path: str, # Acts as Collection Name
-        client: AzureOpenAI,
+        client: AsyncAzureOpenAI,
         embedding_model: str,
         chat_model: str,
     ) -> NativeQdrantRagAdapter:

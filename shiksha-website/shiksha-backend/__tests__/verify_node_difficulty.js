@@ -1,5 +1,5 @@
 
-const { validatePartsResponse } = require('../schemas/ai.response.schema');
+const { normalizePartsResponse } = require('../schemas/ai.response.schema');
 
 const mockAiResponse = {
     metadata: {
@@ -36,8 +36,8 @@ const mockAiResponse = {
 };
 
 try {
-    console.log("Testing validatePartsResponse with mock data...");
-    const flattened = validatePartsResponse(mockAiResponse);
+    console.log("Testing normalizePartsResponse with mock data...");
+    const flattened = normalizePartsResponse(mockAiResponse);
 
     console.log("Result:");
     console.log(JSON.stringify(flattened, null, 2));

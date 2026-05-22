@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Document, Paragraph, HeadingLevel } from 'docx';
-import { DocxUtilityService } from './docx-utility.service';
+import { DocxContext, DocxUtilityService } from './docx-utility.service';
 import { TranslateService } from '@ngx-translate/core';
 
 @Injectable({
@@ -10,6 +10,7 @@ export class LessonDocxGeneratorService {
   constructor(private docxUtility: DocxUtilityService, private translateService:TranslateService) {}
 
   generateDocx(data: any[], formData: any, checkList:any[], learningOutcomes:any[]) {
+    const context = new DocxContext();
   const checklistContent = checkList.map((item) => [
     new Paragraph({
         text: this.translateService.instant(item.type),
@@ -50,13 +51,14 @@ const firstPageContent = [
     let sectionData;
     sectionData = data.map((section) => {
       if (section.type === 'Evaluate') {
-        return this.handleEvalutate(section);
+        return this.handleEvalutate(section, context);
       } else {
-        return this.handleExploreToEloborate(section, formData);
+        return this.handleExploreToEloborate(section, formData, context);
       }
     });
 
     const doc = new Document({
+      numbering: this.docxUtility.getMarkdownNumbering(),
       sections: [
         {
             children: firstPageContent,
@@ -72,7 +74,7 @@ const firstPageContent = [
     this.docxUtility.downloadFile(doc, `${formData?.subjects?.name}_Sem${formData?.subjects?.sem}_${formData?.chapter?.topics }`);
   }
 
-  handleExploreToEloborate(section: any, formData: any) {
+  handleExploreToEloborate(section: any, formData: any, context: DocxContext) {
     return {
       children: [
         new Paragraph({
@@ -95,9 +97,7 @@ const firstPageContent = [
                 after: 80,
               },
             }),
-            ...topic.content.main.split('\n').map((line: any) => {
-              return this.docxUtility.getFormatedContent(line);
-            }),
+            ...this.docxUtility.getMarkdownParagraphs(topic.content.main, context),
           ])
           .flat(),
       ],
@@ -105,7 +105,7 @@ const firstPageContent = [
     };
   }
 
-  handleEvalutate(section: any) {
+  handleEvalutate(section: any, context: DocxContext) {
     const { content } = section.info[0];
 
     // Create an array to hold all paragraphs
@@ -140,20 +140,14 @@ const firstPageContent = [
           const questionParagraphs = block.questions.flatMap(
             (question: any, questionIndex: number) => {
               // Paragraph for the question
-              const questionParagraph = question?.question ? new Paragraph({
-                text: `${questionIndex + 1}. ${question.question}`,
-                spacing: {
-                  before: 80,
-                  after: 20,
-                },
-              }) : [];
+              const questionParagraph = question?.question
+                ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`, context)
+                : [];
 
-              const optionParagraphs = question?.options ? question?.options?.flatMap((options:any)=>{
-                return new Paragraph({
-                  text:`${options}`
-                })
-              }) : [];
-              return [questionParagraph, ...optionParagraphs];
+              const optionParagraphs = question?.options
+                ? this.docxUtility.getMarkdownParagraphs(question.options.map((options: any) => `- ${options}`).join('\n'), context)
+                : [];
+              return [...questionParagraph, ...optionParagraphs];
             }
           );
 
@@ -175,15 +169,11 @@ const firstPageContent = [
           });
 
           // Create paragraphs for each assessment question
-          const questionParagraphs = block.questions.map(
+          const questionParagraphs = block.questions.flatMap(
             (question: any, questionIndex: number) => {
-              return question.question ? new Paragraph({
-                text: `${questionIndex + 1}. ${question.question}`,
-                spacing: {
-                  before: 20,
-                  after: 10,
-                },
-              }):[];
+              return question.question
+                ? this.docxUtility.getMarkdownParagraphs(`**${questionIndex + 1}.** ${question.question}`, context)
+                : [];
             }
           );
 

@@ -8,7 +8,7 @@ question_bank_parts_gen_retrieval_query_template: |
 question_bank_parts_gen: |
       You are a specialist in educational assessment design with advanced expertise in Bloom's Taxonomy and question generation. Your task is to generate a bank of unique, high-quality questions that are aligned with the provided learning outcomes, textbook content, and cognitive objectives. Use the RAG (Retrieval-Augmented Generation) approach to reference textbook content for the specified chapters (units).
 
-      IMPORTANT: Under no circumstances should any generated question be similar to any question in the EXISTING_QUESTIONS_JSON or to any other generated question. This means:
+      IMPORTANT: Under no circumstances should any generated question be similar to any question in the **EXISTING QUESTIONS** or to any other generated question. This means:
       - No direct repetition (identical wording).
       - No reworded or slightly modified versions (even synonyms or restructured sentences).
       - No conceptual overlap (i.e., questions using the same method, formula, or reasoning).
@@ -27,9 +27,8 @@ question_bank_parts_gen: |
       - **Grade:** {GRADE}
       - **Subject:** {SUBJECT}
       - **Total Marks:** {TOTAL_MARKS}
-      - **Chapters (Units):** {CHAPTERS}
-      - **Unit-Wise Learning Outcomes:**
-        {UNIT_WISE_LEARNING_OUTCOMES}
+      - **Chapters (unit names):** {CHAPTERS}
+      - **Unit-Wise Learning Outcomes:** {UNIT_WISE_LEARNING_OUTCOMES}
 
       ----------------------------------------------------------------------------------------
       
@@ -68,14 +67,6 @@ question_bank_parts_gen: |
       6. Style Consistency:
         The newly generated questions will be integrated into the existing question bank JSON. Ensure that their style, language, and formatting align seamlessly with the existing questions, making it appear as if a single LLM request generated all questions.
 
-      {GRAMMAR_TOPICS}
-      
-      ## Output Format:
-
-      Return only a JSON array of the newly generated questions, adhering strictly to the output schema in each of the question slots.
-
-      Replace placeholder data with the actual generated questions. Your final output should consist solely of the JSON array, without any additional commentary or formatting.
-
 question_bank_distribution: |
   You are an expert in educational assessment design and Bloom's Taxonomy. Your task is to **assign a reasonable question distribution** across selected chapters (units) and objectives for a given examination template.
   ---
@@ -86,7 +77,7 @@ question_bank_distribution: |
   - **Grade:** {GRADE}
   - **Subject:** {SUBJECT}
   - **Total Marks:** {TOTAL_MARKS}
-  - **Chapters (Units):** {CHAPTERS}
+  - **Chapters (unit names):** {CHAPTERS}
   - **Marks Distribution per Unit:** {MARKS_DISTRIBUTION}
   - **Objective-Based Distribution:** {OBJECTIVE_DISTRIBUTION}
 
@@ -110,27 +101,21 @@ question_bank_distribution: |
       Automatically infer mappings based on the provided question types.
       Align question demands (cognitive complexity) with the corresponding objectives (e.g., a direct question on factual recall may align with Knowledge/Remember).
   - Ensure Compliance with Mark and Objective Distributions
-      The total marks allocated per unit should match {MARKS_DISTRIBUTION}.
+      The total marks allocated per unit should match **Marks Distribution per Unit**.
       The overall objective-based distribution should guide the proportion of questions testing different cognitive levels.
   - Assign a Balanced Mix of Topics
       Distribute questions fairly across different chapters (units).
       Ensure each question type is assigned to appropriate chapters.
-      Some chapters (units) may contain more questions depending on their weight in {MARKS_DISTRIBUTION}.
+      Some chapters (units) may contain more questions depending on their weight in **Marks Distribution per Unit**.
 
-  Output Format:
-  - Return a JSON array of Template objects with an added question_distribution attribute.
-  - Example structure:
-    ```json
-    {OUTPUT_FORMAT}
-    ```
+  Output requirements:
   - Each question_distribution entry represents one question.
-  - The unit_name should reference a valid chapter/unit from {CHAPTERS}.
+  - The unit_name should reference a valid chapter/unit from **Chapters**.
   - The objective should reference one of the objectives described above (e.g., "Knowledge", "Understanding", "Application", "Skill", "Comprehension", "Expression", "Appreciation").
 
   Final Task
-  Generate a complete list of question templates (based on the JSON {TEMPLATE_JSON}) with an added question_distribution, ensuring:
-    - Coverage of all chapters (units) according to {MARKS_DISTRIBUTION}.
-    - Proportions of cognitive levels in line with {OBJECTIVE_DISTRIBUTION}.
+  Generate a complete list of question templates (based on the **Existing Question Template** above) with an added question_distribution, ensuring:
+    - Coverage of all chapters (units) according to **Marks Distribution per Unit**.
+    - Proportions of cognitive levels in line with **Objective-Based Distribution**.
     - Appropriate mappings to the objectives defined above.
     - Avoid placing questions from same unit together under one question type.
-    - Output should ONLY contain the output JSON in the mentioned structure

@@ -1,3 +1,4 @@
+const axios = require("axios");
 const handleError = require("../helper/handleError.js");
 const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manager.js");
 const BaseController = require("./base.controller.js");
@@ -159,6 +160,49 @@ class TeacherLessonPlanController extends BaseController {
 		}
 	}
 
+	async getLessonPlanPresentation(req, res) {
+		const { lessonPlanId } = req.params;
+		const pythonUrl = process.env.LLM_API_BASE_URL;
+		const response = await axios.get(`${pythonUrl}/presentation/jobs`, {
+			headers: {"X-User-ID": "0".repeat(24)},
+			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
+		});
+		if (response.data.length > 0) {
+			return res.status(200).json(response.data[0]);
+		} else {
+			return res.status(404).json({ message: "Presentation not found" });
+		}
+	}
+
+	async generateLessonPlanPresentation(req, res) {
+		const { lessonPlanId } = req.params;
+		const teacherId = req.user._id;
+
+		const pythonUrl = process.env.LLM_API_BASE_URL;
+		let response = await axios.get(`${pythonUrl}/presentation/jobs`, {
+			headers: {"X-User-ID": "0".repeat(24)},
+			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
+		});
+		if (response.data.length > 0) {
+			return res.status(200).json(response.data[0]);
+		}
+
+		const lessonPlan = await this.teacherLessonPlanManager.teacherLessonPlanDao.getLessonPlanById(teacherId, lessonPlanId);
+		if (!lessonPlan) {
+			return res.status(404).json({ message: "Lesson plan not found" });
+		}
+
+		// this prefix is sufficient to evade libmagic's content-based file mime inference
+		const blob = new Blob(["Lesson plan content:\n", JSON.stringify(lessonPlan)], { type: 'text/plain' });
+		const formData = new FormData();
+		formData.append("textbook_file", blob, `lesson-plan-${lessonPlanId}.json.txt`);
+		formData.append("slides", 16);
+		formData.append("tags", `lesson-plan-${lessonPlanId}`);
+		formData.append("instruction", "");
+		response = await axios.post(`${pythonUrl}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": "0".repeat(24)}});
+		return res.status(200).json(response.data);
+	}
+
 	async getResourcePlanById(req, res) {
 		try {
 			const { resourcePlanId } = req.params;
@@ -183,9 +227,7 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            const role = req.user.role;
-            const allowedRoles = ["power", "admin"];
-            if (!allowedRoles.includes(...role)) {
+            if (!req.user.role.includes("power")) {
                 return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
             }
 
@@ -207,9 +249,7 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            const role = req.user.role;
-            const allowedRoles = ["power", "admin"];
-            if (!allowedRoles.includes(...role)) {
+            if (!req.user.role.includes("power")) {
                 return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
             }
 
@@ -337,10 +377,7 @@ class TeacherLessonPlanController extends BaseController {
 	async retryLessonPlan(req, res) {
 		try {
 			const { regeneratedId, _id } = req.body; 
-			const role = req.user.role;
-			const allowedRoles = ["power", "admin"];
-	
-			if (!allowedRoles.includes(...role)) {
+            if (!req.user.role.includes("power")) {
 				return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
 			}
 	

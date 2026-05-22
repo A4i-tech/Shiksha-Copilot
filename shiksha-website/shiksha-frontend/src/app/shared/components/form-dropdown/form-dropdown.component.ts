@@ -1,32 +1,30 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, SecurityContext } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgSelectModule } from '@ng-select/ng-select';
 import {
   FormsModule,
   ReactiveFormsModule,
-  UntypedFormControl,
-  UntypedFormGroup,
+  FormControl,
+  FormGroup,
 } from '@angular/forms';
-import { DomSanitizer } from '@angular/platform-browser';
-import { FormDropDownConfig, FormDropDownOption } from '../../interfaces/form-dropdown.interface';
+import { FormDropDownConfig, FormDropDownOption, FormDropDownValue } from '../../interfaces/form-dropdown.interface';
 import { TranslateModule } from '@ngx-translate/core';
-import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-form-dropdown',
   standalone: true,
-  imports: [CommonModule, NgSelectModule, FormsModule, ReactiveFormsModule, TranslateModule, MatTooltipModule],
+  imports: [CommonModule, NgSelectModule, FormsModule, ReactiveFormsModule, TranslateModule],
   templateUrl: './form-dropdown.component.html',
   styleUrls: ['./form-dropdown.component.scss'],
 })
 export class FormDropdownComponent implements OnInit, OnChanges {
-  constructor(private readonly sanitizer: DomSanitizer) { }
+  constructor() { }
   /** Options for the dropdown; items may include optional `info` (string) for tooltip. */
   @Input() dropDownValues: FormDropDownOption[] = [];
 
   @Input() dropDownControlName!: string;
 
-  @Input() dropDownCtrl!: UntypedFormControl;
+  @Input() dropDownCtrl!: FormControl;
 
   @Input() config!: FormDropDownConfig;
 
@@ -34,18 +32,18 @@ export class FormDropdownComponent implements OnInit, OnChanges {
 
   @Input() mode!: string;
 
-  @Output() valueChange: EventEmitter<string> = new EventEmitter<string>();
+  @Output() valueChange: EventEmitter<FormDropDownValue | FormDropDownValue[] | null> = new EventEmitter<FormDropDownValue | FormDropDownValue[] | null>();
 
 
-  formGroupTemp!: UntypedFormGroup;
+  formGroupTemp!: FormGroup;
 
   /**
    * Angular oninit lifecycle hook used for initialization
    */
   ngOnInit(): void {
-    const obj: any = {};
-    obj[this.dropDownControlName] = new UntypedFormControl(null);
-    this.formGroupTemp = new UntypedFormGroup(obj);
+    const obj: { [key: string]: FormControl } = {};
+    obj[this.dropDownControlName] = new FormControl(null);
+    this.formGroupTemp = new FormGroup(obj);
     this.filterDropDownValues();
   }
 
@@ -76,41 +74,47 @@ export class FormDropdownComponent implements OnInit, OnChanges {
    * @param i index
    */
   removeItem(i: number) {
-    let updatedArr: string[] = structuredClone(this.dropDownCtrl?.value);
-    updatedArr = updatedArr.filter(item => item !== this.dropDownCtrl?.value[i]);
-    this.dropDownCtrl?.setValue(updatedArr)
-    this.valueChange.emit(updatedArr.join());
+    const raw = this.dropDownCtrl?.value;
+    const currentVal: FormDropDownValue[] = Array.isArray(raw) ? [...raw] : [];
+    const updatedArr = currentVal.filter((_, index) => index !== i);
+    this.dropDownCtrl?.setValue(updatedArr);
+    this.valueChange.emit(updatedArr);
   }
 
   /**
    * Function to emit value change
-   * @param val 
+   * @param val
    */
-  valueSelected(val: any) {
+  valueSelected(val: FormDropDownValue | FormDropDownValue[] | null) {
     this.valueChange.emit(val);
   }
 
   public onSelectAll() {
     if (this.config.selectAllValue) {
-      let data = this.dropDownValues.map((e) =>
-        this.config?.selectAllValue ? e[this.config.selectAllValue] : e
+      const data = this.dropDownValues.map((e) =>
+        this.config?.selectAllValue ? (e[this.config.selectAllValue as keyof FormDropDownOption] as FormDropDownValue) : (e as unknown as FormDropDownValue)
       );
       this.dropDownCtrl.setValue(data);
-      this.valueChange.emit(data.toString());
+      this.valueChange.emit(data);
     } else {
-      this.dropDownCtrl.setValue(this.dropDownValues);
-      this.valueChange.emit(this.dropDownValues.join());
+      const data = this.dropDownValues.map(e =>
+        this.config.bindValue ? (e[this.config.bindValue] as FormDropDownValue) : (e as unknown as FormDropDownValue)
+      );
+      this.dropDownCtrl.setValue(data);
+      this.valueChange.emit(data);
     }
   }
 
   public onClearAll() {
-    this.dropDownCtrl.setValue([]);
-    this.valueChange.emit('');
+    const emptyValue = this.config.multi ? [] : null;
+    this.dropDownCtrl.setValue(emptyValue);
+    this.valueChange.emit(emptyValue as any);
   }
 
-  toggleSelection(item: any) {
-    let currentVal = this.dropDownCtrl?.value;
-    const index = currentVal.findIndex((i: any) => i === item);
+  toggleSelection(item: FormDropDownValue) {
+    const raw = this.dropDownCtrl?.value;
+    const currentVal: FormDropDownValue[] = Array.isArray(raw) ? [...raw] : [];
+    const index = currentVal.findIndex((i: FormDropDownValue) => i === item);
     if (index === -1) {
       currentVal.push(item);
       this.dropDownCtrl.setValue(currentVal);
@@ -120,44 +124,52 @@ export class FormDropdownComponent implements OnInit, OnChanges {
     }
   }
 
-  toggleSelectAll(event: any) {
-    if (event.target.checked) {
+  toggleSelectAll(event: Event) {
+    const target = event.target as HTMLInputElement | null;
+    if (target?.checked) {
       if (this.config.selectAllValue) {
-        let data = this.dropDownValues.map((e) =>
-          this.config?.selectAllValue ? e[this.config.selectAllValue] : e
+        const data = this.dropDownValues.map((e) =>
+          this.config?.selectAllValue ? (e[this.config.selectAllValue as keyof FormDropDownOption] as FormDropDownValue) : (e as unknown as FormDropDownValue)
         );
         this.dropDownCtrl.setValue(data);
-        this.valueChange.emit(data.join());
+        this.valueChange.emit(data);
       } else {
-        this.dropDownCtrl.setValue(this.dropDownValues);
-        this.valueChange.emit(this.dropDownValues.join());
+        const data = this.dropDownValues.map(e =>
+          this.config.bindValue ? (e[this.config.bindValue] as FormDropDownValue) : (e as unknown as FormDropDownValue)
+        );
+        this.dropDownCtrl.setValue(data);
+        this.valueChange.emit(data);
       }
     } else {
       this.dropDownCtrl.setValue([]);
-      this.valueChange.emit('');
+      this.valueChange.emit([] as FormDropDownValue[]);
     }
   }
 
   isSelectAll() {
-    return this.dropDownCtrl.value?.length === this.dropDownValues?.length;
+    const raw = this.dropDownCtrl.value;
+    const currentVal: FormDropDownValue[] = Array.isArray(raw) ? raw : [];
+    return currentVal.length === this.dropDownValues?.length;
   }
 
-  isSelected(item: any) {
-    return this.dropDownCtrl.value.some((i: any) => i === item);
+  isSelected(item: FormDropDownValue) {
+    const raw = this.dropDownCtrl.value;
+    const currentVal: FormDropDownValue[] = Array.isArray(raw) ? raw : [];
+    return currentVal.some((i: FormDropDownValue) => i === item);
   }
 
   public get hasSelections(): boolean {
-    return this.dropDownCtrl.value?.length > 0;
+    const raw = this.dropDownCtrl.value;
+    const currentVal: FormDropDownValue[] = Array.isArray(raw) ? raw : [];
+    return currentVal.length > 0;
   }
 
   /**
-   * Sanitizes option info text for safe use in tooltip/aria-label (prevents XSS if info is user/API-sourced).
+   * Returns option info text for use in tooltip/aria-label.
+   * This is not user-entered text and does not require additional sanitization.
    */
   getSafeInfo(item: FormDropDownOption): string {
-    const raw = item?.info ?? '';
-    if (typeof raw !== 'string') return '';
-    const sanitized = this.sanitizer.sanitize(SecurityContext.HTML, raw);
-    return sanitized ?? '';
+    return item?.info ?? '';
   }
 
   /**
@@ -165,7 +177,7 @@ export class FormDropdownComponent implements OnInit, OnChanges {
    * @param value The value to look up (e.g., abbreviation)
    * @returns The label to display (e.g., boardName) or the value itself if not found
    */
-  getLabelForValue(value: any): string {
+  getLabelForValue(value: FormDropDownValue | FormDropDownOption): string {
     if (value == null || value === '') {
       return '';
     }
@@ -174,12 +186,12 @@ export class FormDropdownComponent implements OnInit, OnChanges {
     if (this.config.bindValue && this.config.bindLable && this.dropDownValues?.length > 0) {
       // Find the item in dropDownValues that matches the value
       const item = this.dropDownValues.find(
-        (item) => item && item[this.config.bindValue!] === value
+        (item) => item && (item[this.config.bindValue!] as FormDropDownValue) === value
       );
 
       // Return the label if found (coerce to string to avoid [object Object] for non-string values)
       if (item && this.config.bindLable && item[this.config.bindLable] != null) {
-        const raw = item[this.config.bindLable];
+        const raw = item[this.config.bindLable] as FormDropDownValue;
         return typeof raw === 'string' ? raw : String(raw);
       }
     }
@@ -193,24 +205,24 @@ export class FormDropdownComponent implements OnInit, OnChanges {
    * @param value The value to look up
    * @returns The original option object, or undefined if not found
    */
-  getItemForValue(value: any): FormDropDownOption | undefined {
+  getItemForValue(value: FormDropDownValue | FormDropDownOption): FormDropDownOption | undefined {
     if (value == null || value === '') {
       return undefined;
     }
 
     if (this.config.bindValue && this.dropDownValues?.length > 0) {
       // If value is an object, try to match by its bindValue property
-      if (typeof value === 'object' && value[this.config.bindValue] !== undefined) {
+      if (typeof value === 'object' && (value as FormDropDownOption)[this.config.bindValue] !== undefined) {
         return this.dropDownValues.find(
-          (item) => item && item[this.config.bindValue!] === value[this.config.bindValue!]
+          (item) => item && item[this.config.bindValue!] === (value as FormDropDownOption)[this.config.bindValue!]
         );
       }
 
       return this.dropDownValues.find(
-        (item) => item && item[this.config.bindValue!] === value
+        (item) => item && (item[this.config.bindValue!] as FormDropDownValue) === value
       );
     }
 
-    return typeof value === 'object' ? value : undefined;
+    return typeof value === 'object' ? (value as FormDropDownOption) : undefined;
   }
 }

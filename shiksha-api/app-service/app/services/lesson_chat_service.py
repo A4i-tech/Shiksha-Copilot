@@ -1,16 +1,12 @@
-import os
 from pathlib import Path
 import logging
 import re
-from typing import Optional
 from app.config import settings
 from app.models.chat import LessonChatRequest
 from app.utils.prompt_template import PromptTemplate
 from app.services.rag_adapters import BaseRagAdapter
 from app.services.rag_adapter_cache import RAG_ADAPTER_CACHE
-from llama_index.llms.azure_openai import AzureOpenAI as LlamaAzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from openai import AzureOpenAI as NativeAzureOpenAI
+from openai import AsyncAzureOpenAI as NativeAsyncAzureOpenAI
 from llama_index.core.llms import ChatMessage
 
 logger = logging.getLogger(__name__)
@@ -27,29 +23,11 @@ class LessonChatService:
         )
         self._prompt_template = PromptTemplate(str(prompts_file_path))
 
-        # Initialize Azure OpenAI completion model (LlamaIndex version for compatibility if needed elsewhere)
-        self._completion_llm = LlamaAzureOpenAI(
-            model=settings.azure_openai_deployment_name,
-            deployment_name=settings.azure_openai_deployment_name,
-            api_key=settings.azure_openai_api_key,
-            api_version=settings.azure_openai_api_version,
-            azure_endpoint=settings.azure_openai_endpoint,
-        )
-
         # Initialize Native Azure OpenAI client for the adapter
-        self._native_client = NativeAzureOpenAI(
+        self._native_client = NativeAsyncAzureOpenAI(
             api_key=settings.azure_openai_api_key,
             api_version=settings.azure_openai_api_version,
             azure_endpoint=settings.azure_openai_endpoint,
-        )
-
-        # Initialize Azure OpenAI embedding model
-        self._embedding_llm = AzureOpenAIEmbedding(
-            model=settings.azure_openai_embed_model,
-            deployment_name=settings.azure_openai_embed_model,
-            api_key=settings.azure_openai_api_key,
-            azure_endpoint=settings.azure_openai_endpoint,
-            api_version=settings.azure_openai_api_version,
         )
 
         # Initialize LRU cache for RAG adapter instances (max 32 items)

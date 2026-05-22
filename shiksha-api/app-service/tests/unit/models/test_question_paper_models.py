@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 from app.models.question_paper import (
+    McqOption,
     QuestionType,
     QuestionBankMetadata,
     TextQuestion,
@@ -77,30 +78,16 @@ class TestFourOptionsQuestion:
     def test_valid_mcq(self):
         """Test creating valid MCQ."""
         question = FourOptionsQuestion(
-            question="What is 2+2?", options=["3", "4", "5", "6"], keyAnswer="4"
+            question="What is 2+2?", options=[
+                McqOption(label="A", text="3"),
+                McqOption(label="B", text="4"),
+                McqOption(label="C", text="5"),
+                McqOption(label="D", text="6"),
+            ], keyAnswer="4"
         )
         assert question.question == "What is 2+2?"
         assert len(question.options) == 4
         assert question.keyAnswer == "4"
-
-    def test_mcq_empty_defaults(self):
-        """Test MCQ with default empty values."""
-        question = FourOptionsQuestion()
-        assert question.question == ""
-        assert question.options == []
-        assert question.keyAnswer == ""
-
-    def test_mcq_with_more_than_four_options(self):
-        """Test MCQ can have more than 4 options."""
-        question = FourOptionsQuestion(
-            question="Test", options=["A", "B", "C", "D", "E"], keyAnswer="A"
-        )
-        assert len(question.options) == 5
-
-    def test_mcq_with_less_than_four_options(self):
-        """Test MCQ can have less than 4 options."""
-        question = FourOptionsQuestion(question="Test", options=["A", "B"], answer="A")
-        assert len(question.options) == 2
 
 
 class TestMatchingListQuestion:
@@ -170,24 +157,6 @@ class TestQuestionType:
         for qt in QuestionType:
             assert hasattr(qt, "description")
             assert len(qt.description) > 0
-
-    def test_question_type_get_required_fields_mcq(self):
-        """Test getting required fields for MCQ."""
-        required = QuestionType.MCQ.get_required_fields()
-        # FourOptionsQuestion has no required fields (all have defaults)
-        assert isinstance(required, list)
-
-    def test_question_type_get_required_fields_text(self):
-        """Test getting required fields for text questions."""
-        required = QuestionType.FILL_BLANKS.get_required_fields()
-        # TextQuestion has no required fields (all have defaults)
-        assert isinstance(required, list)
-
-    def test_question_type_get_required_fields_matching(self):
-        """Test getting required fields for matching questions."""
-        required = QuestionType.MATCH_LIST.get_required_fields()
-        # MatchingListQuestion has no required fields (all have defaults)
-        assert isinstance(required, list)
 
     def test_all_question_types_are_unique(self):
         """Test that all question type values are unique."""

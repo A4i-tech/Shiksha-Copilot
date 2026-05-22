@@ -4,10 +4,10 @@ import { NgSelectModule } from '@ng-select/ng-select';
 import {
   FormsModule,
   ReactiveFormsModule,
-  UntypedFormControl,
-  UntypedFormGroup,
+  FormControl,
+  FormGroup,
 } from '@angular/forms';
-import { FormDropDownConfig } from '../../interfaces/form-dropdown.interface';
+import { FormDropDownConfig, FormDropDownValue } from '../../interfaces/form-dropdown.interface';
 import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
@@ -22,7 +22,7 @@ export class StafFormDropdownComponent implements OnInit {
 
   @Input() dropDownControlName!: string;
 
-  @Input() dropDownCtrl!: UntypedFormControl;
+  @Input() dropDownCtrl!: FormControl;
 
   @Input() config!: FormDropDownConfig;
 
@@ -30,28 +30,29 @@ export class StafFormDropdownComponent implements OnInit {
 
   @Input() mode!: string;
 
-  @Output() valueChange: EventEmitter<any> = new EventEmitter<any>();
+  @Output() valueChange: EventEmitter<FormDropDownValue | FormDropDownValue[] | null> = new EventEmitter<FormDropDownValue | FormDropDownValue[] | null>();
 
 
-  formGroupTemp!: UntypedFormGroup;
+  formGroupTemp!: FormGroup;
 
   /**
    * Angular oninit lifecycle hook used for initialization
    */
   ngOnInit(): void {
-    const obj: any = {};
-    obj[this.dropDownControlName] = new UntypedFormControl(null);
-    this.formGroupTemp = new UntypedFormGroup(obj);
+    const obj: Record<string, FormControl> = {};
+    obj[this.dropDownControlName] = new FormControl(null);
+    this.formGroupTemp = new FormGroup(obj);
   }
 
   /**
    * Function to remove chip value
    * @param i index
    */
-  removeItem(i:number){
-    let updatedArr:string[] = structuredClone(this.dropDownCtrl?.value);
-    updatedArr = updatedArr.filter(item => item !== this.dropDownCtrl?.value[i]);
-    this.dropDownCtrl?.setValue(updatedArr)
+  removeItem(i: number) {
+    const raw = this.dropDownCtrl?.value;
+    const currentVal: FormDropDownValue[] = Array.isArray(raw) ? [...raw] : [];
+    const updatedArr = currentVal.filter((_, index) => index !== i);
+    this.dropDownCtrl?.setValue(updatedArr);
     this.valueChange.emit(updatedArr);
   }
 
@@ -78,21 +79,22 @@ export class StafFormDropdownComponent implements OnInit {
   }
 
   public onClearAll() {
-    this.dropDownCtrl.setValue([]);
-    this.valueChange.emit([]);
+    const emptyValue = this.config.multi ? [] : null;
+    this.dropDownCtrl.setValue(emptyValue);
+    this.valueChange.emit(emptyValue);
   }
 
   toggleSelection(item: any) {
     let currentVal = this.dropDownCtrl?.value || [];
     const itemValue = this.config.bindValue ? item[this.config.bindValue] : item;
     const index = currentVal.findIndex((i: any) => i === itemValue);
-    
+
     if (index === -1) {
       currentVal.push(itemValue);
     } else {
       currentVal.splice(index, 1);
     }
-    
+
     this.dropDownCtrl.setValue([...currentVal]);
     this.valueChange.emit([...currentVal]);
   }
