@@ -50,6 +50,18 @@ def annotate_idle(service: PresentationService, job: JobDetail):
     return job
 
 
+ja_conversions_sem = asyncio.Semaphore(settings.pres_max_file_conversions)
+ja_locks: weakref.WeakValueDictionary[tuple[uuid.UUID, LibreOfficeOutputFormat], asyncio.Lock] = weakref.WeakValueDictionary()
+ja_locks_guard = asyncio.Lock()
+async def _ja_lock(key):
+    async with ja_locks_guard:
+        lock = ja_locks.get(key)
+        if lock is None:
+            lock = asyncio.Lock()
+            ja_locks[key] = lock
+        return lock
+
+
 @router.post("/job")
 async def create_job(
     user_id: XUserIDHeader,
@@ -113,17 +125,6 @@ async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentatio
     return await service.jobs.delete(job)
 
 
-ja_locks: weakref.WeakValueDictionary[tuple[uuid.UUID, LibreOfficeOutputFormat], asyncio.Lock] = weakref.WeakValueDictionary()
-ja_locks_guard = asyncio.Lock()
-async def _ja_lock(key):
-    async with ja_locks_guard:
-        lock = ja_locks.get(key)
-        if lock is None:
-            lock = asyncio.Lock()
-            ja_locks[key] = lock
-        return lock
-
-
 @router.head("/job/{job_id}", include_in_schema=False)
 @router.get("/job/{job_id}")
 async def download_job_artifact(
@@ -147,7 +148,8 @@ async def download_job_artifact(
                 raise HTTPException(status_code=404, detail="File not found")
 
             pptx_path = service.storage.path("out", stem, "%s.pptx" % job_id)
-            content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
+            async with ja_conversions_sem:
+                content = await libre_office.convert(io.BytesIO(await service.storage.read_bytes(pptx_path)), output_format=file_format)
             size = len(content)
             await service.storage.write_bytes(storage_path, content)
             stream = [content]
