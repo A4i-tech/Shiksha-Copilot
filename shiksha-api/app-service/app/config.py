@@ -4,7 +4,7 @@ from string import Template
 from dotenv import load_dotenv
 from pydantic import Field, PositiveInt
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 import yaml
 
@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     pres_finalizer: str = "openai:gpt-5-nano"
     pres_max_auto_retries: PositiveInt = 5
     pres_max_instruction_size: PositiveInt = 1000
+    pres_max_jobs_per_user: PositiveInt | Literal[-1] = 1
     pres_max_slide_count: PositiveInt = 20
     pres_mongodb_url: str = "mongodb://localhost:27017/shiksha_viz"
     pres_sse_buffer_limit: PositiveInt = 512
