@@ -263,6 +263,14 @@ export class ContentGenerationService extends BaseRestService {
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/lesson/${id}`);
   }
 
+  getLessonPlanPresentation(lessonPlanId: string): Observable<any> {
+    return this.http.get(`${this.baseUrl}/teacher-lesson-plan/presentation/${lessonPlanId}`);
+  }
+
+  generateLessonPlanPresentation(lessonPlanId: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/presentation/${lessonPlanId}`, {});
+  }
+
   getResourcePlanById(id:any){
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/resource/${id}`);
   }
@@ -285,5 +293,91 @@ export class ContentGenerationService extends BaseRestService {
 
   downloadLPDetails(lessonId:any):Observable<any>{
     return this.http.get(`${this.baseUrl}/master-lesson/lesson/tables/${lessonId}`)
+  }
+
+  createPresentationJob(formData: FormData): Observable<any> {
+    return this.http.post(`${this.baseUrl}/presentation/job`, formData);
+  }
+
+  getPresentationJob(id: string): Observable<any> {
+    const params = new HttpParams().set('id', id);
+    return this.http.get(`${this.baseUrl}/presentation/job`, { params });
+  }
+
+  deletePresentationJob(id: string): Observable<any> {
+    const params = new HttpParams().set('id', id);
+    return this.http.delete(`${this.baseUrl}/presentation/job`, { params });
+  }
+
+  retryPresentationJob(id: string): Observable<boolean> {
+    const params = new HttpParams().set('id', id);
+    return this.http.get<boolean>(`${this.baseUrl}/presentation/job/retry`, { params });
+  }
+
+  getPresentationJobs(paramVals: any): Observable<any> {
+    let params = new HttpParams()
+      .set('offset', '0')
+      .set('limit', '100');
+
+    if (paramVals.presentationMonth) {
+      const [year, month] = paramVals.presentationMonth.split('-').map(Number);
+      const createdAfter = new Date(year, month - 1, 1).toISOString();
+      const createdBefore = new Date(year, month, 0, 23, 59, 59, 999).toISOString();
+      params = params
+        .set('created_after', createdAfter)
+        .set('created_before', createdBefore);
+    }
+
+    if (paramVals.presentationStatus === 'complete') {
+      params = params.set('status', 'complete');
+    }
+
+    return this.http.get(`${this.baseUrl}/presentation/jobs`, { params });
+  }
+
+  getPresentationTools(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/presentation/tools`);
+  }
+
+  async openPresentationEventStream(
+    jobId: string,
+    onMessage: (event: MessageEvent<string>) => void,
+    onError: () => void
+  ) {
+    const res = await fetch(`${environment.apiUrl}/presentation/events/token?jobId=${jobId}`, {method: "POST", headers: {"Authorization": localStorage.getItem('token') || ""}});
+    const token = await res.text();
+    const eventSource = new EventSource(`${this.baseUrl}/presentation/events/${token}`);
+    eventSource.onmessage = onMessage;
+    eventSource.onerror = onError;
+    return eventSource;
+  }
+
+  closePresentationEventStream(eventSource: EventSource | null | undefined): null {
+    if (eventSource) {
+      eventSource.close();
+    }
+    return null;
+  }
+
+  getPresentationStatusLabel(status?: string): string {
+    if (status === 'complete') return 'Complete';
+    if (status === 'error') return 'Failed';
+    if (status === 'idle') return 'Queued';
+    return 'In Progress';
+  }
+
+  downloadPresentationFile(jobId: string, fileFormat: 'pptx' | 'pdf'): Observable<Blob> {
+    const params = new HttpParams().set('file_format', fileFormat);
+    return this.http.get(`${this.baseUrl}/presentation/job/${jobId}`, {
+      params,
+      responseType: 'blob',
+    });
+  }
+
+  headPresentationFile(jobId: string) {
+    return this.http.head(`${this.baseUrl}/presentation/job/${jobId}`, {
+      params: new HttpParams().set('file_format', 'pptx'),
+      observe: 'response',
+    });
   }
 }

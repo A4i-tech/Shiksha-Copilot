@@ -20,6 +20,7 @@ import { LessonPlanFormatsComponent } from './lesson-plan-formats/lesson-plan-fo
 import { LessonPlanVideosComponent } from './lesson-plan-videos/lesson-plan-videos.component';
 import { LessonPlanDocumentsComponent } from './lesson-plan-documents/lesson-plan-documents.component';
 import { LessonPlanSubjectDetailsComponent } from './lesson-plan-subject-details/lesson-plan-subject-details.component';
+import { PresentationGenerationComponent } from './presentation-generation/presentation-generation.component';
 
 @NgModule({
   declarations: [
@@ -30,6 +31,7 @@ import { LessonPlanSubjectDetailsComponent } from './lesson-plan-subject-details
     LessonPlanVideosComponent,
     LessonPlanDocumentsComponent,
     LessonPlanSubjectDetailsComponent,
+    PresentationGenerationComponent,
   ],
   imports: [
     CommonModule,

@@ -6,14 +6,12 @@ import { DraftGuard } from 'src/app/core/guards/draft.guard';
 import { ChatbotComponent } from '../chatbot/chatbot.component';
 import { PermissionGuard } from 'src/app/core/guards/permission.guard';
 import { LessonPlanViewEditComponent } from './lesson-plan-view-edit/lesson-plan-view-edit.component';
+import { PresentationGenerationComponent } from './presentation-generation/presentation-generation.component';
 
 const routes: Routes = [
   {
     path:'',
     component:LessonContentListComponent,
-    data:{
-      type:'generated'
-    }
   },
   {
     path:'lesson-resources',
@@ -22,6 +20,14 @@ const routes: Routes = [
   {
     path:'lesson-plan',
     component:LessonPlanResourceDetailsComponent
+  },
+  {
+    path:'presentation',
+    component:PresentationGenerationComponent
+  },
+  {
+    path:'presentation/:id',
+    component:PresentationGenerationComponent
   },
   {
     path:'inspect/:planType',

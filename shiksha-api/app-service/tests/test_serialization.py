@@ -22,7 +22,7 @@ def test_serialization():
     # 1. Create a FourOptionsQuestion with difficulty
     q_mcq = FourOptionsQuestion(
         question="What is 5+5?",
-        options=[{"label":"A", "text":"10"}, {"label":"B", "text":"11"}],
+        options=[McqOption(label="A", text="10"), McqOption(label="B", text="11"), McqOption(label="C", text="12"), McqOption(label="D", text="13")],
         answer="A",
         difficulty="Easy"
     )

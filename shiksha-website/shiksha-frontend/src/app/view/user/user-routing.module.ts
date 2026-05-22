@@ -4,9 +4,9 @@ import { ProfileComponent } from './profile/profile.component';
 import { PermissionGuard } from 'src/app/core/guards/permission.guard';
 import { IsProfileCompleteGuard } from 'src/app/core/guards/isProfileComplete.guard';
 import { DashboardComponent } from './dashboard/dashboard.component';
-import { LessonContentListComponent } from './content-generation/lesson-content-list/lesson-content-list.component';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { BaselineSurveyGuard } from 'src/app/core/guards/baseline-survey.guard';
+import { GenerationStatusComponent } from './generation-status/generation-status.component';
 
 const routes: Routes = [
   {
@@ -35,10 +35,9 @@ const routes: Routes = [
   },
   {
     path: 'generation-status',
-    component:LessonContentListComponent,
+    component:GenerationStatusComponent,
     data: {
       permissions: ['power'],
-      type:'status'
     },
     canActivate: [PermissionGuard, IsProfileCompleteGuard,BaselineSurveyGuard],
   },

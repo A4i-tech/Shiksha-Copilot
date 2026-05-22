@@ -14,12 +14,15 @@ import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
 import { NgChartsModule } from 'ng2-charts';
 import { DeleteDetailComponent } from 'src/app/shared/components/delete-detail/delete-detail.component';
 import { ProfileImageComponent } from 'src/app/shared/components/profile-image/profile-image.component';
+import { GenerationStatusComponent } from './generation-status/generation-status.component';
+import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 
 
 @NgModule({
   declarations: [
     ProfileComponent,
-    DashboardComponent
+    DashboardComponent,
+    GenerationStatusComponent
   ],
   imports: [
     CommonModule,
@@ -37,6 +40,7 @@ import { ProfileImageComponent } from 'src/app/shared/components/profile-image/p
     NgChartsModule,
     DeleteDetailComponent,
     ProfileImageComponent,
+    PaginationComponent,
   ]
 })
 export class UserModule { }

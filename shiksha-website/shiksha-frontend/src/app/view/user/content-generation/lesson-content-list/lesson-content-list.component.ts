@@ -1,9 +1,9 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, forkJoin, of } from 'rxjs';
 interface ListParams {
   currentPage: number;
   pageSize: number;
@@ -13,9 +13,22 @@ interface ListParams {
   selectedClass?: string;
   selectedSubject?: string;
   searchTerm?: string;
-  selectedMonth?: number,
+  selectedMonth?: string,
+  presentationMonth?: string,
   isCompleted?:string,
-  isGenerated?:string
+  isGenerated?:string,
+  presentationStatus?: string
+}
+
+interface PresentationListItem {
+  id: string;
+  creation_time: string;
+  textbook_file: string;
+  slides: number | null;
+  instruction: string | null;
+  status: string;
+  message: string;
+  metadata: any;
 }
 
 @Component({
@@ -24,13 +37,12 @@ interface ListParams {
   styleUrls: ['./lesson-content-list.component.scss']
 })
 export class LessonContentListComponent implements OnInit, AfterViewInit, OnDestroy {
-
   currentPage = 1;
   pageSize = 6;
   totalItems = 0;
   tableHeaders = ['Date', 'Class', 'Subject', 'Type', 'Chapter', 'Sub Topics', 'Action'];
 
-  typeDropdownOptions: any[] = [{ name: 'Lesson Plan', value: 'lesson' }, { name: 'Resource Plan', value: 'resource' },{ name: 'All', value: 'all' }];
+  typeDropdownOptions: any[] = [{ name: 'Lesson Plan', value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }];
   boardDropdownOptions: any[] = [];
   mediumDropdownOptions: any[] = [];
   classDropdownOptions: any[] = [];
@@ -104,8 +116,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   private searchTerms = new Subject<string>();
   classList: any[] = []
   isCompleted:any = '';
-  type:any;
-  typeSubscription:Subscription;
   private searchSubscription!: Subscription;
 
 
@@ -128,29 +138,46 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
       selectedClass: this.selectedClass,
       selectedSubject: this.selectedSubject,
       selectedMonth: formattedMonth,
+      presentationMonth: this.selectedMonth,
       searchTerm: this.searchText,
       isCompleted:this.isCompleted,
-      isGenerated:this.type === 'generated' ? 'false':'true',
+      isGenerated:'false',
+      presentationStatus: 'complete',
     };
   }
 
-  constructor(private contentGenService: ContentGenerationService, private router: Router, private cdr: ChangeDetectorRef, public utilityservice: UtilityService,private activatedRoute: ActivatedRoute) {
-   this.typeSubscription = this.activatedRoute.data.subscribe((data: any) => {
-      this.type = data.type;
-    });
-   }
+  constructor(private contentGenService: ContentGenerationService, private router: Router, public utilityservice: UtilityService) {}
 
   ngOnInit(): void {
-    // const params: ListParams = {
-    //   currentPage: this.currentPage,
-    //   pageSize: this.pageSize
-    // };
-    // this.getAllList(params);
-
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
+    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedInUser.classes);
 
-    // this.getBoardsList(loggedInUser);
+    if (this.boardDropdownOptions.length === 1) {
+      this.selectedBoard = this.boardDropdownOptions[0].board;
+      this.mediumDropdownOptions = this.filterMediumByBoard(this.boardDropdownOptions, this.selectedBoard)[0].mediums;
+    }
+
+    if (this.mediumDropdownOptions.length === 1) {
+      this.selectedMedium = this.mediumDropdownOptions[0].medium;
+      this.classDropdownOptions = this.filterClassByMedium(this.mediumDropdownOptions, this.selectedMedium)[0].classes?.sort((a:any,b:any)=>a.class-b.class);
+    }
+
+    if (this.classDropdownOptions.length === 1) {
+      this.selectedClass = this.classDropdownOptions[0].class;
+      const subjectDropdownValue = this.filterSubjectByClass(this.classDropdownOptions, this.selectedClass)[0].data;
+      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectDropdownValue);
+    }
+
+    if (this.subjectDropdownOptions.length === 1) {
+      this.selectedSubject = this.subjectDropdownOptions[0].subject;
+    }
+
+    const today = new Date();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const year = today.getFullYear();
+    this.selectedMonth = `${year}-${month}`;
+    this.getAllList(this.getListParams());
 
    this.searchSubscription = this.searchTerms.pipe(
       debounceTime(1000), // Adjust the debounce time as needed
@@ -163,51 +190,12 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngAfterViewInit(): void {
-  if(this.type === 'generated'){
-    this.typedropdown.selectedItem = this.selectedType;
-    this.statusDropDown.selectedItem = 'all'
-  }
-    this.cdr.detectChanges();
-    const loggedUSer = this.utilityservice.loggedInUserData;
-    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedUSer.classes);
-    
-    if(this.boardDropdownOptions.length === 1){
-      this.boarddropdown.selectedItem = this.boardDropdownOptions[0].board;
-      this.selectedBoard = this.boardDropdownOptions[0].board;
-      this.mediumDropdownOptions = this.filterMediumByBoard(this.boardDropdownOptions,this.boarddropdown.selectedItem)[0].mediums;
-
-    }
-
-    if(this.mediumDropdownOptions.length === 1){
-      this.mediumdropdown.selectedItem = this.mediumDropdownOptions[0].medium;
-      this.selectedMedium = this.mediumDropdownOptions[0].medium;
-      this.classDropdownOptions = this.filterClassByMedium(this.mediumDropdownOptions,this.mediumdropdown.selectedItem)[0].classes?.sort((a:any,b:any)=>a.class-b.class)
-    }
-
-    if(this.classDropdownOptions.length === 1){
-      this.classdropdown.selectedItem = this.classDropdownOptions[0].class;
-      this.selectedClass = this.classDropdownOptions[0].class;
-      const subjectDropdownValue = this.filterSubjectByClass(this.classDropdownOptions,this.classdropdown.selectedItem)[0].data;
-      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectDropdownValue)
-    }
-
-    if(this.subjectDropdownOptions.length === 1){
-      this.subjectdropdown.selectedItem = this.subjectDropdownOptions[0].subject;
-      this.selectedSubject = this.subjectDropdownOptions[0].subject;
-    }
-
-const today = new Date();
-    const month = (today.getMonth() + 1).toString().padStart(2, '0');
-    const year = today.getFullYear();
-    this.selectedMonth = `${year}-${month}`;
-    const param = this.getListParams();
-   
-    
-    this.getAllList(param);
-    
-    
-    
-
+    if (this.typedropdown) this.typedropdown.selectedItem = this.selectedType;
+    if (this.statusDropDown) this.statusDropDown.selectedItem = 'all';
+    if (this.boarddropdown) this.boarddropdown.selectedItem = this.selectedBoard ?? null;
+    if (this.mediumdropdown) this.mediumdropdown.selectedItem = this.selectedMedium ?? null;
+    if (this.classdropdown) this.classdropdown.selectedItem = this.selectedClass ?? null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = this.selectedSubject ?? null;
   }
 
   filterMediumByBoard(dropdownValue:any,selecteItem:any){
@@ -252,11 +240,11 @@ const today = new Date();
   }
 
   resetBoardChange() {
-    this.mediumdropdown.selectedItem = null;
+    if (this.mediumdropdown) this.mediumdropdown.selectedItem = null;
     this.selectedMedium = null;
-    this.classdropdown.selectedItem = null;
+    if (this.classdropdown) this.classdropdown.selectedItem = null;
     this.selectedClass = null;
-    this.subjectdropdown.selectedItem = null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = null;
     this.selectedSubject = null;
     this.mediumDropdownOptions = [];
     this.classDropdownOptions = [];
@@ -276,16 +264,16 @@ const today = new Date();
   }
 
   resetMediumChange() {
-    this.classdropdown.selectedItem = null;
+    if (this.classdropdown) this.classdropdown.selectedItem = null;
     this.selectedClass = null;
-    this.subjectdropdown.selectedItem = null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = null;
     this.selectedSubject = null;
     this.classDropdownOptions = [];
     this.subjectDropdownOptions = [];
   }
 
   resetClassChange() {
-    this.subjectdropdown.selectedItem = null;
+    if (this.subjectdropdown) this.subjectdropdown.selectedItem = null;
     this.selectedSubject = null;
     this.subjectDropdownOptions = [];
   }
@@ -330,11 +318,24 @@ const today = new Date();
   }
 
   getAllList(params: ListParams) {
-    this.contentGenService.getAllList(params).subscribe({
-      next: (res: any) => {
-        this.list = res.data;
+    const lessonListRequest = params.selectedType === 'presentation' ? of({ data: [] }) : this.contentGenService.getAllList(params);
+    const presentationListRequest = (params.selectedType === 'all' || params.selectedType === 'presentation') ? this.contentGenService.getPresentationJobs(params) : of([]);
 
-        this.totalItems = res.data?.totalItems;
+    forkJoin({
+      lessonList: lessonListRequest.pipe(catchError(_ => of(null))),
+      presentationList: presentationListRequest.pipe(catchError(_ => of(null))),
+    }).subscribe({
+      next: (res: any) => {
+        const lessonList = Array.isArray(res.lessonList?.data) ? res.lessonList.data : [];
+        const presentationList = this.filterPresentationJobs(
+          Array.isArray(res.presentationList) ? res.presentationList : [],
+          params
+        ).map((item: PresentationListItem) => this.mapPresentationJob(item));
+        const nextList = [...lessonList, ...presentationList].sort((a: any, b: any) => this.getItemTimestamp(b) - this.getItemTimestamp(a));
+        if (this.getListSignature(this.list) !== this.getListSignature(nextList)) {
+          this.list = nextList;
+          this.totalItems = nextList.length;
+        }
       },
       error: (err) => {
         console.error(err);
@@ -357,6 +358,10 @@ const today = new Date();
   }
 
   onView(data: any) {
+    if (data.isPresentation) {
+      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      return;
+    }
     if (data.isLesson) {
       this.router.navigate([`/user/content-generation/lesson-plan/${data.lesson._id}`]);
     }
@@ -367,6 +372,10 @@ const today = new Date();
   }
 
   onViewDraft(data:any){
+    if (data.isPresentation) {
+      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      return;
+    }
     if (data.isLesson) {
       this.router.navigate([`/user/content-generation/lesson-plan/draft/${data.lesson._id}`]);
     }
@@ -413,8 +422,53 @@ const today = new Date();
     this.router.navigate(['/user/content-generation/lesson-chat'],{queryParams:{recordId,chapterId}})
   }
 
+  private filterPresentationJobs(list: PresentationListItem[], params: ListParams): PresentationListItem[] {
+    let filteredList = list.filter(item => item.status === 'complete');
+
+    if (params.searchTerm) {
+      const searchTerm = params.searchTerm.toLowerCase();
+      filteredList = filteredList.filter(item => {
+        const title = item.metadata?.plan?.outline?.title || '';
+        return [title, item.message, item.textbook_file].some(value => String(value).toLowerCase().includes(searchTerm));
+      });
+    }
+
+    return filteredList;
+  }
+
+  private mapPresentationJob(item: PresentationListItem) {
+    const totalSlides = item.metadata?.quality?.total_slides || item.metadata?.plan?.outline?.total_slides || item.slides;
+    return {
+      ...item,
+      isPresentation: true,
+      isCompleted: item.status === 'complete',
+      updatedAt: item.creation_time,
+      presentationTitle: item.metadata?.plan?.outline?.title || 'Presentation deck',
+      presentationStatusTone: item.status === 'complete' ? 'completed' : item.status === 'error' ? 'failed' : item.status === 'idle' ? 'idle' : 'running',
+      presentationStatusLabel: item.status === 'complete' ? 'Completed' : item.status === 'error' ? 'Error' : item.status === 'idle' ? 'Idle' : 'In Progress',
+      presentationStatusMessage: item.message || 'Presentation job created',
+      presentationSlideCount: totalSlides,
+    };
+  }
+
+  private getItemTimestamp(item: any): number {
+    return new Date(item.updatedAt || item.regeneratedupdatedAt || item.regeneratedcreatedAt || item.creation_time || 0).getTime();
+  }
+
+  private getListSignature(list: any[]): string {
+    return JSON.stringify(list.map((item: any) => ({
+      id: item.id || item._id,
+      status: item.status,
+      message: item.message,
+      updatedAt: item.updatedAt,
+      regeneratedupdatedAt: item.regeneratedupdatedAt,
+      regeneratedcreatedAt: item.regeneratedcreatedAt,
+      slides: item.presentationSlideCount,
+      isCompleted: item.isCompleted,
+    })));
+  }
+
   ngOnDestroy(): void {
-    this.typeSubscription.unsubscribe();
     if (this.searchSubscription) {
       this.searchSubscription.unsubscribe();
     }

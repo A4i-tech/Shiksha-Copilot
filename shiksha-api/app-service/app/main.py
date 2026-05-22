@@ -1,3 +1,6 @@
+import asyncio
+import signal
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -5,23 +8,24 @@ from contextlib import asynccontextmanager
 from fastmcp import FastMCP
 from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
-from app.routers import chat_router, chat_router_mcp, question_paper_router
+from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router
 
 mcp = FastMCP(
     name=settings.app_name,
     instructions="AI-powered educational chat API for Shiksha platform",
-    host=settings.host,
-    port=settings.port,
-    debug=settings.debug,
-    stateless_http=True
 )
 
-mcp_app = mcp.http_app(path="/mcp")
-
+mcp_app = mcp.http_app(path="/mcp", stateless_http=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for proper startup and shutdown"""
+
+    app.state.sigint = asyncio.Future()
+    def sigint_handler(sig, frame):
+        app.state.sigint.set_result(True)
+        if callable(prev): prev(sig, frame)
+    prev = signal.signal(signal.SIGINT, sigint_handler)
 
     assert isinstance(app.state.MCP_APP, StarletteWithLifespan)
     async with app.state.MCP_APP.lifespan(app):
@@ -60,6 +64,7 @@ app.add_middleware(
 )
 
 app.include_router(chat_router)
+app.include_router(presentation_router)
 app.include_router(question_paper_router)
 chat_router_mcp(mcp)
 
