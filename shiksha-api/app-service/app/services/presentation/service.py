@@ -19,11 +19,14 @@ from app.utils.storage import Storage
 
 class PresentationService:
 
-    def __init__(self, storage: Storage, jobs: JobManager, do_transform: bool, max_auto_retries: int):
+    def __init__(self, storage: Storage, jobs: JobManager, do_transform: bool, max_auto_retries: int, max_planner_tasks: int, max_designer_tasks: int, max_finalizer_tasks: int):
         self.storage = storage
         self.jobs = jobs
         self.do_transform = do_transform
         self.max_auto_retries = max_auto_retries
+        self.planner_sem = asyncio.Semaphore(max_planner_tasks)
+        self.designer_sem = asyncio.Semaphore(max_designer_tasks)
+        self.finalizer_sem = asyncio.Semaphore(max_finalizer_tasks)
         self.logger = logging.getLogger(__name__)
         self.processing: dict[bytes, asyncio.Task] = {}
 
@@ -152,7 +155,7 @@ class PresentationService:
             else:
                 source_path = self.storage.path("uploads", job.textbook_file)
                 source_mime = job.textbook_mime
-            async with self.storage.read(source_path) as f:
+            async with self.planner_sem, self.storage.read(source_path) as f:
                 figures = await docparser.read_figures(self.storage, f, self.storage.path("out", stem, "figures"))
                 async for event in agent.plan(source_path, source_mime, f, figures, job.slides, metadata, job.instruction):
                     if isinstance(event, agent.ShikshaCheckpointEvent):
@@ -182,7 +185,7 @@ class PresentationService:
                 source_path = self.storage.path("uploads", job.textbook_file)
 
             figures_dir = self.storage.path("out", stem, "figures")
-            async with self.storage.read(source_path) as f:
+            async with self.designer_sem, self.storage.read(source_path) as f:
                 async for event in agent.design(self.storage, prs, f, figures_dir, outline, metadata, job.instruction):
                     if isinstance(event, agent.ShikshaCheckpointEvent):
                         await self._process_checkpoint(job, event, "design", prs, out_path)
@@ -200,7 +203,7 @@ class PresentationService:
             await self.jobs.update(job.id, {"message": "Adding media"})
             stem = pathlib.Path(job.textbook_file).stem
             out_path = self.storage.path("out", stem, f"{job.id}.pptx")
-            async with self.storage.read(out_path) as f:
+            async with self.finalizer_sem, self.storage.read(out_path) as f:
                 prs = Presentation(f)
 
                 metadata = job.metadata.get("finalize", {})
@@ -292,4 +295,12 @@ class PresentationService:
 def new_default():
     storage = Storage(settings.pres_storage_filesystem, settings.pres_storage_root, settings.pres_storage_options)
     jobs = JobManager(settings.pres_mongodb_url)
-    return PresentationService(storage, jobs, settings.pres_do_transform, settings.pres_max_auto_retries)
+    return PresentationService(
+        storage,
+        jobs,
+        settings.pres_do_transform,
+        settings.pres_max_auto_retries,
+        settings.pres_max_tasks_planner,
+        settings.pres_max_tasks_designer,
+        settings.pres_max_tasks_finalizer,
+    )

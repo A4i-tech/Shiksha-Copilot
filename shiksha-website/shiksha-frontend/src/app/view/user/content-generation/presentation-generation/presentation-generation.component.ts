@@ -443,7 +443,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.isCreatingJob = false;
           this.utilityService.showError(
-            error?.error?.message || 'Unable to start presentation generation.'
+            error?.error?.detail || 'Unable to start presentation generation.'
           );
         },
       });
@@ -467,7 +467,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.isDownloading = false;
           this.utilityService.showError(
-            error?.error?.message || 'Unable to download the presentation.'
+            error?.error?.detail || 'Unable to download the presentation.'
           );
         },
       });
@@ -493,7 +493,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.isRetryingJob = false;
           this.utilityService.showError(
-            error?.error?.message || 'Unable to recover the presentation job.'
+            error?.error?.detail || 'Unable to recover the presentation job.'
           );
           if (this.currentJob?.id) {
             this.fetchJob(this.currentJob.id);
@@ -536,7 +536,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
         error: (error) => {
           this.isTerminatingJob = false;
           this.utilityService.showError(
-            error?.error?.message || 'Unable to terminate the presentation job.'
+            error?.error?.detail || 'Unable to terminate the presentation job.'
           );
           if (this.currentJob?.id) {
             this.fetchJob(this.currentJob.id);

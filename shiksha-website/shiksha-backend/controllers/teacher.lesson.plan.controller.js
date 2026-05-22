@@ -192,7 +192,8 @@ class TeacherLessonPlanController extends BaseController {
 			return res.status(404).json({ message: "Lesson plan not found" });
 		}
 
-		const blob = new Blob([JSON.stringify(lessonPlan)], { type: 'text/plain' });
+		// this prefix is sufficient to evade libmagic's content-based file mime inference
+		const blob = new Blob(["Lesson plan content:\n", JSON.stringify(lessonPlan)], { type: 'text/plain' });
 		const formData = new FormData();
 		formData.append("textbook_file", blob, `lesson-plan-${lessonPlanId}.json.txt`);
 		formData.append("slides", 16);

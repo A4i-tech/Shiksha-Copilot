@@ -61,7 +61,7 @@ async def create_job(
     service: PresentationService = Depends(pres)
 ) -> JobDetail:
     """ Schedule a new PPTX generation job. """
-    if user_id != SYSTEM_USER_ID and settings.pres_max_jobs_per_user != -1 and (n_jobs := await service.jobs.get_pending_count(user_id)) > settings.pres_max_jobs_per_user:
+    if user_id != SYSTEM_USER_ID and settings.pres_max_jobs_per_user != -1 and (n_jobs := await service.jobs.get_pending_count(user_id)) >= settings.pres_max_jobs_per_user:
         raise HTTPException(status_code=429, detail="You already have %d job(s) ongoing." % n_jobs)
 
     filename = textbook_file.filename

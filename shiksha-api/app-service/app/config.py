@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     pres_max_instruction_size: PositiveInt = 1000
     pres_max_jobs_per_user: PositiveInt | Literal[-1] = 1
     pres_max_slide_count: PositiveInt = 20
+    pres_max_tasks_designer: PositiveInt = 3
+    pres_max_tasks_planner: PositiveInt = 2
+    pres_max_tasks_finalizer: PositiveInt = 2
     pres_mongodb_url: str = "mongodb://localhost:27017/shiksha_viz"
     pres_sse_buffer_limit: PositiveInt = 512
     pres_storage_filesystem: str = "file"
