@@ -13,6 +13,11 @@ router.get("/health-api", createProxyMiddleware({
   target: process.env.LLM_API_BASE_URL,
   changeOrigin: true,
   pathRewrite: () => "/health",
+  on: {
+    error: (err, req, res) => {
+      res.status(503).json({ status: "error", message: "API unreachable" });
+    },
+  },
 }));
 
 module.exports = router;
