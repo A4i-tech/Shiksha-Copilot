@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     pres_designer: str = "openai:gpt-5-nano"
     pres_finalizer: str = "openai:gpt-5-nano"
     pres_max_auto_retries: PositiveInt = 5
+    pres_max_file_conversions: PositiveInt = 2
     pres_max_instruction_size: PositiveInt = 1000
     pres_max_jobs_per_user: PositiveInt | Literal[-1] = 1
     pres_max_slide_count: PositiveInt = 20
