@@ -75,6 +75,28 @@ class TestLessonChatServiceCall:
             assert result["response"] == "Test response"
             mock_rag_adapter_cache.get.assert_called_once()
 
+    @pytest.mark.asyncio
+    async def test_call_initiates_index(self, sample_lesson_chat_request, mock_rag_adapter_cache):
+        """Test service initiates index before chatting."""
+        with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
+             patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
+             patch("app.services.lesson_chat_service.new_rag_llm"), \
+             patch("app.services.lesson_chat_service.new_rag_embed"):
+
+            mock_template = Mock()
+            mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
+            MockPromptTemplate.return_value = mock_template
+
+            mock_adapter = AsyncMock()
+            mock_adapter.initiate_index = AsyncMock()
+            mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
+            mock_rag_adapter_cache.get = AsyncMock(return_value=mock_adapter)
+
+            service = LessonChatService()
+
+            await service(sample_lesson_chat_request)
+
+            mock_adapter.initiate_index.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_call_builds_system_message_with_chapter_details(self, sample_lesson_chat_request, mock_rag_adapter_cache):
@@ -139,6 +161,28 @@ class TestLessonChatServiceCall:
             chat_history = call_args[1]["chat_history"]
             assert len(chat_history) > 0
             assert chat_history[0].role == "system"
+
+    @pytest.mark.asyncio
+    async def test_call_handles_rag_adapter_errors(self, sample_lesson_chat_request, mock_rag_adapter_cache):
+        """Test service handles RAG adapter errors."""
+        with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
+             patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
+             patch("app.services.lesson_chat_service.new_rag_llm"), \
+             patch("app.services.lesson_chat_service.new_rag_embed"):
+
+            mock_template = Mock()
+            mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
+            MockPromptTemplate.return_value = mock_template
+
+            # Simulate adapter error
+            mock_adapter = AsyncMock()
+            mock_adapter.initiate_index = AsyncMock(side_effect=Exception("Index error"))
+            mock_rag_adapter_cache.get = AsyncMock(return_value=mock_adapter)
+
+            service = LessonChatService()
+
+            with pytest.raises(Exception, match="Index error"):
+                await service(sample_lesson_chat_request)
 
 
 class TestLessonChatServiceCleanup:

@@ -4,6 +4,7 @@ import re
 from app.models.chat import LessonChatRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
+from app.services.rag_adapters import RagAdapterFactory
 from app.utils.utils import new_rag_embed, new_rag_llm
 from llama_index.core.llms import ChatMessage
 
@@ -23,7 +24,7 @@ class LessonChatService:
 
         self._rag_llm = new_rag_llm()
         self._rag_embed = new_rag_embed()
-        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
+        self._rags = RagAdapterCache(RagAdapterFactory.create_adapter)
 
     async def __call__(
         self,
@@ -41,6 +42,9 @@ class LessonChatService:
         try:
             # Get or create cached RAG adapter instance
             rag_adapter = await self._rags.get(request.index_path, self._rag_llm, self._rag_embed)
+
+            # Initiate the index (download files for InMem, no-op for Qdrant)
+            await rag_adapter.initiate_index()
 
             # Extract chapter details and build system message
             system_message = self._prompt_template.get_prompt_with_variables(
