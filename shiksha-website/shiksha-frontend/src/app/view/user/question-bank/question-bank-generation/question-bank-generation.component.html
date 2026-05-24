@@ -347,7 +347,7 @@
     <!-- Step 3 Generate -->
     <button *ngIf="currentStep === 3" (click)="generateMergedQuestionBank()" [disabled]="isLoadingQuestions"
       class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
-      {{ isLoadingQuestions ? 'Generating...' : 'Generate Final Paper' }}
+      {{ (isLoadingQuestions ? 'Creating question paper...' : 'Generate Final Paper') | translate }}
     </button>
 
   </div>
