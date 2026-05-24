@@ -378,8 +378,8 @@ class QuestionPaperService:
                     chat_history=chat_history
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
-                response_content = response_content["response"]
-                content = response_content.strip("```json").strip("```")
+                content: str = response_content["response"]
+                content = content.strip().removeprefix("```json").removesuffix("```")
                 return GeneratedQuestionItemResponse.model_validate_json(content).items
         except Exception as e:
             logger.exception(e)
