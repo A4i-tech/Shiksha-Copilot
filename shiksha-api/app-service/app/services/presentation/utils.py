@@ -187,6 +187,7 @@ async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str,
             await f.write(buf)
             sha256.update(buf)
 
+        await f.flush()
         await f.seek(0)
         path = pathlib.Path(str(f.name))
         mime = magic.from_file(path, mime=True)
