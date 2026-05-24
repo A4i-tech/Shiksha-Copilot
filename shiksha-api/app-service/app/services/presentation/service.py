@@ -141,7 +141,7 @@ class PresentationService:
                     await self.jobs.update(job.id, {"message": "Simplifying document"})
                     # we are deliberately storing transformation in out/stem/stem instead of out/stem/jobid - if we had
                     # computed transformation for this document during another job, we can skip recomputing for this job.
-                    transform_path = await docparser.transform(self.storage, job.textbook_file, contents, self.storage.path("out", stem, stem))
+                    transform_path = await docparser.transform(self.storage, contents, job.textbook_mime, self.storage.path("out", stem, stem))
                     await self.jobs.update(job.id, {"metadata.transform_path": transform_path})
             await self.jobs.update(job.id, {"status": "planning_structure"})
         elif job.status == "planning_structure":

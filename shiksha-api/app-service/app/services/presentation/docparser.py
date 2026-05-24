@@ -109,18 +109,18 @@ async def read_figures(storage: Storage, textbook: IO[bytes], out_dir: str, capt
     return figures
 
 
-def _transform(textbook_filename: str, textbook: IO[bytes]) -> str | None:
-    if pathlib.Path(textbook_filename).suffix == ".pdf":
-        textbook.seek(0)
-        with pymupdf.open(stream=textbook, filetype="pdf") as doc:
+def _transform(content: IO[bytes], mime: str) -> str | None:
+    if mime == "application/pdf":
+        content.seek(0)
+        with pymupdf.open(stream=content, filetype="pdf") as doc:
             return pymupdf4llm.to_markdown(doc)
     return None
 
 
-async def transform(storage: Storage, textbook_filename: str, textbook: IO[bytes], out_path: str) -> str | None:
+async def transform(storage: Storage, content: IO[bytes], mime: str, out_path: str) -> str | None:
     storage_path = out_path + ".md"
     if not await storage.exists(storage_path):
-        markdown = await asyncio.to_thread(_transform, textbook_filename, textbook)
+        markdown = await asyncio.to_thread(_transform, content, mime)
         if markdown is None:
             return None
         await storage.write_text(storage_path, markdown)
