@@ -65,8 +65,7 @@ class QuestionPaperService:
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
         self.max_questions_per_slot = 20
-        self.concurrency = asyncio.Semaphore(2)
-        self.batch_size = 5
+        self.concurrency = asyncio.Semaphore(5)
 
     def _normalize_string(self, s: str) -> str:
         """Centralized string normalization to collapse whitespace and trim."""
@@ -356,7 +355,7 @@ class QuestionPaperService:
             user_message += "- " + json.dumps(question, ensure_ascii=False) + "\n"
 
         try:
-            if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not rag_adapter:
+            if not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
                 response = await self.client.responses.parse(
@@ -388,12 +387,17 @@ class QuestionPaperService:
 
     async def _generate_questions_batch_async(
         self,
+        index_path: str,
         system_prompt: str,
         slot: Dict[str, Any],
-        rag_adapter: Optional[BaseRagAdapter],
     ) -> list[GeneratedQuestionItem]:
         """Async version of _generate_questions_batch with optional delay."""
         async with self.concurrency:
+            if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not index_path.strip():
+                logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
+                rag_adapter = None
+            else:
+                rag_adapter = await self._rags.get(index_path, self._rag_llm, self._rag_embed)
             return await self._generate_questions_batch(system_prompt, slot, rag_adapter)
 
     def _organize_questions_into_response(
@@ -488,31 +492,18 @@ class QuestionPaperService:
         # Prepare existing questions
         existing_flat = self._flatten_existing_questions(request.existing_questions)
 
-        # Process in parallel batches
+        tasks = []
+        for i, slot in enumerate(slots):
+            index_path = slot["index_path"]
+            logger.debug(f"[SLOT_PROCESSING] Slot {i} | unit='{slot['unit_name']}' | index_path='{index_path}'")
+            system_prompt = self._format_system_prompt(request, existing_flat, slot)
+            task = self._generate_questions_batch_async(index_path, system_prompt, slot)
+            tasks.append(task)
+
         all_generated: list[GeneratedQuestionItem] = []
-
-        for i in range(0, len(slots), self.batch_size):
-            batch_slots = slots[i : i + self.batch_size]
-            tasks = []
-            for j, slot in enumerate(batch_slots):
-                index_path = slot["index_path"]
-                logger.debug(f"[SLOT_PROCESSING] Batch {i}, Slot {j} | unit='{slot['unit_name']}' | index_path='{index_path}'")
-                if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not index_path.strip():
-                    logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
-                    rag_adapter = None
-                else:
-                    rag_adapter = await self._rags.get(index_path, self._rag_llm, self._rag_embed)
-
-                system_prompt = self._format_system_prompt(request, existing_flat, slot)
-                task = self._generate_questions_batch_async(system_prompt, slot, rag_adapter)
-                tasks.append(task)
-
-            # Wait for batch
-            batch_results = await asyncio.gather(*tasks)
-
-            for raw_items in batch_results:
-                if raw_items:
-                    all_generated.extend(raw_items)
+        for raw_items in await asyncio.gather(*tasks):
+            if raw_items:
+                all_generated.extend(raw_items)
 
         response_questions = self._organize_questions_into_response(request, all_generated)
         return QuestionBankResponse(metadata=QuestionBankMetadata(
