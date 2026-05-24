@@ -1,12 +1,11 @@
 from pathlib import Path
 import logging
 import re
-from app.config import settings
 from app.models.chat import LessonChatRequest
+from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
-from app.services.rag_adapters import BaseRagAdapter
-from app.services.rag_adapter_cache import RAG_ADAPTER_CACHE
-from openai import AsyncAzureOpenAI as NativeAsyncAzureOpenAI
+from app.services.rag_adapters import RagAdapterFactory
+from app.utils.utils import new_rag_embed, new_rag_llm
 from llama_index.core.llms import ChatMessage
 
 logger = logging.getLogger(__name__)
@@ -23,15 +22,9 @@ class LessonChatService:
         )
         self._prompt_template = PromptTemplate(str(prompts_file_path))
 
-        # Initialize Native Azure OpenAI client for the adapter
-        self._native_client = NativeAsyncAzureOpenAI(
-            api_key=settings.azure_openai_api_key,
-            api_version=settings.azure_openai_api_version,
-            azure_endpoint=settings.azure_openai_endpoint,
-        )
-
-        # Initialize LRU cache for RAG adapter instances (max 32 items)
-        self._rag_adapter_cache = RAG_ADAPTER_CACHE
+        self._rag_llm = new_rag_llm()
+        self._rag_embed = new_rag_embed()
+        self._rags = RagAdapterCache(RagAdapterFactory.create_adapter)
 
     async def __call__(
         self,
@@ -48,7 +41,7 @@ class LessonChatService:
         """
         try:
             # Get or create cached RAG adapter instance
-            rag_adapter = await self._get_or_create_rag_adapter(request.index_path)
+            rag_adapter = await self._rags.get(request.index_path, self._rag_llm, self._rag_embed)
 
             # Initiate the index (download files for InMem, no-op for Qdrant)
             await rag_adapter.initiate_index()
@@ -166,26 +159,9 @@ class LessonChatService:
         else:
             raise ValueError(f"Invalid chapter_id format: {chapter_id}")
 
-    async def _get_or_create_rag_adapter(self, index_path: str) -> BaseRagAdapter:
-        """
-        Get or create a RAG adapter instance with LRU caching.
-
-        Args:
-            index_path: Path to the RAG index
-
-        Returns:
-            BaseRagAdapter: Cached or newly created RAG adapter instance
-        """
-        return await self._rag_adapter_cache.get_or_create_adapter(
-            index_path=index_path,
-            client=self._native_client,
-            embedding_model=settings.azure_openai_embed_model,
-            chat_model=settings.azure_openai_deployment_name,
-        )
-
     async def cleanup(self) -> None:
         """Clear the RAG adapter cache and associated resources."""
-        await self._rag_adapter_cache.cleanup()
+        await self._rags.cleanup()
 
 
 LESSON_CHAT_SERVICE_INSTANCE = LessonChatService()
