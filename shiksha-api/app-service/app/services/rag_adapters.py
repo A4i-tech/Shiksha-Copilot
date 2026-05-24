@@ -14,10 +14,9 @@ from typing import List, Optional, Union
 from app.config import settings
 from app.utils.blob_store import BlobStore
 from rag_wrapper import InMemRagOps, QdrantRagOps
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.llms import ChatMessage
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +26,16 @@ class BaseRagAdapter(ABC):
 
     def __init__(
         self,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
         metadata_filter: dict = None,
     ):
         """
         Initialize the base RAG adapter.
 
         Args:
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
             metadata_filter: optional metadata filter to apply while retrieval
         """
         self.completion_llm = completion_llm
@@ -105,16 +104,16 @@ class InMemRagOpsAdapter(BaseRagAdapter):
 
     def __init__(
         self,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
         index_path: str,
     ):
         """
         Initialize the InMemRagOps adapter.
 
         Args:
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
             index_path: Path to the RAG index in blob storage
         """
         super().__init__(completion_llm, embedding_llm)
@@ -198,16 +197,16 @@ class QdrantRagOpsAdapter(BaseRagAdapter):
 
     def __init__(
         self,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
         index_path: str,
     ):
         """
         Initialize the QdrantRagOps adapter.
 
         Args:
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
             index_path: Path to the Qdrant collection/index in format "qdrant/collection_name/key:value"
         """
         self.index_path = index_path
@@ -255,18 +254,18 @@ class RagAdapterFactory:
     """Factory class for creating appropriate RAG adapters."""
 
     @staticmethod
-    def create_adapter(
+    async def create_adapter(
         index_path: str,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
     ) -> BaseRagAdapter:
         """
         Create the appropriate RAG adapter based on the index path.
 
         Args:
             index_path: Path to the RAG index
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
 
         Returns:
             BaseRagAdapter: The appropriate RAG adapter instance
