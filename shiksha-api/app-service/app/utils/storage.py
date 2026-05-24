@@ -1,11 +1,12 @@
 import pathlib
 import posixpath
-import tempfile
 from contextlib import asynccontextmanager
-from typing import IO, Any, AsyncIterator
+from typing import Any, AsyncIterator
 
+import aiofiles
 import fsspec
 from fsspec.implementations.asyn_wrapper import AsyncFileSystemWrapper
+from aiofiles.threadpool.binary import AsyncBufferedReader
 
 
 class Storage:
@@ -41,8 +42,8 @@ class Storage:
 
 
     @asynccontextmanager
-    async def read(self, path: str) -> AsyncIterator[IO[bytes]]:
-        with tempfile.NamedTemporaryFile(suffix=pathlib.Path(path).suffix) as f:
+    async def read(self, path: str) -> AsyncIterator[AsyncBufferedReader]:
+        async with aiofiles.tempfile.NamedTemporaryFile(suffix=pathlib.Path(path).suffix) as f:
             await self.fs._get_file(posixpath.join(self.root, path), f.name)
-            f.seek(0)
-            yield f.file
+            await f.seek(0)
+            yield f

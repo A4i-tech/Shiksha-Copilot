@@ -77,7 +77,7 @@ async def _actually_read_figures(storage: Storage, textbook: IO[bytes], out_dir:
 
     textbook.seek(0)
     try:
-        doc = pymupdf.open(textbook)
+        doc = pymupdf.open(stream=textbook)
     except pymupdf.FileDataError:
         return []
 
@@ -112,7 +112,8 @@ async def read_figures(storage: Storage, textbook: IO[bytes], out_dir: str, capt
 def _transform(textbook_filename: str, textbook: IO[bytes]) -> str | None:
     if pathlib.Path(textbook_filename).suffix == ".pdf":
         textbook.seek(0)
-        return pymupdf4llm.to_markdown(textbook)
+        with pymupdf.open(stream=textbook, filetype="pdf") as doc:
+            return pymupdf4llm.to_markdown(doc)
     return None
 
 

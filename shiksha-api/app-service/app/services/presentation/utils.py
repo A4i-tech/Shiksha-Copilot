@@ -5,6 +5,7 @@ import os
 import shutil
 import tempfile
 from typing import IO, Literal
+import aiofiles
 import aiohttp
 import pathlib
 from app.config import settings
@@ -178,26 +179,22 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
-async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, n: int, allowed_mimes: set[str]) -> tuple[str, str]:
+async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int = 1024 * 1024) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
-    with tempfile.NamedTemporaryFile(suffix=suffix) as f:
-        pending = n
-        while chunk := await file.read(min(pending, 8192)):
-            f.write(chunk)
-            sha256.update(chunk)
-            pending -= len(chunk)
-            if pending == 0:
-                break
+    async with aiofiles.tempfile.NamedTemporaryFile(suffix=suffix) as f:
+        while buf := await file.read(chunk_size):
+            await f.write(buf)
+            sha256.update(buf)
 
-        f.seek(0)
-        mime = magic.from_file(f.name, mime=True)
-        if mime not in allowed_mimes:
-            raise ValueError("Unexpected mime (%s)" % mime)
+        await f.seek(0)
+        path = pathlib.Path(str(f.name))
+        mime = magic.from_file(path, mime=True)
+        if mime not in allowed_mimes: raise ValueError("Unexpected mime (%s)" % mime)
 
-        f.seek(0)
         final_name = f"{sha256.hexdigest()}{suffix}"
-        await storage.write_bytes(storage.path("uploads", final_name), pathlib.Path(f.name))
+        await f.seek(0)
+        await storage.write_bytes(storage.path("uploads", final_name), path)
     return final_name, mime
 
 

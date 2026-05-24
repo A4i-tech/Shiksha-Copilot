@@ -78,8 +78,9 @@ async def create_job(
 
     filename = textbook_file.filename
     if not filename: raise HTTPException(status_code=400, detail="Unsupported file type (cannot read filename)")
+    if textbook_file.size is None or textbook_file.size > settings.pres_upload_max_filesize: raise HTTPException(status_code=400, detail="Bad file size")
     try:
-        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, content_length, ALLOWED_MIMES)
+        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, ALLOWED_MIMES)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return await service.jobs.create(user_id, textbook_path, textbook_mime, slides, instruction, tags)

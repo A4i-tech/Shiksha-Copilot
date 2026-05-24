@@ -1,3 +1,4 @@
+import io
 import mimetypes
 import time
 import traceback
@@ -127,9 +128,11 @@ class PresentationService:
             await self.jobs.update(job.id, {"status": "extracting_figures", "message": "Extracting figures from textbook"})
         elif job.status == "extracting_figures":
             await self.jobs.update(job.id, {"message": "Reading textbook and extracting figures"})
-            async with self.storage.read(self.storage.path("uploads", job.textbook_file)) as f:
-                stem = pathlib.Path(job.textbook_file).stem
-                figures = await docparser.read_figures(self.storage, f, self.storage.path("out", stem, "figures"))
+            stem = pathlib.Path(job.textbook_file).stem
+            async with self.planner_sem:
+                async with self.storage.read(self.storage.path("uploads", job.textbook_file)) as f:
+                    contents = io.BytesIO(await f.read())
+                figures = await docparser.read_figures(self.storage, contents, self.storage.path("out", stem, "figures"))
                 await self.jobs.update(job.id, {"metadata.analysis": {
                     "extraction_time": datetime.now().isoformat(),
                     "figures": list(map(lambda x: x.model_dump(), figures)),
@@ -138,7 +141,7 @@ class PresentationService:
                     await self.jobs.update(job.id, {"message": "Simplifying document"})
                     # we are deliberately storing transformation in out/stem/stem instead of out/stem/jobid - if we had
                     # computed transformation for this document during another job, we can skip recomputing for this job.
-                    transform_path = await docparser.transform(self.storage, job.textbook_file, f, self.storage.path("out", stem, stem))
+                    transform_path = await docparser.transform(self.storage, job.textbook_file, contents, self.storage.path("out", stem, stem))
                     await self.jobs.update(job.id, {"metadata.transform_path": transform_path})
             await self.jobs.update(job.id, {"status": "planning_structure"})
         elif job.status == "planning_structure":
@@ -155,9 +158,11 @@ class PresentationService:
             else:
                 source_path = self.storage.path("uploads", job.textbook_file)
                 source_mime = job.textbook_mime
-            async with self.planner_sem, self.storage.read(source_path) as f:
-                figures = await docparser.read_figures(self.storage, f, self.storage.path("out", stem, "figures"))
-                async for event in agent.plan(source_path, source_mime, f, figures, job.slides, metadata, job.instruction):
+            async with self.planner_sem:
+                async with self.storage.read(source_path) as f:
+                    contents = io.BytesIO(await f.read())
+                figures = await docparser.read_figures(self.storage, contents, self.storage.path("out", stem, "figures"))
+                async for event in agent.plan(source_path, source_mime, contents, figures, job.slides, metadata, job.instruction):
                     if isinstance(event, agent.ShikshaCheckpointEvent):
                         await self._process_checkpoint(job, event, "plan", None, out_path)
                     else:
@@ -172,7 +177,7 @@ class PresentationService:
                 await docparser.save_pptx(self.storage, prs, out_path)
             else:
                 async with self.storage.read(out_path) as f:
-                    prs = Presentation(f)
+                    prs = Presentation(io.BytesIO(await f.read()))
 
             outline = agent.PresentationOutline.model_validate(job.metadata["plan"]["outline"])
             metadata = job.metadata.get("design", {})
@@ -185,8 +190,10 @@ class PresentationService:
                 source_path = self.storage.path("uploads", job.textbook_file)
 
             figures_dir = self.storage.path("out", stem, "figures")
-            async with self.designer_sem, self.storage.read(source_path) as f:
-                async for event in agent.design(self.storage, prs, f, figures_dir, outline, metadata, job.instruction):
+            async with self.designer_sem:
+                async with self.storage.read(source_path) as f:
+                    contents = io.BytesIO(await f.read())
+                async for event in agent.design(self.storage, prs, contents, figures_dir, outline, metadata, job.instruction):
                     if isinstance(event, agent.ShikshaCheckpointEvent):
                         await self._process_checkpoint(job, event, "design", prs, out_path)
                     else:
@@ -203,8 +210,9 @@ class PresentationService:
             await self.jobs.update(job.id, {"message": "Adding media"})
             stem = pathlib.Path(job.textbook_file).stem
             out_path = self.storage.path("out", stem, f"{job.id}.pptx")
-            async with self.finalizer_sem, self.storage.read(out_path) as f:
-                prs = Presentation(f)
+            async with self.finalizer_sem:
+                async with self.storage.read(out_path) as f:
+                    prs = Presentation(io.BytesIO(await f.read()))
 
                 metadata = job.metadata.get("finalize", {})
                 if not isinstance(metadata, dict):
@@ -221,7 +229,7 @@ class PresentationService:
             stem = pathlib.Path(job.textbook_file).stem
             out_path = self.storage.path("out", stem, f"{job.id}.pptx")
             async with self.storage.read(out_path) as f:
-                prs = Presentation(f)
+                prs = Presentation(io.BytesIO(await f.read()))
 
                 quality_score = 1.0
                 quality_issues = []
