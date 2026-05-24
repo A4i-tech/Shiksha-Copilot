@@ -179,7 +179,7 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
-async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int = 1024 * 1024) -> tuple[str, str]:
+async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
     async with aiofiles.tempfile.NamedTemporaryFile(suffix=suffix) as f:
