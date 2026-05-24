@@ -532,10 +532,12 @@ class QuestionPaperService:
             tasks = []
             for j, slot in enumerate(batch_slots):
                 index_path = slot["index_path"]
-                logger.debug(
-                    f"[SLOT_PROCESSING] Batch {i}, Slot {j} | "
-                    f"unit='{slot['unit_name']}' | index_path='{index_path}'"
-                )
+                logger.debug(f"[SLOT_PROCESSING] Batch {i}, Slot {j} | unit='{slot['unit_name']}' | index_path='{index_path}'")
+                if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not index_path.strip():
+                    logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
+                    rag_adapter = None
+                else:
+                    rag_adapter = await self._rags.get(index_path, self._rag_llm, self._rag_embed)
 
                 system_prompt = self._format_system_prompt(request, existing_flat, slot)
                 task = self._generate_questions_batch_async(index_path, system_prompt, slot)

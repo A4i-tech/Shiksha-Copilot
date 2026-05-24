@@ -20,6 +20,8 @@ class RagAdapterCache(Generic[T]):
     @classmethod
     async def from_factory(cls, index_path: str, completion_llm: OpenAI, embedding_llm: OpenAIEmbedding):
         adapter = RagAdapterFactory.create_adapter(index_path, completion_llm, embedding_llm)
+        if asyncio.iscoroutine(adapter):
+            adapter = await adapter
         await adapter.initialize()
         await adapter.initiate_index()
         return adapter
@@ -51,8 +53,6 @@ class RagAdapterCache(Generic[T]):
             evicted = self._instances.pop(oldest_key)
             await evicted.cleanup()
         return adapter
-
-
     async def get(self, index_path: str, completion_llm: OpenAI, embedding_llm: OpenAIEmbedding) -> T:
         async with self._lock_for(index_path):
             return await self._actually_get(index_path, completion_llm, embedding_llm)
