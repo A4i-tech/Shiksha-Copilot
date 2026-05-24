@@ -82,6 +82,8 @@ class QuestionPaperService:
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
         self.max_questions_per_slot = 20
+        self.concurrency = asyncio.Semaphore(2)
+        self.batch_size = 5
 
     def _normalize_string(self, s: str) -> str:
         """Centralized string normalization to collapse whitespace and trim."""
@@ -508,12 +510,10 @@ class QuestionPaperService:
         system_prompt: str,
         slot: Dict[str, Any],
         rag_adapter: Optional[BaseRagAdapter],
-        delay_seconds: int = 0,
     ) -> list[GeneratedQuestionItem]:
         """Async version of _generate_questions_batch with optional delay."""
-        if delay_seconds > 0:
-            await asyncio.sleep(delay_seconds)
-        return await self._generate_questions_batch(system_prompt, slot, rag_adapter)
+        async with self.concurrency:
+            return await self._generate_questions_batch(system_prompt, slot, rag_adapter)
 
     def _organize_questions_into_response(
         self,
@@ -609,10 +609,9 @@ class QuestionPaperService:
 
         # Process in parallel batches
         all_generated: list[GeneratedQuestionItem] = []
-        batch_size = 3
 
-        for i in range(0, len(slots), batch_size):
-            batch_slots = slots[i : i + batch_size]
+        for i in range(0, len(slots), self.batch_size):
+            batch_slots = slots[i : i + self.batch_size]
             tasks = []
             for j, slot in enumerate(batch_slots):
                 index_path = slot["index_path"]
@@ -623,7 +622,7 @@ class QuestionPaperService:
 
                 rag_adapter = await self._get_or_create_rag_adapter(index_path)
                 system_prompt = self._format_system_prompt(request, existing_flat, slot)
-                task = self._generate_questions_batch_async(system_prompt, slot, rag_adapter, j * 2)
+                task = self._generate_questions_batch_async(system_prompt, slot, rag_adapter)
                 tasks.append(task)
 
             # Wait for batch

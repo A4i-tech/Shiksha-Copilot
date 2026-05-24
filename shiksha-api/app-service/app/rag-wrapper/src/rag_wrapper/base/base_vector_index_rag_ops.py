@@ -22,6 +22,7 @@ from llama_index.core import (
     get_response_synthesizer,
 )
 from llama_index.core.indices.base import BaseIndex
+from llama_index.core.indices.prompt_helper import PromptHelper
 from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.schema import TransformComponent
 from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
@@ -77,6 +78,7 @@ class BaseVectorIndexRagOps(ABC):
         self.logger = logging.getLogger(__name__)
         self.token_counter = TokenCountingHandler()
         self._callback_manager = CallbackManager([self.token_counter])
+        Settings.prompt_helper = PromptHelper.from_llm_metadata(self.completion_llm.metadata)
 
     def _get_response_mode(self) -> ResponseMode:
         """Convert string response mode to ResponseMode enum."""

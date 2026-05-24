@@ -21,6 +21,7 @@ from llama_index.core import (
     Settings,
 )
 from llama_index.core.llms import ChatMessage, LLM
+from llama_index.core.indices.prompt_helper import PromptHelper
 from llama_index.core.schema import TransformComponent, TextNode
 from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 from llama_index.core.graph_stores.types import EntityNode, Relation
@@ -94,6 +95,7 @@ class BaseGraphIndexRagOps(ABC):
         self.logger = logging.getLogger(__name__)
         self.token_counter = TokenCountingHandler()
         self._callback_manager = CallbackManager([self.token_counter])
+        Settings.prompt_helper = PromptHelper.from_llm_metadata(self.completion_llm.metadata)
 
         self._add_token_counter_to_llm(
             self.completion_llm
