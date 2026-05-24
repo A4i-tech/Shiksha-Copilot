@@ -400,36 +400,14 @@ class QuestionPaperService:
                 # constrains the JSON shape via templated rules + few-shot.
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
-                rag_result = await rag_adapter.chat_with_index(
+                response_content = await rag_adapter.chat_with_index(
                     curr_message=user_message + "\n\nReturn ONLY a JSON object with an `items` array of question objects matching the slot rules above.",
                     chat_history=chat_history,
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
-                response_content = rag_result["response"] if isinstance(rag_result, dict) else str(rag_result)
-
-            # Clean response
-            content = response_content.strip("```json").strip("```")
-            response_data = json.loads(content)
-
-            items = response_data.get("items")
-            if not items:
-                logger.warning("No items found in completion response")
-                return []
-
-            # Post-process items to ensure difficulty text case
-            for item in items:
-                if 'difficulty' in item:
-                    item['difficulty'] = item['difficulty'].capitalize()
-
-            # Coerce dicts into GeneratedQuestionItem so downstream code that
-            # uses attribute access (`.type`, `.unit_name`, etc.) keeps working
-            # regardless of whether the response came from the structured
-            # parser (direct generation) or raw JSON (RAG path).
-            return [
-                GeneratedQuestionItem.model_validate(it) if isinstance(it, dict) else it
-                for it in items
-            ]
-
+                content: str = response_content["response"]
+                content = content.strip().removeprefix("```json").removesuffix("```")
+                return GeneratedQuestionItemResponse.model_validate_json(content).items
         except Exception as e:
             logger.exception(e)
             return []
