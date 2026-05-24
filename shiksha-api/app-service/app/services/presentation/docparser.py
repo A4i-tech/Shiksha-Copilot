@@ -13,6 +13,7 @@ from pptx.enum.shapes import PP_PLACEHOLDER
 from pydantic_ai import AgentRunError, BinaryContent
 import pymupdf4llm
 import pymupdf
+from aiofiles.threadpool.binary import AsyncBufferedReader
 
 
 async def _caption(data: IO[bytes], figure_path: str, page_text: str, sem: asyncio.Semaphore) -> FigureInfo | None:
@@ -61,7 +62,7 @@ def _page_figures(doc: pymupdf.Document, page: pymupdf.Page) -> Iterator[tuple[i
     return page, result
 
 
-async def _actually_read_figures(storage: Storage, textbook: IO[bytes], out_dir: str, caption_concurrency: int) -> list[FigureInfo]:
+async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader, out_dir: str, caption_concurrency: int) -> list[FigureInfo]:
     logger = logging.getLogger(__name__)
     sem = asyncio.Semaphore(caption_concurrency)
     tasks: list[asyncio.Task[FigureInfo | None]] = []
@@ -75,9 +76,9 @@ async def _actually_read_figures(storage: Storage, textbook: IO[bytes], out_dir:
         await storage.write_bytes(storage_path, data.getvalue())
         return await _caption(data, figure_name, page_text, sem)
 
-    textbook.seek(0)
+    await textbook.seek(0)
     try:
-        doc = pymupdf.open(stream=textbook)
+        doc = pymupdf.open(stream=await textbook.read())
     except pymupdf.FileDataError:
         return []
 
@@ -99,7 +100,7 @@ async def _actually_read_figures(storage: Storage, textbook: IO[bytes], out_dir:
     return [f for f in figures if f is not None]
 
 
-async def read_figures(storage: Storage, textbook: IO[bytes], out_dir: str, caption_concurrency: int = 5) -> list[FigureInfo]:
+async def read_figures(storage: Storage, textbook: AsyncBufferedReader, out_dir: str, caption_concurrency: int = 5) -> list[FigureInfo]:
     storage_mf_path = storage.path(out_dir, "manifest.json")
     if await storage.exists(storage_mf_path):
         return list(map(FigureInfo.model_validate, json.loads(await storage.read_text(storage_mf_path))))
@@ -109,18 +110,18 @@ async def read_figures(storage: Storage, textbook: IO[bytes], out_dir: str, capt
     return figures
 
 
-def _transform(content: IO[bytes], mime: str) -> str | None:
+async def _transform(content: AsyncBufferedReader, mime: str) -> str | None:
     if mime == "application/pdf":
-        content.seek(0)
-        with pymupdf.open(stream=content, filetype="pdf") as doc:
-            return pymupdf4llm.to_markdown(doc)
+        await content.seek(0)
+        with pymupdf.open(stream=await content.read()) as doc:
+            return await asyncio.to_thread(pymupdf4llm.to_markdown, doc)
     return None
 
 
-async def transform(storage: Storage, content: IO[bytes], mime: str, out_path: str) -> str | None:
+async def transform(storage: Storage, content: AsyncBufferedReader, mime: str, out_path: str) -> str | None:
     storage_path = out_path + ".md"
     if not await storage.exists(storage_path):
-        markdown = await asyncio.to_thread(_transform, content, mime)
+        markdown = await _transform(content, mime)
         if markdown is None:
             return None
         await storage.write_text(storage_path, markdown)
