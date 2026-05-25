@@ -100,9 +100,7 @@ class TestBlobStoreDownloadBlobs:
         mock_container_client.list_blobs = MagicMock(return_value=async_blob_iterator())
         mock_container_client.get_blob_client = MagicMock(return_value=mock_blob_client)
 
-        blob_store._async_svc.get_container_client = MagicMock(
-            return_value=mock_container_client
-        )
+        blob_store._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
 
         # Mock aiofiles.open - setup context manager properly
         mock_file = AsyncMock()
@@ -131,9 +129,7 @@ class TestBlobStoreDownloadBlobs:
         mock_container_client = AsyncMock()
         mock_container_client.list_blobs = MagicMock(return_value=error_iterator())
 
-        blob_store._async_svc.get_container_client = MagicMock(
-            return_value=mock_container_client
-        )
+        blob_store._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
 
         with pytest.raises(
             RuntimeError, match="Failed to download blobs asynchronously"
@@ -173,9 +169,7 @@ class TestBlobStoreDownloadBlobs:
         )
         mock_container_client.get_blob_client = MagicMock(return_value=mock_blob_client)
 
-        blob_store._async_svc.get_container_client = MagicMock(
-            return_value=mock_container_client
-        )
+        blob_store._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
 
         # Mock file writing - properly setup async context manager
         mock_file = AsyncMock()
@@ -215,9 +209,7 @@ class TestBlobStoreDownloadBlobs:
         mock_container_client.list_blobs = MagicMock(return_value=async_single_blob())
         mock_container_client.get_blob_client = MagicMock(return_value=mock_blob_client)
 
-        blob_store._async_svc.get_container_client = MagicMock(
-            return_value=mock_container_client
-        )
+        blob_store._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
 
         # Mock file writing - properly setup async context manager
         mock_file = AsyncMock()
