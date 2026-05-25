@@ -17,7 +17,7 @@ from openai.types import ResponsesModel
 from llama_index.core.llms import ChatMessage
 
 # 3. Import only the Factory and Base Adapter
-from app.services.rag_adapters import BaseRagAdapter, RagAdapterFactory
+from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
     GeneratedQuestionItem,
@@ -60,7 +60,7 @@ class QuestionPaperService:
 
         self._rag_llm = new_rag_llm()
         self._rag_embed = new_rag_embed()
-        self._rags = RagAdapterCache(RagAdapterFactory.create_adapter)
+        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
         # Load YAML prompts
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
@@ -421,10 +421,19 @@ class QuestionPaperService:
         """Async version of _generate_questions_batch with optional delay."""
         async with self.concurrency:
             if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not index_path.strip():
-                logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
-                rag_adapter = None
+                fut = asyncio.Future()
+                fut.set_result(None)
             else:
-                rag_adapter = await self._rags.get(index_path, self._rag_llm, self._rag_embed)
+                fut = self._rags.get(index_path, self._rag_llm, self._rag_embed)
+
+            try:
+                rag_adapter = await fut
+            except RuntimeError as e:
+                logger.exception(e)
+                rag_adapter = None
+
+            if rag_adapter is None:
+                logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
             return await self._generate_questions_batch(system_prompt, slot, rag_adapter)
 
     def _organize_questions_into_response(

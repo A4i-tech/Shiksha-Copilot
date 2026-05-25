@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List
 
 from azure.core.exceptions import AzureError
 from azure.identity.aio import DefaultAzureCredential
@@ -58,32 +58,26 @@ class BlobStore:
             raise ValueError("Prefix must be in the format 'container/prefix_path'.")
 
         container_name, blob_prefix = prefix.split("/", 1)
-        container_client = self._async_svc.get_container_client(container_name)
         downloaded_files: List[str] = []
 
         try:
-            # list_blobs is async iterable
-            async for blob_props in container_client.list_blobs(
-                name_starts_with=blob_prefix
-            ):
-                blob_name = blob_props.name
-                blob_client = container_client.get_blob_client(blob_name)
-                stream = await blob_client.download_blob()
-                data = await stream.readall()
+            async with self._async_svc.get_container_client(container_name) as container_client:
+                # list_blobs is async iterable
+                async for blob_props in container_client.list_blobs(name_starts_with=blob_prefix):
+                    blob_name = blob_props.name
+                    blob_client = container_client.get_blob_client(blob_name)
+                    stream = await blob_client.download_blob()
+                    data = await stream.readall()
 
-                file_name = blob_name.split("/")[-1]
-                local_path = os.path.join(target_folder, file_name)
-                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                    file_name = blob_name.split("/")[-1]
+                    local_path = os.path.join(target_folder, file_name)
+                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
-                # write without blocking the event loop
-                async with aiofiles.open(local_path, "wb") as f:
-                    await f.write(data)
+                    # write without blocking the event loop
+                    async with aiofiles.open(local_path, "wb") as f:
+                        await f.write(data)
 
-                downloaded_files.append(local_path)
-
+                    downloaded_files.append(local_path)
             return downloaded_files
-
         except AzureError as e:
             raise RuntimeError(f"Failed to download blobs asynchronously: {e}") from e
-        finally:
-            await container_client.close()
