@@ -56,6 +56,18 @@ const QUESTION_TYPE_DETAILS = {
     instruction: "Match the following",
     description: "Match the following"
   },
+  GRAMMAR_MCQ: {
+    instruction: "Grammar: Choose the correct option",
+    description: "Grammar: Multiple Choice Questions"
+  },
+  GRAMMAR_FILL_BLANKS: {
+    instruction: "Grammar: Fill in the blanks with correct words/forms",
+    description: "Grammar: Fill in the blanks"
+  },
+  GRAMMAR_EDITING: {
+    instruction: "Grammar: Identify and correct the error in the sentence",
+    description: "Grammar: Identify and correct the error"
+  },
 };
 
 const QUESTION_TYPE_MAPPING = Object.keys(QUESTION_TYPE_DETAILS).reduce((acc, key) => {

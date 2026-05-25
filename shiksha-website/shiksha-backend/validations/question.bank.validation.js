@@ -8,7 +8,11 @@ const VALID_QUESTION_TYPES = [
     'Answer the following in two or three sentences each',
     'Answer the following questions',
     'Answer the following question in four or five sentences',
-    'Match the following'
+    'Match the following',
+    // Grammar variants — mirror Python QuestionType GRAMMAR_* values
+    'Grammar: Choose the correct option',
+    'Grammar: Fill in the blanks with correct words/forms',
+    'Grammar: Identify and correct the error in the sentence'
 ];
 
 const questionBankCommonSchema = {

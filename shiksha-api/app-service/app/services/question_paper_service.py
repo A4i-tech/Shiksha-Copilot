@@ -453,6 +453,11 @@ class QuestionPaperService:
         user_message = (
             "Generate questions for the following slots by following the rules listed below. "
             "`keyAnswer` field must be non-empty if the question model supports it.\n\n"
+            "Return a JSON object: {\"items\": [...]} where each item has fields: "
+            "`type` (one of the slot types below), `unit_name` (copy from the slot), "
+            "`objective` (copy from the slot), `marks_per_question` (copy from the slot), "
+            "`difficulty` (one of 'Easy', 'Average', 'Difficult'), and `item` (the generated "
+            "question object matching the rule for that type).\n\n"
             "Rules by question type:\n"
             f"{format_rules_text}\n\n"
             f"Question slots:\n"
@@ -475,12 +480,16 @@ class QuestionPaperService:
                     raise RuntimeError("Did not retrieve a valid response from model")
                 return response.output_parsed.items
             else:
-                # Index Available -> RAG Generation
+                # Index Available -> RAG Generation.
+                # We deliberately do NOT inline the full JSON schema here — for long
+                # prompts (grammar + chapter context + few-shot) it can push the
+                # llama-index prompt_helper into negative chunk_size territory
+                # ("Chunk size -N is not positive"). The system prompt already
+                # constrains the JSON shape via templated rules + few-shot.
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
                 rag_result = await rag_adapter.chat_with_index(
-                    # rag-adapter does not support structured output, so we pass model json schema for now.
-                    curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
+                    curr_message=user_message + "\n\nReturn ONLY a JSON object with an `items` array of question objects matching the slot rules above.",
                     chat_history=chat_history,
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
@@ -500,7 +509,14 @@ class QuestionPaperService:
                 if 'difficulty' in item:
                     item['difficulty'] = item['difficulty'].capitalize()
 
-            return items
+            # Coerce dicts into GeneratedQuestionItem so downstream code that
+            # uses attribute access (`.type`, `.unit_name`, etc.) keeps working
+            # regardless of whether the response came from the structured
+            # parser (direct generation) or raw JSON (RAG path).
+            return [
+                GeneratedQuestionItem.model_validate(it) if isinstance(it, dict) else it
+                for it in items
+            ]
 
         except Exception as e:
             logger.exception(e)

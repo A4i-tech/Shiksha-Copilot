@@ -1137,6 +1137,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (!heading || typeof heading !== 'string') return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
     const h = heading.toLowerCase().trim();
 
+    // 0. Grammar variants — match first so the generic "fill"/"mcq" branches don't
+    // capture grammar headings ("Grammar: Fill in the blanks" → GRAMMAR_FILL_BLANKS,
+    // not FILL_BLANKS). Mirrors the GRAMMAR_* keys in Python QuestionType.
+    if (h.startsWith('grammar:') || h.includes('grammar')) {
+      if (h.includes('mcq') || h.includes('multiple choice') || h.includes('correct option')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_MCQ;
+      if (h.includes('editing') || h.includes('identify') || h.includes('correct the error')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_EDITING;
+      if (h.includes('fill') || h.includes('blank')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_FILL_BLANKS;
+    }
+
     // 1. MCQ
     if (h.includes('multiple choice') || h.includes('mcq') || h.includes('objective') || h.includes('alternative')) return QUESTION_TYPE_MAPPING_LONG.MCQ;
 

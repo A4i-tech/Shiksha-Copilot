@@ -79,6 +79,21 @@ export const QUESTION_TYPE = [
         type: "ANSWER_LONG",
         name: "Long Answer",
         value: "Answer the following question in four or five sentences"
+    },
+    {
+        type: "GRAMMAR_MCQ",
+        name: "Grammar: Multiple Choice Questions",
+        value: "Grammar: Choose the correct option"
+    },
+    {
+        type: "GRAMMAR_FILL_BLANKS",
+        name: "Grammar: Fill in the blanks",
+        value: "Grammar: Fill in the blanks with correct words/forms"
+    },
+    {
+        type: "GRAMMAR_EDITING",
+        name: "Grammar: Identify and correct the error",
+        value: "Grammar: Identify and correct the error in the sentence"
     }
 ]
 
