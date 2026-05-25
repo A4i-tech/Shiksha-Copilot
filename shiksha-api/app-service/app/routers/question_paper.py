@@ -111,12 +111,12 @@ async def translate_json_content_to_kannada(
 
 _DISPLAY_NAMES = {
     "MCQ": "Multiple Choice Questions",
-    "FILL_BLANKS": "Fill in the blanks with suitable words",
-    "ANSWER_WORD": "Answer in a word, phrase or sentence",
-    "ANSWER_SHORT": "Answer in two or three sentences",
+    "FILL_BLANKS": "Fill in the blanks",
+    "ANSWER_WORD": "Very Short Answer Questions",
+    "ANSWER_SHORT": "Short Answer Questions",
     "ANSWER_GENERAL": "Answer the following questions",
-    "ANSWER_LONG": "Answer in four or five sentences",
-    "MATCH_LIST": "Match the following",
+    "ANSWER_LONG": "Long Answer Questions",
+    "MATCH_LIST": "Match the Following",
     "GRAMMAR_MCQ": "Grammar: Multiple Choice Questions",
     "GRAMMAR_FILL_BLANKS": "Grammar: Fill in the blanks",
     "GRAMMAR_EDITING": "Grammar: Identify and correct the error",

@@ -634,15 +634,19 @@ class QuestionBankManager extends BaseManager {
         console.warn("[Manager] Chapter lookup failed:", aggErr.message);
       }
 
-      // 1. Prepare Base Chapters (From DB — grammar chapters now have real records)
+      // 1. Prepare Base Chapters (From DB — grammar chapters now have real records).
+      // Subtopic index_path takes precedence over chapter index_path when present
+      // (mirrors pre-DB-migration behaviour Soumabha flagged in PR #52).
       let formattedChapters = chapterData?.length
         ? chapterData.map((chapter) => {
+          const chapterIndexPath = chapter.indexPath || chapter.index_path || "";
           const ch = {
             title: chapter.title,
-            index_path: chapter.indexPath || chapter.index_path || "",
+            index_path: chapterIndexPath,
             learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
             subtopics: (chapter.subtopics || []).map((sub) => ({
               title: sub.title,
+              index_path: sub.indexPath || sub.index_path || chapterIndexPath,
               learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
             })),
           };
@@ -668,21 +672,50 @@ class QuestionBankManager extends BaseManager {
         }
       });
 
-      // Inject Missing Units (fallback for units referenced in marks distribution but not fetched by ID)
+      // Inject Missing Units (fallback for units referenced in marks distribution but not fetched by ID).
+      // Three-step resolution (restored after Soumabha's regression note on PR #52):
+      //   1. unit matches a top-level chapter title → already in formattedChapters, skip
+      //   2. unit matches a subtopic title in formattedChapters → inject top-level entry using subtopic's index_path (subtopic.index_path falls back to parent's at build time)
+      //   3. unit matches a subtopic title in raw chapterData (chapter not in formattedChapters) → inject inheriting parent's index_path
+      //   4. otherwise → inject with empty index_path so RAG falls back to direct generation
+      const lower = (s) => (s || "").toLowerCase();
       requiredUnits.forEach(unitName => {
-        const exists = formattedChapters.some(fc =>
-          fc.title.toLowerCase() === unitName.toLowerCase() ||
-          (fc.subtopics || []).some(sub => sub.title.toLowerCase() === unitName.toLowerCase())
-        );
+        const u = lower(unitName);
+        const matchesChapter = formattedChapters.some(fc => lower(fc.title) === u);
+        if (matchesChapter) return;
 
-        if (!exists) {
-          formattedChapters.push({
-            title: unitName,
-            index_path: "",
-            learning_outcomes: [],
-            subtopics: []
-          });
+        for (const fc of formattedChapters) {
+          const sub = (fc.subtopics || []).find(s => lower(s.title) === u);
+          if (sub) {
+            formattedChapters.push({
+              title: unitName,
+              index_path: sub.index_path || fc.index_path || "",
+              learning_outcomes: sub.learning_outcomes || [],
+              subtopics: [],
+            });
+            return;
+          }
         }
+
+        for (const chapter of (chapterData || [])) {
+          const rawSub = (chapter.subtopics || []).find(s => lower(s.title) === u);
+          if (rawSub) {
+            formattedChapters.push({
+              title: unitName,
+              index_path: rawSub.indexPath || rawSub.index_path || chapter.indexPath || chapter.index_path || "",
+              learning_outcomes: rawSub.learningOutcomes || rawSub.learning_outcomes || [],
+              subtopics: [],
+            });
+            return;
+          }
+        }
+
+        formattedChapters.push({
+          title: unitName,
+          index_path: "",
+          learning_outcomes: [],
+          subtopics: [],
+        });
       });
 
       const formattedMarksDist = (marksDistribution || []).map((dist) => ({
@@ -721,7 +754,7 @@ class QuestionBankManager extends BaseManager {
   }
 
   async getGrammarTopics(grade) {
-    const chapters = await Chapter.find({ standard: parseInt(grade), isGrammar: true, isDeleted: false }).lean();
+    const chapters = await Chapter.find({ standard: grade, isGrammar: true, isDeleted: false }).lean();
     const topics = chapters.flatMap(ch => ch.grammarTopics || []);
     return formatApiReponse(true, 'Grammar topics retrieved', topics);
   }

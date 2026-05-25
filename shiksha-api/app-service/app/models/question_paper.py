@@ -117,8 +117,9 @@ class MatchingListQuestion(BaseModel):
 
 
 class GrammarTextQuestion(BaseModel):
-    question: str = ""
-    answer_key: str = ""
+    question: str
+    answer_key: str
+    difficulty: DifficultyType = "Average"
 
 
 # ==============================
@@ -217,11 +218,16 @@ GRAMMAR_QUESTION_TYPES = set(_GRAMMAR_QUESTION_TYPES_ORDERED)
 
 
 def get_question_types_for_subject(subject: str) -> List[QuestionType]:
-    """Return the list of question types available for the given subject."""
+    """Return the list of question types available for the given subject.
+
+    Grammar types are always appended to the response. The frontend filters them
+    based on each chapter's ``isGrammar`` flag (DB-derived) before showing them
+    to the user, so the previous English-only hardcoding is no longer needed.
+    The ``subject`` parameter is retained for backwards compatibility and future
+    per-subject filtering.
+    """
     base_types = [qt for qt in QuestionType if qt not in GRAMMAR_QUESTION_TYPES]
-    if "english" in subject.lower():
-        return base_types + _GRAMMAR_QUESTION_TYPES_ORDERED
-    return base_types
+    return base_types + _GRAMMAR_QUESTION_TYPES_ORDERED
 
 
 # ============================
@@ -240,6 +246,11 @@ class Chapter(BaseModel):
     learning_outcomes: List[str]
     subtopics: Optional[List[ChapterSubtopic]] = None
     grammar_source_chapters: Optional[List[str]] = None
+
+    @property
+    def is_grammar(self) -> bool:
+        """True when the chapter represents a grammar topic (DB ``isGrammar``)."""
+        return bool(self.grammar_source_chapters) or self.title.startswith("GRAMMAR: ")
 
 
 class MarksDistribution(BaseModel):
@@ -282,6 +293,15 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
     examination_name: str = "Class Assessment"
+
+    def grammar_chapters(self) -> List[Chapter]:
+        """Return chapters flagged as grammar (DB ``isGrammar`` true).
+
+        Encapsulates the filter so callers do not need to inspect
+        ``grammar_source_chapters`` directly. Replaces the previous bespoke
+        ``grammar_source_chapters`` plumbing flagged in PR #52 review.
+        """
+        return [c for c in self.chapters if c.is_grammar]
 
 
 class QBQuestionDistributionGenerationRequest(BaseModel):

@@ -21,6 +21,7 @@ describe("QuestionBankController", () => {
       updateFeedback: jest.fn(),
       retryFailedJobs: jest.fn(),
       retryFailedJob: jest.fn(),
+      getGrammarTopics: jest.fn(),
     }));
 
     controller = new QuestionBankController();
@@ -267,13 +268,16 @@ describe("QuestionBankController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should handle exceptions", async () => {
-      mockManager.retryFailedJobs = jest.fn().mockRejectedValue(new Error("Error"));
+    it("should handle exceptions with sanitized error response", async () => {
+      mockManager.retryFailedJobs = jest.fn().mockRejectedValue(new Error("DB connection lost"));
 
       await controller.retryFailedJobs(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Failed to retry jobs.",
+      });
     });
   });
 
@@ -293,14 +297,66 @@ describe("QuestionBankController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should handle exceptions", async () => {
-      mockManager.retryFailedJob = jest.fn().mockRejectedValue(new Error("Error"));
+    it("should handle exceptions with sanitized error response", async () => {
+      mockManager.retryFailedJob = jest.fn().mockRejectedValue(new Error("DB connection lost"));
       mockReq.params = { id: "job-123" };
 
       await controller.retryFailedJob(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Failed to retry job.",
+      });
+    });
+  });
+
+  describe("getGrammarTopics", () => {
+    it("should return topics for a valid grade and pass numeric grade to manager", async () => {
+      const mockResult = { success: true, message: "Grammar topics retrieved", data: ["Tenses", "Prepositions"] };
+      mockManager.getGrammarTopics = jest.fn().mockResolvedValue(mockResult);
+      mockReq.query = { grade: "6" };
+
+      await controller.getGrammarTopics(mockReq, mockRes);
+
+      expect(mockManager.getGrammarTopics).toHaveBeenCalledWith(6);
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+      expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+    });
+
+    it("should reject non-numeric grade", async () => {
+      mockReq.query = { grade: "abc" };
+
+      await controller.getGrammarTopics(mockReq, mockRes);
+
+      expect(mockManager.getGrammarTopics).not.toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Invalid grade. Must be an integer between 1 and 12.",
+      });
+    });
+
+    it("should reject out-of-range grade", async () => {
+      mockReq.query = { grade: "13" };
+
+      await controller.getGrammarTopics(mockReq, mockRes);
+
+      expect(mockManager.getGrammarTopics).not.toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+    });
+
+    it("should sanitize errors and return 500 when manager throws", async () => {
+      mockManager.getGrammarTopics = jest.fn().mockRejectedValue(new Error("DB unavailable"));
+      mockReq.query = { grade: "8" };
+
+      await controller.getGrammarTopics(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Failed to retrieve grammar topics.",
+      });
     });
   });
 });

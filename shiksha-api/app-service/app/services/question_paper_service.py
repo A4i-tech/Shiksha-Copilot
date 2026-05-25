@@ -135,13 +135,13 @@ class QuestionPaperService:
 
     def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Optional[Dict[str, Any]] = None) -> str:
         """
-        Returns a grammar focus instruction string for English subjects.
+        Returns a grammar focus instruction string when the slot has grammar context
+        (``grammar_source_chapters`` set on the slot or ``GRAMMAR:`` units in the
+        request). The DB-derived ``is_grammar`` flag on chapters drives the slot
+        construction, so no subject-name hardcoding is needed here.
         When a slot with grammar_source_chapters is provided, generates a detailed
         instruction tying the grammar topic to the source textbook chapter content.
         """
-        if "english" not in request.subject.lower():
-            return ""
-
         topics = self.prompts.get("grammar_topics", {})
         topic_map = {int(grade): topic_list for grade, topic_list in topics.items()}
         topics_to_use = topic_map.get(request.grade, [])

@@ -73,6 +73,22 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   showHeadingDropdown: boolean = false;
   hasSubtopics: boolean = false;
 
+  // Question types loaded from /question-types API, partitioned by GRAMMAR_ prefix.
+  // Falls back to hardcoded lists if API call fails.
+  aiStandardTypeNames: string[] = [
+    'Multiple Choice Questions',
+    'Short Answer Questions',
+    'Fill in the blanks',
+    'Long Answer Questions',
+    'Match the Following',
+    'Very Short Answer Questions',
+  ];
+  grammarTypeNames: string[] = [
+    'Grammar: Multiple Choice Questions',
+    'Grammar: Fill in the blanks',
+    'Grammar: Identify and correct the error',
+  ];
+
   // Configs
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
   sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'name', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'name', openOnSelect: true };
@@ -481,6 +497,28 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
+  // Fetches question types from /question-types, partitions by GRAMMAR_ key prefix.
+  // Keeps existing hardcoded defaults if the call fails so heading registration still works.
+  private loadQuestionTypeNames(subject: string) {
+    if (!subject) return;
+    this.questionBankService.getQuestionTypes(subject).subscribe({
+      next: (res: any) => {
+        const list = Array.isArray(res?.data) ? res.data : [];
+        if (!list.length) return;
+        const grammar: string[] = [];
+        const standard: string[] = [];
+        for (const qt of list) {
+          const key = String(qt?.key ?? '');
+          const name = String(qt?.name ?? qt?.value ?? '');
+          if (!name) continue;
+          (key.startsWith('GRAMMAR_') ? grammar : standard).push(name);
+        }
+        if (standard.length) this.aiStandardTypeNames = standard;
+        if (grammar.length) this.grammarTypeNames = grammar;
+      },
+    });
+  }
+
   onSubjectChange(val: any) {
     this.resetSubjectChange();
     if (val) {
@@ -492,6 +530,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val || opt.value === val.value);
       const subjectName = selectedSubjectObj ? selectedSubjectObj.name : (val.name || val);
       const subjectId = selectedSubjectObj ? selectedSubjectObj.value : (val.value || val);
+
+      this.loadQuestionTypeNames(subjectName);
 
       // Objectives Setup
       if (board === 'KSEEB') {
@@ -626,24 +666,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     if (this.useAI && !this.useLBA) {
       if (hasNonGrammar || selectedChapters.length === 0) {
-        registerTypes([
-          'Multiple Choice Questions',
-          'Short Answer Questions',
-          'Fill in the blanks',
-          'Long Answer Questions',
-          'Match the Following',
-          'Very Short Answer Questions'
-        ]);
+        registerTypes(this.aiStandardTypeNames);
       }
     }
 
     // Always add grammar-specific types when grammar chapters are selected
     if (hasGrammar) {
-      registerTypes([
-        'Grammar: Multiple Choice Questions',
-        'Grammar: Fill in the blanks',
-        'Grammar: Identify and correct the error'
-      ]);
+      registerTypes(this.grammarTypeNames);
     }
 
     // 2. Add LBA Headings (merge with AI if they share names) — skip if LBA not selected

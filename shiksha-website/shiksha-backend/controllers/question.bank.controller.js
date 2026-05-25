@@ -141,8 +141,8 @@ class QuestionBankController extends BaseController {
       const result = await this.questionBankManager.retryFailedJobs();
       return res.status(200).json(result);
     } catch (err) {
-      console.log("Error --> QuestionBankController -> retryFailedJobs()", err);
-      return res.status(400).json(err);
+      console.error("Error --> QuestionBankController -> retryFailedJobs()", err);
+      return res.status(400).json({ success: false, message: "Failed to retry jobs." });
     }
   }
 
@@ -163,8 +163,8 @@ class QuestionBankController extends BaseController {
       const result = await this.questionBankManager.retryFailedJob(jobId);
       return res.status(200).json(result);
     } catch (err) {
-      console.log("Error --> QuestionBankController -> retryFailedJobs()", err);
-      return res.status(400).json(err);
+      console.error("Error --> QuestionBankController -> retryFailedJob()", err);
+      return res.status(400).json({ success: false, message: "Failed to retry job." });
     }
   }
 
@@ -228,7 +228,7 @@ class QuestionBankController extends BaseController {
       if (!grade || isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) {
         return res.status(400).json({ success: false, message: 'Invalid grade. Must be an integer between 1 and 12.' });
       }
-      const result = await this.questionBankManager.getGrammarTopics(grade);
+      const result = await this.questionBankManager.getGrammarTopics(gradeNum);
       return res.status(200).json(result);
     } catch (err) {
       console.error('[Controller] getGrammarTopics error:', err.message);

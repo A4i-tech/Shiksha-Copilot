@@ -178,14 +178,15 @@ class InMemRagOpsAdapter(BaseRagAdapter):
             logger.info(f"Downloaded {len(downloaded_file_paths)} index files")
             file_paths_str = "\n".join(downloaded_file_paths)
             logger.info(f"Downloaded RAG index files: {file_paths_str}")
-
-            # Rename legacy index files to the format expected by llama-index >= 0.11
-            # e.g. vector_store.json → default__vector_store.json
-            self._rename_legacy_index_files()
         else:
             logger.debug(f"Index already exists at: {self.persist_dir}")
-            # Also fix legacy names in previously cached downloads
-            self._rename_legacy_index_files()
+
+        # Rename legacy index files to the format expected by llama-index >= 0.11
+        # e.g. vector_store.json → default__vector_store.json. Runs in both branches
+        # to also fix names in previously cached downloads.
+        # TODO(@mamuqsit): once all stored indices are migrated, extract this into
+        # a one-off migration script and drop from the request path.
+        self._rename_legacy_index_files()
 
     def _rename_legacy_index_files(self) -> None:
         """Rename legacy llama-index files (pre-0.11) to the namespaced format."""
