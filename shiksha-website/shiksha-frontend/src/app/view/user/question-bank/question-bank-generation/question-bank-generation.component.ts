@@ -932,85 +932,31 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       switchMap((bpRes: any) => {
-        const blueprint = bpRes.data || bpRes.items || (Array.isArray(bpRes) ? bpRes : null);
-        if (!blueprint) throw new Error('AI Blueprint failed.');
-        payload.template = blueprint;
-
-        // Call the existing generation service with the isPreview flag
+        payload.template = bpRes.data;
         return this.questionBankService.generateQuestionBank(payload);
       }),
       map((finalRes: any) => {
-        let categoryBlocks = [];
-        if (finalRes.data && Array.isArray(finalRes.data)) categoryBlocks = finalRes.data;
-        else if (finalRes.data?.questions) categoryBlocks = finalRes.data.questions;
-        else if (finalRes.categoryBlocks) categoryBlocks = finalRes.categoryBlocks;
-        else if (Array.isArray(finalRes)) categoryBlocks = finalRes;
-
         const flatQuestions: any[] = [];
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
-        type QuestionDistribution = { unit_name: string; objective: string };
-        const normalizeTypeKey = (val?: string): string =>
-          (val ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-        // Single source of truth for objective mapping: blueprint template question_distribution.
-        const blueprintObjectiveByType: Record<string, QuestionDistribution[]> = {};
-        for (const tpl of payload.template ?? []) {
-          blueprintObjectiveByType[normalizeTypeKey(tpl.type)] = tpl.question_distribution ?? [];
-        }
-        categoryBlocks.forEach((block: any) => {
-          const innerQuestions = block.questions || [];
-          const blockType = block.type || 'Question';
-          // Map internal AI type back to user-friendly heading if possible
+        finalRes.data.questions.forEach((block: any) => {
+          const blockType = block.type;
           const friendlyHeading = this.selectedHeadings.find(h => this.mapHeadingToAIType(h) === blockType) || blockType;
-          const blockMarks = Number(block.marks_per_question || 1);
+          const blockMarks = Number(block.marksPerQuestion);
 
-          innerQuestions.forEach((q: any, idx: number) => {
-            // ROBUST EXTRACTION: Handle nested item, question.question, or flat question/text
-            let questionText = q.text || q.question_text || q.content;
-
-            if (!questionText) {
-              const inner = q.item || q.question;
-              if (inner && typeof inner === 'object') {
-                questionText = inner.question || inner.text;
-              } else if (typeof inner === 'string') {
-                questionText = inner;
-              }
-            }
-
-            if (!questionText && q.question && typeof q.question === 'string') {
-              questionText = q.question;
-            }
-
-            if (!questionText && q.value1 && q.value2) {
-              questionText = q.value1 + " - " + q.value2;
-            }
-
-            if (questionText) {
-              const typeKey = normalizeTypeKey(blockType);
-              const distributionObjective =
-                Array.isArray(blueprintObjectiveByType[typeKey]) && blueprintObjectiveByType[typeKey][idx]
-                  ? blueprintObjectiveByType[typeKey][idx].objective
-                  : null;
-              const finalObjective =
-                distributionObjective ||
-                'Knowledge';
-
-              flatQuestions.push({
-                ...q,
-                // Ensure inner properties are also flattened for usage in Step 2/3
-                ...(q.item && typeof q.item === 'object' ? q.item : {}),
-                source: 'AI Questions',
-                text: questionText,
-                marks: Number(q.marks || blockMarks),
-                type: blockType,
-                heading: friendlyHeading,
-                unit_name: q.unit_name || chapterName || 'General',
-                objective: finalObjective,
-                value1: q.value1,
-                value2: q.value2,
-                _id: q._id || `ai_${Math.random().toString(36).substring(7)}`
-              });
-            }
+          block.questions.forEach((q: any) => {
+            flatQuestions.push({
+              ...q,
+              source: 'AI Questions',
+              text: q.question || `${q.value1} - ${q.value2}`,
+              marks: blockMarks,
+              type: blockType,
+              heading: friendlyHeading,
+              unit_name: chapterName,
+              objective: q.objective,
+              value1: q.value1,
+              value2: q.value2,
+              _id: `ai_${Math.random().toString(36).substring(7)}`
+            });
           });
         });
 
