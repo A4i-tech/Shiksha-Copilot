@@ -244,6 +244,7 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
     examination_name: str = "Class Assessment"
+    session_id: Optional[str] = Field(default=None, description="Frontend session identifier for grouping related traces in Langfuse")
 
 
 class QBQuestionDistributionGenerationRequest(BaseModel):
@@ -257,6 +258,7 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
     template: List[Template] = Field(..., description="Base template for question types and structure")
+    session_id: Optional[str] = Field(default=None, description="Frontend session identifier for grouping related traces in Langfuse")
 
     def verify_template_for_marks_and_objective_distribution(
         self, new_template: List[Template]

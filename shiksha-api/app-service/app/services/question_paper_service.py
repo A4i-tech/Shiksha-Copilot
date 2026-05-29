@@ -589,16 +589,39 @@ class QuestionPaperService:
                         f"--\nNo question found for Normalized key: {key}"
                     )
 
+            expected = (
+                len(template.question_distribution)
+                if template.question_distribution
+                else template.number_of_questions
+            )
+            actual = len(questions)
+            if actual < expected:
+                logger.warning(
+                    "Partial QB result for type=%s: expected %d questions, got %d. "
+                    "LLM generation may have returned fewer items than requested.",
+                    template.type.value,
+                    expected,
+                    actual,
+                )
             response_questions.append(QuestionTypeResponse(
                 type=template.type,
-                number_of_questions=(
-                    len(template.question_distribution)
-                    if template.question_distribution
-                    else template.number_of_questions
-                ),
+                number_of_questions=expected,
                 marks_per_question=template.marks_per_question,
                 questions=questions,
             ))
+
+        total_expected = sum(
+            len(t.question_distribution) if t.question_distribution else t.number_of_questions
+            for t in request.template
+        )
+        total_actual = sum(len(qtr.questions) for qtr in response_questions)
+        if total_actual < total_expected:
+            logger.warning(
+                "QB generation incomplete: expected %d total questions, produced %d. "
+                "Returning partial result to caller.",
+                total_expected,
+                total_actual,
+            )
 
         return response_questions
 
@@ -612,8 +635,9 @@ class QuestionPaperService:
         all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
         get_client().update_current_trace(
             user_id=request.user_id,
+            session_id=request.session_id,
             tags=[
-                "flow:question-bank",
+                "chat_type:question-bank",
                 f"board:{request.board}",
                 f"grade:{request.grade}",
                 f"subject:{request.subject}",
@@ -690,8 +714,9 @@ class QuestionPaperService:
         all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
         get_client().update_current_trace(
             user_id=request.user_id,
+            session_id=request.session_id,
             tags=[
-                "flow:question-distribution",
+                "chat_type:question-distribution",
                 f"board:{request.board}",
                 f"grade:{request.grade}",
                 f"subject:{request.subject}",

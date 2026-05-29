@@ -42,7 +42,7 @@ def test_lesson_chat_tags():
 
 def test_question_bank_tags():
     _validate_tags(
-        ["flow:question-bank", "board:CBSE", "grade:9", "subject:Maths"],
+        ["chat_type:question-bank", "board:CBSE", "grade:9", "subject:Maths"],
         "question_bank",
     )
 
