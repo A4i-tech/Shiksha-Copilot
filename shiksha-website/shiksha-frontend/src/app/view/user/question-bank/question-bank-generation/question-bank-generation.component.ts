@@ -613,8 +613,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    // 1. Add AI Standard Types only if AI-only is selected 
-    if (this.useAI && !this.useLBA) {
+    if (this.useAI) {
       const aiStandardTypes = [
         'Multiple Choice Questions',
         'Short Answer Questions',
