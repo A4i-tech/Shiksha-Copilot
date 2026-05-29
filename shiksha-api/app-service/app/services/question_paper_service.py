@@ -11,6 +11,7 @@ import re
 from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
 from langfuse import observe, get_client
+from langfuse.decorators import langfuse_context
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaAzureOpenAI
@@ -396,6 +397,7 @@ class QuestionPaperService:
 
         return self._adapter_cache[index_path]
 
+    @observe(name="question_generation")
     async def _generate_questions_batch(
         self, system_prompt: str, slot: Dict[str, Any], rag_adapter: Optional[BaseRagAdapter]
     ) -> list[GeneratedQuestionItem]:
@@ -406,9 +408,12 @@ class QuestionPaperService:
         # Build slot directives
         slot_questions = slot["questions"]
         index_path = slot.get("index_path")
+        unit_name = slot.get("unit_name", "")
+        rag_enabled = bool(rag_adapter and index_path != "EMPTY_INDEX_PATH_FALLBACK")
 
         # Generate dynamic format rules
         unique_types = set(q["type"] for q in slot_questions)
+        difficulties = list({q.get("difficulty", "Average") for q in slot_questions})
         format_rules = [
             self._get_format_instruction_for_type(qtype) for qtype in unique_types
         ]
@@ -424,8 +429,21 @@ class QuestionPaperService:
         for question in slot_questions:
             user_message += "- " + json.dumps(question, ensure_ascii=False) + "\n"
 
+        langfuse_context.update_current_observation(
+            input={"system_prompt": system_prompt, "user_message": user_message},
+            metadata={
+                "unit_name": unit_name,
+                "question_types": list(unique_types),
+                "difficulties": difficulties,
+                "slot_count": len(slot_questions),
+                "model": self.chat_deployment,
+                "rag_enabled": rag_enabled,
+                "index_path": index_path,
+            },
+        )
+
         try:
-            if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not rag_adapter:
+            if not rag_enabled:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
                 response = await self.client.responses.parse(
@@ -437,23 +455,60 @@ class QuestionPaperService:
                 )
                 if response.output_parsed is None:
                     raise RuntimeError("Did not retrieve a valid response from model")
-                return response.output_parsed.items
+                items = response.output_parsed.items
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {index_path}")
-                chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(
-                    # rag-adapter does not support structured output, so we pass model json schema for now.
-                    curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
-                    chat_history=chat_history
-                )
-                # chat_with_index returns {"response": str, "source_nodes": list}
-                response_content = response_content["response"]
-                content = response_content.strip("```json").strip("```")
-                return GeneratedQuestionItemResponse.model_validate_json(content).items
+                items = await self._fetch_rag_context(system_prompt, user_message, rag_adapter)
+
+            langfuse_context.update_current_observation(
+                output={"items_count": len(items), "items": [i.model_dump() for i in items]},
+            )
+            return items
+
         except Exception as e:
+            langfuse_context.update_current_observation(
+                level="ERROR",
+                status_message=f"{type(e).__name__}: {e}",
+                output={"items_count": 0},
+            )
             logger.exception(e)
             return []
+
+    @observe(name="context_fetch")
+    async def _fetch_rag_context(
+        self,
+        system_prompt: str,
+        user_message: str,
+        rag_adapter: BaseRagAdapter,
+    ) -> list[GeneratedQuestionItem]:
+        """Fetch context from RAG adapter and parse into question items."""
+        chat_history = [ChatMessage(role="system", content=system_prompt)]
+        schema_suffix = "\n\nResponse format must conform to JSON schema:\n" + json.dumps(
+            GeneratedQuestionItemResponse.model_json_schema()
+        )
+        langfuse_context.update_current_observation(
+            input={"user_message": user_message},
+        )
+        try:
+            response_content = await rag_adapter.chat_with_index(
+                curr_message=user_message + schema_suffix,
+                chat_history=chat_history,
+            )
+            # chat_with_index may return str or {"response": str, "source_nodes": list}
+            raw = response_content if isinstance(response_content, str) else response_content.get("response", "")
+            content = raw.strip("```json").strip("```")
+            items = GeneratedQuestionItemResponse.model_validate_json(content).items
+            langfuse_context.update_current_observation(
+                output={"raw_response_preview": raw[:500], "items_count": len(items)},
+            )
+            return items
+        except Exception as e:
+            langfuse_context.update_current_observation(
+                level="ERROR",
+                status_message=f"{type(e).__name__}: {e}",
+            )
+            raise
 
     async def _generate_questions_batch_async(
         self,
@@ -467,6 +522,7 @@ class QuestionPaperService:
             await asyncio.sleep(delay_seconds)
         return await self._generate_questions_batch(system_prompt, slot, rag_adapter)
 
+    @observe(name="output_formatting")
     def _organize_questions_into_response(
         self,
         request: QuestionBankPartsGenerationRequest,
@@ -546,64 +602,14 @@ class QuestionPaperService:
 
         return response_questions
 
-<<<<<<< HEAD
-    async def generate_question_bank_by_parts(self, request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
-=======
-            # Build the final response
-            response_questions = []
-            for template in request.template:
-                question_type_resp = QuestionTypeResponse(
-                    type=template.type,
-                    number_of_questions=(
-                        len(template.question_distribution)
-                        if template.question_distribution
-                        else template.number_of_questions
-                    ),
-                    marks_per_question=template.marks_per_question,
-                    questions=[],
-                )
-
-                for q_dist in template.question_distribution or []:
-                    norm_type = self._normalize_string(template.type.value)
-                    norm_unit = self._normalize_string(q_dist.unit_name)
-                    norm_objective = self._normalize_string(q_dist.objective) if q_dist.objective else "none"
-                    
-                    key = f"{norm_type}|{template.marks_per_question}|{norm_unit}|{norm_objective}"
-
-                    if key in question_directory and len(question_directory[key]) > 0:
-                        question = question_directory[key].pop(0)
-                        question_type_resp.questions.append(question)
-
-                        if len(question_directory[key]) == 0:
-                            del question_directory[key]
-                    else:
-                        logger.warning(
-                            f"--\nNo question found for Normalized key: {key}"
-                        )
-
-                response_questions.append(question_type_resp)
-
-            return response_questions
-
-        except Exception as e:
-            logger.exception(f"Error organizing questions into response: {e}")
-            raise
 
     @observe(name="Shiksha-QB")
-    async def generate_question_bank_by_parts(
-        self, request: QuestionBankPartsGenerationRequest
-    ) -> QuestionBankResponse:
->>>>>>> 85ba5e4 (feat(observability): add Langfuse v3 observability integration (#276))
+    async def generate_question_bank_by_parts(self, request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
         """
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
-<<<<<<< HEAD
-        # Build generation slots
-        slots = self._build_generation_slots(request)
-        if not slots:
-            raise ValueError("No generation slots could be built from template/distribution.")
-=======
+        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
         get_client().update_current_trace(
             user_id=request.user_id,
             tags=[
@@ -612,15 +618,23 @@ class QuestionPaperService:
                 f"grade:{request.grade}",
                 f"subject:{request.subject}",
             ],
+            metadata={
+                "board": request.board,
+                "grade": request.grade,
+                "subject": request.subject,
+                "medium": request.medium,
+                "chapters": [ch.title for ch in request.chapters],
+                "learning_outcomes": all_los,
+                "question_types": [t.type.value for t in request.template],
+                "total_marks": request.total_marks,
+                "model": self.chat_deployment,
+            },
         )
-        try:
-            # Build generation slots
-            slots = self._build_generation_slots(request)
-            if not slots:
-                raise ValueError(
-                    "No generation slots could be built from template/distribution."
-                )
->>>>>>> 85ba5e4 (feat(observability): add Langfuse v3 observability integration (#276))
+
+        # Build generation slots
+        slots = self._build_generation_slots(request)
+        if not slots:
+            raise ValueError("No generation slots could be built from template/distribution.")
 
         # Prepare existing questions
         existing_flat = self._flatten_existing_questions(request.existing_questions)
@@ -673,14 +687,25 @@ class QuestionPaperService:
         """
         Generate question paper template based on unit-wise marks distribution.
         """
+        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
         get_client().update_current_trace(
             user_id=request.user_id,
             tags=[
-                "flow:question-bank",
+                "flow:question-distribution",
                 f"board:{request.board}",
                 f"grade:{request.grade}",
                 f"subject:{request.subject}",
             ],
+            metadata={
+                "board": request.board,
+                "grade": request.grade,
+                "subject": request.subject,
+                "medium": request.medium,
+                "chapters": [ch.title for ch in request.chapters],
+                "learning_outcomes": all_los,
+                "total_marks": request.total_marks,
+                "model": self.chat_deployment,
+            },
         )
 
         def prepare_context() -> dict[str, Any]:
