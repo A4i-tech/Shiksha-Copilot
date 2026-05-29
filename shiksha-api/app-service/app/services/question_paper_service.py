@@ -13,6 +13,7 @@ import logging
 from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
 from langfuse import observe, get_client
+from langfuse.decorators import langfuse_context
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.core.llms import ChatMessage
@@ -207,6 +208,7 @@ class QuestionPaperService:
         )
 
 
+    @observe(name="question_generation")
     async def _generate_questions_batch(self, system_prompt: str, record: _LearningRecord, slot: list[GenerationSlot], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedSlotQuestion]:
         """
         Generate questions for a batch of slots.
@@ -224,6 +226,18 @@ class QuestionPaperService:
             k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
+
+        langfuse_context.update_current_observation(
+            input={"system_prompt": system_prompt, "user_message": user_message},
+            metadata={
+                "unit_name": record.title,
+                "question_types": [t.type.value for _, t, _ in slot],
+                "slot_count": len(slot),
+                "model": self.chat_deployment,
+                "rag_enabled": rag_adapter is not None,
+                "index_path": record.index_path,
+            },
+        )
 
         try:
             if not rag_adapter:
@@ -246,6 +260,11 @@ class QuestionPaperService:
                 response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
                 items = response_format.model_validate(response_content["response"])
         except Exception as e:
+            langfuse_context.update_current_observation(
+                level="ERROR",
+                status_message=f"{type(e).__name__}: {e}",
+                output={"items_count": 0},
+            )
             logger.exception(e)
             return []
 
@@ -273,6 +292,7 @@ class QuestionPaperService:
                 logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{record.index_path}'")
             return await self._generate_questions_batch(system_prompt, record, slot, rag_adapter)
 
+    @observe(name="output_formatting")
     def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedSlotQuestion]) -> List[QuestionTypeResponse]:
         """Organize all generated questions into the final response structure."""
         question_directory = {slot_id: g.item for slot_id, g in all_generated}
@@ -306,7 +326,7 @@ class QuestionPaperService:
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
-
+        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
         get_client().update_current_trace(
             user_id=request.user_id,
             tags=[
@@ -315,6 +335,17 @@ class QuestionPaperService:
                 f"grade:{request.grade}",
                 f"subject:{request.subject}",
             ],
+            metadata={
+                "board": request.board,
+                "grade": request.grade,
+                "subject": request.subject,
+                "medium": request.medium,
+                "chapters": [ch.title for ch in request.chapters],
+                "learning_outcomes": all_los,
+                "question_types": [t.type.value for t in request.template],
+                "total_marks": request.total_marks,
+                "model": self.chat_deployment,
+            },
         )
 
         existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
@@ -346,14 +377,25 @@ class QuestionPaperService:
         """
         Generate question paper template based on unit-wise marks distribution.
         """
+        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
         get_client().update_current_trace(
             user_id=request.user_id,
             tags=[
-                "flow:question-bank",
+                "flow:question-distribution",
                 f"board:{request.board}",
                 f"grade:{request.grade}",
                 f"subject:{request.subject}",
             ],
+            metadata={
+                "board": request.board,
+                "grade": request.grade,
+                "subject": request.subject,
+                "medium": request.medium,
+                "chapters": [ch.title for ch in request.chapters],
+                "learning_outcomes": all_los,
+                "total_marks": request.total_marks,
+                "model": self.chat_deployment,
+            },
         )
 
         templates = {local_unique_id(i): t for i, t in enumerate(request.template)}
