@@ -76,7 +76,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   // Configs
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
   sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'name', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'name', openOnSelect: true };
-  mediumDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Medium', height: 'auto', fieldName: 'Medium', bindLable: 'medium', bindValue: 'medium', required: true, clearableOff: true };
+  mediumDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Medium', height: 'auto', fieldName: 'Medium', bindLable: 'mediumLabel', bindValue: 'medium', required: true, clearableOff: true };
   languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', height: 'auto', fieldName: 'Translate to', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
   subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Subject', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
@@ -403,7 +403,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         }
       });
 
-      this.mediumDropdownOptions = Array.from(uniqueMediums).map(m => ({ medium: m }));
+      this.mediumDropdownOptions = Array.from(uniqueMediums).map(m => ({
+        medium: m,
+        mediumLabel: m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()
+      }));
 
       if (this.mediumDropdownOptions.length === 1) {
         this.f.medium.setValue(this.mediumDropdownOptions[0].medium);
