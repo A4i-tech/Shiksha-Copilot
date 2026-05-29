@@ -653,7 +653,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       });
     };
 
-    if (this.useAI && !this.useLBA) {
+    if (this.useAI) {
       if (hasNonGrammar || selectedChapters.length === 0) {
         registerTypes(this.aiStandardTypeNames);
       }
