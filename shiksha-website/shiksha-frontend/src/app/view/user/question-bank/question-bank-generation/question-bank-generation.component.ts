@@ -926,12 +926,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           const blockMarks = Number(block.marksPerQuestion);
 
           block.questions.forEach((q: any) => {
-            flatQuestions.push({
-              ...q,
-              source: 'AI Questions',
-              text: q.question || (q.value1 && q.value2 ? `${q.value1} - ${q.value2}` : ''),
-              marks: blockMarks,
-              type: blockType,
+              flatQuestions.push({
+                ...q,
+                source: 'AI Questions',
+                text: q.question || (q.value1 && q.value2 ? `${q.value1} - ${q.value2}` : ''),
+                marks: blockMarks,
+                type: blockType,
               heading: friendlyHeading,
               unit_name: chapterName,
               objective: q.objective,
