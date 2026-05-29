@@ -905,29 +905,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   generateAIQuestionsPool() {
-    const finalMarks = Number(this.questionBankConfigForm.get('totalMarks')?.value) || 100;
-
-    // 1. Define what we want to generate
-    const dynamicTemplate = this.selectedHeadings.map(heading => {
-      const aiType = this.mapHeadingToAIType(heading);
-      const marksPerType = this.getMarksPerType(aiType);
-      // Request a pool to choose from
-      return {
-        type: aiType,
-        marks_per_question: marksPerType,
-        number_of_questions: Math.ceil(finalMarks / marksPerType),
-        question_distribution: []
-      };
-    });
-
-    // 2. Prepare Payload
     let payload = this.getTemplatePayload();
-    payload.template = dynamicTemplate;
-
-    /** 
-     * IMPORTANT: We add this flag so the backend knows this is just for 
-     * the selection pool in Step 2, NOT the final paper.
-     **/
+    payload.template = this.selectedHeadings.map(heading => ({
+      type: this.mapHeadingToAIType(heading),
+      question_distribution: []
+    }));
     payload.isPreview = true;
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
@@ -1017,28 +999,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       objectiveDistribution: objectiveDistribution,
       bluePrint: this.questionBankBluePrintData,
     };
-  }
-
-  private getMarksPerType(type: string): number {
-    if (!type) return 1;
-    const t = type.toLowerCase();
-
-    // 1 Mark Questions
-    if (t.includes('multiple choice') || t.includes('mcq') || t.includes('objective') || t.includes('alternative')) return 1;
-    if (t.includes('fill') || t.includes('blank')) return 1;
-    if (t.includes('match') || t.includes('collocation')) return 1;
-    if (t.includes('very short') || t.includes('one sentence') || t.includes('1 mark') || t.includes('true/false') || t.includes('odd one out') || t.includes('opposites')) return 1;
-
-    // 2 Mark Questions
-    if (t.includes('short answer') || t.includes('two or three') || t.includes('two to four') || t.includes('2 marks') || t.includes('read and answer') || t.includes('comprehension')) return 2;
-
-    // 4 Mark Questions (Common for Long Answer in some boards)
-    if (t.includes('four marks') || t.includes('4 marks') || t.includes('four sentences')) return 4;
-
-    // 5 Mark Questions (Long Answer / Essay)
-    if (t.includes('long answer') || t.includes('five marks') || t.includes('5 marks') || t.includes('essay') || t.includes('letter') || t.includes('paragraph') || t.includes('story') || t.includes('picture') || t.includes('map')) return 5;
-
-    return 2; // Default to 2 marks for unknown medium types
   }
 
   getChapterIds(): string[] {
