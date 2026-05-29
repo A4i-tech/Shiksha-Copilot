@@ -157,7 +157,10 @@ class QuestionBankManager extends BaseManager {
         ...templatePayload,
         objective_distribution:
           objective_distribution || req.body.objectiveDistribution || [],
-        template: this._applyBoardMarkingPolicy(req.body.board, this._mapTemplateTypes(template || []), req.body.totalMarks),
+        template: this._mapTemplateTypes(template || []).map((item) => {
+          const marks = (BOARD_MARKS[req.body.board] || BOARD_MARKS.DEFAULT)[item.type];
+          return { ...item, marks_per_question: marks, number_of_questions: Math.ceil(Number(req.body.totalMarks) / marks) };
+        }),
       };
 
       const response = await postToQuestionBankBluePrint(payload);
@@ -192,9 +195,6 @@ class QuestionBankManager extends BaseManager {
       console.log('[Manager] generateQuestionBank called.');
 
       const context = this._prepareGenerationContext(req.body);
-      if (!context.questions || context.questions.length === 0) {
-        context.template = this._applyBoardMarkingPolicy(context.board, this._mapTemplateTypes(context.template || []));
-      }
       const {
         language,
         isPreview,
@@ -577,13 +577,8 @@ class QuestionBankManager extends BaseManager {
     if (!templateArray || !Array.isArray(templateArray)) return [];
 
     return templateArray.map((item) => {
-      // mappedType is just the instruction text for backward compatibility
       const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
-
-      // Look up full details if possible to get the description
       const details = QUESTION_TYPE_DETAILS[item.type];
-
-      // Handle both snake_case (legacy/internal) and camelCase (new/frontend)
       const numQs = item.number_of_questions !== undefined ? item.number_of_questions : item.numberOfQuestions;
       const marksPerQ = item.marks_per_question !== undefined ? item.marks_per_question : item.marksPerQuestion;
       const qDist = item.question_distribution || item.questionDistribution;
@@ -594,7 +589,6 @@ class QuestionBankManager extends BaseManager {
         description: details ? details.description : (item.description || ""),
       };
 
-      // Ensure expected Python snake_case keys are present
       if (numQs !== undefined) mappedItem.number_of_questions = numQs;
       if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
 
@@ -616,17 +610,6 @@ class QuestionBankManager extends BaseManager {
       }
 
       return mappedItem;
-    });
-  }
-
-  _applyBoardMarkingPolicy(board, template, totalMarks) {
-    return template.map((item) => {
-      const marks = (BOARD_MARKS[board] || BOARD_MARKS.DEFAULT)[item.type];
-      return {
-        ...item,
-        marks_per_question: marks,
-        ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / marks) }),
-      };
     });
   }
   /**
