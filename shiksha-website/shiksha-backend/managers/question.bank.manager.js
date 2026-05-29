@@ -158,10 +158,7 @@ class QuestionBankManager extends BaseManager {
         ...templatePayload,
         objective_distribution:
           objective_distribution || req.body.objectiveDistribution || [],
-        template: this._mapTemplateTypes(template || []).map((item) => {
-          const marks = (BOARD_MARKS[req.body.board] || BOARD_MARKS.DEFAULT)[item.type];
-          return { ...item, marks_per_question: marks, number_of_questions: Math.ceil(Number(req.body.totalMarks) / marks) };
-        }),
+        template: this._applyBoardMarkingPolicy(req.body.board, this._mapTemplateTypes(template || []), req.body.totalMarks),
       };
 
       const response = await postToQuestionBankBluePrint(payload);
@@ -196,6 +193,9 @@ class QuestionBankManager extends BaseManager {
       console.log('[Manager] generateQuestionBank called.');
 
       const context = this._prepareGenerationContext(req.body);
+      if (!context.questions || context.questions.length === 0) {
+        context.template = this._applyBoardMarkingPolicy(context.board, this._mapTemplateTypes(context.template || []));
+      }
       const {
         language,
         isPreview,
@@ -619,6 +619,54 @@ class QuestionBankManager extends BaseManager {
       return mappedItem;
     });
   }
+
+  _applyBoardMarkingPolicy(board, template, totalMarks) {
+    return template.map((item) => {
+      const marks = (BOARD_MARKS[board] || BOARD_MARKS.DEFAULT)[item.type];
+      return {
+        ...item,
+        marks_per_question: marks,
+        ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / marks) }),
+      };
+    });
+  }
+  /**
+   * Resolves the index path for a unit name following a clear priority order:
+   * 1. Chapter title match in formattedChapters → return its index_path (found=true)
+   * 2. Subtopic title match in formattedChapters → return its index_path (found=true)
+   * 3. Subtopic in raw chapterData → inherit parent chapter's index_path (found=false)
+   * 4. Not found anywhere → empty index_path (found=false)
+   */
+  _resolveUnitContext(unitName, formattedChapters, rawChapterData) {
+    const lowerName = unitName.toLowerCase();
+
+    // 1. Check chapter title match
+    const matchedChapter = formattedChapters.find(fc => fc.title.toLowerCase() === lowerName);
+    if (matchedChapter) {
+      return { found: true, indexPath: matchedChapter.index_path };
+    }
+
+    // 2. Check subtopic title match
+    for (const fc of formattedChapters) {
+      const matchedSub = fc.subtopics.find(sub => sub.title.toLowerCase() === lowerName);
+      if (matchedSub) {
+        return { found: true, indexPath: matchedSub.index_path || fc.index_path };
+      }
+    }
+
+    // 3. Inherit index_path from parent chapter in raw DB data
+    if (rawChapterData && rawChapterData.length > 0) {
+      const parent = rawChapterData.find(ch =>
+        ch.subtopics && ch.subtopics.some(sub => (sub.title || "").toLowerCase() === lowerName)
+      );
+      if (parent) {
+        return { found: false, indexPath: parent.indexPath || parent.index_path || "" };
+      }
+    }
+
+    return { found: false, indexPath: "" };
+  }
+
   async _createQuestionBankPayload(reqBody, user) {
     try {
       const {
