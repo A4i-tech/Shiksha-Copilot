@@ -10,8 +10,7 @@ import re
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
 from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
-from langfuse import observe, get_client
-from langfuse.decorators import langfuse_context
+from langfuse import observe, get_client, langfuse_context
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaAzureOpenAI
