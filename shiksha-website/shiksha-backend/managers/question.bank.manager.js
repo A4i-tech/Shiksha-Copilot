@@ -60,6 +60,18 @@ const QUESTION_TYPE_MAPPING = Object.keys(QUESTION_TYPE_DETAILS).reduce((acc, ke
   return acc;
 }, {});
 
+const DEFAULT_BOARD_MARKS = Object.fromEntries(Object.entries({
+  MCQ: 1, FILL_BLANKS: 1, MATCHING: 1, ANSWER_VERY_SHORT: 1,
+  ANSWER_SHORT: 2, ANSWER_MEDIUM: 2, ANSWER_LONG: 5,
+}).map(([key, marks]) => [QUESTION_TYPE_MAPPING[key], marks]));
+const BOARD_MARKS = {
+  DEFAULT: DEFAULT_BOARD_MARKS,
+  "BSE-TG": {
+    ...DEFAULT_BOARD_MARKS,
+    [QUESTION_TYPE_MAPPING.MCQ]: 0.5,
+  },
+};
+
 class QuestionBankManager extends BaseManager {
   constructor() {
     super(new QuestionBankDao());
@@ -131,7 +143,7 @@ class QuestionBankManager extends BaseManager {
         ...templatePayload,
         objective_distribution:
           objective_distribution || req.body.objectiveDistribution || [],
-        template: this._mapTemplateTypes(template || []),
+        template: this._applyBoardMarkingPolicy(req.body.board, this._mapTemplateTypes(template || []), req.body.totalMarks),
       };
 
       const response = await postToQuestionBankBluePrint(payload);
@@ -166,6 +178,9 @@ class QuestionBankManager extends BaseManager {
       console.log('[Manager] generateQuestionBank called.');
 
       const context = this._prepareGenerationContext(req.body);
+      if (!context.questions || context.questions.length === 0) {
+        context.template = this._applyBoardMarkingPolicy(context.board, this._mapTemplateTypes(context.template || []));
+      }
       const {
         language,
         isPreview,
@@ -587,6 +602,17 @@ class QuestionBankManager extends BaseManager {
       }
 
       return mappedItem;
+    });
+  }
+
+  _applyBoardMarkingPolicy(board, template, totalMarks) {
+    return template.map((item) => {
+      const marks = (BOARD_MARKS[board] || BOARD_MARKS.DEFAULT)[item.type];
+      return {
+        ...item,
+        marks_per_question: marks,
+        ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / marks) }),
+      };
     });
   }
   /**
