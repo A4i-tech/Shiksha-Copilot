@@ -10,7 +10,7 @@ import re
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
 from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
-from langfuse import observe, get_client, langfuse_context
+from langfuse import observe, get_client
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.llms.azure_openai import AzureOpenAI as LlamaAzureOpenAI
@@ -428,7 +428,7 @@ class QuestionPaperService:
         for question in slot_questions:
             user_message += "- " + json.dumps(question, ensure_ascii=False) + "\n"
 
-        langfuse_context.update_current_observation(
+        get_client().update_current_observation(
             input={"system_prompt": system_prompt, "user_message": user_message},
             metadata={
                 "unit_name": unit_name,
@@ -460,13 +460,13 @@ class QuestionPaperService:
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 items = await self._fetch_rag_context(system_prompt, user_message, rag_adapter)
 
-            langfuse_context.update_current_observation(
+            get_client().update_current_observation(
                 output={"items_count": len(items), "items": [i.model_dump() for i in items]},
             )
             return items
 
         except Exception as e:
-            langfuse_context.update_current_observation(
+            get_client().update_current_observation(
                 level="ERROR",
                 status_message=f"{type(e).__name__}: {e}",
                 output={"items_count": 0},
@@ -486,7 +486,7 @@ class QuestionPaperService:
         schema_suffix = "\n\nResponse format must conform to JSON schema:\n" + json.dumps(
             GeneratedQuestionItemResponse.model_json_schema()
         )
-        langfuse_context.update_current_observation(
+        get_client().update_current_observation(
             input={"user_message": user_message},
         )
         try:
@@ -498,12 +498,12 @@ class QuestionPaperService:
             raw = response_content if isinstance(response_content, str) else response_content.get("response", "")
             content = raw.strip("```json").strip("```")
             items = GeneratedQuestionItemResponse.model_validate_json(content).items
-            langfuse_context.update_current_observation(
+            get_client().update_current_observation(
                 output={"raw_response_preview": raw[:500], "items_count": len(items)},
             )
             return items
         except Exception as e:
-            langfuse_context.update_current_observation(
+            get_client().update_current_observation(
                 level="ERROR",
                 status_message=f"{type(e).__name__}: {e}",
             )
