@@ -24,34 +24,51 @@ const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.
 const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
 
+// really we should look at dropping the 'aliases' field here. ideally db.lba_questions should use lower-case key
+// as the 'answerType' (e.g., 'answer_short' instead of 'short_answer'/'short_answers'). right now, 'aliases' is
+// a safety net for BC.
 const QUESTION_TYPE_DETAILS = {
   MCQ: {
     instruction: "Four alternatives are given for each of the following questions, choose the correct alternative",
-    description: "Objective Questions (MCQ)"
+    label: "Multiple Choice Questions",
+    description: "Objective Questions (MCQ)",
+    aliases: ["mcq"]
   },
   FILL_BLANKS: {
     instruction: "Fill in the blanks with suitable words",
-    description: "Fill in the blanks"
+    label: "Fill in the blanks",
+    description: "Fill in the blanks",
+    aliases: ["fill_in_the_blank", "fill_in_the_blanks"]
   },
   ANSWER_VERY_SHORT: {
     instruction: "Answer the following in a word, phrase or sentence",
-    description: "Very Short Answer"
+    label: "Very Short Answer Questions",
+    description: "Very Short Answer",
+    aliases: ["analogy", "arrange_in_chronological_order", "odd_one_out", "one_sentence_answers", "ordering", "rearrange", "true_false", "word_relation"]
   },
   ANSWER_SHORT: {
     instruction: "Answer the following in two or three sentences each",
-    description: "Short Answer"
+    label: "Short Answer Questions",
+    description: "Short Answer",
+    aliases: ["short_answer", "short_answers"]
   },
   ANSWER_MEDIUM: {
     instruction: "Answer the following questions",
-    description: "Answer the following questions"
+    label: "Answer the following questions",
+    description: "Answer the following questions",
+    aliases: ["answer_medium", "other"]
   },
   ANSWER_LONG: {
     instruction: "Answer the following question in four or five sentences",
-    description: "Long Answer"
+    label: "Long Answer Questions",
+    description: "Long Answer",
+    aliases: ["long_answer", "long_answers", "map_activity", "map_based"]
   },
   MATCHING: {
     instruction: "Match the following",
-    description: "Match the following"
+    label: "Match the Following",
+    description: "Match the following",
+    aliases: ["match_pairs", "match_the_following"]
   },
 };
 
@@ -71,6 +88,20 @@ const BOARD_MARKS = {
     [QUESTION_TYPE_MAPPING.MCQ]: 0.5,
   },
 };
+const CORE_SUBJECTS = ["Science", "Social Science", "Mathematics", "Evs"];
+const CORE_OBJECTIVES = [{ objective: "Knowledge", percentage_distribution: 25 }, { objective: "Understanding", percentage_distribution: 45 }, { objective: "Application", percentage_distribution: 20 }, { objective: "Skill", percentage_distribution: 10 }];
+const CORE_OBJECTIVES_10 = [{ objective: "Knowledge", percentage_distribution: 10 }, { objective: "Understanding", percentage_distribution: 55 }, { objective: "Application", percentage_distribution: 20 }, { objective: "Skill", percentage_distribution: 15 }];
+const LANGUAGE_OBJECTIVES = [{ objective: "Knowledge", percentage_distribution: 25 }, { objective: "Comprehension", percentage_distribution: 40 }, { objective: "Expression", percentage_distribution: 30 }, { objective: "Appreciation", percentage_distribution: 5 }];
+const TELANGANA_OBJECTIVES = [{ objective: "Knowledge", percentage_distribution: 10 }, { objective: "Understanding", percentage_distribution: 20 }, { objective: "Application", percentage_distribution: 30 }, { objective: "Higher order thinking", percentage_distribution: 40 }];
+const BOARD_OBJECTIVES = {
+  DEFAULT: () => CORE_OBJECTIVES,
+  KSEEB: (grade, subjectName) => CORE_SUBJECTS.includes(subjectName) ? (Number(grade) === 10 ? CORE_OBJECTIVES_10 : CORE_OBJECTIVES) : LANGUAGE_OBJECTIVES,
+  "BSE-TG": () => TELANGANA_OBJECTIVES,
+};
+const QUESTION_TYPE_META = Object.fromEntries(Object.entries(QUESTION_TYPE_DETAILS).flatMap(([key, item]) => {
+  const meta = { key, answerType: key, label: item.label, instruction: item.instruction, description: item.description };
+  return [key, item.instruction, item.label, item.description, ...item.aliases].map(value => [value, meta]);
+}));
 
 class QuestionBankManager extends BaseManager {
   constructor() {
@@ -884,13 +915,34 @@ class QuestionBankManager extends BaseManager {
       // 3. Merge Stats back into content
       const enrichedChapters = chapters.map((ch) => ({
         ...ch,
-        headings: statsMap.get(String(ch._id)) || [{ name: "Misc", count: 0 }],
+        headings: (statsMap.get(String(ch._id)) || [{ name: "Misc", count: 0 }]).map((h) => ({
+          ...h,
+          ...QUESTION_TYPE_META[h.answerType],
+        })),
       }));
 
       console.log(`[Manager] getChapters: found ${chapters?.length || 0} chapters`);
       return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
     } catch (err) {
       console.error("[Manager] getChapters failed:", err);
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getPaperConfig(board, grade, subjectName) {
+    try {
+      const marks = BOARD_MARKS[board] || BOARD_MARKS.DEFAULT;
+      const questionTypes = Object.entries(QUESTION_TYPE_DETAILS).map(([key, item]) => ({
+        key,
+        label: item.label,
+        instruction: item.instruction,
+        description: item.description,
+        marksPerQuestion: marks[item.instruction],
+      }));
+      const objectives = (BOARD_OBJECTIVES[board] || BOARD_OBJECTIVES.DEFAULT)(grade, subjectName);
+
+      return formatApiReponse(true, "Question paper config retrieved successfully", { questionTypes, objectives });
+    } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
   }
@@ -982,6 +1034,10 @@ class QuestionBankManager extends BaseManager {
           // fall back to the untranslated result which is already in `result`
         }
       }
+      result = result.map((q) => {
+        const meta = QUESTION_TYPE_META[q.answerType] || {};
+        return { ...q, ...meta, heading: meta.label || q.groupHeading, type: meta.instruction || q.answerType || q.type };
+      });
 
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", result);

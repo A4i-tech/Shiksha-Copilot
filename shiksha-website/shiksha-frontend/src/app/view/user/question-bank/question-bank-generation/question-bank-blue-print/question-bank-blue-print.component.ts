@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
+import { QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -23,7 +23,6 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   @Output() generateClick = new EventEmitter<void>();
 
   totalSteps: number = 3;
-  questionTypeMapper = QUESTION_TYPE_MAPPER;
 
   // Chart Properties
   objectivesChartData!: ChartData<'doughnut'>;
@@ -89,9 +88,9 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
 
     this.finalSelectedQuestions.forEach(q => {
       let label = 'Unknown';
-      if (q.source === 'AI Questions') {
+      if (q.source === QUESTION_SOURCE.AI) {
         label = q.objective || 'Knowledge';
-      } else if (q.source === 'Pre-generated Questions') {
+      } else if (q.source === QUESTION_SOURCE.LBA) {
         label = 'Pre-generated';
       } else {
         label = q.objective || 'Knowledge';

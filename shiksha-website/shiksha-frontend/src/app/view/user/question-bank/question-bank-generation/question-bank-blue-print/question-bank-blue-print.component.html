@@ -20,7 +20,7 @@
         <div *ngFor="let group of groupedBlueprintData; let i = index" class="mb-8 bg-gray-50 rounded-lg border p-4">
           <div class="flex justify-between items-center border-b pb-2 mb-4">
             <h3 class="font-bold text-lg text-content">
-              {{ i + 1 }}. {{ questionTypeMapper[group.type] || group.type }}
+              {{ i + 1 }}. {{ group.type }}
             </h3>
             <span class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold">
               {{ group.questions.length }} Questions x {{ group.marksPerQuestion }} Marks
@@ -49,7 +49,7 @@
       <div class="mt-2 pt-2 border-t text-xs font-bold text-gray-500 text-right">
         Sources included:
         <span *ngFor="let s of uniqueSources; let last = last" class="text-primary uppercase ml-1">
-          {{ s === 'AI Questions' ? 'AI Gen' : (s === 'Pre-generated Questions' ? 'Pre-gen' : s) }}{{ !last ? ',' : '' }}
+          {{ s }}{{ !last ? ',' : '' }}
         </span>
       </div>
     </div>

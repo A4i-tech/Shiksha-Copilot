@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
+import { QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -26,7 +27,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   selectedQuestions: any[] = [];
 
   // Filter State
-  filterSource: 'ALL' | 'AI Questions' | 'Pre-generated Questions' = 'ALL';
+  filterSource: string = 'ALL';
   filterDifficulty: string = 'ALL';
   filterQuestionType: string = 'ALL';
   searchText: string = '';
@@ -34,6 +35,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   availableHeadings: string[] = [];
   availableSources: string[] = [];
   availableDifficulties: string[] = [];
+  readonly QUESTION_SOURCE = QUESTION_SOURCE;
 
   constructor() { }
 
@@ -84,10 +86,9 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
     this.availableHeadings = Array.from(headings).sort();
 
-    // Sort sources: AI Questions first, then others
     this.availableSources = Array.from(sources).sort((a, b) => {
-      if (a === 'AI Questions') return -1;
-      if (b === 'AI Questions') return 1;
+      if (a === QUESTION_SOURCE.AI) return -1;
+      if (b === QUESTION_SOURCE.AI) return 1;
       return a.localeCompare(b);
     });
 

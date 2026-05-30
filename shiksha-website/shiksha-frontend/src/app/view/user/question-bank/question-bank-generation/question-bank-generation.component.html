@@ -213,8 +213,8 @@
                       </label>
                       <label *ngFor="let h of availableHeadings"
                         class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b text-sm">
-                        <input type="checkbox" [checked]="isHeadingSelected(h.name)"
-                          (change)="toggleHeading($event, h.name)"
+                        <input type="checkbox" [checked]="isHeadingSelected(h)"
+                          (change)="toggleHeading($event, h)"
                           class="mr-2 w-4 h-4 text-primary rounded focus:ring-primary" />
                         {{h.name}} <span *ngIf="(h?.count || 0) > 0" class="ml-1 text-gray-400">({{h.count}})</span>
                       </label>

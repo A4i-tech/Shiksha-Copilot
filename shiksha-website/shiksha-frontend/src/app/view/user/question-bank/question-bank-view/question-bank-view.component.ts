@@ -4,7 +4,6 @@ import { QuestionBankService } from '../question-bank.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { slideInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { IdleService } from 'src/app/shared/services/idle.service';
-import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 @Component({
@@ -37,8 +36,6 @@ export class QuestionBankViewComponent implements OnInit {
     { name: 'Agree', symbol: '🙂' },
     { name: 'Strongly Agree', symbol: '😃' },
   ];
-
-  questionTypeMapper = QUESTION_TYPE_MAPPER;
 
   shuffledColumns: string[] = [];
 
@@ -145,7 +142,7 @@ export class QuestionBankViewComponent implements OnInit {
       questionDistribution.forEach((entry: any) => {
         result.push({
           unitName: entry.unitName,
-          type: this.questionTypeMapper[type],
+          type,
           objective: entry.objective,
           marks: marksPerQuestion
         });
