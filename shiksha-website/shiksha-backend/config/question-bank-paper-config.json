@@ -1,0 +1,102 @@
+{
+  "questionTypes": {
+    "MCQ": {
+      "instruction": "Four alternatives are given for each of the following questions, choose the correct alternative",
+      "label": "Multiple Choice Questions",
+      "description": "Objective Questions (MCQ)",
+      "aliases": ["mcq"]
+    },
+    "FILL_BLANKS": {
+      "instruction": "Fill in the blanks with suitable words",
+      "label": "Fill in the blanks",
+      "description": "Fill in the blanks",
+      "aliases": ["fill_in_the_blank", "fill_in_the_blanks"]
+    },
+    "ANSWER_VERY_SHORT": {
+      "instruction": "Answer the following in a word, phrase or sentence",
+      "label": "Very Short Answer Questions",
+      "description": "Very Short Answer",
+      "aliases": ["analogy", "arrange_in_chronological_order", "odd_one_out", "one_sentence_answers", "ordering", "rearrange", "true_false", "word_relation"]
+    },
+    "ANSWER_SHORT": {
+      "instruction": "Answer the following in two or three sentences each",
+      "label": "Short Answer Questions",
+      "description": "Short Answer",
+      "aliases": ["short_answer", "short_answers"]
+    },
+    "ANSWER_MEDIUM": {
+      "instruction": "Answer the following questions",
+      "label": "Answer the following questions",
+      "description": "Answer the following questions",
+      "aliases": ["answer_medium", "other"]
+    },
+    "ANSWER_LONG": {
+      "instruction": "Answer the following question in four or five sentences",
+      "label": "Long Answer Questions",
+      "description": "Long Answer",
+      "aliases": ["long_answer", "long_answers", "map_activity", "map_based"]
+    },
+    "MATCHING": {
+      "instruction": "Match the following",
+      "label": "Match the Following",
+      "description": "Match the following",
+      "aliases": ["match_pairs", "match_the_following"]
+    }
+  },
+  "coreSubjects": ["Science", "Social Science", "Mathematics", "Evs"],
+  "objectives": {
+    "core": [
+      { "objective": "Knowledge", "percentage_distribution": 25 },
+      { "objective": "Understanding", "percentage_distribution": 45 },
+      { "objective": "Application", "percentage_distribution": 20 },
+      { "objective": "Skill", "percentage_distribution": 10 }
+    ],
+    "coreGrade10": [
+      { "objective": "Knowledge", "percentage_distribution": 10 },
+      { "objective": "Understanding", "percentage_distribution": 55 },
+      { "objective": "Application", "percentage_distribution": 20 },
+      { "objective": "Skill", "percentage_distribution": 15 }
+    ],
+    "language": [
+      { "objective": "Knowledge", "percentage_distribution": 25 },
+      { "objective": "Comprehension", "percentage_distribution": 40 },
+      { "objective": "Expression", "percentage_distribution": 30 },
+      { "objective": "Appreciation", "percentage_distribution": 5 }
+    ],
+    "telangana": [
+      { "objective": "Knowledge", "percentage_distribution": 10 },
+      { "objective": "Understanding", "percentage_distribution": 20 },
+      { "objective": "Application", "percentage_distribution": 30 },
+      { "objective": "Higher order thinking", "percentage_distribution": 40 }
+    ]
+  },
+  "boardMarks": {
+    "DEFAULT": {
+      "MCQ": 1,
+      "FILL_BLANKS": 1,
+      "MATCHING": 1,
+      "ANSWER_VERY_SHORT": 1,
+      "ANSWER_SHORT": 2,
+      "ANSWER_MEDIUM": 2,
+      "ANSWER_LONG": 5
+    },
+    "BSE-TG": {
+      "MCQ": 0.5
+    }
+  },
+  "objectivePolicies": {
+    "DEFAULT": {
+      "default": "core"
+    },
+    "KSEEB": {
+      "coreSubject": "core",
+      "coreSubjectGrades": {
+        "10": "coreGrade10"
+      },
+      "default": "language"
+    },
+    "BSE-TG": {
+      "default": "telangana"
+    }
+  }
+}
