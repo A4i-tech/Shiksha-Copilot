@@ -172,7 +172,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const grouped = new Map<string, any>();
     selectedQuestions.forEach(q => {
-      const sectionType = q.type || q.instruction || q.answerType;
+      const sectionType = q.type;
       if (!grouped.has(sectionType)) {
         grouped.set(sectionType, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
       }
@@ -652,14 +652,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   processStep2(selections: any[]) {
     this.selectedQuestions = selections;
-
-    this.finalSelectedQuestions = this.selectedQuestions.map(q => {
-      return {
-        ...q,
-        heading: q.heading || q.label || q.groupHeading || 'Question',
-        unit_name: q.unit_name || 'General'
-      };
-    });
+    this.finalSelectedQuestions = this.selectedQuestions;
 
     this.questionBankBluePrintData = this.generateSummaryBlueprint(this.finalSelectedQuestions);
 
@@ -686,7 +679,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // 2. Organize Selected Questions into Sections
     const sectionsMap = new Map<string, any>();
     this.finalSelectedQuestions.forEach(q => {
-      const heading = q.heading || q.label || q.groupHeading || 'General';
+      const heading = q.heading;
       if (!sectionsMap.has(heading)) {
         sectionsMap.set(heading, {
           type: q.type,
@@ -697,27 +690,16 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         });
       }
       const section = sectionsMap.get(heading);
-      if (q.keyAnswer !== undefined && q.keyAnswer !== null && typeof q.keyAnswer !== 'string') {
-        console.error(
-          `[QuestionBankGeneration.buildPayload] Selected question has non-string keyAnswer ` +
-            `(got ${typeof q.keyAnswer}). Coercing to empty string.`,
-          q
-        );
-      }
-      const safeKeyAnswer = typeof q.keyAnswer === 'string' ? q.keyAnswer : '';
-      const rawValue2 = q.value2 ?? safeKeyAnswer ?? q.answer;
-      const safeValue2 = typeof rawValue2 === 'string' ? rawValue2 : '';
-
       section.questions.push({
-        question: q.text || q.question,
-        options: q.options || [],
-        keyAnswer: safeKeyAnswer,
-        marks: Number(q.marks || 1),
+        question: q.text,
+        options: q.options,
+        keyAnswer: q.keyAnswer,
+        marks: Number(q.marks),
         _id: q._id,
         unit_name: q.unit_name,
-        objective: q.objective || 'Knowledge',
-        value1: q.value1 || q.text || q.question || '',
-        value2: safeValue2
+        objective: q.objective,
+        value1: q.value1,
+        value2: q.value2
       });
       section.numberOfQuestions = section.questions.length;
     });
@@ -937,81 +919,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return this.questionBankService.getLBAQuestions(params).pipe(
       map((docs: any[]) => {
         console.log('[Frontend] getLBAQuestions response length:', docs?.length);
-        return (docs || []).flatMap((q) => {
-          const heading = q.heading || q.label || q.groupHeading || 'Question';
-          const unitName = q.unit_name || selectedTitles[0] || 'General';
-          const baseObj = {
-            source: QUESTION_SOURCE.LBA,
-            marks: q.marksPerQuestion || q.marks || 1,
-            type: q.type || q.instruction || q.answerType,
-            heading,
-            unit_name: unitName,
-            objective: q.objective || 'Knowledge',
-          };
-
-          // Match the Following: expand pairs into individual value1/value2 entries
-          if (q.pairs && q.pairs.length > 0) {
-            return q.pairs.map((pair: any, idx: number) => ({
-              ...baseObj,
-              text: pair.left || '',
-              value1: pair.left || '',
-              value2: pair.right || pair.keyAnswer || '',
-              _id: q._id ? `${q._id}_pair_${idx}` : `lba_${Math.random().toString(36).substring(7)}`,
-            }));
-          }
-
-          // Match the Following fallback: split "Left item a. Right item" at letter marker
-          if (heading === 'Match the Following') {
-            const rawText = q.text || q.question_text || q.question || '';
-            // Pattern: split at " a. ", " b. ", etc. (single lowercase letter surrounded by spaces and period)
-            const splitMatch = rawText.match(/^(.+?)\s+[a-z]\.\s+(.+)$/i);
-            if (splitMatch) {
-              return [{
-                ...baseObj,
-                text: splitMatch[1].trim(),
-                value1: splitMatch[1].trim(),
-                value2: splitMatch[2].trim(),
-                _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
-              }];
-            }
-            // If no letter marker found, use text/keyAnswer
-            return [{
-              ...baseObj,
-              text: rawText,
-              value1: rawText,
-              value2: q.keyAnswer || q.answer || '',
-              _id: q._id || `lba_${Math.random().toString(36).substring(7)}`,
-            }];
-          }
-
-          // Normal questions
-          let displayText = q.text || q.question_text || q.question;
-          if (!displayText) {
-            if (q.items && q.items.length > 0) {
-              const itemTexts = q.items
-                .map((i: any) => i.question || i.text || i.content || '')
-                .filter((t: string) => t && t.trim().length > 0);
-              displayText = itemTexts.length > 0 ? itemTexts.join('\n') : 'Answer the following items';
-            }
-            else displayText = q.heading || q.groupHeading || q.type || 'Question';
-          }
-
-          if (q.keyAnswer !== undefined && q.keyAnswer !== null && typeof q.keyAnswer !== 'string') {
-            console.error(
-              `[QuestionBankGeneration.fetchLBAQuestions] LBA question has non-string keyAnswer ` +
-                `(got ${typeof q.keyAnswer}). Coercing to empty string.`,
-              q
-            );
-          }
-
-          return [{
-            ...q,
-            ...baseObj,
-            text: displayText,
-            keyAnswer: typeof q.keyAnswer === 'string' ? q.keyAnswer : '',
-            _id: q._id || `lba_${Math.random().toString(36).substring(7)}`
-          }];
-        });
+        return (docs || []).map((q) => ({
+          ...q,
+          source: QUESTION_SOURCE.LBA,
+        }));
       }),
       catchError(err => {
         console.error("[QB-LOG] LBA Fetch Error:", err);

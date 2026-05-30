@@ -45,6 +45,34 @@ const getObjectiveKey = (board, grade, subjectName) => {
     ? policy.coreSubjectGrades[String(grade)] || policy.coreSubject
     : policy.default;
 };
+const transform_weak_lba_struct = (q) => {
+  // this exists because db.lba_questions has weak and inconsistent structure.
+  // TODO: we ought to get rid of this backend logic by sanitizing the db collection.
+  const meta = QUESTION_TYPE_META[q.answerType];
+  if (q.answerType && !meta) logger.warn(`Unexpected LBA answer type "${q.answerType}" in question result`, { answerType: q.answerType, questionId: String(q._id), groupHeading: q.groupHeading });
+  const text = q.text || (q.items || []).map((item) => item.text || item.question || item.content || item).join("\n");
+  const keyAnswer = q.keyAnswer || q.answer || "";
+  const base = {
+    ...q,
+    ...(meta || {}),
+    type: meta?.key || q.answerType || q.type,
+    heading: meta?.label || q.groupHeading || "Question",
+    marks: q.marksPerQuestion,
+    unit_name: q.unit_name || q.chapter?.title || "General",
+    objective: q.objective || "Knowledge",
+    text,
+    keyAnswer,
+    value1: q.value1 || text,
+    value2: q.value2 || keyAnswer,
+  };
+  return q.pairs?.length ? q.pairs.map((pair, index) => ({
+    ...base,
+    _id: `${q._id}_pair_${index}`,
+    text: pair.left,
+    value1: pair.left,
+    value2: pair.right || pair.keyAnswer,
+  })) : base;
+};
 
 class QuestionBankManager extends BaseManager {
   constructor() {
@@ -977,11 +1005,7 @@ class QuestionBankManager extends BaseManager {
           // fall back to the untranslated result which is already in `result`
         }
       }
-      result = result.map((q) => {
-        const meta = QUESTION_TYPE_META[q.answerType];
-        if (q.answerType && !meta) logger.warn(`Unexpected LBA answer type "${q.answerType}" in question result`, { answerType: q.answerType, questionId: String(q._id), groupHeading: q.groupHeading });
-        return { ...q, ...(meta || {}), heading: meta?.label || q.groupHeading, type: meta?.instruction || q.answerType || q.type };
-      });
+      result = result.flatMap(transform_weak_lba_struct);
 
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", result);
