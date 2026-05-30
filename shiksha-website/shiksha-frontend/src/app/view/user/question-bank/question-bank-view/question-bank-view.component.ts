@@ -44,6 +44,7 @@ export class QuestionBankViewComponent implements OnInit {
   questionBankBluePrintData: any;
 
   showAnswerKeys: boolean = false;
+  questionTypeLabels: Record<string, string> = {};
 
   docTypes = [
     {
@@ -89,32 +90,19 @@ export class QuestionBankViewComponent implements OnInit {
         next: (val: any) => {
           this.questionBankDetails = val.data;
           this.questionBank = this.questionBankDetails.questionBank
+          this.questionBankService.getPaperConfig({
+            board: this.questionBankDetails.board,
+            grade: String(this.questionBankDetails.grade),
+            subjectName: this.questionBankDetails.subject
+          }).subscribe((config: any) => {
+            this.questionTypeLabels = Object.fromEntries(config.questionTypes.map((type: any) => [type.key, type.label]));
+          });
 
-          // Process Match the Following sections
           if (this.questionBank?.questions?.length) {
             this.questionBank.questions.forEach((section: any) => {
-              if (section.type === 'Match the following' && section.questions?.length) {
-                // Map columns supporting both AI (value1/2) and LBA (text/keyAnswer) formats
-                // LBA: text = Left, keyAnswer = Right
-                const coerceToString = (value: any, context: string, idx: number): string => {
-                  if (typeof value === 'string') return value;
-                  if (value === undefined || value === null) return '';
-                  console.error(
-                    `[QuestionBankView] Match-the-following ${context} at row ${idx} is not a string ` +
-                      `(got ${typeof value}). Coercing to empty string.`,
-                    value
-                  );
-                  return '';
-                };
-
-                const colTwoVal = section.questions.map((ele: any, idx: number) => {
-                  const resolved = ele.value2 ?? ele.keyAnswer ?? ele.right;
-                  return coerceToString(resolved, 'right-hand value', idx);
-                });
-                section.primaryColumn = section.questions.map((ele: any, idx: number) => {
-                  const resolved = ele.value1 ?? ele.text ?? ele.left;
-                  return coerceToString(resolved, 'left-hand value', idx);
-                });
+              if (section.type === 'MATCHING' && section.questions?.length) {
+                const colTwoVal = section.questions.map((ele: any) => ele.value2);
+                section.primaryColumn = section.questions.map((ele: any) => ele.value1);
                 section.originalColumns = [...colTwoVal];
                 section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
               }
