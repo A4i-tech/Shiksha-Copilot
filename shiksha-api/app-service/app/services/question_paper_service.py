@@ -62,15 +62,21 @@ class QuestionPaperService:
         self.chat_deployment = settings.azure_openai_deployment_name
         self.embedding_deployment = settings.azure_openai_embed_model
 
-        self._rag_llm = new_rag_llm()
-        self._rag_embed = new_rag_embed()
-        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
-
         # Load YAML prompts
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
         self.max_questions_per_slot = 20
         self.concurrency = asyncio.Semaphore(5)
+
+
+    async def __aenter__(self):
+        self._rag_llm = new_rag_llm()
+        self._rag_embed = new_rag_embed()
+        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
+
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self._rags.cleanup()
 
 
     def _load_prompts(self) -> Dict[str, Any]:
@@ -312,10 +318,6 @@ class QuestionPaperService:
         ), questions=response_questions)
 
 
-    async def cleanup(self):
-        await self._rags.cleanup()
-
-
     async def get_question_distribution(self, request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
         """
         Generate question paper template based on unit-wise marks distribution.
@@ -369,6 +371,3 @@ class QuestionPaperService:
             raise RuntimeError("The AI model failed to generate a valid JSON structure.")
 
         return response.output_parsed.items
-
-
-QUESTION_PAPER_SERVICE_INSTANCE = QuestionPaperService()
