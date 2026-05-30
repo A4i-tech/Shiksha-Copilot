@@ -25,6 +25,7 @@ const {
 const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.dao");
 const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
+const logger = require("../config/loggers");
 
 // really we should look at dropping the 'aliases' field here. ideally db.lba_questions should use lower-case key
 // as the 'answerType' (e.g., 'answer_short' instead of 'short_answer'/'short_answers'). right now, 'aliases' is
@@ -999,10 +1000,11 @@ class QuestionBankManager extends BaseManager {
       // 3. Merge Stats back into content
       const enrichedChapters = chapters.map((ch) => ({
         ...ch,
-        headings: (statsMap.get(String(ch._id)) || [{ name: "Misc", count: 0 }]).map((h) => ({
-          ...h,
-          ...QUESTION_TYPE_META[h.answerType],
-        })),
+        headings: (statsMap.get(String(ch._id)) || [{ name: "Misc", count: 0 }]).map((h) => {
+          const meta = QUESTION_TYPE_META[h.answerType];
+          if (h.answerType && !meta) logger.warn(`Unexpected LBA answer type "${h.answerType}" in chapter heading stats`, { answerType: h.answerType, heading: h.name, chapterId: String(ch._id) });
+          return { ...h, ...(meta || {}) };
+        }),
       }));
 
       console.log(`[Manager] getChapters: found ${chapters?.length || 0} chapters`);
@@ -1119,8 +1121,9 @@ class QuestionBankManager extends BaseManager {
         }
       }
       result = result.map((q) => {
-        const meta = QUESTION_TYPE_META[q.answerType] || {};
-        return { ...q, ...meta, heading: meta.label || q.groupHeading, type: meta.instruction || q.answerType || q.type };
+        const meta = QUESTION_TYPE_META[q.answerType];
+        if (q.answerType && !meta) logger.warn(`Unexpected LBA answer type "${q.answerType}" in question result`, { answerType: q.answerType, questionId: String(q._id), groupHeading: q.groupHeading });
+        return { ...q, ...(meta || {}), heading: meta?.label || q.groupHeading, type: meta?.instruction || q.answerType || q.type };
       });
 
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
