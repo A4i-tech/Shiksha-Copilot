@@ -92,20 +92,6 @@ const getGrammarTopicsQuerySchema = Joi.object({
 }).unknown(true);
 
 // Middleware functions
-const validateQuestionBankTemplateCreate = (req, res, next) => {
-    const data = req.body;
-    let isValid = questionBankTemplateSchemaCreate.validate(data, { abortEarly: false });
-    if (isValid.error) {
-        return res.status(400).json({
-            success: false,
-            data: false,
-            error: isValid.error.details.map((i) => i.message),
-        });
-    }
-    req.body = isValid.value;
-    next();
-};
-
 const validateQuestionBankBluePrintCreate = (req, res, next) => {
     const data = req.body;
     let isValid = questionBankBluePrintSchemaCreate.validate(data, { abortEarly: false });
@@ -178,7 +164,6 @@ const validateGetGrammarTopics = (req, res, next) => {
 
 module.exports = {
     validateQuestionBankCreate,
-    validateQuestionBankTemplateCreate,
     validateQuestionBankBluePrintCreate,
     validateQuestionBankFeedbackCreate,
     validateGetQuestionTypes,

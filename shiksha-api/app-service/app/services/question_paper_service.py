@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.utils import new_rag_embed, new_rag_llm
@@ -7,7 +8,6 @@ import asyncio
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import logging
-import re
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
 from openai import AsyncAzureOpenAI
@@ -20,15 +20,20 @@ from llama_index.core.llms import ChatMessage
 from app.services.rag_adapters import BaseRagAdapter, RagAdapterFactory
 
 from app.models.question_paper import (
+    AIGeneratedQuestionItem,
+    FourOptionsQuestion,
     GeneratedQuestionItem,
+    GeneratedTemplate,
+    _LearningRecord,
+    MatchingListQuestion,
     QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
     QuestionBankMetadata,
+    QuestionDistribution,
     QuestionTypeResponse,
-    QuestionType,
-    Template,
     GRAMMAR_QUESTION_TYPES,
+    TextQuestion,
 )
 from app.config import settings
 
@@ -36,11 +41,11 @@ logger = logging.getLogger(__name__)
 
 
 class TemplateResponse(BaseModel):
-    items: list[Template]
+    items: list[GeneratedTemplate]
 
 
 class GeneratedQuestionItemResponse(BaseModel):
-    items: list[GeneratedQuestionItem]
+    items: list[AIGeneratedQuestionItem]
 
 
 class QuestionPaperService:
@@ -68,11 +73,6 @@ class QuestionPaperService:
         self.max_questions_per_slot = 20
         self.concurrency = asyncio.Semaphore(5)
 
-    def _normalize_string(self, s: str) -> str:
-        """Centralized string normalization to collapse whitespace and trim."""
-        if not s:
-            return ""
-        return re.sub(r"\s+", " ", s).strip().lower()
 
     def _load_prompts(self) -> Dict[str, Any]:
         """Load prompts from YAML files."""
@@ -99,21 +99,22 @@ class QuestionPaperService:
         logger.info("Successfully loaded prompt templates")
         return prompts
 
-    def _flatten_existing_questions(
-        self, existing: List[QuestionTypeResponse]
-    ) -> List[str]:
+
+    def _flatten_existing_questions(self, existing: List[QuestionTypeResponse]) -> List[str]:
         """Extract question text from existing questions for uniqueness checking."""
         questions = []
         for qtr in existing:
             for q in qtr.questions:
-                if hasattr(q, "question") and q.question:
-                    questions.append(q.question)
-                elif hasattr(q, "value1") and hasattr(q, "value2"):
-                    # For matching questions
-                    questions.append(f"{q.value1} :: {q.value2}")
+                match q:
+                    case TextQuestion(question=question) | FourOptionsQuestion(question=question):
+                        questions.append(question)
+                    case MatchingListQuestion(value1=value1, value2=value2):
+                        questions.append(f"{value1} :: {value2}")
+                    case _:
+                        raise RuntimeError("don't know how to flatten %s" % q.__qualname__)
         return [q for q in questions if q]
 
-    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Dict[str, Any]) -> str:
+    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, record: _LearningRecord) -> str:
         """Return a grammar focus instruction for the slot, or "" when no grammar
         chapter is selected. Grammar chapters are identified by the ``is_grammar``
         flag and their topics by ``grammar_topics``."""
@@ -129,7 +130,7 @@ class QuestionPaperService:
 
         grammar_topic = "; ".join(grammar_units)
 
-        source_chapters = slot["grammar_source_chapters"]
+        source_chapters = record.grammar_source_chapters or []
         if source_chapters:
             chapter_names = ", ".join(source_chapters)
             return self.prompts["grammar_context_prompt"].format(
@@ -140,185 +141,49 @@ class QuestionPaperService:
 
         return self.prompts["grammar_simple_prompt"].format(GRAMMAR_TOPIC=grammar_topic)
 
-    def _get_unit_metadata(self, request: QuestionBankPartsGenerationRequest) -> Dict[str, Dict[str, Any]]:
-        """
-        Consolidated method to get Learning Outcomes and Index Paths for units.
-        Ensures keys are consistent between LOs and Paths.
-        """
-        metadata = {}
-        
-        # Determine if this is a single-chapter request with subtopics
-        use_subtopics = (
-            len(request.chapters) == 1 
-            and request.chapters[0].subtopics 
-            and len(request.chapters[0].subtopics) > 0
-        )
 
-        if use_subtopics:
-            chapter = request.chapters[0]
-            # Use subtopics as units
-            for subtopic in chapter.subtopics:
-                resolved_path = getattr(subtopic, "index_path", None) or chapter.index_path
-                metadata[subtopic.title] = {
-                    "learning_outcomes": subtopic.learning_outcomes,
-                    # Fallback to chapter index path if subtopic doesn't have specific one
-                    "index_path": resolved_path,
-                    "grammar_source_chapters": chapter.grammar_source_chapters or [],
-                }
-        else:
-            # Use chapters as units
-            for chapter in request.chapters:
-                metadata[chapter.title] = {
-                    "learning_outcomes": chapter.learning_outcomes,
-                    "index_path": chapter.index_path,
-                    "grammar_source_chapters": chapter.grammar_source_chapters or [],
-                }
-        
-        return metadata
-
-    def _find_best_matching_unit(self, search_name: str, available_names: List[str]) -> Optional[str]:
-        """
-        Finds the best matching unit name from available names, handling prefixes and minor variations.
-        """
-        if not search_name or not available_names:
-            return None
-
-        normalized_search = self._normalize_string(search_name)
-
-        # 1. Try Exact Match (Normalized)
-        for name in available_names:
-            if self._normalize_string(name) == normalized_search:
-                return name
-
-        # 2. Try Core Identifier Match
-        def get_core_identifier(s: str) -> str:
-            # Remove "unit" label followed by any numbering, or just numbering at start
-            # e.g. "Unit 1: Name" -> "Name"
-            # "1. Name" -> "Name"
-            s_norm = self._normalize_string(s)
-            # Remove "unit <d> :" or "unit <d>" prefix
-            s_norm = re.sub(r"^unit\s*\d+[:.]?\s*", "", s_norm)
-            # Remove "<d>. " prefix
-            s_norm = re.sub(r"^\d+[:.]\s*", "", s_norm)
-            return s_norm.strip()
-
-        core_search = get_core_identifier(search_name)
-        
-        for name in available_names:
-            if get_core_identifier(name) == core_search:
-                return name
-
-        # 3. Try containment (Normalized)
-        # Check if one is a substring of the other (careful with short names)
-        for name in available_names:
-            norm_name = self._normalize_string(name)
-            if norm_name in normalized_search or normalized_search in norm_name:
-                return name
-
-        return None
-
-    def _build_generation_slots(
-        self, request: QuestionBankPartsGenerationRequest
-    ) -> List[Dict[str, Any]]:
-        """Build generation slots from template distributions, grouped by unit with max 20 questions per slot."""
-        
-        # 1. Get unified metadata
-        unit_metadata = self._get_unit_metadata(request)
-        available_units = list(unit_metadata.keys())
-
-        # Group questions by unit_name first
-        unit_questions = {}
-
+    def _build_generation_slots(self, request: QuestionBankPartsGenerationRequest):
+        """Build generation slots from template distributions, grouped by unit with max questions per slot."""
+        lrs = request.chapters[0].subtopics if request.unit_level == "SUBTOPIC" else request.chapters
+        unit_lr = {lr.title: lr for lr in lrs}
+        unit_questions: dict[str, list[tuple[GeneratedTemplate, QuestionDistribution]]] = defaultdict(list)  # Group questions by unit_name first
         for template in request.template:
-            if (
-                template.question_distribution
-                and len(template.question_distribution) > 0
-            ):
-                # Use specified distribution
-                for dist in template.question_distribution:
-                    
-                    matched_unit_name = self._find_best_matching_unit(dist.unit_name, available_units)
-                    
-                    if matched_unit_name is None:
-                        logger.error(f"Unit mismatch. Searched for: '{dist.unit_name}'. Available: {available_units}")
-                        raise ValueError(
-                            f"Unit Name `{dist.unit_name}` is not present in the `chapters` list. Available: {available_units}"
-                        )
-                    
-                    # Update distribution with correct key for consistency
-                    dist.unit_name = matched_unit_name
-                    
-                    question_info = {
-                        "type": template.type,
-                        "objective": dist.objective,
-                        "marks_per_question": template.marks_per_question,
-                        "model_name": template.type.model.__name__,
-                    }
-
-                    if dist.unit_name not in unit_questions:
-                        unit_questions[dist.unit_name] = []
-                    unit_questions[dist.unit_name].append(question_info)
-            else:
-                raise ValueError("Question Distribution should be defined")
-
-        # Create slots with max 20 questions per slot
-        slots = []
+            for dist in template.question_distribution:
+                if dist.unit_name not in unit_lr:
+                    logger.error(f"Unit mismatch. Searched for: '{dist.unit_name}'. Available: {list(unit_lr)}")
+                    raise ValueError(f"Unit Name `{dist.unit_name}` is not present in the `chapters` list. Available: {list(unit_lr)}")
+                unit_questions[dist.unit_name].append((template, dist))
 
         for unit_name, questions in unit_questions.items():
-            # Get metadata
-            meta = unit_metadata.get(unit_name)
-            unit_los = meta["learning_outcomes"]
-            index_path = meta["index_path"]
-            grammar_source_chapters = meta["grammar_source_chapters"]
-
-            # Validate Index Path
-            if not index_path:
-                 logger.warning(f"Index path is missing for unit '{unit_name}'. RAG retrieval will be skipped.")
-                 index_path = "EMPTY_INDEX_PATH_FALLBACK"
-
+            lr = unit_lr[unit_name]
             for i in range(0, len(questions), self.max_questions_per_slot):
-                batch = questions[i : i + self.max_questions_per_slot]
-                slot = {
-                    "unit_name": unit_name,
-                    "learning_outcomes": unit_los,
-                    "questions": batch,
-                    "index_path": index_path,
-                    "grammar_source_chapters": grammar_source_chapters,
-                }
-                slots.append(slot)
+                yield lr, questions[i : i + self.max_questions_per_slot]
 
-        return slots
 
     def _format_system_prompt(
         self,
         request: QuestionBankPartsGenerationRequest,
         existing_questions: List[str],
-        slot: Dict[str, Any],
+        record: _LearningRecord,
+        slot: list[tuple[GeneratedTemplate, QuestionDistribution]],
     ) -> str:
         """Format the system prompt using YAML templates for a specific unit slot."""
         # Get the main template
         template = self.prompts.get("question_bank_parts_gen", "")
 
-        # Get unit-specific information from the slot
-        unit_name = slot["unit_name"]
-        learning_outcomes = slot["learning_outcomes"]
-
         # Get Bloom's taxonomy guide
-        blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("general", "")
-        if "english" in request.subject.lower():
-            blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("english", "")
+        bloom_lang = "english" if "english" in request.subject.lower() else "general"
+        blooms_guide = self.prompts.get("blooms-taxonomy", {}).get(bloom_lang, "")
 
         # Format learning outcomes for this specific unit
-        if learning_outcomes:
-            unit_los_text = f"Unit Name: {unit_name}:\n" + "\n".join(
-                [f"  - {lo}" for lo in learning_outcomes]
-            )
+        if record.learning_outcomes:
+            unit_los_text = f"Unit Name: {record.title}:\n" + "\n".join(f"  - {lo}" for lo in record.learning_outcomes)
         else:
-            unit_los_text = f"Unit Name: {unit_name} (No specific LOs provided)"
+            unit_los_text = f"Unit Name: {record.title} (No specific LOs provided)"
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
-        grammar_topics_text = self._get_grammar_topics(request, slot)
-        slot_types = {q["type"] for q in slot["questions"]}
+        grammar_topics_text = self._get_grammar_topics(request, record)
+        slot_types = {template.type for template, _ in slot}
         if slot_types & GRAMMAR_QUESTION_TYPES:
             grammar_guide = self.prompts.get("grammar_question_types_guide", "")
             if grammar_guide:
@@ -331,36 +196,23 @@ class QuestionPaperService:
             GRADE=request.grade,
             SUBJECT=request.subject,
             TOTAL_MARKS=request.total_marks,
-            CHAPTERS=unit_name,  # Single unit for this batch
+            CHAPTERS=record.title,  # Single unit for this batch
             UNIT_WISE_LEARNING_OUTCOMES=unit_los_text,
-            EXISTING_QUESTIONS_JSON=json.dumps(
-                existing_questions, ensure_ascii=False
-            ),
+            EXISTING_QUESTIONS_JSON=json.dumps(existing_questions, ensure_ascii=False),
             QUESTION_BANK_BLOOM_TAXONOMY_GUIDE=blooms_guide,
             GRAMMAR_TOPICS=grammar_topics_text,
         )
 
-    def _get_format_instruction_for_type(self, qtype: QuestionType) -> str:
-        """Generate format instruction for a specific question type."""
-        return f"- For {qtype.value}: conform to JSON schema for {qtype.model.__name__}."
 
-    async def _generate_questions_batch(
-        self, system_prompt: str, slot: Dict[str, Any], rag_adapter: Optional[BaseRagAdapter]
-    ) -> list[GeneratedQuestionItem]:
+    async def _generate_questions_batch(self, system_prompt: str, record: _LearningRecord, slot: list[tuple[GeneratedTemplate, QuestionDistribution]], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedQuestionItem]:
         """
         Generate questions for a batch of slots.
         Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
         """
-        # Build slot directives
-        slot_questions = slot["questions"]
-        index_path = slot.get("index_path")
 
         # Generate dynamic format rules
-        unique_types = set(q["type"] for q in slot_questions)
-        format_rules = [
-            self._get_format_instruction_for_type(qtype) for qtype in unique_types
-        ]
-        format_rules_text = "\n".join(format_rules)
+        unique_types = set(t.type for t, _ in slot)
+        format_rules_text = "\n".join(f"- For {qtype.value}: conform to JSON schema for {qtype.model.__name__}." for qtype in unique_types)
 
         user_message = (
             "Generate questions for the following slots by following the rules listed below. "
@@ -374,8 +226,8 @@ class QuestionPaperService:
             f"{format_rules_text}\n\n"
             f"Question slots:\n"
         )
-        for question in slot_questions:
-            user_message += "- " + json.dumps(question, ensure_ascii=False) + "\n"
+        for _, question in slot:
+            user_message += "- " + question.model_dump_json(ensure_ascii=False) + "\n"
 
         try:
             if not rag_adapter:
@@ -390,10 +242,10 @@ class QuestionPaperService:
                 )
                 if response.output_parsed is None:
                     raise RuntimeError("Did not retrieve a valid response from model")
-                return response.output_parsed.items
+                items = response.output_parsed.items
             else:
                 # Index Available -> RAG Generation
-                logger.info(f"Using RAG Adapter for index: {index_path}")
+                logger.info(f"Using RAG Adapter for index: {record.index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
                 response_content = await rag_adapter.chat_with_index(
                     # rag-adapter does not support structured output, so we pass model json schema for now.
@@ -403,24 +255,21 @@ class QuestionPaperService:
                 # chat_with_index returns {"response": str, "source_nodes": list}
                 content: str = response_content["response"]
                 content = content.strip().removeprefix("```json").removesuffix("```")
-                return GeneratedQuestionItemResponse.model_validate_json(content).items
+                items = GeneratedQuestionItemResponse.model_validate_json(content).items
         except Exception as e:
             logger.exception(e)
-            return []
+            items = []
 
-    async def _generate_questions_batch_async(
-        self,
-        index_path: str,
-        system_prompt: str,
-        slot: Dict[str, Any],
-    ) -> list[GeneratedQuestionItem]:
-        """Async version of _generate_questions_batch with optional delay."""
+        return list(map(lambda x: GeneratedQuestionItem.model_validate({"unit_name": record.title, **x.model_dump()}), items))
+
+    async def _generate_questions_batch_async(self, system_prompt: str, record: _LearningRecord, slot: list[tuple[GeneratedTemplate, QuestionDistribution]]) -> list[GeneratedQuestionItem]:
         async with self.concurrency:
-            if index_path == "EMPTY_INDEX_PATH_FALLBACK" or not index_path.strip():
+            if not record.index_path.strip():
                 fut = asyncio.Future()
                 fut.set_result(None)
+                logger.warning(f"Index path is missing for unit '{record.title}'. RAG retrieval will be skipped.")
             else:
-                fut = self._rags.get(index_path, self._rag_llm, self._rag_embed)
+                fut = self._rags.get(record.index_path, self._rag_llm, self._rag_embed)
 
             try:
                 rag_adapter = await fut
@@ -431,74 +280,26 @@ class QuestionPaperService:
                 rag_adapter = None
 
             if rag_adapter is None:
-                logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{index_path}'")
-            return await self._generate_questions_batch(system_prompt, slot, rag_adapter)
+                logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{record.index_path}'")
+            return await self._generate_questions_batch(system_prompt, record, slot, rag_adapter)
 
-    def _organize_questions_into_response(
-        self,
-        request: QuestionBankPartsGenerationRequest,
-        all_generated: list[GeneratedQuestionItem],
-    ) -> List[QuestionTypeResponse]:
+    def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedQuestionItem]) -> List[QuestionTypeResponse]:
         """Organize all generated questions into the final response structure."""
-        # Create a question directory to organize questions by their specification
-        question_directory = {}
+        question_directory = defaultdict(list)
+        for g in all_generated:
+            question_directory[g.type, g.marks_per_question, g.unit_name, g.objective].append(g.item)
 
-        # Need available units for matching
-        available_units = [chapter.title for chapter in request.chapters]
-        if len(request.chapters) == 1 and request.chapters[0].subtopics:
-             available_units = [sub.title for sub in request.chapters[0].subtopics]
-
-        for generated in all_generated:
-            qtype = generated.type
-            unit_name = generated.unit_name
-            objective = generated.objective
-            marks_per_question = generated.marks_per_question
-            item = generated.item
-
-            # Normalize key
-            norm_type = self._normalize_string(qtype.value)
-
-            # --- FIX: Use smart matching for unit name ---
-            matched_unit = self._find_best_matching_unit(unit_name, available_units)
-            if matched_unit:
-                norm_unit = self._normalize_string(matched_unit)
-            else:
-                # Fallback to normalized input if no match found (might still fail lookup but logs will show why)
-                logger.warning(f"Could not map generated unit '{unit_name}' to any available unit: {available_units}")
-                norm_unit = self._normalize_string(unit_name)
-            # ---------------------------------------------
-
-            # Objective can be None or empty
-            norm_objective = self._normalize_string(objective) if objective else "none"
-
-            key = f"{norm_type}|{marks_per_question}|{norm_unit}|{norm_objective}"
-            if key not in question_directory:
-                question_directory[key] = []
-
-            question_directory[key].append(item)
-
-        # Build the final response
         response_questions = []
         for template in request.template:
             questions = []
-
-            for q_dist in template.question_distribution or []:
-                norm_type = self._normalize_string(template.type.value)
-                norm_unit = self._normalize_string(q_dist.unit_name)
-                norm_objective = self._normalize_string(q_dist.objective) if q_dist.objective else "none"
-
-                key = f"{norm_type}|{template.marks_per_question}|{norm_unit}|{norm_objective}"
-
+            for q_dist in template.question_distribution:
+                key = template.type, template.marks_per_question, q_dist.unit_name, q_dist.objective
                 if key in question_directory and len(question_directory[key]) > 0:
-                    question = question_directory[key].pop(0)
-                    questions.append(question)
-
+                    questions.append(question_directory[key].pop(0))
                     if len(question_directory[key]) == 0:
                         del question_directory[key]
                 else:
-                    logger.warning(
-                        f"--\nNo question found for Normalized key: {key}"
-                    )
+                    logger.warning(f"--\nNo question found for Normalized key: {key}")
 
             response_questions.append(QuestionTypeResponse(
                 type=template.type,
@@ -518,26 +319,20 @@ class QuestionPaperService:
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
-        # Build generation slots
-        slots = self._build_generation_slots(request)
-        if not slots:
-            raise ValueError("No generation slots could be built from template/distribution.")
 
-        # Prepare existing questions
         existing_flat = self._flatten_existing_questions(request.existing_questions)
-
         tasks = []
-        for i, slot in enumerate(slots):
-            index_path = slot["index_path"]
-            logger.debug(f"[SLOT_PROCESSING] Slot {i} | unit='{slot['unit_name']}' | index_path='{index_path}'")
-            system_prompt = self._format_system_prompt(request, existing_flat, slot)
-            task = self._generate_questions_batch_async(index_path, system_prompt, slot)
-            tasks.append(task)
+        for lr, questions in self._build_generation_slots(request):
+            logger.debug(f"[SLOT_PROCESSING] unit='{lr.title}' | index_path='{lr.index_path}'")
+            system_prompt = self._format_system_prompt(request, existing_flat, lr, questions)
+            tasks.append(self._generate_questions_batch_async(system_prompt, lr, questions))
+
+        if not tasks:
+            raise ValueError("No generation slots could be built from template/distribution.")
 
         all_generated: list[GeneratedQuestionItem] = []
         for raw_items in await asyncio.gather(*tasks):
-            if raw_items:
-                all_generated.extend(raw_items)
+            all_generated.extend(raw_items)
 
         response_questions = self._organize_questions_into_response(request, all_generated)
         return QuestionBankResponse(metadata=QuestionBankMetadata(
@@ -553,25 +348,15 @@ class QuestionPaperService:
     async def cleanup(self):
         await self._rags.cleanup()
 
-    async def get_question_distribution(
-        self,
-        request: QBQuestionDistributionGenerationRequest,
-    ) -> List[Template]:
+
+    async def get_question_distribution(self, request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
         """
         Generate question paper template based on unit-wise marks distribution.
         """
 
         def prepare_context() -> dict[str, Any]:
-            units_str = ""
-            if len(request.chapters) > 1:
-                units_str = ", ".join(chapter.title for chapter in request.chapters)
-            elif len(request.chapters) == 1:
-                if request.chapters[0].subtopics:
-                    units_str = ", ".join(
-                        [sub.title for sub in request.chapters[0].subtopics]
-                    )
-                else:
-                    units_str = request.chapters[0].title
+            lrs = request.chapters[0].subtopics if request.unit_level == "SUBTOPIC" else request.chapters
+            units_str = ", ".join(lr.title for lr in lrs)
 
             # Helper to safely serialize pydantic models
             marks_distribution_str = json.dumps([md.model_dump(mode="json") for md in request.marks_distribution], indent=2)
@@ -579,11 +364,8 @@ class QuestionPaperService:
             template_str = json.dumps([t.model_dump(mode="json") for t in request.template], indent=2)
 
             # Get Bloom's taxonomy guide
-            blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("general", "")
-            if "english" in request.subject.lower():
-                blooms_guide = self.prompts.get("blooms-taxonomy", {}).get(
-                    "english", ""
-                )
+            bloom_lang = "english" if "english" in request.subject.lower() else "general"
+            blooms_guide = self.prompts.get("blooms-taxonomy", {}).get(bloom_lang, "")
 
             return {
                 "BOARD": request.board,
@@ -618,10 +400,6 @@ class QuestionPaperService:
         if not response.output_parsed:
             logger.error(f"Failed raw response: {response.output_text}")
             raise RuntimeError("The AI model failed to generate a valid JSON structure.")
-
-        for item in response.output_parsed.items:
-            if item.question_distribution is None:
-                item.question_distribution = []
 
         return response.output_parsed.items
 

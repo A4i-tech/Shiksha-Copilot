@@ -81,15 +81,6 @@ export class QuestionBankService extends BaseRestService {
   }
 
   /**
-   * Function to generate question bank template
-   * @param data
-   * @returns
-   */
-  generateQuestionBankTemplate(data: any): Observable<any> {
-    return this.post('generate-template', data);
-  }
-
-  /**
    * Function to generate question bank blue print
    * @param data
    * @returns

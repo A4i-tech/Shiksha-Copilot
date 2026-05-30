@@ -5,11 +5,10 @@ from langdetect.detector import Detector
 from pydantic import BaseModel
 
 from app.models.question_paper import (
+    GeneratedTemplate,
     QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
-    QuestionType,
-    Template,
     get_question_types_for_subject,
 )
 from app.services.question_paper_service import QUESTION_PAPER_SERVICE_INSTANCE
@@ -144,7 +143,7 @@ async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationR
 
 
 @router.post("/questiondistribution", summary="Generate Question Distribution Templates")
-async def get_question_distribution(request: QBQuestionDistributionGenerationRequest) -> List[Template]:
+async def get_question_distribution(request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
     """
     Creates optimized question paper templates based on specified marks distribution,
     objective distribution, and educational parameters.

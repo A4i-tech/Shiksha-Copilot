@@ -852,6 +852,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       chapterId: primaryChapterId,
       subTopic: subTopicsPayload,
       isMultiChapter: this.questionBankTypeValue === 'multiChapter',
+      unitLevel: this.questionBankTypeValue === 'singleChapter' && this.hasSubtopics ? 'SUBTOPIC' : 'CHAPTER',
       marksDistribution: (this.marksDistribution || []).map(d => ({
         unit_name: d.unit_name,
         marks: Number(d.marks),

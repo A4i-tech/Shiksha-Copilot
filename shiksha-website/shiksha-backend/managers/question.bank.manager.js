@@ -5,8 +5,7 @@ const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
 const {
-  postToQuestionBankTemplate,
-  postToQuestionBankBluePrint,
+  postToQuestionBankDistribution,
   postToQuestionBankParts,
   getQuestionTypes,
 } = require("../services/question.bank.bot.service");
@@ -108,49 +107,17 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async generateQuestionBankTemplate(req, user) {
-    try {
-      const payload = await this._createQuestionBankPayload(req.body, user);
-
-      const response = await postToQuestionBankTemplate(payload);
-
-      if (response.status !== 200) {
-        throw new Error(`Something went wrong with copilot! Please try later`);
-      }
-
-      if (!response.data) {
-        throw new Error("Something went wrong with copilot! Please try later");
-      }
-
-      const templateData = response.data;
-
-      return formatApiReponse(
-        true,
-        "Question bank template generated successfully!",
-        templateData
-      );
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
-    }
-  }
-
   async generateQuestionBankBluePrint(req, user) {
     try {
       const { objective_distribution, template } = req.body;
-
-      const templatePayload = await this._createQuestionBankPayload(
-        req.body,
-        user
-      );
-
+      const templatePayload = await this._createQuestionBankPayload(req.body, user);
       const payload = {
         ...templatePayload,
-        objective_distribution:
-          objective_distribution || req.body.objectiveDistribution || [],
         template: this._applyBoardMarkingPolicy(req.body.board, this._mapTemplateTypes(template || []), req.body.totalMarks),
+        objective_distribution: objective_distribution || req.body.objectiveDistribution || [],
       };
 
-      const response = await postToQuestionBankBluePrint(payload);
+      const response = await postToQuestionBankDistribution(payload);
 
       if (response.status !== 200) {
         throw new Error(`Something went wrong with copilot! Please try later`);
@@ -160,13 +127,7 @@ class QuestionBankManager extends BaseManager {
         throw new Error("Something went wrong with copilot! Please try later");
       }
 
-      const bluePrintData = response.data;
-
-      return formatApiReponse(
-        true,
-        "Question bank blue print generated successfully!",
-        bluePrintData
-      );
+      return formatApiReponse(true, "Question bank blue print generated successfully!", response.data);
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
     }
@@ -278,6 +239,7 @@ class QuestionBankManager extends BaseManager {
       questions,
       isPreview,
       examinationName,
+      unitLevel,
       objectiveDistribution,
       objective_distribution
     } = reqBody;
@@ -285,8 +247,6 @@ class QuestionBankManager extends BaseManager {
     // Handle both objectiveDistribution (camel) and objective_distribution (snake)
     const finalObjectiveDist = objectiveDistribution || objective_distribution || [];
 
-    // Determine unit names and level
-    const unitLevel = isMultiChapter ? "CHAPTER" : "SUBTOPIC";
     const unitNames = isMultiChapter ? chapter || [] : subTopic || [];
     const processedUnitNames = Array.isArray(unitNames)
       ? unitNames.map((e) => e.trim())
@@ -576,28 +536,21 @@ class QuestionBankManager extends BaseManager {
         ...item,
         type: meta?.key || item.type,
         description: meta?.description || item.description || "",
-      };
-
-      // Ensure expected Python snake_case keys are present
-      if (numQs !== undefined) mappedItem.number_of_questions = numQs;
-      if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
-
-      if (qDist && Array.isArray(qDist)) {
-        mappedItem.question_distribution = qDist.map(d => ({
+        question_distribution: (qDist || []).map(d => ({
           ...d,
-          unit_name: d.unit_name || d.unitName,
+          unit_name: (d.unit_name || d.unitName).trim(),
           objective: d.objective
-        }));
-      }
-
-      if (Array.isArray(item.questions)) {
-        mappedItem.questions = item.questions.map((question) => {
+        })),
+        questions: (item.questions || []).map((question) => {
           if (question?.question && typeof question.question === "object") {
             return question.question;
           }
           return question;
-        });
-      }
+        }),
+      };
+
+      if (numQs !== undefined) mappedItem.number_of_questions = numQs;
+      if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
 
       return mappedItem;
     });
@@ -659,6 +612,7 @@ class QuestionBankManager extends BaseManager {
         subject,
         totalMarks,
         isMultiChapter,
+        unitLevel,
         marksDistribution,
         chapterIds,
         subTopic,
@@ -689,13 +643,13 @@ class QuestionBankManager extends BaseManager {
         ? chapterData.map((chapter) => {
           const chapterIndexPath = chapter.indexPath || chapter.index_path || "";
           const ch = {
-            title: chapter.title,
+            title: chapter.title.trim(),
             index_path: chapterIndexPath,
             learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
             is_grammar: !!(chapter.is_grammar || chapter.isGrammar),
             grammar_topics: chapter.grammar_topics || chapter.grammarTopics || [],
             subtopics: (chapter.subtopics || []).map((sub) => ({
-              title: sub.title,
+              title: sub.title.trim(),
               index_path: sub.indexPath || sub.index_path || chapterIndexPath,
               learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
             })),
@@ -782,6 +736,7 @@ class QuestionBankManager extends BaseManager {
         medium: "English",
         grade: String(grade),
         subject: subject,
+        unit_level: unitLevel,
         total_marks: Number(totalMarks),
         chapters: formattedChapters, // Now contains all necessary units
         marks_distribution: formattedMarksDist,
