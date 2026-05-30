@@ -84,20 +84,6 @@ const questionBankFeedbackSchema = Joi.object({
 })
 
 // Middleware functions
-const validateQuestionBankTemplateCreate = (req, res, next) => {
-    const data = req.body;
-    let isValid = questionBankTemplateSchemaCreate.validate(data, { abortEarly: false });
-    if (isValid.error) {
-        return res.status(400).json({
-            success: false,
-            data: false,
-            error: isValid.error.details.map((i) => i.message),
-        });
-    }
-    req.body = isValid.value;
-    next();
-};
-
 const validateQuestionBankBluePrintCreate = (req, res, next) => {
     const data = req.body;
     let isValid = questionBankBluePrintSchemaCreate.validate(data, { abortEarly: false });
@@ -144,7 +130,6 @@ const validateQuestionBankFeedbackCreate = (req, res, next) => {
 
 module.exports = {
     validateQuestionBankCreate,
-    validateQuestionBankTemplateCreate,
     validateQuestionBankBluePrintCreate,
     validateQuestionBankFeedbackCreate
 };

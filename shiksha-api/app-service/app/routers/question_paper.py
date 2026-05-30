@@ -4,10 +4,10 @@ from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
 
 from app.models.question_paper import (
+    GeneratedTemplate,
     QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
-    Template,
 )
 from app.services.question_paper_service import QUESTION_PAPER_SERVICE_INSTANCE
 from app.services.translation_service import TranslationService
@@ -125,7 +125,7 @@ async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationR
 
 
 @router.post("/questiondistribution", summary="Generate Question Distribution Templates")
-async def get_question_distribution(request: QBQuestionDistributionGenerationRequest) -> List[Template]:
+async def get_question_distribution(request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
     """
     Creates optimized question paper templates based on specified marks distribution,
     objective distribution, and educational parameters.

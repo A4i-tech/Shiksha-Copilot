@@ -2,7 +2,7 @@
 # Extracted from the original standalone FastAPI application
 
 from enum import Enum
-from typing import Annotated, List, Optional, Union, Literal, TypeAlias
+from typing import Annotated, List, Literal, TypeAlias
 import re
 from pydantic import AfterValidator, BaseModel, field_validator, Field, model_validator
 
@@ -156,12 +156,12 @@ class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: Marking
-    questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]] = []
+    questions: List[QuestionModel]
 
 
 class QuestionBankResponse(BaseModel):
-    metadata: Optional[QuestionBankMetadata] = None
-    questions: List[QuestionTypeResponse] = []
+    metadata: QuestionBankMetadata
+    questions: List[QuestionTypeResponse]
 
 
 # ============================
@@ -169,16 +169,18 @@ class QuestionBankResponse(BaseModel):
 # ============================
 
 
-class ChapterSubtopic(BaseModel):
-    title: str
-    learning_outcomes: List[str]
-
-
-class Chapter(BaseModel):
+class _LearningRecord(BaseModel):
     title: str
     index_path: str
     learning_outcomes: List[str]
-    subtopics: Optional[List[ChapterSubtopic]] = None
+
+
+class ChapterSubtopic(_LearningRecord):
+    ...
+
+
+class Chapter(_LearningRecord):
+    subtopics: List[ChapterSubtopic]
 
 
 class MarksDistribution(BaseModel):
@@ -197,11 +199,18 @@ class QuestionDistribution(BaseModel):
     objective: str
 
 
-class Template(BaseModel):
+class _Template(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: Marking
-    question_distribution: Optional[List[QuestionDistribution]] = None
+
+
+class UngeneratedTemplate(_Template):
+    ...
+
+
+class GeneratedTemplate(_Template):
+    question_distribution: List[QuestionDistribution] = Field(min_length=1)
 
 
 class QuestionBankPartsGenerationRequest(BaseModel):
@@ -210,9 +219,10 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
+    unit_level: Literal["CHAPTER", "SUBTOPIC"]
     chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
     total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
-    template: List[Template] = Field(..., description="Question distribution template specifying types and marks")
+    template: List[GeneratedTemplate] = Field(..., description="Question distribution template specifying types and marks")
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
     examination_name: str = "Class Assessment"
@@ -224,27 +234,24 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
+    unit_level: Literal["CHAPTER", "SUBTOPIC"]
     chapters: List[Chapter] = Field(..., min_length=1, description="List of chapters with learning outcomes and subtopics")
     total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
+    template: List[UngeneratedTemplate] = Field(..., description="Question distribution template specifying types and marks")
     marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
-    template: List[Template] = Field(..., description="Base template for question types and structure")
 
 
-class QBTemplateGenerationRequest(BaseModel):
-    user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
-    board: str = Field(..., description="Educational board", examples=["NCERT", "CBSE", "State board"])
-    medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
-    grade: int = Field(..., description="Student grade/class level")
-    subject: str = Field(..., description="Subject for question generation")
-    chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
-    total_marks: Marking
-    marks_distribution: List[MarksDistribution]
-
-
-class GeneratedQuestionItem(BaseModel):
-    unit_name: str
+class _GeneratedQuestionItem(BaseModel):
     type: QuestionType
-    objective: Optional[str] = None
+    objective: str
     marks_per_question: Marking
     item: QuestionModel
+
+
+class AIGeneratedQuestionItem(_GeneratedQuestionItem):
+    ...
+
+
+class GeneratedQuestionItem(_GeneratedQuestionItem):
+    unit_name: str

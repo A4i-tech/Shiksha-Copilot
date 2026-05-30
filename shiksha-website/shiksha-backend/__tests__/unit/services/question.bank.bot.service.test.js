@@ -30,15 +30,6 @@ describe("question.bank.bot.service", () => {
     );
   });
 
-  it("posts to question bank", async () => {
-    axios.post.mockResolvedValue({ status: 200, data: { ok: true } });
-    const service = require("../../../services/question.bank.bot.service");
-    await service.postToQuestionBank({ q: 1 });
-    expect(axios.post).toHaveBeenCalledWith("http://llm/question-paper", {
-      q: 1,
-    });
-  });
-
   it("posts to question bank parts", async () => {
     axios.post.mockResolvedValue({ status: 200, data: { ok: true } });
     const service = require("../../../services/question.bank.bot.service");
