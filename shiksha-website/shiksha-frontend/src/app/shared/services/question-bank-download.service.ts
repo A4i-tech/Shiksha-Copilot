@@ -281,6 +281,10 @@ export class QuestionBankDownloadService {
 
   /** Shared Document Shell */
   private createDocument(data: QuestionBankData, children: (Paragraph | Table)[], subtitleSuffix: string): Document {
+    let totalMarks = 0;
+    for (const section of data.questionBank.questions as QuestionBankSection[]) {
+      totalMarks += Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0);
+    }
     return new Document({
       sections: [
         {
@@ -303,7 +307,7 @@ export class QuestionBankDownloadService {
                   children: [
                     new TextRun({ text: `Subject: ${data.subject}`, bold: true }),
                     new TextRun({ text: `\tClass: ${data.grade}`, bold: true }),
-                    new TextRun({ text: `\tMarks: ${data.totalMarks}`, bold: true }),
+                    new TextRun({ text: `\tMarks: ${totalMarks}`, bold: true }),
                   ],
                   tabStops: [
                     { type: TabStopType.CENTER, position: 4500 },
