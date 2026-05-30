@@ -3,8 +3,9 @@ import logging
 import uuid
 import json
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict, Optional, Union
+from typing import Any, List, Dict, Optional, TypeVar, Union
 
+from pydantic import BaseModel
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -36,6 +37,8 @@ from llama_index.core.indices.property_graph import (
     ImplicitPathExtractor,
 )
 
+
+T = TypeVar("T", bound=BaseModel)
 
 class BaseGraphIndexRagOps(ABC):
     """
@@ -320,6 +323,7 @@ class BaseGraphIndexRagOps(ABC):
         chat_history: List[ChatMessage],
         sub_retrievers: Optional[List[Any]] = None,
         metadata_filter: Optional[Dict[str, str]] = None,
+        output_cls: type[T] | None = None
     ) -> Any:
         """
         Engage in conversational interaction with the RAG index using a chat engine.
@@ -346,7 +350,7 @@ class BaseGraphIndexRagOps(ABC):
             # Create chat engine with context awareness
             chat_engine_kwargs = {
                 "chat_mode": ChatMode.CONTEXT,
-                "llm": self.completion_llm,
+                "llm": self.completion_llm if output_cls is None else self.completion_llm.as_structured_llm(output_cls=output_cls),
                 "embed_model": self.emb_llm,
                 "include_text": self.include_text,
                 "similarity_top_k": self.similarity_top_k,

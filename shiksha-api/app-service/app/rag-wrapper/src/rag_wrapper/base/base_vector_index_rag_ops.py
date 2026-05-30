@@ -1,8 +1,9 @@
 import logging
 import uuid
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, TypeVar
 
+from pydantic import BaseModel
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -32,6 +33,8 @@ from llama_index.core.response_synthesizers import (
     ResponseMode,
 )
 
+
+T = TypeVar("T", bound=BaseModel)
 
 class BaseVectorIndexRagOps(ABC):
     """
@@ -215,7 +218,8 @@ class BaseVectorIndexRagOps(ABC):
         curr_message: str,
         chat_history: List[ChatMessage],
         metadata_filter: Optional[Dict[str, str]] = None,
-    ) -> Any:
+        output_cls: type[T] | None = None
+    ):
         """
         Engage in conversational interaction with the RAG index using a chat engine.
 
@@ -242,7 +246,7 @@ class BaseVectorIndexRagOps(ABC):
             # Create chat engine with context awareness
             chat_engine_kwargs = {
                 "chat_mode": ChatMode.CONTEXT,
-                "llm": self.completion_llm,
+                "llm": self.completion_llm if output_cls is None else self.completion_llm.as_structured_llm(output_cls=output_cls),
                 "embed_model": self.emb_llm,
                 "similarity_top_k": self.similarity_top_k,
             }
