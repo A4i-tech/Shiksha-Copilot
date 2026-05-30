@@ -155,12 +155,12 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   downloadQp() {
-    this.questionBankDownloadService.downloadQuestionBank(this.questionBankDetails);
+    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Question paper downloaded successfully!');
   }
 
   downloadAnswerKey() {
-    this.questionBankDownloadService.downloadAnswerKey(this.questionBankDetails);
+    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Answer key downloaded successfully!');
   }
 
@@ -177,7 +177,10 @@ export class QuestionBankViewComponent implements OnInit {
       examinationName: this.questionBankDetails?.examinationName,
       totalMarks: this.questionBankDetails?.totalMarks
     }
-    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData, metaData)
+    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData.map((item: any) => ({
+      ...item,
+      type: this.questionTypeLabels[item.type] || item.type,
+    })), metaData)
   }
 
   backNavigation() {

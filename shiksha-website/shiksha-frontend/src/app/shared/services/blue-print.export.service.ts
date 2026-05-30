@@ -13,11 +13,14 @@ import {
   TableLayoutType,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { TranslateService } from '@ngx-translate/core';
 
 @Injectable({
   providedIn: 'root',
 })
 export class BluePrintExportService {
+  constructor(private translateService: TranslateService) {}
+
   exportToWord(
     flatData: Array<{
       unitName: string;
@@ -100,8 +103,8 @@ export class BluePrintExportService {
         new TableRow({
           children: [
             this.createPaddedCell(item.unitName),
-            this.createPaddedCell(item.type),
-            this.createPaddedCell(item.objective),
+            this.createPaddedCell(this.translateService.instant(item.type)),
+            this.createPaddedCell(this.translateService.instant(item.objective)),
             this.createPaddedCell(item.marks.toString()),
           ],
         })
