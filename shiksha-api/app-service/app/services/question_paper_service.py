@@ -243,7 +243,7 @@ class QuestionPaperService:
                         "type": template.type,
                         "objective": dist.objective,
                         "marks_per_question": template.marks_per_question,
-                        "model_name": template.type.model_name(),
+                        "model_name": template.type.model.__name__,
                     }
 
                     if dist.unit_name not in unit_questions:
@@ -324,7 +324,7 @@ class QuestionPaperService:
 
     def _get_format_instruction_for_type(self, qtype: QuestionType) -> str:
         """Generate format instruction for a specific question type."""
-        return f"- For {qtype.name}: {qtype.description}, conform to JSON schema for {qtype}."
+        return f"- For {qtype.value}: conform to JSON schema for {qtype.model.__name__}."
 
     async def _generate_questions_batch(
         self, system_prompt: str, slot: Dict[str, Any], rag_adapter: Optional[BaseRagAdapter]
@@ -549,15 +549,9 @@ class QuestionPaperService:
                     units_str = request.chapters[0].title
 
             # Helper to safely serialize pydantic models
-            marks_distribution_str = json.dumps(
-                [md.model_dump() for md in request.marks_distribution], indent=2
-            )
-            objective_distribution_str = json.dumps(
-                [od.model_dump() for od in request.objective_distribution], indent=2
-            )
-            template_str = json.dumps(
-                [t.model_dump() for t in request.template], indent=2
-            )
+            marks_distribution_str = json.dumps([md.model_dump(mode="json") for md in request.marks_distribution], indent=2)
+            objective_distribution_str = json.dumps([od.model_dump(mode="json") for od in request.objective_distribution], indent=2)
+            template_str = json.dumps([t.model_dump(mode="json") for t in request.template], indent=2)
 
             # Get Bloom's taxonomy guide
             blooms_guide = self.prompts.get("blooms-taxonomy", {}).get("general", "")

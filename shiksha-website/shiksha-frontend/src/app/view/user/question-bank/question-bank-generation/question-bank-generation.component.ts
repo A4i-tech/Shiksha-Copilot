@@ -788,7 +788,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const aiHeadings = this.selectedHeadings.filter(heading => heading.instruction);
     if (!aiHeadings.length) return of([]);
     payload.template = aiHeadings.map(heading => ({
-      type: heading.instruction,
+      type: heading.key,
       question_distribution: []
     }));
     payload.isPreview = true;
@@ -803,7 +803,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
         finalRes.data.questions.forEach((block: any) => {
           const blockType = block.type;
-          const friendlyHeading = aiHeadings.find(h => h.instruction === blockType)?.label || blockType;
+          const friendlyHeading = aiHeadings.find(h => h.key === blockType)?.label || blockType;
           const blockMarks = Number(block.marksPerQuestion);
 
           block.questions.forEach((q: any) => {

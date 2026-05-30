@@ -1,15 +1,17 @@
 const Joi = require("joi");
+const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
 
-// 1. Define the allowed types strictly
-const VALID_QUESTION_TYPES = [
-    'Four alternatives are given for each of the following questions, choose the correct alternative',
-    'Fill in the blanks with suitable words',
-    'Answer the following in a word, phrase or sentence',
-    'Answer the following in two or three sentences each',
-    'Answer the following questions',
-    'Answer the following question in four or five sentences',
-    'Match the following'
-];
+const VALID_QUESTION_TYPES = Object.keys(PAPER_CONFIG.questionTypes);
+const questionBankTemplateItemSchema = {
+    type: Joi.string().valid(...VALID_QUESTION_TYPES).required(),
+    number_of_questions: Joi.number(),
+    marks_per_question: Joi.number(),
+    description: Joi.string().optional().allow(""),
+    question_distribution: Joi.alternatives().try(
+        Joi.array().items(Joi.object().unknown(true)),
+        Joi.valid(null)
+    ).optional(),
+};
 
 const questionBankCommonSchema = {
     medium: Joi.string().required(),
@@ -55,16 +57,7 @@ const questionBankBluePrintSchemaCreate = Joi.object({
         .items(Joi.object().unknown(true)) // Relaxed to allow snake/camel case items
         .required(),
     template: Joi.array()
-        .items({
-            type: Joi.string().valid(...VALID_QUESTION_TYPES).required(),
-            number_of_questions: Joi.number(),
-            marks_per_question: Joi.number(),
-            description: Joi.string().optional().allow(""),
-            question_distribution: Joi.alternatives().try(
-                Joi.array(),
-                Joi.valid(null)
-            ).optional(),
-        })
+        .items(questionBankTemplateItemSchema)
         .required(),
 }).unknown(true); // Allow extra fields
 
@@ -77,30 +70,10 @@ const questionBankSchemaCreate = Joi.object({
     objective_distribution: Joi.array().items(Joi.object().unknown(true)).optional(),
 
     questionBankTemplate: Joi.array()
-        .items({
-            type: Joi.string().valid(...VALID_QUESTION_TYPES).required(),
-            number_of_questions: Joi.number(),
-            marks_per_question: Joi.number(),
-            description: Joi.string().optional().allow(""),
-            question_distribution: Joi.alternatives().try(
-                Joi.array(),
-                Joi.valid(null)
-            ).optional(),
-        }).optional(),
+        .items(questionBankTemplateItemSchema).optional(),
 
     template: Joi.array()
-        .items({
-            type: Joi.string().valid(...VALID_QUESTION_TYPES).required(),
-            number_of_questions: Joi.number(),
-            marks_per_question: Joi.number(),
-            description: Joi.string().optional().allow(""),
-            question_distribution: Joi.alternatives().try(
-                Joi.array().items(
-                    Joi.object().unknown(true) 
-                ),
-                Joi.valid(null)
-            ).optional()
-        })
+        .items(questionBankTemplateItemSchema)
         .required(),
 }).unknown(true); //  Allows extra fields in the root payload
 

@@ -356,16 +356,6 @@ function processCacheHits(
   return result;
 }
 
-const QuestionType = {
-  MCQ: "Four alternatives are given for each of the following questions, choose the correct alternative",
-  FILL_BLANKS: "Fill in the blanks with suitable words",
-  ANSWER_WORD: "Answer the following in a word, phrase or sentence",
-  ANSWER_SHORT: "Answer the following in two or three sentences each",
-  ANSWER_GENERAL: "Answer the following questions",
-  ANSWER_LONG: "Answer the following question in four or five sentences",
-  MATCH_LIST: "Match the following",
-};
-
 class Question {
   constructor(question, marks, type) {
     this.question = question;
@@ -494,7 +484,6 @@ class QuestionBankPartsGenerationRequest {
 }
 
 module.exports = {
-  QuestionType,
   Question,
   TextQuestion,
   FourOptionsQuestion,
