@@ -1,12 +1,12 @@
 from app.config import settings
-from llama_index.llms.openai import OpenAI
-from llama_index.llms.azure_openai import AzureOpenAI
+from llama_index.llms.openai import OpenAIResponses
+from llama_index.llms.azure_openai import AzureOpenAIResponses
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 
 
-def new_rag_llm() -> OpenAI:
-    return AzureOpenAI(
+def new_rag_llm() -> OpenAIResponses:
+    return AzureOpenAIResponses(
         model=settings.azure_openai_deployment_name,
         deployment_name=settings.azure_openai_deployment_name,
         api_key=settings.azure_openai_api_key,

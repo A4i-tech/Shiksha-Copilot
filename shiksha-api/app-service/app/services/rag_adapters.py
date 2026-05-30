@@ -10,23 +10,26 @@ import shutil
 import logging
 import tempfile
 from abc import ABC, abstractmethod
-from typing import List, Optional, Union
+from typing import List, Optional, TypeVar, Union
 from app.config import settings
 from app.utils.blob_store import BlobStore
+from pydantic import BaseModel
 from rag_wrapper import InMemRagOps, QdrantRagOps
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai import OpenAIResponses
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.llms import ChatMessage
 
 logger = logging.getLogger(__name__)
 
 
+T = TypeVar("T", bound=BaseModel)
+
 class BaseRagAdapter(ABC):
     """Abstract base class for RAG adapters."""
 
     def __init__(
         self,
-        completion_llm: OpenAI,
+        completion_llm: OpenAIResponses,
         embedding_llm: OpenAIEmbedding,
         metadata_filter: dict = None,
     ):
@@ -74,7 +77,7 @@ class BaseRagAdapter(ABC):
         return self._rag_ops
 
     async def chat_with_index(
-        self, curr_message: str, chat_history: List[ChatMessage]
+        self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] | None = None
     ) -> dict:
         """
         Chat with the RAG index.
@@ -87,7 +90,7 @@ class BaseRagAdapter(ABC):
             dict: Contains 'response' (str) and 'source_nodes' (list) from the RAG system
         """
         result = await self.rag_ops.chat_with_index(
-            curr_message, chat_history, metadata_filter=self.metadata_filter
+            curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls
         )
         # result is the full LlamaIndex AgentChatResponse object
         response_text = result.response if hasattr(result, 'response') else str(result)
@@ -104,7 +107,7 @@ class InMemRagOpsAdapter(BaseRagAdapter):
 
     def __init__(
         self,
-        completion_llm: OpenAI,
+        completion_llm: OpenAIResponses,
         embedding_llm: OpenAIEmbedding,
         index_path: str,
     ):
@@ -186,7 +189,7 @@ class QdrantRagOpsAdapter(BaseRagAdapter):
 
     def __init__(
         self,
-        completion_llm: OpenAI,
+        completion_llm: OpenAIResponses,
         embedding_llm: OpenAIEmbedding,
         index_path: str,
     ):
@@ -245,7 +248,7 @@ class RagAdapterFactory:
     @staticmethod
     async def create_adapter(
         index_path: str,
-        completion_llm: OpenAI,
+        completion_llm: OpenAIResponses,
         embedding_llm: OpenAIEmbedding,
     ) -> BaseRagAdapter:
         """

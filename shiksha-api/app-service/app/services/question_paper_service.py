@@ -247,15 +247,8 @@ class QuestionPaperService:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(
-                    # rag-adapter does not support structured output, so we pass model json schema for now.
-                    curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
-                    chat_history=chat_history,
-                )
-                # chat_with_index returns {"response": str, "source_nodes": list}
-                content: str = response_content["response"]
-                content = content.strip().removeprefix("```json").removesuffix("```")
-                items = GeneratedQuestionItemResponse.model_validate_json(content).items
+                response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=GeneratedQuestionItemResponse)
+                items = GeneratedQuestionItemResponse.model_validate_json(response_content["response"]).items
         except Exception as e:
             logger.exception(e)
             items = []

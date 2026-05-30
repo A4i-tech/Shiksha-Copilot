@@ -4,7 +4,7 @@ import logging
 from typing import Awaitable, Callable, Generic, TypeVar
 
 from app.services.rag_adapters import BaseRagAdapter
-from llama_index.llms.openai import OpenAI
+from llama_index.llms.openai import OpenAIResponses
 from llama_index.embeddings.openai import OpenAIEmbedding
 
 
@@ -17,7 +17,7 @@ class RagAdapterCache(Generic[T]):
     Cache manager for RAG adapters.
     """
 
-    def __init__(self, builder: Callable[[str, OpenAI, OpenAIEmbedding], Awaitable[T]], size: int = 32):
+    def __init__(self, builder: Callable[[str, OpenAIResponses, OpenAIEmbedding], Awaitable[T]], size: int = 32):
         self._builder = builder
         self._size = size
         self._instances: OrderedDict[str, T] = OrderedDict()
@@ -28,7 +28,7 @@ class RagAdapterCache(Generic[T]):
         return self._locks[hash(key) % len(self._locks)]
 
 
-    async def _actually_get(self, index_path: str, completion_llm: OpenAI, embedding_llm: OpenAIEmbedding) -> T:
+    async def _actually_get(self, index_path: str, completion_llm: OpenAIResponses, embedding_llm: OpenAIEmbedding) -> T:
         if index_path in self._instances:
             logger.debug(f"[RAG_ADAPTER] Cache HIT (post-lock) for path: {index_path}")
             adapter = self._instances.pop(index_path)
@@ -46,7 +46,7 @@ class RagAdapterCache(Generic[T]):
         return adapter
 
 
-    async def get(self, index_path: str, completion_llm: OpenAI, embedding_llm: OpenAIEmbedding) -> T:
+    async def get(self, index_path: str, completion_llm: OpenAIResponses, embedding_llm: OpenAIEmbedding) -> T:
         async with self._lock_for(index_path):
             return await self._actually_get(index_path, completion_llm, embedding_llm)
 
