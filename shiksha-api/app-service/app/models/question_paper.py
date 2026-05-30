@@ -4,7 +4,7 @@
 from enum import Enum
 from typing import Annotated, List, Optional, Union, Tuple, Literal, TypeAlias
 import re
-from pydantic import AfterValidator, BaseModel, computed_field, field_validator, Field, model_validator
+from pydantic import AfterValidator, BaseModel, field_validator, Field, model_validator
 
 
 # ==============================
@@ -236,11 +236,6 @@ class Template(BaseModel):
     number_of_questions: int
     marks_per_question: Marking
     question_distribution: Optional[List[QuestionDistribution]] = None
-
-    @computed_field
-    @property
-    def description(self) -> str:
-        return self.type.description
 
 
 class QuestionBankPartsGenerationRequest(BaseModel):
