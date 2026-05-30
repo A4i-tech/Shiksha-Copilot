@@ -2,8 +2,13 @@ const { webcrypto } = require("crypto");
 if (!globalThis.crypto) {
 	globalThis.crypto = webcrypto;
 }
-const express = require("express");
+
 const dotenv = require("dotenv");
+dotenv.config();
+
+require("applicationinsights").setup().start();
+
+const express = require("express");
 const cors = require("cors");
 const logger = require("morgan");
 const path = require("path");
@@ -39,7 +44,6 @@ const helpVideosRoutes = require('./routes/help.videos.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
 const systemRoutes = require('./routes/system.routes.js');
 
-dotenv.config();
 const app = express();
 app.disable("x-powered-by");
 
