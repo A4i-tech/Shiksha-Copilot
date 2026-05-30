@@ -32,11 +32,10 @@ const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
 // as the 'answerType' (e.g., 'answer_short' instead of 'short_answer'/'short_answers'). right now, 'aliases' is
 // a safety net for BC.
 const QUESTION_TYPE_DETAILS = PAPER_CONFIG.questionTypes;
-const QUESTION_TYPE_MAPPING = Object.fromEntries(Object.entries(QUESTION_TYPE_DETAILS).map(([key, item]) => [key, item.instruction]));
-const DEFAULT_BOARD_MARKS = Object.fromEntries(Object.entries(PAPER_CONFIG.boardMarks.DEFAULT).map(([key, marks]) => [QUESTION_TYPE_MAPPING[key], marks]));
+const DEFAULT_BOARD_MARKS = PAPER_CONFIG.boardMarks.DEFAULT;
 const BOARD_MARKS = Object.fromEntries(Object.entries(PAPER_CONFIG.boardMarks).map(([board, marks]) => [
   board,
-  { ...DEFAULT_BOARD_MARKS, ...Object.fromEntries(Object.entries(marks).map(([key, value]) => [QUESTION_TYPE_MAPPING[key], value])) },
+  { ...DEFAULT_BOARD_MARKS, ...marks },
 ]));
 const QUESTION_TYPE_META = Object.fromEntries(Object.entries(QUESTION_TYPE_DETAILS).flatMap(([key, item]) => {
   const meta = { key, answerType: key, label: item.label, instruction: item.instruction, description: item.description };
@@ -540,21 +539,15 @@ class QuestionBankManager extends BaseManager {
     if (!templateArray || !Array.isArray(templateArray)) return [];
 
     return templateArray.map((item) => {
-      // mappedType is just the instruction text for backward compatibility
-      const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
-
-      // Look up full details if possible to get the description
-      const details = QUESTION_TYPE_DETAILS[item.type];
-
-      // Handle both snake_case (legacy/internal) and camelCase (new/frontend)
+      const meta = QUESTION_TYPE_META[item.type];
       const numQs = item.number_of_questions !== undefined ? item.number_of_questions : item.numberOfQuestions;
       const marksPerQ = item.marks_per_question !== undefined ? item.marks_per_question : item.marksPerQuestion;
       const qDist = item.question_distribution || item.questionDistribution;
 
       const mappedItem = {
         ...item,
-        type: mappedType,
-        description: details ? details.description : (item.description || ""),
+        type: meta?.key || item.type,
+        description: meta?.description || item.description || "",
       };
 
       // Ensure expected Python snake_case keys are present
@@ -953,7 +946,7 @@ class QuestionBankManager extends BaseManager {
         label: item.label,
         instruction: item.instruction,
         description: item.description,
-        marksPerQuestion: marks[item.instruction],
+        marksPerQuestion: marks[key],
       }));
       const objectives = PAPER_CONFIG.objectives[getObjectiveKey(board, grade, subjectName)];
 

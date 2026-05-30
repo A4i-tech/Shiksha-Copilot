@@ -128,88 +128,33 @@ class MatchingListQuestion(BaseModel):
 
 
 # ==============================
-# SELF-DESCRIBING QUESTION TYPE
+# QUESTION TYPE
 # ==============================
+
+QuestionModel: TypeAlias = MatchingListQuestion | FourOptionsQuestion | TextQuestion
 
 
 class QuestionType(str, Enum):
-    # value, description, pydantic_model, display_name
-    MCQ = (
-        "Four alternatives are given for each of the following questions, choose the correct alternative",
-        "These questions provide exactly four options, challenging students to select the correct answer from a set of alternatives.",
-        FourOptionsQuestion,
-        "Multiple Choice Questions",
-    )
-    FILL_BLANKS = (
-        "Fill in the blanks with suitable words",
-        "This type of question requires students to complete sentences or phrases by inserting the appropriate missing word(s).",
-        TextQuestion,
-        "Fill in the blanks",
-    )
-    ANSWER_VERY_SHORT = (
-        "Answer the following in a word, phrase or sentence",
-        "These questions expect a very brief response—a single word, a short phrase, or a concise sentence.",
-        TextQuestion,
-        "Very Short Answer Questions",
-    )
-    ANSWER_SHORT = (
-        "Answer the following in two or three sentences each",
-        "Short answer questions require a concise yet complete response, typically in two or three sentences.",
-        TextQuestion,
-        "Short Answer Questions",
-    )
-    ANSWER_MEDIUM = (
-        "Answer the following questions",
-        "These open-ended questions invite students to provide brief responses that are straightforward and to the point.",
-        TextQuestion,
-        "Answer the following questions",
-    )
-    ANSWER_LONG = (
-        "Answer the following question in four or five sentences",
-        "Long answer questions require a detailed, well-structured response that spans four to five sentences.",
-        TextQuestion,
-        "Long Answer Questions",
-    )
-    MATCHING = (
-        "Match the following",
-        "Generate a CORRECTLY matched item-pair",
-        MatchingListQuestion,
-        "Match the Following",
-    )
-    GRAMMAR_MCQ = (
-        "Grammar: Choose the correct option",
-        "Grammar MCQ: Students select the grammatically correct alternative from four options.",
-        FourOptionsQuestion,
-        "Grammar: Multiple Choice Questions",
-    )
-    GRAMMAR_FILL_BLANKS = (
-        "Grammar: Fill in the blanks with correct words/forms",
-        "Grammar fill-in-the-blank: Students complete sentences using correct grammatical forms.",
-        TextQuestion,
-        "Grammar: Fill in the blanks",
-    )
-    GRAMMAR_EDITING = (
-        "Grammar: Identify and correct the error in the sentence",
-        "Grammar editing: Students find and correct grammatical errors in given sentences.",
-        TextQuestion,
-        "Grammar: Identify and correct the error",
-    )
+    model: QuestionModel
+    display_name: str
 
-    def __new__(cls, value, description, pydantic_model, display_name):
+    MCQ = "MCQ", FourOptionsQuestion, "Multiple Choice Questions"
+    FILL_BLANKS = "FILL_BLANKS", TextQuestion, "Fill in the blanks"
+    ANSWER_VERY_SHORT = "ANSWER_VERY_SHORT", TextQuestion, "Very Short Answer Questions"
+    ANSWER_SHORT = "ANSWER_SHORT", TextQuestion, "Short Answer Questions"
+    ANSWER_MEDIUM = "ANSWER_MEDIUM", TextQuestion, "Answer the following questions"
+    ANSWER_LONG = "ANSWER_LONG", TextQuestion, "Long Answer Questions"
+    MATCHING = "MATCHING", MatchingListQuestion, "Match the Following"
+    GRAMMAR_MCQ = "GRAMMAR_MCQ", FourOptionsQuestion, "Grammar: Multiple Choice Questions"
+    GRAMMAR_FILL_BLANKS = "GRAMMAR_FILL_BLANKS", TextQuestion, "Grammar: Fill in the blanks"
+    GRAMMAR_EDITING = "GRAMMAR_EDITING", TextQuestion, "Grammar: Identify and correct the error"
+
+    def __new__(cls, value, pydantic_model, display_name):
         obj = str.__new__(cls, value)
         obj._value_ = value
-        obj.description = description
-        obj._model = pydantic_model
+        obj.model = pydantic_model
         obj.display_name = display_name
         return obj
-
-    # Prompt/schema hint for LLM
-    def model_name(self) -> str:
-        return self._model.__name__
-
-    # Cast generated dict to the right Pydantic model
-    def cast(self, obj: dict):
-        return self._model.model_validate(obj)
 
 
 class QuestionTypeResponse(BaseModel):
@@ -341,5 +286,4 @@ class GeneratedQuestionItem(BaseModel):
     type: QuestionType
     objective: Optional[str] = None
     marks_per_question: Marking
-    difficulty: DifficultyType
-    item: Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]
+    item: QuestionModel
