@@ -2,7 +2,7 @@
 # Extracted from the original standalone FastAPI application
 
 from enum import Enum
-from typing import Annotated, List, Optional, Union, Tuple, Literal, TypeAlias
+from typing import Annotated, List, Optional, Union, Literal, TypeAlias
 import re
 from pydantic import AfterValidator, BaseModel, field_validator, Field, model_validator
 
@@ -323,100 +323,6 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
     template: List[Template] = Field(..., description="Base template for question types and structure")
-
-    def verify_template_for_marks_and_objective_distribution(
-        self, new_template: List[Template]
-    ) -> Tuple[bool, Optional[str]]:
-        """
-        Verifies if the given `new_template` follows:
-        1. The total marks match `self.total_marks`.
-        2. The marks distribution per unit (chapter) aligns with `self.marks_distribution`.
-        3. The objective-based percentage distribution aligns with `self.objective_distribution`.
-
-        Returns:
-            Tuple[bool, Optional[str]]: (True, None) if the new template is valid, (False, "Reason for failure") otherwise.
-        """
-
-        # **Step 1: Verify Total Marks**
-        new_template_total_marks = sum(
-            q_type.marks_per_question * q_type.number_of_questions
-            for q_type in new_template
-        )
-        if new_template_total_marks != self.total_marks:
-            return (
-                False,
-                f"Total marks mismatch: expected {self.total_marks}, got {new_template_total_marks}",
-            )
-
-        # **Step 2: Verify Unit (Chapter) Marks Distribution**
-        new_unit_marks_distribution = {}
-
-        for q_type in new_template:
-            if q_type.question_distribution:
-                for q_dist in q_type.question_distribution:
-                    unit_name = q_dist.unit_name
-                    new_unit_marks_distribution[unit_name] = (
-                        new_unit_marks_distribution.get(unit_name, 0)
-                        + q_type.marks_per_question
-                    )
-
-        # Convert `self.marks_distribution` to a dictionary for faster lookup
-        expected_unit_marks = {md.unit_name: md.marks for md in self.marks_distribution}
-
-        # Ensure the unit names match
-        if set(new_unit_marks_distribution.keys()) != set(expected_unit_marks.keys()):
-            return (
-                False,
-                "Mismatch in unit names between template and expected distribution",
-            )
-
-        # Ensure marks are correctly distributed
-        for unit_name, marks in new_unit_marks_distribution.items():
-            if marks != expected_unit_marks[unit_name]:
-                return (
-                    False,
-                    f"Marks distribution mismatch for unit '{unit_name}': expected {expected_unit_marks[unit_name]}, got {marks}",
-                )
-
-        # **Step 3: Verify Objective-Based Percentage Distribution**
-        new_objective_marks_distribution = {}
-
-        for q_type in new_template:
-            if q_type.question_distribution:
-                for q_dist in q_type.question_distribution:
-                    objective = q_dist.objective
-                    new_objective_marks_distribution[objective] = (
-                        new_objective_marks_distribution.get(objective, 0)
-                        + q_type.marks_per_question
-                    )
-
-        # Convert `self.objective_distribution` to a dictionary for faster lookup
-        expected_objective_distribution = {
-            obj_dist.objective: obj_dist.percentage_distribution
-            for obj_dist in self.objective_distribution
-        }
-
-        # Convert new marks distribution to percentage
-        new_objective_percentage_distribution = {
-            obj: (marks / self.total_marks) * 100
-            for obj, marks in new_objective_marks_distribution.items()
-        }
-
-        # Ensure the objectives match
-        if set(new_objective_percentage_distribution.keys()) != set(
-            expected_objective_distribution.keys()
-        ):
-            return False, "Mismatch in objective distribution keys"
-
-        # Ensure percentage distributions are within ±1% tolerance
-        for objective, percentage in new_objective_percentage_distribution.items():
-            if abs(percentage - expected_objective_distribution[objective]) > 1:
-                return (
-                    False,
-                    f"Objective '{objective}' percentage mismatch: expected {expected_objective_distribution[objective]}%, got {percentage:.2f}%",
-                )
-
-        return True, None  # If all checks pass
 
 
 class QBTemplateGenerationRequest(BaseModel):

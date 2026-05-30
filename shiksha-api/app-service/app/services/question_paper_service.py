@@ -629,9 +629,6 @@ class QuestionPaperService:
             if item.question_distribution is None:
                 item.question_distribution = []
 
-        verfication_status, reason = request.verify_template_for_marks_and_objective_distribution(response.output_parsed.items)
-        logger.info(verfication_status)
-        logger.info(reason)
         return response.output_parsed.items
 
 
