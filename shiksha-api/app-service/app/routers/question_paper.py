@@ -5,7 +5,6 @@ from langdetect.detector import Detector
 
 from app.models.question_paper import (
     QBQuestionDistributionGenerationRequest,
-    QBTemplateGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
     Template,
@@ -136,19 +135,3 @@ async def get_question_distribution(request: QBQuestionDistributionGenerationReq
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.") from e
-
-
-@router.post("/template", summary="Generate Question Paper Templates (Static)")
-async def get_question_paper_template_v2(request: QBTemplateGenerationRequest) -> List[Template]:
-    """
-    Provides predefined question paper templates based on standard educational
-    configurations and curriculum requirements.
-    """
-    try:
-        return request.get_template()
-    except ValueError as e:
-        logger.exception(f"Configuration error in question paper template generation: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Configuration error: {str(e)}") from e
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate question paper template") from e
