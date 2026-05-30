@@ -78,7 +78,7 @@ router.get(
 );
 
 router.get(
-  "/question-bank/meta/answerTypes",
+  "/question-bank/meta/answer-types",
   isAuthenticated,
   asyncMiddleware(questionBankController.getAnswerTypes.bind(questionBankController))
 );
@@ -88,6 +88,12 @@ router.get(
   isAuthenticated,
   validateGetGrammarTopics,
   asyncMiddleware(questionBankController.getGrammarTopics.bind(questionBankController))
+);
+
+router.get(
+  "/question-bank/meta/paper-config",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.getPaperConfig.bind(questionBankController))
 );
 
 router.get(

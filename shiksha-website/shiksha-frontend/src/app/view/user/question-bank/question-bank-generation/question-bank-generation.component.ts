@@ -9,14 +9,7 @@ import {
 import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
-import {
-  CORE_OBJECTIVE_MAPPER,
-  CORE_OBJECTIVE_MAPPER_10,
-  CORE_SUBJECTS,
-  LANGUAGE_OBJECTIVE_MAPPER,
-  TELANGANA_OBJECTIVE_MAPPER,
-  QUESTION_TYPE_MAPPING_LONG
-} from 'src/app/shared/utility/constant.util';
+import { QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
@@ -28,6 +21,12 @@ import { map, switchMap, catchError, finalize, toArray } from 'rxjs/operators';
 
 // Import Child Component for Step 2 access
 import { QuestionBankTemplateComponent } from './question-bank-template/question-bank-template.component';
+
+const SOURCE_GENERATION_OPTIONS: FormDropDownOption[] = [
+  { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
+  { name: QUESTION_SOURCE.LBA, value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
+];
+const LBA_SOURCE_BOARDS = new Set(['KSEEB', 'CBSE']);
 
 @Component({
   selector: 'app-question-bank-generation',
@@ -61,20 +60,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   chapterDropdownOptions: any[] = [];
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
-  sourceGenerationOptions: FormDropDownOption[] = [
-    { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
-    { name: 'Pre-generated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
-  ];
+  sourceGenerationOptions: FormDropDownOption[] = SOURCE_GENERATION_OPTIONS;
 
-  // LBA Specific Data
   lbaChapters: any[] = [];
-  availableHeadings: { name: string; count?: number; chapters: number[] }[] = [];
-  selectedHeadings: string[] = [];
+  paperQuestionTypes: any[] = [];
+  availableHeadings: any[] = [];
+  selectedHeadings: any[] = [];
   showHeadingDropdown: boolean = false;
   hasSubtopics: boolean = false;
-
-  aiStandardTypeNames: string[] = [];
-  grammarTypeNames: string[] = [];
 
   // Configs
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
@@ -177,22 +170,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       }));
     }
 
-    // Group questions into sections and also prepare template using mapped valid types
     const grouped = new Map<string, any>();
     selectedQuestions.forEach(q => {
-      const sectionTypeRaw = q.heading || q.type || 'Question';
-      const mappedType = this.mapHeadingToAIType(sectionTypeRaw);
-      if (!grouped.has(mappedType)) {
-        grouped.set(mappedType, { type: mappedType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
+      const sectionType = q.type || q.instruction || q.answerType;
+      if (!grouped.has(sectionType)) {
+        grouped.set(sectionType, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
       }
-      const sec = grouped.get(mappedType);
+      const sec = grouped.get(sectionType);
       sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1), value1: q.value1 || q.text || q.question || '', value2: q.value2 || q.keyAnswer || q.answer || '' });
       sec.numberOfQuestions = sec.questions.length;
     });
 
     payload.questions = Array.from(grouped.values());
 
-    // Build template entries 
     payload.template = Array.from(grouped.values()).map(s => ({
       type: s.type,
       number_of_questions: s.numberOfQuestions,
@@ -266,29 +256,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
 
   onSourceGenerationChange(selected: any) {
-    // Normalize: handle comma-separated strings from Select All / Remove
-    let val: any[];
-    if (Array.isArray(selected)) {
-      val = selected;
-    } else if (typeof selected === 'string' && selected.includes(',')) {
-      val = selected.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
-    } else {
-      val = selected ? [selected] : [];
-    }
-
-    // Check for "AI Questions" or "AI" in the selected array (handling both strings and objects)
-    this.useAI = val.some((item: any) =>
-      (typeof item === 'string' && (item === 'AI Questions' || item === 'AI')) ||
-      (typeof item === 'object' && (item.value === 'AI' || item.name === 'AI Questions'))
-    );
-
-    // Check for "Pre-generated Questions" or "LBA"
-    this.useLBA = val.some((item: any) =>
-      (typeof item === 'string' && (item === 'Pre-generated Questions' || item === 'LBA')) ||
-      (typeof item === 'object' && (item.value === 'LBA' || item.name === 'Pre-generated Questions'))
-    );
-
-    // Trigger UI update
+    this.useAI = selected.includes(QUESTION_SOURCE.AI);
+    this.useLBA = selected.includes(QUESTION_SOURCE.LBA);
     this.updateLBAAvailableHeadings();
     this.updateFormValidators();
     if (this.useAI) this.distributeMarks();
@@ -353,35 +322,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   updateSourceOptions(boardName: string | null) {
-    if (boardName === 'KSEEB' || boardName === 'CBSE') {
-      this.sourceGenerationOptions = [
-        { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
-        { name: 'Pre-generated Questions', value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
-      ];
-    } else {
-      this.sourceGenerationOptions = [
-        { name: 'AI Questions', value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' }
-      ];
-    }
+    this.sourceGenerationOptions = SOURCE_GENERATION_OPTIONS.filter(option => option.name === QUESTION_SOURCE.AI || LBA_SOURCE_BOARDS.has(boardName || ''));
 
-    // Validate current selection against new options
     const currentVal = this.f.sourceGeneration.value;
     if (!currentVal) return;
 
-    // Normalize to array for consistent handling
     const currentSelections = Array.isArray(currentVal) ? currentVal : [currentVal];
-
-    // Create a Set of valid option names/values for quick lookup
-    // The dropdown uses 'name' as bindValue based on config
     const validValues = new Set(this.sourceGenerationOptions.map(opt => opt.name));
+    const validSelections = currentSelections.filter((sel: any) => validValues.has(sel));
 
-    const validSelections = currentSelections.filter((sel: any) => {
-      // Handle both object and string forms, just in case
-      const selValue = (typeof sel === 'object' && sel.name) ? sel.name : sel;
-      return validValues.has(selValue);
-    });
-
-    // Update if selections have changed
     if (validSelections.length !== currentSelections.length) {
       this.f.sourceGeneration.setValue(validSelections);
       this.onSourceGenerationChange(validSelections);
@@ -487,30 +436,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
-  private loadQuestionTypeNames(subject: string) {
-    if (!subject) return;
-    this.questionBankService.getQuestionTypes(subject).subscribe({
-      next: (res: any) => {
-        const list = Array.isArray(res?.data) ? res.data : [];
-        const grammar: string[] = [];
-        const standard: string[] = [];
-        for (const qt of list) {
-          const key = String(qt?.key ?? '');
-          const name = String(qt?.name ?? qt?.value ?? '');
-          if (!name) continue;
-          (key.startsWith('GRAMMAR_') ? grammar : standard).push(name);
-        }
-        this.aiStandardTypeNames = standard;
-        this.grammarTypeNames = grammar;
-      },
-      error: (err) => {
-        console.error('[QuestionBankGeneration] Failed to load question types', err);
-        this.aiStandardTypeNames = [];
-        this.grammarTypeNames = [];
-      },
-    });
-  }
-
   onSubjectChange(val: any) {
     this.resetSubjectChange();
     if (val) {
@@ -523,32 +448,18 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const subjectName = selectedSubjectObj ? selectedSubjectObj.name : (val.name || val);
       const subjectId = selectedSubjectObj ? selectedSubjectObj.value : (val.value || val);
 
-      this.loadQuestionTypeNames(subjectName);
-
-      // Objectives Setup
-      if (board === 'KSEEB') {
-        if (CORE_SUBJECTS.includes(subjectName)) {
-          this.questionBankObjectives = standard == 10 ? structuredClone(CORE_OBJECTIVE_MAPPER_10) : structuredClone(CORE_OBJECTIVE_MAPPER);
-        } else {
-          this.questionBankObjectives = structuredClone(LANGUAGE_OBJECTIVE_MAPPER);
-        }
-      } else if (board === 'BSE-TG') {
-        this.questionBankObjectives = structuredClone(TELANGANA_OBJECTIVE_MAPPER);
-      } else {
-        this.questionBankObjectives = structuredClone(CORE_OBJECTIVE_MAPPER);
-      }
-
       this.isLoadingQuestions = true;
 
-      this.questionBankService.getChapters({
-        class: String(standard),
-        medium: medium,
-        subject: subjectId // Send ID
+      forkJoin({
+        config: this.questionBankService.getPaperConfig({ board, grade: String(standard), subjectName }),
+        chapters: this.questionBankService.getChapters({ class: String(standard), medium: medium, subject: subjectId })
       }).pipe(
         finalize(() => this.isLoadingQuestions = false)
       ).subscribe({
-        next: (data: any[]) => {
-          this.chapterDropdownOptions = (data || []).map((ch: any) => ({
+        next: ({ config, chapters }: any) => {
+          this.paperQuestionTypes = config.questionTypes || [];
+          this.questionBankObjectives = structuredClone(config.objectives || []);
+          this.chapterDropdownOptions = (chapters || []).map((ch: any) => ({
             ...ch,
             topics: ch.topics || ch.title,
             _id: ch._id || ch.id || null,
@@ -556,7 +467,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             headings: ch.headings || [],
             subTopics: ch.subTopics || [],
             source: 'Unified'
-          })).sort((a, b) => {
+          })).sort((a: any, b: any) => {
             const numA = a.chapterNumber || 999;
             const numB = b.chapterNumber || 999;
             return numA - numB || (a.topics || '').localeCompare(b.topics || '');
@@ -624,60 +535,37 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   private updateLBAAvailableHeadings(): void {
-    // Re-derive source flags from form control to ensure they are always current
     const sourceVal = this.f.sourceGeneration.value;
     if (sourceVal) {
-      const sources = Array.isArray(sourceVal)
-        ? sourceVal
-        : (typeof sourceVal === 'string' ? sourceVal.split(',').map((s: string) => s.trim()) : []);
-      this.useAI = sources.some((s: any) =>
-        (typeof s === 'string' && (s === 'AI Questions' || s === 'AI')) ||
-        (typeof s === 'object' && (s?.value === 'AI' || s?.name === 'AI Questions'))
-      );
-      this.useLBA = sources.some((s: any) =>
-        (typeof s === 'string' && (s === 'Pre-generated Questions' || s === 'LBA')) ||
-        (typeof s === 'object' && (s?.value === 'LBA' || s?.name === 'Pre-generated Questions'))
-      );
+      this.useAI = sourceVal.includes(QUESTION_SOURCE.AI);
+      this.useLBA = sourceVal.includes(QUESTION_SOURCE.LBA);
     }
 
     const rawVal = this.f.chapter.value;
     const selectedTopics = Array.isArray(rawVal) ? rawVal : (rawVal ? [rawVal] : []);
     const selectedChapters = this.chapterDropdownOptions.filter(ch => selectedTopics.includes(ch.topics));
 
-    const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
+    const headingMap = new Map<string, any>();
 
-    // 1. Add AI Standard Types when AI is selected
     const hasGrammar = selectedChapters.some(ch => ch.isGrammar);
     const hasNonGrammar = selectedChapters.some(ch => !ch.isGrammar);
 
-    const registerTypes = (types: string[]) => {
-      types.forEach(typeName => {
-        headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
-      });
-    };
-
     if (this.useAI) {
-      if (hasNonGrammar || selectedChapters.length === 0) {
-        registerTypes(this.aiStandardTypeNames);
-      }
+      this.paperQuestionTypes
+        .filter(q => {
+          const isGrammar = String(q.key || '').startsWith('GRAMMAR_');
+          return isGrammar ? hasGrammar : (hasNonGrammar || selectedChapters.length === 0);
+        })
+        .forEach(q => headingMap.set(q.label, { ...q, name: q.label, count: 0, chapters: new Set<number>() }));
     }
 
-    // Always add grammar-specific types when grammar chapters are selected
-    if (hasGrammar) {
-      registerTypes(this.grammarTypeNames);
-    }
-
-    // 2. Add LBA Headings (merge with AI if they share names) — skip if LBA not selected
     for (const chapter of selectedChapters) {
       if (!this.useLBA) continue;
       const lbaData = chapter.headings || [];
       for (const h of lbaData) {
-        const headingName = (typeof h === 'string' ? h : h.name || 'Misc').trim();
-        const headingCount = (typeof h === 'string' ? 1 : Number(h.count || 0));
-
-        if (!headingMap.has(headingName)) {
-          headingMap.set(headingName, { name: headingName, count: 0, chapters: new Set<number>() });
-        }
+        const headingName = h.label || h.name;
+        const headingCount = Number(h.count || 0);
+        if (!headingMap.has(headingName)) headingMap.set(headingName, { ...h, name: headingName, label: h.label || headingName, count: 0, chapters: new Set<number>() });
         const agg = headingMap.get(headingName)!;
         agg.count += headingCount;
         agg.chapters.add(chapter.chapterNumber || 0);
@@ -686,15 +574,16 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     this.availableHeadings = Array.from(headingMap.values())
       .map(x => ({
+        ...x,
         name: x.name,
+        label: x.label || x.name,
         count: x.count,
-        chapters: Array.from(x.chapters).sort((a, b) => a - b)
+        chapters: Array.from(x.chapters).sort((a: any, b: any) => a - b)
       }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
-    // Sync with form control
     const names = new Set(this.availableHeadings.map(h => h.name));
-    this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h));
+    this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h.name));
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
 
@@ -735,8 +624,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const selectedSources = Array.isArray(rawSources)
       ? rawSources
       : (typeof rawSources === 'string' ? rawSources.split(',').map((s: string) => s.trim()) : []);
-    this.useAI = selectedSources.includes('AI Questions') || selectedSources.includes('AI');
-    this.useLBA = selectedSources.includes('Pre-generated Questions') || selectedSources.includes('LBA');
+    this.useAI = selectedSources.includes(QUESTION_SOURCE.AI);
+    this.useLBA = selectedSources.includes(QUESTION_SOURCE.LBA);
 
     if (!this.useAI && !this.useLBA) {
       this.utilityservice.showError('Please select at least one Source');
@@ -774,13 +663,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.selectedQuestions = selections;
 
     this.finalSelectedQuestions = this.selectedQuestions.map(q => {
-      const rawHeading = q.heading || q.type || 'Question';
-      const mappedType = this.mapHeadingToAIType(rawHeading);
-      const friendlyHeading = this.mapToFriendlyHeading(rawHeading);
       return {
         ...q,
-        type: mappedType,
-        heading: friendlyHeading,
+        heading: q.heading || q.label || q.groupHeading || 'Question',
         unit_name: q.unit_name || 'General'
       };
     });
@@ -810,7 +695,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // 2. Organize Selected Questions into Sections
     const sectionsMap = new Map<string, any>();
     this.finalSelectedQuestions.forEach(q => {
-      const heading = this.mapToFriendlyHeading(q.heading || q.type || 'General');
+      const heading = q.heading || q.label || q.groupHeading || 'General';
       if (!sectionsMap.has(heading)) {
         sectionsMap.set(heading, {
           type: q.type,
@@ -909,8 +794,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   generateAIQuestionsPool() {
     let payload = this.getTemplatePayload();
-    payload.template = this.selectedHeadings.map(heading => ({
-      type: this.mapHeadingToAIType(heading),
+    const aiHeadings = this.selectedHeadings.filter(heading => heading.instruction);
+    if (!aiHeadings.length) return of([]);
+    payload.template = aiHeadings.map(heading => ({
+      type: heading.instruction,
       question_distribution: []
     }));
     payload.isPreview = true;
@@ -925,13 +812,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
         finalRes.data.questions.forEach((block: any) => {
           const blockType = block.type;
-          const friendlyHeading = this.selectedHeadings.find(h => this.mapHeadingToAIType(h) === blockType) || blockType;
+          const friendlyHeading = aiHeadings.find(h => h.instruction === blockType)?.label || blockType;
           const blockMarks = Number(block.marksPerQuestion);
 
           block.questions.forEach((q: any) => {
             flatQuestions.push({
               ...q,
-              source: 'AI Questions',
+              source: QUESTION_SOURCE.AI,
               text: q.question || (q.value1 && q.value2 ? `${q.value1} - ${q.value2}` : ''),
               marks: blockMarks,
               type: blockType,
@@ -1029,72 +916,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }));
   }
 
-  private mapHeadingToAIType(heading: string): string {
-    if (!heading || typeof heading !== 'string') return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
-    const h = heading.toLowerCase().trim();
-
-    // 0. Grammar variants — match first so the generic "fill"/"mcq" branches don't
-    // capture grammar headings ("Grammar: Fill in the blanks" → GRAMMAR_FILL_BLANKS,
-    // not FILL_BLANKS). Mirrors the GRAMMAR_* keys in Python QuestionType.
-    if (h.startsWith('grammar:') || h.includes('grammar')) {
-      if (h.includes('mcq') || h.includes('multiple choice') || h.includes('correct option')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_MCQ;
-      if (h.includes('editing') || h.includes('identify') || h.includes('correct the error')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_EDITING;
-      if (h.includes('fill') || h.includes('blank')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_FILL_BLANKS;
-    }
-
-    // 1. MCQ
-    if (h.includes('multiple choice') || h.includes('mcq') || h.includes('objective') || h.includes('alternative')) return QUESTION_TYPE_MAPPING_LONG.MCQ;
-
-    // 2. Fill in the blanks
-    if (h.includes('fill') || h.includes('blank')) return QUESTION_TYPE_MAPPING_LONG.FILL_BLANKS;
-
-    // 3. Match
-    if (h.includes('match') || h.includes('collocation')) return QUESTION_TYPE_MAPPING_LONG.MATCHING;
-
-    // 4. Very Short / 1 Mark
-    if (h.includes('very short') || h.includes('one sentence') || h.includes('1 mark') || h.includes('true/false') || h.includes('true / false') || h.includes('odd one out') || h.includes('opposites') || h.includes('word relation') || h.includes('fourth word') || h.includes('syllable') || h.includes('chronological')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_VERY_SHORT;
-
-    // 5. Short Answer - Specific Range Checks FIRST to avoid overlap
-    if (h.includes('short answer') || h.includes('two to four') || h.includes('2-4') || h.includes('read and answer')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
-
-    // 6. Long Answer / 4+ Marks / 4+ Sentences
-    if (h.includes('long answer') || h.includes('four or five') || h.includes('four') || h.includes('4 marks') || h.includes('5 marks') || h.includes('six sentences') || h.includes('6 sentences') || h.includes('essay') || h.includes('letter') || h.includes('paragraph') || h.includes('picture') || h.includes('story') || h.includes('map')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_LONG;
-
-    // 7. Short Answer - Catch-all for remaining 2/3 marks/sentences
-    if (h.includes('two') || h.includes('three') || h.includes('2 marks') || h.includes('3 marks') || h.includes('comprehension')) return QUESTION_TYPE_MAPPING_LONG.ANSWER_SHORT;
-
-    return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
-  }
-
-  private mapToFriendlyHeading(rawType: string): string {
-    if (!rawType || typeof rawType !== 'string') return 'Question';
-    const h = rawType.toLowerCase().trim().replace(/_/g, ' ');
-
-    // 1. MCQ
-    if (h.includes('mcq') || h.includes('multiple choice') || h.includes('alternative') || h.includes('objective')) return 'Multiple Choice Questions';
-
-    // 2. Fill in the blanks
-    if (h.includes('fill') || h.includes('blank')) return 'Fill in the blanks';
-
-    // 3. Match
-    if (h.includes('match') || h.includes('collocation')) return 'Match the Following';
-
-    // 4. Very Short
-    if (h.includes('very short') || h.includes('one sentence') || h.includes('word, phrase') || h.includes('1 mark') || h.includes('true/false') || h.includes('true / false') || h.includes('odd one out') || h.includes('opposites') || h.includes('word relation') || h.includes('fourth word') || h.includes('syllable') || h.includes('chronological')) return 'Very Short Answer Questions';
-
-    // 5. Short Answer - Specific Range Checks
-    if (h.includes('short answer') || h.includes('two to four') || h.includes('2-4') || h.includes('read and answer')) return 'Short Answer Questions';
-
-    // 6. Long Answer
-    if (h.includes('long answer') || h.includes('four or five') || h.includes('four') || h.includes('4 marks') || h.includes('5 marks') || h.includes('six sentences') || h.includes('6 sentences') || h.includes('essay') || h.includes('letter') || h.includes('paragraph') || h.includes('picture') || h.includes('story') || h.includes('map')) return 'Long Answer Questions';
-
-    // 7. Short Answer - Catch-all
-    if (h.includes('two') || h.includes('three') || h.includes('2 marks') || h.includes('3 marks') || h.includes('comprehension')) return 'Short Answer Questions';
-
-    if (h === 'answer medium' || h.includes('answer the following')) return 'Answer the following questions';
-    return rawType;
-  }
-
   fetchLBAQuestionsPool() {
     const config = this.questionBankConfigForm.value;
     const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -1116,7 +937,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       class: config.grade,
       chapterNumbers: selectedChapterNumbers.join(','),
       chapterIds: selectedChapterIds.join(','),
-      headings: this.selectedHeadings.join(','),
+      headings: this.selectedHeadings.map(h => h.name).join(','),
       targetLanguage: config.language
     };
 
@@ -1126,13 +947,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       map((docs: any[]) => {
         console.log('[Frontend] getLBAQuestions response length:', docs?.length);
         return (docs || []).flatMap((q) => {
-          const friendlyType = this.mapToFriendlyHeading(q.heading || q.type || q.answerType || 'Question');
+          const heading = q.heading || q.label || q.groupHeading || 'Question';
           const unitName = q.unit_name || selectedTitles[0] || 'General';
           const baseObj = {
-            source: 'Pre-generated Questions',
+            source: QUESTION_SOURCE.LBA,
             marks: q.marksPerQuestion || q.marks || 1,
-            type: friendlyType,
-            heading: friendlyType,
+            type: q.type || q.instruction || q.answerType,
+            heading,
             unit_name: unitName,
             objective: q.objective || 'Knowledge',
           };
@@ -1149,7 +970,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           }
 
           // Match the Following fallback: split "Left item a. Right item" at letter marker
-          if (friendlyType === 'Match the Following') {
+          if (heading === 'Match the Following') {
             const rawText = q.text || q.question_text || q.question || '';
             // Pattern: split at " a. ", " b. ", etc. (single lowercase letter surrounded by spaces and period)
             const splitMatch = rawText.match(/^(.+?)\s+[a-z]\.\s+(.+)$/i);
@@ -1259,7 +1080,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   toggleAllHeadings(event: Event) {
     const input = event.target as HTMLInputElement;
-    this.selectedHeadings = input.checked ? this.availableHeadings.map(h => h.name) : [];
+    this.selectedHeadings = input.checked ? [...this.availableHeadings] : [];
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
   clearAllHeadings(e?: Event) {
@@ -1267,20 +1088,20 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.selectedHeadings = [];
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
-  toggleHeading(event: Event, heading: string) {
+  toggleHeading(event: Event, heading: any) {
     const input = event.target as HTMLInputElement;
-    if (input.checked) { if (!this.selectedHeadings.includes(heading)) this.selectedHeadings.push(heading); }
-    else { this.selectedHeadings = this.selectedHeadings.filter(h => h !== heading); }
+    if (input.checked) { if (!this.isHeadingSelected(heading)) this.selectedHeadings.push(heading); }
+    else { this.selectedHeadings = this.selectedHeadings.filter(h => h.name !== heading.name); }
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
-  isHeadingSelected(heading: string) { return this.selectedHeadings.includes(heading); }
-
+  isHeadingSelected(heading: any) { return this.selectedHeadings.some(h => h.name === heading.name); }
   isAllHeadingsSelected() { return this.availableHeadings.length > 0 && this.selectedHeadings.length === this.availableHeadings.length; }
   headingSummary() {
     if (!this.availableHeadings.length) return 'Select chapters first';
     if (!this.selectedHeadings.length) return 'Select headings';
     if (this.selectedHeadings.length === this.availableHeadings.length) return `All headings (${this.selectedHeadings.length})`;
-    return this.selectedHeadings.length > 2 ? `${this.selectedHeadings.slice(0, 2).join(', ')} +${this.selectedHeadings.length - 2}` : this.selectedHeadings.join(', ');
+    const names = this.selectedHeadings.map(h => h.name);
+    return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
   }
   headingDisplay(h: any) { return h.count > 0 ? `${h.name} (${h.count})` : h.name; }
 
@@ -1318,7 +1139,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   resetDistribution() {
     this.f.chapter.reset(); this.f.subTopic.reset(); this.marksDistribution = [];
-    this.questionBankObjectives = []; this.selectedHeadings = []; this.availableHeadings = [];
+    this.questionBankObjectives = []; this.paperQuestionTypes = []; this.selectedHeadings = []; this.availableHeadings = [];
   }
   resetSubjectChange() { this.resetDistribution(); }
 

@@ -50,7 +50,7 @@
                 <button *ngFor="let s of availableSources" (click)="setFilter(s)"
                   class="px-2.5 py-1 text-xs rounded-full border transition-all"
                   [ngClass]="filterSource === s ? 'bg-primary text-white border-primary shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'">
-                  {{ s === 'AI Questions' ? 'AI Gen' : (s === 'Pre-generated Questions' ? 'Pre-gen' : s) }}
+                  {{ s }}
                 </button>
               </div>
             </div>
@@ -114,7 +114,7 @@
 
       <div *ngFor="let q of filteredQuestions" (click)="selectQuestion(q)"
         class="bg-white p-3 rounded border hover:shadow-md cursor-pointer transition-all border-l-4 group"
-        [ngClass]="{'border-l-blue-500': q.source === 'AI Questions', 'border-l-green-500': q.source === 'Pre-generated Questions'}">
+        [ngClass]="{'border-l-blue-500': q.source === QUESTION_SOURCE.AI, 'border-l-green-500': q.source === QUESTION_SOURCE.LBA}">
         <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-1">
           <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 sm:mr-2">{{ q.text }}</p>
           <div class="flex flex-wrap items-center gap-1 sm:justify-end">
@@ -128,7 +128,7 @@
               {{ q.difficulty }}
             </span>
             <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider"
-              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pre-generated Questions'}">
+              [ngClass]="{'bg-blue-100 text-blue-700': q.source === QUESTION_SOURCE.AI, 'bg-green-100 text-green-700': q.source === QUESTION_SOURCE.LBA}">
               {{ q.source }}
             </span>
             <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }} Marks</span>
@@ -171,8 +171,8 @@
               {{ q.difficulty }}
             </span>
             <span class="text-[10px] font-bold px-1 rounded uppercase"
-              [ngClass]="{'bg-blue-100 text-blue-700': q.source === 'AI Questions', 'bg-green-100 text-green-700': q.source === 'Pre-generated Questions'}">
-              {{ q.source === 'AI Questions' ? 'AI Gen' : 'Pre-gen' }}
+              [ngClass]="{'bg-blue-100 text-blue-700': q.source === QUESTION_SOURCE.AI, 'bg-green-100 text-green-700': q.source === QUESTION_SOURCE.LBA}">
+              {{ q.source }}
             </span>
             <span class="text-xs font-bold text-gray-600">{{ q.marks || 1 }}M</span>
           </div>

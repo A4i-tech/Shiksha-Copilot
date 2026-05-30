@@ -245,6 +245,16 @@ class QuestionBankController extends BaseController {
   }
 
 
+  async getPaperConfig(req, res) {
+    try {
+      const { board, grade, subjectName } = req.query;
+      const result = await this.questionBankManager.getPaperConfig(board, grade, subjectName);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
+
   async getQuestions(req, res) {
     try {
       const filters = req.query;

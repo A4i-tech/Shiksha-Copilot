@@ -225,13 +225,21 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getAnswerTypes(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/answerTypes`).pipe(
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/answer-types`).pipe(
       (source => new Observable<string[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
         complete: () => observer.complete()
       })))
     );
+  }
+
+  getPaperConfig(filters: { board: string; grade: string; subjectName: string }): Observable<any> {
+    let params = new HttpParams();
+    params = params.set('board', filters.board);
+    params = params.set('grade', filters.grade);
+    params = params.set('subjectName', filters.subjectName);
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/paper-config`, { params }).pipe(map(resp => resp.data));
   }
 
   /**
