@@ -24,9 +24,8 @@ import { QuestionBankTemplateComponent } from './question-bank-template/question
 
 const SOURCE_GENERATION_OPTIONS: FormDropDownOption[] = [
   { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
-  { name: QUESTION_SOURCE.LBA, value: 'LBA', info: 'These are LBA Questions as recommended by the KSEEB.' }
+  { name: QUESTION_SOURCE.LBA, value: 'LBA', info: 'These are LBA Questions as recommended by the educational board.' }
 ];
-const LBA_SOURCE_BOARDS = new Set(['KSEEB', 'CBSE']);
 
 @Component({
   selector: 'app-question-bank-generation',
@@ -60,7 +59,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   chapterDropdownOptions: any[] = [];
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
-  sourceGenerationOptions: FormDropDownOption[] = SOURCE_GENERATION_OPTIONS;
+  sourceGenerationOptions: FormDropDownOption[] = [];
 
   lbaChapters: any[] = [];
   paperQuestionTypes: any[] = [];
@@ -303,26 +302,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (val) {
       const boardName = val.board || val;
       const rawClasses = this.loggedInUser.classes || [];
-      const uniqueClasses = new Set<any>();
-
-      rawClasses.forEach((c: any) => {
-        if (c.board === boardName) {
-          uniqueClasses.add(c.class);
-        }
-      });
-
+      const uniqueClasses = new Set<any>(rawClasses.filter((c: any) => c.board === boardName).map((c: any) => c.class));
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
         .sort((a, b) => parseInt(a.class) - parseInt(b.class));
-
-      this.updateSourceOptions(boardName);
-    } else {
-      this.updateSourceOptions(null);
+      this.questionBankService.getPaperConfig({ board: boardName, grade: '', subjectName: '' })
+        .subscribe((config: any) => this.updateSourceOptions(config.questionSources));
     }
   }
 
-  updateSourceOptions(boardName: string | null) {
-    this.sourceGenerationOptions = SOURCE_GENERATION_OPTIONS.filter(option => option.name === QUESTION_SOURCE.AI || LBA_SOURCE_BOARDS.has(boardName || ''));
+  updateSourceOptions(questionSources: string[]) {
+    this.sourceGenerationOptions = SOURCE_GENERATION_OPTIONS.filter(option => questionSources.includes(String(option.value)));
 
     const currentVal = this.f.sourceGeneration.value;
     if (!currentVal) return;
@@ -459,6 +449,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         next: ({ config, chapters }: any) => {
           this.paperQuestionTypes = config.questionTypes || [];
           this.questionBankObjectives = structuredClone(config.objectives || []);
+          this.updateSourceOptions(config.questionSources);
           this.chapterDropdownOptions = (chapters || []).map((ch: any) => ({
             ...ch,
             topics: ch.topics || ch.title,

@@ -911,8 +911,9 @@ class QuestionBankManager extends BaseManager {
         marksPerQuestion: marks[key],
       }));
       const objectives = PAPER_CONFIG.objectives[getObjectiveKey(board, grade, subjectName)];
+      const questionSources = PAPER_CONFIG.questionSources[board] || PAPER_CONFIG.questionSources.DEFAULT;
 
-      return formatApiReponse(true, "Question paper config retrieved successfully", { questionTypes, objectives });
+      return formatApiReponse(true, "Question paper config retrieved successfully", { questionTypes, objectives, questionSources });
     } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
