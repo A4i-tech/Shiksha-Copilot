@@ -105,6 +105,11 @@
       "MCQ": 0.5
     }
   },
+  "questionSources": {
+    "DEFAULT": ["AI"],
+    "KSEEB": ["AI", "LBA"],
+    "CBSE": ["AI", "LBA"]
+  },
   "objectivePolicies": {
     "DEFAULT": {
       "default": "core"
