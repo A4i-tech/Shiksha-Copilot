@@ -50,7 +50,7 @@
           </table>
           <div class="flex justify-end">
             <span class="mr-4 mt-2" *ngIf="questionBankDetails"><b>{{ 'Total' | translate}}</b> :
-              {{ questionBankDetails?.totalMarks }} {{'Marks' | translate}}</span>
+              {{ generatedTotalMarks }} {{'Marks' | translate}}</span>
           </div>
         </div>
       </div>
@@ -83,7 +83,7 @@
           <p>{{'Subject' | translate}} : {{ questionBankDetails?.subject }}</p>
           <p>{{'Class' | translate}} : {{ questionBankDetails?.grade }}</p>
           <p>
-            {{'Marks' | translate}} : {{ questionBankDetails?.totalMarks || 0 }}
+            {{'Marks' | translate}} : {{ generatedTotalMarks }}
           </p>
         </div>
         <hr />

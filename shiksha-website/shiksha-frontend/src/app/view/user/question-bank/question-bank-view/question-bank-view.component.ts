@@ -45,6 +45,7 @@ export class QuestionBankViewComponent implements OnInit {
 
   showAnswerKeys: boolean = false;
   questionTypeLabels: Record<string, string> = {};
+  generatedTotalMarks = 0;
 
   docTypes = [
     {
@@ -90,6 +91,9 @@ export class QuestionBankViewComponent implements OnInit {
         next: (val: any) => {
           this.questionBankDetails = val.data;
           this.questionBank = this.questionBankDetails.questionBank
+          this.generatedTotalMarks = (this.questionBank?.questions || []).reduce((sum: number, section: any) => (
+            sum + Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
+          ), 0);
           this.questionBankService.getPaperConfig({
             board: this.questionBankDetails.board,
             grade: String(this.questionBankDetails.grade),
