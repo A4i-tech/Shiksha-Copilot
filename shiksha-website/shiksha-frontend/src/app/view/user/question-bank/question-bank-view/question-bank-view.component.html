@@ -36,7 +36,7 @@
                     {{ objective.unitName }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    {{ questionTypeLabels[questionBankObjective.type] || questionBankObjective.type }}
+                    {{ (questionTypeLabels[questionBankObjective.type] || questionBankObjective.type) | translate }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
                     {{ objective.objective }}
@@ -91,7 +91,7 @@
         <div class="mt-5" *ngFor="let questionBankData of questionBank?.questions; let q=index">
           <div class="flex items-start justify-between gap-2">
             <h2 class="font-bold text-content">
-              {{utilityService.intToRoman(q+1)}}. {{ questionTypeLabels[questionBankData.type] || questionBankData.type }}
+              {{utilityService.intToRoman(q+1)}}. {{ (questionTypeLabels[questionBankData.type] || questionBankData.type) | translate }}
             </h2>
             <b class="text-content flex items-center justify-end gap-1 min-w-[15vw] md:min-w-[7vw]">{{
               questionBankData.numberOfQuestions }} X {{ questionBankData.marksPerQuestion }} =

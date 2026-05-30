@@ -9,7 +9,7 @@ MAX_RECURSION_DEPTH = 50
 TRANSLATION_BATCH_SIZE = 100
 # Keys whose values are semantic identifiers (enums, codes) used for logic/styling,
 # not human-readable content. Translating these would break downstream consumers.
-SKIP_KEYS: frozenset = frozenset({"difficulty"})
+SKIP_KEYS: frozenset = frozenset({"type", "heading", "source", "difficulty", "objective", "unitName", "unit_name"})
 
 
 class TranslationService:
