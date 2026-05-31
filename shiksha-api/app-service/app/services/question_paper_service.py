@@ -1,12 +1,12 @@
 from collections import defaultdict
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
-from app.utils.utils import new_rag_embed, new_rag_llm
-from pydantic import BaseModel
+from app.utils.utils import local_unique_id, new_rag_embed, new_rag_llm
+from pydantic import Field, create_model
 import yaml
 import asyncio
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Annotated, List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
@@ -20,7 +20,6 @@ from llama_index.core.llms import ChatMessage
 from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
-    AIGeneratedQuestionItem,
     FourOptionsQuestion,
     GeneratedQuestionItem,
     GeneratedTemplate,
@@ -37,14 +36,6 @@ from app.models.question_paper import (
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-
-class TemplateResponse(BaseModel):
-    items: list[GeneratedTemplate]
-
-
-class GeneratedQuestionItemResponse(BaseModel):
-    items: list[AIGeneratedQuestionItem]
 
 
 class QuestionPaperService:
@@ -197,19 +188,17 @@ class QuestionPaperService:
         Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
         """
 
-        # Generate dynamic format rules
-        unique_types = set(t.type for t, _ in slot)
-        format_rules_text = "\n".join(f"- For {qtype.value}: conform to JSON schema for {qtype.model.__name__}." for qtype in unique_types)
-
-        user_message = (
-            "Generate questions for the following slots by following the rules listed below. "
-            "`keyAnswer` field must be non-empty if the question model supports it.\n\n"
-            "Rules by question type:\n"
-            f"{format_rules_text}\n\n"
-            f"Question slots:\n"
+        user_message = self.prompts["question_bank_parts_gen_retrieval_query_template"].format(
+            RULES="\n".join(f"- {q.value}: {q.description}" for q in set(t.type for t, _ in slot)),
+            CHAPTER=record.title,
+            LEARNING_OUTCOMES="\n".join(f"- {lo}" for lo in record.learning_outcomes),
         )
-        for _, question in slot:
-            user_message += "- " + question.model_dump_json(ensure_ascii=False) + "\n"
+
+        slot_indexed = {local_unique_id(i): v for i, v in enumerate(slot)}
+        response_format = create_model("QuestionResponse", **{
+            k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
+            for k, (template, question) in slot_indexed.items()
+        })  # type: ignore[call-overload]
 
         try:
             if not rag_adapter:
@@ -219,23 +208,26 @@ class QuestionPaperService:
                     model=self.chat_deployment,
                     instructions=system_prompt,
                     input=user_message,
-                    text_format=GeneratedQuestionItemResponse,
+                    text_format=response_format,
                     temperature=0.7,
                 )
                 if response.output_parsed is None:
                     raise RuntimeError("Did not retrieve a valid response from model")
-                items = response.output_parsed.items
+                items = response.output_parsed
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=GeneratedQuestionItemResponse)
-                items = GeneratedQuestionItemResponse.model_validate_json(response_content["response"]).items
+                response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
+                items = response_format.model_validate_json(response_content["response"])
         except Exception as e:
             logger.exception(e)
-            items = []
+            return []
 
-        return list(map(lambda x: GeneratedQuestionItem.model_validate({"unit_name": record.title, **x.model_dump()}), items))
+        return [
+            GeneratedQuestionItem(unit_name=record.title, type=template.type, objective=question.objective, marks_per_question=template.marks_per_question, item=getattr(items, k))
+            for k, (template, question) in slot_indexed.items()
+        ]
 
     async def _generate_questions_batch_async(self, system_prompt: str, record: _LearningRecord, slot: list[tuple[GeneratedTemplate, QuestionDistribution]]) -> list[GeneratedQuestionItem]:
         async with self.concurrency:
@@ -323,6 +315,8 @@ class QuestionPaperService:
         Generate question paper template based on unit-wise marks distribution.
         """
 
+        templates = {local_unique_id(i): t for i, t in enumerate(request.template)}
+
         def prepare_context() -> dict[str, Any]:
             lrs = request.chapters[0].subtopics if request.unit_level == "SUBTOPIC" else request.chapters
             units_str = ", ".join(lr.title for lr in lrs)
@@ -330,7 +324,7 @@ class QuestionPaperService:
             # Helper to safely serialize pydantic models
             marks_distribution_str = json.dumps([md.model_dump(mode="json") for md in request.marks_distribution], indent=2)
             objective_distribution_str = json.dumps([od.model_dump(mode="json") for od in request.objective_distribution], indent=2)
-            template_str = json.dumps([t.model_dump(mode="json") for t in request.template], indent=2)
+            template_str = json.dumps({k: v.model_dump(mode="json") for k, v in templates.items()}, indent=2)
 
             # Get Bloom's taxonomy guide
             bloom_lang = "english" if "english" in request.subject.lower() else "general"
@@ -349,6 +343,11 @@ class QuestionPaperService:
                 "TEMPLATE_JSON": template_str,
             }
 
+        response_format = create_model("TemplateResponse", **{
+            k: (Annotated[list[QuestionDistribution], Field(min_length=v.number_of_questions, max_length=v.number_of_questions)], Field(description=f"Distributions for template {k}"))
+            for k, v in templates.items()
+        })  # type: ignore[call-overload]
+
         # Prepare Prompt Context
         prompt_context = prepare_context()
         prompt_template = self.prompts.get("question_bank_distribution", "")
@@ -363,11 +362,14 @@ class QuestionPaperService:
             ),
             input=prompt,
             temperature=0.1,
-            text_format=TemplateResponse
+            text_format=response_format
         )
 
         if not response.output_parsed:
             logger.error(f"Failed raw response: {response.output_text}")
             raise RuntimeError("The AI model failed to generate a valid JSON structure.")
 
-        return response.output_parsed.items
+        return [
+            GeneratedTemplate.model_validate({"question_distribution": getattr(response.output_parsed, k), **v.model_dump()})
+            for k, v in templates.items()
+        ]

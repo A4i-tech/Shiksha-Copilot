@@ -136,18 +136,20 @@ QuestionModel: TypeAlias = MatchingListQuestion | FourOptionsQuestion | TextQues
 
 class QuestionType(str, Enum):
     model: QuestionModel
+    description: str
 
-    MCQ = "MCQ", FourOptionsQuestion
-    FILL_BLANKS = "FILL_BLANKS", TextQuestion
-    ANSWER_VERY_SHORT = "ANSWER_VERY_SHORT", TextQuestion
-    ANSWER_SHORT = "ANSWER_SHORT", TextQuestion
-    ANSWER_MEDIUM = "ANSWER_MEDIUM", TextQuestion
-    ANSWER_LONG = "ANSWER_LONG", TextQuestion
-    MATCHING = "MATCHING", MatchingListQuestion
+    MCQ = "MCQ", FourOptionsQuestion, "These questions provide exactly four options, challenging students to select the correct answer from a set of alternatives"
+    FILL_BLANKS = "FILL_BLANKS", TextQuestion, "This type of question requires students to complete sentences or phrases by inserting the appropriate missing word(s). Use many underscores to denote missing word(s)."
+    ANSWER_VERY_SHORT = "ANSWER_VERY_SHORT", TextQuestion, "These questions expect a very brief response—a single word, a short phrase, or a concise sentence."
+    ANSWER_SHORT = "ANSWER_SHORT", TextQuestion, "Short answer questions require a concise yet complete response, typically in two or three sentences."
+    ANSWER_MEDIUM = "ANSWER_MEDIUM", TextQuestion, "These open-ended questions invite students to provide brief responses that are straightforward and to the point."
+    ANSWER_LONG = "ANSWER_LONG", TextQuestion, "Long answer questions require a detailed, well-structured response that spans four to five sentences."
+    MATCHING = "MATCHING", MatchingListQuestion, "Match the following - generate a CORRECTLY matched item-pair"
 
-    def __new__(cls, value, pydantic_model):
+    def __new__(cls, value, pydantic_model, description):
         obj = str.__new__(cls, value)
         obj._value_ = value
+        obj.description = description
         obj.model = pydantic_model
         return obj
 
@@ -242,16 +244,9 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
 
 
-class _GeneratedQuestionItem(BaseModel):
+class GeneratedQuestionItem(BaseModel):
+    unit_name: str
     type: QuestionType
     objective: str
     marks_per_question: Marking
     item: QuestionModel
-
-
-class AIGeneratedQuestionItem(_GeneratedQuestionItem):
-    ...
-
-
-class GeneratedQuestionItem(_GeneratedQuestionItem):
-    unit_name: str
