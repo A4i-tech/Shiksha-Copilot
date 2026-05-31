@@ -11,6 +11,7 @@ import pathlib
 from app.config import settings
 from app.models.presentation import ImageSearchResult, ImageSearchResults, YouTubeVideoResult
 from app.utils.storage import Storage
+from app.utils.utils import local_unique_id
 from fastapi import UploadFile
 import magic
 from pydantic import HttpUrl, validate_call
@@ -210,18 +211,10 @@ _DUMMY_CDN = "cdn.shiksha.local"
 
 
 def randomize_url(url: str, counter: int) -> str:
-    # key really does not matter here, wee aren't aiming for crypto-secure but rather 'random-enough'. determinism
-    # does not matter either - we just need to generate a sufficiently non-sequential stream of values. for instance,
-    # a stream such as ['xxea', 'xxeb', 'xxec'] is sequential (bad) - one char off and the llm has 'guessed' some other
-    # url mapping. the solution below works well for up to 65,536 generations, far more than the amount an agent
-    # would ever request during its runtime.
-    path = hashlib.blake2s(counter.to_bytes(2, "big"), key=b"shiksha-copilot", digest_size=4).hexdigest()
-
     # retain suffix (.jpg, .gif, etc.) - this is necessary for LLMs to reason about image type. for instance, a user
     # may make an explicit requirement to 'include GIFs in presentation' where the suffix would come handy.
     data = urlparse(url)
-    replacement = data.scheme + "://" + _DUMMY_CDN + "/" + path + pathlib.Path(data.path).suffix
-    return replacement
+    return data.scheme + "://" + _DUMMY_CDN + "/" + local_unique_id(counter) + pathlib.Path(data.path).suffix
 
 
 LibreOfficeOutputFormat = Literal["pdf", "html", "odp", "ppt", "pptx"]

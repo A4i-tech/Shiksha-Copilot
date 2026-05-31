@@ -137,21 +137,23 @@ QuestionModel: TypeAlias = MatchingListQuestion | FourOptionsQuestion | TextQues
 class QuestionType(str, Enum):
     model: QuestionModel
     display_name: str
+    description: str
 
-    MCQ = "MCQ", FourOptionsQuestion, "Multiple Choice Questions"
-    FILL_BLANKS = "FILL_BLANKS", TextQuestion, "Fill in the blanks"
-    ANSWER_VERY_SHORT = "ANSWER_VERY_SHORT", TextQuestion, "Very Short Answer Questions"
-    ANSWER_SHORT = "ANSWER_SHORT", TextQuestion, "Short Answer Questions"
-    ANSWER_MEDIUM = "ANSWER_MEDIUM", TextQuestion, "Answer the following questions"
-    ANSWER_LONG = "ANSWER_LONG", TextQuestion, "Long Answer Questions"
-    MATCHING = "MATCHING", MatchingListQuestion, "Match the Following"
-    GRAMMAR_MCQ = "GRAMMAR_MCQ", FourOptionsQuestion, "Grammar: Multiple Choice Questions"
-    GRAMMAR_FILL_BLANKS = "GRAMMAR_FILL_BLANKS", TextQuestion, "Grammar: Fill in the blanks"
-    GRAMMAR_EDITING = "GRAMMAR_EDITING", TextQuestion, "Grammar: Identify and correct the error"
+    MCQ = "MCQ", FourOptionsQuestion, "Multiple Choice Questions", "These questions provide exactly four options, challenging students to select the correct answer from a set of alternatives."
+    FILL_BLANKS = "FILL_BLANKS", TextQuestion, "Fill in the blanks", "This type of question requires students to complete sentences or phrases by inserting the appropriate missing word(s). Use underscores to denote missing word(s)."
+    ANSWER_VERY_SHORT = "ANSWER_VERY_SHORT", TextQuestion, "Very Short Answer Questions", "These questions expect a very brief response: a single word, a short phrase, or a concise sentence."
+    ANSWER_SHORT = "ANSWER_SHORT", TextQuestion, "Short Answer Questions", "Short answer questions require a concise yet complete response, typically in two or three sentences."
+    ANSWER_MEDIUM = "ANSWER_MEDIUM", TextQuestion, "Answer the following questions", "These open-ended questions invite students to provide brief responses that are straightforward and to the point."
+    ANSWER_LONG = "ANSWER_LONG", TextQuestion, "Long Answer Questions", "Long answer questions require a detailed, well-structured response that spans four to five sentences."
+    MATCHING = "MATCHING", MatchingListQuestion, "Match the Following", "Match the following: generate a correctly matched item pair."
+    GRAMMAR_MCQ = "GRAMMAR_MCQ", FourOptionsQuestion, "Grammar: Multiple Choice Questions", "Grammar MCQ: students select the grammatically correct alternative from four options."
+    GRAMMAR_FILL_BLANKS = "GRAMMAR_FILL_BLANKS", TextQuestion, "Grammar: Fill in the blanks", "Grammar fill-in-the-blank: students complete sentences using correct grammatical forms."
+    GRAMMAR_EDITING = "GRAMMAR_EDITING", TextQuestion, "Grammar: Identify and correct the error", "Grammar editing: students find and correct grammatical errors in given sentences."
 
-    def __new__(cls, value, pydantic_model, display_name):
+    def __new__(cls, value, pydantic_model, display_name, description):
         obj = str.__new__(cls, value)
         obj._value_ = value
+        obj.description = description
         obj.model = pydantic_model
         obj.display_name = display_name
         return obj
@@ -281,16 +283,9 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
 
 
-class _GeneratedQuestionItem(BaseModel):
+class GeneratedQuestionItem(BaseModel):
+    unit_name: str
     type: QuestionType
     objective: str
     marks_per_question: Marking
     item: QuestionModel
-
-
-class AIGeneratedQuestionItem(_GeneratedQuestionItem):
-    ...
-
-
-class GeneratedQuestionItem(_GeneratedQuestionItem):
-    unit_name: str
