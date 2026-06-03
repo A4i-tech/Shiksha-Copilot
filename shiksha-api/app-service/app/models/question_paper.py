@@ -31,9 +31,10 @@ def valid_marking(v: float | int) -> float:
         raise ValueError("must be a positive multiple of 0.5")
     return v
 
+_MARKING_DESC = "Must be a positive multiple of 0.5."
 Marking = Annotated[
     float,
-    Field(description="Must be a positive multiple of 0.5.", examples=[0.5, 1, 2, 3, 4, 5]),
+    Field(description=_MARKING_DESC, examples=[0.5, 1, 2, 3, 4, 5]),
     AfterValidator(valid_marking)
 ]
 
@@ -302,7 +303,7 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
     chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
-    total_marks: Marking
+    total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
     template: List[Template] = Field(..., description="Question distribution template specifying types and marks")
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
@@ -325,7 +326,7 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
     chapters: List[Chapter] = Field(..., min_length=1, description="List of chapters with learning outcomes and subtopics")
-    total_marks: Marking
+    total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
     marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
     template: List[Template] = Field(..., description="Base template for question types and structure")
