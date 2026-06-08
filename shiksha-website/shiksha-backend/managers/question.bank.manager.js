@@ -656,9 +656,10 @@ class QuestionBankManager extends BaseManager {
             title: chapter.title,
             index_path: chapterIndexPath,
             learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-            // Forward the DB-derived isGrammar flag so the LLM service detects
-            // grammar units from data, not from a "GRAMMAR: " title prefix.
+            // Forward the DB-derived isGrammar flag and grammar topics so the LLM
+            // service works from structured data, not from a "GRAMMAR: " title prefix.
             is_grammar: !!(chapter.is_grammar || chapter.isGrammar),
+            grammar_topics: chapter.grammar_topics || chapter.grammarTopics || [],
             subtopics: (chapter.subtopics || []).map((sub) => ({
               title: sub.title,
               index_path: sub.indexPath || sub.index_path || chapterIndexPath,
@@ -706,7 +707,6 @@ class QuestionBankManager extends BaseManager {
               title: unitName,
               index_path: sub.index_path || fc.index_path || "",
               learning_outcomes: sub.learning_outcomes || [],
-              is_grammar: unitName.startsWith("GRAMMAR: "),
               subtopics: [],
             });
             return;
@@ -720,7 +720,6 @@ class QuestionBankManager extends BaseManager {
               title: unitName,
               index_path: rawSub.indexPath || rawSub.index_path || chapter.indexPath || chapter.index_path || "",
               learning_outcomes: rawSub.learningOutcomes || rawSub.learning_outcomes || [],
-              is_grammar: unitName.startsWith("GRAMMAR: "),
               subtopics: [],
             });
             return;
@@ -731,7 +730,6 @@ class QuestionBankManager extends BaseManager {
           title: unitName,
           index_path: "",
           learning_outcomes: [],
-          is_grammar: unitName.startsWith("GRAMMAR: "),
           subtopics: [],
         });
       });

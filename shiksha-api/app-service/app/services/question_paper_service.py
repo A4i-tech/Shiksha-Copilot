@@ -137,15 +137,17 @@ class QuestionPaperService:
         When a slot with grammar_source_chapters is provided, generates a detailed
         instruction tying the grammar topic to the source textbook chapter content.
         """
-        # Grammar focus is driven entirely by the grammar chapters the user
-        # selected (DB-derived ``is_grammar`` flag) — no per-grade hardcoded topic
-        # map, and no title string matching (titles may be non-English). The
-        # synthetic "GRAMMAR: " label prefix, if present, is stripped for a clean
-        # topic name. When no grammar chapter is selected, no instruction is added.
+        # Grammar focus is driven entirely by DB data: the ``is_grammar`` flag
+        # identifies grammar chapters and the ``grammar_topics`` field supplies
+        # the topic names. No per-grade hardcoded map and no title parsing
+        # (titles may be non-English). When no grammar chapter is selected,
+        # nothing is added.
         grammar_units = [
-            ch.title.removeprefix("GRAMMAR: ").strip()
+            topic.strip()
             for ch in request.chapters
             if ch.is_grammar
+            for topic in (ch.grammar_topics or [])
+            if topic and topic.strip()
         ]
         if not grammar_units:
             return ""
