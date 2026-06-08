@@ -136,9 +136,9 @@ class QuestionPaperService:
     def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Optional[Dict[str, Any]] = None) -> str:
         """
         Returns a grammar focus instruction string when the slot has grammar context
-        (``grammar_source_chapters`` set on the slot or ``GRAMMAR:`` units in the
-        request). The DB-derived ``is_grammar`` flag on chapters drives the slot
-        construction, so no subject-name hardcoding is needed here.
+        (``grammar_source_chapters`` set on the slot or chapters flagged ``is_grammar``
+        in the request). The DB-derived ``is_grammar`` flag on chapters drives the slot
+        construction, so no subject-name hardcoding or title matching is needed here.
         When a slot with grammar_source_chapters is provided, generates a detailed
         instruction tying the grammar topic to the source textbook chapter content.
         """
@@ -146,11 +146,13 @@ class QuestionPaperService:
         topic_map = {int(grade): topic_list for grade, topic_list in topics.items()}
         topics_to_use = topic_map.get(request.grade, [])
 
-        # Extract GRAMMAR: prefixed units from request chapters
+        # Grammar units are identified by the DB-derived ``is_grammar`` flag, not
+        # by title string matching (titles may be non-English). The synthetic
+        # "GRAMMAR: " label prefix, if present, is stripped for a clean topic name.
         grammar_units = [
-            ch.title.replace("GRAMMAR: ", "").strip()
+            ch.title.removeprefix("GRAMMAR: ").strip()
             for ch in request.chapters
-            if ch.title.startswith("GRAMMAR: ")
+            if ch.is_grammar
         ]
         if grammar_units:
             topics_to_use = grammar_units

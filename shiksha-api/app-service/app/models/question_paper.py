@@ -257,11 +257,10 @@ class Chapter(BaseModel):
     learning_outcomes: List[str]
     subtopics: Optional[List[ChapterSubtopic]] = None
     grammar_source_chapters: Optional[List[str]] = None
-
-    @property
-    def is_grammar(self) -> bool:
-        """True when the chapter represents a grammar topic (DB ``isGrammar``)."""
-        return bool(self.grammar_source_chapters) or self.title.startswith("GRAMMAR: ")
+    # DB-derived ``isGrammar`` flag forwarded by the backend. Authoritative
+    # grammar signal — do not infer grammar-ness from the chapter title, which
+    # may be in any language (Kannada/Telugu/etc.).
+    is_grammar: bool = False
 
 
 class MarksDistribution(BaseModel):
