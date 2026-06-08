@@ -116,12 +116,6 @@ class MatchingListQuestion(BaseModel):
     difficulty: DifficultyType = "Average"
 
 
-class GrammarTextQuestion(BaseModel):
-    question: str
-    answer_key: str
-    difficulty: DifficultyType = "Average"
-
-
 # ==============================
 # SELF-DESCRIBING QUESTION TYPE
 # ==============================
@@ -180,13 +174,13 @@ class QuestionType(str, Enum):
     GRAMMAR_FILL_BLANKS = (
         "Grammar: Fill in the blanks with correct words/forms",
         "Grammar fill-in-the-blank: Students complete sentences using correct grammatical forms.",
-        GrammarTextQuestion,
+        TextQuestion,
         "Grammar: Fill in the blanks",
     )
     GRAMMAR_EDITING = (
         "Grammar: Identify and correct the error in the sentence",
         "Grammar editing: Students find and correct grammatical errors in given sentences.",
-        GrammarTextQuestion,
+        TextQuestion,
         "Grammar: Identify and correct the error",
     )
 
@@ -211,7 +205,7 @@ class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: int
-    questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion, GrammarTextQuestion]] = []
+    questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]] = []
 
 
 class QuestionBankResponse(BaseModel):

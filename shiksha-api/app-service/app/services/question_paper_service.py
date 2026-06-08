@@ -94,7 +94,6 @@ class QuestionPaperService:
         # Load question paper prompts
         qp_prompts_path = self.prompt_dir / "question_paper_prompts.yaml"
         blooms_path = self.prompt_dir / "blooms_taxonomy.yaml"
-        english_grammar_path = self.prompt_dir / "english_grammar_topics.yaml"
 
         prompts = {}
 
@@ -105,10 +104,6 @@ class QuestionPaperService:
         with open(blooms_path, "r", encoding="utf-8") as f:
             blooms_data = yaml.safe_load(f)
             prompts.update(blooms_data)
-
-        with open(english_grammar_path, "r", encoding="utf-8") as f:
-            grammar_data = yaml.safe_load(f)
-            prompts.update(grammar_data)
 
         grammar_prompts_path = self.prompt_dir / "grammar_prompt_templates.yaml"
         with open(grammar_prompts_path, "r", encoding="utf-8") as f:
@@ -142,25 +137,20 @@ class QuestionPaperService:
         When a slot with grammar_source_chapters is provided, generates a detailed
         instruction tying the grammar topic to the source textbook chapter content.
         """
-        topics = self.prompts.get("grammar_topics", {})
-        topic_map = {int(grade): topic_list for grade, topic_list in topics.items()}
-        topics_to_use = topic_map.get(request.grade, [])
-
-        # Grammar units are identified by the DB-derived ``is_grammar`` flag, not
-        # by title string matching (titles may be non-English). The synthetic
-        # "GRAMMAR: " label prefix, if present, is stripped for a clean topic name.
+        # Grammar focus is driven entirely by the grammar chapters the user
+        # selected (DB-derived ``is_grammar`` flag) — no per-grade hardcoded topic
+        # map, and no title string matching (titles may be non-English). The
+        # synthetic "GRAMMAR: " label prefix, if present, is stripped for a clean
+        # topic name. When no grammar chapter is selected, no instruction is added.
         grammar_units = [
             ch.title.removeprefix("GRAMMAR: ").strip()
             for ch in request.chapters
             if ch.is_grammar
         ]
-        if grammar_units:
-            topics_to_use = grammar_units
-
-        if not topics_to_use:
+        if not grammar_units:
             return ""
 
-        grammar_topic = "; ".join(topics_to_use)
+        grammar_topic = "; ".join(grammar_units)
 
         # If we have source chapter context, build a detailed teacher-style instruction
         source_chapters = (slot or {}).get("grammar_source_chapters", [])
