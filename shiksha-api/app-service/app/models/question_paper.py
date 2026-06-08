@@ -128,63 +128,74 @@ class GrammarTextQuestion(BaseModel):
 
 
 class QuestionType(str, Enum):
-    # value, description, pydantic_model
+    # value, description, pydantic_model, display_name
     MCQ = (
         "Four alternatives are given for each of the following questions, choose the correct alternative",
         "These questions provide exactly four options, challenging students to select the correct answer from a set of alternatives.",
         FourOptionsQuestion,
+        "Multiple Choice Questions",
     )
     FILL_BLANKS = (
         "Fill in the blanks with suitable words",
         "This type of question requires students to complete sentences or phrases by inserting the appropriate missing word(s).",
         TextQuestion,
+        "Fill in the blanks",
     )
     ANSWER_WORD = (
         "Answer the following in a word, phrase or sentence",
         "These questions expect a very brief response—a single word, a short phrase, or a concise sentence.",
         TextQuestion,
+        "Very Short Answer Questions",
     )
     ANSWER_SHORT = (
         "Answer the following in two or three sentences each",
         "Short answer questions require a concise yet complete response, typically in two or three sentences.",
         TextQuestion,
+        "Short Answer Questions",
     )
     ANSWER_GENERAL = (
         "Answer the following questions",
         "These open-ended questions invite students to provide brief responses that are straightforward and to the point.",
         TextQuestion,
+        "Answer the following questions",
     )
     ANSWER_LONG = (
         "Answer the following question in four or five sentences",
         "Long answer questions require a detailed, well-structured response that spans four to five sentences.",
         TextQuestion,
+        "Long Answer Questions",
     )
     MATCH_LIST = (
         "Match the following",
         "Generate a CORRECTLY matched item-pair",
         MatchingListQuestion,
+        "Match the Following",
     )
     GRAMMAR_MCQ = (
         "Grammar: Choose the correct option",
         "Grammar MCQ: Students select the grammatically correct alternative from four options.",
         FourOptionsQuestion,
+        "Grammar: Multiple Choice Questions",
     )
     GRAMMAR_FILL_BLANKS = (
         "Grammar: Fill in the blanks with correct words/forms",
         "Grammar fill-in-the-blank: Students complete sentences using correct grammatical forms.",
         GrammarTextQuestion,
+        "Grammar: Fill in the blanks",
     )
     GRAMMAR_EDITING = (
         "Grammar: Identify and correct the error in the sentence",
         "Grammar editing: Students find and correct grammatical errors in given sentences.",
         GrammarTextQuestion,
+        "Grammar: Identify and correct the error",
     )
 
-    def __new__(cls, value, description, pydantic_model):
+    def __new__(cls, value, description, pydantic_model, display_name):
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj.description = description
         obj._model = pydantic_model
+        obj.display_name = display_name
         return obj
 
     # Prompt/schema hint for LLM
