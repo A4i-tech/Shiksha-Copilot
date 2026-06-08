@@ -73,21 +73,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   showHeadingDropdown: boolean = false;
   hasSubtopics: boolean = false;
 
-  // Question types loaded from /question-types API, partitioned by GRAMMAR_ prefix.
-  // Falls back to hardcoded lists if API call fails.
-  aiStandardTypeNames: string[] = [
-    'Multiple Choice Questions',
-    'Short Answer Questions',
-    'Fill in the blanks',
-    'Long Answer Questions',
-    'Match the Following',
-    'Very Short Answer Questions',
-  ];
-  grammarTypeNames: string[] = [
-    'Grammar: Multiple Choice Questions',
-    'Grammar: Fill in the blanks',
-    'Grammar: Identify and correct the error',
-  ];
+  // Question types are the single source of truth in the backend, loaded from the
+  // /question-types API and partitioned by the GRAMMAR_ key prefix. No hardcoded
+  // fallback — the list is maintained in one place (shiksha-api QuestionType enum).
+  aiStandardTypeNames: string[] = [];
+  grammarTypeNames: string[] = [];
 
   // Configs
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
@@ -497,14 +487,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
-  // Fetches question types from /question-types, partitions by GRAMMAR_ key prefix.
-  // Keeps existing hardcoded defaults if the call fails so heading registration still works.
+  // Fetches question types from /question-types (the backend is the single source
+  // of truth) and partitions them by the GRAMMAR_ key prefix. No hardcoded fallback.
   private loadQuestionTypeNames(subject: string) {
     if (!subject) return;
     this.questionBankService.getQuestionTypes(subject).subscribe({
       next: (res: any) => {
         const list = Array.isArray(res?.data) ? res.data : [];
-        if (!list.length) return;
         const grammar: string[] = [];
         const standard: string[] = [];
         for (const qt of list) {
@@ -513,8 +502,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           if (!name) continue;
           (key.startsWith('GRAMMAR_') ? grammar : standard).push(name);
         }
-        if (standard.length) this.aiStandardTypeNames = standard;
-        if (grammar.length) this.grammarTypeNames = grammar;
+        this.aiStandardTypeNames = standard;
+        this.grammarTypeNames = grammar;
+      },
+      error: (err) => {
+        console.error('[QuestionBankGeneration] Failed to load question types', err);
+        this.aiStandardTypeNames = [];
+        this.grammarTypeNames = [];
       },
     });
   }
