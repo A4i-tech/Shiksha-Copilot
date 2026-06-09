@@ -547,40 +547,28 @@ class BaseGraphIndexRagOps(ABC):
             vector_store: Optional existing vector store
             **kwargs: Additional arguments for PropertyGraphIndex.from_existing
         """
-        try:
-            self.property_graph_store = property_graph_store
-            self.vector_store = vector_store
 
-            # Update storage context
-            if self.vector_store:
-                self.storage_context = StorageContext.from_defaults(
-                    property_graph_store=self.property_graph_store,
-                    vector_store=self.vector_store,
-                )
-            else:
-                self.storage_context = StorageContext.from_defaults(
-                    property_graph_store=self.property_graph_store,
-                )
+        # Update storage context
+        storage_context = StorageContext.from_defaults(property_graph_store=property_graph_store, vector_store=vector_store)
+        # Create index from existing stores
+        rag_index = PropertyGraphIndex.from_existing(
+            property_graph_store=property_graph_store,
+            vector_store=vector_store,
+            embed_model=self.emb_llm if self.embed_kg_nodes else None,
+            embed_kg_nodes=self.embed_kg_nodes,
+            callback_manager=self._callback_manager,
+            **kwargs,
+        )
 
-            # Create index from existing stores
-            self.rag_index = PropertyGraphIndex.from_existing(
-                property_graph_store=self.property_graph_store,
-                vector_store=self.vector_store,
-                embed_model=self.emb_llm if self.embed_kg_nodes else None,
-                embed_kg_nodes=self.embed_kg_nodes,
-                callback_manager=self._callback_manager,
-                **kwargs,
-            )
+        self.logger.info("Successfully created index from existing graph store")
+        # Setup default sub-retrievers if not already set (kept for backwards compatibility)
+        if not self.sub_retrievers:
+            self.sub_retrievers = []
 
-            # Setup default sub-retrievers if not already set (kept for backwards compatibility)
-            if not self.sub_retrievers:
-                self.sub_retrievers = []
-
-            self.logger.info("Successfully created index from existing graph store")
-
-        except Exception as e:
-            self.logger.error(f"Failed to create index from existing graph store: {e}")
-            raise
+        self.vector_store = vector_store
+        self.rag_index = rag_index
+        self.storage_context = storage_context
+        self.property_graph_store = property_graph_store
 
     async def ingest_networkx_graph_nodes(
         self,
