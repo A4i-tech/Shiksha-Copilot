@@ -1,13 +1,10 @@
 from typing import Any, Dict, Optional
 from llama_index.core import StorageContext, VectorStoreIndex
-from llama_index.vector_stores.azureaisearch import (
-    AzureAISearchVectorStore,
-    IndexManagement,
-)
+from llama_index.vector_stores.azureaisearch import AzureAISearchVectorStore, IndexManagement
 from azure.search.documents.indexes.aio import SearchIndexClient
 from azure.search.documents.aio import SearchClient
 from azure.core.credentials import AzureKeyCredential
-from azure.identity import DefaultAzureCredential
+from azure.identity.aio import DefaultAzureCredential
 from azure.core.exceptions import ResourceNotFoundError
 from rag_wrapper.base.base_vector_index_rag_ops import BaseVectorIndexRagOps
 
@@ -45,32 +42,23 @@ class AzureAISearchRagOps(BaseVectorIndexRagOps):
             **kwargs: Additional arguments passed to BaseRagOps (similarity_top_k, response_mode)
         """
         super().__init__(emb_llm, completion_llm, **kwargs)
-        self.search_service_endpoint = (
-            f"https://{search_service_name}.search.windows.net"
-        )
+        self.search_service_endpoint = f"https://{search_service_name}.search.windows.net"
         self.index_name = index_name
         self.api_key = api_key
         self.use_managed_identity = use_managed_identity
         self.vector_store_kwargs = vector_store_kwargs or {}
         self.metadata_fields = metadata_fields
 
-        # Initialize components as None - will be set up in initiate_index
-        self.vector_store = None
 
-    async def index_exists(
-        self,
-    ) -> bool:
+    async def index_exists(self) -> bool:
+        index_client = SearchIndexClient(endpoint=self.search_service_endpoint, credential=self._get_credentials())
         try:
-            index_client = SearchIndexClient(
-                endpoint=self.search_service_endpoint,
-                credential=self._get_credentials(),
-            )
-
             # This will throw ResourceNotFoundError if the index doesn't exist
             await index_client.get_index(self.index_name)
             return True
         except ResourceNotFoundError:
             return False
+
 
     async def initiate_index(self):
         """Initialize Azure AI Search vector store and load the RAG index only if it already exists."""
@@ -114,21 +102,14 @@ class AzureAISearchRagOps(BaseVectorIndexRagOps):
         # Index automatically persisted to Azure AI Search service - no action needed
         pass
 
+
     def _get_credentials(self):
-        # Set up authentication
         if self.use_managed_identity and not self.api_key:
-            # Use managed identity for secure authentication
             credential = DefaultAzureCredential()
-            self.logger.info(
-                "Using Managed Identity for Azure AI Search authentication"
-            )
+            self.logger.info("Using Managed Identity for Azure AI Search authentication")
         elif self.api_key:
-            # Use API key authentication
             credential = AzureKeyCredential(self.api_key)
             self.logger.info("Using API key for Azure AI Search authentication")
         else:
-            raise ValueError(
-                "Either provide an API key or enable managed identity authentication"
-            )
-
+            raise ValueError("Either provide an API key or enable managed identity authentication")
         return credential
