@@ -51,13 +51,13 @@ class AzureAISearchRagOps(BaseVectorIndexRagOps):
 
 
     async def index_exists(self) -> bool:
-        index_client = SearchIndexClient(endpoint=self.search_service_endpoint, credential=self._get_credentials())
-        try:
-            # This will throw ResourceNotFoundError if the index doesn't exist
-            await index_client.get_index(self.index_name)
-            return True
-        except ResourceNotFoundError:
-            return False
+        async with SearchIndexClient(endpoint=self.search_service_endpoint, credential=self._get_credentials()) as client:
+            try:
+                # This will throw ResourceNotFoundError if the index doesn't exist
+                await client.get_index(self.index_name)
+                return True
+            except ResourceNotFoundError:
+                return False
 
 
     async def initiate_index(self):
@@ -77,7 +77,7 @@ class AzureAISearchRagOps(BaseVectorIndexRagOps):
             client = SearchClient(endpoint=self.search_service_endpoint, index_name=self.index_name, credential=self._get_credentials())
 
         vector_store = AzureAISearchVectorStore(
-            search_or_index_client=client,
+            async_search_or_index_client=client,
             id_field_key="id",
             chunk_field_key="chunk",
             embedding_field_key="embedding",
