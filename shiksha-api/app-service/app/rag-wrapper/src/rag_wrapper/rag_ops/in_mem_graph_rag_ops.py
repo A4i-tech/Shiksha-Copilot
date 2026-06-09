@@ -6,11 +6,10 @@ for local/in-memory property graph operations.
 """
 
 import os
-import logging
-from typing import Any, List, Dict, Optional
+from typing import List, Optional
 
-from llama_index.core import StorageContext, PropertyGraphIndex
-from llama_index.core.indices import load_index_from_storage
+from llama_index.core import StorageContext
+from llama_index.core.indices import PropertyGraphIndex, load_index_from_storage
 from llama_index.core.graph_stores import SimplePropertyGraphStore
 from llama_index.core.llms import LLM
 from llama_index.core.schema import TransformComponent
@@ -41,21 +40,11 @@ class InMemGraphRagOps(BaseGraphIndexRagOps):
             persist_dir: Optional directory to persist the index
             **kwargs: Additional arguments passed to BaseGraphIndexRagOps
         """
-        super().__init__(
-            completion_llm=completion_llm,
-            emb_llm=emb_llm,
-            kg_extractors=kg_extractors,
-            **kwargs,
-        )
+        super().__init__(completion_llm=completion_llm, emb_llm=emb_llm, kg_extractors=kg_extractors, **kwargs)
         self.persist_dir = persist_dir or "./inmem_graph_storage"
-
-        # Initialize the simple property graph store
         self.property_graph_store = SimplePropertyGraphStore()
+        self.storage_context = StorageContext.from_defaults(property_graph_store=self.property_graph_store)
 
-        # Setup storage context
-        self.storage_context = StorageContext.from_defaults(
-            property_graph_store=self.property_graph_store
-        )
 
     async def persist_index(self):
         """Persist the property graph index to disk."""
@@ -71,49 +60,31 @@ class InMemGraphRagOps(BaseGraphIndexRagOps):
             self.logger.error(f"Failed to persist index: {e}")
             raise
 
+
     async def initiate_index(self):
         """Initialize the property graph index from existing storage if it exists."""
-        try:
-            if await self.index_exists():
-                # Load existing index from storage
-                storage_context = StorageContext.from_defaults(
-                    persist_dir=self.persist_dir,
-                )
+        if not await self.index_exists():
+            # Index doesn't exist, just setup the storage context
+            storage_context = StorageContext.from_defaults(property_graph_store=self.property_graph_store)
+            rag_index = None
+            property_graph_store = None
+            self.logger.info("Index doesn't exist, storage context initialized")
+        else:
+            # Load existing index from storage
+            storage_context = StorageContext.from_defaults(persist_dir=self.persist_dir)
+            rag_index = load_index_from_storage(storage_context, embed_model=self.emb_llm if self.embed_kg_nodes else None, llm=self.completion_llm, callback_manager=self._callback_manager)
+            self.logger.info(f"Loaded existing index from {self.persist_dir}")
 
-                self.rag_index = load_index_from_storage(
-                    storage_context,
-                    embed_model=self.emb_llm if self.embed_kg_nodes else None,
-                    llm=self.completion_llm,
-                    callback_manager=self._callback_manager,
-                )
-
-                self.storage_context = storage_context
-
-                # Extract the property graph store from the loaded index
-                if hasattr(self.rag_index, "property_graph_store"):
-                    self.property_graph_store = self.rag_index.property_graph_store
-                elif hasattr(self.storage_context, "property_graph_store"):
-                    self.property_graph_store = (
-                        self.storage_context.property_graph_store
-                    )
-                else:
-                    # Fallback: create a new property graph store if none found
-                    self.logger.warning(
-                        "No property graph store found in loaded index, creating new one"
-                    )
-                    self.property_graph_store = SimplePropertyGraphStore()
-
-                self.logger.info(f"Loaded existing index from {self.persist_dir}")
+            # Extract the property graph store from the loaded index
+            if isinstance(rag_index, PropertyGraphIndex):
+                property_graph_store = rag_index.property_graph_store
             else:
-                # Index doesn't exist, just setup the storage context
-                self.storage_context = StorageContext.from_defaults(
-                    property_graph_store=self.property_graph_store
-                )
-                self.logger.info("Index doesn't exist, storage context initialized")
+                property_graph_store = storage_context.property_graph_store or SimplePropertyGraphStore()
 
-        except Exception as e:
-            self.logger.error(f"Failed to initiate index: {e}")
-            raise
+        self.storage_context = storage_context
+        self.rag_index = rag_index
+        self.property_graph_store = property_graph_store
+
 
     async def index_exists(self) -> bool:
         """Check if the property graph index exists in storage."""
@@ -124,8 +95,6 @@ class InMemGraphRagOps(BaseGraphIndexRagOps):
             return False
 
         if not os.path.isdir(self.persist_dir):
-            raise NotADirectoryError(
-                f"The path '{self.persist_dir}' is not a directory."
-            )
+            raise NotADirectoryError(f"The path '{self.persist_dir}' is not a directory.")
 
         return any(file.endswith(".json") for file in os.listdir(self.persist_dir))
