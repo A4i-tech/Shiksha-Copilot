@@ -55,32 +55,26 @@ class QdrantRagOps(BaseVectorIndexRagOps):
         create an in-memory RAG index. If the collection exists it will connect
         and load the VectorStoreIndex.
         """
-        try:
-            index_exists = await self.index_exists()
-            if not index_exists:
-                self.logger.info(f"Collection {self.collection_name} does not exist. Use create_index() to create a new collection.")
-                # Create the collection based on the embedding dimension
-                probe_vec = self.emb_llm.get_text_embedding("dim-probe")
-                dim = len(probe_vec)
-                self.qdrant_utils.create_collection(dim)
+        if not await self.index_exists():
+            self.logger.info(f"Collection {self.collection_name} does not exist. Use create_index() to create a new collection.")
+            # Create the collection based on the embedding dimension
+            dim = len(self.emb_llm.get_text_embedding("dim-probe"))
+            self.qdrant_utils.create_collection(dim)
 
-                # Set up storage context but don't create an index
-                vector_store_config = self.qdrant_utils.get_vector_store_config()
-                self.vector_store = QdrantVectorStore(**vector_store_config)
-                self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
-                return
-
-            # If collection exists, connect to it
+            # Set up storage context but don't create an index
+            vector_store = QdrantVectorStore(**self.qdrant_utils.get_vector_store_config())
+            storage_context = StorageContext.from_defaults(vector_store=vector_store)
+            rag_index = None
+        else:
             self.logger.info(f"Connecting to existing Qdrant collection: {self.collection_name}")
-
-            vector_store_config = self.qdrant_utils.get_vector_store_config()
-            self.vector_store = QdrantVectorStore(**vector_store_config)
-            self.storage_context = StorageContext.from_defaults(vector_store=self.vector_store)
-            self.rag_index = VectorStoreIndex.from_vector_store(vector_store=self.vector_store, embed_model=self.emb_llm,)
+            vector_store = QdrantVectorStore(**self.qdrant_utils.get_vector_store_config())
+            storage_context = StorageContext.from_defaults(vector_store=vector_store)
+            rag_index = VectorStoreIndex.from_vector_store(vector_store=vector_store, embed_model=self.emb_llm,)
             self.logger.info(f"Successfully connected to existing Qdrant collection: {self.collection_name}")
-        except Exception as e:
-            self.logger.error(f"Failed to initialize Qdrant RAG operations: {e}")
-            raise
+
+        self.vector_store = vector_store
+        self.storage_context = storage_context
+        self.rag_index = rag_index
 
 
     async def persist_index(self):
