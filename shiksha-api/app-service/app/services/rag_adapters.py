@@ -143,7 +143,6 @@ class InMemRagOpsAdapter(BaseRagAdapter):
         Initiate the index by downloading files from blob storage if needed.
         """
         if await self.index_exists():
-            logger.debug(f"Index already exists at: {self.persist_dir}")
             return
 
         logger.info(f"Downloading RAG index from blob storage: {self.index_path}")
@@ -167,9 +166,8 @@ class InMemRagOpsAdapter(BaseRagAdapter):
             except OSError as e:
                 raise RuntimeError(f"Failed to copy legacy vector store to {new_vs_path} (disk full?): {e}") from e
 
-        logger.info(f"Downloaded {len(downloaded_file_paths)} index files")
         file_paths_str = "\n".join(downloaded_file_paths)
-        logger.info(f"Downloaded RAG index files: {file_paths_str}")
+        logger.info(f"Downloaded {len(downloaded_file_paths)} RAG index files: {file_paths_str}")
 
     async def cleanup(self) -> None:
         """Clean up downloaded index files."""
