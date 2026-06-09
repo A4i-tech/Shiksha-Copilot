@@ -76,20 +76,24 @@ class AzureAISearchRagOps(BaseVectorIndexRagOps):
             im = IndexManagement.VALIDATE_INDEX
             client = SearchClient(endpoint=self.search_service_endpoint, index_name=self.index_name, credential=self._get_credentials())
 
-        vector_store = AzureAISearchVectorStore(
-            async_search_or_index_client=client,
-            id_field_key="id",
-            chunk_field_key="chunk",
-            embedding_field_key="embedding",
-            doc_id_field_key="doc_id",
-            metadata_string_field_key="metadata",
-            filterable_metadata_field_keys=self.metadata_fields,
-            index_management=im,
-            embedding_dimensionality=1536,  # Default for OpenAI embeddings
-            **vector_store_config
-        )
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        rag_index = VectorStoreIndex.from_documents([], storage_context=storage_context, embed_model=self.emb_llm)
+        try:
+            vector_store = AzureAISearchVectorStore(
+                async_search_or_index_client=client,
+                id_field_key="id",
+                chunk_field_key="chunk",
+                embedding_field_key="embedding",
+                doc_id_field_key="doc_id",
+                metadata_string_field_key="metadata",
+                filterable_metadata_field_keys=self.metadata_fields,
+                index_management=im,
+                embedding_dimensionality=1536,  # Default for OpenAI embeddings
+                **vector_store_config
+            )
+            storage_context = StorageContext.from_defaults(vector_store=vector_store)
+            rag_index = VectorStoreIndex.from_documents([], storage_context=storage_context, embed_model=self.emb_llm)
+        except Exception:
+            await client.close()
+            raise
 
         self.logger.info(f"Successfully connected to existing Azure AI Search index: {self.index_name}")
         self.vector_store = vector_store
