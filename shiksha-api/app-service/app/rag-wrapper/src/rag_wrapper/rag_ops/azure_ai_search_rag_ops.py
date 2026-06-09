@@ -1,6 +1,5 @@
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 from llama_index.core import StorageContext, VectorStoreIndex
-from llama_index.core.retrievers import VectorIndexRetriever
 from llama_index.vector_stores.azureaisearch import (
     AzureAISearchVectorStore,
     IndexManagement,
@@ -75,89 +74,40 @@ class AzureAISearchRagOps(BaseVectorIndexRagOps):
 
     async def initiate_index(self):
         """Initialize Azure AI Search vector store and load the RAG index only if it already exists."""
-        try:
-            # Check if index exists
-            index_exists = await self.index_exists()
-            if not index_exists:
-                self.logger.info(
-                    f"Index {self.index_name} does not exist. Use create_index() to create a new index."
-                )
-                # Set up storage context but don't create an index
-                client = SearchIndexClient(
-                    endpoint=self.search_service_endpoint,
-                    credential=self._get_credentials(),
-                )
+        # Check if index exists
+        vector_store_config = self.vector_store_kwargs.copy()
+        index_exists = await self.index_exists()
+        if not index_exists:
+            self.logger.info(f"Index {self.index_name} does not exist. Use create_index() to create a new index.")
+            im = IndexManagement.CREATE_IF_NOT_EXISTS
+            client = SearchIndexClient(endpoint=self.search_service_endpoint, credential=self._get_credentials())
+            vector_store_config = self.vector_store_kwargs.copy()
+            if "index_name" not in vector_store_config:
+                vector_store_config["index_name"] = self.index_name
+        else:
+            im = IndexManagement.VALIDATE_INDEX
+            client = SearchClient(endpoint=self.search_service_endpoint, index_name=self.index_name, credential=self._get_credentials())
 
-                vector_store_config = {
-                    "search_or_index_client": client,
-                    "id_field_key": "id",
-                    "chunk_field_key": "chunk",
-                    "embedding_field_key": "embedding",
-                    "doc_id_field_key": "doc_id",
-                    "metadata_string_field_key": "metadata",
-                    "filterable_metadata_field_keys": self.metadata_fields,
-                    "index_management": IndexManagement.CREATE_IF_NOT_EXISTS,
-                    "embedding_dimensionality": 1536,  # Default for OpenAI embeddings
-                    **self.vector_store_kwargs,
-                }
+        vector_store = AzureAISearchVectorStore(
+            search_or_index_client=client,
+            id_field_key="id",
+            chunk_field_key="chunk",
+            embedding_field_key="embedding",
+            doc_id_field_key="doc_id",
+            metadata_string_field_key="metadata",
+            filterable_metadata_field_keys=self.metadata_fields,
+            index_management=im,
+            embedding_dimensionality=1536,  # Default for OpenAI embeddings
+            **vector_store_config
+        )
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+        rag_index = VectorStoreIndex.from_documents([], storage_context=storage_context, embed_model=self.emb_llm)
 
-                if "index_name" not in vector_store_config:
-                    vector_store_config["index_name"] = self.index_name
+        self.logger.info(f"Successfully connected to existing Azure AI Search index: {self.index_name}")
+        self.vector_store = vector_store
+        self.storage_context = storage_context
+        self.rag_index = rag_index
 
-                self.vector_store = AzureAISearchVectorStore(**vector_store_config)
-                self.storage_context = StorageContext.from_defaults(
-                    vector_store=self.vector_store
-                )
-                return
-
-            # If index exists, connect to it
-            client = SearchClient(
-                endpoint=self.search_service_endpoint,
-                index_name=self.index_name,
-                credential=self._get_credentials(),
-            )
-
-            self.logger.info(
-                "Connecting to existing index with client type: %s", type(client)
-            )
-
-            # Initialize the Azure AI Search vector store
-            vector_store_config = {
-                "search_or_index_client": client,
-                "id_field_key": "id",
-                "chunk_field_key": "chunk",
-                "embedding_field_key": "embedding",
-                "doc_id_field_key": "doc_id",
-                "metadata_string_field_key": "metadata",
-                "filterable_metadata_field_keys": self.metadata_fields,
-                "index_management": IndexManagement.VALIDATE_INDEX,
-                "embedding_dimensionality": 1536,  # Default for OpenAI embeddings
-                **self.vector_store_kwargs,
-            }
-
-            self.vector_store = AzureAISearchVectorStore(**vector_store_config)
-
-            # Create storage context
-            self.storage_context = StorageContext.from_defaults(
-                vector_store=self.vector_store
-            )
-
-            # Load the existing index
-            self.rag_index = VectorStoreIndex.from_documents(
-                [],
-                storage_context=self.storage_context,
-                embed_model=self.emb_llm,
-            )
-
-            self.logger.info(
-                f"Successfully connected to existing Azure AI Search index: {self.index_name}"
-            )
-
-        except Exception as e:
-            self.logger.error(
-                f"Failed to initialize Azure AI Search RAG operations: {e}"
-            )
-            raise
 
     async def persist_index(self):
         """No-op as Azure AI Search automatically persists the index."""
