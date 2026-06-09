@@ -147,16 +147,12 @@ class InMemRagOpsAdapter(BaseRagAdapter):
             logger.info(f"Downloading RAG index from blob storage: {self.index_path}")
 
             try:
-                downloaded_file_paths = await self._blob_store.download_blobs_to_folder(
-                    prefix=self.index_path, target_folder=self.persist_dir
-                )
+                downloaded_file_paths = await self._blob_store.download_blobs_to_folder(prefix=self.index_path, target_folder=self.persist_dir)
             except ValueError as e:
                 raise RuntimeError(str(e)) from e
 
             if not downloaded_file_paths:
-                raise RuntimeError(
-                    f"No files downloaded for index path: {self.index_path}"
-                )
+                raise RuntimeError(f"No files downloaded for index path: {self.index_path}")
 
             # LlamaIndex expects 'default__vector_store.json', but older indices might only have 'vector_store.json'
             legacy_vs_path = os.path.join(self.persist_dir, "vector_store.json")
@@ -166,13 +162,9 @@ class InMemRagOpsAdapter(BaseRagAdapter):
                     shutil.copy(legacy_vs_path, new_vs_path)
                     logger.info("Copied legacy vector_store.json to default__vector_store.json for LlamaIndex compatibility")
                 except PermissionError as e:
-                    raise RuntimeError(
-                        f"Permission denied copying legacy vector store to {new_vs_path}: {e}"
-                    ) from e
+                    raise RuntimeError(f"Permission denied copying legacy vector store to {new_vs_path}: {e}") from e
                 except OSError as e:
-                    raise RuntimeError(
-                        f"Failed to copy legacy vector store to {new_vs_path} (disk full?): {e}"
-                    ) from e
+                    raise RuntimeError(f"Failed to copy legacy vector store to {new_vs_path} (disk full?): {e}") from e
 
             logger.info(f"Downloaded {len(downloaded_file_paths)} index files")
             file_paths_str = "\n".join(downloaded_file_paths)
