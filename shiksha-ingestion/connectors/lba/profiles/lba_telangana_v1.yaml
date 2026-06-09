@@ -1,0 +1,26 @@
+pipeline_id: lba_telangana_v1
+domain_profile: education_lba_telangana
+input_modality: document
+description: "Telangana LBA question extraction → MongoDB"
+steps:
+  - agent: markdown_cleaning
+  - agent: enrichment
+    config:
+      model: "openai:gpt-4o"
+      prompt_template: |
+        Extract all assessment questions from this Telangana state board textbook content.
+        For each question return a JSON object with EXACTLY these fields:
+          - answerType: one of "mcq", "fill_in_the_blank", "answer_very_short", "answer_short", "answer_medium", "answer_long", "matching"
+          - question: full question text
+          - options: list of option strings with labels e.g. ["A. Rome", "B. Delhi"] (MCQ only; empty list otherwise)
+          - value1: left-side item text (MATCHING only; omit for other types)
+          - value2: right-side matching text (MATCHING only; omit for other types)
+          - keyAnswer: correct answer string
+          - marks: marks allocated as integer (default 1 if not shown)
+          - unitName: chapter or lesson name visible near this question group
+          - objective: learning objective text if explicitly stated (omit if absent)
+
+        Return {"questions": [...]}. If no questions found return {"questions": []}.
+
+        Content:
+        {text}
