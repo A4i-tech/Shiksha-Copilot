@@ -20,7 +20,7 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-DATA_DIR = Path(__file__).parent / "data"
+DATA_DIR = Path(__file__).parent  # local_path in entries already starts with "data/"
 MANIFEST_PATH = Path(__file__).parent / "manifest.json"
 
 

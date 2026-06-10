@@ -46,6 +46,11 @@ class BaseLBAScraper(ABC):
                 try:
                     resp = await client.get(entry.source_url)
                     resp.raise_for_status()
+                    content_type = resp.headers.get("content-type", "")
+                    if "pdf" not in content_type.lower():
+                        entry.status = "failed"
+                        entry.error = f"Expected PDF, got content-type: {content_type}"
+                        continue
                     dest.write_bytes(resp.content)
                     entry.status = "downloaded"
                 except Exception as exc:
