@@ -17,7 +17,7 @@ def service():
         {
             "AZURE_OPENAI_API_KEY": "test-key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/",
-            "AZURE_OPENAI_API_VERSION": "2024-02-15-preview",
+            "AZURE_OPENAI_API_VERSION": "2025-03-01-preview",
             "AZURE_CHAT_DEPLOYMENT_NAME": "gpt-4",
             "AZURE_EMBED_MODEL": "text-embedding-ada-002",
         },

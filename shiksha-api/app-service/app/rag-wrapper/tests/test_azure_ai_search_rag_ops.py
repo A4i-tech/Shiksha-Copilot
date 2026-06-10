@@ -10,12 +10,12 @@ Required:
 - AZURE_OPENAI_ENDPOINT: OpenAI endpoint
 - AZURE_OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
 - AZURE_OPENAI_EMBEDDING_DEPLOYMENT: Embedding deployment name
-- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-4o)
+- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-5.1)
 - AZURE_OPENAI_COMPLETION_DEPLOYMENT: Completion deployment name
 
 Optional:
 - AZURE_SEARCH_API_KEY: Search API key (if not using managed identity)
-- AZURE_OPENAI_API_VERSION: API version (default: 2024-02-15-preview)
+- AZURE_OPENAI_API_VERSION: API version (default: 2025-03-01-preview)
 
 Note: Creates real data in Azure services and may incur costs.
 """

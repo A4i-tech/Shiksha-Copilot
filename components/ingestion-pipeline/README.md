@@ -135,7 +135,7 @@ extractor = LLMTextExtractor(
     api_key="your-openai-key",
     api_base="https://your-openai-endpoint",
     deployment_name="gpt-4-vision",
-    api_version="2024-02-15-preview"
+    api_version="2025-03-01-preview"
 )
 
 text = extractor.extract_text(
@@ -227,7 +227,7 @@ toc_finder = TOCPageFinder(
     api_key="your-azure-openai-key",
     api_base="https://your-resource.openai.azure.com/",
     api_version="2023-03-15-preview",
-    deployment_name="gpt-4o"
+    deployment_name="gpt-5.1"
 )
 
 # Find all consecutive TOC pages
@@ -300,7 +300,7 @@ toc_extractor = TableOfContentsExtractor(
     api_key="your-key",
     api_base="your-endpoint",
     deployment_name="gpt-4-vision",
-    api_version="2024-02-15-preview"
+    api_version="2025-03-01-preview"
 )
 
 toc = toc_extractor.extract_table_of_contents(
