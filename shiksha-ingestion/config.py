@@ -14,8 +14,8 @@ class IngestionSettings(BaseSettings):
     azure_openai_endpoint: str = Field(description="Azure OpenAI endpoint URL, e.g. https://<resource>.openai.azure.com/")
     azure_openai_api_version: str = Field(description="Azure OpenAI API version, e.g. 2024-08-01-preview")
 
-    # Azure OpenAI — optional with defaults
-    azure_openai_model: str = Field(default="gpt-4o", description="Azure OpenAI chat deployment name")
+    # Azure OpenAI — required
+    azure_openai_model: str = Field(description="Azure OpenAI chat deployment name")
     azure_openai_embedding_model: str = Field(default="text-embedding-ada-002", description="Azure OpenAI embedding model name")
     azure_openai_embedding_deployment: str = Field(default="text-embedding-ada-002", description="Azure OpenAI embedding deployment name")
 

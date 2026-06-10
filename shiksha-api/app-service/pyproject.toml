@@ -17,7 +17,6 @@ pyyaml = "^6.0.1"
 azure-ai-translation-text = "^1.0.1"
 aiohttp = "^3.13.5"
 vellm-rag-wrapper = { path = "app/rag-wrapper", develop = true }
-autogen-ext = { extras = ["azure", "openai"], version = "^0.6.4" }
 pydantic-settings = "^2.14.1"
 fastmcp = "^3.2.4"
 langdetect = "^1.0.9"
