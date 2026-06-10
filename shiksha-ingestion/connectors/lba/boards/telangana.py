@@ -101,18 +101,32 @@ class TelanganaScraperFromHTML:
 
 
 # Confirmed-working PDF URLs on SCERT Telangana (verified via HEAD requests).
-# Pattern: https://scert.telangana.gov.in/pdf/publication/ebooks2019/<grade>th class <subject> <medium>.pdf
-# Only grades 5-7 maths confirmed available; other subjects/grades return HTML 404.
+# Two patterns in use:
+#   Maths:  {grade}th class maths {medium}.pdf   — grades 5-7
+#   Social: {grade}th social {medium}.pdf         — grades 6-10
+# Science/English not available on ebooks2019. 10th social TM not found.
+# Add entries here as more URLs are discovered.
 PDF_BASE = f"{BASE_URL}/pdf/publication/ebooks2019"
 
-# (grade, subject, medium_label, medium_key)
+# (grade, subject, url_filename, medium_key)
 _CONFIRMED_PDFS: list[tuple[int, str, str, str]] = [
-    (5, "maths", "em", "english"),
-    (5, "maths", "tm", "telugu"),
-    (6, "maths", "em", "english"),
-    (6, "maths", "tm", "telugu"),
-    (7, "maths", "em", "english"),
-    (7, "maths", "tm", "telugu"),
+    # Maths — pattern: "{grade}th class maths {medium}.pdf"
+    (5,  "maths", "5th%20class%20maths%20em.pdf", "english"),
+    (5,  "maths", "5th%20class%20maths%20tm.pdf", "telugu"),
+    (6,  "maths", "6th%20class%20maths%20em.pdf", "english"),
+    (6,  "maths", "6th%20class%20maths%20tm.pdf", "telugu"),
+    (7,  "maths", "7th%20class%20maths%20em.pdf", "english"),
+    (7,  "maths", "7th%20class%20maths%20tm.pdf", "telugu"),
+    # Social Studies — pattern: "{grade}th social {medium}.pdf"
+    (6,  "social_studies", "6th%20social%20em.pdf", "english"),
+    (6,  "social_studies", "6th%20social%20tm.pdf", "telugu"),
+    (7,  "social_studies", "7th%20social%20em.pdf", "english"),
+    (7,  "social_studies", "7th%20social%20tm.pdf", "telugu"),
+    (8,  "social_studies", "8th%20social%20em.pdf", "english"),
+    (8,  "social_studies", "8th%20social%20tm.pdf", "telugu"),
+    (9,  "social_studies", "9th%20social%20em.pdf", "english"),
+    (9,  "social_studies", "9th%20social%20tm.pdf", "telugu"),
+    (10, "social_studies", "10th%20social%20em.pdf", "english"),
 ]
 
 
@@ -126,8 +140,8 @@ class TelanganaScraperLive(BaseLBAScraper):
 
     async def discover_pdfs(self) -> list[PDFEntry]:
         entries: list[PDFEntry] = []
-        for grade, subject, med_label, med_key in _CONFIRMED_PDFS:
-            url = f"{PDF_BASE}/{grade}th%20class%20{subject}%20{med_label}.pdf"
+        for grade, subject, filename, med_key in _CONFIRMED_PDFS:
+            url = f"{PDF_BASE}/{filename}"
             local_path = f"data/telangana/{grade}th/{med_key}/{subject}.pdf"
             entries.append(PDFEntry(
                 board="telangana",
