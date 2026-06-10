@@ -8,7 +8,7 @@ const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
   postToQuestionBankParts,
-  getQuestionTypesFromLLM,
+  getQuestionTypes,
 } = require("../services/question.bank.bot.service");
 const BaseManager = require("./base.manager");
 const mongoose = require("mongoose");
@@ -646,9 +646,7 @@ class QuestionBankManager extends BaseManager {
         console.warn("[Manager] Chapter lookup failed:", aggErr.message);
       }
 
-      // 1. Prepare Base Chapters (From DB — grammar chapters now have real records).
-      // Subtopic index_path takes precedence over chapter index_path when present
-      // (mirrors pre-DB-migration behaviour Soumabha flagged in PR #52).
+      // Prepare base chapters
       let formattedChapters = chapterData?.length
         ? chapterData.map((chapter) => {
           const chapterIndexPath = chapter.indexPath || chapter.index_path || "";
@@ -656,8 +654,6 @@ class QuestionBankManager extends BaseManager {
             title: chapter.title,
             index_path: chapterIndexPath,
             learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-            // Forward the DB-derived isGrammar flag and grammar topics so the LLM
-            // service works from structured data, not from a "GRAMMAR: " title prefix.
             is_grammar: !!(chapter.is_grammar || chapter.isGrammar),
             grammar_topics: chapter.grammar_topics || chapter.grammarTopics || [],
             subtopics: (chapter.subtopics || []).map((sub) => ({
@@ -688,12 +684,9 @@ class QuestionBankManager extends BaseManager {
         }
       });
 
-      // Inject Missing Units (fallback for units referenced in marks distribution but not fetched by ID).
-      // Three-step resolution (restored after Soumabha's regression note on PR #52):
-      //   1. unit matches a top-level chapter title → already in formattedChapters, skip
-      //   2. unit matches a subtopic title in formattedChapters → inject top-level entry using subtopic's index_path (subtopic.index_path falls back to parent's at build time)
-      //   3. unit matches a subtopic title in raw chapterData (chapter not in formattedChapters) → inject inheriting parent's index_path
-      //   4. otherwise → inject with empty index_path so RAG falls back to direct generation
+      // Inject units referenced in marks distribution but not fetched by ID,
+      // resolving each against chapter and subtopic titles before falling back
+      // to an empty index_path.
       const lower = (s) => (s || "").toLowerCase();
       requiredUnits.forEach(unitName => {
         const u = lower(unitName);
@@ -827,7 +820,7 @@ class QuestionBankManager extends BaseManager {
 
   async getQuestionTypes(subject) {
     try {
-      const response = await getQuestionTypesFromLLM(subject);
+      const response = await getQuestionTypes(subject);
       return formatApiReponse(true, "", response.data);
     } catch (err) {
       return formatApiReponse(false, err?.message, err);

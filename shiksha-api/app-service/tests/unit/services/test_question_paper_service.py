@@ -80,24 +80,23 @@ class TestFlattenExistingQuestions:
 
 
 class TestGetGrammarTopics:
-    """Tests for _get_grammar_topics (DB-driven: is_grammar flag + grammar_topics)."""
+    """Tests for _get_grammar_topics method."""
 
-    def test_grammar_topics_from_db_fields(self, service):
-        """Grammar focus is derived from the DB is_grammar flag and grammar_topics
-        field — not from the chapter title (which may be in any language)."""
+    def test_grammar_topics_from_flag_and_topics(self, service):
+        """Grammar focus comes from the is_grammar flag and grammar_topics field,
+        not the chapter title (which may be in any language)."""
         service.prompts = {
             "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
             "grammar_context_prompt": "Grammar topic: {GRAMMAR_TOPIC}, Chapters: {CHAPTER_NAMES}",
         }
         request = MagicMock()
         request.chapters = [
-            # Title has no "GRAMMAR: " prefix — detection relies solely on the flag.
             Chapter(title="ಅಧ್ಯಾಯ ೩", index_path="", learning_outcomes=[],
                     is_grammar=True, grammar_topics=["Nouns", "Verbs"]),
             Chapter(title="Photosynthesis", index_path="", learning_outcomes=[]),
         ]
 
-        result = service._get_grammar_topics(request)
+        result = service._get_grammar_topics(request, {"grammar_source_chapters": []})
 
         assert "Nouns" in result
         assert "Verbs" in result
@@ -110,7 +109,7 @@ class TestGetGrammarTopics:
             Chapter(title="Algebra", index_path="", learning_outcomes=[]),
         ]
 
-        result = service._get_grammar_topics(request)
+        result = service._get_grammar_topics(request, {"grammar_source_chapters": []})
 
         assert result == ""
 

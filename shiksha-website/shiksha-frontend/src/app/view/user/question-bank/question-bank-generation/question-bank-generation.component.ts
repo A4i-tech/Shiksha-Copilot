@@ -73,9 +73,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   showHeadingDropdown: boolean = false;
   hasSubtopics: boolean = false;
 
-  // Question types are the single source of truth in the backend, loaded from the
-  // /question-types API and partitioned by the GRAMMAR_ key prefix. No hardcoded
-  // fallback — the list is maintained in one place (shiksha-api QuestionType enum).
   aiStandardTypeNames: string[] = [];
   grammarTypeNames: string[] = [];
 
@@ -487,8 +484,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
-  // Fetches question types from /question-types (the backend is the single source
-  // of truth) and partitions them by the GRAMMAR_ key prefix. No hardcoded fallback.
   private loadQuestionTypeNames(subject: string) {
     if (!subject) return;
     this.questionBankService.getQuestionTypes(subject).subscribe({

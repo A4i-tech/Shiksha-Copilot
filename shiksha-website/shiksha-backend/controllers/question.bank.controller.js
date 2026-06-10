@@ -148,7 +148,7 @@ class QuestionBankController extends BaseController {
 
   async getQuestionTypes(req, res) {
     try {
-      const { subject = '' } = req.query;
+      const { subject } = req.query;
       const result = await this.questionBankManager.getQuestionTypes(subject);
       return res.status(200).json(result);
     } catch (err) {
@@ -224,11 +224,7 @@ class QuestionBankController extends BaseController {
   async getGrammarTopics(req, res) {
     try {
       const { grade } = req.query;
-      const gradeNum = parseInt(grade);
-      if (!grade || isNaN(gradeNum) || gradeNum < 1 || gradeNum > 12) {
-        return res.status(400).json({ success: false, message: 'Invalid grade. Must be an integer between 1 and 12.' });
-      }
-      const result = await this.questionBankManager.getGrammarTopics(gradeNum);
+      const result = await this.questionBankManager.getGrammarTopics(grade);
       return res.status(200).json(result);
     } catch (err) {
       console.error('[Controller] getGrammarTopics error:', err.message);

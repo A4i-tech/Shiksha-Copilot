@@ -121,7 +121,7 @@ async function postToQuestionBankParts(payload) {
   }
 }
 
-async function getQuestionTypesFromLLM(subject) {
+async function getQuestionTypes(subject) {
   const apiUrl = `${llmBaseUrl}/question-paper/question-types?subject=${encodeURIComponent(subject)}`;
   try {
     logger.info("Sending request to get question types");
@@ -129,7 +129,7 @@ async function getQuestionTypesFromLLM(subject) {
     logger.info("Request successful");
     return response;
   } catch (error) {
-    logger.error("Error in getQuestionTypesFromLLM", {
+    logger.error("Error in getQuestionTypes", {
       message: error.message,
       stack: error.stack,
     });
@@ -142,5 +142,5 @@ module.exports = {
   postToQuestionBankBluePrint,
   postToQuestionBank,
   postToQuestionBankParts,
-  getQuestionTypesFromLLM,
+  getQuestionTypes,
 };

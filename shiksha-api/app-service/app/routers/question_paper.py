@@ -115,17 +115,12 @@ class QuestionTypeItem(BaseModel):
     name: str
 
 
-@router.get(
-    "/question-types",
-    response_model=List[QuestionTypeItem],
-    status_code=status.HTTP_200_OK,
-    summary="Get available question types for a subject",
-)
-async def get_question_types(subject: str = ""):
+@router.get("/question-types")
+async def get_question_types(subject: str) -> List[QuestionTypeItem]:
     """Return question types available for the given subject."""
     types = get_question_types_for_subject(subject)
     return [
-        {"key": qt.name, "value": qt.value, "name": qt.display_name}
+        QuestionTypeItem(key=qt.name, value=qt.value, name=qt.display_name)
         for qt in types
     ]
 

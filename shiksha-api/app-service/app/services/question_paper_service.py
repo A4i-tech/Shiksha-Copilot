@@ -128,20 +128,10 @@ class QuestionPaperService:
                     questions.append(f"{q.value1} :: {q.value2}")
         return [q for q in questions if q]
 
-    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Optional[Dict[str, Any]] = None) -> str:
-        """
-        Returns a grammar focus instruction string when the slot has grammar context
-        (``grammar_source_chapters`` set on the slot or chapters flagged ``is_grammar``
-        in the request). The DB-derived ``is_grammar`` flag on chapters drives the slot
-        construction, so no subject-name hardcoding or title matching is needed here.
-        When a slot with grammar_source_chapters is provided, generates a detailed
-        instruction tying the grammar topic to the source textbook chapter content.
-        """
-        # Grammar focus is driven entirely by DB data: the ``is_grammar`` flag
-        # identifies grammar chapters and the ``grammar_topics`` field supplies
-        # the topic names. No per-grade hardcoded map and no title parsing
-        # (titles may be non-English). When no grammar chapter is selected,
-        # nothing is added.
+    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Dict[str, Any]) -> str:
+        """Return a grammar focus instruction for the slot, or "" when no grammar
+        chapter is selected. Grammar chapters are identified by the ``is_grammar``
+        flag and their topics by ``grammar_topics``."""
         grammar_units = [
             topic.strip()
             for ch in request.chapters
@@ -154,19 +144,16 @@ class QuestionPaperService:
 
         grammar_topic = "; ".join(grammar_units)
 
-        # If we have source chapter context, build a detailed teacher-style instruction
-        source_chapters = (slot or {}).get("grammar_source_chapters", [])
+        source_chapters = slot["grammar_source_chapters"]
         if source_chapters:
             chapter_names = ", ".join(source_chapters)
-            template = self.prompts.get("grammar_context_prompt", "")
-            return template.format(
+            return self.prompts["grammar_context_prompt"].format(
                 GRAMMAR_TOPIC=grammar_topic,
                 GRAMMAR_TOPIC_UPPER=grammar_topic.upper(),
                 CHAPTER_NAMES=chapter_names,
             )
 
-        template = self.prompts.get("grammar_simple_prompt", "")
-        return template.format(GRAMMAR_TOPIC=grammar_topic)
+        return self.prompts["grammar_simple_prompt"].format(GRAMMAR_TOPIC=grammar_topic)
 
     def _get_unit_metadata(self, request: QuestionBankPartsGenerationRequest) -> Dict[str, Dict[str, Any]]:
         """
@@ -190,7 +177,8 @@ class QuestionPaperService:
                 metadata[subtopic.title] = {
                     "learning_outcomes": subtopic.learning_outcomes,
                     # Fallback to chapter index path if subtopic doesn't have specific one
-                    "index_path": resolved_path
+                    "index_path": resolved_path,
+                    "grammar_source_chapters": chapter.grammar_source_chapters or [],
                 }
         else:
             # Use chapters as units
@@ -296,7 +284,7 @@ class QuestionPaperService:
             meta = unit_metadata.get(unit_name)
             unit_los = meta["learning_outcomes"]
             index_path = meta["index_path"]
-            grammar_source_chapters = meta.get("grammar_source_chapters", [])
+            grammar_source_chapters = meta["grammar_source_chapters"]
 
             # Validate Index Path
             if not index_path:
@@ -310,9 +298,8 @@ class QuestionPaperService:
                     "learning_outcomes": unit_los,
                     "questions": batch,
                     "index_path": index_path,
+                    "grammar_source_chapters": grammar_source_chapters,
                 }
-                if grammar_source_chapters:
-                    slot["grammar_source_chapters"] = grammar_source_chapters
                 slots.append(slot)
 
         return slots
@@ -634,14 +621,7 @@ class QuestionPaperService:
                     f"unit='{slot['unit_name']}' | index_path='{index_path}'"
                 )
 
-                # Get Native/Qdrant adapter from cache; skip for empty/fallback paths
-                rag_adapter = None
-                if index_path and index_path != "EMPTY_INDEX_PATH_FALLBACK":
-                    try:
-                        rag_adapter = await self._get_or_create_rag_adapter(index_path)
-                    except Exception as e:
-                        logger.warning(f"RAG adapter init failed for '{index_path}', falling back to direct generation: {e}")
-
+                rag_adapter = await self._get_or_create_rag_adapter(index_path)
                 system_prompt = self._format_system_prompt(request, existing_flat, slot)
                 task = self._generate_questions_batch_async(system_prompt, slot, rag_adapter, j * 2)
                 tasks.append(task)

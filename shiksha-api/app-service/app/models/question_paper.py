@@ -251,12 +251,7 @@ class Chapter(BaseModel):
     learning_outcomes: List[str]
     subtopics: Optional[List[ChapterSubtopic]] = None
     grammar_source_chapters: Optional[List[str]] = None
-    # DB-derived ``isGrammar`` flag forwarded by the backend. Authoritative
-    # grammar signal — do not infer grammar-ness from the chapter title, which
-    # may be in any language (Kannada/Telugu/etc.).
     is_grammar: bool = False
-    # DB-derived ``grammarTopics`` — the grammar topic(s) this unit covers,
-    # supplied as structured data so the service never parses the title.
     grammar_topics: Optional[List[str]] = None
 
 
