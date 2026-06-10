@@ -312,38 +312,17 @@ describe("QuestionBankController", () => {
   });
 
   describe("getGrammarTopics", () => {
-    it("should return topics for a valid grade and pass numeric grade to manager", async () => {
+    it("should pass the validated grade to the manager", async () => {
+      // grade is validated/coerced upstream by validateGetGrammarTopics.
       const mockResult = { success: true, message: "Grammar topics retrieved", data: ["Tenses", "Prepositions"] };
       mockManager.getGrammarTopics = jest.fn().mockResolvedValue(mockResult);
-      mockReq.query = { grade: "6" };
+      mockReq.query = { grade: 6 };
 
       await controller.getGrammarTopics(mockReq, mockRes);
 
       expect(mockManager.getGrammarTopics).toHaveBeenCalledWith(6);
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should reject non-numeric grade", async () => {
-      mockReq.query = { grade: "abc" };
-
-      await controller.getGrammarTopics(mockReq, mockRes);
-
-      expect(mockManager.getGrammarTopics).not.toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: "Invalid grade. Must be an integer between 1 and 12.",
-      });
-    });
-
-    it("should reject out-of-range grade", async () => {
-      mockReq.query = { grade: "13" };
-
-      await controller.getGrammarTopics(mockReq, mockRes);
-
-      expect(mockManager.getGrammarTopics).not.toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
     it("should sanitize errors and return 500 when manager throws", async () => {
