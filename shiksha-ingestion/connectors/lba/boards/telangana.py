@@ -100,15 +100,53 @@ class TelanganaScraperFromHTML:
         return entries
 
 
+# Known PDF URL pattern: https://scert.telangana.gov.in/pdf/publication/ebooks2019/<code>.pdf
+# Code = <grade><medium_code>_<subject_code>
+# Medium codes: TM = Telugu, EM = English
+# Subject codes: MAT, SCI, SOC, ENG
+# Grade 5 has no Science/Social (only Maths + English)
+PDF_BASE = f"{BASE_URL}/pdf/publication/ebooks2019"
+
+_SUBJECT_CODE = {
+    "maths": "MAT",
+    "science": "SCI",
+    "social_studies": "SOC",
+    "english": "ENG",
+}
+_MEDIUM_CODE = {"telugu": "TM", "english": "EM"}
+
+# Subjects available per grade
+_GRADE_SUBJECTS: dict[int, list[str]] = {
+    5: ["maths", "english"],
+    6: ["maths", "science", "social_studies", "english"],
+    7: ["maths", "science", "social_studies", "english"],
+    8: ["maths", "science", "social_studies", "english"],
+    9: ["maths", "science", "social_studies", "english"],
+    10: ["maths", "science", "social_studies", "english"],
+}
+
+
 class TelanganaScraperLive(BaseLBAScraper):
-    """Live scraper — uses Playwright to fetch the page, then delegates to TelanganaScraperFromHTML."""
+    """Builds PDF entries from known Telangana SCERT URL pattern.
+
+    Avoids Playwright dependency — the SCERT page uses encrypted params
+    that redirect to home; PDF URLs follow a stable pattern instead.
+    """
 
     async def discover_pdfs(self) -> list[PDFEntry]:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page()
-            await page.goto(EBOOKS_URL, wait_until="networkidle", timeout=60_000)
-            html = await page.content()
-            await browser.close()
-
-        return TelanganaScraperFromHTML(html).parse()
+        entries: list[PDFEntry] = []
+        for grade, subjects in _GRADE_SUBJECTS.items():
+            for subject in subjects:
+                for medium in ("telugu", "english"):
+                    code = f"{grade}{_MEDIUM_CODE[medium]}_{_SUBJECT_CODE[subject]}"
+                    url = f"{PDF_BASE}/{code}.pdf"
+                    local_path = f"data/telangana/{grade}th/{medium}/{subject}.pdf"
+                    entries.append(PDFEntry(
+                        board="telangana",
+                        grade=grade,
+                        subject=subject,
+                        medium=medium,
+                        source_url=url,
+                        local_path=local_path,
+                    ))
+        return entries
