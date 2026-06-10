@@ -29,24 +29,40 @@ Content:
 
 
 async def _pdf_to_markdown(pdf_path: Path) -> str:
+    # Try OmniIngest first; fall back to pymupdf for direct text extraction
     try:
         from omni_ingest.agent.cleaning import MarkdownCleaningAgent
         from omni_ingest.core.model import IngestionContext
         agent = MarkdownCleaningAgent()
         ctx = IngestionContext(resource=pdf_path, domain_profile="education_lba")
         await agent.run(ctx)
-        return ctx.text or ""
+        if ctx.text:
+            return ctx.text
+    except Exception:
+        pass
+
+    try:
+        import fitz  # pymupdf
+        doc = fitz.open(str(pdf_path))
+        pages = [page.get_text() for page in doc]
+        doc.close()
+        return "\n\n".join(pages)
     except Exception as exc:
-        log.warning("OmniIngest markdown failed for %s: %s", pdf_path, exc)
+        log.warning("pymupdf extraction failed for %s: %s", pdf_path, exc)
         return ""
 
 
 async def _extract_questions(markdown: str, board: str) -> list[dict[str, Any]]:
     import os
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
+    from openai import AsyncAzureOpenAI
+    client = AsyncAzureOpenAI(
+        api_key=os.environ["AZURE_OPENAI_API_KEY"],
+        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+        api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-04-01-preview"),
+    )
+    deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
     resp = await client.chat.completions.create(
-        model="gpt-4o",
+        model=deployment,
         messages=[{"role": "user", "content": EXTRACTION_PROMPT.format(text=markdown[:8000])}],
         response_format={"type": "json_object"},
     )
