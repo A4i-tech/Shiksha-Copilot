@@ -82,7 +82,7 @@ if settings.debug:
 root_dir = pathlib.Path(__file__).resolve().parents[1]
 assets_dir = root_dir / "assets"
 
-with (root_dir / "config.yaml").open() as f:
+with (root_dir / "config.yaml").open(encoding="utf-8") as f:
     _data = yaml.safe_load(f)
 
 CAPTIONER_SYSTEM_PROMPT = Template(_data["captioner-system-prompt"].strip())
