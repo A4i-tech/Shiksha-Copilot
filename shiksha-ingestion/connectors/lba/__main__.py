@@ -58,8 +58,16 @@ async def _ingest(board: str) -> None:
     import os
     from motor.motor_asyncio import AsyncIOMotorClient
 
+    from pymongo.uri_parser import parse_uri
     mongo_uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017")
-    db_name = os.environ.get("MONGODB_DB", "shiksha-backend")
+    parsed = parse_uri(mongo_uri)
+    db_name = parsed.get("database") or os.environ.get("MONGODB_DB")
+    if not db_name:
+        raise ValueError(
+            "No database name found. Include it in MONGODB_URI "
+            "(e.g. mongodb://localhost:27017/shiksha-backend) "
+            "or set MONGODB_DB env var."
+        )
     client = AsyncIOMotorClient(mongo_uri)
     collection = client[db_name]["lba_questions"]
 
