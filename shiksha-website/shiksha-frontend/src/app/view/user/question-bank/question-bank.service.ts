@@ -236,7 +236,8 @@ export class QuestionBankService extends BaseRestService {
         params = params.set(key, String(value));
       }
     });
-    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params }).pipe(
+    const context = new HttpContext().set(LOADER_MESSAGE, 'Retrieving textbook questions...');
+    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params, context }).pipe(
       (source => new Observable<any[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
