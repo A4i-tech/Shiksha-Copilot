@@ -1,5 +1,5 @@
 <div class="select-wrapper" [formGroup]="formGroupTemp">
-  <label class="form-control-label" for="email-address" *ngIf="config.hideLabel ? false : true">
+  <label class="form-control-label" [for]="inputId" [class.sr-only]="config.hideLabel">
     {{ config.fieldName | translate }}
     <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span>
   </label>
@@ -7,7 +7,7 @@
     [ngClass]="config.hideLabel ? 'top-[9px]' : 'top-[39px]'">
     {{ config.placeHolderTxt | translate }}
   </span>
-  <ng-select [items]="dropDownValues" [ngClass]="config.isBackground && (dropDownCtrl?.disabled || config.disabled) ? 'with-background' : ''"
+  <ng-select [labelForId]="inputId" [items]="dropDownValues" [ngClass]="config.isBackground && (dropDownCtrl?.disabled || config.disabled) ? 'with-background' : ''"
     [style]="{ height: config.height }" [placeholder]="config.placeHolderTxt | translate"
     bindLabel="{{ config.bindLable ? config.bindLable : 'name' }}"
     bindValue="{{ config.bindValue ? config.bindValue : 'value' }}" [dropdownPosition]="'auto'"
