@@ -78,7 +78,7 @@ async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader
 
     await textbook.seek(0)
     try:
-        doc = pymupdf.open(stream=await textbook.read())
+        doc = await asyncio.to_thread(pymupdf.open, stream=await textbook.read())
     except pymupdf.FileDataError:
         return []
 
@@ -110,11 +110,15 @@ async def read_figures(storage: Storage, textbook: AsyncBufferedReader, out_dir:
     return figures
 
 
+def _to_markdown(data: bytes) -> str:
+    with pymupdf.open(stream=data) as doc:
+        return pymupdf4llm.to_markdown(doc)
+
+
 async def _transform(content: AsyncBufferedReader, mime: str) -> str | None:
     if mime == "application/pdf":
         await content.seek(0)
-        with pymupdf.open(stream=await content.read()) as doc:
-            return await asyncio.to_thread(pymupdf4llm.to_markdown, doc)
+        return await asyncio.to_thread(_to_markdown, await content.read())
     return None
 
 
