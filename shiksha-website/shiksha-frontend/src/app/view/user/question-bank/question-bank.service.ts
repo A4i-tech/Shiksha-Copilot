@@ -165,6 +165,7 @@ export class QuestionBankService extends BaseRestService {
     }
     return this.http.get<any>(`${this.baseUrl}/question-bank/meta/media`, { params }).pipe(map(resp => resp.data));
   }
+
   updateQuestionPaper(id: string, data: any): Observable<any> {
     // Use PUT or PATCH so the backend knows to update the existing record
     return this.http.put(`${this.baseUrl}/question-bank/${id}`, data);

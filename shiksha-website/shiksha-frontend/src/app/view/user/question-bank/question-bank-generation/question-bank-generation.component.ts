@@ -54,6 +54,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   hasSubtopics: boolean = false;
   sourceHelpOpen = false;
   pickerOpen = false;
+  aiStandardTypeNames: string[] = [];
+  grammarTypeNames: string[] = [];
 
   boardDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Board', fieldName: 'Board', bindLabel: 'board', bindValue: 'board', required: true, clearableOff: true };
   sourceGenerationDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', fieldName: 'Source', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'value', openOnSelect: true, hideLabel: true };
@@ -343,9 +345,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const board = this.f.board.value;
 
       // Extract details from selection
-      const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val.value);
-      const subjectName = selectedSubjectObj.name;
-      const subjectId = selectedSubjectObj.value;
+      const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val || opt.value === val.value);
+      const subjectName = selectedSubjectObj ? selectedSubjectObj.name : (val.name || val);
+      const subjectId = selectedSubjectObj ? selectedSubjectObj.value : (val.value || val);
+
+      this.loadQuestionTypeNames(subjectName);
 
       this.isLoadingQuestions = true;
 

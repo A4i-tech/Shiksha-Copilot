@@ -38,7 +38,7 @@ question_bank_parts_gen: |
       - No direct repetition (identical wording).
       - No reworded or slightly modified versions (even synonyms or restructured sentences).
       - No conceptual overlap (i.e., questions using the same method, formula, or reasoning).
-      - No computationally equivalent questions (e.g., “What is the sum of 250 + 150?” vs. “Find the total of 150 and 250”).
+      - No computationally equivalent questions (e.g., "What is the sum of 250 + 150?" vs. "Find the total of 150 and 250").
       - No identical real-world contexts (e.g., avoid using the same contextual scenario for similar computations).
 
       {GRAMMAR_TOPICS}
@@ -50,7 +50,7 @@ question_bank_parts_gen: |
       The user will provide board, medium, grade, subject, total marks, chapters, and unit-wise learning outcomes.
 
       ----------------------------------------------------------------------------------------
-      
+
       {BLOOM_TAXONOMY_GUIDE}
 
       ----------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ question_bank_parts_gen: |
         Use the provided verbs and sample stems to craft questions that are cognitively aligned with the objective.
 
       2. Utilize RAG Context:
-        Reference the relevant unit’s learning outcomes and textbook sections to ensure the questions are directly tied to the curriculum content.
+        Reference the relevant unit's learning outcomes and textbook sections to ensure the questions are directly tied to the curriculum content.
         Each question should clearly address a specific learning outcome from the designated chapter or unit.
 
       3. Higher-Order Thinking:
@@ -77,7 +77,7 @@ question_bank_parts_gen: |
       5. Uniqueness Enforcement:
         Ensure that every generated question is entirely new. No generated question should resemble any question in the EXISTING_QUESTIONS_JSON or any other generated question in wording, structure, or underlying concept.
         Confirm that there is no direct repetition, rewording, or conceptual overlap with any previously generated question.
-      
+
       6. Style Consistency:
         The newly generated questions will be integrated into the existing question bank JSON. Ensure that their style, language, and formatting align seamlessly with the existing questions, making it appear as if a single LLM request generated all questions.
 

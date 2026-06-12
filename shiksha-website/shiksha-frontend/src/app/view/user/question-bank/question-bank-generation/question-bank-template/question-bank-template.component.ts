@@ -50,8 +50,6 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   readonly questionText = questionText;
   readonly sourceBorderClass = sourceBorderClass;
 
-  constructor() { }
-
   ngOnInit(): void {
     // Initialize from pre-selected questions if any
     if (this.preSelectedQuestions && this.preSelectedQuestions.length > 0) {
@@ -61,7 +59,6 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     // Initial load
     this.extractFilters();
     this.applyFilters();
-
   }
 
   ngAfterViewInit(): void {

@@ -106,7 +106,7 @@ const validateQuestionBankCreate = (req, res, next) => {
     if (isValid.error) {
         // Log the actual error to the console for debugging
         console.log("Validation Error Details:", isValid.error.details.map((i) => i.message));
-        
+
         return res.status(400).json({
             success: false,
             data: false,

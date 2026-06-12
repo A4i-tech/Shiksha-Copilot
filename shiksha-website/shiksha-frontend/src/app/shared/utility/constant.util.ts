@@ -50,6 +50,59 @@ export const QUESTION_SOURCE = {
     LBA: 'Pre-generated Questions',
 } as const;
 
+export const QUESTION_TYPE = [
+    {
+        type: "MCQ",
+        name: "Objective Questions (MCQ)",
+        value: "Four alternatives are given for each of the following questions, choose the correct alternative"
+    },
+    {
+        type: "FILL_BLANKS",
+        name: "Fill in the blanks with suitable words",
+        value: "Fill in the blanks with suitable words"
+    },
+    {
+        type: "MATCHING",
+        name: "Match the following",
+        value: "Match the following"
+    },
+    {
+        type: "ANSWER_VERY_SHORT",
+        name: "Very Short Answer",
+        value: "Answer the following in a word, phrase or sentence"
+    },
+    {
+        type: "ANSWER_SHORT",
+        name: "Short Answer",
+        value: "Answer the following in two or three sentences each"
+    },
+    {
+        type: "ANSWER_MEDIUM",
+        name: "Answer the following questions",
+        value: "Answer the following questions"
+    },
+    {
+        type: "ANSWER_LONG",
+        name: "Long Answer",
+        value: "Answer the following question in four or five sentences"
+    },
+    {
+        type: "GRAMMAR_MCQ",
+        name: "Grammar: Multiple Choice Questions",
+        value: "Grammar: Choose the correct option"
+    },
+    {
+        type: "GRAMMAR_FILL_BLANKS",
+        name: "Grammar: Fill in the blanks",
+        value: "Grammar: Fill in the blanks with correct words/forms"
+    },
+    {
+        type: "GRAMMAR_EDITING",
+        name: "Grammar: Identify and correct the error",
+        value: "Grammar: Identify and correct the error in the sentence"
+    }
+]
+
 export const formatMarks = (marks: number) => String(marks).replace(/(?:^0)?\.5$/, '½');
 
 export const CCE_TYPE_MAPPER: any = {

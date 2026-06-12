@@ -778,7 +778,7 @@ class QuestionBankManager extends BaseManager {
 
   async getGrammarTopics(grade) {
     const chapters = await Chapter.find({ standard: grade, isGrammar: true, isDeleted: false }).lean();
-    const topics = chapters.flatMap(ch => ch.grammarTopics);
+    const topics = chapters.flatMap(ch => ch.grammarTopics || []);
     return formatApiReponse(true, 'Grammar topics retrieved', topics);
   }
 
