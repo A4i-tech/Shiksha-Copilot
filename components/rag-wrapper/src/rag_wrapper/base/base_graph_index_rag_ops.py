@@ -18,7 +18,6 @@ from llama_index.core import (
     Document,
     PropertyGraphIndex,
     get_response_synthesizer,
-    Settings,
 )
 from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.indices.prompt_helper import PromptHelper
@@ -95,7 +94,7 @@ class BaseGraphIndexRagOps(ABC):
         self.logger = logging.getLogger(__name__)
         self.token_counter = TokenCountingHandler()
         self._callback_manager = CallbackManager([self.token_counter])
-        Settings.prompt_helper = PromptHelper.from_llm_metadata(self.completion_llm.metadata)
+        self._prompt_helper = PromptHelper.from_llm_metadata(self.completion_llm.metadata)
 
         self._add_token_counter_to_llm(
             self.completion_llm
@@ -246,6 +245,7 @@ class BaseGraphIndexRagOps(ABC):
                         llm=self.completion_llm,
                         response_mode=self._get_response_mode(),
                         callback_manager=self._callback_manager,
+                        prompt_helper=self._prompt_helper
                     ),
                     "include_text": self.include_text,
                     "similarity_top_k": self.similarity_top_k,

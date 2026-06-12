@@ -12,16 +12,13 @@ from tenacity import (
 )
 
 from llama_index.core.chat_engine.types import ChatMode
-from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core import (
     QueryBundle,
     StorageContext,
     VectorStoreIndex,
     Document,
-    Settings,
     get_response_synthesizer,
 )
-from llama_index.core.indices.base import BaseIndex
 from llama_index.core.indices.prompt_helper import PromptHelper
 from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.schema import TransformComponent
@@ -78,7 +75,7 @@ class BaseVectorIndexRagOps(ABC):
         self.logger = logging.getLogger(__name__)
         self.token_counter = TokenCountingHandler()
         self._callback_manager = CallbackManager([self.token_counter])
-        Settings.prompt_helper = PromptHelper.from_llm_metadata(self.completion_llm.metadata)
+        self._prompt_helper = PromptHelper.from_llm_metadata(self.completion_llm.metadata)
 
     def _get_response_mode(self) -> ResponseMode:
         """Convert string response mode to ResponseMode enum."""
@@ -140,6 +137,7 @@ class BaseVectorIndexRagOps(ABC):
                         llm=self.completion_llm,
                         response_mode=self._get_response_mode(),
                         callback_manager=self._callback_manager,
+                        prompt_helper=self._prompt_helper
                     ),
                     "similarity_top_k": self.similarity_top_k,
                 }
