@@ -43,7 +43,7 @@ class InMemRagOps(BaseVectorIndexRagOps):
         storage_context = StorageContext.from_defaults(persist_dir=self.persist_dir)
         rag_index = load_index_from_storage(storage_context=storage_context, embed_model=self.emb_llm, callback_manager=self._callback_manager)
         if not isinstance(rag_index, VectorStoreIndex):
-            raise RuntimeError(f"Unexpected index type: {rag_index.__qualname__}")
+            raise RuntimeError(f"Unexpected index type: {type(rag_index).__qualname__}")
 
         self.logger.info("Successfully loaded existing index")
         self.storage_context = storage_context
