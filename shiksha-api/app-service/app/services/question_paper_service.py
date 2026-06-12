@@ -392,16 +392,12 @@ class QuestionPaperService:
                     raise RuntimeError("Did not retrieve a valid response from model")
                 return response.output_parsed.items
             else:
-                # Index Available -> RAG Generation.
-                # We deliberately do NOT inline the full JSON schema here — for long
-                # prompts (grammar + chapter context + few-shot) it can push the
-                # llama-index prompt_helper into negative chunk_size territory
-                # ("Chunk size -N is not positive"). The system prompt already
-                # constrains the JSON shape via templated rules + few-shot.
+                # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
                 response_content = await rag_adapter.chat_with_index(
-                    curr_message=user_message + "\n\nReturn ONLY a JSON object with an `items` array of question objects matching the slot rules above.",
+                    # rag-adapter does not support structured output, so we pass model json schema for now.
+                    curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
                     chat_history=chat_history,
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
