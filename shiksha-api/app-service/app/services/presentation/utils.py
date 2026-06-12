@@ -190,7 +190,7 @@ async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str,
         await f.flush()
         await f.seek(0)
         path = pathlib.Path(str(f.name))
-        mime = magic.from_file(path, mime=True)
+        mime = await asyncio.to_thread(magic.from_file, path, mime=True)
         if mime not in allowed_mimes: raise ValueError("Unexpected mime (%s)" % mime)
 
         final_name = f"{sha256.hexdigest()}{suffix}"
