@@ -14,15 +14,18 @@ export const colors: Map<number,any> = new Map([
 ])
 
 
+// Event background = `secondary`, text is white (see _dashboard_schedule.scss).
+// Each colour is darkened within its own hue to meet WCAG AA (>=4.5:1 vs white).
+// `primary` (event marker) matches the background colour.
 export const dashboardColors: Map<number,any> = new Map([
-	[1, {primary: '#00000', secondary: '#b600e4'}],
-    [2, {primary: '#00000', secondary: '#e4006b'}],
-    [3, {primary: '#00000', secondary: '#00e4a1'}],
-    [4, {primary: '#00000', secondary: 'var(--contrast-BLUE)'}],
-    [5, {primary: '#00000', secondary: 'var(--contrast-TEAL)'}],
-    [6, {primary: '#00000', secondary: 'var(--success-100)'}],
-    [7, {primary: '#00000', secondary: 'var(--primary-100)'}],
-    [8, {primary: '#00000', secondary: 'var(--secondary-100)'}],
-    [9, {primary: '#00000', secondary: 'var(--tertiary-100)'}],
-    [10, {primary: '#00000', secondary: 'var(--warn-100)'}]
+	[1, {primary: '#b600e4', secondary: '#b600e4'}],
+    [2, {primary: '#e4006b', secondary: '#e4006b'}],
+    [3, {primary: '#00845D', secondary: '#00845D'}],
+    [4, {primary: '#3772DD', secondary: '#3772DD'}],
+    [5, {primary: '#008192', secondary: '#008192'}],
+    [6, {primary: '#338626', secondary: '#338626'}],
+    [7, {primary: '#1565C0', secondary: '#1565C0'}],
+    [8, {primary: '#B65D34', secondary: '#B65D34'}],
+    [9, {primary: '#9058DE', secondary: '#9058DE'}],
+    [10, {primary: '#906F2D', secondary: '#906F2D'}]
 ])

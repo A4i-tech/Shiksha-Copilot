@@ -30,7 +30,7 @@
         class="w-28 h-28 relative"
         alt=""
       />
-      <p class="mt-4 text-content-50 text-center">
+      <p class="mt-4 text-content-60 text-center">
         {{ "Hello! I am here to assist you. Just type your question to get started!" | translate}}
       </p>
     </div>
@@ -69,7 +69,7 @@
                     {{ ref.title }}
                   </a>
                   <span *ngIf="!ref.url" class="font-medium text-content">{{ ref.title }}</span>
-                  <p *ngIf="ref.text && !ref.url" class="text-content-50 text-[11px] mt-0.5 leading-tight">{{ ref.text }}</p>
+                  <p *ngIf="ref.text && !ref.url" class="text-content-60 text-[11px] mt-0.5 leading-tight">{{ ref.text }}</p>
                 </div>
               </div>
             </details>
@@ -105,7 +105,7 @@
       <span class="dot"></span>
       <span class="dot"></span>
     </ng-container>
-    <span *ngIf="loadingStatus" class="text-xs text-content-50 ml-2 animate-pulse">{{ loadingStatus }}</span>
+    <span *ngIf="loadingStatus" class="text-xs text-content-60 ml-2 animate-pulse">{{ loadingStatus }}</span>
   </div>
   <div class="relative flex flex-col-reverse">
     <div class="absolute w-full  px-0 md:px-36" [ngClass]="type === 'general' ? 'bottom-[-65px] md:bottom-[-95px]' : 'bottom-[-65px] md:bottom-[-95px]'">
@@ -137,7 +137,7 @@
         </button>
       </div>
       <div class="flex items-center justify-center gap-1 py-1 mt-1" >
-      <small class="text-content-60" >{{'Daily chat limit: 20 messages per day' | translate }}. <span class="underline cursor-pointer text-warn" (click)="modalService.showChatbotSampleDialog = true; showInstructions=true"> {{'Sample Instructions' | translate}}</span> </small>
+      <small class="text-content-60" >{{'Daily chat limit: 20 messages per day' | translate }}. <span class="underline cursor-pointer text-primary" (click)="modalService.showChatbotSampleDialog = true; showInstructions=true"> {{'Sample Instructions' | translate}}</span> </small>
       </div>
     </div>
   </div>

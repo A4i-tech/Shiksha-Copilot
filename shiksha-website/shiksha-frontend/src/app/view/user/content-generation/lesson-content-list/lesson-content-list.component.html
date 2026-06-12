@@ -281,8 +281,8 @@
               (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
               class="w-full py-2 rounded"
               [ngClass]="{
-                'bg-[#A062F7]': item.isLesson,
-                'bg-[#70CF97]': !item.isLesson
+                'bg-[#8353E2]': item.isLesson,
+                'bg-[#117B34]': !item.isLesson
               }"
             >
               <span
@@ -300,7 +300,7 @@
                 </span>
               </ng-template>
             </button>
-            <button [hasPermission]="['power']" (click)="chat(item?._id, item?.lesson?.chapter?._id)" title="{{'Chatbot' | translate}}" *ngIf="item.isLesson && item.isCompleted" class="w-full text-sm border border-[#A062F7] text-[#A062F7] hover:bg-purple-50 py-[7px] rounded font-semibold">{{'Chatbot' | translate}}</button>
+            <button [hasPermission]="['power']" (click)="chat(item?._id, item?.lesson?.chapter?._id)" title="{{'Chatbot' | translate}}" *ngIf="item.isLesson && item.isCompleted" class="w-full text-sm border border-[#8353E2] text-[#8353E2] hover:bg-purple-50 py-[7px] rounded font-semibold">{{'Chatbot' | translate}}</button>
           </div>
       </ng-template>
     </div>
