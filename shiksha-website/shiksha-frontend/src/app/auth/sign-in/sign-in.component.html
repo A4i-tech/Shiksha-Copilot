@@ -1,4 +1,4 @@
-<div class="w-screen h-screen px-4 lg:px-0 bg-white">
+<main class="w-screen h-screen px-4 lg:px-0 bg-white">
 	<div class="flex w-full h-full  items-center sign-in-container ">
 		<div class="right lg:w-1/2 h-full hidden lg:flex flex-col items-center justify-evenly sign_in">
 			<div class="get_started">
@@ -10,8 +10,8 @@
 		</div>
 		<div class="left w-full lg:w-1/2 h-full flex flex-col">
 			<div class="flex items-center justify-between py-4 pl-2 md:pl-4 pr-4 md:pr-8">
-				<img class="ms-logo" src="assets/images/Microsoft_Logo.png" alt="">
-				<img class="s-logo" src="assets/images/SikshanaLogo.jpg" alt="">
+				<img class="ms-logo" src="assets/images/Microsoft_Logo.png" alt="Microsoft">
+				<img class="s-logo" src="assets/images/SikshanaLogo.jpg" alt="Sikshana Foundation">
 			</div>
 			<div class="flex justify-center mt-16">
 				<img src="assets/images/logo.svg" alt="" class="logo">
@@ -23,7 +23,7 @@
 					<p class="text-base text-shade">Please enter the phone number to continue</p>
 					<form class="mt-8">
 						<div class="mb-2 ">
-							<label for="email" class="block mb-2 text-sm font-medium text-[#424955] text-left ">Phone
+							<label for="mNumber" class="block mb-2 text-sm font-medium text-[#424955] text-left ">Phone
 								Number</label>
 
 							<div class="relative">
@@ -34,15 +34,16 @@
 									class="bg-gray-100  text-gray-900 text-sm rounded-lg   block  p-2.5 outline-none w-full pl-12"
 									placeholder="Enter Phone Number" [(ngModel)]="phoneNumber" name="userMobileNumber"
 									(keydown.enter)="onVerifyPhoneNumber()" (keypress)="checkLimit($event)"
-									(input)="clearErrorMsg()" autocomplete="off" #phone />
+									(input)="clearErrorMsg()" autocomplete="off" aria-label="Phone Number" #phone />
 							</div>
 
 							<p *ngIf="numberErrorMsg" class="text-error text-left">{{numberErrorMsg}}</p>
 						</div>
 
 						<div class="flex items-center gap-1 mb-4">
-							<input type="checkbox" [(ngModel)]="rememberMe" name="rememberMe">
-							<span class="text-sm text-[#424955]">Remember Me</span>
+							<input type="checkbox" id="rememberMe" [(ngModel)]="rememberMe" name="rememberMe"
+								aria-label="Remember Me">
+							<label for="rememberMe" class="text-sm text-[#424955]">Remember Me</label>
 						</div>
 
 						<button class="btn-primary w-full shadow-lg" (click)="onVerifyPhoneNumber()">Continue <img
@@ -60,15 +61,16 @@
 		</div>
 
 	</div>
-</div>
+</main>
 
 
 
 <!-- pop up modal  -->
-<div class="pop-up-container" [ngClass]="modalStatus? 'visible-modal':'hidden-modal'">
+<div class="pop-up-container" [ngClass]="modalStatus? 'visible-modal':'hidden-modal'"
+	(keydown.escape)="closeModal()" role="dialog" aria-modal="true" aria-label="Enter PIN">
 	<div class="backdrop"></div>
 	<form>
-		<div class="modal">
+		<div class="modal" cdkTrapFocus [cdkTrapFocusAutoCapture]="modalStatus">
 			<div class="close-btn p-1 hover:bg-shade-50 w-9 h-9 absolute top-3 md:top-6 right-6 cursor-pointer rounded-full"
 				(click)="closeModal()">
 				<img src="assets/icons/remove.svg" alt="close-modal" class="w-full h-full  hover:bg-shade-50">
@@ -77,7 +79,7 @@
 				<h2 class="md:text-3xl text-lg text-content font-semibold">Enter PIN</h2>
 				<p class=" text-[#323842] font-normal text-sm" *ngIf="otpTriggered">Please type the PIN we sent you into
 					your phone.</p>
-				<div>
+				<div role="group" aria-label="Enter PIN">
 					<ng-otp-input (onInputChange)="handeOtpChange($event)" [config]="otpInputConfig" #ngotp
 						[ngClass]="{'error':invalidOtp}"></ng-otp-input>
 				</div>

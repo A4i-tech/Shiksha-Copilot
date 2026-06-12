@@ -83,7 +83,7 @@ export class UtilityService {
    * @param message
    */
   showError(message: string) {
-    this.toastr.error(message);
+    this.toastr.error(message, '', { politeness: 'assertive' });
   }
 
   /**
