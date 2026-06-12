@@ -42,8 +42,6 @@ class InMemGraphRagOps(BaseGraphIndexRagOps):
         """
         super().__init__(completion_llm=completion_llm, emb_llm=emb_llm, kg_extractors=kg_extractors, **kwargs)
         self.persist_dir = persist_dir or "./inmem_graph_storage"
-        self.property_graph_store = SimplePropertyGraphStore()
-        self.storage_context = StorageContext.from_defaults(property_graph_store=self.property_graph_store)
 
 
     async def persist_index(self):
