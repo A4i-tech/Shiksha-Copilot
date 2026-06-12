@@ -1,3 +1,4 @@
+import io
 import mimetypes
 import time
 import traceback
@@ -127,8 +128,8 @@ class PresentationService:
             await self.jobs.update(job.id, {"status": "extracting_figures", "message": "Extracting figures from textbook"})
         elif job.status == "extracting_figures":
             await self.jobs.update(job.id, {"message": "Reading textbook and extracting figures"})
-            async with self.storage.read(self.storage.path("uploads", job.textbook_file)) as f:
-                stem = pathlib.Path(job.textbook_file).stem
+            stem = pathlib.Path(job.textbook_file).stem
+            async with self.planner_sem, self.storage.read(self.storage.path("uploads", job.textbook_file)) as f:
                 figures = await docparser.read_figures(self.storage, f, self.storage.path("out", stem, "figures"))
                 await self.jobs.update(job.id, {"metadata.analysis": {
                     "extraction_time": datetime.now().isoformat(),
@@ -138,7 +139,7 @@ class PresentationService:
                     await self.jobs.update(job.id, {"message": "Simplifying document"})
                     # we are deliberately storing transformation in out/stem/stem instead of out/stem/jobid - if we had
                     # computed transformation for this document during another job, we can skip recomputing for this job.
-                    transform_path = await docparser.transform(self.storage, job.textbook_file, f, self.storage.path("out", stem, stem))
+                    transform_path = await docparser.transform(self.storage, f, job.textbook_mime, self.storage.path("out", stem, stem))
                     await self.jobs.update(job.id, {"metadata.transform_path": transform_path})
             await self.jobs.update(job.id, {"status": "planning_structure"})
         elif job.status == "planning_structure":
@@ -172,7 +173,7 @@ class PresentationService:
                 await docparser.save_pptx(self.storage, prs, out_path)
             else:
                 async with self.storage.read(out_path) as f:
-                    prs = Presentation(f)
+                    prs = Presentation(io.BytesIO(await f.read()))
 
             outline = agent.PresentationOutline.model_validate(job.metadata["plan"]["outline"])
             metadata = job.metadata.get("design", {})
@@ -203,8 +204,9 @@ class PresentationService:
             await self.jobs.update(job.id, {"message": "Adding media"})
             stem = pathlib.Path(job.textbook_file).stem
             out_path = self.storage.path("out", stem, f"{job.id}.pptx")
-            async with self.finalizer_sem, self.storage.read(out_path) as f:
-                prs = Presentation(f)
+            async with self.finalizer_sem:
+                async with self.storage.read(out_path) as f:
+                    prs = Presentation(io.BytesIO(await f.read()))
 
                 metadata = job.metadata.get("finalize", {})
                 if not isinstance(metadata, dict):
@@ -221,7 +223,7 @@ class PresentationService:
             stem = pathlib.Path(job.textbook_file).stem
             out_path = self.storage.path("out", stem, f"{job.id}.pptx")
             async with self.storage.read(out_path) as f:
-                prs = Presentation(f)
+                prs = Presentation(io.BytesIO(await f.read()))
 
                 quality_score = 1.0
                 quality_issues = []
