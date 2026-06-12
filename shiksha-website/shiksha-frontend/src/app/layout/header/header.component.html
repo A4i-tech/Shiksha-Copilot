@@ -1,7 +1,7 @@
 <header
   class="fixed z-30 top-0 left-0 md:left-[270px] right-0 header shadow-md py-2 px-4 md:px-8 flex justify-between lg:justify-end items-center"
 >
-  <button class="p-2 rounded-md lg:hidden" (click)="openSidebar()">
+  <button type="button" [attr.aria-label]="'Open navigation menu' | translate" class="p-2 rounded-md lg:hidden" (click)="openSidebar()">
     <svg
       class="w-5 h-5 text-content-80"
       aria-hidden="true"

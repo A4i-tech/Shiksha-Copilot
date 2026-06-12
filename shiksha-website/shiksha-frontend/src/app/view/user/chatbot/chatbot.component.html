@@ -22,8 +22,8 @@
 <small>{{ 'You have a daily chat limit of 20 messages per day' | translate }}.</small> -->
 </div>
 </div>
-<section class="chat-wrapper px-4">
-  <div class="chat-container px-2 md:px-36 mb-4 md:mb-2 flex flex-col-reverse">
+<section class="chat-wrapper px-4" [attr.aria-label]="'Chat conversation' | translate">
+  <div class="chat-container px-2 md:px-36 mb-4 md:mb-2 flex flex-col-reverse" aria-live="polite">
     <div class="flex flex-col items-center relative top-[-40%]" *ngIf="messages.length === 0">
       <img
         src="assets/icons/chat-bot-empty.svg"
@@ -115,6 +115,7 @@
       >
         <textarea
           type="text"
+          [attr.aria-label]="'Message input' | translate"
           placeholder="{{ 'Send a message' | translate }}"
           class="chat-input"
           [(ngModel)]="chatValue"
@@ -128,6 +129,7 @@
         <button
           class="btn-primary p-1 rounded-full"
           type="submit"
+          [attr.aria-label]="'Send message' | translate"
           [disabled]="isLoading || !chatValue"
           (click)="sendMessage()"
         >

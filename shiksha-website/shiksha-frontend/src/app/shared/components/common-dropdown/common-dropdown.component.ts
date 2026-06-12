@@ -30,6 +30,8 @@ import { TranslateModule } from '@ngx-translate/core';
   ],
 })
 export class CommonDropdownComponent implements ControlValueAccessor {
+  private static nextId = 0;
+
   @Input() dropDownValues: any[] = [];
 
   @Input() config!: DropDownConfig;
@@ -39,6 +41,14 @@ export class CommonDropdownComponent implements ControlValueAccessor {
   selectedItem: any;
 
   @Input() mode!: string;
+
+  /** Unique id linking the ng-select input to its label for accessibility */
+  inputId = `common-dropdown-${CommonDropdownComponent.nextId++}`;
+
+  /** Accessible name for the dropdown: visible label, else placeholder text */
+  get ariaLabelText(): string {
+    return this.config?.labelTxt || this.config?.placeHolderTxt || '';
+  }
 
 
   /**
