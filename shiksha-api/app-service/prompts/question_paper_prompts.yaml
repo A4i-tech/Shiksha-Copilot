@@ -1,3 +1,14 @@
+grammar_question_types_guide: |
+  ## Grammar Question Type Guidelines
+
+  When generating questions of grammar types, follow these rules:
+
+  - **Grammar: Choose the correct option** — Provide exactly 4 grammatically distinct options. The `answer` field must match one option exactly.
+  - **Grammar: Fill in the blanks with correct words/forms** — The `question` field contains the sentence with `___`. The `keyAnswer` field contains the correct word/phrase.
+  - **Grammar: Identify and correct the error in the sentence** — The `question` field contains the erroneous sentence. The `keyAnswer` contains the corrected sentence and a brief explanation.
+
+  Ensure all grammar questions are drawn from the unit's grammar topics listed above.
+
 question_bank_parts_gen_retrieval_query_template: |
   Units: 
   {CHAPTERS}

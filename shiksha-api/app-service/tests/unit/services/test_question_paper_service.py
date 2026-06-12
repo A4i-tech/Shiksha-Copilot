@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from app.services.question_paper_service import QuestionPaperService
-from app.models.question_paper import QuestionType
+from app.models.question_paper import QuestionType, Chapter
 
 
 # Shared fixture to avoid recreating the service
@@ -82,24 +82,34 @@ class TestFlattenExistingQuestions:
 class TestGetGrammarTopics:
     """Tests for _get_grammar_topics method."""
 
-    def test_grammar_topics_for_english(self, service):
-        """Test grammar topics extraction for English."""
+    def test_grammar_topics_from_flag_and_topics(self, service):
+        """Grammar focus comes from the is_grammar flag and grammar_topics field,
+        not the chapter title (which may be in any language)."""
         service.prompts = {
-            "grammar_topics": {9: ["Nouns", "Verbs"], 10: ["Tenses", "Articles"]}
+            "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
+            "grammar_context_prompt": "Grammar topic: {GRAMMAR_TOPIC}, Chapters: {CHAPTER_NAMES}",
         }
-        request = MagicMock(subject="English", grade=9)
+        request = MagicMock()
+        request.chapters = [
+            Chapter(title="ಅಧ್ಯಾಯ ೩", index_path="", learning_outcomes=[],
+                    is_grammar=True, grammar_topics=["Nouns", "Verbs"]),
+            Chapter(title="Photosynthesis", index_path="", learning_outcomes=[]),
+        ]
 
-        result = service._get_grammar_topics(request)
+        result = service._get_grammar_topics(request, {"grammar_source_chapters": []})
 
         assert "Nouns" in result
         assert "Verbs" in result
 
-    def test_grammar_topics_for_non_english(self, service):
-        """Test grammar topics for non-English subjects."""
-        service.prompts = {"grammar_topics": {}}
-        request = MagicMock(subject="Mathematics", grade=10)
+    def test_no_grammar_topics_when_no_grammar_chapter(self, service):
+        """No grammar instruction is added when no chapter is flagged is_grammar."""
+        service.prompts = {"grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}"}
+        request = MagicMock()
+        request.chapters = [
+            Chapter(title="Algebra", index_path="", learning_outcomes=[]),
+        ]
 
-        result = service._get_grammar_topics(request)
+        result = service._get_grammar_topics(request, {"grammar_source_chapters": []})
 
         assert result == ""
 
@@ -150,8 +160,10 @@ class TestFormatSystemPrompt:
         """Test system prompt formatting."""
         service.prompts = {
             "question_bank_parts_gen": (
-                "Board: {BOARD}, Grade: {GRADE}, Subject: {SUBJECT}, "
-                "Chapters: {CHAPTERS}, Blooms: {QUESTION_BANK_BLOOM_TAXONOMY_GUIDE}"
+                "Board: {BOARD}, Medium: {MEDIUM}, Grade: {GRADE}, Subject: {SUBJECT}, "
+                "Total: {TOTAL_MARKS}, Chapters: {CHAPTERS}, LOs: {UNIT_WISE_LEARNING_OUTCOMES}, "
+                "Existing: {EXISTING_QUESTIONS_JSON}, Blooms: {QUESTION_BANK_BLOOM_TAXONOMY_GUIDE}, "
+                "Grammar: {GRAMMAR_TOPICS}"
             ),
             "blooms-taxonomy": {"general": "Test Blooms"},
         }
@@ -159,7 +171,7 @@ class TestFormatSystemPrompt:
         request = MagicMock(
             board="CBSE", grade=10, subject="Math", medium="English", total_marks=100
         )
-        slot = {"unit_name": "Chapter 1", "learning_outcomes": ["LO1"]}
+        slot = {"unit_name": "Chapter 1", "learning_outcomes": ["LO1"], "questions": [{"type": "MCQ", "count": 5, "marks": 1}]}
 
         result = service._format_system_prompt(request, [], slot)
 

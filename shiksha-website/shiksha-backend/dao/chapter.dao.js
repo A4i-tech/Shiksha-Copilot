@@ -79,6 +79,10 @@ class ChapterDao extends BaseDao {
 				ch.title ||
 				`Chapter ${ch.orderNumber || ch.chapterNumber}`,
 			subTopics: ch.subTopics,
+			indexPath: ch.indexPath || '',
+			isGrammar: ch.isGrammar || false,
+			grammarTopics: ch.grammarTopics || [],
+			grammarSourceChapters: ch.grammarSourceChapters || [],
 		}));
 	}
 

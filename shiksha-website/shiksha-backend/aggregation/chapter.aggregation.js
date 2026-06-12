@@ -92,6 +92,9 @@ class ChapterAggregation {
             title: "$topics",
             index_path: "$indexPath",
             learning_outcomes: "$learningOutcomes",
+            is_grammar: "$isGrammar",
+            grammar_source_chapters: "$grammarSourceChapters",
+            grammar_topics: "$grammarTopics",
             _id: 0,
             subtopics: {
               $map: {
@@ -177,6 +180,9 @@ class ChapterAggregation {
             title: "$topics",
             index_path: "$indexPath",
             learning_outcomes: 1,
+            is_grammar: "$isGrammar",
+            grammar_source_chapters: "$grammarSourceChapters",
+            grammar_topics: "$grammarTopics",
           },
         },
       ];

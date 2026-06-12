@@ -30,6 +30,7 @@ from app.models.question_paper import (
     QuestionTypeResponse,
     QuestionType,
     Template,
+    GRAMMAR_QUESTION_TYPES,
 )
 from app.config import settings
 
@@ -93,7 +94,6 @@ class QuestionPaperService:
         # Load question paper prompts
         qp_prompts_path = self.prompt_dir / "question_paper_prompts.yaml"
         blooms_path = self.prompt_dir / "blooms_taxonomy.yaml"
-        english_grammar_path = self.prompt_dir / "english_grammar_topics.yaml"
 
         prompts = {}
 
@@ -105,9 +105,11 @@ class QuestionPaperService:
             blooms_data = yaml.safe_load(f)
             prompts.update(blooms_data)
 
-        with open(english_grammar_path, "r", encoding="utf-8") as f:
-            grammar_data = yaml.safe_load(f)
-            prompts.update(grammar_data)
+        grammar_prompts_path = self.prompt_dir / "grammar_prompt_templates.yaml"
+        with open(grammar_prompts_path, "r", encoding="utf-8") as f:
+            grammar_prompt_data = yaml.safe_load(f)
+            prompts.update(grammar_prompt_data)
+
 
         logger.info("Successfully loaded prompt templates")
         return prompts
@@ -126,27 +128,32 @@ class QuestionPaperService:
                     questions.append(f"{q.value1} :: {q.value2}")
         return [q for q in questions if q]
 
-    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest) -> str:
-        """
-        Reads the NCERT grammar topics YAML and returns a dict
-        mapping grade (int) to list of topics (list of str).
-        """
-        if "english" in request.subject.lower():
-            # The YAML top‐level key is 'ncert_grammar_topics'
-            topics = self.prompts.get("grammar_topics", {})
+    def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, slot: Dict[str, Any]) -> str:
+        """Return a grammar focus instruction for the slot, or "" when no grammar
+        chapter is selected. Grammar chapters are identified by the ``is_grammar``
+        flag and their topics by ``grammar_topics``."""
+        grammar_units = [
+            topic.strip()
+            for ch in request.chapters
+            if ch.is_grammar
+            for topic in (ch.grammar_topics or [])
+            if topic and topic.strip()
+        ]
+        if not grammar_units:
+            return ""
 
-            # Ensure all grade keys are ints (PyYAML may load them as ints already)
-            topic_map = {int(grade): topic_list for grade, topic_list in topics.items()}
+        grammar_topic = "; ".join(grammar_units)
 
-            return (
-                "⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit’s content."
-                + "\nCover following topics: "
-                + "; ".join(topic_map[request.grade])
-                if request.grade in topic_map
-                else ""
+        source_chapters = slot["grammar_source_chapters"]
+        if source_chapters:
+            chapter_names = ", ".join(source_chapters)
+            return self.prompts["grammar_context_prompt"].format(
+                GRAMMAR_TOPIC=grammar_topic,
+                GRAMMAR_TOPIC_UPPER=grammar_topic.upper(),
+                CHAPTER_NAMES=chapter_names,
             )
 
-        return ""
+        return self.prompts["grammar_simple_prompt"].format(GRAMMAR_TOPIC=grammar_topic)
 
     def _get_unit_metadata(self, request: QuestionBankPartsGenerationRequest) -> Dict[str, Dict[str, Any]]:
         """
@@ -170,14 +177,16 @@ class QuestionPaperService:
                 metadata[subtopic.title] = {
                     "learning_outcomes": subtopic.learning_outcomes,
                     # Fallback to chapter index path if subtopic doesn't have specific one
-                    "index_path": resolved_path
+                    "index_path": resolved_path,
+                    "grammar_source_chapters": chapter.grammar_source_chapters or [],
                 }
         else:
             # Use chapters as units
             for chapter in request.chapters:
                 metadata[chapter.title] = {
                     "learning_outcomes": chapter.learning_outcomes,
-                    "index_path": chapter.index_path
+                    "index_path": chapter.index_path,
+                    "grammar_source_chapters": chapter.grammar_source_chapters or [],
                 }
         
         return metadata
@@ -275,7 +284,8 @@ class QuestionPaperService:
             meta = unit_metadata.get(unit_name)
             unit_los = meta["learning_outcomes"]
             index_path = meta["index_path"]
-            
+            grammar_source_chapters = meta["grammar_source_chapters"]
+
             # Validate Index Path
             if not index_path:
                  logger.warning(f"Index path is missing for unit '{unit_name}'. RAG retrieval will be skipped.")
@@ -283,14 +293,14 @@ class QuestionPaperService:
 
             for i in range(0, len(questions), self.max_questions_per_slot):
                 batch = questions[i : i + self.max_questions_per_slot]
-                slots.append(
-                    {
-                        "unit_name": unit_name,
-                        "learning_outcomes": unit_los,
-                        "questions": batch,
-                        "index_path": index_path,
-                    }
-                )
+                slot = {
+                    "unit_name": unit_name,
+                    "learning_outcomes": unit_los,
+                    "questions": batch,
+                    "index_path": index_path,
+                    "grammar_source_chapters": grammar_source_chapters,
+                }
+                slots.append(slot)
 
         return slots
 
@@ -321,6 +331,14 @@ class QuestionPaperService:
         else:
             unit_los_text = f"Unit Name: {unit_name} (No specific LOs provided)"
 
+        # Build grammar topics text, appending grammar guide if slot has grammar types
+        grammar_topics_text = self._get_grammar_topics(request, slot)
+        slot_types = {q["type"] for q in slot["questions"]}
+        if slot_types & GRAMMAR_QUESTION_TYPES:
+            grammar_guide = self.prompts.get("grammar_question_types_guide", "")
+            if grammar_guide:
+                grammar_topics_text = (grammar_topics_text + "\n\n" + grammar_guide).strip()
+
         # Format the prompt for this specific unit
         return template.format(
             BOARD=request.board,
@@ -334,7 +352,7 @@ class QuestionPaperService:
                 existing_questions, ensure_ascii=False
             ),
             QUESTION_BANK_BLOOM_TAXONOMY_GUIDE=blooms_guide,
-            GRAMMAR_TOPICS=self._get_grammar_topics(request),
+            GRAMMAR_TOPICS=grammar_topics_text,
         )
 
     def _get_format_instruction_for_type(self, qtype: QuestionType) -> str:
@@ -416,6 +434,11 @@ class QuestionPaperService:
         user_message = (
             "Generate questions for the following slots by following the rules listed below. "
             "`keyAnswer` field must be non-empty if the question model supports it.\n\n"
+            "Return a JSON object: {\"items\": [...]} where each item has fields: "
+            "`type` (one of the slot types below), `unit_name` (copy from the slot), "
+            "`objective` (copy from the slot), `marks_per_question` (copy from the slot), "
+            "`difficulty` (one of 'Easy', 'Average', 'Difficult'), and `item` (the generated "
+            "question object matching the rule for that type).\n\n"
             "Rules by question type:\n"
             f"{format_rules_text}\n\n"
             f"Question slots:\n"
@@ -438,18 +461,44 @@ class QuestionPaperService:
                     raise RuntimeError("Did not retrieve a valid response from model")
                 return response.output_parsed.items
             else:
-                # Index Available -> RAG Generation
+                # Index Available -> RAG Generation.
+                # We deliberately do NOT inline the full JSON schema here — for long
+                # prompts (grammar + chapter context + few-shot) it can push the
+                # llama-index prompt_helper into negative chunk_size territory
+                # ("Chunk size -N is not positive"). The system prompt already
+                # constrains the JSON shape via templated rules + few-shot.
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(
-                    # rag-adapter does not support structured output, so we pass model json schema for now.
-                    curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
-                    chat_history=chat_history
+                rag_result = await rag_adapter.chat_with_index(
+                    curr_message=user_message + "\n\nReturn ONLY a JSON object with an `items` array of question objects matching the slot rules above.",
+                    chat_history=chat_history,
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
-                response_content = response_content["response"]
-                content = response_content.strip("```json").strip("```")
-                return GeneratedQuestionItemResponse.model_validate_json(content).items
+                response_content = rag_result["response"] if isinstance(rag_result, dict) else str(rag_result)
+
+            # Clean response
+            content = response_content.strip("```json").strip("```")
+            response_data = json.loads(content)
+
+            items = response_data.get("items")
+            if not items:
+                logger.warning("No items found in completion response")
+                return []
+
+            # Post-process items to ensure difficulty text case
+            for item in items:
+                if 'difficulty' in item:
+                    item['difficulty'] = item['difficulty'].capitalize()
+
+            # Coerce dicts into GeneratedQuestionItem so downstream code that
+            # uses attribute access (`.type`, `.unit_name`, etc.) keeps working
+            # regardless of whether the response came from the structured
+            # parser (direct generation) or raw JSON (RAG path).
+            return [
+                GeneratedQuestionItem.model_validate(it) if isinstance(it, dict) else it
+                for it in items
+            ]
+
         except Exception as e:
             logger.exception(e)
             return []
@@ -567,7 +616,11 @@ class QuestionPaperService:
             tasks = []
             for j, slot in enumerate(batch_slots):
                 index_path = slot["index_path"]
-                logger.debug(f"[SLOT_PROCESSING] Batch {i}, Slot {j} | unit='{slot['unit_name']}' | index_path='{index_path}'")
+                logger.debug(
+                    f"[SLOT_PROCESSING] Batch {i}, Slot {j} | "
+                    f"unit='{slot['unit_name']}' | index_path='{index_path}'"
+                )
+
                 rag_adapter = await self._get_or_create_rag_adapter(index_path)
                 system_prompt = self._format_system_prompt(request, existing_flat, slot)
                 task = self._generate_questions_batch_async(system_prompt, slot, rag_adapter, j * 2)

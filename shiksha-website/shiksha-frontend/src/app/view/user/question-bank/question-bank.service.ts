@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
 
@@ -9,6 +10,7 @@ import { environment } from 'src/environments/environment';
 })
 export class QuestionBankService extends BaseRestService {
   baseUrl: string;
+  private _questionTypesCache: Record<string, any[]> = {};
 
   /**
    * Class constructor
@@ -102,6 +104,26 @@ export class QuestionBankService extends BaseRestService {
    */
   generateQuestionBank(data: any) {
     return this.post('generate', data);
+  }
+
+  /**
+   * Function to get question types for a subject
+   * @param subject
+   * @returns
+   */
+  getQuestionTypes(subject: string): Observable<any> {
+    const key = subject.toLowerCase();
+    if (this._questionTypesCache[key]) {
+      return of({ success: true, message: '', data: this._questionTypesCache[key] });
+    }
+    const params = new HttpParams().set('subject', subject);
+    return this.get('question-types', params).pipe(
+      tap((res: any) => {
+        if (res?.data && Array.isArray(res.data)) {
+          this._questionTypesCache[key] = res.data;
+        }
+      })
+    );
   }
 
   /**
@@ -247,5 +269,10 @@ export class QuestionBankService extends BaseRestService {
    */
   generateLBAQuestionPaper(data: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data);
+  }
+
+  getGrammarTopics(grade: number): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/grammarTopics?grade=${grade}`)
+      .pipe(map(res => res?.data ?? []));
   }
 }

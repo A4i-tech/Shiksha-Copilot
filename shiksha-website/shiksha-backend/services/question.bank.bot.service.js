@@ -121,9 +121,26 @@ async function postToQuestionBankParts(payload) {
   }
 }
 
+async function getQuestionTypes(subject) {
+  const apiUrl = `${llmBaseUrl}/question-paper/question-types?subject=${encodeURIComponent(subject)}`;
+  try {
+    logger.info("Sending request to get question types");
+    const response = await axios.get(apiUrl);
+    logger.info("Request successful");
+    return response;
+  } catch (error) {
+    logger.error("Error in getQuestionTypes", {
+      message: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+}
+
 module.exports = {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
   postToQuestionBank,
   postToQuestionBankParts,
+  getQuestionTypes,
 };
