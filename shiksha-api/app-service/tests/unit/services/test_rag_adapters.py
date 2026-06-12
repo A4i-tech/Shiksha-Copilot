@@ -280,11 +280,11 @@ class TestQdrantRagOpsAdapter:
 class TestRagAdapterFactory:
     """Test RagAdapterFactory for adapter creation."""
 
-    async def test_create_qdrant_adapter_when_qdrant_in_path(self, mock_completion_llm, mock_embedding_llm):
+    def test_create_qdrant_adapter_when_qdrant_in_path(self, mock_completion_llm, mock_embedding_llm):
         """Test factory creates QdrantRagOpsAdapter when 'qdrant' in path."""
         index_path = "qdrant/test-collection/chapter_id:6"
 
-        adapter = await RagAdapterFactory.create_adapter(
+        adapter = RagAdapterFactory.create_adapter(
             index_path=index_path,
             completion_llm=mock_completion_llm,
             embedding_llm=mock_embedding_llm
@@ -293,11 +293,11 @@ class TestRagAdapterFactory:
         assert isinstance(adapter, QdrantRagOpsAdapter)
         assert adapter.index_path == index_path
 
-    async def test_create_inmem_adapter_when_blob_in_path(self, mock_completion_llm, mock_embedding_llm):
+    def test_create_inmem_adapter_when_blob_in_path(self, mock_completion_llm, mock_embedding_llm):
         """Test factory creates InMemRagOpsAdapter when 'blob' in path."""
         index_path = "blob/test-container/test-index"
 
-        adapter = await RagAdapterFactory.create_adapter(
+        adapter = RagAdapterFactory.create_adapter(
             index_path=index_path,
             completion_llm=mock_completion_llm,
             embedding_llm=mock_embedding_llm
@@ -306,11 +306,11 @@ class TestRagAdapterFactory:
         assert isinstance(adapter, InMemRagOpsAdapter)
         assert adapter.index_path == index_path
 
-    async def test_create_inmem_adapter_by_default(self, mock_completion_llm, mock_embedding_llm):
+    def test_create_inmem_adapter_by_default(self, mock_completion_llm, mock_embedding_llm):
         """Test factory creates InMemRagOpsAdapter by default."""
         index_path = "some/other/path"
 
-        adapter = await RagAdapterFactory.create_adapter(
+        adapter = RagAdapterFactory.create_adapter(
             index_path=index_path,
             completion_llm=mock_completion_llm,
             embedding_llm=mock_embedding_llm
@@ -318,11 +318,11 @@ class TestRagAdapterFactory:
 
         assert isinstance(adapter, InMemRagOpsAdapter)
 
-    async def test_factory_case_insensitive_qdrant_detection(self, mock_completion_llm, mock_embedding_llm):
+    def test_factory_case_insensitive_qdrant_detection(self, mock_completion_llm, mock_embedding_llm):
         """Test factory detects 'qdrant' case-insensitively."""
         index_path = "QDRANT/test-collection/key:value"
 
-        adapter = await RagAdapterFactory.create_adapter(
+        adapter = RagAdapterFactory.create_adapter(
             index_path=index_path,
             completion_llm=mock_completion_llm,
             embedding_llm=mock_embedding_llm

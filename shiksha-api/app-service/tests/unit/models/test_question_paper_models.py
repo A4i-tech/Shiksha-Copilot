@@ -127,8 +127,8 @@ class TestQuestionType:
 
     def test_question_type_answer_word(self):
         """Test answer in word question type."""
-        assert "word, phrase or sentence" in QuestionType.ANSWER_WORD.value
-        assert QuestionType.ANSWER_WORD._model == TextQuestion
+        assert "word, phrase or sentence" in QuestionType.ANSWER_VERY_SHORT.value
+        assert QuestionType.ANSWER_VERY_SHORT._model == TextQuestion
 
     def test_question_type_answer_short(self):
         """Test short answer question type."""
@@ -137,10 +137,10 @@ class TestQuestionType:
 
     def test_question_type_answer_general(self):
         """Test general answer question type."""
-        assert QuestionType.ANSWER_GENERAL.value.startswith(
+        assert QuestionType.ANSWER_MEDIUM.value.startswith(
             "Answer the following questions"
         )
-        assert QuestionType.ANSWER_GENERAL._model == TextQuestion
+        assert QuestionType.ANSWER_MEDIUM._model == TextQuestion
 
     def test_question_type_answer_long(self):
         """Test long answer question type."""
@@ -149,8 +149,8 @@ class TestQuestionType:
 
     def test_question_type_match_list(self):
         """Test match list question type."""
-        assert QuestionType.MATCH_LIST.value.startswith("Match the following")
-        assert QuestionType.MATCH_LIST._model == MatchingListQuestion
+        assert QuestionType.MATCHING.value.startswith("Match the following")
+        assert QuestionType.MATCHING._model == MatchingListQuestion
 
     def test_question_type_has_description(self):
         """Test that all question types have descriptions."""

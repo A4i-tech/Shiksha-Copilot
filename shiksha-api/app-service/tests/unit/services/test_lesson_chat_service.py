@@ -75,6 +75,7 @@ class TestLessonChatServiceCall:
             assert result["response"] == "Test response"
             mock_rag_adapter_cache.get.assert_called_once()
 
+
     @pytest.mark.asyncio
     async def test_call_builds_system_message_with_chapter_details(self, sample_lesson_chat_request, mock_rag_adapter_cache):
         """Test service builds system message with chapter details."""

@@ -148,7 +148,7 @@ class QuestionType(str, Enum):
         TextQuestion,
         "Fill in the blanks",
     )
-    ANSWER_WORD = (
+    ANSWER_VERY_SHORT = (
         "Answer the following in a word, phrase or sentence",
         "These questions expect a very brief response—a single word, a short phrase, or a concise sentence.",
         TextQuestion,
@@ -160,7 +160,7 @@ class QuestionType(str, Enum):
         TextQuestion,
         "Short Answer Questions",
     )
-    ANSWER_GENERAL = (
+    ANSWER_MEDIUM = (
         "Answer the following questions",
         "These open-ended questions invite students to provide brief responses that are straightforward and to the point.",
         TextQuestion,
@@ -172,7 +172,7 @@ class QuestionType(str, Enum):
         TextQuestion,
         "Long Answer Questions",
     )
-    MATCH_LIST = (
+    MATCHING = (
         "Match the following",
         "Generate a CORRECTLY matched item-pair",
         MatchingListQuestion,
