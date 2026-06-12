@@ -4,7 +4,6 @@ import re
 from app.models.chat import LessonChatRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
-from app.services.rag_adapters import RagAdapterFactory
 from app.utils.utils import new_rag_embed, new_rag_llm
 from llama_index.core.llms import ChatMessage
 
@@ -24,7 +23,7 @@ class LessonChatService:
 
         self._rag_llm = new_rag_llm()
         self._rag_embed = new_rag_embed()
-        self._rags = RagAdapterCache(RagAdapterFactory.create_adapter)
+        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
     async def __call__(
         self,

@@ -17,7 +17,7 @@ from openai.types import ResponsesModel
 from llama_index.core.llms import ChatMessage
 
 # 3. Import only the Factory and Base Adapter
-from app.services.rag_adapters import BaseRagAdapter, RagAdapterFactory
+from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
     GeneratedQuestionItem,
@@ -60,7 +60,7 @@ class QuestionPaperService:
 
         self._rag_llm = new_rag_llm()
         self._rag_embed = new_rag_embed()
-        self._rags = RagAdapterCache(RagAdapterFactory.create_adapter)
+        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
         # Load YAML prompts
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"

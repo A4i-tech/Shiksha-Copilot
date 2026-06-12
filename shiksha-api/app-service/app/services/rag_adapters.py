@@ -243,7 +243,7 @@ class RagAdapterFactory:
     """Factory class for creating appropriate RAG adapters."""
 
     @staticmethod
-    async def create_adapter(
+    def create_adapter(
         index_path: str,
         completion_llm: OpenAI,
         embedding_llm: OpenAIEmbedding,

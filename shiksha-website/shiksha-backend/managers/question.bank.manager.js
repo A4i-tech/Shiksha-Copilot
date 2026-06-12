@@ -578,8 +578,13 @@ class QuestionBankManager extends BaseManager {
     if (!templateArray || !Array.isArray(templateArray)) return [];
 
     return templateArray.map((item) => {
+      // mappedType is just the instruction text for backward compatibility
       const mappedType = QUESTION_TYPE_MAPPING[item.type] || item.type;
+
+      // Look up full details if possible to get the description
       const details = QUESTION_TYPE_DETAILS[item.type];
+
+      // Handle both snake_case (legacy/internal) and camelCase (new/frontend)
       const numQs = item.number_of_questions !== undefined ? item.number_of_questions : item.numberOfQuestions;
       const marksPerQ = item.marks_per_question !== undefined ? item.marks_per_question : item.marksPerQuestion;
       const qDist = item.question_distribution || item.questionDistribution;
@@ -590,6 +595,7 @@ class QuestionBankManager extends BaseManager {
         description: details ? details.description : (item.description || ""),
       };
 
+      // Ensure expected Python snake_case keys are present
       if (numQs !== undefined) mappedItem.number_of_questions = numQs;
       if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
 
@@ -613,43 +619,6 @@ class QuestionBankManager extends BaseManager {
       return mappedItem;
     });
   }
-  /**
-   * Resolves the index path for a unit name following a clear priority order:
-   * 1. Chapter title match in formattedChapters → return its index_path (found=true)
-   * 2. Subtopic title match in formattedChapters → return its index_path (found=true)
-   * 3. Subtopic in raw chapterData → inherit parent chapter's index_path (found=false)
-   * 4. Not found anywhere → empty index_path (found=false)
-   */
-  _resolveUnitContext(unitName, formattedChapters, rawChapterData) {
-    const lowerName = unitName.toLowerCase();
-
-    // 1. Check chapter title match
-    const matchedChapter = formattedChapters.find(fc => fc.title.toLowerCase() === lowerName);
-    if (matchedChapter) {
-      return { found: true, indexPath: matchedChapter.index_path };
-    }
-
-    // 2. Check subtopic title match
-    for (const fc of formattedChapters) {
-      const matchedSub = fc.subtopics.find(sub => sub.title.toLowerCase() === lowerName);
-      if (matchedSub) {
-        return { found: true, indexPath: matchedSub.index_path || fc.index_path };
-      }
-    }
-
-    // 3. Inherit index_path from parent chapter in raw DB data
-    if (rawChapterData && rawChapterData.length > 0) {
-      const parent = rawChapterData.find(ch =>
-        ch.subtopics && ch.subtopics.some(sub => (sub.title || "").toLowerCase() === lowerName)
-      );
-      if (parent) {
-        return { found: false, indexPath: parent.indexPath || parent.index_path || "" };
-      }
-    }
-
-    return { found: false, indexPath: "" };
-  }
-
   async _createQuestionBankPayload(reqBody, user) {
     try {
       const {
