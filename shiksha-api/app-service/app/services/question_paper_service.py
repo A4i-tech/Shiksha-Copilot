@@ -396,7 +396,8 @@ class QuestionPaperService:
                 logger.info(f"Using RAG Adapter for index: {index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
                 response_content = await rag_adapter.chat_with_index(
-                    curr_message=user_message + "\n\nReturn ONLY a JSON object with an `items` array of question objects matching the slot rules above.",
+                    # rag-adapter does not support structured output, so we pass model json schema for now.
+                    curr_message=user_message + "\n\nResponse format must conform to JSON schema:\n" + json.dumps(GeneratedQuestionItemResponse.model_json_schema()),
                     chat_history=chat_history,
                 )
                 # chat_with_index returns {"response": str, "source_nodes": list}
