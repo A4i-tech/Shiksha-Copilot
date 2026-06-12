@@ -43,7 +43,7 @@
 		
 		<div [ngSwitch]="view" class="week overflow-auto my-schedule">
 			
-			<mwl-calendar-week-view *ngSwitchCase="CalendarView.Week" [viewDate]="viewDate" [events]="events" 
+			<mwl-calendar-week-view appCalendarA11y *ngSwitchCase="CalendarView.Week" [viewDate]="viewDate" [events]="events"
 			[weekStartsOn]="1"
 				[refresh]="refresh"  [eventTemplate]="customCellTemplate" (hourSegmentClicked)="onEmptySlotClicked($event,tooltip_modal)" 
 				 

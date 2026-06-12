@@ -212,6 +212,7 @@
       </div>
 
       <mwl-calendar-month-view
+        appCalendarA11y
         [viewDate]="monthViewDate"
         [weekStartsOn]="1"
         (dayClicked)="dayClicked($event.day)"
@@ -230,6 +231,7 @@
 
       <div class="mt-5 dashboard-events">
         <mwl-calendar-day-view
+          appCalendarA11y
           [viewDate]="viewDate"
           [events]="events"
           #calender_ele
