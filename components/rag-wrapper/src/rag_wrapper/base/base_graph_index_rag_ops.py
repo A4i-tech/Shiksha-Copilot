@@ -1,8 +1,7 @@
 import asyncio
-import logging
 import uuid
 import json
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, List, Dict, Optional, Union
 
 from tenacity import (
@@ -12,20 +11,18 @@ from tenacity import (
     retry_if_exception_type,
     retry_if_result,
 )
-from llama_index.core.chat_engine.types import ChatMode
 from llama_index.core import (
+    QueryBundle,
     StorageContext,
-    Document,
     PropertyGraphIndex,
     get_response_synthesizer,
 )
 from llama_index.core.llms import ChatMessage, LLM
-from llama_index.core.indices.prompt_helper import PromptHelper
+from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.schema import TransformComponent, TextNode
-from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
 from llama_index.core.graph_stores.types import EntityNode, Relation
 
-from llama_index.core.callbacks import CallbackManager, TokenCountingHandler
+from llama_index.core.callbacks import TokenCountingHandler
 import traceback
 from llama_index.core.response_synthesizers import (
     ResponseMode,
@@ -34,9 +31,10 @@ from llama_index.core.indices.property_graph import (
     SimpleLLMPathExtractor,
     ImplicitPathExtractor,
 )
+from rag_wrapper.base.base_rag_ops import BaseRagOps
 
 
-class BaseGraphIndexRagOps(ABC):
+class BaseGraphIndexRagOps(BaseRagOps):
     """
     Abstract base class for RAG operations using LlamaIndex Property Graph.
 
@@ -66,7 +64,7 @@ class BaseGraphIndexRagOps(ABC):
         completion_llm: LLM,
         emb_llm: Optional[LLM] = None,
         similarity_top_k: int = 6,
-        response_mode: str = "tree_summarize",
+        response_mode: ResponseMode = ResponseMode.TREE_SUMMARIZE,
         kg_extractors: Optional[List[TransformComponent]] = None,
         path_depth: int = 1,
         include_text: bool = True,
@@ -84,17 +82,10 @@ class BaseGraphIndexRagOps(ABC):
             include_text: Whether to include source chunk text with retrieved paths (default: True)
             embed_kg_nodes: Whether to embed knowledge graph nodes (default: True)
         """
-        self.emb_llm = emb_llm
-        self.completion_llm = completion_llm
-        self.similarity_top_k = similarity_top_k
-        self.response_mode = response_mode
+        super().__init__(completion_llm, emb_llm, similarity_top_k, response_mode)
         self.path_depth = path_depth
         self.include_text = include_text
         self.embed_kg_nodes = embed_kg_nodes
-        self.logger = logging.getLogger(__name__)
-        self.token_counter = TokenCountingHandler()
-        self._callback_manager = CallbackManager([self.token_counter])
-        self._prompt_helper = PromptHelper.from_llm_metadata(self.completion_llm.metadata)
 
         self._add_token_counter_to_llm(
             self.completion_llm
@@ -124,23 +115,6 @@ class BaseGraphIndexRagOps(ABC):
             ):
                 llm.callback_manager.add_handler(self.token_counter)
 
-    def _get_response_mode(self) -> ResponseMode:
-        """Convert string response mode to ResponseMode enum."""
-        mode_mapping = {
-            "tree_summarize": ResponseMode.TREE_SUMMARIZE,
-            "simple_summarize": ResponseMode.SIMPLE_SUMMARIZE,
-            "generation": ResponseMode.GENERATION,
-            "refine": ResponseMode.REFINE,
-            "compact": ResponseMode.COMPACT,
-            "compact_accumulate": ResponseMode.COMPACT_ACCUMULATE,
-            "accumulate": ResponseMode.ACCUMULATE,
-        }
-
-        if isinstance(self.response_mode, str):
-            return mode_mapping.get(
-                self.response_mode.lower(), ResponseMode.TREE_SUMMARIZE
-            )
-        return self.response_mode
 
     def add_kg_extractor(self, extractor: Any) -> None:
         """Add a knowledge graph extractor to the list of extractors.
@@ -151,68 +125,6 @@ class BaseGraphIndexRagOps(ABC):
         if self.kg_extractors is None:
             self.kg_extractors = []
         self.kg_extractors.append(extractor)
-
-    def _create_metadata_filters(
-        self, metadata_filter: Optional[Dict[str, str]] = None
-    ) -> Optional[MetadataFilters]:
-        """Create metadata filters from key-value pairs."""
-        if not metadata_filter:
-            return None
-
-        filter_list = []
-        for key, value in metadata_filter.items():
-            filter_list.append(ExactMatchFilter(key=key, value=value))
-        return MetadataFilters(filters=filter_list)
-
-    def _create_documents_from_text_chunks(
-        self, text_chunks: List[str], metadata: dict = None
-    ) -> tuple[List[Document], List[str]]:
-        """Create Document objects from text chunks with optional metadata."""
-        if not text_chunks:
-            raise ValueError("text_chunks cannot be empty")
-
-        documents = []
-        doc_ids = []
-
-        for text in text_chunks:
-            if not text.strip():  # Skip empty or whitespace-only chunks
-                continue
-
-            doc_id = f"doc_id_{uuid.uuid4()}"
-            doc_chunk = Document(text=text, id_=doc_id)
-
-            if metadata:
-                doc_chunk.metadata = metadata.copy()
-
-            documents.append(doc_chunk)
-            doc_ids.append(doc_id)
-
-        if not documents:
-            raise ValueError("No valid text chunks provided after filtering")
-
-        return documents, doc_ids
-
-    def _log_retry_attempt(self, retry_state):
-        """Log retry attempts with detailed information."""
-        self.logger.warning(
-            f"Retrying {retry_state.fn.__name__} after {retry_state.attempt_number} attempts. "
-            f"Next attempt in {retry_state.next_action.sleep} seconds."
-        )
-
-    def _retry_on_empty_string_or_timeout_response(self, result) -> bool:
-        """Check if response indicates failure requiring retry."""
-        if hasattr(result, "response"):
-            response_text = str(result.response)
-        else:
-            response_text = str(result)
-
-        # Check for empty responses or known error patterns
-        return (
-            response_text == ""
-            or response_text == "504.0 GatewayTimeout"
-            or "timeout" in response_text.lower()
-            or len(response_text.strip()) == 0
-        )
 
     async def _query_with_retries(
         self,
@@ -225,45 +137,16 @@ class BaseGraphIndexRagOps(ABC):
         @retry(
             stop=stop_after_attempt(3),
             wait=wait_exponential(multiplier=1, min=1, max=10),
-            retry=(
-                retry_if_exception_type(Exception)
-                | retry_if_result(
-                    lambda result: self._retry_on_empty_string_or_timeout_response(
-                        result
-                    )
-                )
-            ),
+            retry=(retry_if_exception_type(Exception) | retry_if_result(self._retry_on_empty_string_or_timeout_response)),
             before_sleep=self._log_retry_attempt,
         )
         async def _aquery_with_retries():
             """Internal retry wrapper."""
             try:
-                # Create query engine with token tracking and sub-retrievers
-                query_engine_kwargs = {
-                    "llm": self.completion_llm,
-                    "response_synthesizer": get_response_synthesizer(
-                        llm=self.completion_llm,
-                        response_mode=self._get_response_mode(),
-                        callback_manager=self._callback_manager,
-                        prompt_helper=self._prompt_helper
-                    ),
-                    "include_text": self.include_text,
-                    "similarity_top_k": self.similarity_top_k,
-                }
-
-                # Add sub_retrievers if provided, otherwise create default ones with correct LLM
-                if sub_retrievers:
-                    query_engine_kwargs["sub_retrievers"] = sub_retrievers
-                else:
-                    query_engine_kwargs["sub_retrievers"] = (
-                        self._create_default_sub_retrievers(metadata_filter)
-                    )
-
-                query_engine = self.rag_index.as_query_engine(**query_engine_kwargs)
-
-                # Generate response using the query engine
-                response = await query_engine.aquery(text_str)
-                return response
+                retriever = self.rag_index.as_retriever(sub_retrievers=sub_retrievers or self._create_default_sub_retrievers(metadata_filter), include_text=self.include_text, use_async=True)
+                response_synthesizer = get_response_synthesizer(llm=self.completion_llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
+                query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
+                return await query_engine.aquery(text_str)
             except Exception as e:
                 self.logger.error(traceback.format_exc())
                 raise e
@@ -300,16 +183,10 @@ class BaseGraphIndexRagOps(ABC):
                 )
 
         try:
-            answer = await self._query_with_retries(
-                text_str, sub_retrievers, metadata_filter
-            )
-
-            # Validate response quality
+            answer = await self._query_with_retries(text_str, sub_retrievers, metadata_filter)
             if self._retry_on_empty_string_or_timeout_response(answer):
                 raise ValueError(f"LLM RESPONSE IS NOT VALID: {answer}")
-
             return answer
-
         except Exception as e:
             self.logger.error(f"Query failed for text '{text_str[:50]}...': {e}")
             raise
@@ -343,35 +220,10 @@ class BaseGraphIndexRagOps(ABC):
                 )
 
         try:
-            # Create chat engine with context awareness
-            chat_engine_kwargs = {
-                "chat_mode": ChatMode.CONTEXT,
-                "llm": self.completion_llm,
-                "embed_model": self.emb_llm,
-                "include_text": self.include_text,
-                "similarity_top_k": self.similarity_top_k,
-            }
-
-            # Add sub_retrievers if provided, otherwise create default ones with correct LLM
-            if sub_retrievers:
-                chat_engine_kwargs["sub_retrievers"] = sub_retrievers
-            else:
-                chat_engine_kwargs["sub_retrievers"] = (
-                    self._create_default_sub_retrievers(metadata_filter)
-                )
-
-            chat_engine = self.rag_index.as_chat_engine(**chat_engine_kwargs)
-            if hasattr(chat_engine, "callback_manager"):
-                chat_engine.callback_manager = self._callback_manager
-
-            # Generate response with chat history context
-            response = await chat_engine.achat(curr_message, chat_history)
-
-            self.logger.debug(
-                f"Chat response generated for message: {curr_message[:50]}..."
-            )
-            return response.response
-
+            retriever = self.rag_index.as_retriever(sub_retrievers=sub_retrievers or self._create_default_sub_retrievers(metadata_filter), include_text=self.include_text, use_async=True)
+            response_synthesizer = get_response_synthesizer(llm=self.completion_llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
+            query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
+            return await query_engine.aquery(QueryBundle(query_str=f"{chr(10).join(f'{m.role}: {m.content}' for m in chat_history[-6:])}{chr(10)}user: {curr_message}" if chat_history else curr_message, custom_embedding_strs=[curr_message]))
         except Exception as e:
             self.logger.error(f"Chat failed for message '{curr_message[:50]}...': {e}")
             self.logger.error(traceback.format_exc())
@@ -853,6 +705,7 @@ class BaseGraphIndexRagOps(ABC):
             self._add_token_counter_to_llm(self.emb_llm)
             return VectorContextRetriever(
                 graph_store=self.property_graph_store,
+                vector_store=self.vector_store,
                 embed_model=self.emb_llm,
                 similarity_top_k=self.similarity_top_k,
                 path_depth=self.path_depth,
