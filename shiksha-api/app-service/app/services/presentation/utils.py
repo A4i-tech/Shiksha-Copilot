@@ -179,11 +179,15 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
-async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int) -> tuple[str, str]:
+async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int, max_size: int) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
+    total = 0
     async with aiofiles.tempfile.NamedTemporaryFile(suffix=suffix) as f:
         while buf := await file.read(chunk_size):
+            total += len(buf)
+            if total > max_size: raise ValueError(f"Bad file size (expected <= {max_size}, got > {total})")
+
             await f.write(buf)
             sha256.update(buf)
 
