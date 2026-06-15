@@ -40,6 +40,8 @@ export class CommonDropdownComponent implements ControlValueAccessor {
 
   @Input() mode!: string;
 
+  dropdownId = 'dropdown-' + Math.random().toString(36).substring(2, 9);
+
 
   /**
    * Function trigger for dropdown value change

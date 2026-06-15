@@ -1,7 +1,9 @@
 <div class="select-wrapper">
-  <label *ngIf="config.labelTxt" class="form-control-label">{{ config.labelTxt | translate}} <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span></label> 
+  <label *ngIf="config.labelTxt" [attr.for]="dropdownId" class="form-control-label">{{ config.labelTxt | translate}} <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span></label> 
 
   <ng-select
+    [labelForId]="dropdownId"
+    [attr.aria-label]="(config.labelTxt || config.placeHolderTxt) | translate"
     [items]="dropDownValues"
     [ngClass]="config.isBackground && config.disabled ? 'with-background' : ''"
     [style]="{ height: config.height }"
