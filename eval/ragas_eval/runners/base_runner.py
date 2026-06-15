@@ -1,14 +1,15 @@
 import asyncio
 import random
+from datetime import datetime, timezone
 from typing import List
 from openai import AsyncAzureOpenAI, RateLimitError, APITimeoutError
 from tqdm.asyncio import tqdm as tqdm_async
 import config
 
-CALL_TIMEOUT = 90.0        # seconds per API call
-MAX_RETRIES = 6            # max 429 retries
-BASE_BACKOFF = 2.0         # seconds, doubles each retry
-INTER_REQUEST_DELAY = 0.3  # seconds between released semaphore slots
+CALL_TIMEOUT = 90.0
+MAX_RETRIES = 6
+BASE_BACKOFF = 2.0
+INTER_REQUEST_DELAY = 0.3
 
 
 class BaseRunner:
@@ -26,11 +27,22 @@ class BaseRunner:
         self.deployment = self.model_cfg["deployment_name"]
         self._sem = asyncio.Semaphore(self.MAX_CONCURRENT)
 
-    async def call_model(self, system_prompt: str, user_prompt: str, **kwargs) -> str:
+    async def call_model(self, system_prompt: str, user_prompt: str, **kwargs) -> dict:
+        """
+        Returns dict:
+            content          : str   — model response text
+            prompt_tokens    : int
+            completion_tokens: int
+            total_tokens     : int
+            call_start       : str   — ISO8601 UTC
+            call_end         : str   — ISO8601 UTC
+            model_name       : str   — model reported by API
+        """
         for attempt in range(MAX_RETRIES):
             try:
                 async with self._sem:
                     await asyncio.sleep(INTER_REQUEST_DELAY)
+                    call_start = datetime.now(timezone.utc)
                     resp = await asyncio.wait_for(
                         self.client.chat.completions.create(
                             model=self.deployment,
@@ -43,8 +55,18 @@ class BaseRunner:
                         ),
                         timeout=CALL_TIMEOUT,
                     )
+                    call_end = datetime.now(timezone.utc)
                     content = resp.choices[0].message.content.strip()
-                    return content
+                    usage = resp.usage or {}
+                    return {
+                        "content": content,
+                        "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+                        "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+                        "total_tokens": getattr(usage, "total_tokens", 0) or 0,
+                        "call_start": call_start.isoformat(),
+                        "call_end": call_end.isoformat(),
+                        "model_name": resp.model or self.deployment,
+                    }
 
             except RateLimitError:
                 wait = BASE_BACKOFF ** attempt + random.uniform(0, 1)

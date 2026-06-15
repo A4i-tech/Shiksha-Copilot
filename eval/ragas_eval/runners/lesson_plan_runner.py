@@ -40,10 +40,12 @@ def _build_user_prompt(sample: dict) -> str:
 class LessonPlanRunner(BaseRunner):
     async def run_single(self, sample: dict) -> dict:
         user_prompt = _build_user_prompt(sample)
+        result = {}
+        response = ""
         try:
-            response = await self.call_model(_SYSTEM_PROMPT, user_prompt)
+            result = await self.call_model(_SYSTEM_PROMPT, user_prompt)
+            response = result["content"]
         except Exception as e:
-            response = ""
             print(f"[ERROR] {sample['id']}: {e}")
         return {
             "id": sample["id"],
@@ -54,6 +56,12 @@ class LessonPlanRunner(BaseRunner):
                 "subject": sample["subject"],
                 "chapter": sample["chapter_title"],
                 "section": sample["section_title"],
+                "prompt_tokens": result.get("prompt_tokens", 0),
+                "completion_tokens": result.get("completion_tokens", 0),
+                "total_tokens": result.get("total_tokens", 0),
+                "call_start": result.get("call_start", ""),
+                "call_end": result.get("call_end", ""),
+                "model_name": result.get("model_name", self.deployment),
             },
         }
 

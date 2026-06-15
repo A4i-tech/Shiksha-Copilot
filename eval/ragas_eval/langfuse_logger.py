@@ -1,7 +1,27 @@
+"""Langfuse Experiments integration.
+
+Creates a dataset in Langfuse, then for each eval run:
+  - Creates one trace per sample (input + output)
+  - Links trace to dataset item as an experiment run
+  - Attaches custom judge scores + RAGAS scores to each trace
+
+Results appear in Langfuse UI: Datasets → <dataset-name> → Experiments tab.
+"""
+
 import uuid
-from typing import List, Any
+from datetime import datetime
+from typing import List, Optional
 from langfuse import Langfuse
 import config
+
+
+def _parse_dt(val: str) -> Optional[datetime]:
+    if not val:
+        return None
+    try:
+        return datetime.fromisoformat(val)
+    except Exception:
+        return None
 
 
 class LangfuseEvalLogger:
@@ -14,83 +34,119 @@ class LangfuseEvalLogger:
             host=config.LANGFUSE_HOST,
         )
 
-    def create_dataset(self, samples: List[dict]) -> None:
-        """Upload input samples as a Langfuse dataset (idempotent)."""
+    def ensure_dataset(self, samples: List[dict]) -> None:
+        """Upload input samples as Langfuse dataset items (idempotent by item id)."""
         try:
             self.client.create_dataset(name=self.dataset_name)
         except Exception:
-            pass  # dataset already exists
+            pass  # already exists
 
         for sample in samples:
-            self.client.create_dataset_item(
-                dataset_name=self.dataset_name,
-                id=sample["id"],
-                input=sample,
-                expected_output=None,
-            )
+            try:
+                self.client.create_dataset_item(
+                    dataset_name=self.dataset_name,
+                    id=sample["id"],
+                    input=sample,
+                    expected_output=None,
+                )
+            except Exception:
+                pass  # item already exists — skip
+
         print(f"[Langfuse] Dataset '{self.dataset_name}' ready ({len(samples)} items)")
 
-    def log_run(
+    def log_experiment_run(
         self,
         run_name: str,
         outputs: List[dict],
-        scores: Any,
+        custom_scores: List[dict],
+        ragas_scores: List[dict] | None = None,
     ) -> None:
         """
-        Log model outputs + RAGAS scores as a Langfuse experiment run.
+        Upload one experiment run to Langfuse.
 
-        scores: ragas EvaluationResult (behaves like a dict of metric -> list[float])
+        run_name      : unique name shown in Experiments tab (e.g. "gpt-5_1-20260615T074436")
+        outputs       : [{id, user_input, response, metadata}, ...] parallel
+        custom_scores : [{metric: float|None, ...}, ...] parallel to outputs
+        ragas_scores  : [{context_precision, context_recall, faithfulness,
+                          answer_correctness}, ...] parallel to outputs
         """
-        dataset = self.client.get_dataset(self.dataset_name)
+        ragas_scores = ragas_scores or [{} for _ in outputs]
 
-        # Build score lookup: metric_name -> [score per sample]
-        score_dict: dict[str, list] = {}
-        if scores is not None:
-            try:
-                df = scores.to_pandas()
-                for col in df.columns:
-                    if col not in ("user_input", "response", "reference"):
-                        score_dict[col] = df[col].tolist()
-            except Exception as e:
-                print(f"[WARN] Could not extract scores DataFrame: {e}")
+        try:
+            dataset = self.client.get_dataset(self.dataset_name)
+            item_map = {item.id: item for item in dataset.items}
+        except Exception as e:
+            print(f"[Langfuse] ERROR: could not fetch dataset '{self.dataset_name}': {e}")
+            return
 
-        valid_outputs = [o for o in outputs if o["response"]]
-        for idx, (item, output) in enumerate(zip(dataset.items, valid_outputs)):
+        uploaded = 0
+        for output, c_score, r_score in zip(outputs, custom_scores, ragas_scores):
+            if not output.get("response"):
+                continue
+
+            item = item_map.get(output["id"])
+            if item is None:
+                print(f"[Langfuse] WARN: item '{output['id']}' not in dataset — skipping")
+                continue
+
+            meta = output.get("metadata", {})
+            call_start = _parse_dt(meta.get("call_start", ""))
+            call_end = _parse_dt(meta.get("call_end", ""))
+
             trace = self.client.trace(
                 id=str(uuid.uuid4()),
-                name=f"{run_name}-{self.eval_type}",
+                name=f"{run_name}/{self.eval_type}",
                 input=output["user_input"],
                 output=output["response"],
-                metadata=output.get("metadata", {}),
+                metadata=meta,
                 tags=[run_name, self.eval_type],
+                user_id=self.eval_type,
+                start_time=call_start,
+                end_time=call_end,
             )
             item.link(trace, run_name=run_name)
 
-            for metric_name, values in score_dict.items():
-                if idx < len(values) and values[idx] is not None:
+            # Generation observation — feeds Model Usage, Model costs, latency panels
+            if call_start and call_end:
+                trace.generation(
+                    name="llm-generation",
+                    model=meta.get("model_name", ""),
+                    model_parameters={"temperature": 0},
+                    input=[
+                        {"role": "user", "content": output["user_input"]},
+                    ],
+                    output=output["response"],
+                    usage={
+                        "input": meta.get("prompt_tokens", 0),
+                        "output": meta.get("completion_tokens", 0),
+                        "total": meta.get("total_tokens", 0),
+                        "unit": "TOKENS",
+                    },
+                    start_time=call_start,
+                    end_time=call_end,
+                )
+
+            for metric, value in c_score.items():
+                if value is not None:
                     trace.score(
-                        name=metric_name,
-                        value=float(values[idx]),
-                        comment=f"RAGAS {metric_name} for {run_name}",
+                        name=metric,
+                        value=float(value),
+                        comment="custom-judge",
                     )
 
-        self.client.flush()
-        print(f"[Langfuse] Run '{run_name}' logged for dataset '{self.dataset_name}'")
+            for metric, value in r_score.items():
+                if value is not None:
+                    trace.score(
+                        name=f"ragas_{metric}",
+                        value=float(value),
+                        comment="RAGAS",
+                    )
 
-    def print_comparison(self, results_by_model: dict[str, Any]) -> None:
-        print(f"\n{'='*60}")
-        print(f"RAGAS Evaluation Summary — {self.eval_type}")
-        print(f"{'='*60}")
-        for model_name, results in results_by_model.items():
-            if results is None:
-                print(f"  {model_name}: NO RESULTS")
-                continue
-            try:
-                df = results.to_pandas()
-                numeric_cols = df.select_dtypes("number").columns.tolist()
-                print(f"\n  {model_name}:")
-                for col in numeric_cols:
-                    print(f"    {col}: {df[col].mean():.4f} (mean)")
-            except Exception as e:
-                print(f"  {model_name}: {e}")
-        print()
+            uploaded += 1
+
+        self.client.flush()
+        print(f"[Langfuse] Run '{run_name}' — {uploaded} traces in '{self.dataset_name}'")
+
+    def print_dataset_url(self) -> None:
+        base = config.LANGFUSE_HOST.rstrip("/")
+        print(f"[Langfuse] View: {base}/datasets/{self.dataset_name}/runs")

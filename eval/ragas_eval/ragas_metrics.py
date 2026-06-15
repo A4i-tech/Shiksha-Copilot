@@ -1,11 +1,17 @@
-from ragas.metrics import ResponseRelevancy, AspectCritic
+from ragas.metrics import (
+    ContextPrecision,
+    ContextRecall,
+    Faithfulness,
+    AnswerCorrectness,
+    AspectCritic,
+    ResponseRelevancy,
+)
 from ragas.llms import LangchainLLMWrapper
 from langchain_openai import AzureChatOpenAI
 import config
 
 
 def get_judge_llm() -> LangchainLLMWrapper:
-    """GPT-4o as neutral judge for RAGAS evaluation."""
     cfg = config.GPT4O_CONFIG
     llm = AzureChatOpenAI(
         azure_deployment=cfg["deployment_name"],
@@ -17,8 +23,18 @@ def get_judge_llm() -> LangchainLLMWrapper:
     return LangchainLLMWrapper(llm)
 
 
-def get_metrics_for_type(eval_type: str, judge_llm: LangchainLLMWrapper):
-    """Return RAGAS metrics list for a given eval type."""
+def get_core_ragas_metrics(judge_llm: LangchainLLMWrapper) -> list:
+    """All 4 core RAGAS metrics from issue #184."""
+    return [
+        ContextPrecision(llm=judge_llm),
+        ContextRecall(llm=judge_llm),
+        Faithfulness(llm=judge_llm),
+        AnswerCorrectness(llm=judge_llm),
+    ]
+
+
+def get_domain_metrics_for_type(eval_type: str, judge_llm: LangchainLLMWrapper) -> list:
+    """Domain-specific AspectCritic + ResponseRelevancy per eval type."""
     relevancy = ResponseRelevancy(llm=judge_llm)
 
     if eval_type == "lesson_plan":

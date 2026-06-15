@@ -1,20 +1,25 @@
 """
-Model evaluation: GPT-4o vs GPT-5.1 (local run, no RAGAS/Langfuse)
-Scoring via GPT-4o-as-judge using custom_metrics.py.
+Model evaluation: GPT-4o vs GPT-5.1
+Scoring via GPT-4o-as-judge (custom_metrics) + optional RAGAS core metrics.
 Results saved to eval/ragas_eval/results/ as timestamped JSON.
+With --langfuse: uploads to Langfuse as a dataset experiment run.
 
 Usage:
-    poetry run python evaluate.py                          # all 3 types, both models
-    poetry run python evaluate.py --type lesson_plan       # single type
-    poetry run python evaluate.py --models gpt-4o          # single model
-    poetry run python evaluate.py --limit 10               # quick smoke-test
-    poetry run python evaluate.py --skip-scoring           # save raw outputs only
+    poetry run python evaluate.py                                  # all types, both models
+    poetry run python evaluate.py --type lesson_plan               # single type
+    poetry run python evaluate.py --models gpt-4o                  # single model
+    poetry run python evaluate.py --limit 10                       # quick smoke-test
+    poetry run python evaluate.py --skip-scoring                   # output only, no judge
+    poetry run python evaluate.py --ragas                          # add RAGAS 4 core metrics
+    poetry run python evaluate.py --langfuse                       # upload to Langfuse Experiments
+    poetry run python evaluate.py --ragas --langfuse               # RAGAS + Langfuse upload
 """
 
 import asyncio
 import argparse
 import json
 import time
+from datetime import datetime, timezone
 from typing import List
 
 import config
@@ -62,13 +67,25 @@ async def run_eval_type(
     model_names: List[str],
     limit: int,
     skip_scoring: bool,
+    run_ragas: bool,
+    upload_langfuse: bool,
 ) -> None:
     samples = load_samples(eval_type, limit)
     print(f"\n{'='*60}")
     print(f"Eval type : {eval_type}")
     print(f"Models    : {model_names}")
     print(f"Samples   : {len(samples)}")
+    print(f"RAGAS     : {'yes' if run_ragas else 'no'}")
+    print(f"Langfuse  : {'yes' if upload_langfuse else 'no'}")
     print(f"{'='*60}")
+
+    lf_logger = None
+    if upload_langfuse:
+        from langfuse_logger import LangfuseEvalLogger
+        lf_logger = LangfuseEvalLogger(eval_type)
+        # Upload full dataset (all samples in file), not just the --limit subset
+        all_samples_for_upload = load_samples(eval_type, limit=999999)
+        lf_logger.ensure_dataset(all_samples_for_upload)
 
     all_scores: dict[str, List[dict]] = {}
 
@@ -83,15 +100,33 @@ async def run_eval_type(
             elapsed = time.monotonic() - t0
             print(f"    Scoring done in {elapsed:.1f}s")
 
-        save_run(eval_type, model_name, outputs, scores)
+        ragas_scores: List[dict] = []
+        if run_ragas:
+            from ragas_scorer import score_with_ragas
+            print(f"    Running RAGAS metrics (chunk=5)...")
+            t0 = time.monotonic()
+            ragas_scores = score_with_ragas(outputs, samples, chunk_size=5)
+            elapsed = time.monotonic() - t0
+            print(f"    RAGAS done in {elapsed:.1f}s")
+
+        save_run(eval_type, model_name, outputs, scores, ragas_scores or [])
         all_scores[model_name] = scores
+
+        if lf_logger is not None:
+            safe_model = model_name.replace(".", "_")
+            ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+            run_name = f"{safe_model}-{ts}"
+            lf_logger.log_experiment_run(run_name, outputs, scores, ragas_scores or [])
 
     if not skip_scoring:
         print_comparison(eval_type, model_names, all_scores)
 
+    if lf_logger is not None:
+        lf_logger.print_dataset_url()
+
 
 def main():
-    parser = argparse.ArgumentParser(description="GPT-4o vs GPT-5.1 evaluation — results saved to JSON")
+    parser = argparse.ArgumentParser(description="GPT-4o vs GPT-5.1 evaluation")
     parser.add_argument(
         "--type",
         choices=list(RUNNER_MAP.keys()) + ["all"],
@@ -106,11 +141,16 @@ def main():
     )
     parser.add_argument("--limit", type=int, default=60)
     parser.add_argument("--skip-scoring", action="store_true", help="Skip judge scoring — output only")
+    parser.add_argument("--ragas", action="store_true", help="Add RAGAS core 4 metrics")
+    parser.add_argument("--langfuse", action="store_true", help="Upload results to Langfuse as experiment run")
     args = parser.parse_args()
 
     eval_types = list(RUNNER_MAP.keys()) if args.eval_type == "all" else [args.eval_type]
     for et in eval_types:
-        asyncio.run(run_eval_type(et, args.models, args.limit, args.skip_scoring))
+        asyncio.run(run_eval_type(
+            et, args.models, args.limit,
+            args.skip_scoring, args.ragas, args.langfuse,
+        ))
 
     print("\nDone. Results in eval/ragas_eval/results/")
 
