@@ -1,6 +1,13 @@
-<div class="disable-popup-wrapper z-100">
+<div 
+  class="disable-popup-wrapper z-100"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="disable-dialog-title"
+  cdkTrapFocus
+  [cdkTrapFocusAutoCapture]="true"
+>
   <div class="flex items-center justify-between mb-2">
-    <h1 class="font-bold text-[20px] text-content">{{ modalHeader }}</h1>
+    <h1 id="disable-dialog-title" class="font-bold text-[20px] text-content">{{ modalHeader }}</h1>
     <img class="w-5 h-5 cursor-pointer" src="assets/icons/remove.svg" (click)="closeModal()" alt="" />
   </div>
   <p class="text-sm">{{ modalSubHeader }}</p>
