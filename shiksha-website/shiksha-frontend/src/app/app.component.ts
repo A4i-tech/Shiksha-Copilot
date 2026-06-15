@@ -33,6 +33,16 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // ========== GLOBAL ACCESSIBILITY OBSERVER (ngx-clipboard textarea patch) ==========
+    const clipboardObserver = new MutationObserver((mutations) => {
+      document.querySelectorAll('textarea').forEach((textarea) => {
+        if (!textarea.hasAttribute('aria-label') && !textarea.hasAttribute('aria-hidden') && textarea.style.opacity === '0') {
+          textarea.setAttribute('aria-label', 'System Clipboard Helper');
+          textarea.setAttribute('aria-hidden', 'true');
+        }
+      });
+    });
+    clipboardObserver.observe(document.body, { childList: true, subtree: true });
 
     // ========== IDLE WATCHER ==========
     this.idleService.idleIndicator.subscribe({

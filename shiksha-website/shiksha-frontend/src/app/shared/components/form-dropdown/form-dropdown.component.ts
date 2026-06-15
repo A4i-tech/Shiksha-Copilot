@@ -18,6 +18,8 @@ import { TranslateModule } from '@ngx-translate/core';
   styleUrls: ['./form-dropdown.component.scss'],
 })
 export class FormDropdownComponent implements OnInit, OnChanges {
+  inputId = 'form-dropdown-' + Math.random().toString(36).substring(2, 9);
+
   constructor() { }
   /** Options for the dropdown; items may include optional `info` (string) for tooltip. */
   @Input() dropDownValues: FormDropDownOption[] = [];
