@@ -99,6 +99,8 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
         qb_page.select_dropdown_option("grade", index=0)
         qb_page.select_dropdown_option("medium", index=0)
         qb_page.select_dropdown_option("subject", index=0)
+        # subject change fires getChapters() — ngx-spinner overlays page during load, blocking clicks
+        logged_in_page.locator("ngx-spinner").wait_for(state="hidden", timeout=15000)
 
     with step("Select All Sources"):
         # Source Generation is the multi-select dropdown at index 1
