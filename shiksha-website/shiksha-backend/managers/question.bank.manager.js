@@ -113,7 +113,7 @@ class QuestionBankManager extends BaseManager {
       const templatePayload = await this._createQuestionBankPayload(req.body, user);
       const payload = {
         ...templatePayload,
-        template: this._applyBoardMarkingPolicy(req.body.board, this._mapTemplateTypes(template || []), req.body.totalMarks),
+        template: this._applyQuestionCounts(this._mapTemplateTypes(template), req.body.totalMarks),
         objective_distribution: objective_distribution || req.body.objectiveDistribution || [],
       };
 
@@ -144,7 +144,7 @@ class QuestionBankManager extends BaseManager {
 
       const context = this._prepareGenerationContext(req.body);
       if (!context.questions || context.questions.length === 0) {
-        context.template = this._applyBoardMarkingPolicy(context.board, this._mapTemplateTypes(context.template || []));
+        context.template = this._applyQuestionCounts(this._mapTemplateTypes(context.template));
       }
       const {
         language,
@@ -556,15 +556,11 @@ class QuestionBankManager extends BaseManager {
     });
   }
 
-  _applyBoardMarkingPolicy(board, template, totalMarks) {
-    return template.map((item) => {
-      const marks = (BOARD_MARKS[board] || BOARD_MARKS.DEFAULT)[item.type];
-      return {
-        ...item,
-        marks_per_question: marks,
-        ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / marks) }),
-      };
-    });
+  _applyQuestionCounts(template, totalMarks) {
+    return template.map((item) => ({
+      ...item,
+      ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / item.marks_per_question) }),
+    }));
   }
 
   async _createQuestionBankPayload(reqBody, user) {

@@ -90,19 +90,19 @@
   },
   "boardMarks": {
     "DEFAULT": {
-      "MCQ": 1,
-      "FILL_BLANKS": 1,
-      "MATCHING": 1,
-      "ANSWER_VERY_SHORT": 1,
-      "ANSWER_SHORT": 2,
-      "ANSWER_MEDIUM": 2,
-      "ANSWER_LONG": 5,
-      "GRAMMAR_MCQ": 1,
-      "GRAMMAR_FILL_BLANKS": 1,
-      "GRAMMAR_EDITING": 1
+      "MCQ": [1],
+      "FILL_BLANKS": [1],
+      "MATCHING": [1],
+      "ANSWER_VERY_SHORT": [1],
+      "ANSWER_SHORT": [2],
+      "ANSWER_MEDIUM": [2],
+      "ANSWER_LONG": [5],
+      "GRAMMAR_MCQ": [1],
+      "GRAMMAR_FILL_BLANKS": [1],
+      "GRAMMAR_EDITING": [1]
     },
     "BSE-TG": {
-      "MCQ": 0.5
+      "MCQ": [0.5, 1]
     }
   },
   "questionSources": {

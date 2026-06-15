@@ -544,10 +544,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (this.useAI) {
       this.paperQuestionTypes
         .filter(q => {
-          const isGrammar = String(q.key || '').startsWith('GRAMMAR_');
+          const isGrammar = q.key.startsWith('GRAMMAR_');
           return isGrammar ? hasGrammar : (hasNonGrammar || selectedChapters.length === 0);
         })
-        .forEach(q => headingMap.set(q.label, { ...q, name: q.label, count: 0, chapters: new Set<number>() }));
+        .forEach(q => {
+          q.marksPerQuestion.forEach((marks: number) => {
+            const name = `${q.label} (${marks} mark${marks === 1 ? '' : 's'})`;
+            headingMap.set(`AI:${q.key}:${marks}`, { ...q, marksPerQuestion: marks, name, label: name, count: 0, chapters: new Set<number>() });
+          });
+        });
     }
 
     for (const chapter of selectedChapters) {
@@ -745,8 +750,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     let payload = this.getTemplatePayload();
     const aiHeadings = this.selectedHeadings.filter(heading => heading.instruction);
     if (!aiHeadings.length) return of([]);
+    const headingByTypeAndMarks = new Map(aiHeadings.map(heading => [`${heading.key}:${Number(heading.marksPerQuestion)}`, heading]));
     payload.template = aiHeadings.map(heading => ({
       type: heading.key,
+      marks_per_question: heading.marksPerQuestion,
       question_distribution: []
     }));
     payload.isPreview = true;
@@ -761,17 +768,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
         finalRes.data.questions.forEach((block: any) => {
           const blockType = block.type;
-          const friendlyHeading = aiHeadings.find(h => h.key === blockType)?.label || blockType;
           const blockMarks = Number(block.marksPerQuestion);
+          const heading = headingByTypeAndMarks.get(`${blockType}:${blockMarks}`);
+          if (!heading) throw new Error(`Unexpected AI question block ${blockType}:${blockMarks}`);
 
           block.questions.forEach((q: any) => {
+            const text = blockType === 'MATCHING' ? `${q.value1} - ${q.value2}` : q.question;
             flatQuestions.push({
               ...q,
               source: QUESTION_SOURCE.AI,
-              text: q.question || (q.value1 && q.value2 ? `${q.value1} - ${q.value2}` : ''),
+              text,
               marks: blockMarks,
               type: blockType,
-              heading: friendlyHeading,
+              heading: heading.label,
               unit_name: chapterName,
               objective: q.objective,
               value1: q.value1,
