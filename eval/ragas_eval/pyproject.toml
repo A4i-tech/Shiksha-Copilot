@@ -1,0 +1,21 @@
+[project]
+name = "ragas-eval"
+version = "0.1.0"
+description = "RAGAS model evaluation"
+authors = [
+    {name = "Punit Kaushik",email = "punit.kaushik444@gmail.com"}
+]
+readme = "README.md"
+requires-python = "~3.11"
+dependencies = [
+    "openai (>=1.50.0)",
+    "tqdm (>=4.0.0)",
+    "pandas (>=2.0.0)",
+    "python-dotenv (>=1.0.0)",
+    "pyyaml (>=6.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
