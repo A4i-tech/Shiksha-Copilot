@@ -1,5 +1,6 @@
 import pytest
 import os
+from typing import Optional
 from playwright.sync_api import expect
 from page_objects.content_generation_page import ContentGenerationPage
 from page_objects.presentation_page import PresentationPage
@@ -7,7 +8,7 @@ from page_objects.presentation_page import PresentationPage
 BASE_URL = os.getenv("FRONTEND_URL")
 
 
-def _get_first_presentation_id(logged_in_page) -> str | None:
+def _get_first_presentation_id(logged_in_page) -> Optional[str]:
     """
     Navigate to content generation list, filter for presentation type,
     return job ID from URL after clicking first presentation card.

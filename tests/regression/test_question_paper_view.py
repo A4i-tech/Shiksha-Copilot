@@ -1,12 +1,13 @@
 import pytest
 import os
+from typing import Optional
 from playwright.sync_api import expect
 from page_objects.question_paper_view_page import QuestionPaperViewPage
 
 BASE_URL = os.getenv("FRONTEND_URL")
 
 
-def _navigate_to_first_paper(logged_in_page) -> str | None:
+def _navigate_to_first_paper(logged_in_page) -> Optional[str]:
     """
     Go to question paper list, click first available paper's view/open button,
     return the paper ID extracted from the resulting URL.
