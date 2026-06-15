@@ -75,7 +75,7 @@ router.get(
 );
 
 router.get(
-  "/question-bank/meta/grammarTopics",
+  "/question-bank/meta/grammar-topics",
   isAuthenticated,
   validateGetGrammarTopics,
   asyncMiddleware(questionBankController.getGrammarTopics.bind(questionBankController))

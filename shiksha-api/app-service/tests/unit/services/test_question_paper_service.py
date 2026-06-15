@@ -44,12 +44,7 @@ class TestFlattenExistingQuestions:
     def test_flatten_matching_questions(self, service):
         """Test flattening matching-type questions."""
         mock_response = MagicMock()
-        mock_response.questions = [
-            MatchingListQuestion(
-                value1="Mitochondria",
-                value2="Powerhouse of the cell",
-            )
-        ]
+        mock_response.questions = [MatchingListQuestion(value1="Mitochondria", value2="Powerhouse of the cell")]
 
         result = service._flatten_existing_questions([mock_response])
 
@@ -116,22 +111,13 @@ class TestFormatSystemPrompt:
             "blooms-taxonomy": {"general": "Test Blooms"},
         }
 
-        request = MagicMock(
-            board="CBSE",
-            grade=10,
-            subject="Math",
-            medium="English",
-            total_marks=100,
-            chapters=[],
-        )
+        request = MagicMock(board="CBSE", grade=10, subject="Math", medium="English", total_marks=100, chapters=[])
         record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
         template = GeneratedTemplate(
             type=QuestionType.MCQ,
             number_of_questions=1,
             marks_per_question=1,
-            question_distribution=[
-                QuestionDistribution(unit_name="Chapter 1", objective="remember")
-            ],
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective="remember")],
         )
         slot = [(template, template.question_distribution[0])]
 
