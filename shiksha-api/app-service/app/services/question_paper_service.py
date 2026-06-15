@@ -109,7 +109,7 @@ class QuestionPaperService:
                     case MatchingListQuestion(value1=value1, value2=value2):
                         questions.append(f"{value1} :: {value2}")
                     case _:
-                        raise RuntimeError("don't know how to flatten %s" % q.__qualname__)
+                        raise RuntimeError("don't know how to flatten %s" % type(q).__qualname__)
         return [q for q in questions if q]
 
     def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, record: _LearningRecord) -> str:

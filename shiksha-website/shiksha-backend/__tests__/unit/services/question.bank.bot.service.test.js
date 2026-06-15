@@ -9,25 +9,15 @@ describe("question.bank.bot.service", () => {
     process.env.LLM_API_BASE_URL = "http://llm";
   });
 
-  it("posts to question bank template", async () => {
+  it("posts to question bank distribution", async () => {
     axios.post.mockResolvedValue({ status: 200, data: { ok: true } });
     const service = require("../../../services/question.bank.bot.service");
-    const res = await service.postToQuestionBankTemplate({});
-    expect(axios.post).toHaveBeenCalledWith(
-      "http://llm/question-paper/questiondistribution",
-      {}
-    );
-    expect(res.data).toEqual({ ok: true });
-  });
-
-  it("posts to question bank blueprint", async () => {
-    axios.post.mockResolvedValue({ status: 200, data: { ok: true } });
-    const service = require("../../../services/question.bank.bot.service");
-    await service.postToQuestionBankBluePrint({ plan: 1 });
+    const res = await service.postToQuestionBankDistribution({ plan: 1 });
     expect(axios.post).toHaveBeenCalledWith(
       "http://llm/question-paper/questiondistribution",
       { plan: 1 }
     );
+    expect(res.data).toEqual({ ok: true });
   });
 
   it("posts to question bank parts", async () => {

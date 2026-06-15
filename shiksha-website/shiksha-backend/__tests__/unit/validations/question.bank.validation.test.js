@@ -1,5 +1,4 @@
 const {
-  validateQuestionBankTemplateCreate,
   validateQuestionBankBluePrintCreate,
   validateQuestionBankCreate,
   validateGetQuestionTypes,
@@ -20,91 +19,6 @@ describe("Question Bank Validation", () => {
       json: jest.fn().mockReturnThis(),
     };
     mockNext = jest.fn();
-  });
-
-  describe("validateQuestionBankTemplateCreate", () => {
-    const validTemplateData = {
-      medium: "English",
-      board: "CBSE",
-      grade: 10,
-      subject: "Mathematics",
-      chapter: "Algebra",
-      totalMarks: 100,
-      examinationName: "Final Exam",
-      chapterIds: ["chapter123"],
-      isMultiChapter: false,
-      marksDistribution: [
-        {
-          unit_name: "Unit 1",
-          marks: 50,
-          percentage_distribution: 50,
-        },
-      ],
-    };
-
-    it("should pass validation with valid template data", () => {
-      mockReq.body = { ...validTemplateData };
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockNext).toHaveBeenCalled();
-      expect(mockRes.status).not.toHaveBeenCalled();
-    });
-
-    it("should fail when grade is missing", () => {
-      const { grade, ...dataWithoutGrade } = validTemplateData;
-      mockReq.body = dataWithoutGrade;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        data: false,
-        error: expect.arrayContaining([expect.stringContaining("grade")]),
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when board is missing", () => {
-      const { board, ...dataWithoutBoard } = validTemplateData;
-      mockReq.body = dataWithoutBoard;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when medium is missing", () => {
-      const { medium, ...dataWithoutMedium } = validTemplateData;
-      mockReq.body = dataWithoutMedium;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when subject is missing", () => {
-      const { subject, ...dataWithoutSubject } = validTemplateData;
-      mockReq.body = dataWithoutSubject;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when chapterIds is missing", () => {
-      const { chapterIds, ...dataWithoutChapterIds } = validTemplateData;
-      mockReq.body = dataWithoutChapterIds;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
   });
 
   describe("validateQuestionBankBluePrintCreate", () => {
@@ -133,7 +47,7 @@ describe("Question Bank Validation", () => {
       ],
       template: [
         {
-          type: "Four alternatives are given for each of the following questions, choose the correct alternative",
+          type: "MCQ",
           number_of_questions: 10,
           marks_per_question: 1,
         },
@@ -198,7 +112,7 @@ describe("Question Bank Validation", () => {
       ],
       template: [
         {
-          type: "Four alternatives are given for each of the following questions, choose the correct alternative",
+          type: "MCQ",
           number_of_questions: 10,
           marks_per_question: 1,
         },
