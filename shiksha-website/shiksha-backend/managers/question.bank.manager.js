@@ -21,7 +21,6 @@ const {
   getQuestions,
   mergeQuestions,
   processCacheHits,
-  processCacheHitsForSubtopic,
 } = require("../helper/question.bank.cache.helper");
 const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.dao");
 const { addCacheJob } = require("./cache.queue.manager");
@@ -522,21 +521,13 @@ class QuestionBankManager extends BaseManager {
         )
         : [];
 
-      const processedCache = isMultiChapter
-        ? processCacheHits(
-          rawCacheHit,
-          chapterIds,
-          processedUnitNames,
-          unitLevel,
-          objectives
-        )
-        : processCacheHitsForSubtopic(
-          rawCacheHit,
-          chapterIds,
-          processedUnitNames,
-          unitLevel,
-          objectives
-        );
+      const processedCache = processCacheHits(
+        rawCacheHit,
+        isMultiChapter ? chapterIds : processedUnitNames.map(() => chapterIds[0]),
+        processedUnitNames,
+        unitLevel,
+        objectives
+      );
 
       let cacheSummaryData = convertToCamelCase({
         questionBankConfigId,

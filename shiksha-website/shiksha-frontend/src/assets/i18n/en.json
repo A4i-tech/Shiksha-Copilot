@@ -485,5 +485,10 @@
   "Right (Answer)": "Right (Answer)",
   "Blueprint": "Blueprint",
   "Question paper + Answer Key": "Question paper + Answer Key",
-  "Download": "Download"
+  "Download": "Download",
+  "Loading...": "Loading...",
+  "Generating blueprint...": "Generating blueprint...",
+  "Retrieving textbook questions...": "Retrieving textbook questions...",
+  "Generating questions...": "Generating questions...",
+  "Creating question paper...": "Creating question paper..."
 }

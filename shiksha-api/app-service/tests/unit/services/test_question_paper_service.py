@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 from app.services.question_paper_service import QuestionPaperService
 from app.models.question_paper import QuestionType, Chapter
 
@@ -9,18 +9,11 @@ from app.models.question_paper import QuestionType, Chapter
 def service():
     """Create a mocked QuestionPaperService once per test."""
     with patch("app.services.question_paper_service.AsyncAzureOpenAI"), patch(
-        "app.services.question_paper_service.LlamaAzureOpenAI"
-    ), patch("app.services.question_paper_service.AzureOpenAIEmbedding"), patch(
+        "app.services.question_paper_service.new_rag_llm"
+    ), patch("app.services.question_paper_service.new_rag_embed"), patch(
+        "app.services.question_paper_service.RagAdapterCache"
+    ), patch(
         "app.services.question_paper_service.yaml.safe_load", return_value={}
-    ), patch.dict(
-        "os.environ",
-        {
-            "AZURE_OPENAI_API_KEY": "test-key",
-            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com/",
-            "AZURE_OPENAI_API_VERSION": "2024-02-15-preview",
-            "AZURE_CHAT_DEPLOYMENT_NAME": "gpt-4",
-            "AZURE_EMBED_MODEL": "text-embedding-ada-002",
-        },
     ):
         svc = QuestionPaperService()
         yield svc
@@ -33,11 +26,6 @@ class TestQuestionPaperServiceInitialization:
         """Test that service initializes and loads prompts."""
         assert service.client is not None
         assert hasattr(service, "prompts")
-
-    def test_initialization_has_adapter_cache(self, service):
-        """Test that service has adapter cache."""
-        assert hasattr(service, "_adapter_cache")
-        assert isinstance(service._adapter_cache, dict)
 
 
 class TestFlattenExistingQuestions:
@@ -278,35 +266,3 @@ class TestOrganizeQuestionsIntoResponse:
         assert len(response) > 0
         assert response[0].type == QuestionType.MCQ
         assert len(response[0].questions) == 1
-
-
-class TestGetOrCreateRagAdapter:
-    """Tests for _get_or_create_rag_adapter method."""
-
-    @pytest.mark.asyncio
-    async def test_create_new_adapter(self, service):
-        """Test creating a new RAG adapter."""
-        with patch(
-            "app.services.question_paper_service.RagAdapterFactory"
-        ) as mock_factory:
-            mock_adapter = AsyncMock()
-            mock_factory.create_adapter.return_value = mock_adapter
-
-            adapter = await service._get_or_create_rag_adapter("/path/to/index")
-
-            assert adapter is not None
-            mock_factory.create_adapter.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_return_cached_adapter(self, service):
-        """Test returning cached RAG adapter."""
-        with patch(
-            "app.services.question_paper_service.RagAdapterFactory"
-        ) as mock_factory:
-            mock_adapter = AsyncMock()
-            service._adapter_cache["/path/to/index"] = mock_adapter
-
-            adapter = await service._get_or_create_rag_adapter("/path/to/index")
-
-            assert adapter is mock_adapter
-            mock_factory.create_adapter.assert_not_called()

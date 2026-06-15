@@ -20,11 +20,11 @@ import {
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
-import { distinctUntilChanged } from 'rxjs';
+import { concat, distinctUntilChanged } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
-import { map, switchMap, catchError, finalize } from 'rxjs/operators';
+import { map, switchMap, catchError, finalize, toArray } from 'rxjs/operators';
 
 // Import Child Component for Step 2 access
 import { QuestionBankTemplateComponent } from './question-bank-template/question-bank-template.component';
@@ -744,18 +744,16 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.allAvailableQuestions = [];
     this.selectedQuestions = []; // Clear previous selections when config changes
 
-    const tasks: any = {};
-    if (this.useAI) tasks.ai = this.generateAIQuestionsPool();
-    if (this.useLBA) tasks.lba = this.fetchLBAQuestionsPool();
-
-    forkJoin(tasks).pipe(
+    concat(
+      this.useLBA ? this.fetchLBAQuestionsPool() : of([]),
+      this.useAI ? this.generateAIQuestionsPool() : of([])
+    ).pipe(
+      toArray(),
+      map(([lbaQs, aiQs]: any) => [...(aiQs || []), ...(lbaQs || [])]),
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (results: any) => {
-        const aiQs = results.ai || [];
-        const lbaQs = results.lba || [];
-        this.allAvailableQuestions = [...aiQs, ...lbaQs];
-
+        this.allAvailableQuestions = results;
         if (this.allAvailableQuestions.length > 0) {
           this.currentStep = 2; // Success: Move to Step 2
         } else {

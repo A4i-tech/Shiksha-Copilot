@@ -14,10 +14,9 @@ from typing import List, Optional, Union
 from app.config import settings
 from app.utils.blob_store import BlobStore
 from rag_wrapper import InMemRagOps, QdrantRagOps
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.llms import ChatMessage
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -27,16 +26,16 @@ class BaseRagAdapter(ABC):
 
     def __init__(
         self,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
         metadata_filter: dict = None,
     ):
         """
         Initialize the base RAG adapter.
 
         Args:
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
             metadata_filter: optional metadata filter to apply while retrieval
         """
         self.completion_llm = completion_llm
@@ -105,16 +104,16 @@ class InMemRagOpsAdapter(BaseRagAdapter):
 
     def __init__(
         self,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
         index_path: str,
     ):
         """
         Initialize the InMemRagOps adapter.
 
         Args:
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
             index_path: Path to the RAG index in blob storage
         """
         super().__init__(completion_llm, embedding_llm)
@@ -143,43 +142,32 @@ class InMemRagOpsAdapter(BaseRagAdapter):
         """
         Initiate the index by downloading files from blob storage if needed.
         """
-        index_exists = await self.index_exists()
-        if not index_exists:
-            logger.info(f"Downloading RAG index from blob storage: {self.index_path}")
+        if await self.index_exists():
+            return
 
+        logger.info(f"Downloading RAG index from blob storage: {self.index_path}")
+        try:
+            downloaded_file_paths = await self._blob_store.download_blobs_to_folder(prefix=self.index_path, target_folder=self.persist_dir)
+        except ValueError as e:
+            raise RuntimeError(str(e)) from e
+
+        if not downloaded_file_paths:
+            raise RuntimeError(f"No files downloaded for index path: {self.index_path}")
+
+        # LlamaIndex expects 'default__vector_store.json', but older indices might only have 'vector_store.json'
+        legacy_vs_path = os.path.join(self.persist_dir, "vector_store.json")
+        new_vs_path = os.path.join(self.persist_dir, "default__vector_store.json")
+        if os.path.exists(legacy_vs_path) and not os.path.exists(new_vs_path):
             try:
-                downloaded_file_paths = await self._blob_store.download_blobs_to_folder(
-                    prefix=self.index_path, target_folder=self.persist_dir
-                )
-            except ValueError as e:
-                raise RuntimeError(str(e)) from e
+                shutil.copy(legacy_vs_path, new_vs_path)
+                logger.info("Copied legacy vector_store.json to default__vector_store.json for LlamaIndex compatibility")
+            except PermissionError as e:
+                raise RuntimeError(f"Permission denied copying legacy vector store to {new_vs_path}: {e}") from e
+            except OSError as e:
+                raise RuntimeError(f"Failed to copy legacy vector store to {new_vs_path} (disk full?): {e}") from e
 
-            if not downloaded_file_paths:
-                raise RuntimeError(
-                    f"No files downloaded for index path: {self.index_path}"
-                )
-
-            # LlamaIndex expects 'default__vector_store.json', but older indices might only have 'vector_store.json'
-            legacy_vs_path = os.path.join(self.persist_dir, "vector_store.json")
-            new_vs_path = os.path.join(self.persist_dir, "default__vector_store.json")
-            if os.path.exists(legacy_vs_path) and not os.path.exists(new_vs_path):
-                try:
-                    shutil.copy(legacy_vs_path, new_vs_path)
-                    logger.info("Copied legacy vector_store.json to default__vector_store.json for LlamaIndex compatibility")
-                except PermissionError as e:
-                    raise RuntimeError(
-                        f"Permission denied copying legacy vector store to {new_vs_path}: {e}"
-                    ) from e
-                except OSError as e:
-                    raise RuntimeError(
-                        f"Failed to copy legacy vector store to {new_vs_path} (disk full?): {e}"
-                    ) from e
-
-            logger.info(f"Downloaded {len(downloaded_file_paths)} index files")
-            file_paths_str = "\n".join(downloaded_file_paths)
-            logger.info(f"Downloaded RAG index files: {file_paths_str}")
-        else:
-            logger.debug(f"Index already exists at: {self.persist_dir}")
+        file_paths_str = "\n".join(downloaded_file_paths)
+        logger.info(f"Downloaded {len(downloaded_file_paths)} RAG index files: {file_paths_str}")
 
     async def cleanup(self) -> None:
         """Clean up downloaded index files."""
@@ -198,16 +186,16 @@ class QdrantRagOpsAdapter(BaseRagAdapter):
 
     def __init__(
         self,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
         index_path: str,
     ):
         """
         Initialize the QdrantRagOps adapter.
 
         Args:
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
             index_path: Path to the Qdrant collection/index in format "qdrant/collection_name/key:value"
         """
         self.index_path = index_path
@@ -257,16 +245,16 @@ class RagAdapterFactory:
     @staticmethod
     def create_adapter(
         index_path: str,
-        completion_llm: AzureOpenAI,
-        embedding_llm: AzureOpenAIEmbedding,
+        completion_llm: OpenAI,
+        embedding_llm: OpenAIEmbedding,
     ) -> BaseRagAdapter:
         """
         Create the appropriate RAG adapter based on the index path.
 
         Args:
             index_path: Path to the RAG index
-            completion_llm: Azure OpenAI completion model instance
-            embedding_llm: Azure OpenAI embedding model instance
+            completion_llm: OpenAI completion model instance
+            embedding_llm: OpenAI embedding model instance
 
         Returns:
             BaseRagAdapter: The appropriate RAG adapter instance

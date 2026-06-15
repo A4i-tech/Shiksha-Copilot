@@ -1,8 +1,9 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
+import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
 
 @Injectable({
@@ -94,7 +95,9 @@ export class QuestionBankService extends BaseRestService {
    * @returns
    */
   generateQuestionBankBluePrint(data: any): Observable<any> {
-    return this.post('generate-blue-print', data);
+    return this.http.post(`${this.getUrl()}generate-blue-print`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Generating blueprint...')
+    });
   }
 
   /**
@@ -103,7 +106,9 @@ export class QuestionBankService extends BaseRestService {
    * @returns
    */
   generateQuestionBank(data: any) {
-    return this.post('generate', data);
+    return this.http.post(`${this.getUrl()}generate`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, data?.isPreview ? 'Generating questions...' : 'Creating question paper...')
+    });
   }
 
   /**
@@ -253,7 +258,8 @@ export class QuestionBankService extends BaseRestService {
         params = params.set(key, String(value));
       }
     });
-    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params }).pipe(
+    const context = new HttpContext().set(LOADER_MESSAGE, 'Retrieving textbook questions...');
+    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params, context }).pipe(
       (source => new Observable<any[]>(observer => source.subscribe({
         next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
         error: (e) => observer.error(e),
@@ -268,7 +274,9 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<any>
    */
   generateLBAQuestionPaper(data: any): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data);
+    return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Creating question paper...')
+    });
   }
 
   getGrammarTopics(grade: number): Observable<string[]> {

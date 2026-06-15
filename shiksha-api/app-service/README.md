@@ -737,8 +737,8 @@ poetry run pytest -v
 ### Building the Docker Image
 
 ```bash
-# Build the image
-docker build -t shiksha-copilot-api .
+# Build the image from the repository root
+docker build -f shiksha-api/app-service/Dockerfile -t shiksha-copilot-api .
 
 # Run the container
 docker run -p 8000:8000 --env-file .env shiksha-copilot-api
@@ -750,7 +750,9 @@ docker run -p 8000:8000 --env-file .env shiksha-copilot-api
 version: "3.8"
 services:
   api:
-    build: .
+    build:
+      context: ../..
+      dockerfile: shiksha-api/app-service/Dockerfile
     ports:
       - "8000:8000"
     environment:

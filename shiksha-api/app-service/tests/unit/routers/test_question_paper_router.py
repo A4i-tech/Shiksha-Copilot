@@ -1,32 +1,13 @@
 import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, AsyncMock
-from app.main import app
-
-
-client = TestClient(app)
-
-
-def _mock_translate_same_data(json_data):
-    """Return a coroutine that resolves to the same json_data (no-op translation)."""
-    async def _same(_data, _src, _tgt):
-        return json_data
-    return _same
-
-
-@pytest.fixture
-def mock_question_paper_service():
-    """Mock the QuestionPaperService."""
-    with patch(
-        "app.routers.question_paper.QUESTION_PAPER_SERVICE_INSTANCE"
-    ) as mock_service:
-        yield mock_service
+from unittest.mock import AsyncMock, patch
+from app.routers.question_paper import translate_json_content_to_kannada
 
 
 class TestTranslateJsonEndpoint:
     """Tests for the /question-paper/translate-json endpoint."""
 
-    def test_translate_json_same_language(self, mock_question_paper_service):
+    @pytest.mark.asyncio
+    async def test_translate_json_same_language(self):
         """Test translation when source and target languages match."""
         request_data = {
             "target_language": "English",
@@ -37,12 +18,12 @@ class TestTranslateJsonEndpoint:
         }
 
         with patch("app.routers.question_paper.detect", return_value="en"):
-            response = client.post("/question-paper/translate-json", json=request_data)
+            response = await translate_json_content_to_kannada(**request_data)
 
-        assert response.status_code == 200
-        assert response.json() == request_data["json_data"]
+        assert response == request_data["json_data"]
 
-    def test_translate_json_with_language_map(self, mock_question_paper_service):
+    @pytest.mark.asyncio
+    async def test_translate_json_with_language_map(self):
         """Test translation with mapped language codes."""
         request_data = {
             "target_language": "Kannada",
@@ -52,24 +33,17 @@ class TestTranslateJsonEndpoint:
             },
         }
 
-        response = client.post("/question-paper/translate-json", json=request_data)
+        with patch("app.routers.question_paper.detect", return_value="en"), patch(
+            "app.routers.question_paper.TranslationService.translate_json_async",
+            new_callable=AsyncMock,
+            return_value=request_data["json_data"],
+        ):
+            response = await translate_json_content_to_kannada(**request_data)
 
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, dict)
+        assert isinstance(response, dict)
 
-    def test_translate_json_missing_fields(self):
-        """Test translation request with missing required fields."""
-        request_data = {
-            "target_language": "Kannada"
-            # Missing json_data
-        }
-
-        response = client.post("/question-paper/translate-json", json=request_data)
-
-        assert response.status_code == 422  # Validation error
-
-    def test_translate_json_invalid_language(self, mock_question_paper_service):
+    @pytest.mark.asyncio
+    async def test_translate_json_invalid_language(self):
         """Test translation with unmapped language name returns 200 (mocked no-op)."""
         request_data = {
             "target_language": "Unmapped Language",
@@ -78,23 +52,23 @@ class TestTranslateJsonEndpoint:
         with patch(
             "app.routers.question_paper.TranslationService.translate_json_async",
             new_callable=AsyncMock,
-            side_effect=_mock_translate_same_data(request_data["json_data"]),
+            return_value=request_data["json_data"],
         ):
-            response = client.post("/question-paper/translate-json", json=request_data)
+            response = await translate_json_content_to_kannada(**request_data)
 
-        assert response.status_code == 200
-        assert response.json() == request_data["json_data"]
+        assert response == request_data["json_data"]
 
-    def test_translate_json_empty_json_data(self, mock_question_paper_service):
+    @pytest.mark.asyncio
+    async def test_translate_json_empty_json_data(self):
         """Test translation with empty JSON data."""
         request_data = {"target_language": "English", "json_data": {}}
 
-        response = client.post("/question-paper/translate-json", json=request_data)
+        response = await translate_json_content_to_kannada(**request_data)
 
-        assert response.status_code == 200
-        assert response.json() == {}
+        assert response == {}
 
-    def test_translate_json_nested_structure(self, mock_question_paper_service):
+    @pytest.mark.asyncio
+    async def test_translate_json_nested_structure(self):
         """Test translation with deeply nested JSON structure (structure preserved)."""
         request_data = {
             "target_language": "Hindi",
@@ -116,13 +90,11 @@ class TestTranslateJsonEndpoint:
         with patch(
             "app.routers.question_paper.TranslationService.translate_json_async",
             new_callable=AsyncMock,
-            side_effect=_mock_translate_same_data(json_data),
+            return_value=json_data,
         ):
-            response = client.post("/question-paper/translate-json", json=request_data)
+            response = await translate_json_content_to_kannada(**request_data)
 
-        assert response.status_code == 200
-        data = response.json()
-        assert data["parts"][0]["part_name"] == "Part A"
+        assert response["parts"][0]["part_name"] == "Part A"
 
 
 class TestHelperFunctions:

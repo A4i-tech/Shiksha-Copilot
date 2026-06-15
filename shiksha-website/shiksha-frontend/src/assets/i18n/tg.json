@@ -485,5 +485,10 @@
   "Right (Answer)": "కుడి (సమాధానం)",
   "Blueprint": "బ్లూప్రింట్",
   "Question paper + Answer Key": "ప్రశ్న పత్రం + సమాధాన కీ",
-  "Download": "డౌన్‌లోడ్"
+  "Download": "డౌన్‌లోడ్",
+  "Loading...": "లోడ్ అవుతోంది...",
+  "Generating blueprint...": "బ్లూప్రింట్ రూపొందిస్తోంది...",
+  "Retrieving textbook questions...": "పాఠ్యపుస్తక ప్రశ్నలను పొందుతోంది...",
+  "Generating questions...": "ప్రశ్నలను రూపొందిస్తోంది...",
+  "Creating question paper...": "ప్రశ్న పత్రాన్ని రూపొందిస్తోంది..."
 }
