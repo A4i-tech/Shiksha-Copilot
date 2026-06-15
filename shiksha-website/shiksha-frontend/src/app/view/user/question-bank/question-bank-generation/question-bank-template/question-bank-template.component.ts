@@ -175,7 +175,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   // --- TOTALS ---
   get currentTotalMarks(): number {
-    return this.selectedQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
+    return this.selectedQuestions.reduce((sum, q) => sum + q.marks, 0);
   }
 
   get isTotalMet(): boolean {

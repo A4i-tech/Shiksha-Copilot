@@ -66,7 +66,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     const groups: { [key: string]: any } = {};
 
     this.finalSelectedQuestions.forEach(q => {
-      const sectionName = q.heading || q.type || 'General Questions';
+      const sectionName = q.heading;
 
       if (!groups[sectionName]) {
         groups[sectionName] = {
@@ -87,14 +87,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     let chartColors: string[] = [];
 
     this.finalSelectedQuestions.forEach(q => {
-      let label = 'Unknown';
-      if (q.source === QUESTION_SOURCE.AI) {
-        label = q.objective || 'Knowledge';
-      } else if (q.source === QUESTION_SOURCE.LBA) {
-        label = 'Pre-generated';
-      } else {
-        label = q.objective || 'Knowledge';
-      }
+      const label = q.source === QUESTION_SOURCE.AI ? q.objective : 'Pre-generated';
       chartMapper[label] = (chartMapper[label] || 0) + 1;
     });
 
@@ -117,7 +110,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   get uniqueSources(): string[] {
     const sources = new Set<string>();
     this.finalSelectedQuestions.forEach(q => {
-      sources.add(q.source || 'Unknown');
+      sources.add(q.source);
     });
     return Array.from(sources);
   }

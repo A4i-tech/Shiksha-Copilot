@@ -158,9 +158,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (!payload.marksDistribution || payload.marksDistribution.length === 0) {
       const unitMap = new Map();
       selectedQuestions.forEach(q => {
-        const unit = q.unit_name || 'General';
+        const unit = q.unit_name;
         if (!unitMap.has(unit)) unitMap.set(unit, { unit_name: unit, marks: 0 });
-        unitMap.get(unit).marks += Number(q.marks || 1);
+        unitMap.get(unit).marks += Number(q.marks);
       });
       payload.marksDistribution = Array.from(unitMap.values()).map(d => ({
         unit_name: d.unit_name,
@@ -173,10 +173,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     selectedQuestions.forEach(q => {
       const sectionType = q.type;
       if (!grouped.has(sectionType)) {
-        grouped.set(sectionType, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks || 1), questions: [] });
+        grouped.set(sectionType, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks), questions: [] });
       }
       const sec = grouped.get(sectionType);
-      sec.questions.push({ question: q.text || q.question, options: q.options || [], answer: q.answer || '', marks: Number(q.marks || 1), value1: q.value1 || q.text || q.question || '', value2: q.value2 || q.keyAnswer || q.answer || '' });
+      sec.questions.push({ question: q.text, options: q.options, answer: q.answer, marks: Number(q.marks), value1: q.value1, value2: q.value2 });
       sec.numberOfQuestions = sec.questions.length;
     });
 
@@ -186,7 +186,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       type: s.type,
       number_of_questions: s.numberOfQuestions,
       marks_per_question: s.marksPerQuestion,
-      question_distribution: [{ unit_name: selectedQuestions[0]?.unit_name || 'General', objective: selectedQuestions[0]?.objective || 'Knowledge' }]
+      question_distribution: [{ unit_name: selectedQuestions[0].unit_name, objective: selectedQuestions[0].objective }]
     }));
 
     payload.bluePrint = this.generateSummaryBlueprint(selectedQuestions);
@@ -447,15 +447,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         finalize(() => this.isLoadingQuestions = false)
       ).subscribe({
         next: ({ config, chapters }: any) => {
-          this.paperQuestionTypes = config.questionTypes || [];
-          this.questionBankObjectives = structuredClone(config.objectives || []);
+          this.paperQuestionTypes = config.questionTypes;
+          this.questionBankObjectives = structuredClone(config.objectives);
           this.updateSourceOptions(config.questionSources);
-          this.chapterDropdownOptions = (chapters || []).map((ch: any) => ({
+          this.chapterDropdownOptions = chapters.map((ch: any) => ({
             ...ch,
-            topics: ch.topics || ch.title,
-            _id: ch._id || ch.id || null,
+            topics: ch.title,
+            _id: ch._id,
             chapterNumber: ch.chapterNumber,
-            headings: ch.headings || [],
+            headings: ch.headings,
             subTopics: ch.subTopics || [],
             source: 'Unified'
           })).sort((a: any, b: any) => {
@@ -552,7 +552,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     for (const chapter of selectedChapters) {
       if (!this.useLBA) continue;
-      const lbaData = chapter.headings || [];
+      const lbaData = chapter.headings;
       for (const h of lbaData) {
         const headingName = h.label || h.name;
         const headingCount = Number(h.count || 0);
@@ -632,7 +632,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.useAI ? this.generateAIQuestionsPool() : of([])
     ).pipe(
       toArray(),
-      map(([lbaQs, aiQs]: any) => [...(aiQs || []), ...(lbaQs || [])]),
+      map(([lbaQs, aiQs]: any) => [...aiQs, ...lbaQs]),
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (results: any) => {
@@ -684,7 +684,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         sectionsMap.set(heading, {
           type: q.type,
           heading: heading,
-          marksPerQuestion: Number(q.marks || 1),
+          marksPerQuestion: Number(q.marks),
           numberOfQuestions: 0,
           questions: []
         });
@@ -738,31 +738,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   private extractIdFromResponse(res: any): string | undefined {
-    if (!res) return undefined;
-    const candidates = [
-      res?.data?._id, res?.data?.id, res?._id, res?.id,
-      res?.data?.questionBankConfigId, res?.data?.questionBank?._id,
-      res?.data?.question_bank_config?._id,
-    ];
-    for (const c of candidates) {
-      if (c) return typeof c === 'string' ? c : (c?._id ? String(c._id) : undefined);
-    }
-    const isMongoId = (v: any) => typeof v === 'string' && /^[a-fA-F0-9]{24}$/.test(v);
-    const scan = (obj: any, depth = 0): string | undefined => {
-      if (!obj || depth > 3) return undefined;
-      if (typeof obj === 'string' && isMongoId(obj)) return obj;
-      if (typeof obj === 'object') {
-        if (obj._id && isMongoId(String(obj._id))) return String(obj._id);
-        if (obj.id && isMongoId(String(obj.id))) return String(obj.id);
-        for (const k of Object.keys(obj)) {
-          const v = obj[k];
-          const found = scan(v, depth + 1);
-          if (found) return found;
-        }
-      }
-      return undefined;
-    };
-    return scan(res) || scan(res?.data) || undefined;
+    return res.data._id;
   }
 
   generateAIQuestionsPool() {
@@ -882,11 +858,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   generateSummaryBlueprint(questions: any[]) {
     return questions.map((q) => ({
-      topic: q.unit_name || 'General',
-      questionType: q.heading || q.type || 'Question',
-      objective: q.objective || 'Knowledge',
-      marks: Number(q.marks || 0),
-      source: q.source || 'Unknown'
+      topic: q.unit_name,
+      questionType: q.heading,
+      objective: q.objective,
+      marks: Number(q.marks),
+      source: q.source
     }));
   }
 
@@ -920,7 +896,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return this.questionBankService.getLBAQuestions(params).pipe(
       map((docs: any[]) => {
         console.log('[Frontend] getLBAQuestions response length:', docs?.length);
-        return (docs || []).map((q) => ({
+        return docs.map((q) => ({
           ...q,
           source: QUESTION_SOURCE.LBA,
         }));

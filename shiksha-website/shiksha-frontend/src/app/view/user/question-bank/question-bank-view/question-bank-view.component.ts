@@ -91,7 +91,7 @@ export class QuestionBankViewComponent implements OnInit {
         next: (val: any) => {
           this.questionBankDetails = val.data;
           this.questionBank = this.questionBankDetails.questionBank
-          this.generatedTotalMarks = (this.questionBank?.questions || []).reduce((sum: number, section: any) => (
+          this.generatedTotalMarks = this.questionBank.questions.reduce((sum: number, section: any) => (
             sum + Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
           ), 0);
           this.questionBankService.getPaperConfig({
@@ -102,7 +102,7 @@ export class QuestionBankViewComponent implements OnInit {
             this.questionTypeLabels = Object.fromEntries(config.questionTypes.map((type: any) => [type.key, type.label]));
           });
 
-          if (this.questionBank?.questions?.length) {
+          if (this.questionBank.questions.length) {
             this.questionBank.questions.forEach((section: any) => {
               if (section.type === 'MATCHING' && section.questions?.length) {
                 const colTwoVal = section.questions.map((ele: any) => ele.value2);

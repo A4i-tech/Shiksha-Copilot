@@ -239,7 +239,7 @@ class QuestionPaperService:
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
                 response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
-                items = response_format.model_validate_json(response_content["response"])
+                items = response_format.model_validate(response_content["response"])
         except Exception as e:
             logger.exception(e)
             return []
