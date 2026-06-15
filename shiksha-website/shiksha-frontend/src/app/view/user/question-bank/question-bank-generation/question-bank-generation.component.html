@@ -304,6 +304,7 @@
       <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2" class="h-full w-full overflow-y-auto md:overflow-hidden">
         <app-question-bank-template *ngIf="!isLoadingQuestions" [currentStep]="currentStep" [totalMarks]="totalMarks"
           [availableQuestions]="allAvailableQuestions" [preSelectedQuestions]="selectedQuestions"
+          [subject]="f['subject'].value"
           (selectionChange)="selectedQuestions = $event" (backClick)="previousStep()"></app-question-bank-template>
 
       </div>
@@ -346,7 +347,7 @@
     <!-- Step 3 Generate -->
     <button *ngIf="currentStep === 3" (click)="generateMergedQuestionBank()" [disabled]="isLoadingQuestions"
       class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
-      {{ isLoadingQuestions ? 'Generating...' : 'Generate Final Paper' }}
+      {{ (isLoadingQuestions ? 'Creating question paper...' : 'Generate Final Paper') | translate }}
     </button>
 
   </div>

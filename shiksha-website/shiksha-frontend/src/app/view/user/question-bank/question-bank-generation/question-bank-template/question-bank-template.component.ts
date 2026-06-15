@@ -1,4 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
+import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
+import { QUESTION_TYPE } from 'src/app/shared/utility/constant.util';
+import { QuestionBankService } from '../../question-bank.service';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -14,6 +17,8 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   // Pre-selected questions passed from the parent to restore selections
   @Input() preSelectedQuestions: any[] = [];
+
+  @Input() subject: string = '';
 
   @Output() backClick = new EventEmitter<boolean>();
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
@@ -35,7 +40,18 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   availableSources: string[] = [];
   availableDifficulties: string[] = [];
 
-  constructor() { }
+  questionTypeDropdownOptions: any[] = QUESTION_TYPE;
+  questionTypeDropdownconfig: DropDownConfig = {
+    isBackground: false,
+    placeHolderTxt: 'Select Type',
+    height: 'auto',
+    bindLabel: 'name',
+    bindValue: 'value',
+    required: true,
+    clearableOff: true,
+  };
+
+  constructor(private questionBankService: QuestionBankService) { }
 
   ngOnInit(): void {
     // Initialize from pre-selected questions if any
@@ -45,6 +61,23 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
     // Initial load
     this.extractFilters();
     this.applyFilters();
+
+    // Load question types from API, fallback to hardcoded list
+    if (this.subject) {
+      this.questionBankService.getQuestionTypes(this.subject).subscribe({
+        next: (res: any) => {
+          if (res?.data && Array.isArray(res.data)) {
+            this.questionTypeDropdownOptions = res.data.map((qt: any) => ({
+              name: qt.name,
+              value: qt.value,
+            }));
+          }
+        },
+        error: () => {
+          this.questionTypeDropdownOptions = QUESTION_TYPE;
+        },
+      });
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {

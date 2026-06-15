@@ -8,7 +8,11 @@ const VALID_QUESTION_TYPES = [
     'Answer the following in two or three sentences each',
     'Answer the following questions',
     'Answer the following question in four or five sentences',
-    'Match the following'
+    'Match the following',
+    // Grammar variants — mirror Python QuestionType GRAMMAR_* values
+    'Grammar: Choose the correct option',
+    'Grammar: Fill in the blanks with correct words/forms',
+    'Grammar: Identify and correct the error in the sentence'
 ];
 
 const questionBankCommonSchema = {
@@ -110,6 +114,14 @@ const questionBankFeedbackSchema = Joi.object({
     overallFeedback: Joi.string().allow("")
 })
 
+const getQuestionTypesQuerySchema = Joi.object({
+    subject: Joi.string().required(),
+}).unknown(true);
+
+const getGrammarTopicsQuerySchema = Joi.object({
+    grade: Joi.number().integer().min(1).max(12).required(),
+}).unknown(true);
+
 // Middleware functions
 const validateQuestionBankTemplateCreate = (req, res, next) => {
     const data = req.body;
@@ -169,9 +181,37 @@ const validateQuestionBankFeedbackCreate = (req, res, next) => {
     next();
 };
 
+const validateGetQuestionTypes = (req, res, next) => {
+    const isValid = getQuestionTypesQuerySchema.validate(req.query, { abortEarly: false });
+    if (isValid.error) {
+        return res.status(400).json({
+            success: false,
+            data: false,
+            error: isValid.error.details.map((i) => i.message),
+        });
+    }
+    req.query = isValid.value;
+    next();
+};
+
+const validateGetGrammarTopics = (req, res, next) => {
+    const isValid = getGrammarTopicsQuerySchema.validate(req.query, { abortEarly: false });
+    if (isValid.error) {
+        return res.status(400).json({
+            success: false,
+            data: false,
+            error: isValid.error.details.map((i) => i.message),
+        });
+    }
+    req.query = isValid.value;
+    next();
+};
+
 module.exports = {
     validateQuestionBankCreate,
     validateQuestionBankTemplateCreate,
     validateQuestionBankBluePrintCreate,
-    validateQuestionBankFeedbackCreate
+    validateQuestionBankFeedbackCreate,
+    validateGetQuestionTypes,
+    validateGetGrammarTopics
 };

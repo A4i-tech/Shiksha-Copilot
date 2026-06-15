@@ -20,11 +20,11 @@ import {
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
-import { distinctUntilChanged } from 'rxjs';
+import { concat, distinctUntilChanged } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
-import { map, switchMap, catchError, finalize } from 'rxjs/operators';
+import { map, switchMap, catchError, finalize, toArray } from 'rxjs/operators';
 
 // Import Child Component for Step 2 access
 import { QuestionBankTemplateComponent } from './question-bank-template/question-bank-template.component';
@@ -72,6 +72,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   selectedHeadings: string[] = [];
   showHeadingDropdown: boolean = false;
   hasSubtopics: boolean = false;
+
+  aiStandardTypeNames: string[] = [];
+  grammarTypeNames: string[] = [];
 
   // Configs
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
@@ -481,6 +484,30 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
+  private loadQuestionTypeNames(subject: string) {
+    if (!subject) return;
+    this.questionBankService.getQuestionTypes(subject).subscribe({
+      next: (res: any) => {
+        const list = Array.isArray(res?.data) ? res.data : [];
+        const grammar: string[] = [];
+        const standard: string[] = [];
+        for (const qt of list) {
+          const key = String(qt?.key ?? '');
+          const name = String(qt?.name ?? qt?.value ?? '');
+          if (!name) continue;
+          (key.startsWith('GRAMMAR_') ? grammar : standard).push(name);
+        }
+        this.aiStandardTypeNames = standard;
+        this.grammarTypeNames = grammar;
+      },
+      error: (err) => {
+        console.error('[QuestionBankGeneration] Failed to load question types', err);
+        this.aiStandardTypeNames = [];
+        this.grammarTypeNames = [];
+      },
+    });
+  }
+
   onSubjectChange(val: any) {
     this.resetSubjectChange();
     if (val) {
@@ -492,6 +519,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val || opt.value === val.value);
       const subjectName = selectedSubjectObj ? selectedSubjectObj.name : (val.name || val);
       const subjectId = selectedSubjectObj ? selectedSubjectObj.value : (val.value || val);
+
+      this.loadQuestionTypeNames(subjectName);
 
       // Objectives Setup
       if (board === 'KSEEB') {
@@ -538,6 +567,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           this.utilityservice.showError('Failed to load chapters.');
         }
       });
+
     }
   }
 
@@ -613,19 +643,25 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const headingMap = new Map<string, { name: string; count: number; chapters: Set<number> }>();
 
-    // 1. Add AI Standard Types only if AI-only is selected 
-    if (this.useAI && !this.useLBA) {
-      const aiStandardTypes = [
-        'Multiple Choice Questions',
-        'Short Answer Questions',
-        'Fill in the blanks',
-        'Long Answer Questions',
-        'Match the Following',
-        'Very Short Answer Questions'
-      ];
-      aiStandardTypes.forEach(typeName => {
+    // 1. Add AI Standard Types when AI is selected
+    const hasGrammar = selectedChapters.some(ch => ch.isGrammar);
+    const hasNonGrammar = selectedChapters.some(ch => !ch.isGrammar);
+
+    const registerTypes = (types: string[]) => {
+      types.forEach(typeName => {
         headingMap.set(typeName, { name: typeName, count: 0, chapters: new Set<number>() });
       });
+    };
+
+    if (this.useAI && !this.useLBA) {
+      if (hasNonGrammar || selectedChapters.length === 0) {
+        registerTypes(this.aiStandardTypeNames);
+      }
+    }
+
+    // Always add grammar-specific types when grammar chapters are selected
+    if (hasGrammar) {
+      registerTypes(this.grammarTypeNames);
     }
 
     // 2. Add LBA Headings (merge with AI if they share names) — skip if LBA not selected
@@ -708,18 +744,16 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.allAvailableQuestions = [];
     this.selectedQuestions = []; // Clear previous selections when config changes
 
-    const tasks: any = {};
-    if (this.useAI) tasks.ai = this.generateAIQuestionsPool();
-    if (this.useLBA) tasks.lba = this.fetchLBAQuestionsPool();
-
-    forkJoin(tasks).pipe(
+    concat(
+      this.useLBA ? this.fetchLBAQuestionsPool() : of([]),
+      this.useAI ? this.generateAIQuestionsPool() : of([])
+    ).pipe(
+      toArray(),
+      map(([lbaQs, aiQs]: any) => [...(aiQs || []), ...(lbaQs || [])]),
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (results: any) => {
-        const aiQs = results.ai || [];
-        const lbaQs = results.lba || [];
-        this.allAvailableQuestions = [...aiQs, ...lbaQs];
-
+        this.allAvailableQuestions = results;
         if (this.allAvailableQuestions.length > 0) {
           this.currentStep = 2; // Success: Move to Step 2
         } else {
@@ -1090,6 +1124,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     if (!heading || typeof heading !== 'string') return QUESTION_TYPE_MAPPING_LONG.ANSWER_MEDIUM;
     const h = heading.toLowerCase().trim();
 
+    // 0. Grammar variants — match first so the generic "fill"/"mcq" branches don't
+    // capture grammar headings ("Grammar: Fill in the blanks" → GRAMMAR_FILL_BLANKS,
+    // not FILL_BLANKS). Mirrors the GRAMMAR_* keys in Python QuestionType.
+    if (h.startsWith('grammar:') || h.includes('grammar')) {
+      if (h.includes('mcq') || h.includes('multiple choice') || h.includes('correct option')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_MCQ;
+      if (h.includes('editing') || h.includes('identify') || h.includes('correct the error')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_EDITING;
+      if (h.includes('fill') || h.includes('blank')) return QUESTION_TYPE_MAPPING_LONG.GRAMMAR_FILL_BLANKS;
+    }
+
     // 1. MCQ
     if (h.includes('multiple choice') || h.includes('mcq') || h.includes('objective') || h.includes('alternative')) return QUESTION_TYPE_MAPPING_LONG.MCQ;
 
@@ -1322,6 +1365,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
   isHeadingSelected(heading: string) { return this.selectedHeadings.includes(heading); }
+
   isAllHeadingsSelected() { return this.availableHeadings.length > 0 && this.selectedHeadings.length === this.availableHeadings.length; }
   headingSummary() {
     if (!this.availableHeadings.length) return 'Select chapters first';

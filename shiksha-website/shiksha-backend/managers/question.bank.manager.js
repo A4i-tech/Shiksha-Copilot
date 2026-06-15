@@ -8,10 +8,12 @@ const {
   postToQuestionBankTemplate,
   postToQuestionBankBluePrint,
   postToQuestionBankParts,
+  getQuestionTypes,
 } = require("../services/question.bank.bot.service");
 const BaseManager = require("./base.manager");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const Chapter = require("../models/chapter.model");
 const chapterAggregation = require("../aggregation/chapter.aggregation");
 const { convertToCamelCase } = require("../helper/formatter");
 const QuestionBankCacheDao = require("../dao/question.bank.cache.dao");
@@ -19,7 +21,6 @@ const {
   getQuestions,
   mergeQuestions,
   processCacheHits,
-  processCacheHitsForSubtopic,
 } = require("../helper/question.bank.cache.helper");
 const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.dao");
 const { addCacheJob } = require("./cache.queue.manager");
@@ -53,6 +54,18 @@ const QUESTION_TYPE_DETAILS = {
   MATCHING: {
     instruction: "Match the following",
     description: "Match the following"
+  },
+  GRAMMAR_MCQ: {
+    instruction: "Grammar: Choose the correct option",
+    description: "Grammar: Multiple Choice Questions"
+  },
+  GRAMMAR_FILL_BLANKS: {
+    instruction: "Grammar: Fill in the blanks with correct words/forms",
+    description: "Grammar: Fill in the blanks"
+  },
+  GRAMMAR_EDITING: {
+    instruction: "Grammar: Identify and correct the error in the sentence",
+    description: "Grammar: Identify and correct the error"
   },
 };
 
@@ -508,21 +521,13 @@ class QuestionBankManager extends BaseManager {
         )
         : [];
 
-      const processedCache = isMultiChapter
-        ? processCacheHits(
-          rawCacheHit,
-          chapterIds,
-          processedUnitNames,
-          unitLevel,
-          objectives
-        )
-        : processCacheHitsForSubtopic(
-          rawCacheHit,
-          chapterIds,
-          processedUnitNames,
-          unitLevel,
-          objectives
-        );
+      const processedCache = processCacheHits(
+        rawCacheHit,
+        isMultiChapter ? chapterIds : processedUnitNames.map(() => chapterIds[0]),
+        processedUnitNames,
+        unitLevel,
+        objectives
+      );
 
       let cacheSummaryData = convertToCamelCase({
         questionBankConfigId,
@@ -598,43 +603,6 @@ class QuestionBankManager extends BaseManager {
       return mappedItem;
     });
   }
-  /**
-   * Resolves the index path for a unit name following a clear priority order:
-   * 1. Chapter title match in formattedChapters → return its index_path (found=true)
-   * 2. Subtopic title match in formattedChapters → return its index_path (found=true)
-   * 3. Subtopic in raw chapterData → inherit parent chapter's index_path (found=false)
-   * 4. Not found anywhere → empty index_path (found=false)
-   */
-  _resolveUnitContext(unitName, formattedChapters, rawChapterData) {
-    const lowerName = unitName.toLowerCase();
-
-    // 1. Check chapter title match
-    const matchedChapter = formattedChapters.find(fc => fc.title.toLowerCase() === lowerName);
-    if (matchedChapter) {
-      return { found: true, indexPath: matchedChapter.index_path };
-    }
-
-    // 2. Check subtopic title match
-    for (const fc of formattedChapters) {
-      const matchedSub = fc.subtopics.find(sub => sub.title.toLowerCase() === lowerName);
-      if (matchedSub) {
-        return { found: true, indexPath: matchedSub.index_path || fc.index_path };
-      }
-    }
-
-    // 3. Inherit index_path from parent chapter in raw DB data
-    if (rawChapterData && rawChapterData.length > 0) {
-      const parent = rawChapterData.find(ch =>
-        ch.subtopics && ch.subtopics.some(sub => (sub.title || "").toLowerCase() === lowerName)
-      );
-      if (parent) {
-        return { found: false, indexPath: parent.indexPath || parent.index_path || "" };
-      }
-    }
-
-    return { found: false, indexPath: "" };
-  }
-
   async _createQuestionBankPayload(reqBody, user) {
     try {
       const {
@@ -669,18 +637,27 @@ class QuestionBankManager extends BaseManager {
         console.warn("[Manager] Chapter lookup failed:", aggErr.message);
       }
 
-      // 1. Prepare Base Chapters (From DB)
+      // Prepare base chapters
       let formattedChapters = chapterData?.length
-        ? chapterData.map((chapter) => ({
-          title: chapter.title,
-          index_path: chapter.indexPath || chapter.index_path || "",
-          learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-          subtopics: (chapter.subtopics || []).map((sub) => ({
-            title: sub.title,
-            learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
-            index_path: sub.indexPath || sub.index_path || chapter.indexPath || chapter.index_path || "",
-          })),
-        }))
+        ? chapterData.map((chapter) => {
+          const chapterIndexPath = chapter.indexPath || chapter.index_path || "";
+          const ch = {
+            title: chapter.title,
+            index_path: chapterIndexPath,
+            learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
+            is_grammar: !!(chapter.is_grammar || chapter.isGrammar),
+            grammar_topics: chapter.grammar_topics || chapter.grammarTopics || [],
+            subtopics: (chapter.subtopics || []).map((sub) => ({
+              title: sub.title,
+              index_path: sub.indexPath || sub.index_path || chapterIndexPath,
+              learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+            })),
+          };
+          if (chapter.grammar_source_chapters?.length) {
+            ch.grammar_source_chapters = chapter.grammar_source_chapters;
+          }
+          return ch;
+        })
         : [];
 
       const requiredUnits = new Set();
@@ -698,20 +675,48 @@ class QuestionBankManager extends BaseManager {
         }
       });
 
-      // Inject Missing Units
+      // Inject units referenced in marks distribution but not fetched by ID,
+      // resolving each against chapter and subtopic titles before falling back
+      // to an empty index_path.
+      const lower = (s) => (s || "").toLowerCase();
       requiredUnits.forEach(unitName => {
-        const { found, indexPath } = this._resolveUnitContext(unitName, formattedChapters, chapterData);
-        if (!found) {
-          console.log(`[Manager] Injecting missing unit context: ${unitName}`);
-          formattedChapters.push({
-            title: unitName,
-            index_path: indexPath,
-            learning_outcomes: [],
-            subtopics: []
-          });
+        const u = lower(unitName);
+        const matchesChapter = formattedChapters.some(fc => lower(fc.title) === u);
+        if (matchesChapter) return;
+
+        for (const fc of formattedChapters) {
+          const sub = (fc.subtopics || []).find(s => lower(s.title) === u);
+          if (sub) {
+            formattedChapters.push({
+              title: unitName,
+              index_path: sub.index_path || fc.index_path || "",
+              learning_outcomes: sub.learning_outcomes || [],
+              subtopics: [],
+            });
+            return;
+          }
         }
+
+        for (const chapter of (chapterData || [])) {
+          const rawSub = (chapter.subtopics || []).find(s => lower(s.title) === u);
+          if (rawSub) {
+            formattedChapters.push({
+              title: unitName,
+              index_path: rawSub.indexPath || rawSub.index_path || chapter.indexPath || chapter.index_path || "",
+              learning_outcomes: rawSub.learningOutcomes || rawSub.learning_outcomes || [],
+              subtopics: [],
+            });
+            return;
+          }
+        }
+
+        formattedChapters.push({
+          title: unitName,
+          index_path: "",
+          learning_outcomes: [],
+          subtopics: [],
+        });
       });
-      // -----------------------------------------------------------
 
       const formattedMarksDist = (marksDistribution || []).map((dist) => ({
         unit_name: dist.unit_name || dist.unitName,
@@ -746,6 +751,12 @@ class QuestionBankManager extends BaseManager {
       console.error("Error creating payload:", e);
       throw e;
     }
+  }
+
+  async getGrammarTopics(grade) {
+    const chapters = await Chapter.find({ standard: grade, isGrammar: true, isDeleted: false }).lean();
+    const topics = chapters.flatMap(ch => ch.grammarTopics || []);
+    return formatApiReponse(true, 'Grammar topics retrieved', topics);
   }
 
   async updateFeedback(questionBankId, feedbackData) {
@@ -795,6 +806,15 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(true, "Failed job processing initiated", null);
     } catch (err) {
       return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getQuestionTypes(subject) {
+    try {
+      const response = await getQuestionTypes(subject);
+      return formatApiReponse(true, "", response.data);
+    } catch (err) {
+      return formatApiReponse(false, err?.message, err);
     }
   }
 

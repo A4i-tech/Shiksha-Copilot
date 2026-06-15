@@ -2,7 +2,7 @@ import os
 import logging
 from typing import Any
 from llama_index.core import StorageContext
-from llama_index.core.indices import load_index_from_storage
+from llama_index.core.indices import VectorStoreIndex, load_index_from_storage
 from llama_index.core.llms import LLM
 from rag_wrapper.base.base_vector_index_rag_ops import BaseVectorIndexRagOps
 
@@ -35,26 +35,19 @@ class InMemRagOps(BaseVectorIndexRagOps):
 
     async def initiate_index(self):
         """Load existing index from storage without creating a new one."""
-        try:
-            if await self.index_exists():
-                self.logger.info(f"Loading existing index from {self.persist_dir}")
-                self.storage_context = StorageContext.from_defaults(
-                    persist_dir=self.persist_dir
-                )
-                self.rag_index = load_index_from_storage(
-                    storage_context=self.storage_context,
-                    embed_model=self.emb_llm,
-                    callback_manager=self._callback_manager,
-                )
-                self.logger.info("Successfully loaded existing index")
-            else:
-                self.logger.info(
-                    f"No existing index found at {self.persist_dir}. Use create_index() to create a new index."
-                )
+        if not await self.index_exists():
+            self.logger.info(f"No existing index found at {self.persist_dir}. Use create_index() to create a new index.")
+            return
 
-        except Exception as e:
-            self.logger.error(f"Failed to initialize index: {e}")
-            raise
+        self.logger.info(f"Loading existing index from {self.persist_dir}")
+        storage_context = StorageContext.from_defaults(persist_dir=self.persist_dir)
+        rag_index = load_index_from_storage(storage_context=storage_context, embed_model=self.emb_llm, callback_manager=self._callback_manager)
+        if not isinstance(rag_index, VectorStoreIndex):
+            raise RuntimeError(f"Unexpected index type: {type(rag_index).__qualname__}")
+
+        self.logger.info("Successfully loaded existing index")
+        self.storage_context = storage_context
+        self.rag_index = rag_index
 
     async def index_exists(self) -> bool:
         """Check if folder contains index files (.json)."""

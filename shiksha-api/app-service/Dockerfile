@@ -17,9 +17,12 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install poetry
 
-WORKDIR /src/app-service
+WORKDIR /src
 
-COPY . .
+COPY components/rag-wrapper ./components/rag-wrapper
+COPY shiksha-api/app-service ./shiksha-api/app-service
+
+WORKDIR /src/shiksha-api/app-service
 
 RUN poetry install --no-root --no-interaction --no-ansi
 

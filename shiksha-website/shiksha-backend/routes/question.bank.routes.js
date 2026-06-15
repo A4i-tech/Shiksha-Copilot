@@ -3,7 +3,7 @@ const router = express.Router();
 const QuestionBankController = require("../controllers/question.bank.controller");
 const asyncMiddleware = require("../middlewares/asyncMiddleware");
 const { isAuthenticated, isAdmin } = require("../middlewares/auth");
-const { validateQuestionBankCreate, validateQuestionBankFeedbackCreate, validateQuestionBankTemplateCreate, validateQuestionBankBluePrintCreate } = require("../validations/question.bank.validation");
+const { validateQuestionBankCreate, validateQuestionBankFeedbackCreate, validateQuestionBankTemplateCreate, validateQuestionBankBluePrintCreate, validateGetQuestionTypes, validateGetGrammarTopics } = require("../validations/question.bank.validation");
 const MulterUploadMiddleware = require('../middlewares/multerUploadMiddleware');
 const questionBankController = new QuestionBankController();
 
@@ -31,6 +31,15 @@ router.post(
   validateQuestionBankCreate,
   asyncMiddleware(
     questionBankController.generateQuestionBank.bind(questionBankController)
+  )
+);
+
+router.get(
+  "/question-bank/question-types",
+  isAuthenticated,
+  validateGetQuestionTypes,
+  asyncMiddleware(
+    questionBankController.getQuestionTypes.bind(questionBankController)
   )
 );
 
@@ -72,6 +81,13 @@ router.get(
   "/question-bank/meta/answerTypes",
   isAuthenticated,
   asyncMiddleware(questionBankController.getAnswerTypes.bind(questionBankController))
+);
+
+router.get(
+  "/question-bank/meta/grammarTopics",
+  isAuthenticated,
+  validateGetGrammarTopics,
+  asyncMiddleware(questionBankController.getGrammarTopics.bind(questionBankController))
 );
 
 router.get(

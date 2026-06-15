@@ -2,13 +2,16 @@ from typing import List, Dict, Any
 from fastapi import APIRouter, Body, HTTPException, status
 from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
+from pydantic import BaseModel
 
 from app.models.question_paper import (
     QBQuestionDistributionGenerationRequest,
     QBTemplateGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
+    QuestionType,
     Template,
+    get_question_types_for_subject,
 )
 from app.services.question_paper_service import QUESTION_PAPER_SERVICE_INSTANCE
 from app.services.translation_service import TranslationService
@@ -104,6 +107,22 @@ async def translate_json_content_to_kannada(
 
     logger.info("Successfully processed translation request.")
     return translated_data
+
+
+class QuestionTypeItem(BaseModel):
+    key: str
+    value: str
+    name: str
+
+
+@router.get("/question-types")
+async def get_question_types(subject: str) -> List[QuestionTypeItem]:
+    """Return question types available for the given subject."""
+    types = get_question_types_for_subject(subject)
+    return [
+        QuestionTypeItem(key=qt.name, value=qt.value, name=qt.display_name)
+        for qt in types
+    ]
 
 
 @router.post("/by-parts", summary="Generate Complete Question Paper by Parts")

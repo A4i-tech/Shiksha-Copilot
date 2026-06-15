@@ -92,7 +92,7 @@ jobs:
       - name: Build image (no push)
         uses: docker/build-push-action@v5
         with:
-          context: shiksha-api/app-service
+          context: .
           file: shiksha-api/app-service/Dockerfile
           push: false
           tags: shiksha-api-local
@@ -182,7 +182,7 @@ jobs:
         id: push
         uses: docker/build-push-action@v5
         with:
-          context: shiksha-api/app-service
+          context: .
           file: shiksha-api/app-service/Dockerfile
           push: true
           tags: ${{ needs.build-test.outputs.image_tags }}

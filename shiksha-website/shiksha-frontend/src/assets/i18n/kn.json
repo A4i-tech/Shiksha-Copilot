@@ -478,5 +478,10 @@
   "Right (Answer)": "ಬಲ (ಉತ್ತರ)",
   "Blueprint": "ನೀಲನಕ್ಷೆ",
   "Question paper + Answer Key": "ಪ್ರಶ್ನೆ ಪತ್ರಿಕೆ + ಉತ್ತರ ಕೀಲಿ",
-  "Download": "ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ"
+  "Download": "ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
+  "Loading...": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+  "Generating blueprint...": "ನೀಲನಕ್ಷೆ ರಚಿಸಲಾಗುತ್ತಿದೆ...",
+  "Retrieving textbook questions...": "ಪಠ್ಯಪುಸ್ತಕದ ಪ್ರಶ್ನೆಗಳನ್ನು ಪಡೆಯಲಾಗುತ್ತಿದೆ...",
+  "Generating questions...": "ಪ್ರಶ್ನೆಗಳನ್ನು ರಚಿಸಲಾಗುತ್ತಿದೆ...",
+  "Creating question paper...": "ಪ್ರಶ್ನೆ ಪತ್ರಿಕೆ ರಚಿಸಲಾಗುತ್ತಿದೆ..."
 }

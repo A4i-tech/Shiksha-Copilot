@@ -141,8 +141,19 @@ class QuestionBankController extends BaseController {
       const result = await this.questionBankManager.retryFailedJobs();
       return res.status(200).json(result);
     } catch (err) {
-      console.log("Error --> QuestionBankController -> retryFailedJobs()", err);
-      return res.status(400).json(err);
+      console.error("Error --> QuestionBankController -> retryFailedJobs()", err);
+      return res.status(400).json({ success: false, message: "Failed to retry jobs." });
+    }
+  }
+
+  async getQuestionTypes(req, res) {
+    try {
+      const { subject } = req.query;
+      const result = await this.questionBankManager.getQuestionTypes(subject);
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error("Error --> QuestionBankController -> getQuestionTypes()", err);
+      return res.status(400).json({ message: err.message || "Failed to fetch question types" });
     }
   }
 
@@ -152,8 +163,8 @@ class QuestionBankController extends BaseController {
       const result = await this.questionBankManager.retryFailedJob(jobId);
       return res.status(200).json(result);
     } catch (err) {
-      console.log("Error --> QuestionBankController -> retryFailedJobs()", err);
-      return res.status(400).json(err);
+      console.error("Error --> QuestionBankController -> retryFailedJob()", err);
+      return res.status(400).json({ success: false, message: "Failed to retry job." });
     }
   }
 
@@ -209,6 +220,18 @@ class QuestionBankController extends BaseController {
       return res.status(400).json(err);
     }
   }
+
+  async getGrammarTopics(req, res) {
+    try {
+      const { grade } = req.query;
+      const result = await this.questionBankManager.getGrammarTopics(grade);
+      return res.status(200).json(result);
+    } catch (err) {
+      console.error('[Controller] getGrammarTopics error:', err.message);
+      return res.status(500).json({ success: false, message: 'Failed to retrieve grammar topics.' });
+    }
+  }
+
 
   async getQuestions(req, res) {
     try {

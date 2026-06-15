@@ -356,45 +356,6 @@ function processCacheHits(
   return result;
 }
 
-function processCacheHitsForSubtopic(
-  rawCacheHit,
-  chapterId,
-  chapterNames,
-  unitLevel,
-  objectives
-) {
-  const result = [];
-
-  const cache = Array.isArray(rawCacheHit) ? rawCacheHit : [];
-
-  for (let i = 0; i < chapterNames.length; i++) {
-    const chapterName = chapterNames[i];
-
-    const match = cache.find(
-      (item) => item.chapterId === chapterId && item.unitName === chapterName
-    );
-
-    if (match) {
-      const updatedEntry = JSON.parse(JSON.stringify(match));
-
-      updatedEntry.questions = updatedEntry.questions || [];
-
-      result.push(updatedEntry);
-    } else {
-      const newEntry = {
-        chapterId,
-        unitName: chapterName,
-        unitLevel,
-        questions: [],
-      };
-
-      result.push(newEntry);
-    }
-  }
-
-  return result;
-}
-
 const QuestionType = {
   MCQ: "Four alternatives are given for each of the following questions, choose the correct alternative",
   FILL_BLANKS: "Fill in the blanks with suitable words",
@@ -549,5 +510,4 @@ module.exports = {
   mergeQuestions,
   fixObjectIdsInArray,
   processCacheHits,
-  processCacheHitsForSubtopic
 };
