@@ -223,7 +223,7 @@ class QuestionBankManager extends BaseManager {
         return formatApiReponse(
           true,
           "Question bank preview generated successfully!",
-          { questions: mergedList }
+          { questions: convertToCamelCase(mergedList) }
         );
       }
 
