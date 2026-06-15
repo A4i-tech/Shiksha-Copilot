@@ -4,9 +4,9 @@
 from enum import Enum
 from functools import reduce
 from math import gcd
-from typing import List, Dict, Any, Optional, Union, Tuple, Literal, TypeAlias
+from typing import Annotated, List, Optional, Union, Tuple, Literal, TypeAlias
 import re
-from pydantic import BaseModel, computed_field, field_validator, Field, model_validator
+from pydantic import AfterValidator, BaseModel, computed_field, field_validator, Field, model_validator
 
 
 # ==============================
@@ -24,6 +24,19 @@ class QuestionBankMetadata(BaseModel):
 
 
 DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
+
+
+def valid_marking(v: float | int) -> float:
+    if v <= 0 or v % 0.5:
+        raise ValueError("must be a positive multiple of 0.5")
+    return v
+
+_MARKING_DESC = "Must be a positive multiple of 0.5."
+Marking = Annotated[
+    float,
+    Field(description=_MARKING_DESC, examples=[0.5, 1, 2, 3, 4, 5]),
+    AfterValidator(valid_marking)
+]
 
 
 class TextQuestion(BaseModel):
@@ -135,7 +148,7 @@ class QuestionType(str, Enum):
         TextQuestion,
         "Fill in the blanks",
     )
-    ANSWER_WORD = (
+    ANSWER_VERY_SHORT = (
         "Answer the following in a word, phrase or sentence",
         "These questions expect a very brief response—a single word, a short phrase, or a concise sentence.",
         TextQuestion,
@@ -147,7 +160,7 @@ class QuestionType(str, Enum):
         TextQuestion,
         "Short Answer Questions",
     )
-    ANSWER_GENERAL = (
+    ANSWER_MEDIUM = (
         "Answer the following questions",
         "These open-ended questions invite students to provide brief responses that are straightforward and to the point.",
         TextQuestion,
@@ -159,7 +172,7 @@ class QuestionType(str, Enum):
         TextQuestion,
         "Long Answer Questions",
     )
-    MATCH_LIST = (
+    MATCHING = (
         "Match the following",
         "Generate a CORRECTLY matched item-pair",
         MatchingListQuestion,
@@ -204,7 +217,7 @@ class QuestionType(str, Enum):
 class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
-    marks_per_question: int
+    marks_per_question: Marking
     questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]] = []
 
 
@@ -258,7 +271,7 @@ class Chapter(BaseModel):
 class MarksDistribution(BaseModel):
     unit_name: str
     percentage_distribution: int
-    marks: int
+    marks: Marking
 
 
 class ObjectiveDistribution(BaseModel):
@@ -274,7 +287,7 @@ class QuestionDistribution(BaseModel):
 class Template(BaseModel):
     type: QuestionType
     number_of_questions: int
-    marks_per_question: int
+    marks_per_question: Marking
     question_distribution: Optional[List[QuestionDistribution]] = None
 
     @computed_field
@@ -290,7 +303,7 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
     chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
-    total_marks: int = Field(..., description="Total marks for the question paper")
+    total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
     template: List[Template] = Field(..., description="Question distribution template specifying types and marks")
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
@@ -313,7 +326,7 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
     chapters: List[Chapter] = Field(..., min_length=1, description="List of chapters with learning outcomes and subtopics")
-    total_marks: int = Field(..., description="Total marks for the question paper")
+    total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
     marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
     template: List[Template] = Field(..., description="Base template for question types and structure")
@@ -420,7 +433,7 @@ class QBTemplateGenerationRequest(BaseModel):
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
     chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
-    total_marks: int
+    total_marks: Marking
     marks_distribution: List[MarksDistribution]
 
     def get_template(self) -> List[Template]:
@@ -567,6 +580,6 @@ class GeneratedQuestionItem(BaseModel):
     unit_name: str
     type: QuestionType
     objective: Optional[str] = None
-    marks_per_question: int
+    marks_per_question: Marking
     difficulty: DifficultyType
     item: Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]

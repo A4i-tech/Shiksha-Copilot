@@ -61,22 +61,18 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     }
   }
 
-  /**
-   * Transforms flat selected questions into a grouped "Blueprint" view
-   */
   processDataForView() {
     if (!this.finalSelectedQuestions || this.finalSelectedQuestions.length === 0) return;
 
     const groups: { [key: string]: any } = {};
 
     this.finalSelectedQuestions.forEach(q => {
-      // Group by heading so "Fill in the blanks" stays together
       const sectionName = q.heading || q.type || 'General Questions';
 
       if (!groups[sectionName]) {
         groups[sectionName] = {
           type: sectionName,
-          marks_per_question: q.marks || 0,
+          marksPerQuestion: q.marks,
           questions: []
         };
       }
@@ -87,7 +83,6 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     this.updateChartData();
   }
 
-  // --- UPDATED FUNCTION ---
   updateChartData() {
     const chartMapper: { [key: string]: number } = {};
     let chartColors: string[] = [];

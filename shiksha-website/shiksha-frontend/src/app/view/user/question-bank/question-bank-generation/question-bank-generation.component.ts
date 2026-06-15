@@ -905,112 +905,40 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   generateAIQuestionsPool() {
-    const finalMarks = Number(this.questionBankConfigForm.get('totalMarks')?.value) || 100;
-
-    // 1. Define what we want to generate
-    const dynamicTemplate = this.selectedHeadings.map(heading => {
-      const aiType = this.mapHeadingToAIType(heading);
-      const marksPerType = this.getMarksPerType(aiType);
-      // Request a pool to choose from
-      return {
-        type: aiType,
-        marks_per_question: marksPerType,
-        number_of_questions: Math.ceil(finalMarks / marksPerType),
-        question_distribution: []
-      };
-    });
-
-    // 2. Prepare Payload
     let payload = this.getTemplatePayload();
-    payload.template = dynamicTemplate;
-
-    /** 
-     * IMPORTANT: We add this flag so the backend knows this is just for 
-     * the selection pool in Step 2, NOT the final paper.
-     **/
+    payload.template = this.selectedHeadings.map(heading => ({
+      type: this.mapHeadingToAIType(heading),
+      question_distribution: []
+    }));
     payload.isPreview = true;
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       switchMap((bpRes: any) => {
-        const blueprint = bpRes.data || bpRes.items || (Array.isArray(bpRes) ? bpRes : null);
-        if (!blueprint) throw new Error('AI Blueprint failed.');
-        payload.template = blueprint;
-
-        // Call the existing generation service with the isPreview flag
+        payload.template = bpRes.data;
         return this.questionBankService.generateQuestionBank(payload);
       }),
       map((finalRes: any) => {
-        let categoryBlocks = [];
-        if (finalRes.data && Array.isArray(finalRes.data)) categoryBlocks = finalRes.data;
-        else if (finalRes.data?.questions) categoryBlocks = finalRes.data.questions;
-        else if (finalRes.categoryBlocks) categoryBlocks = finalRes.categoryBlocks;
-        else if (Array.isArray(finalRes)) categoryBlocks = finalRes;
-
         const flatQuestions: any[] = [];
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
-        type QuestionDistribution = { unit_name: string; objective: string };
-        const normalizeTypeKey = (val?: string): string =>
-          (val ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-        // Single source of truth for objective mapping: blueprint template question_distribution.
-        const blueprintObjectiveByType: Record<string, QuestionDistribution[]> = {};
-        for (const tpl of payload.template ?? []) {
-          blueprintObjectiveByType[normalizeTypeKey(tpl.type)] = tpl.question_distribution ?? [];
-        }
-        categoryBlocks.forEach((block: any) => {
-          const innerQuestions = block.questions || [];
-          const blockType = block.type || 'Question';
-          // Map internal AI type back to user-friendly heading if possible
+        finalRes.data.questions.forEach((block: any) => {
+          const blockType = block.type;
           const friendlyHeading = this.selectedHeadings.find(h => this.mapHeadingToAIType(h) === blockType) || blockType;
-          const blockMarks = Number(block.marks_per_question || 1);
+          const blockMarks = Number(block.marksPerQuestion);
 
-          innerQuestions.forEach((q: any, idx: number) => {
-            // ROBUST EXTRACTION: Handle nested item, question.question, or flat question/text
-            let questionText = q.text || q.question_text || q.content;
-
-            if (!questionText) {
-              const inner = q.item || q.question;
-              if (inner && typeof inner === 'object') {
-                questionText = inner.question || inner.text;
-              } else if (typeof inner === 'string') {
-                questionText = inner;
-              }
-            }
-
-            if (!questionText && q.question && typeof q.question === 'string') {
-              questionText = q.question;
-            }
-
-            if (!questionText && q.value1 && q.value2) {
-              questionText = q.value1 + " - " + q.value2;
-            }
-
-            if (questionText) {
-              const typeKey = normalizeTypeKey(blockType);
-              const distributionObjective =
-                Array.isArray(blueprintObjectiveByType[typeKey]) && blueprintObjectiveByType[typeKey][idx]
-                  ? blueprintObjectiveByType[typeKey][idx].objective
-                  : null;
-              const finalObjective =
-                distributionObjective ||
-                'Knowledge';
-
-              flatQuestions.push({
-                ...q,
-                // Ensure inner properties are also flattened for usage in Step 2/3
-                ...(q.item && typeof q.item === 'object' ? q.item : {}),
-                source: 'AI Questions',
-                text: questionText,
-                marks: Number(q.marks || blockMarks),
-                type: blockType,
-                heading: friendlyHeading,
-                unit_name: q.unit_name || chapterName || 'General',
-                objective: finalObjective,
-                value1: q.value1,
-                value2: q.value2,
-                _id: q._id || `ai_${Math.random().toString(36).substring(7)}`
-              });
-            }
+          block.questions.forEach((q: any) => {
+            flatQuestions.push({
+              ...q,
+              source: 'AI Questions',
+              text: q.question || (q.value1 && q.value2 ? `${q.value1} - ${q.value2}` : ''),
+              marks: blockMarks,
+              type: blockType,
+              heading: friendlyHeading,
+              unit_name: chapterName,
+              objective: q.objective,
+              value1: q.value1,
+              value2: q.value2,
+              _id: `ai_${Math.random().toString(36).substring(7)}`
+            });
           });
         });
 
@@ -1071,28 +999,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       objectiveDistribution: objectiveDistribution,
       bluePrint: this.questionBankBluePrintData,
     };
-  }
-
-  private getMarksPerType(type: string): number {
-    if (!type) return 1;
-    const t = type.toLowerCase();
-
-    // 1 Mark Questions
-    if (t.includes('multiple choice') || t.includes('mcq') || t.includes('objective') || t.includes('alternative')) return 1;
-    if (t.includes('fill') || t.includes('blank')) return 1;
-    if (t.includes('match') || t.includes('collocation')) return 1;
-    if (t.includes('very short') || t.includes('one sentence') || t.includes('1 mark') || t.includes('true/false') || t.includes('odd one out') || t.includes('opposites')) return 1;
-
-    // 2 Mark Questions
-    if (t.includes('short answer') || t.includes('two or three') || t.includes('two to four') || t.includes('2 marks') || t.includes('read and answer') || t.includes('comprehension')) return 2;
-
-    // 4 Mark Questions (Common for Long Answer in some boards)
-    if (t.includes('four marks') || t.includes('4 marks') || t.includes('four sentences')) return 4;
-
-    // 5 Mark Questions (Long Answer / Essay)
-    if (t.includes('long answer') || t.includes('five marks') || t.includes('5 marks') || t.includes('essay') || t.includes('letter') || t.includes('paragraph') || t.includes('story') || t.includes('picture') || t.includes('map')) return 5;
-
-    return 2; // Default to 2 marks for unknown medium types
   }
 
   getChapterIds(): string[] {
