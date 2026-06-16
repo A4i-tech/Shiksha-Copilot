@@ -521,8 +521,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         })
         .forEach(q => {
           q.marksPerQuestion.forEach((marks: number) => {
-            const name = `${q.label} (${this.formatMarks(marks)} mark${marks <= 1 ? '' : 's'})`;
-            headingMap.set(`AI:${q.key}:${marks}`, { ...q, marksPerQuestion: marks, name, label: q.label, count: 0, chapters: new Set<number>() });
+            const selectionKey = q.key;
+            if (!headingMap.has(selectionKey)) headingMap.set(selectionKey, { ...q, selectionKey, displayName: q.label, name: q.label, label: q.label, count: 0, chapters: new Set<number>(), aiVariants: [], lbaName: undefined });
+            headingMap.get(selectionKey).aiVariants.push({ ...q, marksPerQuestion: marks, name: q.label, label: q.label });
           });
         });
     }
@@ -531,10 +532,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       if (!this.useLBA) continue;
       const lbaData = chapter.headings;
       for (const h of lbaData) {
+        const selectionKey = h.key;
         const headingName = h.label;
         const headingCount = Number(h.count);
-        if (!headingMap.has(headingName)) headingMap.set(headingName, { ...h, name: headingName, label: h.label, count: 0, chapters: new Set<number>() });
-        const agg = headingMap.get(headingName)!;
+        if (!headingMap.has(selectionKey)) headingMap.set(selectionKey, { ...h, selectionKey, displayName: headingName, name: headingName, label: h.label, count: 0, chapters: new Set<number>(), aiVariants: [], lbaName: headingName });
+        const agg = headingMap.get(selectionKey)!;
+        agg.lbaName = headingName;
         agg.count += headingCount;
         agg.chapters.add(chapter.chapterNumber);
       }
@@ -545,13 +548,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         ...x,
         name: x.name,
         label: x.label,
+        displayName: x.displayName,
+        selectionKey: x.selectionKey,
+        aiVariants: x.aiVariants,
+        lbaName: x.lbaName,
         count: x.count,
         chapters: Array.from(x.chapters).sort((a: any, b: any) => a - b)
       }))
-      .sort((a, b) => a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count);
+      .sort((a, b) => a.count === b.count ? a.displayName.localeCompare(b.displayName) : b.count - a.count);
 
-    const names = new Set(this.availableHeadings.map(h => h.name));
-    this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h.name));
+    const selectionKeys = new Set(this.availableHeadings.map(h => h.selectionKey));
+    this.selectedHeadings = this.selectedHeadings.filter(h => selectionKeys.has(h.selectionKey));
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
 
@@ -718,7 +725,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   generateAIQuestionsPool() {
     let payload = this.getTemplatePayload();
-    const aiHeadings = this.selectedHeadings.filter(heading => heading.instruction);
+    const aiHeadings = this.selectedHeadings.flatMap(heading => heading.aiVariants);
     if (!aiHeadings.length) return of([]);
     const headingByTypeAndMarks = new Map(aiHeadings.map(heading => [`${heading.key}:${Number(heading.marksPerQuestion)}`, heading]));
     payload.template = aiHeadings.map(heading => ({
@@ -850,6 +857,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const selectedChapterNumbers = selectedChapters.map(ch => ch.chapterNumber);
     const selectedChapterIds = selectedChapters.map(ch => ch._id);
+    const selectedLBAHeadings = this.selectedHeadings.filter(h => h.lbaName).map(h => h.lbaName);
+    if (!selectedLBAHeadings.length) return of([]);
 
     const params: any = {
       subject: config.subject, // This is now the Master Subject ID
@@ -857,7 +866,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       class: config.grade,
       chapterNumbers: selectedChapterNumbers.join(','),
       chapterIds: selectedChapterIds.join(','),
-      headings: this.selectedHeadings.map(h => h.name).join(','),
+      headings: selectedLBAHeadings.join(','),
       targetLanguage: config.language
     };
 
@@ -940,19 +949,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   toggleHeading(event: Event, heading: any) {
     const input = event.target as HTMLInputElement;
     if (input.checked) { if (!this.isHeadingSelected(heading)) this.selectedHeadings.push(heading); }
-    else { this.selectedHeadings = this.selectedHeadings.filter(h => h.name !== heading.name); }
+    else { this.selectedHeadings = this.selectedHeadings.filter(h => h.selectionKey !== heading.selectionKey); }
     this.f.selectedHeadings.setValue(this.selectedHeadings);
   }
-  isHeadingSelected(heading: any) { return this.selectedHeadings.some(h => h.name === heading.name); }
+  isHeadingSelected(heading: any) { return this.selectedHeadings.some(h => h.selectionKey === heading.selectionKey); }
   isAllHeadingsSelected() { return this.availableHeadings.length > 0 && this.selectedHeadings.length === this.availableHeadings.length; }
   headingSummary() {
     if (!this.availableHeadings.length) return 'Select chapters first';
     if (!this.selectedHeadings.length) return 'Select headings';
     if (this.selectedHeadings.length === this.availableHeadings.length) return `All headings (${this.selectedHeadings.length})`;
-    const names = this.selectedHeadings.map(h => h.name);
+    const names = this.selectedHeadings.map(h => h.displayName);
     return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ');
   }
-  headingDisplay(h: any) { return h.count > 0 ? `${h.name} (${h.count})` : h.name; }
+  headingDisplay(h: any) { return h.count > 0 ? `${h.displayName} (${h.count})` : h.displayName; }
 
   onLanguageChange(val: any) { }
   onSubtopicChange() { if (this.useAI) this.distributeMarks(); }

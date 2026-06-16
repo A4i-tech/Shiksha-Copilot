@@ -540,10 +540,13 @@ class QuestionBankManager extends BaseManager {
   }
 
   _applyQuestionCounts(template, totalMarks) {
-    return template.map((item) => ({
-      ...item,
-      ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / item.marks_per_question) }),
-    }));
+    return template.map((item) => {
+      if (!Number.isFinite(Number(item.marks_per_question))) throw new Error(`Question type "${item.type}" is missing marks_per_question`);
+      return {
+        ...item,
+        ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / item.marks_per_question) }),
+      };
+    });
   }
 
   async _createQuestionBankPayload(reqBody, user) {
