@@ -17,7 +17,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { DOCX_CONFIG, SUPERSCRIPT_MAP } from '../utility/constant.util';
+import { DOCX_CONFIG, formatMarks, SUPERSCRIPT_MAP } from '../utility/constant.util';
 import { OptionDto, QuestionSectionDto } from '../models/question-bank.dto';
 import { TranslateService } from '@ngx-translate/core';
 
@@ -92,9 +92,7 @@ export class QuestionBankDownloadService {
           children: [
             new TextRun({ text: `${roman}. ${this.translateService.instant(questionTypeLabels[section.type] || section.type)}`, bold: true }),
             new TextRun({
-              text: `\t${section.numberOfQuestions} X ${section.marksPerQuestion} = ${
-                section.numberOfQuestions * section.marksPerQuestion
-              }`,
+              text: `\t${section.numberOfQuestions} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks(section.numberOfQuestions * section.marksPerQuestion)}`,
               bold: true,
             }),
           ],
@@ -309,7 +307,7 @@ export class QuestionBankDownloadService {
                   children: [
                     new TextRun({ text: `Subject: ${data.subject}`, bold: true }),
                     new TextRun({ text: `\tClass: ${data.grade}`, bold: true }),
-                    new TextRun({ text: `\tMarks: ${totalMarks}`, bold: true }),
+                    new TextRun({ text: `\tMarks: ${formatMarks(totalMarks)}`, bold: true }),
                   ],
                   tabStops: [
                     { type: TabStopType.CENTER, position: 4500 },

@@ -49,6 +49,8 @@ export const QUESTION_SOURCE = {
     LBA: 'Pre-generated Questions',
 } as const;
 
+export const formatMarks = (marks: number) => String(marks).replace(/(?:^0)?\.5$/, '½');
+
 export const CCE_TYPE_MAPPER: any = {
     'Science': 'cce_tools_math_science',
     'Mathematics': 'cce_tools_math_science',

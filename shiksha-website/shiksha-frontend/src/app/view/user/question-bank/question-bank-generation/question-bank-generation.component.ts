@@ -9,7 +9,7 @@ import {
 import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
-import { QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
@@ -37,6 +37,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   // Step 2 Child Component
   @ViewChild(QuestionBankTemplateComponent) templateComponent!: QuestionBankTemplateComponent;
   @ViewChild('headingDropdownContainer') headingDropdownContainer?: ElementRef<HTMLElement>;
+  readonly formatMarks = formatMarks;
 
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
@@ -549,8 +550,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         })
         .forEach(q => {
           q.marksPerQuestion.forEach((marks: number) => {
-            const name = `${q.label} (${marks} mark${marks === 1 ? '' : 's'})`;
-            headingMap.set(`AI:${q.key}:${marks}`, { ...q, marksPerQuestion: marks, name, label: name, count: 0, chapters: new Set<number>() });
+            const name = `${q.label} (${this.formatMarks(marks)} mark${marks <= 1 ? '' : 's'})`;
+            headingMap.set(`AI:${q.key}:${marks}`, { ...q, marksPerQuestion: marks, name, label: q.label, count: 0, chapters: new Set<number>() });
           });
         });
     }
@@ -685,8 +686,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const sectionsMap = new Map<string, any>();
     this.finalSelectedQuestions.forEach(q => {
       const heading = q.heading;
-      if (!sectionsMap.has(heading)) {
-        sectionsMap.set(heading, {
+      const sectionKey = `${q.type}:${Number(q.marks)}`;
+      if (!sectionsMap.has(sectionKey)) {
+        sectionsMap.set(sectionKey, {
           type: q.type,
           heading: heading,
           marksPerQuestion: Number(q.marks),
@@ -694,7 +696,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           questions: []
         });
       }
-      const section = sectionsMap.get(heading);
+      const section = sectionsMap.get(sectionKey);
       section.questions.push({
         question: q.text,
         options: q.options,

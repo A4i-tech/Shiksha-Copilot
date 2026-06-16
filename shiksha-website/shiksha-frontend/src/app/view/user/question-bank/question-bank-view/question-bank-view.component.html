@@ -42,7 +42,7 @@
                     {{ objective.objective }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    {{ questionBankObjective.marksPerQuestion }}
+                    {{ formatMarks(questionBankObjective.marksPerQuestion) }}
                   </td>
                 </tr>
               </ng-container>
@@ -50,7 +50,7 @@
           </table>
           <div class="flex justify-end">
             <span class="mr-4 mt-2" *ngIf="questionBankDetails"><b>{{ 'Total' | translate}}</b> :
-              {{ generatedTotalMarks }} {{'Marks' | translate}}</span>
+              {{ formatMarks(generatedTotalMarks) }} {{'Marks' | translate}}</span>
           </div>
         </div>
       </div>
@@ -83,7 +83,7 @@
           <p>{{'Subject' | translate}} : {{ questionBankDetails?.subject }}</p>
           <p>{{'Class' | translate}} : {{ questionBankDetails?.grade }}</p>
           <p>
-            {{'Marks' | translate}} : {{ generatedTotalMarks }}
+            {{'Marks' | translate}} : {{ formatMarks(generatedTotalMarks) }}
           </p>
         </div>
         <hr />
@@ -94,8 +94,8 @@
               {{utilityService.intToRoman(q+1)}}. {{ (questionTypeLabels[questionBankData.type] || questionBankData.type) | translate }}
             </h2>
             <b class="text-content flex items-center justify-end gap-1 min-w-[15vw] md:min-w-[7vw]">{{
-              questionBankData.numberOfQuestions }} X {{ questionBankData.marksPerQuestion }} =
-              {{questionBankData.numberOfQuestions * questionBankData.marksPerQuestion }}
+              questionBankData.numberOfQuestions }} X {{ formatMarks(questionBankData.marksPerQuestion) }} =
+              {{ formatMarks(questionBankData.numberOfQuestions * questionBankData.marksPerQuestion) }}
             </b>
           </div>
           <div *ngIf="questionBankData.type !== 'MATCHING'">

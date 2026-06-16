@@ -288,7 +288,7 @@
                         <td class="p-3 border text-right">Total:</td>
                         <td class="p-3 border text-center"
                           [ngClass]="totalMarks !== totalDistributedMarks ? 'text-error' : 'text-primary'">
-                          {{totalDistributedMarks}} / {{totalMarks}}</td>
+                          {{ formatMarks(totalDistributedMarks) }} / {{ formatMarks(totalMarks) }}</td>
                         <td class="p-3 border text-center">{{totalDistributedPercentage}}%</td>
                       </tr>
                     </tfoot>

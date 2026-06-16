@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -21,6 +21,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
+  readonly formatMarks = formatMarks;
 
   totalSteps: number = 3;
 
@@ -66,11 +67,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     const groups: { [key: string]: any } = {};
 
     this.finalSelectedQuestions.forEach(q => {
-      const sectionName = q.heading;
+      const sectionName = `${q.type}:${q.marks}`;
 
       if (!groups[sectionName]) {
         groups[sectionName] = {
-          type: sectionName,
+          type: q.heading,
           marksPerQuestion: q.marks,
           questions: []
         };

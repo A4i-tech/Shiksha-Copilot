@@ -14,6 +14,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { TranslateService } from '@ngx-translate/core';
+import { formatMarks } from '../utility/constant.util';
 
 @Injectable({
   providedIn: 'root',
@@ -64,7 +65,7 @@ export class BluePrintExportService {
               width: { size: 30, type: WidthType.PERCENTAGE },
             }),
             new TableCell({
-              children: [new Paragraph( key === 'schoolName' ? value.toString() : this.capitalize(value.toString()))],
+              children: [new Paragraph(key === 'schoolName' ? value.toString() : key === 'totalMarks' ? formatMarks(Number(value)) : this.capitalize(value.toString()))],
               margins: { top: 100, bottom: 100, left: 100, right: 100 },
               width: { size: 70, type: WidthType.PERCENTAGE },
             }),
@@ -105,7 +106,7 @@ export class BluePrintExportService {
             this.createPaddedCell(item.unitName),
             this.createPaddedCell(this.translateService.instant(item.type)),
             this.createPaddedCell(this.translateService.instant(item.objective)),
-            this.createPaddedCell(item.marks.toString()),
+            this.createPaddedCell(formatMarks(item.marks)),
           ],
         })
     );
