@@ -360,7 +360,7 @@ class QuestionBankManager extends BaseManager {
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
         const numNeeded = template.questionDistribution.length;
-        const blockQuestions = normalizedQuestions.slice(itemPointer, itemPointer + numNeeded);
+        const blockQuestions = normalizedQuestions.slice(itemPointer, itemPointer + numNeeded).map((q, idx) => ({...q, ...template.questionDistribution[idx]}));
         itemPointer += numNeeded;
         return {
           type: template.type,
