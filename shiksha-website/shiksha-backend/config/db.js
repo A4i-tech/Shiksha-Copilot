@@ -27,8 +27,10 @@ class DBService {
 
 	async onConnect() {
 		try {
-			await QuestionBankCache.createIndexes();
-			await QuestionBankConfiguration.createIndexes();
+			await Promise.all([
+				QuestionBankCache.createIndexes(),
+				QuestionBankConfiguration.createIndexes(),
+			]);
 			await runMigrations();
 			if (!this.isOnConnectExecuted) {
 				this.isOnConnectExecuted = true;
