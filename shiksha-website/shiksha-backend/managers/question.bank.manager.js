@@ -14,7 +14,7 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const Chapter = require("../models/chapter.model");
 const chapterAggregation = require("../aggregation/chapter.aggregation");
-const { convertToCamelCase } = require("../helper/formatter");
+const { convertToCamelCase, convertToSnakeCase } = require("../helper/formatter");
 const QuestionBankCacheDao = require("../dao/question.bank.cache.dao");
 const {
   getQuestions,
@@ -51,13 +51,14 @@ const transformWeakLbaQuestion = (q) => {
   // TODO: we ought to get rid of this backend logic by sanitizing the db collection.
   const meta = QUESTION_TYPE_META[q.answerType];
   if (!meta) throw new Error(`Unexpected LBA answer type "${q.answerType}" in question result`);
+  const { unit_name, ...question } = q;
   const base = {
-    ...q,
+    ...question,
     ...meta,
     type: meta.key,
     heading: meta.label,
     marks: q.marksPerQuestion,
-    unit_name: q.unit_name,
+    unitName: unit_name,
     objective: q.objective,
     text: q.text,
     keyAnswer: q.keyAnswer,
@@ -107,13 +108,14 @@ class QuestionBankManager extends BaseManager {
 
   async generateQuestionBankBluePrint(req, user) {
     try {
-      const { objective_distribution, template } = req.body;
-      const templatePayload = await this._createQuestionBankPayload(req.body, user);
-      const payload = {
+      const body = convertToCamelCase(req.body);
+      const { objectiveDistribution, template } = body;
+      const templatePayload = await this._createQuestionBankPayload(body, user);
+      const payload = convertToSnakeCase({
         ...templatePayload,
-        template: this._applyQuestionCounts(this._withQuestionTypeMetadata(template), req.body.total_marks),
-        objective_distribution,
-      };
+        template: this._applyQuestionCounts(this._withQuestionTypeMetadata(template), body.totalMarks),
+        objectiveDistribution,
+      });
 
       const response = await postToQuestionBankDistribution(payload);
 
@@ -125,7 +127,7 @@ class QuestionBankManager extends BaseManager {
         throw new Error("Something went wrong with copilot! Please try later");
       }
 
-      return formatApiReponse(true, "Question bank blue print generated successfully!", response.data);
+      return formatApiReponse(true, "Question bank blue print generated successfully!", convertToCamelCase(response.data));
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
     }
@@ -140,7 +142,8 @@ class QuestionBankManager extends BaseManager {
     try {
       console.log('[Manager] generateQuestionBank called.');
 
-      const context = this._prepareGenerationContext(req.body);
+      const body = convertToCamelCase(req.body);
+      const context = this._prepareGenerationContext(body);
       if (!context.questions || context.questions.length === 0) {
         context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template));
       }
@@ -151,7 +154,7 @@ class QuestionBankManager extends BaseManager {
       } = context;
 
       // 1. Get Questions (Manual or AI + Cache)
-      const aiResult = await this._handleAIQuestionGeneration(context, user, req.body);
+      const aiResult = await this._handleAIQuestionGeneration(context, user, body);
       let { mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache } = aiResult;
 
       // 2. Translation
@@ -214,11 +217,14 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async translateQuestionPaper(target_language, json_data) {
+  async translateQuestionPaper(targetLanguage, jsonData) {
     try {
       const pythonUrl = process.env.LLM_API_BASE_URL;
-      const response = await axios.post(`${pythonUrl}/question-paper/translate-json`, {target_language, json_data});
-      return formatApiReponse(true, "Translation processed successfully", response.data);
+      const response = await axios.post(
+        `${pythonUrl}/question-paper/translate-json`,
+        convertToSnakeCase({ targetLanguage, jsonData })
+      );
+      return formatApiReponse(true, "Translation processed successfully", convertToCamelCase(response.data));
     } catch (err) {
       console.error("Translation Manager Error:", err.message);
       return formatApiReponse(false, "Translation failed", err.response?.data || err.message);
@@ -228,52 +234,52 @@ class QuestionBankManager extends BaseManager {
   _prepareGenerationContext(reqBody) {
     const {
       chapter,
-      sub_topic,
-      is_multi_chapter,
-      chapter_ids,
-      question_bank_template,
+      subTopic,
+      isMultiChapter,
+      chapterIds,
+      questionBankTemplate,
       template,
       language,
       questions,
-      is_preview,
-      examination_name,
-      unit_level,
-      objective_distribution
+      isPreview,
+      examinationName,
+      unitLevel,
+      objectiveDistribution
     } = reqBody;
 
-    const unitNames = is_multi_chapter ? chapter : sub_topic;
+    const unitNames = isMultiChapter ? chapter : subTopic;
     const processedUnitNames = Array.isArray(unitNames)
       ? unitNames.map((e) => e.trim())
       : [];
 
     // chapterIds is always an array even if frontend sends a single string
-    const chapterIdsArr = Array.isArray(chapter_ids)
-      ? chapter_ids
-      : chapter_ids
-        ? [chapter_ids]
+    const chapterIdsArr = Array.isArray(chapterIds)
+      ? chapterIds
+      : chapterIds
+        ? [chapterIds]
         : [];
 
     return {
       chapter,
-      subTopic: sub_topic,
-      isMultiChapter: is_multi_chapter,
+      subTopic,
+      isMultiChapter,
       chapterIds: chapterIdsArr,
-      questionBankTemplate: question_bank_template,
+      questionBankTemplate,
       template,
       language,
       questions,
-      isPreview: is_preview,
-      examinationName: examination_name,
-      objectiveDistribution: objective_distribution,
+      isPreview,
+      examinationName,
+      objectiveDistribution,
       processedUnitNames,
-      unitLevel: unit_level,
+      unitLevel,
       // Pass other fields needed for payload creation
       board: reqBody.board,
       medium: reqBody.medium,
       grade: reqBody.grade,
       subject: reqBody.subject,
-      totalMarks: reqBody.total_marks,
-      marksDistribution: reqBody.marks_distribution
+      totalMarks: reqBody.totalMarks,
+      marksDistribution: reqBody.marksDistribution
     };
   }
 
@@ -335,10 +341,10 @@ class QuestionBankManager extends BaseManager {
       const payload = {
         ...templatePayload,
         template: notFoundRes,
-        existing_questions: res,
+        existingQuestions: res,
       };
 
-      const response = await postToQuestionBankParts(payload);
+      const response = await postToQuestionBankParts(convertToSnakeCase(payload));
 
       if (response.status !== 200 || !response.data) {
         throw new Error("Something went wrong with copilot! Please try later");
@@ -348,12 +354,12 @@ class QuestionBankManager extends BaseManager {
 
       // Normalize Python response from nested blocks into the flat merge shape.
       const normalizedQuestions = [];
-      for(const questionBlock of response.data.questions) normalizedQuestions.push(...questionBlock.questions);
+      for(const questionBlock of convertToCamelCase(response.data).questions) normalizedQuestions.push(...questionBlock.questions);
 
       // Restructure normalized items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
-        const numNeeded = template.question_distribution.length;
+        const numNeeded = template.questionDistribution.length;
         const blockQuestions = normalizedQuestions.slice(itemPointer, itemPointer + numNeeded);
         itemPointer += numNeeded;
         return {
@@ -377,12 +383,12 @@ class QuestionBankManager extends BaseManager {
     const filters = [];
 
     template.forEach((item) => {
-      const marks = item.marks_per_question;
-      const questionDistribution = item.question_distribution;
+      const marks = item.marksPerQuestion;
+      const questionDistribution = item.questionDistribution;
 
       questionDistribution.forEach((distribution) => {
         filters.push({
-          unitName: distribution.unit_name,
+          unitName: distribution.unitName,
           objective: distribution.objective.toLowerCase(),
           type: item.type,
           marks,
@@ -402,7 +408,7 @@ class QuestionBankManager extends BaseManager {
         title: examinationName,
         language: language,
         parts: [
-          {part_name: "Questions", questions: convertToCamelCase(mergedList)},
+          { partName: "Questions", questions: convertToCamelCase(mergedList) },
         ],
       });
 
@@ -442,7 +448,7 @@ class QuestionBankManager extends BaseManager {
 
     let configData = convertToCamelCase({
       ...context,
-      user_id: undefined,
+      userId: undefined,
       chapters: undefined,
       chapterIds,
       isMultiChapter,
@@ -497,8 +503,6 @@ class QuestionBankManager extends BaseManager {
 
       cacheSummaryData.notFoundQuestions = notFoundQuestions;
 
-      cacheSummaryData.notFoundQuestions = notFoundQuestions;
-
       const summary = await this.questionBankCacheSummaryDao.create(cacheSummaryData);
 
       addCacheJob({
@@ -522,9 +526,9 @@ class QuestionBankManager extends BaseManager {
         ...item,
         type: meta.key,
         description: meta.description,
-        question_distribution: item.question_distribution.map(d => ({
+        questionDistribution: item.questionDistribution.map(d => ({
           ...d,
-          unit_name: d.unit_name.trim(),
+          unitName: d.unitName.trim(),
           objective: d.objective
         })),
       };
@@ -541,10 +545,10 @@ class QuestionBankManager extends BaseManager {
 
   _applyQuestionCounts(template, totalMarks) {
     return template.map((item) => {
-      if (!Number.isFinite(Number(item.marks_per_question))) throw new Error(`Question type "${item.type}" is missing marks_per_question`);
+      if (!Number.isFinite(Number(item.marksPerQuestion))) throw new Error(`Question type "${item.type}" is missing marksPerQuestion`);
       return {
         ...item,
-        ...(totalMarks && { number_of_questions: Math.ceil(Number(totalMarks) / item.marks_per_question) }),
+        ...(totalMarks && { numberOfQuestions: Math.ceil(Number(totalMarks) / item.marksPerQuestion) }),
       };
     });
   }
@@ -556,26 +560,26 @@ class QuestionBankManager extends BaseManager {
         medium,
         grade,
         subject,
-        total_marks,
-        is_multi_chapter,
-        unit_level,
-        marks_distribution,
-        chapter_ids,
-        sub_topic,
+        totalMarks,
+        isMultiChapter,
+        unitLevel,
+        marksDistribution,
+        chapterIds,
+        subTopic,
         template,
         questions,
       } = reqBody;
 
-      const objective_distribution = reqBody.objective_distribution;
-      const chapterIdsArr = Array.isArray(chapter_ids) ? chapter_ids : (chapter_ids ? [chapter_ids] : []);
-      const subTopicsArr = Array.isArray(sub_topic) ? sub_topic : (sub_topic ? [sub_topic] : []);
+      const objectiveDistribution = reqBody.objectiveDistribution;
+      const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
+      const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
 
       const validChapterIds = chapterIdsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
       const validSubTopicIds = subTopicsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
 
       let chapterData = [];
       try {
-        if (is_multi_chapter) {
+        if (isMultiChapter) {
           if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
         } else {
           if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, subTopicsArr);
@@ -584,31 +588,33 @@ class QuestionBankManager extends BaseManager {
         console.warn("[Manager] Chapter lookup failed:", aggErr.message);
       }
 
+      chapterData = convertToCamelCase(chapterData);
+
       // Prepare base chapters
       let formattedChapters = chapterData.length
         ? chapterData.map((chapter) => {
-          const chapterIndexPath = chapter.index_path;
+          const chapterIndexPath = chapter.indexPath;
           const ch = {
             title: chapter.title.trim(),
-            index_path: chapterIndexPath,
-            learning_outcomes: chapter.learning_outcomes,
-            is_grammar: !!chapter.is_grammar,
-            grammar_topics: chapter.grammar_topics,
+            indexPath: chapterIndexPath,
+            learningOutcomes: chapter.learningOutcomes,
+            isGrammar: !!chapter.isGrammar,
+            grammarTopics: chapter.grammarTopics,
             subtopics: chapter.subtopics.map((sub) => ({
               title: sub.title.trim(),
-              index_path: sub.index_path,
-              learning_outcomes: sub.learning_outcomes,
+              indexPath: sub.indexPath,
+              learningOutcomes: sub.learningOutcomes,
             })),
           };
-          if (chapter.grammar_source_chapters?.length) {
-            ch.grammar_source_chapters = chapter.grammar_source_chapters;
+          if (chapter.grammarSourceChapters?.length) {
+            ch.grammarSourceChapters = chapter.grammarSourceChapters;
           }
           return ch;
         })
         : [];
 
       const requiredUnits = new Set();
-      marks_distribution.forEach(dist => requiredUnits.add(dist.unit_name.trim()));
+      marksDistribution.forEach(dist => requiredUnits.add(dist.unitName.trim()));
 
       // Check inputs as well (Hybrid Flow)
       const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
@@ -620,7 +626,7 @@ class QuestionBankManager extends BaseManager {
 
       // Inject units referenced in marks distribution but not fetched by ID,
       // resolving each against chapter and subtopic titles before falling back
-      // to an empty index_path.
+      // to an empty indexPath.
       const lower = (s) => s.toLowerCase();
       requiredUnits.forEach(unitName => {
         const u = lower(unitName);
@@ -632,8 +638,8 @@ class QuestionBankManager extends BaseManager {
           if (sub) {
             formattedChapters.push({
               title: unitName,
-              index_path: sub.index_path,
-              learning_outcomes: sub.learning_outcomes,
+              indexPath: sub.indexPath,
+              learningOutcomes: sub.learningOutcomes,
               subtopics: [],
             });
             return;
@@ -645,8 +651,8 @@ class QuestionBankManager extends BaseManager {
           if (rawSub) {
             formattedChapters.push({
               title: unitName,
-              index_path: rawSub.index_path,
-              learning_outcomes: rawSub.learning_outcomes,
+              indexPath: rawSub.indexPath,
+              learningOutcomes: rawSub.learningOutcomes,
               subtopics: [],
             });
             return;
@@ -655,41 +661,37 @@ class QuestionBankManager extends BaseManager {
 
         formattedChapters.push({
           title: unitName,
-          index_path: "",
-          learning_outcomes: [],
+          indexPath: "",
+          learningOutcomes: [],
           subtopics: [],
         });
       });
 
-      const formattedMarksDist = marks_distribution.map((dist) => ({
-        unit_name: dist.unit_name,
-        percentage_distribution: dist.percentage_distribution,
+      const formattedMarksDist = marksDistribution.map((dist) => ({
+        unitName: dist.unitName,
+        percentageDistribution: dist.percentageDistribution,
         marks: dist.marks,
       }));
 
-      const formattedObjectiveDist = objective_distribution.map((obj) => ({
+      const formattedObjectiveDist = objectiveDistribution.map((obj) => ({
         objective: obj.objective,
-        percentage_distribution: obj.percentage_distribution,
+        percentageDistribution: obj.percentageDistribution,
       }));
 
       const payload = {
-        user_id: user._id.toString(),
+        userId: user._id.toString(),
         board: board,
         medium: "English",
         grade: String(grade),
         subject: subject,
-        unit_level,
-        total_marks: Number(total_marks),
+        unitLevel,
+        totalMarks: Number(totalMarks),
         chapters: formattedChapters, // Now contains all necessary units
-        marks_distribution: formattedMarksDist,
-        objective_distribution: formattedObjectiveDist,
+        marksDistribution: formattedMarksDist,
+        objectiveDistribution: formattedObjectiveDist,
         template: this._withQuestionTypeMetadata(template),
       };
-
-      if (questions && questions.length > 0) {
-        payload.questions = questions;
-      }
-
+      if (questions && questions.length > 0) payload.questions = questions;
       return payload;
     } catch (e) {
       console.error("Error creating payload:", e);

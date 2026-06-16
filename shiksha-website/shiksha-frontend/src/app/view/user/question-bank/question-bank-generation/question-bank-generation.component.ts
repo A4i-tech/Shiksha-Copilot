@@ -154,17 +154,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     let payload: any = this.getTemplatePayload();
 
     // Ensure marksDistribution present
-    if (payload.marks_distribution.length === 0) {
+    if (payload.marksDistribution.length === 0) {
       const unitMap = new Map();
       selectedQuestions.forEach(q => {
-        const unit = q.unit_name;
-        if (!unitMap.has(unit)) unitMap.set(unit, { unit_name: unit, marks: 0 });
+        const unit = q.unitName;
+        if (!unitMap.has(unit)) unitMap.set(unit, { unitName: unit, marks: 0 });
         unitMap.get(unit).marks += Number(q.marks);
       });
-      payload.marks_distribution = Array.from(unitMap.values()).map(d => ({
-        unit_name: d.unit_name,
+      payload.marksDistribution = Array.from(unitMap.values()).map(d => ({
+        unitName: d.unitName,
         marks: d.marks,
-        percentage_distribution: payload.total_marks > 0 ? (d.marks / payload.total_marks) * 100 : 0
+        percentageDistribution: payload.totalMarks > 0 ? (d.marks / payload.totalMarks) * 100 : 0
       }));
     }
 
@@ -184,9 +184,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     payload.template = Array.from(grouped.values()).map(s => ({
       type: s.type,
-      number_of_questions: s.numberOfQuestions,
-      marks_per_question: s.marksPerQuestion,
-      question_distribution: [{ unit_name: selectedQuestions[0].unit_name, objective: selectedQuestions[0].objective }]
+      numberOfQuestions: s.numberOfQuestions,
+      marksPerQuestion: s.marksPerQuestion,
+      questionDistribution: [{ unitName: selectedQuestions[0].unitName, objective: selectedQuestions[0].objective }]
     }));
 
     this.isLoadingQuestions = true;
@@ -657,7 +657,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     // 1. Prepare Base Payload
     let payload = this.getTemplatePayload();
-    payload.is_preview = false; // ENSURE THIS IS FALSE TO TRIGGER DB SAVE
+    payload.isPreview = false; // ENSURE THIS IS FALSE TO TRIGGER DB SAVE
 
     // 2. Organize Selected Questions into Sections
     const sectionsMap = new Map<string, any>();
@@ -680,7 +680,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         keyAnswer: q.keyAnswer,
         marks: Number(q.marks),
         _id: q._id,
-        unit_name: q.unit_name,
+        unitName: q.unitName,
         objective: q.objective,
         value1: q.value1,
         value2: q.value2
@@ -694,9 +694,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // 3. Create Template for backend validation
     payload.template = finalSections.map(s => ({
       type: s.type,
-      number_of_questions: s.numberOfQuestions,
-      marks_per_question: s.marksPerQuestion,
-      question_distribution: s.questions.map((q: any) => ({ unit_name: q.unit_name, objective: q.objective }))
+      numberOfQuestions: s.numberOfQuestions,
+      marksPerQuestion: s.marksPerQuestion,
+      questionDistribution: s.questions.map((q: any) => ({ unitName: q.unitName, objective: q.objective }))
     }));
 
     // 4. CALL BACKEND TO SAVE
@@ -730,10 +730,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const headingByTypeAndMarks = new Map(aiHeadings.map(heading => [`${heading.key}:${Number(heading.marksPerQuestion)}`, heading]));
     payload.template = aiHeadings.map(heading => ({
       type: heading.key,
-      marks_per_question: heading.marksPerQuestion,
-      question_distribution: []
+      marksPerQuestion: heading.marksPerQuestion,
+      questionDistribution: []
     }));
-    payload.is_preview = true;
+    payload.isPreview = true;
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       switchMap((bpRes: any) => {
@@ -758,7 +758,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
               marks: blockMarks,
               type: blockType,
               heading: heading.label,
-              unit_name: chapterName,
+              unitName: chapterName,
               objective: q.objective,
               value1: q.value1,
               value2: q.value2,
@@ -779,7 +779,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const objectiveDistribution = (this.questionBankObjectives)
       .map((obj: any) => ({
         objective: obj?.objective,
-        percentage_distribution: Number(obj?.percentage_distribution)
+        percentageDistribution: Number(obj?.percentageDistribution)
       }))
       .filter((obj: any) => !!obj.objective);
 
@@ -801,20 +801,20 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       language: formVal.language,
       grade: String(formVal.grade),
       subject: subjectName, // Send Name for AI
-      total_marks: Number(formVal.totalMarks),
-      examination_name: formVal.examinationName,
+      totalMarks: Number(formVal.totalMarks),
+      examinationName: formVal.examinationName,
       chapter: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
-      chapter_ids: validChapterIds,
-      sub_topic: subTopicsPayload,
-      is_multi_chapter: this.questionBankTypeValue === 'multiChapter',
-      unit_level: this.questionBankTypeValue === 'singleChapter' && this.hasSubtopics ? 'SUBTOPIC' : 'CHAPTER',
-      marks_distribution: this.marksDistribution.map(d => ({
-        unit_name: d.unit_name,
+      chapterIds: validChapterIds,
+      subTopic: subTopicsPayload,
+      isMultiChapter: this.questionBankTypeValue === 'multiChapter',
+      unitLevel: this.questionBankTypeValue === 'singleChapter' && this.hasSubtopics ? 'SUBTOPIC' : 'CHAPTER',
+      marksDistribution: this.marksDistribution.map(d => ({
+        unitName: d.unitName,
         marks: Number(d.marks),
-        percentage_distribution: Number(d.percentage_distribution)
+        percentageDistribution: Number(d.percentageDistribution)
       })),
       template: [],
-      objective_distribution: objectiveDistribution,
+      objectiveDistribution,
     };
   }
 
@@ -835,7 +835,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   generateSummaryBlueprint(questions: any[]) {
     return questions.map((q) => ({
-      topic: q.unit_name,
+      topic: q.unitName,
       questionType: q.heading,
       objective: q.objective,
       marks: Number(q.marks),
@@ -974,9 +974,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const marksPerChapter = Math.floor(this.totalMarks / topics.length);
       const remainingMarks = this.totalMarks % topics.length;
       this.marksDistribution = topics.map((topic: any, index: any) => ({
-        unit_name: topic,
+        unitName: topic,
         marks: index === 0 ? marksPerChapter + remainingMarks : marksPerChapter,
-        percentage_distribution: Math.round(((index === 0 ? marksPerChapter + remainingMarks : marksPerChapter) / this.totalMarks) * 100)
+        percentageDistribution: Math.round(((index === 0 ? marksPerChapter + remainingMarks : marksPerChapter) / this.totalMarks) * 100)
       }));
     } else { this.marksDistribution = []; }
     this.totalDistributedMarks = this.totalMarks;
@@ -985,7 +985,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   updatePercentage(i: any) {
     const marks = Number(this.marksDistribution[i].marks);
     this.marksDistribution[i].marks = marks;
-    this.marksDistribution[i].percentage_distribution = Math.round((marks * 100) / this.totalMarks);
+    this.marksDistribution[i].percentageDistribution = Math.round((marks * 100) / this.totalMarks);
     this.calculateTotalDistribution();
   }
   calculateTotalDistribution() {
@@ -993,7 +993,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.totalDistributedPercentage = Math.round((this.totalDistributedMarks * 100) / this.totalMarks);
   }
   calculateTotalPercentage(i: any) {
-    this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentage_distribution), 0);
+    this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentageDistribution), 0);
   }
   resetDistribution() {
     this.f.chapter.reset(); this.f.subTopic.reset(); this.marksDistribution = [];

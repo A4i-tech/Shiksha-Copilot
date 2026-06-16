@@ -28,29 +28,29 @@ describe("Question Bank Validation", () => {
       grade: 10,
       subject: "Mathematics",
       chapter: "Algebra",
-      total_marks: 100,
-      examination_name: "Final Exam",
-      chapter_ids: ["chapter123"],
-      is_multi_chapter: false,
-      marks_distribution: [
+      totalMarks: 100,
+      examinationName: "Final Exam",
+      chapterIds: ["chapter123"],
+      isMultiChapter: false,
+      marksDistribution: [
         {
-          unit_name: "Unit 1",
+          unitName: "Unit 1",
           marks: 50,
-          percentage_distribution: 50,
+          percentageDistribution: 50,
         },
       ],
-      objective_distribution: [
+      objectiveDistribution: [
         {
           objective: "Understanding",
-          percentage_distribution: 40,
+          percentageDistribution: 40,
         },
       ],
       template: [
         {
           type: "MCQ",
-          number_of_questions: 10,
-          marks_per_question: 1,
-          question_distribution: [],
+          numberOfQuestions: 10,
+          marksPerQuestion: 1,
+          questionDistribution: [],
         },
       ],
     };
@@ -64,8 +64,8 @@ describe("Question Bank Validation", () => {
       expect(mockRes.status).not.toHaveBeenCalled();
     });
 
-    it("should fail when objective_distribution is missing", () => {
-      const { objective_distribution, ...dataWithoutObjective } =
+    it("should fail when objectiveDistribution is missing", () => {
+      const { objectiveDistribution, ...dataWithoutObjective } =
         validBlueprintData;
       mockReq.body = dataWithoutObjective;
 
@@ -76,7 +76,7 @@ describe("Question Bank Validation", () => {
         success: false,
         data: false,
         error: expect.arrayContaining([
-          expect.stringContaining("objective_distribution"),
+          expect.stringContaining("objectiveDistribution"),
         ]),
       });
       expect(mockNext).not.toHaveBeenCalled();
@@ -100,29 +100,29 @@ describe("Question Bank Validation", () => {
       grade: 10,
       subject: "Mathematics",
       chapter: "Algebra",
-      total_marks: 100,
-      examination_name: "Final Exam",
-      chapter_ids: ["chapter123"],
-      is_multi_chapter: false,
-      marks_distribution: [
+      totalMarks: 100,
+      examinationName: "Final Exam",
+      chapterIds: ["chapter123"],
+      isMultiChapter: false,
+      marksDistribution: [
         {
-          unit_name: "Unit 1",
+          unitName: "Unit 1",
           marks: 50,
-          percentage_distribution: 50,
+          percentageDistribution: 50,
         },
       ],
-      objective_distribution: [
+      objectiveDistribution: [
         {
           objective: "Understanding",
-          percentage_distribution: 40,
+          percentageDistribution: 40,
         },
       ],
       template: [
         {
           type: "MCQ",
-          number_of_questions: 10,
-          marks_per_question: 1,
-          question_distribution: [],
+          numberOfQuestions: 10,
+          marksPerQuestion: 1,
+          questionDistribution: [],
         },
       ],
     };

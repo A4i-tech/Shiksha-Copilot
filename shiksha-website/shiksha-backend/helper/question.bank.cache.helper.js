@@ -61,7 +61,7 @@ async function getQuestions(templateList, cacheDocs, options = {}) {
 
       res.push(responseModel);
 
-      if (notFound.number_of_questions > 0) {
+      if (notFound.numberOfQuestions > 0) {
         notFoundRes.push(notFound);
         notFoundIndices.push(notFoundIndexData);
       } else {
@@ -104,26 +104,26 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
 
   const questionTypeResponse = new QuestionTypeResponse(
     template.type,
-    template.marks_per_question
+    template.marksPerQuestion
   );
 
   let notFoundTemplate = { ...template };
-  notFoundTemplate.question_distribution = [];
-  notFoundTemplate.number_of_questions = 0;
+  notFoundTemplate.questionDistribution = [];
+  notFoundTemplate.numberOfQuestions = 0;
   let notFoundQuestionIndices = [];
 
-  const questionDistribution = template.question_distribution;
+  const questionDistribution = template.questionDistribution;
 
   for (let i = 0; i < questionDistribution.length; i++) {
     total++;
-    const unitName = questionDistribution[i].unit_name.toLowerCase().trim();
+    const unitName = questionDistribution[i].unitName.toLowerCase().trim();
     const objective = questionDistribution[i].objective.toLowerCase();
-    const marks = template.marks_per_question;
+    const marks = template.marksPerQuestion;
     const poolKey = `${unitName}|${objective}|${template.type}|${marks}`;
 
     if (!shouldUseCache()) {
       misses++;
-      notFoundTemplate.question_distribution.push(questionDistribution[i]);
+      notFoundTemplate.questionDistribution.push(questionDistribution[i]);
       notFoundQuestionIndices.push(i);
       continue;
     }
@@ -148,7 +148,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
 
     if (validCandidates.length === 0) {
       misses++;
-      notFoundTemplate.question_distribution.push(questionDistribution[i]);
+      notFoundTemplate.questionDistribution.push(questionDistribution[i]);
       notFoundQuestionIndices.push(i);
       continue;
     }
@@ -185,13 +185,13 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
       handledPoolKeys.add(poolKey);
     } else {
       misses++;
-      notFoundTemplate.question_distribution.push(questionDistribution[i]);
+      notFoundTemplate.questionDistribution.push(questionDistribution[i]);
       notFoundQuestionIndices.push(i);
     }
   }
 
-  questionTypeResponse.number_of_questions = questionTypeResponse.questions.length;
-  notFoundTemplate.number_of_questions = notFoundTemplate.question_distribution.length;
+  questionTypeResponse.numberOfQuestions = questionTypeResponse.questions.length;
+  notFoundTemplate.numberOfQuestions = notFoundTemplate.questionDistribution.length;
 
   return {
     responseModel: questionTypeResponse.modelDump(),
@@ -268,7 +268,7 @@ function mergeQuestions(existingQuestions, newQuestions, indices) {
       existingBlock.questions.splice(insertIndex, 0, question);
     });
 
-    existingBlock.number_of_questions += newQuestionsToInsert.length;
+    existingBlock.numberOfQuestions += newQuestionsToInsert.length;
   }
 
   return existingQuestions;
@@ -407,18 +407,18 @@ class QuestionBankCacheDoc {
 }
 
 class QuestionTypeResponse {
-  constructor(type, marks_per_question) {
+  constructor(type, marksPerQuestion) {
     this.type = type;
-    this.marks_per_question = marks_per_question;
-    this.number_of_questions = 0;
+    this.marksPerQuestion = marksPerQuestion;
+    this.numberOfQuestions = 0;
     this.questions = [];
   }
 
   modelDump() {
     return {
       type: this.type,
-      marks_per_question: this.marks_per_question,
-      number_of_questions: this.number_of_questions,
+      marksPerQuestion: this.marksPerQuestion,
+      numberOfQuestions: this.numberOfQuestions,
       questions: this.questions,
     };
   }
@@ -434,14 +434,14 @@ class QuestionDistribution {
 class Template {
   constructor(
     type,
-    number_of_questions,
-    marks_per_question,
-    question_distribution = []
+    numberOfQuestions,
+    marksPerQuestion,
+    questionDistribution = []
   ) {
     this.type = type;
-    this.number_of_questions = number_of_questions;
-    this.marks_per_question = marks_per_question;
-    this.question_distribution = question_distribution;
+    this.numberOfQuestions = numberOfQuestions;
+    this.marksPerQuestion = marksPerQuestion;
+    this.questionDistribution = questionDistribution;
   }
 }
 

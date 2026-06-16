@@ -64,28 +64,28 @@
   "coreSubjects": ["Science", "Social Science", "Mathematics", "Evs"],
   "objectives": {
     "core": [
-      { "objective": "Knowledge", "percentage_distribution": 25 },
-      { "objective": "Understanding", "percentage_distribution": 45 },
-      { "objective": "Application", "percentage_distribution": 20 },
-      { "objective": "Skill", "percentage_distribution": 10 }
+      { "objective": "Knowledge", "percentageDistribution": 25 },
+      { "objective": "Understanding", "percentageDistribution": 45 },
+      { "objective": "Application", "percentageDistribution": 20 },
+      { "objective": "Skill", "percentageDistribution": 10 }
     ],
     "coreGrade10": [
-      { "objective": "Knowledge", "percentage_distribution": 10 },
-      { "objective": "Understanding", "percentage_distribution": 55 },
-      { "objective": "Application", "percentage_distribution": 20 },
-      { "objective": "Skill", "percentage_distribution": 15 }
+      { "objective": "Knowledge", "percentageDistribution": 10 },
+      { "objective": "Understanding", "percentageDistribution": 55 },
+      { "objective": "Application", "percentageDistribution": 20 },
+      { "objective": "Skill", "percentageDistribution": 15 }
     ],
     "language": [
-      { "objective": "Knowledge", "percentage_distribution": 25 },
-      { "objective": "Comprehension", "percentage_distribution": 40 },
-      { "objective": "Expression", "percentage_distribution": 30 },
-      { "objective": "Appreciation", "percentage_distribution": 5 }
+      { "objective": "Knowledge", "percentageDistribution": 25 },
+      { "objective": "Comprehension", "percentageDistribution": 40 },
+      { "objective": "Expression", "percentageDistribution": 30 },
+      { "objective": "Appreciation", "percentageDistribution": 5 }
     ],
     "telangana": [
-      { "objective": "Knowledge", "percentage_distribution": 10 },
-      { "objective": "Understanding", "percentage_distribution": 20 },
-      { "objective": "Application", "percentage_distribution": 30 },
-      { "objective": "Higher order thinking", "percentage_distribution": 40 }
+      { "objective": "Knowledge", "percentageDistribution": 10 },
+      { "objective": "Understanding", "percentageDistribution": 20 },
+      { "objective": "Application", "percentageDistribution": 30 },
+      { "objective": "Higher order thinking", "percentageDistribution": 40 }
     ]
   },
   "boardMarks": {

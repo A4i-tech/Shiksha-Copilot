@@ -4,10 +4,10 @@ const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
 const VALID_QUESTION_TYPES = Object.keys(PAPER_CONFIG.questionTypes);
 const questionBankTemplateItemSchema = {
     type: Joi.string().valid(...VALID_QUESTION_TYPES).required(),
-    number_of_questions: Joi.number(),
-    marks_per_question: Joi.number(),
+    numberOfQuestions: Joi.number(),
+    marksPerQuestion: Joi.number(),
     description: Joi.string().optional().allow(""),
-    question_distribution: Joi.array().items(Joi.object().unknown(true)).required(),
+    questionDistribution: Joi.array().items(Joi.object().unknown(true)).required(),
 };
 
 const questionBankCommonSchema = {
@@ -19,26 +19,26 @@ const questionBankCommonSchema = {
         Joi.array().items(Joi.string()),
         Joi.string()
     ),
-    sub_topic: Joi.alternatives().try(
+    subTopic: Joi.alternatives().try(
         Joi.array()
             .items(Joi.string())
             .allow(null)
             .empty(null)
             .default([]),
     ),
-    total_marks: Joi.number().required(),
-    examination_name: Joi.string().required(),
-    is_preview: Joi.boolean(),
-    chapter_ids: Joi.alternatives().try(
+    totalMarks: Joi.number().required(),
+    examinationName: Joi.string().required(),
+    isPreview: Joi.boolean(),
+    chapterIds: Joi.alternatives().try(
         Joi.array().items(Joi.string()),
         Joi.string()
     ).required(),
-    is_multi_chapter: Joi.boolean().required(),
-    marks_distribution: Joi.array()
+    isMultiChapter: Joi.boolean().required(),
+    marksDistribution: Joi.array()
         .items({
-            unit_name: Joi.string(),
+            unitName: Joi.string(),
             marks: Joi.number(),
-            percentage_distribution: Joi.number(),
+            percentageDistribution: Joi.number(),
         })
         .required()
 }
@@ -51,7 +51,7 @@ const questionBankTemplateSchemaCreate = Joi.object({
 // 2. Blueprint Schema (Step 2)
 const questionBankBluePrintSchemaCreate = Joi.object({
     ...questionBankCommonSchema,
-    objective_distribution: Joi.array()
+    objectiveDistribution: Joi.array()
         .items(Joi.object().unknown(true))
         .required(),
     template: Joi.array()
@@ -62,7 +62,7 @@ const questionBankBluePrintSchemaCreate = Joi.object({
 // 3. Generate Schema (Step 3 - The one failing)
 const questionBankSchemaCreate = Joi.object({
     ...questionBankCommonSchema,
-    objective_distribution: Joi.array().items(Joi.object().unknown(true)).required(),
+    objectiveDistribution: Joi.array().items(Joi.object().unknown(true)).required(),
 
     questionBankTemplate: Joi.array()
         .items(questionBankTemplateItemSchema).optional(),

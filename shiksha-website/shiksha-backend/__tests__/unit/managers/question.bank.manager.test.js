@@ -101,16 +101,16 @@ describe("QuestionBankManager", () => {
   describe("_withQuestionTypeMetadata", () => {
     it("should map template types correctly", () => {
       const template = [
-        { type: "MCQ", number_of_questions: 10, marks_per_question: 1, question_distribution: [] },
-        { type: "FILL_BLANKS", number_of_questions: 5, marks_per_question: 1, question_distribution: [] },
-        { type: "ANSWER_VERY_SHORT", number_of_questions: 3, marks_per_question: 1, question_distribution: [] },
+        { type: "MCQ", numberOfQuestions: 10, marksPerQuestion: 1, questionDistribution: [] },
+        { type: "FILL_BLANKS", numberOfQuestions: 5, marksPerQuestion: 1, questionDistribution: [] },
+        { type: "ANSWER_VERY_SHORT", numberOfQuestions: 3, marksPerQuestion: 1, questionDistribution: [] },
       ];
 
       const result = manager._withQuestionTypeMetadata(template);
 
-      expect(result[0]).toMatchObject({ type: "MCQ", number_of_questions: 10, marks_per_question: 1 });
-      expect(result[1]).toMatchObject({ type: "FILL_BLANKS", number_of_questions: 5, marks_per_question: 1 });
-      expect(result[2]).toMatchObject({ type: "ANSWER_VERY_SHORT", number_of_questions: 3, marks_per_question: 1 });
+      expect(result[0]).toMatchObject({ type: "MCQ", numberOfQuestions: 10, marksPerQuestion: 1 });
+      expect(result[1]).toMatchObject({ type: "FILL_BLANKS", numberOfQuestions: 5, marksPerQuestion: 1 });
+      expect(result[2]).toMatchObject({ type: "ANSWER_VERY_SHORT", numberOfQuestions: 3, marksPerQuestion: 1 });
     });
 
     it("should handle empty array", () => {
@@ -119,7 +119,7 @@ describe("QuestionBankManager", () => {
     });
 
     it("should reject unknown types", () => {
-      expect(() => manager._withQuestionTypeMetadata([{ type: "CUSTOM_TYPE", question_distribution: [] }])).toThrow("Unknown question type");
+      expect(() => manager._withQuestionTypeMetadata([{ type: "CUSTOM_TYPE", questionDistribution: [] }])).toThrow("Unknown question type");
     });
   });
 
@@ -132,14 +132,14 @@ describe("QuestionBankManager", () => {
           medium: "English",
           grade: "5",
           subject: "Mathematics",
-          total_marks: 100,
-          is_multi_chapter: true,
-          chapter_ids: ["507f1f77bcf86cd799439011"],
-          marks_distribution: [{ unit_name: "Unit 1", marks: 100, percentage_distribution: 100 }],
-          objective_distribution: [
-            { objective: "Knowledge", percentage_distribution: 40 },
+          totalMarks: 100,
+          isMultiChapter: true,
+          chapterIds: ["507f1f77bcf86cd799439011"],
+          marksDistribution: [{ unitName: "Unit 1", marks: 100, percentageDistribution: 100 }],
+          objectiveDistribution: [
+            { objective: "Knowledge", percentageDistribution: 40 },
           ],
-          template: [{ type: "MCQ", marks_per_question: 1, question_distribution: [] }],
+          template: [{ type: "MCQ", marksPerQuestion: 1, questionDistribution: [] }],
         },
       };
 
@@ -256,24 +256,21 @@ describe("QuestionBankManager", () => {
         data: { parts: [] },
       });
 
-      const payload = {
-        target_language: "Kannada",
-        json_data: { title: "Test" },
-      };
-
-      const result = await manager.translateQuestionPaper(payload);
+      const result = await manager.translateQuestionPaper("Kannada", { title: "Test" });
 
       expect(result.success).toBe(true);
       expect(result.message).toBe("Translation processed successfully");
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining("/question-paper/translate-json"),
+        { target_language: "Kannada", json_data: { title: "Test" } }
+      );
     });
 
     it("should handle translation errors", async () => {
       const axios = require("axios");
       jest.spyOn(axios, "post").mockRejectedValue(new Error("API error"));
 
-      const payload = { target_language: "Kannada" };
-
-      const result = await manager.translateQuestionPaper(payload);
+      const result = await manager.translateQuestionPaper("Kannada", { title: "Test" });
 
       expect(result.success).toBe(false);
       expect(result.message).toBe("Translation failed");
@@ -302,7 +299,7 @@ describe("QuestionBankManager", () => {
         expect.objectContaining({
           text: "Q1",
           heading: "Multiple Choice Questions",
-          unit_name: "Unit 1",
+          unitName: "Unit 1",
           objective: "Knowledge",
           keyAnswer: "A",
         }),
@@ -335,7 +332,7 @@ describe("QuestionBankManager", () => {
         expect.objectContaining({
           text: "Q1 Translated",
           heading: "Multiple Choice Questions",
-          unit_name: "Unit 1",
+          unitName: "Unit 1",
           objective: "Knowledge",
           keyAnswer: "A",
         }),

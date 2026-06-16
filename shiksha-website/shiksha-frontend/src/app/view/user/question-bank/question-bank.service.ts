@@ -98,7 +98,7 @@ export class QuestionBankService extends BaseRestService {
    */
   generateQuestionBank(data: any) {
     return this.http.post(`${this.getUrl()}generate`, data, {
-      context: new HttpContext().set(LOADER_MESSAGE, data.is_preview ? 'Generating questions...' : 'Creating question paper...')
+      context: new HttpContext().set(LOADER_MESSAGE, data.isPreview ? 'Generating questions...' : 'Creating question paper...')
     });
   }
 
