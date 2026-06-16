@@ -28,11 +28,11 @@ describe("Question Bank Validation", () => {
       grade: 10,
       subject: "Mathematics",
       chapter: "Algebra",
-      totalMarks: 100,
-      examinationName: "Final Exam",
-      chapterIds: ["chapter123"],
-      isMultiChapter: false,
-      marksDistribution: [
+      total_marks: 100,
+      examination_name: "Final Exam",
+      chapter_ids: ["chapter123"],
+      is_multi_chapter: false,
+      marks_distribution: [
         {
           unit_name: "Unit 1",
           marks: 50,
@@ -42,7 +42,7 @@ describe("Question Bank Validation", () => {
       objective_distribution: [
         {
           objective: "Understanding",
-          percentage: 40,
+          percentage_distribution: 40,
         },
       ],
       template: [
@@ -50,6 +50,7 @@ describe("Question Bank Validation", () => {
           type: "MCQ",
           number_of_questions: 10,
           marks_per_question: 1,
+          question_distribution: [],
         },
       ],
     };
@@ -99,15 +100,21 @@ describe("Question Bank Validation", () => {
       grade: 10,
       subject: "Mathematics",
       chapter: "Algebra",
-      totalMarks: 100,
-      examinationName: "Final Exam",
-      chapterIds: ["chapter123"],
-      isMultiChapter: false,
-      marksDistribution: [
+      total_marks: 100,
+      examination_name: "Final Exam",
+      chapter_ids: ["chapter123"],
+      is_multi_chapter: false,
+      marks_distribution: [
         {
           unit_name: "Unit 1",
           marks: 50,
           percentage_distribution: 50,
+        },
+      ],
+      objective_distribution: [
+        {
+          objective: "Understanding",
+          percentage_distribution: 40,
         },
       ],
       template: [
@@ -115,6 +122,7 @@ describe("Question Bank Validation", () => {
           type: "MCQ",
           number_of_questions: 10,
           marks_per_question: 1,
+          question_distribution: [],
         },
       ],
     };
