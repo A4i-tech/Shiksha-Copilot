@@ -2,7 +2,7 @@ import { Component, Input, OnChanges, OnDestroy, SimpleChanges } from '@angular/
 import { Router } from '@angular/router';
 import { saveAs } from 'file-saver';
 import { CheckListExportService } from 'src/app/shared/services/checklist-export.service';
-import { ChecklistPdfExportService } from 'src/app/shared/services/checklist-pdf-export.service';
+import { ChecklistPdfExportService } from '../../../../shared/services/checklist-pdf-export.service';
 import { DocumentExportService } from 'src/app/shared/services/document-export.service';
 import { ResourcePptGeneratorService } from 'src/app/shared/services/resource-ppt-generator.service';
 import { ContentGenerationService } from '../content-generation.service';
