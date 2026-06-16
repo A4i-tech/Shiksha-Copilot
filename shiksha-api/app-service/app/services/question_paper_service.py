@@ -37,6 +37,9 @@ from app.models.question_paper import (
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+SlotId = tuple[int, int]
+GenerationSlot = tuple[SlotId, GeneratedTemplate, QuestionDistribution]
+GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
 
 
 class QuestionPaperService:
@@ -144,13 +147,13 @@ class QuestionPaperService:
         """Build generation slots from template distributions, grouped by unit with max questions per slot."""
         lrs = request.chapters[0].subtopics if request.unit_level == "SUBTOPIC" else request.chapters
         unit_lr = {lr.title: lr for lr in lrs}
-        unit_questions: dict[str, list[tuple[GeneratedTemplate, QuestionDistribution]]] = defaultdict(list)  # Group questions by unit_name first
-        for template in request.template:
-            for dist in template.question_distribution:
+        unit_questions: dict[str, list[GenerationSlot]] = defaultdict(list)  # Group questions by unit_name first
+        for template_i, template in enumerate(request.template):
+            for dist_i, dist in enumerate(template.question_distribution):
                 if dist.unit_name not in unit_lr:
                     logger.error(f"Unit mismatch. Searched for: '{dist.unit_name}'. Available: {list(unit_lr)}")
                     raise ValueError(f"Unit Name `{dist.unit_name}` is not present in the `chapters` list. Available: {list(unit_lr)}")
-                unit_questions[dist.unit_name].append((template, dist))
+                unit_questions[dist.unit_name].append(((template_i, dist_i), template, dist))
 
         for unit_name, questions in unit_questions.items():
             lr = unit_lr[unit_name]
@@ -163,7 +166,7 @@ class QuestionPaperService:
         request: QuestionBankPartsGenerationRequest,
         existing_questions: List[str],
         record: _LearningRecord,
-        slot: list[tuple[GeneratedTemplate, QuestionDistribution]],
+        slot: list[GenerationSlot],
     ) -> str:
         """Format the system prompt using YAML templates for a specific unit slot."""
         # Get the main template
@@ -181,7 +184,7 @@ class QuestionPaperService:
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
         grammar_topics_text = self._get_grammar_topics(request, record)
-        slot_types = {template.type for template, _ in slot}
+        slot_types = {template.type for _, template, _ in slot}
         if slot_types & GRAMMAR_QUESTION_TYPES:
             grammar_guide = self.prompts.get("grammar_question_types_guide", "")
             if grammar_guide:
@@ -202,14 +205,14 @@ class QuestionPaperService:
         )
 
 
-    async def _generate_questions_batch(self, system_prompt: str, record: _LearningRecord, slot: list[tuple[GeneratedTemplate, QuestionDistribution]], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedQuestionItem]:
+    async def _generate_questions_batch(self, system_prompt: str, record: _LearningRecord, slot: list[GenerationSlot], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedSlotQuestion]:
         """
         Generate questions for a batch of slots.
         Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
         """
 
         user_message = self.prompts["question_bank_parts_gen_retrieval_query_template"].format(
-            RULES="\n".join(f"- {q.value}: {q.description}" for q in set(t.type for t, _ in slot)),
+            RULES="\n".join(f"- {q.value}: {q.description}" for q in set(t.type for _, t, _ in slot)),
             CHAPTER=record.title,
             LEARNING_OUTCOMES="\n".join(f"- {lo}" for lo in record.learning_outcomes),
         )
@@ -217,7 +220,7 @@ class QuestionPaperService:
         slot_indexed = {local_unique_id(i): v for i, v in enumerate(slot)}
         response_format = create_model("QuestionResponse", **{
             k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
-            for k, (template, question) in slot_indexed.items()
+            for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 
         try:
@@ -245,11 +248,11 @@ class QuestionPaperService:
             return []
 
         return [
-            GeneratedQuestionItem(unit_name=record.title, type=template.type, objective=question.objective, marks_per_question=template.marks_per_question, item=getattr(items, k))
-            for k, (template, question) in slot_indexed.items()
+            (slot_id, GeneratedQuestionItem(unit_name=record.title, type=template.type, objective=question.objective, marks_per_question=template.marks_per_question, item=getattr(items, k)))
+            for k, (slot_id, template, question) in slot_indexed.items()
         ]
 
-    async def _generate_questions_batch_async(self, system_prompt: str, record: _LearningRecord, slot: list[tuple[GeneratedTemplate, QuestionDistribution]]) -> list[GeneratedQuestionItem]:
+    async def _generate_questions_batch_async(self, system_prompt: str, record: _LearningRecord, slot: list[GenerationSlot]) -> list[GeneratedSlotQuestion]:
         async with self.concurrency:
             if not record.index_path.strip():
                 fut = asyncio.Future()
@@ -268,23 +271,19 @@ class QuestionPaperService:
                 logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{record.index_path}'")
             return await self._generate_questions_batch(system_prompt, record, slot, rag_adapter)
 
-    def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedQuestionItem]) -> List[QuestionTypeResponse]:
+    def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedSlotQuestion]) -> List[QuestionTypeResponse]:
         """Organize all generated questions into the final response structure."""
-        question_directory = defaultdict(list)
-        for g in all_generated:
-            question_directory[g.type, g.marks_per_question, g.unit_name, g.objective].append(g.item)
+        question_directory = {slot_id: g.item for slot_id, g in all_generated}
 
         response_questions = []
-        for template in request.template:
+        for template_i, template in enumerate(request.template):
             questions = []
-            for q_dist in template.question_distribution:
-                key = template.type, template.marks_per_question, q_dist.unit_name, q_dist.objective
-                if key in question_directory and len(question_directory[key]) > 0:
-                    questions.append(question_directory[key].pop(0))
-                    if len(question_directory[key]) == 0:
-                        del question_directory[key]
+            for dist_i, q_dist in enumerate(template.question_distribution):
+                key = template_i, dist_i
+                if key in question_directory:
+                    questions.append(question_directory[key])
                 else:
-                    logger.warning(f"--\nNo question found for Normalized key: {key}")
+                    logger.warning(f"--\nNo question found for slot: {(template.type, template.marks_per_question, q_dist.unit_name, q_dist.objective)}")
 
             response_questions.append(QuestionTypeResponse(
                 type=template.type,
@@ -315,7 +314,7 @@ class QuestionPaperService:
         if not tasks:
             raise ValueError("No generation slots could be built from template/distribution.")
 
-        all_generated: list[GeneratedQuestionItem] = []
+        all_generated: list[GeneratedSlotQuestion] = []
         for raw_items in await asyncio.gather(*tasks):
             all_generated.extend(raw_items)
 
@@ -377,7 +376,7 @@ class QuestionPaperService:
             model=self.chat_deployment,
             instructions=(
                 "You are a strict data generation assistant.\n"
-                "You must output only a valid JSON Array based on the user request.\n"
+                "You must output only a valid JSON object matching the requested schema.\n"
                 "Do not add any conversational text, markdown formatting, or explanations."
             ),
             input=prompt,

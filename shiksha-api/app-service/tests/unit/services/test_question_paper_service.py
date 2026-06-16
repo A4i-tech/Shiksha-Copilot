@@ -119,7 +119,7 @@ class TestFormatSystemPrompt:
             marks_per_question=1,
             question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective="remember")],
         )
-        slot = [(template, template.question_distribution[0])]
+        slot = [((0, 0), template, template.question_distribution[0])]
 
         result = service._format_system_prompt(request, [], record, slot)
 
@@ -155,7 +155,7 @@ class TestBuildGenerationSlots:
         record, questions = slots[0]
         assert record.title == "Chapter 1"
         assert record.index_path == "/path/to/index"
-        assert questions == [(template, distribution)]
+        assert questions == [((0, 0), template, distribution)]
 
     def test_build_slots_unit_mismatch(self, service):
         """Test that unit mismatch raises error."""
@@ -184,7 +184,7 @@ class TestOrganizeQuestionsIntoResponse:
 
     def test_organize_questions(self, service):
         """Test organizing generated questions into response."""
-        generated = [MagicMock(
+        generated = [((0, 0), MagicMock(
             type=QuestionType.MCQ,
             unit_name="Chapter 1",
             objective="remember",
@@ -197,7 +197,7 @@ class TestOrganizeQuestionsIntoResponse:
                 "option_d": "D",
                 "correct_option": "option_a",
             },
-        )]
+        ))]
 
         distribution = MagicMock()
         distribution.unit_name = "Chapter 1"
