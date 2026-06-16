@@ -7,10 +7,7 @@ const questionBankTemplateItemSchema = {
     number_of_questions: Joi.number(),
     marks_per_question: Joi.number(),
     description: Joi.string().optional().allow(""),
-    question_distribution: Joi.alternatives().try(
-        Joi.array().items(Joi.object().unknown(true)),
-        Joi.valid(null)
-    ).optional(),
+    question_distribution: Joi.array().items(Joi.object().unknown(true)).required(),
 };
 
 const questionBankCommonSchema = {
@@ -22,21 +19,22 @@ const questionBankCommonSchema = {
         Joi.array().items(Joi.string()),
         Joi.string()
     ),
-    subTopic: Joi.alternatives().try(
+    sub_topic: Joi.alternatives().try(
         Joi.array()
             .items(Joi.string())
             .allow(null)
             .empty(null)
             .default([]),
     ),
-    totalMarks: Joi.number().required(),
-    examinationName: Joi.string().required(),
-    chapterIds: Joi.alternatives().try(
+    total_marks: Joi.number().required(),
+    examination_name: Joi.string().required(),
+    is_preview: Joi.boolean(),
+    chapter_ids: Joi.alternatives().try(
         Joi.array().items(Joi.string()),
         Joi.string()
     ).required(),
-    isMultiChapter: Joi.boolean().required(),
-    marksDistribution: Joi.array()
+    is_multi_chapter: Joi.boolean().required(),
+    marks_distribution: Joi.array()
         .items({
             unit_name: Joi.string(),
             marks: Joi.number(),
@@ -54,7 +52,7 @@ const questionBankTemplateSchemaCreate = Joi.object({
 const questionBankBluePrintSchemaCreate = Joi.object({
     ...questionBankCommonSchema,
     objective_distribution: Joi.array()
-        .items(Joi.object().unknown(true)) // Relaxed to allow snake/camel case items
+        .items(Joi.object().unknown(true))
         .required(),
     template: Joi.array()
         .items(questionBankTemplateItemSchema)
@@ -64,10 +62,7 @@ const questionBankBluePrintSchemaCreate = Joi.object({
 // 3. Generate Schema (Step 3 - The one failing)
 const questionBankSchemaCreate = Joi.object({
     ...questionBankCommonSchema,
-    
-    // Allow both camelCase and snake_case versions
-    objectiveDistribution: Joi.array().items(Joi.object().unknown(true)).optional(),
-    objective_distribution: Joi.array().items(Joi.object().unknown(true)).optional(),
+    objective_distribution: Joi.array().items(Joi.object().unknown(true)).required(),
 
     questionBankTemplate: Joi.array()
         .items(questionBankTemplateItemSchema).optional(),

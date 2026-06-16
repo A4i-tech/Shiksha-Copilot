@@ -104,7 +104,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
 
   const questionTypeResponse = new QuestionTypeResponse(
     template.type,
-    template.marks_per_question || template.marksPerQuestion
+    template.marks_per_question
   );
 
   let notFoundTemplate = { ...template };
@@ -112,13 +112,13 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
   notFoundTemplate.number_of_questions = 0;
   let notFoundQuestionIndices = [];
 
-  const questionDistribution = template.question_distribution || template.questionDistribution || [];
+  const questionDistribution = template.question_distribution;
 
   for (let i = 0; i < questionDistribution.length; i++) {
     total++;
-    const unitName = (questionDistribution[i].unit_name || questionDistribution[i].unitName || "").toLowerCase().trim();
+    const unitName = questionDistribution[i].unit_name.toLowerCase().trim();
     const objective = questionDistribution[i].objective.toLowerCase();
-    const marks = template.marks_per_question || template.marksPerQuestion;
+    const marks = template.marks_per_question;
     const poolKey = `${unitName}|${objective}|${template.type}|${marks}`;
 
     if (!shouldUseCache()) {
@@ -134,8 +134,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
       if (
         cacheDoc.unitName.toLowerCase() === unitName
       ) {
-        const questionList = cacheDoc.questions || [];
-        for (const questionInCache of questionList) {
+        for (const questionInCache of cacheDoc.questions) {
           if (
             questionInCache.objective === objective &&
             questionInCache.type === template.type &&
@@ -165,7 +164,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
     const shuffledCandidates = validCandidates.sort(() => 0.5 - Math.random());
 
     for (const candidate of shuffledCandidates) {
-      const questionKey = JSON.stringify(candidate.question || "");
+      const questionKey = JSON.stringify(candidate.question);
 
       if (!includedQuestionKeys.includes(questionKey)) {
         const selectedQuestion = JSON.parse(JSON.stringify(candidate.question));
@@ -325,20 +324,16 @@ function processCacheHits(
 ) {
   const result = [];
 
-  const cache = Array.isArray(rawCacheHit) ? rawCacheHit : [];
-
   for (let i = 0; i < chapterIds.length; i++) {
     const chapterId = chapterIds[i];
     const chapterName = chapterNames[i];
 
-    const match = cache.find(
+    const match = rawCacheHit.find(
       (item) => item.chapterId === chapterId && item.unitName === chapterName
     );
 
     if (match) {
       const updatedEntry = JSON.parse(JSON.stringify(match));
-
-      updatedEntry.questions = updatedEntry.questions || [];
 
       result.push(updatedEntry);
     } else {

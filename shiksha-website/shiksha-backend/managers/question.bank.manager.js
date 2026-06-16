@@ -46,32 +46,30 @@ const getObjectiveKey = (board, grade, subjectName) => {
     ? policy.coreSubjectGrades[String(grade)] || policy.coreSubject
     : policy.default;
 };
-const transform_weak_lba_struct = (q) => {
+const transformWeakLbaQuestion = (q) => {
   // this exists because db.lba_questions has weak and inconsistent structure.
   // TODO: we ought to get rid of this backend logic by sanitizing the db collection.
   const meta = QUESTION_TYPE_META[q.answerType];
-  if (q.answerType && !meta) logger.warn(`Unexpected LBA answer type "${q.answerType}" in question result`, { answerType: q.answerType, questionId: String(q._id), groupHeading: q.groupHeading });
-  const text = q.text || (q.items || []).map((item) => item.text || item.question || item.content || item).join("\n");
-  const keyAnswer = q.keyAnswer || q.answer || "";
+  if (!meta) throw new Error(`Unexpected LBA answer type "${q.answerType}" in question result`);
   const base = {
     ...q,
-    ...(meta || {}),
-    type: meta?.key || q.answerType || q.type,
-    heading: meta?.label || q.groupHeading || "Question",
+    ...meta,
+    type: meta.key,
+    heading: meta.label,
     marks: q.marksPerQuestion,
-    unit_name: q.unit_name || q.chapter?.title || "General",
-    objective: q.objective || "Knowledge",
-    text,
-    keyAnswer,
-    value1: q.value1 || text,
-    value2: q.value2 || keyAnswer,
+    unit_name: q.unit_name,
+    objective: q.objective,
+    text: q.text,
+    keyAnswer: q.keyAnswer,
+    value1: q.value1,
+    value2: q.value2,
   };
   return q.pairs?.length ? q.pairs.map((pair, index) => ({
     ...base,
     _id: `${q._id}_pair_${index}`,
     text: pair.left,
     value1: pair.left,
-    value2: pair.right || pair.keyAnswer,
+    value2: pair.right,
   })) : base;
 };
 
@@ -113,8 +111,8 @@ class QuestionBankManager extends BaseManager {
       const templatePayload = await this._createQuestionBankPayload(req.body, user);
       const payload = {
         ...templatePayload,
-        template: this._applyQuestionCounts(this._mapTemplateTypes(template), req.body.totalMarks),
-        objective_distribution: objective_distribution || req.body.objectiveDistribution || [],
+        template: this._applyQuestionCounts(this._withQuestionTypeMetadata(template), req.body.total_marks),
+        objective_distribution,
       };
 
       const response = await postToQuestionBankDistribution(payload);
@@ -144,7 +142,7 @@ class QuestionBankManager extends BaseManager {
 
       const context = this._prepareGenerationContext(req.body);
       if (!context.questions || context.questions.length === 0) {
-        context.template = this._applyQuestionCounts(this._mapTemplateTypes(context.template));
+        context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template));
       }
       const {
         language,
@@ -160,7 +158,7 @@ class QuestionBankManager extends BaseManager {
       mergedList = await this._handleTranslation(language, mergedList, examinationName);
 
       // 3. Return Preview if requested
-      if (isPreview === true || isPreview === "true") {
+      if (isPreview === true) {
         if (session && session.inTransaction()) await session.abortTransaction();
         await this._enqueueCacheUpdate(
           null,
@@ -230,56 +228,52 @@ class QuestionBankManager extends BaseManager {
   _prepareGenerationContext(reqBody) {
     const {
       chapter,
-      subTopic,
-      isMultiChapter,
-      chapterIds,
-      questionBankTemplate,
+      sub_topic,
+      is_multi_chapter,
+      chapter_ids,
+      question_bank_template,
       template,
       language,
       questions,
-      isPreview,
-      examinationName,
-      unitLevel,
-      objectiveDistribution,
+      is_preview,
+      examination_name,
+      unit_level,
       objective_distribution
     } = reqBody;
 
-    // Handle both objectiveDistribution (camel) and objective_distribution (snake)
-    const finalObjectiveDist = objectiveDistribution || objective_distribution || [];
-
-    const unitNames = isMultiChapter ? chapter || [] : subTopic || [];
+    const unitNames = is_multi_chapter ? chapter : sub_topic;
     const processedUnitNames = Array.isArray(unitNames)
       ? unitNames.map((e) => e.trim())
       : [];
 
     // chapterIds is always an array even if frontend sends a single string
-    const chapterIdsArr = Array.isArray(chapterIds)
-      ? chapterIds
-      : chapterIds
-        ? [chapterIds]
+    const chapterIdsArr = Array.isArray(chapter_ids)
+      ? chapter_ids
+      : chapter_ids
+        ? [chapter_ids]
         : [];
 
     return {
       chapter,
-      subTopic,
-      isMultiChapter,
+      subTopic: sub_topic,
+      isMultiChapter: is_multi_chapter,
       chapterIds: chapterIdsArr,
-      questionBankTemplate,
+      questionBankTemplate: question_bank_template,
       template,
       language,
       questions,
-      isPreview,
-      examinationName,
-      objectiveDistribution: finalObjectiveDist,
+      isPreview: is_preview,
+      examinationName: examination_name,
+      objectiveDistribution: objective_distribution,
       processedUnitNames,
-      unitLevel,
+      unitLevel: unit_level,
       // Pass other fields needed for payload creation
       board: reqBody.board,
       medium: reqBody.medium,
       grade: reqBody.grade,
       subject: reqBody.subject,
-      totalMarks: reqBody.totalMarks,
-      marksDistribution: reqBody.marksDistribution
+      totalMarks: reqBody.total_marks,
+      marksDistribution: reqBody.marks_distribution
     };
   }
 
@@ -304,7 +298,7 @@ class QuestionBankManager extends BaseManager {
       return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
     }
 
-    const cacheQuestionFilters = this._buildCacheQuestionFilters(template || []);
+    const cacheQuestionFilters = this._buildCacheQuestionFilters(template);
 
     // AI GENERATION FLOW
     const [cacheHit, fullCacheHit] = await Promise.all([
@@ -321,12 +315,12 @@ class QuestionBankManager extends BaseManager {
       )
     ]);
 
-    rawCacheHit = (fullCacheHit || []).map((doc) => doc.toObject());
+    rawCacheHit = fullCacheHit.map((doc) => doc.toObject());
 
     const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
-      template || [],
+      template,
       cacheHit,
-      { returnPool: context.isPreview === true || context.isPreview === "true" }
+      { returnPool: context.isPreview === true }
     );
     cacheSummary = summary;
     notFoundQuestions = JSON.parse(JSON.stringify(notFoundRes));
@@ -340,8 +334,8 @@ class QuestionBankManager extends BaseManager {
     if (notFoundRes.length) {
       const payload = {
         ...templatePayload,
-        template: this._mapTemplateTypes(notFoundRes),
-        existing_questions: this._mapTemplateTypes(res),
+        template: notFoundRes,
+        existing_questions: res,
       };
 
       const response = await postToQuestionBankParts(payload);
@@ -382,14 +376,14 @@ class QuestionBankManager extends BaseManager {
   _buildCacheQuestionFilters(template) {
     const filters = [];
 
-    (template || []).forEach((item) => {
-      const marks = item.marks_per_question || item.marksPerQuestion;
-      const questionDistribution = item.question_distribution || item.questionDistribution || [];
+    template.forEach((item) => {
+      const marks = item.marks_per_question;
+      const questionDistribution = item.question_distribution;
 
       questionDistribution.forEach((distribution) => {
         filters.push({
-          unitName: distribution.unit_name || distribution.unitName,
-          objective: (distribution.objective || "").toLowerCase(),
+          unitName: distribution.unit_name,
+          objective: distribution.objective.toLowerCase(),
           type: item.type,
           marks,
         });
@@ -405,7 +399,7 @@ class QuestionBankManager extends BaseManager {
     console.log(`Initiating translation check for target language: ${language}...`);
     try {
       const transResponse = await this.translateQuestionPaper(language, {
-        title: examinationName || "Question Paper",
+        title: examinationName,
         language: language,
         parts: [
           {part_name: "Questions", questions: convertToCamelCase(mergedList)},
@@ -480,11 +474,7 @@ class QuestionBankManager extends BaseManager {
         unitLevel
       } = context;
 
-      const objectives = objectiveDistribution?.length
-        ? objectiveDistribution.map((e) =>
-          (e.objective || "").toLowerCase()
-        )
-        : [];
+      const objectives = objectiveDistribution.map((e) => e.objective.toLowerCase());
 
       const processedCache = processCacheHits(
         rawCacheHit,
@@ -523,34 +513,27 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  _mapTemplateTypes(templateArray) {
-    if (!templateArray || !Array.isArray(templateArray)) return [];
-
+  _withQuestionTypeMetadata(templateArray) {
     return templateArray.map((item) => {
       const meta = QUESTION_TYPE_META[item.type];
-      const numQs = item.number_of_questions !== undefined ? item.number_of_questions : item.numberOfQuestions;
-      const marksPerQ = item.marks_per_question !== undefined ? item.marks_per_question : item.marksPerQuestion;
-      const qDist = item.question_distribution || item.questionDistribution;
+      if (!meta) throw new Error(`Unknown question type "${item.type}"`);
 
       const mappedItem = {
         ...item,
-        type: meta?.key || item.type,
-        description: meta?.description || item.description || "",
-        question_distribution: (qDist || []).map(d => ({
+        type: meta.key,
+        description: meta.description,
+        question_distribution: item.question_distribution.map(d => ({
           ...d,
-          unit_name: (d.unit_name || d.unitName).trim(),
+          unit_name: d.unit_name.trim(),
           objective: d.objective
         })),
-        questions: (item.questions || []).map((question) => {
-          if (question?.question && typeof question.question === "object") {
-            return question.question;
-          }
-          return question;
-        }),
       };
-
-      if (numQs !== undefined) mappedItem.number_of_questions = numQs;
-      if (marksPerQ !== undefined) mappedItem.marks_per_question = marksPerQ;
+      if (item.questions) {
+        mappedItem.questions = item.questions.map((question) => {
+          if (question?.question && typeof question.question === "object") return question.question;
+          return question;
+        });
+      }
 
       return mappedItem;
     });
@@ -570,26 +553,26 @@ class QuestionBankManager extends BaseManager {
         medium,
         grade,
         subject,
-        totalMarks,
-        isMultiChapter,
-        unitLevel,
-        marksDistribution,
-        chapterIds,
-        subTopic,
+        total_marks,
+        is_multi_chapter,
+        unit_level,
+        marks_distribution,
+        chapter_ids,
+        sub_topic,
         template,
         questions,
       } = reqBody;
 
-      const objective_distribution = reqBody.objective_distribution || reqBody.objectiveDistribution || [];
-      const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
-      const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
+      const objective_distribution = reqBody.objective_distribution;
+      const chapterIdsArr = Array.isArray(chapter_ids) ? chapter_ids : (chapter_ids ? [chapter_ids] : []);
+      const subTopicsArr = Array.isArray(sub_topic) ? sub_topic : (sub_topic ? [sub_topic] : []);
 
       const validChapterIds = chapterIdsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
       const validSubTopicIds = subTopicsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
 
       let chapterData = [];
       try {
-        if (isMultiChapter) {
+        if (is_multi_chapter) {
           if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
         } else {
           if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, subTopicsArr);
@@ -599,19 +582,19 @@ class QuestionBankManager extends BaseManager {
       }
 
       // Prepare base chapters
-      let formattedChapters = chapterData?.length
+      let formattedChapters = chapterData.length
         ? chapterData.map((chapter) => {
-          const chapterIndexPath = chapter.indexPath || chapter.index_path || "";
+          const chapterIndexPath = chapter.index_path;
           const ch = {
             title: chapter.title.trim(),
             index_path: chapterIndexPath,
-            learning_outcomes: chapter.learningOutcomes || chapter.learning_outcomes || [],
-            is_grammar: !!(chapter.is_grammar || chapter.isGrammar),
-            grammar_topics: chapter.grammar_topics || chapter.grammarTopics || [],
-            subtopics: (chapter.subtopics || []).map((sub) => ({
+            learning_outcomes: chapter.learning_outcomes,
+            is_grammar: !!chapter.is_grammar,
+            grammar_topics: chapter.grammar_topics,
+            subtopics: chapter.subtopics.map((sub) => ({
               title: sub.title.trim(),
-              index_path: sub.indexPath || sub.index_path || chapterIndexPath,
-              learning_outcomes: sub.learningOutcomes || sub.learning_outcomes || [],
+              index_path: sub.index_path,
+              learning_outcomes: sub.learning_outcomes,
             })),
           };
           if (chapter.grammar_source_chapters?.length) {
@@ -622,11 +605,7 @@ class QuestionBankManager extends BaseManager {
         : [];
 
       const requiredUnits = new Set();
-      if (marksDistribution && Array.isArray(marksDistribution)) {
-        marksDistribution.forEach(dist => {
-          if (dist.unit_name) requiredUnits.add(dist.unit_name.trim());
-        });
-      }
+      marks_distribution.forEach(dist => requiredUnits.add(dist.unit_name.trim()));
 
       // Check inputs as well (Hybrid Flow)
       const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
@@ -639,32 +618,32 @@ class QuestionBankManager extends BaseManager {
       // Inject units referenced in marks distribution but not fetched by ID,
       // resolving each against chapter and subtopic titles before falling back
       // to an empty index_path.
-      const lower = (s) => (s || "").toLowerCase();
+      const lower = (s) => s.toLowerCase();
       requiredUnits.forEach(unitName => {
         const u = lower(unitName);
         const matchesChapter = formattedChapters.some(fc => lower(fc.title) === u);
         if (matchesChapter) return;
 
         for (const fc of formattedChapters) {
-          const sub = (fc.subtopics || []).find(s => lower(s.title) === u);
+          const sub = fc.subtopics.find(s => lower(s.title) === u);
           if (sub) {
             formattedChapters.push({
               title: unitName,
-              index_path: sub.index_path || fc.index_path || "",
-              learning_outcomes: sub.learning_outcomes || [],
+              index_path: sub.index_path,
+              learning_outcomes: sub.learning_outcomes,
               subtopics: [],
             });
             return;
           }
         }
 
-        for (const chapter of (chapterData || [])) {
-          const rawSub = (chapter.subtopics || []).find(s => lower(s.title) === u);
+        for (const chapter of chapterData) {
+          const rawSub = chapter.subtopics.find(s => lower(s.title) === u);
           if (rawSub) {
             formattedChapters.push({
               title: unitName,
-              index_path: rawSub.indexPath || rawSub.index_path || chapter.indexPath || chapter.index_path || "",
-              learning_outcomes: rawSub.learningOutcomes || rawSub.learning_outcomes || [],
+              index_path: rawSub.index_path,
+              learning_outcomes: rawSub.learning_outcomes,
               subtopics: [],
             });
             return;
@@ -679,15 +658,15 @@ class QuestionBankManager extends BaseManager {
         });
       });
 
-      const formattedMarksDist = (marksDistribution || []).map((dist) => ({
-        unit_name: dist.unit_name || dist.unitName,
-        percentage_distribution: dist.percentage_distribution || dist.percentageDistribution,
+      const formattedMarksDist = marks_distribution.map((dist) => ({
+        unit_name: dist.unit_name,
+        percentage_distribution: dist.percentage_distribution,
         marks: dist.marks,
       }));
 
-      const formattedObjectiveDist = (objective_distribution || []).map((obj) => ({
+      const formattedObjectiveDist = objective_distribution.map((obj) => ({
         objective: obj.objective,
-        percentage_distribution: obj.percentage_distribution || obj.percentageDistribution,
+        percentage_distribution: obj.percentage_distribution,
       }));
 
       const payload = {
@@ -696,12 +675,12 @@ class QuestionBankManager extends BaseManager {
         medium: "English",
         grade: String(grade),
         subject: subject,
-        unit_level: unitLevel,
-        total_marks: Number(totalMarks),
+        unit_level,
+        total_marks: Number(total_marks),
         chapters: formattedChapters, // Now contains all necessary units
         marks_distribution: formattedMarksDist,
         objective_distribution: formattedObjectiveDist,
-        template: this._mapTemplateTypes(template || []),
+        template: this._withQuestionTypeMetadata(template),
       };
 
       if (questions && questions.length > 0) {
@@ -717,7 +696,7 @@ class QuestionBankManager extends BaseManager {
 
   async getGrammarTopics(grade) {
     const chapters = await Chapter.find({ standard: grade, isGrammar: true, isDeleted: false }).lean();
-    const topics = chapters.flatMap(ch => ch.grammarTopics || []);
+    const topics = chapters.flatMap(ch => ch.grammarTopics);
     return formatApiReponse(true, 'Grammar topics retrieved', topics);
   }
 
@@ -761,7 +740,7 @@ class QuestionBankManager extends BaseManager {
           notFoundQuestions,
           processedCache,
           unitLevel,
-          newResQuestions: aiQuestionsForCache || notFoundResponse,
+          newResQuestions: aiQuestionsForCache,
           cacheSummaryId: job._id.toString(),
         });
       }
@@ -794,7 +773,7 @@ class QuestionBankManager extends BaseManager {
         notFoundQuestions,
         processedCache,
         unitLevel,
-        newResQuestions: aiQuestionsForCache || notFoundResponse,
+        newResQuestions: aiQuestionsForCache,
         cacheSummaryId: failedJob._id.toString(),
       });
 
@@ -816,7 +795,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Classes retrieved successfully",
-        (classes || []).sort((a, b) => Number(a) - Number(b))
+        classes.sort((a, b) => Number(a) - Number(b))
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -832,7 +811,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Medium retrieved successfully",
-        (media || []).sort()
+        media.sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -842,21 +821,20 @@ class QuestionBankManager extends BaseManager {
   async getChapters(className, medium, subject) {
     try {
       console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}`);
-      const normalizedClass = String(className || "").trim();
+      const normalizedClass = String(className).trim();
 
-      const { subjectCode, targetSubjectIds } =
+      const { targetSubjectIds } =
         await this.masterSubjectDao.resolveSubjectContext(subject);
 
       // 1. Fetch Chapters (now without headings)
       const chapters = await this.chapterDao.getChapters(
         normalizedClass,
         medium,
-        subjectCode,
         targetSubjectIds
       );
 
       // 2. Fetch Aggregated Stats from QuestionDao
-      const chapterIds = (chapters || []).map((ch) => ch._id);
+      const chapterIds = chapters.map((ch) => ch._id);
       let statsMap = new Map();
 
       if (chapterIds.length > 0) {
@@ -866,14 +844,14 @@ class QuestionBankManager extends BaseManager {
       // 3. Merge Stats back into content
       const enrichedChapters = chapters.map((ch) => ({
         ...ch,
-        headings: (statsMap.get(String(ch._id)) || [{ name: "Misc", count: 0 }]).map((h) => {
+        headings: statsMap.has(String(ch._id)) ? statsMap.get(String(ch._id)).map((h) => {
           const meta = QUESTION_TYPE_META[h.answerType];
           if (h.answerType && !meta) logger.warn(`Unexpected LBA answer type "${h.answerType}" in chapter heading stats`, { answerType: h.answerType, heading: h.name, chapterId: String(ch._id) });
-          return { ...h, ...(meta || {}) };
-        }),
+          return meta ? { ...h, ...meta } : h;
+        }) : [],
       }));
 
-      console.log(`[Manager] getChapters: found ${chapters?.length || 0} chapters`);
+      console.log(`[Manager] getChapters: found ${chapters.length} chapters`);
       return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
     } catch (err) {
       console.error("[Manager] getChapters failed:", err);
@@ -906,7 +884,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Difficulties retrieved successfully",
-        (diffs || []).filter(Boolean).sort()
+        diffs.filter(Boolean).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -919,7 +897,7 @@ class QuestionBankManager extends BaseManager {
       return formatApiReponse(
         true,
         "Answer types retrieved successfully",
-        (types || []).filter(Boolean).sort()
+        types.filter(Boolean).sort()
       );
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -940,7 +918,7 @@ class QuestionBankManager extends BaseManager {
         type,
         search,
         headings,
-      } = filters || {};
+      } = filters;
 
       if (!subject || !medium || !className) {
         throw new Error("Subject, medium, and class are required");
@@ -954,7 +932,7 @@ class QuestionBankManager extends BaseManager {
         subjectCode,
         targetSubjectIds,
         medium,
-        class: String(className || "").trim(),
+        class: String(className).trim(),
         chapterNumbers: chapterNumbers
           ? String(chapterNumbers)
             .split(",")
@@ -987,7 +965,7 @@ class QuestionBankManager extends BaseManager {
           // fall back to the untranslated result which is already in `result`
         }
       }
-      result = result.flatMap(transform_weak_lba_struct);
+      result = result.flatMap(transformWeakLbaQuestion);
 
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", result);
@@ -1002,7 +980,7 @@ class QuestionBankManager extends BaseManager {
       const insertedChapters = [];
       const insertedQuestions = [];
 
-      for (const entry of data || []) {
+      for (const entry of data) {
         const {
           class: className,
           medium,
@@ -1010,7 +988,7 @@ class QuestionBankManager extends BaseManager {
           chapterNumber,
           title,
           questions,
-        } = entry || {};
+        } = entry;
 
         if (
           !className ||
@@ -1049,12 +1027,12 @@ class QuestionBankManager extends BaseManager {
               chapterNumber: chapter.chapterNumber,
               title: chapter.title,
             },
-            groupHeading: q.groupHeading || "",
-            answerType: q.answerType || "",
-            difficulty: q.difficulty || "",
-            marksPerQuestion: q.marksPerQuestion || 1,
-            text: q.text || "",
-            keyAnswer: q.keyAnswer || "",
+            groupHeading: q.groupHeading,
+            answerType: q.answerType,
+            difficulty: q.difficulty,
+            marksPerQuestion: q.marksPerQuestion,
+            text: q.text,
+            keyAnswer: q.keyAnswer,
             options: Array.isArray(q.options) ? q.options : [],
             pairs: Array.isArray(q.pairs) ? q.pairs : [],
             items: Array.isArray(q.items) ? q.items : [],

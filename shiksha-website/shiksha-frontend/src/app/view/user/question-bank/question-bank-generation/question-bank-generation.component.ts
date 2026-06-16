@@ -152,31 +152,30 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const formVal = this.questionBankConfigForm.getRawValue();
     let payload: any = this.getTemplatePayload();
-    payload.metadata = { examinationName: formVal.examinationName };
-    payload.title = formVal.examinationName;
 
     // Ensure marksDistribution present
-    if (!payload.marksDistribution || payload.marksDistribution.length === 0) {
+    if (payload.marks_distribution.length === 0) {
       const unitMap = new Map();
       selectedQuestions.forEach(q => {
         const unit = q.unit_name;
         if (!unitMap.has(unit)) unitMap.set(unit, { unit_name: unit, marks: 0 });
         unitMap.get(unit).marks += Number(q.marks);
       });
-      payload.marksDistribution = Array.from(unitMap.values()).map(d => ({
+      payload.marks_distribution = Array.from(unitMap.values()).map(d => ({
         unit_name: d.unit_name,
         marks: d.marks,
-        percentage_distribution: payload.totalMarks > 0 ? (d.marks / payload.totalMarks) * 100 : 0
+        percentage_distribution: payload.total_marks > 0 ? (d.marks / payload.total_marks) * 100 : 0
       }));
     }
 
     const grouped = new Map<string, any>();
     selectedQuestions.forEach(q => {
       const sectionType = q.type;
-      if (!grouped.has(sectionType)) {
-        grouped.set(sectionType, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks), questions: [] });
+      const sectionKey = `${sectionType}:${Number(q.marks)}`;
+      if (!grouped.has(sectionKey)) {
+        grouped.set(sectionKey, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks), questions: [] });
       }
-      const sec = grouped.get(sectionType);
+      const sec = grouped.get(sectionKey);
       sec.questions.push({ question: q.text, options: q.options, answer: q.answer, marks: Number(q.marks), value1: q.value1, value2: q.value2 });
       sec.numberOfQuestions = sec.questions.length;
     });
@@ -189,8 +188,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       marks_per_question: s.marksPerQuestion,
       question_distribution: [{ unit_name: selectedQuestions[0].unit_name, objective: selectedQuestions[0].objective }]
     }));
-
-    payload.bluePrint = this.generateSummaryBlueprint(selectedQuestions);
 
     this.isLoadingQuestions = true;
     this.questionBankService.generateQuestionBank(payload).pipe(
@@ -230,7 +227,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     this.questionBankConfigForm.get('totalMarks')?.valueChanges.pipe(distinctUntilChanged()).subscribe({
       next: (val) => {
-        this.totalMarks = parseInt(val || 0);
+        this.totalMarks = Number(val);
         if (this.useAI) this.distributeMarks();
       },
     });
@@ -301,8 +298,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.resetDistribution();
 
     if (val) {
-      const boardName = val.board || val;
-      const rawClasses = this.loggedInUser.classes || [];
+      const boardName = val.board;
+      const rawClasses = this.loggedInUser.classes;
       const uniqueClasses = new Set<any>(rawClasses.filter((c: any) => c.board === boardName).map((c: any) => c.class));
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
@@ -335,9 +332,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.resetDistribution();
 
     if (val) {
-      const selectedClass = val.class || val;
+      const selectedClass = val.class;
       const selectedBoard = this.f.board.value;
-      const rawClasses = this.loggedInUser.classes || [];
+      const rawClasses = this.loggedInUser.classes;
       const uniqueMediums = new Set<string>();
 
       rawClasses.forEach((c: any) => {
@@ -365,10 +362,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.resetDistribution();
 
     if (val) {
-      const selectedMedium = (val.medium || val || '').toLowerCase(); // Normalize input
+      const selectedMedium = val.medium.toLowerCase();
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
-      const rawClasses = this.loggedInUser.classes || [];
+      const rawClasses = this.loggedInUser.classes;
 
       // Auto-select language based on medium
       const matchedLanguage = this.languageDropdownOptions.find(
@@ -376,27 +373,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       );
       if (matchedLanguage) {
         this.f.language.setValue(matchedLanguage.value);
-      } else {
-        // Fallback or leave empty? User requirement implies strong correlation.
-        // If medium is 'english', select 'english'.
-        // If medium is 'kannada', select 'kannada'.
       }
 
 
       const subjectMap = new Map<string, string>(); // Formatted Name -> Raw Value
 
       rawClasses.forEach((c: any) => {
-        // Use the original c.medium for checking against the selected medium value (assuming the dropdown passes the exact string from options)
-        // But since we lowercased selectedMedium above for logic, we should probably compare carefully.
-        // However, onStandardChange populates mediumDropdownOptions from rawClasses[].medium directly. 
-        // So `val.medium` should match exactly one of `c.medium`.
-        // Let's use the raw value from `val` (before we lowercased it for language matching) for filtering classes.
-
-        const rawSelectedMedium = val.medium || val;
+        const rawSelectedMedium = val.medium;
 
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === rawSelectedMedium) {
           const rawValue = c.subject;
-          const nameToFormat = c.name || c.subject || '';
+          const nameToFormat = c.subject;
           if (rawValue) {
             const formatted = this.formatSubjectName(nameToFormat);
             // Only add if not already present to ensure deduplication by formatted name
@@ -435,9 +422,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const board = this.f.board.value;
 
       // Extract details from selection
-      const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val || opt.value === val.value);
-      const subjectName = selectedSubjectObj ? selectedSubjectObj.name : (val.name || val);
-      const subjectId = selectedSubjectObj ? selectedSubjectObj.value : (val.value || val);
+      const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val.value);
+      const subjectName = selectedSubjectObj.name;
+      const subjectId = selectedSubjectObj.value;
 
       this.isLoadingQuestions = true;
 
@@ -457,12 +444,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
             _id: ch._id,
             chapterNumber: ch.chapterNumber,
             headings: ch.headings,
-            subTopics: ch.subTopics || [],
+            subTopics: ch.subTopics,
             source: 'Unified'
           })).sort((a: any, b: any) => {
-            const numA = a.chapterNumber || 999;
-            const numB = b.chapterNumber || 999;
-            return numA - numB || (a.topics || '').localeCompare(b.topics || '');
+            return a.chapterNumber === b.chapterNumber ? a.topics.localeCompare(b.topics) : a.chapterNumber - b.chapterNumber;
           });
 
           this.lbaChapters = this.chapterDropdownOptions;
@@ -483,11 +468,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     // Handle selection 
     let selectedChapterNames: string[] = [];
-    if (Array.isArray(val)) {
-      selectedChapterNames = val;
-    } else if (val) {
-      selectedChapterNames = [val.topics || val];
-    }
+    if (Array.isArray(val)) selectedChapterNames = val;
 
     // Filter to get full chapter data
     const selectedChaptersFullData = this.chapterDropdownOptions.filter(ch =>
@@ -497,22 +478,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // Combine subtopics from all selected chapters
     let combinedSubTopics: any[] = [];
     selectedChaptersFullData.forEach(ch => {
-      if (ch.subTopics && ch.subTopics.length > 0) {
+      if (ch.subTopics.length > 0) {
         combinedSubTopics = [...combinedSubTopics, ...ch.subTopics];
       }
     });
 
-    this.subtopicsDropdownOptions = combinedSubTopics.map((st: any) => {
-      if (typeof st === 'string') {
-        return { topics: st, _id: st }; // Use text as ID for binding
-      }
-
-      const idVal = st._id || st.id;
-      return {
-        topics: st.topics || st.title || st.name || st.text,
-        _id: idVal || (st.topics || st.title)
-      };
-    });
+    this.subtopicsDropdownOptions = combinedSubTopics.map((st: string) => ({ topics: st, _id: st }));
 
     this.subTopicDropdownconfig = {
       ...this.subTopicDropdownconfig,
@@ -546,7 +517,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.paperQuestionTypes
         .filter(q => {
           const isGrammar = q.key.startsWith('GRAMMAR_');
-          return isGrammar ? hasGrammar : (hasNonGrammar || selectedChapters.length === 0);
+          return isGrammar ? hasGrammar : hasNonGrammar || selectedChapters.length === 0;
         })
         .forEach(q => {
           q.marksPerQuestion.forEach((marks: number) => {
@@ -560,12 +531,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       if (!this.useLBA) continue;
       const lbaData = chapter.headings;
       for (const h of lbaData) {
-        const headingName = h.label || h.name;
-        const headingCount = Number(h.count || 0);
-        if (!headingMap.has(headingName)) headingMap.set(headingName, { ...h, name: headingName, label: h.label || headingName, count: 0, chapters: new Set<number>() });
+        const headingName = h.label;
+        const headingCount = Number(h.count);
+        if (!headingMap.has(headingName)) headingMap.set(headingName, { ...h, name: headingName, label: h.label, count: 0, chapters: new Set<number>() });
         const agg = headingMap.get(headingName)!;
         agg.count += headingCount;
-        agg.chapters.add(chapter.chapterNumber || 0);
+        agg.chapters.add(chapter.chapterNumber);
       }
     }
 
@@ -573,11 +544,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       .map(x => ({
         ...x,
         name: x.name,
-        label: x.label || x.name,
+        label: x.label,
         count: x.count,
         chapters: Array.from(x.chapters).sort((a: any, b: any) => a - b)
       }))
-      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+      .sort((a, b) => a.count === b.count ? a.name.localeCompare(b.name) : b.count - a.count);
 
     const names = new Set(this.availableHeadings.map(h => h.name));
     this.selectedHeadings = this.selectedHeadings.filter(h => names.has(h.name));
@@ -662,7 +633,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     this.questionBankBluePrintData = this.generateSummaryBlueprint(this.finalSelectedQuestions);
 
-    this.selectedQuestionsMarks = this.finalSelectedQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    this.selectedQuestionsMarks = this.finalSelectedQuestions.reduce((sum, q) => sum + Number(q.marks), 0);
     this.totalTemplateMarks = this.selectedQuestionsMarks;
 
     this.currentStep = 3;
@@ -679,8 +650,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     // 1. Prepare Base Payload
     let payload = this.getTemplatePayload();
-    payload.title = formVal.examinationName;
-    payload.isPreview = false; // ENSURE THIS IS FALSE TO TRIGGER DB SAVE
+    payload.is_preview = false; // ENSURE THIS IS FALSE TO TRIGGER DB SAVE
 
     // 2. Organize Selected Questions into Sections
     const sectionsMap = new Map<string, any>();
@@ -722,8 +692,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       question_distribution: s.questions.map((q: any) => ({ unit_name: q.unit_name, objective: q.objective }))
     }));
 
-    payload.bluePrint = this.questionBankBluePrintData;
-
     // 4. CALL BACKEND TO SAVE
     this.questionBankService.generateQuestionBank(payload).pipe(
       finalize(() => this.isLoadingQuestions = false)
@@ -758,7 +726,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       marks_per_question: heading.marksPerQuestion,
       question_distribution: []
     }));
-    payload.isPreview = true;
+    payload.is_preview = true;
 
     return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       switchMap((bpRes: any) => {
@@ -808,9 +776,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       }))
       .filter((obj: any) => !!obj.objective);
 
-    const selectedSubjectId = formVal.subject;
-    const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === selectedSubjectId);
-    const subjectName = selectedSubjectObj ? selectedSubjectObj.name : selectedSubjectId;
+    const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === formVal.subject);
+    const subjectName = selectedSubjectObj ? selectedSubjectObj.name : formVal.subject;
 
     let subTopicsPayload: string[] = [];
     const rawSubTopics = formVal.subTopic ? (Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic]) : [];
@@ -823,32 +790,24 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     return {
       board: formVal.board,
-      medium: formVal.medium || 'English',
-      language: formVal.language ?? 'English',
+      medium: formVal.medium,
+      language: formVal.language,
       grade: String(formVal.grade),
       subject: subjectName, // Send Name for AI
-      subjectId: selectedSubjectId, // Send ID for DB
       total_marks: Number(formVal.totalMarks),
-      totalMarks: Number(formVal.totalMarks),
-      examinationName: formVal.examinationName,
-      title: formVal.examinationName,
-      metadata: { examinationName: formVal.examinationName },
+      examination_name: formVal.examinationName,
       chapter: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
-      chapters: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
-      chapterIds: validChapterIds,
-      chapterId: primaryChapterId,
-      subTopic: subTopicsPayload,
-      isMultiChapter: this.questionBankTypeValue === 'multiChapter',
-      unitLevel: this.questionBankTypeValue === 'singleChapter' && this.hasSubtopics ? 'SUBTOPIC' : 'CHAPTER',
-      marksDistribution: (this.marksDistribution || []).map(d => ({
+      chapter_ids: validChapterIds,
+      sub_topic: subTopicsPayload,
+      is_multi_chapter: this.questionBankTypeValue === 'multiChapter',
+      unit_level: this.questionBankTypeValue === 'singleChapter' && this.hasSubtopics ? 'SUBTOPIC' : 'CHAPTER',
+      marks_distribution: this.marksDistribution.map(d => ({
         unit_name: d.unit_name,
         marks: Number(d.marks),
         percentage_distribution: Number(d.percentage_distribution)
       })),
       template: [],
       objective_distribution: objectiveDistribution,
-      objectiveDistribution: objectiveDistribution,
-      bluePrint: this.questionBankBluePrintData,
     };
   }
 
@@ -879,7 +838,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   fetchLBAQuestionsPool() {
     const config = this.questionBankConfigForm.value;
-    const norm = (str: string) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const norm = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
 
     const rawVal = config.chapter;
     const selectedTitles = Array.isArray(rawVal) ? rawVal : [rawVal];
@@ -934,7 +893,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   calculateTotal() {
-    this.currentTotalMarks = this.selectedQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    this.currentTotalMarks = this.selectedQuestions.reduce((sum, q) => sum + Number(q.marks), 0);
     this.selectedQuestionsCount = this.selectedQuestions.length;
     this.selectedQuestionsMarks = this.currentTotalMarks;
   }
@@ -1015,7 +974,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.totalDistributedPercentage = 100;
   }
   updatePercentage(i: any) {
-    const marks = parseInt(this.marksDistribution[i].marks) || 0;
+    const marks = Number(this.marksDistribution[i].marks);
     this.marksDistribution[i].marks = marks;
     this.marksDistribution[i].percentage_distribution = Math.round((marks * 100) / this.totalMarks);
     this.calculateTotalDistribution();
@@ -1025,7 +984,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.totalDistributedPercentage = Math.round((this.totalDistributedMarks * 100) / this.totalMarks);
   }
   calculateTotalPercentage(i: any) {
-    this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + (parseInt(obj.percentage_distribution) || 0), 0);
+    this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentage_distribution), 0);
   }
   resetDistribution() {
     this.f.chapter.reset(); this.f.subTopic.reset(); this.marksDistribution = [];
