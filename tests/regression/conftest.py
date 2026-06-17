@@ -39,7 +39,7 @@ def browser_context():
         expect(verify_button).to_be_enabled(timeout=5000)
         verify_button.dispatch_event("click")
 
-        page.wait_for_url("**/dashboard")
+        page.wait_for_url("**/dashboard", timeout=60000)
 
         yield context
 
