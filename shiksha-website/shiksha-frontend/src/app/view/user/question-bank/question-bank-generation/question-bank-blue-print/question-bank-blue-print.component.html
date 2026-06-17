@@ -4,7 +4,7 @@
     <div>
       <h2 class="text-xl font-bold text-content">Step 3/3: Preview & Blue Print</h2>
       <p class="text-sm text-gray-500">Exam: <span class="font-semibold text-primary">{{ examName }}</span> | Total
-        Marks: <span class="font-semibold text-primary">{{ totalMarks }}</span></p>
+        Marks: <span class="font-semibold text-primary">{{ formatMarks(totalMarks) }}</span></p>
     </div>
     <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-2 mt-3 md:mt-0">
       <img src="assets/icons/Info 2.svg" alt="info" class="w-5 h-5" />
@@ -20,10 +20,10 @@
         <div *ngFor="let group of groupedBlueprintData; let i = index" class="mb-8 bg-gray-50 rounded-lg border p-4">
           <div class="flex justify-between items-center border-b pb-2 mb-4">
             <h3 class="font-bold text-lg text-content">
-              {{ i + 1 }}. {{ questionTypeMapper[group.type] || group.type }}
+              {{ i + 1 }}. {{ group.type }}
             </h3>
             <span class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold">
-              {{ group.questions.length }} Questions x {{ group.marksPerQuestion }} Marks
+              {{ group.questions.length }} Questions x {{ formatMarks(group.marksPerQuestion) }} Marks
             </span>
           </div>
 
@@ -49,7 +49,7 @@
       <div class="mt-2 pt-2 border-t text-xs font-bold text-gray-500 text-right">
         Sources included:
         <span *ngFor="let s of uniqueSources; let last = last" class="text-primary uppercase ml-1">
-          {{ s === 'AI Questions' ? 'AI Gen' : (s === 'Pre-generated Questions' ? 'Pre-gen' : s) }}{{ !last ? ',' : '' }}
+          {{ s }}{{ !last ? ',' : '' }}
         </span>
       </div>
     </div>
@@ -77,7 +77,7 @@
           <div class="flex justify-between text-sm">
             <span class="text-gray-500">Current Marks:</span>
             <span class="font-bold" [ngClass]="selectedQuestionsMarks === totalMarks ? 'text-primary' : 'text-error'">
-              {{ selectedQuestionsMarks }} / {{ totalMarks }}
+              {{ formatMarks(selectedQuestionsMarks) }} / {{ formatMarks(totalMarks) }}
             </span>
           </div>
         </div>

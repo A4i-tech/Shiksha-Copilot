@@ -10,11 +10,15 @@ grammar_question_types_guide: |
   Ensure all grammar questions are drawn from the unit's grammar topics listed above.
 
 question_bank_parts_gen_retrieval_query_template: |
-  Units: 
-  {CHAPTERS}
+  Generate questions by following the rules listed below. `keyAnswer` field must be non-empty if the question model supports it.
 
-  Learning Outcomes: 
-  {UNIT_WISE_LEARNING_OUTCOMES}
+  Unit: {CHAPTER}
+
+  Learning Outcomes:
+  {LEARNING_OUTCOMES}
+
+  Rules by question type:
+  {RULES}
 
 question_bank_parts_gen: |
       You are a specialist in educational assessment design with advanced expertise in Bloom's Taxonomy and question generation. Your task is to generate a bank of unique, high-quality questions that are aligned with the provided learning outcomes, textbook content, and cognitive objectives. Use the RAG (Retrieval-Augmented Generation) approach to reference textbook content for the specified chapters (units).
@@ -65,7 +69,7 @@ question_bank_parts_gen: |
         Reference the relevant unit’s learning outcomes and textbook sections to ensure the questions are directly tied to the curriculum content.
         Each question should clearly address a specific learning outcome from the designated chapter or unit.
 
-      3.Higher-Order Thinking:
+      3. Higher-Order Thinking:
         Go beyond mere recall or procedural tasks. Each question should involve multi-step reasoning, application to real-world contexts, and, where appropriate, require justification or alternative solutions.
 
       4. Adaptability:
@@ -99,7 +103,7 @@ question_bank_distribution: |
   ---
 
   ## Existing Question Template
-  A predefined question template (JSON) is provided, specifying question types, the number of questions, and marks per question. Your role is to **add** the `question_distribution` for each question type. The template is given as:
+  A predefined question template (JSON) is provided, specifying question types, the number of questions, and marks per question. Your role is to generate question distribution for each question type. The template is given as:
 
   ```json
   {TEMPLATE_JSON}

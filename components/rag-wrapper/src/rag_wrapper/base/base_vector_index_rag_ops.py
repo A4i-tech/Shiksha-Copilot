@@ -1,6 +1,7 @@
 from abc import abstractmethod
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict, Optional, TypeVar
 
+from pydantic import BaseModel
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -21,6 +22,9 @@ from llama_index.core.schema import TransformComponent
 import traceback
 from llama_index.core.response_synthesizers import ResponseMode
 from rag_wrapper.base.base_rag_ops import BaseRagOps
+
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class BaseVectorIndexRagOps(BaseRagOps):
@@ -116,6 +120,7 @@ class BaseVectorIndexRagOps(BaseRagOps):
         curr_message: str,
         chat_history: List[ChatMessage],
         metadata_filter: Optional[Dict[str, str]] = None,
+        output_cls: type[T] | None = None,
     ) -> Any:
         """
         Engage in conversational interaction with the RAG index using a chat engine.
@@ -137,7 +142,8 @@ class BaseVectorIndexRagOps(BaseRagOps):
 
         try:
             retriever = self.rag_index.as_retriever(similarity_top_k=self.similarity_top_k, filters=self._create_metadata_filters(metadata_filter) if metadata_filter else None)
-            response_synthesizer = get_response_synthesizer(llm=self.completion_llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
+            llm = self.completion_llm if output_cls is None else self.completion_llm.as_structured_llm(output_cls=output_cls)
+            response_synthesizer = get_response_synthesizer(llm=llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
             query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
             history_text = "\n".join(f"{m.role}: {m.content}" for m in chat_history[-6:])
             query_str = f"{history_text}\nuser: {curr_message}" if history_text else curr_message

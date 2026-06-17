@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
+import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -21,9 +21,9 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
+  readonly formatMarks = formatMarks;
 
   totalSteps: number = 3;
-  questionTypeMapper = QUESTION_TYPE_MAPPER;
 
   // Chart Properties
   objectivesChartData!: ChartData<'doughnut'>;
@@ -67,11 +67,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     const groups: { [key: string]: any } = {};
 
     this.finalSelectedQuestions.forEach(q => {
-      const sectionName = q.heading || q.type || 'General Questions';
+      const sectionName = `${q.type}:${q.marks}`;
 
       if (!groups[sectionName]) {
         groups[sectionName] = {
-          type: sectionName,
+          type: q.heading,
           marksPerQuestion: q.marks,
           questions: []
         };
@@ -88,14 +88,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     let chartColors: string[] = [];
 
     this.finalSelectedQuestions.forEach(q => {
-      let label = 'Unknown';
-      if (q.source === 'AI Questions') {
-        label = q.objective || 'Knowledge';
-      } else if (q.source === 'Pre-generated Questions') {
-        label = 'Pre-generated';
-      } else {
-        label = q.objective || 'Knowledge';
-      }
+      const label = q.source === QUESTION_SOURCE.AI ? q.objective : 'Pre-generated';
       chartMapper[label] = (chartMapper[label] || 0) + 1;
     });
 
@@ -118,7 +111,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   get uniqueSources(): string[] {
     const sources = new Set<string>();
     this.finalSelectedQuestions.forEach(q => {
-      sources.add(q.source || 'Unknown');
+      sources.add(q.source);
     });
     return Array.from(sources);
   }

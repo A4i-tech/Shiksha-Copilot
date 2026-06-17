@@ -81,15 +81,6 @@ export class QuestionBankService extends BaseRestService {
   }
 
   /**
-   * Function to generate question bank template
-   * @param data
-   * @returns
-   */
-  generateQuestionBankTemplate(data: any): Observable<any> {
-    return this.post('generate-template', data);
-  }
-
-  /**
    * Function to generate question bank blue print
    * @param data
    * @returns
@@ -107,7 +98,7 @@ export class QuestionBankService extends BaseRestService {
    */
   generateQuestionBank(data: any) {
     return this.http.post(`${this.getUrl()}generate`, data, {
-      context: new HttpContext().set(LOADER_MESSAGE, data?.isPreview ? 'Generating questions...' : 'Creating question paper...')
+      context: new HttpContext().set(LOADER_MESSAGE, data.isPreview ? 'Generating questions...' : 'Creating question paper...')
     });
   }
 
@@ -124,7 +115,7 @@ export class QuestionBankService extends BaseRestService {
     const params = new HttpParams().set('subject', subject);
     return this.get('question-types', params).pipe(
       tap((res: any) => {
-        if (res?.data && Array.isArray(res.data)) {
+        if (Array.isArray(res.data)) {
           this._questionTypesCache[key] = res.data;
         }
       })
@@ -148,14 +139,7 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getClasses(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/classes`).pipe(
-      // unwrap formatted response if present
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/classes`).pipe(map(resp => resp.data));
   }
 
   /**
@@ -168,13 +152,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.class) {
       params = params.set('class', filters.class);
     }
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/media`, { params }).pipe(
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/media`, { params }).pipe(map(resp => resp.data));
   }
   updateQuestionPaper(id: string, data: any): Observable<any> {
     // Use PUT or PATCH so the backend knows to update the existing record
@@ -197,13 +175,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.subject) {
       params = params.set('subject', filters.subject);
     }
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/chapters`, { params }).pipe(
-      (source => new Observable<any[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/chapters`, { params }).pipe(map(resp => resp.data));
   }
 
   /**
@@ -211,13 +183,7 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getDifficulties(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/difficulties`).pipe(
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/difficulties`).pipe(map(resp => resp.data));
   }
 
   /**
@@ -225,13 +191,15 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getAnswerTypes(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/answerTypes`).pipe(
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/answer-types`).pipe(map(resp => resp.data));
+  }
+
+  getPaperConfig(filters: { board: string; grade: string; subjectName: string }): Observable<any> {
+    let params = new HttpParams();
+    params = params.set('board', filters.board);
+    params = params.set('grade', filters.grade);
+    params = params.set('subjectName', filters.subjectName);
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/paper-config`, { params }).pipe(map(resp => resp.data));
   }
 
   /**
@@ -259,13 +227,7 @@ export class QuestionBankService extends BaseRestService {
       }
     });
     const context = new HttpContext().set(LOADER_MESSAGE, 'Retrieving textbook questions...');
-    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params, context }).pipe(
-      (source => new Observable<any[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params, context }).pipe(map(resp => resp.data));
   }
 
   /**
@@ -280,7 +242,7 @@ export class QuestionBankService extends BaseRestService {
   }
 
   getGrammarTopics(grade: number): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/grammarTopics?grade=${grade}`)
-      .pipe(map(res => res?.data ?? []));
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/grammar-topics?grade=${grade}`)
+      .pipe(map(res => res.data));
   }
 }
