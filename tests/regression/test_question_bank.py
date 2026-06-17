@@ -99,8 +99,16 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
         qb_page.select_dropdown_option("grade", index=0)
         qb_page.select_dropdown_option("medium", index=0)
         qb_page.select_dropdown_option("subject", index=0)
-        # subject change fires getChapters() — ngx-spinner overlays page during load, blocking clicks
-        logged_in_page.locator("ngx-spinner").wait_for(state="hidden", timeout=15000)
+        # subject change fires getChapters() — wait for network and spinner overlay to clear
+        logged_in_page.wait_for_load_state("networkidle", timeout=20000)
+        # ngx-spinner outer element may report hidden while inner "Loading..." text still renders;
+        # wait for the visible text itself to disappear
+        loading_text = logged_in_page.get_by_text("Loading...")
+        try:
+            loading_text.wait_for(state="hidden", timeout=15000)
+        except Exception:
+            pass  # no loading text present — already clear
+        logged_in_page.wait_for_timeout(500)
 
     with step("Select All Sources"):
         # Source Generation is the multi-select dropdown at index 1
