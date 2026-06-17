@@ -1,4 +1,4 @@
-import { AfterViewChecked, Directive, ElementRef } from '@angular/core';
+import { AfterViewInit, Directive, ElementRef, OnDestroy } from '@angular/core';
 
 /**
  * Accessibility fix for angular-calendar's week/day views.
@@ -12,20 +12,39 @@ import { AfterViewChecked, Directive, ElementRef } from '@angular/core';
  *  - convert each clickable event's `role="application"` to `role="button"`
  *    (events are `tabindex="0"`, have a click handler and an `aria-label`).
  *
- * Reusable: drop `appCalendarA11y` on any `mwl-calendar-week-view` /
+ * A MutationObserver handles late-arriving nodes (events loaded after init)
+ * without running on every change-detection cycle.
+ *
+ * Reusable: drop `appCalendarAccessibility` on any `mwl-calendar-week-view` /
  * `mwl-calendar-day-view` (day view also renders `.cal-week-view`). It is a
  * no-op on views that don't emit these roles (e.g. month view), so it is safe
  * to apply to every calendar instance. Import the directive into the consuming
  * NgModule (or component `imports`).
  */
 @Directive({
-  selector: '[appCalendarA11y]',
+  selector: '[appCalendarAccessibility]',
   standalone: true,
 })
-export class CalendarA11yDirective implements AfterViewChecked {
+export class CalendarAccessibilityDirective implements AfterViewInit, OnDestroy {
+  private _observer: MutationObserver | null = null;
+
   constructor(private readonly el: ElementRef<HTMLElement>) {}
 
-  ngAfterViewChecked(): void {
+  ngAfterViewInit(): void {
+    this._patchRoles();
+    this._observer = new MutationObserver(() => this._patchRoles());
+    this._observer.observe(this.el.nativeElement, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  ngOnDestroy(): void {
+    this._observer?.disconnect();
+    this._observer = null;
+  }
+
+  private _patchRoles(): void {
     const host = this.el.nativeElement;
 
     host

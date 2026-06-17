@@ -16,7 +16,7 @@ import { DeleteDetailComponent } from 'src/app/shared/components/delete-detail/d
 import { ProfileImageComponent } from 'src/app/shared/components/profile-image/profile-image.component';
 import { GenerationStatusComponent } from './generation-status/generation-status.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
-import { CalendarA11yDirective } from 'src/app/shared/directives/calendar-a11y.directive';
+import { CalendarAccessibilityDirective } from 'src/app/shared/directives/calendar-accessibility.directive';
 
 
 @NgModule({
@@ -42,7 +42,7 @@ import { CalendarA11yDirective } from 'src/app/shared/directives/calendar-a11y.d
     DeleteDetailComponent,
     ProfileImageComponent,
     PaginationComponent,
-    CalendarA11yDirective,
+    CalendarAccessibilityDirective,
   ]
 })
 export class UserModule { }

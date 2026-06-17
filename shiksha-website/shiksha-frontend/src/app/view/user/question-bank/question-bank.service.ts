@@ -6,12 +6,25 @@ import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
 
+export interface QuestionTypeOption {
+  key?: string;
+  name: string;
+  value: string;
+  type?: string;
+}
+
+interface QuestionTypesApiResponse {
+  success?: boolean;
+  message?: string;
+  data: QuestionTypeOption[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class QuestionBankService extends BaseRestService {
   baseUrl: string;
-  private _questionTypesCache: Record<string, any[]> = {};
+  private _questionTypesCache: Record<string, QuestionTypeOption[]> = {};
 
   /**
    * Class constructor
@@ -116,14 +129,14 @@ export class QuestionBankService extends BaseRestService {
    * @param subject
    * @returns
    */
-  getQuestionTypes(subject: string): Observable<any> {
+  getQuestionTypes(subject: string): Observable<QuestionTypesApiResponse> {
     const key = subject.toLowerCase();
     if (this._questionTypesCache[key]) {
       return of({ success: true, message: '', data: this._questionTypesCache[key] });
     }
     const params = new HttpParams().set('subject', subject);
-    return this.get('question-types', params).pipe(
-      tap((res: any) => {
+    return (this.get('question-types', params) as Observable<QuestionTypesApiResponse>).pipe(
+      tap((res) => {
         if (res?.data && Array.isArray(res.data)) {
           this._questionTypesCache[key] = res.data;
         }
@@ -280,7 +293,7 @@ export class QuestionBankService extends BaseRestService {
   }
 
   getGrammarTopics(grade: number): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/grammarTopics?grade=${grade}`)
+    return this.http.get<{ data?: string[] }>(`${this.baseUrl}/question-bank/meta/grammarTopics?grade=${grade}`)
       .pipe(map(res => res?.data ?? []));
   }
 }

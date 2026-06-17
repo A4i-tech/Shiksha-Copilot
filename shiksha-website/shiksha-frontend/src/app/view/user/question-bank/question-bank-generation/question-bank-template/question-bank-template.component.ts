@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { QUESTION_TYPE } from 'src/app/shared/utility/constant.util';
-import { QuestionBankService } from '../../question-bank.service';
+import { QuestionBankService, QuestionTypeOption } from '../../question-bank.service';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -40,7 +40,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   availableSources: string[] = [];
   availableDifficulties: string[] = [];
 
-  questionTypeDropdownOptions: any[] = QUESTION_TYPE;
+  questionTypeDropdownOptions: QuestionTypeOption[] = QUESTION_TYPE;
   questionTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Type',
@@ -65,11 +65,12 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
     // Load question types from API, fallback to hardcoded list
     if (this.subject) {
       this.questionBankService.getQuestionTypes(this.subject).subscribe({
-        next: (res: any) => {
+        next: (res) => {
           if (res?.data && Array.isArray(res.data)) {
-            this.questionTypeDropdownOptions = res.data.map((qt: any) => ({
+            this.questionTypeDropdownOptions = res.data.map((qt) => ({
               name: qt.name,
-              value: qt.value,
+              value: qt.value ?? qt.name,
+              type: qt.key,
             }));
           }
         },

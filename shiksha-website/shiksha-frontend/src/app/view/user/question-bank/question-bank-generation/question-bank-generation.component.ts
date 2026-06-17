@@ -17,7 +17,7 @@ import {
   TELANGANA_OBJECTIVE_MAPPER,
   QUESTION_TYPE_MAPPING_LONG
 } from 'src/app/shared/utility/constant.util';
-import { QuestionBankService } from '../question-bank.service';
+import { QuestionBankService, QuestionTypeOption } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import { concat, distinctUntilChanged } from 'rxjs';
@@ -487,7 +487,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   private loadQuestionTypeNames(subject: string) {
     if (!subject) return;
     this.questionBankService.getQuestionTypes(subject).subscribe({
-      next: (res: any) => {
+      next: (res) => {
         const list = Array.isArray(res?.data) ? res.data : [];
         const grammar: string[] = [];
         const standard: string[] = [];
@@ -749,7 +749,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.useAI ? this.generateAIQuestionsPool() : of([])
     ).pipe(
       toArray(),
-      map(([lbaQs, aiQs]: any) => [...(aiQs || []), ...(lbaQs || [])]),
+      map((results) => [...(results[1] || []), ...(results[0] || [])]),
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (results: any) => {
