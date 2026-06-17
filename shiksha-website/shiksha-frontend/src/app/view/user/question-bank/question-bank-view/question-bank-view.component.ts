@@ -146,6 +146,18 @@ export class QuestionBankViewComponent implements OnInit {
     return result;
   }
 
+  contentItems(content: any): any[] {
+    return Array.isArray(content) ? content : [{ contentType: 'text/plain', content }];
+  }
+
+  isTextContent(item: any): boolean {
+    return item.contentType === 'text/plain';
+  }
+
+  mediaSrc(item: any): string {
+    return `data:${item.contentType};base64,${item.content}`;
+  }
+
   download(type: any) {
     if (type === 'qp') {
       this.downloadQp()

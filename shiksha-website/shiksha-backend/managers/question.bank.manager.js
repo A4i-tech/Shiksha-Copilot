@@ -26,6 +26,7 @@ const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
 const logger = require("../config/loggers");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
+const { getBlobContent } = require("../services/azure.blob.service");
 
 // really we should look at dropping the 'aliases' field here. ideally db.lba_questions should use lower-case key
 // as the 'answerType' (e.g., 'answer_short' instead of 'short_answer'/'short_answers'). right now, 'aliases' is
@@ -46,7 +47,17 @@ const getObjectiveKey = (board, grade, subjectName) => {
     ? policy.coreSubjectGrades[String(grade)] || policy.coreSubject
     : policy.default;
 };
-const transformWeakLbaQuestion = (q) => {
+const b64regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
+const toQuestionContent = async value => {
+  if(typeof value === "string") return [{ contentType: "text/plain", content: value }];
+  if(Array.isArray(value)) Promise.all(value.map(async item => {
+    if(item.contentType === "text/plain") return item;
+    if(b64regex.test(item.content)) return { contentType: item.contentType, content: Buffer.from(item.content, "base64").toString("utf8") }
+    return { ...(await getBlobContent(item.content, item.contentType)) }
+  }));
+  return value;
+};
+const transformWeakLbaQuestion = async (q) => {
   // this exists because db.lba_questions has weak and inconsistent structure.
   // TODO: we ought to get rid of this backend logic by sanitizing the db collection.
   const meta = QUESTION_TYPE_META[q.answerType];
@@ -60,20 +71,16 @@ const transformWeakLbaQuestion = (q) => {
     marks: q.marksPerQuestion,
     unitName: unit_name,
     objective: q.objective,
-    text: q.text,
-    keyAnswer: q.keyAnswer,
-    value1: q.value1,
-    value2: q.value2,
+    text: await toQuestionContent(q.text),
+    keyAnswer: await toQuestionContent(q.keyAnswer ?? q.keyanswer),
+    options: q.options ? await Promise.all(q.options.map(async option => ({ ...option, text: await toQuestionContent(option.text) }))) : q.options,
   };
-  return q.pairs?.length ? q.pairs.map((pair, index) => ({
-    ...base,
-    _id: `${q._id}_pair_${index}`,
-    text: pair.left,
-    value1: pair.left,
-    value2: pair.right,
+  delete q.keyanswer;
+  return q.pairs?.length ? Promise.all(q.pairs.map(async (pair, index) => {
+    const value1 = await toQuestionContent(pair.left);
+    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, value1, value2: await toQuestionContent(pair.right) };
   })) : base;
 };
-
 class QuestionBankManager extends BaseManager {
   constructor() {
     super(new QuestionBankDao());
@@ -300,7 +307,15 @@ class QuestionBankManager extends BaseManager {
 
     if (questions && questions.length > 0) {
       console.log("[Manager] Manual Flow detected. Using provided questions/sections.");
-      mergedList = questions;
+      mergedList = await Promise.all(questions.map(async section => ({
+        ...section,
+        questions: await Promise.all(section.questions.map(async q => {
+          if (!q.lbaQuestionId) return q;
+          const rawQuestion = await mongoose.connection.collection("lba_questions").findOne({ _id: new ObjectId(q.lbaQuestionId) });
+          const transformed = await transformWeakLbaQuestion(rawQuestion);
+          return { ...(Array.isArray(transformed) ? transformed[q.lbaPairIndex] : transformed), unitName: q.unitName, objective: q.objective, marks: q.marks };
+        })),
+      })));
       return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
     }
 
@@ -970,10 +985,10 @@ class QuestionBankManager extends BaseManager {
           // fall back to the untranslated result which is already in `result`
         }
       }
-      result = result.flatMap(transformWeakLbaQuestion);
+      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
 
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
-      return formatApiReponse(true, "Questions retrieved successfully", result);
+      return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));
     } catch (err) {
       console.error("[Manager] getQuestions error:", err);
       return formatApiReponse(false, err.message, err);

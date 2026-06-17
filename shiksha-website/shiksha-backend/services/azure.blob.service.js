@@ -96,6 +96,22 @@ async function getPreSignedUrl(blobName, expiryInSeconds) {
     return blobUrl;
 }
 
+function getBlobName(blobRef) {
+    try {
+        const pathname = decodeURIComponent(new URL(blobRef).pathname).replace(/^\/+/, "");
+        return pathname.startsWith(`${containerName}/`) ? pathname.slice(containerName.length + 1) : pathname;
+    } catch {
+        return blobRef;
+    }
+}
+
+async function getBlobContent(blobRef, contentType) {
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    const blobClient = containerClient.getBlockBlobClient(getBlobName(blobRef));
+    const [buffer, properties] = await Promise.all([blobClient.downloadToBuffer(), blobClient.getProperties()]);
+    return {contentType: contentType || properties.contentType, content: buffer.toString("base64")};
+}
+
 async function getPreSignedProfileImageUrl(userId) {
     const linkExpiryInSeconds = 7 * 24 * 60 * 60;
     const destinationObject = `${userId}_photo`;
@@ -114,4 +130,4 @@ async function getPreSignedFileUrl(filePath) {
     return fileUrl;
 }
 
-module.exports = { uploadToStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl };
+module.exports = { uploadToStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl, getBlobContent };

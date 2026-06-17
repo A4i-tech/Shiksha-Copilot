@@ -176,7 +176,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         grouped.set(sectionKey, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks), questions: [] });
       }
       const sec = grouped.get(sectionKey);
-      sec.questions.push({ question: q.text, options: q.options, answer: q.answer, marks: Number(q.marks), value1: q.value1, value2: q.value2 });
+      sec.questions.push(this.slimLbaQuestion(q));
       sec.numberOfQuestions = sec.questions.length;
     });
 
@@ -674,7 +674,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         });
       }
       const section = sectionsMap.get(sectionKey);
-      section.questions.push({
+      section.questions.push(q.source === QUESTION_SOURCE.AI ? {
         question: q.text,
         options: q.options,
         keyAnswer: q.keyAnswer,
@@ -684,7 +684,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         objective: q.objective,
         value1: q.value1,
         value2: q.value2
-      });
+      } : this.slimLbaQuestion(q));
       section.numberOfQuestions = section.questions.length;
     });
 
@@ -721,6 +721,18 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   private extractIdFromResponse(res: any): string | undefined {
     return res.data._id;
+  }
+
+  slimLbaQuestion(q: any): any {
+    const [lbaQuestionId, lbaPairIndex] = String(q._id).split('_pair_');
+    return {
+      _id: q._id,
+      lbaQuestionId,
+      lbaPairIndex: Number(lbaPairIndex),
+      marks: Number(q.marks),
+      unitName: q.unitName,
+      objective: q.objective,
+    };
   }
 
   generateAIQuestionsPool() {
@@ -920,9 +932,19 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   applyFilters() {
     this.filteredQuestions = this.allAvailableQuestions.filter(q => {
       const matchesSource = this.filterSource === 'ALL' || q.source === this.filterSource;
-      const matchesSearch = q.text.toLowerCase().includes(this.searchQuery);
+      const matchesSearch = this.questionText(q).toLowerCase().includes(this.searchQuery);
       return matchesSource && matchesSearch;
     });
+  }
+
+  questionText(question: any): string {
+    const components = [];
+    if(question.type === 'MATCHING'){
+      components.push(...question.value1, {contentType: 'text/plain', content: '-'}, ...question.value2);
+    }else{
+      components.push(question.text);
+    }
+    return components.filter((item: any) => item.contentType === 'text/plain').map((item: any) => item.content).join(' ');
   }
 
   get isTotalMet(): boolean { return this.currentTotalMarks === this.totalMarks; }

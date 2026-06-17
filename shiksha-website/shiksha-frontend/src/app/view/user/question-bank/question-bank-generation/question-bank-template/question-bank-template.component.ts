@@ -147,13 +147,23 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
       const matchType = this.filterQuestionType === 'ALL' || q.heading === this.filterQuestionType;
 
       // 4. Search Filter
-      const matchSearch = !this.searchText || (q.text && q.text.toLowerCase().includes(this.searchText.toLowerCase()));
+      const matchSearch = !this.searchText || this.questionText(q).toLowerCase().includes(this.searchText.toLowerCase());
 
       // 5. Exclude already selected
       const isSelected = this.selectedQuestions.some(sq => sq._id === q._id);
 
       return matchSource && matchDifficulty && matchType && matchSearch && !isSelected;
     });
+  }
+
+  questionText(question: any): string {
+    const components = [];
+    if(question.type === 'MATCHING'){
+      components.push(...question.value1, {contentType: 'text/plain', content: '-'}, ...question.value2);
+    }else{
+      components.push(question.text);
+    }
+    return components.filter((item: any) => item.contentType === 'text/plain').map((item: any) => item.content).join(' ');
   }
 
   onSearch(val: any) {

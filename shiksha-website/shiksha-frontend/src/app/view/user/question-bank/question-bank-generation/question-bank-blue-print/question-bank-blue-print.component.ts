@@ -116,6 +116,14 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     return Array.from(sources);
   }
 
+  mediaSrc(item: any): string {
+    return `data:${item.contentType};base64,${item.content}`;
+  }
+
+  contentItems(content: any): any[] {
+    return Array.isArray(content) ? content : [{ contentType: 'text/plain', content }];
+  }
+
   previousStep() {
     this.backClick.emit();
   }
