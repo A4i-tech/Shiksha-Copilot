@@ -12,8 +12,8 @@ import { AfterViewInit, Directive, ElementRef, OnDestroy } from '@angular/core';
  *  - convert each clickable event's `role="application"` to `role="button"`
  *    (events are `tabindex="0"`, have a click handler and an `aria-label`).
  *
- * A MutationObserver handles late-arriving nodes (events loaded after init)
- * without running on every change-detection cycle.
+ * A MutationObserver watches only added nodes to avoid rescanning the full
+ * subtree on every calendar mutation (e.g. event drag, tooltip open).
  *
  * Reusable: drop `appCalendarAccessibility` on any `mwl-calendar-week-view` /
  * `mwl-calendar-day-view` (day view also renders `.cal-week-view`). It is a
@@ -31,8 +31,16 @@ export class CalendarAccessibilityDirective implements AfterViewInit, OnDestroy 
   constructor(private readonly el: ElementRef<HTMLElement>) {}
 
   ngAfterViewInit(): void {
-    this._patchRoles();
-    this._observer = new MutationObserver(() => this._patchRoles());
+    this._patchSubtree(this.el.nativeElement);
+    this._observer = new MutationObserver((mutations) => {
+      for (const { addedNodes } of mutations) {
+        addedNodes.forEach((node) => {
+          if (node instanceof HTMLElement) {
+            this._patchSubtree(node);
+          }
+        });
+      }
+    });
     this._observer.observe(this.el.nativeElement, {
       childList: true,
       subtree: true,
@@ -44,15 +52,14 @@ export class CalendarAccessibilityDirective implements AfterViewInit, OnDestroy 
     this._observer = null;
   }
 
-  private _patchRoles(): void {
-    const host = this.el.nativeElement;
-
-    host
-      .querySelectorAll('.cal-week-view[role="grid"]')
-      .forEach((grid) => grid.removeAttribute('role'));
-
-    host
-      .querySelectorAll('[role="application"]')
-      .forEach((event) => event.setAttribute('role', 'button'));
+  private _patchSubtree(root: HTMLElement): void {
+    if (root.classList?.contains('cal-week-view') && root.getAttribute('role') === 'grid') {
+      root.removeAttribute('role');
+    }
+    if (root.getAttribute('role') === 'application') {
+      root.setAttribute('role', 'button');
+    }
+    root.querySelectorAll('.cal-week-view[role="grid"]').forEach((g) => g.removeAttribute('role'));
+    root.querySelectorAll('[role="application"]').forEach((e) => e.setAttribute('role', 'button'));
   }
 }

@@ -135,7 +135,7 @@ export class QuestionBankService extends BaseRestService {
       return of({ success: true, message: '', data: this._questionTypesCache[key] });
     }
     const params = new HttpParams().set('subject', subject);
-    return (this.get('question-types', params) as Observable<QuestionTypesApiResponse>).pipe(
+    return this.get<QuestionTypesApiResponse>('question-types', params).pipe(
       tap((res) => {
         if (res?.data && Array.isArray(res.data)) {
           this._questionTypesCache[key] = res.data;
