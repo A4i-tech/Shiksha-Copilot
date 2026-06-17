@@ -41,7 +41,11 @@ export class CommonDropdownComponent implements ControlValueAccessor {
   @Input() mode!: string;
 
   /** Unique id linking the ng-select input to its label for accessibility */
-  readonly inputId = `common-dropdown-${crypto.randomUUID()}`;
+  readonly inputId = `common-dropdown-${
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2, 10)
+  }`;
 
   /** Accessible name for the dropdown: visible label, else placeholder text */
   get ariaLabelText(): string {

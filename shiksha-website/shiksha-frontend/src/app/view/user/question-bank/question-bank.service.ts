@@ -1,7 +1,7 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
@@ -140,6 +140,10 @@ export class QuestionBankService extends BaseRestService {
         if (res?.data && Array.isArray(res.data)) {
           this._questionTypesCache[key] = res.data;
         }
+      }),
+      catchError((err) => {
+        console.error('[QuestionBankService] getQuestionTypes failed', err);
+        return of({ success: false, message: err?.message ?? 'Unknown error', data: [] });
       })
     );
   }
