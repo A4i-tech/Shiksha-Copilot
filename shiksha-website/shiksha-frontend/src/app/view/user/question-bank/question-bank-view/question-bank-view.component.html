@@ -117,10 +117,8 @@
                 *ngIf="questionBankData.type === 'MCQ'"
                 class="list-alpha">
                 <li *ngFor="let option of questionData.options">
-                  <ng-container *ngFor="let item of contentItems(option.text)">
-                    <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
-                    <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-32 max-w-full" />
-                  </ng-container>
+                  <span *ngIf="option.text">{{ option.text | mathFormatting }}</span>
+                  <span *ngIf="!option.text">{{ option | mathFormatting }}</span>
                 </li>
               </ul>
 

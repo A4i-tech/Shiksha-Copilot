@@ -104,8 +104,8 @@ export class BluePrintExportService {
         new TableRow({
           children: [
             this.createPaddedCell(item.unitName),
-            this.createPaddedCell(this.translate(item.type)),
-            this.createPaddedCell(this.translate(item.objective)),
+            this.createPaddedCell(this.translateService.instant(item.type)),
+            this.createPaddedCell(this.translateService.instant(item.objective)),
             this.createPaddedCell(formatMarks(item.marks)),
           ],
         })

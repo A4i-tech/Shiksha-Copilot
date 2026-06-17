@@ -7,7 +7,6 @@ import { IdleService } from 'src/app/shared/services/idle.service';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 import { formatMarks } from 'src/app/shared/utility/constant.util';
-import { contentItems } from 'src/app/shared/utility/question-bank-display.util';
 @Component({
   selector: 'app-question-bank-view',
   templateUrl: './question-bank-view.component.html',
@@ -49,7 +48,6 @@ export class QuestionBankViewComponent implements OnInit {
   questionTypeLabels: Record<string, string> = {};
   generatedTotalMarks = 0;
   readonly formatMarks = formatMarks;
-  readonly contentItems = contentItems;
 
   docTypes = [
     {

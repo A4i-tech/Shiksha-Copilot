@@ -26,7 +26,6 @@ const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
 const logger = require("../config/loggers");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
-const { getBlobContent } = require("../services/azure.blob.service");
 
 // really we should look at dropping the 'aliases' field here. ideally db.lba_questions should use lower-case key
 // as the 'answerType' (e.g., 'answer_short' instead of 'short_answer'/'short_answers'). right now, 'aliases' is
@@ -47,16 +46,7 @@ const getObjectiveKey = (board, grade, subjectName) => {
     ? policy.coreSubjectGrades[String(grade)] || policy.coreSubject
     : policy.default;
 };
-const b64regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
-const toQuestionContent = async value => {
-  if(typeof value === "string") return [{ contentType: "text/plain", content: value }];
-  if(Array.isArray(value)) return Promise.all(value.map(async item => {
-    if(item.contentType === "text/plain" || b64regex.test(item.content)) return item;
-    return await getBlobContent(item.content, item.contentType)
-  }));
-  return value;
-};
-const transformWeakLbaQuestion = async (q) => {
+const transformWeakLbaQuestion = (q) => {
   // this exists because db.lba_questions has weak and inconsistent structure.
   // TODO: we ought to get rid of this backend logic by sanitizing the db collection.
   const meta = QUESTION_TYPE_META[q.answerType];
@@ -70,14 +60,17 @@ const transformWeakLbaQuestion = async (q) => {
     marks: q.marksPerQuestion,
     unitName: unit_name,
     objective: q.objective,
-    text: await toQuestionContent(q.text),
-    keyAnswer: await toQuestionContent(q.keyAnswer ?? q.keyanswer),
-    options: q.options ? await Promise.all(q.options.map(async option => ({ ...option, text: await toQuestionContent(option.text) }))) : q.options,
+    text: q.text,
+    keyAnswer: q.keyAnswer,
+    value1: q.value1,
+    value2: q.value2,
   };
-  delete q.keyanswer;
-  return q.pairs?.length ? Promise.all(q.pairs.map(async (pair, index) => {
-    const value1 = await toQuestionContent(pair.left);
-    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, value1, value2: await toQuestionContent(pair.right) };
+  return q.pairs?.length ? q.pairs.map((pair, index) => ({
+    ...base,
+    _id: `${q._id}_pair_${index}`,
+    text: pair.left,
+    value1: pair.left,
+    value2: pair.right,
   })) : base;
 };
 class QuestionBankManager extends BaseManager {
@@ -986,7 +979,7 @@ class QuestionBankManager extends BaseManager {
           // fall back to the untranslated result which is already in `result`
         }
       }
-      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
+      result = result.flatMap(transformWeakLbaQuestion);
 
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));

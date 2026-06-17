@@ -279,7 +279,7 @@ describe("QuestionBankManager", () => {
 
   describe("getQuestions", () => {
     it("should get questions successfully without translation", async () => {
-      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([{ text: "Q1", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] }]);
+      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([{ text: "Q1", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A" }]);
       const masterSubjectDao = require("../../../dao/master.subject.dao");
       manager.masterSubjectDao = {
         resolveSubjectContext: jest.fn().mockResolvedValue({ subjectCode: "SC", targetSubjectIds: [] })
@@ -297,18 +297,18 @@ describe("QuestionBankManager", () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual([
         expect.objectContaining({
-          text: [{ contentType: "text/plain", content: "Q1" }],
+          text: "Q1",
           heading: "Multiple Choice Questions",
           unitName: "Unit 1",
           objective: "Knowledge",
-          keyAnswer: [{ contentType: "text/plain", content: "A" }],
+          keyAnswer: "A",
         }),
       ]);
     });
 
     it("should get questions and translate if targetLanguage is provided", async () => {
-      const rawQuestion = { text: "Q1", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] };
-      const translatedQuestion = { text: "Q1 Translated", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] };
+      const rawQuestion = { text: "Q1", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A" };
+      const translatedQuestion = { text: "Q1 Translated", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A" };
       mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([rawQuestion]);
       const masterSubjectDao = require("../../../dao/master.subject.dao");
       manager.masterSubjectDao = {
@@ -330,11 +330,11 @@ describe("QuestionBankManager", () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual([
         expect.objectContaining({
-          text: [{ contentType: "text/plain", content: "Q1 Translated" }],
+          text: "Q1 Translated",
           heading: "Multiple Choice Questions",
           unitName: "Unit 1",
           objective: "Knowledge",
-          keyAnswer: [{ contentType: "text/plain", content: "A" }],
+          keyAnswer: "A",
         }),
       ]);
     });
