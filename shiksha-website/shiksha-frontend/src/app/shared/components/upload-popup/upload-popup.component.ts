@@ -21,7 +21,6 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
 
   ngOnInit() {
     this.previousActiveElement = document.activeElement as HTMLElement;
-    console.log('contxt', this.context);
   }
 
   ngOnDestroy() {

@@ -16,7 +16,6 @@ export class DisablePopupComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.previousActiveElement = document.activeElement as HTMLElement;
-    console.log('tabledata frm disable popup',this.tableData);
   }
 
   ngOnDestroy() {
