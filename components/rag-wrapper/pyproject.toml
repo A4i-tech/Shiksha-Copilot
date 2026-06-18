@@ -29,6 +29,7 @@ llama-index-vector-stores-azureaisearch = "*"
 llama-index-vector-stores-qdrant = "*"
 llama-index-workflows = "*"
 azure-search-documents = "*"
+llama-index-graph-stores-neo4j = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"             # For testing

@@ -193,7 +193,7 @@ const routeCases = [
   {
     file: "question.bank.routes.js",
     method: "post",
-    path: "/question-bank/generate-template",
+    path: "/question-bank/generate-blue-print",
   },
   { file: "region.routes.js", method: "get", path: "/regions/list" },
   { file: "schedule.routes.js", method: "post", path: "/schedule/create" },

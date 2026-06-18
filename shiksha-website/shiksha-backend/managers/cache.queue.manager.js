@@ -72,10 +72,10 @@ const buildCacheAdditions = ({
 
   (notFoundQuestions || []).forEach((template, templateIndex) => {
     const type = template.type;
-    const marks = template.marks_per_question;
+    const marks = template.marksPerQuestion;
 
-    (template.question_distribution || []).forEach((distribution, questionIndex) => {
-      const unitName = distribution.unit_name;
+    (template.questionDistribution || []).forEach((distribution, questionIndex) => {
+      const unitName = distribution.unitName;
       const objective = normalizeObjective(distribution.objective);
       const cacheEntry = cacheIndex.get(getCacheKey(unitName, unitLevel));
 

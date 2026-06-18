@@ -374,11 +374,11 @@ Generate a complete question paper with multiple question types and structured s
 
 - **MCQ**: Multiple Choice Questions with 4 options
 - **FILL_BLANKS**: Fill in the blanks questions
-- **ANSWER_WORD**: Single word/phrase answers
+- **ANSWER_VERY_SHORT**: Single word/phrase answers
 - **ANSWER_SHORT**: Short answer questions (2-3 sentences)
-- **ANSWER_GENERAL**: General answer questions
+- **ANSWER_MEDIUM**: General answer questions
 - **ANSWER_LONG**: Long answer questions (4-5 sentences)
-- **MATCH_LIST**: Matching type questions
+- **MATCHING**: Matching type questions
 
 **Features:**
 
@@ -737,8 +737,8 @@ poetry run pytest -v
 ### Building the Docker Image
 
 ```bash
-# Build the image
-docker build -t shiksha-copilot-api .
+# Build the image from the repository root
+docker build -f shiksha-api/app-service/Dockerfile -t shiksha-copilot-api .
 
 # Run the container
 docker run -p 8000:8000 --env-file .env shiksha-copilot-api
@@ -750,7 +750,9 @@ docker run -p 8000:8000 --env-file .env shiksha-copilot-api
 version: "3.8"
 services:
   api:
-    build: .
+    build:
+      context: ../..
+      dockerfile: shiksha-api/app-service/Dockerfile
     ports:
       - "8000:8000"
     environment:

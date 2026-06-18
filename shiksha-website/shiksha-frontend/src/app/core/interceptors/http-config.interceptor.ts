@@ -9,6 +9,7 @@ import { Observable, catchError, finalize, throwError } from 'rxjs';
 import { NgxSpinnerService } from 'ngx-spinner';
 import { UtilityService } from '../services/utility.service';
 import { AuthorizationService } from '../services/authorization.service';
+import { LOADER_MESSAGE, LoaderMessageService } from '../services/loader-message.service';
 import { LOADER_RESTRICTED_URLS } from 'src/app/shared/utility/constant.util';
 
 @Injectable()
@@ -23,7 +24,8 @@ export class HttpConfigInterceptor implements HttpInterceptor {
   constructor(
     private spinner: NgxSpinnerService,
     private utilityService: UtilityService,
-    private authorizationService: AuthorizationService
+    private authorizationService: AuthorizationService,
+    private loaderMessage: LoaderMessageService
   ) {}
 
   intercept(
@@ -31,6 +33,9 @@ export class HttpConfigInterceptor implements HttpInterceptor {
     next: HttpHandler
   ): Observable<HttpEvent<unknown>> {
     this.pendingRequests+=1; 
+    if (!LOADER_RESTRICTED_URLS.some(api => request.url.includes(api))) {
+      this.loaderMessage.set(request.context.get(LOADER_MESSAGE));
+    }
     if (this.pendingRequests === 1 && !LOADER_RESTRICTED_URLS.some(api => request.url.includes(api))) {
       this.spinner.show();
     }
@@ -57,6 +62,7 @@ export class HttpConfigInterceptor implements HttpInterceptor {
         this.pendingRequests-=1;
         if (this.pendingRequests === 0) {
           this.spinner.hide()
+          this.loaderMessage.set()
         }
       })
     );

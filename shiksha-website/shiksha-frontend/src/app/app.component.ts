@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { SignInService } from './auth/sign-in.service';
 import { UtilityService } from './core/services/utility.service';
 import { AuthorizationService } from './core/services/authorization.service';
+import { LoaderMessageService } from './core/services/loader-message.service';
 import { IdleService } from './shared/services/idle.service';
 import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD } from './shared/utility/constant.util';
 
@@ -29,6 +30,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private utilityService: UtilityService,
     private router: Router,
     private authorizationService: AuthorizationService,
+    public loaderMessage: LoaderMessageService,
     private idleService: IdleService,
     private baselineSurveyService: BaselineSurveyService,
     private baselineSurveyDialog: BaselineSurveyDialogService
@@ -152,4 +154,3 @@ export class AppComponent implements OnInit, OnDestroy {
     window.removeEventListener('beforeunload', this.handleBeforeUnload.bind(this));
   }
 }
-

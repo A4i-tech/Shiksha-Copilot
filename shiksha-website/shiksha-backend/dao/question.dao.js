@@ -201,7 +201,7 @@ class QuestionDao extends BaseDao {
             },
             {
                 $group: {
-                    _id: { chId: "$chapterId", heading: "$groupHeading" },
+                    _id: { chId: "$chapterId", heading: "$groupHeading", answerType: "$answerType" },
                     count: { $sum: 1 },
                 },
             },
@@ -211,6 +211,7 @@ class QuestionDao extends BaseDao {
                     headings: {
                         $push: {
                             name: { $ifNull: ["$_id.heading", "Misc"] },
+                            answerType: "$_id.answerType",
                             count: "$count",
                         },
                     },

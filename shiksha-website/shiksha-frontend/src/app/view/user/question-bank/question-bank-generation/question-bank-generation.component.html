@@ -213,10 +213,10 @@
                       </label>
                       <label *ngFor="let h of availableHeadings"
                         class="flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b text-sm">
-                        <input type="checkbox" [checked]="isHeadingSelected(h.name)"
-                          (change)="toggleHeading($event, h.name)"
+                        <input type="checkbox" [checked]="isHeadingSelected(h)"
+                          (change)="toggleHeading($event, h)"
                           class="mr-2 w-4 h-4 text-primary rounded focus:ring-primary" />
-                        {{h.name}} <span *ngIf="(h?.count || 0) > 0" class="ml-1 text-gray-400">({{h.count}})</span>
+                        {{ headingDisplay(h) }}
                       </label>
                     </div>
                   </div>
@@ -248,7 +248,7 @@
                       <tr>
                         <td class="p-2 border" *ngFor="let obj of questionBankObjectives; let i=index">
                           <input type="text" class="w-full text-center border-none p-2 focus:ring-0 text-sm"
-                            [(ngModel)]="obj.percentage_distribution" [ngModelOptions]="{standalone:true}"
+                            [(ngModel)]="obj.percentageDistribution" [ngModelOptions]="{standalone:true}"
                             (ngModelChange)="calculateTotalPercentage(i)" placeholder="%" />
                         </td>
                       </tr>
@@ -274,13 +274,13 @@
                     </thead>
                     <tbody>
                       <tr *ngFor="let c of marksDistribution; let i=index" class="hover:bg-gray-50">
-                        <td class="p-3 border text-sm font-medium">{{c.unit_name}}</td>
+                        <td class="p-3 border text-sm font-medium">{{c.unitName}}</td>
                         <td class="p-3 border">
                           <input type="text" class="w-full text-center border-none p-1 focus:ring-0"
                             [(ngModel)]="c.marks" [ngModelOptions]="{standalone:true}"
                             (ngModelChange)="updatePercentage(i)" />
                         </td>
-                        <td class="p-3 border text-center text-sm text-gray-500">{{c.percentage_distribution}}%</td>
+                        <td class="p-3 border text-center text-sm text-gray-500">{{c.percentageDistribution}}%</td>
                       </tr>
                     </tbody>
                     <tfoot class="bg-gray-50 font-bold">
@@ -288,7 +288,7 @@
                         <td class="p-3 border text-right">Total:</td>
                         <td class="p-3 border text-center"
                           [ngClass]="totalMarks !== totalDistributedMarks ? 'text-error' : 'text-primary'">
-                          {{totalDistributedMarks}} / {{totalMarks}}</td>
+                          {{ formatMarks(totalDistributedMarks) }} / {{ formatMarks(totalMarks) }}</td>
                         <td class="p-3 border text-center">{{totalDistributedPercentage}}%</td>
                       </tr>
                     </tfoot>
@@ -347,7 +347,7 @@
     <!-- Step 3 Generate -->
     <button *ngIf="currentStep === 3" (click)="generateMergedQuestionBank()" [disabled]="isLoadingQuestions"
       class="btn-primary px-8 py-2 rounded-lg font-bold shadow-md">
-      {{ isLoadingQuestions ? 'Generating...' : 'Generate Final Paper' }}
+      {{ (isLoadingQuestions ? 'Creating question paper...' : 'Generate Final Paper') | translate }}
     </button>
 
   </div>

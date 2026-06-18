@@ -2,8 +2,7 @@ import pytest
 import os
 import sys
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, MagicMock
-from typing import List
+from unittest.mock import Mock, AsyncMock
 
 # Add app directory to Python path
 app_dir = Path(__file__).parent.parent / "app"
@@ -11,8 +10,6 @@ sys.path.insert(0, str(app_dir))
 
 from llama_index.core import MockEmbedding
 from llama_index.core.llms import MockLLM
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 
 
 if not os.getenv("OPENAI_API_KEY"):
@@ -132,8 +129,9 @@ def sample_question_bank_request():
     from app.models.question_paper import (
         QuestionBankPartsGenerationRequest,
         Chapter,
-        Template,
-        QuestionType
+        GeneratedTemplate,
+        QuestionType,
+        QuestionDistribution
     )
 
     chapters = [
@@ -146,17 +144,19 @@ def sample_question_bank_request():
     ]
 
     templates = [
-        Template(
+        GeneratedTemplate(
             type=QuestionType.MCQ,
             marks_per_question=1,
             number_of_questions=10,
-            unit=1
+            unit=1,
+            question_distribution=[QuestionDistribution(unit_name="test-unit", objective="Knowledge")]
         ),
-        Template(
+        GeneratedTemplate(
             type=QuestionType.ANSWER_SHORT,
             marks_per_question=3,
             number_of_questions=5,
-            unit=1
+            unit=1,
+            question_distribution=[QuestionDistribution(unit_name="test-unit", objective="Knowledge")]
         )
     ]
 
@@ -164,7 +164,8 @@ def sample_question_bank_request():
         user_id="test-user-123",
         board="CBSE",
         medium="English",
-        grade="10",
+        grade=10,
+        unit_level="CHAPTER",
         subject="Science",
         chapters=chapters,
         total_marks=25,
