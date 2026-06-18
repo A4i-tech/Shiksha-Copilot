@@ -83,7 +83,9 @@ export class UtilityService {
    * @param message
    */
   showError(message: string) {
-    this.toastr.error(message, '', { politeness: 'assertive' });
+    this.toastr.error(message);
+    const container = document.querySelector('.toast-container');
+    container?.setAttribute('aria-live', 'assertive');
   }
 
   /**
