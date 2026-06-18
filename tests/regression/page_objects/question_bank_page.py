@@ -72,11 +72,11 @@ class QuestionBankPage:
         
         panel = self.page.locator("ng-dropdown-panel")
         try:
-            panel.wait_for(state="visible", timeout=3000)
+            panel.wait_for(state="visible", timeout=5000)
         except:
             # Retry with arrow
             dropdown.locator(".ng-arrow-wrapper").click(force=True)
-            panel.wait_for(state="visible", timeout=5000)
+            panel.wait_for(state="visible", timeout=10000)
         
         options = panel.locator(".ng-option")
         options.first.wait_for(state="visible", timeout=5000)

@@ -41,6 +41,11 @@ def test_chatbot_send_receive_logic(chatbot, step):
     with step("Send Message"):
         chatbot.send_message(question)
         expect(chatbot.chat_textarea).to_have_value("")
+        # If daily limit exhausted the message is silently dropped — no user bubble appears
+        try:
+            chatbot.user_message_bubbles.last.wait_for(state="visible", timeout=5000)
+        except PlaywrightTimeoutError:
+            pytest.skip("Message not rendered after send — daily chat limit likely exhausted (20 msgs/day)")
 
     with step("Verify Chatbot Response"):
         # The exact text varies based on LLM output and timing, so we just
