@@ -20,7 +20,6 @@ from llama_index.core.llms import ChatMessage
 from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
-    Content,
     FourOptionsQuestion,
     GeneratedQuestionItem,
     GeneratedTemplate,

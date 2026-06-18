@@ -44,7 +44,6 @@
                       <span *ngIf="item.contentType === 'text/plain'"> {{ item.content }}</span>
                       <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-1 max-h-24 max-w-full" />
                     </ng-container>
-                    <span *ngIf="!option.label && !option.text">{{ option }}</span>
                   </div>
                 </div>
                 <!-- Removed Topic, Obj, Source per user request -->
