@@ -1,7 +1,8 @@
 const {
-  validateQuestionBankTemplateCreate,
   validateQuestionBankBluePrintCreate,
   validateQuestionBankCreate,
+  validateGetQuestionTypes,
+  validateGetGrammarTopics,
 } = require("../../../validations/question.bank.validation");
 
 describe("Question Bank Validation", () => {
@@ -20,91 +21,6 @@ describe("Question Bank Validation", () => {
     mockNext = jest.fn();
   });
 
-  describe("validateQuestionBankTemplateCreate", () => {
-    const validTemplateData = {
-      medium: "English",
-      board: "CBSE",
-      grade: 10,
-      subject: "Mathematics",
-      chapter: "Algebra",
-      totalMarks: 100,
-      examinationName: "Final Exam",
-      chapterIds: ["chapter123"],
-      isMultiChapter: false,
-      marksDistribution: [
-        {
-          unit_name: "Unit 1",
-          marks: 50,
-          percentage_distribution: 50,
-        },
-      ],
-    };
-
-    it("should pass validation with valid template data", () => {
-      mockReq.body = { ...validTemplateData };
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockNext).toHaveBeenCalled();
-      expect(mockRes.status).not.toHaveBeenCalled();
-    });
-
-    it("should fail when grade is missing", () => {
-      const { grade, ...dataWithoutGrade } = validTemplateData;
-      mockReq.body = dataWithoutGrade;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        data: false,
-        error: expect.arrayContaining([expect.stringContaining("grade")]),
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when board is missing", () => {
-      const { board, ...dataWithoutBoard } = validTemplateData;
-      mockReq.body = dataWithoutBoard;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when medium is missing", () => {
-      const { medium, ...dataWithoutMedium } = validTemplateData;
-      mockReq.body = dataWithoutMedium;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when subject is missing", () => {
-      const { subject, ...dataWithoutSubject } = validTemplateData;
-      mockReq.body = dataWithoutSubject;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when chapterIds is missing", () => {
-      const { chapterIds, ...dataWithoutChapterIds } = validTemplateData;
-      mockReq.body = dataWithoutChapterIds;
-
-      validateQuestionBankTemplateCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-  });
-
   describe("validateQuestionBankBluePrintCreate", () => {
     const validBlueprintData = {
       medium: "English",
@@ -118,22 +34,23 @@ describe("Question Bank Validation", () => {
       isMultiChapter: false,
       marksDistribution: [
         {
-          unit_name: "Unit 1",
+          unitName: "Unit 1",
           marks: 50,
-          percentage_distribution: 50,
+          percentageDistribution: 50,
         },
       ],
-      objective_distribution: [
+      objectiveDistribution: [
         {
           objective: "Understanding",
-          percentage: 40,
+          percentageDistribution: 40,
         },
       ],
       template: [
         {
-          type: "Four alternatives are given for each of the following questions, choose the correct alternative",
-          number_of_questions: 10,
-          marks_per_question: 1,
+          type: "MCQ",
+          numberOfQuestions: 10,
+          marksPerQuestion: 1,
+          questionDistribution: [],
         },
       ],
     };
@@ -147,8 +64,8 @@ describe("Question Bank Validation", () => {
       expect(mockRes.status).not.toHaveBeenCalled();
     });
 
-    it("should fail when objective_distribution is missing", () => {
-      const { objective_distribution, ...dataWithoutObjective } =
+    it("should fail when objectiveDistribution is missing", () => {
+      const { objectiveDistribution, ...dataWithoutObjective } =
         validBlueprintData;
       mockReq.body = dataWithoutObjective;
 
@@ -159,7 +76,7 @@ describe("Question Bank Validation", () => {
         success: false,
         data: false,
         error: expect.arrayContaining([
-          expect.stringContaining("objective_distribution"),
+          expect.stringContaining("objectiveDistribution"),
         ]),
       });
       expect(mockNext).not.toHaveBeenCalled();
@@ -189,16 +106,23 @@ describe("Question Bank Validation", () => {
       isMultiChapter: false,
       marksDistribution: [
         {
-          unit_name: "Unit 1",
+          unitName: "Unit 1",
           marks: 50,
-          percentage_distribution: 50,
+          percentageDistribution: 50,
+        },
+      ],
+      objectiveDistribution: [
+        {
+          objective: "Understanding",
+          percentageDistribution: 40,
         },
       ],
       template: [
         {
-          type: "Four alternatives are given for each of the following questions, choose the correct alternative",
-          number_of_questions: 10,
-          marks_per_question: 1,
+          type: "MCQ",
+          numberOfQuestions: 10,
+          marksPerQuestion: 1,
+          questionDistribution: [],
         },
       ],
     };
@@ -232,6 +156,78 @@ describe("Question Bank Validation", () => {
       mockReq.body = dataWithoutGrade;
 
       validateQuestionBankCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("validateGetQuestionTypes", () => {
+    beforeEach(() => {
+      mockReq = { query: {} };
+    });
+
+    it("should pass with a subject", () => {
+      mockReq.query = { subject: "English" };
+
+      validateGetQuestionTypes(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+    });
+
+    it("should fail when subject is missing", () => {
+      mockReq.query = {};
+
+      validateGetQuestionTypes(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        data: false,
+        error: expect.arrayContaining([expect.stringContaining("subject")]),
+      });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("validateGetGrammarTopics", () => {
+    beforeEach(() => {
+      mockReq = { query: {} };
+    });
+
+    it("should pass and coerce a valid grade to a number", () => {
+      mockReq.query = { grade: "6" };
+
+      validateGetGrammarTopics(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockReq.query.grade).toBe(6);
+    });
+
+    it("should fail when grade is missing", () => {
+      mockReq.query = {};
+
+      validateGetGrammarTopics(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should fail for a non-numeric grade", () => {
+      mockReq.query = { grade: "abc" };
+
+      validateGetGrammarTopics(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should fail for an out-of-range grade", () => {
+      mockReq.query = { grade: "13" };
+
+      validateGetGrammarTopics(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();

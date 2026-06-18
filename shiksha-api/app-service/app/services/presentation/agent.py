@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 import inspect
 from io import BytesIO
 import json
-from typing import IO, Annotated, Any, Literal
+from typing import Annotated, Any, Literal
+from aiofiles.threadpool.binary import AsyncBufferedReader
 
 from app.models.presentation import CaptionerResponse, ImageSearchResults, NextSlideSpec, PresentationOutline, ShikshaAgentEvent, ShikshaCheckpointEvent, SlideSpec, WelcomeSlideInfo, YouTubeVideoResult
 from app.utils.storage import Storage
@@ -324,17 +325,17 @@ def _adapt_event(event: AgentStreamEvent) -> ShikshaAgentEvent | None:
     return None
 
 
-async def plan(textbook_path: str, textbook_mime: str, data: IO[bytes], figures: list[docparser.FigureInfo], slides: int | None, metadata: dict[str, Any], instruction: str | None):
+async def plan(textbook_path: str, textbook_mime: str, data: AsyncBufferedReader, figures: list[docparser.FigureInfo], slides: int | None, metadata: dict[str, Any], instruction: str | None):
     if "outline" in metadata:
         return
 
     yield ShikshaCheckpointEvent(message="Reading document to build presentation spec...")
 
-    data.seek(0)
+    await data.seek(0)
     if textbook_mime.startswith("text/"):
-        f = TextContent(data.read().decode(), metadata={"source": textbook_path})
+        f = TextContent((await data.read()).decode(), metadata={"source": textbook_path})
     else:
-        f = BinaryContent(data.read(), media_type=textbook_mime)
+        f = BinaryContent(await data.read(), media_type=textbook_mime)
 
     outline = None
     async for raw_event in planner.run_stream_events([f, PLANNER_USER_PROMPT.safe_substitute(
@@ -361,7 +362,7 @@ async def plan(textbook_path: str, textbook_mime: str, data: IO[bytes], figures:
     )
 
 
-async def design(storage: Storage, prs: presentation.Presentation, data: IO[bytes], figures_dir: str, outline: PresentationOutline, metadata: dict[str, Any], instruction: str | None):
+async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBufferedReader, figures_dir: str, outline: PresentationOutline, metadata: dict[str, Any], instruction: str | None):
     # Initialize metadata
     if "slides_completed" not in metadata: metadata["slides_completed"] = []
     if "slides_created" not in metadata: metadata["slides_created"] = 0

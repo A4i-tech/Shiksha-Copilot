@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     pres_storage_filesystem: str = "file"
     pres_storage_root: str = "shiksha-copilot-presentations"
     pres_storage_options: dict[str, Any] = Field(default_factory=dict)
+    pres_download_chunk_size: PositiveInt = 1024 * 1024  # 1 MiB
     pres_upload_max_filesize: int = 5_242_880  # 5 MiB
     pres_do_transform: bool = True
 

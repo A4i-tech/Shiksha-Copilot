@@ -1,9 +1,24 @@
-question_bank_parts_gen_retrieval_query_template: |
-  Units: 
-  {CHAPTERS}
+grammar_question_types_guide: |
+  ## Grammar Question Type Guidelines
 
-  Learning Outcomes: 
-  {UNIT_WISE_LEARNING_OUTCOMES}
+  When generating questions of grammar types, follow these rules:
+
+  - **Grammar: Choose the correct option** — Provide exactly 4 grammatically distinct options. The `answer` field must match one option exactly.
+  - **Grammar: Fill in the blanks with correct words/forms** — The `question` field contains the sentence with `___`. The `keyAnswer` field contains the correct word/phrase.
+  - **Grammar: Identify and correct the error in the sentence** — The `question` field contains the erroneous sentence. The `keyAnswer` contains the corrected sentence and a brief explanation.
+
+  Ensure all grammar questions are drawn from the unit's grammar topics listed above.
+
+question_bank_parts_gen_retrieval_query_template: |
+  Generate questions by following the rules listed below. `keyAnswer` field must be non-empty if the question model supports it.
+
+  Unit: {CHAPTER}
+
+  Learning Outcomes:
+  {LEARNING_OUTCOMES}
+
+  Rules by question type:
+  {RULES}
 
 question_bank_parts_gen: |
       You are a specialist in educational assessment design with advanced expertise in Bloom's Taxonomy and question generation. Your task is to generate a bank of unique, high-quality questions that are aligned with the provided learning outcomes, textbook content, and cognitive objectives. Use the RAG (Retrieval-Augmented Generation) approach to reference textbook content for the specified chapters (units).
@@ -54,7 +69,7 @@ question_bank_parts_gen: |
         Reference the relevant unit’s learning outcomes and textbook sections to ensure the questions are directly tied to the curriculum content.
         Each question should clearly address a specific learning outcome from the designated chapter or unit.
 
-      3.Higher-Order Thinking:
+      3. Higher-Order Thinking:
         Go beyond mere recall or procedural tasks. Each question should involve multi-step reasoning, application to real-world contexts, and, where appropriate, require justification or alternative solutions.
 
       4. Adaptability:
@@ -88,7 +103,7 @@ question_bank_distribution: |
   ---
 
   ## Existing Question Template
-  A predefined question template (JSON) is provided, specifying question types, the number of questions, and marks per question. Your role is to **add** the `question_distribution` for each question type. The template is given as:
+  A predefined question template (JSON) is provided, specifying question types, the number of questions, and marks per question. Your role is to generate question distribution for each question type. The template is given as:
 
   ```json
   {TEMPLATE_JSON}

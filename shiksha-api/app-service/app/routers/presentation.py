@@ -65,7 +65,7 @@ async def _ja_lock(key):
 @router.post("/job")
 async def create_job(
     user_id: XUserIDHeader,
-    content_length: int = Header(lt=settings.pres_upload_max_filesize),
+    content_length: int = Header(lt=settings.pres_upload_max_filesize),  # bail early
     textbook_file: UploadFile = File(...),
     slides: int | None = Form(None, ge=1, le=settings.pres_max_slide_count),
     instruction: str | None = Form(None, max_length=settings.pres_max_instruction_size),
@@ -78,8 +78,9 @@ async def create_job(
 
     filename = textbook_file.filename
     if not filename: raise HTTPException(status_code=400, detail="Unsupported file type (cannot read filename)")
+    if textbook_file.size is not None and textbook_file.size > settings.pres_upload_max_filesize: raise HTTPException(status_code=400, detail="Bad file size")  # bail early
     try:
-        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, content_length, ALLOWED_MIMES)
+        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, ALLOWED_MIMES, settings.pres_download_chunk_size, settings.pres_upload_max_filesize)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return await service.jobs.create(user_id, textbook_path, textbook_mime, slides, instruction, tags)

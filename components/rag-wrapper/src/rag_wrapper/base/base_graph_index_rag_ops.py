@@ -1,8 +1,10 @@
-import logging
+import asyncio
 import uuid
-from abc import ABC, abstractmethod
-from typing import Any, List, Dict, Optional, Union
+import json
+from abc import abstractmethod
+from typing import Any, List, Dict, Optional, TypeVar, Union
 
+from pydantic import BaseModel
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -10,19 +12,18 @@ from tenacity import (
     retry_if_exception_type,
     retry_if_result,
 )
-from llama_index.core.chat_engine.types import ChatMode
 from llama_index.core import (
+    QueryBundle,
     StorageContext,
-    Document,
     PropertyGraphIndex,
     get_response_synthesizer,
-    Settings,
 )
 from llama_index.core.llms import ChatMessage, LLM
-from llama_index.core.schema import TransformComponent
-from llama_index.core.vector_stores import MetadataFilters, ExactMatchFilter
+from llama_index.core.query_engine import RetrieverQueryEngine
+from llama_index.core.schema import TransformComponent, TextNode
+from llama_index.core.graph_stores.types import EntityNode, Relation
 
-from llama_index.core.callbacks import CallbackManager, TokenCountingHandler
+from llama_index.core.callbacks import TokenCountingHandler
 import traceback
 from llama_index.core.response_synthesizers import (
     ResponseMode,
@@ -31,9 +32,13 @@ from llama_index.core.indices.property_graph import (
     SimpleLLMPathExtractor,
     ImplicitPathExtractor,
 )
+from rag_wrapper.base.base_rag_ops import BaseRagOps
 
 
-class BaseGraphIndexRagOps(ABC):
+T = TypeVar("T", bound=BaseModel)
+
+
+class BaseGraphIndexRagOps(BaseRagOps):
     """
     Abstract base class for RAG operations using LlamaIndex Property Graph.
 
@@ -62,8 +67,8 @@ class BaseGraphIndexRagOps(ABC):
         self,
         completion_llm: LLM,
         emb_llm: Optional[LLM] = None,
-        similarity_top_k: int = 3,
-        response_mode: str = "tree_summarize",
+        similarity_top_k: int = 6,
+        response_mode: ResponseMode = ResponseMode.TREE_SUMMARIZE,
         kg_extractors: Optional[List[TransformComponent]] = None,
         path_depth: int = 1,
         include_text: bool = True,
@@ -81,16 +86,10 @@ class BaseGraphIndexRagOps(ABC):
             include_text: Whether to include source chunk text with retrieved paths (default: True)
             embed_kg_nodes: Whether to embed knowledge graph nodes (default: True)
         """
-        self.emb_llm = emb_llm
-        self.completion_llm = completion_llm
-        self.similarity_top_k = similarity_top_k
-        self.response_mode = response_mode
+        super().__init__(completion_llm, emb_llm, similarity_top_k, response_mode)
         self.path_depth = path_depth
         self.include_text = include_text
         self.embed_kg_nodes = embed_kg_nodes
-        self.logger = logging.getLogger(__name__)
-        self.token_counter = TokenCountingHandler()
-        self._callback_manager = CallbackManager([self.token_counter])
 
         self._add_token_counter_to_llm(
             self.completion_llm
@@ -120,23 +119,6 @@ class BaseGraphIndexRagOps(ABC):
             ):
                 llm.callback_manager.add_handler(self.token_counter)
 
-    def _get_response_mode(self) -> ResponseMode:
-        """Convert string response mode to ResponseMode enum."""
-        mode_mapping = {
-            "tree_summarize": ResponseMode.TREE_SUMMARIZE,
-            "simple_summarize": ResponseMode.SIMPLE_SUMMARIZE,
-            "generation": ResponseMode.GENERATION,
-            "refine": ResponseMode.REFINE,
-            "compact": ResponseMode.COMPACT,
-            "compact_accumulate": ResponseMode.COMPACT_ACCUMULATE,
-            "accumulate": ResponseMode.ACCUMULATE,
-        }
-
-        if isinstance(self.response_mode, str):
-            return mode_mapping.get(
-                self.response_mode.lower(), ResponseMode.TREE_SUMMARIZE
-            )
-        return self.response_mode
 
     def add_kg_extractor(self, extractor: Any) -> None:
         """Add a knowledge graph extractor to the list of extractors.
@@ -147,68 +129,6 @@ class BaseGraphIndexRagOps(ABC):
         if self.kg_extractors is None:
             self.kg_extractors = []
         self.kg_extractors.append(extractor)
-
-    def _create_metadata_filters(
-        self, metadata_filter: Optional[Dict[str, str]] = None
-    ) -> Optional[MetadataFilters]:
-        """Create metadata filters from key-value pairs."""
-        if not metadata_filter:
-            return None
-
-        filter_list = []
-        for key, value in metadata_filter.items():
-            filter_list.append(ExactMatchFilter(key=key, value=value))
-        return MetadataFilters(filters=filter_list)
-
-    def _create_documents_from_text_chunks(
-        self, text_chunks: List[str], metadata: dict = None
-    ) -> tuple[List[Document], List[str]]:
-        """Create Document objects from text chunks with optional metadata."""
-        if not text_chunks:
-            raise ValueError("text_chunks cannot be empty")
-
-        documents = []
-        doc_ids = []
-
-        for text in text_chunks:
-            if not text.strip():  # Skip empty or whitespace-only chunks
-                continue
-
-            doc_id = f"doc_id_{uuid.uuid4()}"
-            doc_chunk = Document(text=text, id_=doc_id)
-
-            if metadata:
-                doc_chunk.metadata = metadata.copy()
-
-            documents.append(doc_chunk)
-            doc_ids.append(doc_id)
-
-        if not documents:
-            raise ValueError("No valid text chunks provided after filtering")
-
-        return documents, doc_ids
-
-    def _log_retry_attempt(self, retry_state):
-        """Log retry attempts with detailed information."""
-        self.logger.warning(
-            f"Retrying {retry_state.fn.__name__} after {retry_state.attempt_number} attempts. "
-            f"Next attempt in {retry_state.next_action.sleep} seconds."
-        )
-
-    def _retry_on_empty_string_or_timeout_response(self, result) -> bool:
-        """Check if response indicates failure requiring retry."""
-        if hasattr(result, "response"):
-            response_text = str(result.response)
-        else:
-            response_text = str(result)
-
-        # Check for empty responses or known error patterns
-        return (
-            response_text == ""
-            or response_text == "504.0 GatewayTimeout"
-            or "timeout" in response_text.lower()
-            or len(response_text.strip()) == 0
-        )
 
     async def _query_with_retries(
         self,
@@ -221,44 +141,16 @@ class BaseGraphIndexRagOps(ABC):
         @retry(
             stop=stop_after_attempt(3),
             wait=wait_exponential(multiplier=1, min=1, max=10),
-            retry=(
-                retry_if_exception_type(Exception)
-                | retry_if_result(
-                    lambda result: self._retry_on_empty_string_or_timeout_response(
-                        result
-                    )
-                )
-            ),
+            retry=(retry_if_exception_type(Exception) | retry_if_result(self._retry_on_empty_string_or_timeout_response)),
             before_sleep=self._log_retry_attempt,
         )
         async def _aquery_with_retries():
             """Internal retry wrapper."""
             try:
-                # Create query engine with token tracking and sub-retrievers
-                query_engine_kwargs = {
-                    "llm": self.completion_llm,
-                    "response_synthesizer": get_response_synthesizer(
-                        llm=self.completion_llm,
-                        response_mode=self._get_response_mode(),
-                        callback_manager=self._callback_manager,
-                    ),
-                    "include_text": self.include_text,
-                    "similarity_top_k": self.similarity_top_k,
-                }
-
-                # Add sub_retrievers if provided, otherwise create default ones with correct LLM
-                if sub_retrievers:
-                    query_engine_kwargs["sub_retrievers"] = sub_retrievers
-                else:
-                    query_engine_kwargs["sub_retrievers"] = (
-                        self._create_default_sub_retrievers(metadata_filter)
-                    )
-
-                query_engine = self.rag_index.as_query_engine(**query_engine_kwargs)
-
-                # Generate response using the query engine
-                response = await query_engine.aquery(text_str)
-                return response
+                retriever = self.rag_index.as_retriever(sub_retrievers=sub_retrievers or self._create_default_sub_retrievers(metadata_filter), include_text=self.include_text, use_async=True)
+                response_synthesizer = get_response_synthesizer(llm=self.completion_llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
+                query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
+                return await query_engine.aquery(text_str)
             except Exception as e:
                 self.logger.error(traceback.format_exc())
                 raise e
@@ -295,16 +187,10 @@ class BaseGraphIndexRagOps(ABC):
                 )
 
         try:
-            answer = await self._query_with_retries(
-                text_str, sub_retrievers, metadata_filter
-            )
-
-            # Validate response quality
+            answer = await self._query_with_retries(text_str, sub_retrievers, metadata_filter)
             if self._retry_on_empty_string_or_timeout_response(answer):
                 raise ValueError(f"LLM RESPONSE IS NOT VALID: {answer}")
-
             return answer
-
         except Exception as e:
             self.logger.error(f"Query failed for text '{text_str[:50]}...': {e}")
             raise
@@ -315,6 +201,7 @@ class BaseGraphIndexRagOps(ABC):
         chat_history: List[ChatMessage],
         sub_retrievers: Optional[List[Any]] = None,
         metadata_filter: Optional[Dict[str, str]] = None,
+        output_cls: type[T] | None = None,
     ) -> Any:
         """
         Engage in conversational interaction with the RAG index using a chat engine.
@@ -338,35 +225,11 @@ class BaseGraphIndexRagOps(ABC):
                 )
 
         try:
-            # Create chat engine with context awareness
-            chat_engine_kwargs = {
-                "chat_mode": ChatMode.CONTEXT,
-                "llm": self.completion_llm,
-                "embed_model": self.emb_llm,
-                "include_text": self.include_text,
-                "similarity_top_k": self.similarity_top_k,
-            }
-
-            # Add sub_retrievers if provided, otherwise create default ones with correct LLM
-            if sub_retrievers:
-                chat_engine_kwargs["sub_retrievers"] = sub_retrievers
-            else:
-                chat_engine_kwargs["sub_retrievers"] = (
-                    self._create_default_sub_retrievers(metadata_filter)
-                )
-
-            chat_engine = self.rag_index.as_chat_engine(**chat_engine_kwargs)
-            if hasattr(chat_engine, "callback_manager"):
-                chat_engine.callback_manager = self._callback_manager
-
-            # Generate response with chat history context
-            response = await chat_engine.achat(curr_message, chat_history)
-
-            self.logger.debug(
-                f"Chat response generated for message: {curr_message[:50]}..."
-            )
-            return response.response
-
+            retriever = self.rag_index.as_retriever(sub_retrievers=sub_retrievers or self._create_default_sub_retrievers(metadata_filter), include_text=self.include_text, use_async=True)
+            llm = self.completion_llm if output_cls is None else self.completion_llm.as_structured_llm(output_cls=output_cls)
+            response_synthesizer = get_response_synthesizer(llm=llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
+            query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
+            return await query_engine.aquery(QueryBundle(query_str=f"{chr(10).join(f'{m.role}: {m.content}' for m in chat_history[-6:])}{chr(10)}user: {curr_message}" if chat_history else curr_message, custom_embedding_strs=[curr_message]))
         except Exception as e:
             self.logger.error(f"Chat failed for message '{curr_message[:50]}...': {e}")
             self.logger.error(traceback.format_exc())
@@ -405,9 +268,11 @@ class BaseGraphIndexRagOps(ABC):
             extractors_to_use = kg_extractors or self.kg_extractors
 
             # Create a new property graph index from documents
-            self.rag_index = PropertyGraphIndex.from_documents(
+            self.rag_index = await asyncio.to_thread(
+                PropertyGraphIndex.from_documents,
                 documents,
                 property_graph_store=self.property_graph_store,
+                vector_store=self.vector_store,
                 embed_model=self.emb_llm if self.embed_kg_nodes else None,
                 kg_extractors=extractors_to_use,
                 transformations=transformations,
@@ -468,7 +333,7 @@ class BaseGraphIndexRagOps(ABC):
 
             # Insert documents
             for document in documents:
-                self.rag_index.insert(document)
+                await asyncio.to_thread(self.rag_index.insert, document)
 
             self.logger.info(f"Successfully inserted {len(documents)} text chunks")
 
@@ -495,8 +360,7 @@ class BaseGraphIndexRagOps(ABC):
             raise ValueError("Index must be created before deleting documents")
 
         try:
-            for doc_id in doc_ids:
-                self.rag_index.delete(doc_id)
+            await asyncio.gather(*[asyncio.to_thread(self.rag_index.delete, doc_id) for doc_id in doc_ids])
 
             self.logger.info(f"Successfully deleted {len(doc_ids)} documents")
 
@@ -541,40 +405,282 @@ class BaseGraphIndexRagOps(ABC):
             vector_store: Optional existing vector store
             **kwargs: Additional arguments for PropertyGraphIndex.from_existing
         """
+
+        # Update storage context
+        storage_context = StorageContext.from_defaults(property_graph_store=property_graph_store, vector_store=vector_store)
+        # Create index from existing stores
+        rag_index = PropertyGraphIndex.from_existing(
+            property_graph_store=property_graph_store,
+            vector_store=vector_store,
+            embed_model=self.emb_llm if self.embed_kg_nodes else None,
+            embed_kg_nodes=self.embed_kg_nodes,
+            callback_manager=self._callback_manager,
+            **kwargs,
+        )
+
+        self.logger.info("Successfully created index from existing graph store")
+        # Setup default sub-retrievers if not already set (kept for backwards compatibility)
+        if not self.sub_retrievers:
+            self.sub_retrievers = []
+
+        self.vector_store = vector_store
+        self.rag_index = rag_index
+        self.storage_context = storage_context
+        self.property_graph_store = property_graph_store
+
+    async def ingest_networkx_graph_nodes(
+        self,
+        networkx_graph_json: Union[str, Dict],
+        content_field: str = "content",
+    ) -> Dict[str, int]:
+        """
+        Ingest nodes and edges from a NetworkX graph JSON and convert to LlamaIndex objects.
+
+        This function directly processes NetworkX graph JSON data and converts nodes/edges to
+        LlamaIndex EntityNode, TextNode, and Relation objects for insertion into Neo4j and Qdrant.
+        No KG extractors are used since all relationships are already present in the JSON.
+
+        Args:
+            networkx_graph_json: Either a JSON string or dictionary containing the NetworkX graph data
+            content_field: The field name in each node that contains the text content for embeddings (default: "content")
+
+        Returns:
+            Dictionary containing:
+                - "entity_nodes_added": Count of entity nodes that were created
+                - "text_nodes_added": Count of text nodes that were created
+                - "relations_added": Count of relation objects that were created
+
+        Raises:
+            ValueError: If the JSON structure is invalid or content field is missing
+            KeyError: If required graph structure is not found
+        """
         try:
-            self.property_graph_store = property_graph_store
-            self.vector_store = vector_store
+            # Step 1: Parse and validate input JSON
+            graph_data = self._parse_networkx_json(networkx_graph_json)
+            nodes, edges = self._extract_nodes_and_edges(graph_data)
 
-            # Update storage context
-            if self.vector_store:
-                self.storage_context = StorageContext.from_defaults(
-                    property_graph_store=self.property_graph_store,
-                    vector_store=self.vector_store,
-                )
-            else:
-                self.storage_context = StorageContext.from_defaults(
-                    property_graph_store=self.property_graph_store,
-                )
+            # Step 2: Initialize index if needed
+            if not self.property_graph_store:
+                await self.initiate_index()
 
-            # Create index from existing stores
-            self.rag_index = PropertyGraphIndex.from_existing(
-                property_graph_store=self.property_graph_store,
-                vector_store=self.vector_store,
-                embed_model=self.emb_llm if self.embed_kg_nodes else None,
-                embed_kg_nodes=self.embed_kg_nodes,
-                callback_manager=self._callback_manager,
-                **kwargs,
+            # Step 3: Process nodes and create LlamaIndex objects
+            entity_nodes, text_nodes = self._process_networkx_nodes(
+                nodes, content_field
             )
 
-            # Setup default sub-retrievers if not already set (kept for backwards compatibility)
-            if not self.sub_retrievers:
-                self.sub_retrievers = []
+            # Step 4: Process edges and create relation objects
+            relations = self._process_networkx_edges(edges)
 
-            self.logger.info("Successfully created index from existing graph store")
+            self.logger.info(
+                f"Created {len(entity_nodes)} entity nodes, {len(text_nodes)} text nodes, and {len(relations)} relations"
+            )
 
+            # Step 5: Store data in graph and vector stores
+            self._store_entity_nodes_and_relations(entity_nodes, relations)
+            self._store_text_nodes_with_embeddings(text_nodes)
+
+            # Step 6: Create index and persist
+            self.from_existing_graph_store(
+                property_graph_store=self.property_graph_store,
+                vector_store=self.vector_store if self.embed_kg_nodes else None,
+            )
+            await self.persist_index()
+
+            self.logger.info(
+                f"Successfully ingested NetworkX graph: {len(entity_nodes)} nodes, {len(relations)} relations"
+            )
+
+            return {
+                "entity_nodes_added": len(entity_nodes),
+                "text_nodes_added": len(text_nodes),
+                "relations_added": len(relations),
+            }
+
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format: {e}")
         except Exception as e:
-            self.logger.error(f"Failed to create index from existing graph store: {e}")
-            raise
+            self.logger.error(f"Error ingesting NetworkX graph: {e}")
+            raise e
+
+    def _parse_networkx_json(self, networkx_graph_json: Union[str, Dict]) -> Dict:
+        """Parse NetworkX JSON input into a dictionary."""
+        if isinstance(networkx_graph_json, str):
+            return json.loads(networkx_graph_json)
+        return networkx_graph_json
+
+    def _extract_nodes_and_edges(
+        self, graph_data: Dict
+    ) -> tuple[List[Dict], List[Dict]]:
+        """Extract nodes and edges from NetworkX graph data structure."""
+        try:
+            networkx_data = graph_data["graph_data"]["networkx_data"]["directed"]
+        except KeyError as e:
+            missing_key = str(e).strip("'\"")
+            raise KeyError(
+                f"Required key '{missing_key}' not found in graph data structure. Expected path: graph_data['graph_data']['networkx_data']['directed']"
+            )
+
+        # Validate required keys exist
+        if "nodes" not in networkx_data:
+            raise KeyError("'nodes' key not found in the directed graph data")
+        if "links" not in networkx_data:
+            raise KeyError("'links' key not found in the directed graph data")
+
+        nodes = networkx_data["nodes"]
+        edges = networkx_data["links"]  # NetworkX JSON format uses "links" for edges
+
+        if not nodes:
+            raise ValueError("No nodes found in the graph data")
+
+        return nodes, edges
+
+    def _process_networkx_nodes(
+        self,
+        nodes: List[Dict],
+        content_field: str,
+    ) -> tuple[List[EntityNode], List[TextNode]]:
+        """Convert NetworkX nodes to LlamaIndex EntityNode and TextNode objects."""
+        # Define node field constants
+        NODE_ID_FIELD = "id"
+        NODE_TYPE_FIELD = "type"
+        NODE_NAME_FIELD = "name"
+        ENTITY_NODE_FIELDS = {NODE_ID_FIELD, NODE_TYPE_FIELD, NODE_NAME_FIELD}
+
+        entity_nodes = []
+        text_nodes = []
+
+        for node in nodes:
+            node_id = str(node.get(NODE_ID_FIELD, f"node_{uuid.uuid4()}"))
+            entity_label = node.get(NODE_TYPE_FIELD, "entity")
+            node_name = node.get(NODE_NAME_FIELD, "default_name")
+
+            # Create entity properties (exclude content and core entity fields)
+            entity_properties = self._extract_entity_properties(
+                node, ENTITY_NODE_FIELDS
+            )
+
+            # Create EntityNode
+            entity_node = EntityNode(
+                label=entity_label,
+                name=node_name,
+                properties=entity_properties,
+            )
+            entity_nodes.append(entity_node)
+
+            # Create TextNode if content exists and embedding is enabled
+            text_node = self._create_text_node_if_valid(
+                node, node_id, content_field, entity_properties
+            )
+            if text_node:
+                text_nodes.append(text_node)
+
+        return entity_nodes, text_nodes
+
+    def _extract_entity_properties(
+        self, node: Dict, excluded_fields: set
+    ) -> Dict[str, str]:
+        """Extract entity properties from node, excluding content and core fields."""
+        entity_properties = {}
+
+        for key, value in node.items():
+            if key not in excluded_fields:
+                if isinstance(value, (dict, list)):
+                    entity_properties[key] = json.dumps(value)
+                else:
+                    entity_properties[key] = str(value)
+
+        return entity_properties
+
+    def _create_text_node_if_valid(
+        self,
+        node: Dict,
+        node_id: str,
+        content_field: str,
+        entity_properties: Dict[str, str],
+    ) -> Optional[TextNode]:
+        """Create TextNode for embedding if content is valid and embedding is enabled."""
+        # Check if content exists and embedding is enabled
+        has_content = content_field in node and node[content_field]
+        if not (has_content and self.embed_kg_nodes):
+            self.logger.warning(
+                f"Node {node_id} missing '{content_field}' field, skipping text node creation or self.embed_kg_nodes is False"
+            )
+            return None
+
+        content = node[content_field]
+        if not content.strip():
+            self.logger.warning(
+                f"Node {node_id} has empty '{content_field}' field, skipping text node creation"
+            )
+            return None
+
+        # Create text node
+        text_node = TextNode(id_=node_id, text=content, metadata=entity_properties)
+
+        return text_node
+
+    def _process_networkx_edges(self, edges: List[Dict]) -> List[Relation]:
+        """Convert NetworkX edges to LlamaIndex Relation objects."""
+        relations = []
+
+        for edge in edges:
+            source_id = str(edge.get("source", ""))
+            target_id = str(edge.get("target", ""))
+
+            if not source_id or not target_id:
+                self.logger.warning(f"Edge missing source or target: {edge}")
+                continue
+
+            # Extract edge properties
+            edge_properties = {
+                "confidence": str(edge.get("confidence", "1.0")),
+                "description": str(edge.get("description", "")),
+            }
+
+            relation_label = edge.get("relation_type", "related")
+            relation = Relation(
+                label=relation_label,
+                source_id=source_id,
+                target_id=target_id,
+                properties=edge_properties,
+            )
+            relations.append(relation)
+
+        return relations
+
+    def _store_entity_nodes_and_relations(
+        self, entity_nodes: List[EntityNode], relations: List[Relation]
+    ) -> None:
+        """Store entity nodes and relations in the property graph store."""
+        if entity_nodes:
+            self.property_graph_store.upsert_nodes(entity_nodes)
+            self.logger.info(
+                f"Inserted {len(entity_nodes)} entity nodes into property graph store"
+            )
+
+        if relations:
+            self.property_graph_store.upsert_relations(relations)
+            self.logger.info(
+                f"Inserted {len(relations)} relations into property graph store"
+            )
+
+    def _store_text_nodes_with_embeddings(self, text_nodes: List[TextNode]) -> None:
+        """Generate embeddings for text nodes and store in vector store."""
+        if not (text_nodes and self.vector_store and self.emb_llm):
+            return
+
+        # Generate embeddings for text nodes
+        for node in text_nodes:
+            if hasattr(self.emb_llm, "get_text_embedding"):
+                node.embedding = self.emb_llm.get_text_embedding(node.text)
+            elif hasattr(self.emb_llm, "_get_text_embedding"):
+                node.embedding = self.emb_llm._get_text_embedding(node.text)
+
+        # Add text nodes to vector store
+        self.vector_store.add(text_nodes)
+        self.logger.info(
+            f"Inserted {len(text_nodes)} text nodes with embeddings into vector store"
+        )
 
     def _create_default_sub_retrievers(
         self, metadata_filter: Optional[Dict[str, str]]
@@ -605,6 +711,7 @@ class BaseGraphIndexRagOps(ABC):
             self._add_token_counter_to_llm(self.emb_llm)
             return VectorContextRetriever(
                 graph_store=self.property_graph_store,
+                vector_store=self.vector_store,
                 embed_model=self.emb_llm,
                 similarity_top_k=self.similarity_top_k,
                 path_depth=self.path_depth,

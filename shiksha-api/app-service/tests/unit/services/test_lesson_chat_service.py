@@ -13,64 +13,49 @@ from app.models.chat import LessonChatRequest, ConversationMessage, MessageRole
 class TestLessonChatServiceChapterParsing:
     """Test chapter ID parsing logic."""
 
-    def test_extract_details_with_valid_chapter_id(self, mock_settings):
+    def test_extract_details_with_valid_chapter_id(self):
         """Test extracting details from valid chapter ID."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
+        service = LessonChatService.__new__(LessonChatService)
 
-            service = LessonChatService()
+        chapter_id = "Board=CBSE,Medium=English,Grade=10,Subject=Science,Number=6,Title=Life Processes"
+        details = service._extract_details(chapter_id)
 
-            chapter_id = "Board=CBSE,Medium=English,Grade=10,Subject=Science,Number=6,Title=Life Processes"
-            details = service._extract_details(chapter_id)
+        assert details["BOARD"] == "CBSE"
+        assert details["MEDIUM"] == "English"
+        assert details["GRADE"] == "10"
+        assert details["SUBJECT"] == "Science"
+        assert details["CHAPTER_NUMBER"] == "6"
+        assert details["CHAPTER_TITLE"] == "Life Processes"
 
-            assert details["BOARD"] == "CBSE"
-            assert details["MEDIUM"] == "English"
-            assert details["GRADE"] == "10"
-            assert details["SUBJECT"] == "Science"
-            assert details["CHAPTER_NUMBER"] == "6"
-            assert details["CHAPTER_TITLE"] == "Life Processes"
-
-    def test_extract_details_with_special_characters_in_title(self, mock_settings):
+    def test_extract_details_with_special_characters_in_title(self):
         """Test extracting details when title has special characters."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
+        service = LessonChatService.__new__(LessonChatService)
 
-            service = LessonChatService()
+        chapter_id = "Board=ICSE,Medium=Hindi,Grade=8,Subject=Math,Number=1,Title=Rational Numbers: Properties & Operations"
+        details = service._extract_details(chapter_id)
 
-            chapter_id = "Board=ICSE,Medium=Hindi,Grade=8,Subject=Math,Number=1,Title=Rational Numbers: Properties & Operations"
-            details = service._extract_details(chapter_id)
+        assert details["CHAPTER_TITLE"] == "Rational Numbers: Properties & Operations"
 
-            assert details["CHAPTER_TITLE"] == "Rational Numbers: Properties & Operations"
-
-    def test_extract_details_raises_error_with_invalid_format(self, mock_settings):
+    def test_extract_details_raises_error_with_invalid_format(self):
         """Test error raised with invalid chapter ID format."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE"):
+        service = LessonChatService.__new__(LessonChatService)
 
-            service = LessonChatService()
+        invalid_chapter_id = "InvalidFormat"
 
-            invalid_chapter_id = "InvalidFormat"
-
-            with pytest.raises(ValueError, match="Invalid chapter_id format"):
-                service._extract_details(invalid_chapter_id)
+        with pytest.raises(ValueError, match="Invalid chapter_id format"):
+            service._extract_details(invalid_chapter_id)
 
 
 class TestLessonChatServiceCall:
     """Test LessonChatService __call__ method."""
 
     @pytest.mark.asyncio
-    async def test_call_uses_cached_rag_adapter(self, mock_settings, sample_lesson_chat_request, mock_rag_adapter_cache):
+    async def test_call_uses_cached_rag_adapter(self, sample_lesson_chat_request, mock_rag_adapter_cache):
         """Test service uses cached RAG adapter."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
+        with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
+             patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
+             patch("app.services.lesson_chat_service.new_rag_llm"), \
+             patch("app.services.lesson_chat_service.new_rag_embed"):
 
             mock_template = Mock()
             mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
@@ -80,7 +65,7 @@ class TestLessonChatServiceCall:
             mock_adapter = AsyncMock()
             mock_adapter.initiate_index = AsyncMock()
             mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
-            mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
+            mock_rag_adapter_cache.get = AsyncMock(return_value=mock_adapter)
 
             service = LessonChatService()
 
@@ -88,38 +73,15 @@ class TestLessonChatServiceCall:
 
             assert isinstance(result, dict)
             assert result["response"] == "Test response"
-            mock_rag_adapter_cache.get_or_create_adapter.assert_called_once()
+            mock_rag_adapter_cache.get.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_call_initiates_index(self, mock_settings, sample_lesson_chat_request, mock_rag_adapter_cache):
-        """Test service initiates index before chatting."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
-
-            mock_template = Mock()
-            mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
-            MockPromptTemplate.return_value = mock_template
-
-            mock_adapter = AsyncMock()
-            mock_adapter.initiate_index = AsyncMock()
-            mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
-            mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
-
-            service = LessonChatService()
-
-            await service(sample_lesson_chat_request)
-
-            mock_adapter.initiate_index.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_call_builds_system_message_with_chapter_details(self, mock_settings, sample_lesson_chat_request, mock_rag_adapter_cache):
+    async def test_call_builds_system_message_with_chapter_details(self, sample_lesson_chat_request, mock_rag_adapter_cache):
         """Test service builds system message with chapter details."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
+        with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
+             patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
+             patch("app.services.lesson_chat_service.new_rag_llm"), \
+             patch("app.services.lesson_chat_service.new_rag_embed"):
 
             mock_template = Mock()
             mock_template.get_prompt_with_variables = Mock(return_value="Teaching Science for Grade 10")
@@ -128,7 +90,7 @@ class TestLessonChatServiceCall:
             mock_adapter = AsyncMock()
             mock_adapter.initiate_index = AsyncMock()
             mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
-            mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
+            mock_rag_adapter_cache.get = AsyncMock(return_value=mock_adapter)
 
             service = LessonChatService()
 
@@ -144,12 +106,12 @@ class TestLessonChatServiceCall:
             assert kwargs["SUBJECT"] == "Science"
 
     @pytest.mark.asyncio
-    async def test_call_converts_messages_to_llamaindex_format(self, mock_settings, sample_lesson_chat_request, mock_rag_adapter_cache):
+    async def test_call_converts_messages_to_llamaindex_format(self, sample_lesson_chat_request, mock_rag_adapter_cache):
         """Test service converts messages to LlamaIndex ChatMessage format."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
+        with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
+             patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
+             patch("app.services.lesson_chat_service.new_rag_llm"), \
+             patch("app.services.lesson_chat_service.new_rag_embed"):
 
             mock_template = Mock()
             mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
@@ -158,7 +120,7 @@ class TestLessonChatServiceCall:
             mock_adapter = AsyncMock()
             mock_adapter.initiate_index = AsyncMock()
             mock_adapter.chat_with_index = AsyncMock(return_value={"response": "Test response", "source_nodes": []})
-            mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
+            mock_rag_adapter_cache.get = AsyncMock(return_value=mock_adapter)
 
             service = LessonChatService()
 
@@ -177,39 +139,17 @@ class TestLessonChatServiceCall:
             assert len(chat_history) > 0
             assert chat_history[0].role == "system"
 
-    @pytest.mark.asyncio
-    async def test_call_handles_rag_adapter_errors(self, mock_settings, sample_lesson_chat_request, mock_rag_adapter_cache):
-        """Test service handles RAG adapter errors."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
-
-            mock_template = Mock()
-            mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
-            MockPromptTemplate.return_value = mock_template
-
-            # Simulate adapter error
-            mock_adapter = AsyncMock()
-            mock_adapter.initiate_index = AsyncMock(side_effect=Exception("Index error"))
-            mock_rag_adapter_cache.get_or_create_adapter = AsyncMock(return_value=mock_adapter)
-
-            service = LessonChatService()
-
-            with pytest.raises(Exception, match="Index error"):
-                await service(sample_lesson_chat_request)
-
 
 class TestLessonChatServiceCleanup:
     """Test LessonChatService cleanup method."""
 
     @pytest.mark.asyncio
-    async def test_cleanup_clears_rag_adapter_cache(self, mock_settings, mock_rag_adapter_cache):
+    async def test_cleanup_clears_rag_adapter_cache(self, mock_rag_adapter_cache):
         """Test cleanup clears RAG adapter cache."""
-        with patch("app.services.lesson_chat_service.settings", mock_settings), \
-             patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.NativeAsyncAzureOpenAI"), \
-             patch("app.services.lesson_chat_service.RAG_ADAPTER_CACHE", mock_rag_adapter_cache):
+        with patch("app.services.lesson_chat_service.PromptTemplate"), \
+             patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
+             patch("app.services.lesson_chat_service.new_rag_llm"), \
+             patch("app.services.lesson_chat_service.new_rag_embed"):
 
             service = LessonChatService()
 

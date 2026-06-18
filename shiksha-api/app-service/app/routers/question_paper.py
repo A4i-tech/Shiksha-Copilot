@@ -1,22 +1,36 @@
+from contextlib import asynccontextmanager
 from typing import List, Dict, Any
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Request, status
 from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
+from pydantic import BaseModel
 
 from app.models.question_paper import (
+    GeneratedTemplate,
     QBQuestionDistributionGenerationRequest,
-    QBTemplateGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
-    Template,
+    get_question_types_for_subject,
 )
-from app.services.question_paper_service import QUESTION_PAPER_SERVICE_INSTANCE
+from app.services.question_paper_service import QuestionPaperService
 from app.services.translation_service import TranslationService
 import logging
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.qp_svc = QuestionPaperService()
+    async with app.state.qp_svc:
+        yield
+
+
+def svc(request: Request) -> QuestionPaperService:
+    return request.app.state.qp_svc
+
+
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/question-paper", tags=["Question Paper Generation"])
+router = APIRouter(prefix="/question-paper", tags=["Question Paper Generation"], lifespan=lifespan)
 
 # ISO 639-1 Language Code Mapping
 LANGUAGE_MAP = {
@@ -106,15 +120,31 @@ async def translate_json_content_to_kannada(
     return translated_data
 
 
+class QuestionTypeItem(BaseModel):
+    key: str
+    value: str
+    name: str
+
+
+@router.get("/question-types")
+async def get_question_types(subject: str) -> List[QuestionTypeItem]:
+    """Return question types available for the given subject."""
+    types = get_question_types_for_subject(subject)
+    return [
+        QuestionTypeItem(key=qt.name, value=qt.value, name=qt.display_name)
+        for qt in types
+    ]
+
+
 @router.post("/by-parts", summary="Generate Complete Question Paper by Parts")
-async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
+async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationRequest, service: QuestionPaperService = Depends(svc)) -> QuestionBankResponse:
     """
     Creates a comprehensive question paper using AI generation with specified templates,
     learning outcomes, and question distributions across different sections.
     """
     try:
         logger.info(f"Processing question paper generation request for user: {request.user_id}")
-        response = await QUESTION_PAPER_SERVICE_INSTANCE.generate_question_bank_by_parts(request)
+        response = await service.generate_question_bank_by_parts(request)
         logger.info(f"Successfully generated question paper for user: {request.user_id}\nResponse: {response.model_dump_json(indent=2)}")
         return response
     except ValueError as e:
@@ -126,29 +156,13 @@ async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationR
 
 
 @router.post("/questiondistribution", summary="Generate Question Distribution Templates")
-async def get_question_distribution(request: QBQuestionDistributionGenerationRequest) -> List[Template]:
+async def get_question_distribution(request: QBQuestionDistributionGenerationRequest, service: QuestionPaperService = Depends(svc)) -> List[GeneratedTemplate]:
     """
     Creates optimized question paper templates based on specified marks distribution,
     objective distribution, and educational parameters.
     """
     try:
-        return await QUESTION_PAPER_SERVICE_INSTANCE.get_question_distribution(request)
+        return await service.get_question_distribution(request)
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.") from e
-
-
-@router.post("/template", summary="Generate Question Paper Templates (Static)")
-async def get_question_paper_template_v2(request: QBTemplateGenerationRequest) -> List[Template]:
-    """
-    Provides predefined question paper templates based on standard educational
-    configurations and curriculum requirements.
-    """
-    try:
-        return request.get_template()
-    except ValueError as e:
-        logger.exception(f"Configuration error in question paper template generation: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Configuration error: {str(e)}") from e
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate question paper template") from e

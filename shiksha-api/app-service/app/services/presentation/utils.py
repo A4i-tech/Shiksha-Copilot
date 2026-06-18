@@ -5,11 +5,13 @@ import os
 import shutil
 import tempfile
 from typing import IO, Literal
+import aiofiles
 import aiohttp
 import pathlib
 from app.config import settings
 from app.models.presentation import ImageSearchResult, ImageSearchResults, YouTubeVideoResult
 from app.utils.storage import Storage
+from app.utils.utils import local_unique_id
 from fastapi import UploadFile
 import magic
 from pydantic import HttpUrl, validate_call
@@ -178,26 +180,27 @@ async def resolve_image(image: str, is_url: bool, storage: Storage | None = None
         return BytesIO(await resp.read())
 
 
-async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, n: int, allowed_mimes: set[str]) -> tuple[str, str]:
+async def save_file_with_hash(storage: Storage, file: UploadFile, filename: str, allowed_mimes: set[str], chunk_size: int, max_size: int) -> tuple[str, str]:
     suffix = pathlib.Path(filename).suffix.lower()
     sha256 = hashlib.sha256()
-    with tempfile.NamedTemporaryFile(suffix=suffix) as f:
-        pending = n
-        while chunk := await file.read(min(pending, 8192)):
-            f.write(chunk)
-            sha256.update(chunk)
-            pending -= len(chunk)
-            if pending == 0:
-                break
+    total = 0
+    async with aiofiles.tempfile.NamedTemporaryFile(suffix=suffix) as f:
+        while buf := await file.read(chunk_size):
+            total += len(buf)
+            if total > max_size: raise ValueError(f"Bad file size (expected <= {max_size}, got > {total})")
 
-        f.seek(0)
-        mime = magic.from_file(f.name, mime=True)
-        if mime not in allowed_mimes:
-            raise ValueError("Unexpected mime (%s)" % mime)
+            await f.write(buf)
+            sha256.update(buf)
 
-        f.seek(0)
+        await f.flush()
+        await f.seek(0)
+        path = pathlib.Path(str(f.name))
+        mime = await asyncio.to_thread(magic.from_file, path, mime=True)
+        if mime not in allowed_mimes: raise ValueError("Unexpected mime (%s)" % mime)
+
         final_name = f"{sha256.hexdigest()}{suffix}"
-        await storage.write_bytes(storage.path("uploads", final_name), pathlib.Path(f.name))
+        await f.seek(0)
+        await storage.write_bytes(storage.path("uploads", final_name), path)
     return final_name, mime
 
 
@@ -208,18 +211,10 @@ _DUMMY_CDN = "cdn.shiksha.local"
 
 
 def randomize_url(url: str, counter: int) -> str:
-    # key really does not matter here, wee aren't aiming for crypto-secure but rather 'random-enough'. determinism
-    # does not matter either - we just need to generate a sufficiently non-sequential stream of values. for instance,
-    # a stream such as ['xxea', 'xxeb', 'xxec'] is sequential (bad) - one char off and the llm has 'guessed' some other
-    # url mapping. the solution below works well for up to 65,536 generations, far more than the amount an agent
-    # would ever request during its runtime.
-    path = hashlib.blake2s(counter.to_bytes(2, "big"), key=b"shiksha-copilot", digest_size=4).hexdigest()
-
     # retain suffix (.jpg, .gif, etc.) - this is necessary for LLMs to reason about image type. for instance, a user
     # may make an explicit requirement to 'include GIFs in presentation' where the suffix would come handy.
     data = urlparse(url)
-    replacement = data.scheme + "://" + _DUMMY_CDN + "/" + path + pathlib.Path(data.path).suffix
-    return replacement
+    return data.scheme + "://" + _DUMMY_CDN + "/" + local_unique_id(counter) + pathlib.Path(data.path).suffix
 
 
 LibreOfficeOutputFormat = Literal["pdf", "html", "odp", "ppt", "pptx"]
