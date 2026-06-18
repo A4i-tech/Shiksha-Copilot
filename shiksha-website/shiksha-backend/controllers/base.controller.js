@@ -31,7 +31,7 @@ class BaseController {
 			const searchFilter = {};
 
 			if (search) {
-				const searchFields = ["name", "phone"];
+				const searchFields = ["identity.name", "identity.phone"];
 
 				const regexExpressions = searchFields.map((field) => ({
 					[field]: { $regex: new RegExp(search, "i") },

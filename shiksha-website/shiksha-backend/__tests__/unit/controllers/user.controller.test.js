@@ -22,7 +22,11 @@ describe("UserController", () => {
       params: {},
       body: {},
       query: {},
-      user: { _id: "user-123", name: "Test User", role: "teacher" },
+      user: {
+        _id: "user-123",
+        identity: { name: "Test User", phone: "9876543210" },
+        roles: ["teacher"],
+      },
       file: null
     };
 

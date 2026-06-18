@@ -9,8 +9,7 @@ const mongoose = require('mongoose');
  */
 const generateTestToken = (payload = {}, expiresIn = '1h') => {
   const defaultPayload = {
-    userId: new mongoose.Types.ObjectId().toString(),
-    role: 'TEACHER',
+    _id: new mongoose.Types.ObjectId().toString(),
     ...payload,
   };
 
@@ -23,9 +22,7 @@ const generateTestToken = (payload = {}, expiresIn = '1h') => {
  */
 const generateAdminToken = () => {
   return generateTestToken({
-    userId: new mongoose.Types.ObjectId().toString(),
-    role: 'ADMIN',
-    isAdmin: true,
+    _id: new mongoose.Types.ObjectId().toString(),
   });
 };
 
@@ -240,7 +237,7 @@ const createMockRequest = (options = {}) => {
     query: {},
     headers: {},
     user: null,
-    isAdmin: false,
+    permissions: [],
     file: null,
     files: [],
     ...options,

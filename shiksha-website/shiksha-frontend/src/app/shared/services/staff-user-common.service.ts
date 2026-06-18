@@ -12,12 +12,42 @@ export class StaffUserCommonService extends BaseRestService {
   baseUrl = environment.apiUrl;
 
   addUser(data: any, role: string): Observable<any> { 
-    this.setURI(role);
-    return this.post('create', data);
+    this.setUri('users');
+    const isTeacher = role === 'user';
+    return this.post('', {
+      identity: {
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+      },
+      roles: [data.role],
+      profiles: isTeacher
+        ? {
+            teacher: {
+              state: data.state,
+              zone: data.zone,
+              district: data.district,
+              block: data.block,
+              school: data.school,
+              preferredLanguage: 'en',
+              facilities: [],
+              classes: [],
+              isProfileCompleted: false,
+            },
+          }
+        : {
+            admin: {
+              state: data.state,
+              zones: data.zones,
+              districts: data.districts,
+            },
+          },
+    });
   }
 
   getUserDetails(id: string, role: string): Observable<any> {
-    this.setURI(role);
+    this.setUri('users');
     return this.get(`${id}`);
   }
 
@@ -61,35 +91,21 @@ export class StaffUserCommonService extends BaseRestService {
       params = params.set('search', search);
     }
     
-    if (from === 'user') {
-      return this.http.get<any>(`${this.baseUrl}/user/list`, { params: params });
-    } else {
-      return this.http.get<any>(`${this.baseUrl}/admin/list`, { params: params });
-    } 
+    params = params.set('filter[rolePermission]', from === 'user' ? 'dashboard.teacher.view' : 'dashboard.admin.view');
+    return this.http.get<any>(`${this.baseUrl}/users`, { params });
     
   }
 
   disableUser(id: string, role: string | undefined): Observable<any> {
-    this.setURI(role);
-    if(role === 'user'){
-      return this.put(`deactivate/${id}`,{});
-    }
-    else{
-      return this.delete(`${id}`);
-    }
+    return this.http.put(`${this.baseUrl}/users/${id}/deactivate`, {});
   }
 
   activateUser(id:any, role: string | undefined){
-    this.setURI(role);
-    return this.put(`activate/${id}`,{});
+    return this.http.put(`${this.baseUrl}/users/${id}/activate`, {});
   }
 
   bulkUpload(formdata: any, role: string | undefined): Observable<any>{   
-    if (role === 'user') {
-      return this.http.post(`${this.baseUrl}/user/bulk-upload`,formdata);
-    } else {
-      return this.http.post(`${this.baseUrl}/admin/bulk-upload`,formdata);
-    }
+    return this.http.post(`${this.baseUrl}/users/import`,formdata);
   }
 
   exportTeacher(filters?: { [key: string]: any }, search?: string): Observable<any> { 
@@ -120,11 +136,11 @@ export class StaffUserCommonService extends BaseRestService {
       params = params.set('search', search);
     }
     
-      return this.http.get<any>(`${this.baseUrl}/user/export`, { params: params } );
+      return this.http.get<any>(`${this.baseUrl}/users/export`, { params: params } );
   }
 
   setURI(role:string | undefined) {
-    this.setUri(role);
+    this.setUri('users');
   }
 
 }

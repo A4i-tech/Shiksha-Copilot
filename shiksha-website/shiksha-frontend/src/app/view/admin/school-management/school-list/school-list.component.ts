@@ -159,15 +159,16 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     this.getRegionsData();
 
     const loggedInUser = this.utilityService.loggedInUserData;
-    if (loggedInUser && loggedInUser.role.includes('manager')) {
-      if (loggedInUser.state) {
-        this.filterObj.state = loggedInUser.state;
+    const adminProfile = loggedInUser?.profiles?.admin;
+    if (this.utilityService.isRegionallyScoped()) {
+      if (adminProfile?.state) {
+        this.filterObj.state = adminProfile.state;
       }
-      if (loggedInUser.zones && loggedInUser.zones.length > 0) {
-        this.filterObj.zone = loggedInUser.zones;
+      if (adminProfile?.zones?.length > 0) {
+        this.filterObj.zone = adminProfile.zones;
       }
-      if (loggedInUser.districts && loggedInUser.districts.length > 0) {
-        this.filterObj.district = loggedInUser.districts;
+      if (adminProfile?.districts?.length > 0) {
+        this.filterObj.district = adminProfile.districts;
       }
       // Only show manager's zones in dropdown
       setTimeout(() => this.setZoneDropdownOptionsForManager(), 0);
@@ -208,15 +209,10 @@ export class SchoolListComponent implements OnInit, OnDestroy {
         'state',
         selectedStateValue
       );
-      if (
-        loggedInUser &&
-        loggedInUser.role.includes('manager') &&
-        loggedInUser.zones &&
-        loggedInUser.zones.length > 0
-      ) {
+      if (this.utilityService.isRegionallyScoped() && loggedInUser?.profiles?.admin?.zones?.length > 0) {
         // Only show manager's zones
         this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) =>
-          loggedInUser.zones.includes(zone.name)
+          loggedInUser.profiles.admin.zones.includes(zone.name)
         );
       } else {
         this.zoneDropdownOptions = this.selectedStateObj.zones;
@@ -385,7 +381,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    * @param id school id
    */
   viewSchool(id: any) {
-    this.router.navigate([`/school-management/${id}`], {
+    this.router.navigate([`/schools/${id}`], {
       queryParams: { mode: 'view' },
     });
   }
@@ -395,7 +391,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    * @param id school id
    */
   editSchool(id: any) {
-    this.router.navigate([`/school-management/${id}`], {
+    this.router.navigate([`/schools/${id}`], {
       queryParams: { mode: 'edit' },
     });
   }
@@ -539,15 +535,16 @@ export class SchoolListComponent implements OnInit, OnDestroy {
 
     setZoneDropdownOptionsForManager() {
       const loggedInUser = this.utilityService.loggedInUserData;
-      if (loggedInUser && loggedInUser.zones && this.regionsData) {
+      const adminProfile = loggedInUser?.profiles?.admin;
+      if (adminProfile?.zones && this.regionsData) {
         // Find the state object
         const stateObj = this.regionsData.find(
-          (state: any) => state.state === loggedInUser.state
+          (state: any) => state.state === adminProfile.state
         );
         if (stateObj) {
           // Only include zones assigned to the manager
           this.zoneDropdownOptions = stateObj.zones.filter((zone: any) =>
-            loggedInUser.zones.includes(zone.name)
+            adminProfile.zones.includes(zone.name)
           );
         }
       }

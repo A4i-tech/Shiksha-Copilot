@@ -46,16 +46,13 @@ export class TeacherService {
       params = params.append('search', searchTerm.trim());
     }
     
-    // Use the correct role values for teachers: 'standard' and 'power'
-    // The backend expects role to be an array, so we need to send both values
-    params = params.append('role', 'standard');
-    params = params.append('role', 'power');
+    params = params.append('filter[rolePermission]', 'dashboard.teacher.view');
     
     console.log('TeacherService.getTeachers - API call with params:', {
       zone, district, page, limit, searchTerm,
       fullParams: params.toString()
     });
     
-    return this.http.get<TeacherResponse>(`${this.baseUrl}/user/list`, { params });
+    return this.http.get<TeacherResponse>(`${this.baseUrl}/users`, { params });
   }
-} 
+}

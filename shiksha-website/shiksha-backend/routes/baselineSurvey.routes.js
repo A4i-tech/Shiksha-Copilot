@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const asyncMiddleware = require('../middlewares/asyncMiddleware');
-const { isAuthenticated } = require('../middlewares/auth');
+const { isAuthenticated, requirePermission } = require('../middlewares/auth');
 const baselineController = require('../controllers/baselineSurvey.controller');
 const { validateSubmitSurvey, validateRemindLater } = require('../validations/baselineSurvey.validation');
 
@@ -19,12 +19,14 @@ const remindLaterLimiter = rateLimit({
 router.get(
   '/baseline-surveys/check',
   isAuthenticated,
+  requirePermission('survey.baseline.complete'),
   asyncMiddleware(baselineController.checkIfCompleted.bind(baselineController))
 );
 
 router.post(
   '/baseline-surveys',
   isAuthenticated,
+  requirePermission('survey.baseline.complete'),
   validateSubmitSurvey,
   asyncMiddleware(baselineController.submitSurvey.bind(baselineController))
 );
@@ -32,6 +34,7 @@ router.post(
 router.patch(
   '/baseline-surveys/remind-later',
   isAuthenticated,
+  requirePermission('survey.baseline.complete'),
   remindLaterLimiter,
   validateRemindLater,
   asyncMiddleware(baselineController.remindLater.bind(baselineController))

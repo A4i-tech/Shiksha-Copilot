@@ -33,7 +33,7 @@ export class UtilityService {
 
   get loggedInUserData(){
     const userInfo : any = localStorage.getItem('userData') ?? null;
-   return JSON.parse(userInfo);
+    return userInfo ? JSON.parse(userInfo) : null;
   }
 
   /**
@@ -90,12 +90,13 @@ export class UtilityService {
    * @returns
    */
   hasPermission(premissions: string[]) {
-    const data: any = localStorage.getItem('userData') ?? null;
-    const loggedInUser = JSON.parse(data) ;
-    if (loggedInUser) {
-      return premissions.some((element) => loggedInUser.role.includes(element));
-    }
-    return false;
+    const permissions = this.loggedInUserData?.permissions || [];
+    return premissions.some((permission) => permissions.includes(permission));
+  }
+
+  isRegionallyScoped() {
+    const permissions = this.loggedInUserData?.permissions || [];
+    return permissions.includes('scope.regional') && !permissions.includes('scope.global');
   }
 
   /**

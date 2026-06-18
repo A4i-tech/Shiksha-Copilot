@@ -1,8 +1,9 @@
 <div [ngClass]="size">
   <img
-    *ngIf="profileImage; else defaultImage"
+    *ngIf="profileImage && !imageFailed; else defaultImage"
     [src]="profileImage"
     alt="profile-pic"
+    (error)="imageFailed = true"
     class="object-cover w-full h-full rounded-full"
   />
   <ng-template #defaultImage>

@@ -21,33 +21,41 @@ const routes: Routes = [
     path:'lesson-resources',
     component:LessonPlanResourceDetailsComponent,
     data:{
+      permissions: ['lesson-resource.generate'],
       trackingTag:'lesson-resources',
       idleTracking:'custom',
-    }
+    },
+    canActivate: [PermissionGuard],
   },
   {
     path:'lesson-plan',
     component:LessonPlanResourceDetailsComponent,
     data:{
+      permissions: ['lesson-plan.generate'],
       trackingTag:'lesson-plan-list',
       idleTracking:'custom',
-    }
+    },
+    canActivate: [PermissionGuard],
   },
   {
     path:'presentation',
     component:PresentationGenerationComponent,
     data:{
+      permissions: ['presentation.generate.arbitrary'],
       mode:'generate',
       trackingTag:'presentation',
       idleTracking:'skip',
-    }
+    },
+    canActivate: [PermissionGuard],
   },
   {
     path:'presentation/:id',
     component:PresentationGenerationComponent,
     data:{
+      permissions: ['presentation.generate.arbitrary', 'presentation.generate.lesson_plan'],
       trackingTag:'view-presentation',
-    }
+    },
+    canActivate: [PermissionGuard],
   },
   {
     path:'inspect/:planType',
@@ -83,7 +91,7 @@ const routes: Routes = [
     component:ChatbotComponent,
     data:{
       type:'index',
-      permissions: ['power'],
+      permissions: ['chat.use'],
       trackingTag:'lesson-chat',
     },
     canActivate: [PermissionGuard],

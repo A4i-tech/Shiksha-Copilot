@@ -11,6 +11,8 @@ class MasterLessonController extends BaseController {
 	async saveToTeacher(req, res) {
 		try {
 			let { _id: teacherId } = req.user;
+			const permission = req.body.lessonId ? "lesson-plan.edit" : "lesson-resource.edit";
+			if (!req.permissions.includes(permission)) return res.status(403).json({ message: "Forbidden: You do not have the required permissions to perform this action." });
 
 			let result = await this.manager.saveToTeacher(
 				teacherId,
@@ -89,12 +91,8 @@ class MasterLessonController extends BaseController {
 
 	async regenerateLessonPlan(req, res) {
 		try {
-			const accessibleRoles = ["power", "admin", "manager"];
-			if (!accessibleRoles.includes(req.user.role)) {
-				return res.status(403).json({
-					message:
-						"Forbidden: You do not have the required permissions to perform this action.",
-				});
+			if (!req.permissions.includes("content.activity.view") && !req.permissions.includes("lesson-plan.generate")) {
+				return res.status(403).json({ message: "Forbidden: You do not have the required permissions to perform this action." });
 			}
 
 			const { lessonId, reason } = req.body;

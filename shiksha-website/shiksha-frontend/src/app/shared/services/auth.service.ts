@@ -3,14 +3,12 @@ import { BehaviorSubject, Observable } from 'rxjs';
 
 export interface User {
   _id: string;
-  name: string;
-  email: string;
-  role: string | string[];
-  state: string;
-  zone?: string;
-  district?: string;
-  zones?: string[];
-  districts?: string[];
+  identity: { name: string; phone: string; email?: string };
+  profiles: {
+    teacher?: any;
+    admin?: any;
+  };
+  permissions: string[];
 }
 
 @Injectable({
@@ -26,7 +24,7 @@ export class AuthService {
   }
 
   private getUserFromStorage(): User | null {
-    const userStr = localStorage.getItem('currentUser');
+    const userStr = localStorage.getItem('userData');
     if (userStr) {
       try {
         return JSON.parse(userStr);

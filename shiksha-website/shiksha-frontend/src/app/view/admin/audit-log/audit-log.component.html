@@ -14,7 +14,7 @@
         <div class="action-btn flex justify-end gap-2">
           <button
             class="bg-primary text-white rounded w-8 h-8 p-0 inline-flex items-center justify-center hover:bg-primary-100 sm:hidden"
-            [hasPermission]="['admin','manager']"
+            [hasPermission]="['audit.view']"
             (click)="refresh()"
             [attr.aria-label]="'Refresh'"
           >
@@ -24,7 +24,7 @@
           </button>
           <button
             class="hidden sm:inline-flex btn-primary items-center justify-center gap-2"
-            [hasPermission]="['admin','manager']"
+            [hasPermission]="['audit.view']"
             (click)="refresh()"
           >
             <img src="assets/icons/Replay_light.svg" alt="" />

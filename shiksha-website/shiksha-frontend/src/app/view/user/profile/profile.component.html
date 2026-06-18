@@ -2,20 +2,20 @@
   <h1 class="text-xl md:text-[30px] leading-[48px] font-bold text-content">
     {{ "Setup Your Profile" | translate }}
   </h1>
-  <p class="text-content-50 mt-1 text-sm leading-[48px] tracking-tight">
+  <h6 class="text-content-50 mt-1 text-sm leading-[48px] tracking-tight">
     {{ "Profile photo" | translate }}
-  </p>
+  </h6>
   <form class="flex flex-col gap-4" [formGroup]="userPorfileForm">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
       <div class="dp-setup flex gap-6">
         <app-profile-image [profileImage]="this.sidebarService.profileImg()" [size]="'lg'" ></app-profile-image>
         <div class="upload-container">
-          <p class="text-sm font-normal text-content leading-[22px]">
+          <h5 class="text-sm font-normal text-content leading-[22px]">
             {{ "Upload your photo" | translate }}
-          </p>
-          <p class="text-xs font-normal text-shade leading-[20px] mb-4">
+          </h5>
+          <h6 class="text-xs font-normal text-shade leading-[20px] mb-4">
             {{ "Your photo should be in PNG, JPG or JPEG format" | translate }}.
-          </p>
+          </h6>
           <div class="btn-wrapper">
             <button
               type="button"
@@ -63,7 +63,7 @@
 
     <div class="grid grid-cols-1 gap-6 md:mb-4 md:grid-cols-4">
       <div>
-        <label for="profile-name" class="block mb-1 form-control-label">{{
+        <label for="first_name" class="block mb-1 form-control-label">{{
           "Name" | translate
         }}</label>
         <input
@@ -72,11 +72,11 @@
           class="form-control"
           placeholder="{{ 'Enter your name' | translate }}"
           readonly
-          [value]="userData?.name"
+          [value]="userData?.identity?.name"
         />
       </div>
       <div>
-        <label for="profile-phone" class="block mb-1 form-control-label">{{
+        <label for="last_name" class="block mb-1 form-control-label">{{
           "Phone" | translate
         }}</label>
         <input
@@ -85,11 +85,11 @@
           class="form-control"
           placeholder="{{ 'Enter your phone number' | translate }}"
           readonly
-          [value]="userData?.phone"
+          [value]="userData?.identity?.phone"
         />
       </div>
-      <div class="md:col-span-2" *ngIf="isTeacherRole">
-        <label for="profile-school" class="block mb-1 form-control-label">{{
+      <div class="md:col-span-2">
+        <label for="company" class="block mb-1 form-control-label">{{
           "School/Organization" | translate
         }}</label>
         <input
@@ -97,14 +97,14 @@
           id="profile-school"
           class="form-control"
           readonly
-          [value]="userData?.school?.name"
+          [value]="userData?.profiles?.teacher?.school?.name"
         />
       </div>
     </div>
 
     <div class="grid gap-6 md:mb-4 md:grid-cols-4">
       <div>
-        <label for="profile-state" class="block mb-1 form-control-label"
+        <label for="company" class="block mb-1 form-control-label"
           >{{ "State" | translate }}
         </label>
         <input
@@ -113,60 +113,58 @@
           class="form-control"
           placeholder="{{ 'Enter your cluster' | translate }}"
           readonly
-          [value]="userData?.state"
+          [value]="userData?.profiles?.teacher?.state"
         />
       </div>
-      <ng-container *ngIf="isTeacherRole">
-        <div>
-          <label for="profile-zone" class="block mb-1 form-control-label">{{
-            "Zone" | translate
-          }}</label>
-          <input
-            type="text"
-            id="profile-zone"
-            class="form-control"
-            placeholder="{{ 'Enter your zone' | translate }}"
-            readonly
-            [value]="userData?.zone"
-          />
-        </div>
-        <div>
-          <label for="profile-district" class="block mb-1 form-control-label">{{
-            "District" | translate
-          }}</label>
-          <input
-            type="text"
-            id="profile-district"
-            class="form-control"
-            placeholder="{{ 'Enter your district' | translate }}"
-            readonly
-            [value]="userData?.district"
-          />
-        </div>
-        <div>
-          <label for="profile-taluk" class="block mb-1 form-control-label">{{
-            "Taluk" | translate
-          }}</label>
-          <input
-            type="text"
-            id="profile-taluk"
-            class="form-control"
-            placeholder="{{ 'Enter Taluk' | translate }}"
-            readonly
-            [value]="userData?.block"
-          />
-        </div>
-      </ng-container>
+      <div>
+        <label for="profile-zone" class="block mb-1 form-control-label">{{
+          "Zone" | translate
+        }}</label>
+        <input
+          type="text"
+          id="profile-zone"
+          class="form-control"
+          placeholder="{{ 'Enter your zone' | translate }}"
+          readonly
+          [value]="userData?.profiles?.teacher?.zone"
+        />
+      </div>
+      <div>
+        <label for="profile-district" class="block mb-1 form-control-label">{{
+          "District" | translate
+        }}</label>
+        <input
+          type="text"
+          id="profile-district"
+          class="form-control"
+          placeholder="{{ 'Enter your district' | translate }}"
+          readonly
+          [value]="userData?.profiles?.teacher?.district"
+        />
+      </div>
+      <div>
+        <label for="profile-taluk" class="block mb-1 form-control-label">{{
+          "Taluk" | translate
+        }}</label>
+        <input
+          type="text"
+          id="profile-taluk"
+          class="form-control"
+          placeholder="{{ 'Enter Taluk' | translate }}"
+          readonly
+          [value]="userData?.profiles?.teacher?.block"
+        />
+      </div>
     </div>
 
-    <div class="relative" *ngIf="isTeacherRole">
+    <div class="relative">
       <h2 class="font-bold text-lg leading-7 mb-2 mt-2 lg:hidden">
         {{ "Class Details" | translate }}
       </h2>
       <div
         class="rounded-lg bg-[#E5EDF67D] text-sm md:text-[16px] p-2 mt-5 mb-2 text-content-100 lg:grid grid-cols-[auto,1fr] gap-2 items-start hidden">
         <img class="me-1 w-5" src="assets/icons/lesson-info.svg" alt="">        
-        <small class="text-[#1565C0]">{{'In the table below, please ensure that there is at least one class data and that all fields are filled.' | translate}}</small>
+        <small class="text-primary">{{'In the table below, please ensure that there is at least one class data and that all fields are filled.' | translate}}</small>
       </div>
       <table
       class="table-auto w-full text-content rounded-lg"
@@ -193,7 +191,7 @@
             class="flex flex-col border rounded lg:rounded-none lg:border-none p-4 lg:p-0 mt-4 lg:mt-0 lg:table-row"
           >
             <td class="px-1 py-1 lg:px-4 lg:py-4">
-              <label class="lg:hidden mb-1 form-control-label">{{
+              <label for="board" class="lg:hidden mb-1 form-control-label">{{
                 "Board" | translate
               }} <span class="text-[16px] text-error">*</span></label>
               <app-dropdown
@@ -219,7 +217,7 @@
               ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
-              <label class="lg:hidden mb-1 form-control-label">{{
+              <label for="board" class="lg:hidden mb-1 form-control-label">{{
                 "Class" | translate
               }} <span class="text-[16px] text-error">*</span></label>
               <app-dropdown
@@ -232,7 +230,7 @@
               ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
-              <label class="lg:hidden mb-1 form-control-label">{{
+              <label for="board" class="lg:hidden mb-1 form-control-label">{{
                 "Subject" | translate
               }} <span class="text-[16px] text-error">*</span></label>
               <app-dropdown
@@ -245,13 +243,13 @@
               ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
-              <label class="lg:hidden mb-1 form-control-label">{{
+              <label for="board" class="lg:hidden mb-1 form-control-label">{{
                 "Boys Strength" | translate
               }}</label>
               <p>{{ class.get("boysStrength")?.value || "-" }}</p>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
-              <label class="lg:hidden mb-1 form-control-label">{{
+              <label for="board" class="lg:hidden mb-1 form-control-label">{{
                 "Girls Strength" | translate
               }}</label>
               <p>{{ class.get("girlsStrength")?.value || "-" }}</p>
@@ -290,7 +288,7 @@
         </tbody>
       </table>
     </div>
-    <div class="resource-block mt-4" *ngIf="isTeacherRole">
+    <div class="resource-block mt-4">
       <h2 class="font-bold text-lg leading-7 mb-4 text-content">
         {{ "Resources" | translate }}
       </h2>
@@ -341,7 +339,7 @@
                   </div>
                   <div class="py-2 md:py-4 text-sm  content-start md:col-span-5">
                     <div >
-                      <label class="block  form-control-label " *ngIf="resource.get('detailsChipSet')?.value">{{
+                      <label for="Resource Details" class="block  form-control-label " *ngIf="resource.get('detailsChipSet')?.value">{{
                         "Resource Details" | translate
                       }}</label>
                       <div [hidden]="!resource.get('detailsChipSet')?.value">

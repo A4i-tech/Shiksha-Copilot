@@ -283,7 +283,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       ? this.contentGenService.selectedLessonPlan
       : this.contentGenService.resourcePlanData;
     if (!content) {
-      this.router.navigate(['/content-generation']);
+      this.router.navigate(['/content']);
     } else {
       this.planDetails = content;
 
@@ -485,7 +485,7 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   chat(recordId: any, chapterId: any) {
-    this.router.navigate(['/content-generation/lesson-chat'], {
+    this.router.navigate(['/content/lesson-chat'], {
       queryParams: { recordId, chapterId },
     });
   }
@@ -519,7 +519,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       next: (res) => {
         this.hasUnsavedChanges = false;
         this.utilityService.handleResponse(res);
-        this.router.navigate(['/content-generation']);
+        this.router.navigate(['/content']);
       },
       error: (err) => {
         this.utilityService.handleError(err);
@@ -601,7 +601,7 @@ export class LessonPlanViewEditComponent implements OnInit {
           if (this.planDetails.isGenerated && !isCompleted) {
             this.router.navigate(['/generation-status']);
           } else {
-            this.router.navigate(['/content-generation']);
+            this.router.navigate(['/content']);
           }
         },
         error: (err: any) => {
@@ -656,7 +656,7 @@ export class LessonPlanViewEditComponent implements OnInit {
           this.utilityService.showSuccess(ResPlanMessage);
           this.utilityService.showSuccess(feedbackMessage);
           this.hasUnsavedChanges = false;
-          this.router.navigate(['/content-generation']);
+          this.router.navigate(['/content']);
         },
         error: (err) => {
           this.utilityService.handleError(err);
@@ -686,11 +686,11 @@ export class LessonPlanViewEditComponent implements OnInit {
       if (this.mode === 'generate') {
         this.router.navigate([
           this.isLesson
-            ? '/content-generation/lesson-plan'
-            : '/content-generation/lesson-resources',
+            ? '/content/lesson-plan'
+            : '/content/lesson-resources',
         ]);
       } else {
-        this.router.navigate(['/content-generation']);
+        this.router.navigate(['/content']);
       }
     }
   }

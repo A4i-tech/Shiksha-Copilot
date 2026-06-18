@@ -10,8 +10,9 @@ const logger = require("../config/loggers");
 class DashboardAggregation {
 
 	_createHierarchicalMatchAndGroup(query, prefix = "") {
-		const p = prefix ? prefix + "." : "";
-		const f = (field) => "$" + p + field;
+		const joinedUser = prefix === "teacher" || prefix === "user";
+		const p = joinedUser ? `${prefix}.profiles.teacher.` : prefix ? `${prefix}.` : "";
+		const f = (field) => joinedUser && field === "_id" ? `$${prefix}._id` : joinedUser && field === "name" ? `$${prefix}.identity.name` : `$${p}${field}`;
 
 		let matchConditions = {};
 		let groupByFields = {
@@ -56,11 +57,24 @@ class DashboardAggregation {
 
 	async getDashboardMetrics(query) {
 		query = query || {};
+		const userShapeStage = {
+			$set: {
+				name: "$identity.name",
+				role: "$roles",
+				school: "$profiles.teacher.school",
+				state: "$profiles.teacher.state",
+				zone: "$profiles.teacher.zone",
+				district: "$profiles.teacher.district",
+				block: "$profiles.teacher.block",
+				classes: "$profiles.teacher.classes",
+			},
+		};
 		// User-level match: same hierarchy as lesson plans (school/state/zone/district/block) so dashboard metrics are consistent.
 		const { matchConditions: userMatchConditions } = this._createHierarchicalMatchAndGroup(query, "");
 
 		// 1. Prepare User Aggregation (Activity/Counts) - runs on User collection
 		const userCountsPipeline = [
+			userShapeStage,
 			...(Object.keys(userMatchConditions).length > 0 ? [{ $match: userMatchConditions }] : []),
 			{
 				$facet: {
@@ -153,6 +167,7 @@ class DashboardAggregation {
 		];
 
 		const userMediumsPipeline = [
+			userShapeStage,
 			...(Object.keys(userMatchConditions).length > 0 ? [{ $match: userMatchConditions }] : []),
 			{
 				$unwind: {
@@ -274,7 +289,7 @@ class DashboardAggregation {
 			{
 				$lookup: {
 					from: "schools",
-					localField: "teacher.school", // teacher.school is from the joined user
+					localField: "teacher.profiles.teacher.school",
 					foreignField: "_id",
 					as: "schoolDetails",
 				},

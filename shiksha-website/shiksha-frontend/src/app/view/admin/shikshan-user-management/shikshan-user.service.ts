@@ -8,43 +8,59 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root',
 })
 export class ShikshanService extends BaseRestService {
-
-  userRoleDropdownOptions = [
-    { name: 'Admin', value: 'admin' },
-    { name: 'Manager', value: 'manager' }
-  ];
   baseUrl = environment.apiUrl;
 
   constructor(http: HttpClient) {
     super(http);
-    this.setUri('admin');
+    this.setUri('users');
   }
 
   editUserDetails(id: string, data: any): Observable<any> {
     const updatedData = {
-      _id: id,
-      name: data.name,
-      phone: data.phone,
-      email: data.email,
-      role: Array.isArray(data.role) ? data.role : [data.role],
+      identity: {
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+      },
+      roles: [data.role],
+      profiles: {
+        admin: {
+          state: data.state,
+          zones: data.zones,
+          districts: data.districts,
+        },
+      },
       isDeleted: data.isDeleted,
-      state: data.state,
-      zones: data.zones,
-      districts: data.districts
     };
-    return this.put('update', updatedData);
+    return this.put(id, updatedData);
+  }
+
+  getRoles(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/roles`);
   }
 
   createUser(data: any): Observable<any> {
-    const createData = {
-      ...data,
-      role: Array.isArray(data.role) ? data.role : [data.role]
-    };
-    return this.post('create', createData);
+    return this.post('', {
+      identity: {
+        name: data.name,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+      },
+      roles: [data.role],
+      profiles: {
+        admin: {
+          state: data.state,
+          zones: data.zones,
+          districts: data.districts,
+        },
+      },
+    });
   }
 
   bulkUpload(formdata:any):Observable<any>{   
-    return this.post('bulk-upload', formdata);
+    return this.post('import', formdata);
   }
 
 }

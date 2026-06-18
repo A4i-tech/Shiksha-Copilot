@@ -6,14 +6,31 @@ import { environment } from 'src/environments/environment';
 
 export interface User {
   _id: string;
-  name: string;
-  email: string;
-  role: string | string[];
-  state: string;
-  zone?: string;
-  district?: string;
-  zones?: string[];
-  districts?: string[];
+  identity: {
+    name: string;
+    phone: string;
+    email?: string;
+    address?: string;
+  };
+  profiles: {
+    teacher?: {
+      state?: string;
+      zone?: string;
+      district?: string;
+      block?: string;
+      school?: any;
+      preferredLanguage?: string;
+      classes?: any[];
+      facilities?: any[];
+      isProfileCompleted?: boolean;
+    };
+    admin?: {
+      state?: string;
+      zones?: string[];
+      districts?: string[];
+    };
+  };
+  permissions: string[];
 }
 
 @Injectable({
@@ -30,7 +47,7 @@ export class AuthService {
   }
 
   private getUserFromStorage(): User | null {
-    const userStr = localStorage.getItem('currentUser');
+    const userStr = localStorage.getItem('userData');
     if (userStr) {
       try {
         return JSON.parse(userStr);
@@ -50,7 +67,7 @@ export class AuthService {
       .pipe(map(response => {
         if (response.success && response.data) {
           const user = response.data;
-          localStorage.setItem('currentUser', JSON.stringify(user));
+          localStorage.setItem('userData', JSON.stringify(user));
           if (user.token) {
             localStorage.setItem('token', user.token);
           }
@@ -62,7 +79,7 @@ export class AuthService {
   }
 
   logout(): void {
-    localStorage.removeItem('currentUser');
+    localStorage.removeItem('userData');
     this.currentUserSubject.next(null);
   }
 
@@ -73,9 +90,9 @@ export class AuthService {
   getUserLocation(): { state: string | null; zone: string | null; district: string | null } {
     const user = this.getCurrentUser();
     return {
-      state: user?.state || null,
-      zone: user?.zone || null,
-      district: user?.district || null
+      state: user?.profiles.teacher?.state || user?.profiles.admin?.state || null,
+      zone: user?.profiles.teacher?.zone || null,
+      district: user?.profiles.teacher?.district || null
     };
   }
 

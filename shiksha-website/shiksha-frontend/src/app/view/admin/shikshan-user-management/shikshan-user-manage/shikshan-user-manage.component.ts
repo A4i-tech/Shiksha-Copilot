@@ -22,7 +22,7 @@ export class ShikshanUserManageComponent implements OnInit {
     placeHolderTxt: 'Select Staff Role',
     fieldName: 'Staff Role',
     bindLabel: 'name',
-    bindValue: 'value',
+    bindValue: '_id',
     required: true
   };
 
@@ -76,8 +76,6 @@ export class ShikshanUserManageComponent implements OnInit {
   constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private shikshanaUserService: ShikshanService, private router: Router, private masterService: MasterService, private commonStaffUserService: StaffUserCommonService) { }
 
   ngOnInit(): void {
-    this.userRolesDropdownOptions = this.shikshanaUserService.userRoleDropdownOptions;
-
     this.route.queryParamMap.subscribe((qparams) => {
       this.mode = qparams?.get('mode');
     });
@@ -88,7 +86,10 @@ export class ShikshanUserManageComponent implements OnInit {
 
     this.initialize_add_form();
     if (this.mode === 'view') this.addForm.disable();
-    this.getRegionsData();
+    this.shikshanaUserService.getRoles().subscribe((res: any) => {
+      this.userRolesDropdownOptions = res.data.results.filter((role: any) => role.permissions.includes('dashboard.admin.view'));
+      this.getRegionsData();
+    });
     this.handleRoleChange();
   }
 
@@ -97,7 +98,7 @@ export class ShikshanUserManageComponent implements OnInit {
       name: [null, [Validators.required, Validators.minLength(3)]],
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
       email: [null, [Validators.required, Validators.email]],
-      role: ['manager', [Validators.required]],
+      role: [null, [Validators.required]],
       isDeleted: [false, [Validators.required]],
       state: [null],
       zones: [[]],
@@ -108,7 +109,7 @@ export class ShikshanUserManageComponent implements OnInit {
   getRegionsData() {
     this.masterService.getRegions().subscribe({
       next: (val) => {
-        this.regionsData = val?.data?.results || [];
+        this.regionsData = val.data.results;
         this.stateDropdownOptions = this.regionsData;
         if (this.userId) {
           this.getUserDetails(this.userId);
@@ -119,7 +120,7 @@ export class ShikshanUserManageComponent implements OnInit {
 
   handleRoleChange() {
     this.addForm.get('role')?.valueChanges.subscribe((role) => {
-      if (role === 'manager') {
+      if (this.selectedRoleHas('scope.regional')) {
         this.addForm.get('state')?.setValidators([Validators.required]);
         this.addForm.get('zones')?.setValidators([Validators.required]);
         this.addForm.get('districts')?.setValidators([Validators.required]);
@@ -224,8 +225,7 @@ export class ShikshanUserManageComponent implements OnInit {
     // Create a copy of the form value to avoid modifying the form directly
     const formData = { ...this.addForm.value };
 
-    // Remove state, zones, and districts if the role is not 'manager'
-    if (formData.role !== 'manager') {
+    if (!this.selectedRoleHas('scope.regional')) {
       delete formData.state;
       delete formData.zones;
       delete formData.districts;
@@ -237,7 +237,7 @@ export class ShikshanUserManageComponent implements OnInit {
       name: string;
       phone: string;
       email: string;
-      role: string[];
+      role: string;
       isDeleted: boolean;
       state?: string;
       zones?: string[];
@@ -249,12 +249,11 @@ export class ShikshanUserManageComponent implements OnInit {
       name: formData.name?.trim(),
       phone: formData.phone?.toString(),
       email: formData.email?.trim().toLowerCase(),
-      role: [formData.role],
+      role: formData.role,
       isDeleted: formData.isDeleted
     };
 
-    // Add state, zones, and districts only if role is manager
-    if (formData.role === 'manager') {
+    if (this.selectedRoleHas('scope.regional')) {
       if (!formData.state || !formData.zones?.length || !formData.districts?.length) {
         this.utilityService.handleError({ error: { message: 'State, zones, and districts are required for manager role' } });
         return;
@@ -267,7 +266,7 @@ export class ShikshanUserManageComponent implements OnInit {
       formattedData._id = this.userId;
       this.shikshanaUserService.editUserDetails(this.userId, formattedData).subscribe({
         next: (res: any) => {
-          this.router.navigate(['/staff-management/list']);
+          this.router.navigate(['/staff/list']);
           this.utilityService.handleResponse(res);
         },
         error: (err) => {
@@ -280,7 +279,7 @@ export class ShikshanUserManageComponent implements OnInit {
       // For create, we need to send the data to the correct endpoint
       this.shikshanaUserService.createUser(formattedData).subscribe({
         next: (res: any) => {
-          this.router.navigate(['/staff-management/list']);
+          this.router.navigate(['/staff/list']);
           this.utilityService.handleResponse(res)
         },
         error: (err) => {
@@ -303,9 +302,9 @@ export class ShikshanUserManageComponent implements OnInit {
     this.commonStaffUserService.getUserDetails(id, 'admin').subscribe({
       next: (res: any) => {
         const userData = res.data;
-        const roleValue = Array.isArray(userData.role) ? userData.role[0] : userData.role;
+        const roleValue = userData.role[0]._id;
 
-        if (roleValue === 'manager' && userData.state) {
+        if (this.roleHas(roleValue, 'scope.regional') && userData.state) {
           this.updateZoneOptions(userData.state);
           this.updateDistrictOptions(userData.zones);
           this.addForm.patchValue({
@@ -319,7 +318,6 @@ export class ShikshanUserManageComponent implements OnInit {
             districts: userData.districts
           });
         } else {
-          // For admin or other roles, clear state/zones/districts
           this.addForm.patchValue({
             name: userData.name,
             phone: userData.phone,
@@ -345,6 +343,14 @@ export class ShikshanUserManageComponent implements OnInit {
   set isActive(val: boolean) {
     this.addForm.get('isDeleted')?.setValue(!val);
     this.addForm.markAsDirty();
+  }
+
+  selectedRoleHas(permission: string): boolean {
+    return this.roleHas(this.addForm.get('role')!.value, permission);
+  }
+
+  roleHas(roleId: string, permission: string): boolean {
+    return this.userRolesDropdownOptions.find((role) => role._id === roleId).permissions.includes(permission);
   }
 
 }

@@ -74,7 +74,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     placeHolderTxt: 'Select Teacher Role',
     fieldName: 'Teacher Role',
     bindLabel: 'name',
-    bindValue: 'value',
+    bindValue: '_id',
     required: true
   };
 
@@ -106,7 +106,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private userManagementService: UserManagementService, private router: Router, private masterService: MasterService,private commonStaffUserService:StaffUserCommonService) { }
 
   ngOnInit(): void {
-    this.userRolesDropdownOptions = this.userManagementService.userRoleDropdownOptions;
     this.route.queryParamMap.subscribe((qparams) => {
       this.mode = qparams?.get('mode');
     });
@@ -120,6 +119,9 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
 
     this.initialize_add_form();
     if (this.mode === 'view') this.addForm.disable();
+    this.userManagementService.getRoles().subscribe((res: any) => {
+      this.userRolesDropdownOptions = res.data.results.filter((role: any) => role.permissions.includes('dashboard.teacher.view'));
+    });
     if (this.mode !== 'view' && this.mode !== 'edit') this.getRegionsData();
   }
 
@@ -185,9 +187,9 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       );
       // Only show manager's zones if role is manager
       const loggedInUser = this.utilityService.loggedInUserData;
-      const role = this.addForm.get('role')?.value || (loggedInUser && loggedInUser.role);
-      if (role && (Array.isArray(role) ? role.includes('manager') : role === 'manager') && loggedInUser && loggedInUser.zones) {
-        this.zoneDropdownOptions = this.utilityService.getZonesForManager(this.regionsData, loggedInUser);
+      const adminProfile = loggedInUser?.profiles?.admin;
+      if (this.utilityService.isRegionallyScoped() && adminProfile?.zones) {
+        this.zoneDropdownOptions = this.utilityService.getZonesForManager(this.regionsData, adminProfile);
       } else {
         this.zoneDropdownOptions = this.selectedStateObj.zones;
       }
@@ -296,7 +298,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       district: [null, [Validators.required]],
       block: [null, [Validators.required]],
       school: [null, [Validators.required]],
-      role: [this.mode === 'edit' || this.mode === 'view' ? null : 'standard', [Validators.required]],
+      role: [null, [Validators.required]],
     });
   }
 
@@ -316,7 +318,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       if (currentSchoolValue !== this.initialSchoolValue) {
         this.userManagementService.editUserDetails(this.userId, updatedData).subscribe({
           next: (res: any) => {
-            this.router.navigate(['/teacher-management/list']);
+            this.router.navigate(['/teachers/list']);
             this.utilityService.handleResponse(res);
           },
           error: (err) => {
@@ -328,7 +330,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       else {
         this.userManagementService.editUserDetails(this.userId, this.addForm.value).subscribe({
           next: (res: any) => {
-            this.router.navigate(['/teacher-management/list']);
+            this.router.navigate(['/teachers/list']);
             this.utilityService.handleResponse(res);
           },
           error: (err) => {
@@ -343,7 +345,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
 
       this.commonStaffUserService.addUser(this.addForm.value, 'user').subscribe({
         next: (res: any) => {
-          this.router.navigate(['/teacher-management/list']);
+          this.router.navigate(['/teachers/list']);
           this.utilityService.handleResponse(res);
         },
         error: (err) => {
@@ -375,7 +377,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       data,
       keysToRemove
     );
-    newObj.role = newObj.role[0];
+    newObj.role = newObj.role[0]._id;
     this.dependentPatchData = removedObj;
     this.getRegionsData();
     this.addForm.patchValue(newObj);

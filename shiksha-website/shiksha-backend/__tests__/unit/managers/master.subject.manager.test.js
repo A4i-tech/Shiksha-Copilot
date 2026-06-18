@@ -42,7 +42,7 @@ describe("MasterSubjectManager", () => {
 
   describe("getByName", () => {
     it("should return subject successfully", async () => {
-      const user = { school: "school1" };
+      const user = { profiles: { teacher: { school: "school1" } } };
       const mockSchool = { _id: "school1", board: "CBSE" };
       const mockBoard = { _id: "board1", abbreviation: "CBSE" };
       const mockSubject = { _id: "subject1", subjectName: "Mathematics" };
@@ -67,7 +67,7 @@ describe("MasterSubjectManager", () => {
     });
 
     it("should return error when school not found", async () => {
-      const user = { school: "school1" };
+      const user = { profiles: { teacher: { school: "school1" } } };
 
       mockSchoolDao.getById.mockResolvedValue(null);
 
@@ -81,7 +81,7 @@ describe("MasterSubjectManager", () => {
     });
 
     it("should return error when board not found", async () => {
-      const user = { school: "school1" };
+      const user = { profiles: { teacher: { school: "school1" } } };
       const mockSchool = { _id: "school1", board: "INVALID" };
 
       mockSchoolDao.getById.mockResolvedValue(mockSchool);
@@ -97,7 +97,7 @@ describe("MasterSubjectManager", () => {
     });
 
     it("should return error when subject not found", async () => {
-      const user = { school: "school1" };
+      const user = { profiles: { teacher: { school: "school1" } } };
       const mockSchool = { _id: "school1", board: "CBSE" };
       const mockBoard = { _id: "board1", abbreviation: "CBSE" };
 
@@ -115,7 +115,7 @@ describe("MasterSubjectManager", () => {
     });
 
     it("should return error on exception", async () => {
-      const user = { school: "school1" };
+      const user = { profiles: { teacher: { school: "school1" } } };
       const error = new Error("Database error");
 
       mockSchoolDao.getById.mockRejectedValue(error);

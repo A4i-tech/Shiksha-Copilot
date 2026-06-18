@@ -1,129 +1,111 @@
 const Joi = require("joi");
-const validateRequest = require("./common.validation");
-
-const roleValidator = (value, helpers) => {
-	if (typeof value === "string") {
-		return value.split("|").map((role) => role.trim());
-	}
-	return value;
-};
 
 const phoneNumberPattern = /^[6789]\d{9}$/;
-
-const userSchema = Joi.object({
-	name: Joi.string().required(),
-	profileImage: Joi.string().optional(),
-	email: Joi.string().email(),
-	zone: Joi.string().required(),
-	state: Joi.string().required(),
-	district: Joi.string().required(),
-	block: Joi.string().required(),
-	phone: Joi.string().required(),
-	password: Joi.string().min(8),
-	subjects: Joi.number(),
-	address: Joi.string().optional(),
-	role: Joi.custom(roleValidator, "role validator").required(),
-	school: Joi.string().required(),
-	preferredLanguage: Joi.string(),
-	classes: Joi.array(),
-	isDeleted: Joi.boolean().optional(),
+const objectId = Joi.string().hex().length(24);
+const identitySchema = Joi.object({
+  name: Joi.string().min(2).required(),
+  phone: Joi.string().pattern(phoneNumberPattern).required(),
+  email: Joi.string().email().allow("", null),
+  address: Joi.string().allow("", null),
 });
 
-const bulkUploadSchema = Joi.object({
-	name: Joi.string()
-    .min(5)
-    .required()
-    .messages({
-      'string.base': 'Name should be a text.',
-      'string.min': 'Name must be at least 5 characters long.',
-      'any.required': 'Name is required.',
-    }),
-	phone: Joi.string()
-    .pattern(phoneNumberPattern, 'Indian phone number')
-    .required()
-    .messages({
-      'string.base': 'Phone number should be a text.',
-      'string.pattern.name': 'Phone number must be a valid Indian phone number.',
-      'any.required': 'Phone number is required.',
-    }),
-	school: Joi.number().required(),
-	role: Joi.custom(roleValidator, "role validator").required(),
-})
+const teacherProfileSchema = Joi.object({
+  state: Joi.string().required(),
+  zone: Joi.string().required(),
+  district: Joi.string().required(),
+  block: Joi.string().required(),
+  school: Joi.string().required(),
+  preferredLanguage: Joi.string().valid("en", "kn"),
+  facilities: Joi.array(),
+  classes: Joi.array(),
+  isProfileCompleted: Joi.boolean(),
+});
 
-const validatePreferredLanguageUpdate = validateRequest(Joi.object({
-	preferredLanguage: Joi.string().required(),
-}));
+const adminProfileSchema = Joi.object({
+  state: Joi.string().allow("", null),
+  zones: Joi.array().items(Joi.string()),
+  districts: Joi.array().items(Joi.string()),
+});
 
-const validateUserCreate = validateRequest(userSchema);
+const profilesSchema = Joi.object({
+  teacher: teacherProfileSchema,
+  admin: adminProfileSchema,
+}).required();
 
-const validateUserGetById = (req, res, next) => {
-	const data = { id: req?.params?.id };
+const userSchema = Joi.object({
+  identity: identitySchema.required(),
+  roles: Joi.array().items(objectId).min(1).required(),
+  profiles: profilesSchema,
+  isDeleted: Joi.boolean(),
+});
 
-	const userSchemaId = Joi.object({
-		id: Joi.string().required(),
-	});
-	let isValid = userSchemaId.validate(data);
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const updateSchema = Joi.object({
+  identity: identitySchema.required(),
+  roles: Joi.array().items(objectId).min(1).required(),
+  profiles: profilesSchema,
+  isDeleted: Joi.boolean(),
+  isLoginAllowed: Joi.boolean(),
+  isSchoolChanged: Joi.boolean(),
+});
 
-const validateUserGetByPhone = validateRequest(Joi.object({
-	phone: Joi.string().required(),
-}));
-
-const validateUserUpdate = validateRequest(Joi.object({
-	name: Joi.string(),
-	phone: Joi.string(),
-	state: Joi.string(),
-	zone: Joi.string(),
-	district: Joi.string(),
-	block: Joi.string(),
-	school: Joi.string(),
-	role: Joi.custom(roleValidator, "role validator"),
-	isSchoolChanged: Joi.boolean().optional(),
-}).min(1));
+function validate(schema) {
+  return (req, res, next) => {
+    const { error } = schema.validate(req.body, { abortEarly: false });
+    if (error) return res.status(400).json({ success: false, data: false, error: error.details.map((detail) => detail.message) });
+    next();
+  };
+}
 
 const classSchema = Joi.object({
-	class: Joi.number().required(),
-	board: Joi.string().required(),
-	medium: Joi.string().required(),
-	section: Joi.string().optional(),
-	subject: Joi.string().required(),
-	sem: Joi.number().required(),
-	name: Joi.string().required(),
+  class: Joi.number().required(),
+  board: Joi.string().required(),
+  medium: Joi.string().required(),
+  section: Joi.string(),
+  subject: Joi.string().required(),
+  sem: Joi.number().required(),
+  name: Joi.string().required(),
 });
 
 const profileSchema = Joi.object({
-	preferredLanguage: Joi.string(),
-	classes: Joi.array().items(classSchema),
-	facilities: Joi.array().items(),
+  preferredLanguage: Joi.string().valid("en", "kn"),
+  classes: Joi.array().items(classSchema),
+  facilities: Joi.array(),
 });
 
-const validateSetProfile = validateRequest(profileSchema);
+const bulkUploadSchema = Joi.object({
+  identity: identitySchema,
+  roles: Joi.array().items(objectId).min(1).required(),
+  profiles: Joi.object({
+    teacher: Joi.object({
+      school: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
+      preferredLanguage: Joi.string().valid("en", "kn"),
+      facilities: Joi.array(),
+      classes: Joi.array(),
+      isProfileCompleted: Joi.boolean(),
+    }).required(),
+  }).required(),
+});
 
-const validateUserActivityLog = validateRequest(Joi.object({
-	moduleName:Joi.string().required(),
-	idleTime:Joi.number().required(),
-	interactionTime:Joi.number().required(),
-	draftId:Joi.string().optional(),
-	planId:Joi.string().optional(),
-	isCompleted:Joi.boolean().optional(),
-}));
+const validateUserGetByPhone = validate(Joi.object({ phone: Joi.string().pattern(phoneNumberPattern).required() }));
+const validatePreferredLanguageUpdate = validate(Joi.object({ preferredLanguage: Joi.string().valid("en", "kn").required() }));
+
+const validateUserActivityLog = validate(
+  Joi.object({
+    planId: Joi.string().allow("", null),
+    draftId: Joi.string().allow("", null),
+    idleTime: Joi.number().required(),
+    interactionTime: Joi.number().required(),
+    moduleName: Joi.string().required(),
+    isCompleted: Joi.boolean(),
+  })
+);
 
 module.exports = {
-	userSchema,
-	bulkUploadSchema,
-	validateUserCreate,
-	validateUserGetById,
-	validateUserGetByPhone,
-	validateUserUpdate,
-	validateSetProfile,
-	validatePreferredLanguageUpdate,
-	validateUserActivityLog
+  bulkUploadSchema,
+  validatePreferredLanguageUpdate,
+  validateSetProfile: validate(profileSchema),
+  validateUserActivityLog,
+  validateUserCreate: validate(userSchema),
+  validateUserGetByPhone,
+  validateUserUpdate: validate(updateSchema),
 };

@@ -165,13 +165,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   };
 
   lessonTypeConfig: LessonTypeConfig = {
-    '/content-generation/lesson-plan': {
+    '/content/lesson-plan': {
       type: 'plan',
-      inspectUrl: '/content-generation/inspect/lesson-plan',
+      inspectUrl: '/content/inspect/lesson-plan',
     },
-    '/content-generation/lesson-resources': {
+    '/content/lesson-resources': {
       type: 'resource',
-      inspectUrl: '/content-generation/inspect/resource-plan',
+      inspectUrl: '/content/inspect/resource-plan',
     },
   };
 
@@ -772,11 +772,11 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     if (value === 'ok') {
       if (this.draftDetails.type === 'lesson') {
         this.router.navigate([
-          `/content-generation/lesson-plan/draft/${this.draftDetails.id}`,
+          `/content/lesson-plan/draft/${this.draftDetails.id}`,
         ]);
       } else {
         this.router.navigate([
-          `/content-generation/resource-plan/draft/${this.draftDetails.id}`,
+          `/content/resource-plan/draft/${this.draftDetails.id}`,
         ]);
       }
     }

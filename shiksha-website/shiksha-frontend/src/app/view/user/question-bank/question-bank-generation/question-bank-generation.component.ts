@@ -185,9 +185,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   get f(): any { return this.questionBankConfigForm.controls; }
 
   getBoardsList(userDetails: any) {
-    if (!userDetails || !userDetails.classes) return;
+    if (!userDetails?.profiles?.teacher) return;
 
-    const rawClasses = userDetails.classes;
+    const rawClasses = userDetails.profiles.teacher.classes;
     const uniqueBoards = new Set<string>();
 
     rawClasses.forEach((c: any) => {
@@ -657,7 +657,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const finalId = res.data?._id;
         if (finalId) {
           this.utilityservice.showSuccess('Question Paper Created Successfully!');
-          this.router.navigate([`/question-paper/view/${finalId}`]);
+          this.router.navigate([`/question-papers/view/${finalId}`]);
         } else {
           this.utilityservice.showError("Paper created but ID not found.");
         }
@@ -908,7 +908,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.syncDependentDropdowns();
   }
 
-  backNavigation() { this.router.navigate(['/question-paper']); }
+  backNavigation() { this.router.navigate(['/question-papers']); }
   previousStep() { if (this.currentStep > 1) this.currentStep--; }
   ngOnDestroy(): void { this.idleService.resetIdler(); }
 }

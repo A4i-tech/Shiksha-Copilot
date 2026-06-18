@@ -12,7 +12,7 @@ const createPresentationProxy = target => createProxyMiddleware({
 	timeout: 310_000,
 	on: {
 		proxyReq: (proxyReq, req, res) => {
-			if (proxyReq.method === "POST" && !req.user.role.includes('power')){
+			if (proxyReq.method === "POST" && !req.permissions.includes("presentation.generate.arbitrary") && !req.permissions.includes("presentation.generate.lesson_plan")) {
 				res.statusCode = 403;
 				res.end("Forbidden");
 				proxyReq.destroy();
@@ -37,9 +37,7 @@ router.post("/presentation/events/token",
 	(req, res, next) => {
 		const userId = encodeURIComponent(String(req.user._id));
 		const jobId = req.query.jobId && encodeURIComponent(String(req.query.jobId));
-		const path = jobId
-			? `/presentation/events/${userId}/${jobId}`
-			: `/presentation/events/pending/${userId}`;
+		const path = jobId ? `/presentation/events/${userId}/${jobId}` : `/presentation/events/pending/${userId}`;
 
 		// generate runtime token usable to initiate SSE for 60s
 		const iv = crypto.randomBytes(12);

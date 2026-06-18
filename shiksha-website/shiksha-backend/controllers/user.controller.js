@@ -74,7 +74,7 @@ class UserController extends BaseController {
         return res.status(400).json({ error: "File not provided" });
       }
       const userId = req.user._id;
-      const userName = req.user.name;
+      const userName = req.user.identity.name;
 
       const result = await this.manager.bulkUpload(
         req.file.buffer,
@@ -280,27 +280,9 @@ class UserController extends BaseController {
         processedFilter.role = role;
       }
 
-      // Modernized: Default to manager's zones/districts if not provided or empty
-      const userZones = req.user?.zones;
-      const userDistricts = req.user?.districts;
-      const userRoles = req.user?.role || [];
-      const isManager = Array.isArray(userRoles) ? userRoles.includes('manager') : userRoles === 'manager';
-
-      // Normalize possible empty string/array
-      const zoneIsEmpty = !zone || (Array.isArray(zone) && zone.length === 0) || (typeof zone === 'string' && zone.trim() === '');
-      const districtIsEmpty = !district || (Array.isArray(district) && district.length === 0) || (typeof district === 'string' && district.trim() === '');
-
-      if (isManager) {
-        if (zoneIsEmpty && userZones && userZones.length > 0) {
-          processedFilter.zone = userZones;
-        } else if (zone) {
-          processedFilter.zone = zone;
-        }
-        if (districtIsEmpty && userDistricts && userDistricts.length > 0) {
-          processedFilter.district = userDistricts;
-        } else if (district) {
-          processedFilter.district = district;
-        }
+      if (req.permissions.includes("scope.regional")) {
+        processedFilter.zone = zone || req.user.profiles.admin.zones;
+        processedFilter.district = district || req.user.profiles.admin.districts;
       } else {
         if (zone) {
           processedFilter.zone = zone;
@@ -310,17 +292,15 @@ class UserController extends BaseController {
         }
       }
 
-      // Handle search filter
       const searchFilter = {};
       if (search) {
-        const searchFields = ["name", "phone", "zone", "district"];
+        const searchFields = ["identity.name", "identity.phone", "profiles.teacher.zone", "profiles.teacher.district"];
         const regexExpressions = searchFields.map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
         searchFilter.$or = regexExpressions;
       }
 
-      // Handle includeDeleted status
       let status = {};
       if (includeDeleted === '2') {
         status = { isDeleted: true };

@@ -118,7 +118,7 @@ class ScheduleAggregation {
 	async getBySchool(schoolId, teacherClasses, fromDate, toDate, teacherId, teacherSchedule) {
 		try {
 			let getactiveUserSchedules = {
-        		school: schoolId,
+			"profiles.teacher.school": schoolId,
         		isDeleted: false,
       		};
 
@@ -228,8 +228,7 @@ class ScheduleAggregation {
 							{
 								$project: {
 									_id: 1,
-									name: 1,
-									role: 1,
+									name: "$identity.name",
 									profileImage: 1,
 								},
 							},

@@ -203,7 +203,7 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   backNavigation() {
-    this.router.navigate(['/question-paper']);
+    this.router.navigate(['/question-papers']);
   }
 
   submitFeedback() {

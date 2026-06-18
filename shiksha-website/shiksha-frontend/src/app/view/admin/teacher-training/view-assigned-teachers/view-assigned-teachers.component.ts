@@ -129,7 +129,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           alert('Error fetching batch details. Please try again.');
         }
         
-        this.router.navigate(['/teacher-training/view-batch']);
+        this.router.navigate(['/training/view-batch']);
       }
     });
   }
@@ -219,7 +219,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm(`Are you sure you want to remove ${teacher.name} from ${batch.batchName}?`)) {
+    if (confirm(`Are you sure you want to remove ${teacher.identity.name} from ${batch.batchName}?`)) {
       const currentAttendance = [...(this.selectedBatch?.attendance || [])];
       const updatedAttendance = currentAttendance.filter(id => id !== teacher._id);
       
@@ -407,7 +407,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/teacher-training/view-batch']);
+    this.router.navigate(['/training/view-batch']);
   }
 
   getPresentCount(): number {
@@ -517,10 +517,10 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
       const teacher = teachers[idx];
       worksheet.addRow([
         idx + 1,
-        teacher.name || '',
-        teacher.phone || '',
-        teacher.zone || '',
-        teacher.district || '',
+        teacher.identity.name || '',
+        teacher.identity.phone || '',
+        teacher.profiles.teacher.zone || '',
+        teacher.profiles.teacher.district || '',
         formattedDate,
         '' // Signature column left blank
       ]);

@@ -35,7 +35,7 @@ class MasterSubjectManager extends BaseManager {
 
 	async getByName(subjectName, user) {
 		try {
-			const school = await this.schoolDao.getById(user.school);
+			const school = await this.schoolDao.getById(user.profiles.teacher.school);
 
 			if (!school) {
 				return formatApiReponse(false, "Invalid school for teacher", null);

@@ -44,7 +44,7 @@ export class ContentActivityService extends BaseRestService {
         params = params.set('filter[schoolId]', filters._id);
       }
     }
-    return this.get('get-content-activity', params);
+    return this.http.get<any>(`${this.baseUrl}/content-activity`, { params });
   }
 
   getLessonPlanDetFrmContentActivity(id:any){
@@ -70,7 +70,6 @@ export class ContentActivityService extends BaseRestService {
         });
       }
 
-    return this.http.get<any>(`${this.baseUrl}/admin/content-activity/export`, { params: params });
+    return this.http.get<any>(`${this.baseUrl}/content-activity/export`, { params: params });
   }
 }
-

@@ -53,11 +53,10 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.authorizationService.isLoggedIn()) {
       this.authService.authMe().subscribe({
         next: (res: any) => {
-          const user = res?.data ?? null;
+          const user = { ...res.data.user, permissions: res.data.permissions };
 
-          if (user) {
-            localStorage.setItem('userData', JSON.stringify(user));
-          }
+          localStorage.setItem('userData', JSON.stringify(user));
+          window.dispatchEvent(new Event('permissionsChanged'));
         },
         error: (err: any) => {
           this.utilityService.handleError(err);
@@ -87,7 +86,9 @@ export class AppComponent implements OnInit, OnDestroy {
   updateUserData() {
     this.authService.authMe().subscribe({
       next: (res: any) => {
-        localStorage.setItem('userData', JSON.stringify(res?.data));
+        const user = { ...res.data.user, permissions: res.data.permissions };
+        localStorage.setItem('userData', JSON.stringify(user));
+        window.dispatchEvent(new Event('permissionsChanged'));
       },
       error: (err: any) => {
         this.utilityService.handleError(err);

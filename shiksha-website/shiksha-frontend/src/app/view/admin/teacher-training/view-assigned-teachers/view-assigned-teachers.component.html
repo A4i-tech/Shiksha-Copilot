@@ -75,8 +75,8 @@
         <div class="rounded-xl border p-4 bg-white shadow-sm" *ngFor="let teacher of selectedBatch.assignedTeachers">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <p class="font-semibold break-words">{{ teacher.name }}</p>
-              <p class="text-sm text-content-60 mt-1 break-all">{{ teacher.phone }}</p>
+              <p class="font-semibold break-words">{{ teacher.identity.name }}</p>
+              <p class="text-sm text-content-60 mt-1 break-all">{{ teacher.identity.phone }}</p>
             </div>
             <button
               class="remove-assigned-teacher-icon"
@@ -97,11 +97,11 @@
           <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
               <p class="text-xs text-content-60">Zone</p>
-              <p class="break-words">{{ teacher.zone || '-' }}</p>
+              <p class="break-words">{{ teacher.profiles.teacher.zone || '-' }}</p>
             </div>
             <div>
               <p class="text-xs text-content-60">District</p>
-              <p class="break-words">{{ teacher.district || '-' }}</p>
+              <p class="break-words">{{ teacher.profiles.teacher.district || '-' }}</p>
             </div>
             <div class="col-span-2">
               <label class="attendance-row">
@@ -132,10 +132,10 @@
           </thead>
           <tbody class="bg-white">
             <tr *ngFor="let teacher of selectedBatch.assignedTeachers" class="border-b">
-              <td class="text-sm p-4 border-r break-words">{{ teacher.name }}</td>
-              <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.phone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.zone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.district }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.identity.name }}</td>
+              <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.identity.phone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.profiles.teacher.zone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.profiles.teacher.district }}</td>
               <td class="text-sm p-4 border-r text-center">
                 <input
                   type="checkbox"

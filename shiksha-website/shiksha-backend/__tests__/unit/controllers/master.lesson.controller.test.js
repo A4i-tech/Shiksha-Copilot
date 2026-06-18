@@ -178,7 +178,7 @@ describe("MasterLessonController", () => {
         data: { lessonId: "lesson-123", regenerated: true },
       };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "power";
+      mockReq.permissions = ["presentation.generate.lesson_plan"];
       mockReq.body = { lessonId: "lesson-123", reason: "Outdated content" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);
@@ -195,7 +195,7 @@ describe("MasterLessonController", () => {
     it("should regenerate lesson plan for admin user", async () => {
       const mockResult = { success: true, data: { regenerated: true } };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "admin";
+      mockReq.permissions = ["content.activity.view"];
       mockReq.body = { lessonId: "lesson-123", reason: "Test" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);
@@ -206,7 +206,7 @@ describe("MasterLessonController", () => {
     it("should regenerate lesson plan for manager user", async () => {
       const mockResult = { success: true, data: { regenerated: true } };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "manager";
+      mockReq.permissions = ["content.activity.view"];
       mockReq.body = { lessonId: "lesson-123", reason: "Test" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);
@@ -215,7 +215,7 @@ describe("MasterLessonController", () => {
     });
 
     it("should deny access for unauthorized role", async () => {
-      mockReq.user.role = "teacher";
+      mockReq.permissions = [];
       mockReq.body = { lessonId: "lesson-123", reason: "Test" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);
@@ -230,7 +230,7 @@ describe("MasterLessonController", () => {
     it("should handle regeneration failure", async () => {
       const mockResult = { success: false, message: "Regeneration failed" };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "admin";
+      mockReq.permissions = ["content.activity.view"];
       mockReq.body = { lessonId: "lesson-123", reason: "Test" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);

@@ -1,11 +1,11 @@
 
 <div class="lg:mt-0 mb-0 lg:mb-4 p-4 lg:p-0 pb-0">
   <h1 class="text-xl text-content md:text-2xl font-bold">
-    {{ "Hi" | translate }}, {{ utiltyService.loggedInUserData?.name }}
+    {{ "Hi" | translate }}, {{ utiltyService.loggedInUserData?.identity?.name }}
   </h1>
-  <p class="text-sm md:text-sm font-light text-content-60">
+  <h6 class="text-sm md:text-sm font-light text-content-60">
     {{ "Your Teacher Toolkit at a Glance" | translate }}
-  </p>
+  </h6>
 </div>
 <div
   class="dashboard-wrapper grid grid-cols-1 md:grid-cols-10 md:gap-[22px] p-4 lg:p-0"
@@ -22,30 +22,30 @@
           <h2 class="mt-1 text-xl text-white font-semibold">
             {{ "Lesson Plan Generation" | translate }}
           </h2>
-          <p class="mt-3 text-white text-sm">
+          <h6 class="mt-3 text-white text-sm">
             {{
               "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom"
                 | translate
             }}
-          </p>
+          </h6>
           <button
-            routerLink="/content-generation/lesson-plan"
+            routerLink="/content/lesson-plan"
             class="text-primary bg-white px-7 py-2 mt-7 rounded font-medium text-sm"
           >
-            <span>{{ "Generate" | translate }}</span>
+            <h6>{{ "Generate" | translate }}</h6>
           </button>
         </div>
       </div>
     </div>
 
-    <div class="mt-10" role="region" [attr.aria-label]="'Recently Generated/Modified Plans' | translate">
+    <div class="mt-10">
       <div class="flex justify-between">
         <h3 class="text-xl md:text-2xl font-medium text-content-100">
           {{ "Recently Generated/Modified Plans" | translate }}
         </h3>
         <p
           class="text-sm font-medium text-primary cursor-pointer"
-          routerLink="/content-generation"
+          routerLink="/content"
           *ngIf="recentPlans.length > 0"
         >
           {{ "View All" | translate }}
@@ -80,10 +80,10 @@
                 />
               </svg>
             </div>
-            <p class="text-xs font-normal text-content-70">
+            <h6 class="text-xs font-normal text-content-70">
               {{ "Modified On" | translate }}:
               <span>{{ plan.updatedAt | date : "MMM dd,yyyy" }}</span>
-            </p>
+            </h6>
           </div>
 
           <div class="mt-5">
@@ -91,9 +91,9 @@
               {{ "Subject" | translate }}:
               <span>{{ plan.isLesson ? utiltyService.getSubjectDisplayName(plan.lesson.subjects) : utiltyService.getSubjectDisplayName(plan.resource.subjects)}}</span>
             </h4>
-            <p class="mt-2 text-xs font-normal text-content-70">
+            <h6 class="mt-2 text-xs font-normal text-content-70">
               {{ "Topic" | translate }}: {{plan.isLesson ?  plan.lesson.chapter?.orderNumber+'. '+plan.lesson.chapter.topics:plan.resource.chapter?.orderNumber +'. '+plan.resource.chapter.topics }}
-            </p>
+            </h6>
           </div>
          </div>
 
@@ -102,9 +102,9 @@
             [ngClass]="plan.btnColor"
             (click)="onView(plan)"
           >
-            <span class="text-white text-sm">
+            <h6 class="text-white text-sm">
               {{ (plan.isLesson ? "View Lesson Plan" : "View Resource Plan") | translate }}
-            </span>
+            </h6>
           </button>
         </div>
 
@@ -119,18 +119,18 @@
             {{ "No plans found" | translate }}
           </h4>
           <button
-          routerLink="/content-generation"
+          routerLink="/content"
             class="mt-7 w-full py-2 rounded bg-warn"
           >
-            <span class="text-white text-sm">
+            <h6 class="text-white text-sm">
               {{ "Generate" | translate }}
-            </span>
+            </h6>
           </button>
         </div>
       </div>
     </div>
 
-    <div class="canvas-container mt-8 bg-white py-7 px-6 rounded-xl border" role="region" [attr.aria-label]="'Lesson Plan/Resources Generated' | translate">
+    <div class="canvas-container mt-8 bg-white py-7 px-6 rounded-xl border">
       <div class="flex justify-between items-center mb-5">
         <h2 class="text-base text-content">
           {{ "Lesson Plan/Resources Generated" | translate }}
@@ -146,8 +146,6 @@
       </div>
       <canvas
         baseChart
-        role="img"
-        [attr.aria-label]="('Lesson Plan/Resources Generated' | translate) + ' - ' + ('line chart showing the number of lesson plans and resources generated over time' | translate)"
         height="400"
         [type]="'line'"
         [data]="lineChartData"
@@ -159,8 +157,6 @@
   <div class="w-full col-span-4 mt-8 md:mt-0">
     <div
       class="bg-white px-5 py-7 rounded-xl border open-calender-wrapper h-full"
-      role="region"
-      [attr.aria-label]="'Calendar' | translate"
     >
       <h2
         class="font-bold text-xl md:text-[24px] pl-3 text-content-100"
@@ -178,8 +174,6 @@
 
         <div class="btn-group flex gap-4 items-center ml-auto min-w-fit">
           <button
-            type="button"
-            [attr.aria-label]="'Previous month' | translate"
             class="p-1 md:py-2 md:px-4 rounded text-sm md:text-lg"
             mwlCalendarPreviousView
             [view]="view"
@@ -194,8 +188,6 @@
           </button>
 
           <button
-            type="button"
-            [attr.aria-label]="'Next month' | translate"
             class="p-1 md:py-2 md:px-4 rounded text-primary text-sm md:text-lg"
             mwlCalendarNextView
             [view]="view"
@@ -212,7 +204,6 @@
       </div>
 
       <mwl-calendar-month-view
-        appCalendarAccessibility
         [viewDate]="monthViewDate"
         [weekStartsOn]="1"
         (dayClicked)="dayClicked($event.day)"
@@ -224,14 +215,13 @@
         routerLink="/schedule"
         class="px-6 py-4 bg-primary rounded w-full mt-7 mb-5"
       >
-        <span class="block text-white text-left font-medium">
+        <h6 class="text-white text-left font-medium">
           {{ "My Schedule" | translate }}
-        </span>
+        </h6>
       </button>
 
       <div class="mt-5 dashboard-events">
         <mwl-calendar-day-view
-          appCalendarAccessibility
           [viewDate]="viewDate"
           [events]="events"
           #calender_ele

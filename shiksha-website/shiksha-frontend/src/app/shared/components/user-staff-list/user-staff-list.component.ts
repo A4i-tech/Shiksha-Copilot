@@ -46,7 +46,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   usersList: any[] = [];
   schoolNamesDropdownOptions: any[]=[];
 
-  userRolesDropdownOptions!: any[];
+  userRolesDropdownOptions: any[] = [];
 
   userStatusDropdownOptions: any[]=[{ name: 'Active', value: 'active' },{ name: 'Inactive', value: 'inactive' }];
 
@@ -76,7 +76,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     isBackground: true,
     placeHolderTxt: 'Type of Teacher',
     bindLabel:'name',
-    bindValue:'value',
+    bindValue:'_id',
     labelTxt:'Type of Teacher'
   };
 
@@ -163,16 +163,16 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   fileToUpload!: File;
   lessonContentType!: string | null;
   contentListConfig:ContentListConfig = {
-    "/teacher-management/list": {
+    "/teachers/list": {
       type:'user',
-      router: '/teacher-management/',
+      router: '/teachers/',
       table_headers: ['Teacher Name', 'Mobile Number', 'School Name', 'Type of Teacher', 'Status of Teacher', 'Training Status', ''],
       download_file:'user-management'
 
     },
-    "/staff-management/list": {
+    "/staff/list": {
       type:"admin",
-      router: '/staff-management/',
+      router: '/staff/',
       table_headers: ['Staff Name', 'Mobile Number', 'Type of staff', 'Status of staff', ''],
       download_file:'admin-shikshana-user-management'
     }
@@ -215,11 +215,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
 
   constructor(private elRef:ElementRef, private route: ActivatedRoute, private router: Router, public modalService: ModalService, private userManagementService: UserManagementService, public utility: UtilityService, private commonStaffUserService: StaffUserCommonService, private masterService:MasterService, private schoolManagementService:SchoolManagementService) {
     this.lessonContentType = this.router.url.split('?')[0];
-    if (this.getType()?.type === 'user') {
-      this.userRolesDropdownOptions = [{ name: 'Standard', value: 'standard' }, { name: 'Power', value: 'power' }];
-    } 
     if (this.getType()?.type === 'admin') {
-      this.userRolesDropdownOptions = [{ name: 'Admin', value: 'admin' }, { name: 'Manager', value: 'manager' }];
       this.userRolesDropdownconfig.placeHolderTxt ='Type of staff'
       this.modal_subheader = 'Are you sure you want to delete this Staff? This cannot be undone.';
     }
@@ -235,19 +231,21 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
 
     const loggedInUser = this.utility.loggedInUserData;
 
-    if (loggedInUser && loggedInUser.role.includes('manager')) {
-      if (loggedInUser.state) {
-        this.filterObj.state = loggedInUser.state;
+    const adminProfile = loggedInUser?.profiles?.admin;
+    if (this.utility.isRegionallyScoped()) {
+      if (adminProfile?.state) {
+        this.filterObj.state = adminProfile.state;
       }
-      if (loggedInUser.zones && loggedInUser.zones.length > 0) {
-        this.filterObj.zone = loggedInUser.zones;
+      if (adminProfile?.zones?.length > 0) {
+        this.filterObj.zone = adminProfile.zones;
       }
-      if (loggedInUser.districts && loggedInUser.districts.length > 0) {
-        this.filterObj.district = loggedInUser.districts;
+      if (adminProfile?.districts?.length > 0) {
+        this.filterObj.district = adminProfile.districts;
       }
     }
 
     this.getUsersList(this.filterObj);
+    this.loadRoles();
 
     this.searchSubscription = this.searchTerms.pipe(
       debounceTime(1000),
@@ -334,10 +332,21 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
         status: item.isDeleted ? 'Inactive' : 'Active',
         isAction: true,
         user_name: item.name,
-        role_name: item.role,
+        role_name: this.roleName(item),
         more_icon: false
       }
     }
+  }
+
+  loadRoles() {
+    const permission = this.getType()?.type === 'user' ? 'dashboard.teacher.view' : 'dashboard.admin.view';
+    this.userManagementService.getRoles().subscribe((res: any) => {
+      this.userRolesDropdownOptions = res.data.results.filter((role: any) => role.permissions.includes(permission));
+    });
+  }
+
+  roleName(item: any) {
+    return item.role.join(', ');
   }
 
   ondisableUser(item: any) {    
@@ -671,9 +680,9 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
         );
         // Only show manager's zones if role is manager
         const loggedInUser = this.utility.loggedInUserData;
-        const role = loggedInUser && loggedInUser.role;
-        if (role && (Array.isArray(role) ? role.includes('manager') : role === 'manager') && loggedInUser && loggedInUser.zones) {
-          this.zoneDropdownOptions = this.utility.getZonesForManager(this.regionsData, loggedInUser);
+        const adminProfile = loggedInUser?.profiles?.admin;
+        if (this.utility.isRegionallyScoped() && adminProfile?.zones) {
+          this.zoneDropdownOptions = this.utility.getZonesForManager(this.regionsData, adminProfile);
         } else {
           this.zoneDropdownOptions = this.selectedStateObj.zones;
         }

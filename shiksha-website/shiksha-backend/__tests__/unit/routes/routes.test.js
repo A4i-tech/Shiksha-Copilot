@@ -20,7 +20,7 @@ jest.mock("express", () => {
 });
 
 const controllerPaths = [
-  "../../../controllers/admin.user.controller.js",
+  "../../../controllers/operations.controller.js",
   "../../../controllers/audit.log.controller.js",
   "../../../controllers/auth.controller.js",
   "../../../controllers/baselineSurvey.controller.js",
@@ -47,7 +47,6 @@ const controllerPaths = [
 ];
 
 const validationPaths = [
-  "../../../validations/admin.user.validation.js",
   "../../../validations/auth.validation.js",
   "../../../validations/board.validation.js",
   "../../../validations/facility.validation.js",
@@ -91,8 +90,8 @@ const setupSharedMocks = () => {
   );
   jest.doMock("../../../middlewares/auth.js", () => ({
     isAuthenticated: jest.fn((req, res, next) => next && next()),
-    isAdmin: jest.fn((req, res, next) => next && next()),
-    isAdminOrManager: jest.fn((req, res, next) => next && next()),
+    requirePermission: jest.fn(() => (req, res, next) => next && next()),
+    requireAnyPermission: jest.fn(() => (req, res, next) => next && next()),
   }));
   jest.doMock("../../../middlewares/uploadMiddleware.js", () => jest.fn());
   jest.doMock("../../../middlewares/multerUploadMiddleware.js", () =>
@@ -139,7 +138,7 @@ const loadRoute = (file) => {
 };
 
 const routeCases = [
-  { file: "admin.user.routes.js", method: "post", path: "/admin/create" },
+  { file: "operations.routes.js", method: "get", path: "/dashboard/admin" },
   { file: "audit.log.route.js", method: "get", path: "/audit/log" },
   { file: "auth.routes.js", method: "post", path: "/auth/get-otp" },
   {
@@ -201,7 +200,7 @@ const routeCases = [
     method: "post",
     path: "/teacher-training-batches/",
   },
-  { file: "user.routes.js", method: "post", path: "/user/create" },
+  { file: "user.routes.js", method: "post", path: "/users" },
 ];
 
 describe("route modules wiring", () => {

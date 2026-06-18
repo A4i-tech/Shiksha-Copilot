@@ -15,6 +15,7 @@ export class LessonPlanFormatsComponent implements OnChanges, OnDestroy {
   @Input() planId: any;
   @Input() isLesson: any;
   @Input() planAiActive: boolean = false;
+  @Input() editPermission = '';
   @Output() unsavedChanges: EventEmitter<boolean> = new EventEmitter<boolean>();
   @Output() aiAccepted: EventEmitter<void> = new EventEmitter<void>();
   @Output() aiModeActive: EventEmitter<boolean> = new EventEmitter<boolean>();

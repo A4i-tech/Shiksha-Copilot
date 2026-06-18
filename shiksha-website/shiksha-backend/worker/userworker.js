@@ -6,6 +6,7 @@ const { workerData, parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../services/variform.service");
 const User = require("../models/user.model");
+const Role = require("../models/role.model");
 const School = require("../models/school.model");
 const dbService = require("../config/db.js");
 const { bulkUploadSchema } = require("../validations/user.validation");
@@ -26,39 +27,39 @@ async function processRow(
     return;
   }
 
-  if (phoneNumbers.has(userDataRow.phone)) {
+  if (phoneNumbers.has(userDataRow.identity.normalizedPhone)) {
     validationErrors.push({
       row: rowNumber,
-      message: `Duplicate phone number ${userDataRow.phone} found within the file`,
+      message: `Duplicate phone number ${userDataRow.identity.phone} found within the file`,
     });
     return;
   }
 
-  phoneNumbers.add(userDataRow.phone);
+  phoneNumbers.add(userDataRow.identity.normalizedPhone);
 
-  const existingUser = await User.findOne({ phone: userDataRow.phone });
+  const existingUser = await User.findOne({ "identity.normalizedPhone": userDataRow.identity.normalizedPhone });
   if (existingUser) {
     validationErrors.push({
       row: rowNumber,
-      message: `Phone number ${userDataRow.phone} already exists`,
+      message: `Phone number ${userDataRow.identity.phone} already exists`,
     });
     return;
   }
 
-  const existingSchool = await School.findOne({ schoolId: userDataRow.school });
+  const existingSchool = await School.findOne({ schoolId: userDataRow.profiles.teacher.school });
   if (!existingSchool) {
     validationErrors.push({
       row: rowNumber,
-      message: `School with diseCode ${userDataRow.school} does not exist`,
+      message: `School with diseCode ${userDataRow.profiles.teacher.school} does not exist`,
     });
     return;
   }
 
-  userDataRow.school = existingSchool._id.toString();
-  userDataRow.state = existingSchool.state;
-  userDataRow.zone = existingSchool.zone;
-  userDataRow.district = existingSchool.district;
-  userDataRow.block = existingSchool.block;
+  userDataRow.profiles.teacher.school = existingSchool._id.toString();
+  userDataRow.profiles.teacher.state = existingSchool.state;
+  userDataRow.profiles.teacher.zone = existingSchool.zone;
+  userDataRow.profiles.teacher.district = existingSchool.district;
+  userDataRow.profiles.teacher.block = existingSchool.block;
 
   userData.push(userDataRow);
 }
@@ -108,7 +109,7 @@ async function processValidData(userData, client, userId, userName) {
 
       await Promise.all(
         insertResult.map((user) =>
-          sendWelcomeSMS(user.phone, user.name).catch((error) => {
+          sendWelcomeSMS(user.identity.phone, user.identity.name).catch((error) => {
             logger.warn("Welcome SMS failed", { userId: String(user._id), error: error.message });
           })
         )
@@ -170,6 +171,7 @@ dbService.getConnection().then(async (client) => {
     const userData = [];
     const validationErrors = [];
     const phoneNumbers = new Set();
+    const roleByName = new Map((await Role.find({ isDeleted: false }).select("_id name")).map((role) => [role.name.toLowerCase(), role._id]));
 
     const rowProcessingPromises = [];
     worksheet.forEach((rowData, rowNumber) => {
@@ -179,10 +181,23 @@ dbService.getConnection().then(async (client) => {
       if (isEmptyRow) return;
 
       const userDataRow = {
-        name: rowData.name,
-        phone: rowData.phone,
-        school: Number(rowData.school),
-        role: rowData.role,
+        identity: {
+          name: rowData.name,
+          phone: rowData.phone,
+          normalizedPhone: String(rowData.phone || "")
+            .replace(/\D/g, "")
+            .replace(/^91(?=\d{10}$)/, ""),
+        },
+        roles: rowData.role.map((role) => roleByName.get(role.toLowerCase())),
+        profiles: {
+          teacher: {
+            school: Number(rowData.school),
+            preferredLanguage: "en",
+            facilities: [],
+            classes: [],
+            isProfileCompleted: false,
+          },
+        },
       };
       rowProcessingPromises.push(
         processRow(userDataRow, rowNumber + 1, phoneNumbers, validationErrors, userData)

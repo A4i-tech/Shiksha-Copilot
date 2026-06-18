@@ -1,14 +1,12 @@
 require("dotenv").config();
-const jwt = require("jsonwebtoken");
 const CryptoJS = require('crypto-js');
 
 const UserAction = require("../models/user.action.logs.model");
 const UserDao = require("../dao/user.dao");
-const AdminUserDao = require("../dao/admin.user.dao");
 const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
-const { JWT_SECRET } = process.env;
+const { resolvePermissions } = require("../helper/permission.helper");
 const CAPTCHA_ATTEMPT = 3, MAX_LOGIN_ATTEMPTS = 6;
 const LOGIN_LOCK_MINUTES = 5, LOGIN_LOCK_TTL = LOGIN_LOCK_MINUTES * 60 * 1000;
 const PENDING_PIN_TTL_MINUTES = 5, PENDING_PIN_TTL = PENDING_PIN_TTL_MINUTES * 60 * 1000;
@@ -18,52 +16,15 @@ const RESEND_COOLDOWN_MS = RESEND_COOLDOWN_SECONDS * 1000;
 class AuthManager {
     constructor() {
         this.userDao = new UserDao();
-        this.adminUserDao = new AdminUserDao();
-    }
-
-    async getUsersByPhone(phone) {
-        const [teacher, admin] = await Promise.all([this.userDao.getByPhone(phone), this.adminUserDao.getByPhone(phone)]);
-        return { teacher, admin };
-    }
-
-    updateUsers({ teacher, admin }, method, ...args) {
-        return Promise.all([[teacher, this.userDao], [admin, this.adminUserDao]]
-            .filter(([user]) => user)
-            .map(([user, dao]) => dao[method](user._id, ...args)));
-    }
-
-    getUserDao({ teacher, admin }) {
-        return teacher ? [teacher, this.userDao] : [admin, this.adminUserDao];
-    }
-
-    mergeUser(teacher, admin) {
-        const user = (teacher || admin).toObject();
-        Object.assign(user, {
-            role: [...new Set([...(teacher?.role || []), ...(admin?.role || [])])],
-            ...(teacher && { userId: teacher._id }),
-            ...(admin && { adminUserId: admin._id, zones: admin.zones, districts: admin.districts }),
-        });
-        delete user.otp;
-        delete user.rememberMeToken;
-        delete user.loginAttempts;
-        delete user.recovery;
-        return user;
     }
 
     async getOtp(req) {
         try {
-            let { phone, rememberMe, forgotPassword } = req.body;
+            const { phone, rememberMe, forgotPassword } = req.body;
+            const user = await this.userDao.getByPhone(phone, true);
 
-            const users = await this.getUsersByPhone(phone);
-            if (!users.teacher && !users.admin) {
-                return formatApiReponse(false, "Account does not exist!", {});
-            }
-
-            const activeUsers = { teacher: users.teacher?.isDeleted ? null : users.teacher, admin: users.admin?.isDeleted ? null : users.admin };
-            const [user, dao] = this.getUserDao(activeUsers);
-            if (!user) {
-                return formatApiReponse(false, "User is inactive", {});
-            }
+            if (!user) return formatApiReponse(false, "Account does not exist!", {});
+            if (user.isDeleted) return formatApiReponse(false, "User is inactive", {});
 
             // SMS PIN (first-time or forgot/resend): pending only — no permanent otp until validated.
             if (forgotPassword || (!user.otp && !user.rememberMeToken)) {
@@ -74,7 +35,7 @@ class AuthManager {
                     sentAt: new Date(),
                     attempts: 0,
                 };
-                if (!await dao.reserveRecovery(user._id, recovery, new Date(Date.now() - RESEND_COOLDOWN_MS))) {
+                if (!await this.userDao.reserveRecovery(user._id, recovery, new Date(Date.now() - RESEND_COOLDOWN_MS))) {
                     return { ...formatApiReponse(false, "Please wait before requesting another PIN.", {
                         retryAfterSeconds: RESEND_COOLDOWN_SECONDS,
                     }), code: "PIN_COOLDOWN" };
@@ -82,17 +43,17 @@ class AuthManager {
                 try {
                     await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
                 } catch {
-                    await dao.clearRecovery(user._id);
+                    await this.userDao.clearRecovery(user._id);
                     return formatApiReponse(false, "Unable to send PIN. Please try again shortly.", null);
                 }
-                await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
+                await this.userDao.update(user._id, { rememberMeToken: rememberMe === true });
                 return formatApiReponse(true, "PIN sent successfully", {
-                    user: user.phone, otpTriggered: true, recoveryTriggered: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS,
+                    user: user.identity.phone, otpTriggered: true, recoveryTriggered: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS,
                 });
             }
 
-            await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
-            return formatApiReponse(true, "Verify your Pin!", { user: user.phone, otpTriggered: false });
+            await this.userDao.update(user._id, { rememberMeToken: rememberMe === true });
+            return formatApiReponse(true, "Verify your Pin!", { user: user.identity.phone, otpTriggered: false });
 
         } catch (err) {
             return formatApiReponse(false, err?.message || "Internal Server Error", err);
@@ -103,32 +64,23 @@ class AuthManager {
         try {
             const { phone, otp, captchaToken, recovery } = req.body;
 
-            const users = await this.getUsersByPhone(phone);
-            if (!users.teacher && !users.admin) {
-                return formatApiReponse(false, "Account does not exist!", null);
-            }
+            const user = await this.userDao.getByPhone(phone, true);
+            if (!user) return formatApiReponse(false, "Account does not exist!", null);
+            if (user.isDeleted) return formatApiReponse(false, "User is inactive", {});
 
-            const activeUsers = { teacher: users.teacher?.isDeleted ? null : users.teacher, admin: users.admin?.isDeleted ? null : users.admin };
-            const user = activeUsers.teacher || activeUsers.admin;
-            if (!user) {
-                return formatApiReponse(false, "User is inactive", {});
-            }
+            if (recovery) return this.validateRecovery(req, user);
 
-            if (recovery) return await this.validateRecovery(req, activeUsers);
-
-            const encryptedOtp = activeUsers.teacher ? activeUsers.teacher.otp : activeUsers.admin?.otp;
+            const encryptedOtp = user.otp;
             if (!encryptedOtp) {
                 return formatApiReponse(false, "PIN not found", null);
             }
 
-            const attemptCount = Math.max(...[activeUsers.teacher, activeUsers.admin]
-                .filter(Boolean).map((account) => account.loginAttempts?.length || 0));
+            const attemptCount = user.loginAttempts?.length || 0;
             if (attemptCount >= MAX_LOGIN_ATTEMPTS) {
                 return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "LOGIN_LOCKED" };
             }
             if (attemptCount === CAPTCHA_ATTEMPT) {
-                const lockedUntil = Math.max(...[activeUsers.teacher, activeUsers.admin].filter(Boolean)
-                    .map((account) => new Date(account.loginAttempts?.[CAPTCHA_ATTEMPT - 1] || 0).getTime())) + LOGIN_LOCK_TTL;
+                const lockedUntil = new Date(user.loginAttempts[CAPTCHA_ATTEMPT - 1]).getTime() + LOGIN_LOCK_TTL;
                 if (lockedUntil > Date.now()) {
                     return { ...formatApiReponse(false, `Too many failed attempts. Please try again after ${LOGIN_LOCK_MINUTES} minutes.`, {
                         retryAfterSeconds: Math.ceil((lockedUntil - Date.now()) / 1000),
@@ -140,9 +92,9 @@ class AuthManager {
                 return { ...formatApiReponse(false, "Complete the CAPTCHA to continue.", null), code: "CAPTCHA_REQUIRED" };
             }
 
-            const reservations = await this.updateUsers(activeUsers, "reserveLoginAttempt", new Date(),
+            const reservation = await this.userDao.reserveLoginAttempt(user._id, new Date(),
                 !authHelper.captchaEnabled || captchaRequired ? MAX_LOGIN_ATTEMPTS : CAPTCHA_ATTEMPT);
-            if (reservations.some((account) => !account)) {
+            if (!reservation) {
                 if (authHelper.captchaEnabled && !captchaRequired) {
                     return { ...formatApiReponse(false, `Too many failed attempts. Please try again after ${LOGIN_LOCK_MINUTES} minutes.`, {
                         retryAfterSeconds: LOGIN_LOCK_MINUTES * 60,
@@ -152,9 +104,9 @@ class AuthManager {
             }
 
             const decryptedOtp = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
-            if (otp === decryptedOtp) return this.completeLogin(req, activeUsers);
+            if (otp === decryptedOtp) return this.completeLogin(req, user);
 
-            const attemptCountAfter = Math.max(...reservations.map((account) => account.loginAttempts.length));
+            const attemptCountAfter = reservation.loginAttempts.length;
             if (attemptCountAfter >= MAX_LOGIN_ATTEMPTS) {
                 return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "LOGIN_LOCKED" };
             }
@@ -174,45 +126,39 @@ class AuthManager {
         }
     }
 
-    async completeLogin(req, activeUsers) {
-        const user = activeUsers.teacher || activeUsers.admin;
-        const token = jwt.sign({
-            _id: user._id,
-            userId: activeUsers.teacher?._id,
-            adminUserId: activeUsers.admin?._id,
-            isAdmin: Boolean(activeUsers.admin),
-            isDeleted: false,
-        }, JWT_SECRET, { expiresIn: "7d" });
+    async completeLogin(req, user) {
+        const token = user.generateAuthToken();
         await Promise.all([
-            this.updateUsers(activeUsers, "update", { isLoginAllowed: true }),
-            this.updateUsers(activeUsers, "clearLoginAttempts"),
-            this.updateUsers(activeUsers, "clearRecovery"),
+            this.userDao.update(user._id, { isLoginAllowed: true }),
+            this.userDao.clearLoginAttempts(user._id),
+            this.userDao.clearRecovery(user._id),
         ]);
-        const userObj = this.mergeUser(activeUsers.teacher, activeUsers.admin);
-        if (activeUsers.teacher) {
-            await refreshProfileImageIfExpired(userObj, (id, updates) => this.userDao.update(id, updates));
-        }
+        await refreshProfileImageIfExpired(user, (id, updates) => this.userDao.update(id, updates));
         const agent = req.useragent || {};
         await UserAction.create({
             userId: user._id,
-            userName: user.name,
+            userName: user.identity.name,
             actionType: 'login',
             timestamp: new Date().toISOString(),
             deviceType: agent.isMobile ? 'mobile' : agent.isTablet ? 'tablet' : 'desktop',
             browserInfo: agent.browser ? `${agent.browser}/${agent.version}` : 'Unknown',
             osInfo: agent.os || 'Unknown',
         });
-        return formatApiReponse(true, "PIN verified successfully!", { user: userObj, token });
+        const { roles, ...sessionUser } = user.toObject();
+        return formatApiReponse(true, "PIN verified successfully!", {
+            user: sessionUser,
+            permissions: resolvePermissions(user.roles),
+            token,
+        });
     }
 
-    async validateRecovery(req, activeUsers) {
-        const [user, dao] = this.getUserDao(activeUsers);
+    async validateRecovery(req, user) {
         const recovery = user.recovery;
         if (!recovery || new Date(recovery.expiresAt).getTime() <= Date.now()) {
             return formatApiReponse(false, "PIN expired. Request a new one.", null);
         }
 
-        if (!await dao.reserveRecoveryAttempt(user._id)) {
+        if (!await this.userDao.reserveRecoveryAttempt(user._id)) {
             return {
                 ...formatApiReponse(false, "Too many attempts. Request a new PIN.", {
                     retryAfterSeconds: Math.ceil((new Date(recovery.expiresAt).getTime() - Date.now()) / 1000),
@@ -226,21 +172,15 @@ class AuthManager {
             return formatApiReponse(false, "Invalid PIN", null);
         }
 
-        await this.updateUsers(activeUsers, "update", { otp: recovery.otp });
-        return this.completeLogin(req, activeUsers);
+        await this.userDao.update(user._id, { otp: recovery.otp });
+        return this.completeLogin(req, user);
     }
 
     async getUserFromToken(req) {
         try {
-            if (req.teacherUser) {
-                await refreshProfileImageIfExpired(req.teacherUser, (id, updates) => this.userDao.update(id, updates));
-            }
-
-            return {
-                success: true,
-                data: this.mergeUser(req.teacherUser, req.adminUser),
-                message: ""
-            };
+            await refreshProfileImageIfExpired(req.user, (id, updates) => this.userDao.update(id, updates));
+            const { roles, ...sessionUser } = req.user.toObject();
+            return { success: true, data: { user: sessionUser, permissions: req.permissions }, message: "" };
         } catch (err) {
             return formatApiReponse(false, err?.message, err);
         }

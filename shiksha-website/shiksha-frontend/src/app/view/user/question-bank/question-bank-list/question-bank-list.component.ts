@@ -259,7 +259,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   viewQuestionPaper(id: any) {
-    this.router.navigate([`/question-paper/view/${id}`]);
+    this.router.navigate([`/question-papers/view/${id}`]);
   }
 
   ngOnDestroy(): void {

@@ -5,7 +5,7 @@ import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, concatMap, toArray, finalize } from 'rxjs';
 import { Router, ActivatedRoute } from '@angular/router';
-import { AuthService } from 'src/app/core/services/auth.service';
+import { UtilityService } from 'src/app/core/services/utility.service';
 
 @Component({
   selector: 'app-view-batch',
@@ -36,13 +36,13 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
   teacherSearchTerm = '';
   searchTimeout: NodeJS.Timeout | null = null;
 
-  isAdmin: boolean = false;
+  canViewAllBatches: boolean = false;
 
   private route = inject(ActivatedRoute);
   private batchService = inject(BatchService);
   private teacherService = inject(TeacherService);
   private router = inject(Router);
-  private authService = inject(AuthService);
+  private utilityService = inject(UtilityService);
 
   constructor() {
     this.batchId = this.route.snapshot.params['id'];
@@ -57,8 +57,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
 
     this.loadBatchDetails();
 
-    const currentUser = this.authService.getCurrentUser();
-    this.isAdmin = !!(currentUser && (Array.isArray(currentUser.role) ? currentUser.role.includes('admin') : currentUser.role === 'admin'));
+    this.canViewAllBatches = this.utilityService.hasPermission(['scope.global']);
   }
 
   fetchBatches(): void {
@@ -257,7 +256,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       this.batchService.getBatchById(batch._id).subscribe({
         next: () => {
           // If we can access the batch, navigate to view teachers
-          this.router.navigate(['/teacher-training/view-teachers', batch._id]);
+          this.router.navigate(['/training/view-teachers', batch._id]);
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error accessing batch:', error);
@@ -287,7 +286,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm(`Are you sure you want to remove ${teacher.name} from ${batch.batchName}?`)) {
+    if (confirm(`Are you sure you want to remove ${teacher.identity.name} from ${batch.batchName}?`)) {
       this.batchService.removeTeacherFromBatch(batch._id, teacher._id).subscribe({
         next: (updatedBatch: Batch) => {
           // Update the specific batch in the local array

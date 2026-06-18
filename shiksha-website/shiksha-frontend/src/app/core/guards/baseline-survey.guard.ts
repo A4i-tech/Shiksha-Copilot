@@ -22,13 +22,13 @@ export class BaselineSurveyGuard implements CanActivate {
     // 1) Ensure we have fresh user (and roles)
     try {
       const res: any = await firstValueFrom(this.auth.authMe());
-      if (res?.data) localStorage.setItem('userData', JSON.stringify(res.data));
+      if (res?.data?.user) localStorage.setItem('userData', JSON.stringify({ ...res.data.user, permissions: res.data.permissions }));
     } catch {
       // fall back to stored user if present
     }
 
     const user = this.getUser();
-    if (!this.authz.isTeacherOnly(user)) return true; // skip for managers/admins/non-teachers
+    if (!user?.permissions?.includes('survey.baseline.complete')) return true;
 
     // Skip if already dismissed/postponed in the current session
     if (this.survey.isDismissed()) {

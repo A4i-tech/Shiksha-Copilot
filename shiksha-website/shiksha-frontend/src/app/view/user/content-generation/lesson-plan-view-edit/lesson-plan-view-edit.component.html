@@ -13,7 +13,7 @@
     </div>
     <div class="flex gap-2">
       <button
-        [hasPermission]="['power']"
+        [hasPermission]="['lesson-plan.edit']"
         *ngIf="isLesson && !planAiMode && !sectionAiActive"
         class="btn-primary flex gap-2 items-center my-2 md:my-0"
         (click)="startPlanAiPrompt()"
@@ -21,7 +21,7 @@
         <img src="assets/icons/ai-logo.svg" alt="" />{{ "Enhance" | translate }}
       </button>
       <button
-        [hasPermission]="['power']"
+        [hasPermission]="['chat.use']"
         *ngIf="isLesson && mode !== 'generate'"
         class="btn-primary flex gap-2 items-center my-2 md:my-0"
         (click)="chat(planDetails._id, planDetails?.lesson?.chapter?._id)"
@@ -174,6 +174,7 @@
           [planId]="planId"
           [isLesson]="isLesson"
           [planAiActive]="!!planAiMode"
+          [editPermission]="isLesson ? 'lesson-plan.edit' : 'lesson-resource.edit'"
           (unsavedChanges)="updateUnsavedChanges($event)"
           (aiAccepted)="onAiAccepted()"
           (aiModeActive)="sectionAiActive = $event"
@@ -377,7 +378,7 @@
       class="flex items-center justify-end gap-2 mt-5"
       *ngIf="mode === 'view'"
     >
-      <button (click)="saveEditedContent()" type="submit" class="btn-primary">
+      <button [hasPermission]="[isLesson ? 'lesson-plan.edit' : 'lesson-resource.edit']" (click)="saveEditedContent()" type="submit" class="btn-primary">
         {{ "Save Changes" | translate }}
       </button>
     </div>
@@ -388,6 +389,7 @@
     >
       <button
         (click)="onSave()"
+        [hasPermission]="[isLesson ? 'lesson-plan.edit' : 'lesson-resource.edit']"
         type="submit"
         class="btn-primary"
         [disabled]="!feedback"
@@ -435,4 +437,3 @@
     (close)="confirmRevert($event)"
   ></app-delete-detail>
 </div>
-

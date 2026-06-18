@@ -15,6 +15,7 @@
         class="flex items-center gap-4 opacity-100 md:opacity-0 md:group-hover:opacity-100"
       >
         <div
+          [hasPermission]="[editPermission]"
           class="flex gap-1 items-center cursor-pointer"
           (click)="setEditMode(i)"
           *ngIf="!editMode[i] && section.editable"
@@ -28,6 +29,7 @@
         </div>
 
         <div
+          [hasPermission]="[editPermission]"
           class="flex gap-1 items-center cursor-pointer"
           (click)="saveEdited(i)"
           *ngIf="editMode[i]"
@@ -369,7 +371,7 @@
     </ng-container>
 
     <div class="flex justify-end">
-      <button class="btn-primary" (click)="saveEdited(i)" *ngIf="editMode[i]">
+      <button [hasPermission]="[editPermission]" class="btn-primary" (click)="saveEdited(i)" *ngIf="editMode[i]">
         Save
       </button>
     </div>

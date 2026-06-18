@@ -13,9 +13,11 @@ const QuestionBankConfiguration = require("../models/question.bank.config.model"
 const Classes = require("../models/school.class.model")
 const Chapters = require("../models/chapter.model")
 const Schools = require("../models/school.model")
+const unifyUsers = require("./unify-users");
 
 async function runMigrations() {
     try {
+        await unifyUsers();
         await Promise.all([
             MasterLesson.updateMany(
                 { isRegenerated: { $exists: false } },

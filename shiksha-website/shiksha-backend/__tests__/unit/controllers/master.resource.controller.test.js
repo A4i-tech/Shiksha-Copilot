@@ -88,7 +88,7 @@ describe("MasterResourceController", () => {
         data: { resourceId: "resource-123", regenerated: true },
       };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "power";
+      mockReq.permissions = ["presentation.generate.lesson_plan"];
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Outdated content",
@@ -109,7 +109,7 @@ describe("MasterResourceController", () => {
     it("should regenerate resource for admin user", async () => {
       const mockResult = { success: true, data: { regenerated: true } };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "admin";
+      mockReq.permissions = ["content.activity.view"];
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Test",
@@ -124,7 +124,7 @@ describe("MasterResourceController", () => {
     it("should regenerate resource for manager user", async () => {
       const mockResult = { success: true, data: { regenerated: true } };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "manager";
+      mockReq.permissions = ["content.activity.view"];
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Test",
@@ -137,7 +137,7 @@ describe("MasterResourceController", () => {
     });
 
     it("should deny access for unauthorized role", async () => {
-      mockReq.user.role = "teacher";
+      mockReq.permissions = [];
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Test",
@@ -156,7 +156,7 @@ describe("MasterResourceController", () => {
     it("should return 404 when regeneration fails", async () => {
       const mockResult = { success: false, message: "Regeneration failed" };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "admin";
+      mockReq.permissions = ["content.activity.view"];
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Test",
@@ -171,7 +171,7 @@ describe("MasterResourceController", () => {
 
     it("should handle exceptions", async () => {
       mockManager.regenerateResourcePlan = jest.fn().mockRejectedValue(new Error("Error"));
-      mockReq.user.role = "admin";
+      mockReq.permissions = ["content.activity.view"];
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Test",

@@ -381,7 +381,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   }
 
   backNavigation() {
-    this.router.navigate(['/content-generation'])
+    this.router.navigate(['/content'])
   }
 
   ngOnDestroy(): void {

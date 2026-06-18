@@ -44,18 +44,45 @@ class UserAggregation {
         { $sort: Object.keys(sort).length > 0 ? sort : { _id: 1 } },
         ...(limit > 0 ? [{ $skip: (page - 1) * limit }, { $limit: limit }] : []),
       ];
-      const projectStage = { $project: { otp: 0, loginAttempts: 0, recovery: 0, trainingAttendance: 0 } };
+      const projectStage = {
+        $project: {
+          identity: 1,
+          roles: {
+            $map: {
+              input: "$roles",
+              as: "role",
+              in: { _id: "$$role._id", name: "$$role.name" },
+            },
+          },
+          profiles: 1,
+          profileImage: 1,
+          profileImageExpiresIn: 1,
+          isDeleted: 1,
+          isLoginAllowed: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          trainingStatus: 1,
+        },
+      };
       const pipeline = [
+        { $match: otherFilters },
         {
           $lookup: {
             from: "schools",
-            localField: "school",
+            localField: "profiles.teacher.school",
             foreignField: "_id",
-            as: "school",
+            as: "profiles.teacher.school",
           },
         },
-        { $unwind: { path: "$school", preserveNullAndEmptyArrays: true } },
-        { $match: otherFilters },
+        { $unwind: { path: "$profiles.teacher.school", preserveNullAndEmptyArrays: true } },
+        {
+          $lookup: {
+            from: "roles",
+            localField: "roles",
+            foreignField: "_id",
+            as: "roles",
+          },
+        },
         ...(trainingStatus ? [...trainingStages, { $match: { trainingStatus } }] : []),
       ];
 
@@ -93,21 +120,21 @@ class UserAggregation {
         },
         {
           $unwind: {
-            path: "$classes"
+            path: "$profiles.teacher.classes"
           },
         },
         {
           $group: {
             _id: {
-              name: "$classes.name",
-              board: "$classes.board",
-              class: "$classes.class",
-              medium: "$classes.medium",
+              name: "$profiles.teacher.classes.name",
+              board: "$profiles.teacher.classes.board",
+              class: "$profiles.teacher.classes.class",
+              medium: "$profiles.teacher.classes.medium",
             },
             subjects: {
               $push: {
-                subjectName: "$classes.subject",
-                sem: "$classes.sem",
+                subjectName: "$profiles.teacher.classes.subject",
+                sem: "$profiles.teacher.classes.sem",
               },
             },
           },

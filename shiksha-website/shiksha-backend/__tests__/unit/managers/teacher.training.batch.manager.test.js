@@ -47,14 +47,14 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", role: ["admin"] };
+      const user = { _id: "user-123", roles: ["admin"] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
-      expect(mockPopulate).toHaveBeenCalledWith(
-        "assignedTeachers",
-        "name zone district phone"
-      );
+      expect(mockPopulate).toHaveBeenCalledWith([
+        { path: "assignedTeachers", select: "identity profiles.teacher" },
+        { path: "createdBy", select: "identity" },
+      ]);
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockBatches);
     });
@@ -67,7 +67,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", role: ["manager"] };
+      const user = { _id: "user-123", roles: ["manager"] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({
@@ -85,7 +85,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", role: ["manager", "admin"] };
+      const user = { _id: "user-123", roles: ["manager", "admin"] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
@@ -111,7 +111,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: jest.fn().mockRejectedValue(new Error("Database error")),
       });
 
-      const user = { _id: "user-123", role: ["admin"] };
+      const user = { _id: "user-123", roles: ["admin"] };
       const result = await manager.getBatches(user);
 
       expect(result.success).toBe(false);
@@ -126,7 +126,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", role: ["teacher"] };
+      const user = { _id: "user-123", roles: ["teacher"] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});

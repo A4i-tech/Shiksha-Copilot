@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
-const { isAuthenticated, isAdmin } = require("../middlewares/auth.js");
+const { isAuthenticated, requireAnyPermission, requirePermission } = require("../middlewares/auth.js");
 const MasterResourceController = require("../controllers/master.resource.controller.js");
 const {
 	validateMasterResource,
@@ -36,6 +36,7 @@ router.put(
 router.post(
 	"/resource-plan/regenerate",
 	isAuthenticated,
+	requireAnyPermission("content.activity.view", "lesson-resource.generate"),
 	asyncMiddleware(
 		masterResourceController.regenerate.bind(masterResourceController)
 	)
@@ -51,6 +52,7 @@ router.post(
 router.post(
 	"/resource-plan/learning-outcomes",
 	isAuthenticated,
+	requirePermission("lesson-resource.generate"),
 	asyncMiddleware(
 		masterResourceController.getSubtopicResourceList.bind(
 			masterResourceController
@@ -61,6 +63,7 @@ router.post(
 router.get(
 	"/master-resource/:resourceId",
 	isAuthenticated,
+	requirePermission("lesson-resource.generate"),
 	asyncMiddleware(
 		masterResourceController.generateResourcePlan.bind(masterResourceController)
 	)
@@ -69,7 +72,7 @@ router.get(
 router.post(
 	"/master-resource/upload",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("content.manage"),
 	MulterUploadMiddleware,
 	asyncMiddleware(
 		masterResourceController.uploadMasterResource.bind(masterResourceController)
@@ -79,7 +82,7 @@ router.post(
 router.post(
 	"/master-resource/old-version-upload",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("content.manage"),
 	MulterUploadMiddleware,
 	asyncMiddleware(
 		masterResourceController.uploadOldMasterResource.bind(masterResourceController)

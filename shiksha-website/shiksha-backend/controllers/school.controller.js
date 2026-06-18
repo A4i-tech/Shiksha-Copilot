@@ -66,7 +66,7 @@ class SchoolController extends BaseController {
 	async bulkUpload(req, res) {
 		try {
 			const userId = req.user._id;
-			const userName = req.user.name;
+			const userName = req.user.identity.name;
 			if (!req.file) {
 				return res.status(400).json({ error: "File not provided" });
 			}

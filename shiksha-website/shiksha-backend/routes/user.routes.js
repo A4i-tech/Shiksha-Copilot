@@ -1,128 +1,127 @@
 const express = require("express");
 const router = express.Router();
-const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
-const { isAuthenticated ,isAdmin, isAdminOrManager } = require("../middlewares/auth.js");
-const uploadMiddleware = require("../middlewares/uploadMiddleware.js");
-const UserController = require("../controllers/user.controller.js");
+const asyncMiddleware = require("../middlewares/asyncMiddleware");
 const {
-	validateUserCreate,
-	validateUserUpdate,
-	validateUserGetByPhone,
-	validateSetProfile,
-	validatePreferredLanguageUpdate,
-	validateUserActivityLog,
-} = require("../validations/user.validation.js");
+  isAuthenticated,
+  requireAnyPermission,
+  requirePermission,
+} = require("../middlewares/auth");
+const uploadMiddleware = require("../middlewares/uploadMiddleware");
+const UserController = require("../controllers/user.controller");
+const {
+  validateUserCreate,
+  validateUserUpdate,
+  validateUserGetByPhone,
+  validateSetProfile,
+  validatePreferredLanguageUpdate,
+  validateUserActivityLog,
+} = require("../validations/user.validation");
 
-const userController = new UserController();
+const controller = new UserController();
 
 router.post(
-	"/user/create",
-	isAuthenticated,
-	isAdmin,
-	validateUserCreate,
-	asyncMiddleware(userController.create.bind(userController))
+  "/users",
+  isAuthenticated,
+  requireAnyPermission("teacher.create", "staff.create"),
+  validateUserCreate,
+  asyncMiddleware(controller.create.bind(controller))
 );
-
 router.post(
-	"/user/get-by-phone",
-	validateUserGetByPhone,
-	asyncMiddleware(userController.getByPhone.bind(userController))
+  "/users/lookup",
+  isAuthenticated,
+  requireAnyPermission("teacher.view", "staff.view"),
+  validateUserGetByPhone,
+  asyncMiddleware(controller.getByPhone.bind(controller))
 );
-
+router.get(
+  "/users",
+  isAuthenticated,
+  requireAnyPermission("teacher.view", "staff.view"),
+  asyncMiddleware(controller.getAll.bind(controller))
+);
+router.get(
+  "/users/export",
+  isAuthenticated,
+  requirePermission("teacher.export"),
+  asyncMiddleware(controller.export.bind(controller))
+);
+router.get(
+  "/users/:id/profile",
+  isAuthenticated,
+  requireAnyPermission("profile.view", "teacher.view", "staff.view"),
+  asyncMiddleware(controller.getProfile.bind(controller))
+);
+router.get(
+  "/users/:id",
+  isAuthenticated,
+  requireAnyPermission("profile.view", "teacher.view", "staff.view"),
+  asyncMiddleware(controller.getUserWithSchoolId.bind(controller))
+);
 router.put(
-	"/user/set-profile",
-	validateSetProfile,
-	isAuthenticated,
-	asyncMiddleware(userController.setProfile.bind(userController))
+  "/users/:id",
+  isAuthenticated,
+  requireAnyPermission("teacher.edit", "staff.edit"),
+  (req, res, next) => req.body.roles ? requirePermission("role.assign")(req, res, next) : next(),
+  validateUserUpdate,
+  asyncMiddleware(controller.update.bind(controller))
 );
-
-router.patch(
-	"/user/update-language",
-	isAuthenticated,
-	validatePreferredLanguageUpdate,
-	asyncMiddleware(userController.updatePreferredLanguage.bind(userController))
-);
-
-router.get(
-	"/user/list",
-	isAuthenticated,
-	isAdminOrManager,
-	asyncMiddleware(userController.getAll.bind(userController))
-);
-
-router.get(
-	"/user/export",
-	isAuthenticated,
-	isAdminOrManager,
-	asyncMiddleware(userController.export.bind(userController))
-);
-
-router.get(
-	"/user/get-profile/:id",
-	isAuthenticated,
-	asyncMiddleware(userController.getProfile.bind(userController))
-);
-
-router.put(
-	"/user/:id",
-	isAuthenticated,
-	isAdmin,
-	validateUserUpdate,
-	asyncMiddleware(userController.update.bind(userController))
-);
-
-router.get(
-	"/user/:id",
-	asyncMiddleware(userController.getUserWithSchoolId.bind(userController))
-);
-
 router.delete(
-	"/user/:id",
-	isAuthenticated,
-	isAdmin,
-	asyncMiddleware(userController.delete.bind(userController))
+  "/users/:id",
+  isAuthenticated,
+  requireAnyPermission("teacher.delete", "staff.delete"),
+  asyncMiddleware(controller.delete.bind(controller))
 );
-
-router.post(
-	"/user/bulk-upload",
-	isAuthenticated,
-	isAdmin,
-	uploadMiddleware,
-	asyncMiddleware(userController.bulkUpload.bind(userController))
-);
-
-router.post(
-	"/user/upload-profile-image",
-	isAuthenticated,
-	uploadMiddleware,
-	asyncMiddleware(userController.uploadProfileImage.bind(userController))
-);
-
-router.post(
-	"/user/remove-profile-image",
-	isAuthenticated,
-	asyncMiddleware(userController.removeProfileImage.bind(userController))
-);
-
 router.put(
-	"/user/activate/:id",
-	isAuthenticated,
-	isAdmin,
-	asyncMiddleware(userController.activate.bind(userController))
+  "/users/:id/activate",
+  isAuthenticated,
+  requireAnyPermission("teacher.edit", "staff.edit"),
+  asyncMiddleware(controller.activate.bind(controller))
 );
-
 router.put(
-	"/user/deactivate/:id",
-	isAuthenticated,
-	isAdmin,
-	asyncMiddleware(userController.deactivate.bind(userController))
+  "/users/:id/deactivate",
+  isAuthenticated,
+  requireAnyPermission("teacher.edit", "staff.edit"),
+  asyncMiddleware(controller.deactivate.bind(controller))
 );
-
 router.post(
-	"/user/activity-log",
-	validateUserActivityLog,
-	isAuthenticated,
-	asyncMiddleware(userController.activityLog.bind(userController))
+  "/users/import",
+  isAuthenticated,
+  requireAnyPermission("teacher.import", "staff.import"),
+  uploadMiddleware,
+  asyncMiddleware(controller.bulkUpload.bind(controller))
+);
+router.put(
+  "/profile",
+  isAuthenticated,
+  requirePermission("profile.edit"),
+  validateSetProfile,
+  asyncMiddleware(controller.setProfile.bind(controller))
+);
+router.patch(
+  "/profile/language",
+  isAuthenticated,
+  requirePermission("profile.edit"),
+  validatePreferredLanguageUpdate,
+  asyncMiddleware(controller.updatePreferredLanguage.bind(controller))
+);
+router.post(
+  "/profile/image",
+  isAuthenticated,
+  requirePermission("profile.edit"),
+  uploadMiddleware,
+  asyncMiddleware(controller.uploadProfileImage.bind(controller))
+);
+router.delete(
+  "/profile/image",
+  isAuthenticated,
+  requirePermission("profile.edit"),
+  asyncMiddleware(controller.removeProfileImage.bind(controller))
+);
+router.post(
+  "/activity-log",
+  isAuthenticated,
+  validateUserActivityLog,
+  asyncMiddleware(controller.activityLog.bind(controller))
 );
 
 module.exports = router;

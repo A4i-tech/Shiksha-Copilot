@@ -10,7 +10,7 @@
         <p class="mt-1 text-sm text-content-60">Manage training batches and assign participants.</p>
       </div>
 
-      <button class="btn-primary h-9 w-full sm:w-auto" routerLink="/teacher-training/create-batch">
+      <button class="btn-primary h-9 w-full sm:w-auto" routerLink="/training/create-batch">
         <div class="flex items-center justify-center gap-2">
           <img src="assets/icons/add.svg" alt="" />
           <span class="text-nowrap">Create Batch</span>
@@ -56,9 +56,9 @@
             <p class="text-xs text-content-60">Mode of Training</p>
             <p class="break-words">{{ batch.trainingType | titlecase }}</p>
           </div>
-          <div *ngIf="isAdmin">
+          <div *ngIf="canViewAllBatches">
             <p class="text-xs text-content-60">Manager</p>
-            <p class="break-words">{{ batch.createdBy?.name || '-' }}</p>
+            <p class="break-words">{{ batch.createdBy?.identity?.name || '-' }}</p>
           </div>
         </div>
 
@@ -103,7 +103,7 @@
             <th class="text-left p-4 rounded border-r text-sm text-content">Batch Name</th>
             <th class="text-left p-4 border-r text-sm text-content">Schedule Date</th>
             <th class="text-left p-4 border-r text-sm text-content">Mode of Training</th>
-            <th *ngIf="isAdmin" class="text-left p-4 border-r text-sm text-content">Manager</th>
+            <th *ngIf="canViewAllBatches" class="text-left p-4 border-r text-sm text-content">Manager</th>
             <th class="text-left p-4 border-r text-sm text-content">View Teacher</th>
             <th class="text-left p-4 border-r text-sm text-content">Status</th>
             <th class="text-left p-4 text-sm text-content">Actions</th>
@@ -114,7 +114,7 @@
             <td class="text-sm p-4 border-r break-words">{{ batch.batchName }}</td>
             <td class="text-sm p-4 border-r whitespace-nowrap">{{ batch.scheduleDate | date }}</td>
             <td class="text-sm p-4 border-r break-words">{{ batch.trainingType | titlecase }}</td>
-            <td *ngIf="isAdmin" class="text-sm p-4 border-r break-words">{{ batch.createdBy?.name || '-' }}</td>
+            <td *ngIf="canViewAllBatches" class="text-sm p-4 border-r break-words">{{ batch.createdBy?.identity?.name || '-' }}</td>
             <td class="text-sm p-4 border-r">
               <button class="btn-primary h-9" (click)="onViewTeachers(batch)">
                 <div class="flex items-center justify-center gap-2">
@@ -262,12 +262,12 @@
                   (change)="selectedBatch && onTeacherCheckboxChange(selectedBatch, teacher, $event)"
                 >
               </td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.name }}</td>
-              <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.phone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.role }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.zone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.district }}</td>
-              <td class="text-sm p-4 break-words">{{ teacher.block }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.identity.name }}</td>
+              <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.identity.phone }}</td>
+              <td class="text-sm p-4 border-r break-words">Teacher</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.profiles.teacher.zone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.profiles.teacher.district }}</td>
+              <td class="text-sm p-4 break-words">{{ teacher.profiles.teacher.block }}</td>
             </tr>
           </tbody>
         </table>

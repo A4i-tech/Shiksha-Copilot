@@ -1,0 +1,42 @@
+[
+  {
+    "_id": "7368696b7368615f726f6f74",
+    "name": "Superuser",
+    "description": "Owns platform setup, access control, audits, and every operational workflow.",
+    "isSystem": true,
+    "isSuperUser": true,
+    "isDeleted": false
+  },
+  {
+    "_id": "7368696b7368615f61646d6e",
+    "name": "Admin",
+    "description": "Runs statewide operations across schools, staff, teachers, training, content, audits, and role assignments.",
+    "permissions": ["scope.global", "dashboard.admin.view", "school.read", "school.view", "school.export", "school.create", "school.edit", "school.delete", "teacher.view", "teacher.create", "teacher.edit", "teacher.delete", "teacher.import", "teacher.export", "staff.view", "staff.create", "staff.edit", "staff.delete", "staff.import", "staff.export", "role.assign", "role.view", "role.manage", "content.activity.view", "content.activity.export", "content.manage", "training.view", "training.edit", "audit.view", "help.manage", "question-paper.manage"],
+    "isSystem": true,
+    "isDeleted": false
+  },
+  {
+    "_id": "7368696b7368615f6d677221",
+    "name": "Manager",
+    "description": "Coordinates regional school and teacher operations, training activity, exports, and support workflows.",
+    "permissions": ["scope.regional", "dashboard.admin.view", "school.read", "school.view", "school.export", "teacher.view", "teacher.create", "teacher.edit", "teacher.export", "role.assign", "content.activity.view", "content.activity.export", "training.view", "training.edit", "audit.view", "help.view"],
+    "isSystem": true,
+    "isDeleted": false
+  },
+  {
+    "_id": "7368696b7368615f74636872",
+    "name": "Teacher",
+    "description": "Uses the teacher workspace to manage profile details, create lesson plans and question papers, view schedules, and complete surveys.",
+    "permissions": ["dashboard.teacher.view", "school.read", "profile.view", "profile.edit", "content.view", "lesson-plan.generate", "lesson-plan.edit", "lesson-plan.enhance", "lesson-resource.generate", "lesson-resource.edit", "question-paper.generate", "schedule.view", "schedule.edit", "help.view", "survey.baseline.complete", "survey.endline.complete"],
+    "isSystem": true,
+    "isDeleted": false
+  },
+  {
+    "_id": "7368696b7368615f70777221",
+    "name": "Power Teacher",
+    "description": "Extends the teacher workspace with chat, generation status, and presentation generation tools.",
+    "permissions": ["dashboard.teacher.view", "school.read", "profile.view", "profile.edit", "content.view", "lesson-plan.generate", "lesson-plan.edit", "lesson-plan.enhance", "lesson-resource.generate", "lesson-resource.edit", "question-paper.generate", "schedule.view", "schedule.edit", "help.view", "survey.baseline.complete", "survey.endline.complete", "generation.status.view", "chat.use", "presentation.generate.arbitrary", "presentation.generate.lesson_plan"],
+    "isSystem": true,
+    "isDeleted": false
+  }
+]

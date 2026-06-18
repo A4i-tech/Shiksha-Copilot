@@ -416,7 +416,7 @@ class SchoolManager extends BaseManager {
       );
 
       const userId = req.user._id;
-      const userName = req.user.name;
+      const userName = req.user.identity.name;
 
       const worker = new Worker(
         path.resolve(__dirname, '../worker/exportschoolworker.js')

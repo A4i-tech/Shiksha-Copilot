@@ -20,7 +20,7 @@ describe("TeacherTrainingBatchController", () => {
     teacherTrainingBatchController = require("../../../controllers/teacher.training.batch.controller");
 
     mockReq = {
-      user: { _id: "user-123", role: ["admin"] },
+      user: { _id: "user-123", roles: ["admin"] },
       params: {},
       query: {},
       body: {},

@@ -47,7 +47,7 @@ export class AdminDashboardService extends BaseRestService{
       }
     }
   
-    return this.http.get(`${this.baseUrl}/admin/dashboard`, { params });
+    return this.http.get(`${this.baseUrl}/dashboard/admin`, { params });
   }
   
 

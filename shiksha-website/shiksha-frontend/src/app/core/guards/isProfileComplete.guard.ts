@@ -16,12 +16,10 @@ export const IsProfileCompleteGuard: CanActivateFn = (
   const utilityServcie = inject(UtilityService);
   const router = inject(Router);
 
-  if (loggedInUser.isProfileCompleted) {
+  if (!loggedInUser.profiles?.teacher || loggedInUser.profiles.teacher.isProfileCompleted) {
     return true;
   } else {
-    utilityServcie.showWarning(
-      'Please complete the profile for further access'
-    );
+    utilityServcie.showWarning('Please complete the profile for further access');
     router.navigate(['/profile']);
     return false;
   }

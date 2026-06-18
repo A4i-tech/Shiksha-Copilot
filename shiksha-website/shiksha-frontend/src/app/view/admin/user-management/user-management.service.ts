@@ -8,17 +8,37 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root'
 })
 export class UserManagementService extends BaseRestService {
-
-  userRoleDropdownOptions: any[] = [{name:'Standard', value:'standard'}, {name:'Power', value:'power'}];
   baseUrl = environment.apiUrl;
 
   constructor(http: HttpClient) {
     super(http);
-    this.setUri('user');
+    this.setUri('users');
   }
 
   editUserDetails(id: string, data: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/user/${id}`, data);
+    return this.http.put(`${this.baseUrl}/users/${id}`, {
+      identity: { name: data.name, phone: data.phone, email: data.email, address: data.address },
+      roles: [data.role],
+      profiles: {
+        teacher: {
+          state: data.state,
+          zone: data.zone,
+          district: data.district,
+          block: data.block,
+          school: data.school,
+          preferredLanguage: data.preferredLanguage || 'en',
+          facilities: data.facilities || [],
+          classes: data.classes || [],
+          isProfileCompleted: data.isProfileCompleted || false,
+        },
+      },
+      isSchoolChanged: data.isSchoolChanged,
+      isDeleted: data.isDeleted,
+    });
+  }
+
+  getRoles(): Observable<any> {
+    return this.http.get(`${this.baseUrl}/roles`);
   }
 
   getSchoolList(includeDeleted:boolean,filters?:any) : Observable<any>{
@@ -58,13 +78,13 @@ export class UserManagementService extends BaseRestService {
   
   
   bulkUpload(formdata:any):Observable<any>{   
-    return this.http.post(`${this.baseUrl}/user/bulk-upload`,formdata);
+    return this.http.post(`${this.baseUrl}/users/import`,formdata);
   }
 
   getUsersOfSchool(schoolId:string):Observable<any>{
     let params = new HttpParams()
     .set('filter[school]',schoolId);
-    return this.http.get(`${this.baseUrl}/user/list`, { params: params });
+    return this.http.get(`${this.baseUrl}/users`, { params: params });
   }
 
 }

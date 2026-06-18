@@ -14,7 +14,7 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { Router } from '@angular/router';
 import { SidebarService } from 'src/app/layout/sidebar/sidebar.service';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -23,7 +23,6 @@ import { TranslateService } from '@ngx-translate/core';
   styleUrls: ['./profile.component.scss'],
 })
 export class ProfileComponent implements OnInit, OnDestroy {
-  isTeacherRole!: boolean;
   showDeleteClassDetailsConfirm!: boolean;
   showDeleteResourceConfirm!: boolean;
   selectedClassIndex!:any;
@@ -157,7 +156,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const data: string = localStorage.getItem('userData') ?? '';
     this.loggedInUser = JSON.parse(data);
-    this.isTeacherRole = this.utilityService.hasPermission(['standard', 'power']);
     this.createUserForm();
     this.getData();
   }
@@ -166,17 +164,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get all master data and profile data
    */
   getData() {
-    const boardMaster = this.isTeacherRole
-      ? this.service.getClassesByBoard(this.loggedInUser.school._id)
-      : of(null);
+    const school = this.loggedInUser.profiles.teacher.school;
+    const boardMaster = this.service.getClassesByBoard(school?._id || school);
     const resourceMaster = this.masterService.getFacilities();
     const userProfile = this.service.getProfileInfo(this.loggedInUser._id);
 
     forkJoin([boardMaster, resourceMaster, userProfile]).subscribe({
       next: ([boardRes, resourceRes, profileRes]) => {
-        if (this.isTeacherRole) {
-          this.setClassesByBoard(boardRes);
-        }
+        this.setClassesByBoard(boardRes);
         this.setResourceData(resourceRes);
         this.setProfileInfo(profileRes);
       },
@@ -284,15 +279,15 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get profile info
    */
   setProfileInfo(val:any) {
-    if (this.isTeacherRole) {
-      this.mergeSchoolResource(val?.data?.school?.facilities);
-    }
+    const teacherProfile = val?.data?.profiles?.teacher;
+    const schoolFacilities = teacherProfile?.school?.facilities;
+    this.mergeSchoolResource(schoolFacilities);
 
     this.userData = val?.data;
     const keysToRemove = ['classes', 'facilities'];
 
     const { newObj, removedObj } = this.utilityService.removeKeys(
-      val?.data,
+      teacherProfile,
       keysToRemove
     );
     this.patchObj = newObj;
@@ -335,7 +330,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.userPorfileForm = this.fb.group({
       classes: this.fb.array([]),
       facilities: this.fb.array([]),
-      preferredLanguage: [this.loggedInUser?.preferredLanguage],
+      preferredLanguage: [this.loggedInUser?.profiles?.teacher?.preferredLanguage],
     });
     this.addResource();
   }
@@ -349,6 +344,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   mergeSchoolResource(schoolResource:any){
+    schoolResource ||= [];
     const schoolOthers = schoolResource.filter((ele:any)=> ele.type =='Others').map((item:any)=> 
       {
       return {
@@ -514,7 +510,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.service.updatePreferedLanguage(lang).
       subscribe({
       next:(res)=>{
-          this.loggedInUser.preferredLanguage = lang;
+          this.loggedInUser.profiles.teacher.preferredLanguage = lang;
           this.userPorfileForm.get('preferredLanguage')?.setValue(lang);
           this.utilityService.handleResponse(res);
           localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
@@ -757,7 +753,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.service.updateProfile(data).subscribe({
       next: (res) => {
         this.utilityService.handleResponse(res);
-        localStorage.setItem('userData', JSON.stringify(res.data));
+        const permissions = this.loggedInUser.permissions;
+        this.loggedInUser = { ...res.data, permissions };
+        localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
         this.router.navigate(['/']);
       },
       error: (err) => {

@@ -8,6 +8,7 @@ const ExcelJS = require('exceljs');
 const mongoose = require('mongoose');
 // const ejs = require('ejs');
 const path = require('path');
+const { resolvePermissions } = require('../helper/permission.helper');
 
 /** @extends {BaseManager<TeacherTrainingBatchDao>} */
 class TeacherTrainingBatchManager extends BaseManager {
@@ -19,10 +20,12 @@ class TeacherTrainingBatchManager extends BaseManager {
   async getBatches(user) {
     try {
       let query = {};
-      if (user && user.role && user.role.includes('manager') && !user.role.includes('admin')) {
-        query.createdBy = user._id;
-      }
-      const batches = await TeacherTrainingBatch.find(query).populate('assignedTeachers', 'name zone district phone');
+      const permissions = resolvePermissions(user.roles);
+      if (permissions.includes('scope.regional') && !permissions.includes('scope.global')) query.createdBy = user._id;
+      const batches = await TeacherTrainingBatch.find(query).populate([
+        { path: 'assignedTeachers', select: 'identity profiles.teacher' },
+        { path: 'createdBy', select: 'identity' },
+      ]);
       return formatApiReponse(true, '', batches);
     } catch (err) {
       return formatApiReponse(false, err.message, null);
@@ -32,4 +35,4 @@ class TeacherTrainingBatchManager extends BaseManager {
   // Add other business logic methods here, moving from the old controller
 }
 
-module.exports = TeacherTrainingBatchManager; 
+module.exports = TeacherTrainingBatchManager;

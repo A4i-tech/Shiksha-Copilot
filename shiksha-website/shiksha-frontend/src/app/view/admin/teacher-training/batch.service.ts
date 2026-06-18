@@ -6,17 +6,8 @@ import { environment } from 'src/environments/environment';
 
 export interface Teacher {
   _id: string;
-  name: string;
-  phone: string;
-  zone: string;
-  district: string;
-  state: string;
-  taluk: string;
-  schoolId: string;
-  block: string;
-  schoolName: string;
-  role: string;
-  // Add any other relevant teacher properties
+  identity: { name: string; phone: string };
+  profiles: { teacher: { zone?: string; district?: string; state?: string; block?: string } };
   attendance: string[];
 }
 
@@ -32,7 +23,7 @@ export interface Batch {
   pdfPath?: string;
   photoPaths?: { path: string; mimetype: string }[];
   attendancePdfPath?: string;
-  createdBy?: { name: string }; // <-- Add this for manager/admin name
+  createdBy?: { identity: { name: string } };
 }
 
 export interface TeacherStats {
@@ -170,4 +161,4 @@ extractActualFilename(url:any) {
       responseType: 'blob'
     });
   }
-} 
+}
