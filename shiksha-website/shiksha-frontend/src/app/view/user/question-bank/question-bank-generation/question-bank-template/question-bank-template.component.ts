@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -39,6 +40,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   availableDifficulties: string[] = [];
   readonly QUESTION_SOURCE = QUESTION_SOURCE;
   readonly formatMarks = formatMarks;
+  readonly questionText = questionText;
 
   constructor() { }
 
@@ -154,16 +156,6 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
       return matchSource && matchDifficulty && matchType && matchSearch && !isSelected;
     });
-  }
-
-  questionText(question: any): string {
-    const components = [];
-    if(question.type === 'MATCHING'){
-      components.push(...question.value1, {contentType: 'text/plain', content: '-'}, ...question.value2);
-    }else{
-      components.push(question.text);
-    }
-    return components.filter((item: any) => item.contentType === 'text/plain').map((item: any) => item.content).join(' ');
   }
 
   onSearch(val: any) {
