@@ -114,66 +114,24 @@ export class QuestionBankDownloadService {
 
   /** Builds a table for Match the Following questions */
   private buildMatchTable(questions: QuestionBankQuestion[], shuffle: boolean): Table {
-    const rows: TableRow[] = [];
+    const row = (left: any, right: any, bold = false) => new TableRow({
+      children: [left, right].map(content => new TableCell({
+        width: { size: 50, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({
+          children: bold
+            ? [new TextRun({ text: content, bold: true })]
+            : this.contentRuns(content),
+          spacing: DOCX_CONFIG.spacing.tableCell,
+        })],
+      })),
+    });
 
-    // Header Row (Only for Answer Key as per original logic, let's keep it consistent)
-    if (!shuffle) {
-      rows.push(
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: ' Left', bold: true })],
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: ' Right (Answer)', bold: true })],
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-          ],
-        })
-      );
-    }
+    const left = questions.map(q => q.value1 ?? q.left ?? q.text);
+    const answers = questions.map(q => q.value2 ?? q.right ?? q.keyAnswer);
+    const right = shuffle ? this.utilityService.shuffleOptions([...answers]) : answers;
+    const rows = left.map((value, index) => row(value, right[index]));
 
-    const col1 = questions.map((q) => q.value1 ?? q.left ?? q.text);
-    const rawCol2 = questions.map((q) => q.value2 ?? q.right ?? q.keyAnswer);
-    const col2 = shuffle ? this.utilityService.shuffleOptions([...rawCol2]) : rawCol2;
-
-    for (let i = 0; i < col1.length; i++) {
-      rows.push(
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: this.contentRuns(col1[i]),
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: this.contentRuns(col2[i]),
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-          ],
-        })
-      );
-    }
+    if (!shuffle) rows.unshift(row('Left', 'Right (Answer)', true));
 
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
