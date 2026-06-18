@@ -17,6 +17,7 @@ import {
   ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { imageSize } from 'image-size';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DOCX_CONFIG, formatMarks, SUPERSCRIPT_MAP } from '../utility/constant.util';
 import { OptionDto, QuestionSectionDto } from '../models/question-bank.dto';
@@ -190,7 +191,9 @@ export class QuestionBankDownloadService {
     return content.flatMap(item => {
       if (item.contentType === 'text/plain') return this.convertToDocxRuns(item.content);
       const type: 'jpg' | 'png' = item.contentType === 'image/jpeg' ? 'jpg' : 'png';
-      return [new ImageRun({ type, data: Uint8Array.from(atob(item.content), c => c.charCodeAt(0)), transformation: { width: 240, height: 160 } })];
+      const data = Uint8Array.from(atob(item.content), c => c.charCodeAt(0));
+      const { width = 240, height = 160 } = imageSize(data);
+      return [new ImageRun({ type, data, transformation: { width: 240, height: 240 * height / width } })];
     });
   }
 
