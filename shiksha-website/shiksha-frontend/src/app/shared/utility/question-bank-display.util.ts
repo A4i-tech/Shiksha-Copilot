@@ -19,3 +19,12 @@ export function questionContentItems(question: any): QuestionContentItem[] {
 export function questionText(question: any): string {
   return questionContentItems(question).filter(item => item.contentType === 'text/plain').map(item => item.content) .join(' ');
 }
+
+export function hasQuestionImage(question: any): boolean {
+  const content = [
+    ...questionContentItems(question),
+    ...contentItems(question?.keyAnswer),
+    ...(question?.options || []).flatMap((option: any) => contentItems(option?.text)),
+  ];
+  return content.some(item => item.contentType?.startsWith('image/'));
+}

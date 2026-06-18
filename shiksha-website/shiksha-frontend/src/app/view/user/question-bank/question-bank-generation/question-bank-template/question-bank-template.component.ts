@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
-import { questionText } from 'src/app/shared/utility/question-bank-display.util';
+import { hasQuestionImage, questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -40,6 +40,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   availableDifficulties: string[] = [];
   readonly QUESTION_SOURCE = QUESTION_SOURCE;
   readonly formatMarks = formatMarks;
+  readonly hasQuestionImage = hasQuestionImage;
   readonly questionText = questionText;
 
   constructor() { }
