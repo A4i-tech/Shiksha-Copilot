@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/staging", "238-regression-tests" ]
+    branches: [ "a4i/main", "a4i/staging"]
   pull_request:
     branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
@@ -207,7 +207,6 @@ jobs:
 
   regression-tests-branch:
     name: Regression Tests
-    if: github.ref_name == '238-regression-tests'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
