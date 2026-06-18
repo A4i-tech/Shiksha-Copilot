@@ -37,7 +37,7 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // ========== GLOBAL ACCESSIBILITY OBSERVER (ngx-clipboard textarea patch) ==========
+    // ngx-clipboard textarea patch
     this.clipboardObserver = new MutationObserver((mutations) => {
       document.querySelectorAll('textarea').forEach((textarea) => {
         if (!textarea.hasAttribute('aria-label') && !textarea.hasAttribute('aria-hidden') && textarea.style.opacity === '0') {
@@ -48,14 +48,12 @@ export class AppComponent implements OnInit, OnDestroy {
     });
     this.clipboardObserver.observe(document.body, { childList: true, subtree: true });
 
-    // ========== IDLE WATCHER ==========
     this.idleService.idleIndicator.subscribe({
       next: () => {
         this.showIdleWarning = true;
       }
     });
 
-    // ========== FETCH USER + CHECK BASELINE ==========
     if (this.authorizationService.isLoggedIn()) {
       this.authService.authMe().subscribe({
         next: (res: any) => {
@@ -87,7 +85,6 @@ export class AppComponent implements OnInit, OnDestroy {
       });
     }
 
-    // ========== BEFORE UNLOAD ==========
     window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
   }
 
