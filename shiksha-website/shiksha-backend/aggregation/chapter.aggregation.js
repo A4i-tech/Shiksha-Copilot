@@ -113,6 +113,7 @@ class ChapterAggregation {
                 as: "filteredItem",
                 in: {
                   title: "$$filteredItem.title",
+                  index_path: "$indexPath",
                   learning_outcomes: "$$filteredItem.learningOutcomes",
                 },
               },
@@ -136,7 +137,7 @@ class ChapterAggregation {
 
   async getChapterByIdsAndFilterObject(chapterIds) {
     try {
-      const validIds = (chapterIds || [])
+      const validIds = chapterIds
         .filter((id) => id && mongoose.Types.ObjectId.isValid(id))
         .map((id) => new ObjectId(id));
 
@@ -183,6 +184,7 @@ class ChapterAggregation {
             is_grammar: "$isGrammar",
             grammar_source_chapters: "$grammarSourceChapters",
             grammar_topics: "$grammarTopics",
+            subtopics: [],
           },
         },
       ];

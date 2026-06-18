@@ -17,8 +17,9 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { DOCX_CONFIG, SUPERSCRIPT_MAP } from '../utility/constant.util';
+import { DOCX_CONFIG, formatMarks, SUPERSCRIPT_MAP } from '../utility/constant.util';
 import { OptionDto, QuestionSectionDto } from '../models/question-bank.dto';
+import { TranslateService } from '@ngx-translate/core';
 
 /** Interfaces for Question Bank Data */
 export interface QuestionBankMetadata {
@@ -54,6 +55,7 @@ export interface QuestionBankData {
   subject: string;
   grade: string;
   totalMarks: number;
+  questionTypeLabels: Record<string, string>;
 }
 
 const COLOR_ANSWER = '2E7D32';
@@ -62,24 +64,24 @@ const COLOR_ANSWER = '2E7D32';
   providedIn: 'root',
 })
 export class QuestionBankDownloadService {
-  constructor(private utilityService: UtilityService) {}
+  constructor(private utilityService: UtilityService, private translateService: TranslateService) {}
 
   /** Public method to download the Question Bank */
   downloadQuestionBank(data: QuestionBankData) {
-    const children = this.buildContent(data.questionBank.questions, false);
+    const children = this.buildContent(data.questionBank.questions, false, data.questionTypeLabels);
     const doc = this.createDocument(data, children, '');
     this.saveDocument(doc, `${data.subject}_QuestionBank.docx`);
   }
 
   /** Public method to download the Answer Key */
   downloadAnswerKey(data: QuestionBankData) {
-    const children = this.buildContent(data.questionBank.questions, true);
+    const children = this.buildContent(data.questionBank.questions, true, data.questionTypeLabels);
     const doc = this.createDocument(data, children, ' - ANSWER KEY');
     this.saveDocument(doc, `${data.subject}_AnswerKey.docx`);
   }
 
   /** Unified content builder for both Bank and Answer Key */
-  private buildContent(sections: QuestionBankSection[] | QuestionSectionDto[], showAnswers: boolean): (Paragraph | Table)[] {
+  private buildContent(sections: QuestionBankSection[] | QuestionSectionDto[], showAnswers: boolean, questionTypeLabels: Record<string, string>): (Paragraph | Table)[] {
     const content: (Paragraph | Table)[] = [];
     let sectionCount = 1;
 
@@ -88,11 +90,9 @@ export class QuestionBankDownloadService {
       content.push(
         new Paragraph({
           children: [
-            new TextRun({ text: `${roman}. ${section.type}`, bold: true }),
+            new TextRun({ text: `${roman}. ${this.translateService.instant(questionTypeLabels[section.type] || section.type)}`, bold: true }),
             new TextRun({
-              text: `\t${section.numberOfQuestions} X ${section.marksPerQuestion} = ${
-                section.numberOfQuestions * section.marksPerQuestion
-              }`,
+              text: `\t${section.numberOfQuestions} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks(section.numberOfQuestions * section.marksPerQuestion)}`,
               bold: true,
             }),
           ],
@@ -101,7 +101,7 @@ export class QuestionBankDownloadService {
         })
       );
 
-      if (section.type === 'Match the following') {
+      if (section.type === 'MATCHING') {
         content.push(this.buildMatchTable(section.questions, !showAnswers));
       } else {
         content.push(...this.buildStandardQuestions(section.questions, showAnswers));
@@ -281,6 +281,10 @@ export class QuestionBankDownloadService {
 
   /** Shared Document Shell */
   private createDocument(data: QuestionBankData, children: (Paragraph | Table)[], subtitleSuffix: string): Document {
+    let totalMarks = 0;
+    for (const section of data.questionBank.questions as QuestionBankSection[]) {
+      totalMarks += Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0);
+    }
     return new Document({
       sections: [
         {
@@ -303,7 +307,7 @@ export class QuestionBankDownloadService {
                   children: [
                     new TextRun({ text: `Subject: ${data.subject}`, bold: true }),
                     new TextRun({ text: `\tClass: ${data.grade}`, bold: true }),
-                    new TextRun({ text: `\tMarks: ${data.totalMarks}`, bold: true }),
+                    new TextRun({ text: `\tMarks: ${formatMarks(totalMarks)}`, bold: true }),
                   ],
                   tabStops: [
                     { type: TabStopType.CENTER, position: 4500 },

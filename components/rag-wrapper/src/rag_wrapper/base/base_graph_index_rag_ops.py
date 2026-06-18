@@ -2,8 +2,9 @@ import asyncio
 import uuid
 import json
 from abc import abstractmethod
-from typing import Any, List, Dict, Optional, Union
+from typing import Any, List, Dict, Optional, TypeVar, Union
 
+from pydantic import BaseModel
 from tenacity import (
     retry,
     stop_after_attempt,
@@ -32,6 +33,9 @@ from llama_index.core.indices.property_graph import (
     ImplicitPathExtractor,
 )
 from rag_wrapper.base.base_rag_ops import BaseRagOps
+
+
+T = TypeVar("T", bound=BaseModel)
 
 
 class BaseGraphIndexRagOps(BaseRagOps):
@@ -197,6 +201,7 @@ class BaseGraphIndexRagOps(BaseRagOps):
         chat_history: List[ChatMessage],
         sub_retrievers: Optional[List[Any]] = None,
         metadata_filter: Optional[Dict[str, str]] = None,
+        output_cls: type[T] | None = None,
     ) -> Any:
         """
         Engage in conversational interaction with the RAG index using a chat engine.
@@ -221,7 +226,8 @@ class BaseGraphIndexRagOps(BaseRagOps):
 
         try:
             retriever = self.rag_index.as_retriever(sub_retrievers=sub_retrievers or self._create_default_sub_retrievers(metadata_filter), include_text=self.include_text, use_async=True)
-            response_synthesizer = get_response_synthesizer(llm=self.completion_llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
+            llm = self.completion_llm if output_cls is None else self.completion_llm.as_structured_llm(output_cls=output_cls)
+            response_synthesizer = get_response_synthesizer(llm=llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
             query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
             return await query_engine.aquery(QueryBundle(query_str=f"{chr(10).join(f'{m.role}: {m.content}' for m in chat_history[-6:])}{chr(10)}user: {curr_message}" if chat_history else curr_message, custom_embedding_strs=[curr_message]))
         except Exception as e:

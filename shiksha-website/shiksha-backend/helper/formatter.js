@@ -352,6 +352,24 @@ function convertToCamelCase(data) {
 	}
 }
 
+function convertToSnakeCase(data) {
+	if (Array.isArray(data)) {
+		return data.map(item => convertToSnakeCase(item));
+	} else if (data !== null && typeof data === 'object') {
+		if (data instanceof ObjectId) {
+			return data.toHexString();
+		}
+
+		return Object.keys(data).reduce((acc, key) => {
+			const newKey = key === '_id' ? '_id' : _.snakeCase(key);
+			acc[newKey] = convertToSnakeCase(data[key]);
+			return acc;
+		}, {});
+	} else {
+		return data;
+	}
+}
+
 
 function formatSections(sections, templateSections) {
 	const formattedSections = sections.map((e) => {
@@ -766,6 +784,7 @@ module.exports = {
 	formatSubject,
 	getSemester,
 	convertToCamelCase,
+	convertToSnakeCase,
 	formatSections,
 	restructureResourcesNew,
 	transformSections,

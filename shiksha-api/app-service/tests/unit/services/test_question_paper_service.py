@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from app.services.question_paper_service import QuestionPaperService
-from app.models.question_paper import QuestionType, Chapter
+from app.models.question_paper import Chapter, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion
 
 
 # Shared fixture to avoid recreating the service
@@ -33,10 +33,8 @@ class TestFlattenExistingQuestions:
 
     def test_flatten_text_questions(self, service):
         """Test flattening text-based questions."""
-        mock_question = MagicMock()
-        mock_question.question = "What is photosynthesis?"
         mock_response = MagicMock()
-        mock_response.questions = [mock_question]
+        mock_response.questions = [TextQuestion(question="What is photosynthesis?")]
 
         result = service._flatten_existing_questions([mock_response])
 
@@ -45,18 +43,10 @@ class TestFlattenExistingQuestions:
 
     def test_flatten_matching_questions(self, service):
         """Test flattening matching-type questions."""
-        mock_question = MagicMock()
-        mock_question.value1 = "Mitochondria"
-        mock_question.value2 = "Powerhouse of the cell"
         mock_response = MagicMock()
-        mock_response.questions = [mock_question]
+        mock_response.questions = [MatchingListQuestion(value1="Mitochondria", value2="Powerhouse of the cell")]
 
-        with patch.object(
-            service,
-            "_flatten_existing_questions",
-            return_value=["Mitochondria :: Powerhouse of the cell"],
-        ):
-            result = service._flatten_existing_questions([mock_response])
+        result = service._flatten_existing_questions([mock_response])
 
         assert len(result) == 1
         assert "Mitochondria :: Powerhouse of the cell" in result
@@ -80,11 +70,13 @@ class TestGetGrammarTopics:
         request = MagicMock()
         request.chapters = [
             Chapter(title="ಅಧ್ಯಾಯ ೩", index_path="", learning_outcomes=[],
-                    is_grammar=True, grammar_topics=["Nouns", "Verbs"]),
-            Chapter(title="Photosynthesis", index_path="", learning_outcomes=[]),
+                    is_grammar=True, grammar_topics=["Nouns", "Verbs"], subtopics=[]),
+            Chapter(title="Photosynthesis", index_path="", learning_outcomes=[], subtopics=[]),
         ]
 
-        result = service._get_grammar_topics(request, {"grammar_source_chapters": []})
+        record = Chapter(title="Photosynthesis", index_path="", learning_outcomes=[], subtopics=[])
+
+        result = service._get_grammar_topics(request, record)
 
         assert "Nouns" in result
         assert "Verbs" in result
@@ -94,51 +86,14 @@ class TestGetGrammarTopics:
         service.prompts = {"grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}"}
         request = MagicMock()
         request.chapters = [
-            Chapter(title="Algebra", index_path="", learning_outcomes=[]),
+            Chapter(title="Algebra", index_path="", learning_outcomes=[], subtopics=[]),
         ]
 
-        result = service._get_grammar_topics(request, {"grammar_source_chapters": []})
+        record = Chapter(title="Algebra", index_path="", learning_outcomes=[], subtopics=[])
+
+        result = service._get_grammar_topics(request, record)
 
         assert result == ""
-
-
-class TestGetUnitMetadata:
-    """Tests for _get_unit_metadata method."""
-
-    def test_metadata_with_chapters(self, service):
-        """Test unit metadata extraction from chapters."""
-        chapter = MagicMock()
-        chapter.title = "Chapter 1"
-        chapter.learning_outcomes = ["LO1", "LO2"]
-        chapter.index_path = "/path/to/index"
-        chapter.subtopics = []
-
-        request = MagicMock(chapters=[chapter])
-
-        metadata = service._get_unit_metadata(request)
-
-        assert "Chapter 1" in metadata
-        assert metadata["Chapter 1"]["index_path"] == "/path/to/index"
-        assert len(metadata["Chapter 1"]["learning_outcomes"]) == 2
-
-    def test_metadata_with_subtopics(self, service):
-        """Test unit metadata extraction from subtopics."""
-        subtopic = MagicMock()
-        subtopic.title = "Subtopic 1"
-        subtopic.learning_outcomes = ["Sub LO1"]
-        subtopic.index_path = "/path/to/subtopic"
-
-        chapter = MagicMock()
-        chapter.title = "Chapter 1"
-        chapter.index_path = "/path/to/chapter"
-        chapter.subtopics = [subtopic]
-
-        request = MagicMock(chapters=[chapter])
-
-        metadata = service._get_unit_metadata(request)
-
-        assert "Subtopic 1" in metadata
-        assert metadata["Subtopic 1"]["index_path"] == "/path/to/subtopic"
 
 
 class TestFormatSystemPrompt:
@@ -156,24 +111,20 @@ class TestFormatSystemPrompt:
             "blooms-taxonomy": {"general": "Test Blooms"},
         }
 
-        request = MagicMock(
-            board="CBSE", grade=10, subject="Math", medium="English", total_marks=100
+        request = MagicMock(board="CBSE", grade=10, subject="Math", medium="English", total_marks=100, chapters=[])
+        record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
+        template = GeneratedTemplate(
+            type=QuestionType.MCQ,
+            number_of_questions=1,
+            marks_per_question=1,
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective="remember")],
         )
-        slot = {"unit_name": "Chapter 1", "learning_outcomes": ["LO1"], "questions": [{"type": "MCQ", "count": 5, "marks": 1}]}
+        slot = [((0, 0), template, template.question_distribution[0])]
 
-        result = service._format_system_prompt(request, [], slot)
+        result = service._format_system_prompt(request, [], record, slot)
 
         assert "CBSE" in result
         assert "Chapter 1" in result
-
-
-class TestGetFormatInstructionForType:
-    """Tests for _get_format_instruction_for_type method."""
-
-    def test_format_instruction_mcq(self, service):
-        """Test format instruction for MCQ type."""
-        instruction = service._get_format_instruction_for_type(QuestionType.MCQ)
-        assert "MCQ" in instruction
 
 
 class TestBuildGenerationSlots:
@@ -198,11 +149,13 @@ class TestBuildGenerationSlots:
 
         request = MagicMock(chapters=[chapter], template=[template])
 
-        slots = service._build_generation_slots(request)
+        slots = list(service._build_generation_slots(request))
 
         assert len(slots) > 0
-        assert slots[0]["unit_name"] == "Chapter 1"
-        assert slots[0]["index_path"] == "/path/to/index"
+        record, questions = slots[0]
+        assert record.title == "Chapter 1"
+        assert record.index_path == "/path/to/index"
+        assert questions == [((0, 0), template, distribution)]
 
     def test_build_slots_unit_mismatch(self, service):
         """Test that unit mismatch raises error."""
@@ -223,7 +176,7 @@ class TestBuildGenerationSlots:
         request = MagicMock(chapters=[chapter], template=[template])
 
         with pytest.raises(ValueError, match="Unit Name"):
-            service._build_generation_slots(request)
+            list(service._build_generation_slots(request))
 
 
 class TestOrganizeQuestionsIntoResponse:
@@ -231,7 +184,7 @@ class TestOrganizeQuestionsIntoResponse:
 
     def test_organize_questions(self, service):
         """Test organizing generated questions into response."""
-        generated = [MagicMock(
+        generated = [((0, 0), MagicMock(
             type=QuestionType.MCQ,
             unit_name="Chapter 1",
             objective="remember",
@@ -244,7 +197,7 @@ class TestOrganizeQuestionsIntoResponse:
                 "option_d": "D",
                 "correct_option": "option_a",
             },
-        )]
+        ))]
 
         distribution = MagicMock()
         distribution.unit_name = "Chapter 1"

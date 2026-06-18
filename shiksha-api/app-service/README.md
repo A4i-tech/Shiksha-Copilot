@@ -374,11 +374,11 @@ Generate a complete question paper with multiple question types and structured s
 
 - **MCQ**: Multiple Choice Questions with 4 options
 - **FILL_BLANKS**: Fill in the blanks questions
-- **ANSWER_WORD**: Single word/phrase answers
+- **ANSWER_VERY_SHORT**: Single word/phrase answers
 - **ANSWER_SHORT**: Short answer questions (2-3 sentences)
-- **ANSWER_GENERAL**: General answer questions
+- **ANSWER_MEDIUM**: General answer questions
 - **ANSWER_LONG**: Long answer questions (4-5 sentences)
-- **MATCH_LIST**: Matching type questions
+- **MATCHING**: Matching type questions
 
 **Features:**
 
