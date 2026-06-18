@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { CalendarAccessibilityDirective } from './calendar-accessibility.directive';
+import { CalendarAccessibilityDirective } from './calendar';
 
 @Component({
   template: `

@@ -1,26 +1,7 @@
 import { AfterViewInit, Directive, ElementRef, OnDestroy } from '@angular/core';
 
-/**
- * Accessibility fix for angular-calendar's week/day views.
- *
- * The library hardcodes `role="grid"` on `.cal-week-view` and `role="application"`
- * on each event. A `grid` requires `row`/`gridcell` children, so `application`
- * children trigger axe's "aria-required-children" violation (WCAG 1.3.1).
- *
- * We cannot edit the library template, so we neutralise the roles in the DOM:
- *  - drop `role="grid"` (this view isn't a real data grid) — clears the violation
- *  - convert each clickable event's `role="application"` to `role="button"`
- *    (events are `tabindex="0"`, have a click handler and an `aria-label`).
- *
- * A MutationObserver watches only added nodes to avoid rescanning the full
- * subtree on every calendar mutation (e.g. event drag, tooltip open).
- *
- * Reusable: drop `appCalendarAccessibility` on any `mwl-calendar-week-view` /
- * `mwl-calendar-day-view` (day view also renders `.cal-week-view`). It is a
- * no-op on views that don't emit these roles (e.g. month view), so it is safe
- * to apply to every calendar instance. Import the directive into the consuming
- * NgModule (or component `imports`).
- */
+// Patches angular-calendar's hardcoded role="grid"/"application" attrs that
+// can't be changed via templates. Safe no-op on month view.
 @Directive({
   selector: '[appCalendarAccessibility]',
   standalone: true,
