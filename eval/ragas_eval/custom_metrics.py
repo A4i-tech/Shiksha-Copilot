@@ -11,7 +11,7 @@ from openai import AsyncAzureOpenAI, RateLimitError, APITimeoutError
 from tqdm.asyncio import tqdm as tqdm_async
 import config
 
-_JUDGE_CFG = config.GPT4O_CONFIG
+_JUDGE_CFG = config.GPT41_CONFIG
 _SCORE_TIMEOUT = 60.0
 _MAX_RETRIES = 5
 _BASE_BACKOFF = 2.0

@@ -1,13 +1,13 @@
 """
-Model evaluation: GPT-4o vs GPT-5.1
+Model evaluation: GPT-4.1 vs GPT-4.1-mini vs GPT-4.1-nano
 Scoring via GPT-4o-as-judge (custom_metrics) + optional RAGAS core metrics.
 Results saved to eval/ragas_eval/results/ as timestamped JSON.
 With --langfuse: uploads to Langfuse as a dataset experiment run.
 
 Usage:
-    poetry run python evaluate.py                                  # all types, both models
+    poetry run python evaluate.py                                  # all types, all models
     poetry run python evaluate.py --type lesson_plan               # single type
-    poetry run python evaluate.py --models gpt-4o                  # single model
+    poetry run python evaluate.py --models gpt-4.1                 # single model
     poetry run python evaluate.py --limit 10                       # quick smoke-test
     poetry run python evaluate.py --skip-scoring                   # output only, no judge
     poetry run python evaluate.py --ragas                          # add RAGAS 4 core metrics
@@ -16,11 +16,15 @@ Usage:
 """
 
 import asyncio
+import sys
 import argparse
 import json
 import time
 from datetime import datetime, timezone
 from typing import List
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 import config
 from runners.lesson_plan_runner import LessonPlanRunner
@@ -126,7 +130,7 @@ async def run_eval_type(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="GPT-4o vs GPT-5.1 evaluation")
+    parser = argparse.ArgumentParser(description="GPT-4.1 variant evaluation")
     parser.add_argument(
         "--type",
         choices=list(RUNNER_MAP.keys()) + ["all"],
@@ -136,7 +140,7 @@ def main():
     parser.add_argument(
         "--models",
         nargs="+",
-        default=["gpt-4o", "gpt-5.1"],
+        default=["gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano"],
         choices=list(config.MODELS.keys()),
     )
     parser.add_argument("--limit", type=int, default=60)

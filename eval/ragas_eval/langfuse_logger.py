@@ -8,6 +8,7 @@ Creates a dataset in Langfuse, then for each eval run:
 Results appear in Langfuse UI: Datasets → <dataset-name> → Experiments tab.
 """
 
+import math
 import uuid
 from datetime import datetime
 from typing import List, Optional
@@ -93,11 +94,15 @@ class LangfuseEvalLogger:
             call_start = _parse_dt(meta.get("call_start", ""))
             call_end = _parse_dt(meta.get("call_end", ""))
 
+            MAX_CHARS = 10_000
+            user_input_tr = output["user_input"][:MAX_CHARS]
+            response_tr = output["response"][:MAX_CHARS]
+
             trace = self.client.trace(
                 id=str(uuid.uuid4()),
                 name=f"{run_name}/{self.eval_type}",
-                input=output["user_input"],
-                output=output["response"],
+                input=user_input_tr,
+                output=response_tr,
                 metadata=meta,
                 tags=[run_name, self.eval_type],
                 user_id=self.eval_type,
@@ -113,9 +118,9 @@ class LangfuseEvalLogger:
                     model=meta.get("model_name", ""),
                     model_parameters={"temperature": 0},
                     input=[
-                        {"role": "user", "content": output["user_input"]},
+                        {"role": "user", "content": user_input_tr},
                     ],
-                    output=output["response"],
+                    output=response_tr,
                     usage={
                         "input": meta.get("prompt_tokens", 0),
                         "output": meta.get("completion_tokens", 0),
@@ -127,7 +132,7 @@ class LangfuseEvalLogger:
                 )
 
             for metric, value in c_score.items():
-                if value is not None:
+                if value is not None and not math.isnan(float(value)):
                     trace.score(
                         name=metric,
                         value=float(value),
@@ -135,7 +140,7 @@ class LangfuseEvalLogger:
                     )
 
             for metric, value in r_score.items():
-                if value is not None:
+                if value is not None and not math.isnan(float(value)):
                     trace.score(
                         name=f"ragas_{metric}",
                         value=float(value),

@@ -24,7 +24,7 @@ import config
 
 
 def _build_judge_llm() -> LangchainLLMWrapper:
-    cfg = config.GPT4O_CONFIG
+    cfg = config.GPT41_CONFIG
     llm = AzureChatOpenAI(
         azure_deployment=cfg["deployment_name"],
         openai_api_key=cfg["api_key"],
@@ -58,7 +58,10 @@ def _get_reference(sample: dict) -> str:
 
 def _safe_float(val) -> Optional[float]:
     try:
-        return round(float(val), 4) if val is not None else None
+        if val is None:
+            return None
+        f = round(float(val), 4)
+        return None if math.isnan(f) or math.isinf(f) else f
     except (TypeError, ValueError):
         return None
 
