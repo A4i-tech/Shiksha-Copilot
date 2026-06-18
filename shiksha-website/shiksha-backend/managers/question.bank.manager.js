@@ -50,10 +50,11 @@ const getObjectiveKey = (board, grade, subjectName) => {
 const b64regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
 const toQuestionContent = async value => {
   if(typeof value === "string") return [{ contentType: "text/plain", content: value }];
-  if(Array.isArray(value)) Promise.all(value.map(async item => {
-    if(item.contentType === "text/plain") return item;
-    if(b64regex.test(item.content)) return { contentType: item.contentType, content: Buffer.from(item.content, "base64").toString("utf8") }
-    return { ...(await getBlobContent(item.content, item.contentType)) }
+  if(Array.isArray(value)) return Promise.all(value.map(async item => {
+    if(item.contentType === "text/plain" || b64regex.test(item.content)) return item;
+    resp = await getBlobContent(item.content, item.contentType)
+    if(rep.contentType.startsWith("image/")) resp.content = Buffer.from(resp.content, "utf8").toString("base64")
+    return resp
   }));
   return value;
 };
