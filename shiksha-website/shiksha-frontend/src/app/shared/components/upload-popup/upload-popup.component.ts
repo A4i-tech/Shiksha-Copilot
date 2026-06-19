@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnDestroy, HostListener, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgxFileDropEntry, NgxFileDropModule } from 'ngx-file-drop';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -7,15 +7,32 @@ import { ModalService } from '../modal/modal.service';
 import { MAX_FILE_SIZE } from '../../utility/constant.util';
 import { ExcelDownloadService } from '../../services/excel_download.service';
 import { TranslateModule } from '@ngx-translate/core';
+import { A11yModule } from '@angular/cdk/a11y';
 
 @Component({
   selector: 'app-upload-popup',
   standalone: true,
-  imports: [CommonModule, NgxFileDropModule, FormsModule, ReactiveFormsModule, TranslateModule],
+  imports: [CommonModule, NgxFileDropModule, FormsModule, ReactiveFormsModule, TranslateModule, A11yModule],
   templateUrl: './upload-popup.component.html',
   styleUrls: ['./upload-popup.component.scss'],
 })
-export class UploadPopupComponent implements OnInit{
+export class UploadPopupComponent implements OnInit, OnDestroy{
+  private previousActiveElement: HTMLElement | null = null;
+
+  ngOnInit() {
+    this.previousActiveElement = document.activeElement as HTMLElement;
+  }
+
+  ngOnDestroy() {
+    if (this.previousActiveElement) {
+      this.previousActiveElement.focus();
+    }
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  handleEscape(event: KeyboardEvent) {
+    this.closeModal();
+  }
   public files: NgxFileDropEntry[] = [];
 
   @Input() allowedFileTypes: string[] = [];
@@ -116,11 +133,5 @@ export class UploadPopupComponent implements OnInit{
     else if(this.context === 'school-management'){
       this.excelDownloadService.downloadTemplate('school');
     }
-  }
-
-  
-  ngOnInit(): void {
-    console.log('contxt', this.context);
-    
   }
 }
