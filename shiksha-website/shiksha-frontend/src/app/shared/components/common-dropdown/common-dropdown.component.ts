@@ -30,8 +30,6 @@ import { TranslateModule } from '@ngx-translate/core';
   ],
 })
 export class CommonDropdownComponent implements ControlValueAccessor {
-  readonly inputId = `common-dropdown-${Math.random().toString(36).slice(2, 10)}`;
-
   @Input() dropDownValues: any[] = [];
 
   @Input() config!: DropDownConfig;
