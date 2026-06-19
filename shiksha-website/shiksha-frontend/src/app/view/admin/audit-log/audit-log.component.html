@@ -7,9 +7,9 @@
 
   <div class="audit-log-list-container px-4 py-6 md:px-6 md:py-8 bg-white mt-6 border rounded">
     <div class="flex items-center justify-between gap-3 sm:gap-5 mb-3">
-      <h2 class="text-content text-2xl md:text-[30px] md:leading-[48px] font-bold min-w-0">
+      <p class="text-content text-2xl md:text-[30px] md:leading-[48px] font-bold min-w-0">
         {{ "Audit Log List" | translate }}
-      </h2>
+      </p>
       <div class="buttons shrink-0 flex justify-end">
         <div class="action-btn flex justify-end gap-2">
           <button
@@ -50,7 +50,7 @@
               <span
                 class="inline-flex px-3 py-0.5 sm:py-1 rounded-full capitalize"
                 [ngClass]="{
-                  'text-success bg-success-50': auditLogData?.status === 'success',
+                  'text-green bg-success-50': auditLogData?.status === 'success',
                   'text-error bg-error-50': auditLogData?.status === 'failure'
                 }"
               >{{ auditLogData?.status }}</span>
@@ -126,7 +126,7 @@
               <span
                 class="px-3 py-2 rounded-full capitalize"
                 [ngClass]="{
-                  'text-success bg-success-50':
+                  'text-green bg-success-50':
                     auditLogData?.status === 'success',
                   'text-error bg-error-50': auditLogData?.status === 'failure'
                 }"

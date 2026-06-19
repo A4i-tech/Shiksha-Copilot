@@ -52,11 +52,9 @@
     </div>
 
     <div class="relative flex-col min-w-0">
-        <label class="form-control-label" for="fromDateInput">From</label>
+        <label class="form-control-label">From</label>
         <div class="relative">
             <input 
-            id="fromDateInput"
-            aria-label="From date"
             type="date" 
             [(ngModel)]="selectedFromDate" 
             (change)="onFrmDateSelection($event)" 
@@ -71,15 +69,13 @@
     </div>              
     
     <div class="relative flex-col min-w-0">
-        <label class="form-control-label" for="toDateInput">To</label>
+        <label class="form-control-label">To</label>
         <div class="relative">
             <input 
-            id="toDateInput"
-            aria-label="To date"
             type="date" 
             [(ngModel)]="selectedToDate" 
             (change)="onToDateSelection($event)" 
-            name="toDate" 
+            name="fromDate" 
             class="form-control h-[35px] pr-3 pl-2" />
             <button type="button" (click)="clearToDate()" *ngIf="selectedToDate" class="absolute inset-y-0 right-6 flex items-center pr-3 cursor-pointer" >
             <svg width="10" fill="#6E7787" class="bi bi-x" viewBox="0 0 16 16" >
@@ -94,13 +90,13 @@
             <ng-template #noData>
                 <div class="flex flex-col justify-center items-center h-[400px]">
                     <img width="80" src="assets/icons/three-bars-chart-svgrepo-com.svg" alt="">
-                    <p class="text-content-60 mt-2">No Data Available!</p>
+                    <p class="text-content-50 mt-2">No Data Available!</p>
                 </div>
             </ng-template>     
             <ng-template #nodonutData>
                 <div class="flex flex-col justify-center items-center h-[400px]">
                     <img width="100" src="assets/icons/donut-chart-svgrepo-com.svg" alt="">
-                    <p class="text-content-60">No Data Available!</p>
+                    <p class="text-content-50">No Data Available!</p>
                 </div>
             </ng-template>   
 
@@ -117,8 +113,7 @@
                 <div  class="chartWrapper ">
                     <div [ngClass]="{'w-[3000px]': (byUserBarChartData.labels?.length ?? 0) > 18}" *ngIf="userDataAvailable; else noData">
                         <canvas baseChart height="400px" [data]="byUserBarChartData" [options]="byUserBarChartOptions"
-                            [plugins]="byUserBarChartPlugins" [legend]="byUserBarChartLegend" [type]="'bar'"
-                            role="img" aria-label="Bar chart showing lesson plans by location level">
+                            [plugins]="byUserBarChartPlugins" [legend]="byUserBarChartLegend" [type]="'bar'">
                         </canvas>
                     </div>
                 </div>
@@ -140,8 +135,7 @@
                     <div>
                         <div *ngIf="subDataAvailable; else noData">
                             <canvas class="subCanvas" baseChart height="400px" [data]="bySubjectBarChartData" [options]="bySubjectBarChartOptions"
-                                [plugins]="bySubjectBarChartPlugins" [legend]="bySubjectBarChartLegend" [type]="'bar'"
-                                role="img" aria-label="Bar chart showing lesson plans by subject">
+                                [plugins]="bySubjectBarChartPlugins" [legend]="bySubjectBarChartLegend" [type]="'bar'">
                             </canvas>
                         </div>
                     </div>
@@ -155,8 +149,7 @@
                     </div>
                     <div *ngIf="mediumDataAvailable; else nodonutData">
                         <canvas baseChart [data]="byMediumDonutChartData" [options]="byMediumDonutChartOptions"
-                            [plugins]="byMediumDonutChartPlugins" [legend]="byMediumDonutChartLegend" [type]="'doughnut'"
-                            role="img" aria-label="Doughnut chart showing lesson plans by medium">
+                            [plugins]="byMediumDonutChartPlugins" [legend]="byMediumDonutChartLegend" [type]="'doughnut'">
                         </canvas>
                     </div>
                 </div>
@@ -179,8 +172,7 @@
                 <div class="relative flex justify-center items-center">
                     <div *ngIf="statusDataAvailable; else nodonutData">
                         <canvas baseChart [data]="statusDonutChartData" height="315" width="315" [options]="statusDonutChartOptions"
-                            [plugins]="statusDonutChartPlugins" [legend]="statusDonutChartLegend" [type]="'doughnut'"
-                            role="img" aria-label="Doughnut chart showing active and inactive users">
+                            [plugins]="statusDonutChartPlugins" [legend]="statusDonutChartLegend" [type]="'doughnut'">
                         </canvas>
                         <div class="absolute top-[60%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
                             <h2 class="text-[20px] font-bold">{{activeUsersCount}} / {{allUsersCount}}</h2>
@@ -257,7 +249,7 @@
                 </div>
                 <ng-template #notableData>
                     <div class="flex justify-center items-center h-[280px] mt-5">
-                        <p class="text-content-60">No Data Available!</p>
+                        <p class="text-content-50">No Data Available!</p>
                     </div>
                 </ng-template>
             </div>
@@ -273,8 +265,7 @@
                 </div>
                 <div *ngIf="avgScoreDataAvailable; else nodonutData">
                     <canvas baseChart [data]="avgFeedbackDonutChartData" [options]="avgFeedbackDonutChartOptions"
-                        [plugins]="avgFeedbackDonutChartPlugins" [legend]="avgFeedbackDonutChartLegend" [type]="'doughnut'"
-                        role="img" aria-label="Doughnut chart showing average feedback score on generated content">
+                        [plugins]="avgFeedbackDonutChartPlugins" [legend]="avgFeedbackDonutChartLegend" [type]="'doughnut'">
                     </canvas>
                 </div>
             </div>
@@ -286,8 +277,7 @@
                 </div>
                 <div *ngIf="chatbotDataAvailable; else noData">
                     <canvas baseChart class="chatbotCanvas" height="400px" [data]="chatbotRequestsBarChartData" [options]="chatbotRequestsBarChartOptions"
-                        [plugins]="chatbotRequestsBarChartPlugins" [legend]="chatbotRequestsBarChartLegend" [type]="'bar'"
-                        role="img" aria-label="Bar chart showing number of requests made to the chatbot">
+                        [plugins]="chatbotRequestsBarChartPlugins" [legend]="chatbotRequestsBarChartLegend" [type]="'bar'">
                     </canvas>
                 </div>
             </div>
