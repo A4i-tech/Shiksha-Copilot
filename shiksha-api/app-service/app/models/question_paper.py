@@ -43,7 +43,7 @@ SerializableBytes = Annotated[
 
 
 class Content(BaseModel):
-    content_type: Literal["text/plain", "image/png"] = Field(default="text/plain")
+    content_type: Literal["text/plain", "image/png", "image/jpeg"] = Field(default="text/plain")
     content: SerializableBytes
 
     @staticmethod
