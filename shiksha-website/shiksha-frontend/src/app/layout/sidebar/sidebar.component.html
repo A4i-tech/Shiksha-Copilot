@@ -28,7 +28,7 @@
             *ngIf="utilitService.hasPermission(menuItem.permission)"
             class="mt-1 flex text-shade items-center rounded-md px-3 py-4 duration-300 cursor-pointer menu-item focus:outline-none focus:ring-2 focus:ring-primary-100"
             (click)="closeSidebar($event)"
-            [routerLinkActive]="'bg-[#EDF6FE] !text-[#0A58A3]'"
+            [routerLinkActive]="'bg-[#EDF6FE] !text-[#1565C0]'"
             [routerLink]="menuItem.route"
             [attr.aria-current]="isActive(menuItem.match) ? 'page' : null"
             tabindex="0"

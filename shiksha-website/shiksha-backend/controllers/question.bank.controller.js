@@ -1,5 +1,8 @@
 const QuestionBankManager = require("../managers/question.bank.manager");
 const BaseController = require("./base.controller");
+const handleError = require("../helper/handleError");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 
 class QuestionBankController extends BaseController {
   constructor() {
@@ -70,23 +73,6 @@ class QuestionBankController extends BaseController {
     }
   }
 
-  async generateQuestionBankTemplate(req, res) {
-    try {
-      const user = req.user;
-      const result = await this.questionBankManager.generateQuestionBankTemplate(
-        req,
-        user
-      );
-      return res.status(200).json(result);
-    } catch (err) {
-      console.log(
-        "Error --> QuestionBankController -> generateQuestionBank()",
-        err
-      );
-      return res.status(400).json(err);
-    }
-  }
-
   async generateQuestionBankBluePrint(req, res) {
     try {
       const user = req.user;
@@ -94,6 +80,9 @@ class QuestionBankController extends BaseController {
         req,
         user
       );
+      if (!result.success) {
+        return handleError(result, res);
+      }
       return res.status(200).json(result);
     } catch (err) {
       console.log(
@@ -111,6 +100,9 @@ class QuestionBankController extends BaseController {
         req,
         user
       );
+      if (!result.success) {
+        return handleError(result, res);
+      }
       return res.status(200).json(result);
     } catch (err) {
       console.log(
@@ -232,6 +224,16 @@ class QuestionBankController extends BaseController {
     }
   }
 
+
+  async getPaperConfig(req, res) {
+    try {
+      const { board, grade, subjectName } = req.query;
+      const result = await this.questionBankManager.getPaperConfig(board, grade, subjectName);
+      return res.status(200).json(result);
+    } catch (err) {
+      return res.status(400).json(err);
+    }
+  }
 
   async getQuestions(req, res) {
     try {
