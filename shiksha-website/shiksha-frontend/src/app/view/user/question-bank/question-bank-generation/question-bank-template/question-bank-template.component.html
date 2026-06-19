@@ -116,8 +116,10 @@
         class="bg-white p-3 rounded border hover:shadow-md cursor-pointer transition-all border-l-4 group"
         [ngClass]="{'border-l-blue-500': q.source === QUESTION_SOURCE.AI, 'border-l-green-500': q.source === QUESTION_SOURCE.LBA}">
         <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-1">
-          <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 sm:mr-2">{{ q.text }}</p>
+          <p class="text-sm text-gray-800 line-clamp-3 group-hover:text-primary flex-1 sm:mr-2">{{ questionText(q) }}</p>
           <div class="flex flex-wrap items-center gap-1 sm:justify-end">
+            <img *ngIf="hasQuestionImage(q)" src="assets/icons/image.svg" [alt]="'Contains image' | translate"
+              [title]="'Contains image' | translate" class="w-4 h-4 text-gray-500" />
             <!-- New Heading Badge -->
             <span *ngIf="q.heading"
               class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
@@ -158,8 +160,10 @@
         <button (click)="removeQuestion(i)"
           class="absolute top-2 right-2 text-gray-300 hover:text-red-500 font-bold text-xl leading-none">&times;</button>
         <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-1 pr-6">
-          <p class="text-sm text-gray-800 flex-1 sm:mr-2">{{ q.text }}</p>
+          <p class="text-sm text-gray-800 flex-1 sm:mr-2">{{ questionText(q) }}</p>
           <div class="flex flex-wrap items-center gap-1 sm:justify-end">
+            <img *ngIf="hasQuestionImage(q)" src="assets/icons/image.svg" [alt]="'Contains image' | translate"
+              [title]="'Contains image' | translate" class="w-4 h-4 text-gray-500" />
             <!-- New Heading Badge -->
             <span *ngIf="q.heading"
               class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">

@@ -14,24 +14,23 @@ import {
   WidthType,
   PageNumber,
   TabStopType,
+  ImageRun,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { imageSize } from 'image-size';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DOCX_CONFIG, formatMarks, SUPERSCRIPT_MAP } from '../utility/constant.util';
 import { OptionDto, QuestionSectionDto } from '../models/question-bank.dto';
 import { TranslateService } from '@ngx-translate/core';
 
-/** Interfaces for Question Bank Data */
 export interface QuestionBankMetadata {
   schoolName: string;
 }
 
-export type QuestionBankOption = string | OptionDto;
-
 export interface QuestionBankQuestion {
   question?: string;
   text?: string;
-  options?: QuestionBankOption[];
+  options?: OptionDto[];
   value1?: string;
   value2?: string;
   left?: string;
@@ -116,77 +115,24 @@ export class QuestionBankDownloadService {
 
   /** Builds a table for Match the Following questions */
   private buildMatchTable(questions: QuestionBankQuestion[], shuffle: boolean): Table {
-    const rows: TableRow[] = [];
-
-    // Header Row (Only for Answer Key as per original logic, let's keep it consistent)
-    if (!shuffle) {
-      rows.push(
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: ' Left', bold: true })],
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: [new TextRun({ text: ' Right (Answer)', bold: true })],
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-          ],
-        })
-      );
-    }
-
-    const col1 = questions.map((q) => (q.value1 ?? q.left ?? q.text ?? '') || '');
-    const rawCol2 = questions.map((q, idx) => {
-      const resolved = q.value2 ?? q.right ?? q.keyAnswer;
-      if (typeof resolved !== 'string' || resolved.trim() === '') {
-        console.warn(
-          `[QuestionBankDownloadService.buildMatchTable] Row ${idx}: no valid right-hand match value found ` +
-            `(value2/right/keyAnswer). Falling back to empty string.`,
-          q
-        );
-        return '';
-      }
-      return resolved;
+    const row = (left: any, right: any, bold = false) => new TableRow({
+      children: [left, right].map(content => new TableCell({
+        width: { size: 50, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({
+          children: bold
+            ? [new TextRun({ text: content, bold: true })]
+            : this.contentRuns(content),
+          spacing: DOCX_CONFIG.spacing.tableCell,
+        })],
+      })),
     });
-    const col2 = shuffle ? this.utilityService.shuffleOptions([...rawCol2]) : rawCol2;
 
-    for (let i = 0; i < col1.length; i++) {
-      rows.push(
-        new TableRow({
-          children: [
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: this.convertToDocxRuns(col1[i]),
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              children: [
-                new Paragraph({
-                  children: this.convertToDocxRuns(col2[i]),
-                  spacing: DOCX_CONFIG.spacing.tableCell,
-                }),
-              ],
-            }),
-          ],
-        })
-      );
-    }
+    const left = questions.map(q => q.value1 ?? q.left ?? q.text);
+    const answers = questions.map(q => q.value2 ?? q.right ?? q.keyAnswer);
+    const right = shuffle ? this.utilityService.shuffleOptions([...answers]) : answers;
+    const rows = left.map((value, index) => row(value, right[index]));
+
+    if (!shuffle) rows.unshift(row('Left', 'Right (Answer)', true));
 
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -199,10 +145,9 @@ export class QuestionBankDownloadService {
     const paragraphs: Paragraph[] = [];
 
     questions.forEach((q, index) => {
-      const questionText = q.question ?? q.text ?? '';
       paragraphs.push(
         new Paragraph({
-          children: [new TextRun({ text: `${index + 1}. ` }), ...this.convertToDocxRuns(questionText)],
+          children: [new TextRun({ text: `${index + 1}. ` }), ...this.contentRuns(q.question ?? q.text)],
           spacing: DOCX_CONFIG.spacing.questionItem,
         })
       );
@@ -210,13 +155,12 @@ export class QuestionBankDownloadService {
       // Options render in both the standard bank and answer-key layouts so that
       // objective questions retain context alongside their answers.
       if (q.options) {
-        q.options.forEach((opt: QuestionBankOption, i: number) => {
-          const { label, text } = this.decodeOption(opt, i);
+        q.options.forEach((opt: OptionDto, i: number) => {
           paragraphs.push(
             new Paragraph({
               children: [
-                new TextRun({ text: `${DOCX_CONFIG.indent.optionLeft}${label}. ` }),
-                ...this.convertToDocxRuns(text),
+                new TextRun({ text: `${DOCX_CONFIG.indent.optionLeft}${opt.label || String.fromCharCode(65 + i)}. ` }),
+                ...this.contentRuns(opt.text),
               ],
               spacing: DOCX_CONFIG.spacing.optionItem,
             })
@@ -225,22 +169,12 @@ export class QuestionBankDownloadService {
       }
 
       if (showAnswers) {
-        let answer = '';
-        if (typeof q.keyAnswer === 'string') {
-          answer = q.keyAnswer;
-        } else if (q.keyAnswer !== undefined && q.keyAnswer !== null) {
-          console.error(
-            `[QuestionBankDownloadService.buildStandardQuestions] Question ${index + 1}: keyAnswer is not a string ` +
-              `(got ${typeof q.keyAnswer}). Falling back to empty string to prevent docx failure.`,
-            q
-          );
-        }
-        if (answer) {
+        if (q.keyAnswer) {
           paragraphs.push(
             new Paragraph({
               children: [
                 new TextRun({ text: '   Ans: ', bold: true, color: COLOR_ANSWER }),
-                new TextRun({ text: answer, italics: true, color: COLOR_ANSWER }),
+                ...this.contentRuns(q.keyAnswer),
               ],
               spacing: DOCX_CONFIG.spacing.optionItem,
             })
@@ -252,31 +186,15 @@ export class QuestionBankDownloadService {
     return paragraphs;
   }
 
-  /**
-   * Decodes a single MCQ option into { label, text }, mirroring the preview pattern used in
-   * `question-bank-blue-print.component.html` so downloads never render `[object Object]`.
-   * Supports three shapes:
-   *   - { label, text } → label from data, text from data
-   *   - { text }        → label auto-assigned (A, B, C…), text from data
-   *   - primitive       → label auto-assigned, text is the primitive coerced to string
-   */
-  private decodeOption(opt: QuestionBankOption | null | undefined, index: number): { label: string; text: string } {
-    const autoLabel = String.fromCharCode(65 + index);
-
-    if (opt && typeof opt === 'object') {
-      const label = typeof opt.label === 'string' && opt.label.trim() !== '' ? opt.label : autoLabel;
-      if (typeof opt.text === 'string') {
-        return { label, text: opt.text };
-      }
-      console.warn(
-        `[QuestionBankDownloadService.decodeOption] Option ${index} is an object without a string 'text' field. ` +
-          `Falling back to empty string.`,
-        opt
-      );
-      return { label, text: '' };
-    }
-
-    return { label: autoLabel, text: opt == null ? '' : String(opt) };
+  private contentRuns(content: any): any[] {
+    if (!Array.isArray(content)) return this.convertToDocxRuns(content);
+    return content.flatMap(item => {
+      if (item.contentType === 'text/plain') return this.convertToDocxRuns(item.content);
+      const type: 'jpg' | 'png' = item.contentType === 'image/jpeg' ? 'jpg' : 'png';
+      const data = Uint8Array.from(atob(item.content), c => c.charCodeAt(0));
+      const { width = 240, height = 160 } = imageSize(data);
+      return [new ImageRun({ type, data, transformation: { width: 240, height: 240 * height / width } })];
+    });
   }
 
   /** Shared Document Shell */

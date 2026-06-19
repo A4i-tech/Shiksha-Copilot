@@ -104,8 +104,8 @@ export class BluePrintExportService {
         new TableRow({
           children: [
             this.createPaddedCell(item.unitName),
-            this.createPaddedCell(this.translateService.instant(item.type)),
-            this.createPaddedCell(this.translateService.instant(item.objective)),
+            this.createPaddedCell(this.translate(item.type)),
+            this.createPaddedCell(this.translate(item.objective)),
             this.createPaddedCell(formatMarks(item.marks)),
           ],
         })
@@ -160,6 +160,11 @@ export class BluePrintExportService {
       margins: { top: 100, bottom: 100, left: 100, right: 100 },
       width: { size: 25, type: WidthType.PERCENTAGE },
     });
+  }
+
+  private translate(value: unknown): string {
+    if (value == null || value === '') return '';
+    return this.translateService.instant(String(value));
   }
 
   private capitalize(str: string) {

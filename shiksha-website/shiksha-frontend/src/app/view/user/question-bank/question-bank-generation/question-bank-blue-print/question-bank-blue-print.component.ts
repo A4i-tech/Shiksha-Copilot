@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -22,6 +23,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
   readonly formatMarks = formatMarks;
+  readonly contentItems = contentItems;
+  readonly questionContentItems = questionContentItems;
 
   totalSteps: number = 3;
 
@@ -114,6 +117,10 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
       sources.add(q.source);
     });
     return Array.from(sources);
+  }
+
+  mediaSrc(item: any): string {
+    return `data:${item.contentType};base64,${item.content}`;
   }
 
   previousStep() {

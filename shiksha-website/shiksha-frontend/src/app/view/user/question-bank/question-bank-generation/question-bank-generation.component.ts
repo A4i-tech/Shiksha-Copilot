@@ -18,6 +18,7 @@ import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { map, switchMap, catchError, finalize, toArray } from 'rxjs/operators';
+import { questionContentItems, questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 // Import Child Component for Step 2 access
 import { QuestionBankTemplateComponent } from './question-bank-template/question-bank-template.component';
@@ -38,6 +39,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   @ViewChild(QuestionBankTemplateComponent) templateComponent!: QuestionBankTemplateComponent;
   @ViewChild('headingDropdownContainer') headingDropdownContainer?: ElementRef<HTMLElement>;
   readonly formatMarks = formatMarks;
+  readonly questionText = questionText;
 
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
@@ -176,7 +178,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         grouped.set(sectionKey, { type: sectionType, numberOfQuestions: 0, marksPerQuestion: Number(q.marks), questions: [] });
       }
       const sec = grouped.get(sectionKey);
-      sec.questions.push({ question: q.text, options: q.options, answer: q.answer, marks: Number(q.marks), value1: q.value1, value2: q.value2 });
+      sec.questions.push(this.slimLbaQuestion(q));
       sec.numberOfQuestions = sec.questions.length;
     });
 
@@ -522,7 +524,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         .forEach(q => {
           q.marksPerQuestion.forEach((marks: number) => {
             const selectionKey = q.key;
-            if (!headingMap.has(selectionKey)) headingMap.set(selectionKey, { ...q, selectionKey, displayName: q.label, name: q.label, label: q.label, count: 0, chapters: new Set<number>(), aiVariants: [], lbaName: undefined });
+            if (!headingMap.has(selectionKey)) headingMap.set(selectionKey, { ...q, selectionKey, displayName: q.label, name: q.label, label: q.label, count: 0, chapters: new Set<number>(), aiVariants: [], lbaHeadings: new Set<string>() });
             headingMap.get(selectionKey).aiVariants.push({ ...q, marksPerQuestion: marks, name: q.label, label: q.label });
           });
         });
@@ -535,9 +537,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const selectionKey = h.key;
         const headingName = h.label;
         const headingCount = Number(h.count);
-        if (!headingMap.has(selectionKey)) headingMap.set(selectionKey, { ...h, selectionKey, displayName: headingName, name: headingName, label: h.label, count: 0, chapters: new Set<number>(), aiVariants: [], lbaName: headingName });
+        if (!headingMap.has(selectionKey)) headingMap.set(selectionKey, { ...h, selectionKey, displayName: headingName, name: headingName, label: h.label, count: 0, chapters: new Set<number>(), aiVariants: [], lbaHeadings: new Set<string>() });
         const agg = headingMap.get(selectionKey)!;
-        agg.lbaName = headingName;
+        agg.lbaHeadings.add(h.name);
         agg.count += headingCount;
         agg.chapters.add(chapter.chapterNumber);
       }
@@ -551,7 +553,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         displayName: x.displayName,
         selectionKey: x.selectionKey,
         aiVariants: x.aiVariants,
-        lbaName: x.lbaName,
+        lbaHeadings: Array.from(x.lbaHeadings),
         count: x.count,
         chapters: Array.from(x.chapters).sort((a: any, b: any) => a - b)
       }))
@@ -674,7 +676,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         });
       }
       const section = sectionsMap.get(sectionKey);
-      section.questions.push({
+      section.questions.push(q.source === QUESTION_SOURCE.AI ? {
         question: q.text,
         options: q.options,
         keyAnswer: q.keyAnswer,
@@ -684,7 +686,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         objective: q.objective,
         value1: q.value1,
         value2: q.value2
-      });
+      } : this.slimLbaQuestion(q));
       section.numberOfQuestions = section.questions.length;
     });
 
@@ -723,6 +725,20 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return res.data._id;
   }
 
+  slimLbaQuestion(q: any): any {
+    const parts = String(q._id).split('_pair_');
+    const lbaQuestionId = parts[0];
+    const lbaPairIndex = parts.length > 1 ? Number(parts[1]) : undefined;
+    return {
+      _id: q._id,
+      lbaQuestionId,
+      lbaPairIndex,
+      marks: Number(q.marks),
+      unitName: q.unitName,
+      objective: q.objective,
+    };
+  }
+
   generateAIQuestionsPool() {
     let payload = this.getTemplatePayload();
     const aiHeadings = this.selectedHeadings.flatMap(heading => heading.aiVariants);
@@ -750,13 +766,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           if (!heading) throw new Error(`Unexpected AI question block ${blockType}:${blockMarks}`);
 
           block.questions.forEach((q: any) => {
-            const text = blockType === 'MATCHING' ? `${q.value1} - ${q.value2}` : q.question;
+            const typedQuestion = { ...q, type: blockType };
             flatQuestions.push({
-              ...q,
+              ...typedQuestion,
               source: QUESTION_SOURCE.AI,
-              text,
+              text: questionContentItems(typedQuestion),
               marks: blockMarks,
-              type: blockType,
               heading: heading.label,
               unitName: chapterName,
               objective: q.objective,
@@ -857,7 +872,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const selectedChapterNumbers = selectedChapters.map(ch => ch.chapterNumber);
     const selectedChapterIds = selectedChapters.map(ch => ch._id);
-    const selectedLBAHeadings = this.selectedHeadings.filter(h => h.lbaName).map(h => h.lbaName);
+    const selectedLBAHeadings = Array.from(new Set(this.selectedHeadings.flatMap(h => h.lbaHeadings || [])));
     if (!selectedLBAHeadings.length) return of([]);
 
     const params: any = {
@@ -920,7 +935,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   applyFilters() {
     this.filteredQuestions = this.allAvailableQuestions.filter(q => {
       const matchesSource = this.filterSource === 'ALL' || q.source === this.filterSource;
-      const matchesSearch = q.text.toLowerCase().includes(this.searchQuery);
+      const matchesSearch = this.questionText(q).toLowerCase().includes(this.searchQuery);
       return matchesSource && matchesSearch;
     });
   }

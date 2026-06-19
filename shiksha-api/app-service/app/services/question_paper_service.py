@@ -30,6 +30,7 @@ from app.models.question_paper import (
     QuestionBankResponse,
     QuestionBankMetadata,
     QuestionDistribution,
+    QuestionModel,
     QuestionTypeResponse,
     GRAMMAR_QUESTION_TYPES,
     TextQuestion,
@@ -100,20 +101,20 @@ class QuestionPaperService:
         logger.info("Successfully loaded prompt templates")
         return prompts
 
-
-    def _flatten_existing_questions(self, existing: List[QuestionTypeResponse]) -> List[str]:
-        """Extract question text from existing questions for uniqueness checking."""
+    def _flatten_questions(self, existing: list[QuestionModel]) -> list[str]:
+        to_text = lambda v: "\n".join(c.content.decode("utf-8") for c in v if c.content_type == "text/plain")
         questions = []
-        for qtr in existing:
-            for q in qtr.questions:
-                match q:
-                    case TextQuestion(question=question) | FourOptionsQuestion(question=question):
-                        questions.append(question)
-                    case MatchingListQuestion(value1=value1, value2=value2):
-                        questions.append(f"{value1} :: {value2}")
-                    case _:
-                        raise RuntimeError("don't know how to flatten %s" % type(q).__qualname__)
-        return [q for q in questions if q]
+        for q in existing:
+            match q:
+                case TextQuestion(question=question) | FourOptionsQuestion(question=question):
+                    if text := to_text(question):
+                        questions.append(text)
+                case MatchingListQuestion(value1=value1, value2=value2):
+                    if (v1 := to_text(value1)) and (v2 := to_text(value2)):
+                        questions.append(f"{v1} :: {v2}")
+                case _:
+                    raise RuntimeError("don't know how to flatten %s" % type(q).__qualname__)
+        return questions
 
     def _get_grammar_topics(self, request: QuestionBankPartsGenerationRequest, record: _LearningRecord) -> str:
         """Return a grammar focus instruction for the slot, or "" when no grammar
@@ -304,7 +305,7 @@ class QuestionPaperService:
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
 
-        existing_flat = self._flatten_existing_questions(request.existing_questions)
+        existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
         tasks = []
         for lr, questions in self._build_generation_slots(request):
             logger.debug(f"[SLOT_PROCESSING] unit='{lr.title}' | index_path='{lr.index_path}'")
