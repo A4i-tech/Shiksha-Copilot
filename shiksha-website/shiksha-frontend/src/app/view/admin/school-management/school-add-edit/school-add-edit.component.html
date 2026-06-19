@@ -14,9 +14,9 @@
     class="school-container px-4 py-6 md:p-8 bg-white mt-6 rounded border-content-30"
   >
     <div class="flex justify-between content-center">
-      <h2 class="text-content text-2xl md:text-[32px] md:leading-[48px] font-bold tracking-tight">
+      <p class="text-content text-2xl md:text-[32px] md:leading-[48px] font-bold tracking-tight">
         {{ (mode === "view" ? "View" : mode === "edit" ? "Edit" : "Add") | translate }} {{'School Profile' | translate}}
-      </h2>
+      </p>
 
       <button
         class="hidden btn-primary h-9"
@@ -423,7 +423,6 @@
                             />
                             <button
                               class="btn-primary h-9 w-full sm:w-auto"
-                              aria-label="Add resource detail"
                               (click)="addOtherResource(resource, i, $event)"
                               type="button"
                             >
