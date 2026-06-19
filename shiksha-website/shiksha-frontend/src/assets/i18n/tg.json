@@ -509,5 +509,14 @@
   "Pre-generated Questions": "ముందుగా రూపొందించిన ప్రశ్నలు",
   "Easy": "సులభం",
   "Average": "సగటు",
-  "Difficult": "కష్టం"
+  "Difficult": "కష్టం",
+  "Chat conversation": "చాట్ సంభాషణ",
+  "Message input": "సందేశం ఇన్‌పుట్",
+  "Send message": "సందేశం పంపండి",
+  "Previous month": "మునుపటి నెల",
+  "Next month": "తదుపరి నెల",
+  "Calendar": "క్యాలెండర్",
+  "Recently Generated/Modified Plans": "ఇటీవల రూపొందించిన/సవరించిన ప్రణాళికలు",
+  "Lesson Plan/Resources Generated": "పాఠ్య ప్రణాళిక/వనరులు రూపొందించబడ్డాయి",
+  "line chart showing the number of lesson plans and resources generated over time": "కాలక్రమేణా రూపొందించిన పాఠ్య ప్రణాళికలు మరియు వనరుల సంఖ్యను చూపించే రేఖా చిత్రం"
 }
