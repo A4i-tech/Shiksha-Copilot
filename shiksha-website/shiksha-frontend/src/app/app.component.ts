@@ -23,6 +23,8 @@ export class AppComponent implements OnInit, OnDestroy {
   showIdleWarning = false;
   idleTime = Math.round((IDLE_WARNING_THRESHOLD + IDLE_START_THRESHOLD) / 60);
 
+  private clipboardObserver: MutationObserver | null = null;
+
   constructor(
     private authService: SignInService,
     private utilityService: UtilityService,
@@ -35,15 +37,23 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    // ngx-clipboard textarea patch
+    this.clipboardObserver = new MutationObserver((mutations) => {
+      document.querySelectorAll('textarea').forEach((textarea) => {
+        if (!textarea.hasAttribute('aria-label') && !textarea.hasAttribute('aria-hidden') && textarea.style.opacity === '0') {
+          textarea.setAttribute('aria-label', 'System Clipboard Helper');
+          textarea.setAttribute('aria-hidden', 'true');
+        }
+      });
+    });
+    this.clipboardObserver.observe(document.body, { childList: true, subtree: true });
 
-    // ========== IDLE WATCHER ==========
     this.idleService.idleIndicator.subscribe({
       next: () => {
         this.showIdleWarning = true;
       }
     });
 
-    // ========== FETCH USER + CHECK BASELINE ==========
     if (this.authorizationService.isLoggedIn()) {
       this.authService.authMe().subscribe({
         next: (res: any) => {
@@ -75,7 +85,6 @@ export class AppComponent implements OnInit, OnDestroy {
       });
     }
 
-    // ========== BEFORE UNLOAD ==========
     window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
   }
 
@@ -138,6 +147,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clipboardObserver?.disconnect();
     window.removeEventListener('beforeunload', this.handleBeforeUnload.bind(this));
   }
 }
