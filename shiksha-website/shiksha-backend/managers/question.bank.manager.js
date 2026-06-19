@@ -308,12 +308,14 @@ class QuestionBankManager extends BaseManager {
 
     if (questions && questions.length > 0) {
       console.log("[Manager] Manual Flow detected. Using provided questions/sections.");
+      const ids = [...new Set(questions.flatMap(section => section.questions.map(q => q.lbaQuestionId).filter(Boolean)))];
+      const rawQuestions = ids.length ? await mongoose.connection.collection("lba_questions").find({ _id: { $in: ids.map(id => new ObjectId(id)) } }).toArray() : [];
+      const rawQuestionById = new Map(rawQuestions.map(q => [String(q._id), q]));
       mergedList = await Promise.all(questions.map(async section => ({
         ...section,
         questions: await Promise.all(section.questions.map(async q => {
           if (!q.lbaQuestionId) return q;
-          const rawQuestion = await mongoose.connection.collection("lba_questions").findOne({ _id: new ObjectId(q.lbaQuestionId) });
-          const transformed = await transformWeakLbaQuestion(rawQuestion);
+          const transformed = await transformWeakLbaQuestion(rawQuestionById.get(String(q.lbaQuestionId)));
           return { ...(Array.isArray(transformed) && q.lbaPairIndex != null ? transformed[q.lbaPairIndex] : transformed), unitName: q.unitName, objective: q.objective, marks: q.marks };
         })),
       })));
