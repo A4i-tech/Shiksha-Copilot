@@ -30,6 +30,8 @@ import { TranslateModule } from '@ngx-translate/core';
   ],
 })
 export class CommonDropdownComponent implements ControlValueAccessor {
+  inputId = 'common-dropdown-' + Math.random().toString(36).substring(2, 9);
+
   @Input() dropDownValues: any[] = [];
 
   @Input() config!: DropDownConfig;
@@ -40,7 +42,12 @@ export class CommonDropdownComponent implements ControlValueAccessor {
 
   @Input() mode!: string;
 
-  dropdownId = 'dropdown-' + Math.random().toString(36).substring(2, 9);
+  readonly inputId = `common-dropdown-${Math.random().toString(36).slice(2, 10)}`;
+
+  /** Accessible name for the dropdown: visible label, else placeholder text */
+  get ariaLabelText(): string {
+    return this.config?.labelTxt || this.config?.placeHolderTxt || '';
+  }
 
 
   /**

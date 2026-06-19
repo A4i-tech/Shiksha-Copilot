@@ -44,6 +44,7 @@
   "Enter Resources": "Enter Resources",
   "Enter Resources details": "Enter Resources details",
   "Logout": "Logout",
+  "Open navigation menu": "Open navigation menu",
   "My Schedules": "My Schedules",
   "Create": "Create",
   "Previous Week": " Previous Week",
@@ -508,5 +509,12 @@
   "Pre-generated Questions": "Pre-generated Questions",
   "Easy": "Easy",
   "Average": "Average",
-  "Difficult": "Difficult"
+  "Difficult": "Difficult",
+  "Contains image": "Contains image",
+  "Chat conversation": "Chat conversation",
+  "Message input": "Message input",
+  "Send message": "Send message",
+  "Previous month": "Previous month",
+  "Next month": "Next month",
+  "line chart showing the number of lesson plans and resources generated over time": "Line chart showing lesson plans and resources generated over time"
 }
