@@ -726,11 +726,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   slimLbaQuestion(q: any): any {
-    const [lbaQuestionId, lbaPairIndex] = String(q._id).split('_pair_');
+    const parts = String(q._id).split('_pair_');
+    const lbaQuestionId = parts[0];
+    const lbaPairIndex = parts.length > 1 ? Number(parts[1]) : undefined;
     return {
       _id: q._id,
       lbaQuestionId,
-      lbaPairIndex: Number(lbaPairIndex),
+      lbaPairIndex,
       marks: Number(q.marks),
       unitName: q.unitName,
       objective: q.objective,

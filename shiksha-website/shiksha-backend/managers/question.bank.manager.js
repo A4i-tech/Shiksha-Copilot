@@ -314,7 +314,7 @@ class QuestionBankManager extends BaseManager {
           if (!q.lbaQuestionId) return q;
           const rawQuestion = await mongoose.connection.collection("lba_questions").findOne({ _id: new ObjectId(q.lbaQuestionId) });
           const transformed = await transformWeakLbaQuestion(rawQuestion);
-          return { ...(Array.isArray(transformed) ? transformed[q.lbaPairIndex] : transformed), unitName: q.unitName, objective: q.objective, marks: q.marks };
+          return { ...(Array.isArray(transformed) && q.lbaPairIndex != null ? transformed[q.lbaPairIndex] : transformed), unitName: q.unitName, objective: q.objective, marks: q.marks };
         })),
       })));
       return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
