@@ -1,0 +1,34 @@
+flow_id: period_plan_generation_v1
+description: "Generate period-wise lesson plans from Excel metadata and call the lesson plan API."
+
+inputs:
+  excel:
+    subject: social
+    file_path: ./inputs/Social.LOs.Jan.-.Feb.xlsx
+    sheet_map:
+      "9": "grade 9"
+    grades: ["9"]
+
+templates:
+  workflow_template_path: workflows/telangana_social_chapter_lp_workflow.yaml
+
+api:
+  url: http://localhost:7071/api/v2/lesson-plans
+  post_timeout_secs: 30
+  poll_timeout_secs: 30
+  poll_interval_secs: 10
+  max_poll_retries: 60
+  concurrency: 1
+
+outputs:
+  run_root: runs/period_plan_generation
+  curated_dirname: curated
+  payloads_dirname: payloads
+  results_dirname: results
+  reports_dirname: reports
+
+execution:
+  skip_existing_payloads: true
+  skip_existing_results: true
+  validate_payloads: true
+  validate_results: true
