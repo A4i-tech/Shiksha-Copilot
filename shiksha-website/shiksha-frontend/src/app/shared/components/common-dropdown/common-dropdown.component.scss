@@ -22,6 +22,11 @@
     -webkit-user-select: unset;
   }
 
+  // WCAG AA: ng-select default placeholder (#999, ~2.85:1) fails contrast
+  ::ng-deep .ng-select .ng-select-container .ng-value-container .ng-placeholder {
+    color: var(--content-60);
+  }
+
   // ::ng-deep
   //   .ng-select.ng-select-focused:not(.ng-select-opened)
   //   > .ng-select-container {

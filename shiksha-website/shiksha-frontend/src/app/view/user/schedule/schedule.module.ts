@@ -10,6 +10,7 @@ import { CalendarModule, DateAdapter } from 'angular-calendar';
 import { adapterFactory } from 'angular-calendar/date-adapters/date-fns';
 import { TranslateModule } from '@ngx-translate/core';
 import { DeleteDetailComponent } from '../../../shared/components/delete-detail/delete-detail.component';
+import { CalendarAccessibilityDirective } from 'src/app/shared/directives/calendar';
 
 @NgModule({
   declarations: [
@@ -26,7 +27,8 @@ import { DeleteDetailComponent } from '../../../shared/components/delete-detail/
       provide: DateAdapter,
       useFactory: adapterFactory
     }),
-    TranslateModule
+    TranslateModule,
+    CalendarAccessibilityDirective
   ],
   providers: [
     DatePipe

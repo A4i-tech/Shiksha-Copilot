@@ -1,6 +1,6 @@
 <div class="select-wrapper">
-  <label *ngIf="config.labelTxt" [for]="inputId" class="form-control-label">{{ config.labelTxt | translate}} <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span></label> 
-  <label *ngIf="!config.labelTxt" [for]="inputId" class="sr-only">{{ config.placeHolderTxt | translate }}</label>
+  <label *ngIf="config.labelTxt" [for]="inputId" class="form-control-label">{{ config.labelTxt | translate}} <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span></label>
+  <label *ngIf="!config.labelTxt && ariaLabelText" [for]="inputId" class="sr-only">{{ ariaLabelText | translate }}</label>
 
   <ng-select
     [labelForId]="inputId"

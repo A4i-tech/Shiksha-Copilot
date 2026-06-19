@@ -1,17 +1,30 @@
 import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
+
+export interface QuestionTypeOption {
+  key?: string;
+  name: string;
+  value: string;
+  type?: string;
+}
+
+interface QuestionTypesApiResponse {
+  success?: boolean;
+  message?: string;
+  data: QuestionTypeOption[];
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class QuestionBankService extends BaseRestService {
   baseUrl: string;
-  private _questionTypesCache: Record<string, any[]> = {};
+  private _questionTypesCache: Record<string, QuestionTypeOption[]> = {};
 
   /**
    * Class constructor
@@ -107,7 +120,7 @@ export class QuestionBankService extends BaseRestService {
    * @param subject
    * @returns
    */
-  getQuestionTypes(subject: string): Observable<any> {
+  getQuestionTypes(subject: string): Observable<QuestionTypesApiResponse> {
     const key = subject.toLowerCase();
     if (this._questionTypesCache[key]) {
       return of({ success: true, message: '', data: this._questionTypesCache[key] });
@@ -118,6 +131,10 @@ export class QuestionBankService extends BaseRestService {
         if (Array.isArray(res.data)) {
           this._questionTypesCache[key] = res.data;
         }
+      }),
+      catchError((err) => {
+        console.error('[QuestionBankService] getQuestionTypes failed', err);
+        return of({ success: false, message: err?.message ?? 'Unknown error', data: [] });
       })
     );
   }

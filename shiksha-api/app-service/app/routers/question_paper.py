@@ -52,7 +52,7 @@ def get_sample_text(data: Any) -> str:
     if isinstance(data, dict):
         for key, value in data.items():
             # Prioritize fields likely to contain full sentences or specific language content
-            if key in ['instructions', 'question_text', 'title', 'question', 'text', 'part_name']:
+            if key in ['instructions', 'question_text', 'title', 'question', 'text', 'part_name', 'content']:
                 if isinstance(value, str) and len(value.strip().split()) > 2:
                     return value
             res = get_sample_text(value)

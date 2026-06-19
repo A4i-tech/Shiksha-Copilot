@@ -5,7 +5,7 @@ export interface OptionDto {
 
 export interface QuestionDto {
   question: string;
-  options?: (string | OptionDto)[];
+  options?: OptionDto[];
   value1?: string;
   value2?: string;
   text?: string;
