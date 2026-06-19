@@ -52,9 +52,7 @@ const toQuestionContent = async value => {
   if(typeof value === "string") return [{ contentType: "text/plain", content: value }];
   if(Array.isArray(value)) return Promise.all(value.map(async item => {
     if(item.contentType === "text/plain" || b64regex.test(item.content)) return item;
-    resp = await getBlobContent(item.content, item.contentType)
-    if(resp.contentType.startsWith("image/")) resp.content = Buffer.from(resp.content, "utf8").toString("base64")
-    return resp
+    return await getBlobContent(item.content, item.contentType)
   }));
   return value;
 };
