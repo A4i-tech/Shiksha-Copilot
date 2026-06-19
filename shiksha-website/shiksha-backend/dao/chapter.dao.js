@@ -13,18 +13,13 @@ const toTitleCase = (str) => {
 	return capitalizeFirstLetter(String(str).toLowerCase());
 };
 const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, "i");
-const str = (val) => String(val || "").trim();
-
 class ChapterDao extends BaseDao {
 	constructor() {
 		super(Chapter);
 	}
 
 	async getClasses() {
-		let classes = await Chapter.distinct("standard");
-		if (!classes || classes.length === 0) {
-			classes = await Chapter.distinct("class");
-		}
+		const classes = await Chapter.distinct("standard");
 		return classes
 			.map((c) => parseInt(c))
 			.filter((n) => !isNaN(n))
@@ -34,30 +29,26 @@ class ChapterDao extends BaseDao {
 
 	async getMedia(className) {
 		const rawMedia = await Chapter.distinct("medium", {
-			$or: [{ standard: parseInt(className) }, { class: str(className) }],
+			standard: parseInt(className),
 		});
 		const uniqueMedia = new Set(rawMedia.map((m) => toTitleCase(m)));
 		return Array.from(uniqueMedia).sort();
 	}
 
-	async getChapters(className, medium, subjectCode, targetSubjectIds) {
+	async getChapters(className, medium, targetSubjectIds) {
 
 		const medRx = regexExact(medium);
 		const standardNum = parseInt(className);
-		const classStr = str(className);
 
 		const chapterQuery = {
 			isDeleted: false,
 			medium: medRx,
 			$and: [
 				{
-					$or: [{ standard: standardNum }, { class: classStr }],
+					standard: standardNum,
 				},
 				{
-					$or: [
-						{ subjectId: { $in: targetSubjectIds } },
-						{ subject: regexExact(subjectCode) },
-					],
+					subjectId: { $in: targetSubjectIds },
 				},
 			],
 		};
@@ -73,12 +64,13 @@ class ChapterDao extends BaseDao {
 
 		return chapters.map((ch) => ({
 			_id: ch._id,
-			chapterNumber: ch.orderNumber || ch.chapterNumber,
-			title:
-				ch.topics ||
-				ch.title ||
-				`Chapter ${ch.orderNumber || ch.chapterNumber}`,
+			chapterNumber: ch.orderNumber,
+			title: ch.topics,
 			subTopics: ch.subTopics,
+			indexPath: ch.indexPath,
+			isGrammar: ch.isGrammar,
+			grammarTopics: ch.grammarTopics,
+			grammarSourceChapters: ch.grammarSourceChapters,
 		}));
 	}
 

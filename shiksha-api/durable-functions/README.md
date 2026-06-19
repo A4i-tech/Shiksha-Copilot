@@ -354,7 +354,7 @@ graph TD
    az acr login --name your-registry-name
 
    # Build and push
-   docker build -t your-registry.azurecr.io/shiksha-functions:latest .
+   docker build -f shiksha-api/durable-functions/Dockerfile -t your-registry.azurecr.io/shiksha-functions:latest .
    docker push your-registry.azurecr.io/shiksha-functions:latest
    ```
 

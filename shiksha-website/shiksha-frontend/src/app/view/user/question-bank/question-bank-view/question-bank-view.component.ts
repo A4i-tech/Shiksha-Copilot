@@ -4,9 +4,10 @@ import { QuestionBankService } from '../question-bank.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { slideInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { IdleService } from 'src/app/shared/services/idle.service';
-import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
+import { formatMarks } from 'src/app/shared/utility/constant.util';
+import { contentItems } from 'src/app/shared/utility/question-bank-display.util';
 @Component({
   selector: 'app-question-bank-view',
   templateUrl: './question-bank-view.component.html',
@@ -38,8 +39,6 @@ export class QuestionBankViewComponent implements OnInit {
     { name: 'Strongly Agree', symbol: '😃' },
   ];
 
-  questionTypeMapper = QUESTION_TYPE_MAPPER;
-
   shuffledColumns: string[] = [];
 
   primaryColumn: string[] = [];
@@ -47,6 +46,10 @@ export class QuestionBankViewComponent implements OnInit {
   questionBankBluePrintData: any;
 
   showAnswerKeys: boolean = false;
+  questionTypeLabels: Record<string, string> = {};
+  generatedTotalMarks = 0;
+  readonly formatMarks = formatMarks;
+  readonly contentItems = contentItems;
 
   docTypes = [
     {
@@ -92,32 +95,22 @@ export class QuestionBankViewComponent implements OnInit {
         next: (val: any) => {
           this.questionBankDetails = val.data;
           this.questionBank = this.questionBankDetails.questionBank
+          this.generatedTotalMarks = this.questionBank.questions.reduce((sum: number, section: any) => (
+            sum + Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
+          ), 0);
+          this.questionBankService.getPaperConfig({
+            board: this.questionBankDetails.board,
+            grade: String(this.questionBankDetails.grade),
+            subjectName: this.questionBankDetails.subject
+          }).subscribe((config: any) => {
+            this.questionTypeLabels = Object.fromEntries(config.questionTypes.map((type: any) => [type.key, type.label]));
+          });
 
-          // Process Match the Following sections
-          if (this.questionBank?.questions?.length) {
+          if (this.questionBank.questions.length) {
             this.questionBank.questions.forEach((section: any) => {
-              if (section.type === 'Match the following' && section.questions?.length) {
-                // Map columns supporting both AI (value1/2) and LBA (text/keyAnswer) formats
-                // LBA: text = Left, keyAnswer = Right
-                const coerceToString = (value: any, context: string, idx: number): string => {
-                  if (typeof value === 'string') return value;
-                  if (value === undefined || value === null) return '';
-                  console.error(
-                    `[QuestionBankView] Match-the-following ${context} at row ${idx} is not a string ` +
-                      `(got ${typeof value}). Coercing to empty string.`,
-                    value
-                  );
-                  return '';
-                };
-
-                const colTwoVal = section.questions.map((ele: any, idx: number) => {
-                  const resolved = ele.value2 ?? ele.keyAnswer ?? ele.right;
-                  return coerceToString(resolved, 'right-hand value', idx);
-                });
-                section.primaryColumn = section.questions.map((ele: any, idx: number) => {
-                  const resolved = ele.value1 ?? ele.text ?? ele.left;
-                  return coerceToString(resolved, 'left-hand value', idx);
-                });
+              if (section.type === 'MATCHING' && section.questions?.length) {
+                const colTwoVal = section.questions.map((ele: any) => ele.value2);
+                section.primaryColumn = section.questions.map((ele: any) => ele.value1);
                 section.originalColumns = [...colTwoVal];
                 section.shuffledColumns = this.utilityService.shuffleOptions(colTwoVal);
               }
@@ -145,7 +138,7 @@ export class QuestionBankViewComponent implements OnInit {
       questionDistribution.forEach((entry: any) => {
         result.push({
           unitName: entry.unitName,
-          type: this.questionTypeMapper[type],
+          type,
           objective: entry.objective,
           marks: marksPerQuestion
         });
@@ -153,6 +146,14 @@ export class QuestionBankViewComponent implements OnInit {
     });
 
     return result;
+  }
+
+  isTextContent(item: any): boolean {
+    return item.contentType === 'text/plain';
+  }
+
+  mediaSrc(item: any): string {
+    return `data:${item.contentType};base64,${item.content}`;
   }
 
   download(type: any) {
@@ -166,12 +167,12 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   downloadQp() {
-    this.questionBankDownloadService.downloadQuestionBank(this.questionBankDetails);
+    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Question paper downloaded successfully!');
   }
 
   downloadAnswerKey() {
-    this.questionBankDownloadService.downloadAnswerKey(this.questionBankDetails);
+    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Answer key downloaded successfully!');
   }
 
@@ -188,7 +189,10 @@ export class QuestionBankViewComponent implements OnInit {
       examinationName: this.questionBankDetails?.examinationName,
       totalMarks: this.questionBankDetails?.totalMarks
     }
-    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData, metaData)
+    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData.map((item: any) => ({
+      ...item,
+      type: this.questionTypeLabels[item.type] || item.type,
+    })), metaData)
   }
 
   backNavigation() {

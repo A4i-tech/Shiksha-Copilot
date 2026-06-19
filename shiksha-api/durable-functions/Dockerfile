@@ -12,13 +12,15 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
 RUN pip install --no-cache-dir poetry
 
 # 4) Set the working directory where the Functions host expects your code
-WORKDIR /home/site/wwwroot
+WORKDIR /home/site
 
 # 5) Copy dependency manifests first (for Docker layer caching)
-COPY pyproject.toml poetry.lock* ./
+COPY shiksha-api/durable-functions/pyproject.toml shiksha-api/durable-functions/poetry.lock* ./wwwroot/
 
-# 6) Copy your local path‐dependency so Poetry can find it
-COPY core/rag-wrapper ./core/rag-wrapper
+# 6) Copy the shared local path dependency so Poetry can find it
+COPY components/rag-wrapper /home/components/rag-wrapper
+
+WORKDIR /home/site/wwwroot
 
 # 7) Configure Poetry to install into the system Python (not in a venv)
 #    and install only non-dev (runtime) dependencies
@@ -26,6 +28,6 @@ RUN poetry config virtualenvs.create false \
     && poetry install --no-interaction --no-ansi
 
 # 8) Copy the rest of your function-app code
-COPY . .
+COPY shiksha-api/durable-functions ./
 
 # 9) The Functions base image already sets ENTRYPOINT/CMD to launch the host

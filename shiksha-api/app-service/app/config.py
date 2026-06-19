@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     pres_storage_filesystem: str = "file"
     pres_storage_root: str = "shiksha-copilot-presentations"
     pres_storage_options: dict[str, Any] = Field(default_factory=dict)
+    pres_download_chunk_size: PositiveInt = 1024 * 1024  # 1 MiB
     pres_upload_max_filesize: int = 5_242_880  # 5 MiB
     pres_do_transform: bool = True
 
@@ -82,7 +83,7 @@ if settings.debug:
 root_dir = pathlib.Path(__file__).resolve().parents[1]
 assets_dir = root_dir / "assets"
 
-with (root_dir / "config.yaml").open() as f:
+with (root_dir / "config.yaml").open(encoding="utf-8") as f:
     _data = yaml.safe_load(f)
 
 CAPTIONER_SYSTEM_PROMPT = Template(_data["captioner-system-prompt"].strip())

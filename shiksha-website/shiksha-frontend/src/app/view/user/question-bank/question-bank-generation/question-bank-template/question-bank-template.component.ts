@@ -1,4 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
+import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { hasQuestionImage, questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -15,6 +17,8 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   // Pre-selected questions passed from the parent to restore selections
   @Input() preSelectedQuestions: any[] = [];
 
+  @Input() subject: string = '';
+
   @Output() backClick = new EventEmitter<boolean>();
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
   @Output() selectionChange = new EventEmitter<any[]>();
@@ -26,7 +30,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   selectedQuestions: any[] = [];
 
   // Filter State
-  filterSource: 'ALL' | 'AI Questions' | 'Pre-generated Questions' = 'ALL';
+  filterSource: string = 'ALL';
   filterDifficulty: string = 'ALL';
   filterQuestionType: string = 'ALL';
   searchText: string = '';
@@ -34,6 +38,10 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   availableHeadings: string[] = [];
   availableSources: string[] = [];
   availableDifficulties: string[] = [];
+  readonly QUESTION_SOURCE = QUESTION_SOURCE;
+  readonly formatMarks = formatMarks;
+  readonly hasQuestionImage = hasQuestionImage;
+  readonly questionText = questionText;
 
   constructor() { }
 
@@ -45,6 +53,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
     // Initial load
     this.extractFilters();
     this.applyFilters();
+
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -84,10 +93,9 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
     this.availableHeadings = Array.from(headings).sort();
 
-    // Sort sources: AI Questions first, then others
     this.availableSources = Array.from(sources).sort((a, b) => {
-      if (a === 'AI Questions') return -1;
-      if (b === 'AI Questions') return 1;
+      if (a === QUESTION_SOURCE.AI) return -1;
+      if (b === QUESTION_SOURCE.AI) return 1;
       return a.localeCompare(b);
     });
 
@@ -142,7 +150,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
       const matchType = this.filterQuestionType === 'ALL' || q.heading === this.filterQuestionType;
 
       // 4. Search Filter
-      const matchSearch = !this.searchText || (q.text && q.text.toLowerCase().includes(this.searchText.toLowerCase()));
+      const matchSearch = !this.searchText || this.questionText(q).toLowerCase().includes(this.searchText.toLowerCase());
 
       // 5. Exclude already selected
       const isSelected = this.selectedQuestions.some(sq => sq._id === q._id);
@@ -171,7 +179,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
   // --- TOTALS ---
   get currentTotalMarks(): number {
-    return this.selectedQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
+    return this.selectedQuestions.reduce((sum, q) => sum + q.marks, 0);
   }
 
   get isTotalMet(): boolean {

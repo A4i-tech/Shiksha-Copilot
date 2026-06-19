@@ -1,0 +1,25 @@
+grammar_context_prompt: |
+  ⚠ **GRAMMAR IN CONTEXT — {GRAMMAR_TOPIC_UPPER}**
+
+  You are an English teacher preparing a grammar assessment on **{GRAMMAR_TOPIC}**.
+  The grammar topic "{GRAMMAR_TOPIC}" is taught as part of the textbook chapter(s): **{CHAPTER_NAMES}**.
+
+  **Step-by-step approach:**
+  1. **Read the retrieved textbook content** from the chapter(s) above carefully.
+  2. **Identify sentences, dialogues, and passages** from the chapter that naturally demonstrate {GRAMMAR_TOPIC}.
+  3. **Create grammar questions using the chapter's own language** — characters, situations, vocabulary, and sentence patterns from the text.
+  4. For fill-in-the-blanks, pick actual sentences from the chapter or closely paraphrase them, then blank out the grammar element being tested.
+  5. For other question types, use the chapter's context (characters, events, theme) as the setting for the grammar exercise.
+
+  **Example approach for "{GRAMMAR_TOPIC}":**
+  - If the chapter has a sentence like "What a brave boy he was!", create: "______ a brave boy he was!" (Answer: What)
+  - If the chapter describes a beautiful scene, create: "______ beautiful the scene was!" using the chapter's own imagery.
+
+  **DO NOT** generate generic grammar questions unrelated to the textbook chapter.
+  **EVERY question MUST** reference content, vocabulary, characters, or situations from **{CHAPTER_NAMES}**.
+
+  **CRITICAL:** In the output JSON, the `unit_name` field MUST be `"GRAMMAR: {GRAMMAR_TOPIC}"` — NOT the source chapter name.
+
+grammar_simple_prompt: |
+  ⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit's content.
+  Cover following topics: {GRAMMAR_TOPIC}

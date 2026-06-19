@@ -6,6 +6,7 @@ import { FormsModule } from '@angular/forms';
 import {  TranslateModule } from '@ngx-translate/core';
 import { TimeformatPipe } from '../shared/pipes/timeformat.pipe';
 import { NgOtpInputModule } from 'ng-otp-input';
+import { A11yModule } from '@angular/cdk/a11y';
 
 
 
@@ -20,7 +21,8 @@ import { NgOtpInputModule } from 'ng-otp-input';
     AuthRoutingModule,
     FormsModule,
     NgOtpInputModule,
-    TranslateModule    
+    A11yModule,
+    TranslateModule
   ]
 })
 export class AuthModule { }

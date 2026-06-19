@@ -16,7 +16,7 @@
   </span>
   <ng-select
     [items]="dropDownValues"
-    [ngClass]="config.isBackground && (dropDownCtrl?.disabled || config.disabled) ? 'with-background' : ''"
+    [ngClass]="config.isBackground && (dropDownCtrl.disabled || config.disabled) ? 'with-background' : ''"
     [style]="{ height: config.height }"
     [placeholder]="config.placeHolderTxt | translate"
     bindLabel="{{ config.bindLable ? config.bindLable : 'name' }}"

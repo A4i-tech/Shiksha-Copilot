@@ -41,50 +41,10 @@ const logPythonError = (error) => {
   });
 }
 
-async function postToQuestionBankTemplate(payload) {
+async function postToQuestionBankDistribution(payload) {
   const apiUrl = `${llmBaseUrl}/question-paper/questiondistribution`;
   try {
     logger.info("Sending request to Question Bot API (Template/Distribution)");
-    const response = await axios.post(apiUrl, payload);
-
-    if (response.status !== 200) {
-      logger.warn(
-        `Unexpected status code from Question Bot: ${response.status}`
-      );
-    }
-
-    logger.info("Request successful");
-    return response;
-  } catch (error) {
-    logPythonError(error);
-    throw error;
-  }
-}
-
-async function postToQuestionBankBluePrint(payload) {
-  const apiUrl = `${llmBaseUrl}/question-paper/questiondistribution`;
-  try {
-    logger.info("Sending request to Question Bot API (Blueprint)");
-    const response = await axios.post(apiUrl, payload);
-
-    if (response.status !== 200) {
-      logger.warn(
-        `Unexpected status code from Question Bot: ${response.status}`
-      );
-    }
-
-    logger.info("Request successful");
-    return response;
-  } catch (error) {
-    logPythonError(error);
-    throw error;
-  }
-}
-
-async function postToQuestionBank(payload) {
-  const apiUrl = `${llmBaseUrl}/question-paper`;
-  try {
-    logger.info("Sending request to Question Bot API");
     const response = await axios.post(apiUrl, payload);
 
     if (response.status !== 200) {
@@ -121,9 +81,24 @@ async function postToQuestionBankParts(payload) {
   }
 }
 
+async function getQuestionTypes(subject) {
+  const apiUrl = `${llmBaseUrl}/question-paper/question-types?subject=${encodeURIComponent(subject)}`;
+  try {
+    logger.info("Sending request to get question types");
+    const response = await axios.get(apiUrl);
+    logger.info("Request successful");
+    return response;
+  } catch (error) {
+    logger.error("Error in getQuestionTypes", {
+      message: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+}
+
 module.exports = {
-  postToQuestionBankTemplate,
-  postToQuestionBankBluePrint,
-  postToQuestionBank,
+  postToQuestionBankDistribution,
   postToQuestionBankParts,
+  getQuestionTypes,
 };

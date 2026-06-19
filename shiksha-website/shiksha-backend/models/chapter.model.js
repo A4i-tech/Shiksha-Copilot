@@ -26,7 +26,11 @@ const ChapterSchema = new mongoose.Schema(
       }
     ],
 
-    indexPath: { type: String }
+    indexPath: { type: String },
+
+    isGrammar: { type: Boolean, default: false },
+    grammarTopics: { type: [String], default: [] },
+    grammarSourceChapters: { type: [String], default: [] }
   },
   { timestamps: true }
 );

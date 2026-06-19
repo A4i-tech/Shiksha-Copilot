@@ -6512,7 +6512,7 @@ tenacity = "*"
 
 [package.source]
 type = "directory"
-url = "app/rag-wrapper"
+url = "../../components/rag-wrapper"
 
 [[package]]
 name = "virtualenv"
@@ -7030,4 +7030,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "06b46df8748fe90cf2982058ec38636f8fecce92e3451c8d2e93db62c3a8ef99"
+content-hash = "d0ae9d13a02849ce0eeaf3043cd058b55f2dc3d8042dbd6bfabbf340a0d07579"

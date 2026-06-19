@@ -98,107 +98,28 @@ describe("QuestionBankManager", () => {
     });
   });
 
-  describe("generateQuestionBankTemplate", () => {
-    it("should generate template successfully", async () => {
-      const mockUser = { _id: "user-123", name: "Test User" };
-      const mockReq = {
-        body: {
-          board: "KSEEB",
-          medium: "English",
-          grade: "5",
-          subject: "Mathematics",
-          totalMarks: 100,
-          isMultiChapter: true,
-          chapterIds: ["ch-1", "ch-2"],
-        },
-      };
-
-      const mockTemplateData = {
-        template: [
-          { type: "MCQ", count: 10, marks: 1 },
-          { type: "Short Answer", count: 5, marks: 2 },
-        ],
-      };
-
-      const {
-        postToQuestionBankTemplate,
-      } = require("../../../services/question.bank.bot.service");
-      postToQuestionBankTemplate.mockResolvedValue({
-        status: 200,
-        data: mockTemplateData,
-      });
-
-      const chapterAggregation = require("../../../aggregation/chapter.aggregation");
-      chapterAggregation.getChapterByIdsAndFilterObject = jest
-        .fn()
-        .mockResolvedValue([
-          { title: "Chapter 1", indexPath: "/path", learningOutcomes: [] },
-        ]);
-
-      const result = await manager.generateQuestionBankTemplate(
-        mockReq,
-        mockUser
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockTemplateData);
-    });
-
-    it("should handle errors from copilot", async () => {
-      const mockUser = { _id: "user-123" };
-      const mockReq = { body: {} };
-
-      const {
-        postToQuestionBankTemplate,
-      } = require("../../../services/question.bank.bot.service");
-      postToQuestionBankTemplate.mockResolvedValue({
-        status: 500,
-        data: null,
-      });
-
-      const chapterAggregation = require("../../../aggregation/chapter.aggregation");
-      chapterAggregation.getChapterByIdsAndFilterObject = jest
-        .fn()
-        .mockResolvedValue([]);
-
-      const result = await manager.generateQuestionBankTemplate(
-        mockReq,
-        mockUser
-      );
-
-      expect(result.success).toBe(false);
-    });
-  });
-
-  describe("_mapTemplateTypes", () => {
+  describe("_withQuestionTypeMetadata", () => {
     it("should map template types correctly", () => {
       const template = [
-        { type: "MCQ", count: 10 },
-        { type: "FILL_BLANKS", count: 5 },
-        { type: "ANSWER_VERY_SHORT", count: 3 },
+        { type: "MCQ", numberOfQuestions: 10, marksPerQuestion: 1, questionDistribution: [] },
+        { type: "FILL_BLANKS", numberOfQuestions: 5, marksPerQuestion: 1, questionDistribution: [] },
+        { type: "ANSWER_VERY_SHORT", numberOfQuestions: 3, marksPerQuestion: 1, questionDistribution: [] },
       ];
 
-      const result = manager._mapTemplateTypes(template);
+      const result = manager._withQuestionTypeMetadata(template);
 
-      expect(result[0].type).toContain("Four alternatives");
-      expect(result[1].type).toContain("Fill in the blanks");
-      expect(result[2].type).toContain("Answer the following in a word");
+      expect(result[0]).toMatchObject({ type: "MCQ", numberOfQuestions: 10, marksPerQuestion: 1 });
+      expect(result[1]).toMatchObject({ type: "FILL_BLANKS", numberOfQuestions: 5, marksPerQuestion: 1 });
+      expect(result[2]).toMatchObject({ type: "ANSWER_VERY_SHORT", numberOfQuestions: 3, marksPerQuestion: 1 });
     });
 
     it("should handle empty array", () => {
-      const result = manager._mapTemplateTypes([]);
+      const result = manager._withQuestionTypeMetadata([]);
       expect(result).toEqual([]);
     });
 
-    it("should handle null/undefined", () => {
-      expect(manager._mapTemplateTypes(null)).toEqual([]);
-      expect(manager._mapTemplateTypes(undefined)).toEqual([]);
-    });
-
-    it("should keep unmapped types as-is", () => {
-      const template = [{ type: "CUSTOM_TYPE", count: 5 }];
-      const result = manager._mapTemplateTypes(template);
-      expect(result[0].type).toBe("CUSTOM_TYPE");
+    it("should reject unknown types", () => {
+      expect(() => manager._withQuestionTypeMetadata([{ type: "CUSTOM_TYPE", questionDistribution: [] }])).toThrow("Unknown question type");
     });
   });
 
@@ -213,20 +134,21 @@ describe("QuestionBankManager", () => {
           subject: "Mathematics",
           totalMarks: 100,
           isMultiChapter: true,
-          chapterIds: ["ch-1"],
-          objective_distribution: [
-            { objective: "Knowledge", percentage_distribution: 40 },
+          chapterIds: ["507f1f77bcf86cd799439011"],
+          marksDistribution: [{ unitName: "Unit 1", marks: 100, percentageDistribution: 100 }],
+          objectiveDistribution: [
+            { objective: "Knowledge", percentageDistribution: 40 },
           ],
-          template: [{ type: "MCQ", count: 10 }],
+          template: [{ type: "MCQ", marksPerQuestion: 1, questionDistribution: [] }],
         },
       };
 
       const mockBlueprint = { blueprint: "data" };
 
       const {
-        postToQuestionBankBluePrint,
+        postToQuestionBankDistribution,
       } = require("../../../services/question.bank.bot.service");
-      postToQuestionBankBluePrint.mockResolvedValue({
+      postToQuestionBankDistribution.mockResolvedValue({
         status: 200,
         data: mockBlueprint,
       });
@@ -334,24 +256,21 @@ describe("QuestionBankManager", () => {
         data: { parts: [] },
       });
 
-      const payload = {
-        target_language: "Kannada",
-        json_data: { title: "Test" },
-      };
-
-      const result = await manager.translateQuestionPaper(payload);
+      const result = await manager.translateQuestionPaper("Kannada", { title: "Test" });
 
       expect(result.success).toBe(true);
       expect(result.message).toBe("Translation processed successfully");
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringContaining("/question-paper/translate-json"),
+        { target_language: "Kannada", json_data: { title: "Test" } }
+      );
     });
 
     it("should handle translation errors", async () => {
       const axios = require("axios");
       jest.spyOn(axios, "post").mockRejectedValue(new Error("API error"));
 
-      const payload = { target_language: "Kannada" };
-
-      const result = await manager.translateQuestionPaper(payload);
+      const result = await manager.translateQuestionPaper("Kannada", { title: "Test" });
 
       expect(result.success).toBe(false);
       expect(result.message).toBe("Translation failed");
@@ -360,7 +279,7 @@ describe("QuestionBankManager", () => {
 
   describe("getQuestions", () => {
     it("should get questions successfully without translation", async () => {
-      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([{ text: "Q1" }]);
+      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([{ text: "Q1", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] }]);
       const masterSubjectDao = require("../../../dao/master.subject.dao");
       manager.masterSubjectDao = {
         resolveSubjectContext: jest.fn().mockResolvedValue({ subjectCode: "SC", targetSubjectIds: [] })
@@ -376,17 +295,27 @@ describe("QuestionBankManager", () => {
       const result = await manager.getQuestions(filters);
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual([{ text: "Q1" }]);
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          text: [{ contentType: "text/plain", content: "Q1" }],
+          heading: "Multiple Choice Questions",
+          unitName: "Unit 1",
+          objective: "Knowledge",
+          keyAnswer: [{ contentType: "text/plain", content: "A" }],
+        }),
+      ]);
     });
 
     it("should get questions and translate if targetLanguage is provided", async () => {
-      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([{ text: "Q1" }]);
+      const rawQuestion = { text: "Q1", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] };
+      const translatedQuestion = { text: "Q1 Translated", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] };
+      mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([rawQuestion]);
       const masterSubjectDao = require("../../../dao/master.subject.dao");
       manager.masterSubjectDao = {
         resolveSubjectContext: jest.fn().mockResolvedValue({ subjectCode: "SC", targetSubjectIds: [] })
       };
       manager.questionDao = mockQuestionBankDao;
-      manager._handleTranslation = jest.fn().mockResolvedValue([{ text: "Q1 Translated" }]);
+      manager._handleTranslation = jest.fn().mockResolvedValue([translatedQuestion]);
 
       const filters = {
         subject: "Science",
@@ -397,9 +326,17 @@ describe("QuestionBankManager", () => {
 
       const result = await manager.getQuestions(filters);
 
-      expect(manager._handleTranslation).toHaveBeenCalledWith("Kannada", [{ text: "Q1" }], "LBA Questions");
+      expect(manager._handleTranslation).toHaveBeenCalledWith("Kannada", [rawQuestion], "LBA Questions");
       expect(result.success).toBe(true);
-      expect(result.data).toEqual([{ text: "Q1 Translated" }]);
+      expect(result.data).toEqual([
+        expect.objectContaining({
+          text: [{ contentType: "text/plain", content: "Q1 Translated" }],
+          heading: "Multiple Choice Questions",
+          unitName: "Unit 1",
+          objective: "Knowledge",
+          keyAnswer: [{ contentType: "text/plain", content: "A" }],
+        }),
+      ]);
     });
   });
 });

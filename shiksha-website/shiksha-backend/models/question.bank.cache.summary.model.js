@@ -5,7 +5,7 @@ const ObjectId = mongoose.Types.ObjectId;
 
 const questionDistributionSchema = new Schema(
     {
-      unit_name:{
+      unitName:{
         type:String
       },
       objective:{
@@ -19,13 +19,13 @@ const questionDistributionSchema = new Schema(
       type:{
         type:String
       },
-      number_of_questions:{
+      numberOfQuestions:{
         type:Number
       },
-      marks_per_question:{
+      marksPerQuestion:{
         type:Number
       },
-      question_distribution:[questionDistributionSchema]
+      questionDistribution:[questionDistributionSchema]
     }
   )
 

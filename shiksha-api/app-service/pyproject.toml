@@ -16,7 +16,7 @@ aiofiles = "^23.2.1"
 pyyaml = "^6.0.1"
 azure-ai-translation-text = "^1.0.1"
 aiohttp = "^3.13.5"
-vellm-rag-wrapper = { path = "app/rag-wrapper", develop = true }
+vellm-rag-wrapper = { path = "../../components/rag-wrapper", develop = true }
 pydantic-settings = "^2.14.1"
 fastmcp = "^3.2.4"
 langdetect = "^1.0.9"

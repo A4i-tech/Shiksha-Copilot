@@ -2,11 +2,8 @@
 # Extracted from the original standalone FastAPI application
 
 from enum import Enum
-from functools import reduce
-from math import gcd
-from typing import List, Dict, Any, Optional, Union, Tuple, Literal, TypeAlias
-import re
-from pydantic import BaseModel, computed_field, field_validator, Field, model_validator
+from typing import Annotated, List, Literal, Optional, TypeAlias
+from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, WithJsonSchema
 
 
 # ==============================
@@ -26,10 +23,37 @@ class QuestionBankMetadata(BaseModel):
 DifficultyType: TypeAlias = Literal["Easy", "Average", "Difficult"]
 
 
+def valid_marking(v: float | int) -> float:
+    if v <= 0 or v % 0.5:
+        raise ValueError("must be a positive multiple of 0.5")
+    return v
+
+_MARKING_DESC = "Must be a positive multiple of 0.5."
+Marking = Annotated[
+    float,
+    Field(description=_MARKING_DESC, examples=[0.5, 1, 2, 3, 4, 5]),
+    AfterValidator(valid_marking)
+]
+
+SerializableBytes = Annotated[
+    bytes,
+    BeforeValidator(lambda v: v if isinstance(v, bytes) else v.encode("utf-8")),
+    WithJsonSchema({"type": "string"}),
+]
+
+
+class Content(BaseModel):
+    content_type: Literal["text/plain", "image/png", "image/jpeg"] = Field(default="text/plain")
+    content: SerializableBytes
+
+    @staticmethod
+    def text(content: str): return Content(content=content.encode(encoding="utf-8"))
+
+
 class TextQuestion(BaseModel):
-    question: str = Field(default="")
-    answer: str = Field(default="")
-    keyAnswer: str = Field(default="", description="\n".join([
+    question: list[Content] = Field(default_factory=list)
+    answer: list[Content] = Field(default_factory=list)
+    keyAnswer: list[Content] = Field(default_factory=list, description="\n".join([
         "Answer to be displayed right below the question.",
         "- For MCQs, this should be the label of the correct option (e.g. 'A').",
         "- For fill-in-the-blank questions, this should be the word or phrase that fills the blank.",
@@ -38,71 +62,22 @@ class TextQuestion(BaseModel):
     difficulty: DifficultyType = "Average"
 
 
-
 class McqOption(BaseModel):
     label: str
-    text: str
-
+    text: list[Content]
 
 
 class FourOptionsQuestion(BaseModel):
-    question: str = Field(default="", examples=["What is the speed of light in vacuum?"])
+    question: list[Content] = Field(default_factory=list, examples=["What is the speed of light in vacuum?"])
     options: List[McqOption] = Field(default_factory=list, min_length=4, max_length=4, examples=[[
-        McqOption(label="A", text="3x10^8 m/s"),
-        McqOption(label="B", text="3x10^6 m/s"),
-        McqOption(label="C", text="3x10^10 m/s"),
-        McqOption(label="D", text="3x10^5 m/s")
+        McqOption(label="A", text=[Content.text("3x10^8 m/s")]),
+        McqOption(label="B", text=[Content.text("3x10^6 m/s")]),
+        McqOption(label="C", text=[Content.text("3x10^10 m/s")]),
+        McqOption(label="D", text=[Content.text("3x10^5 m/s")])
     ]])
-    answer: str = Field(default="", examples=["3x10^8 m/s"])
-    keyAnswer: str = Field(default="", description="The correct answer choice. This is displayed right below the question.", examples=["A"])
+    answer: list[Content] = Field(default_factory=list, examples=["3x10^8 m/s"])
+    keyAnswer: list[Content] = Field(default_factory=list, description="The correct answer choice. This is displayed right below the question.", examples=["A"])
     difficulty: DifficultyType = "Average"
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_legacy_mcq_shape(cls, values):
-        if not isinstance(values, dict):
-            return values
-
-        values = dict(values)
-
-        if "options" not in values:
-            legacy_options = []
-            for label in ["A", "B", "C", "D", "E", "F"]:
-                option_key = f"option_{label.lower()}"
-                option_text = values.get(option_key)
-                if option_text:
-                    legacy_options.append({"label": label, "text": option_text})
-
-            if legacy_options:
-                values["options"] = legacy_options
-
-        if "keyAnswer" not in values and "correct_option" in values:
-            correct_option = values.get("correct_option")
-            if isinstance(correct_option, str):
-                match = re.match(r"option_([A-Za-z])$", correct_option.strip())
-                values["keyAnswer"] = (
-                    match.group(1).upper() if match else correct_option.strip()
-                )
-
-        return values
-
-    @field_validator("options", mode="before")
-    def convert_strings_to_options(cls, v):
-        # If it's a list of strings, convert to McqOption objects
-        if v is None:
-            return []
-        if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
-            labels = ["A", "B", "C", "D", "E", "F"]
-            cleaned_options = []
-            for i, opt in enumerate(v):
-                # Clean prefix like "A. ", "a) ", "1. " from the start of the string
-                clean_text = re.sub(r'^[A-Za-z0-9]+[\.\)]\s*', '', opt)
-                
-                label = labels[i] if i < len(labels) else str(i+1)
-                cleaned_options.append({"label": label, "text": clean_text})
-                
-            return cleaned_options
-        return v
 
 
 class MatchingListQuestion(BaseModel):
@@ -111,80 +86,75 @@ class MatchingListQuestion(BaseModel):
     often consists of multiple entries, this model represents just one complete entry.
     """
 
-    value1: str = Field(default="", description="The phrase to display on the left-hand side.")
-    value2: str = Field(default="", description="The phrase to display on the right-hand side.")
+    value1: list[Content] = Field(default_factory=list, description="The phrase to display on the left-hand side.")
+    value2: list[Content] = Field(default_factory=list, description="The phrase to display on the right-hand side.")
     difficulty: DifficultyType = "Average"
 
 
 # ==============================
-# SELF-DESCRIBING QUESTION TYPE
+# QUESTION TYPE
 # ==============================
+
+QuestionModel: TypeAlias = MatchingListQuestion | FourOptionsQuestion | TextQuestion
 
 
 class QuestionType(str, Enum):
-    # value, description, pydantic_model
-    MCQ = (
-        "Four alternatives are given for each of the following questions, choose the correct alternative",
-        "These questions provide exactly four options, challenging students to select the correct answer from a set of alternatives.",
-        FourOptionsQuestion,
-    )
-    FILL_BLANKS = (
-        "Fill in the blanks with suitable words",
-        "This type of question requires students to complete sentences or phrases by inserting the appropriate missing word(s).",
-        TextQuestion,
-    )
-    ANSWER_WORD = (
-        "Answer the following in a word, phrase or sentence",
-        "These questions expect a very brief response—a single word, a short phrase, or a concise sentence.",
-        TextQuestion,
-    )
-    ANSWER_SHORT = (
-        "Answer the following in two or three sentences each",
-        "Short answer questions require a concise yet complete response, typically in two or three sentences.",
-        TextQuestion,
-    )
-    ANSWER_GENERAL = (
-        "Answer the following questions",
-        "These open-ended questions invite students to provide brief responses that are straightforward and to the point.",
-        TextQuestion,
-    )
-    ANSWER_LONG = (
-        "Answer the following question in four or five sentences",
-        "Long answer questions require a detailed, well-structured response that spans four to five sentences.",
-        TextQuestion,
-    )
-    MATCH_LIST = (
-        "Match the following",
-        "Generate a CORRECTLY matched item-pair",
-        MatchingListQuestion,
-    )
+    model: QuestionModel
+    display_name: str
+    description: str
 
-    def __new__(cls, value, description, pydantic_model):
+    MCQ = "MCQ", FourOptionsQuestion, "Multiple Choice Questions", "These questions provide exactly four options, challenging students to select the correct answer from a set of alternatives."
+    FILL_BLANKS = "FILL_BLANKS", TextQuestion, "Fill in the blanks", "This type of question requires students to complete sentences or phrases by inserting the appropriate missing word(s). Use underscores to denote missing word(s)."
+    ANSWER_VERY_SHORT = "ANSWER_VERY_SHORT", TextQuestion, "Very Short Answer Questions", "These questions expect a very brief response: a single word, a short phrase, or a concise sentence."
+    ANSWER_SHORT = "ANSWER_SHORT", TextQuestion, "Short Answer Questions", "Short answer questions require a concise yet complete response, typically in two or three sentences."
+    ANSWER_MEDIUM = "ANSWER_MEDIUM", TextQuestion, "Answer the following questions", "These open-ended questions invite students to provide brief responses that are straightforward and to the point."
+    ANSWER_LONG = "ANSWER_LONG", TextQuestion, "Long Answer Questions", "Long answer questions require a detailed, well-structured response that spans four to five sentences."
+    MATCHING = "MATCHING", MatchingListQuestion, "Match the Following", "Match the following: generate a correctly matched item pair."
+    GRAMMAR_MCQ = "GRAMMAR_MCQ", FourOptionsQuestion, "Grammar: Multiple Choice Questions", "Grammar MCQ: students select the grammatically correct alternative from four options."
+    GRAMMAR_FILL_BLANKS = "GRAMMAR_FILL_BLANKS", TextQuestion, "Grammar: Fill in the blanks", "Grammar fill-in-the-blank: students complete sentences using correct grammatical forms."
+    GRAMMAR_EDITING = "GRAMMAR_EDITING", TextQuestion, "Grammar: Identify and correct the error", "Grammar editing: students find and correct grammatical errors in given sentences."
+
+    def __new__(cls, value, pydantic_model, display_name, description):
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj.description = description
-        obj._model = pydantic_model
+        obj.model = pydantic_model
+        obj.display_name = display_name
         return obj
-
-    # Prompt/schema hint for LLM
-    def model_name(self) -> str:
-        return self._model.__name__
-
-    # Cast generated dict to the right Pydantic model
-    def cast(self, obj: dict):
-        return self._model.model_validate(obj)
 
 
 class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
-    marks_per_question: int
-    questions: List[Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]] = []
+    marks_per_question: Marking
+    questions: List[QuestionModel]
 
 
 class QuestionBankResponse(BaseModel):
-    metadata: Optional[QuestionBankMetadata] = None
-    questions: List[QuestionTypeResponse] = []
+    metadata: QuestionBankMetadata
+    questions: List[QuestionTypeResponse]
+
+
+# Ordered list is the single source of truth; set is derived for O(1) lookup.
+_GRAMMAR_QUESTION_TYPES_ORDERED: List[QuestionType] = [
+    QuestionType.GRAMMAR_MCQ,
+    QuestionType.GRAMMAR_FILL_BLANKS,
+    QuestionType.GRAMMAR_EDITING,
+]
+GRAMMAR_QUESTION_TYPES = set(_GRAMMAR_QUESTION_TYPES_ORDERED)
+
+
+def get_question_types_for_subject(subject: str) -> List[QuestionType]:
+    """Return the list of question types available for the given subject.
+
+    Grammar types are always appended to the response. The frontend filters them
+    based on each chapter's ``isGrammar`` flag (DB-derived) before showing them
+    to the user, so the previous English-only hardcoding is no longer needed.
+    The ``subject`` parameter is retained for backwards compatibility and future
+    per-subject filtering.
+    """
+    base_types = [qt for qt in QuestionType if qt not in GRAMMAR_QUESTION_TYPES]
+    return base_types + _GRAMMAR_QUESTION_TYPES_ORDERED
 
 
 # ============================
@@ -192,22 +162,27 @@ class QuestionBankResponse(BaseModel):
 # ============================
 
 
-class ChapterSubtopic(BaseModel):
-    title: str
-    learning_outcomes: List[str]
-
-
-class Chapter(BaseModel):
+class _LearningRecord(BaseModel):
     title: str
     index_path: str
     learning_outcomes: List[str]
-    subtopics: Optional[List[ChapterSubtopic]] = None
+    grammar_source_chapters: Optional[List[str]] = None
+    is_grammar: bool = False
+    grammar_topics: Optional[List[str]] = None
+
+
+class ChapterSubtopic(_LearningRecord):
+    ...
+
+
+class Chapter(_LearningRecord):
+    subtopics: List[ChapterSubtopic]
 
 
 class MarksDistribution(BaseModel):
     unit_name: str
     percentage_distribution: int
-    marks: int
+    marks: Marking
 
 
 class ObjectiveDistribution(BaseModel):
@@ -220,16 +195,18 @@ class QuestionDistribution(BaseModel):
     objective: str
 
 
-class Template(BaseModel):
+class _Template(BaseModel):
     type: QuestionType
     number_of_questions: int
-    marks_per_question: int
-    question_distribution: Optional[List[QuestionDistribution]] = None
+    marks_per_question: Marking
 
-    @computed_field
-    @property
-    def description(self) -> str:
-        return self.type.description
+
+class UngeneratedTemplate(_Template):
+    ...
+
+
+class GeneratedTemplate(_Template):
+    question_distribution: List[QuestionDistribution] = Field(min_length=1)
 
 
 class QuestionBankPartsGenerationRequest(BaseModel):
@@ -238,12 +215,22 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
+    unit_level: Literal["CHAPTER", "SUBTOPIC"]
     chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
-    total_marks: int = Field(..., description="Total marks for the question paper")
-    template: List[Template] = Field(..., description="Question distribution template specifying types and marks")
+    total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
+    template: List[GeneratedTemplate] = Field(..., description="Question distribution template specifying types and marks")
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
     examination_name: str = "Class Assessment"
+
+    def grammar_chapters(self) -> List[Chapter]:
+        """Return chapters flagged as grammar (DB ``isGrammar`` true).
+
+        Encapsulates the filter so callers do not need to inspect
+        ``grammar_source_chapters`` directly. Replaces the previous bespoke
+        ``grammar_source_chapters`` plumbing flagged in PR #52 review.
+        """
+        return [c for c in self.chapters if c.is_grammar]
 
 
 class QBQuestionDistributionGenerationRequest(BaseModel):
@@ -252,261 +239,17 @@ class QBQuestionDistributionGenerationRequest(BaseModel):
     medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
+    unit_level: Literal["CHAPTER", "SUBTOPIC"]
     chapters: List[Chapter] = Field(..., min_length=1, description="List of chapters with learning outcomes and subtopics")
-    total_marks: int = Field(..., description="Total marks for the question paper")
+    total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
+    template: List[UngeneratedTemplate] = Field(..., description="Question distribution template specifying types and marks")
     marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
     objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
-    template: List[Template] = Field(..., description="Base template for question types and structure")
-
-    def verify_template_for_marks_and_objective_distribution(
-        self, new_template: List[Template]
-    ) -> Tuple[bool, Optional[str]]:
-        """
-        Verifies if the given `new_template` follows:
-        1. The total marks match `self.total_marks`.
-        2. The marks distribution per unit (chapter) aligns with `self.marks_distribution`.
-        3. The objective-based percentage distribution aligns with `self.objective_distribution`.
-
-        Returns:
-            Tuple[bool, Optional[str]]: (True, None) if the new template is valid, (False, "Reason for failure") otherwise.
-        """
-
-        # **Step 1: Verify Total Marks**
-        new_template_total_marks = sum(
-            q_type.marks_per_question * q_type.number_of_questions
-            for q_type in new_template
-        )
-        if new_template_total_marks != self.total_marks:
-            return (
-                False,
-                f"Total marks mismatch: expected {self.total_marks}, got {new_template_total_marks}",
-            )
-
-        # **Step 2: Verify Unit (Chapter) Marks Distribution**
-        new_unit_marks_distribution = {}
-
-        for q_type in new_template:
-            if q_type.question_distribution:
-                for q_dist in q_type.question_distribution:
-                    unit_name = q_dist.unit_name
-                    new_unit_marks_distribution[unit_name] = (
-                        new_unit_marks_distribution.get(unit_name, 0)
-                        + q_type.marks_per_question
-                    )
-
-        # Convert `self.marks_distribution` to a dictionary for faster lookup
-        expected_unit_marks = {md.unit_name: md.marks for md in self.marks_distribution}
-
-        # Ensure the unit names match
-        if set(new_unit_marks_distribution.keys()) != set(expected_unit_marks.keys()):
-            return (
-                False,
-                "Mismatch in unit names between template and expected distribution",
-            )
-
-        # Ensure marks are correctly distributed
-        for unit_name, marks in new_unit_marks_distribution.items():
-            if marks != expected_unit_marks[unit_name]:
-                return (
-                    False,
-                    f"Marks distribution mismatch for unit '{unit_name}': expected {expected_unit_marks[unit_name]}, got {marks}",
-                )
-
-        # **Step 3: Verify Objective-Based Percentage Distribution**
-        new_objective_marks_distribution = {}
-
-        for q_type in new_template:
-            if q_type.question_distribution:
-                for q_dist in q_type.question_distribution:
-                    objective = q_dist.objective
-                    new_objective_marks_distribution[objective] = (
-                        new_objective_marks_distribution.get(objective, 0)
-                        + q_type.marks_per_question
-                    )
-
-        # Convert `self.objective_distribution` to a dictionary for faster lookup
-        expected_objective_distribution = {
-            obj_dist.objective: obj_dist.percentage_distribution
-            for obj_dist in self.objective_distribution
-        }
-
-        # Convert new marks distribution to percentage
-        new_objective_percentage_distribution = {
-            obj: (marks / self.total_marks) * 100
-            for obj, marks in new_objective_marks_distribution.items()
-        }
-
-        # Ensure the objectives match
-        if set(new_objective_percentage_distribution.keys()) != set(
-            expected_objective_distribution.keys()
-        ):
-            return False, "Mismatch in objective distribution keys"
-
-        # Ensure percentage distributions are within ±1% tolerance
-        for objective, percentage in new_objective_percentage_distribution.items():
-            if abs(percentage - expected_objective_distribution[objective]) > 1:
-                return (
-                    False,
-                    f"Objective '{objective}' percentage mismatch: expected {expected_objective_distribution[objective]}%, got {percentage:.2f}%",
-                )
-
-        return True, None  # If all checks pass
-
-
-class QBTemplateGenerationRequest(BaseModel):
-    user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
-    board: str = Field(..., description="Educational board", examples=["NCERT", "CBSE", "State board"])
-    medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
-    grade: int = Field(..., description="Student grade/class level")
-    subject: str = Field(..., description="Subject for question generation")
-    chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
-    total_marks: int
-    marks_distribution: List[MarksDistribution]
-
-    def get_template(self) -> List[Template]:
-        """
-        Generates a List of Template objects, with the following question types:
-            1) QuestionType.MCQ
-            2) QuestionType.ANSWER_SHORT
-            3) QuestionType.ANSWER_LONG
-
-        Adhering to the self.marks_distribution such that the sum of marks
-        allocated to each unit equals self.total_marks. Here, we simply
-        verify consistency and then evenly split marks among these 3 question
-        types. Finally, set `question_distribution=None` in each Template.
-        """
-
-        sum_of_md_marks = sum(md.marks for md in self.marks_distribution)
-        if sum_of_md_marks != self.total_marks:
-            raise ValueError(
-                f"Sum of 'marks' in marks_distribution ({sum_of_md_marks}) "
-                f"does not match 'total_marks' ({self.total_marks})."
-            )
-
-        question_types = [
-            QuestionType.MCQ,
-            QuestionType.ANSWER_SHORT,
-            QuestionType.ANSWER_LONG,
-        ]
-
-        marks_per_q = {
-            QuestionType.MCQ: 1,  # e.g., each MCQ is 1 mark
-            QuestionType.ANSWER_SHORT: 2,  # each short-answer question is 2 marks
-            QuestionType.ANSWER_LONG: 5,  # each long-answer question is 5 marks
-        }
-
-        total_marks_per_q = self._divide_into_k_parts_with_divisors(
-            self.total_marks,
-            [marks_per_q[q_type] for q_type in question_types],
-        )
-
-        templates: List[Template] = []
-        for q_type, total_marks in zip(question_types, total_marks_per_q):
-            num_of_questions = total_marks // marks_per_q[q_type]
-            if num_of_questions > 0:
-                template_obj = Template(
-                    type=q_type,
-                    number_of_questions=num_of_questions,
-                    marks_per_question=marks_per_q[q_type],
-                    question_distribution=None,
-                )
-                templates.append(template_obj)
-
-        return templates
-
-    def _divide_into_k_parts_with_divisors(self, n: int, d: list[int]) -> list[int]:
-        """
-        Divide the integer 'n' into 'k' parts (where k = len(d)),
-        such that each part p[i] is:
-            - an integer multiple of d[i],
-            - the sum of all p[i] is 'n',
-            - and all p[i] are as close to each other as possible (heuristically).
-
-        Parameters:
-        -----------
-        n : int
-            The total integer to be divided.
-        d : list[int]
-            A list of k divisors. Each resulting part p[i] must be a multiple of d[i].
-
-        Returns:
-        --------
-        p : list[int]
-            A list of length k, where p[i] is a multiple of d[i], and sum(p) = n.
-
-        Raises:
-        -------
-        ValueError
-            If it's impossible to distribute 'n' as the sum of multiples of d[i].
-            (For example, if gcd(d) does not divide n.)
-        """
-
-        k = len(d)
-        if k == 0:
-            raise ValueError("Empty 'd' list; cannot divide into 0 parts.")
-
-        # 1) Check gcd(d[0], d[1], ..., d[k-1]) must divide n
-        common_divisor = reduce(gcd, d)
-        if n % common_divisor != 0:
-            raise ValueError(
-                "Impossible to distribute n as a sum of multiples of each d[i]. "
-                f"gcd(d) = {common_divisor} does not divide n = {n}."
-            )
-
-        # 2) We'll try to keep each part near n/k
-        target = n / k  # float, "ideal" size if no constraints
-        p = [0] * k
-
-        # 3) Initialize each p[i] to the largest multiple of d[i] that doesn't exceed target
-        #    i.e. p[i] = floor(target / d[i]) * d[i]
-        for i in range(k):
-            base_count = int(target // d[i])  # how many times d[i] fits in 'target'
-            p[i] = base_count * d[i]
-
-        # 4) Calculate how many units we still need to add or remove
-        leftover = n - sum(p)
-
-        # Helper cost functions to see how 'close' p[i] gets to the target if we add/subtract d[i]
-        def cost_if_add(i: int) -> float:
-            return abs((p[i] + d[i]) - target)
-
-        def cost_if_sub(i: int) -> float:
-            return abs((p[i] - d[i]) - target)
-
-        # 5) Greedily add or remove multiples of d[i] to fix leftover
-        while leftover != 0:
-            if leftover > 0:
-                # We want to add increments of d[i] to whichever part yields the smallest 'cost'
-                candidates = [i for i in range(k) if leftover >= d[i]]
-                if not candidates:
-                    raise ValueError(
-                        "Cannot distribute leftover>0. Possibly leftover < some d[i]."
-                    )
-                # Pick the index that yields minimal 'cost' after adding d[i]
-                i_best = min(candidates, key=cost_if_add)
-                p[i_best] += d[i_best]
-                leftover -= d[i_best]
-
-            else:  # leftover < 0
-                # We want to remove increments of d[i] (i.e., subtract d[i])
-                # from whichever part yields the smallest 'cost'.
-                candidates = [i for i in range(k) if p[i] >= d[i]]
-                if not candidates:
-                    raise ValueError(
-                        "Cannot reduce leftover<0. All parts are smaller than their divisor."
-                    )
-                i_best = min(candidates, key=cost_if_sub)
-                p[i_best] -= d[i_best]
-                leftover += d[i_best]
-
-        # Now sum(p) == n, and each p[i] is multiple of d[i]
-        return p
 
 
 class GeneratedQuestionItem(BaseModel):
     unit_name: str
     type: QuestionType
-    objective: Optional[str] = None
-    marks_per_question: int
-    difficulty: DifficultyType
-    item: Union[MatchingListQuestion, FourOptionsQuestion, TextQuestion]
+    objective: str
+    marks_per_question: Marking
+    item: QuestionModel

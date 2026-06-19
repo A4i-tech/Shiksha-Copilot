@@ -1,14 +1,30 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
+import { catchError, map, tap } from 'rxjs/operators';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
+import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
+
+export interface QuestionTypeOption {
+  key?: string;
+  name: string;
+  value: string;
+  type?: string;
+}
+
+interface QuestionTypesApiResponse {
+  success?: boolean;
+  message?: string;
+  data: QuestionTypeOption[];
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class QuestionBankService extends BaseRestService {
   baseUrl: string;
+  private _questionTypesCache: Record<string, QuestionTypeOption[]> = {};
 
   /**
    * Class constructor
@@ -78,21 +94,14 @@ export class QuestionBankService extends BaseRestService {
   }
 
   /**
-   * Function to generate question bank template
-   * @param data
-   * @returns
-   */
-  generateQuestionBankTemplate(data: any): Observable<any> {
-    return this.post('generate-template', data);
-  }
-
-  /**
    * Function to generate question bank blue print
    * @param data
    * @returns
    */
   generateQuestionBankBluePrint(data: any): Observable<any> {
-    return this.post('generate-blue-print', data);
+    return this.http.post(`${this.getUrl()}generate-blue-print`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Generating blueprint...')
+    });
   }
 
   /**
@@ -101,7 +110,33 @@ export class QuestionBankService extends BaseRestService {
    * @returns
    */
   generateQuestionBank(data: any) {
-    return this.post('generate', data);
+    return this.http.post(`${this.getUrl()}generate`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, data.isPreview ? 'Generating questions...' : 'Creating question paper...')
+    });
+  }
+
+  /**
+   * Function to get question types for a subject
+   * @param subject
+   * @returns
+   */
+  getQuestionTypes(subject: string): Observable<QuestionTypesApiResponse> {
+    const key = subject.toLowerCase();
+    if (this._questionTypesCache[key]) {
+      return of({ success: true, message: '', data: this._questionTypesCache[key] });
+    }
+    const params = new HttpParams().set('subject', subject);
+    return this.get('question-types', params).pipe(
+      tap((res: any) => {
+        if (Array.isArray(res.data)) {
+          this._questionTypesCache[key] = res.data;
+        }
+      }),
+      catchError((err) => {
+        console.error('[QuestionBankService] getQuestionTypes failed', err);
+        return of({ success: false, message: err?.message ?? 'Unknown error', data: [] });
+      })
+    );
   }
 
   /**
@@ -121,14 +156,7 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getClasses(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/classes`).pipe(
-      // unwrap formatted response if present
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/classes`).pipe(map(resp => resp.data));
   }
 
   /**
@@ -141,13 +169,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.class) {
       params = params.set('class', filters.class);
     }
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/media`, { params }).pipe(
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/media`, { params }).pipe(map(resp => resp.data));
   }
   updateQuestionPaper(id: string, data: any): Observable<any> {
     // Use PUT or PATCH so the backend knows to update the existing record
@@ -170,13 +192,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.subject) {
       params = params.set('subject', filters.subject);
     }
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/chapters`, { params }).pipe(
-      (source => new Observable<any[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/chapters`, { params }).pipe(map(resp => resp.data));
   }
 
   /**
@@ -184,13 +200,7 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getDifficulties(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/difficulties`).pipe(
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/difficulties`).pipe(map(resp => resp.data));
   }
 
   /**
@@ -198,13 +208,15 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<string[]>
    */
   getAnswerTypes(): Observable<string[]> {
-    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/answerTypes`).pipe(
-      (source => new Observable<string[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/answer-types`).pipe(map(resp => resp.data));
+  }
+
+  getPaperConfig(filters: { board: string; grade: string; subjectName: string }): Observable<any> {
+    let params = new HttpParams();
+    params = params.set('board', filters.board);
+    params = params.set('grade', filters.grade);
+    params = params.set('subjectName', filters.subjectName);
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/paper-config`, { params }).pipe(map(resp => resp.data));
   }
 
   /**
@@ -231,13 +243,8 @@ export class QuestionBankService extends BaseRestService {
         params = params.set(key, String(value));
       }
     });
-    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params }).pipe(
-      (source => new Observable<any[]>(observer => source.subscribe({
-        next: (resp) => observer.next(Array.isArray(resp) ? resp : (resp?.data ?? [])),
-        error: (e) => observer.error(e),
-        complete: () => observer.complete()
-      })))
-    );
+    const context = new HttpContext().set(LOADER_MESSAGE, 'Retrieving textbook questions...');
+    return this.http.get<any>(`${this.baseUrl}/question-bank/questions`, { params, context }).pipe(map(resp => resp.data));
   }
 
   /**
@@ -246,6 +253,13 @@ export class QuestionBankService extends BaseRestService {
    * @returns Observable<any>
    */
   generateLBAQuestionPaper(data: any): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data);
+    return this.http.post<any>(`${this.baseUrl}/question-bank/generate`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Creating question paper...')
+    });
+  }
+
+  getGrammarTopics(grade: number): Observable<string[]> {
+    return this.http.get<any>(`${this.baseUrl}/question-bank/meta/grammar-topics?grade=${grade}`)
+      .pipe(map(res => res.data));
   }
 }

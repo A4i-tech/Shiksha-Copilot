@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { QUESTION_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
+import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -21,9 +22,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
+  readonly formatMarks = formatMarks;
+  readonly contentItems = contentItems;
+  readonly questionContentItems = questionContentItems;
 
   totalSteps: number = 3;
-  questionTypeMapper = QUESTION_TYPE_MAPPER;
 
   // Chart Properties
   objectivesChartData!: ChartData<'doughnut'>;
@@ -61,22 +64,18 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     }
   }
 
-  /**
-   * Transforms flat selected questions into a grouped "Blueprint" view
-   */
   processDataForView() {
     if (!this.finalSelectedQuestions || this.finalSelectedQuestions.length === 0) return;
 
     const groups: { [key: string]: any } = {};
 
     this.finalSelectedQuestions.forEach(q => {
-      // Group by heading so "Fill in the blanks" stays together
-      const sectionName = q.heading || q.type || 'General Questions';
+      const sectionName = `${q.type}:${q.marks}`;
 
       if (!groups[sectionName]) {
         groups[sectionName] = {
-          type: sectionName,
-          marks_per_question: q.marks || 0,
+          type: q.heading,
+          marksPerQuestion: q.marks,
           questions: []
         };
       }
@@ -87,20 +86,12 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     this.updateChartData();
   }
 
-  // --- UPDATED FUNCTION ---
   updateChartData() {
     const chartMapper: { [key: string]: number } = {};
     let chartColors: string[] = [];
 
     this.finalSelectedQuestions.forEach(q => {
-      let label = 'Unknown';
-      if (q.source === 'AI Questions') {
-        label = q.objective || 'Knowledge';
-      } else if (q.source === 'Pre-generated Questions') {
-        label = 'Pre-generated';
-      } else {
-        label = q.objective || 'Knowledge';
-      }
+      const label = q.source === QUESTION_SOURCE.AI ? q.objective : 'Pre-generated';
       chartMapper[label] = (chartMapper[label] || 0) + 1;
     });
 
@@ -123,9 +114,13 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
   get uniqueSources(): string[] {
     const sources = new Set<string>();
     this.finalSelectedQuestions.forEach(q => {
-      sources.add(q.source || 'Unknown');
+      sources.add(q.source);
     });
     return Array.from(sources);
+  }
+
+  mediaSrc(item: any): string {
+    return `data:${item.contentType};base64,${item.content}`;
   }
 
   previousStep() {

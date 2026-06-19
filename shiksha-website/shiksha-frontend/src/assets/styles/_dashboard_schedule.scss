@@ -21,6 +21,8 @@
     .cal-month-view .cal-day-number {
       font-size: 1.1em;
       margin: 5px;
+      color: var(--content-DEFAULT);
+      opacity: 1;
     }
     .cal-month-view .cal-day-cell.cal-today .cal-day-number {
       font-size: 1.1em;
@@ -51,7 +53,7 @@
     }
     .cal-month-view .cal-header .cal-cell {
       font-weight: 400;
-      color: var(--content-30);
+      color: var(--content-DEFAULT);
     }
     .cal-day-selected,
     .cal-day-selected:hover {
