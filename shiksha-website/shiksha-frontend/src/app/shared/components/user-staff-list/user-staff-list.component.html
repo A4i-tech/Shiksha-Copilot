@@ -191,13 +191,13 @@
 										<div>
 												<p class="text-xs text-content-60">{{'Status' | translate}}</p>
 												<span class="inline-flex px-3 py-0.5 sm:py-1 rounded-full"
-																[ngClass]="{'text-success bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">{{!item.isDeleted
+																[ngClass]="{'text-green bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">{{!item.isDeleted
 																? 'Active' : 'Inactive'}}</span>
 										</div>
 										<div *ngIf="getType()?.type === 'user'" class="col-span-2">
 											<p class="text-xs text-content-60">{{'Training Status' | translate}}</p>
 											<span class="inline-flex px-3 py-0.5 sm:py-1 rounded-full"
-												[ngClass]="{'text-success bg-success-50': item.trainingStatus === 'trained', 'text-warn bg-orange-50': item.trainingStatus === 'untrained'}">
+												[ngClass]="{'text-green bg-success-50': item.trainingStatus === 'trained', 'text-orange bg-orange-50': item.trainingStatus === 'untrained'}">
 												{{item.trainingStatus === 'trained' ? 'Trained' : 'Untrained'}}
 											</span>
 										</div>
@@ -223,12 +223,12 @@
 											<td class="text-sm p-4 border-r max-w-[20vw] break-all" *ngIf="getType()?.type === 'user'" >{{ item?.school?.name }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36">{{ utility.formatValue(item.role)| titlecase }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36 text-center"><span class="px-3 py-2 rounded-full"
-															[ngClass]="{'text-success bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">{{!item.isDeleted
+															[ngClass]="{'text-green bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">{{!item.isDeleted
 															? 'Active' : 'Inactive'}}</span>
 											</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36 text-center" *ngIf="getType()?.type === 'user'">
 												<span class="px-3 py-2 rounded-full"
-													[ngClass]="{'text-success bg-success-50': item.trainingStatus === 'trained', 'text-warn bg-orange-50': item.trainingStatus === 'untrained'}">
+													[ngClass]="{'text-green bg-success-50': item.trainingStatus === 'trained', 'text-orange bg-orange-50': item.trainingStatus === 'untrained'}">
 													{{item.trainingStatus === 'trained' ? 'Trained' : 'Untrained'}}
 												</span>
 											</td>
