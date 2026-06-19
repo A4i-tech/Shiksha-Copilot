@@ -3,6 +3,7 @@
     {{ config.fieldName | translate }}
     <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span>
   </label>
+  <label *ngIf="config.hideLabel" [for]="inputId" class="sr-only">{{ config.fieldName || config.placeHolderTxt | translate }}</label>
   <span *ngIf="config.multi && dropDownCtrl?.value?.length > 0" class="area-label"
     [ngClass]="config.hideLabel ? 'top-[9px]' : 'top-[39px]'">
     {{ config.placeHolderTxt | translate }}
