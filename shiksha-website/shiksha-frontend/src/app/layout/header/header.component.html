@@ -42,19 +42,12 @@
     </a>
 
     <div class="relative">
-      <button
-        type="button"
-        class="focus:outline-none rounded-full cursor-pointer focus-visible:ring-2 focus-visible:ring-primary-100"
+      <app-profile-image
+        [profileImage]="sidebarService.profileImg()"
+        [size]="'md'"
         (click)="toggleMenu()"
-        aria-label="Open profile menu"
-        [attr.aria-expanded]="isMenuOpen ? 'true' : 'false'"
-        aria-haspopup="true"
-      >
-        <app-profile-image
-          [profileImage]="sidebarService.profileImg()"
-          [size]="'md'"
-        ></app-profile-image>
-      </button>
+        class="cursor-pointer"
+      ></app-profile-image>
       <div
         *ngIf="isMenuOpen"
         class="absolute right-0 mt-2 w-60 bg-white rounded shadow-lg p-4"

@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TranslateModule } from '@ngx-translate/core';
-import { A11yModule } from '@angular/cdk/a11y';
 
 export interface DeleteDetailConfig {
   heading: string;
@@ -15,35 +14,16 @@ export interface DeleteDetailConfig {
 @Component({
   selector: 'app-delete-detail',
   standalone:true,
-  imports:[TranslateModule, CommonModule, A11yModule],
+  imports:[TranslateModule, CommonModule],
   templateUrl: './delete-detail.component.html',
   styleUrls: ['./delete-detail.component.scss']
 })
-export class DeleteDetailComponent implements OnInit, OnDestroy {
+export class DeleteDetailComponent {
   @Output() close = new EventEmitter<string>();
 
   @Input() config!: DeleteDetailConfig;
 
   @Input() showCancelBtn = true;
-
-  private previousActiveElement: HTMLElement | null = null;
-
-  ngOnInit() {
-    this.previousActiveElement = document.activeElement as HTMLElement;
-  }
-
-  ngOnDestroy() {
-    if (this.previousActiveElement) {
-      this.previousActiveElement.focus();
-    }
-  }
-
-  @HostListener('document:keydown.escape', ['$event'])
-  handleEscape(event: KeyboardEvent) {
-    if (this.showCancelBtn) {
-      this.closePopUp('close');
-    }
-  }
 
   closePopUp(val?:any) {
     this.close.emit(val);
