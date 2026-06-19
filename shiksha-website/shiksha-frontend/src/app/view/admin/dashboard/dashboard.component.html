@@ -118,7 +118,7 @@
                     <div [ngClass]="{'w-[3000px]': (byUserBarChartData.labels?.length ?? 0) > 18}" *ngIf="userDataAvailable; else noData">
                         <canvas baseChart height="400px" [data]="byUserBarChartData" [options]="byUserBarChartOptions"
                             [plugins]="byUserBarChartPlugins" [legend]="byUserBarChartLegend" [type]="'bar'"
-                            role="img" attr.aria-label="Bar chart showing lesson plans by location level">
+                            role="img" aria-label="Bar chart showing lesson plans by location level">
                         </canvas>
                     </div>
                 </div>
@@ -141,7 +141,7 @@
                         <div *ngIf="subDataAvailable; else noData">
                             <canvas class="subCanvas" baseChart height="400px" [data]="bySubjectBarChartData" [options]="bySubjectBarChartOptions"
                                 [plugins]="bySubjectBarChartPlugins" [legend]="bySubjectBarChartLegend" [type]="'bar'"
-                                role="img" attr.aria-label="Bar chart showing lesson plans by subject">
+                                role="img" aria-label="Bar chart showing lesson plans by subject">
                             </canvas>
                         </div>
                     </div>
@@ -156,7 +156,7 @@
                     <div *ngIf="mediumDataAvailable; else nodonutData">
                         <canvas baseChart [data]="byMediumDonutChartData" [options]="byMediumDonutChartOptions"
                             [plugins]="byMediumDonutChartPlugins" [legend]="byMediumDonutChartLegend" [type]="'doughnut'"
-                            role="img" attr.aria-label="Doughnut chart showing lesson plans by medium">
+                            role="img" aria-label="Doughnut chart showing lesson plans by medium">
                         </canvas>
                     </div>
                 </div>
@@ -180,7 +180,7 @@
                     <div *ngIf="statusDataAvailable; else nodonutData">
                         <canvas baseChart [data]="statusDonutChartData" height="315" width="315" [options]="statusDonutChartOptions"
                             [plugins]="statusDonutChartPlugins" [legend]="statusDonutChartLegend" [type]="'doughnut'"
-                            role="img" attr.aria-label="Doughnut chart showing active and inactive users">
+                            role="img" aria-label="Doughnut chart showing active and inactive users">
                         </canvas>
                         <div class="absolute top-[60%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
                             <h2 class="text-[20px] font-bold">{{activeUsersCount}} / {{allUsersCount}}</h2>
@@ -274,7 +274,7 @@
                 <div *ngIf="avgScoreDataAvailable; else nodonutData">
                     <canvas baseChart [data]="avgFeedbackDonutChartData" [options]="avgFeedbackDonutChartOptions"
                         [plugins]="avgFeedbackDonutChartPlugins" [legend]="avgFeedbackDonutChartLegend" [type]="'doughnut'"
-                        role="img" attr.aria-label="Doughnut chart showing average feedback score on generated content">
+                        role="img" aria-label="Doughnut chart showing average feedback score on generated content">
                     </canvas>
                 </div>
             </div>
@@ -287,7 +287,7 @@
                 <div *ngIf="chatbotDataAvailable; else noData">
                     <canvas baseChart class="chatbotCanvas" height="400px" [data]="chatbotRequestsBarChartData" [options]="chatbotRequestsBarChartOptions"
                         [plugins]="chatbotRequestsBarChartPlugins" [legend]="chatbotRequestsBarChartLegend" [type]="'bar'"
-                        role="img" attr.aria-label="Bar chart showing number of requests made to the chatbot">
+                        role="img" aria-label="Bar chart showing number of requests made to the chatbot">
                     </canvas>
                 </div>
             </div>

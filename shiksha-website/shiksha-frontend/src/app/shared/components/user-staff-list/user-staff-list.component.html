@@ -197,7 +197,7 @@
 										<div *ngIf="getType()?.type === 'user'" class="col-span-2">
 											<p class="text-xs text-content-60">{{'Training Status' | translate}}</p>
 											<span class="inline-flex px-3 py-0.5 sm:py-1 rounded-full"
-												[ngClass]="{'text-success bg-success-50': item.trainingStatus === 'trained', 'text-secondary bg-orange-50': item.trainingStatus === 'untrained'}">
+												[ngClass]="{'text-success bg-success-50': item.trainingStatus === 'trained', 'text-warn bg-orange-50': item.trainingStatus === 'untrained'}">
 												{{item.trainingStatus === 'trained' ? 'Trained' : 'Untrained'}}
 											</span>
 										</div>
@@ -228,7 +228,7 @@
 											</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36 text-center" *ngIf="getType()?.type === 'user'">
 												<span class="px-3 py-2 rounded-full"
-													[ngClass]="{'text-success bg-success-50': item.trainingStatus === 'trained', 'text-secondary bg-orange-50': item.trainingStatus === 'untrained'}">
+													[ngClass]="{'text-success bg-success-50': item.trainingStatus === 'trained', 'text-warn bg-orange-50': item.trainingStatus === 'untrained'}">
 													{{item.trainingStatus === 'trained' ? 'Trained' : 'Untrained'}}
 												</span>
 											</td>
