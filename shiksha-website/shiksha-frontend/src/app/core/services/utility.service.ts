@@ -84,6 +84,8 @@ export class UtilityService {
    */
   showError(message: string) {
     this.toastr.error(message);
+    const container = document.querySelector('.toast-container');
+    container?.setAttribute('aria-live', 'assertive');
   }
 
   /**
