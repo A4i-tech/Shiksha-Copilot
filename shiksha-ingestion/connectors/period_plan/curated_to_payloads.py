@@ -12,7 +12,10 @@ from .config import PeriodPlanConfig
 
 
 def _load_workflow_template(path: Path) -> dict[str, Any]:
-    return dict(yaml.safe_load(path.read_text(encoding="utf-8")))
+    data = dict(yaml.safe_load(path.read_text(encoding="utf-8")))
+    if "_id" not in data:
+        raise ValueError(f"Workflow template {path} must contain a top-level '_id' field")
+    return data
 
 
 def _substitute_workflow(

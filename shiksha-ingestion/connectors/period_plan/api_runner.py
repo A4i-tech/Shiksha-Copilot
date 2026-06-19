@@ -51,7 +51,8 @@ async def _process_single(
                     timeout=aiohttp.ClientTimeout(total=cfg.poll_timeout_secs),
                 ) as status_resp:
                     status_data: dict[str, Any] = await status_resp.json()
-            except Exception:
+            except Exception as poll_exc:
+                print(f"  [Poll error] {type(poll_exc).__name__}: {poll_exc}; retrying...")
                 await asyncio.sleep(cfg.poll_interval_secs)
                 continue
             runtime_status = status_data.get("runtimeStatus")
@@ -87,6 +88,7 @@ async def run_async(
     payloads_dir: Path,
     results_dir: Path,
     cfg: ApiConfig,
+    skip_existing: bool = True,
 ) -> list[dict[str, Any]]:
     all_files = sorted(payloads_dir.rglob("*.json"))
     if not all_files:
@@ -96,7 +98,7 @@ async def run_async(
     skipped = 0
     for p in all_files:
         rel = p.relative_to(payloads_dir)
-        if (results_dir / rel).exists():
+        if skip_existing and (results_dir / rel).exists():
             skipped += 1
         else:
             to_process.append(p)
@@ -122,5 +124,5 @@ async def run_async(
     return api_results
 
 
-def run(payloads_dir: Path, results_dir: Path, cfg: ApiConfig) -> list[dict[str, Any]]:
-    return asyncio.run(run_async(payloads_dir, results_dir, cfg))
+def run(payloads_dir: Path, results_dir: Path, cfg: ApiConfig, skip_existing: bool = True) -> list[dict[str, Any]]:
+    return asyncio.run(run_async(payloads_dir, results_dir, cfg, skip_existing))

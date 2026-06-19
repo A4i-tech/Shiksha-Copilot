@@ -13,6 +13,7 @@ import argparse
 import datetime
 import sys
 from pathlib import Path
+from typing import Any
 
 from . import api_runner, curated_to_payloads, excel_to_curated, manifest, validate
 from .config import PeriodPlanConfig
@@ -55,11 +56,11 @@ def cmd_curated_to_payloads(cfg: PeriodPlanConfig, run_dir: Path) -> int:
     return curated_to_payloads.run(cfg, run_dir)
 
 
-def cmd_api(cfg: PeriodPlanConfig, run_dir: Path) -> list[dict]:
+def cmd_api(cfg: PeriodPlanConfig, run_dir: Path) -> list[dict[str, Any]]:
     print("\n=== Step C: API Run ===")
     payloads_dir = run_dir / cfg.outputs.payloads_dirname
     results_dir = run_dir / cfg.outputs.results_dirname
-    return api_runner.run(payloads_dir, results_dir, cfg.api)
+    return api_runner.run(payloads_dir, results_dir, cfg.api, skip_existing=cfg.execution.skip_existing_results)
 
 
 def cmd_validate(cfg: PeriodPlanConfig, run_dir: Path) -> tuple[int, int]:
@@ -70,7 +71,7 @@ def cmd_validate(cfg: PeriodPlanConfig, run_dir: Path) -> tuple[int, int]:
 
 
 def cmd_run(cfg: PeriodPlanConfig, run_dir: Path) -> int:
-    steps_summary: dict = {}
+    steps_summary: dict[str, Any] = {}
     cmd_excel_to_curated(cfg, run_dir)
     steps_summary["excel_to_curated"] = "completed"
     payload_count = cmd_curated_to_payloads(cfg, run_dir)
