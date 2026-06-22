@@ -13,7 +13,9 @@
     bindValue="{{ config.bindValue ? config.bindValue : 'value' }}" [dropdownPosition]="'auto'"
     [searchable]="config.searchable || false" [clearable]="config.clearableOff ? false : true"
     [multiple]="config.multi ? true : false" [formControl]="dropDownCtrl" (change)="valueSelected($event)"
-    [closeOnSelect]="config.openOnSelect ? false : true">
+    [closeOnSelect]="config.openOnSelect ? false : true"
+    [attr.aria-invalid]="submitted && dropDownCtrl.invalid ? 'true' : null"
+    [attr.aria-describedby]="submitted && dropDownCtrl.invalid ? (dropDownControlName + '-error') : null">
     <ng-template ng-option-tmp let-item="item" let-search="searchTerm" *ngIf="config.multi && config.selectAllOption">
       <div class="flex items-center gap-2">
         <input type="checkbox"
@@ -30,7 +32,7 @@
       </label>
     </ng-template>
   </ng-select>
-  <small class="form-control-error" *ngIf="submitted && dropDownCtrl.errors?.['required']">{{ config.fieldName |
+  <small class="form-control-error" [id]="dropDownControlName + '-error'" *ngIf="submitted && dropDownCtrl.errors?.['required']">{{ config.fieldName |
     translate }} {{'is required' | translate}}</small>
 
   <ng-container *ngIf="config.hideChips ? false : true && config.multi">
