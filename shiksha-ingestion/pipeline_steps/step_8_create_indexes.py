@@ -1,17 +1,15 @@
-import json
 import logging
 import os
 import re
-from textwrap import dedent
-from typing import Dict, List, Any
+from typing import Dict
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
 from rag_wrapper.rag_ops.qdrant_rag_ops import QdrantRagOps
 from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from ingestion_pipeline.base.pipeline import BasePipelineStep, StepResult, StepStatus
 import asyncio
+import motor.motor_asyncio
 
 load_dotenv(".env")
 
@@ -98,7 +96,8 @@ class CreateIndexStep(BasePipelineStep):
             chapter_id = f"Medium={medium},Grade={grade},Subject={subject},Number={chapter_number}"
     
             rag_ops = self._get_rag_ops_instance(collection_name=board)
-            
+            index_path = f"qdrant/{board}/chapter_id:{chapter_id}"
+
             async def run_create_index():
                 transformations = [
                     MarkdownNodeParser(),
@@ -111,6 +110,35 @@ class CreateIndexStep(BasePipelineStep):
                     },
                     transformations=transformations
                 )
+
+                # Write indexPath back to MongoDB so the backend knows which
+                # Qdrant collection to query for this chapter.
+                mongo_url = os.getenv("MONGO_URL")
+                if mongo_url:
+                    # Qdrant collection name uses underscores (BSE_TG) but
+                    # MongoDB board field uses dashes (BSE-TG).
+                    mongo_board = board.replace("_", "-")
+                    mongo_client = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
+                    db = mongo_client.get_default_database()
+                    result = await db.chapters.update_one(
+                        {
+                            "board": mongo_board,
+                            "medium": medium,
+                            "standard": grade,
+                            "orderNumber": chapter_number,
+                        },
+                        {"$set": {"indexPath": index_path}},
+                    )
+                    mongo_client.close()
+                    if result.modified_count:
+                        logger.info(f"Updated indexPath in MongoDB: {index_path}")
+                    else:
+                        logger.warning(
+                            f"No chapter updated in MongoDB for board={mongo_board} "
+                            f"medium={medium} grade={grade} chapter={chapter_number}"
+                        )
+                else:
+                    logger.warning("MONGO_URL not set — skipping indexPath write-back to MongoDB")
 
             asyncio.run(run_create_index())
             
