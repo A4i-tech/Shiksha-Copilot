@@ -16,7 +16,7 @@
           [attr.aria-current]="currentStep === i + 1 ? 'step' : null"
           [attr.aria-label]="(currentStep === i + 1 ? 'Current step: ' : (currentStep > i + 1 ? 'Completed: ' : 'Upcoming: ')) + stepNames[i]">
         <div class="w-8 h-8 flex items-center justify-center rounded-full border-2 transition-all duration-300"
-          role="img" aria-hidden="true"
+          aria-hidden="true"
           [ngClass]="{
             'bg-primary text-white border-primary': currentStep > i + 1,
             'bg-blue-100 text-primary border-primary': currentStep === i + 1,
