@@ -32,18 +32,12 @@
               <span class="text-gray-400 font-bold text-sm">{{ j + 1 }}.</span>
               <div class="flex-1">
                 <p class="text-sm text-content mb-2">
-                  <ng-container *ngFor="let item of questionContentItems(q)">
-                    <span *ngIf="item.contentType === 'text/plain'">{{ item.content }}</span>
-                    <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-2 max-h-40 max-w-full" />
-                  </ng-container>
+                  {{ q.text }}
                 </p>
                 <div *ngIf="q.options && q.options.length > 0" class="ml-4 mb-2">
                   <div *ngFor="let option of q.options" class="text-xs text-gray-600">
                     <b *ngIf="option.label">{{ option.label }}.</b>
-                    <ng-container *ngFor="let item of contentItems(option.text)">
-                      <span *ngIf="item.contentType === 'text/plain'"> {{ item.content }}</span>
-                      <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-1 max-h-24 max-w-full" />
-                    </ng-container>
+                    {{ option.text }}
                   </div>
                 </div>
                 <!-- Removed Topic, Obj, Source per user request -->

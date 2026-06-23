@@ -18,7 +18,6 @@ import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { map, switchMap, catchError, finalize, toArray } from 'rxjs/operators';
-import { questionContentItems, questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 // Import Child Component for Step 2 access
 import { QuestionBankTemplateComponent } from './question-bank-template/question-bank-template.component';
@@ -924,7 +923,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   applyFilters() {
     this.filteredQuestions = this.allAvailableQuestions.filter(q => {
       const matchesSource = this.filterSource === 'ALL' || q.source === this.filterSource;
-      const matchesSearch = this.questionText(q).toLowerCase().includes(this.searchQuery);
+      const matchesSearch = q.text.toLowerCase().includes(this.searchQuery);
       return matchesSource && matchesSearch;
     });
   }

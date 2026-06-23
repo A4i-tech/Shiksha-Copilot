@@ -105,10 +105,7 @@
               <div class="flex justify-between items-start mt-2 gap-2">
                 <p class="text-content">
                   {{ i + 1 }}.
-                  <ng-container *ngFor="let item of contentItems(questionData.question)">
-                    <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
-                    <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-2 max-h-64 max-w-full" />
-                  </ng-container>
+                  <span>{{ questionData.question | mathFormatting }}</span>
                 </p>
               </div>
 
@@ -117,8 +114,7 @@
                 *ngIf="questionBankData.type === 'MCQ'"
                 class="list-alpha">
                 <li *ngFor="let option of questionData.options">
-                  <span *ngIf="option.text">{{ option.text | mathFormatting }}</span>
-                  <span *ngIf="!option.text">{{ option | mathFormatting }}</span>
+                  <span>{{ (option.text ?? option) | mathFormatting }}</span>
                 </li>
               </ul>
 
@@ -126,10 +122,7 @@
                 class="mt-1 mb-3 ml-4 px-3 py-2 bg-green-50 border border-green-200 rounded-md">
                 <span class="text-xs font-bold text-green-700 uppercase tracking-wider">{{ "Answer" | translate }}:</span>
                 <span class="ml-2 text-sm text-green-800 font-medium">
-                  <ng-container *ngFor="let item of contentItems(questionData.keyAnswer)">
-                    <span *ngIf="isTextContent(item)">{{ item.content }}</span>
-                    <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-32 max-w-full" />
-                  </ng-container>
+                  {{ questionData.keyAnswer }}
                 </span>
               </div>
             </div>
@@ -139,16 +132,10 @@
               <tbody>
                 <tr *ngFor="let val of questionBankData.questions; let i=index">
                   <td class="border px-2 py-2 text-sm">
-                    <ng-container *ngFor="let item of contentItems(questionBankData.primaryColumn[i])">
-                      <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
-                      <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-32 max-w-full" />
-                    </ng-container>
+                    {{ questionBankData.primaryColumn[i] | mathFormatting }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    <ng-container *ngFor="let item of contentItems(questionBankData.shuffledColumns[i])">
-                      <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
-                      <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-32 max-w-full" />
-                    </ng-container>
+                    {{ questionBankData.shuffledColumns[i] | mathFormatting }}
                   </td>
                 </tr>
               </tbody>
@@ -165,16 +152,10 @@
                 <tbody>
                   <tr *ngFor="let val of questionBankData.questions; let i=index">
                     <td class="border border-green-200 px-2 py-1 text-sm text-green-800">
-                      <ng-container *ngFor="let item of contentItems(questionBankData.primaryColumn[i])">
-                        <span *ngIf="isTextContent(item)">{{ item.content }}</span>
-                        <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-24 max-w-full" />
-                      </ng-container>
+                      {{ questionBankData.primaryColumn[i] }}
                     </td>
                     <td class="border border-green-200 px-2 py-1 text-sm text-green-800 font-medium">
-                      <ng-container *ngFor="let item of contentItems(questionBankData.originalColumns[i])">
-                        <span *ngIf="isTextContent(item)">{{ item.content }}</span>
-                        <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-24 max-w-full" />
-                      </ng-container>
+                      {{ questionBankData.originalColumns[i] }}
                     </td>
                   </tr>
                 </tbody>

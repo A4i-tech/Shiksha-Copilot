@@ -97,6 +97,7 @@ class FourOptionsQuestion(BaseModel):
 
         return values
 
+    @classmethod
     @field_validator("options", mode="before")
     def convert_strings_to_options(cls, v):
         # If it's a list of strings, convert to McqOption objects
