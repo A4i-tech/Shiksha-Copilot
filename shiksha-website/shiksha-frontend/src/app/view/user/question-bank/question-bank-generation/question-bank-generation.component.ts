@@ -468,9 +468,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.distributeMarks();
     this.f.subTopic.reset();
 
-    // Handle selection 
+    // Handle selection (val is string[] in multi mode, string in single mode)
     let selectedChapterNames: string[] = [];
     if (Array.isArray(val)) selectedChapterNames = val;
+    else if (val) selectedChapterNames = [val];
 
     // Filter to get full chapter data
     const selectedChaptersFullData = this.chapterDropdownOptions.filter(ch =>
@@ -480,7 +481,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // Combine subtopics from all selected chapters
     let combinedSubTopics: any[] = [];
     selectedChaptersFullData.forEach(ch => {
-      if (ch.subTopics.length > 0) {
+      if (ch.subTopics?.length > 0) {
         combinedSubTopics = [...combinedSubTopics, ...ch.subTopics];
       }
     });
