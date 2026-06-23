@@ -618,7 +618,17 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       this.useAI ? this.generateAIQuestionsPool() : of([])
     ).pipe(
       toArray(),
-      map(([lbaQs, aiQs]: any) => [...aiQs, ...lbaQs]),
+      map(([lbaQs, aiQs]: any) => {
+        // Both sources emit a canonical `type`; force one heading label per type so AI+LBA
+        // questions of the same type collapse into a single section (not one per source).
+        const labelByType = new Map<string, string>(
+          this.selectedHeadings.map((h: any) => [h.selectionKey, h.label])
+        );
+        return [...aiQs, ...lbaQs].map((q: any) => ({
+          ...q,
+          heading: labelByType.get(q.type) ?? q.heading,
+        }));
+      }),
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (results: any) => {
