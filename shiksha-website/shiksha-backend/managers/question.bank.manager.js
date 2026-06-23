@@ -64,6 +64,11 @@ const transformWeakLbaQuestion = (q) => {
     keyAnswer: q.keyAnswer,
     value1: q.value1,
     value2: q.value2,
+    options: Array.isArray(q.options)
+      ? q.options.map((opt, i) => typeof opt === 'string'
+          ? { label: ['A', 'B', 'C', 'D', 'E', 'F'][i] ?? String(i + 1), text: opt.replace(/^[A-Za-z0-9]+[.)]\s*/, '') }
+          : opt)
+      : q.options,
   };
   return q.pairs?.length ? q.pairs.map((pair, index) => ({
     ...base,
