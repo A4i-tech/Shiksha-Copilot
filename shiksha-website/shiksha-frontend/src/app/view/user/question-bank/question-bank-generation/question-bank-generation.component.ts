@@ -893,6 +893,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         return docs.map((q) => ({
           ...q,
           source: QUESTION_SOURCE.LBA,
+          heading: q.groupHeading ?? q.heading,
         }));
       }),
       catchError(err => {
