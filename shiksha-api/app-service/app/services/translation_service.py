@@ -9,7 +9,19 @@ MAX_RECURSION_DEPTH = 50
 TRANSLATION_BATCH_SIZE = 100
 # Keys whose values are semantic identifiers (enums, codes) used for logic/styling,
 # not human-readable content. Translating these would break downstream consumers.
-SKIP_KEYS: frozenset = frozenset({"type", "heading", "source", "difficulty", "objective", "unit_name"})
+SKIP_KEYS: frozenset = frozenset({
+    "type", "heading", "source", "difficulty", "objective", "unit_name", "answer_type", "_id",
+    "correct_order_indices", "year", "correct_order_by_id", "exam_type", "chapter_number", "content_type",
+    "marks_per_question", "title", "medium", "language", "chapter_id", "subject", "chapter", "class"
+})
+
+
+def _skip(data: dict, key: str) -> bool:
+    if key in SKIP_KEYS:
+        return True
+    if key == "content" and "content_type" in data and data["content_type"].startswith("image/"):
+        return True
+    return False
 
 
 class TranslationService:
@@ -55,7 +67,7 @@ class TranslationService:
         if isinstance(data, dict):
             out: List[str] = []
             for key, value in data.items():
-                if key in SKIP_KEYS:
+                if _skip(data, key):
                     continue
                 if isinstance(value, str):
                     out.append(value)
@@ -96,7 +108,7 @@ class TranslationService:
         if isinstance(data, dict):
             return {
                 key: value
-                if key in SKIP_KEYS
+                if _skip(data, key)
                 else cls._fill_strings(value, translations, depth + 1)
                 if not isinstance(value, str)
                 else cls._next_translated(translations, value)
