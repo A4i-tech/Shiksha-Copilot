@@ -33,7 +33,7 @@ const routes: Routes = [
     canActivate: [PermissionGuard],
   },
   {
-    path: 'user-management',
+    path: 'teacher-management',
     loadChildren: () =>
       import('./user-management/user-management.module').then(
         (m) => m.UserManagementModule
@@ -44,7 +44,7 @@ const routes: Routes = [
     canActivate: [PermissionGuard],
   },
   {
-    path: 'shikshana-user',
+    path: 'staff-management',
     loadChildren: () =>
       import('./shikshan-user-management/shikshan-user-management.module').then(
         (m) => m.ShikshanUserManagementModule

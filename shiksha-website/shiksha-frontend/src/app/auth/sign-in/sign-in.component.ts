@@ -72,20 +72,23 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     this.autoSlide();
     this.getCookies();
     if(this.authService.isLoggedIn()){
-      const userData = this.utility.loggedInUserData;
-      if (
-        userData.role.includes('admin') ||
-        userData.role.includes('manager')
-      ) {
-        this.router.navigate(['/admin']);
-      }  else if (!userData.isProfileCompleted) {
-        this.router.navigate(['/user/profile']);
-      } else {
-        this.router.navigate(['/user']);
-      }
+      this.navigateAfterLogin(this.utility.loggedInUserData);
 
     }
 
+  }
+
+  navigateAfterLogin(userData: any) {
+    const roles = userData?.role || [];
+    const isTeacher = roles.includes('standard') || roles.includes('power');
+
+    if (isTeacher && !userData.isProfileCompleted) {
+      this.router.navigate(['/profile']);
+    } else if (isTeacher) {
+      this.router.navigate(['/home']);
+    } else {
+      this.router.navigate(['/dashboard']);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -269,13 +272,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
               this.secureCookieService.deleteCookie("userInfo");
             }
 
-            if (res.data.user.role.includes('admin') || res.data.user.role.includes('manager')) {
-              this.router.navigate(['/admin']);
-            } else if (!res.data.user.isProfileCompleted) {
-              this.router.navigate(['/user/profile']);
-            } else {
-              this.router.navigate(['/user']);
-            }
+            this.navigateAfterLogin(res.data.user);
           },
           error: (err: any) => {
             this.invalidOtp = true;

@@ -46,6 +46,7 @@ router.patch(
 router.get(
 	"/user/list",
 	isAuthenticated,
+	isAdminOrManager,
 	asyncMiddleware(userController.getAll.bind(userController))
 );
 

@@ -2,63 +2,31 @@ const assetURl = 'assets/icons';
 export const menuItem = [
   getMenuItems(
     'Dashboard',
-    '/user/dashboard',
-    'dashboard.svg',
-    'dashboard-light.svg',
-    'dashboard',
-    ['standard', 'power']
-  ),
-  getMenuItems(
-    'Profile',
-    '/user/profile',
-    'profile.svg',
-    'profile-light.svg',
-    'profile',
-    ['standard', 'power']
-  ),
-  getMenuItems(
-    'Content Generation',
-    '/user/content-generation',
-    'content-generation.svg',
-    'content-generation-light.svg',
-    'content-generation',
-    ['standard', 'power']
-  ),
-  getMenuItems(
-    'Chatbot',
-    '/user/chatbot',
-    'chatbot.svg',
-    'chatbot-light.svg',
-    'chatbot',
-    ['power']
-  ),
-  getMenuItems(
-    'Question Paper Generation',
-    '/user/question-paper',
-    'question-bank.svg',
-    'question-bank-light.svg',
-    'question-paper',
-    ['standard', 'power']
-  ),
-  getMenuItems(
-    'My Schedules',
-    '/user/schedule',
-    'schedule.svg',
-    'schedule-light.svg',
-    'schedule',
-    ['standard', 'power']
-  ),
-  getMenuItems(
-    'Dashboard',
-    '/admin/dashboard',
+    '/dashboard',
     'dashboard.svg',
     'dashboard-light.svg',
     'dashboard',
     ['admin','manager']
   ),
   getMenuItems(
+    'Home',
+    '/home',
+    'dashboard.svg',
+    'dashboard-light.svg',
+    'home',
+    ['standard', 'power']
+  ),
+  getMenuItems(
+    'Profile',
+    '/profile',
+    'profile.svg',
+    'profile-light.svg',
+    'profile',
+    ['standard', 'power']
+  ),
+  getMenuItems(
     'School Management',
-    '/admin/school-management',
+    '/school-management',
     'school-management.svg',
     'school-management-light.svg',
     'school-management',
@@ -66,23 +34,63 @@ export const menuItem = [
   ),
   getMenuItems(
     'Teacher Management',
-    '/admin/user-management',
+    '/teacher-management',
     'user-management.svg',
     'user-management-light.svg',
-    'user-management',
+    'teacher-management',
     ['admin','manager']
   ),
   getMenuItems(
     'Staff Management',
-    '/admin/shikshana-user',
+    '/staff-management',
     'staff-management.svg',
     'staff-management-light.svg',
-    'shikshana-user',
+    'staff-management',
     ['admin']
   ),
   getMenuItems(
+    'Content Generation',
+    '/content-generation',
+    'content-generation.svg',
+    'content-generation-light.svg',
+    'content-generation',
+    ['standard', 'power']
+  ),
+  getMenuItems(
+    'Question Paper Generation',
+    '/question-paper',
+    'question-bank.svg',
+    'question-bank-light.svg',
+    'question-paper',
+    ['standard', 'power']
+  ),
+  getMenuItems(
+    'Chatbot',
+    '/chatbot',
+    'chatbot.svg',
+    'chatbot-light.svg',
+    'chatbot',
+    ['power']
+  ),
+  getMenuItems(
+    'My Schedules',
+    '/schedule',
+    'schedule.svg',
+    'schedule-light.svg',
+    'schedule',
+    ['standard', 'power']
+  ),
+  getMenuItems(
+    'Teacher Training',
+    '/teacher-training',
+    'teacher-training-light.svg',
+    'teacher-training.svg',
+    'teacher-training',
+    ['admin', 'manager']
+  ),
+  getMenuItems(
     'Content Activity',
-    '/admin/content-activity',
+    '/content-activity',
     'content-activity.svg',
     'content-activity-light.svg',
     'content-activity',
@@ -90,23 +98,15 @@ export const menuItem = [
   ),
   getMenuItems(
     'Audit Log',
-    '/admin/audit-log',
+    '/audit-log',
     'audit-log-light.svg',
     'audit-log.svg',
     'audit-log',
     ['admin','manager']
   ),
   getMenuItems(
-    'Teacher Training',
-    '/admin/teacher-training',
-    'teacher-training-light.svg',
-    'teacher-training.svg',
-    'teacher-training',
-    ['admin', 'manager']
-  ),
-  getMenuItems(
     'Help',
-    '/user/help',
+    '/help',
     'help-light.svg',
     'help.svg',
     'help',

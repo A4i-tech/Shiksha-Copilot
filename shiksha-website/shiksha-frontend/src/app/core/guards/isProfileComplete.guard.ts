@@ -22,7 +22,7 @@ export const IsProfileCompleteGuard: CanActivateFn = (
     utilityServcie.showWarning(
       'Please complete the profile for further access'
     );
-    router.navigate(['/user/profile']);
+    router.navigate(['/profile']);
     return false;
   }
 };

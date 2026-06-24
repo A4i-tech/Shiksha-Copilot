@@ -46,15 +46,15 @@
 
   <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
     <div class="flex gap-2 flex-wrap items-center">
-      <button class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/user/content-generation/lesson-resources">
+      <button class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content-generation/lesson-resources">
         <img src="assets/icons/edit_light.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Resource" | translate}}</span>
       </button>
-      <button class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/user/content-generation/lesson-plan">
+      <button class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/lesson-plan">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Plan" | translate}}</span>
       </button>
-      <button [hasPermission]="['power']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/user/content-generation/presentation">
+      <button [hasPermission]="['power']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/presentation">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Presentation" | translate}}</span>
       </button>

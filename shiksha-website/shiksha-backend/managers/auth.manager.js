@@ -1,15 +1,14 @@
 require("dotenv").config();
-const mongoose = require("mongoose");
+const jwt = require("jsonwebtoken");
 const CryptoJS = require('crypto-js');
 
-// --- IMPORTS ---
-const User = require("../models/user.model.js"); // <--- ADDED THIS FOR DEBUGGING
 const UserAction = require("../models/user.action.logs.model");
 const UserDao = require("../dao/user.dao");
 const AdminUserDao = require("../dao/admin.user.dao");
 const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
+const { JWT_SECRET } = process.env;
 
 class AuthManager {
     constructor() {
@@ -17,52 +16,42 @@ class AuthManager {
         this.adminUserDao = new AdminUserDao();
     }
 
-    /**
-     * Auto-detect user type by searching both User and AdminUser tables
-     * @param {string} phone - Phone number to search
-     * @returns {object} { user: User|AdminUser|null, type: "0"|"1"|null }
-     */
-    async detectUserType(phone) {
-        // Try regular User table first (type=0)
-        const regularUser = await this.userDao.getByPhone(phone);
-        if (regularUser) {
-            return { user: regularUser, type: "0" };
-        }
-
-        // Try AdminUser table (type=1)
-        const adminUser = await this.adminUserDao.getByPhone(phone);
-        if (adminUser) {
-            return { user: adminUser, type: "1" };
-        }
-
-        return { user: null, type: null };
+    async getUsersByPhone(phone) {
+        const [teacher, admin] = await Promise.all([this.userDao.getByPhone(phone), this.adminUserDao.getByPhone(phone)]);
+        return { teacher, admin };
     }
 
-    async updateUserByType(userId, type, updates) {
-        if (type === "0") {
-            await this.userDao.update(userId, updates);
-        } else if (type === "1") {
-            await this.adminUserDao.update(userId, updates);
-        } else {
-            throw new Error("Invalid type");
-        }
+    updateUsers({ teacher, admin }, updates) {
+        return Promise.all([
+            teacher && this.userDao.update(teacher._id, updates),
+            admin && this.adminUserDao.update(admin._id, updates),
+        ].filter(Boolean));
+    }
+
+    mergeUser(teacher, admin) {
+        const user = (teacher || admin).toObject();
+        Object.assign(user, {
+            role: [...new Set([...(teacher?.role || []), ...(admin?.role || [])])],
+            ...(teacher && { userId: teacher._id }),
+            ...(admin && { adminUserId: admin._id, zones: admin.zones, districts: admin.districts, adminState: admin.state }),
+        });
+        delete user.otp;
+        delete user.rememberMeToken;
+        return user;
     }
 
     async getOtp(req) {
         try {
             let { phone, rememberMe, forgotPassword } = req.body;
 
-            // Auto-detect user type by searching both tables
-            const detected = await this.detectUserType(phone);
-            if (!detected.user) {
+            const users = await this.getUsersByPhone(phone);
+            if (!users.teacher && !users.admin) {
                 return formatApiReponse(false, "Account does not exist!", {});
             }
 
-            const user = detected.user;
-            const type = detected.type;
-            console.log(`[AUTH] User detected: phone=${phone}, type=${type} (${type === "0" ? "Teacher" : "Admin"})`);
-
-            if (user.isDeleted) {
+            const activeUsers = { teacher: users.teacher?.isDeleted ? null : users.teacher, admin: users.admin?.isDeleted ? null : users.admin };
+            const user = activeUsers.teacher || activeUsers.admin;
+            if (!user) {
                 return formatApiReponse(false, "User is inactive", {});
             }
 
@@ -81,16 +70,13 @@ class AuthManager {
                     const templateId = process.env.VARIFORM_SMS_TEMPLATE;
                     await authHelper.sendOtp(templateId, phone, otp);
                     const encryptedOtp = CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString();
-                    await this.updateUserByType(user._id, type, { otp: encryptedOtp, rememberMeToken: rememberMe === true });
+                    await this.updateUsers(activeUsers, { otp: encryptedOtp, rememberMeToken: rememberMe === true });
                     otpTriggered = true;
                 }
             } else {
-                await this.updateUserByType(user._id, type, { rememberMeToken: rememberMe === true });
+                await this.updateUsers(activeUsers, { rememberMeToken: rememberMe === true });
             }
 
-            const userObj = user.toObject();
-            delete userObj.otp;
-            delete userObj.rememberMeToken;
             return formatApiReponse(true, otpTriggered ? "OTP sent successfully" : "Verify your Pin!", { user: user.phone, otpTriggered });
 
         } catch (err) {
@@ -102,21 +88,18 @@ class AuthManager {
         try {
             let { phone, otp } = req.body;
 
-            // Auto-detect user type by searching both tables
-            const detected = await this.detectUserType(phone);
-            if (!detected.user) {
+            const users = await this.getUsersByPhone(phone);
+            if (!users.teacher && !users.admin) {
                 return formatApiReponse(false, "Account does not exist!", null);
             }
 
-            const user = detected.user;
-            const type = detected.type;
-            console.log(`[AUTH] OTP validation for: phone=${phone}, type=${type} (${type === "0" ? "Teacher" : "Admin"})`);
-
-            if (user.isDeleted) {
+            const activeUsers = { teacher: users.teacher?.isDeleted ? null : users.teacher, admin: users.admin?.isDeleted ? null : users.admin };
+            const user = activeUsers.teacher || activeUsers.admin;
+            if (!user) {
                 return formatApiReponse(false, "User is inactive", {});
             }
 
-            const { otp: encryptedOtp } = user;
+            const encryptedOtp = activeUsers.teacher?.otp || activeUsers.admin?.otp;
             if (!encryptedOtp) {
                 return formatApiReponse(false, "PIN not found", null);
             }
@@ -126,12 +109,24 @@ class AuthManager {
             let isOtpValid = otp === decryptedOtp;
 
             if (isOtpValid) {
-                const token = user.generateAuthToken();
-                await this.updateUserByType(user._id, type, { isLoginAllowed: true });
-                const userObj = user.toObject();
+                const token = jwt.sign(
+                    {
+                        _id: activeUsers.teacher?._id || activeUsers.admin?._id,
+                        userId: activeUsers.teacher?._id,
+                        adminUserId: activeUsers.admin?._id,
+                        isAdmin: Boolean(activeUsers.admin),
+                        isDeleted: false,
+                    },
+                    JWT_SECRET,
+                    { expiresIn: "7d" }
+                );
+                await this.updateUsers(activeUsers, { isLoginAllowed: true });
+                const userObj = this.mergeUser(activeUsers.teacher, activeUsers.admin);
 
                 // Refresh profile image SAS URL if expired
-                await refreshProfileImageIfExpired(userObj, (id, updates) => this.updateUserByType(id, type, updates));
+                if (activeUsers.teacher) {
+                    await refreshProfileImageIfExpired(userObj, (id, updates) => this.userDao.update(id, updates));
+                }
 
                 // Logging logic
                 const agent = req.useragent || {};
@@ -151,8 +146,6 @@ class AuthManager {
 
                 await UserAction.create(userActionLogData);
 
-                delete userObj.otp;
-                delete userObj.rememberMeToken;
                 return formatApiReponse(true, "PIN verified successfully!", { user: userObj, token });
             }
 
@@ -165,9 +158,15 @@ class AuthManager {
 
     async getUserFromToken(req) {
         try {
-            await refreshProfileImageIfExpired(req.user, (id, updates) => this.userDao.update(id, updates));
+            if (req.teacherUser) {
+                await refreshProfileImageIfExpired(req.teacherUser, (id, updates) => this.userDao.update(id, updates));
+            }
 
-            return { success: true, data: req.user, message: "" };
+            return {
+                success: true,
+                data: this.mergeUser(req.teacherUser, req.adminUser),
+                message: ""
+            };
         } catch (err) {
             return formatApiReponse(false, err?.message, err);
         }

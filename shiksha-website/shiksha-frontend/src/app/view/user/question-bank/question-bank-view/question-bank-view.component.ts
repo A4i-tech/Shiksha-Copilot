@@ -196,7 +196,7 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   backNavigation() {
-    this.router.navigate(['/user/question-paper']);
+    this.router.navigate(['/question-paper']);
   }
 
   submitFeedback() {

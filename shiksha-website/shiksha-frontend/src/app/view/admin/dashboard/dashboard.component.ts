@@ -934,7 +934,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   navigateToUserMgmt(selectedSchoolId: any) {
-    this.route.navigate(['admin/user-management/list']);
+    this.route.navigate(['/teacher-management/list']);
   }
 
   /**

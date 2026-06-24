@@ -6,6 +6,24 @@ const User = require("../models/user.model.js");
 const AdminUser = require("../models/admin.user.model.js");
 const { JWT_SECRET } = process.env;
 
+function useAdmin(req, res, next, roles = ["admin"]) {
+	const adminUser = req.adminUser || req.user;
+	if (!adminUser || !roles.some((role) => adminUser.role.includes(role))) {
+		return res.status(401).json({ success: false, message: "Access Denied!" });
+	}
+
+	if (!adminUser.isLoginAllowed) {
+		return res.status(401).json({
+			success: false,
+			message: "Account details updated by admin! Please login to continue",
+		});
+	}
+
+	req.user = adminUser;
+	req.isAdmin = true;
+	return next();
+}
+
 exports.isAuthenticated = function (req, res, next) {
 	try {
 		const { authorization } = req.headers;
@@ -20,8 +38,8 @@ exports.isAuthenticated = function (req, res, next) {
 				});
 			}
 			const { _id, isAdmin, isDeleted } = payload;
-
-			let user;
+			const userId = payload.userId || (!isAdmin ? _id : null);
+			const adminUserId = payload.adminUserId || (isAdmin ? _id : null);
 
 			if (isDeleted) {
 				return res.status(401).json({
@@ -31,11 +49,12 @@ exports.isAuthenticated = function (req, res, next) {
 				});
 			}
 
-			if (isAdmin) {
-				user = await AdminUser.findById(_id).select("-otp");
-			} else {
-				user = await User.findById(_id).populate("school", "name medium board").select("-otp -zone -district");
-			}
+			const [teacherUser, adminUser] = await Promise.all([
+				userId ? User.findById(userId).populate("school", "name medium board").select("-otp -zone -district") : null,
+				adminUserId ? AdminUser.findById(adminUserId).select("-otp") : null,
+			]);
+
+			const user = teacherUser || adminUser;
 
 			if (!user) {
 				return res.status(401).json({
@@ -44,28 +63,29 @@ exports.isAuthenticated = function (req, res, next) {
 				});
 			}
 
-			if(user.isDeleted)
-			{
+			if ((teacherUser && teacherUser.isDeleted) || (adminUser && adminUser.isDeleted)) {
 				return res.status(401).json({
 					success: false,
 					message: "Your account is inactive!",
 				});
 			}
 
-			if (!user.isLoginAllowed) {
-				const message = !user.isProfileCompleted && !isAdmin && 
-				  !req.route.path.includes("/set-profile") &&
-				  !req.route.path.includes("/update-language")
-				  ? "You have been assigned to a different school. Please login to continue"
-				  : "Account details updated by admin! Please login to continue";
-				  return res.status(401).json({
+			const routePath = req.route?.path || "";
+			const isProfileRoute = routePath.includes("/set-profile") || routePath.includes("/update-language");
+			const isAdminUser = user === adminUser;
+			if (!user.isLoginAllowed && (isAdminUser || user.isProfileCompleted || !isProfileRoute)) {
+				return res.status(401).json({
 					success: false,
-					message
-				  });
-				}
+					message: !user.isProfileCompleted && !isAdminUser && !isProfileRoute
+						? "You have been assigned to a different school. Please login to continue"
+						: "Account details updated by admin! Please login to continue",
+				});
+			}
 
 			req.user = user;
-			req.isAdmin = isAdmin;
+			req.teacherUser = teacherUser;
+			req.adminUser = adminUser;
+			req.isAdmin = Boolean(adminUser);
 			next();
 		});
 	} catch (err) {
@@ -76,14 +96,7 @@ exports.isAuthenticated = function (req, res, next) {
 
 exports.isAdmin = function (req, res, next) {
 	try {
-		if (!req.isAdmin) {
-			return res.status(401).json({
-				success: false,
-				message: "Access Denied!",
-			});
-		}
-
-		next();
+		return useAdmin(req, res, next);
 	} catch (err) {
 		console.log(err);
 		res.status(500).json({ message: "Something went wrong" });
@@ -92,16 +105,7 @@ exports.isAdmin = function (req, res, next) {
 
 exports.isAdminOrManager = function (req, res, next) {
 	try {
-		if (
-			req.user &&
-			(req.user.role.includes('admin') || req.user.role.includes('manager'))
-		) {
-			return next();
-		}
-		return res.status(401).json({
-			success: false,
-			message: 'Access Denied!',
-		});
+		return useAdmin(req, res, next, ["admin", "manager"]);
 	} catch (err) {
 		console.log(err);
 		res.status(500).json({ message: 'Something went wrong' });

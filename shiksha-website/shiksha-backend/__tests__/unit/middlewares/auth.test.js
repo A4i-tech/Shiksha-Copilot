@@ -153,6 +153,40 @@ describe("Auth Middleware", () => {
       expect(mockNext).toHaveBeenCalled();
     });
 
+    it("should authenticate combined teacher and admin token with teacher as default user", async () => {
+      mockReq.headers.authorization = "valid-token";
+
+      const mockUser = { _id: "teacher-123", isDeleted: false, isLoginAllowed: true, isProfileCompleted: true, role: ["power"] };
+      const mockAdminUser = { _id: "admin-123", isDeleted: false, isLoginAllowed: true, role: ["admin"] };
+
+      User.findById = jest.fn().mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue(mockUser)
+      });
+      AdminUser.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockAdminUser)
+      });
+
+      jwt.verify.mockImplementation((token, secret, callback) => {
+        callback(null, {
+          _id: "teacher-123",
+          userId: "teacher-123",
+          adminUserId: "admin-123",
+          isAdmin: true,
+          isDeleted: false
+        });
+      });
+
+      isAuthenticated(mockReq, mockRes, mockNext);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockReq.user).toEqual(mockUser);
+      expect(mockReq.teacherUser).toEqual(mockUser);
+      expect(mockReq.adminUser).toEqual(mockAdminUser);
+      expect(mockNext).toHaveBeenCalled();
+    });
+
     it("should return 401 when user not found in database", async () => {
       mockReq.headers.authorization = "valid-token";
 
@@ -304,7 +338,8 @@ describe("Auth Middleware", () => {
       // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(mockRes.status).toHaveBeenCalledWith(401);
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
 
     it("should handle exceptions gracefully", () => {
@@ -325,7 +360,7 @@ describe("Auth Middleware", () => {
 
   describe("isAdmin", () => {
     it("should allow access when user is admin", () => {
-      mockReq.isAdmin = true;
+      mockReq.user = { role: ["admin"], isLoginAllowed: true };
 
       isAdmin(mockReq, mockRes, mockNext);
 
@@ -334,7 +369,7 @@ describe("Auth Middleware", () => {
     });
 
     it("should deny access when user is not admin", () => {
-      mockReq.isAdmin = false;
+      mockReq.user = { role: ["power"], isLoginAllowed: true };
 
       isAdmin(mockReq, mockRes, mockNext);
 
@@ -346,21 +381,22 @@ describe("Auth Middleware", () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
 
-    // Removed problematic error-forcing test
   });
 
   describe("isAdminOrManager", () => {
-    it("should allow access when user is admin", () => {
-      mockReq.user = { role: ["admin"] };
+    it("should switch to admin principal when available", () => {
+      mockReq.user = { _id: "teacher-123", role: ["power"] };
+      mockReq.adminUser = { _id: "admin-123", role: ["admin"], isLoginAllowed: true };
 
       isAdminOrManager(mockReq, mockRes, mockNext);
 
+      expect(mockReq.user).toEqual(mockReq.adminUser);
       expect(mockNext).toHaveBeenCalled();
       expect(mockRes.status).not.toHaveBeenCalled();
     });
 
     it("should allow access when user is manager", () => {
-      mockReq.user = { role: ["manager"] };
+      mockReq.user = { role: ["manager"], isLoginAllowed: true };
 
       isAdminOrManager(mockReq, mockRes, mockNext);
 
@@ -368,16 +404,8 @@ describe("Auth Middleware", () => {
       expect(mockRes.status).not.toHaveBeenCalled();
     });
 
-    it("should allow access when user has both admin and manager roles", () => {
-      mockReq.user = { role: ["admin", "manager"] };
-
-      isAdminOrManager(mockReq, mockRes, mockNext);
-
-      expect(mockNext).toHaveBeenCalled();
-    });
-
     it("should deny access when user is neither admin nor manager", () => {
-      mockReq.user = { role: ["teacher"] };
+      mockReq.user = { role: ["teacher"], isLoginAllowed: true };
 
       isAdminOrManager(mockReq, mockRes, mockNext);
 
@@ -397,7 +425,5 @@ describe("Auth Middleware", () => {
       expect(mockRes.status).toHaveBeenCalledWith(401);
       expect(mockNext).not.toHaveBeenCalled();
     });
-
-    // Removed problematic error-forcing test
   });
 });
