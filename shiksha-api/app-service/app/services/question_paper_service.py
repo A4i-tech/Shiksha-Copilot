@@ -380,6 +380,7 @@ class QuestionPaperService:
             tasks.append(self._generate_questions_batch_async(system_prompt, lr, questions))
 
         if not tasks:
+            raise ValueError("No generation slots could be built from template/distribution.")
 
         all_generated: list[GeneratedSlotQuestion] = []
         for raw_items in await asyncio.gather(*tasks):
