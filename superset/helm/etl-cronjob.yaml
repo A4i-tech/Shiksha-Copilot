@@ -1,0 +1,354 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: etl-sync-script
+  namespace: superset
+data:
+  sync.py: |
+    #!/usr/bin/env python3
+    """
+    ETL: MongoDB prod_dump2 -> analytics PostgreSQL (Superset star schema)
+    Full reload each run: truncate all tables, then rebuild from MongoDB.
+
+    Env vars:
+      MONGO_URI  - mongodb://host:port/dbname  (default: mongodb://localhost:27017/prod_dump2)
+      PG_DSN     - postgresql://user:pass@host:port/db  (default: analytics/analytics@localhost/analytics)
+    """
+    import os
+    import sys
+    from collections import defaultdict
+    from datetime import datetime, timezone
+
+    from pymongo import MongoClient
+    import psycopg2
+    from psycopg2.extras import execute_values
+
+    MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/prod_dump2")
+    PG_DSN    = os.environ.get("PG_DSN",    "postgresql://analytics:analytics@localhost:5432/analytics")
+
+    ROLE_MAP = {
+        "power":  "HM",
+        "hm":     "HM",
+        "crp":    "CRP",
+        "beo":    "BEO",
+        "ddpi":   "DDPI",
+        "admin":  "StateAdmin",
+        "state":  "StateAdmin",
+    }
+    VALID_ROLES = {"HM", "CRP", "BEO", "DDPI", "StateAdmin"}
+
+    STATUS_MAP = {
+        "completed":   "published",
+        "published":   "published",
+        "in_progress": "draft",
+        "draft":       "draft",
+        "archived":    "archived",
+    }
+
+    NOW = datetime.now(timezone.utc)
+
+
+    def log(msg: str) -> None:
+        print(f"[ETL] {msg}", flush=True)
+
+
+    def coerce_dt(val):
+        if val is None:
+            return NOW
+        if isinstance(val, datetime):
+            return val
+        return NOW
+
+
+    def main() -> None:
+        log(f"Connecting to MongoDB: {MONGO_URI}")
+        mc = MongoClient(MONGO_URI, serverSelectionTimeoutMS=10_000)
+        db = mc.get_default_database()
+        mc.admin.command("ping")
+        log("MongoDB OK")
+
+        log(f"Connecting to PostgreSQL ...")
+        pg  = psycopg2.connect(PG_DSN)
+        cur = pg.cursor()
+        log("PostgreSQL OK")
+
+        # ------------------------------------------------------------------ truncate
+        log("Truncating tables ...")
+        cur.execute("""
+            TRUNCATE fact_lba_attempts, fact_chatbot_sessions, fact_ai_actions,
+                     fact_user_activities, fact_lesson_plans CASCADE;
+            TRUNCATE dim_users CASCADE;
+            TRUNCATE dim_schools CASCADE;
+            TRUNCATE dim_regions CASCADE;
+        """)
+
+        # ------------------------------------------------------------------ dim_regions
+        log("Syncing dim_regions ...")
+        users_raw = list(db.users.find(
+            {"isDeleted": {"$ne": True}},
+            {"state": 1, "district": 1, "block": 1}
+        ))
+
+        state_id = {}   # state_name       -> region_id
+        dist_id  = {}   # (state, dist)    -> region_id
+        block_id = {}   # (state, dist, b) -> region_id
+
+        for s in sorted({u.get("state") for u in users_raw if u.get("state")}):
+            cur.execute(
+                "INSERT INTO dim_regions (name, type, parent_id) VALUES (%s, 'state', NULL) RETURNING region_id",
+                (s,)
+            )
+            state_id[s] = cur.fetchone()[0]
+
+        for u in users_raw:
+            s, d = u.get("state"), u.get("district")
+            if s and d and (s, d) not in dist_id:
+                cur.execute(
+                    "INSERT INTO dim_regions (name, type, parent_id) VALUES (%s, 'district', %s) RETURNING region_id",
+                    (d, state_id.get(s))
+                )
+                dist_id[(s, d)] = cur.fetchone()[0]
+
+        for u in users_raw:
+            s, d, b = u.get("state"), u.get("district"), u.get("block")
+            if s and d and b and (s, d, b) not in block_id:
+                cur.execute(
+                    "INSERT INTO dim_regions (name, type, parent_id) VALUES (%s, 'block', %s) RETURNING region_id",
+                    (b, dist_id.get((s, d)))
+                )
+                block_id[(s, d, b)] = cur.fetchone()[0]
+
+        log(f"  {len(state_id)} states, {len(dist_id)} districts, {len(block_id)} blocks")
+
+        # ------------------------------------------------------------------ dim_schools
+        log("Syncing dim_schools ...")
+        mongo_school_to_pg = {}  # str(mongo _id) -> pg school_id
+
+        for sch in db.schools.find({"isDeleted": {"$ne": True}}):
+            s, d, b  = sch.get("state"), sch.get("district"), sch.get("block")
+            d_id     = dist_id.get((s, d))
+            b_id     = block_id.get((s, d, b)) or d_id
+            if not d_id:
+                continue
+            cur.execute(
+                "INSERT INTO dim_schools (name, block_id, district_id) VALUES (%s, %s, %s) RETURNING school_id",
+                (sch.get("name", "Unknown"), b_id or d_id, d_id)
+            )
+            mongo_school_to_pg[str(sch["_id"])] = cur.fetchone()[0]
+
+        log(f"  {len(mongo_school_to_pg)} schools")
+
+        # ------------------------------------------------------------------ dim_users
+        log("Syncing dim_users ...")
+        valid_user_ids: set[str] = set()
+        fallback_region = (
+            list(state_id.values())[0]
+            if state_id else None
+        )
+
+        for u in db.users.find({"isDeleted": {"$ne": True}}):
+            roles     = u.get("role") or []
+            mapped    = next((ROLE_MAP.get(r.lower()) for r in roles if ROLE_MAP.get((r or "").lower())), "HM")
+            s, d, b   = u.get("state"), u.get("district"), u.get("block")
+            region    = block_id.get((s, d, b)) or dist_id.get((s, d)) or state_id.get(s) or fallback_region
+            if not region:
+                continue
+            school_pg = mongo_school_to_pg.get(str(u.get("school")))
+            uid       = str(u["_id"])
+            cur.execute(
+                "INSERT INTO dim_users (user_id, name, role, school_id, region_id) "
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
+                (uid, u.get("name", "Unknown"), mapped, school_pg, region)
+            )
+            valid_user_ids.add(uid)
+
+        log(f"  {len(valid_user_ids)} users")
+        if not valid_user_ids:
+            log("WARNING: no valid users — fact tables will be empty")
+            pg.commit()
+            return
+
+        # ------------------------------------------------------------------ lesson lookup
+        lessons = {
+            str(l["_id"]): {"subject": l.get("subject", "General"), "grade": int(l.get("class") or 1)}
+            for l in db.masterlessons.find({}, {"subject": 1, "class": 1})
+        }
+
+        # ------------------------------------------------------------------ fact_lesson_plans
+        log("Syncing fact_lesson_plans ...")
+        lp_rows = []
+        for lp in db.teacherlessonplans.find({"isDeleted": {"$ne": True}}):
+            uid = str(lp.get("teacherId", ""))
+            if uid not in valid_user_ids:
+                continue
+            meta    = lessons.get(str(lp.get("lessonId", "")), {})
+            subject = meta.get("subject", "General")
+            grade   = meta.get("grade", 1)
+            status  = STATUS_MAP.get(lp.get("status", ""), "draft")
+            lp_rows.append((uid, subject, grade, status, coerce_dt(lp.get("createdAt"))))
+
+        if lp_rows:
+            execute_values(
+                cur,
+                "INSERT INTO fact_lesson_plans (user_id, subject, grade, status, created_at) VALUES %s",
+                lp_rows
+            )
+        log(f"  {len(lp_rows)} lesson plans")
+
+        # ------------------------------------------------------------------ fact_user_activities
+        log("Syncing fact_user_activities ...")
+        act_rows = []
+        for a in db.useractivities.find({}):
+            uid = str(a.get("userId", ""))
+            if uid not in valid_user_ids:
+                continue
+            module = a.get("moduleName", "app")
+            act_rows.append((uid, "session", module, coerce_dt(a.get("createdAt"))))
+
+        if act_rows:
+            execute_values(
+                cur,
+                "INSERT INTO fact_user_activities (user_id, activity_type, app_section, created_at) VALUES %s",
+                act_rows
+            )
+        log(f"  {len(act_rows)} user activities")
+
+        # ------------------------------------------------------------------ fact_ai_actions
+        log("Syncing fact_ai_actions ...")
+        ai_rows = []
+        for a in db.useractions.find({}):
+            uid = str(a.get("userId", ""))
+            if uid not in valid_user_ids:
+                continue
+            ai_rows.append((uid, a.get("actionType", "unknown"), coerce_dt(a.get("createdAt"))))
+
+        if ai_rows:
+            execute_values(
+                cur,
+                "INSERT INTO fact_ai_actions (user_id, action_type, created_at) VALUES %s",
+                ai_rows
+            )
+        log(f"  {len(ai_rows)} AI actions")
+
+        # ------------------------------------------------------------------ fact_chatbot_sessions
+        log("Syncing fact_chatbot_sessions ...")
+        sessions: dict[tuple, list] = defaultdict(list)
+        for c in db.lessonchats.find({}):
+            key = (str(c.get("teacherId", "")), str(c.get("recordId", "")))
+            sessions[key].append(c.get("createdAt"))
+
+        chat_rows = []
+        for (tid, _), dates in sessions.items():
+            if tid not in valid_user_ids:
+                continue
+            valid_dates = [d for d in dates if d]
+            created     = min(valid_dates) if valid_dates else NOW
+            chat_rows.append((tid, len(dates), True, created))
+
+        if chat_rows:
+            execute_values(
+                cur,
+                "INSERT INTO fact_chatbot_sessions (user_id, message_count, resolved, created_at) VALUES %s",
+                chat_rows
+            )
+        log(f"  {len(chat_rows)} chatbot sessions")
+
+        # ------------------------------------------------------------------ fact_lba_attempts
+        log("Syncing fact_lba_attempts ...")
+        lba_rows = []
+        for fb in db.lessonfeedbacks.find({"isCompleted": True}):
+            uid = str(fb.get("teacherId", ""))
+            if uid not in valid_user_ids:
+                continue
+            meta    = lessons.get(str(fb.get("lessonId", "")), {})
+            subject = meta.get("subject", "General")
+            grade   = meta.get("grade", 1)
+
+            score = 50.0
+            for entry in (fb.get("assessment") or []):
+                for key in ("score", "marks", "percentage", "totalScore"):
+                    v = entry.get(key)
+                    if v is not None:
+                        try:
+                            score = float(v)
+                            break
+                        except (TypeError, ValueError):
+                            pass
+                else:
+                    continue
+                break
+
+            lba_rows.append((uid, subject, grade, score, coerce_dt(fb.get("createdAt"))))
+
+        if lba_rows:
+            execute_values(
+                cur,
+                "INSERT INTO fact_lba_attempts (user_id, subject, grade, score, created_at) VALUES %s",
+                lba_rows
+            )
+        log(f"  {len(lba_rows)} LBA attempts")
+
+        # ------------------------------------------------------------------ commit
+        pg.commit()
+        log("Sync complete.")
+        cur.close()
+        pg.close()
+        mc.close()
+
+
+    if __name__ == "__main__":
+        try:
+            main()
+        except Exception as exc:
+            log(f"FATAL: {exc}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: analytics-etl
+  namespace: superset
+  labels:
+    app: analytics-etl
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          volumes:
+            - name: script
+              configMap:
+                name: etl-sync-script
+          containers:
+            - name: etl
+              image: python:3.11-slim
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  pip install pymongo psycopg2-binary --quiet --no-cache-dir &&
+                  python /scripts/sync.py
+              volumeMounts:
+                - name: script
+                  mountPath: /scripts
+              env:
+                - name: MONGO_URI
+                  value: "mongodb://host.minikube.internal:27017/prod_dump2"
+                - name: PG_DSN
+                  value: "postgresql://analytics:analytics@analytics-db.superset.svc.cluster.local:5432/analytics"
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
