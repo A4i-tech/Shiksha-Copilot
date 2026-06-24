@@ -1,0 +1,122 @@
+x-superset-image: &superset-image apache/superset:4.1.0
+
+x-superset-env: &superset-env
+  env_file: .env
+  environment:
+    PYTHONPATH: /app/pythonpath_dev:/app/docker/pythonpath_dev
+    SUPERSET_CONFIG_PATH: /app/docker/pythonpath_dev/superset_config.py
+
+x-superset-volumes: &superset-volumes
+  volumes:
+    - ./docker:/app/docker
+
+x-superset-depends: &superset-depends
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: superset
+      POSTGRES_USER: superset
+      POSTGRES_PASSWORD: superset
+    volumes:
+      - superset_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "superset"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  analytics-db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: analytics
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: analytics
+    volumes:
+      - analytics_db:/var/lib/postgresql/data
+      - ./analytics-db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "analytics"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "5433:5432"
+
+  superset-init:
+    image: *superset-image
+    <<: [*superset-env, *superset-volumes, *superset-depends]
+    command: >
+      bash -c "
+        superset db upgrade &&
+        superset fab create-admin
+          --username $$SUPERSET_ADMIN_USERNAME
+          --firstname Superset
+          --lastname Admin
+          --email $$SUPERSET_ADMIN_EMAIL
+          --password $$SUPERSET_ADMIN_PASSWORD &&
+        superset init
+      "
+    restart: "no"
+
+  superset:
+    image: *superset-image
+    <<: [*superset-env, *superset-volumes, *superset-depends]
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    command: /usr/bin/run-server.sh
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  superset-worker:
+    image: *superset-image
+    <<: [*superset-env, *superset-volumes, *superset-depends]
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    command: celery --app=superset.tasks.celery_app:app worker --loglevel=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery --app=superset.tasks.celery_app:app inspect ping -d celery@$$HOSTNAME"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  superset-worker-beat:
+    image: *superset-image
+    <<: [*superset-env, *superset-volumes, *superset-depends]
+    depends_on:
+      superset-init:
+        condition: service_completed_successfully
+    command: celery --app=superset.tasks.celery_app:app beat --loglevel=info
+    restart: unless-stopped
+
+volumes:
+  superset_db:
+  analytics_db:
