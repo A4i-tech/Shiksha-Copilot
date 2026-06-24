@@ -2,21 +2,21 @@
 -- Dimension tables
 -- ============================================================
 
-CREATE TABLE dim_regions (
+CREATE TABLE IF NOT EXISTS dim_regions (
     region_id   SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
     type        TEXT NOT NULL CHECK (type IN ('state', 'district', 'block')),
     parent_id   INT REFERENCES dim_regions(region_id)
 );
 
-CREATE TABLE dim_schools (
+CREATE TABLE IF NOT EXISTS dim_schools (
     school_id   SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
     block_id    INT NOT NULL REFERENCES dim_regions(region_id),
     district_id INT NOT NULL REFERENCES dim_regions(region_id)
 );
 
-CREATE TABLE dim_users (
+CREATE TABLE IF NOT EXISTS dim_users (
     user_id     TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
     role        TEXT NOT NULL CHECK (role IN ('HM', 'CRP', 'BEO', 'DDPI', 'StateAdmin')),
@@ -28,7 +28,7 @@ CREATE TABLE dim_users (
 -- Fact tables
 -- ============================================================
 
-CREATE TABLE fact_lesson_plans (
+CREATE TABLE IF NOT EXISTS fact_lesson_plans (
     lp_id       SERIAL PRIMARY KEY,
     user_id     TEXT NOT NULL REFERENCES dim_users(user_id),
     subject     TEXT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE fact_lesson_plans (
     created_at  TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fact_user_activities (
+CREATE TABLE IF NOT EXISTS fact_user_activities (
     activity_id   SERIAL PRIMARY KEY,
     user_id       TEXT NOT NULL REFERENCES dim_users(user_id),
     activity_type TEXT NOT NULL,
@@ -45,14 +45,14 @@ CREATE TABLE fact_user_activities (
     created_at    TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fact_ai_actions (
+CREATE TABLE IF NOT EXISTS fact_ai_actions (
     action_id   SERIAL PRIMARY KEY,
     user_id     TEXT NOT NULL REFERENCES dim_users(user_id),
     action_type TEXT NOT NULL,
     created_at  TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fact_chatbot_sessions (
+CREATE TABLE IF NOT EXISTS fact_chatbot_sessions (
     session_id    SERIAL PRIMARY KEY,
     user_id       TEXT NOT NULL REFERENCES dim_users(user_id),
     message_count INT NOT NULL,
@@ -60,10 +60,23 @@ CREATE TABLE fact_chatbot_sessions (
     created_at    TIMESTAMP NOT NULL
 );
 
-CREATE TABLE fact_lba_attempts (
+CREATE TABLE IF NOT EXISTS fact_lba_attempts (
     attempt_id  SERIAL PRIMARY KEY,
     user_id     TEXT NOT NULL REFERENCES dim_users(user_id),
     subject     TEXT NOT NULL,
+    grade       INT NOT NULL,
     score       NUMERIC(5,2) NOT NULL,
     created_at  TIMESTAMP NOT NULL
 );
+
+-- ============================================================
+-- Indexes for dashboard query performance
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_fact_lesson_plans_user_created ON fact_lesson_plans(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_fact_user_activities_user_created ON fact_user_activities(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_fact_user_activities_type ON fact_user_activities(activity_type);
+CREATE INDEX IF NOT EXISTS idx_fact_ai_actions_user_created ON fact_ai_actions(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_fact_chatbot_sessions_user_created ON fact_chatbot_sessions(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_fact_lba_attempts_user_created ON fact_lba_attempts(user_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_fact_lba_attempts_subject ON fact_lba_attempts(subject);
