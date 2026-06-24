@@ -468,9 +468,12 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.distributeMarks();
     this.f.subTopic.reset();
 
-    // Handle selection 
+    // ng-select (change) emits full item objects; onQuestionTypeChange passes bound strings.
+    // Normalize both cases to string[].
+    const toName = (v: any) => (v && typeof v === 'object' ? v.topics : v) as string;
     let selectedChapterNames: string[] = [];
-    if (Array.isArray(val)) selectedChapterNames = val;
+    if (Array.isArray(val)) selectedChapterNames = val.map(toName);
+    else if (val) selectedChapterNames = [toName(val)];
 
     // Filter to get full chapter data
     const selectedChaptersFullData = this.chapterDropdownOptions.filter(ch =>
@@ -480,7 +483,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     // Combine subtopics from all selected chapters
     let combinedSubTopics: any[] = [];
     selectedChaptersFullData.forEach(ch => {
-      if (ch.subTopics.length > 0) {
+      if (ch.subTopics?.length > 0) {
         combinedSubTopics = [...combinedSubTopics, ...ch.subTopics];
       }
     });
