@@ -44,7 +44,8 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
     height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
-    clearableOff:true
+    clearableOff:true,
+    labelTxt: 'Select Preferred Language'
   };
 
   /**
