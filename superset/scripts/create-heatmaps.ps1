@@ -84,8 +84,8 @@ if ($calcNames -contains "hour_of_day" -and $calcNames -contains "day_of_week") 
     $calcCols = @(
         @{
             column_name = "hour_of_day"
-            expression  = "EXTRACT(HOUR FROM created_at)::integer"
-            type        = "INTEGER"
+            expression  = "LPAD(EXTRACT(HOUR FROM created_at)::text, 2, '0')"
+            type        = "VARCHAR"
             is_dttm     = $false
             filterable  = $true
             groupby     = $true
