@@ -71,7 +71,7 @@
         </button>
       </div>
 
-      <div class="question-bank-container p-4 md:px-12 rounded-md border h-[88vh] bg-white overflow-y-auto">
+      <div class="question-bank-container p-4 md:px-12 rounded-md border h-[88vh] bg-white overflow-y-auto" tabindex="0" role="region" [attr.aria-label]="'Question paper content — scroll to read all questions' | translate">
         <h2 class="text-center text-base font-bold text-content">
           {{ questionBankDetails?.questionBank?.metadata.schoolName }}
         </h2>
