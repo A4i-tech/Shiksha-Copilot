@@ -8,6 +8,8 @@ from llama_index.llms.azure_openai import AzureOpenAI
 from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from ingestion_pipeline.base.pipeline import BasePipelineStep, StepResult, StepStatus
+from qdrant_client import AsyncQdrantClient
+from qdrant_client.models import PayloadSchemaType
 import asyncio
 import motor.motor_asyncio
 
@@ -111,12 +113,22 @@ class CreateIndexStep(BasePipelineStep):
                     transformations=transformations
                 )
 
-                # Write indexPath back to MongoDB so the backend knows which
-                # Qdrant collection to query for this chapter.
+                # Ensure chapter_id payload index exists for filtered queries
+                qdrant_client = AsyncQdrantClient(
+                    url=os.getenv("QDRANT_URL", "http://localhost:6333"),
+                    api_key=os.getenv("QDRANT_API_KEY"),
+                )
+                await qdrant_client.create_payload_index(
+                    collection_name=board,
+                    field_name="chapter_id",
+                    field_schema=PayloadSchemaType.KEYWORD,
+                )
+
+                # Write indexPath back to MongoDB so the backend routes to the
+                # correct Qdrant collection for this chapter.
+                # Qdrant collection uses underscores (BSE_TG); MongoDB board field uses dashes (BSE-TG).
                 mongo_url = os.getenv("MONGO_URL")
                 if mongo_url:
-                    # Qdrant collection name uses underscores (BSE_TG) but
-                    # MongoDB board field uses dashes (BSE-TG).
                     mongo_board = board.replace("_", "-")
                     mongo_client = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
                     db = mongo_client.get_default_database()
