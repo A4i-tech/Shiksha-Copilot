@@ -88,92 +88,92 @@ $charts = @(
         }
     }
 
-    # 2. LBA Avg Score by Subject — echarts_bar
+    # 2. LBA Avg Score by Subject — dist_bar (echarts_bar not in 3.1.3)
     @{
         slice_name      = "LBA Avg Score by Subject"
-        viz_type        = "echarts_bar"
+        viz_type        = "dist_bar"
         datasource_id   = Get-DsId "fact_lba_attempts"
         datasource_type = "table"
         params          = @{
-            viz_type     = "echarts_bar"
-            time_range   = "No filter"
-            metrics      = @( Metric "score" "AVG" )
-            groupby      = @("subject")
-            row_limit    = 50
-            show_legend  = $false
-            x_axis       = "subject"
-            sort_series_ascending = $false
+            viz_type      = "dist_bar"
+            time_range    = "No filter"
+            metrics       = @( Metric "score" "AVG" )
+            groupby       = @("subject")
+            columns       = @()
+            row_limit     = 50
+            show_legend   = $false
+            y_axis_format = ".2f"
         }
     }
 
-    # 3. AI Actions by Type — echarts_pie
+    # 3. AI Actions by Type — pie (echarts_pie not in 3.1.3)
     @{
         slice_name      = "AI Actions by Type"
-        viz_type        = "echarts_pie"
+        viz_type        = "pie"
         datasource_id   = Get-DsId "fact_ai_actions"
         datasource_type = "table"
         params          = @{
-            viz_type     = "echarts_pie"
-            time_range   = "No filter"
-            metric       = Metric "action_id" "COUNT"
-            groupby      = @("action_type")
-            row_limit    = 50
-            show_legend  = $true
-            show_labels  = $true
-            show_labels_threshold = 5
+            viz_type       = "pie"
+            time_range     = "No filter"
+            metric         = Metric "action_id" "COUNT"
+            groupby        = @("action_type")
+            row_limit      = 50
+            show_legend    = $true
+            labels_outside = $true
+            donut          = $false
         }
     }
 
-    # 4. App Usage by Section — echarts_bar
+    # 4. App Usage by Section — dist_bar (echarts_bar not in 3.1.3)
     @{
         slice_name      = "App Usage by Section"
-        viz_type        = "echarts_bar"
+        viz_type        = "dist_bar"
         datasource_id   = Get-DsId "fact_user_activities"
         datasource_type = "table"
         params          = @{
-            viz_type     = "echarts_bar"
-            time_range   = "No filter"
-            metrics      = @( Metric "activity_id" "COUNT" )
-            groupby      = @("app_section")
-            row_limit    = 50
-            show_legend  = $false
-            x_axis       = "app_section"
+            viz_type    = "dist_bar"
+            time_range  = "No filter"
+            metrics     = @( Metric "activity_id" "COUNT" )
+            groupby     = @("app_section")
+            columns     = @()
+            row_limit   = 50
+            show_legend = $false
         }
     }
 
-    # 5. Chatbot Resolution Rate — echarts_pie
+    # 5. Chatbot Resolution Rate — pie (echarts_pie not in 3.1.3)
     @{
         slice_name      = "Chatbot Resolution Rate"
-        viz_type        = "echarts_pie"
+        viz_type        = "pie"
         datasource_id   = Get-DsId "fact_chatbot_sessions"
         datasource_type = "table"
         params          = @{
-            viz_type     = "echarts_pie"
-            time_range   = "No filter"
-            metric       = Metric "session_id" "COUNT"
-            groupby      = @("resolved")
-            row_limit    = 10
-            show_legend  = $true
-            show_labels  = $true
-            show_labels_threshold = 5
+            viz_type       = "pie"
+            time_range     = "No filter"
+            metric         = Metric "session_id" "COUNT"
+            groupby        = @("resolved")
+            row_limit      = 10
+            show_legend    = $true
+            labels_outside = $true
+            donut          = $false
         }
     }
 
-    # 6. Users by Role — echarts_pie
+    # 6. Users by Role — pie (echarts_pie not in 3.1.3)
     @{
         slice_name      = "Users by Role"
-        viz_type        = "echarts_pie"
+        viz_type        = "pie"
         datasource_id   = Get-DsId "dim_users"
         datasource_type = "table"
         params          = @{
-            viz_type     = "echarts_pie"
-            time_range   = "No filter"
-            metric       = Metric "user_id" "COUNT"
-            groupby      = @("role")
-            row_limit    = 20
-            show_legend  = $true
-            show_labels  = $true
-            show_labels_threshold = 5
+            viz_type       = "pie"
+            time_range     = "No filter"
+            metric         = Metric "user_id" "COUNT"
+            groupby        = @("role")
+            row_limit      = 20
+            show_legend    = $true
+            labels_outside = $true
+            donut          = $false
         }
     }
 )
