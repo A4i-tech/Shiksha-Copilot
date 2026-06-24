@@ -205,29 +205,6 @@ jobs:
           name: regression-report
           path: regression_report.csv
 
-  regression-tests-branch:
-    name: Regression Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with: { python-version: '3.11' }
-      - run: |
-          python -m pip install --upgrade pip
-          pip install -r tests/requirements.txt
-          playwright install chromium
-      - name: Run Regression Tests
-        env:
-          FRONTEND_URL: ${{ secrets.STAGING_URL }}
-          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
-          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
-        run: pytest tests/regression --csv regression_report.csv -v
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: regression-report
-          path: regression_report.csv
-
   performance-tests:
     name: Performance Tests
     needs: [cicd-frontend, health-check]
