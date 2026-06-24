@@ -19,9 +19,10 @@ import {
 import { saveAs } from 'file-saver';
 import { imageSize } from 'image-size';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { DOCX_CONFIG, formatMarks, SUPERSCRIPT_MAP } from '../utility/constant.util';
+import { DOCX_CONFIG, formatMarks } from '../utility/constant.util';
 import { OptionDto, QuestionSectionDto } from '../models/question-bank.dto';
 import { TranslateService } from '@ngx-translate/core';
+import { DocxUtilityService } from './docx-utility.service';
 
 export interface QuestionBankMetadata {
   schoolName: string;
@@ -63,7 +64,7 @@ const COLOR_ANSWER = '2E7D32';
   providedIn: 'root',
 })
 export class QuestionBankDownloadService {
-  constructor(private utilityService: UtilityService, private translateService: TranslateService) {}
+  constructor(private utilityService: UtilityService, private translateService: TranslateService, private docxUtility: DocxUtilityService) {}
 
   /** Public method to download the Question Bank */
   downloadQuestionBank(data: QuestionBankData) {
@@ -187,9 +188,9 @@ export class QuestionBankDownloadService {
   }
 
   private contentRuns(content: any): any[] {
-    if (!Array.isArray(content)) return this.convertToDocxRuns(content);
+    if (!Array.isArray(content)) return this.docxUtility.getTextRunsWithMath(content);
     return content.flatMap(item => {
-      if (item.contentType === 'text/plain') return this.convertToDocxRuns(item.content);
+      if (item.contentType === 'text/plain') return this.docxUtility.getTextRunsWithMath(item.content);
       const type: 'jpg' | 'png' = item.contentType === 'image/jpeg' ? 'jpg' : 'png';
       const data = Uint8Array.from(atob(item.content), c => c.charCodeAt(0));
       const { width = 240, height = 160 } = imageSize(data);
@@ -258,36 +259,5 @@ export class QuestionBankDownloadService {
     Packer.toBlob(doc).then((blob) => {
       saveAs(blob, fileName);
     });
-  }
-
-  convertToDocxRuns(text: string): TextRun[] {
-    if (!text || typeof text !== 'string') {
-      console.warn('[WARNING] convertToDocxRuns: expected string but received', typeof text);
-      return [new TextRun({ text: text != null ? String(text) : '' })];
-    }
-
-    const runs: TextRun[] = [];
-    const regex = /\^([a-zA-Z0-9()+\-]+)/g;
-    let lastIndex = 0;
-
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      if (match.index > lastIndex) {
-        runs.push(new TextRun({ text: text.substring(lastIndex, match.index) }));
-      }
-      const exponent = match[1];
-      const allMapped = [...exponent].every(ch => ch in SUPERSCRIPT_MAP);
-      if (!allMapped) {
-        console.warn('[WARNING] convertToDocxRuns: unmapped superscript characters in exponent:', exponent);
-      }
-      runs.push(new TextRun({ text: exponent, superScript: true }));
-      lastIndex = regex.lastIndex;
-    }
-
-    if (lastIndex < text.length) {
-      runs.push(new TextRun({ text: text.substring(lastIndex) }));
-    }
-
-    return runs;
   }
 }

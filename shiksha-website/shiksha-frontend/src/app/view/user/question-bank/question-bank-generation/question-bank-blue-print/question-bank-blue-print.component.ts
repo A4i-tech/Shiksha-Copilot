@@ -1,14 +1,17 @@
-import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
 @Component({
   selector: 'app-question-bank-blue-print',
   templateUrl: './question-bank-blue-print.component.html',
   styleUrls: ['./question-bank-blue-print.component.scss'],
 })
-export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
+export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterViewInit {
+  @ViewChild('bluePrintContent') bluePrintContent!: ElementRef<HTMLElement>;
+
   @Input() currentStep: number = 3;
   @Input() totalMarks: number = 0;
   @Input() selectedQuestionsMarks: number = 0;
@@ -58,6 +61,10 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
     this.processDataForView();
   }
 
+  ngAfterViewInit(): void {
+    renderTexMath(this.bluePrintContent.nativeElement);
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['finalSelectedQuestions']) {
       this.processDataForView();
@@ -84,6 +91,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges {
 
     this.groupedBlueprintData = Object.values(groups);
     this.updateChartData();
+    if (this.bluePrintContent) renderTexMath(this.bluePrintContent.nativeElement);
   }
 
   updateChartData() {
