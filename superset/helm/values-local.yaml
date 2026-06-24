@@ -52,4 +52,9 @@ postgresql:
 redis:
   enabled: true
 
+service:
+  type: NodePort
+  nodePort:
+    http: 30088
+
 # Analytics DB deployed separately as analytics-postgres
