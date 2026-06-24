@@ -59,64 +59,55 @@ function Get-ChartId($name) {
 # Arranges chart IDs in a 2-column grid (width=6 each).
 # Odd last chart gets full width (12).
 function Build-Layout([int[]]$chartIds, [string[]]$chartNames) {
-    $layout = [ordered]@{
-        "DASHBOARD_VERSION_KEY" = "v2"
-        "ROOT_ID" = @{
-            type     = "ROOT"
-            id       = "ROOT_ID"
-            children = @("GRID_ID")
-        }
-        "GRID_ID" = @{
-            type     = "GRID"
-            id       = "GRID_ID"
-            children = @()
-            parents  = @("ROOT_ID")
-        }
-    }
+    $rows      = [System.Collections.Generic.List[object]]::new()
+    $allCharts = [System.Collections.Generic.Dictionary[string,object]]::new()
+    $ci        = 0
+    $ri        = 0
 
-    $rowIndex   = 0
-    $chartIndex = 0
-    $total      = $chartIds.Count
+    while ($ci -lt $chartIds.Count) {
+        $rowId       = "ROW-r$ri"
+        $rowChildren = [System.Collections.Generic.List[string]]::new()
+        $colsInRow   = if (($ci + 1) -lt $chartIds.Count) { 2 } else { 1 }
 
-    while ($chartIndex -lt $total) {
-        $rowId       = "ROW-r$rowIndex"
-        $rowChildren = @()
-
-        # Determine columns in this row (2 per row, or 1 if last odd)
-        $colsInRow = if ($chartIndex + 1 -lt $total) { 2 } else { 1 }
-
-        for ($col = 0; $col -lt $colsInRow; $col++) {
-            $cid       = $chartIds[$chartIndex]
-            $cname     = if ($chartIndex -lt $chartNames.Count) { $chartNames[$chartIndex] } else { "Chart $cid" }
-            $elemId    = "CHART-c$chartIndex"
-            $width     = if ($colsInRow -eq 1) { 12 } else { 6 }
-
-            $layout[$elemId] = @{
+        for ($col = 0; $col -lt $colsInRow -and $ci -lt $chartIds.Count; $col++) {
+            $elemId = "CHART-c$ci"
+            $width  = if ($colsInRow -eq 1) { 12 } else { 6 }
+            $allCharts[$elemId] = [PSCustomObject]@{
                 type     = "CHART"
                 id       = $elemId
                 children = @()
                 parents  = @($rowId, "GRID_ID", "ROOT_ID")
-                meta     = @{
-                    chartId   = $cid
+                meta     = [PSCustomObject]@{
+                    chartId   = $chartIds[$ci]
                     width     = $width
                     height    = 50
-                    sliceName = $cname
+                    sliceName = $chartNames[$ci]
                 }
             }
-            $rowChildren += $elemId
-            $chartIndex++
+            $rowChildren.Add($elemId)
+            $ci++
         }
-
-        $layout[$rowId] = @{
-            type     = "ROW"
-            id       = $rowId
-            children = $rowChildren
-            parents  = @("GRID_ID", "ROOT_ID")
-            meta     = @{ background = "BACKGROUND_TRANSPARENT" }
-        }
-        $layout["GRID_ID"].children += $rowId
-        $rowIndex++
+        $rows.Add([PSCustomObject]@{ id = $rowId; children = $rowChildren.ToArray() })
+        $ri++
     }
+
+    $layout = [ordered]@{
+        "DASHBOARD_VERSION_KEY" = "v2"
+        "ROOT_ID" = [PSCustomObject]@{ type = "ROOT"; id = "ROOT_ID"; children = @("GRID_ID") }
+        "GRID_ID" = [PSCustomObject]@{
+            type    = "GRID"; id = "GRID_ID"
+            children = @($rows | ForEach-Object { $_.id })
+            parents  = @("ROOT_ID")
+        }
+    }
+    foreach ($row in $rows) {
+        $layout[$row.id] = [PSCustomObject]@{
+            type     = "ROW"; id = $row.id; children = $row.children
+            parents  = @("GRID_ID", "ROOT_ID")
+            meta     = [PSCustomObject]@{ background = "BACKGROUND_TRANSPARENT" }
+        }
+    }
+    foreach ($key in $allCharts.Keys) { $layout[$key] = $allCharts[$key] }
 
     $layout | ConvertTo-Json -Depth 20
 }
