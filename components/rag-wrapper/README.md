@@ -8,7 +8,7 @@ A Python library for Retrieval-Augmented Generation (RAG) operations using Llama
 - **Knowledge Graph Integration**: Extract entities and relationships for enhanced context understanding
 - **Metadata Filtering**: Filter results by document attributes across all backend types
 - **Chat Interface**: Conversational interactions with document collections and graph context
-- **Azure OpenAI Integration**: Built-in support for Azure OpenAI models for embeddings and completions
+- **OpenAI Integration**: Built-in support for OpenAI-compatible models for embeddings and completions
 - **Multiple Backends**: Support for in-memory, Azure AI Search, and property graph storage backends
 - **Flexible Retrieval**: Configurable sub-retrievers for custom retrieval strategies
 - **Graph Traversal**: Follow entity relationships with configurable path depth for richer context
@@ -24,21 +24,19 @@ pip install -e .
 ### In-Memory RAG
 
 ```python
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from rag_wrapper.rag_ops.in_mem_rag_ops import InMemRagOps
 
 # Initialize models
-embedding_model = AzureOpenAIEmbedding(
+embedding_model = OpenAIEmbedding(
     model="text-embedding-ada-002",
     api_key="your-api-key",
-    azure_endpoint="your-endpoint"
 )
 
-completion_model = AzureOpenAI(
-    model="gpt-35-turbo",
+completion_model = OpenAI(
+    model="gpt-4.1",
     api_key="your-api-key", 
-    azure_endpoint="your-endpoint"
 )
 
 # Create RAG instance
@@ -66,23 +64,21 @@ chat_response = await rag_ops.chat_with_index(
 ### Azure AI Search RAG
 
 ```python
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from rag_wrapper.rag_ops.azure_ai_search_rag_ops import AzureAISearchRagOps
 
 # Initialize models
-embedding_model = AzureOpenAIEmbedding(
+embedding_model = OpenAIEmbedding(
     model="text-embedding-ada-002",
     deployment_name="your-embedding-deployment",
     api_key="your-api-key",
-    azure_endpoint="your-endpoint"
 )
 
-completion_model = AzureOpenAI(
-    model="gpt-35-turbo",
+completion_model = OpenAI(
+    model="gpt-4.1",
     deployment_name="your-completion-deployment",
     api_key="your-api-key", 
-    azure_endpoint="your-endpoint"
 )
 
 # Create Azure AI Search RAG instance (using API key)
@@ -127,22 +123,20 @@ chat_response = await rag_ops.chat_with_index(
 ### Property Graph RAG
 
 ```python
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.indices.property_graph import SchemaLLMPathExtractor
 from rag_wrapper.rag_ops.in_mem_graph_rag_ops import InMemGraphRagOps
 
 # Initialize models
-embedding_model = AzureOpenAIEmbedding(
+embedding_model = OpenAIEmbedding(
     model="text-embedding-ada-002",
     api_key="your-api-key",
-    azure_endpoint="your-endpoint"
 )
 
-completion_model = AzureOpenAI(
-    model="gpt-35-turbo",
+completion_model = OpenAI(
+    model="gpt-4.1",
     api_key="your-api-key", 
-    azure_endpoint="your-endpoint"
 )
 
 # Create Property Graph RAG instance with custom knowledge extractors

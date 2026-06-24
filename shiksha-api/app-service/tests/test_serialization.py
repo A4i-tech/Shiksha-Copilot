@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.models.question_paper import (
+    Content,
     TextQuestion,
     FourOptionsQuestion,
     QuestionType,
@@ -21,14 +22,14 @@ def test_serialization():
     
     # 1. Create a FourOptionsQuestion with difficulty
     q_mcq = FourOptionsQuestion(
-        question="What is 5+5?",
-        options=[McqOption(label="A", text="10"), McqOption(label="B", text="11"), McqOption(label="C", text="12"), McqOption(label="D", text="13")],
-        answer="A",
+        question=[Content.text("What is 5+5?")],
+        options=[McqOption(label=label, text=[Content.text(text)]) for label, text in [("A", "10"), ("B", "11"), ("C", "12"), ("D", "13")]],
+        answer=[Content.text("10")],
         difficulty="Easy"
     )
     
     # 2. Check if dumping it includes difficulty
-    dumped_mcq = q_mcq.model_dump()
+    dumped_mcq = q_mcq.model_dump(mode="json")
     print("Dumped MCQ:", json.dumps(dumped_mcq, indent=2))
     assert "difficulty" in dumped_mcq, "difficulty field missing from FourOptionsQuestion dump"
     assert dumped_mcq["difficulty"] == "Easy", "difficulty value incorrect"
@@ -42,7 +43,7 @@ def test_serialization():
     )
     
     # 4. Check serialization of the wrapper
-    dumped_resp = qt_resp.model_dump()
+    dumped_resp = qt_resp.model_dump(mode="json")
     print("Dumped Response:", json.dumps(dumped_resp, indent=2))
     
     # Verify the question inside has difficulty

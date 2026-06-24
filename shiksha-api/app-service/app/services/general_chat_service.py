@@ -1,12 +1,10 @@
 from typing import List
 from pathlib import Path
 import logging
-import traceback
 
-from langfuse.openai import AsyncAzureOpenAI
+from langfuse.openai import AsyncOpenAI
 from langfuse import observe, get_client
 import json
-import asyncio
 from openai.types.responses import ResponseOutputMessage, ResponseOutputText
 from openai.types.responses.response import Response
 from openai.types.responses.response_output_text import AnnotationURLCitation
@@ -20,32 +18,12 @@ logger = logging.getLogger(__name__)
 
 
 class GeneralChatService:
-    """Service for handling chat interactions using Azure OpenAI client."""
+    """Service for handling chat interactions using OpenAI client."""
 
     def __init__(self):
-        # Initialize prompt template with the chat prompts file
-        prompts_file_path = (
-            Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
-        )
+        prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
         self.prompt_template = PromptTemplate(str(prompts_file_path))
-
-        # Check configuration
-        if not settings.azure_openai_api_key:
-            raise ValueError("AZURE_OPENAI_API_KEY environment variable is required")
-        if not settings.azure_openai_endpoint:
-            raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
-        if not settings.azure_openai_api_version:
-            raise ValueError("AZURE_OPENAI_API_VERSION environment variable is required")
-        if not settings.azure_openai_deployment_name:
-            raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required")
-        if not settings.azure_chat_deployment_name:
-            raise ValueError("AZURE_CHAT_DEPLOYMENT_NAME environment variable is required")
-
-        self.client = AsyncAzureOpenAI(
-                api_key=settings.azure_openai_api_key,
-                api_version=settings.azure_openai_api_version,
-                azure_endpoint=settings.azure_openai_endpoint,
-            )
+        self.client = AsyncOpenAI()
 
 
     @validate_call
@@ -76,7 +54,7 @@ class GeneralChatService:
 
             # Responses API with web search
             stream = await self.client.responses.create(
-                model=settings.azure_chat_deployment_name,
+                model=settings.general_chat_model,
                 input=formatted_messages,
                 tools=[{"type": "web_search"}],
                 stream=True,
@@ -106,7 +84,7 @@ class GeneralChatService:
                 }) + "\n"
 
         except Exception as e:
-            logger.error(f"Error in Azure OpenAI chat: {e}", exc_info=True)
+            logger.error(f"Error in OpenAI chat: {e}", exc_info=True)
             yield json.dumps({
                 "type": "error",
                 "message": str(e)
@@ -114,7 +92,7 @@ class GeneralChatService:
 
     def _extract_url_citations(self, response: Response) -> list:
         """
-        Extract URL citations from Azure OpenAI Responses API output annotations.
+        Extract URL citations from OpenAI Responses API output annotations.
 
         The Responses API returns output items that may contain 'url_citation'
         annotations within message content blocks.

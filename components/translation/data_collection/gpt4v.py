@@ -1,12 +1,8 @@
 import base64
 from mimetypes import guess_type
-from openai import AzureOpenAI
-from azure.identity import AzureCliCredential, get_bearer_token_provider
+from openai import OpenAI
 import json
 import ast
-
-token_provider = get_bearer_token_provider(AzureCliCredential(), "https://cognitiveservices.azure.com/.default")
-
 
 
 # Function to encode a local image into data URL 
@@ -29,18 +25,14 @@ def get_toc(image_path):
     # image_path = '/home/t-narora/translation/scraped_books/KSEEB_kan/english/8/science_2/images/3.jpg'
     data_url = local_image_to_data_url(image_path)
 
-    client = AzureOpenAI(
-        azure_ad_token_provider=token_provider,
-        api_version="2025-03-01-preview",
-        azure_endpoint="https://vellm-openai3.openai.azure.com/",
-    )
+    client = OpenAI()
 
     flag = True
     tries = 0
     while flag:
         
         response = client.chat.completions.create(
-            model="GPT-4.1",
+            model="gpt-4.1",
             messages=[
                 { "role": "system", "content": "You are a helpful assistant. You give output in correct json format." },
                 { "role": "user", "content": [  

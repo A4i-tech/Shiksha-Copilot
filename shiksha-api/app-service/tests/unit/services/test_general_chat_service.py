@@ -1,58 +1,13 @@
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, AsyncMock, patch
 import json as import_json
 from pathlib import Path
 import sys
-import asyncio
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "app"))
 
 from app.services.general_chat_service import GeneralChatService
 from app.models.chat import ConversationMessage, MessageRole
-from openai.types.responses import ResponseOutputMessage, ResponseOutputText
-from openai.types.responses.response import Response
-from openai.types.responses.response_output_text import AnnotationURLCitation
-
-
-class TestGeneralChatServiceInitialization:
-    """Test GeneralChatService initialization."""
-
-    def test_initialization_loads_prompt_template(self, mock_settings):
-        """Test service initialization loads prompt template."""
-        with patch("app.services.general_chat_service.settings", mock_settings), patch(
-            "app.services.general_chat_service.PromptTemplate"
-        ) as MockPromptTemplate, patch("app.services.general_chat_service.AsyncAzureOpenAI"):
-            mock_template = Mock()
-            MockPromptTemplate.return_value = mock_template
-
-            service = GeneralChatService()
-
-            MockPromptTemplate.assert_called_once()
-            assert service.prompt_template == mock_template
-
-
-    def test_initialization_raises_error_when_api_key_missing(self):
-        """Test initialization raises error when API key is missing."""
-        mock_settings = Mock()
-        mock_settings.azure_openai_api_key = None
-
-        with patch("app.services.general_chat_service.settings", mock_settings), patch(
-            "app.services.general_chat_service.PromptTemplate"
-        ):
-            with pytest.raises(ValueError, match="AZURE_OPENAI_API_KEY"):
-                GeneralChatService()
-
-    def test_initialization_raises_error_when_endpoint_missing(self):
-        """Test initialization raises error when endpoint is missing."""
-        mock_settings = Mock()
-        mock_settings.azure_openai_api_key = "test-key"
-        mock_settings.azure_openai_endpoint = None
-
-        with patch("app.services.general_chat_service.settings", mock_settings), patch(
-            "app.services.general_chat_service.PromptTemplate"
-        ):
-            with pytest.raises(ValueError, match="AZURE_OPENAI_ENDPOINT"):
-                GeneralChatService()
 
 
 class TestGeneralChatServiceCall:
@@ -60,14 +15,14 @@ class TestGeneralChatServiceCall:
 
     @pytest.mark.asyncio
     async def test_call_with_single_message(
-        self, mock_settings, mock_azure_openai_client, sample_chat_messages
+        self, mock_settings, mock_openai_client, sample_chat_messages
     ):
         """Test calling service with a single message."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
             # Setup prompt template
@@ -75,7 +30,7 @@ class TestGeneralChatServiceCall:
             mock_template.get_prompt = Mock(return_value="You are a helpful assistant.")
             MockPromptTemplate.return_value = mock_template
 
-            # Setup Azure OpenAI response - mock streaming
+            # Setup OpenAI response - mock streaming
             expected_content = "Photosynthesis is the process..."
             
             # Create a mock delta event
@@ -94,7 +49,7 @@ class TestGeneralChatServiceCall:
             
             mock_stream = AsyncMock()
             mock_stream.__aiter__.return_value = [mock_delta_event, mock_completed_event]
-            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream)
+            mock_openai_client.responses.create = AsyncMock(return_value=mock_stream)
             
             service = GeneralChatService()
             messages = [sample_chat_messages[0]]  # Only first message
@@ -112,23 +67,23 @@ class TestGeneralChatServiceCall:
             assert accumulated_response == expected_content
             assert "Thinking..." in [s for s in status_messages if "Thinking..." in s]
             
-            mock_azure_openai_client.responses.create.assert_called_once()
-            call_args = mock_azure_openai_client.responses.create.call_args
+            mock_openai_client.responses.create.assert_called_once()
+            call_args = mock_openai_client.responses.create.call_args
             
-            assert call_args[1]["model"] == mock_settings.azure_chat_deployment_name
+            assert call_args[1]["model"] == mock_settings.general_chat_model
             assert call_args[1]["stream"] is True
             assert call_args[1]["tools"] == [{"type": "web_search"}]
 
     @pytest.mark.asyncio
     async def test_call_with_conversation_history(
-        self, mock_settings, mock_azure_openai_client, sample_chat_messages
+        self, mock_settings, mock_openai_client, sample_chat_messages
     ):
         """Test calling service with conversation history."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
             mock_template = Mock()
@@ -145,7 +100,7 @@ class TestGeneralChatServiceCall:
             
             mock_stream = AsyncMock()
             mock_stream.__aiter__.return_value = [mock_delta_event, mock_completed_event]
-            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream)
+            mock_openai_client.responses.create = AsyncMock(return_value=mock_stream)
 
             service = GeneralChatService()
 
@@ -154,7 +109,7 @@ class TestGeneralChatServiceCall:
                 pass
 
             # Verify input structure
-            call_args = mock_azure_openai_client.responses.create.call_args
+            call_args = mock_openai_client.responses.create.call_args
             messages_arg = call_args[1]["input"]
             
             # Check system prompt
@@ -213,14 +168,14 @@ class TestGeneralChatServiceCall:
 
     @pytest.mark.asyncio
     async def test_call_formats_messages_correctly(
-        self, mock_settings, mock_azure_openai_client
+        self, mock_settings, mock_openai_client
     ):
         """Test service formats messages correctly."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
             mock_template = Mock()
@@ -242,7 +197,7 @@ class TestGeneralChatServiceCall:
             # Setup AsyncMock to represent the result of client.responses.create
             mock_stream = AsyncMock()
             mock_stream.__aiter__.return_value = [mock_delta_event, mock_completed_event]
-            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream)
+            mock_openai_client.responses.create = AsyncMock(return_value=mock_stream)
 
             service = GeneralChatService()
 
@@ -255,22 +210,22 @@ class TestGeneralChatServiceCall:
             async for _ in service(messages, user_id="test-user-1"): pass
 
             # call_args check
-            assert mock_azure_openai_client.responses.create.called
-            call_args = mock_azure_openai_client.responses.create.call_args
+            assert mock_openai_client.responses.create.called
+            call_args = mock_openai_client.responses.create.call_args
             msgs = call_args[1]["input"]
             assert msgs[1]["content"] == "Hello"
             assert msgs[2]["content"] == "Hi there!"
 
     @pytest.mark.asyncio
     async def test_call_handles_missing_output_text(
-        self, mock_settings, mock_azure_openai_client
+        self, mock_settings, mock_openai_client
     ):
         """Test service handles response without output_text attribute."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
             # This test is obsolete as fallback logic was removed.
@@ -278,34 +233,33 @@ class TestGeneralChatServiceCall:
 
     @pytest.mark.asyncio
     async def test_call_returns_default_message_when_no_content(
-        self, mock_settings, mock_azure_openai_client
+        self, mock_settings, mock_openai_client
     ):
         """Test service returns default message when no content found."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
             # This test is obsolete or should just check empty stream
             pass
 
     @pytest.mark.asyncio
-    async def test_call_raises_error_on_azure_failure(
-        self, mock_settings, mock_azure_openai_client
+    async def test_call_raises_error_on_failure(
+        self, mock_settings, mock_openai_client
     ):
-        """Test service raises error when Azure OpenAI call fails."""
+        """Test service raises error when OpenAI call fails."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
-            # Simulate Azure OpenAI error
-            # Simulate Azure OpenAI error
-            mock_azure_openai_client.responses.create = AsyncMock(side_effect=Exception("API Error"))
+            # Simulate OpenAI error
+            mock_openai_client.responses.create = AsyncMock(side_effect=Exception("API Error"))
 
             service = GeneralChatService()
             messages = [{"role": "user", "message": "Test"}]
@@ -320,14 +274,14 @@ class TestGeneralChatServiceCall:
 
     @pytest.mark.asyncio
     async def test_call_loads_prompt_from_template(
-        self, mock_settings, mock_azure_openai_client
+        self, mock_settings, mock_openai_client
     ):
         """Test service loads prompt from template file."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
             mock_template = Mock()
@@ -345,7 +299,7 @@ class TestGeneralChatServiceCall:
             async def mock_stream_fn():
                 yield mock_delta_event
                 yield mock_completed_event
-            mock_azure_openai_client.responses.create = AsyncMock(return_value=mock_stream_fn())
+            mock_openai_client.responses.create = AsyncMock(return_value=mock_stream_fn())
 
             service = GeneralChatService()
             messages = [{"role": "user", "message": "Test"}]
@@ -357,14 +311,14 @@ class TestGeneralChatServiceCall:
 
     @pytest.mark.asyncio
     async def test_call_raises_error_when_prompt_not_found(
-        self, mock_settings, mock_azure_openai_client
+        self, mock_settings, mock_openai_client
     ):
         """Test service raises error when prompt is not found in template."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncAzureOpenAI",
-            return_value=mock_azure_openai_client,
+            "app.services.general_chat_service.AsyncOpenAI",
+            return_value=mock_openai_client,
         ):
 
             mock_template = Mock()
@@ -391,7 +345,7 @@ class TestGeneralChatServiceCleanup:
         """Test cleanup method can be called."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AsyncAzureOpenAI"):
+        ), patch("app.services.general_chat_service.AsyncOpenAI"):
 
             service = GeneralChatService()
 

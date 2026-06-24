@@ -1,12 +1,14 @@
 from pathlib import Path
 import logging
 import re
+from app.config import settings
 from app.models.chat import LessonChatRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
-from app.utils.utils import new_rag_embed, new_rag_llm
 from llama_index.core.llms import ChatMessage
 from langfuse import observe, get_client
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.openai import OpenAIResponses
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +19,11 @@ class LessonChatService:
     def __init__(self):
         """Initialize the lesson chat service with LLM models and blob store."""
         # Initialize prompt template with the chat prompts file
-        prompts_file_path = (
-            Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
-        )
+        prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
         self._prompt_template = PromptTemplate(str(prompts_file_path))
 
-        self._rag_llm = new_rag_llm()
-        self._rag_embed = new_rag_embed()
+        self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model)
+        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
     @observe(name="Shiksha-QA")

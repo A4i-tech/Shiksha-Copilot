@@ -5,30 +5,18 @@ from glob import glob
 from tqdm.auto import tqdm
 from dotenv import load_dotenv
 
-from openai import AzureOpenAI
-from azure.identity import AzureCliCredential, get_bearer_token_provider
+from openai import OpenAI
 
 from cleanup_sentence_pairs import post_proc
 load_dotenv()
 
-AZURE_ENDPOINT = os.getenv('AZURE_ENDPOINT')
 GPT4_MODEL_NAME = os.getenv('GPT4_MODEL_NAME')
 GPT4_MODEL_ENGINE = os.getenv('GPT4_MODEL_ENGINE')
 CONTEXT_LENGTH = 128000
 MAX_NEW_TOKENS = 4096
 
 
-token_provider = get_bearer_token_provider(AzureCliCredential(), "https://cognitiveservices.azure.com/.default")
-
-def load_model():
-    llm_ = AzureOpenAI(
-        azure_ad_token_provider=token_provider,
-        api_version="2023-03-15-preview",
-        azure_endpoint=AZURE_ENDPOINT,
-    )
-    return llm_
-
-def ask_model(model: AzureOpenAI, query: dict):
+def ask_model(model: OpenAI, query: dict):
     response = model.chat.completions.create(
         model=GPT4_MODEL_ENGINE,
         messages=query,
@@ -55,8 +43,7 @@ def ask_query_on_text(query, content):
         ],
     }
 
-    model = load_model()
-    return ask_model(model, sample_msg["messages"])
+    return ask_model(OpenAI(), sample_msg["messages"])
 
 def club_sentences(words_to_sent):
     inverse_dict = {}

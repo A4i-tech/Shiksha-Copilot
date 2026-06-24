@@ -16,6 +16,12 @@ from app.services.rag_adapters import (
 )
 
 
+@pytest.fixture(autouse=True)
+def mock_blob_store_constructor():
+    with patch("app.services.rag_adapters.BlobStore"):
+        yield
+
+
 class TestBaseRagAdapter:
     """Test BaseRagAdapter abstract base class."""
 
