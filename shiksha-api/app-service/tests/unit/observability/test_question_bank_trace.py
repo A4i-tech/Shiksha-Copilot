@@ -23,6 +23,7 @@ async def test_question_bank_sets_user_id_and_tags():
         medium="English",
         grade=9,
         subject="Maths",
+        unit_level="CHAPTER",
         chapters=[],
         total_marks=80,
         template=[],

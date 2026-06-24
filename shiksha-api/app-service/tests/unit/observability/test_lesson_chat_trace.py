@@ -29,8 +29,11 @@ async def test_lesson_chat_sets_user_id_and_tags():
         svc = LessonChatService.__new__(LessonChatService)
         svc._prompt_template = MagicMock()
         svc._prompt_template.get_prompt_with_variables = MagicMock(return_value="sys prompt")
-        svc._rag_adapter_cache = AsyncMock()
-        svc._get_or_create_rag_adapter = AsyncMock(return_value=mock_rag_adapter)
+        mock_rags = AsyncMock()
+        mock_rags.get = AsyncMock(return_value=mock_rag_adapter)
+        svc._rags = mock_rags
+        svc._rag_llm = MagicMock()
+        svc._rag_embed = MagicMock()
 
         request = LessonChatRequest(
             user_id="student-456",
