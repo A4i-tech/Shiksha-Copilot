@@ -46,10 +46,11 @@ services:
   analytics-db:
     image: postgres:15-alpine
     restart: unless-stopped
+    env_file: .env
     environment:
-      POSTGRES_DB: analytics
-      POSTGRES_USER: analytics
-      POSTGRES_PASSWORD: analytics
+      POSTGRES_DB: ${ANALYTICS_DB_DB}
+      POSTGRES_USER: ${ANALYTICS_DB_USER}
+      POSTGRES_PASSWORD: ${ANALYTICS_DB_PASSWORD}
     volumes:
       - analytics_db:/var/lib/postgresql/data
       - ./analytics-db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -67,12 +68,12 @@ services:
     command: >
       bash -c "
         superset db upgrade &&
-        superset fab create-admin
+        (superset fab create-admin
           --username $$SUPERSET_ADMIN_USERNAME
           --firstname Superset
           --lastname Admin
           --email $$SUPERSET_ADMIN_EMAIL
-          --password $$SUPERSET_ADMIN_PASSWORD &&
+          --password $$SUPERSET_ADMIN_PASSWORD || true) &&
         superset init
       "
     restart: "no"
