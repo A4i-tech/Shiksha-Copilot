@@ -31,6 +31,7 @@ import {
 } from 'docx';
 import { marked } from 'marked';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { TEX_MATH_DELIMITERS } from '../utility/constant.util';
 import temml from "temml";
 
 const tag = (n?: Element) => n?.localName || "";
@@ -120,15 +121,25 @@ export class DocxContext{
 export class DocxUtilityService {
   constructor(private utilityService:UtilityService, private translateService:TranslateService){}
 
+  getTextRunsWithMath(content: unknown, options: IRunOptions = {}): (TextRun | DocxMath)[] {
+    return this.processMath(content == null ? '' : String(content), options);
+  }
+
   private processMath(content: string, options: IRunOptions): (TextRun | DocxMath)[] {
-    return content.split(/(\$[^$]+\$)/g).map(part => {
-      if (part.startsWith("$") && part.endsWith("$")) {
-        const mathml = temml.renderToString(part.slice(1, -1), { displayMode: false, throwOnError: false });
-        const doc = new DOMParser().parseFromString(mathml, "application/xml");
-        return new DocxMath({ ...options, children: mathmlToDocx(doc.documentElement) });
-      }
-      return new TextRun({ ...options, text: part });
+    const mathPattern = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$[^$\n]+\$)/g;
+    return content.split(mathPattern).map(part => {
+      const math = this.extractMath(part);
+      if (!math) return new TextRun({ ...options, text: part });
+
+      const mathml = temml.renderToString(math.content, { displayMode: math.displayMode, throwOnError: false });
+      const doc = new DOMParser().parseFromString(mathml, "application/xml");
+      return new DocxMath({ ...options, children: mathmlToDocx(doc.documentElement) });
     });
+  }
+
+  private extractMath(part: string): { content: string; displayMode: boolean } | null {
+    const delimiter = TEX_MATH_DELIMITERS.find(({ left, right }) => part.startsWith(left) && part.endsWith(right));
+    return delimiter ? { content: part.slice(delimiter.left.length, -delimiter.right.length), displayMode: delimiter.display } : null;
   }
 
   private toRuns(tokens: marked.Token[]): ParagraphChild[] {

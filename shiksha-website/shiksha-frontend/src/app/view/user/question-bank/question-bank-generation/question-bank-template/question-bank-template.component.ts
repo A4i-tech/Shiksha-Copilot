@@ -1,13 +1,16 @@
-import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { hasQuestionImage, questionText } from 'src/app/shared/utility/question-bank-display.util';
+import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
   templateUrl: './question-bank-template.component.html',
   styleUrls: ['./question-bank-template.component.scss'],
 })
-export class QuestionBankTemplateComponent implements OnInit, OnChanges {
+export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterViewInit {
+  @ViewChild('questionSelectionContent') questionSelectionContent!: ElementRef<HTMLElement>;
+
   @Input() currentStep: number = 2;
   @Input() totalMarks: number = 0; // Target marks
 
@@ -54,6 +57,10 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
     this.extractFilters();
     this.applyFilters();
 
+  }
+
+  ngAfterViewInit(): void {
+    renderTexMath(this.questionSelectionContent.nativeElement);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -157,6 +164,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
 
       return matchSource && matchDifficulty && matchType && matchSearch && !isSelected;
     });
+    if (this.questionSelectionContent) renderTexMath(this.questionSelectionContent.nativeElement);
   }
 
   onSearch(val: any) {
