@@ -23,6 +23,7 @@ const routes:Routes=[
                 canActivate:[DefaultLandingGuard],
                 component:ViewComponent
             },
+            // Flat URLs are intentional; keep user/admin top-level child paths unique.
             {
                 path:'',
                 loadChildren: () => import('./user/user.module').then((m) => m.UserModule),
