@@ -4,11 +4,16 @@ import { ViewComponent } from "./view.component";
 
 const DefaultLandingGuard = () => {
     const router = inject(Router);
-    const roles = JSON.parse(localStorage.getItem('userData') || '{}')?.role || [];
-    if (roles.includes('standard') || roles.includes('power')) {
-        return router.parseUrl('/home');
+    let roles: string[] = [];
+    try {
+        roles = JSON.parse(localStorage.getItem('userData') || '{}')?.role || [];
+    } catch {
+        localStorage.removeItem('userData');
+        return router.parseUrl('/auth/sign-in');
     }
-    return router.parseUrl('/dashboard');
+    return roles.includes('standard') || roles.includes('power')
+        ? router.parseUrl('/home')
+        : router.parseUrl('/dashboard');
 };
 
 const routes:Routes=[
