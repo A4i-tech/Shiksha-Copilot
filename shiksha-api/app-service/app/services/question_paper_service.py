@@ -227,7 +227,7 @@ class QuestionPaperService:
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 
-        get_client().update_current_observation(
+        get_client().update_current_span(
             input={"system_prompt": system_prompt, "user_message": user_message},
             metadata={
                 "unit_name": record.title,
@@ -260,7 +260,7 @@ class QuestionPaperService:
                 response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
                 items = response_format.model_validate(response_content["response"])
         except Exception as e:
-            get_client().update_current_observation(
+            get_client().update_current_span(
                 level="ERROR",
                 status_message=f"{type(e).__name__}: {e}",
                 output={"items_count": 0},
