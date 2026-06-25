@@ -33,7 +33,7 @@ class AuthManager {
         Object.assign(user, {
             role: [...new Set([...(teacher?.role || []), ...(admin?.role || [])])],
             ...(teacher && { userId: teacher._id }),
-            ...(admin && { adminUserId: admin._id, zones: admin.zones, districts: admin.districts, adminState: admin.state }),
+            ...(admin && { adminUserId: admin._id, zones: admin.zones, districts: admin.districts }),
         });
         delete user.otp;
         delete user.rememberMeToken;
