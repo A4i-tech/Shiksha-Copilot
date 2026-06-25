@@ -18,10 +18,7 @@ import { TranslateModule } from '@ngx-translate/core';
   styleUrls: ['./form-dropdown.component.scss'],
 })
 export class FormDropdownComponent implements OnInit, OnChanges {
-  /** Incrementing counter to guarantee a unique label/input id per instance. */
   private static nextId = 0;
-
-  /** Unique id used to associate the visible <label> with the ng-select input (a11y). */
   inputId = `form-dropdown-${FormDropdownComponent.nextId++}`;
 
   constructor() { }
