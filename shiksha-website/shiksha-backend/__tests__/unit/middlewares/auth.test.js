@@ -118,7 +118,6 @@ describe("Auth Middleware", () => {
 
       expect(User.findById).toHaveBeenCalledWith("user-123");
       expect(mockReq.user).toEqual(mockUser);
-      expect(mockReq.isAdmin).toBe(false);
       expect(mockNext).toHaveBeenCalled();
     });
 
@@ -149,7 +148,6 @@ describe("Auth Middleware", () => {
 
       expect(AdminUser.findById).toHaveBeenCalledWith("admin-123");
       expect(mockReq.user).toEqual(mockAdminUser);
-      expect(mockReq.isAdmin).toBe(true);
       expect(mockNext).toHaveBeenCalled();
     });
 

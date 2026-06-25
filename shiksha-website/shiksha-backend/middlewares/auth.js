@@ -20,7 +20,6 @@ function useAdmin(req, res, next, roles = ["admin"]) {
 	}
 
 	req.user = adminUser;
-	req.isAdmin = true;
 	return next();
 }
 
@@ -85,7 +84,6 @@ exports.isAuthenticated = function (req, res, next) {
 			req.user = user;
 			req.teacherUser = teacherUser;
 			req.adminUser = adminUser;
-			req.isAdmin = Boolean(adminUser);
 			next();
 		});
 	} catch (err) {
