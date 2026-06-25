@@ -46,10 +46,16 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: "0.8.17"
+          enable-cache: true
+          cache-dependency-glob: |
+            components/rag-wrapper/pyproject.toml
+            components/rag-wrapper/uv.lock
+            shiksha-api/app-service/pyproject.toml
+            shiksha-api/app-service/uv.lock
 
       - name: Run unit tests (before build)
         working-directory: shiksha-api/app-service
@@ -65,9 +71,8 @@ jobs:
           QDRANT_URL: http://localhost:6333
           QDRANT_API_KEY: dummy-qdrant-key
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install
-          poetry run pytest tests/unit/ --cov=app --cov-report=html --cov-report=xml:coverage-unit.xml --cov-report json:coverage-unit.json
+          uv sync --locked
+          uv run --no-sync pytest tests/unit/ --cov=app --cov-report=html --cov-report=xml:coverage-unit.xml --cov-report json:coverage-unit.json
           # Save unit test coverage data
           cp .coverage .coverage.unit || true
 
@@ -108,24 +113,23 @@ jobs:
           mkdir -p shiksha-api/app-service
           # Create container, run tests, and copy coverage file out
           CONTAINER_ID=$(docker create \
-            --entrypoint poetry "$IMAGE" run pytest tests/integration/ --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json)
+            --entrypoint uv "$IMAGE" run --locked pytest tests/integration/ --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json)
           docker start -a $CONTAINER_ID || true
-          docker cp $CONTAINER_ID:/src/app-service/.coverage shiksha-api/app-service/.coverage.integration || true
-          docker cp $CONTAINER_ID:/src/app-service/htmlcov/. htmlcov-integration/ || true
-          docker cp $CONTAINER_ID:/src/app-service/coverage.json shiksha-api/app-service/coverage-integration.json || true
+          docker cp $CONTAINER_ID:/src/shiksha-api/app-service/.coverage shiksha-api/app-service/.coverage.integration || true
+          docker cp $CONTAINER_ID:/src/shiksha-api/app-service/htmlcov/. htmlcov-integration/ || true
+          docker cp $CONTAINER_ID:/src/shiksha-api/app-service/coverage.json shiksha-api/app-service/coverage-integration.json || true
           docker rm $CONTAINER_ID
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
 
       - name: Combine coverage reports
         working-directory: shiksha-api/app-service
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           # Combine unit and integration coverage
-          poetry run coverage combine .coverage.unit .coverage.integration 2>/dev/null || poetry run coverage combine .coverage.unit || true
+          uv run --no-sync coverage combine .coverage.unit .coverage.integration 2>/dev/null || uv run --no-sync coverage combine .coverage.unit || true
           # Generate combined reports
-          poetry run coverage json -o coverage.json
-          poetry run coverage html -d ../../htmlcov
-          poetry run coverage xml -o coverage.xml
+          uv run --no-sync coverage json -o coverage.json
+          uv run --no-sync coverage html -d ../../htmlcov
+          uv run --no-sync coverage xml -o coverage.xml
 
       - name: Upload coverage reports
         if: always()

@@ -31,8 +31,8 @@ app-service/
 │   ├── question_paper_prompts.yaml  # Question generation prompts
 │   ├── blooms_taxonomy.yaml    # Bloom's taxonomy definitions
 │   └── english_grammar_topics.yaml  # Grammar topic mappings
-├── pyproject.toml       # Poetry configuration and dependencies
-├── poetry.lock         # Locked dependency versions
+├── pyproject.toml       # Project configuration and dependencies
+├── uv.lock             # Locked dependency versions
 └── README.md           # This file
 ```
 
@@ -40,28 +40,25 @@ app-service/
 
 ### Prerequisites
 
-- Python 3.8+
-- Poetry (for dependency management)
+- Python 3.11
+- uv (for dependency management)
 
 ### Installation
 
-1. Install Poetry (if not already installed):
+1. Install uv (if not already installed):
 
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
 2. Install dependencies:
 
 ```bash
-poetry install
+uv sync
 ```
 
-3. Activate the virtual environment:
+3. Run commands in the virtual environment with `uv run`.
 
-```bash
-poetry shell
-```
 
 ### Configuration
 
@@ -113,30 +110,30 @@ QDRANT_API_KEY=your_qdrant_api_key
 
 ### Running the Application
 
-1. Development mode with Poetry:
+1. Development mode with uv:
 Run the app from the app-service directory to ensure usage of env files.
 
 ```bash
-poetry run python app/main.py
+uv run python app/main.py
 ```
 
 2. Alternative - activate shell first, then run:
 
 ```bash
-poetry shell
+. .venv/bin/activate
 python app/main.py
 ```
 
 3. Using uvicorn directly:
 
 ```bash
-poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 4. Production deployment:
 
 ```bash
-poetry run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
 The API will be available at:
@@ -720,16 +717,16 @@ Run tests using pytest:
 
 ```bash
 # Run all tests
-poetry run pytest
+uv run pytest
 
 # Run with coverage
-poetry run pytest --cov=app
+uv run pytest --cov=app
 
 # Run specific test file
-poetry run pytest tests/test_question_paper.py
+uv run pytest tests/test_question_paper.py
 
 # Run with verbose output
-poetry run pytest -v
+uv run pytest -v
 ```
 
 ## Docker Deployment
@@ -865,7 +862,7 @@ logger.error("Failed to generate questions", exc_info=True)
 Enable debug mode for detailed logging:
 
 ```bash
-DEBUG=true poetry run uvicorn app.main:app --reload
+DEBUG=true uv run uvicorn app.main:app --reload
 ```
 
 ## Recent Changes and Improvements

@@ -299,7 +299,7 @@ graph TD
 ## Prerequisites
 
 - Python 3.11
-- Poetry (for dependency management)
+- uv (for dependency management)
 - Azure CLI (for deployment)
 - Docker (for containerized deployment)
 - Azure subscription with the following services:
@@ -315,7 +315,7 @@ graph TD
 1. **Install dependencies**
 
    ```bash
-   poetry install
+   uv sync
    ```
 
 2. **Configure environment variables**
