@@ -48,24 +48,25 @@ exports.isAuthenticated = function (req, res, next) {
 				});
 			}
 
-			const [teacherUser, adminUser] = await Promise.all([
+			const [loadedTeacher, loadedAdmin] = await Promise.all([
 				userId ? User.findById(userId).populate("school", "name medium board").select("-otp -zone -district") : null,
 				adminUserId ? AdminUser.findById(adminUserId).select("-otp") : null,
 			]);
-
+			const teacherUser = loadedTeacher?.isDeleted ? null : loadedTeacher;
+			const adminUser = loadedAdmin?.isDeleted ? null : loadedAdmin;
 			const user = teacherUser || adminUser;
+
+			if ((loadedTeacher || loadedAdmin) && !user) {
+				return res.status(401).json({
+					success: false,
+					message: "Your account is inactive!",
+				});
+			}
 
 			if (!user) {
 				return res.status(401).json({
 					success: false,
 					message: "Account doesn't exist!",
-				});
-			}
-
-			if ((teacherUser && teacherUser.isDeleted) || (adminUser && adminUser.isDeleted)) {
-				return res.status(401).json({
-					success: false,
-					message: "Your account is inactive!",
 				});
 			}
 

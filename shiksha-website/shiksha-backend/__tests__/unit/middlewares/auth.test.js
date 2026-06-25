@@ -185,6 +185,41 @@ describe("Auth Middleware", () => {
       expect(mockNext).toHaveBeenCalled();
     });
 
+    it("should keep active admin access when duplicate-phone teacher account is deleted", async () => {
+      mockReq.headers.authorization = "valid-token";
+
+      const mockUser = { _id: "teacher-123", isDeleted: true, isLoginAllowed: true, isProfileCompleted: true, role: ["power"] };
+      const mockAdminUser = { _id: "admin-123", isDeleted: false, isLoginAllowed: true, role: ["admin"] };
+
+      User.findById = jest.fn().mockReturnValue({
+        populate: jest.fn().mockReturnThis(),
+        select: jest.fn().mockResolvedValue(mockUser)
+      });
+      AdminUser.findById = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue(mockAdminUser)
+      });
+
+      jwt.verify.mockImplementation((token, secret, callback) => {
+        callback(null, {
+          _id: "teacher-123",
+          userId: "teacher-123",
+          adminUserId: "admin-123",
+          isAdmin: true,
+          isDeleted: false
+        });
+      });
+
+      isAuthenticated(mockReq, mockRes, mockNext);
+
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(mockReq.user).toEqual(mockAdminUser);
+      expect(mockReq.teacherUser).toBeNull();
+      expect(mockReq.adminUser).toEqual(mockAdminUser);
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+    });
+
     it("should return 401 when user not found in database", async () => {
       mockReq.headers.authorization = "valid-token";
 
