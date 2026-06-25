@@ -99,7 +99,7 @@ class AuthManager {
                 return formatApiReponse(false, "User is inactive", {});
             }
 
-            const encryptedOtp = activeUsers.teacher?.otp || activeUsers.admin?.otp;
+            const encryptedOtp = activeUsers.teacher ? activeUsers.teacher.otp : activeUsers.admin?.otp;
             if (!encryptedOtp) {
                 return formatApiReponse(false, "PIN not found", null);
             }

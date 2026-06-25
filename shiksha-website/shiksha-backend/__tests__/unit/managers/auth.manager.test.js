@@ -19,8 +19,8 @@ const jwt = require("jsonwebtoken");
 const AuthManager = require("../../../managers/auth.manager");
 
 const doc = (data) => ({ ...data, toObject: jest.fn(() => ({ ...data })) });
-const teacher = () => doc({ _id: "teacher-1", name: "Teacher", phone: "9876543210", role: ["power"], otp: "encrypted-pin", isDeleted: false });
-const admin = () => doc({ _id: "admin-1", name: "Admin", phone: "9876543210", role: ["admin"], zones: ["Zone A"], districts: ["District A"], state: "State A", isDeleted: false });
+const teacher = (overrides = {}) => doc({ _id: "teacher-1", name: "Teacher", phone: "9876543210", role: ["power"], otp: "encrypted-pin", isDeleted: false, ...overrides });
+const admin = (overrides = {}) => doc({ _id: "admin-1", name: "Admin", phone: "9876543210", role: ["admin"], zones: ["Zone A"], districts: ["District A"], state: "State A", isDeleted: false, ...overrides });
 
 describe("AuthManager dual-role login", () => {
   let manager;
@@ -53,6 +53,16 @@ describe("AuthManager dual-role login", () => {
       expect.any(String),
       { expiresIn: "7d" }
     );
+  });
+
+  it("does not fall back to admin OTP for duplicate-phone teacher accounts", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ otp: undefined }));
+    mockAdminDao.getByPhone.mockResolvedValue(admin());
+
+    const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "1234" } });
+
+    expect(result).toEqual(expect.objectContaining({ success: false, message: "PIN not found" }));
+    expect(jwt.sign).not.toHaveBeenCalled();
   });
 
   it("keeps merged roles when refreshing the user from token", async () => {
