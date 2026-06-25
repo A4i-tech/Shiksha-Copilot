@@ -25,7 +25,6 @@ from app.models.question_paper import (
     GeneratedTemplate,
     _LearningRecord,
     MatchingListQuestion,
-    QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
     QuestionBankMetadata,
@@ -328,68 +327,3 @@ class QuestionPaperService:
             school_name=request.school_name,
             examination_name=request.examination_name,
         ), questions=response_questions)
-
-
-    async def get_question_distribution(self, request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
-        """
-        Generate question paper template based on unit-wise marks distribution.
-        """
-
-        templates = {local_unique_id(i): t for i, t in enumerate(request.template)}
-
-        def prepare_context() -> dict[str, Any]:
-            lrs = request.chapters[0].subtopics if request.unit_level == "SUBTOPIC" else request.chapters
-            units_str = ", ".join(lr.title for lr in lrs)
-
-            # Helper to safely serialize pydantic models
-            marks_distribution_str = json.dumps([md.model_dump(mode="json") for md in request.marks_distribution], indent=2)
-            objective_distribution_str = json.dumps([od.model_dump(mode="json") for od in request.objective_distribution], indent=2)
-            template_str = json.dumps({k: v.model_dump(mode="json") for k, v in templates.items()}, indent=2)
-
-            # Get Bloom's taxonomy guide
-            bloom_lang = "english" if "english" in request.subject.lower() else "general"
-            blooms_guide = self.prompts.get("blooms-taxonomy", {}).get(bloom_lang, "")
-
-            return {
-                "BOARD": request.board,
-                "MEDIUM": request.medium,
-                "GRADE": str(request.grade),
-                "SUBJECT": request.subject,
-                "TOTAL_MARKS": str(request.total_marks),
-                "CHAPTERS": units_str,
-                "QUESTION_BANK_BLOOM_TAXONOMY_GUIDE": blooms_guide,
-                "MARKS_DISTRIBUTION": marks_distribution_str,
-                "OBJECTIVE_DISTRIBUTION": objective_distribution_str,
-                "TEMPLATE_JSON": template_str,
-            }
-
-        response_format = create_model("TemplateResponse", **{
-            k: (Annotated[list[QuestionDistribution], Field(min_length=v.number_of_questions, max_length=v.number_of_questions)], Field(description=f"Distributions for template {k}"))
-            for k, v in templates.items()
-        })  # type: ignore[call-overload]
-
-        # Prepare Prompt Context
-        prompt_context = prepare_context()
-        prompt_template = self.prompts.get("question_bank_distribution", "")
-        prompt = prompt_template.format(**prompt_context)
-        # Call Azure OpenAI with Strict System Instructions
-        response = await self.client.responses.parse(
-            model=self.chat_deployment,
-            instructions=(
-                "You are a strict data generation assistant.\n"
-                "You must output only a valid JSON object matching the requested schema.\n"
-                "Do not add any conversational text, markdown formatting, or explanations."
-            ),
-            input=prompt,
-            temperature=0.1,
-            text_format=response_format
-        )
-
-        if not response.output_parsed:
-            logger.error(f"Failed raw response: {response.output_text}")
-            raise RuntimeError("The AI model failed to generate a valid JSON structure.")
-
-        return [
-            GeneratedTemplate.model_validate({"question_distribution": getattr(response.output_parsed, k), **v.model_dump()})
-            for k, v in templates.items()
-        ]

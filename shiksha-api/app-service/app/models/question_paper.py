@@ -179,17 +179,6 @@ class Chapter(_LearningRecord):
     subtopics: List[ChapterSubtopic]
 
 
-class MarksDistribution(BaseModel):
-    unit_name: str
-    percentage_distribution: int
-    marks: Marking
-
-
-class ObjectiveDistribution(BaseModel):
-    objective: str
-    percentage_distribution: int
-
-
 class QuestionDistribution(BaseModel):
     unit_name: str
     objective: str
@@ -199,10 +188,6 @@ class _Template(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: Marking
-
-
-class UngeneratedTemplate(_Template):
-    ...
 
 
 class GeneratedTemplate(_Template):
@@ -231,20 +216,6 @@ class QuestionBankPartsGenerationRequest(BaseModel):
         ``grammar_source_chapters`` plumbing flagged in PR #52 review.
         """
         return [c for c in self.chapters if c.is_grammar]
-
-
-class QBQuestionDistributionGenerationRequest(BaseModel):
-    user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
-    board: str = Field(..., description="Educational board", examples=["NCERT", "CBSE", "State board"])
-    medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
-    grade: int = Field(..., description="Student grade/class level")
-    subject: str = Field(..., description="Subject for question generation")
-    unit_level: Literal["CHAPTER", "SUBTOPIC"]
-    chapters: List[Chapter] = Field(..., min_length=1, description="List of chapters with learning outcomes and subtopics")
-    total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
-    template: List[UngeneratedTemplate] = Field(..., description="Question distribution template specifying types and marks")
-    marks_distribution: List[MarksDistribution] = Field(..., description="Unit-wise marks allocation with percentages")
-    objective_distribution: List[ObjectiveDistribution] = Field(..., description="Learning objective distribution (Knowledge, Understanding, etc.)")
 
 
 class GeneratedQuestionItem(BaseModel):

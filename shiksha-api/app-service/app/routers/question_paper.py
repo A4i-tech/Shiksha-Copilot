@@ -6,8 +6,6 @@ from langdetect.detector import Detector
 from pydantic import BaseModel
 
 from app.models.question_paper import (
-    GeneratedTemplate,
-    QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
     get_question_types_for_subject,
@@ -143,10 +141,7 @@ async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationR
     learning outcomes, and question distributions across different sections.
     """
     try:
-        logger.info(f"Processing question paper generation request for user: {request.user_id}")
-        response = await service.generate_question_bank_by_parts(request)
-        logger.info(f"Successfully generated question paper for user: {request.user_id}\nResponse: {response.model_dump_json(indent=2)}")
-        return response
+        return await service.generate_question_bank_by_parts(request)
     except ValueError as e:
         logger.error(f"Configuration error in question paper generation: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Configuration error: {str(e)}") from e
@@ -154,15 +149,3 @@ async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationR
         logger.exception(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate question paper") from e
 
-
-@router.post("/questiondistribution", summary="Generate Question Distribution Templates")
-async def get_question_distribution(request: QBQuestionDistributionGenerationRequest, service: QuestionPaperService = Depends(svc)) -> List[GeneratedTemplate]:
-    """
-    Creates optimized question paper templates based on specified marks distribution,
-    objective distribution, and educational parameters.
-    """
-    try:
-        return await service.get_question_distribution(request)
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.") from e

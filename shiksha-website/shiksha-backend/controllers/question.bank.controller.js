@@ -73,26 +73,6 @@ class QuestionBankController extends BaseController {
     }
   }
 
-  async generateQuestionBankBluePrint(req, res) {
-    try {
-      const user = req.user;
-      const result = await this.questionBankManager.generateQuestionBankBluePrint(
-        req,
-        user
-      );
-      if (!result.success) {
-        return handleError(result, res);
-      }
-      return res.status(200).json(result);
-    } catch (err) {
-      console.log(
-        "Error --> QuestionBankController -> generateQuestionBankBluePrint()",
-        err
-      );
-      return res.status(400).json(err);
-    }
-  }
-
   async generateQuestionBank(req, res) {
     try {
       const user = req.user;

@@ -5,7 +5,6 @@ const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
 const {
-  postToQuestionBankDistribution,
   postToQuestionBankParts,
   getQuestionTypes,
 } = require("../services/question.bank.bot.service");
@@ -27,6 +26,7 @@ const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.
 const logger = require("../config/loggers");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
 const { getBlobContent } = require("../services/azure.blob.service");
+const { allocateQuestionBankBlueprint } = require("../helper/question.bank.blueprint.allocator");
 
 // really we should look at dropping the 'aliases' field here. ideally db.lba_questions should use lower-case key
 // as the 'answerType' (e.g., 'answer_short' instead of 'short_answer'/'short_answers'). right now, 'aliases' is
@@ -112,33 +112,6 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async generateQuestionBankBluePrint(req, user) {
-    try {
-      const body = convertToCamelCase(req.body);
-      const { objectiveDistribution, template } = body;
-      const templatePayload = await this._createQuestionBankPayload(body, user);
-      const payload = convertToSnakeCase({
-        ...templatePayload,
-        template: this._applyQuestionCounts(this._withQuestionTypeMetadata(template), body.totalMarks),
-        objectiveDistribution,
-      });
-
-      const response = await postToQuestionBankDistribution(payload);
-
-      if (response.status !== 200) {
-        throw new Error(`Something went wrong with copilot! Please try later`);
-      }
-
-      if (!response.data) {
-        throw new Error("Something went wrong with copilot! Please try later");
-      }
-
-      return formatApiReponse(true, "Question bank blue print generated successfully!", convertToCamelCase(response.data));
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
-    }
-  }
-
   async generateQuestionBank(req, user) {
     // Standalone MongoDB doesn't support transactions.
     // Uncomment these lines if running with a Replica Set.
@@ -151,7 +124,17 @@ class QuestionBankManager extends BaseManager {
       const body = convertToCamelCase(req.body);
       const context = this._prepareGenerationContext(body);
       if (!context.questions || context.questions.length === 0) {
-        context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template));
+        context.template = allocateQuestionBankBlueprint(
+          this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template), context.totalMarks),
+          {
+            board: context.board,
+            grade: context.grade,
+            subject: context.subject,
+            totalMarks: context.totalMarks,
+            marksDistribution: context.marksDistribution,
+            objectiveDistribution: context.objectiveDistribution,
+          }
+        );
       }
       const {
         language,
@@ -542,7 +525,7 @@ class QuestionBankManager extends BaseManager {
         ...item,
         type: meta.key,
         description: meta.description,
-        questionDistribution: item.questionDistribution.map(d => ({
+        questionDistribution: (item.questionDistribution || []).map(d => ({
           ...d,
           unitName: d.unitName.trim(),
           objective: d.objective

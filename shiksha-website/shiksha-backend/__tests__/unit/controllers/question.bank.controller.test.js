@@ -15,7 +15,6 @@ describe("QuestionBankController", () => {
     // Setup mock manager methods before controller instantiation
     QuestionBankManager.mockImplementation(() => ({
       getTeacherQuestionPapers: jest.fn(),
-      generateQuestionBankBluePrint: jest.fn(),
       generateQuestionBank: jest.fn(),
       updateFeedback: jest.fn(),
       retryFailedJobs: jest.fn(),
@@ -136,34 +135,6 @@ describe("QuestionBankController", () => {
       mockManager.getTeacherQuestionPapers = jest.fn().mockRejectedValue(new Error("Database error"));
 
       await controller.getTeacherQuestionPapers(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
-    });
-  });
-
-  describe("generateQuestionBankBluePrint", () => {
-    it("should generate question bank blueprint successfully", async () => {
-      const mockResult = {
-        success: true,
-        data: { blueprintId: "blueprint-123" },
-      };
-      mockManager.generateQuestionBankBluePrint = jest.fn().mockResolvedValue(mockResult);
-
-      await controller.generateQuestionBankBluePrint(mockReq, mockRes);
-
-      expect(mockManager.generateQuestionBankBluePrint).toHaveBeenCalledWith(
-        mockReq,
-        mockReq.user
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith(mockResult);
-    });
-
-    it("should handle exceptions", async () => {
-      mockManager.generateQuestionBankBluePrint = jest.fn().mockRejectedValue(new Error("Error"));
-
-      await controller.generateQuestionBankBluePrint(mockReq, mockRes);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));

@@ -94,17 +94,6 @@ export class QuestionBankService extends BaseRestService {
   }
 
   /**
-   * Function to generate question bank blue print
-   * @param data
-   * @returns
-   */
-  generateQuestionBankBluePrint(data: any): Observable<any> {
-    return this.http.post(`${this.getUrl()}generate-blue-print`, data, {
-      context: new HttpContext().set(LOADER_MESSAGE, 'Generating blueprint...')
-    });
-  }
-
-  /**
    * Function to generate question bank
    * @param data
    * @returns

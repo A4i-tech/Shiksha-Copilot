@@ -41,26 +41,6 @@ const logPythonError = (error) => {
   });
 }
 
-async function postToQuestionBankDistribution(payload) {
-  const apiUrl = `${llmBaseUrl}/question-paper/questiondistribution`;
-  try {
-    logger.info("Sending request to Question Bot API (Template/Distribution)");
-    const response = await axios.post(apiUrl, payload);
-
-    if (response.status !== 200) {
-      logger.warn(
-        `Unexpected status code from Question Bot: ${response.status}`
-      );
-    }
-
-    logger.info("Request successful");
-    return response;
-  } catch (error) {
-    logPythonError(error);
-    throw error;
-  }
-}
-
 async function postToQuestionBankParts(payload) {
   const apiUrl = `${llmBaseUrl}/question-paper/by-parts`;
   try {
@@ -98,7 +78,6 @@ async function getQuestionTypes(subject) {
 }
 
 module.exports = {
-  postToQuestionBankDistribution,
   postToQuestionBankParts,
   getQuestionTypes,
 };
