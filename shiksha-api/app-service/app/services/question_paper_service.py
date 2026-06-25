@@ -49,6 +49,9 @@ class QuestionPaperService:
 
     def __init__(self):
         self.client = AsyncOpenAI()
+        self._rag_llm = OpenAIResponses(model=settings.question_paper_model)
+        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
+        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
         self.max_questions_per_slot = 20
@@ -56,9 +59,6 @@ class QuestionPaperService:
 
 
     async def __aenter__(self):
-        self._rag_llm = OpenAIResponses(model=settings.question_paper_model)
-        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
-        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         return self
 
 

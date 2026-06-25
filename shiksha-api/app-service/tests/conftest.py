@@ -15,6 +15,8 @@ from llama_index.core.llms import MockLLM
 if not os.getenv("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = "sk-xxxx"
 
+os.environ["DEBUG"] = "false"
+
 
 @pytest.fixture
 def mock_settings():

@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 def test_question_bank_openai_import_is_langfuse():
     mod = pytest.importorskip("app.services.question_paper_service")
     import langfuse.openai as lf_openai
-    assert mod.AsyncAzureOpenAI is lf_openai.AsyncAzureOpenAI
+    assert mod.AsyncOpenAI is lf_openai.AsyncOpenAI
 
 
 @pytest.mark.asyncio
