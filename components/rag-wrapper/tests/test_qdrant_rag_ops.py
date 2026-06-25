@@ -59,7 +59,7 @@ def embedding_llm():
         ),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
     )
 
 
@@ -71,7 +71,7 @@ def completion_llm():
         deployment_name=os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-35-turbo"),
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
     )
 
 @pytest.fixture

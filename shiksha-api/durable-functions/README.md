@@ -330,7 +330,7 @@ graph TD
        "AZURE_OPENAI_API_BASE": "your-openai-endpoint",
        "AZURE_OPENAI_API_KEY": "your-openai-key",
        "AZURE_OPENAI_API_VERSION": "2024-08-01-preview",
-       "AZURE_OPENAI_MODEL": "gpt-4o",
+       "AZURE_OPENAI_MODEL": "GPT-4.1",
        "AZURE_OPENAI_EMBED_MODEL": "text-embedding-ada-002",
        "BLOB_STORE_CONNECTION_STRING": "your-blob-storage-connection-string",
        "WEBHOOK_URL": "your-webhook-endpoint"
@@ -373,7 +373,7 @@ Configure the following environment variables in your Azure Function App:
 | `AZURE_OPENAI_API_BASE`        | Azure OpenAI service endpoint                        | `https://your-openai.openai.azure.com`           |
 | `AZURE_OPENAI_API_KEY`         | Azure OpenAI API key                                 | `your-api-key`                                   |
 | `AZURE_OPENAI_API_VERSION`     | OpenAI API version                                   | `2024-08-01-preview`                             |
-| `AZURE_OPENAI_MODEL`           | Primary GPT model                                    | `gpt-4o`                                         |
+| `AZURE_OPENAI_MODEL`           | Primary GPT model                                    | `GPT-4.1`                                         |
 | `AZURE_OPENAI_EMBED_MODEL`     | Embedding model                                      | `text-embedding-ada-002`                         |
 | `BLOB_STORE_CONNECTION_STRING` | Blob storage for content artifacts                   | `DefaultEndpointsProtocol=https;AccountName=...` |
 | `WEBHOOK_URL`                  | Webhook endpoint for status updates                  | `None`                                           |
