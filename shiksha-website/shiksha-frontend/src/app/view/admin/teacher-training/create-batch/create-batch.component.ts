@@ -75,7 +75,7 @@ export class CreateBatchComponent implements OnInit {
           console.log('Batch Created:', response);
           this.batchForm.reset();
           this.selectedFile = null;
-          this.router.navigate(['/admin/teacher-training/view-batch']);
+          this.router.navigate(['/teacher-training/view-batch']);
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error creating batch:', error);

@@ -199,7 +199,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const finalId = this.extractIdFromResponse(res);
         if (finalId) {
           this.utilityservice.showSuccess('Question Paper Created Successfully!');
-          this.router.navigate([`/user/question-paper/view/${finalId}`]);
+          this.router.navigate([`/question-paper/view/${finalId}`]);
         } else {
           this.utilityservice.showSuccess('Paper created but ID not returned by server.');
         }
@@ -712,7 +712,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const finalId = this.extractIdFromResponse(res);
         if (finalId) {
           this.utilityservice.showSuccess('Question Paper Created Successfully!');
-          this.router.navigate([`/user/question-paper/view/${finalId}`]);
+          this.router.navigate([`/question-paper/view/${finalId}`]);
         } else {
           this.utilityservice.showError("Paper created but ID not found.");
         }
@@ -1060,7 +1060,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.updateFormValidators();
   }
 
-  backNavigation() { this.router.navigate(['/user/question-paper']); }
+  backNavigation() { this.router.navigate(['/question-paper']); }
   nextStep() { if (this.currentStep < this.totalSteps) this.currentStep++; }
   previousStep() { if (this.currentStep > 1) this.currentStep--; }
   totalTemplateMarksChange(val: any) { this.totalTemplateMarks = val; }

@@ -2,7 +2,7 @@
   <div class="flex content-center">
     <img
       src="assets/icons/back-arrow.svg"
-      routerLink="/admin/school-management"
+      routerLink="/school-management"
       alt=""
       class="cursor-pointer"
     />
@@ -20,7 +20,7 @@
 
       <button
         class="hidden btn-primary h-9"
-        routerLink="/admin/school-management/add"
+        routerLink="/school-management/add"
         (click)="blukUpload()"
       >
         <div class="flex content-center">
@@ -704,7 +704,7 @@
           <button
             *ngIf="mode === 'view'"
             class="btn-outline-primary h-9 w-full sm:w-[74px]"
-            routerLink="/admin/school-management"
+            routerLink="/school-management"
             type="button"
           >
             {{'Close' | translate}}
@@ -726,7 +726,7 @@
           <button
             *ngIf="mode !== 'view'"
             class="btn-outline-primary h-9 w-full sm:w-[74px]"
-            routerLink="/admin/school-management"
+            routerLink="/school-management"
             type="button"
           >
             {{'Cancel' | translate}}

@@ -129,7 +129,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           alert('Error fetching batch details. Please try again.');
         }
         
-        this.router.navigate(['/admin/teacher-training/view-batch']);
+        this.router.navigate(['/teacher-training/view-batch']);
       }
     });
   }
@@ -407,7 +407,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/admin/teacher-training/view-batch']);
+    this.router.navigate(['/teacher-training/view-batch']);
   }
 
   getPresentCount(): number {

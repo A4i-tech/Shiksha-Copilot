@@ -54,26 +54,26 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
 
   onView(data: any) {
     if (data.isPresentation) {
-      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      this.router.navigate([`/content-generation/presentation/${data.id}`]);
       return;
     }
     if (data.isLesson) {
-      this.router.navigate([`/user/content-generation/lesson-plan/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/${data.lesson._id}`]);
       return;
     }
-    this.router.navigate([`/user/content-generation/resource-plan/${data.resource._id}`]);
+    this.router.navigate([`/content-generation/resource-plan/${data.resource._id}`]);
   }
 
   onViewDraft(data: any) {
     if (data.isPresentation) {
-      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      this.router.navigate([`/content-generation/presentation/${data.id}`]);
       return;
     }
     if (data.isLesson) {
-      this.router.navigate([`/user/content-generation/lesson-plan/draft/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/draft/${data.lesson._id}`]);
       return;
     }
-    this.router.navigate([`/user/content-generation/resource-plan/draft/${data.resource._id}`]);
+    this.router.navigate([`/content-generation/resource-plan/draft/${data.resource._id}`]);
   }
 
   private getListParams(): ListParams {

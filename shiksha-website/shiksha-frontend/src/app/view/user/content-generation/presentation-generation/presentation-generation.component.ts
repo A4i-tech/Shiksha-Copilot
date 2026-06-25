@@ -367,7 +367,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   }
 
   backNavigation(): void {
-    this.router.navigate(['/user/content-generation']);
+    this.router.navigate(['/content-generation']);
   }
 
   openFilePicker(fileInput: HTMLInputElement): void {
@@ -438,7 +438,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
           this.isCreatingJob = false;
           this.currentJob = job;
           this.currentStep = 2;
-          this.router.navigate([`/user/content-generation/presentation/${job.id}`]);
+          this.router.navigate([`/content-generation/presentation/${job.id}`]);
         },
         error: (error) => {
           this.isCreatingJob = false;
@@ -570,7 +570,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       fileInput.value = '';
     }
 
-    this.router.navigate(['/user/content-generation/presentation']);
+    this.router.navigate(['/content-generation/presentation']);
   }
 
   getTaskState(taskStatus: PresentationJobStatus): TaskState {

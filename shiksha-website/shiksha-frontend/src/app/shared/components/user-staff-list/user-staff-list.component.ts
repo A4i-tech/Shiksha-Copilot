@@ -172,16 +172,16 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   fileToUpload!: File;
   lessonContentType!: string | null;
   contentListConfig:ContentListConfig = {
-    "/admin/user-management/list": {
+    "/teacher-management/list": {
       type:'user',
-      router: '/admin/user-management/',
+      router: '/teacher-management/',
       table_headers: ['Teacher Name', 'Mobile Number', 'School Name', 'Type of Teacher', 'Status of Teacher', 'Training Status', ''],
       download_file:'user-management'
 
     },
-    "/admin/shikshana-user/list": {
+    "/staff-management/list": {
       type:"admin",
-      router: '/admin/shikshana-user/',
+      router: '/staff-management/',
       table_headers: ['Staff Name', 'Mobile Number', 'Type of staff', 'Status of staff', ''],
       download_file:'admin-shikshana-user-management'
     }

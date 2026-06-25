@@ -1,7 +1,20 @@
-import { NgModule } from "@angular/core";
-import { RouterModule, Routes } from "@angular/router";
+import { inject, NgModule } from "@angular/core";
+import { Router, RouterModule, Routes } from "@angular/router";
 import { ViewComponent } from "./view.component";
-import { IsUserGuard } from "../core/guards/isUser.guard";
+
+const DefaultLandingGuard = () => {
+    const router = inject(Router);
+    let roles: string[] = [];
+    try {
+        roles = JSON.parse(localStorage.getItem('userData') || '{}')?.role || [];
+    } catch {
+        localStorage.removeItem('userData');
+        return router.parseUrl('/auth/sign-in');
+    }
+    return roles.includes('standard') || roles.includes('power')
+        ? router.parseUrl('/home')
+        : router.parseUrl('/dashboard');
+};
 
 const routes:Routes=[
 
@@ -11,19 +24,19 @@ const routes:Routes=[
         children:[
             {
                 path:'',
-                redirectTo:'user',
-                pathMatch:'full'
+                pathMatch:'full',
+                canActivate:[DefaultLandingGuard],
+                component:ViewComponent
             },
+            // Flat URLs are intentional; keep user/admin top-level child paths unique.
             {
-                path:'admin',
-                loadChildren:()=> import('./admin/admin.module').then((m)=>m.AdminModule)
-            },
-            {
-                path: 'user',
+                path:'',
                 loadChildren: () => import('./user/user.module').then((m) => m.UserModule),
-                canActivate:[IsUserGuard]
+            },
+            {
+                path:'',
+                loadChildren:()=> import('./admin/admin.module').then((m)=>m.AdminModule)
             }
-
 
         ]
     }

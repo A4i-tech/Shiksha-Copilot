@@ -238,7 +238,7 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
   }
 
   navigateLessonPlan(toolTip:any){
-    this.router.navigate(['user/content-generation/lesson-plan',this.selectedEvent.event.meta.events.lessonId]);
+    this.router.navigate(['/content-generation/lesson-plan',this.selectedEvent.event.meta.events.lessonId]);
     toolTip.style.display = 'none';
   }
 

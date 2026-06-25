@@ -4,11 +4,11 @@
   (click)="closeSidebar($event)"
 >
   <nav
-    class="grid sidebar p-4 top-0 bottom-0 left-0 w-[270px] bg-white fixed z-[999] lg:static h-full"
+    class="grid sidebar p-4 top-0 bottom-0 left-0 w-[270px] bg-white fixed z-[999] lg:static h-full overflow-y-auto"
     [ngClass]="isSidebarOpen ? 'show' : 'hide'"
     aria-label="Main navigation"
   >
-    <div class="text-shade-80 text-xl">
+    <div class="text-shade-80 text-xl min-h-0">
       <div class="p-2.5 pl-0 mt-1 flex items-center rounded-md">
         <img src="assets/images/logo.svg" alt="" class="logo" />
         <img
@@ -19,9 +19,6 @@
         />
       </div>
 
-      <p class="text-content text-sm mt-4">
-        {{ (isAdmin ? "Admin Panel" : "Teacher Panel") | translate }}
-      </p>
       <div>
         <ng-container *ngFor="let menuItem of menuItems">
           <a

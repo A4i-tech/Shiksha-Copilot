@@ -173,13 +173,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   };
 
   lessonTypeConfig: LessonTypeConfig = {
-    '/user/content-generation/lesson-plan': {
+    '/content-generation/lesson-plan': {
       type: 'plan',
-      inspectUrl: '/user/content-generation/inspect/lesson-plan',
+      inspectUrl: '/content-generation/inspect/lesson-plan',
     },
-    '/user/content-generation/lesson-resources': {
+    '/content-generation/lesson-resources': {
       type: 'resource',
-      inspectUrl: '/user/content-generation/inspect/resource-plan',
+      inspectUrl: '/content-generation/inspect/resource-plan',
     },
   };
 
@@ -600,7 +600,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
         this.idleService.planId = this.selectedSubtopic.value;
         this.isGenerate = true;
         this.idleService.stopWatching('lo-regeneration');
-        this.router.navigate(['/user/generation-status']);
+        this.router.navigate(['/generation-status']);
         this.utilityservice.handleResponse(res);
       },
       error: (err) => {
@@ -776,11 +776,11 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     if (value === 'ok') {
       if (this.draftDetails.type === 'lesson') {
         this.router.navigate([
-          `/user/content-generation/lesson-plan/draft/${this.draftDetails.id}`,
+          `/content-generation/lesson-plan/draft/${this.draftDetails.id}`,
         ]);
       } else {
         this.router.navigate([
-          `/user/content-generation/resource-plan/draft/${this.draftDetails.id}`,
+          `/content-generation/resource-plan/draft/${this.draftDetails.id}`,
         ]);
       }
     }
