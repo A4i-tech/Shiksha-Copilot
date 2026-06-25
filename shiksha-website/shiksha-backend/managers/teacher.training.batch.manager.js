@@ -9,10 +9,10 @@ const mongoose = require('mongoose');
 // const ejs = require('ejs');
 const path = require('path');
 
+/** @extends {BaseManager<TeacherTrainingBatchDao>} */
 class TeacherTrainingBatchManager extends BaseManager {
   constructor() {
     super(new TeacherTrainingBatchDao());
-    this.batchDao = new TeacherTrainingBatchDao();
   }
 
   // Example: getBatches logic

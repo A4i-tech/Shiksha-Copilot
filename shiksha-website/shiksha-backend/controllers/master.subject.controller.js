@@ -1,10 +1,10 @@
 const MasterSubjectManager = require("../managers/master.subject.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<MasterSubjectManager>} */
 class MasterSubjectController extends BaseController {
 	constructor() {
 		super(new MasterSubjectManager());
-		this.masterSubjectManager = new MasterSubjectManager();
 	}
 
 	async getByName(req, res) {
@@ -12,7 +12,7 @@ class MasterSubjectController extends BaseController {
 			const { subject } = req.body;
 			const user = req.user;
 
-			const result = await this.masterSubjectManager.getByName(subject, user);
+			const result = await this.manager.getByName(subject, user);
 			if (!result.success) {
 				return res.status(404).json({ message: result.message });
 			}
@@ -27,7 +27,7 @@ class MasterSubjectController extends BaseController {
 		try {
 			const { board } = req.params;
 
-			const result = await this.masterSubjectManager.getByBoard(board);
+			const result = await this.manager.getByBoard(board);
 			if (!result.success) {
 				return res.status(404).json({ message: result.message });
 			}
@@ -41,7 +41,7 @@ class MasterSubjectController extends BaseController {
 	async update(req, res) {
 		try {
 			const { id } = req.params;
-			const result = await this.masterSubjectManager.updateSubject(
+			const result = await this.manager.updateSubject(
 				id,
 				req.body
 			);

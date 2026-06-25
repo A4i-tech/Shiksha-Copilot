@@ -19,7 +19,7 @@ describe("LessonPlanTemplateManager", () => {
     }));
 
     manager = new LessonPlanTemplateManager();
-    mockDao = manager.lessonPlanTemplateDao;
+    mockDao = manager.dao;
   });
 
   describe("constructor", () => {
@@ -29,7 +29,7 @@ describe("LessonPlanTemplateManager", () => {
     });
 
     it("should initialize with LessonPlanTemplateDao", () => {
-      expect(manager.lessonPlanTemplateDao).toBeDefined();
+      expect(manager.dao).toBeDefined();
       expect(LessonPlanTemplateDao).toHaveBeenCalled();
     });
   });

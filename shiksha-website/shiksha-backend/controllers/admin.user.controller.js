@@ -2,15 +2,15 @@ const handleError = require("../helper/handleError.js");
 const AdminUserManager = require("../managers/admin.user.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<AdminUserManager>} */
 class AdminUserController extends BaseController {
 	constructor() {
 		super(new AdminUserManager());
-		this.adminUserManager = new AdminUserManager();
 	}
 
 	async getByPhone(req, res) {
 		try {
-			let result = await this.adminUserManager.getByPhone(req);
+			let result = await this.manager.getByPhone(req);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -28,7 +28,7 @@ class AdminUserController extends BaseController {
 	async update(req, res) {
 		try {
 			const { _id } = req.body;
-			let result = await this.adminUserManager.update(_id, req.body);
+			let result = await this.manager.update(_id, req.body);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -48,7 +48,7 @@ class AdminUserController extends BaseController {
 			if (!req.file) {
 				return res.status(400).json({ error: "File not provided" });
 			}
-			const result = await this.adminUserManager.bulkUpload(req.file.buffer);
+			const result = await this.manager.bulkUpload(req.file.buffer);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -100,7 +100,7 @@ class AdminUserController extends BaseController {
 				searchFilter.$or = regexExpressions;
 			}
 
-			let result = await this.adminUserManager.getContentActivity(
+			let result = await this.manager.getContentActivity(
 				parseInt(page),
 				parseInt(limit),
 				{ ...filter, ...searchFilter },
@@ -122,7 +122,7 @@ class AdminUserController extends BaseController {
 
 	async exportContentActivity(req, res) {
 		try {
-		  const result = await this.adminUserManager.exportContentActivity(req);
+		  const result = await this.manager.exportContentActivity(req);
 		  if (result.success) return res.status(200).json(result);
 	
 		  handleError(result, res);
@@ -145,7 +145,7 @@ class AdminUserController extends BaseController {
 				toDate,
 				isLesson: isLesson === 'true' ? true : isLesson === 'false' ? false : undefined
 			};
-			let result = await this.adminUserManager.getDashboardMetrics(filters);
+			let result = await this.manager.getDashboardMetrics(filters);
 
 			if (result.success) {
 				return res.status(200).json(result);

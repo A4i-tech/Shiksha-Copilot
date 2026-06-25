@@ -14,16 +14,16 @@ const handleError = require('../helper/handleError');
 const {
   getPreSignedFileUrl,
 } = require("../services/azure.blob.service");
+/** @extends {BaseController<TeacherTrainingBatchManager>} */
 class TeacherTrainingBatchController extends BaseController {
   constructor() {
     super(new TeacherTrainingBatchManager());
-    this.batchManager = new TeacherTrainingBatchManager();
     this.getBatches = this.getBatches.bind(this);
     // Bind other methods as needed
   }
 
   async getBatches(req, res) {
-    const result = await this.batchManager.getBatches(req.user);
+    const result = await this.manager.getBatches(req.user);
     if (result.success) {
       return res.json(result.data);
     }

@@ -17,7 +17,7 @@ describe("TeacherLessonPlanController", () => {
 
     controller = new TeacherLessonPlanController();
     mockManager = TeacherLessonPlanManager.mock.instances[TeacherLessonPlanManager.mock.instances.length - 1];
-    controller.teacherLessonPlanManager = mockManager;
+    controller.manager = mockManager;
 
     mockReq = {
       params: {},
@@ -39,7 +39,7 @@ describe("TeacherLessonPlanController", () => {
     });
 
     it("should have a teacherLessonPlanManager property", () => {
-      expect(controller.teacherLessonPlanManager).toBeDefined();
+      expect(controller.manager).toBeDefined();
     });
   });
 

@@ -13,10 +13,10 @@ const formatApiReponse = require("../helper/response");
 const { formatSubject, getSemester } = require('../helper/formatter');
 const Chapter = require("../models/chapter.model");
 
+/** @extends {BaseManager<ChapterDao>} */
 class ChapterManager extends BaseManager {
   constructor() {
     super(new ChapterDao());
-    this.chapterDao = new ChapterDao();
     this.masterSubejectDao = new MasterSubjectDao();
   }
 
@@ -64,7 +64,7 @@ class ChapterManager extends BaseManager {
           subjectCount += 1;
         }
 
-        let chapter = await this.chapterDao.getOne({
+        let chapter = await this.dao.getOne({
           board,
           medium,
           topics: title,
@@ -92,7 +92,7 @@ class ChapterManager extends BaseManager {
           indexPath: lessonPlans[i]?.index_path
         };
 
-        await this.chapterDao.create(chapterObj);
+        await this.dao.create(chapterObj);
         chapterCount += 1;
 
       }
@@ -175,7 +175,7 @@ class ChapterManager extends BaseManager {
     filters = {}
   ) {
     try {
-      let data = await this.chapterDao.getChapterBySemester(filters);
+      let data = await this.dao.getChapterBySemester(filters);
       return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err.message, err);

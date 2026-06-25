@@ -17,7 +17,7 @@ describe("AuditLogController", () => {
   describe("constructor", () => {
     it("should create controller instance successfully", () => {
       expect(controller).toBeInstanceOf(AuditLogController);
-      expect(controller.auditLogManager).toBeDefined();
+      expect(controller.manager).toBeDefined();
     });
 
     it("should initialize with AuditLogManager", () => {
@@ -32,8 +32,8 @@ describe("AuditLogController", () => {
     });
 
     it("should have manager instance", () => {
-      expect(controller.auditLogManager).toBeDefined();
-      expect(controller.auditLogManager).toBeInstanceOf(AuditLogManager);
+      expect(controller.manager).toBeDefined();
+      expect(controller.manager).toBeInstanceOf(AuditLogManager);
     });
   });
 });

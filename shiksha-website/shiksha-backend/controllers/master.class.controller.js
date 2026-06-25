@@ -2,16 +2,16 @@
 const MasterClassManager = require("../managers/master.class.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<MasterClassManager>} */
 class MasterClassController extends BaseController {
   constructor() {
     super(new MasterClassManager());
-    this.masterClassManager = new MasterClassManager();
   }
 
   async update(req, res) {
     try {
       const { id } = req.params;
-      const result = await this.masterClassManager.updateClass(id, req.body);
+      const result = await this.manager.updateClass(id, req.body);
       if (!result.success) {
         return res.status(404).json({ message: result.message });
       }

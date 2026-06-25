@@ -3,10 +3,10 @@ const SchoolManager = require("../managers/school.manager.js");
 const BaseController = require("./base.controller.js");
 const dbService = require("../config/db");
 
+/** @extends {BaseController<SchoolManager>} */
 class SchoolController extends BaseController {
 	constructor() {
 		super(new SchoolManager());
-		this.schoolManager = new SchoolManager();
 	}
 
 	async create(req, res) {
@@ -14,7 +14,7 @@ class SchoolController extends BaseController {
 			let db = await dbService.getConnection();
 			const session = await db.startSession();
 
-			let result = await this.schoolManager.create(req, session);
+			let result = await this.manager.create(req, session);
 
 			await session.endSession();
 
@@ -34,7 +34,7 @@ class SchoolController extends BaseController {
 	async update(req, res) {
 		try {
 			const { id } = req.params;
-			let result = await this.schoolManager.update(id, req.body);
+			let result = await this.manager.update(id, req.body);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -50,7 +50,7 @@ class SchoolController extends BaseController {
 	async updateFacility(req, res) {
 		try {
 			const { id } = req.params;
-			let result = await this.schoolManager.updateFacility(id, req.body);
+			let result = await this.manager.updateFacility(id, req.body);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -70,7 +70,7 @@ class SchoolController extends BaseController {
 			if (!req.file) {
 				return res.status(400).json({ error: "File not provided" });
 			}
-			const result = await this.schoolManager.bulkUpload(req.file.buffer ,userId.toString(), userName);
+			const result = await this.manager.bulkUpload(req.file.buffer ,userId.toString(), userName);
 			if (result.success)
 			return res.status(200).json({
 			  message: "Bulk upload initiated , Please verify for audit logs!",
@@ -85,7 +85,7 @@ class SchoolController extends BaseController {
 
 	async export(req,res){
 		try {
-      const result = await this.schoolManager.exportSchool(req);
+      const result = await this.manager.exportSchool(req);
       if (result.success) {
         return res.status(200).json(result);
       }

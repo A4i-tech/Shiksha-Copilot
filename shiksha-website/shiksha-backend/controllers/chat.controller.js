@@ -2,10 +2,10 @@ const handleError = require('../helper/handleError.js');
 const ChatManager = require('../managers/chat.manager.js');
 const BaseController = require('./base.controller.js');
 
+/** @extends {BaseController<ChatManager>} */
 class ChatController extends BaseController {
     constructor() {
         super(new ChatManager());
-        this.chatManager = new ChatManager();
     }
 
     async sendMessage(req, res) {
@@ -14,7 +14,7 @@ class ChatController extends BaseController {
             const userId = req.user._id;
 
             // Use streaming manager method
-            const result = await this.chatManager.sendMessageStream(userId, message);
+            const result = await this.manager.sendMessageStream(userId, message);
 
             if (!result.success) {
                 return res.status(404).json({ message: result.message, data: result.error });
@@ -45,7 +45,7 @@ class ChatController extends BaseController {
     async listMessages(req, res) {
         try {
             const userId = req.user._id;
-            const result = await this.chatManager.listMessages(userId);
+            const result = await this.manager.listMessages(userId);
             if (!result.success) {
                 return res.status(404).json({ message: result.message, data: result.data });
             }
@@ -61,7 +61,7 @@ class ChatController extends BaseController {
             const { recordId, chapterId } = req.params;
             const userId = req.user._id;
             const { message } = req.body;
-            const result = await this.chatManager.sendLessonMessage(userId, recordId, chapterId, message);
+            const result = await this.manager.sendLessonMessage(userId, recordId, chapterId, message);
             if (!result.success) {
                 return res.status(404).json({ message: result.message, data: result.data });
             }
@@ -76,7 +76,7 @@ class ChatController extends BaseController {
         try {
             const { recordId, chapterId } = req.params;
             const userId = req.user._id;
-            const result = await this.chatManager.listLessonMessages(recordId, chapterId, userId);
+            const result = await this.manager.listLessonMessages(recordId, chapterId, userId);
             if (!result.success) {
                 return res.status(404).json({ message: result.message, data: result.data });
             }

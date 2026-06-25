@@ -21,7 +21,7 @@ describe('ChatManager', () => {
             createMessage: jest.fn(),
             getMessagesBySessionId: jest.fn()
         };
-        chatManager.chatDao = mockChatDao;
+        chatManager.dao = mockChatDao;
         chatManager.getTotalSessionMessagesCount = jest.fn();
         jest.clearAllMocks();
     });

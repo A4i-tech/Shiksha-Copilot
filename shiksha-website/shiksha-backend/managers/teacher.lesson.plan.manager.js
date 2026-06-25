@@ -22,10 +22,10 @@ const mongoose = require("mongoose");
 const ActivityRatingAggregate = require("../models/activity.aggregate.model.js");
 const { attachAggregateRatings } = require("../helper/activity.rating.helper.js");
 
+/** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
 	constructor() {
 		super(new TeacherLessonPlanDao());
-		this.teacherLessonPlanDao = new TeacherLessonPlanDao();
 		this.chapterDao = new ChapterDao();
 		this.masterLessonDao = new MasterLessonDao();
 		this.lessonPlanTemplateDao = new LessonPlanTemplateDao();
@@ -43,7 +43,7 @@ class TeacherLessonPlanManager extends BaseManager {
 	) {
 		try {
 			if (filters.type != "all") {
-				let lessons = await this.teacherLessonPlanDao.getByTeacherAndPagination(
+				let lessons = await this.dao.getByTeacherAndPagination(
 					teacherId,
 					filters.type,
 					page,
@@ -58,7 +58,7 @@ class TeacherLessonPlanManager extends BaseManager {
 					lessons.results.sort((a, b) => b.updatedAt - a.updatedAt)
 				);
 			} else {
-				let lessons = await this.teacherLessonPlanDao.getByTeacherAndPagination(
+				let lessons = await this.dao.getByTeacherAndPagination(
 					teacherId,
 					"lesson",
 					page,
@@ -68,7 +68,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				);
 
 				let resources =
-					await this.teacherLessonPlanDao.getByTeacherAndPagination(
+					await this.dao.getByTeacherAndPagination(
 						teacherId,
 						"resource",
 						page,
@@ -129,7 +129,7 @@ class TeacherLessonPlanManager extends BaseManager {
 
 	async getLessonPlanById(teacherId, lessonPlanId) {
 		try {
-			const lessonPlan = await this.teacherLessonPlanDao.getLessonPlanById(
+			const lessonPlan = await this.dao.getLessonPlanById(
 				teacherId,
 				lessonPlanId
 			);
@@ -208,7 +208,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				instanceId: result.data.instance_id,
 			};
 
-			let newTeacherLessonPlan = await this.teacherLessonPlanDao.create(
+			let newTeacherLessonPlan = await this.dao.create(
 				teacherLessonPlanData
 			);
 
@@ -237,7 +237,7 @@ class TeacherLessonPlanManager extends BaseManager {
 
 	async getResourcePlanById(teacherId, resourcePlanId) {
 		try {
-			const resourcePlan = await this.teacherLessonPlanDao.getResourcePlanById(
+			const resourcePlan = await this.dao.getResourcePlanById(
 				teacherId,
 				resourcePlanId
 			);
@@ -322,7 +322,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				regenFeedback:payload.regenFeedback
 			};
 
-			const existingLessonPlan = await this.teacherLessonPlanDao.getOne({
+			const existingLessonPlan = await this.dao.getOne({
 				teacherId: teacherId,
 				lessonId: payload.lessonId,
 			});
@@ -339,7 +339,7 @@ class TeacherLessonPlanManager extends BaseManager {
 					instanceId: result.data.instance_id,
 				};
 
-				const newTeacherLessonPlan = await this.teacherLessonPlanDao.create(
+				const newTeacherLessonPlan = await this.dao.create(
 					newTeacherLessonPlanData
 				);
 				await this.lessonFeedbackDao.create({
@@ -349,7 +349,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				});
 			} else {
 				const existingLessonPlan =
-					await this.teacherLessonPlanDao.updateForRegenerate(
+					await this.dao.updateForRegenerate(
 						teacherId,
 						payload.lessonId,
 						lesson._id,
@@ -396,7 +396,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			const todayEnd = new Date();
 			todayEnd.setUTCHours(23, 59, 59, 999);
     
-            const regenerationCount = await this.teacherLessonPlanDao.getRegeneratedLessonPlansCount(teacherId, todayStart, todayEnd);
+            const regenerationCount = await this.dao.getRegeneratedLessonPlansCount(teacherId, todayStart, todayEnd);
 			return regenerationCount
 		}catch(error){
 			console.error("Error -> TeacherLessonPlanController -> regeneratedCount", error);
@@ -409,7 +409,7 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			const { instance_id , status, output } = webhookData;
 
-			const existingLessonPlan = await this.teacherLessonPlanDao.getOne({
+			const existingLessonPlan = await this.dao.getOne({
 				instanceId: instance_id,
 			});
 
@@ -441,7 +441,7 @@ class TeacherLessonPlanManager extends BaseManager {
 					sections
 				};
 
-				await this.teacherLessonPlanDao.updatePlan(
+				await this.dao.updatePlan(
 					existingLessonPlan._id,
 					updateTeacherLessonPlanData
 				);
@@ -457,7 +457,7 @@ class TeacherLessonPlanManager extends BaseManager {
 					status: status.toLowerCase(),
 				};
 
-				await this.teacherLessonPlanDao.updatePlan(
+				await this.dao.updatePlan(
 					existingLessonPlan._id,
 					updateTeacherLessonPlanData
 				);
@@ -790,7 +790,7 @@ async rateActivity(teacherId, resourceId, data) {
 	async _checkStatusAndThrowError(regeneratedId, recordId) {
         try {
             const regeneratedLog = await this.regeneratedLessonResource.getById(regeneratedId);
-            const teacherLessonPlan = await this.teacherLessonPlanDao.getById(recordId);
+            const teacherLessonPlan = await this.dao.getById(recordId);
 
             if (!regeneratedLog || regeneratedLog.status.toLowerCase() !== "failed") {
                 throw new Error("Regeneration log is either not found or not in a failed state.");
@@ -811,7 +811,7 @@ async rateActivity(teacherId, resourceId, data) {
 			await this._checkStatusAndThrowError(regeneratedId, recordId);
 
 			const regeneratedLog = await this.regeneratedLessonResource.getById(regeneratedId);
-			const teacherLessonPlan = await this.teacherLessonPlanDao.getById(recordId);
+			const teacherLessonPlan = await this.dao.getById(recordId);
 
             const masterLesson = await this.masterLessonDao.getById(teacherLessonPlan.lessonId);
             if (!masterLesson) {

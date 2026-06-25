@@ -20,7 +20,7 @@ describe("LessonPlanTemplateController", () => {
     }));
 
     controller = new LessonPlanTemplateController();
-    mockManager = controller.lessonPlanTemplateManager;
+    mockManager = controller.manager;
 
     mockReq = {
       query: {},

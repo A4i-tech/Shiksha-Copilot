@@ -38,7 +38,7 @@ describe("UserController", () => {
     });
 
     it("should have a userManager property", () => {
-      expect(controller.userManager).toBeDefined();
+      expect(controller.manager).toBeDefined();
     });
   });
 

@@ -26,7 +26,7 @@ describe("MasterResourceController", () => {
     }));
 
     controller = new MasterResourceController();
-    mockManager = controller.masterResourceManager;
+    mockManager = controller.manager;
 
     mockReq = {
       user: { _id: "user-123", role: "teacher" },

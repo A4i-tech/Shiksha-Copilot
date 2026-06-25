@@ -2,17 +2,17 @@ const handleError = require("../helper/handleError.js");
 const MasterLessonManger = require("../managers/master.lesson.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<MasterLessonManger>} */
 class MasterLessonController extends BaseController {
 	constructor() {
 		super(new MasterLessonManger());
-		this.masterLessonManager = new MasterLessonManger();
 	}
 
 	async saveToTeacher(req, res) {
 		try {
 			let { _id: teacherId } = req.user;
 
-			let result = await this.masterLessonManager.saveToTeacher(
+			let result = await this.manager.saveToTeacher(
 				teacherId,
 				req.body
 			);
@@ -34,7 +34,7 @@ class MasterLessonController extends BaseController {
 		try {
 			const { id } = req.params;
 	
-			const result = await this.masterLessonManager.getActivityById(id);
+			const result = await this.manager.getActivityById(id);
 	
 			if (result.success) {
 				return res.status(200).json(result);
@@ -52,7 +52,7 @@ class MasterLessonController extends BaseController {
 		try {
 			let { _id: teacherId } = req.user;
 			let reqBody = req.body;
-			let result = await this.masterLessonManager.getByTeacher(
+			let result = await this.manager.getByTeacher(
 				teacherId,
 				reqBody
 			);
@@ -72,7 +72,7 @@ class MasterLessonController extends BaseController {
 
 	async update(req, res) {
 		try {
-			let result = await this.masterLessonManager.update(req);
+			let result = await this.manager.update(req);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -99,7 +99,7 @@ class MasterLessonController extends BaseController {
 
 			const { lessonId, reason } = req.body;
 
-			const result = await this.masterLessonManager.regenerateLessonPlan({
+			const result = await this.manager.regenerateLessonPlan({
 				lessonId,
 				reason,
 				userId: req.user._id,
@@ -124,7 +124,7 @@ class MasterLessonController extends BaseController {
 	async comboScript(req, res) {
 		try {
 			const { board = "CBSE", medium = "English", isAll = true } = req.body;
-			const result = await this.masterLessonManager.comboScript(
+			const result = await this.manager.comboScript(
 				board,
 				medium,
 				isAll
@@ -144,7 +144,7 @@ class MasterLessonController extends BaseController {
 		try {
 			const { chapterId,templateIds } = req.body;
 			const { filters = {} } = req.query;
-			const result = await this.masterLessonManager.getLessonOutcomes(
+			const result = await this.manager.getLessonOutcomes(
 				chapterId,
 				templateIds,
 				filters
@@ -170,7 +170,7 @@ class MasterLessonController extends BaseController {
 			const { lessonId } = req.params;
 			const { _id: teacherId } = req.user;
 			const { filters = {} } = req.query;
-			const result = await this.masterLessonManager.generateLessonPlan(
+			const result = await this.manager.generateLessonPlan(
 				teacherId,
 				lessonId,
 				filters
@@ -205,7 +205,7 @@ class MasterLessonController extends BaseController {
 		try {
 			const { lessonId } = req.params;
 			const { _id: user_id , name : user_name }  = req.user
-			const result = await this.masterLessonManager.generate5ETables(
+			const result = await this.manager.generate5ETables(
 				lessonId,
 				user_id,
 				user_name
@@ -228,7 +228,7 @@ class MasterLessonController extends BaseController {
 
 	async scriptLpDump(req, res) {
 		try {
-			let result = await this.masterLessonManager.scriptLpDump(req);
+			let result = await this.manager.scriptLpDump(req);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -246,7 +246,7 @@ class MasterLessonController extends BaseController {
 
 	async uploadMasterLesson(req, res) {
 		try {
-			let result = await this.masterLessonManager.uploadMasterLesson(req);
+			let result = await this.manager.uploadMasterLesson(req);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -263,7 +263,7 @@ class MasterLessonController extends BaseController {
 
 	async uploadMasterLessonOlderVersion(req, res) {
 		try {
-			let result = await this.masterLessonManager.uploadMasterLessonOlderVersion(req);
+			let result = await this.manager.uploadMasterLessonOlderVersion(req);
 
 			if (result.success) {
 				return res.status(200).json(result);

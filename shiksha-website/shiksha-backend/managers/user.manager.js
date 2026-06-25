@@ -15,17 +15,17 @@ const { MESSAGES } = require("../config/constants");
 const ClassDao = require("../dao/school.class.dao");
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
 
+/** @extends {BaseManager<UserDao>} */
 class UserManager extends BaseManager {
   constructor() {
     super(new UserDao());
-    this.userDao = new UserDao();
     this.schoolDao = new SchoolDao();
     this.classDao = new ClassDao();
   }
 
   async create(req) {
     try {
-      const existingUser = await this.userDao.getByPhone(req.body.phone);
+      const existingUser = await this.dao.getByPhone(req.body.phone);
 
       if (existingUser)
         return { success: false, message: "Phone already exists!" };
@@ -34,7 +34,7 @@ class UserManager extends BaseManager {
 
       if (!school) return { success: false, message: "School does not exist!" };
 
-      const result = await this.userDao.create(req.body);
+      const result = await this.dao.create(req.body);
 
       sendWelcomeSMS(req.body.phone, req.body.name).catch((error) => {
         console.error("Error sending welcome SMS:", error);
@@ -48,12 +48,12 @@ class UserManager extends BaseManager {
 
   async getProfileById(id) {
     try {
-      let user = await this.userDao.getById(id);
+      let user = await this.dao.getById(id);
 
       let plainUser = user.toObject();
 
       // Refresh profile image SAS URL if expired
-      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.userDao.update(id, updates));
+      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.dao.update(id, updates));
 
       let groupByBoards = await this.classDao.getGroupClassesByBoard(
         user.school
@@ -113,7 +113,7 @@ class UserManager extends BaseManager {
 
   async getByPhone(req) {
     try {
-      let data = await this.userDao.getByPhone(req.body.phone);
+      let data = await this.dao.getByPhone(req.body.phone);
       if (data) return formatApiReponse(true, "", data);
       return formatApiReponse(false, "", null);
     } catch (err) {
@@ -123,7 +123,7 @@ class UserManager extends BaseManager {
 
   async update(id, payload) {
     try {
-      let user = await this.userDao.getOne({
+      let user = await this.dao.getOne({
         _id: id,
         phone: payload.phone,
       });
@@ -137,12 +137,12 @@ class UserManager extends BaseManager {
         }
         if (isRoleChanged) payload.isLoginAllowed = false;
 
-        user = await this.userDao.update(id, payload);
+        user = await this.dao.update(id, payload);
         if (user)
           return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, user.phone);
       }
 
-      user = await this.userDao.getOne({ phone: payload.phone });
+      user = await this.dao.getOne({ phone: payload.phone });
       if (user) {
         return formatApiReponse(
           false,
@@ -151,7 +151,7 @@ class UserManager extends BaseManager {
         );
       }
 
-      let originalUserRecord = await this.userDao.getOne({ _id: id });
+      let originalUserRecord = await this.dao.getOne({ _id: id });
 
       if (payload.isSchoolChanged) {
         payload.isProfileCompleted = false;
@@ -162,7 +162,7 @@ class UserManager extends BaseManager {
         originalUserRecord && originalUserRecord.phone !== payload.phone;
       if (isPhoneChanged) payload.isLoginAllowed = false;
 
-      user = await this.userDao.update(id, payload);
+      user = await this.dao.update(id, payload);
 
       if (user) {
         return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, user.phone);
@@ -263,7 +263,7 @@ class UserManager extends BaseManager {
 
   async getById(userId) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "User not found" };
       }
@@ -276,7 +276,7 @@ class UserManager extends BaseManager {
 
   async setProfile(userId, profileData) {
     try {
-      const updatedUser = await this.userDao.setProfile(userId, profileData);
+      const updatedUser = await this.dao.setProfile(userId, profileData);
       if (!updatedUser) {
         return formatApiReponse(false, "Teacher not found", null);
       }
@@ -289,14 +289,14 @@ class UserManager extends BaseManager {
 
   async uploadProfileImage(userId, filePath) {
     try {
-      let user = await this.userDao.getById(userId);
+      let user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "Teacher not found" };
       }
 
       let expireLimit = 5 * 24 * 60 * 60;
 
-      user = await this.userDao.update(userId, {
+      user = await this.dao.update(userId, {
         profileImage: filePath,
         profileImageExpiresIn:
           parseInt(Date.now() / 1000) + Number(expireLimit),
@@ -323,12 +323,12 @@ class UserManager extends BaseManager {
 
   async removeProfileImage(userId) {
     try {
-      let user = await this.userDao.getById(userId);
+      let user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "Teacher not found" };
       }
 
-      user = await this.userDao.update(user._id, {
+      user = await this.dao.update(user._id, {
         profileImage: "",
         profileImageExpiresIn: parseInt(Date.now() / 1000),
       });
@@ -350,7 +350,7 @@ class UserManager extends BaseManager {
 
   async activate(userId) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
       const school = await this.schoolDao.getOne({ _id: user.school });
       if (school.isDeleted) {
         return formatApiReponse(
@@ -368,7 +368,7 @@ class UserManager extends BaseManager {
         return formatApiReponse(false, "Teacher is already active", null);
       }
 
-      const updatedUser = await this.userDao.update(userId, {
+      const updatedUser = await this.dao.update(userId, {
         isDeleted: false,
       });
       return formatApiReponse(
@@ -383,7 +383,7 @@ class UserManager extends BaseManager {
 
   async deactivate(userId) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
 
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
@@ -391,7 +391,7 @@ class UserManager extends BaseManager {
       if (user.isDeleted) {
         return formatApiReponse(false, "Teacher is already inactive", null);
       }
-      const updatedUser = await this.userDao.update(userId, {
+      const updatedUser = await this.dao.update(userId, {
         isDeleted: true,
       });
 
@@ -407,13 +407,13 @@ class UserManager extends BaseManager {
 
   async updatePreferredLanguage(userId, preferredLanguage) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
 
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
       }
 
-      await this.userDao.update(userId, { preferredLanguage });
+      await this.dao.update(userId, { preferredLanguage });
 
       return formatApiReponse(true, "Language updated successfully", null);
     } catch (err) {
@@ -470,7 +470,7 @@ class UserManager extends BaseManager {
       } else if (includeDeleted === "0") {
         status = { isDeleted: false };
       }
-      const users = await this.userDao.getAll(
+      const users = await this.dao.getAll(
         parseInt(page),
         parseInt(limit),
         mergedFilter,
@@ -549,7 +549,7 @@ class UserManager extends BaseManager {
   async activityLog(req) {
     try {
       const { _id } = req.user;
-      const userActivity = await this.userDao.activityLog(_id, req.body);
+      const userActivity = await this.dao.activityLog(_id, req.body);
       return formatApiReponse(true, "Logs saved successfully!", userActivity);
     }
     catch (err) {
