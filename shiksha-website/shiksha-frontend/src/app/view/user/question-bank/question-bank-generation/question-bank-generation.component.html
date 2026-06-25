@@ -77,7 +77,21 @@
                 </div>
 
                 <!-- 2. Source Generation (Multi Select Dropdown) -->
-                <div>
+                <div class="source-field">
+                  <label class="form-control-label inline-flex items-center gap-1">
+                    {{ 'Source' | translate }} <span class="text-[16px] text-error">*</span>
+                    <span class="relative z-10 group cursor-help" tabindex="0" [attr.aria-label]="'Help' | translate"
+                      aria-describedby="source-help-tooltip" [attr.aria-expanded]="sourceHelpOpen"
+                      (focus)="sourceHelpOpen = true" (blur)="sourceHelpOpen = false">
+                      <img src="assets/icons/info-primary.svg" class="inline-block w-4 h-4" alt="" />
+                      <span id="source-help-tooltip" role="tooltip" class="hidden group-hover:grid group-focus:grid absolute top-5 left-0 z-50 w-72 gap-1 rounded border border-content-30 bg-white p-3 text-xs font-normal leading-snug text-content-60 shadow-md">
+                        <ng-container *ngFor="let option of sourceGenerationOptions">
+                          <strong class="text-content">{{ option.name | translate }}</strong>
+                          <span *ngIf="option.info">{{ option.info | translate }}</span>
+                        </ng-container>
+                      </span>
+                    </span>
+                  </label>
                   <app-form-dropdown [dropDownControlName]="'sourceGeneration'"
                     (valueChange)="onSourceGenerationChange($event)"
                     [dropDownCtrl]="convertToFormControl(f['sourceGeneration'])"

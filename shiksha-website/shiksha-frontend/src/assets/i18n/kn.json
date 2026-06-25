@@ -500,6 +500,8 @@
   "Higher order thinking": "ಉನ್ನತ ಮಟ್ಟದ ಚಿಂತನೆ",
   "AI Questions": "ಎಐ ಪ್ರಶ್ನೆಗಳು",
   "Pre-generated Questions": "ಪೂರ್ವ-ರಚಿತ ಪ್ರಶ್ನೆಗಳು",
+  "These are AI-generated questions based on the selected criteria.": "ಆಯ್ಕೆ ಮಾಡಿದ ಮಾನದಂಡಗಳ ಆಧಾರದ ಮೇಲೆ ಎಐ ರಚಿಸಿದ ಪ್ರಶ್ನೆಗಳು.",
+  "These are LBA Questions as recommended by the educational board.": "ಶೈಕ್ಷಣಿಕ ಮಂಡಳಿಯ ಶಿಫಾರಸಿನಂತೆ ಇರುವ LBA ಪ್ರಶ್ನೆಗಳು.",
   "Easy": "ಸುಲಭ",
   "Average": "ಸರಾಸರಿ",
   "Difficult": "ಕಷ್ಟ",

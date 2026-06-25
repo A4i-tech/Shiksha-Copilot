@@ -28,6 +28,7 @@ export interface FormDropDownConfig {
   hideLabel?: boolean;
   searchable?: boolean;
   hideChips?: boolean;
+  hideChipIcons?: boolean;
   bindLable?: string;
   bindValue?: string;
   chipValueType?: string;
