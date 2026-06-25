@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { hasQuestionImage, questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 @Component({
   selector: 'app-question-bank-template', // Keeping selector same for compatibility
@@ -39,6 +40,8 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
   availableDifficulties: string[] = [];
   readonly QUESTION_SOURCE = QUESTION_SOURCE;
   readonly formatMarks = formatMarks;
+  readonly hasQuestionImage = hasQuestionImage;
+  readonly questionText = questionText;
 
   constructor() { }
 
@@ -147,7 +150,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges {
       const matchType = this.filterQuestionType === 'ALL' || q.heading === this.filterQuestionType;
 
       // 4. Search Filter
-      const matchSearch = !this.searchText || (q.text && q.text.toLowerCase().includes(this.searchText.toLowerCase()));
+      const matchSearch = !this.searchText || this.questionText(q).toLowerCase().includes(this.searchText.toLowerCase());
 
       // 5. Exclude already selected
       const isSelected = this.selectedQuestions.some(sq => sq._id === q._id);

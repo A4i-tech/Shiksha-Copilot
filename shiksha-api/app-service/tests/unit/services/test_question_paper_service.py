@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from app.services.question_paper_service import QuestionPaperService
-from app.models.question_paper import Chapter, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion
+from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion
 
 
 # Shared fixture to avoid recreating the service
@@ -33,27 +33,26 @@ class TestFlattenQuestions:
 
     def test_flatten_text_questions(self, service):
         """Test flattening text-based questions."""
-        mock_response = MagicMock()
-        mock_response.questions = [TextQuestion(question="What is photosynthesis?")]
-
-        result = service._flatten_existing_questions([mock_response])
+        questions = [TextQuestion(question=[Content.text("What is photosynthesis?")])]
+        result = service._flatten_questions(questions)
 
         assert len(result) == 1
         assert "What is photosynthesis?" in result
 
     def test_flatten_matching_questions(self, service):
         """Test flattening matching-type questions."""
-        mock_response = MagicMock()
-        mock_response.questions = [MatchingListQuestion(value1="Mitochondria", value2="Powerhouse of the cell")]
-
-        result = service._flatten_existing_questions([mock_response])
+        questions = [MatchingListQuestion(
+            value1=[Content.text("Mitochondria")],
+            value2=[Content.text("Powerhouse of the cell")],
+        )]
+        result = service._flatten_questions(questions)
 
         assert len(result) == 1
         assert "Mitochondria :: Powerhouse of the cell" in result
 
     def test_flatten_empty_list(self, service):
         """Test flattening empty list."""
-        result = service._flatten_existing_questions([])
+        result = service._flatten_questions([])
         assert result == []
 
 

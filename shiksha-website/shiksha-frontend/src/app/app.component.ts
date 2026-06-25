@@ -37,16 +37,18 @@ export class AppComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // ngx-clipboard textarea patch
-    this.clipboardObserver = new MutationObserver((mutations) => {
+    // ngx-clipboard injects a hidden utility textarea. aria-hidden="true" alone removes
+    // it from the a11y tree (an aria-label on a hidden element is never announced).
+    const patchClipboardTextareas = () => {
       document.querySelectorAll('textarea').forEach((textarea) => {
-        if (!textarea.hasAttribute('aria-label') && !textarea.hasAttribute('aria-hidden') && textarea.style.opacity === '0') {
-          textarea.setAttribute('aria-label', 'System Clipboard Helper');
+        if (!textarea.hasAttribute('aria-hidden') && textarea.style.opacity === '0') {
           textarea.setAttribute('aria-hidden', 'true');
         }
       });
-    });
+    };
+    this.clipboardObserver = new MutationObserver(patchClipboardTextareas);
     this.clipboardObserver.observe(document.body, { childList: true, subtree: true });
+    patchClipboardTextareas(); // initial scan: observer only fires on future mutations
 
     this.idleService.idleIndicator.subscribe({
       next: () => {

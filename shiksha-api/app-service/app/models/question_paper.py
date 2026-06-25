@@ -3,8 +3,7 @@
 
 from enum import Enum
 from typing import Annotated, List, Literal, Optional, TypeAlias
-import re
-from pydantic import AfterValidator, BaseModel, field_validator, Field, model_validator
+from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, WithJsonSchema
 
 
 # ==============================
@@ -36,11 +35,25 @@ Marking = Annotated[
     AfterValidator(valid_marking)
 ]
 
+SerializableBytes = Annotated[
+    bytes,
+    BeforeValidator(lambda v: v if isinstance(v, bytes) else v.encode("utf-8")),
+    WithJsonSchema({"type": "string"}),
+]
+
+
+class Content(BaseModel):
+    content_type: Literal["text/plain", "image/png", "image/jpeg"] = Field(default="text/plain")
+    content: SerializableBytes
+
+    @staticmethod
+    def text(content: str): return Content(content=content.encode(encoding="utf-8"))
+
 
 class TextQuestion(BaseModel):
-    question: str = Field(default="")
-    answer: str = Field(default="")
-    keyAnswer: str = Field(default="", description="\n".join([
+    question: list[Content] = Field(default_factory=list)
+    answer: list[Content] = Field(default_factory=list)
+    keyAnswer: list[Content] = Field(default_factory=list, description="\n".join([
         "Answer to be displayed right below the question.",
         "- For MCQs, this should be the label of the correct option (e.g. 'A').",
         "- For fill-in-the-blank questions, this should be the word or phrase that fills the blank.",
@@ -49,72 +62,22 @@ class TextQuestion(BaseModel):
     difficulty: DifficultyType = "Average"
 
 
-
 class McqOption(BaseModel):
     label: str
-    text: str
-
+    text: list[Content]
 
 
 class FourOptionsQuestion(BaseModel):
-    question: str = Field(default="", examples=["What is the speed of light in vacuum?"])
+    question: list[Content] = Field(default_factory=list, examples=["What is the speed of light in vacuum?"])
     options: List[McqOption] = Field(default_factory=list, min_length=4, max_length=4, examples=[[
-        McqOption(label="A", text="3x10^8 m/s"),
-        McqOption(label="B", text="3x10^6 m/s"),
-        McqOption(label="C", text="3x10^10 m/s"),
-        McqOption(label="D", text="3x10^5 m/s")
+        McqOption(label="A", text=[Content.text("3x10^8 m/s")]),
+        McqOption(label="B", text=[Content.text("3x10^6 m/s")]),
+        McqOption(label="C", text=[Content.text("3x10^10 m/s")]),
+        McqOption(label="D", text=[Content.text("3x10^5 m/s")])
     ]])
-    answer: str = Field(default="", examples=["3x10^8 m/s"])
-    keyAnswer: str = Field(default="", description="The correct answer choice. This is displayed right below the question.", examples=["A"])
+    answer: list[Content] = Field(default_factory=list, examples=["3x10^8 m/s"])
+    keyAnswer: list[Content] = Field(default_factory=list, description="The correct answer choice. This is displayed right below the question.", examples=["A"])
     difficulty: DifficultyType = "Average"
-
-    @model_validator(mode="before")
-    @classmethod
-    def convert_legacy_mcq_shape(cls, values):
-        if not isinstance(values, dict):
-            return values
-
-        values = dict(values)
-
-        if "options" not in values:
-            legacy_options = []
-            for label in ["A", "B", "C", "D", "E", "F"]:
-                option_key = f"option_{label.lower()}"
-                option_text = values.get(option_key)
-                if option_text:
-                    legacy_options.append({"label": label, "text": option_text})
-
-            if legacy_options:
-                values["options"] = legacy_options
-
-        if "keyAnswer" not in values and "correct_option" in values:
-            correct_option = values.get("correct_option")
-            if isinstance(correct_option, str):
-                match = re.match(r"option_([A-Za-z])$", correct_option.strip())
-                values["keyAnswer"] = (
-                    match.group(1).upper() if match else correct_option.strip()
-                )
-
-        return values
-
-    @classmethod
-    @field_validator("options", mode="before")
-    def convert_strings_to_options(cls, v):
-        # If it's a list of strings, convert to McqOption objects
-        if v is None:
-            return []
-        if isinstance(v, list) and len(v) > 0 and isinstance(v[0], str):
-            labels = ["A", "B", "C", "D", "E", "F"]
-            cleaned_options = []
-            for i, opt in enumerate(v):
-                # Clean prefix like "A. ", "a) ", "1. " from the start of the string
-                clean_text = re.sub(r'^[A-Za-z0-9]+[\.\)]\s*', '', opt)
-
-                label = labels[i] if i < len(labels) else str(i+1)
-                cleaned_options.append({"label": label, "text": clean_text})
-
-            return cleaned_options
-        return v
 
 
 class MatchingListQuestion(BaseModel):
@@ -123,8 +86,8 @@ class MatchingListQuestion(BaseModel):
     often consists of multiple entries, this model represents just one complete entry.
     """
 
-    value1: str = Field(default="", description="The phrase to display on the left-hand side.")
-    value2: str = Field(default="", description="The phrase to display on the right-hand side.")
+    value1: list[Content] = Field(default_factory=list, description="The phrase to display on the left-hand side.")
+    value2: list[Content] = Field(default_factory=list, description="The phrase to display on the right-hand side.")
     difficulty: DifficultyType = "Average"
 
 
