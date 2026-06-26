@@ -187,8 +187,11 @@ class TeacherLessonPlanController extends BaseController {
 			return res.status(200).json(response.data[0]);
 		}
 
-		const lessonPlan = await this.teacherLessonPlanManager.teacherLessonPlanDao.getLessonPlanById(teacherId, lessonPlanId);
-		if (!lessonPlan) {
+		const [authorized, lessonPlan] = await Promise.all([
+			this.teacherLessonPlanManager.teacherLessonPlanDao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
+			this.teacherLessonPlanManager.masterLessonDao.getById(lessonPlanId)
+		]);
+		if (!authorized || !lessonPlan) {
 			return res.status(404).json({ message: "Lesson plan not found" });
 		}
 
