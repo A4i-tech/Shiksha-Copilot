@@ -1096,7 +1096,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    */
   editSchoolDetails() {
     this.router.navigateByUrl('/empty', { skipLocationChange: true }).then(() => {
-      this.router.navigate([`/admin/school-management/${this.schoolId}`], {
+      this.router.navigate([`/school-management/${this.schoolId}`], {
         relativeTo: this.route,
         queryParams: { mode: 'edit' },
       });
@@ -1167,7 +1167,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
       this.schoolManagementService.updateSchool(data, this.schoolId).subscribe({
         next: (res) => {
           this.utilityService.handleResponse(res);
-          this.router.navigate(['/admin/school-management']);
+          this.router.navigate(['/school-management']);
         },
         error: (err) => {
           this.utilityService.handleError(err);
@@ -1177,7 +1177,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
       this.schoolManagementService.createSchool(data).subscribe({
         next: (res) => {
           this.utilityService.handleResponse(res);
-          this.router.navigate(['/admin/school-management']);
+          this.router.navigate(['/school-management']);
         },
         error: (err) => {
           this.utilityService.handleError(err);

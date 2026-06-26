@@ -63,11 +63,23 @@ class UserManager extends BaseManager {
 
       plainUser.classes = (groupedClasseswithSubjects || []).map((classItem) => {
         const board = groupByBoards.find(
-          (item) => item._id === classItem.board
+          (item) => String(item._id) === String(classItem.board)
         );
+        if (!board) {
+          console.warn(
+            `getProfileById: no board entry found for board=${classItem.board}, skipping class`
+          );
+          return null;
+        }
         const medium = board.medium.find(
           (item) => item.medium === classItem.medium
         );
+        if (!medium) {
+          console.warn(
+            `getProfileById: no medium entry found for board=${classItem.board} medium=${classItem.medium}, skipping class`
+          );
+          return null;
+        }
         const standard = medium.classDetails.find(
           (item) => item.standard === classItem.class
         );
@@ -79,10 +91,10 @@ class UserManager extends BaseManager {
           subject: classItem.name,
           medium: classItem.medium,
           subjectDetails: classItem.subjects,
-          boysStrength: standard.boysStrength,
-          girlsStrength: standard.girlsStrength,
+          boysStrength: standard?.boysStrength,
+          girlsStrength: standard?.girlsStrength,
         };
-      });
+      }).filter(Boolean);
 
       return {
         success: true,

@@ -325,7 +325,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       if (currentSchoolValue !== this.initialSchoolValue) {
         this.userManagementService.editUserDetails(this.userId, updatedData).subscribe({
           next: (res: any) => {
-            this.router.navigate(['/admin/user-management/list']);
+            this.router.navigate(['/teacher-management/list']);
             this.utilityService.handleResponse(res);
           },
           error: (err) => {
@@ -337,7 +337,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       else {
         this.userManagementService.editUserDetails(this.userId, this.addForm.value).subscribe({
           next: (res: any) => {
-            this.router.navigate(['/admin/user-management/list']);
+            this.router.navigate(['/teacher-management/list']);
             this.utilityService.handleResponse(res);
           },
           error: (err) => {
@@ -352,7 +352,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
 
       this.commonStaffUserService.addUser(this.addForm.value, 'user').subscribe({
         next: (res: any) => {
-          this.router.navigate(['/admin/user-management/list']);
+          this.router.navigate(['/teacher-management/list']);
           this.utilityService.handleResponse(res);
         },
         error: (err) => {

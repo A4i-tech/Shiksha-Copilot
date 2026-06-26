@@ -359,29 +359,29 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
 
   onView(data: any) {
     if (data.isPresentation) {
-      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      this.router.navigate([`/content-generation/presentation/${data.id}`]);
       return;
     }
     if (data.isLesson) {
-      this.router.navigate([`/user/content-generation/lesson-plan/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/${data.lesson._id}`]);
     }
     else {
 
-      this.router.navigate([`/user/content-generation/resource-plan/${data.resource._id}`]);
+      this.router.navigate([`/content-generation/resource-plan/${data.resource._id}`]);
     }
   }
 
   onViewDraft(data:any){
     if (data.isPresentation) {
-      this.router.navigate([`/user/content-generation/presentation/${data.id}`]);
+      this.router.navigate([`/content-generation/presentation/${data.id}`]);
       return;
     }
     if (data.isLesson) {
-      this.router.navigate([`/user/content-generation/lesson-plan/draft/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/draft/${data.lesson._id}`]);
     }
     else {
 
-      this.router.navigate([`/user/content-generation/resource-plan/draft/${data.resource._id}`]);
+      this.router.navigate([`/content-generation/resource-plan/draft/${data.resource._id}`]);
     }
   }
 
@@ -419,7 +419,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   chat(recordId:any, chapterId:any){
-    this.router.navigate(['/user/content-generation/lesson-chat'],{queryParams:{recordId,chapterId}})
+    this.router.navigate(['/content-generation/lesson-chat'],{queryParams:{recordId,chapterId}})
   }
 
   private filterPresentationJobs(list: PresentationListItem[], params: ListParams): PresentationListItem[] {

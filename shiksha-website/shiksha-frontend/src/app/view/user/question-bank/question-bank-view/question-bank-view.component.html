@@ -71,7 +71,7 @@
         </button>
       </div>
 
-      <div class="question-bank-container p-4 md:px-12 rounded-md border h-[88vh] bg-white overflow-y-auto">
+      <div #questionPaperContent class="question-bank-container p-4 md:px-12 rounded-md border h-[88vh] bg-white overflow-y-auto" tabindex="0" role="region" [attr.aria-label]="'Question paper content — scroll to read all questions' | translate">
         <h2 class="text-center text-base font-bold text-content">
           {{ questionBankDetails?.questionBank?.metadata.schoolName }}
         </h2>
@@ -106,7 +106,7 @@
                 <p class="text-content">
                   {{ i + 1 }}.
                   <ng-container *ngFor="let item of contentItems(questionData.question)">
-                    <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
+                    <span *ngIf="isTextContent(item)">{{ item.content }}</span>
                     <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-2 max-h-64 max-w-full" />
                   </ng-container>
                 </p>
@@ -118,7 +118,7 @@
                 class="list-alpha">
                 <li *ngFor="let option of questionData.options">
                   <ng-container *ngFor="let item of contentItems(option.text)">
-                    <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
+                    <span *ngIf="isTextContent(item)">{{ item.content }}</span>
                     <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-32 max-w-full" />
                   </ng-container>
                 </li>
@@ -142,13 +142,13 @@
                 <tr *ngFor="let val of questionBankData.questions; let i=index">
                   <td class="border px-2 py-2 text-sm">
                     <ng-container *ngFor="let item of contentItems(questionBankData.primaryColumn[i])">
-                      <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
+                      <span *ngIf="isTextContent(item)">{{ item.content }}</span>
                       <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-32 max-w-full" />
                     </ng-container>
                   </td>
                   <td class="border px-2 py-2 text-sm">
                     <ng-container *ngFor="let item of contentItems(questionBankData.shuffledColumns[i])">
-                      <span *ngIf="isTextContent(item)">{{ item.content | mathFormatting }}</span>
+                      <span *ngIf="isTextContent(item)">{{ item.content }}</span>
                       <img *ngIf="!isTextContent(item)" [src]="mediaSrc(item)" class="mt-1 max-h-32 max-w-full" />
                     </ng-container>
                   </td>

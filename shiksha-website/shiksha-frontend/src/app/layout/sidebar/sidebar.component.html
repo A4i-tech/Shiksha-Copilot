@@ -3,11 +3,12 @@
   [ngClass]="isSidebarOpen ? 'show' : 'hide'"
   (click)="closeSidebar($event)"
 >
-  <div
-    class="grid sidebar p-4 top-0 bottom-0 left-0 w-[270px] bg-white fixed z-[999] lg:static h-full"
+  <nav
+    class="grid sidebar p-4 top-0 bottom-0 left-0 w-[270px] bg-white fixed z-[999] lg:static h-full overflow-y-auto"
     [ngClass]="isSidebarOpen ? 'show' : 'hide'"
+    aria-label="Main navigation"
   >
-    <div class="text-shade-80 text-xl">
+    <div class="text-shade-80 text-xl min-h-0">
       <div class="p-2.5 pl-0 mt-1 flex items-center rounded-md">
         <img src="assets/images/logo.svg" alt="" class="logo" />
         <img
@@ -18,17 +19,16 @@
         />
       </div>
 
-      <p class="text-content text-sm mt-4">
-        {{ (isAdmin ? "Admin Panel" : "Teacher Panel") | translate }}
-      </p>
       <div>
         <ng-container *ngFor="let menuItem of menuItems">
-          <div
+          <a
             *ngIf="utilitService.hasPermission(menuItem.permission)"
-            class="mt-1 flex text-shade items-center rounded-md px-3 py-4 duration-300 cursor-pointer menu-item"
+            class="mt-1 flex text-shade items-center rounded-md px-3 py-4 duration-300 cursor-pointer menu-item focus:outline-none focus:ring-2 focus:ring-primary-100"
             (click)="closeSidebar($event)"
-            [routerLinkActive]="'bg-[#EDF6FE] !text-[#1565C0]'"
+            [routerLinkActive]="'bg-[#EDF6FE] !text-[#0A58A3]'"
             [routerLink]="menuItem.route"
+            [attr.aria-current]="isActive(menuItem.match) ? 'page' : null"
+            tabindex="0"
           >
             <img
               class="menu-icon w-5"
@@ -40,9 +40,9 @@
               alt=""
             />
             <span class="text-sm ml-2">{{ menuItem.text | translate }}</span>
-          </div>
+          </a>
         </ng-container>
       </div>
     </div>
-  </div>
+  </nav>
 </div>

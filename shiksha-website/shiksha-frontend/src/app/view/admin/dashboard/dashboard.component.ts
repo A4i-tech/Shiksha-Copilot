@@ -175,7 +175,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     plugins: {
       legend: {
         labels: {
-          usePointStyle: true
+          usePointStyle: true,
+          color: '#4B4B4B'
         },
       },
       tooltip: {
@@ -214,7 +215,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     plugins: {
       legend: {
         labels: {
-          usePointStyle: true
+          usePointStyle: true,
+          color: '#4B4B4B'
         }
       },
       tooltip: {
@@ -237,6 +239,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         position: 'bottom',
         labels: {
           usePointStyle: true,
+          color: '#4B4B4B'
         }
       },
       tooltip: {
@@ -339,6 +342,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         position: 'top',
         labels: {
           usePointStyle: true,
+          color: '#4B4B4B'
         }
       },
       tooltip: {
@@ -380,7 +384,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     plugins: {
       legend: {
         labels: {
-          usePointStyle: true
+          usePointStyle: true,
+          color: '#4B4B4B'
         }
       },
       tooltip: {
@@ -934,7 +939,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   }
 
   navigateToUserMgmt(selectedSchoolId: any) {
-    this.route.navigate(['admin/user-management/list']);
+    this.route.navigate(['/teacher-management/list']);
   }
 
   /**

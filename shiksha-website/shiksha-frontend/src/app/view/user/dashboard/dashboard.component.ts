@@ -253,9 +253,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    */
   onView(data: any) {
     if (data.isLesson) {
-      this.router.navigate([`/user/content-generation/lesson-plan/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/${data.lesson._id}`]);
     } else {
-      this.router.navigate([`/user/content-generation/resource-plan/${data.resource._id}`]);
+      this.router.navigate([`/content-generation/resource-plan/${data.resource._id}`]);
     }
   }
 

@@ -2,7 +2,7 @@
   <div class="flex content-center">
     <img
       src="assets/icons/back-arrow.svg"
-      routerLink="/admin/school-management"
+      routerLink="/school-management"
       alt=""
       class="cursor-pointer"
     />
@@ -14,13 +14,13 @@
     class="school-container px-4 py-6 md:p-8 bg-white mt-6 rounded border-content-30"
   >
     <div class="flex justify-between content-center">
-      <p class="text-content text-2xl md:text-[32px] md:leading-[48px] font-bold tracking-tight">
+      <h2 class="text-content text-2xl md:text-[32px] md:leading-[48px] font-bold tracking-tight">
         {{ (mode === "view" ? "View" : mode === "edit" ? "Edit" : "Add") | translate }} {{'School Profile' | translate}}
-      </p>
+      </h2>
 
       <button
         class="hidden btn-primary h-9"
-        routerLink="/admin/school-management/add"
+        routerLink="/school-management/add"
         (click)="blukUpload()"
       >
         <div class="flex content-center">
@@ -423,6 +423,7 @@
                             />
                             <button
                               class="btn-primary h-9 w-full sm:w-auto"
+                              aria-label="Add resource detail"
                               (click)="addOtherResource(resource, i, $event)"
                               type="button"
                             >
@@ -703,7 +704,7 @@
           <button
             *ngIf="mode === 'view'"
             class="btn-outline-primary h-9 w-full sm:w-[74px]"
-            routerLink="/admin/school-management"
+            routerLink="/school-management"
             type="button"
           >
             {{'Close' | translate}}
@@ -725,7 +726,7 @@
           <button
             *ngIf="mode !== 'view'"
             class="btn-outline-primary h-9 w-full sm:w-[74px]"
-            routerLink="/admin/school-management"
+            routerLink="/school-management"
             type="button"
           >
             {{'Cancel' | translate}}

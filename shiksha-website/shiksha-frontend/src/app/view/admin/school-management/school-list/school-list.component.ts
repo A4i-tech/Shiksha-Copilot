@@ -390,7 +390,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    * @param id school id
    */
   viewSchool(id: any) {
-    this.router.navigate([`/admin/school-management/${id}`], {
+    this.router.navigate([`/school-management/${id}`], {
       queryParams: { mode: 'view' },
     });
   }
@@ -400,7 +400,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    * @param id school id
    */
   editSchool(id: any) {
-    this.router.navigate([`/admin/school-management/${id}`], {
+    this.router.navigate([`/school-management/${id}`], {
       queryParams: { mode: 'edit' },
     });
   }

@@ -25,15 +25,22 @@ export class IdleService {
 
   customIdleTrackerRoutes: any[] = [
     '/auth/signin',
-    '/user/content-generation',
-    '/user/question-paper',
-    '/user/content-generation/lesson-plan',
-    '/user/content-generation/lesson-resources',
+    '/content-generation',
+    '/question-paper',
+    '/content-generation/lesson-plan',
+    '/content-generation/lesson-resources',
+    '/dashboard',
+    '/school-management',
+    '/teacher-management',
+    '/staff-management',
+    '/content-activity',
+    '/audit-log',
+    '/teacher-training',
   ];
 
   skipIdleActivityRoutes: any[] = [
-    '/user/content-generation/inspect/lesson-plan',
-    '/user/content-generation/inspect/resource-plan',
+    '/content-generation/inspect/lesson-plan',
+    '/content-generation/inspect/resource-plan',
   ];
 
   isCustom = false;
@@ -60,8 +67,7 @@ export class IdleService {
         next: (val: any) => {
           this.moduleName = val.url;
           this.isCustom =
-            this.customIdleTrackerRoutes.includes(val.urlAfterRedirects) ||
-            val.urlAfterRedirects.includes('admin');
+            this.customIdleTrackerRoutes.includes(val.urlAfterRedirects);
           this.isSkip = this.skipIdleActivityRoutes.includes(
             val.urlAfterRedirects
           );
@@ -127,27 +133,19 @@ export class IdleService {
 
   private getModuleName(url: string): string {
     const matchedModuleName = this.customModuleMatcher(url);
-    const parts = url.split('/');
-    let modName: any;
-
-    parts.forEach((uri) => {
-      if (uri) {
-        modName = modName + '/' + uri;
-      }
-    });
 
     if (matchedModuleName) {
       return matchedModuleName;
     }
-    return parts.length > 2 ? parts[2] : '';
+    return url.split('/').filter(Boolean)[0] || '';
   }
 
   customModuleMatcher(url: string): string | null {
     const routePatterns = {
-      'view-lp': /^\/user\/content-generation\/lesson-plan\/([a-f0-9]{24})$/,
-      'view-lr': /^\/user\/content-generation\/resource-plan\/([a-f0-9]{24})$/,
-      'lesson-chat': /^\/user\/content-generation\/lesson-chat/,
-      'view-question-bank': /^\/user\/question-paper\/view\/([a-f0-9]{24})$/
+      'view-lp': /^\/content-generation\/lesson-plan\/([a-f0-9]{24})$/,
+      'view-lr': /^\/content-generation\/resource-plan\/([a-f0-9]{24})$/,
+      'lesson-chat': /^\/content-generation\/lesson-chat/,
+      'view-question-bank': /^\/question-paper\/view\/([a-f0-9]{24})$/
     };
 
     for (const [routeName, pattern] of Object.entries(routePatterns)) {

@@ -274,7 +274,7 @@ export class ShikshanUserManageComponent implements OnInit {
       formattedData._id = this.userId;
       this.shikshanaUserService.editUserDetails(this.userId, formattedData).subscribe({
         next: (res: any) => {
-          this.router.navigate(['/admin/shikshana-user/list']);
+          this.router.navigate(['/staff-management/list']);
           this.utilityService.handleResponse(res);
         },
         error: (err) => {
@@ -287,7 +287,7 @@ export class ShikshanUserManageComponent implements OnInit {
       // For create, we need to send the data to the correct endpoint
       this.shikshanaUserService.createUser(formattedData).subscribe({
         next: (res: any) => {
-          this.router.navigate(['/admin/shikshana-user/list']);
+          this.router.navigate(['/staff-management/list']);
           this.utilityService.handleResponse(res)
         },
         error: (err) => {

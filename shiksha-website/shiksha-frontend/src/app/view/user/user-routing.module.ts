@@ -11,11 +11,11 @@ import { GenerationStatusComponent } from './generation-status/generation-status
 const routes: Routes = [
   {
     path: '',
-    redirectTo: 'dashboard',
+    redirectTo: 'home',
     pathMatch: 'full',
   },
   {
-    path: 'dashboard',
+    path: 'home',
     component:DashboardComponent,
     data: {
       permissions: ['standard', 'power'],

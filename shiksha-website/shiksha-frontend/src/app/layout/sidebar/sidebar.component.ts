@@ -12,8 +12,6 @@ import { SidebarService } from './sidebar.service';
 })
 export class SidebarComponent {
   isSidebarOpen: boolean = false;
-  loggedInUser: any;
-  isAdmin!: string;
   menuItems: MenuItem[] = menuItem;
   
   /**
@@ -27,15 +25,9 @@ export class SidebarComponent {
     public utilitService: UtilityService,
     public sidebarService: SidebarService
   ) {
-    const data: string = localStorage.getItem('userData') ?? '';
-    this.loggedInUser = JSON.parse(data).role;
-    this.isAdmin =
-      this.loggedInUser.includes('admin') ||
-      this.loggedInUser.includes('manager');
-
-      effect(()=>{
-        this.isSidebarOpen = this.sidebarService.sidebarOpen()
-      })
+    effect(()=>{
+      this.isSidebarOpen = this.sidebarService.sidebarOpen()
+    })
   }
 
   closeSidebar(event: MouseEvent) {

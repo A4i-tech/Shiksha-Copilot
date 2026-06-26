@@ -420,7 +420,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
       this.classes.controls[i]
         ?.get('medium')
         ?.setValue(this.dependentPatchData.classes[i].medium);
-      const classes = mediums[0].medium.filter(
+      if (!mediums[0]?.medium) {
+        console.warn(
+          `Orphaned class: board "${this.dependentPatchData.classes[i].board}" not found in master data`,
+          this.dependentPatchData.classes[i]
+        );
+      }
+      const classes = (mediums[0]?.medium ?? []).filter(
         (e: any) => e.medium === this.dependentPatchData.classes[i].medium
       );
       this.setClassDropdown(i, classes[0]);

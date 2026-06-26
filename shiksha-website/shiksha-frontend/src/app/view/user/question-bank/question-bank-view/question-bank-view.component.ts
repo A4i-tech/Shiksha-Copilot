@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { QuestionBankService } from '../question-bank.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -8,6 +8,8 @@ import { QuestionBankDownloadService } from 'src/app/shared/services/question-ba
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 import { formatMarks } from 'src/app/shared/utility/constant.util';
 import { contentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { renderTexMath } from 'src/app/shared/utility/math-render.util';
+
 @Component({
   selector: 'app-question-bank-view',
   templateUrl: './question-bank-view.component.html',
@@ -15,6 +17,8 @@ import { contentItems } from 'src/app/shared/utility/question-bank-display.util'
   animations: [slideInOutAnimation],
 })
 export class QuestionBankViewComponent implements OnInit {
+  @ViewChild('questionPaperContent') questionPaperContent!: ElementRef<HTMLElement>;
+
   questionBankId: any;
 
   questionBankDetails: any;
@@ -123,6 +127,7 @@ export class QuestionBankViewComponent implements OnInit {
           }
           this.idleService.planId = this.questionBankDetails?.questionBank?._id;
           this.questionBankBluePrintData = this.flattenQuestionData(val.data.bluePrintTemplate);
+          renderTexMath(this.questionPaperContent.nativeElement);
         },
         error: (err) => {
           this.utilityService.handleError(err);
@@ -178,6 +183,7 @@ export class QuestionBankViewComponent implements OnInit {
 
   toggleAnswerKeys() {
     this.showAnswerKeys = !this.showAnswerKeys;
+    renderTexMath(this.questionPaperContent.nativeElement);
   }
 
   downloadBluePrint() {
@@ -196,7 +202,7 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   backNavigation() {
-    this.router.navigate(['/user/question-paper']);
+    this.router.navigate(['/question-paper']);
   }
 
   submitFeedback() {

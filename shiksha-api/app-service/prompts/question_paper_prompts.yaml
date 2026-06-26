@@ -82,6 +82,9 @@ question_bank_parts_gen: |
       6. Style Consistency:
         The newly generated questions will be integrated into the existing question bank JSON. Ensure that their style, language, and formatting align seamlessly with the existing questions, making it appear as if a single LLM request generated all questions.
 
+      7. Mathematical Notation:
+        Use TeX delimiters for mathematical expressions: `\\(...\\)` for inline math and `\\[...\\]` for display math.
+
 question_bank_distribution: |
   You are an expert in educational assessment design and Bloom's Taxonomy. Your task is to **assign a reasonable question distribution** across selected chapters (units) and objectives for a given examination template.
   ---

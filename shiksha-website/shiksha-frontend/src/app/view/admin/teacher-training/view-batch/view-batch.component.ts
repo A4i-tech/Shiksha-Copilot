@@ -257,7 +257,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       this.batchService.getBatchById(batch._id).subscribe({
         next: () => {
           // If we can access the batch, navigate to view teachers
-          this.router.navigate(['/admin/teacher-training/view-teachers', batch._id]);
+          this.router.navigate(['/teacher-training/view-teachers', batch._id]);
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error accessing batch:', error);
