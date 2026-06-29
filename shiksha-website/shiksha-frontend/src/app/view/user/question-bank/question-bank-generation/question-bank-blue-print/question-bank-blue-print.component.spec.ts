@@ -63,4 +63,12 @@ describe('QuestionBankBluePrintComponent', () => {
     const dataset = component.objectivesChartData.datasets[0];
     expect(dataset.data).toContain(1);
   });
+
+  it('precomputes stable display content for the preview template', () => {
+    const question = component.groupedBlueprintData[0].questions[0];
+
+    expect(question.displayItems).toEqual([]);
+    expect(question.displayOptions).toEqual([]);
+    expect(component.uniqueSources).toEqual(['AI Questions']);
+  });
 });

@@ -26,8 +26,6 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
   readonly formatMarks = formatMarks;
-  readonly contentItems = contentItems;
-  readonly questionContentItems = questionContentItems;
 
   totalSteps: number = 3;
 
@@ -37,6 +35,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   chartTitle: string = 'Objective Analysis';
 
   groupedBlueprintData: any[] = [];
+  uniqueSources: string[] = [];
 
   objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
@@ -81,15 +80,24 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
 
       if (!groups[sectionName]) {
         groups[sectionName] = {
+          key: sectionName,
           type: q.heading,
           marksPerQuestion: q.marks,
           questions: []
         };
       }
-      groups[sectionName].questions.push(q);
+      groups[sectionName].questions.push({
+        ...q,
+        displayItems: questionContentItems(q),
+        displayOptions: (q.options || []).map((option: any) => ({
+          ...option,
+          displayItems: contentItems(option.text),
+        })),
+      });
     });
 
     this.groupedBlueprintData = Object.values(groups);
+    this.uniqueSources = Array.from(new Set(this.finalSelectedQuestions.map(q => q.source)));
     this.updateChartData();
     if (this.bluePrintContent) renderTexMath(this.bluePrintContent.nativeElement);
   }
@@ -119,12 +127,20 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
     };
   }
 
-  get uniqueSources(): string[] {
-    const sources = new Set<string>();
-    this.finalSelectedQuestions.forEach(q => {
-      sources.add(q.source);
-    });
-    return Array.from(sources);
+  trackGroup(_: number, group: any): string {
+    return group.key;
+  }
+
+  trackQuestion(index: number, question: any): string | number {
+    return question._id || index;
+  }
+
+  trackOption(index: number, option: any): string | number {
+    return option._id || option.label || index;
+  }
+
+  trackContent(index: number): number {
+    return index;
   }
 
   mediaSrc(item: any): string {
