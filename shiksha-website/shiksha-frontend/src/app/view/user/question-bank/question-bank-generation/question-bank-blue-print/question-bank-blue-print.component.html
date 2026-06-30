@@ -17,7 +17,7 @@
     <!-- LEFT SIDE: GROUPED QUESTION LIST -->
     <div class="flex-1 flex flex-col">
       <div #bluePrintContent class="max-h-[55vh] overflow-y-auto pr-2" tabindex="0" role="region" aria-label="Question list — scroll to see all questions">
-        <div *ngFor="let group of groupedBlueprintData; let i = index; trackBy: trackGroup" class="mb-8 bg-gray-50 rounded-lg border p-4">
+        <div *ngFor="let group of groupedBlueprintData; let i = index" class="mb-8 bg-gray-50 rounded-lg border p-4">
           <div class="flex justify-between items-center border-b pb-2 mb-4">
             <h3 class="font-bold text-lg text-content">
               {{ i + 1 }}. {{ group.type }}
@@ -28,19 +28,19 @@
           </div>
 
           <div class="space-y-3">
-            <div *ngFor="let q of group.questions; let j = index; trackBy: trackQuestion" class="bg-white p-3 rounded border flex gap-3">
+            <div *ngFor="let q of group.questions; let j = index" class="bg-white p-3 rounded border flex gap-3">
               <span class="text-gray-400 font-bold text-sm">{{ j + 1 }}.</span>
               <div class="flex-1">
                 <p class="text-sm text-content mb-2">
-                  <ng-container *ngFor="let item of q.displayItems; trackBy: trackContent">
+                  <ng-container *ngFor="let item of questionContentItems(q); trackBy: trackContent">
                     <span *ngIf="item.contentType === 'text/plain'">{{ item.content }}</span>
                     <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-2 max-h-40 max-w-full" />
                   </ng-container>
                 </p>
                 <div *ngIf="q.options && q.options.length > 0" class="ml-4 mb-2">
-                  <div *ngFor="let option of q.displayOptions; trackBy: trackOption" class="text-xs text-gray-600">
+                  <div *ngFor="let option of q.options" class="text-xs text-gray-600">
                     <b *ngIf="option.label">{{ option.label }}.</b>
-                    <ng-container *ngFor="let item of option.displayItems; trackBy: trackContent">
+                    <ng-container *ngFor="let item of contentItems(option.text); trackBy: trackContent">
                       <span *ngIf="item.contentType === 'text/plain'"> {{ item.content }}</span>
                       <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-1 max-h-24 max-w-full" />
                     </ng-container>
