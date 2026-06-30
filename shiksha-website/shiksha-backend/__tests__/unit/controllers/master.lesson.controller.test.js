@@ -31,7 +31,7 @@ describe("MasterLessonController", () => {
     }));
 
     controller = new MasterLessonController();
-    mockManager = controller.masterLessonManager;
+    mockManager = controller.manager;
 
     mockReq = {
       user: { _id: "teacher-123", role: "teacher", name: "Test Teacher" },

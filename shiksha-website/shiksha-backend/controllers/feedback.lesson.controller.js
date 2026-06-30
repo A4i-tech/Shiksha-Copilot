@@ -2,16 +2,16 @@ const handleError = require("../helper/handleError.js");
 const LessonFeedbackManager = require("../managers/feedback.lesson.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<LessonFeedbackManager>} */
 class LessonFeedbackController extends BaseController {
 	constructor() {
 		super(new LessonFeedbackManager());
-		this.lessonFeedbackManager = new LessonFeedbackManager();
 	}
 
 	async getByTeacher(req, res) {
 		try {
 			const { teacherId } = req.params;
-			const result = await this.lessonFeedbackManager.getByTeacher(teacherId);
+			const result = await this.manager.getByTeacher(teacherId);
 			if (!result.success) {
 				return res.status(404).json({ message: result.message });
 			}
@@ -25,7 +25,7 @@ class LessonFeedbackController extends BaseController {
 	async update(req, res) {
 		try {
 			const { id } = req.params;
-			const result = await this.lessonFeedbackManager.update(id, req.body);
+			const result = await this.manager.update(id, req.body);
 			if (!result.success) {
 				return res.status(404).json({ message: result.message });
 			}

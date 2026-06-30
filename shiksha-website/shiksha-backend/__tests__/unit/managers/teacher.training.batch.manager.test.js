@@ -27,7 +27,7 @@ describe("TeacherTrainingBatchManager", () => {
   describe("constructor", () => {
     it("should create manager instance successfully", () => {
       expect(manager).toBeInstanceOf(TeacherTrainingBatchManager);
-      expect(manager.batchDao).toBeDefined();
+      expect(manager.dao).toBeDefined();
     });
 
     it("should initialize with TeacherTrainingBatchDao", () => {

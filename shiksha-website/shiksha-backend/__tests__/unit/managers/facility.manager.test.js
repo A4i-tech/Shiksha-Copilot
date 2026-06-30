@@ -12,7 +12,7 @@ describe('FacilityManager', () => {
         mockFacilityDao = {
             update: jest.fn()
         };
-        facilityManager.resourceDao = mockFacilityDao;
+        facilityManager.dao = mockFacilityDao;
         jest.clearAllMocks();
     });
 

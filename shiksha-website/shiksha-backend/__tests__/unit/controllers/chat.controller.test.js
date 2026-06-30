@@ -29,7 +29,7 @@ describe('ChatController', () => {
             sendLessonMessage: jest.fn(),
             listLessonMessages: jest.fn()
         };
-        chatController.chatManager = mockChatManager;
+        chatController.manager = mockChatManager;
         jest.clearAllMocks();
     });
 

@@ -4,10 +4,10 @@ const fs = require('fs');
 const ExcelJS = require('exceljs');
 const formatApiReponse = require('../helper/response');
 
+/** @extends {BaseManager<FLNResourceDao>} */
 class FLNResourceManager extends BaseManager {
   constructor() {
     super(new FLNResourceDao());
-    this.flnResourceDao = new FLNResourceDao();
   }
 
   async uploadFLNFile(req) {
@@ -20,8 +20,8 @@ class FLNResourceManager extends BaseManager {
         return formatApiReponse(false, 'File must contain exactly one grade', null);
       }
       const grade = grades[0];
-      await this.flnResourceDao.Model.deleteMany({ grade });
-      const saved = await this.flnResourceDao.Model.create({
+      await this.dao.Model.deleteMany({ grade });
+      const saved = await this.dao.Model.create({
         grade,
         originalFileName: req.file.originalname,
         data: json,
@@ -36,7 +36,7 @@ class FLNResourceManager extends BaseManager {
 
   async getGrades() {
     try {
-      const grades = await this.flnResourceDao.Model.distinct('grade');
+      const grades = await this.dao.Model.distinct('grade');
       return formatApiReponse(true, '', grades);
     } catch (err) {
       return formatApiReponse(false, err.message, null);
@@ -45,7 +45,7 @@ class FLNResourceManager extends BaseManager {
 
   async getDaysByGrade(grade) {
     try {
-      const resource = await this.flnResourceDao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
+      const resource = await this.dao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
       if (!resource) return formatApiReponse(false, 'No data found for grade ' + grade, null);
       const lessons = resource.data?.lesson_plan_by_grade?.[grade] || [];
       const days = [...new Set((lessons || []).map(l => l.day))].sort((a, b) => a - b);
@@ -57,7 +57,7 @@ class FLNResourceManager extends BaseManager {
 
   async getLesson(grade, day) {
     try {
-      const resource = await this.flnResourceDao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
+      const resource = await this.dao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
       if (!resource) return formatApiReponse(false, 'No data found for grade ' + grade, null);
       const lessons = resource.data?.lesson_plan_by_grade?.[grade] || [];
       const lesson = lessons.find(l => l.day === Number(day));
@@ -70,7 +70,7 @@ class FLNResourceManager extends BaseManager {
 
   async exportLessonsExcel(grade, res) {
     try {
-      const resource = await this.flnResourceDao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
+      const resource = await this.dao.Model.findOne({ grade }).sort({ uploadedAt: -1 });
       if (!resource) return formatApiReponse(false, 'No data found for grade ' + grade, null);
       const lessons = resource.data?.lesson_plan_by_grade?.[grade] || [];
       const workbook = new ExcelJS.Workbook();

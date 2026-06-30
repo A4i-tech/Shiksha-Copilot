@@ -2,16 +2,16 @@ const handleError = require("../helper/handleError.js");
 const TeacherResourceFeedbackManager = require("../managers/teacher.feedback.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<TeacherResourceFeedbackManager>} */
 class TeacherResourceFeedbackController extends BaseController {
 	constructor() {
 		super(new TeacherResourceFeedbackManager());
-		this.teacherResourceFeedbackManager = new TeacherResourceFeedbackManager();
 	}
 
 	async update(req, res) {
 		try {
 			const { id } = req.params;
-			const result = await this.teacherResourceFeedbackManager.update(id, req.body);
+			const result = await this.manager.update(id, req.body);
 			if (!result.success) {
 				return res.status(404).json({ message: result.message });
 			}

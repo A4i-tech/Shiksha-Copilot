@@ -3,10 +3,10 @@ const formatApiReponse = require("../helper/response");
 const ScheduleManager = require("../managers/schedule.manager");
 const BaseController = require("./base.controller");
 
+/** @extends {BaseController<ScheduleManager>} */
 class ScheduleController extends BaseController {
 	constructor() {
 		super(new ScheduleManager());
-		this.scheduleManager = new ScheduleManager();
 	}
 
 	async update(req, res) {
@@ -15,7 +15,7 @@ class ScheduleController extends BaseController {
 
 			req.body._id = undefined;
 
-			const result = await this.scheduleManager.update(
+			const result = await this.manager.update(
 				_id,
 				req.body,
 				req.user,
@@ -36,7 +36,7 @@ class ScheduleController extends BaseController {
 		try {
 			const { teacherId } = req.params;
 
-			const result = await this.scheduleManager.getAllSchedulesBasedOnTeacherId(
+			const result = await this.manager.getAllSchedulesBasedOnTeacherId(
 				teacherId
 			);
 
@@ -58,7 +58,7 @@ class ScheduleController extends BaseController {
 		try {
 			const { fromDate, toDate, teacherClass ,teacherSchedule } = req.query;
 
-			const result = await this.scheduleManager.getBySchool(
+			const result = await this.manager.getBySchool(
 				req.user,
 				fromDate,
 				toDate,
@@ -81,7 +81,7 @@ class ScheduleController extends BaseController {
 		try {
 			const { date } = req.query;
 
-			const result = await this.scheduleManager.getMySchedules(
+			const result = await this.manager.getMySchedules(
 				req.user._id,
 				date
 			);

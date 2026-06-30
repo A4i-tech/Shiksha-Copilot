@@ -3,15 +3,15 @@ const UserManager = require("../managers/user.manager.js");
 const BaseController = require("./base.controller.js");
 const User = require("../models/user.model.js");
 
+/** @extends {BaseController<UserManager>} */
 class UserController extends BaseController {
   constructor() {
     super(new UserManager());
-    this.userManager = new UserManager();
   }
 
   async getByPhone(req, res) {
     try {
-      let result = await this.userManager.getByPhone(req);
+      let result = await this.manager.getByPhone(req);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -29,7 +29,7 @@ class UserController extends BaseController {
   async update(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.userManager.update(id, req.body);
+      let result = await this.manager.update(id, req.body);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -50,7 +50,7 @@ class UserController extends BaseController {
 
       const { preferredLanguage } = req.body;
 
-      let result = await this.userManager.updatePreferredLanguage(
+      let result = await this.manager.updatePreferredLanguage(
         _id,
         preferredLanguage
       );
@@ -76,7 +76,7 @@ class UserController extends BaseController {
       const userId = req.user._id;
       const userName = req.user.name;
 
-      const result = await this.userManager.bulkUpload(
+      const result = await this.manager.bulkUpload(
         req.file.buffer,
         userId.toString(),
         userName
@@ -96,7 +96,7 @@ class UserController extends BaseController {
     try {
       const { _id } = req.user;
 
-      let result = await this.userManager.setProfile(_id, req.body);
+      let result = await this.manager.setProfile(_id, req.body);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -115,7 +115,7 @@ class UserController extends BaseController {
     try {
       const { id } = req.params;
 
-      let result = await this.userManager.getById(id);
+      let result = await this.manager.getById(id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -133,7 +133,7 @@ class UserController extends BaseController {
   async getProfile(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.userManager.getProfileById(id);
+      let result = await this.manager.getProfileById(id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -156,7 +156,7 @@ class UserController extends BaseController {
           .json({ success: false, message: "No file uploaded" });
       }
 
-      const result = await this.userManager.uploadProfileImage(
+      const result = await this.manager.uploadProfileImage(
         req.user._id,
         req.file.path
       );
@@ -176,7 +176,7 @@ class UserController extends BaseController {
   async removeProfileImage(req, res) {
     try {
       let { _id } = req.user;
-      const result = await this.userManager.removeProfileImage(_id);
+      const result = await this.manager.removeProfileImage(_id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -191,7 +191,7 @@ class UserController extends BaseController {
   async activate(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.userManager.activate(id);
+      let result = await this.manager.activate(id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -207,7 +207,7 @@ class UserController extends BaseController {
   async deactivate(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.userManager.deactivate(id);
+      let result = await this.manager.deactivate(id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -233,7 +233,7 @@ class UserController extends BaseController {
 
   async activityLog(req,res){
     try{
-      const result = await this.userManager.activityLog(req);
+      const result = await this.manager.activityLog(req);
       if (result.success) return res.status(200).json(result);
 
       handleError(result, res);
@@ -312,7 +312,7 @@ class UserController extends BaseController {
 
       const mergedFilter = { ...processedFilter, ...searchFilter };
 
-      let result = await this.userManager.getAll(
+      let result = await this.manager.getAll(
         parseInt(page), 
         parseInt(limit), 
         mergedFilter,

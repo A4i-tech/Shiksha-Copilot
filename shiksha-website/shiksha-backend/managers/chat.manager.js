@@ -8,10 +8,10 @@ const MasterSubjectDao = require("../dao/master.subject.dao");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const MasterLessonDao = require("../dao/master.lesson.dao");
 
+/** @extends {BaseManager<ChatDao>} */
 class ChatManager extends BaseManager {
 	constructor() {
 		super(new ChatDao());
-		this.chatDao = new ChatDao();
 		this.chapterDao = new ChapterDao();
 		this.subjectDao = new MasterSubjectDao();
 		this.teacherLessonPlanDao = new TeacherLessonPlanDao();
@@ -22,15 +22,15 @@ class ChatManager extends BaseManager {
 		try {
 			const today = new Date();
 			today.setUTCHours(0, 0, 0, 0);
-			let chatSession = await this.chatDao.getActiveSession(userId, today);
+			let chatSession = await this.dao.getActiveSession(userId, today);
 
 			if (!chatSession) {
-				chatSession = await this.chatDao.create({
+				chatSession = await this.dao.create({
 					userId,
 					sessionDate: today,
 					requestCount: 0,
 				});
-				await this.chatDao.createMessage({
+				await this.dao.createMessage({
 					chatHistoryId: chatSession._id,
 					messages: [],
 				});
@@ -46,7 +46,7 @@ class ChatManager extends BaseManager {
 				);
 			}
 
-			let existingMessages = await this.chatDao.getMessagesBySessionId(
+			let existingMessages = await this.dao.getMessagesBySessionId(
 				chatSession._id
 			);
 
@@ -73,7 +73,7 @@ class ChatManager extends BaseManager {
 				throw new Error("Something went wrong with copilot! Please try later");
 			}
 
-			await this.chatDao.addMessage(chatSession._id, {
+			await this.dao.addMessage(chatSession._id, {
 				question: message,
 				answer: response.data.response,
 				references: response.data.references || [],
@@ -97,15 +97,15 @@ class ChatManager extends BaseManager {
 		try {
 			const today = new Date();
 			today.setUTCHours(0, 0, 0, 0);
-			let chatSession = await this.chatDao.getActiveSession(userId, today);
+			let chatSession = await this.dao.getActiveSession(userId, today);
 
 			if (!chatSession) {
-				chatSession = await this.chatDao.create({
+				chatSession = await this.dao.create({
 					userId,
 					sessionDate: today,
 					requestCount: 0,
 				});
-				await this.chatDao.createMessage({
+				await this.dao.createMessage({
 					chatHistoryId: chatSession._id,
 					messages: [],
 				});
@@ -117,7 +117,7 @@ class ChatManager extends BaseManager {
 				return { success: false, message: "Session closed due to request limit exceeded" };
 			}
 
-			let existingMessages = await this.chatDao.getMessagesBySessionId(
+			let existingMessages = await this.dao.getMessagesBySessionId(
 				chatSession._id
 			);
 
@@ -178,7 +178,7 @@ class ChatManager extends BaseManager {
 			stream.on('end', async () => {
 				try {
 					if (fullAnswer) {
-						await this.chatDao.addMessage(chatSession._id, {
+						await this.dao.addMessage(chatSession._id, {
 							question: message,
 							answer: fullAnswer,
 							references: references
@@ -202,13 +202,13 @@ class ChatManager extends BaseManager {
 		try {
 			const today = new Date();
 			today.setUTCHours(0, 0, 0, 0);
-			let chatSession = await this.chatDao.getActiveSession(userId, today);
+			let chatSession = await this.dao.getActiveSession(userId, today);
 
 			if (!chatSession) {
 				return formatApiResponse(false, "Chat session not found", []);
 			}
 
-			let messages = await this.chatDao.getMessagesBySessionId(chatSession._id);
+			let messages = await this.dao.getMessagesBySessionId(chatSession._id);
 
 			return formatApiResponse(true, "Chat history fetched!", messages);
 		} catch (err) {
@@ -276,7 +276,7 @@ class ChatManager extends BaseManager {
 
 			const totalMessages = await this.getTotalSessionMessagesCount(userId);
 
-			let messageHistory = await this.chatDao.getLessonMessages(
+			let messageHistory = await this.dao.getLessonMessages(
 				lessonDetails._id,
 				userId,
 				todayStart,
@@ -313,7 +313,7 @@ class ChatManager extends BaseManager {
 				throw new Error("Lesson chatbot returned an invalid response.");
 			}
 
-			await this.chatDao.createLessonChats({
+			await this.dao.createLessonChats({
 				teacherId: userId,
 				recordId: lessonDetails._id,
 				message: {
@@ -339,7 +339,7 @@ class ChatManager extends BaseManager {
 				recordId, chapterId, userId
 			);
 
-			let messagesHistory = await this.chatDao.getLessonMessages(
+			let messagesHistory = await this.dao.getLessonMessages(
 				lessonDetails._id,
 				userId
 			);
@@ -362,9 +362,9 @@ class ChatManager extends BaseManager {
 		const todayEnd = new Date();
 		todayEnd.setUTCHours(23, 59, 59, 999);
 
-		let chatSession = await this.chatDao.getActiveSession(userId, todayStart);
+		let chatSession = await this.dao.getActiveSession(userId, todayStart);
 
-		let messageHistory = await this.chatDao.getAllLessonMessages(
+		let messageHistory = await this.dao.getAllLessonMessages(
 			userId,
 			todayStart,
 			todayEnd

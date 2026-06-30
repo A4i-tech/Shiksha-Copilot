@@ -1,6 +1,7 @@
 const RegionManager = require("../managers/region.manager");
 const BaseController = require("./base.controller");
 
+/** @extends {BaseController<RegionManager>} */
 class RegionController extends BaseController {
 	constructor() {
 		super(new RegionManager());

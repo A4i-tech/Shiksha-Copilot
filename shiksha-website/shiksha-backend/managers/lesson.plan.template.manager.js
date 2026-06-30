@@ -1,15 +1,15 @@
 const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao");
 const formatApiReponse = require("../helper/response");
 const BaseManager = require("./base.manager");
+/** @extends {BaseManager<LessonPlanTemplateDao>} */
 class LessonPlanTemplateManager extends BaseManager {
   constructor() {
     super(new LessonPlanTemplateDao());
-    this.lessonPlanTemplateDao = new LessonPlanTemplateDao();
   }
 
   async findAllTemplates(filter) {
     try {
-      const templates = await this.lessonPlanTemplateDao.filter(filter);
+      const templates = await this.dao.filter(filter);
       if (!templates) {
         return formatApiReponse(false, "Templates not found", null);
       }

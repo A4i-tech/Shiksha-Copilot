@@ -16,7 +16,7 @@ describe("SchoolManager", () => {
     jest.clearAllMocks();
     mockSchoolDao = new SchoolDao();
     manager = new SchoolManager();
-    manager.schoolDao = mockSchoolDao;
+    manager.dao = mockSchoolDao;
   });
 
   describe("Instance creation", () => {
@@ -25,7 +25,7 @@ describe("SchoolManager", () => {
     });
 
     it("should have a schoolDao property", () => {
-      expect(manager.schoolDao).toBeDefined();
+      expect(manager.dao).toBeDefined();
     });
 
     it("should have a classDao property", () => {

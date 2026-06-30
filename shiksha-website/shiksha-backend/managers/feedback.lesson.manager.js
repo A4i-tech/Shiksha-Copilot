@@ -2,10 +2,10 @@ const BaseManager = require("./base.manager");
 const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
 const formatApiReponse = require("../helper/response");
 
+/** @extends {BaseManager<LessonFeedbackDao>} */
 class LessonFeedbackManager extends BaseManager {
 	constructor() {
 		super(new LessonFeedbackDao());
-		this.lessonFeedbackDao = new LessonFeedbackDao();
 	}
 
 	async create(req) {
@@ -14,13 +14,13 @@ class LessonFeedbackManager extends BaseManager {
 
 			let { lessonId, isCompleted } = req.body;
 
-			let lessonFeedback = await this.lessonFeedbackDao.getByTeacherAndLessonId(
+			let lessonFeedback = await this.dao.getByTeacherAndLessonId(
 				teacherId,
 				lessonId
 			);
 
 			if (!lessonFeedback) {
-				let data = await this.lessonFeedbackDao.create({
+				let data = await this.dao.create({
 					...req.body,
 					teacherId,
 				});
@@ -33,7 +33,7 @@ class LessonFeedbackManager extends BaseManager {
 			}
 
 			if (!lessonFeedback.isCompleted) {
-				let data = await this.lessonFeedbackDao.update(lessonFeedback._id, {
+				let data = await this.dao.update(lessonFeedback._id, {
 					...req.body,
 					teacherId,
 				});
@@ -53,7 +53,7 @@ class LessonFeedbackManager extends BaseManager {
 
 	async getByTeacher(teacherId) {
 		try {
-			const feedbacks = await this.lessonFeedbackDao.getByTeacher(teacherId);
+			const feedbacks = await this.dao.getByTeacher(teacherId);
 			if (!feedbacks) {
 				return formatApiReponse(false, "failed to load feedbacks", null);
 			}
@@ -65,7 +65,7 @@ class LessonFeedbackManager extends BaseManager {
 
 	async update(id, updates) {
 		try {
-			const updatedFeedback = await this.lessonFeedbackDao.update(id, updates);
+			const updatedFeedback = await this.dao.update(id, updates);
 			if (!updatedFeedback) {
 				return formatApiReponse(
 					false,

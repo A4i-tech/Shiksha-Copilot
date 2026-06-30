@@ -2,10 +2,10 @@ const handleError = require("../helper/handleError");
 const LessonPlanTemplateManager = require("../managers/lesson.plan.template.manager");
 const BaseController = require("./base.controller");
 
+/** @extends {BaseController<LessonPlanTemplateManager>} */
 class LessonPlanTemplateController extends BaseController {
   constructor() {
     super(new LessonPlanTemplateManager());
-    this.lessonPlanTemplateManager = new LessonPlanTemplateManager();
   }
 
   async findTemplates(req, res) {
@@ -14,7 +14,7 @@ class LessonPlanTemplateController extends BaseController {
 
       filter.classes = parseInt(filter.classes);
 
-      const result = await this.lessonPlanTemplateManager.findAllTemplates(
+      const result = await this.manager.findAllTemplates(
         filter
       );
 

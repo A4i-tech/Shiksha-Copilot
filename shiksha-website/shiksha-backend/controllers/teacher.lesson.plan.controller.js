@@ -2,10 +2,10 @@ const axios = require("axios");
 const handleError = require("../helper/handleError.js");
 const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manager.js");
 const BaseController = require("./base.controller.js");
+/** @extends {BaseController<TeacherLessonPlanManager>} */
 class TeacherLessonPlanController extends BaseController {
 	constructor() {
 		super(new TeacherLessonPlanManager());
-		this.teacherLessonPlanManager = new TeacherLessonPlanManager();
 	}
 
 	async getByTeacherAndPagination(req, res) {
@@ -44,7 +44,7 @@ class TeacherLessonPlanController extends BaseController {
 			}
 
 			const result =
-				await this.teacherLessonPlanManager.getByTeacherAndPagination(
+				await this.manager.getByTeacherAndPagination(
 					teacherId,
 					parseInt(page),
 					parseInt(limit),
@@ -71,7 +71,7 @@ class TeacherLessonPlanController extends BaseController {
 
 			let filter = req.query.filter;
 
-			const monthlyCounts = await this.teacherLessonPlanManager.getMonthlyCount(
+			const monthlyCounts = await this.manager.getMonthlyCount(
 				teacherId,
 				filter
 			);
@@ -97,7 +97,7 @@ class TeacherLessonPlanController extends BaseController {
 		try {
 			const teacherId = req.user._id;
 
-			const regenerationLimit = await this.teacherLessonPlanManager.getRegenerationLimit(
+			const regenerationLimit = await this.manager.getRegenerationLimit(
 				teacherId
 			);
 
@@ -123,7 +123,7 @@ class TeacherLessonPlanController extends BaseController {
 			const teacherId = req.user._id;
 
 			const doesLessonPlanExists =
-				await this.teacherLessonPlanManager.checkIfLessonPlanExists(
+				await this.manager.checkIfLessonPlanExists(
 					teacherId,
 					lessonPlanId
 				);
@@ -144,7 +144,7 @@ class TeacherLessonPlanController extends BaseController {
 			const { lessonPlanId } = req.params;
 			const teacherId = req.user._id;
 
-			const lessonPlan = await this.teacherLessonPlanManager.getLessonPlanById(
+			const lessonPlan = await this.manager.getLessonPlanById(
 				teacherId,
 				lessonPlanId
 			);
@@ -188,8 +188,8 @@ class TeacherLessonPlanController extends BaseController {
 		}
 
 		const [authorized, lessonPlan] = await Promise.all([
-			this.teacherLessonPlanManager.teacherLessonPlanDao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
-			this.teacherLessonPlanManager.masterLessonDao.getById(lessonPlanId)
+			this.manager.dao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
+			this.manager.masterLessonDao.getById(lessonPlanId)
 		]);
 		if (!authorized || !lessonPlan) {
 			return res.status(404).json({ message: "Lesson plan not found" });
@@ -211,7 +211,7 @@ class TeacherLessonPlanController extends BaseController {
 			const { resourcePlanId } = req.params;
 			const teacherId = req.user._id;
 
-			const resourcePlan = await this.teacherLessonPlanManager.getResourcePlanById(
+			const resourcePlan = await this.manager.getResourcePlanById(
 				teacherId,
 				resourcePlanId
 			);
@@ -234,7 +234,7 @@ class TeacherLessonPlanController extends BaseController {
                 return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
             }
 
-            const result = await this.teacherLessonPlanManager.generateContent(teacherId, payload);
+            const result = await this.manager.generateContent(teacherId, payload);
 
             if (result.success) {
                 return res.status(200).json(result);
@@ -256,7 +256,7 @@ class TeacherLessonPlanController extends BaseController {
                 return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
             }
 
-            const result = await this.teacherLessonPlanManager.regenerateContent(teacherId, payload);
+            const result = await this.manager.regenerateContent(teacherId, payload);
 
             if (result.success) {
                 return res.status(200).json(result);
@@ -273,7 +273,7 @@ class TeacherLessonPlanController extends BaseController {
 	async handleWebhook(req, res) {
         try {
             const data = req.body;
-            await this.teacherLessonPlanManager.processWebhookData(data);
+            await this.manager.processWebhookData(data);
             res.status(200).send({ success: true });
         } catch (error) {
             console.error("Error handling webhook event:", error);
@@ -287,7 +287,7 @@ class TeacherLessonPlanController extends BaseController {
 			const { lessonPlanId } = req.params;
 			const teacherId = req.user._id;
             const data = req.body;
-            const result = await this.teacherLessonPlanManager.lessonUploadMedia(teacherId,lessonPlanId,data);
+            const result = await this.manager.lessonUploadMedia(teacherId,lessonPlanId,data);
             if (result.success) {
                 return res.status(200).json(result);
             } else {
@@ -306,7 +306,7 @@ class TeacherLessonPlanController extends BaseController {
 			const { lessonPlanId } = req.params;
 			const teacherId = req.user._id;
             const data = req.body;
-            const result = await this.teacherLessonPlanManager.deleteLessonMedia(teacherId,lessonPlanId,data);
+            const result = await this.manager.deleteLessonMedia(teacherId,lessonPlanId,data);
             if (result.success) {
                 return res.status(200).json(result);
             } else {
@@ -325,7 +325,7 @@ class TeacherLessonPlanController extends BaseController {
 			const { resourcePlanId } = req.params;
 			const teacherId = req.user._id;
             const data = req.body;
-            const result = await this.teacherLessonPlanManager.resourceUploadMedia(teacherId,resourcePlanId,data);
+            const result = await this.manager.resourceUploadMedia(teacherId,resourcePlanId,data);
             if (result.success) {
                 return res.status(200).json(result);
             } else {
@@ -344,7 +344,7 @@ class TeacherLessonPlanController extends BaseController {
 			const { resourcePlanId } = req.params;
 			const teacherId = req.user._id;
             const data = req.body;
-            const result = await this.teacherLessonPlanManager.deleteResourceMedia(teacherId,resourcePlanId,data);
+            const result = await this.manager.deleteResourceMedia(teacherId,resourcePlanId,data);
             if (result.success) {
                 return res.status(200).json(result);
             } else {
@@ -364,7 +364,7 @@ class TeacherLessonPlanController extends BaseController {
 			const { resourcePlanId } = req.params;
 			const teacherId = req.user._id;
             const data = req.body;
-            const result = await this.teacherLessonPlanManager.rateActivity(teacherId,resourcePlanId,data);
+            const result = await this.manager.rateActivity(teacherId,resourcePlanId,data);
             if (result.success) {
                 return res.status(200).json(result);
             } else {
@@ -384,7 +384,7 @@ class TeacherLessonPlanController extends BaseController {
 				return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
 			}
 	
-			const result = await this.teacherLessonPlanManager.retryLessonPlan(regeneratedId, _id);
+			const result = await this.manager.retryLessonPlan(regeneratedId, _id);
 	
 			if (result.success) {
 				return res.status(200).json(result);

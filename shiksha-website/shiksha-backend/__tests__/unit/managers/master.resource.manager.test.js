@@ -63,7 +63,7 @@ describe("MasterResourceManager", () => {
   describe("constructor", () => {
     it("should create manager instance successfully", () => {
       expect(manager).toBeInstanceOf(MasterResourceManager);
-      expect(manager.masterResourceDao).toBeDefined();
+      expect(manager.dao).toBeDefined();
       expect(manager.teacherLessonPlanDao).toBeDefined();
     });
 
