@@ -11,7 +11,7 @@ class Config:
     )
     AZURE_OPENAI_API_KEY = os.environ.get("AZURE_OPENAI_API_KEY")
     AZURE_OPENAI_API_VERSION = os.environ.get("AZURE_OPENAI_API_VERSION", "2023-05-15")
-    AZURE_OPENAI_MODEL = os.environ.get("AZURE_OPENAI_MODEL", "gpt-4o")
+    AZURE_OPENAI_MODEL = os.environ.get("AZURE_OPENAI_MODEL", "GPT-4.1")
     AZURE_OPENAI_EMBED_MODEL = os.environ.get(
         "AZURE_OPENAI_EMBED_MODEL", "text-embedding-ada-002"
     )

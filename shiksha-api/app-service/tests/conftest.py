@@ -30,7 +30,7 @@ def mock_settings():
     # Azure OpenAI settings
     mock.azure_openai_api_key = "test-api-key"
     mock.azure_openai_endpoint = "https://test.openai.azure.com"
-    mock.azure_openai_api_version = "2024-02-15-preview"
+    mock.azure_openai_api_version = "2025-03-01-preview"
     mock.azure_openai_deployment_name = "gpt-4"
     mock.azure_openai_embed_model = "text-embedding-ada-002"
     mock.azure_chat_deployment_name = "gpt-4-chat"

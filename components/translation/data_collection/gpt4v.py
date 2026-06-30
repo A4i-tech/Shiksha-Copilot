@@ -31,7 +31,7 @@ def get_toc(image_path):
 
     client = AzureOpenAI(
         azure_ad_token_provider=token_provider,
-        api_version="2024-02-15-preview",
+        api_version="2025-03-01-preview",
         azure_endpoint="https://vellm-openai3.openai.azure.com/",
     )
 
@@ -40,7 +40,7 @@ def get_toc(image_path):
     while flag:
         
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="GPT-4.1",
             messages=[
                 { "role": "system", "content": "You are a helpful assistant. You give output in correct json format." },
                 { "role": "user", "content": [  

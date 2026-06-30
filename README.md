@@ -170,7 +170,7 @@ Shiksha Copilot follows a modular architecture with clear separation between off
 - **Language Support:** Primarily tested on English-language inputs and outputs; support for other languages is experimental and should be used cautiously.
 - **Model Limitations:** Outputs from large language models may occasionally include hallucinated facts, speculative content, or biased information. It is crucial that educators carefully review and validate the content before classroom use.
 - **Content Accuracy:** The AI-generated content may contain occasional errors or inaccuracies. Users of Shiksha Copilot should thoroughly validate all content before incorporating it into their classroom teaching materials.
-- **Model Dependency:** The quality and reliability of outputs are inherently tied to the underlying model. Shiksha Copilot currently utilizes the GPT-4o model.
+- **Model Dependency:** The quality and reliability of outputs are inherently tied to the underlying model. Shiksha Copilot currently utilizes the GPT-4.1 model.
 - **Infrastructure Requirements:** The system requires multiple components (knowledge base, API services, web application) to be properly deployed and maintained for full functionality.
 - **Security:** Developers deploying the tool in open environments must implement/use appropriate security mechanisms like Azure's content moderation.
 

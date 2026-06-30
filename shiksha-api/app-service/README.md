@@ -79,7 +79,7 @@ LOG_LEVEL="INFO"
 # Azure OpenAI Configuration (Required)
 AZURE_OPENAI_API_KEY=your_azure_openai_api_key
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2024-02-15-preview
+AZURE_OPENAI_API_VERSION=2025-03-01-preview
 AZURE_OPENAI_DEPLOYMENT_NAME=your_completion_model_deployment
 AZURE_OPENAI_EMBED_MODEL=your_embedding_model_deployment
 

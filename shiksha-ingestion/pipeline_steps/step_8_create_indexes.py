@@ -49,7 +49,7 @@ class CreateIndexStep(BasePipelineStep):
             ),
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
         )
 
 
@@ -60,7 +60,7 @@ class CreateIndexStep(BasePipelineStep):
             deployment_name=os.getenv("AZURE_OPENAI_MODEL", "gpt-35-turbo"),
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
         )
     
     def _get_rag_ops_instance(self, collection_name: str):
