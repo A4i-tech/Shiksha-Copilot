@@ -507,6 +507,8 @@
   "Higher order thinking": "ఉన్నత స్థాయి ఆలోచన",
   "AI Questions": "AI ప్రశ్నలు",
   "Pre-generated Questions": "ముందుగా రూపొందించిన ప్రశ్నలు",
+  "These are AI-generated questions based on the selected criteria.": "ఎంచుకున్న ప్రమాణాల ఆధారంగా AI రూపొందించిన ప్రశ్నలు.",
+  "These are LBA Questions as recommended by the educational board.": "విద్యా మండలి సిఫార్సు చేసిన LBA ప్రశ్నలు.",
   "Easy": "సులభం",
   "Average": "సగటు",
   "Difficult": "కష్టం",
