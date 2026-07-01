@@ -6,6 +6,7 @@ from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
 from app.utils.utils import new_rag_embed, new_rag_llm
 from llama_index.core.llms import ChatMessage
+from langfuse import observe, get_client
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class LessonChatService:
         self._rag_embed = new_rag_embed()
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
+    @observe(name="Shiksha-QA")
     async def __call__(
         self,
         request: LessonChatRequest,
@@ -38,13 +40,23 @@ class LessonChatService:
         Returns:
             dict: Contains 'response' (str) and 'references' (list of dicts)
         """
+        chapter_details = self._extract_details(request.chapter_id)
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            tags=[
+                "chat_type:lesson",
+                f"board:{chapter_details['BOARD']}",
+                f"grade:{chapter_details['GRADE']}",
+                f"subject:{chapter_details['SUBJECT']}",
+            ],
+        )
         try:
             # Get or create cached RAG adapter instance
             rag_adapter = await self._rags.get(request.index_path, self._rag_llm, self._rag_embed)
 
-            # Extract chapter details and build system message
+            # Build system message using already-extracted chapter details
             system_message = self._prompt_template.get_prompt_with_variables(
-                "lesson_chat", **self._extract_details(request.chapter_id)
+                "lesson_chat", **chapter_details
             )
 
             # Convert request messages to chat format
