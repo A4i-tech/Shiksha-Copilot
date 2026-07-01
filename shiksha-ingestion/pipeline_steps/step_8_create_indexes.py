@@ -30,18 +30,10 @@ class CreateIndexStep(BasePipelineStep):
     output_types = {"index_filter"}
 
     def _split_by_pages(self, content):
-        """
-        Split the content into pages using delimiters of the form '## Page <number>'.
-        Returns a list of strings, one per page.
-        """
-        # Split on lines starting with '## Page <number>'
-        # Handles both start-of-file and anywhere in the file
         pages = re.split(r'^##\s*Page\s*\d+\s*$', content, flags=re.MULTILINE)
-        # Remove empty or whitespace-only pages
         return [page.strip() for page in pages if page.strip()]
 
     def _embedding_llm(self):
-        """Initialize Azure OpenAI embedding model"""
         return AzureOpenAIEmbedding(
             model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
             deployment_name=os.getenv(
@@ -52,9 +44,7 @@ class CreateIndexStep(BasePipelineStep):
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
         )
 
-
     def _completion_llm(self):
-        """Initialize Azure OpenAI completion model"""
         return AzureOpenAI(
             model=os.getenv("AZURE_OPENAI_MODEL", "gpt-35-turbo"),
             deployment_name=os.getenv("AZURE_OPENAI_MODEL", "gpt-35-turbo"),
@@ -64,7 +54,6 @@ class CreateIndexStep(BasePipelineStep):
         )
 
     def _get_rag_ops_instance(self, collection_name: str):
-        """Get an instance of QdrantRagOps with the specified collection name."""
         return QdrantRagOps(
             url=os.getenv("QDRANT_URL", "http://localhost:6333"),
             collection_name=collection_name,
@@ -73,17 +62,6 @@ class CreateIndexStep(BasePipelineStep):
         )
 
     def process(self, input_paths: Dict[str, str], output_dir: str) -> StepResult:
-        """
-        Process the step - create indexes from chapter markdown content.
-
-        Args:
-            input_paths: Dictionary with keys:
-                - "markdown": Path to the cleaned markdown file
-            index_filter: index metadata filter
-
-        Returns:
-            StepResult with status and output paths containing the index_filter
-        """
         try:
             markdown_file = input_paths["markdown"]
             with open(markdown_file, "r", encoding="utf-8") as file:
@@ -107,50 +85,73 @@ class CreateIndexStep(BasePipelineStep):
                 ]
                 await rag_ops.create_index(
                     text_chunks=pages,
-                    metadata={
-                        "chapter_id": chapter_id
-                    },
+                    metadata={"chapter_id": chapter_id},
                     transformations=transformations
                 )
 
-                # Ensure chapter_id payload index exists for filtered queries
+                # Ensure chapter_id payload index exists for filtered queries.
+                # Close in finally to avoid a connection leak per chapter.
                 qdrant_client = AsyncQdrantClient(
                     url=os.getenv("QDRANT_URL", "http://localhost:6333"),
                     api_key=os.getenv("QDRANT_API_KEY"),
                 )
-                await qdrant_client.create_payload_index(
-                    collection_name=board,
-                    field_name="chapter_id",
-                    field_schema=PayloadSchemaType.KEYWORD,
-                )
+                try:
+                    await qdrant_client.create_payload_index(
+                        collection_name=board,
+                        field_name="chapter_id",
+                        field_schema=PayloadSchemaType.KEYWORD,
+                    )
+                finally:
+                    await qdrant_client.close()
 
                 # Write indexPath back to MongoDB so the backend routes to the
                 # correct Qdrant collection for this chapter.
                 # Qdrant collection uses underscores (BSE_TG); MongoDB board field uses dashes (BSE-TG).
                 mongo_url = os.getenv("MONGO_URL")
-                if mongo_url:
-                    mongo_board = board.replace("_", "-")
-                    mongo_client = AsyncMongoClient(mongo_url)
+                if not mongo_url:
+                    logger.warning("MONGO_URL not set — skipping indexPath write-back to MongoDB")
+                    return
+
+                mongo_board = board.replace("_", "-")
+                mongo_client = AsyncMongoClient(mongo_url)
+                try:
                     db = mongo_client.get_default_database()
+
+                    # Chapter docs store subject as subjectId (ObjectId ref to MasterSubject),
+                    # not a plain string — resolve it first to avoid matching the wrong chapter.
+                    master_subject = await db.mastersubjects.find_one(
+                        {"subjectName": {"$regex": f"^{subject}$", "$options": "i"}},
+                        {"_id": 1},
+                    )
+                    if not master_subject:
+                        logger.warning(
+                            f"MasterSubject not found for subject={subject} "
+                            f"— skipping indexPath write-back"
+                        )
+                        return
+
                     result = await db.chapters.update_one(
                         {
                             "board": mongo_board,
                             "medium": medium,
-                            "standard": grade,
-                            "orderNumber": chapter_number,
+                            "standard": int(grade),
+                            "orderNumber": int(chapter_number),
+                            "subjectId": master_subject["_id"],
                         },
                         {"$set": {"indexPath": index_path}},
                     )
-                    mongo_client.close()
-                    if result.modified_count:
+
+                    if result.matched_count == 0:
+                        logger.warning(
+                            f"No chapter found in MongoDB for board={mongo_board} "
+                            f"medium={medium} grade={grade} subject={subject} chapter={chapter_number}"
+                        )
+                    elif result.modified_count:
                         logger.info(f"Updated indexPath in MongoDB: {index_path}")
                     else:
-                        logger.warning(
-                            f"No chapter updated in MongoDB for board={mongo_board} "
-                            f"medium={medium} grade={grade} chapter={chapter_number}"
-                        )
-                else:
-                    logger.warning("MONGO_URL not set — skipping indexPath write-back to MongoDB")
+                        logger.info(f"indexPath already correct in MongoDB: {index_path}")
+                finally:
+                    await mongo_client.close()
 
             asyncio.run(run_create_index())
 
