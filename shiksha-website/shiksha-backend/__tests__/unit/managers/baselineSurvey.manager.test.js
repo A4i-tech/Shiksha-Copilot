@@ -1,4 +1,5 @@
 const BaselineSurveyDao = require("../../../dao/baselineSurvey.dao");
+process.env.BASELINE_SURVEY = "true";
 
 jest.mock("../../../dao/baselineSurvey.dao");
 

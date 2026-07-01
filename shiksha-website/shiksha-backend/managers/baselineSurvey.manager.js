@@ -9,11 +9,13 @@ class BaselineSurveyManager extends BaseManager {
     const dao = new BaselineSurveyDao();
     super(dao);
     this.dao = dao;
+    this.baselineSurvey = process.env.BASELINE_SURVEY === 'true';
   }
 
   async checkCompleted(userId) {
     try {
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
+      if (!this.baselineSurvey) return formatApiResponse(true, 'OK', { completed: true });
       const exists = await this.dao.existsByUser(userId);
       return formatApiResponse(true, 'OK', { completed: !!exists });
     } catch (err) {
@@ -24,6 +26,7 @@ class BaselineSurveyManager extends BaseManager {
 
   async submitSurvey(userId, body, session = null) {
     try {
+      if (!this.baselineSurvey) return formatApiResponse(false, 'Survey is disabled', null);
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
       const already = await this.dao.findByUser(userId);
