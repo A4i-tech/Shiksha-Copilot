@@ -200,26 +200,60 @@ async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> li
     return [item.metadata for item in ctx.items]
 
 
+_GROUP_HEADING: dict[str, str] = {
+    "mcq": "Multiple Choice Questions",
+    "fill_in_the_blank": "Fill in the Blanks",
+    "answer_very_short": "Very Short Answer",
+    "answer_short": "Short Answer",
+    "answer_medium": "Medium Answer",
+    "answer_long": "Long Answer",
+    "matching": "Matching",
+}
+
+
+def _parse_options(raw: list) -> list[dict[str, str]]:
+    """Convert ['A. Rome', 'B. Delhi'] → [{'label':'A','text':'Rome'}, ...]"""
+    import re
+    result = []
+    fallback_labels = ["A", "B", "C", "D", "E"]
+    for i, opt in enumerate(raw):
+        m = re.match(r'^[\(\[]?([A-Ea-e])[\)\].\s]+(.+)$', str(opt).strip())
+        if m:
+            result.append({"label": m.group(1).upper(), "text": m.group(2).strip()})
+        else:
+            label = fallback_labels[i] if i < len(fallback_labels) else str(i + 1)
+            result.append({"label": label, "text": str(opt).strip()})
+    return result
+
+
 def _to_mongo_doc(q: dict[str, Any], entry: PDFEntry) -> dict[str, Any]:
-    doc: dict[str, Any] = {
-        "board": entry.board,
-        "subject": entry.subject,
-        "medium": entry.medium,
-        "class": str(entry.grade),
-        "answerType": q.get("answerType", ""),
-        "question": q.get("question", ""),
-        "keyAnswer": q.get("keyAnswer", ""),
-        "marks": q.get("marks", 1),
-        "unitName": q.get("unitName", ""),
-    }
-    if q.get("objective"):
-        doc["objective"] = q["objective"]
+    from datetime import datetime, timezone
     answer_type = q.get("answerType", "")
-    if answer_type == "mcq":
-        doc["options"] = q.get("options", [])
-    if answer_type == "matching":
-        doc["value1"] = q.get("value1", "")
-        doc["value2"] = q.get("value2", "")
+    now = datetime.now(timezone.utc)
+
+    doc: dict[str, Any] = {
+        "subject": entry.subject,
+        "medium": entry.medium.lower(),
+        "class": str(entry.grade),
+        "year": "2024-25",
+        "examType": "LBA",
+        "board": entry.board,
+        "chapter": {"title": q.get("unitName", "")},
+        "groupHeading": _GROUP_HEADING.get(answer_type, answer_type),
+        "answerType": answer_type,
+        "difficulty": "",
+        "marksPerQuestion": q.get("marks", 1),
+        "text": q.get("question", ""),
+        "keyAnswer": q.get("keyAnswer", ""),
+        "items": [],
+        "correctOrderById": [],
+        "correctOrderIndices": [],
+        "options": _parse_options(q.get("options", [])) if answer_type == "mcq" else [],
+        "pairs": [{"value1": q.get("value1", ""), "value2": q.get("value2", "")}] if answer_type == "matching" else [],
+        "createdAt": now,
+        "updatedAt": now,
+        "__v": 0,
+    }
     return doc
 
 
