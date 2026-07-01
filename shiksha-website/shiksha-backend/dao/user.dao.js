@@ -98,7 +98,7 @@ class UserDao extends BaseDao {
 
 	async getByPhone(phone) {
 		try {
-			let user = await User.findOne({ phone }).select("+loginAttempts").populate("school", "_id name")
+			let user = await User.findOne({ phone }).select("+loginAttempts +recovery").populate("school", "_id name")
 			if (user) return user;
 			return false;
 		} catch (err) {

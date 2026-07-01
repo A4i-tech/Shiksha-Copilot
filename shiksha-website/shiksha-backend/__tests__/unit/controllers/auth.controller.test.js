@@ -19,7 +19,8 @@ describe('AuthController', () => {
         };
         mockRes = {
             status: jest.fn().mockReturnThis(),
-            json: jest.fn().mockReturnThis()
+            json: jest.fn().mockReturnThis(),
+            set: jest.fn().mockReturnThis()
         };
         mockAuthManager = {
             getOtp: jest.fn(),
@@ -107,6 +108,20 @@ describe('AuthController', () => {
 
             expect(mockRes.status).toHaveBeenCalledWith(423);
             expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+        });
+
+        it('should return 429 when recovery attempts are exhausted', async () => {
+            const mockResult = {
+                success: false,
+                code: 'RECOVERY_LOCKED',
+                data: { retryAfterSeconds: 120 }
+            };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.set).toHaveBeenCalledWith('Retry-After', '120');
+            expect(mockRes.status).toHaveBeenCalledWith(429);
         });
 
         it('should return 400 when exception occurs', async () => {

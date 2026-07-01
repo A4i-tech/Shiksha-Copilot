@@ -8,7 +8,7 @@ class AdminUserDao extends BaseDao {
 
 	async getByPhone(phone) {
 		try {
-			let adminUser = await AdminUser.findOne({ phone }).select("+loginAttempts");
+			let adminUser = await AdminUser.findOne({ phone }).select("+loginAttempts +recovery");
 			if (adminUser) return adminUser;
 			return false;
 		} catch (err) {
@@ -18,7 +18,7 @@ class AdminUserDao extends BaseDao {
 
 	async getAll(...args) {
 		const result = await super.getAll(...args);
-		result.results = result.results.map(({ loginAttempts, ...user }) => user);
+		result.results = result.results.map(({ loginAttempts, recovery, ...user }) => user);
 		return result;
 	}
 

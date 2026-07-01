@@ -10,6 +10,7 @@ const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const { JWT_SECRET } = process.env;
 const CAPTCHA_ATTEMPT = 3, MAX_LOGIN_ATTEMPTS = 6;
+const RECOVERY_TTL = 5 * 60 * 1000;
 
 class AuthManager {
     constructor() {
@@ -38,6 +39,7 @@ class AuthManager {
         delete user.otp;
         delete user.rememberMeToken;
         delete user.loginAttempts;
+        delete user.recovery;
         return user;
     }
 
@@ -58,22 +60,27 @@ class AuthManager {
 
             let otpTriggered = false;
 
-            if (forgotPassword || (!user.otp && !user.rememberMeToken)) {
-                if (user.otp && forgotPassword) {
-                    const decryptedOtpBytes = CryptoJS.AES.decrypt(user.otp, process.env.PIN_SECRET_KEY);
-                    const decryptedOtp = decryptedOtpBytes.toString(CryptoJS.enc.Utf8);
-
-                    const templateId = process.env.VARIFORM_SMS_TEMPLATE;
-                    await authHelper.sendOtp(templateId, phone, decryptedOtp);
-                    otpTriggered = true;
-                } else {
-                    const otp = authHelper.getOtp();
-                    const templateId = process.env.VARIFORM_SMS_TEMPLATE;
-                    await authHelper.sendOtp(templateId, phone, otp);
-                    const encryptedOtp = CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString();
-                    await this.updateUsers(activeUsers, "update", { otp: encryptedOtp, rememberMeToken: rememberMe === true });
-                    otpTriggered = true;
+            if (forgotPassword) {
+                if (user.recovery?.expiresAt > Date.now()) {
+                    return formatApiReponse(true, "Recovery PIN already sent", { user: user.phone, recoveryTriggered: true });
                 }
+                const otp = authHelper.getOtp();
+                await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
+                await this.updateUsers(activeUsers, "setRecovery", {
+                    otp: CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString(),
+                    expiresAt: new Date(Date.now() + RECOVERY_TTL),
+                    attempts: 0,
+                });
+                return formatApiReponse(true, "Recovery PIN sent successfully", { user: user.phone, recoveryTriggered: true });
+            }
+
+            if (!user.otp && !user.rememberMeToken) {
+                const otp = authHelper.getOtp();
+                const templateId = process.env.VARIFORM_SMS_TEMPLATE;
+                await authHelper.sendOtp(templateId, phone, otp);
+                const encryptedOtp = CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString();
+                await this.updateUsers(activeUsers, "update", { otp: encryptedOtp, rememberMeToken: rememberMe === true });
+                otpTriggered = true;
             } else {
                 await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
             }
@@ -87,7 +94,7 @@ class AuthManager {
 
     async validateOtp(req) {
         try {
-            let { phone, otp, captchaToken } = req.body;
+            let { phone, otp, captchaToken, recovery } = req.body;
 
             const users = await this.getUsersByPhone(phone);
             if (!users.teacher && !users.admin) {
@@ -99,6 +106,8 @@ class AuthManager {
             if (!user) {
                 return formatApiReponse(false, "User is inactive", {});
             }
+
+            if (recovery) return this.validateRecovery(req, activeUsers);
 
             const encryptedOtp = activeUsers.teacher ? activeUsers.teacher.otp : activeUsers.admin?.otp;
             if (!encryptedOtp) {
@@ -183,6 +192,36 @@ class AuthManager {
         } catch (err) {
             return formatApiReponse(false, err?.message || "Internal Server Error", err);
         }
+    }
+
+    async validateRecovery(req, activeUsers) {
+        const recovery = (activeUsers.teacher || activeUsers.admin).recovery;
+        const now = Date.now();
+        if (!recovery || new Date(recovery.expiresAt).getTime() <= now) {
+            return formatApiReponse(false, "Recovery PIN expired. Request a new one.", null);
+        }
+
+        const reservations = await this.updateUsers(activeUsers, "reserveRecoveryAttempt");
+        if (reservations.some((account) => !account)) {
+            return { ...formatApiReponse(false, "Too many recovery attempts. Request a new PIN later.", {
+                retryAfterSeconds: Math.max(1, Math.ceil((new Date(recovery.expiresAt).getTime() - now) / 1000)),
+            }), code: "RECOVERY_LOCKED" };
+        }
+
+        const decrypted = CryptoJS.AES.decrypt(recovery.otp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
+        if (req.body.otp !== decrypted) {
+            const attempts = Math.max(...reservations.map((account) => account.recovery.attempts));
+            return formatApiReponse(false, "Invalid recovery PIN", { attemptsRemaining: 3 - attempts });
+        }
+
+        await Promise.all([
+            this.updateUsers(activeUsers, "clearLoginAttempts"),
+            this.updateUsers(activeUsers, "clearRecovery"),
+        ]);
+        const encryptedPin = activeUsers.teacher?.otp || activeUsers.admin?.otp;
+        if (!encryptedPin) return formatApiReponse(false, "PIN not found", null);
+        const pin = CryptoJS.AES.decrypt(encryptedPin, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
+        return this.validateOtp({ ...req, body: { phone: req.body.phone, otp: pin } });
     }
 
     async getUserFromToken(req) {

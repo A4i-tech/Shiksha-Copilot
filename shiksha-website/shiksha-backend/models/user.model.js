@@ -105,6 +105,7 @@ const userSchema = mongoose.Schema(
       type: String,
     },
     loginAttempts: { type: [Date], default: [], select: false },
+    recovery: { type: Object, select: false },
     rememberMeToken: {
       type: Boolean,
       default: false,

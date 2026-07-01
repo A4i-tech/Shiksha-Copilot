@@ -34,6 +34,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   captchaToken = '';
   captchaWidgetId: string | null = null;
   accountLocked = false;
+  recoveryMode = false;
   images: Carousel[] = images; //utility from the utility folder
 
   rememberMe= false;
@@ -207,6 +208,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     ) {
       this.numberErrorMsg = 'Invalid phone number.';
     } else {
+      this.recoveryMode = false;
       this.numberErrorMsg = null;
       const reqBody = {
         phone:this.phoneNumber,
@@ -224,7 +226,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         this.captchaRequired = this.accountLocked = false;
         this.captchaToken = '';
         this.captchaWidgetId = null;
-        this.otpTriggered = res?.data?.otpTriggered;
+        this.otpTriggered = res?.data?.otpTriggered || res?.data?.recoveryTriggered;
         this.modalStatus = true;
         this.showResendOTP = false;
         this.clearOTPFiled();
@@ -241,6 +243,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   forgotPin(){
+    this.recoveryMode = true;
     const reqBody = {
       phone:this.phoneNumber,
       rememberMe:this.rememberMe,
@@ -258,7 +261,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   onVerifyOTP() {
     if (this.otpValue) {
       this.service
-        .validateOTP(this.otpValue, this.phoneNumber.toString(), this.captchaToken)
+        .validateOTP(this.otpValue, this.phoneNumber.toString(), this.captchaToken, this.recoveryMode)
         .subscribe({
           next: (res: any) => {
             this.invalidOtp = false;

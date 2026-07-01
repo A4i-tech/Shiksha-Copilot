@@ -3,12 +3,18 @@ const mockUserDao = {
   update: jest.fn(),
   reserveLoginAttempt: jest.fn(),
   clearLoginAttempts: jest.fn(),
+  setRecovery: jest.fn(),
+  reserveRecoveryAttempt: jest.fn(),
+  clearRecovery: jest.fn(),
 };
 const mockAdminDao = {
   getByPhone: jest.fn(),
   update: jest.fn(),
   reserveLoginAttempt: jest.fn(),
   clearLoginAttempts: jest.fn(),
+  setRecovery: jest.fn(),
+  reserveRecoveryAttempt: jest.fn(),
+  clearRecovery: jest.fn(),
 };
 process.env.JWT_SECRET = "test-secret";
 
@@ -16,7 +22,12 @@ jest.mock("../../../dao/user.dao", () => jest.fn(() => mockUserDao));
 jest.mock("../../../dao/admin.user.dao", () => jest.fn(() => mockAdminDao));
 jest.mock("../../../models/user.action.logs.model", () => ({ create: jest.fn() }));
 jest.mock("../../../helper/profile.helper", () => ({ refreshProfileImageIfExpired: jest.fn() }));
-jest.mock("../../../helper/auth.helper", () => ({ captchaEnabled: true, validateCaptcha: jest.fn() }));
+jest.mock("../../../helper/auth.helper", () => ({
+  captchaEnabled: true,
+  validateCaptcha: jest.fn(),
+  getOtp: jest.fn(() => "1234"),
+  sendOtp: jest.fn(),
+}));
 jest.mock("jsonwebtoken", () => ({ sign: jest.fn(() => "signed-token") }));
 jest.mock("crypto-js", () => ({
   AES: {
@@ -47,6 +58,10 @@ describe("AuthManager dual-role login", () => {
     mockAdminDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
     mockUserDao.clearLoginAttempts.mockResolvedValue({});
     mockAdminDao.clearLoginAttempts.mockResolvedValue({});
+    mockUserDao.reserveRecoveryAttempt.mockResolvedValue({ recovery: { attempts: 1 } });
+    mockAdminDao.reserveRecoveryAttempt.mockResolvedValue({ recovery: { attempts: 1 } });
+    mockUserDao.clearRecovery.mockResolvedValue({});
+    mockAdminDao.clearRecovery.mockResolvedValue({});
     authHelper.captchaEnabled = true;
     authHelper.validateCaptcha.mockResolvedValue(true);
     manager = new AuthManager();
@@ -166,6 +181,35 @@ describe("AuthManager dual-role login", () => {
 
     expect(result.message).toBe("Invalid PIN");
     expect(authHelper.validateCaptcha).not.toHaveBeenCalled();
+  });
+
+  it("allows a valid recovery PIN to clear permanent lockout and log in", async () => {
+    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 0 };
+    mockUserDao.getByPhone
+      .mockResolvedValueOnce(teacher({ loginAttempts: Array(6).fill(new Date()), recovery }))
+      .mockResolvedValueOnce(teacher({ loginAttempts: [] }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+
+    const result = await manager.validateOtp({
+      body: { phone: "9876543210", otp: "1234", recovery: true }, useragent: {},
+    });
+
+    expect(result.success).toBe(true);
+    expect(mockUserDao.clearLoginAttempts).toHaveBeenCalledWith("teacher-1");
+    expect(mockUserDao.clearRecovery).toHaveBeenCalledWith("teacher-1");
+  });
+
+  it("limits recovery verification to three attempts", async () => {
+    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 3 };
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(6).fill(new Date()), recovery }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+    mockUserDao.reserveRecoveryAttempt.mockResolvedValue(null);
+
+    const result = await manager.validateOtp({
+      body: { phone: "9876543210", otp: "9999", recovery: true },
+    });
+
+    expect(result.code).toBe("RECOVERY_LOCKED");
   });
 
 });
