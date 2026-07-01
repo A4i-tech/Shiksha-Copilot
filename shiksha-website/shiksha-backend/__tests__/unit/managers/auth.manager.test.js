@@ -131,7 +131,7 @@ describe("AuthManager dual-role login", () => {
 
     const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "9999" } });
 
-    expect(result).toEqual({ success: false, message: "Invalid PIN", data: { captchaRequired: true } });
+    expect(result.code).toBe("CAPTCHA_REQUIRED");
   });
 
   it("rejects the fourth attempt without a valid CAPTCHA", async () => {
@@ -185,9 +185,7 @@ describe("AuthManager dual-role login", () => {
 
   it("allows a valid recovery PIN to clear permanent lockout and log in", async () => {
     const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 0 };
-    mockUserDao.getByPhone
-      .mockResolvedValueOnce(teacher({ loginAttempts: Array(6).fill(new Date()), recovery }))
-      .mockResolvedValueOnce(teacher({ loginAttempts: [] }));
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(6).fill(new Date()), recovery }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
 
     const result = await manager.validateOtp({

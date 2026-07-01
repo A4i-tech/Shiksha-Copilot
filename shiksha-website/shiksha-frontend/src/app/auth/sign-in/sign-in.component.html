@@ -85,7 +85,7 @@
 				</div>
 				<div *ngIf="captchaRequired" id="turnstile-container"></div>
 				<button class="btn-success font-normal text-sm md:text-lg  text-center w-full" (click)="onVerifyOTP()"
-					[disabled]="otpValue.length!=4 || (captchaRequired && !captchaToken) || accountLocked"> Verify</button>
+					[disabled]="otpValue.length!=4 || (captchaRequired && !captchaToken)"> Verify</button>
 				<ng-container *ngIf="otpTriggered">
 					<a class="text-success underline cursor-pointer md:text-lg text-sm" (click)="onResendOTP()">Resend
 						PIN</a>

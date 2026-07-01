@@ -94,7 +94,7 @@ class AuthManager {
 
     async validateOtp(req) {
         try {
-            let { phone, otp, captchaToken, recovery } = req.body;
+            const { phone, otp, captchaToken, recovery } = req.body;
 
             const users = await this.getUsersByPhone(phone);
             if (!users.teacher && !users.admin) {
@@ -124,8 +124,7 @@ class AuthManager {
                 return { ...formatApiReponse(false, "Complete the CAPTCHA to continue.", null), code: "CAPTCHA_REQUIRED" };
             }
 
-            const attemptedAt = new Date();
-            const reservations = await this.updateUsers(activeUsers, "reserveLoginAttempt", attemptedAt,
+            const reservations = await this.updateUsers(activeUsers, "reserveLoginAttempt", new Date(),
                 !authHelper.captchaEnabled || captchaRequired ? MAX_LOGIN_ATTEMPTS : CAPTCHA_ATTEMPT);
             if (reservations.some((account) => !account)) {
                 const code = !authHelper.captchaEnabled || captchaRequired ? "ACCOUNT_LOCKED" : "CAPTCHA_REQUIRED";
@@ -133,65 +132,53 @@ class AuthManager {
                 return { ...formatApiReponse(false, message, null), code };
             }
 
-            const decryptedOtpBytes = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY);
-            const decryptedOtp = decryptedOtpBytes.toString(CryptoJS.enc.Utf8);
-            let isOtpValid = otp === decryptedOtp;
+            const decryptedOtp = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
+            if (otp === decryptedOtp) return this.completeLogin(req, activeUsers);
 
-            if (isOtpValid) {
-                const token = jwt.sign(
-                    {
-                        _id: activeUsers.teacher?._id || activeUsers.admin?._id,
-                        userId: activeUsers.teacher?._id,
-                        adminUserId: activeUsers.admin?._id,
-                        isAdmin: Boolean(activeUsers.admin),
-                        isDeleted: false,
-                    },
-                    JWT_SECRET,
-                    { expiresIn: "7d" }
-                );
-                await Promise.all([
-                    this.updateUsers(activeUsers, "update", { isLoginAllowed: true }),
-                    this.updateUsers(activeUsers, "clearLoginAttempts"),
-                ]);
-                const userObj = this.mergeUser(activeUsers.teacher, activeUsers.admin);
-
-                // Refresh profile image SAS URL if expired
-                if (activeUsers.teacher) {
-                    await refreshProfileImageIfExpired(userObj, (id, updates) => this.userDao.update(id, updates));
-                }
-
-                // Logging logic
-                const agent = req.useragent || {};
-                const deviceType = agent.isMobile ? 'mobile' : agent.isTablet ? 'tablet' : 'desktop';
-                const browserInfo = agent.browser ? `${agent.browser}/${agent.version}` : 'Unknown';
-                const osInfo = agent.os || 'Unknown';
-
-                const userActionLogData = {
-                    userId: user._id,
-                    userName: user.name,
-                    actionType: 'login',
-                    timestamp: new Date().toISOString(),
-                    deviceType,
-                    browserInfo,
-                    osInfo
-                };
-
-                await UserAction.create(userActionLogData);
-
-                return formatApiReponse(true, "PIN verified successfully!", { user: userObj, token });
-            }
-
-            if (reservations.some((account) => account.loginAttempts.length >= MAX_LOGIN_ATTEMPTS)) {
+            const attemptCountAfter = Math.max(...reservations.map((account) => account.loginAttempts.length));
+            if (attemptCountAfter >= MAX_LOGIN_ATTEMPTS) {
                 return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "ACCOUNT_LOCKED" };
             }
 
-            const requireCaptchaNext = authHelper.captchaEnabled &&
-                reservations.some((account) => account.loginAttempts.length >= CAPTCHA_ATTEMPT);
-            return formatApiReponse(false, "Invalid PIN", requireCaptchaNext ? { captchaRequired: true } : null);
+            if (authHelper.captchaEnabled && attemptCountAfter >= CAPTCHA_ATTEMPT) {
+                return { ...formatApiReponse(false, "Complete the CAPTCHA to continue.", null), code: "CAPTCHA_REQUIRED" };
+            }
+            return formatApiReponse(false, "Invalid PIN", null);
 
         } catch (err) {
             return formatApiReponse(false, err?.message || "Internal Server Error", err);
         }
+    }
+
+    async completeLogin(req, activeUsers) {
+        const user = activeUsers.teacher || activeUsers.admin;
+        const token = jwt.sign({
+            _id: user._id,
+            userId: activeUsers.teacher?._id,
+            adminUserId: activeUsers.admin?._id,
+            isAdmin: Boolean(activeUsers.admin),
+            isDeleted: false,
+        }, JWT_SECRET, { expiresIn: "7d" });
+        await Promise.all([
+            this.updateUsers(activeUsers, "update", { isLoginAllowed: true }),
+            this.updateUsers(activeUsers, "clearLoginAttempts"),
+            this.updateUsers(activeUsers, "clearRecovery"),
+        ]);
+        const userObj = this.mergeUser(activeUsers.teacher, activeUsers.admin);
+        if (activeUsers.teacher) {
+            await refreshProfileImageIfExpired(userObj, (id, updates) => this.userDao.update(id, updates));
+        }
+        const agent = req.useragent || {};
+        await UserAction.create({
+            userId: user._id,
+            userName: user.name,
+            actionType: 'login',
+            timestamp: new Date().toISOString(),
+            deviceType: agent.isMobile ? 'mobile' : agent.isTablet ? 'tablet' : 'desktop',
+            browserInfo: agent.browser ? `${agent.browser}/${agent.version}` : 'Unknown',
+            osInfo: agent.os || 'Unknown',
+        });
+        return formatApiReponse(true, "PIN verified successfully!", { user: userObj, token });
     }
 
     async validateRecovery(req, activeUsers) {
@@ -214,14 +201,7 @@ class AuthManager {
             return formatApiReponse(false, "Invalid recovery PIN", { attemptsRemaining: 3 - attempts });
         }
 
-        await Promise.all([
-            this.updateUsers(activeUsers, "clearLoginAttempts"),
-            this.updateUsers(activeUsers, "clearRecovery"),
-        ]);
-        const encryptedPin = activeUsers.teacher?.otp || activeUsers.admin?.otp;
-        if (!encryptedPin) return formatApiReponse(false, "PIN not found", null);
-        const pin = CryptoJS.AES.decrypt(encryptedPin, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
-        return this.validateOtp({ ...req, body: { phone: req.body.phone, otp: pin } });
+        return this.completeLogin(req, activeUsers);
     }
 
     async getUserFromToken(req) {

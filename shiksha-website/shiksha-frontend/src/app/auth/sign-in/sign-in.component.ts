@@ -33,7 +33,6 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   captchaRequired = false;
   captchaToken = '';
   captchaWidgetId: string | null = null;
-  accountLocked = false;
   recoveryMode = false;
   images: Carousel[] = images; //utility from the utility folder
 
@@ -222,8 +221,8 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   getOtp(reqBody:any){
     this.service.validateMobileNumber(reqBody).subscribe({
       next: (res: any) => {
-        if (this.captchaWidgetId !== null) (window as any).turnstile?.remove(this.captchaWidgetId);
-        this.captchaRequired = this.accountLocked = false;
+        if (this.captchaWidgetId !== null) (window as any).turnstile.remove(this.captchaWidgetId);
+        this.captchaRequired = false;
         this.captchaToken = '';
         this.captchaWidgetId = null;
         this.otpTriggered = res?.data?.otpTriggered || res?.data?.recoveryTriggered;
@@ -275,7 +274,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
                 this.translateService.use(res.data.user.preferredLanguage);
             }
 
-            if(this.rememberMe){
+            if(this.rememberMe && !this.recoveryMode){
               const userInfo = {
                 phone:this.phoneNumber,
                 apin:this.otpValue
@@ -289,10 +288,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           },
           error: (err: any) => {
             this.invalidOtp = true;
-            const error = err?.error;
-            if (error?.code === 'CAPTCHA_REQUIRED' || error?.data?.captchaRequired) this.requireCaptcha();
-            if (error?.code === 'ACCOUNT_LOCKED') this.accountLocked = true;
-            if (this.captchaRequired) this.resetCaptcha();
+            if (err.error.code === 'CAPTCHA_REQUIRED') this.requireCaptcha();
             this.utility.handleError(err);
           },
         }); //api call
@@ -304,19 +300,16 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     this.captchaRequired = true;
     setTimeout(() => {
       const turnstile = (window as any).turnstile;
-      if (turnstile && this.captchaWidgetId === null) {
+      if (!turnstile) return;
+      this.captchaToken = '';
+      if (this.captchaWidgetId === null) {
         this.captchaWidgetId = turnstile.render('#turnstile-container', {
           sitekey: environment.turnstileSiteKey,
           callback: (token: string) => this.captchaToken = token,
           'expired-callback': () => this.captchaToken = '',
         });
-      }
+      } else turnstile.reset(this.captchaWidgetId);
     });
-  }
-
-  resetCaptcha() {
-    this.captchaToken = '';
-    if (this.captchaWidgetId !== null) (window as any).turnstile?.reset(this.captchaWidgetId);
   }
 
   /**
