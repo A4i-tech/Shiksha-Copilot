@@ -32,7 +32,7 @@ describe("UserDao", () => {
       const result = await dao.getByPhone("1234567890");
 
       expect(User.findOne).toHaveBeenCalledWith({ phone: "1234567890" });
-      expect(mockSelect).toHaveBeenCalledWith("+loginAttempts");
+      expect(mockSelect).toHaveBeenCalledWith("+loginAttempts +recovery");
       expect(mockPopulate).toHaveBeenCalledWith("school", "_id name");
       expect(result).toEqual(mockUser);
     });
