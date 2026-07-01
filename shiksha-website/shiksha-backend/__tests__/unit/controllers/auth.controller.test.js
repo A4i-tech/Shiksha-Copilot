@@ -19,7 +19,8 @@ describe('AuthController', () => {
         };
         mockRes = {
             status: jest.fn().mockReturnThis(),
-            json: jest.fn().mockReturnThis()
+            json: jest.fn().mockReturnThis(),
+            set: jest.fn().mockReturnThis()
         };
         mockAuthManager = {
             getOtp: jest.fn(),
@@ -81,6 +82,23 @@ describe('AuthController', () => {
             await authController.validateOtp(mockReq, mockRes);
 
             expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
+        });
+
+        it('should return 429 with Retry-After when login is locked', async () => {
+            const mockResult = {
+                success: false,
+                code: 'LOGIN_LOCKED',
+                message: 'Too many failed attempts. Try again later.',
+                data: { retryAfterSeconds: 300 }
+            };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.set).toHaveBeenCalledWith('Retry-After', '300');
+            expect(mockRes.status).toHaveBeenCalledWith(429);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+            expect(handleError).not.toHaveBeenCalled();
         });
 
         it('should return 400 when exception occurs', async () => {

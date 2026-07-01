@@ -33,6 +33,10 @@ class AuthController {
             if (result.success) {
                 return res.status(200).json(result);
             }
+            if (result.code === "LOGIN_LOCKED") {
+                res.set("Retry-After", String(result.data.retryAfterSeconds));
+                return res.status(429).json(result);
+            }
             handleError(result, res);
             return;
         } catch (err) {

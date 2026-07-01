@@ -104,6 +104,7 @@ const userSchema = mongoose.Schema(
     otp: {
       type: String,
     },
+    loginAttempts: { type: [Date], default: [], select: false },
     rememberMeToken: {
       type: Boolean,
       default: false,

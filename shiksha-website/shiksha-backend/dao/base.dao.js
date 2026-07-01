@@ -139,6 +139,18 @@ class BaseDao {
 		}
 	}
 
+	reserveLoginAttempt(id, attemptedAt) {
+		return this.Model.findOneAndUpdate(
+			{ _id: id, "loginAttempts.2": { $exists: false } },
+			{ $push: { loginAttempts: attemptedAt } },
+			{ new: true }
+		).select("+loginAttempts");
+	}
+
+	clearLoginAttempts(id) {
+		return this.Model.findByIdAndUpdate(id, { $set: { loginAttempts: [] } });
+	}
+
 	async bulkUpload(dataArray) {
 		try {
 			const result = await this.Model.insertMany(dataArray);

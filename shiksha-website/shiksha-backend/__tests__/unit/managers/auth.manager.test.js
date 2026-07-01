@@ -1,5 +1,15 @@
-const mockUserDao = { getByPhone: jest.fn(), update: jest.fn() };
-const mockAdminDao = { getByPhone: jest.fn(), update: jest.fn() };
+const mockUserDao = {
+  getByPhone: jest.fn(),
+  update: jest.fn(),
+  reserveLoginAttempt: jest.fn(),
+  clearLoginAttempts: jest.fn(),
+};
+const mockAdminDao = {
+  getByPhone: jest.fn(),
+  update: jest.fn(),
+  reserveLoginAttempt: jest.fn(),
+  clearLoginAttempts: jest.fn(),
+};
 process.env.JWT_SECRET = "test-secret";
 
 jest.mock("../../../dao/user.dao", () => jest.fn(() => mockUserDao));
@@ -31,6 +41,10 @@ describe("AuthManager dual-role login", () => {
     process.env.VARIFORM_SMS_TEMPLATE = "template";
     mockUserDao.update.mockResolvedValue({});
     mockAdminDao.update.mockResolvedValue({});
+    mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
+    mockAdminDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
+    mockUserDao.clearLoginAttempts.mockResolvedValue({});
+    mockAdminDao.clearLoginAttempts.mockResolvedValue({});
     manager = new AuthManager();
   });
 
@@ -53,6 +67,8 @@ describe("AuthManager dual-role login", () => {
       expect.any(String),
       { expiresIn: "7d" }
     );
+    expect(mockUserDao.clearLoginAttempts).toHaveBeenCalledWith("teacher-1");
+    expect(mockAdminDao.clearLoginAttempts).toHaveBeenCalledWith("admin-1");
   });
 
   it("does not fall back to admin OTP for duplicate-phone teacher accounts", async () => {
@@ -66,12 +82,67 @@ describe("AuthManager dual-role login", () => {
   });
 
   it("keeps merged roles when refreshing the user from token", async () => {
-    const result = await manager.getUserFromToken({ teacherUser: teacher(), adminUser: admin() });
+    const result = await manager.getUserFromToken({
+      teacherUser: teacher({ loginAttempts: [new Date()] }),
+      adminUser: admin({ loginAttempts: [new Date()] }),
+    });
 
     expect(result.data).toEqual(expect.objectContaining({
       role: ["power", "admin"],
       userId: "teacher-1",
       adminUserId: "admin-1",
     }));
+    expect(result.data.loginAttempts).toBeUndefined();
   });
+
+  it("returns invalid PIN for the first two failed attempts", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: [new Date()] }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+    mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date(), new Date()] });
+
+    const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "9999" } });
+
+    expect(result).toEqual({ success: false, message: "Invalid PIN", data: null });
+  });
+
+  it("locks immediately on the third failed attempt", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: [new Date(), new Date()] }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+    mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date(), new Date(), new Date()] });
+
+    const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "9999" } });
+
+    expect(result).toEqual(expect.objectContaining({
+      success: false,
+      code: "LOGIN_LOCKED",
+      data: { retryAfterSeconds: 300 },
+    }));
+  });
+
+  it("rejects attempts during the lock without reserving another attempt", async () => {
+    const attempts = [new Date(), new Date(), new Date(Date.now() - 60_000)];
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: attempts }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+
+    const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "1234" } });
+
+    expect(result.code).toBe("LOGIN_LOCKED");
+    expect(result.data.retryAfterSeconds).toBeGreaterThanOrEqual(239);
+    expect(result.data.retryAfterSeconds).toBeLessThanOrEqual(240);
+    expect(mockUserDao.reserveLoginAttempt).not.toHaveBeenCalled();
+    expect(jwt.sign).not.toHaveBeenCalled();
+  });
+
+  it("clears an expired lock before recording a new failed attempt", async () => {
+    const expired = new Date(Date.now() - 5 * 60_000 - 1);
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: [expired, expired, expired] }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+    mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
+
+    const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "9999" } });
+
+    expect(mockUserDao.clearLoginAttempts).toHaveBeenCalledWith("teacher-1");
+    expect(result.message).toBe("Invalid PIN");
+  });
+
 });

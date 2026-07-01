@@ -9,6 +9,8 @@ const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const { JWT_SECRET } = process.env;
+const MAX_LOGIN_ATTEMPTS = 3
+LOGIN_LOCK_MS = 5 * 60 * 1000;
 
 class AuthManager {
     constructor() {
@@ -21,11 +23,28 @@ class AuthManager {
         return { teacher, admin };
     }
 
-    updateUsers({ teacher, admin }, updates) {
-        return Promise.all([
-            teacher && this.userDao.update(teacher._id, updates),
-            admin && this.adminUserDao.update(admin._id, updates),
-        ].filter(Boolean));
+    updateUsers({ teacher, admin }, method, ...args) {
+        return Promise.all([[teacher, this.userDao], [admin, this.adminUserDao]]
+            .filter(([user]) => user)
+            .map(([user, dao]) => dao[method](user._id, ...args)));
+    }
+
+    getLockExpiresAt({ teacher, admin }) {
+        return [teacher, admin].reduce((latest, account) => {
+            const attempts = account?.loginAttempts || [];
+            if (attempts.length < MAX_LOGIN_ATTEMPTS) return latest;
+            const expiresAt = new Date(attempts[MAX_LOGIN_ATTEMPTS - 1]).getTime() + LOGIN_LOCK_MS;
+            return Math.max(latest, expiresAt);
+        }, 0);
+    }
+
+    lockedResponse(expiresAt, now = Date.now()) {
+        return {
+            ...formatApiReponse(false, "Too many failed attempts. Try again later.", {
+                retryAfterSeconds: Math.max(1, Math.ceil((expiresAt - now) / 1000)),
+            }),
+            code: "LOGIN_LOCKED",
+        };
     }
 
     mergeUser(teacher, admin) {
@@ -37,6 +56,7 @@ class AuthManager {
         });
         delete user.otp;
         delete user.rememberMeToken;
+        delete user.loginAttempts;
         return user;
     }
 
@@ -70,11 +90,11 @@ class AuthManager {
                     const templateId = process.env.VARIFORM_SMS_TEMPLATE;
                     await authHelper.sendOtp(templateId, phone, otp);
                     const encryptedOtp = CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString();
-                    await this.updateUsers(activeUsers, { otp: encryptedOtp, rememberMeToken: rememberMe === true });
+                    await this.updateUsers(activeUsers, "update", { otp: encryptedOtp, rememberMeToken: rememberMe === true });
                     otpTriggered = true;
                 }
             } else {
-                await this.updateUsers(activeUsers, { rememberMeToken: rememberMe === true });
+                await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
             }
 
             return formatApiReponse(true, otpTriggered ? "OTP sent successfully" : "Verify your Pin!", { user: user.phone, otpTriggered });
@@ -104,6 +124,29 @@ class AuthManager {
                 return formatApiReponse(false, "PIN not found", null);
             }
 
+            const now = Date.now();
+            const lockExpiresAt = this.getLockExpiresAt(activeUsers);
+            if (lockExpiresAt > now) {
+                return this.lockedResponse(lockExpiresAt, now);
+            }
+            if (lockExpiresAt) {
+                await this.updateUsers(activeUsers, "clearLoginAttempts");
+                if (activeUsers.teacher) activeUsers.teacher.loginAttempts = [];
+                if (activeUsers.admin) activeUsers.admin.loginAttempts = [];
+            }
+
+            const attemptedAt = new Date(now);
+            const reservations = await this.updateUsers(activeUsers, "reserveLoginAttempt", attemptedAt);
+            if (reservations.some((account) => !account)) {
+                const refreshedUsers = await this.getUsersByPhone(phone);
+                const refreshedActiveUsers = {
+                    teacher: refreshedUsers.teacher?.isDeleted ? null : refreshedUsers.teacher,
+                    admin: refreshedUsers.admin?.isDeleted ? null : refreshedUsers.admin,
+                };
+                const refreshedLockExpiresAt = this.getLockExpiresAt(refreshedActiveUsers);
+                return this.lockedResponse(refreshedLockExpiresAt || now + LOGIN_LOCK_MS, now);
+            }
+
             const decryptedOtpBytes = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY);
             const decryptedOtp = decryptedOtpBytes.toString(CryptoJS.enc.Utf8);
             let isOtpValid = otp === decryptedOtp;
@@ -120,7 +163,10 @@ class AuthManager {
                     JWT_SECRET,
                     { expiresIn: "7d" }
                 );
-                await this.updateUsers(activeUsers, { isLoginAllowed: true });
+                await Promise.all([
+                    this.updateUsers(activeUsers, "update", { isLoginAllowed: true }),
+                    this.updateUsers(activeUsers, "clearLoginAttempts"),
+                ]);
                 const userObj = this.mergeUser(activeUsers.teacher, activeUsers.admin);
 
                 // Refresh profile image SAS URL if expired
@@ -147,6 +193,10 @@ class AuthManager {
                 await UserAction.create(userActionLogData);
 
                 return formatApiReponse(true, "PIN verified successfully!", { user: userObj, token });
+            }
+
+            if (reservations.some((account) => account.loginAttempts.length >= MAX_LOGIN_ATTEMPTS)) {
+                return this.lockedResponse(now + LOGIN_LOCK_MS, now);
             }
 
             return formatApiReponse(false, "Invalid PIN", null);
