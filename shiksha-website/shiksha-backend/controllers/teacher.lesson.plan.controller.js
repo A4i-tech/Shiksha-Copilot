@@ -159,6 +159,36 @@ class TeacherLessonPlanController extends BaseController {
 		}
 	}
 
+	async downloadLp(req, res) {
+		try {
+			const { lessonPlanId } = req.params;
+			const teacherId = req.user._id;
+
+			const buffer = await this.teacherLessonPlanManager.downloadLp(
+				teacherId,
+				lessonPlanId
+			);
+
+			if (buffer) {
+				res.setHeader(
+    			'Content-Type',
+    			'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  				);
+  				res.setHeader(
+    			'Content-Disposition',
+    			'attachment; filename="document.docx"'
+  				);
+
+  			res.send(buffer);
+			} else {
+				return res.status(404).json({ message: "Lesson plan not found" });
+			}
+		} catch (error) {
+			console.error("Error getting lesson plan by ID:", error);
+			return res.status(500).json({ error: "Internal server error" });
+		}
+	}
+
 	async getResourcePlanById(req, res) {
 		try {
 			const { resourcePlanId } = req.params;

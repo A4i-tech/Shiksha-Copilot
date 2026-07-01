@@ -286,4 +286,10 @@ export class ContentGenerationService extends BaseRestService {
   downloadLPDetails(lessonId:any):Observable<any>{
     return this.http.get(`${this.baseUrl}/master-lesson/lesson/tables/${lessonId}`)
   }
+
+  downloadDocx(lessonPlanId:any): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/teacher-lesson-plan/lesson-download/${lessonPlanId}`, {
+      responseType: 'blob'
+    });
+  }
 }

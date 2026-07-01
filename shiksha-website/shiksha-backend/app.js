@@ -33,6 +33,7 @@ const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.rout
 const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
 const helpVideosRoutes = require('./routes/help.videos.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
+const endlineSurveyRoutes = require('./routes/endlineSurvey.routes');
 
 dotenv.config();
 const app = express();
@@ -96,6 +97,8 @@ app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);
 app.use('/api', helpVideosRoutes);
 app.use('/api', baselineSurveyRoutes);
+app.use('/api', endlineSurveyRoutes);
+
 
 process.on('unhandledRejection',(reason,promise)=>{
 	console.log(promise,reason);

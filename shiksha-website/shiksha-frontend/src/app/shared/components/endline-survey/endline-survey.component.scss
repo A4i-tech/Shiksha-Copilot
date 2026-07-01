@@ -1,0 +1,685 @@
+
+/* Make the Angular Material dialog hug the survey nicely */
+.survey-wrapper{
+.survey-wrapper :host ::ng-deep .mat-dialog-container {
+  padding: 0;
+  max-width: 100vw;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* MAIN CONTAINER – clean, modern, and breathable */
+.survey-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  max-height: 85vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  position: relative;
+  // border-radius: 24px 24px 0 0;
+}
+
+/* HEADER – vibrant gradient with a subtle pattern overlay */
+.survey-hero {
+  background: linear-gradient(145deg, #3F91DA 0%, #3F91DA 100%);
+  padding: 32px 40px 24px;
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.survey-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.06'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.survey-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+  // gap: 24px;
+}
+
+.survey-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+}
+
+/* Pills – crisp, high contrast */
+.survey-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.survey-pill {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.survey-pill.primary {
+  background: white;
+  color: #3F91DA;
+  border: none;
+  font-weight: 800;
+  font-size: 0.9rem;
+  padding: 8px 20px 8px 16px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Info banner – friendly and noticeable */
+.survey-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  padding: 16px 20px;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  max-width: 500px;
+  margin-top: 4px;
+}
+
+.survey-info-banner .info-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #3F91DA;
+  font-size: 18px;
+}
+
+.survey-info-banner .info-text {
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.survey-info-banner .info-text strong {
+  font-weight: 700;
+}
+
+/* HERO ILLUSTRATION – simpler, more focused */
+.hero-illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.illustration-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.teacher-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+.teacher-icon {
+  font-size: 40px;
+}
+
+/* Floating emojis – more subtle */
+.floating-elements {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.floating-item {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  animation: float 5s ease-in-out infinite;
+  font-size: 18px;
+}
+
+.item-1 { top: 0; left: 0; animation-delay: 0s; }
+.item-2 { top: 5px; right: 0; animation-delay: 1.5s; }
+.item-3 { bottom: 5px; left: 45%; animation-delay: 3s; }
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
+}
+
+/* FORM – clean white cards with soft shadows */
+.survey-form {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 36px 40px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #f9fafc;
+}
+
+/* Question cards – elevated, with consistent hover */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: white;
+  padding: 28px;
+  border-radius: 20px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  border: 1px solid #edf2f7;
+  transition: all 0.2s ease;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  border-color: #e2e8f0;
+}
+
+/* Error state – clearly visible */
+.form-group.has-error {
+  border-left: 6px solid #dc2626;
+  border-color: #fecaca;
+  background: #fff9f9;
+}
+
+.question-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.question-number {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #3F91DA, #3F91DA);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 1.05rem;
+  line-height: 1.5;
+  margin: 0;
+  flex: 1;
+}
+
+.label-pill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #e6f0ff;
+  padding: 4px 12px;
+  border-radius: 30px;
+  margin-left: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.required-star {
+  color: #dc2626;
+  font-size: 1rem;
+  margin-left: 4px;
+}
+
+/* SELECT – modern, minimal arrow */
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.form-control {
+  width: 100%;
+  padding: 14px 18px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: white;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  appearance: none;
+  color: #0f172a;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+}
+
+.form-control::placeholder {
+  color: #94a3b8;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* CHECKBOX GROUP – card-like, spacious */
+.checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.checkbox-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 16px 18px;
+  margin: 0;
+  font-size: 0.95rem;
+  border-radius: 16px;
+  transition: all 0.15s ease;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.checkbox-card:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.checkbox-card input[type='checkbox'] {
+  position: absolute;
+  opacity: 0;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  height: 22px;
+  width: 22px;
+  background-color: white;
+  border-radius: 8px;
+  border: 2px solid #cbd5e1;
+  position: relative;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.checkbox-card:hover .checkmark {
+  border-color: #2563eb;
+}
+
+.checkbox-card input:checked ~ .checkmark {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 7px;
+  top: 3px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-card input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-card:has(input:checked) {
+  background: #eef2ff;
+  border-color: #2563eb;
+  color: #1e3a8a;
+  font-weight: 600;
+}
+
+.checkbox-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+/* Mutual exclusivity note – clear, friendly */
+.mutual-exclusivity-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #92400e;
+}
+
+.mutual-exclusivity-note .note-text {
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Disabled checkbox card – when mutually exclusive */
+.checkbox-card.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  pointer-events: none;
+}
+
+.checkbox-card.disabled .checkmark {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+/* OTHER INPUT – well separated */
+.other-input {
+  margin-top: 16px;
+  padding: 20px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+}
+
+.other-label {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 10px;
+}
+
+.other-input .form-control {
+  background: white;
+  border-color: #cbd5e1;
+}
+
+.other-input .form-control:focus {
+  border-color: #2563eb;
+  background: white;
+}
+
+/* FIELD ERROR – prominent, accessible */
+.field-error {
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-top: 4px;
+  border: 1px solid #fecaca;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* FORM ACTIONS – modern buttons */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-top: 20px;
+  padding-top: 24px;
+  border-top: 1px solid #e2e8f0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.btn-cancel,
+.btn-submit {
+  padding: 14px 32px;
+  border-radius: 40px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 150px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+.btn-cancel {
+  background: white;
+  color: #334155;
+  border: 1.5px solid #e2e8f0;
+}
+
+.btn-cancel:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.06);
+}
+
+.btn-submit {
+  background: linear-gradient(145deg, #2563eb, #4f46e5);
+  color: white;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: linear-gradient(145deg, #1d4ed8, #4338ca);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.35);
+}
+
+.btn-cancel:active:not(:disabled),
+.btn-submit:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.btn-cancel:disabled,
+.btn-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ERROR MESSAGE – at the bottom */
+.error-message {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #b91c1c;
+  background: #fee2e2;
+  padding: 16px 22px;
+  border-radius: 16px;
+  margin-top: 24px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* SCROLLBAR – subtle */
+.survey-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.survey-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.survey-container::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+
+.survey-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* RESPONSIVE – maintains clarity on small screens */
+@media (max-width: 768px) {
+  .survey-container {
+    max-height: 90vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .survey-hero {
+    padding: 28px 24px 24px;
+  }
+
+  .survey-header {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .hero-illustration {
+    align-self: center;
+  }
+
+  .illustration-container {
+    width: 100px;
+    height: 100px;
+  }
+
+  .teacher-avatar {
+    width: 75px;
+    height: 75px;
+    top: 12px;
+    left: 12px;
+  }
+
+  .teacher-icon {
+    font-size: 32px;
+  }
+
+  .floating-item {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .survey-form {
+    padding: 28px 24px;
+  }
+
+  .form-group {
+    padding: 22px;
+  }
+
+  .checkbox-group {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .btn-cancel,
+  .btn-submit {
+    width: 100%;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .survey-hero {
+    padding: 24px 18px 20px;
+  }
+
+  .survey-form {
+    padding: 24px 18px;
+  }
+
+  .form-group {
+    padding: 18px;
+  }
+
+  .question-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .question-number {
+    align-self: flex-start;
+  }
+
+  .checkbox-card {
+    padding: 14px 16px;
+  }
+}
+}

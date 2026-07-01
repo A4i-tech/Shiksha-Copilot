@@ -11,11 +11,34 @@ class BaselineSurveyManager extends BaseManager {
     this.dao = dao;
   }
 
+  /**
+   * Calculate Academic Year.
+   * Academic Year X starts June 1, Year X and ends March 31, Year X+1.
+   */
+  getAcademicYearInfo() {
+    const now = new Date();
+    const month = now.getMonth(); // 0-11. June is 5, March is 2.
+    const year = now.getFullYear();
+
+    // Months:
+    // 0: Jan, 1: Feb, 2: Mar  -> Academic Year = Current Year - 1
+    // 3: Apr, 4: May          -> Window CLOSED (but baseline should still allow submission)
+    // 5: Jun ... 11: Dec      -> Academic Year = Current Year
+
+    if (month >= 5) { // June onwards
+      return year;
+    } else { // Jan, Feb, Mar, Apr, May
+      return year - 1;
+    }
+  }
+
   async checkCompleted(userId) {
     try {
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
-      const exists = await this.dao.existsByUser(userId);
-      return formatApiResponse(true, 'OK', { completed: !!exists });
+      
+      const academicYear = this.getAcademicYearInfo();
+      const exists = await this.dao.existsByUser(userId, academicYear);
+      return formatApiResponse(true, 'OK', { completed: !!exists, academicYear });
     } catch (err) {
       console.error('BaselineSurveyManager.checkCompleted', err);
       return formatApiResponse(false, 'Server error', null);
@@ -26,8 +49,9 @@ class BaselineSurveyManager extends BaseManager {
     try {
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
-      const already = await this.dao.findByUser(userId);
-      if (already) return formatApiResponse(false, 'Already submitted', null);
+      const academicYear = this.getAcademicYearInfo();
+      const already = await this.dao.findByUser(userId, academicYear);
+      if (already) return formatApiResponse(false, 'Already submitted for this academic year', null);
 
       // ---- NORMALIZE ARRAYS ----
       const plans = Array.isArray(body.plans) ? body.plans : [];
@@ -71,6 +95,7 @@ class BaselineSurveyManager extends BaseManager {
 
       const payload = {
         userId,
+        academicYear,
         plans,
         devices,
         weeklyLessonPlans: body.weeklyLessonPlans || '',
@@ -86,7 +111,7 @@ class BaselineSurveyManager extends BaseManager {
     } catch (err) {
       console.error('BaselineSurveyManager.submitSurvey', err);
       if (err && err.code === 11000) {
-        return formatApiResponse(false, 'Already submitted', null);
+        return formatApiResponse(false, 'Already submitted for this academic year', null);
       }
       return formatApiResponse(false, 'Server error', null);
     }

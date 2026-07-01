@@ -39,12 +39,14 @@ import { MatIconModule } from '@angular/material/icon';
 
 // Components
 import { BaselineSurveyComponent } from './shared/components/baseline-survey/baseline-survey.component';
+import { EndlineSurveyComponent } from './shared/components/endline-survey/endline-survey.component';
 
 // Services
 import { BaselineSurveyDialogService } from './core/services/baseline-survey-dialog.service';
+import { EndlineSurveyDialogService } from './core/services/endline-survey-dialog.service';
 
 @NgModule({
-  declarations: [AppComponent,BaselineSurveyComponent,],
+  declarations: [AppComponent, BaselineSurveyComponent, EndlineSurveyComponent],
   imports: [
     BrowserModule,
     AppRoutingModule,
@@ -86,7 +88,8 @@ import { BaselineSurveyDialogService } from './core/services/baseline-survey-dia
       multi:true
     },
     DatePipe,
-    BaselineSurveyDialogService
+    BaselineSurveyDialogService,
+    EndlineSurveyDialogService
 
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],

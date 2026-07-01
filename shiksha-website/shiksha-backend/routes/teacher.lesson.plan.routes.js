@@ -152,6 +152,17 @@ router.get(
 );
 
 router.get(
+	"/teacher-lesson-plan/lesson-download/:lessonPlanId",
+	isAuthenticated,
+	asyncMiddleware(
+		teacherLessonPlanController.downloadLp.bind(
+			teacherLessonPlanController
+		)
+	)
+);
+
+
+router.get(
 	"/teacher-lesson-plan/resource/:resourcePlanId",
 	isAuthenticated,
 	asyncMiddleware(

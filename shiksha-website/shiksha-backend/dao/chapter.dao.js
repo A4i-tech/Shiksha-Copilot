@@ -62,6 +62,7 @@ class ChapterDao extends BaseDao {
 					processedFilters[key] = filters[key];
 				}
 			}
+			processedFilters = {...processedFilters, isDeleted:false}
 
 			const results = await chapterAggregation.getChapterBySemester(
 				processedFilters

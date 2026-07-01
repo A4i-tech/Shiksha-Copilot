@@ -351,7 +351,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         title: 'Learning Outcomes',
         content: lo,
         outputFormat: 'plain_text',
-        editable: false,
+        editable: true,
       });
     }
 
@@ -452,7 +452,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       reqBody = {
         lessonId: this.planId,
         sections: this.getFormattedSectionData(),
-        learningOutcomes: this.planDetails?.learningOutcomes,
+        learningOutcomes: this.getFormattedLo(this.sections.filter((item) => item.title === 'Learning Outcomes')[0]?.content || ''),
       };
     } else {
       const { resources, additionalResources } = this.lessonResourceFormatter(
@@ -523,7 +523,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       let saveTeacherData: any = {
         isCompleted,
         lessonId,
-        learningOutcomes: this.planDetails?.learningOutcomes,
+        learningOutcomes: this.getFormattedLo(this.sections.filter((item) => item.title === 'Learning Outcomes')[0]?.content || ''),
         isVideoSelected: this.videoUrls.length ? true : false,
       };
       saveTeacherData.sections = this.getFormattedSectionData();
@@ -813,4 +813,14 @@ export class LessonPlanViewEditComponent implements OnInit {
 
     return sectionData;
   }
+
+  getFormattedLo(sectionLo:any){
+      const lo = sectionLo
+    .split('\n')                  // split into lines
+    .map((line:any) => line.trim())     // remove whitespace
+    .filter((line:any) => line.startsWith('- '))   // keep only markdown bullets
+    .map((line:any) => line.slice(2));
+    return lo;
+  }
+
 }

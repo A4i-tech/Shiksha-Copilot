@@ -1,15 +1,17 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CheckListExportService } from 'src/app/shared/services/checklist-export.service';
 import { ChecklistPdfExportService } from 'src/app/shared/services/checklist-pdf-export.service';
 import { DocumentExportService } from 'src/app/shared/services/document-export.service';
 import { ResourcePptGeneratorService } from 'src/app/shared/services/resource-ppt-generator.service';
+import { ContentGenerationService } from '../content-generation.service';
+import { UtilityService } from 'src/app/core/services/utility.service';
 
 @Component({
   selector: 'app-lesson-plan-documents',
   templateUrl: './lesson-plan-documents.component.html',
   styleUrls: ['./lesson-plan-documents.component.scss'],
 })
-export class LessonPlanDocumentsComponent {
+export class LessonPlanDocumentsComponent implements OnInit {
   @Input() docTypeValues: any[] = [];
 
   @Input() mode: any;
@@ -20,12 +22,20 @@ export class LessonPlanDocumentsComponent {
 
   @Input() sections: any[] = [];
 
+  board:any;
+
   constructor(
     private documentExportService: DocumentExportService,
     private checklistPdfExportService: ChecklistPdfExportService,
     private resourcePptxService: ResourcePptGeneratorService,
-    private checkListExportService: CheckListExportService
+    private checkListExportService: CheckListExportService,
+    private contentGenerationService: ContentGenerationService,
+    private utilityservice: UtilityService
   ) {}
+
+  ngOnInit(): void {
+    this.board = this.planDetails?.chapter?.board || this.planDetails?.lesson?.chapter?.board;
+  }
 
   downloadDocument(downloadType: any) {
     if (this.mode !== 'view') {
@@ -125,5 +135,38 @@ export class LessonPlanDocumentsComponent {
         flName
       );
     }
+  }
+
+  downloadDocv2(){
+    let headerData;
+     headerData = { ...this.planDetails?.lesson?.chapter };
+      headerData.subjects = this.planDetails?.lesson?.subjects;
+      headerData.subTopics = this.planDetails?.lesson?.subTopics;
+      headerData.class = this.planDetails?.lesson?.class;
+      const fileName = `${headerData?.subjects?.name}${
+        headerData?.subjects?.sem ? '_' : ''
+      }${headerData?.subjects?.sem ? headerData?.subjects?.sem : ''}_${
+        headerData?.topics
+      }_lesson_plan`;
+      this.downloadLatexDoc(this.planDetails.lessonId, fileName);
+  }
+
+  downloadLatexDoc(lessonPlanId:any, docName:any){
+    this.contentGenerationService.downloadDocx(lessonPlanId).subscribe({
+      next:(res)=>{
+        const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${docName}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      },
+      error:(err)=>{
+        this.utilityservice.handleError(err);
+      }
+    })
   }
 }

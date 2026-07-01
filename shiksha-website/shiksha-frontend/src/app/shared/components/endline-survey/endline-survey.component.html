@@ -1,0 +1,274 @@
+<div class="survey-wrapper">
+  <div class="survey-container">
+    <!-- HEADER -->
+    <div class="survey-hero">
+      <div class="survey-header">
+        <div class="survey-title-block">
+          <div class="survey-pill-row">
+           <span class="survey-pill primary">
+  Please fill the <B>Endline Survey</B> {{ academicYear }}
+</span>
+
+            <span class="survey-pill">Takes ~ 1 minute</span>
+          </div>
+
+          <div class="survey-info-banner">
+            <div class="info-icon">💡</div>
+            <div class="info-text">
+              <strong>Your responses will directly help us to improve the Shiksha copilot portal.</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right-side illustration -->
+        <div class="hero-illustration">
+          <div class="illustration-container">
+            <div class="teacher-avatar">
+              <div class="teacher-icon">👩‍🏫</div>
+            </div>
+            <div class="floating-elements">
+              <div class="floating-item item-1">📚</div>
+              <div class="floating-item item-2">✏️</div>
+              <div class="floating-item item-3">📝</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORM -->
+    <form [formGroup]="surveyForm" (ngSubmit)="onSubmit()" class="survey-form">
+      <!-- Q1: Time Usage -->
+      <div class="form-group"
+        [class.has-error]="surveyForm.get('shikshaTimeUsage')?.invalid && surveyForm.get('shikshaTimeUsage')?.touched">
+        <div class="question-header">
+          <div class="question-number">1</div>
+          <label>
+            How much time do you take to prepare lesson plan using Shiksha copilot?
+            <span class="required-star">*</span>
+          </label>
+        </div>
+        <div class="select-wrapper">
+          <select formControlName="shikshaTimeUsage" class="form-control">
+            <option value="">Select</option>
+            <option *ngFor="let o of shikshaTimeOptions" [value]="o">{{ o }}</option>
+          </select>
+          <div class="select-arrow">▼</div>
+        </div>
+        <div class="field-error"
+          *ngIf="surveyForm.get('shikshaTimeUsage')?.invalid && surveyForm.get('shikshaTimeUsage')?.touched">
+          Please select time usage.
+        </div>
+      </div>
+
+      <!-- Q2: Usability -->
+      <div class="form-group"
+        [class.has-error]="surveyForm.get('shikshaUsability')?.invalid && surveyForm.get('shikshaUsability')?.touched">
+        <div class="question-header">
+          <div class="question-number">2</div>
+          <label>
+            Is content from Shiksha copilot directly usable?
+            <span class="required-star">*</span>
+          </label>
+        </div>
+        <div class="select-wrapper">
+          <select formControlName="shikshaUsability" class="form-control">
+            <option value="">Select</option>
+            <option *ngFor="let o of shikshaUsabilityOptions" [value]="o">{{ o }}</option>
+          </select>
+          <div class="select-arrow">▼</div>
+        </div>
+        <div class="field-error"
+          *ngIf="surveyForm.get('shikshaUsability')?.invalid && surveyForm.get('shikshaUsability')?.touched">
+          Please select usability.
+        </div>
+      </div>
+
+      <!-- Q3: Benefits -->
+      <div class="form-group"
+        [class.has-error]="surveyForm.get('shikshaBenefits')?.invalid && surveyForm.get('shikshaBenefits')?.touched">
+        <div class="question-header">
+          <div class="question-number">3</div>
+          <label>
+            Which of the following do you feel is true about Shiksha copilot?
+            <span class="label-pill">Check all that apply</span>
+          </label>
+        </div>
+
+        <!-- Special option: Still exploring -->
+        <div class="checkbox-group">
+          <label class="checkbox-card">
+            <input type="checkbox" (change)="onBenefitsChange('Still exploring its usefulness', $event)"
+              [checked]="isChecked('shikshaBenefits', 'Still exploring its usefulness')" />
+            <span class="checkmark"></span>
+            <span class="checkbox-text">Still exploring its usefulness</span>
+          </label>
+        </div>
+
+        <!-- Dynamic note when special option is selected -->
+        <div class="mutual-exclusivity-note" *ngIf="showSpecialBenefitsNote">
+          <!-- <mat-icon class="info-icon">info</mat-icon> -->
+          <span class="note-text">Other options cannot be selected when "Still exploring its usefulness" is
+            chosen.</span>
+        </div>
+
+        <!-- Other options (hidden when special option is selected) -->
+        <div class="checkbox-group" *ngIf="showOtherBenefitsOptions">
+          <label *ngFor="let o of filteredBenefitsOptions" class="checkbox-card">
+            <input type="checkbox" (change)="onBenefitsChange(o, $event)" [checked]="isChecked('shikshaBenefits', o)" />
+            <span class="checkmark"></span>
+            <span class="checkbox-text">{{ o }}</span>
+          </label>
+        </div>
+
+        <div class="field-error"
+          *ngIf="surveyForm.get('shikshaBenefits')?.invalid && surveyForm.get('shikshaBenefits')?.touched">
+          Please select at least one benefit.
+        </div>
+      </div>
+
+      <!-- Q4: Time Utilization -->
+      <div class="form-group"
+        [class.has-error]="surveyForm.get('shikshaTimeUtilization')?.invalid && surveyForm.get('shikshaTimeUtilization')?.touched">
+        <div class="question-header">
+          <div class="question-number">4</div>
+          <label>
+            How do you utilize time saved since you started using Shiksha copilot?
+            <span class="required-star">*</span>
+          </label>
+        </div>
+        <div class="select-wrapper">
+          <select formControlName="shikshaTimeUtilization" class="form-control">
+            <option value="">Select</option>
+            <option *ngFor="let o of shikshaTimeUtilizationOptions" [value]="o">{{ o }}</option>
+          </select>
+          <div class="select-arrow">▼</div>
+        </div>
+        <div class="field-error"
+          *ngIf="surveyForm.get('shikshaTimeUtilization')?.invalid && surveyForm.get('shikshaTimeUtilization')?.touched">
+          Please select time utilization.
+        </div>
+      </div>
+
+      <!-- Q4 Other input -->
+      <div class="other-input" *ngIf="showOtherTimeUtilization">
+        <label class="other-label">Please specify how you utilize the saved time:</label>
+        <input type="text" class="form-control" formControlName="shikshaTimeUtilizationOther"
+          placeholder="Enter your response here" />
+        <div class="field-error"
+          *ngIf="surveyForm.get('shikshaTimeUtilizationOther')?.invalid && surveyForm.get('shikshaTimeUtilizationOther')?.touched">
+          Please specify your response in the text field.
+        </div>
+      </div>
+
+      <!-- Q5: Content Used -->
+      <div class="form-group"
+        [class.has-error]="surveyForm.get('shikshaContentUsed')?.invalid && surveyForm.get('shikshaContentUsed')?.touched">
+        <div class="question-header">
+          <div class="question-number">5</div>
+          <label>
+            Which of the following content generated by Shiksha copilot do you use in classroom?
+            <span class="label-pill">Check all that apply</span>
+          </label>
+        </div>
+
+        <!-- Special option: Not used -->
+        <div class="checkbox-group">
+          <label class="checkbox-card">
+            <input type="checkbox"
+              (change)="onContentUsedChange('I have not used any of these in my classroom', $event)"
+              [checked]="isChecked('shikshaContentUsed', 'I have not used any of these in my classroom')" />
+            <span class="checkmark"></span>
+            <span class="checkbox-text">I have not used any of these in my classroom</span>
+          </label>
+        </div>
+
+        <!-- Dynamic note when special option is selected -->
+        <div class="mutual-exclusivity-note" *ngIf="showSpecialContentNote">
+          <!-- <mat-icon class="info-icon">info</mat-icon> -->
+          <span class="note-text">Other options cannot be selected when "I have not used any of these in my classroom"
+            is chosen.</span>
+        </div>
+
+        <!-- Other options (hidden when special option is selected) -->
+        <div class="checkbox-group" *ngIf="showOtherContentOptions">
+          <label *ngFor="let o of filteredContentOptions" class="checkbox-card">
+            <input type="checkbox" (change)="onContentUsedChange(o, $event)"
+              [checked]="isChecked('shikshaContentUsed', o)" />
+            <span class="checkmark"></span>
+            <span class="checkbox-text">{{ o }}</span>
+          </label>
+        </div>
+
+        <div class="field-error"
+          *ngIf="surveyForm.get('shikshaContentUsed')?.invalid && surveyForm.get('shikshaContentUsed')?.touched">
+          Please select at least one content type.
+        </div>
+      </div>
+
+      <!-- Q6: Student Impact -->
+      <div class="form-group"
+        [class.has-error]="surveyForm.get('shikshaStudentImpact')?.invalid && surveyForm.get('shikshaStudentImpact')?.touched">
+        <div class="question-header">
+          <div class="question-number">6</div>
+          <label>
+            Do you feel using Shiksha copilot content has made any difference with students?
+            <span class="label-pill">Check all that apply</span>
+          </label>
+        </div>
+
+        <!-- Special option: Not enough -->
+        <div class="checkbox-group">
+          <label class="checkbox-card">
+            <input type="checkbox"
+              (change)="onStudentImpactChange('I have not used it enough to notice changes', $event)"
+              [checked]="isChecked('shikshaStudentImpact', 'I have not used it enough to notice changes')" />
+            <span class="checkmark"></span>
+            <span class="checkbox-text">I have not used it enough to notice changes</span>
+          </label>
+        </div>
+
+        <!-- Dynamic note when special option is selected -->
+        <div class="mutual-exclusivity-note" *ngIf="showSpecialImpactNote">
+          <!-- <mat-icon class="info-icon">info</mat-icon> -->
+          <span class="note-text">Other options cannot be selected when "I have not used it enough to notice changes" is
+            chosen.</span>
+        </div>
+
+        <!-- Other options (hidden when special option is selected) -->
+        <div class="checkbox-group" *ngIf="showOtherImpactOptions">
+          <label *ngFor="let o of filteredImpactOptions" class="checkbox-card">
+            <input type="checkbox" (change)="onStudentImpactChange(o, $event)"
+              [checked]="isChecked('shikshaStudentImpact', o)" />
+            <span class="checkmark"></span>
+            <span class="checkbox-text">{{ o }}</span>
+          </label>
+        </div>
+
+        <div class="field-error"
+          *ngIf="surveyForm.get('shikshaStudentImpact')?.invalid && surveyForm.get('shikshaStudentImpact')?.touched">
+          Please select at least one impact option.
+        </div>
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="form-actions">
+        <!-- <button mat-button type="button" (click)="onClose()" [disabled]="submitting" *ngIf="!data?.force"
+          class="btn-cancel">
+          Cancel
+        </button> -->
+        <button mat-raised-button color="primary" type="submit" [disabled]="surveyForm.invalid || submitting"
+          class="btn-submit">
+          <span *ngIf="!submitting">Submit Survey</span>
+          <mat-spinner *ngIf="submitting" diameter="20"></mat-spinner>
+        </button>
+      </div>
+
+      <!-- ERROR -->
+      <div *ngIf="error" class="error-message">
+        <!-- <mat-icon>error_outline</mat-icon> -->
+        <span>{{ error }}</span>
+      </div>
+    </form>
+  </div>
+</div>

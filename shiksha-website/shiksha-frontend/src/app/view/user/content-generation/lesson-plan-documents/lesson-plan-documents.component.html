@@ -51,6 +51,46 @@
       </button>
     </div>
   </ng-container>
+
+  <!-- Experimental DOCX version 2 with latex support  -->
+  <div
+  *ngIf="isLesson && board ==='BSE-TG'"
+      [ngClass]="{ 'disable-download': mode !== 'view' }"
+      class="bg-white shadow rounded-lg p-5 flex flex-col md:flex-row items-left md:items-center gap-5 md:gap-0 justify-between border border-primary-50 hover:shadow-md transition"
+    >
+      <div class="flex items-center space-x-4">
+        <div>
+          <div class="text-white p-3 rounded-full bg-primary-30">
+            <img
+              class="w-8"
+              src="../../../../../assets/icons/docx-original.svg"
+              alt=""
+            />
+          </div>
+        </div>
+        <div>
+          <small class="text-purple-600 bg-purple-100 px-2 py-1 rounded">Formula Support</small>
+          <p
+            class="font-semibold text-gray-800 max-w-52 text-nowrap overflow-hidden text-ellipsis !mb-0"
+          >
+            Lesson Plan V2 Docx
+          </p>
+          <p class="text-sm text-gray-500">DOCX file</p>
+        </div>
+      </div>
+      <button
+        (click)="downloadDocv2()"
+        class="md:hidden btn-outline-primary"
+      >
+        Download
+      </button>
+      <button
+        (click)="downloadDocv2()"
+        class="hidden md:block btn-primary"
+      >
+        Download
+      </button>
+    </div>
 </div>
 <div class="bg-warn-50 p-2 my-4" *ngIf="mode !== 'view'">
   <div class="flex items-center gap-2">

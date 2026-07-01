@@ -21,6 +21,7 @@ const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
 const ActivityRatingAggregate = require("../models/activity.aggregate.model.js");
 const { attachAggregateRatings } = require("../helper/activity.rating.helper.js");
+const { combineMarkdown } = require("../helper/docx.helper.js");
 
 class TeacherLessonPlanManager extends BaseManager {
 	constructor() {
@@ -143,6 +144,29 @@ class TeacherLessonPlanManager extends BaseManager {
 			return formatApiReponse(false, "Internal server error", error);
 		}
 	}
+
+		async downloadLp(teacherId, lessonPlanId) {
+		try {
+			const lessonPlan = await this.teacherLessonPlanDao.getLessonPlanById(
+				teacherId,
+				lessonPlanId
+			);
+
+			if (lessonPlan) {
+			const {default:markdownDocx,Packer} = await import('markdown-docx');
+			const markdownString = combineMarkdown(lessonPlan);
+			const doc = await markdownDocx(markdownString)
+			const buffer = await Packer.toBuffer(doc); 
+				return buffer
+			} else {
+				return formatApiReponse(false, "Lesson plan not found", null);
+			}
+		} catch (error) {
+			console.error("Error getting lesson plan by ID:", error);
+			return formatApiReponse(false, "Internal server error", error);
+		}
+	}
+
 
 	async generateContent(teacherId, payload) {
 		try {

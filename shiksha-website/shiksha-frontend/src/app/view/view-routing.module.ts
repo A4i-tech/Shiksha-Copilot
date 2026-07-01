@@ -2,6 +2,7 @@ import { NgModule } from "@angular/core";
 import { RouterModule, Routes } from "@angular/router";
 import { ViewComponent } from "./view.component";
 import { IsUserGuard } from "../core/guards/isUser.guard";
+import { EndlineSurveyGuard } from "../core/guards/endline-survey.guard";
 
 const routes:Routes=[
 
@@ -21,7 +22,8 @@ const routes:Routes=[
             {
                 path: 'user',
                 loadChildren: () => import('./user/user.module').then((m) => m.UserModule),
-                canActivate:[IsUserGuard]
+                canActivate:[IsUserGuard, EndlineSurveyGuard]
+
             }
 
 
