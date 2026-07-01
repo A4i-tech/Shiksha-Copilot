@@ -101,13 +101,27 @@ describe('AuthController', () => {
         });
 
         it('should return 423 when the account is locked', async () => {
-            const mockResult = { success: false, code: 'ACCOUNT_LOCKED', data: null };
+            const mockResult = { success: false, code: 'LOGIN_LOCKED', data: null };
             mockAuthManager.validateOtp.mockResolvedValue(mockResult);
 
             await authController.validateOtp(mockReq, mockRes);
 
             expect(mockRes.status).toHaveBeenCalledWith(423);
             expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+        });
+
+        it('should return 429 when login is temporarily locked', async () => {
+            const mockResult = {
+                success: false,
+                code: 'LOGIN_LOCKED',
+                data: { retryAfterSeconds: 300 }
+            };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.set).toHaveBeenCalledWith('Retry-After', '300');
+            expect(mockRes.status).toHaveBeenCalledWith(429);
         });
 
         it('should return 429 when recovery attempts are exhausted', async () => {

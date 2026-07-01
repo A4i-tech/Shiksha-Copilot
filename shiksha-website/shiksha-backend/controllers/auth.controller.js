@@ -27,7 +27,11 @@ class AuthController {
                 return res.status(200).json(result);
             }
             if (result.code === "CAPTCHA_REQUIRED") return res.status(403).json(result);
-            if (result.code === "ACCOUNT_LOCKED") return res.status(423).json(result);
+            if (result.code === "LOGIN_LOCKED") {
+                if (!result.data) return res.status(423).json(result);
+                res.set("Retry-After", String(result.data.retryAfterSeconds));
+                return res.status(429).json(result);
+            }
             if (result.code === "RECOVERY_LOCKED") {
                 res.set("Retry-After", String(result.data.retryAfterSeconds));
                 return res.status(429).json(result);

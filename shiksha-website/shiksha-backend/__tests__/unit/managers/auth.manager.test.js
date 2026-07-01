@@ -124,18 +124,18 @@ describe("AuthManager dual-role login", () => {
     expect(result).toEqual({ success: false, message: "Invalid PIN", data: null });
   });
 
-  it("requires CAPTCHA after the third failed attempt", async () => {
+  it("temporarily locks after the third failed attempt", async () => {
     mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: [new Date(), new Date()] }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
     mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date(), new Date(), new Date()] });
 
     const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "9999" } });
 
-    expect(result.code).toBe("CAPTCHA_REQUIRED");
+    expect(result.code).toBe("LOGIN_LOCKED");
   });
 
   it("rejects the fourth attempt without a valid CAPTCHA", async () => {
-    const attempts = [new Date(), new Date(), new Date()];
+    const attempts = Array(3).fill(new Date(Date.now() - 5 * 60 * 1000 - 1));
     mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: attempts }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
     authHelper.validateCaptcha.mockResolvedValue(false);
@@ -157,7 +157,7 @@ describe("AuthManager dual-role login", () => {
       body: { phone: "9876543210", otp: "9999", captchaToken: "valid" },
     });
 
-    expect(result.code).toBe("ACCOUNT_LOCKED");
+    expect(result.code).toBe("LOGIN_LOCKED");
   });
 
   it("rejects a correct PIN after permanent lock", async () => {
@@ -166,14 +166,14 @@ describe("AuthManager dual-role login", () => {
 
     const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "1234" } });
 
-    expect(result.code).toBe("ACCOUNT_LOCKED");
+    expect(result.code).toBe("LOGIN_LOCKED");
     expect(mockUserDao.reserveLoginAttempt).not.toHaveBeenCalled();
     expect(jwt.sign).not.toHaveBeenCalled();
   });
 
   it("skips CAPTCHA when it is not configured", async () => {
     authHelper.captchaEnabled = false;
-    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(3).fill(new Date()) }));
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(3).fill(new Date(Date.now() - 5 * 60 * 1000 - 1)) }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
     mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: Array(4).fill(new Date()) });
 

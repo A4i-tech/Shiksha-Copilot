@@ -10,6 +10,7 @@ const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const { JWT_SECRET } = process.env;
 const CAPTCHA_ATTEMPT = 3, MAX_LOGIN_ATTEMPTS = 6;
+const LOGIN_LOCK_MINUTES = 5, LOGIN_LOCK_TTL = LOGIN_LOCK_MINUTES * 60 * 1000;
 const RECOVERY_TTL_MINUTES = 5, RECOVERY_TTL = RECOVERY_TTL_MINUTES * 60 * 1000;
 
 class AuthManager {
@@ -117,7 +118,16 @@ class AuthManager {
             const attemptCount = Math.max(...[activeUsers.teacher, activeUsers.admin]
                 .filter(Boolean).map((account) => account.loginAttempts?.length || 0));
             if (attemptCount >= MAX_LOGIN_ATTEMPTS) {
-                return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "ACCOUNT_LOCKED" };
+                return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "LOGIN_LOCKED" };
+            }
+            if (attemptCount === CAPTCHA_ATTEMPT) {
+                const lockedUntil = Math.max(...[activeUsers.teacher, activeUsers.admin].filter(Boolean)
+                    .map((account) => new Date(account.loginAttempts?.[CAPTCHA_ATTEMPT - 1] || 0).getTime())) + LOGIN_LOCK_TTL;
+                if (lockedUntil > Date.now()) {
+                    return { ...formatApiReponse(false, `Too many failed attempts. Please try again after ${LOGIN_LOCK_MINUTES} minutes.`, {
+                        retryAfterSeconds: Math.ceil((lockedUntil - Date.now()) / 1000),
+                    }), code: "LOGIN_LOCKED" };
+                }
             }
             const captchaRequired = authHelper.captchaEnabled && attemptCount >= CAPTCHA_ATTEMPT;
             if (captchaRequired && !await authHelper.validateCaptcha(captchaToken)) {
@@ -127,9 +137,12 @@ class AuthManager {
             const reservations = await this.updateUsers(activeUsers, "reserveLoginAttempt", new Date(),
                 !authHelper.captchaEnabled || captchaRequired ? MAX_LOGIN_ATTEMPTS : CAPTCHA_ATTEMPT);
             if (reservations.some((account) => !account)) {
-                const code = !authHelper.captchaEnabled || captchaRequired ? "ACCOUNT_LOCKED" : "CAPTCHA_REQUIRED";
-                const message = code === "ACCOUNT_LOCKED" ? "Account locked. Contact an administrator." : "Complete the CAPTCHA to continue.";
-                return { ...formatApiReponse(false, message, null), code };
+                if (authHelper.captchaEnabled && !captchaRequired) {
+                    return { ...formatApiReponse(false, `Too many failed attempts. Please try again after ${LOGIN_LOCK_MINUTES} minutes.`, {
+                        retryAfterSeconds: LOGIN_LOCK_MINUTES * 60,
+                    }), code: "LOGIN_LOCKED" };
+                }
+                return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "LOGIN_LOCKED" };
             }
 
             const decryptedOtp = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
@@ -137,7 +150,12 @@ class AuthManager {
 
             const attemptCountAfter = Math.max(...reservations.map((account) => account.loginAttempts.length));
             if (attemptCountAfter >= MAX_LOGIN_ATTEMPTS) {
-                return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "ACCOUNT_LOCKED" };
+                return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "LOGIN_LOCKED" };
+            }
+            if (attemptCountAfter === CAPTCHA_ATTEMPT) {
+                return { ...formatApiReponse(false, `Too many failed attempts. Please try again after ${LOGIN_LOCK_MINUTES} minutes.`, {
+                    retryAfterSeconds: LOGIN_LOCK_MINUTES * 60,
+                }), code: "LOGIN_LOCKED" };
             }
 
             if (authHelper.captchaEnabled && attemptCountAfter >= CAPTCHA_ATTEMPT) {
