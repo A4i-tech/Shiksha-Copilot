@@ -48,8 +48,8 @@ class GeneralChatService:
             )
 
 
-    @observe(name="Shiksha-QA")
     @validate_call
+    @observe(name="Shiksha-QA")
     async def __call__(
         self,
         messages: List[ConversationMessage],

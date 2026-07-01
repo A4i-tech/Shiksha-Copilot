@@ -10,10 +10,9 @@ from typing import Annotated, List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
 from langfuse import observe, get_client
-from langfuse.openai import AzureOpenAI  # noqa: F401 — enables langfuse auto-tracing for sync client; test asserts this import
+from langfuse.openai import AsyncAzureOpenAI  # noqa: F401 — enables langfuse auto-tracing; test asserts this import
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.core.llms import ChatMessage
