@@ -136,3 +136,6 @@ async def main(inputData: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         logger.exception(f"Error generating section '{section_id}': {str(e)}")
         raise e
+    finally:
+        if _langfuse is not None:
+            _langfuse.flush()
