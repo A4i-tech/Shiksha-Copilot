@@ -8,17 +8,10 @@ class AuthController {
 
     async getOtp(req, res) {
         try {
-            console.log("--> [Controller] Calling authManager.getOtp");
-            
-            // Call the Manager
             let result = await this.authManager.getOtp(req);
-            
-            console.log("--> [Controller] Result received:", JSON.stringify(result));
-
             if (result.success) {
                 return res.status(200).json(result);
             }
-
             handleError(result, res);
             return;
         } catch (err) {
