@@ -10,8 +10,8 @@ from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from ingestion_pipeline.base.pipeline import BasePipelineStep, StepResult, StepStatus
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import PayloadSchemaType
+from pymongo import AsyncMongoClient
 import asyncio
-import motor.motor_asyncio
 
 load_dotenv(".env")
 
@@ -28,7 +28,7 @@ class CreateIndexStep(BasePipelineStep):
     description = "Create Index for chapter markdown file"
     input_types = {"markdown"}
     output_types = {"index_filter"}
-    
+
     def _split_by_pages(self, content):
         """
         Split the content into pages using delimiters of the form '## Page <number>'.
@@ -62,7 +62,7 @@ class CreateIndexStep(BasePipelineStep):
             azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
         )
-    
+
     def _get_rag_ops_instance(self, collection_name: str):
         """Get an instance of QdrantRagOps with the specified collection name."""
         return QdrantRagOps(
@@ -89,16 +89,16 @@ class CreateIndexStep(BasePipelineStep):
             with open(markdown_file, "r", encoding="utf-8") as file:
                 markdown_content = file.read()
             pages = self._split_by_pages(markdown_content)
-            
+
             board = self.config.get("board", "KSEEB")
             medium = self.config.get("medium", "english")
             grade = self.config.get("grade", 6)
             subject = self.config.get("subject", "science")
             chapter_number = self.config.get("chapter_number", 1)
             chapter_id = f"Medium={medium},Grade={grade},Subject={subject},Number={chapter_number}"
-    
-            rag_ops = self._get_rag_ops_instance(collection_name=board)
             index_path = f"qdrant/{board}/chapter_id:{chapter_id}"
+
+            rag_ops = self._get_rag_ops_instance(collection_name=board)
 
             async def run_create_index():
                 transformations = [
@@ -130,7 +130,7 @@ class CreateIndexStep(BasePipelineStep):
                 mongo_url = os.getenv("MONGO_URL")
                 if mongo_url:
                     mongo_board = board.replace("_", "-")
-                    mongo_client = motor.motor_asyncio.AsyncIOMotorClient(mongo_url)
+                    mongo_client = AsyncMongoClient(mongo_url)
                     db = mongo_client.get_default_database()
                     result = await db.chapters.update_one(
                         {
@@ -153,7 +153,7 @@ class CreateIndexStep(BasePipelineStep):
                     logger.warning("MONGO_URL not set — skipping indexPath write-back to MongoDB")
 
             asyncio.run(run_create_index())
-            
+
             return StepResult(
                 status=StepStatus.COMPLETED,
                 output_paths={
@@ -168,9 +168,7 @@ class CreateIndexStep(BasePipelineStep):
                     "chapter_id": chapter_id
                 }
             )
-        
+
         except Exception as e:
             logger.error(f"Error processing markdown file {markdown_file}: {e}")
             return StepResult(status=StepStatus.FAILED, error=str(e))
-        
-        
