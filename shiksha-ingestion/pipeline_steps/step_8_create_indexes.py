@@ -114,68 +114,79 @@ class CreateIndexStep(BasePipelineStep):
                 )
 
                 # Ensure chapter_id payload index exists for filtered queries.
+                # Best-effort: a failure here must not fail the step since create_index already succeeded.
                 # Close in finally to avoid a connection leak per chapter.
-                qdrant_client = AsyncQdrantClient(
-                    url=os.getenv("QDRANT_URL", "http://localhost:6333"),
-                    api_key=os.getenv("QDRANT_API_KEY"),
-                )
                 try:
-                    await qdrant_client.create_payload_index(
-                        collection_name=board,
-                        field_name="chapter_id",
-                        field_schema=PayloadSchemaType.KEYWORD,
+                    qdrant_client = AsyncQdrantClient(
+                        url=os.getenv("QDRANT_URL", "http://localhost:6333"),
+                        api_key=os.getenv("QDRANT_API_KEY"),
                     )
-                finally:
-                    await qdrant_client.close()
+                    try:
+                        await qdrant_client.create_payload_index(
+                            collection_name=board,
+                            field_name="chapter_id",
+                            field_schema=PayloadSchemaType.KEYWORD,
+                        )
+                    finally:
+                        await qdrant_client.close()
+                except Exception as e:
+                    logger.warning(f"Failed to create chapter_id payload index (non-fatal): {e}")
 
                 # Write indexPath back to MongoDB so the backend routes to the
                 # correct Qdrant collection for this chapter.
+                # Best-effort: a failure here must not fail the step since create_index already succeeded.
+                # MONGO_URL must include the database name (e.g. mongodb://host:27017/mydb).
                 # Qdrant collection uses underscores (BSE_TG); MongoDB board field uses dashes (BSE-TG).
-                mongo_url = os.getenv("MONGO_URL")
-                if not mongo_url:
-                    logger.warning("MONGO_URL not set — skipping indexPath write-back to MongoDB")
-                    return
-
-                mongo_board = board.replace("_", "-")
-                mongo_client = AsyncMongoClient(mongo_url)
                 try:
-                    db = mongo_client.get_default_database()
-
-                    # Chapter docs store subject as subjectId (ObjectId ref to MasterSubject),
-                    # not a plain string — resolve it first to avoid matching the wrong chapter.
-                    master_subject = await db.mastersubjects.find_one(
-                        {"subjectName": {"$regex": f"^{subject}$", "$options": "i"}},
-                        {"_id": 1},
-                    )
-                    if not master_subject:
-                        logger.warning(
-                            f"MasterSubject not found for subject={subject} "
-                            f"— skipping indexPath write-back"
-                        )
+                    mongo_url = os.getenv("MONGO_URL")
+                    if not mongo_url:
+                        logger.warning("MONGO_URL not set — skipping indexPath write-back to MongoDB")
                         return
 
-                    result = await db.chapters.update_one(
-                        {
-                            "board": mongo_board,
-                            "medium": medium,
-                            "standard": int(grade),
-                            "orderNumber": int(chapter_number),
-                            "subjectId": master_subject["_id"],
-                        },
-                        {"$set": {"indexPath": index_path}},
-                    )
+                    mongo_board = board.replace("_", "-")
+                    mongo_client = AsyncMongoClient(mongo_url)
+                    try:
+                        db = mongo_client.get_default_database()
 
-                    if result.matched_count == 0:
-                        logger.warning(
-                            f"No chapter found in MongoDB for board={mongo_board} "
-                            f"medium={medium} grade={grade} subject={subject} chapter={chapter_number}"
+                        # Chapter docs store subject as subjectId (ObjectId ref to MasterSubject),
+                        # not a plain string — resolve it first to avoid matching the wrong chapter.
+                        # Use re.escape to handle any regex metacharacters in subject name.
+                        master_subject = await db.mastersubjects.find_one(
+                            {"subjectName": {"$regex": f"^{re.escape(subject.strip())}$", "$options": "i"}},
+                            {"_id": 1},
                         )
-                    elif result.modified_count:
-                        logger.info(f"Updated indexPath in MongoDB: {index_path}")
-                    else:
-                        logger.info(f"indexPath already correct in MongoDB: {index_path}")
-                finally:
-                    await mongo_client.close()
+                        if not master_subject:
+                            logger.warning(
+                                f"MasterSubject not found for subject={subject} "
+                                f"— skipping indexPath write-back"
+                            )
+                            return
+
+                        result = await db.chapters.update_one(
+                            {
+                                # Match case-insensitively, consistent with chapter.dao.js regexExact.
+                                "board": {"$regex": f"^{re.escape(mongo_board.strip())}$", "$options": "i"},
+                                "medium": {"$regex": f"^{re.escape(medium.strip())}$", "$options": "i"},
+                                "standard": int(grade),
+                                "orderNumber": int(chapter_number),
+                                "subjectId": master_subject["_id"],
+                            },
+                            {"$set": {"indexPath": index_path}},
+                        )
+
+                        if result.matched_count == 0:
+                            logger.warning(
+                                f"No chapter found in MongoDB for board={mongo_board} "
+                                f"medium={medium} grade={grade} subject={subject} chapter={chapter_number}"
+                            )
+                        elif result.modified_count:
+                            logger.info(f"Updated indexPath in MongoDB: {index_path}")
+                        else:
+                            logger.info(f"indexPath already correct in MongoDB: {index_path}")
+                    finally:
+                        await mongo_client.close()
+                except Exception as e:
+                    logger.warning(f"MongoDB indexPath write-back failed (non-fatal): {e}")
 
             asyncio.run(run_create_index())
 
