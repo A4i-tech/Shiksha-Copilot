@@ -78,7 +78,7 @@ async def _ingest(board: str) -> None:
         manifest.entries = [e for e in manifest.entries if e.board == board]
 
     try:
-        await run_ingestion(manifest, collection)
+        await run_ingestion(manifest, collection, data_dir=DATA_DIR)
     finally:
         client.close()
 
