@@ -184,7 +184,6 @@ register_step("lba_extraction", LBAExtractionStep)
 
 
 async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> list[dict[str, Any]]:
-    from omni_ingest.agent.cleaning import MarkdownCleaningAgent
     from omni_ingest.parser import parse
 
     with open(pdf_path, "rb") as f:
@@ -193,11 +192,7 @@ async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> li
     resource = ResolvedResource(uri=str(pdf_path), content=raw_text, metadata=metadata)
     ctx = IngestionContext(resource=resource, store=_NullStore())
 
-    force_vision = medium.lower() in ("telugu", "kannada", "hindi")
-    steps: list[Step] = []
-    if not force_vision:
-        steps.append(MarkdownCleaningAgent())
-    steps.append(LBAExtractionStep(medium=medium))
+    steps: list[Step] = [LBAExtractionStep(medium=medium)]
 
     runner = PipelineRunner(steps=steps)
     await runner.run(ctx)
