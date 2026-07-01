@@ -472,7 +472,6 @@ class MasterResourceManager extends BaseManager {
 					medium,
 					subject: subjectName,
 					chapterId: chapter._id,
-					subTopics: lessonPlans[i].subtopics,
 					isAll: lessonPlans[i].lp_level === 'CHAPTER',
 					templateId
 				}
@@ -493,6 +492,7 @@ class MasterResourceManager extends BaseManager {
 						resources: extracted,
 						additionalResources: additional,
 						learningOutcomes: lessonPlans[i]?.learning_outcomes,
+						subTopics: lessonPlans[i]?.subtopics,
 					}
 
 					resource = await this.dao.updateByFilter(lrQuery, lrData)

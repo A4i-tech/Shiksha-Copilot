@@ -23,7 +23,7 @@ class BaselineSurveyController {
       if (!userId) return res.status(401).json(formatResponse(false, 'Unauthorized', null));
 
       const result = await baselineSurveyManager.submitSurvey(userId, req.body);
-      const status = result.success ? 200 : (result.message === 'Already submitted' ? 409 : 400);
+      const status = result.success ? 200 : (result.message === 'Already submitted for this academic year' ? 409 : 400);
       return res.status(status).json(result);
     } catch (err) {
       console.error('BaselineSurveyController.submitSurvey', err);

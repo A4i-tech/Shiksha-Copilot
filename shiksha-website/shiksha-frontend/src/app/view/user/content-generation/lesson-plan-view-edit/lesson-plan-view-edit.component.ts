@@ -372,7 +372,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         title: 'Learning Outcomes',
         content: lo,
         outputFormat: 'plain_text',
-        editable: false,
+        editable: true,
       });
     }
 
@@ -473,7 +473,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       reqBody = {
         lessonId: this.planId,
         sections: this.getFormattedSectionData(),
-        learningOutcomes: this.planDetails?.learningOutcomes,
+        learningOutcomes: this.getFormattedLearningOutcomes(),
       };
     } else {
       const { resources, additionalResources } = this.lessonResourceFormatter(
@@ -543,7 +543,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       let saveTeacherData: any = {
         isCompleted,
         lessonId,
-        learningOutcomes: this.planDetails?.learningOutcomes,
+        learningOutcomes: this.getFormattedLearningOutcomes(),
         isVideoSelected: this.videosEnabled(),
       };
       saveTeacherData.sections = this.getFormattedSectionData();
@@ -832,5 +832,14 @@ export class LessonPlanViewEditComponent implements OnInit {
       });
 
     return sectionData;
+  }
+
+  getFormattedLearningOutcomes(): string[] {
+    const content = this.sections.find((item) => item.title === 'Learning Outcomes')?.content || '';
+    return content
+      .split('\n')
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.startsWith('- '))
+      .map((line: string) => line.slice(2));
   }
 }
