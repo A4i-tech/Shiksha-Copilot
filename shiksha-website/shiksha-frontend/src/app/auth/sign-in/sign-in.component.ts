@@ -36,6 +36,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   recoveryMode = false;
   recoveredPin = '';
   showRecoveredPin = false;
+  hasViewedPin = false;
   recoveredUser: any;
   images: Carousel[] = images; //utility from the utility folder
 
@@ -269,6 +270,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
             this.invalidOtp = false;
             if (this.recoveryMode) {
               this.recoveredPin = res.data.pin;
+              this.hasViewedPin = false;
               this.recoveredUser = res.data;
               return;
             }
@@ -326,11 +328,13 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   closeModal() {
     this.modalStatus = false;
     this.recoveredPin = '';
+    this.hasViewedPin = false;
     this.recoveredUser = null;
     // this.stopTimer();
   }
 
   finishRecovery() {
+    if (!this.hasViewedPin) return;
     localStorage.setItem('token', this.recoveredUser.token);
     localStorage.setItem('userData', JSON.stringify(this.recoveredUser.user));
     this.sidebarService.profileImg.set(this.recoveredUser.user.profileImage || '');
