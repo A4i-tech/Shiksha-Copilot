@@ -30,10 +30,18 @@ class CreateIndexStep(BasePipelineStep):
     output_types = {"index_filter"}
 
     def _split_by_pages(self, content):
+        """
+        Split the content into pages using delimiters of the form '## Page <number>'.
+        Returns a list of strings, one per page.
+        """
+        # Split on lines starting with '## Page <number>'
+        # Handles both start-of-file and anywhere in the file
         pages = re.split(r'^##\s*Page\s*\d+\s*$', content, flags=re.MULTILINE)
+        # Remove empty or whitespace-only pages
         return [page.strip() for page in pages if page.strip()]
 
     def _embedding_llm(self):
+        """Initialize Azure OpenAI embedding model"""
         return AzureOpenAIEmbedding(
             model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
             deployment_name=os.getenv(
@@ -44,7 +52,9 @@ class CreateIndexStep(BasePipelineStep):
             api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
         )
 
+
     def _completion_llm(self):
+        """Initialize Azure OpenAI completion model"""
         return AzureOpenAI(
             model=os.getenv("AZURE_OPENAI_MODEL", "gpt-35-turbo"),
             deployment_name=os.getenv("AZURE_OPENAI_MODEL", "gpt-35-turbo"),
@@ -54,6 +64,7 @@ class CreateIndexStep(BasePipelineStep):
         )
 
     def _get_rag_ops_instance(self, collection_name: str):
+        """Get an instance of QdrantRagOps with the specified collection name."""
         return QdrantRagOps(
             url=os.getenv("QDRANT_URL", "http://localhost:6333"),
             collection_name=collection_name,
@@ -62,6 +73,17 @@ class CreateIndexStep(BasePipelineStep):
         )
 
     def process(self, input_paths: Dict[str, str], output_dir: str) -> StepResult:
+        """
+        Process the step - create indexes from chapter markdown content.
+
+        Args:
+            input_paths: Dictionary with keys:
+                - "markdown": Path to the cleaned markdown file
+            index_filter: index metadata filter
+
+        Returns:
+            StepResult with status and output paths containing the index_filter
+        """
         try:
             markdown_file = input_paths["markdown"]
             with open(markdown_file, "r", encoding="utf-8") as file:
@@ -85,7 +107,9 @@ class CreateIndexStep(BasePipelineStep):
                 ]
                 await rag_ops.create_index(
                     text_chunks=pages,
-                    metadata={"chapter_id": chapter_id},
+                    metadata={
+                        "chapter_id": chapter_id
+                    },
                     transformations=transformations
                 )
 
@@ -173,3 +197,5 @@ class CreateIndexStep(BasePipelineStep):
         except Exception as e:
             logger.error(f"Error processing markdown file {markdown_file}: {e}")
             return StepResult(status=StepStatus.FAILED, error=str(e))
+
+
