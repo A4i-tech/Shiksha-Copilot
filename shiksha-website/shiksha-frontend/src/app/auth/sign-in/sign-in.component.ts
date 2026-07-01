@@ -288,7 +288,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           },
           error: (err: any) => {
             this.invalidOtp = true;
-            if (err.error.code === 'CAPTCHA_REQUIRED') this.requireCaptcha();
+            if (err.error?.code === 'CAPTCHA_REQUIRED') this.requireCaptcha();
             this.utility.handleError(err);
           },
         }); //api call

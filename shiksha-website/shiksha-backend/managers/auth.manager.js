@@ -10,7 +10,7 @@ const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const { JWT_SECRET } = process.env;
 const CAPTCHA_ATTEMPT = 3, MAX_LOGIN_ATTEMPTS = 6;
-const RECOVERY_TTL = 5 * 60 * 1000;
+const RECOVERY_TTL_MINUTES = 5, RECOVERY_TTL = RECOVERY_TTL_MINUTES * 60 * 1000;
 
 class AuthManager {
     constructor() {
@@ -190,7 +190,7 @@ class AuthManager {
 
         const reservations = await this.updateUsers(activeUsers, "reserveRecoveryAttempt");
         if (reservations.some((account) => !account)) {
-            return { ...formatApiReponse(false, "Too many recovery attempts. Request a new PIN later.", {
+            return { ...formatApiReponse(false, `Too many recovery attempts. Please try again after ${RECOVERY_TTL_MINUTES} minutes.`, {
                 retryAfterSeconds: Math.max(1, Math.ceil((new Date(recovery.expiresAt).getTime() - now) / 1000)),
             }), code: "RECOVERY_LOCKED" };
         }
