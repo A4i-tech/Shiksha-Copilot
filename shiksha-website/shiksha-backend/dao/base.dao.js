@@ -139,9 +139,9 @@ class BaseDao {
 		}
 	}
 
-	reserveLoginAttempt(id, attemptedAt) {
+	reserveLoginAttempt(id, attemptedAt, limit) {
 		return this.Model.findOneAndUpdate(
-			{ _id: id, "loginAttempts.2": { $exists: false } },
+			{ _id: id, [`loginAttempts.${limit - 1}`]: { $exists: false } },
 			{ $push: { loginAttempts: attemptedAt } },
 			{ new: true }
 		).select("+loginAttempts");

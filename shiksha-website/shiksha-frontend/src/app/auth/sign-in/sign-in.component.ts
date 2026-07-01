@@ -11,6 +11,7 @@ import { NgOtpInputComponent, NgOtpInputConfig } from 'ng-otp-input';
 import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-sign-in',
@@ -29,6 +30,10 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   showResendOTP: boolean = false;
   otpValue: string = '';
   invalidOtp=false;
+  captchaRequired = false;
+  captchaToken = '';
+  captchaWidgetId: string | null = null;
+  accountLocked = false;
   images: Carousel[] = images; //utility from the utility folder
 
   rememberMe= false;
@@ -69,6 +74,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    * autoslide enabled
    */
   ngOnInit(): void {
+    if (!environment.turnstileSiteKey) console.warn('Turnstile site key is unset; CAPTCHA is disabled.');
     this.autoSlide();
     this.getCookies();
     if(this.authService.isLoggedIn()){
@@ -214,6 +220,10 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   getOtp(reqBody:any){
     this.service.validateMobileNumber(reqBody).subscribe({
       next: (res: any) => {
+        if (this.captchaWidgetId !== null) (window as any).turnstile?.remove(this.captchaWidgetId);
+        this.captchaRequired = this.accountLocked = false;
+        this.captchaToken = '';
+        this.captchaWidgetId = null;
         this.otpTriggered = res?.data?.otpTriggered;
         this.modalStatus = true;
         this.showResendOTP = false;
@@ -248,7 +258,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   onVerifyOTP() {
     if (this.otpValue) {
       this.service
-        .validateOTP(this.otpValue, this.phoneNumber.toString())
+        .validateOTP(this.otpValue, this.phoneNumber.toString(), this.captchaToken)
         .subscribe({
           next: (res: any) => {
             this.invalidOtp = false;
@@ -276,10 +286,34 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           },
           error: (err: any) => {
             this.invalidOtp = true;
+            const error = err?.error;
+            if (error?.code === 'CAPTCHA_REQUIRED' || error?.data?.captchaRequired) this.requireCaptcha();
+            if (error?.code === 'ACCOUNT_LOCKED') this.accountLocked = true;
+            if (this.captchaRequired) this.resetCaptcha();
             this.utility.handleError(err);
           },
         }); //api call
     }
+  }
+
+  requireCaptcha() {
+    if (!environment.turnstileSiteKey) return;
+    this.captchaRequired = true;
+    setTimeout(() => {
+      const turnstile = (window as any).turnstile;
+      if (turnstile && this.captchaWidgetId === null) {
+        this.captchaWidgetId = turnstile.render('#turnstile-container', {
+          sitekey: environment.turnstileSiteKey,
+          callback: (token: string) => this.captchaToken = token,
+          'expired-callback': () => this.captchaToken = '',
+        });
+      }
+    });
+  }
+
+  resetCaptcha() {
+    this.captchaToken = '';
+    if (this.captchaWidgetId !== null) (window as any).turnstile?.reset(this.captchaWidgetId);
   }
 
   /**

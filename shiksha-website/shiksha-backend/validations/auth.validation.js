@@ -44,6 +44,7 @@ const validateOtp = (req, res, next) => {
     const schema = Joi.object({
         phone: Joi.string().required(),
         otp: Joi.string(),
+        captchaToken: Joi.string(),
         rememberMe: Joi.boolean(),
     });
 

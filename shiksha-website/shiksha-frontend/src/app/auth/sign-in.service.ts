@@ -36,10 +36,11 @@ export class SignInService extends BaseRestService {
    * @param phoneNumber
    * @returns
    */
-  validateOTP(otpval: string, phoneNumber: string) {
+  validateOTP(otpval: string, phoneNumber: string, captchaToken?: string) {
     return this.post(`validate-otp`, {
       phone: phoneNumber,
       otp: otpval,
+      ...(captchaToken && { captchaToken }),
     });
   }
 

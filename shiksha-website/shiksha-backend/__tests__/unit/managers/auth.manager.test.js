@@ -16,6 +16,7 @@ jest.mock("../../../dao/user.dao", () => jest.fn(() => mockUserDao));
 jest.mock("../../../dao/admin.user.dao", () => jest.fn(() => mockAdminDao));
 jest.mock("../../../models/user.action.logs.model", () => ({ create: jest.fn() }));
 jest.mock("../../../helper/profile.helper", () => ({ refreshProfileImageIfExpired: jest.fn() }));
+jest.mock("../../../helper/auth.helper", () => ({ captchaEnabled: true, validateCaptcha: jest.fn() }));
 jest.mock("jsonwebtoken", () => ({ sign: jest.fn(() => "signed-token") }));
 jest.mock("crypto-js", () => ({
   AES: {
@@ -26,6 +27,7 @@ jest.mock("crypto-js", () => ({
 }));
 
 const jwt = require("jsonwebtoken");
+const authHelper = require("../../../helper/auth.helper");
 const AuthManager = require("../../../managers/auth.manager");
 
 const doc = (data) => ({ ...data, toObject: jest.fn(() => ({ ...data })) });
@@ -45,6 +47,8 @@ describe("AuthManager dual-role login", () => {
     mockAdminDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
     mockUserDao.clearLoginAttempts.mockResolvedValue({});
     mockAdminDao.clearLoginAttempts.mockResolvedValue({});
+    authHelper.captchaEnabled = true;
+    authHelper.validateCaptcha.mockResolvedValue(true);
     manager = new AuthManager();
   });
 
@@ -105,44 +109,63 @@ describe("AuthManager dual-role login", () => {
     expect(result).toEqual({ success: false, message: "Invalid PIN", data: null });
   });
 
-  it("locks immediately on the third failed attempt", async () => {
+  it("requires CAPTCHA after the third failed attempt", async () => {
     mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: [new Date(), new Date()] }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
     mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date(), new Date(), new Date()] });
 
     const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "9999" } });
 
-    expect(result).toEqual(expect.objectContaining({
-      success: false,
-      code: "LOGIN_LOCKED",
-      data: { retryAfterSeconds: 300 },
-    }));
+    expect(result).toEqual({ success: false, message: "Invalid PIN", data: { captchaRequired: true } });
   });
 
-  it("rejects attempts during the lock without reserving another attempt", async () => {
-    const attempts = [new Date(), new Date(), new Date(Date.now() - 60_000)];
+  it("rejects the fourth attempt without a valid CAPTCHA", async () => {
+    const attempts = [new Date(), new Date(), new Date()];
     mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: attempts }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
+    authHelper.validateCaptcha.mockResolvedValue(false);
 
     const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "1234" } });
 
-    expect(result.code).toBe("LOGIN_LOCKED");
-    expect(result.data.retryAfterSeconds).toBeGreaterThanOrEqual(239);
-    expect(result.data.retryAfterSeconds).toBeLessThanOrEqual(240);
+    expect(result.code).toBe("CAPTCHA_REQUIRED");
     expect(mockUserDao.reserveLoginAttempt).not.toHaveBeenCalled();
     expect(jwt.sign).not.toHaveBeenCalled();
   });
 
-  it("clears an expired lock before recording a new failed attempt", async () => {
-    const expired = new Date(Date.now() - 5 * 60_000 - 1);
-    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: [expired, expired, expired] }));
+  it("locks indefinitely on the sixth failed attempt", async () => {
+    const attempts = Array(5).fill(new Date());
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: attempts }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
-    mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
+    mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [...attempts, new Date()] });
+
+    const result = await manager.validateOtp({
+      body: { phone: "9876543210", otp: "9999", captchaToken: "valid" },
+    });
+
+    expect(result.code).toBe("ACCOUNT_LOCKED");
+  });
+
+  it("rejects a correct PIN after permanent lock", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(6).fill(new Date()) }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+
+    const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "1234" } });
+
+    expect(result.code).toBe("ACCOUNT_LOCKED");
+    expect(mockUserDao.reserveLoginAttempt).not.toHaveBeenCalled();
+    expect(jwt.sign).not.toHaveBeenCalled();
+  });
+
+  it("skips CAPTCHA when it is not configured", async () => {
+    authHelper.captchaEnabled = false;
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(3).fill(new Date()) }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+    mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: Array(4).fill(new Date()) });
 
     const result = await manager.validateOtp({ body: { phone: "9876543210", otp: "9999" } });
 
-    expect(mockUserDao.clearLoginAttempts).toHaveBeenCalledWith("teacher-1");
     expect(result.message).toBe("Invalid PIN");
+    expect(authHelper.validateCaptcha).not.toHaveBeenCalled();
   });
 
 });

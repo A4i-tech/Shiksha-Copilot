@@ -19,8 +19,7 @@ describe('AuthController', () => {
         };
         mockRes = {
             status: jest.fn().mockReturnThis(),
-            json: jest.fn().mockReturnThis(),
-            set: jest.fn().mockReturnThis()
+            json: jest.fn().mockReturnThis()
         };
         mockAuthManager = {
             getOtp: jest.fn(),
@@ -84,21 +83,30 @@ describe('AuthController', () => {
             expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
         });
 
-        it('should return 429 with Retry-After when login is locked', async () => {
+        it('should return 403 when CAPTCHA is required', async () => {
             const mockResult = {
                 success: false,
-                code: 'LOGIN_LOCKED',
-                message: 'Too many failed attempts. Try again later.',
-                data: { retryAfterSeconds: 300 }
+                code: 'CAPTCHA_REQUIRED',
+                message: 'Complete the CAPTCHA to continue.',
+                data: null
             };
             mockAuthManager.validateOtp.mockResolvedValue(mockResult);
 
             await authController.validateOtp(mockReq, mockRes);
 
-            expect(mockRes.set).toHaveBeenCalledWith('Retry-After', '300');
-            expect(mockRes.status).toHaveBeenCalledWith(429);
+            expect(mockRes.status).toHaveBeenCalledWith(403);
             expect(mockRes.json).toHaveBeenCalledWith(mockResult);
             expect(handleError).not.toHaveBeenCalled();
+        });
+
+        it('should return 423 when the account is locked', async () => {
+            const mockResult = { success: false, code: 'ACCOUNT_LOCKED', data: null };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(423);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
         });
 
         it('should return 400 when exception occurs', async () => {

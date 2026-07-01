@@ -83,8 +83,9 @@
 					<ng-otp-input (onInputChange)="handeOtpChange($event)" [config]="otpInputConfig" #ngotp
 						[ngClass]="{'error':invalidOtp}"></ng-otp-input>
 				</div>
+				<div *ngIf="captchaRequired" id="turnstile-container"></div>
 				<button class="btn-success font-normal text-sm md:text-lg  text-center w-full" (click)="onVerifyOTP()"
-					[disabled]="otpValue.length!=4"> Verify</button>
+					[disabled]="otpValue.length!=4 || (captchaRequired && !captchaToken) || accountLocked"> Verify</button>
 				<ng-container *ngIf="otpTriggered">
 					<a class="text-success underline cursor-pointer md:text-lg text-sm" (click)="onResendOTP()">Resend
 						PIN</a>

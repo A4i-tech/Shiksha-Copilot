@@ -9,8 +9,7 @@ const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const { JWT_SECRET } = process.env;
-const MAX_LOGIN_ATTEMPTS = 3
-LOGIN_LOCK_MS = 5 * 60 * 1000;
+const CAPTCHA_ATTEMPT = 3, MAX_LOGIN_ATTEMPTS = 6;
 
 class AuthManager {
     constructor() {
@@ -27,24 +26,6 @@ class AuthManager {
         return Promise.all([[teacher, this.userDao], [admin, this.adminUserDao]]
             .filter(([user]) => user)
             .map(([user, dao]) => dao[method](user._id, ...args)));
-    }
-
-    getLockExpiresAt({ teacher, admin }) {
-        return [teacher, admin].reduce((latest, account) => {
-            const attempts = account?.loginAttempts || [];
-            if (attempts.length < MAX_LOGIN_ATTEMPTS) return latest;
-            const expiresAt = new Date(attempts[MAX_LOGIN_ATTEMPTS - 1]).getTime() + LOGIN_LOCK_MS;
-            return Math.max(latest, expiresAt);
-        }, 0);
-    }
-
-    lockedResponse(expiresAt, now = Date.now()) {
-        return {
-            ...formatApiReponse(false, "Too many failed attempts. Try again later.", {
-                retryAfterSeconds: Math.max(1, Math.ceil((expiresAt - now) / 1000)),
-            }),
-            code: "LOGIN_LOCKED",
-        };
     }
 
     mergeUser(teacher, admin) {
@@ -106,7 +87,7 @@ class AuthManager {
 
     async validateOtp(req) {
         try {
-            let { phone, otp } = req.body;
+            let { phone, otp, captchaToken } = req.body;
 
             const users = await this.getUsersByPhone(phone);
             if (!users.teacher && !users.admin) {
@@ -124,27 +105,23 @@ class AuthManager {
                 return formatApiReponse(false, "PIN not found", null);
             }
 
-            const now = Date.now();
-            const lockExpiresAt = this.getLockExpiresAt(activeUsers);
-            if (lockExpiresAt > now) {
-                return this.lockedResponse(lockExpiresAt, now);
+            const attemptCount = Math.max(...[activeUsers.teacher, activeUsers.admin]
+                .filter(Boolean).map((account) => account.loginAttempts?.length || 0));
+            if (attemptCount >= MAX_LOGIN_ATTEMPTS) {
+                return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "ACCOUNT_LOCKED" };
             }
-            if (lockExpiresAt) {
-                await this.updateUsers(activeUsers, "clearLoginAttempts");
-                if (activeUsers.teacher) activeUsers.teacher.loginAttempts = [];
-                if (activeUsers.admin) activeUsers.admin.loginAttempts = [];
+            const captchaRequired = authHelper.captchaEnabled && attemptCount >= CAPTCHA_ATTEMPT;
+            if (captchaRequired && !await authHelper.validateCaptcha(captchaToken)) {
+                return { ...formatApiReponse(false, "Complete the CAPTCHA to continue.", null), code: "CAPTCHA_REQUIRED" };
             }
 
-            const attemptedAt = new Date(now);
-            const reservations = await this.updateUsers(activeUsers, "reserveLoginAttempt", attemptedAt);
+            const attemptedAt = new Date();
+            const reservations = await this.updateUsers(activeUsers, "reserveLoginAttempt", attemptedAt,
+                !authHelper.captchaEnabled || captchaRequired ? MAX_LOGIN_ATTEMPTS : CAPTCHA_ATTEMPT);
             if (reservations.some((account) => !account)) {
-                const refreshedUsers = await this.getUsersByPhone(phone);
-                const refreshedActiveUsers = {
-                    teacher: refreshedUsers.teacher?.isDeleted ? null : refreshedUsers.teacher,
-                    admin: refreshedUsers.admin?.isDeleted ? null : refreshedUsers.admin,
-                };
-                const refreshedLockExpiresAt = this.getLockExpiresAt(refreshedActiveUsers);
-                return this.lockedResponse(refreshedLockExpiresAt || now + LOGIN_LOCK_MS, now);
+                const code = !authHelper.captchaEnabled || captchaRequired ? "ACCOUNT_LOCKED" : "CAPTCHA_REQUIRED";
+                const message = code === "ACCOUNT_LOCKED" ? "Account locked. Contact an administrator." : "Complete the CAPTCHA to continue.";
+                return { ...formatApiReponse(false, message, null), code };
             }
 
             const decryptedOtpBytes = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY);
@@ -196,10 +173,12 @@ class AuthManager {
             }
 
             if (reservations.some((account) => account.loginAttempts.length >= MAX_LOGIN_ATTEMPTS)) {
-                return this.lockedResponse(now + LOGIN_LOCK_MS, now);
+                return { ...formatApiReponse(false, "Account locked. Contact an administrator.", null), code: "ACCOUNT_LOCKED" };
             }
 
-            return formatApiReponse(false, "Invalid PIN", null);
+            const requireCaptchaNext = authHelper.captchaEnabled &&
+                reservations.some((account) => account.loginAttempts.length >= CAPTCHA_ATTEMPT);
+            return formatApiReponse(false, "Invalid PIN", requireCaptchaNext ? { captchaRequired: true } : null);
 
         } catch (err) {
             return formatApiReponse(false, err?.message || "Internal Server Error", err);
