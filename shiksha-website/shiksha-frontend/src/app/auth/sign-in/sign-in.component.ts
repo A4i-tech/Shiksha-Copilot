@@ -34,6 +34,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   captchaToken = '';
   captchaWidgetId: string | null = null;
   recoveryMode = false;
+  recoveredPin = '';
+  showRecoveredPin = false;
+  recoveredUser: any;
   images: Carousel[] = images; //utility from the utility folder
 
   rememberMe= false;
@@ -264,7 +267,11 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         .subscribe({
           next: (res: any) => {
             this.invalidOtp = false;
-            this.utility.showSuccess("You've successfully logged in.");
+            if (this.recoveryMode) {
+              this.recoveredPin = res.data.pin;
+              this.recoveredUser = res.data;
+              return;
+            }
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('userData', JSON.stringify(res.data.user));
             const profileUrl = res?.data?.user?.profileImage || ''
@@ -284,6 +291,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
               this.secureCookieService.deleteCookie("userInfo");
             }
 
+            this.utility.showSuccess("You've successfully logged in.");
             this.navigateAfterLogin(res.data.user);
           },
           error: (err: any) => {
@@ -317,7 +325,21 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    */
   closeModal() {
     this.modalStatus = false;
+    this.recoveredPin = '';
+    this.recoveredUser = null;
     // this.stopTimer();
+  }
+
+  finishRecovery() {
+    localStorage.setItem('token', this.recoveredUser.token);
+    localStorage.setItem('userData', JSON.stringify(this.recoveredUser.user));
+    this.sidebarService.profileImg.set(this.recoveredUser.user.profileImage || '');
+    if (this.recoveredUser.user.preferredLanguage) {
+      this.translateService.use(this.recoveredUser.user.preferredLanguage);
+    }
+    this.modalStatus = false;
+    this.utility.showSuccess("You've successfully logged in.");
+    this.navigateAfterLogin(this.recoveredUser.user);
   }
 
   startTimer() {

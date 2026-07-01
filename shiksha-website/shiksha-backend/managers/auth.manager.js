@@ -219,7 +219,10 @@ class AuthManager {
             return formatApiReponse(false, "Invalid recovery PIN", { attemptsRemaining: 3 - attempts });
         }
 
-        return this.completeLogin(req, activeUsers);
+        const result = await this.completeLogin(req, activeUsers);
+        result.data.pin = CryptoJS.AES.decrypt((activeUsers.teacher || activeUsers.admin).otp,
+            process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
+        return result;
     }
 
     async getUserFromToken(req) {

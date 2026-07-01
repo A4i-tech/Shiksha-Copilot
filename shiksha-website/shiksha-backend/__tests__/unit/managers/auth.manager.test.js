@@ -193,6 +193,7 @@ describe("AuthManager dual-role login", () => {
     });
 
     expect(result.success).toBe(true);
+    expect(result.data.pin).toBe("1234");
     expect(mockUserDao.clearLoginAttempts).toHaveBeenCalledWith("teacher-1");
     expect(mockUserDao.clearRecovery).toHaveBeenCalledWith("teacher-1");
   });
