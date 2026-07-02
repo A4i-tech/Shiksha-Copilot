@@ -42,7 +42,7 @@ class EndlineSurveyManager {
       throw error;
     }
     this.validate(payload);
-    const data = await this.dao.createSurvey({ userId, academicYear: eligibility.academicYear, ...payload });
+    const data = await this.dao.createSurvey({ ...payload, userId, academicYear: eligibility.academicYear });
     return { success: true, message: 'Survey submitted', data };
   }
 
