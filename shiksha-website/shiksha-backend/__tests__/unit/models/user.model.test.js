@@ -57,6 +57,8 @@ describe("User Model", () => {
       expect(user.rememberMeToken).toBe(false);
       expect(user.isLoginAllowed).toBe(true);
       expect(user.profileImage).toBe("");
+      expect(user.loginAttempts).toEqual([]);
+      expect(User.schema.path("loginAttempts").options.select).toBe(false);
     });
 
     it("should validate role enum correctly", () => {

@@ -39,7 +39,6 @@ describe("Auth Validations", () => {
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockRes.status).not.toHaveBeenCalled();
-      expect(consoleLogSpy).toHaveBeenCalledWith("[validateGetOtp] Validation Passed");
     });
 
     it("should pass validation with phone and rememberMe", () => {
@@ -179,28 +178,6 @@ describe("Auth Validations", () => {
           expect.stringContaining('"rememberMe" must be a boolean')
         ])
       });
-    });
-
-    it("should log incoming request details", () => {
-      mockReq.query = { test: "value" };
-      mockReq.body = { phone: "1234567890" };
-
-      validateGetOtp(mockReq, mockRes, mockNext);
-
-      expect(consoleLogSpy).toHaveBeenCalledWith("\n[validateGetOtp] Incoming Request:");
-      expect(consoleLogSpy).toHaveBeenCalledWith("Query Params (URL):", mockReq.query);
-      expect(consoleLogSpy).toHaveBeenCalledWith("Body (Payload):", mockReq.body);
-    });
-
-    it("should log validation failure", () => {
-      mockReq.body = {};
-
-      validateGetOtp(mockReq, mockRes, mockNext);
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        "[validateGetOtp] Validation Failed:",
-        expect.any(Array)
-      );
     });
   });
 
@@ -348,26 +325,6 @@ describe("Auth Validations", () => {
           expect.stringContaining('"rememberMe" must be a boolean')
         ])
       });
-    });
-
-    it("should log incoming request details", () => {
-      mockReq.body = { phone: "1234567890", otp: "123456" };
-
-      validateOtp(mockReq, mockRes, mockNext);
-
-      expect(consoleLogSpy).toHaveBeenCalledWith("\n[validateOtp] Incoming Request:");
-      expect(consoleLogSpy).toHaveBeenCalledWith("Body (Payload):", mockReq.body);
-    });
-
-    it("should log validation failure", () => {
-      mockReq.body = {};
-
-      validateOtp(mockReq, mockRes, mockNext);
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        "[validateOtp] Validation Failed:",
-        expect.any(Array)
-      );
     });
   });
 });

@@ -19,7 +19,8 @@ describe('AuthController', () => {
         };
         mockRes = {
             status: jest.fn().mockReturnThis(),
-            json: jest.fn().mockReturnThis()
+            json: jest.fn().mockReturnThis(),
+            set: jest.fn().mockReturnThis()
         };
         mockAuthManager = {
             getOtp: jest.fn(),
@@ -81,6 +82,60 @@ describe('AuthController', () => {
             await authController.validateOtp(mockReq, mockRes);
 
             expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
+        });
+
+        it('should return 403 when CAPTCHA is required', async () => {
+            const mockResult = {
+                success: false,
+                code: 'CAPTCHA_REQUIRED',
+                message: 'Complete the CAPTCHA to continue.',
+                data: null
+            };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+            expect(handleError).not.toHaveBeenCalled();
+        });
+
+        it('should return 423 when the account is locked', async () => {
+            const mockResult = { success: false, code: 'LOGIN_LOCKED', data: null };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(423);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+        });
+
+        it('should return 429 when login is temporarily locked', async () => {
+            const mockResult = {
+                success: false,
+                code: 'LOGIN_LOCKED',
+                data: { retryAfterSeconds: 300 }
+            };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.set).toHaveBeenCalledWith('Retry-After', '300');
+            expect(mockRes.status).toHaveBeenCalledWith(429);
+        });
+
+        it('should return 429 when recovery attempts are exhausted', async () => {
+            const mockResult = {
+                success: false,
+                code: 'RECOVERY_LOCKED',
+                data: { retryAfterSeconds: 120 }
+            };
+            mockAuthManager.validateOtp.mockResolvedValue(mockResult);
+
+            await authController.validateOtp(mockReq, mockRes);
+
+            expect(mockRes.set).toHaveBeenCalledWith('Retry-After', '120');
+            expect(mockRes.status).toHaveBeenCalledWith(429);
         });
 
         it('should return 400 when exception occurs', async () => {

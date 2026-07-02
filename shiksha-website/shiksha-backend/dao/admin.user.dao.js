@@ -8,12 +8,18 @@ class AdminUserDao extends BaseDao {
 
 	async getByPhone(phone) {
 		try {
-			let adminUser = await AdminUser.findOne({ phone });
+			let adminUser = await AdminUser.findOne({ phone }).select("+loginAttempts +recovery");
 			if (adminUser) return adminUser;
 			return false;
 		} catch (err) {
 			console.log("Error -> AdminUserDao -> getByPhone", err);
 		}
+	}
+
+	async getAll(...args) {
+		const result = await super.getAll(...args);
+		result.results = result.results.map(({ loginAttempts, recovery, ...user }) => user);
+		return result;
 	}
 
 	async update(id, data, session = null) {

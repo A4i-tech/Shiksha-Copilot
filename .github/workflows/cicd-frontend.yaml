@@ -16,6 +16,11 @@ on:
         description: "Backend API URL this frontend resource must call"
         required: true
         type: string
+      turnstile_site_key:
+        description: "Cloudflare Turnstile site key; leave blank to disable CAPTCHA"
+        required: false
+        type: string
+        default: ""
       deploy_target:
         description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
         required: false
@@ -55,6 +60,7 @@ jobs:
 
     env:
       BACKEND_URL: ${{ inputs.api_url }}
+      TURNSTILE_SITE_KEY: ${{ inputs.turnstile_site_key }}
       SHIKSHA_COPILOT_BUILD: ${{ github.sha }}
 
     steps:
@@ -75,6 +81,8 @@ jobs:
             find src/environments -name "environment*.ts" -print \
               -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
           fi
+          find src/environments -name "environment*.ts" \
+            -exec sed -i "s|your_turnstile_site_key|${TURNSTILE_SITE_KEY}|g" {} \;
 
           npm ci
           npm run build -- --configuration ${{ inputs.environment }} \

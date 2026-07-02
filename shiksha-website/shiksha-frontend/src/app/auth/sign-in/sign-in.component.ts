@@ -11,6 +11,7 @@ import { NgOtpInputComponent, NgOtpInputConfig } from 'ng-otp-input';
 import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-sign-in',
@@ -29,6 +30,14 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   showResendOTP: boolean = false;
   otpValue: string = '';
   invalidOtp=false;
+  captchaRequired = false;
+  captchaToken = '';
+  captchaWidgetId: string | null = null;
+  recoveryMode = false;
+  recoveredPin = '';
+  showRecoveredPin = false;
+  hasViewedPin = false;
+  recoveredUser: any;
   images: Carousel[] = images; //utility from the utility folder
 
   rememberMe= false;
@@ -69,6 +78,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    * autoslide enabled
    */
   ngOnInit(): void {
+    if (!environment.turnstileSiteKey) console.warn('Turnstile site key is unset; CAPTCHA is disabled.');
     this.autoSlide();
     this.getCookies();
     if(this.authService.isLoggedIn()){
@@ -201,6 +211,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     ) {
       this.numberErrorMsg = 'Invalid phone number.';
     } else {
+      this.recoveryMode = false;
       this.numberErrorMsg = null;
       const reqBody = {
         phone:this.phoneNumber,
@@ -214,7 +225,12 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   getOtp(reqBody:any){
     this.service.validateMobileNumber(reqBody).subscribe({
       next: (res: any) => {
-        this.otpTriggered = res?.data?.otpTriggered;
+        this.recoveryMode = res?.data?.recoveryTriggered === true;
+        if (this.captchaWidgetId !== null) (window as any).turnstile.remove(this.captchaWidgetId);
+        this.captchaRequired = false;
+        this.captchaToken = '';
+        this.captchaWidgetId = null;
+        this.otpTriggered = res?.data?.otpTriggered || res?.data?.recoveryTriggered;
         this.modalStatus = true;
         this.showResendOTP = false;
         this.clearOTPFiled();
@@ -231,6 +247,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   forgotPin(){
+    this.recoveryMode = true;
     const reqBody = {
       phone:this.phoneNumber,
       rememberMe:this.rememberMe,
@@ -248,11 +265,16 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   onVerifyOTP() {
     if (this.otpValue) {
       this.service
-        .validateOTP(this.otpValue, this.phoneNumber.toString())
+        .validateOTP(this.otpValue, this.phoneNumber.toString(), this.captchaToken, this.recoveryMode)
         .subscribe({
           next: (res: any) => {
             this.invalidOtp = false;
-            this.utility.showSuccess("You've successfully logged in.");
+            if (this.recoveryMode) {
+              this.recoveredPin = res.data.pin;
+              this.hasViewedPin = false;
+              this.recoveredUser = res.data;
+              return;
+            }
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('userData', JSON.stringify(res.data.user));
             const profileUrl = res?.data?.user?.profileImage || ''
@@ -262,7 +284,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
                 this.translateService.use(res.data.user.preferredLanguage);
             }
 
-            if(this.rememberMe){
+            if(this.rememberMe && !this.recoveryMode){
               const userInfo = {
                 phone:this.phoneNumber,
                 apin:this.otpValue
@@ -272,14 +294,33 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
               this.secureCookieService.deleteCookie("userInfo");
             }
 
+            this.utility.showSuccess("You've successfully logged in.");
             this.navigateAfterLogin(res.data.user);
           },
           error: (err: any) => {
             this.invalidOtp = true;
+            if (err.error?.code === 'CAPTCHA_REQUIRED') this.requireCaptcha();
             this.utility.handleError(err);
           },
         }); //api call
     }
+  }
+
+  requireCaptcha() {
+    if (!environment.turnstileSiteKey) return;
+    this.captchaRequired = true;
+    setTimeout(() => {
+      const turnstile = (window as any).turnstile;
+      if (!turnstile) return;
+      this.captchaToken = '';
+      if (this.captchaWidgetId === null) {
+        this.captchaWidgetId = turnstile.render('#turnstile-container', {
+          sitekey: environment.turnstileSiteKey,
+          callback: (token: string) => this.captchaToken = token,
+          'expired-callback': () => this.captchaToken = '',
+        });
+      } else turnstile.reset(this.captchaWidgetId);
+    });
   }
 
   /**
@@ -287,7 +328,23 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    */
   closeModal() {
     this.modalStatus = false;
+    this.recoveredPin = '';
+    this.hasViewedPin = false;
+    this.recoveredUser = null;
     // this.stopTimer();
+  }
+
+  finishRecovery() {
+    if (!this.hasViewedPin) return;
+    localStorage.setItem('token', this.recoveredUser.token);
+    localStorage.setItem('userData', JSON.stringify(this.recoveredUser.user));
+    this.sidebarService.profileImg.set(this.recoveredUser.user.profileImage || '');
+    if (this.recoveredUser.user.preferredLanguage) {
+      this.translateService.use(this.recoveredUser.user.preferredLanguage);
+    }
+    this.modalStatus = false;
+    this.utility.showSuccess("You've successfully logged in.");
+    this.navigateAfterLogin(this.recoveredUser.user);
   }
 
   startTimer() {

@@ -43,6 +43,8 @@ const adminUserSchema = new mongoose.Schema(
 		otp: {
 			type: String,
 		},
+		loginAttempts: { type: [Date], default: [], select: false },
+		recovery: { type: Object, select: false },
 		rememberMeToken: {
 			type: Boolean,
 			default: false,
