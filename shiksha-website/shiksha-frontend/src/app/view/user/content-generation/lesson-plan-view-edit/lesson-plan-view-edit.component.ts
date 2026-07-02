@@ -835,11 +835,16 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   getFormattedLearningOutcomes(): string[] {
-    const content = this.sections.find((item) => item.title === 'Learning Outcomes')?.content || '';
-    return content
+    const lines = (this.sections.find((item) => item.title === 'Learning Outcomes')?.content || '')
       .split('\n')
       .map((line: string) => line.trim())
-      .filter((line: string) => line.startsWith('- '))
-      .map((line: string) => line.slice(2));
+      .filter(Boolean);
+    if (!lines.some((line: string) => /^[-*•]\s+/.test(line))) return lines;
+    return lines.reduce((out: string[], line: string) => {
+      if (/^[-*•]\s+/.test(line)) out.push(line.replace(/^[-*•]\s+/, ''));
+      else if (out.length) out[out.length - 1] += `\n${line}`;
+      else out.push(line);
+      return out;
+    }, []);
   }
 }
