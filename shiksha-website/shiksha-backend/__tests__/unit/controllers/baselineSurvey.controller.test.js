@@ -122,7 +122,7 @@ describe("BaselineSurveyController", () => {
     it("should return 409 when survey already submitted", async () => {
       const mockResult = {
         success: false,
-        message: "Already submitted",
+        message: "Already submitted for this academic year",
       };
       baselineSurveyManager.submitSurvey = jest.fn().mockResolvedValue(mockResult);
       mockReq.body = { answers: {} };

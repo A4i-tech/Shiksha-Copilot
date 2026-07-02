@@ -29,4 +29,9 @@ describe('LessonPlanViewEditComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('formats edited learning outcomes for persistence', () => {
+    component.sections = [{ title: 'Learning Outcomes', content: '- First outcome\n- Second outcome' }];
+    expect(component.getFormattedLearningOutcomes()).toEqual(['First outcome', 'Second outcome']);
+  });
 });

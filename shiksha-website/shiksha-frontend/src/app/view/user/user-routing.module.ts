@@ -7,6 +7,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { ChatbotComponent } from './chatbot/chatbot.component';
 import { BaselineSurveyGuard } from 'src/app/core/guards/baseline-survey.guard';
 import { GenerationStatusComponent } from './generation-status/generation-status.component';
+import { EndlineSurveyGuard } from 'src/app/core/guards/endline-survey.guard';
 
 const routes: Routes = [
   {
@@ -20,7 +21,7 @@ const routes: Routes = [
     data: {
       permissions: ['standard', 'power'],
     },
-    canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard],
+    canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
   {
     path: 'content-generation',
@@ -31,7 +32,7 @@ const routes: Routes = [
     data: {
       permissions: ['standard', 'power'],
     },
-    canActivate: [PermissionGuard, IsProfileCompleteGuard,BaselineSurveyGuard],
+    canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
   {
     path: 'generation-status',
@@ -39,7 +40,7 @@ const routes: Routes = [
     data: {
       permissions: ['power'],
     },
-    canActivate: [PermissionGuard, IsProfileCompleteGuard,BaselineSurveyGuard],
+    canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
   {
     path: 'profile',
@@ -47,7 +48,7 @@ const routes: Routes = [
     data: {
       permissions: ['standard', 'power'],
     },
-    canActivate: [PermissionGuard],
+    canActivate: [PermissionGuard, EndlineSurveyGuard],
   },
   {
     path: 'chatbot',
@@ -56,7 +57,7 @@ const routes: Routes = [
       permissions: ['power'],
       type:'general'
     },
-    canActivate: [PermissionGuard, IsProfileCompleteGuard,BaselineSurveyGuard],
+    canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
   {
     path: 'question-paper',
@@ -64,7 +65,7 @@ const routes: Routes = [
     data: {
       permissions: ['standard', 'power'],
     },
-    canActivate: [PermissionGuard, IsProfileCompleteGuard,BaselineSurveyGuard],
+    canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
   {
     path: 'schedule',
@@ -73,7 +74,7 @@ const routes: Routes = [
     data: {
       permissions: ['standard', 'power'],
     },
-    canActivate: [PermissionGuard, IsProfileCompleteGuard,BaselineSurveyGuard],
+    canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
   {
     path: 'help',
@@ -81,7 +82,7 @@ const routes: Routes = [
     data: {
       permissions: ['standard', 'power'],
     },
-    canActivate: [PermissionGuard],
+    canActivate: [PermissionGuard, EndlineSurveyGuard],
   }
 ];
 

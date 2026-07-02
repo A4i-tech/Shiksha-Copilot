@@ -5,7 +5,12 @@ class TeacherTrainingBatchDao extends BaseDao {
   constructor() {
     super(TeacherTrainingBatch);
   }
-  // Add any batch-specific DAO methods here if needed
+
+  async getTrainingDateForUser(userId) {
+    const batch = await this.Model.findOne({ attendance: userId, isSubmitted: true })
+      .sort({ scheduleDate: -1 }).select('scheduleDate').lean();
+    return batch?.scheduleDate || null;
+  }
 }
 
-module.exports = TeacherTrainingBatchDao; 
+module.exports = TeacherTrainingBatchDao;

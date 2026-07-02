@@ -922,7 +922,6 @@ class MasterLessonManger extends BaseManager {
 					medium,
 					subject: subjectName,
 					chapterId: chapter._id,
-					subTopics: lessonPlans[i].subtopics,
 					isRegenerated: false,
 					isAll: lessonPlans[i].lp_level === 'CHAPTER',
 					templateId
@@ -948,6 +947,7 @@ class MasterLessonManger extends BaseManager {
 						sections: oldFormatStructuredData(instructionSet, lessonPlans[i]?.checklist, templateDetails[0]?.sections),
 						learningOutcomes: lessonPlans[i]?.learning_outcomes,
 						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
+						subTopics: lessonPlans[i]?.subtopics,
 					}
 
 

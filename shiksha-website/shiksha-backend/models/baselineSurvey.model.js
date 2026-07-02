@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const baselineSurveySchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-    year: { type: Number, required: true, default: () => new Date().getFullYear(), index: true },
+    academicYear: { type: Number, required: true, index: true },
     // Q1..Q7
     plans: { type: [String], default: [] },
     devices: { type: [String], default: [] },
@@ -17,8 +17,7 @@ const baselineSurveySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// one survey per user per year
-baselineSurveySchema.index({ userId: 1, year: 1 }, { unique: true });
+baselineSurveySchema.index({ userId: 1, academicYear: 1 }, { unique: true });
 
 const BaselineSurvey = mongoose.model(
   "BaselineSurvey",

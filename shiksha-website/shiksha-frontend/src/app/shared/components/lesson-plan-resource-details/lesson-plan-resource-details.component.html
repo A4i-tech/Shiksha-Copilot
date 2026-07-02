@@ -2,7 +2,7 @@
 	<h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
 		{{(getLessonType()?.type === 'plan' ? 'Lesson Plan Details':'Lesson Resources') | translate}}
 	</h1>
-	<p class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">{{'Info' | translate}}: {{(getLessonType()?.type === 'plan' ? 'Lesson':'Resource')}} Plan Type-5E , {{'Board' | translate}}-{{getBoards()}} </p>
+	<p class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">{{'Info' | translate}}: {{(getLessonType()?.type === 'plan' ? 'Lesson':'Resource')}} Plan, {{'Board' | translate}}-{{getBoards()}} </p>
 
 	<div class="text-content rounded my-5 ">
 			<form [formGroup]="lessonForm" (ngSubmit)="on_form_submit()">
