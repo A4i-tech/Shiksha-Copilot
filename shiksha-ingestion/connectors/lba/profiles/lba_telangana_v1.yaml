@@ -1,7 +1,0 @@
-pipeline_id: lba_telangana_v1
-domain_profile: education_lba_telangana
-input_modality: document
-description: "Telangana LBA question extraction → MongoDB"
-steps:
-  - agent: markdown_cleaning
-  - agent: lba_extraction
