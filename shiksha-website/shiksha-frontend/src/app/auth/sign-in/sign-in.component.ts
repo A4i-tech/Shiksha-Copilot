@@ -225,6 +225,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   getOtp(reqBody:any){
     this.service.validateMobileNumber(reqBody).subscribe({
       next: (res: any) => {
+        this.recoveryMode = res?.data?.recoveryTriggered === true;
         if (this.captchaWidgetId !== null) (window as any).turnstile.remove(this.captchaWidgetId);
         this.captchaRequired = false;
         this.captchaToken = '';

@@ -198,6 +198,31 @@ describe("AuthManager dual-role login", () => {
     expect(mockUserDao.clearRecovery).toHaveBeenCalledWith("teacher-1");
   });
 
+  it("issues an initial login PIN when recovery is requested without one", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ otp: undefined }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+
+    const result = await manager.getOtp({ body: { phone: "9876543210", forgotPassword: true } });
+
+    expect(result.data).toEqual({ user: "9876543210", otpTriggered: true });
+    expect(mockUserDao.update).toHaveBeenCalledWith("teacher-1", expect.objectContaining({ otp: "encrypted-pin" }));
+    expect(mockUserDao.setRecovery).not.toHaveBeenCalled();
+  });
+
+  it("does not complete recovery when the permanent PIN is missing", async () => {
+    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 0 };
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ otp: undefined, recovery }));
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+
+    const result = await manager.validateOtp({
+      body: { phone: "9876543210", otp: "1234", recovery: true }, useragent: {},
+    });
+
+    expect(result.message).toBe("PIN not found");
+    expect(jwt.sign).not.toHaveBeenCalled();
+    expect(mockUserDao.clearRecovery).not.toHaveBeenCalled();
+  });
+
   it("limits recovery verification to three attempts", async () => {
     const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 3 };
     mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(6).fill(new Date()), recovery }));

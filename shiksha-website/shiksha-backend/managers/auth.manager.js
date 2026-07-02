@@ -61,7 +61,7 @@ class AuthManager {
 
             let otpTriggered = false;
 
-            if (forgotPassword) {
+            if (forgotPassword && user.otp) {
                 if (user.recovery?.expiresAt > Date.now()) {
                     return formatApiReponse(true, "Recovery PIN already sent", { user: user.phone, recoveryTriggered: true });
                 }
@@ -108,7 +108,7 @@ class AuthManager {
                 return formatApiReponse(false, "User is inactive", {});
             }
 
-            if (recovery) return this.validateRecovery(req, activeUsers);
+            if (recovery) return await this.validateRecovery(req, activeUsers);
 
             const encryptedOtp = activeUsers.teacher ? activeUsers.teacher.otp : activeUsers.admin?.otp;
             if (!encryptedOtp) {
@@ -219,9 +219,11 @@ class AuthManager {
             return formatApiReponse(false, "Invalid recovery PIN", { attemptsRemaining: 3 - attempts });
         }
 
+        const loginOtp = (activeUsers.teacher || activeUsers.admin).otp;
+        if (!loginOtp) return formatApiReponse(false, "PIN not found", null);
+        const pin = CryptoJS.AES.decrypt(loginOtp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
         const result = await this.completeLogin(req, activeUsers);
-        result.data.pin = CryptoJS.AES.decrypt((activeUsers.teacher || activeUsers.admin).otp,
-            process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
+        result.data.pin = pin;
         return result;
     }
 
