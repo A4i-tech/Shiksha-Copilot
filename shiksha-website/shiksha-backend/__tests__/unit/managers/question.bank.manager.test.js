@@ -53,7 +53,7 @@ describe("QuestionBankManager", () => {
   describe("constructor", () => {
     it("should create manager instance successfully", () => {
       expect(manager).toBeInstanceOf(QuestionBankManager);
-      expect(manager.questionBankDao).toBeDefined();
+      expect(manager.dao).toBeDefined();
       expect(manager.chapterDao).toBeDefined();
     });
 

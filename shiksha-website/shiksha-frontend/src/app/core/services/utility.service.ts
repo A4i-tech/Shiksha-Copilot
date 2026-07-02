@@ -51,23 +51,11 @@ export class UtilityService {
    * @param err error
    */
   handleError(err: any) {
-    if (err.status === 400) {
-      // Handle validation errors (array of error messages)
-      if (err.error?.error && Array.isArray(err.error.error)) {
-        const errorMessages = err.error.error.join(', ');
-        this.showError(errorMessages || 'Validation failed. Please check your input.');
-      } else if (err.error?.message) {
-        this.showError(err.error.message);
-      } else if (err.error?.error) {
-        this.showError(err.error.error);
-      } else {
-        this.showError('An error occurred. Please try again.');
-      }
-    } else if (err.status === 401) {
-      this.showError(err.error?.message || 'Unauthorized. Please login again.');
-    } else if (err.status === 500) {
-      this.showError('Server error. Please try again later.');
-    }
+    if (Array.isArray(err.error?.error)) return this.showError(err.error.error.join(', '));
+    const fallback = err.status === 401
+      ? 'Unauthorized. Please login again.'
+      : err.status >= 500 ? 'Server error. Please try again later.' : 'An error occurred. Please try again.';
+    this.showError(err.error?.message || err.error?.error || fallback);
   }
 
   /**

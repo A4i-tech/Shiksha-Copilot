@@ -139,6 +139,34 @@ class BaseDao {
 		}
 	}
 
+	reserveLoginAttempt(id, attemptedAt, limit) {
+		return this.Model.findOneAndUpdate(
+			{ _id: id, [`loginAttempts.${limit - 1}`]: { $exists: false } },
+			{ $push: { loginAttempts: attemptedAt } },
+			{ new: true }
+		).select("+loginAttempts");
+	}
+
+	clearLoginAttempts(id) {
+		return this.Model.findByIdAndUpdate(id, { $set: { loginAttempts: [] } });
+	}
+
+	setRecovery(id, recovery) {
+		return this.Model.findByIdAndUpdate(id, { $set: { recovery } });
+	}
+
+	reserveRecoveryAttempt(id) {
+		return this.Model.findOneAndUpdate(
+			{ _id: id, "recovery.attempts": { $lt: 3 } },
+			{ $inc: { "recovery.attempts": 1 } },
+			{ new: true }
+		).select("+recovery");
+	}
+
+	clearRecovery(id) {
+		return this.Model.findByIdAndUpdate(id, { $unset: { recovery: 1 } });
+	}
+
 	async bulkUpload(dataArray) {
 		try {
 			const result = await this.Model.insertMany(dataArray);

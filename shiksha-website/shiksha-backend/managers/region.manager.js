@@ -2,6 +2,7 @@ const RegionDao = require("../dao/region.dao");
 const BaseManager = require("./base.manager");
 const SchoolDao = require("../dao/school.dao");
 
+/** @extends {BaseManager<RegionDao>} */
 class RegionManager extends BaseManager {
 	constructor() {
 		super(new RegionDao());

@@ -2,10 +2,10 @@ const BaseManager = require("./base.manager");
 const TeacherResourceFeedbackDao = require("../dao/teacher.feedback.dao");
 const formatApiReponse = require("../helper/response");
 
+/** @extends {BaseManager<TeacherResourceFeedbackDao>} */
 class TeacherResourceFeedbackManager extends BaseManager {
 	constructor() {
 		super(new TeacherResourceFeedbackDao());
-		this.teacherResourceFeedbackDao = new TeacherResourceFeedbackDao();
 	}
 
 	async create(req) {
@@ -14,13 +14,13 @@ class TeacherResourceFeedbackManager extends BaseManager {
 
 			let { resourceId, isCompleted } = req.body;
 
-			let resourceFeedback = await this.teacherResourceFeedbackDao.getOne({
+			let resourceFeedback = await this.dao.getOne({
 				teacherId,
 				resourceId,
 			});
 
 			if (!resourceFeedback) {
-				let data = await this.teacherResourceFeedbackDao.create({
+				let data = await this.dao.create({
 					...req.body,
 					teacherId,
 				});
@@ -33,7 +33,7 @@ class TeacherResourceFeedbackManager extends BaseManager {
 			}
 
 			if (!resourceFeedback.isCompleted) {
-				let data = await this.teacherResourceFeedbackDao.update(
+				let data = await this.dao.update(
 					resourceFeedback._id,
 					{
 						...req.body,
@@ -56,7 +56,7 @@ class TeacherResourceFeedbackManager extends BaseManager {
 
 	async update(id, updates) {
 		try {
-			const updatedFeedback = await this.teacherResourceFeedbackDao.update(
+			const updatedFeedback = await this.dao.update(
 				id,
 				updates
 			);

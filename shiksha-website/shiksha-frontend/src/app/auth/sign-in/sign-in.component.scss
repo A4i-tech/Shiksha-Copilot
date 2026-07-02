@@ -116,8 +116,14 @@
     padding: 3rem 5rem;
     z-index: 100;
     min-width: 35vw;
-    button {
+    .btn-success {
       background-color: var(--success-50);
+
+      &:disabled {
+        background-color: #d1d5db;
+        color: #6b7280;
+        cursor: not-allowed;
+      }
     }
 
     ::ng-deep .error .otp-input{

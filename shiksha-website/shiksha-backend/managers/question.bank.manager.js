@@ -80,11 +80,11 @@ const transformWeakLbaQuestion = async (q) => {
     return { ...base, _id: `${q._id}_pair_${index}`, text: value1, value1, value2: await toQuestionContent(pair.right) };
   })) : base;
 };
+/** @extends {BaseManager<QuestionBankDao>} */
 class QuestionBankManager extends BaseManager {
   constructor() {
     super(new QuestionBankDao());
     this.chapterDao = new ChapterDao();
-    this.questionBankDao = new QuestionBankDao();
     this.questionDao = new QuestionDao();
     this.masterSubjectDao = new MasterSubjectDao();
     this.questionBankCacheDao = new QuestionBankCacheDao();
@@ -99,7 +99,7 @@ class QuestionBankManager extends BaseManager {
     sort = {}
   ) {
     try {
-      let data = await this.questionBankDao.getTeacherQuestionPapers(
+      let data = await this.dao.getTeacherQuestionPapers(
         teacherId,
         page,
         limit,
@@ -460,7 +460,7 @@ class QuestionBankManager extends BaseManager {
       questions: mergedList,
     };
 
-    const questionBank = await this.questionBankDao.saveQuestionBank(questionBankData, session);
+    const questionBank = await this.dao.saveQuestionBank(questionBankData, session);
 
     let configData = convertToCamelCase({
       ...context,
@@ -478,7 +478,7 @@ class QuestionBankManager extends BaseManager {
     configData.questionBank = new ObjectId(questionBank._id);
     configData.topics = processedUnitNames;
 
-    const questionBankConfig = await this.questionBankDao.create(configData, session);
+    const questionBankConfig = await this.dao.create(configData, session);
 
     return {
       ...questionBankConfig.toObject(),
@@ -723,7 +723,7 @@ class QuestionBankManager extends BaseManager {
 
   async updateFeedback(questionBankId, feedbackData) {
     try {
-      await this.questionBankDao.update(questionBankId, feedbackData);
+      await this.dao.update(questionBankId, feedbackData);
       return formatApiReponse(true, "Feedback submitted successfully", null);
     } catch (err) {
       return formatApiReponse(false, err.message, err);

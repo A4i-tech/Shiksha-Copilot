@@ -2,10 +2,10 @@ const ChapterManager = require("../managers/chapter.manager");
 const BaseController = require("./base.controller");
 const handleError = require("../helper/handleError")
 
+/** @extends {BaseController<ChapterManager>} */
 class ChapterController extends BaseController {
 	constructor() {
 		super(new ChapterManager());
-		this.chapterManager = new ChapterManager();
 	}
 
 	async getBySemester(req, res){
@@ -15,7 +15,7 @@ class ChapterController extends BaseController {
 			} = req.query;
 
 			const transformedFilter = { ...filter };
-			const result = await this.chapterManager.getBySemester(transformedFilter);
+			const result = await this.manager.getBySemester(transformedFilter);
 			if (result.success) {
 				return res.status(200).json(result);
 			}
@@ -31,7 +31,7 @@ class ChapterController extends BaseController {
 
 	async scriptFromLp(req, res) {
 		try {
-			let result = await this.chapterManager.scriptFromLp(req);
+			let result = await this.manager.scriptFromLp(req);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -49,7 +49,7 @@ class ChapterController extends BaseController {
 
 	async updateChapter(req, res) {
 		try {
-			let result = await this.chapterManager.updateChapter(req);
+			let result = await this.manager.updateChapter(req);
 
 			if (result.success) {
 				return res.status(200).json(result);

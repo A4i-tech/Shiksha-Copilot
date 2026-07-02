@@ -11,10 +11,10 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
 
+/** @extends {BaseManager<SchoolDao>} */
 class SchoolManager extends BaseManager {
   constructor() {
     super(new SchoolDao());
-    this.schoolDao = new SchoolDao();
     this.classDao = new ClassDao();
     this.userDao = new UserDao();
   }
@@ -23,14 +23,14 @@ class SchoolManager extends BaseManager {
     try {
       session.startTransaction();
       let classes = req.body?.classes || [];
-      let school = await this.schoolDao.getOne({ schoolId: req.body.schoolId });
+      let school = await this.dao.getOne({ schoolId: req.body.schoolId });
 
       if (school) {
         await session.abortTransaction();
         return formatApiReponse(false, "Disecode already exists", null);
       }
 
-      school = await this.schoolDao.create(req.body);
+      school = await this.dao.create(req.body);
 
       if (!school) {
         await session.abortTransaction();
@@ -98,9 +98,9 @@ class SchoolManager extends BaseManager {
     try {
       const { classes: classesData } = data;
 
-      const currentSchool = await this.schoolDao.getById(id);
+      const currentSchool = await this.dao.getById(id);
 
-      const existingSchool = await this.schoolDao.getBySchoolId(data.schoolId);
+      const existingSchool = await this.dao.getBySchoolId(data.schoolId);
 
       if (
         existingSchool &&
@@ -113,7 +113,7 @@ class SchoolManager extends BaseManager {
         );
       }
 
-      const updatedSchool = await this.schoolDao.update(id, data);
+      const updatedSchool = await this.dao.update(id, data);
 
       if (!updatedSchool) {
         return formatApiReponse(false, "Failed to update school info", null);
@@ -295,7 +295,7 @@ class SchoolManager extends BaseManager {
 
   async delete(req) {
     try {
-      let data = await this.schoolDao.delete(req.params?.id);
+      let data = await this.dao.delete(req.params?.id);
       return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -304,11 +304,11 @@ class SchoolManager extends BaseManager {
 
   async updateFacility(id, body) {
     try {
-      let data = await this.schoolDao.getById(id);
+      let data = await this.dao.getById(id);
       let schoolfacilities = data?.facilities;
       const updatedFacilities = schoolfacilities.filter((ele) => ele.otherType !== body.otherType);
 
-      const school = await this.schoolDao.update(id, { facilities: updatedFacilities })
+      const school = await this.dao.update(id, { facilities: updatedFacilities })
 
       const users = await this.userDao.getUsersBySchoolId(id);
 
@@ -330,7 +330,7 @@ class SchoolManager extends BaseManager {
     try {
       const schoolId = req.params.id;
 
-      const school = await this.schoolDao.update(schoolId, { isDeleted: true });
+      const school = await this.dao.update(schoolId, { isDeleted: true });
 
       if (!school) {
         return formatApiReponse(false, "Failed to deactivate school", null);
@@ -406,7 +406,7 @@ class SchoolManager extends BaseManager {
       }
 
 
-      const schools = await this.schoolDao.getAll(
+      const schools = await this.dao.getAll(
         parseInt(page),
         parseInt(limit),
         mergedFilter,

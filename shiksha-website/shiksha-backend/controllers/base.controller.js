@@ -1,8 +1,16 @@
 const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+
+/**
+ * @template TManager
+ */
 class BaseController {
+	/**
+	 * @param {TManager} manager
+	 */
 	constructor(manager) {
+		/** @protected @type {TManager} */
 		this.manager = manager;
 	}
 

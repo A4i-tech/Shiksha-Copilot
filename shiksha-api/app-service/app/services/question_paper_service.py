@@ -10,8 +10,9 @@ from typing import Annotated, List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from openai import AsyncAzureOpenAI
 from openai.types import ResponsesModel
+from langfuse import observe, get_client
+from langfuse.openai import AsyncAzureOpenAI  # noqa: F401 — enables langfuse auto-tracing; test asserts this import
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.core.llms import ChatMessage
@@ -206,6 +207,7 @@ class QuestionPaperService:
         )
 
 
+    @observe(name="question_generation")
     async def _generate_questions_batch(self, system_prompt: str, record: _LearningRecord, slot: list[GenerationSlot], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedSlotQuestion]:
         """
         Generate questions for a batch of slots.
@@ -223,6 +225,18 @@ class QuestionPaperService:
             k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
+
+        get_client().update_current_span(
+            input={"system_prompt": system_prompt, "user_message": user_message},
+            metadata={
+                "unit_name": record.title,
+                "question_types": [t.type.value for _, t, _ in slot],
+                "slot_count": len(slot),
+                "model": self.chat_deployment,
+                "rag_enabled": rag_adapter is not None,
+                "index_path": record.index_path,
+            },
+        )
 
         try:
             if not rag_adapter:
@@ -245,6 +259,11 @@ class QuestionPaperService:
                 response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
                 items = response_format.model_validate(response_content["response"])
         except Exception as e:
+            get_client().update_current_span(
+                level="ERROR",
+                status_message=f"{type(e).__name__}: {e}",
+                output={"items_count": 0},
+            )
             logger.exception(e)
             return []
 
@@ -272,6 +291,7 @@ class QuestionPaperService:
                 logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{record.index_path}'")
             return await self._generate_questions_batch(system_prompt, record, slot, rag_adapter)
 
+    @observe(name="output_formatting")
     def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedSlotQuestion]) -> List[QuestionTypeResponse]:
         """Organize all generated questions into the final response structure."""
         question_directory = {slot_id: g.item for slot_id, g in all_generated}
@@ -286,24 +306,70 @@ class QuestionPaperService:
                 else:
                     logger.warning(f"--\nNo question found for slot: {(template.type, template.marks_per_question, q_dist.unit_name, q_dist.objective)}")
 
+            expected = (
+                len(template.question_distribution)
+                if template.question_distribution
+                else template.number_of_questions
+            )
+            actual = len(questions)
+            if actual < expected:
+                logger.warning(
+                    "Partial QB result for type=%s: expected %d questions, got %d. "
+                    "LLM generation may have returned fewer items than requested.",
+                    template.type.value,
+                    expected,
+                    actual,
+                )
             response_questions.append(QuestionTypeResponse(
                 type=template.type,
-                number_of_questions=(
-                    len(template.question_distribution)
-                    if template.question_distribution
-                    else template.number_of_questions
-                ),
+                number_of_questions=expected,
                 marks_per_question=template.marks_per_question,
                 questions=questions,
             ))
 
+        total_expected = sum(
+            len(t.question_distribution) if t.question_distribution else t.number_of_questions
+            for t in request.template
+        )
+        total_actual = sum(len(qtr.questions) for qtr in response_questions)
+        if total_actual < total_expected:
+            logger.warning(
+                "QB generation incomplete: expected %d total questions, produced %d. "
+                "Returning partial result to caller.",
+                total_expected,
+                total_actual,
+            )
+
         return response_questions
 
+    @observe(name="Shiksha-QB")
     async def generate_question_bank_by_parts(self, request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
         """
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
+        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            session_id=request.session_id,
+            tags=[
+                "chat_type:question-bank",
+                f"board:{request.board}",
+                f"grade:{request.grade}",
+                f"subject:{request.subject}",
+            ],
+            metadata={
+                "board": request.board,
+                "grade": request.grade,
+                "subject": request.subject,
+                "medium": request.medium,
+                "chapters": [ch.title for ch in request.chapters],
+                "learning_outcomes": all_los,
+                "question_types": [t.type.value for t in request.template],
+                "total_marks": request.total_marks,
+                "model": getattr(self, "chat_deployment", None),
+            },
+        )
 
         existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
         tasks = []
@@ -330,10 +396,32 @@ class QuestionPaperService:
         ), questions=response_questions)
 
 
+    @observe(name="Shiksha-QB")
     async def get_question_distribution(self, request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
         """
         Generate question paper template based on unit-wise marks distribution.
         """
+        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
+        get_client().update_current_trace(
+            user_id=request.user_id,
+            session_id=request.session_id,
+            tags=[
+                "chat_type:question-distribution",
+                f"board:{request.board}",
+                f"grade:{request.grade}",
+                f"subject:{request.subject}",
+            ],
+            metadata={
+                "board": request.board,
+                "grade": request.grade,
+                "subject": request.subject,
+                "medium": request.medium,
+                "chapters": [ch.title for ch in request.chapters],
+                "learning_outcomes": all_los,
+                "total_marks": request.total_marks,
+                "model": self.chat_deployment,
+            },
+        )
 
         templates = {local_unique_id(i): t for i, t in enumerate(request.template)}
 

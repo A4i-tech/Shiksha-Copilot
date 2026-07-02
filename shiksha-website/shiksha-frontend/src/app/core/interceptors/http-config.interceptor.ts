@@ -53,7 +53,6 @@ export class HttpConfigInterceptor implements HttpInterceptor {
     return next.handle(authReq).pipe(
       catchError((error) => {
         if (error.status === 401 && this.authorizationService.isLoggedIn()) {
-          this.utilityService.showWarning(error?.error?.message);
           this.utilityService.logout();
         }
         return throwError(() => error);

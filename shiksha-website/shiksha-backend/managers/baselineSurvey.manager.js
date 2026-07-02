@@ -3,19 +3,23 @@
 const BaseManager = require('./base.manager');
 const formatApiResponse = require('../helper/response');
 const BaselineSurveyDao = require('../dao/baselineSurvey.dao');
+const { getAcademicYear } = require('../helper/academic.year.helper');
 
 class BaselineSurveyManager extends BaseManager {
   constructor() {
     const dao = new BaselineSurveyDao();
     super(dao);
     this.dao = dao;
+    this.baselineSurvey = process.env.BASELINE_SURVEY === 'true';
   }
 
   async checkCompleted(userId) {
     try {
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
-      const exists = await this.dao.existsByUser(userId);
-      return formatApiResponse(true, 'OK', { completed: !!exists });
+      if (!this.baselineSurvey) return formatApiResponse(true, 'OK', { completed: true });
+      const academicYear = getAcademicYear();
+      const exists = await this.dao.existsByUser(userId, academicYear);
+      return formatApiResponse(true, 'OK', { completed: !!exists, academicYear });
     } catch (err) {
       console.error('BaselineSurveyManager.checkCompleted', err);
       return formatApiResponse(false, 'Server error', null);
@@ -24,10 +28,12 @@ class BaselineSurveyManager extends BaseManager {
 
   async submitSurvey(userId, body, session = null) {
     try {
+      if (!this.baselineSurvey) return formatApiResponse(false, 'Survey is disabled', null);
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
-      const already = await this.dao.findByUser(userId);
-      if (already) return formatApiResponse(false, 'Already submitted', null);
+      const academicYear = getAcademicYear();
+      const already = await this.dao.findByUser(userId, academicYear);
+      if (already) return formatApiResponse(false, 'Already submitted for this academic year', null);
 
       // ---- NORMALIZE ARRAYS ----
       const plans = Array.isArray(body.plans) ? body.plans : [];
@@ -71,6 +77,7 @@ class BaselineSurveyManager extends BaseManager {
 
       const payload = {
         userId,
+        academicYear,
         plans,
         devices,
         weeklyLessonPlans: body.weeklyLessonPlans || '',
@@ -86,7 +93,7 @@ class BaselineSurveyManager extends BaseManager {
     } catch (err) {
       console.error('BaselineSurveyManager.submitSurvey', err);
       if (err && err.code === 11000) {
-        return formatApiResponse(false, 'Already submitted', null);
+        return formatApiResponse(false, 'Already submitted for this academic year', null);
       }
       return formatApiResponse(false, 'Server error', null);
     }

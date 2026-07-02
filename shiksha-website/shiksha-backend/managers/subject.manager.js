@@ -2,15 +2,15 @@ const BaseManager = require("./base.manager");
 const SubjectDao = require("../dao/subject.dao");
 const formatApiReponse = require("../helper/response");
 
+/** @extends {BaseManager<SubjectDao>} */
 class SubjectManager extends BaseManager {
 	constructor() {
 		super(new SubjectDao());
-		this.subjectDao = new SubjectDao();
 	}
 
 	async updateSubject(id, updates) {
 		try {
-			const updatedSubject = await this.subjectDao.update(id, updates);
+			const updatedSubject = await this.dao.update(id, updates);
 			if (!updatedSubject) {
 				return formatApiReponse(false, "Subject not found", null);
 			}

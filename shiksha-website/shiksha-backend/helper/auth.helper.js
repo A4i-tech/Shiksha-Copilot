@@ -1,7 +1,13 @@
 require("dotenv").config();
 const crypto = require('crypto');
+const axios = require('axios');
 const variforrmSMSService = require('../services/variform.service');
 class AuthHelper {
+	constructor() {
+		this.captchaEnabled = Boolean(process.env.TURNSTILE_SECRET_KEY);
+		if (!this.captchaEnabled && process.env.NODE_ENV !== 'test') console.warn('TURNSTILE_SECRET_KEY is unset; CAPTCHA is disabled.');
+	}
+
 	getOtp() {
         const OTP = crypto.randomInt(1000, 10000).toString();
 		return OTP;
@@ -30,8 +36,15 @@ class AuthHelper {
     }
 
 	validateOtp(clientOtp, serverOtp) {
-        return clientOtp === serverOtp;
-    }
+		return clientOtp === serverOtp;
+	}
+
+	async validateCaptcha(token) {
+		if (!token) return false;
+		const body = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY, response: token });
+		const { data } = await axios.post('https://challenges.cloudflare.com/turnstile/v0/siteverify', body);
+		return data.success === true;
+	}
 }
 
 const authHelper = new AuthHelper();

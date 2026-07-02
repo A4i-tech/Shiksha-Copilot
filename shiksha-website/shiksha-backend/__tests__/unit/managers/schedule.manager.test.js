@@ -15,7 +15,7 @@ describe('ScheduleManager', () => {
             create: jest.fn(),
             getParallelSchedules: jest.fn()
         };
-        scheduleManager.scheduleDao = mockScheduleDao;
+        scheduleManager.dao = mockScheduleDao;
         jest.clearAllMocks();
         overlap.mockReturnValue(false);
     });

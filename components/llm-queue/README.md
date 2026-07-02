@@ -40,9 +40,9 @@ azure_open_ai:
     api_type: "azure"
     azure_endpoint: "https://your-resource.openai.azure.com/"
     azure_oai_models:
-      - unique_model_id: "gpt-4o"
-        model_name_in_azure: "gpt-4o"
-        deployment_name_in_azure: "gpt-4o"
+      - unique_model_id: "GPT-4.1"
+        model_name_in_azure: "GPT-4.1"
+        deployment_name_in_azure: "GPT-4.1"
         model_type: "completion"
         req_per_min: 450
         tokens_per_min: 75000
@@ -152,7 +152,7 @@ from llm_queue.base.data_classes import ModelPreferences
 
 # For chat completion only
 chat_prefs = ModelPreferences(
-    specific_llm_model="gpt-4o",
+    specific_llm_model="GPT-4.1",
     require_llm_model=True,
     require_embedding_model=False,
     num_llm_calls_per_req=1

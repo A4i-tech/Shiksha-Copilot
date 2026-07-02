@@ -24,7 +24,7 @@ describe("QuestionBankController", () => {
     }));
 
     controller = new QuestionBankController();
-    mockManager = controller.questionBankManager;
+    mockManager = controller.manager;
 
     mockReq = {
       user: { _id: "teacher-123" },

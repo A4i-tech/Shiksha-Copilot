@@ -18,8 +18,8 @@ azure_open_ai:
     azure_endpoint: "https://***.openai.azure.com/"
     azure_oai_models:
       - unique_model_id: GPT4-o
-        model_name_in_azure: gpt-4o
-        deployment_name_in_azure: gpt-4o
+        model_name_in_azure: GPT-4.1
+        deployment_name_in_azure: GPT-4.1
         model_type: completion
         req_per_min: 450
         tokens_per_min: 75000

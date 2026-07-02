@@ -3,10 +3,10 @@ const formatApiReponse = require("../helper/response");
 const BaseManager = require("./base.manager");
 const overlap = require("../helper/overlap")
 
+/** @extends {BaseManager<ScheduleDao>} */
 class ScheduleManager extends BaseManager {
 	constructor() {
 		super(new ScheduleDao());
-		this.scheduleDao = new ScheduleDao();
 	}
 
 	async create(req) {
@@ -50,7 +50,7 @@ class ScheduleManager extends BaseManager {
 				seenSlots.add(key);
 			}
 
-			let parallelSchedules = await this.scheduleDao.getParallelSchedules(
+			let parallelSchedules = await this.dao.getParallelSchedules(
 				schoolId,
 				teacherClass,
 				board,
@@ -67,7 +67,7 @@ class ScheduleManager extends BaseManager {
 				);
 			}
 
-			let data = await this.scheduleDao.create(req.body);
+			let data = await this.dao.create(req.body);
 			if (data) {
 				return formatApiReponse(true, "schedule created successfully!", data);
 			}
@@ -82,7 +82,7 @@ class ScheduleManager extends BaseManager {
 		try {
 			let teacherId = user._id;
 
-			let schedule = await this.scheduleDao.getById(scheduleId);
+			let schedule = await this.dao.getById(scheduleId);
 
 			if (!schedule) {
 				return formatApiReponse(false, "Failed to update schedule info", null);
@@ -134,7 +134,7 @@ class ScheduleManager extends BaseManager {
 				seenSlots.add(key);
 			}
 
-			let parallelSchedules = await this.scheduleDao.getParallelSchedules(
+			let parallelSchedules = await this.dao.getParallelSchedules(
 				schoolId,
 				teacherClass,
 				board,
@@ -152,7 +152,7 @@ class ScheduleManager extends BaseManager {
 				);
 			}
 
-			schedule = await this.scheduleDao.update(scheduleId, { ...data, teacherId });
+			schedule = await this.dao.update(scheduleId, { ...data, teacherId });
 
 			return formatApiReponse(true, "update success!", schedule);
 		} catch (err) {
@@ -162,7 +162,7 @@ class ScheduleManager extends BaseManager {
 
 	async getAllSchedulesBasedOnTeacherId(teacherId) {
 		try {
-			let schedules = await this.scheduleDao.getAllSchedulesBasedOnTeacherId(
+			let schedules = await this.dao.getAllSchedulesBasedOnTeacherId(
 				teacherId
 			);
 
@@ -196,7 +196,7 @@ class ScheduleManager extends BaseManager {
 				}
 			}
 
-			let schedules = await this.scheduleDao.getBySchool(
+			let schedules = await this.dao.getBySchool(
 				schoolId,
 				teacherClasses,
 				fromDate,
@@ -217,7 +217,7 @@ class ScheduleManager extends BaseManager {
 
 	async getMySchedules(teacherId, date) {
 		try {
-			let schedules = await this.scheduleDao.getMySchedules(teacherId, date);
+			let schedules = await this.dao.getMySchedules(teacherId, date);
 
 			if (!schedules) {
 				return formatApiReponse(false, "failed to get schedule info", null);
@@ -233,7 +233,7 @@ class ScheduleManager extends BaseManager {
 		try {
 			let { id, timeId } = req.params;
 
-			let schedule = await this.scheduleDao.getOne({
+			let schedule = await this.dao.getOne({
 				_id: id,
 				teacherId: req.user._id,
 				isDeleted: false,
@@ -243,10 +243,10 @@ class ScheduleManager extends BaseManager {
 				return formatApiReponse(false, "failed to find schedule!", null);
 			}
 
-			let data = await this.scheduleDao.deleteDateTime(id, timeId);
+			let data = await this.dao.deleteDateTime(id, timeId);
 
 			if (data.scheduleDateTime.length == 0) {
-				data = await this.scheduleDao.delete(id);
+				data = await this.dao.delete(id);
 			}
 
 			if (!data) {

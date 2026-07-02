@@ -91,7 +91,7 @@ describe("TeacherLessonPlanManager", () => {
   describe("constructor", () => {
     it("should create manager instance successfully", () => {
       expect(manager).toBeInstanceOf(TeacherLessonPlanManager);
-      expect(manager.teacherLessonPlanDao).toBeDefined();
+      expect(manager.dao).toBeDefined();
       expect(manager.chapterDao).toBeDefined();
       expect(manager.masterLessonDao).toBeDefined();
     });

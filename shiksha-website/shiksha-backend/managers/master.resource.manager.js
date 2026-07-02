@@ -15,10 +15,10 @@ const LessonPlanTemplate = require("../models/lesson.plan.template.model");
 const compareChapter = require("../helper/chapter.helper");
 const { attachAggregateRatings } = require("../helper/activity.rating.helper");
 
+/** @extends {BaseManager<MasterResourceDao>} */
 class MasterResourceManager extends BaseManager {
 	constructor() {
 		super(new MasterResourceDao());
-		this.masterResourceDao = new MasterResourceDao();
 		this.teacherLessonPlanDao = new TeacherLessonPlanDao();
 		this.regenerateResourceLog = new RegeneratedLessonResourceDao();
 		this.masterSubjectDao = new MasterSubjectDao();
@@ -27,7 +27,7 @@ class MasterResourceManager extends BaseManager {
 
 	async updateMasterResource(id, updates) {
 		try {
-			const updatedResource = await this.masterResourceDao.update(id, updates);
+			const updatedResource = await this.dao.update(id, updates);
 			if (!updatedResource) {
 				return formatApiResponse(false, "Master resource not found", null);
 			}
@@ -39,7 +39,7 @@ class MasterResourceManager extends BaseManager {
 
 	async regenerateResourcePlan({ resourceId, reason, userId }) {
 		try {
-			const resourcePlan = await this.masterResourceDao.getById(resourceId);
+			const resourcePlan = await this.dao.getById(resourceId);
 			if (!resourcePlan) {
 				return formatApiResponse(false, "Resource plan not found", null);
 			}
@@ -58,7 +58,7 @@ class MasterResourceManager extends BaseManager {
 				resources: regeneratedResource.resources,
 			};
 
-			const savedResourcePlan = await this.masterResourceDao.create(
+			const savedResourcePlan = await this.dao.create(
 				newResourcePlan
 			);
 
@@ -94,7 +94,7 @@ class MasterResourceManager extends BaseManager {
 				let subTopicSubSets = uniqueSubsets(chapter.subTopics);
 				for (const subTopic of subTopicSubSets) {
 					const newResourcePlan = createData(false, chapter, subTopic, subject);
-					await this.masterResourceDao.create(newResourcePlan);
+					await this.dao.create(newResourcePlan);
 				}
 			}
 			return formatApiResponse(true, "", "Data inserted!");
@@ -106,7 +106,7 @@ class MasterResourceManager extends BaseManager {
 
 	async getSubtopicResourceList(chapterId, templateIds) {
 		try {
-			let result = await this.masterResourceDao.getSubtopicResourceList(
+			let result = await this.dao.getSubtopicResourceList(
 				chapterId,
 				templateIds
 			);
@@ -147,7 +147,7 @@ class MasterResourceManager extends BaseManager {
 				);
 			}
 
-			const result = await this.masterResourceDao.generateResourcePlan(
+			const result = await this.dao.generateResourcePlan(
 				resourceId,
 				filters
 			);
@@ -294,7 +294,7 @@ class MasterResourceManager extends BaseManager {
 					templateId
 				}
 
-				const existingLr = await this.masterResourceDao.getOne(queryingObj);
+				const existingLr = await this.dao.getOne(queryingObj);
 
 				let resource;
 
@@ -311,7 +311,7 @@ class MasterResourceManager extends BaseManager {
 						learningOutcomes: lessonPlans[i]?.learning_outcomes,
 					}
 
-					resource = await this.masterResourceDao.updateByFilter(lrQuery, lrData)
+					resource = await this.dao.updateByFilter(lrQuery, lrData)
 					updateCount += 1
 				} else {
 					let resourcePlanObj = {
@@ -328,7 +328,7 @@ class MasterResourceManager extends BaseManager {
 						learningOutcomes,
 						templateId
 					};
-					resource = await this.masterResourceDao.create(resourcePlanObj);
+					resource = await this.dao.create(resourcePlanObj);
 					createCount += 1
 				}
 			}
@@ -472,12 +472,11 @@ class MasterResourceManager extends BaseManager {
 					medium,
 					subject: subjectName,
 					chapterId: chapter._id,
-					subTopics: lessonPlans[i].subtopics,
 					isAll: lessonPlans[i].lp_level === 'CHAPTER',
 					templateId
 				}
 
-				const existingLr = await this.masterResourceDao.getOne(queryingObj);
+				const existingLr = await this.dao.getOne(queryingObj);
 
 				let resource;
 
@@ -493,9 +492,10 @@ class MasterResourceManager extends BaseManager {
 						resources: extracted,
 						additionalResources: additional,
 						learningOutcomes: lessonPlans[i]?.learning_outcomes,
+						subTopics: lessonPlans[i]?.subtopics,
 					}
 
-					resource = await this.masterResourceDao.updateByFilter(lrQuery, lrData)
+					resource = await this.dao.updateByFilter(lrQuery, lrData)
 					updateCount += 1
 				} else {
 					let resourcePlanObj = {
@@ -513,7 +513,7 @@ class MasterResourceManager extends BaseManager {
 						learningOutcomes,
 						templateId
 					};
-					resource = await this.masterResourceDao.create(resourcePlanObj);
+					resource = await this.dao.create(resourcePlanObj);
 					createCount += 1
 				}
 			}

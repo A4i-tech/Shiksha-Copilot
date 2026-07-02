@@ -39,12 +39,13 @@ import { MatIconModule } from '@angular/material/icon';
 
 // Components
 import { BaselineSurveyComponent } from './shared/components/baseline-survey/baseline-survey.component';
+import { EndlineSurveyComponent } from './shared/components/endline-survey/endline-survey.component';
 
 // Services
 import { BaselineSurveyDialogService } from './core/services/baseline-survey-dialog.service';
 
 @NgModule({
-  declarations: [AppComponent,BaselineSurveyComponent,],
+  declarations: [AppComponent, BaselineSurveyComponent, EndlineSurveyComponent],
   imports: [
     BrowserModule,
     AppRoutingModule,

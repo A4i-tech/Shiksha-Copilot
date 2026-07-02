@@ -14,10 +14,10 @@ const { Worker } = require("worker_threads");
 const path = require("path");
 
 
+/** @extends {BaseManager<AdminUserDao>} */
 class AdminUserManager extends BaseManager {
 	constructor() {
 		super(new AdminUserDao());
-		this.adminUserDao = new AdminUserDao();
 		this.regeneratedLogDao = new RegeneratedLessonResourceDao();
 	}
 
@@ -35,14 +35,14 @@ class AdminUserManager extends BaseManager {
 				return { success: false, message: "Name is required" };
 			}
 
-			const existingAdminUser = await this.adminUserDao.getByPhone(
+			const existingAdminUser = await this.dao.getByPhone(
 				req.body.phone
 			);
 
 			if (existingAdminUser)
 				return { success: false, message: "Phone number already exists!" };
 
-			const result = await this.adminUserDao.create(req.body);
+			const result = await this.dao.create(req.body);
 
 			// Only send SMS if both phone and name are available
 			if (req.body.phone && req.body.name) {
@@ -59,7 +59,7 @@ class AdminUserManager extends BaseManager {
 
 	async getByPhone(req) {
 		try {
-			let data = await this.adminUserDao.getByPhone(req.body.phone);
+			let data = await this.dao.getByPhone(req.body.phone);
 			if (data) return formatApiReponse(true, "", data);
 			return formatApiReponse(false, "", null);
 		} catch (err) {
@@ -69,7 +69,7 @@ class AdminUserManager extends BaseManager {
 
 	async update(id, payload) {
 		try {
-			let admin = await this.adminUserDao.getOne({
+			let admin = await this.dao.getOne({
 				_id: id,
 				phone: payload.phone,
 			});
@@ -82,13 +82,13 @@ class AdminUserManager extends BaseManager {
 					payload.isLoginAllowed = false;
 				}
 
-				admin = await this.adminUserDao.update(id, payload);
+				admin = await this.dao.update(id, payload);
 				if (admin) {
 					return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, admin.phone);
 				}
 			}
 
-			admin = await this.adminUserDao.getOne({ phone: payload.phone });
+			admin = await this.dao.getOne({ phone: payload.phone });
 
 			if (admin) {
 				return formatApiReponse(
@@ -98,13 +98,13 @@ class AdminUserManager extends BaseManager {
 				);
 			}
 
-			let originalUserRecord = await this.adminUserDao.getOne({ _id: id })
+			let originalUserRecord = await this.dao.getOne({ _id: id })
 
 			const isPhoneChanged = originalUserRecord && originalUserRecord.phone !== payload.phone;
 			if (isPhoneChanged)
 				payload.isLoginAllowed = false;
 
-			admin = await this.adminUserDao.update(id, payload);
+			admin = await this.dao.update(id, payload);
 
 			if (admin) {
 				return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, admin.phone);
@@ -159,7 +159,7 @@ class AdminUserManager extends BaseManager {
 
 					phoneNumbers.add(adminUserDataRow.phone);
 
-					const existingAdminUser = await this.adminUserDao.getByPhone(
+					const existingAdminUser = await this.dao.getByPhone(
 						adminUserDataRow.phone
 					);
 					if (existingAdminUser) {
@@ -175,7 +175,7 @@ class AdminUserManager extends BaseManager {
 			}
 
 			if (validationErrors.length === 0) {
-				const result = await this.adminUserDao.bulkUpload(adminUserData);
+				const result = await this.dao.bulkUpload(adminUserData);
 				adminUserData.forEach((user) => {
 					sendWelcomeSMS(user.phone, user.name).catch((error) => {
 						console.error("Error sending welcome SMS:", error);
@@ -288,7 +288,7 @@ class AdminUserManager extends BaseManager {
 
 	async getAll(page, limit, filters = {}, sort = {}, status = {}, loggedInUserId) {
 		try {
-			let result = await this.adminUserDao.getAll(
+			let result = await this.dao.getAll(
 				page,
 				limit,
 				filters,

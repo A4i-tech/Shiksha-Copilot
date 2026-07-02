@@ -26,7 +26,7 @@ describe("SchoolController", () => {
 
     controller = new SchoolController();
     mockManager = new SchoolManager();
-    controller.schoolManager = mockManager;
+    controller.manager = mockManager;
 
     mockReq = {
       params: {},
@@ -52,7 +52,7 @@ describe("SchoolController", () => {
     });
 
     it("should have a schoolManager property", () => {
-      expect(controller.schoolManager).toBeDefined();
+      expect(controller.manager).toBeDefined();
     });
   });
 

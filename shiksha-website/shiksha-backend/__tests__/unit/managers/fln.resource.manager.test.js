@@ -33,7 +33,7 @@ describe("FLNResourceManager", () => {
   describe("constructor", () => {
     it("should create manager instance successfully", () => {
       expect(manager).toBeInstanceOf(FLNResourceManager);
-      expect(manager.flnResourceDao).toBeDefined();
+      expect(manager.dao).toBeDefined();
     });
 
     it("should initialize with FLNResourceDao", () => {

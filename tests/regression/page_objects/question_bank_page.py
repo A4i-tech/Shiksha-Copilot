@@ -34,36 +34,66 @@ class QuestionBankPage:
 
     # --- Dropdown Helpers ---
     def _get_dropdown_locator(self, control_name: str):
-        control_map = {
-            "board": 0, "medium": 1, "language": 2, "grade": 3,
-            "subject": 4, "chapter": 5, "subTopic": 6
-        }
-        self.page.locator("app-form-dropdown").first.wait_for(state="visible")
-        
-        if control_name in control_map:
-            index = control_map[control_name]
-            dropdowns = self.page.locator("app-form-dropdown")
-            if dropdowns.count() <= index:
-                 dropdowns.nth(index).wait_for()
-            return dropdowns.nth(index)
-        else:
-            return self.page.locator(f"app-form-dropdown[dropdowncontrolname='{control_name}']")
+        """
+        Robustly finds a dropdown by its label or control name.
+        """
+        # Prefer direct control-name binding when available.
+        dropdown = self.page.locator(
+            f"app-form-dropdown[ng-reflect-drop-down-control-name='{control_name}']"
+        ).first
 
-    def select_dropdown_option(self, control_name: str, value_text: str = None, index: int = 0):
+        if dropdown.count() == 0:
+            # Fallback to index-based if attribute match fails.
+            control_map = {
+                "board": 0, "sourceGeneration": 1, "grade": 2, "medium": 3,
+                "subject": 4, "language": 5, "chapter": 6, "subTopic": 7
+            }
+            index = control_map.get(control_name, 0)
+            dropdown = self.page.locator("app-form-dropdown").nth(index)
+
+        dropdown.scroll_into_view_if_needed()
+        dropdown.wait_for(state="visible", timeout=10000)
+        return dropdown
+
+    def select_dropdown_option(self, control_name: str, value_text: str = None, index: int = 0, clear_first: bool = False):
         dropdown = self._get_dropdown_locator(control_name)
         dropdown.scroll_into_view_if_needed()
-        dropdown.click()
+        if clear_first:
+            clear_btn = dropdown.locator(".ng-clear-wrapper")
+            try:
+                clear_btn.wait_for(state="visible", timeout=2000)
+                clear_btn.click(force=True)
+                self.page.wait_for_timeout(500)
+            except:
+                pass
+        
+        # Open dropdown
+        dropdown.locator(".ng-select-container").click(force=True)
         
         panel = self.page.locator("ng-dropdown-panel")
-        panel.wait_for(state="visible")
+        try:
+            panel.wait_for(state="visible", timeout=5000)
+        except:
+            # Retry with arrow
+            dropdown.locator(".ng-arrow-wrapper").click(force=True)
+            panel.wait_for(state="visible", timeout=10000)
         
         options = panel.locator(".ng-option")
-        options.first.wait_for(state="visible", timeout=10000)
+        options.first.wait_for(state="visible", timeout=5000)
         
-        if value_text:
-            panel.get_by_text(value_text, exact=False).first.click(timeout=60000)
+        if value_text == "SELECT_ALL":
+            # For multi-select with "Select All" header
+            select_all_checkbox = panel.locator(".ng-header-tmp input[type='checkbox']")
+            if select_all_checkbox.is_visible(timeout=2000):
+                select_all_checkbox.click(force=True)
+            else:
+                # Fallback: click all options if select all header is missing
+                for i in range(options.count()):
+                    options.nth(i).click(force=True)
+        elif value_text:
+            panel.locator(".ng-option", has_text=value_text).first.click(force=True, timeout=60000)
         else:
-            options.nth(index).click(timeout=60000)
+            options.nth(index).click(force=True, timeout=60000)
 
     def select_radio_option(self, value_key: str):
         text_map = {"singleChapter": "Single Chapter", "multiChapter": "Multiple Chapters"}

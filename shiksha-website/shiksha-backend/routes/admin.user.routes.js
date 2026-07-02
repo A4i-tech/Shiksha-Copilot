@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
-const { isAuthenticated, isAdmin } = require("../middlewares/auth.js");
+const { isAuthenticated, isAdmin, isAdminOrManager } = require("../middlewares/auth.js");
 const uploadMiddleware = require("../middlewares/uploadMiddleware.js");
 const AdminUserController = require("../controllers/admin.user.controller.js");
 const {
@@ -23,7 +23,7 @@ router.post(
 router.get(
 	"/admin/dashboard",
 	isAuthenticated,
-	isAdmin,
+	isAdminOrManager,
 	asyncMiddleware(
 		adminUserController.getDashboardMetrics.bind(adminUserController)
 	)

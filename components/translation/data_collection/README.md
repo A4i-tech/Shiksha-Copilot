@@ -28,7 +28,7 @@ The `toc` can be generated using the `gpt4v.py` script. It will take in the page
 *Description:*
 The `extract_sentence_pairs.py` script takes the path of both english text and kannada text for the same chapter, as extracted by last step. It will then provide one kannada sentence and a few english sentences, asking ChatGPT it to find the best matching english sentence. This yields english-kannada sentence pairs.
 
-This script and the cleanup script in next step require you to put the details of the GPT model azure deploymnet in a `.env` file. Make sure the following variables are set in that `.env` file: `AZURE_ENDPOINT` (exdpoint of gpt model on azure), `GPT4_MODEL_NAME` (name of the hosted model, eg. GPT-4o), `GPT4_MODEL_ENGINE` (name of the hosted model, eg. GPT-4o).
+This script and the cleanup script in next step require you to put the details of the GPT model azure deploymnet in a `.env` file. Make sure the following variables are set in that `.env` file: `AZURE_ENDPOINT` (exdpoint of gpt model on azure), `GPT4_MODEL_NAME` (name of the hosted model, eg. GPT-4.1), `GPT4_MODEL_ENGINE` (name of the hosted model, eg. GPT-4.1).
 
 ### Step 4: Final Data Cleaning
 **Script:** `cleanup_sentence_pairs.py`

@@ -2,15 +2,15 @@ const handleError = require("../helper/handleError.js");
 const BoardManager = require("../managers/board.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<BoardManager>} */
 class BoardController extends BaseController {
     constructor() {
         super(new BoardManager());
-        this.boardManager = new BoardManager();
     }
 
     async getByName(req, res) {
         try {
-            let result = await this.boardManager.getByName(req);
+            let result = await this.manager.getByName(req);
             if (result.success) {
                 return res.status(200).json(result);
             }
@@ -26,7 +26,7 @@ class BoardController extends BaseController {
 
     async update(req, res) {
         try {
-            let result = await this.boardManager.update(req);
+            let result = await this.manager.update(req);
 
             if (result.success) {
                 return res.status(200).json(result);

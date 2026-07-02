@@ -8,17 +8,10 @@ class AuthController {
 
     async getOtp(req, res) {
         try {
-            console.log("--> [Controller] Calling authManager.getOtp");
-            
-            // Call the Manager
             let result = await this.authManager.getOtp(req);
-            
-            console.log("--> [Controller] Result received:", JSON.stringify(result));
-
             if (result.success) {
                 return res.status(200).json(result);
             }
-
             handleError(result, res);
             return;
         } catch (err) {
@@ -32,6 +25,16 @@ class AuthController {
             let result = await this.authManager.validateOtp(req);
             if (result.success) {
                 return res.status(200).json(result);
+            }
+            if (result.code === "CAPTCHA_REQUIRED") return res.status(403).json(result);
+            if (result.code === "LOGIN_LOCKED") {
+                if (!result.data) return res.status(423).json(result);
+                res.set("Retry-After", String(result.data.retryAfterSeconds));
+                return res.status(429).json(result);
+            }
+            if (result.code === "RECOVERY_LOCKED") {
+                res.set("Retry-After", String(result.data.retryAfterSeconds));
+                return res.status(429).json(result);
             }
             handleError(result, res);
             return;

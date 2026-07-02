@@ -56,7 +56,7 @@ jobs:
         env:
           AZURE_OPENAI_API_KEY: dummy-key-for-testing
           AZURE_OPENAI_ENDPOINT: https://dummy-endpoint.openai.azure.com/
-          AZURE_OPENAI_API_VERSION: 2024-02-15-preview
+          AZURE_OPENAI_API_VERSION: 2025-03-01-preview
           AZURE_OPENAI_DEPLOYMENT_NAME: dummy-deployment
           AZURE_CHAT_DEPLOYMENT_NAME: dummy-chat-deployment
           AZURE_OPENAI_EMBED_MODEL: text-embedding-ada-002

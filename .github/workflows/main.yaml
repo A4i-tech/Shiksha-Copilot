@@ -61,6 +61,7 @@ jobs:
       deploy_target: ${{ needs.cd-backend.result == 'success' && 'github-pages' || '' }}
       environment: uat
       api_url: ${{ needs.cd-backend.result == 'success' && format('{0}/api', needs.cd-backend.outputs['service-url']) || '' }}
+      turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
 
   cd-api-prod:
     name: Deploy api
@@ -88,12 +89,13 @@ jobs:
     needs: cd-backend-prod
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets:
-      azure_connection_string: ${{ secrets.AZURE_CONNECTION_STRING_FRONTEND }}
+      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
     with:
       deploy_name: shiksha-frontend-prod
-      deploy_target: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' && 'azure-blob' || '' }}
+      deploy_target: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' && 'azure-swa' || '' }}
       environment: production
       api_url: ${{ needs.cd-backend-prod.result == 'success' && format('{0}/api', needs.cd-backend-prod.outputs['service-url']) || '' }}
+      turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
 
   health-check:
     name: Health Check
@@ -166,7 +168,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
-        with: { python-version: '3.9' }
+        with: { python-version: '3.11' }
       - run: |
           python -m pip install --upgrade pip
           pip install -r tests/requirements.txt
@@ -190,7 +192,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
-        with: { python-version: '3.9' }
+        with: { python-version: '3.11' }
       - run: |
           python -m pip install --upgrade pip
           pip install -r tests/requirements.txt

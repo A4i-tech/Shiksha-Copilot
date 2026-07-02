@@ -1,4 +1,5 @@
 const BaselineSurveyDao = require("../../../dao/baselineSurvey.dao");
+process.env.BASELINE_SURVEY = "true";
 
 jest.mock("../../../dao/baselineSurvey.dao");
 
@@ -25,7 +26,7 @@ describe("BaselineSurveyManager", () => {
 
       const result = await baselineSurveyManager.checkCompleted("user-123");
 
-      expect(mockDao.existsByUser).toHaveBeenCalledWith("user-123");
+      expect(mockDao.existsByUser).toHaveBeenCalledWith("user-123", expect.any(Number));
       expect(result.success).toBe(true);
       expect(result.data.completed).toBe(true);
     });
@@ -76,7 +77,7 @@ describe("BaselineSurveyManager", () => {
 
       const result = await baselineSurveyManager.submitSurvey(mockUserId, mockBody);
 
-      expect(mockDao.findByUser).toHaveBeenCalledWith(mockUserId);
+      expect(mockDao.findByUser).toHaveBeenCalledWith(mockUserId, expect.any(Number));
       expect(mockDao.createSurvey).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: mockUserId,
@@ -103,9 +104,9 @@ describe("BaselineSurveyManager", () => {
 
       const result = await baselineSurveyManager.submitSurvey(mockUserId, mockBody);
 
-      expect(mockDao.findByUser).toHaveBeenCalledWith(mockUserId);
+      expect(mockDao.findByUser).toHaveBeenCalledWith(mockUserId, expect.any(Number));
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Already submitted");
+      expect(result.message).toBe("Already submitted for this academic year");
       expect(mockDao.createSurvey).not.toHaveBeenCalled();
     });
 
@@ -219,7 +220,7 @@ describe("BaselineSurveyManager", () => {
       const result = await baselineSurveyManager.submitSurvey(mockUserId, mockBody);
 
       expect(result.success).toBe(false);
-      expect(result.message).toBe("Already submitted");
+      expect(result.message).toBe("Already submitted for this academic year");
     });
 
     it("should handle general errors", async () => {

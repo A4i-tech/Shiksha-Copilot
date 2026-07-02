@@ -55,6 +55,8 @@ class UserAggregation {
         {
           $project: {
             otp: 0,
+            loginAttempts: 0,
+            recovery: 0,
             trainingAttendance: 0
           },
         },

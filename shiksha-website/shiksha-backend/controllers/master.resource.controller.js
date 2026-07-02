@@ -2,16 +2,16 @@ const handleError = require("../helper/handleError.js");
 const MasterResourceManager = require("../managers/master.resource.manager.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<MasterResourceManager>} */
 class MasterResourceController extends BaseController {
 	constructor() {
 		super(new MasterResourceManager());
-		this.masterResourceManager = new MasterResourceManager();
 	}
 
 	async update(req, res) {
 		try {
 			const { id } = req.params;
-			const result = await this.masterResourceManager.updateMasterResource(
+			const result = await this.manager.updateMasterResource(
 				id,
 				req.body
 			);
@@ -35,7 +35,7 @@ class MasterResourceController extends BaseController {
 				});
 			}
 			const { resourceId, reason, userId } = req.body;
-			const result = await this.masterResourceManager.regenerateResourcePlan({
+			const result = await this.manager.regenerateResourcePlan({
 				resourceId,
 				reason,
 				userId,
@@ -53,7 +53,7 @@ class MasterResourceController extends BaseController {
 	async comboScript(req, res) {
 		try {
 			const { board = "CBSE", medium = "English" } = req.body;
-			const result = await this.masterResourceManager.comboScript(
+			const result = await this.manager.comboScript(
 				board,
 				medium
 			);
@@ -71,7 +71,7 @@ class MasterResourceController extends BaseController {
 	async getSubtopicResourceList(req, res) {
 		try {
 			const { chapterId, templateIds } = req.body;
-			const result = await this.masterResourceManager.getSubtopicResourceList(
+			const result = await this.manager.getSubtopicResourceList(
 				chapterId,
 				templateIds
 			);
@@ -95,7 +95,7 @@ class MasterResourceController extends BaseController {
 			const { _id: teacherId } = req.user;
 			const { filters = {} } = req.query;
 
-			const result = await this.masterResourceManager.generateResourcePlan(
+			const result = await this.manager.generateResourcePlan(
 				teacherId,
 				resourceId,
 				filters
@@ -118,7 +118,7 @@ class MasterResourceController extends BaseController {
 
 	async uploadMasterResource(req, res) {
 		try {
-			let result = await this.masterResourceManager.uploadMasterResources(req);
+			let result = await this.manager.uploadMasterResources(req);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -135,7 +135,7 @@ class MasterResourceController extends BaseController {
 
 	async uploadOldMasterResource(req, res) {
 		try {
-			let result = await this.masterResourceManager.uploadOldMasterResources(req);
+			let result = await this.manager.uploadOldMasterResources(req);
 
 			if (result.success) {
 				return res.status(200).json(result);

@@ -38,7 +38,7 @@ def router(mcp: FastMCP):
 
             response_content = await GENERAL_CHAT_SERVICE_INSTANCE([
                 ConversationMessage(role=MessageRole.USER, message=message)
-            ])
+            ], user_id=user_id)
 
             logger.info(f"Successfully processed general chat for user: {user_id}")
 

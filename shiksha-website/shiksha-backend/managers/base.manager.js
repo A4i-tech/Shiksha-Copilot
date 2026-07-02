@@ -2,8 +2,15 @@ const formatApiReponse = require("../helper/response");
 
 require("dotenv").config();
 
+/**
+ * @template TDao
+ */
 class BaseManager {
+	/**
+	 * @param {TDao} dao
+	 */
 	constructor(dao) {
+		/** @protected @type {TDao} */
 		this.dao = dao;
 	}
 

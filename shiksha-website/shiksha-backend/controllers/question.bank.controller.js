@@ -4,10 +4,10 @@ const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 
+/** @extends {BaseController<QuestionBankManager>} */
 class QuestionBankController extends BaseController {
   constructor() {
     super(new QuestionBankManager());
-    this.questionBankManager = new QuestionBankManager();
   }
 
   async getTeacherQuestionPapers(req, res) {
@@ -52,7 +52,7 @@ class QuestionBankController extends BaseController {
       }
       const mergedFilter = { ...transformedFilter, ...searchFilter };
 
-      const result = await this.questionBankManager.getTeacherQuestionPapers(
+      const result = await this.manager.getTeacherQuestionPapers(
         teacherId,
         parseInt(page),
         parseInt(limit),
@@ -76,7 +76,7 @@ class QuestionBankController extends BaseController {
   async generateQuestionBankBluePrint(req, res) {
     try {
       const user = req.user;
-      const result = await this.questionBankManager.generateQuestionBankBluePrint(
+      const result = await this.manager.generateQuestionBankBluePrint(
         req,
         user
       );
@@ -96,7 +96,7 @@ class QuestionBankController extends BaseController {
   async generateQuestionBank(req, res) {
     try {
       const user = req.user;
-      const result = await this.questionBankManager.generateQuestionBank(
+      const result = await this.manager.generateQuestionBank(
         req,
         user
       );
@@ -117,7 +117,7 @@ class QuestionBankController extends BaseController {
     try {
       const questionBankId = req.params.id;
       const feedback = req.body;
-      const result = await this.questionBankManager.updateFeedback(
+      const result = await this.manager.updateFeedback(
         questionBankId,
         feedback
       );
@@ -130,7 +130,7 @@ class QuestionBankController extends BaseController {
 
   async retryFailedJobs(req, res) {
     try {
-      const result = await this.questionBankManager.retryFailedJobs();
+      const result = await this.manager.retryFailedJobs();
       return res.status(200).json(result);
     } catch (err) {
       console.error("Error --> QuestionBankController -> retryFailedJobs()", err);
@@ -141,7 +141,7 @@ class QuestionBankController extends BaseController {
   async getQuestionTypes(req, res) {
     try {
       const { subject } = req.query;
-      const result = await this.questionBankManager.getQuestionTypes(subject);
+      const result = await this.manager.getQuestionTypes(subject);
       return res.status(200).json(result);
     } catch (err) {
       console.error("Error --> QuestionBankController -> getQuestionTypes()", err);
@@ -152,7 +152,7 @@ class QuestionBankController extends BaseController {
   async retryFailedJob(req, res) {
     try {
       const jobId = req.params.id;
-      const result = await this.questionBankManager.retryFailedJob(jobId);
+      const result = await this.manager.retryFailedJob(jobId);
       return res.status(200).json(result);
     } catch (err) {
       console.error("Error --> QuestionBankController -> retryFailedJob()", err);
@@ -164,7 +164,7 @@ class QuestionBankController extends BaseController {
 
   async getClasses(req, res) {
     try {
-      const result = await this.questionBankManager.getClasses();
+      const result = await this.manager.getClasses();
       return res.status(200).json(result);
     } catch (err) {
       return res.status(400).json(err);
@@ -174,7 +174,7 @@ class QuestionBankController extends BaseController {
   async getMedia(req, res) {
     try {
       const { class: className } = req.query;
-      const result = await this.questionBankManager.getMedia(className);
+      const result = await this.manager.getMedia(className);
       return res.status(200).json(result);
     } catch (err) {
       return res.status(400).json(err);
@@ -184,7 +184,7 @@ class QuestionBankController extends BaseController {
   async getChapters(req, res) {
     try {
       const { class: className, medium, subject } = req.query;
-      const result = await this.questionBankManager.getChapters(
+      const result = await this.manager.getChapters(
         className,
         medium,
         subject
@@ -197,7 +197,7 @@ class QuestionBankController extends BaseController {
 
   async getDifficulties(req, res) {
     try {
-      const result = await this.questionBankManager.getDifficulties();
+      const result = await this.manager.getDifficulties();
       return res.status(200).json(result);
     } catch (err) {
       return res.status(400).json(err);
@@ -206,7 +206,7 @@ class QuestionBankController extends BaseController {
 
   async getAnswerTypes(req, res) {
     try {
-      const result = await this.questionBankManager.getAnswerTypes();
+      const result = await this.manager.getAnswerTypes();
       return res.status(200).json(result);
     } catch (err) {
       return res.status(400).json(err);
@@ -216,7 +216,7 @@ class QuestionBankController extends BaseController {
   async getGrammarTopics(req, res) {
     try {
       const { grade } = req.query;
-      const result = await this.questionBankManager.getGrammarTopics(grade);
+      const result = await this.manager.getGrammarTopics(grade);
       return res.status(200).json(result);
     } catch (err) {
       console.error('[Controller] getGrammarTopics error:', err.message);
@@ -228,7 +228,7 @@ class QuestionBankController extends BaseController {
   async getPaperConfig(req, res) {
     try {
       const { board, grade, subjectName } = req.query;
-      const result = await this.questionBankManager.getPaperConfig(board, grade, subjectName);
+      const result = await this.manager.getPaperConfig(board, grade, subjectName);
       return res.status(200).json(result);
     } catch (err) {
       return res.status(400).json(err);
@@ -238,7 +238,7 @@ class QuestionBankController extends BaseController {
   async getQuestions(req, res) {
     try {
       const filters = req.query;
-      const result = await this.questionBankManager.getQuestions(filters);
+      const result = await this.manager.getQuestions(filters);
       return res.status(200).json(result);
     } catch (err) {
       return res.status(400).json(err);
@@ -257,7 +257,7 @@ class QuestionBankController extends BaseController {
       const jsonData = JSON.parse(fileBuffer);
       const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
 
-      const result = await this.questionBankManager.insertChaptersAndQuestions([
+      const result = await this.manager.insertChaptersAndQuestions([
         master,
       ]);
 

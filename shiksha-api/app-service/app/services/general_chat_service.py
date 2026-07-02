@@ -3,7 +3,8 @@ from pathlib import Path
 import logging
 import traceback
 
-from openai import AsyncAzureOpenAI
+from langfuse.openai import AsyncAzureOpenAI
+from langfuse import observe, get_client
 import json
 import asyncio
 from openai.types.responses import ResponseOutputMessage, ResponseOutputText
@@ -48,11 +49,18 @@ class GeneralChatService:
 
 
     @validate_call
+    @observe(name="Shiksha-QA")
     async def __call__(
         self,
         messages: List[ConversationMessage],
+        user_id: str,
     ):
         try:
+            get_client().update_current_trace(
+                user_id=user_id,
+                tags=["chat_type:general", "has_web_search:true"],
+            )
+
             system_prompt = self.prompt_template.get_prompt("general_chat")
             if not system_prompt:
                 raise ValueError("General chat prompt not found in chat_prompts.yaml")

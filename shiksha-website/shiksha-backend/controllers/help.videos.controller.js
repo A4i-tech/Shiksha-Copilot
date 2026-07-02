@@ -2,6 +2,7 @@ const HelpVideosManager = require("../managers/help.vidoes.manager.js");
 const HelpVideos = require("../models/help.videos.model.js");
 const BaseController = require("./base.controller.js");
 
+/** @extends {BaseController<HelpVideosManager>} */
 class HelpVideosController extends BaseController {
   constructor() {
     super(new HelpVideosManager());

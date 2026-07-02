@@ -17,7 +17,7 @@ def get_tokens():
 
 
 llm = AzureChatOpenAI(
-    deployment_name="gpt-4o",
+    deployment_name="GPT-4.1",
     azure_ad_token_provider=get_tokens(),
     api_version="2023-03-15-preview",
     azure_endpoint="https://vellm-openai3.openai.azure.com/",

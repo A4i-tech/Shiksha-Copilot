@@ -127,6 +127,10 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
     return Array.from(sources);
   }
 
+  trackContent(index: number): number {
+    return index;
+  }
+
   mediaSrc(item: any): string {
     return `data:${item.contentType};base64,${item.content}`;
   }

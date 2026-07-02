@@ -33,10 +33,10 @@ const compareChapter = require("../helper/chapter.helper");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");
 
 
+/** @extends {BaseManager<MasterLessonDao>} */
 class MasterLessonManger extends BaseManager {
 	constructor() {
 		super(new MasterLessonDao());
-		this.masterLessonDao = new MasterLessonDao();
 		this.masterResourceDao = new MasterResourceDao();
 		this.teacherLessonPlanDao = new TeacherLessonPlanDao();
 		this.regenerateResourceLog = new RegeneratedLessonResourceDao();
@@ -48,7 +48,7 @@ class MasterLessonManger extends BaseManager {
 
 	async getActivityById(lessonId) {
 		try {
-			const lessonPlan = await this.masterLessonDao.generateLessonPlan(lessonId);
+			const lessonPlan = await this.dao.generateLessonPlan(lessonId);
 			if (!lessonPlan) {
 				return formatApiReponse(false, "Lesson plan not found", null);
 			}
@@ -71,7 +71,7 @@ class MasterLessonManger extends BaseManager {
 			let messageType;
 
 			if (data?.lessonId) {
-				content = await this.masterLessonDao.getById(data.lessonId);
+				content = await this.dao.getById(data.lessonId);
 
 				if (!content) {
 					return formatApiReponse(false, "Invalid lesson id", null);
@@ -185,7 +185,7 @@ class MasterLessonManger extends BaseManager {
 
 	async update(req) {
 		try {
-			let data = await this.masterLessonDao.update(req.body);
+			let data = await this.dao.update(req.body);
 			if (data) return formatApiReponse(true, "", data);
 			return formatApiReponse(false, "", null);
 		} catch (err) {
@@ -195,7 +195,7 @@ class MasterLessonManger extends BaseManager {
 
 	async regenerateLessonPlan({ lessonId, reason, userId }) {
 		try {
-			const lessonPlan = await this.masterLessonDao.getById(lessonId);
+			const lessonPlan = await this.dao.getById(lessonId);
 			if (!lessonPlan) {
 				return formatApiReponse(false, "Lesson plan not found", null);
 			}
@@ -223,7 +223,7 @@ class MasterLessonManger extends BaseManager {
 				interactOutput: regeneratedContent.interactOutput,
 			};
 
-			const savedNewLessonPlan = await this.masterLessonDao.create(
+			const savedNewLessonPlan = await this.dao.create(
 				newLessonPlan
 			);
 
@@ -264,7 +264,7 @@ class MasterLessonManger extends BaseManager {
 						subject,
 						isAll
 					);
-					await this.masterLessonDao.create(newLessonPlan);
+					await this.dao.create(newLessonPlan);
 				} else {
 					for (const subTopic of chapter.subTopics) {
 						const newLessonPlan = createData(
@@ -274,7 +274,7 @@ class MasterLessonManger extends BaseManager {
 							subject,
 							isAll
 						);
-						await this.masterLessonDao.create(newLessonPlan);
+						await this.dao.create(newLessonPlan);
 					}
 				}
 			}
@@ -287,7 +287,7 @@ class MasterLessonManger extends BaseManager {
 
 	async getLessonOutcomes(chapterId, templateIds, filters) {
 		try {
-			let result = await this.masterLessonDao.getLessonOutcomes(
+			let result = await this.dao.getLessonOutcomes(
 				chapterId,
 				templateIds,
 				filters
@@ -365,7 +365,7 @@ class MasterLessonManger extends BaseManager {
 
 	async generate5ETables(lessonId, userId, userName) {
 		try {
-			const masterLesson = await this.masterLessonDao.getById(lessonId);
+			const masterLesson = await this.dao.getById(lessonId);
 			if (!masterLesson) {
 				throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
 			}
@@ -447,7 +447,7 @@ class MasterLessonManger extends BaseManager {
 
 
 	async _generateLessonPlanResult(lessonId, filters) {
-		const result = await this.masterLessonDao.generateLessonPlan(lessonId, filters);
+		const result = await this.dao.generateLessonPlan(lessonId, filters);
 
 		if (result?.length > 0 && result[0].videos.length == 0 && filters["includeVideos"] === "true") {
 			return formatApiReponse(false, "Video not found!", { hasVideos: false });
@@ -565,7 +565,7 @@ class MasterLessonManger extends BaseManager {
 					templateId: lessonPlans[i].lessonTemplateId
 				}
 
-				const existingLp = await this.masterLessonDao.getOne(queryingObj);
+				const existingLp = await this.dao.getOne(queryingObj);
 
 				let lesson;
 				if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
@@ -580,7 +580,7 @@ class MasterLessonManger extends BaseManager {
 						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
 						checkList: restructureCheckList(lessonPlans[i].checklist)
 					}
-					lesson = await this.masterLessonDao.updateByFilter(lpQuery, lpData)
+					lesson = await this.dao.updateByFilter(lpQuery, lpData)
 
 					const lrData = {
 						resources: restructureResources(lessonPlans[i].extracted_resources),
@@ -613,7 +613,7 @@ class MasterLessonManger extends BaseManager {
 						isRegenerated: false
 					};
 
-					lesson = await this.masterLessonDao.create({ ...lessonPlanObj, templateId: lessonPlans[i].lessonTemplateId });
+					lesson = await this.dao.create({ ...lessonPlanObj, templateId: lessonPlans[i].lessonTemplateId });
 
 					let resourcePlanObj = {
 						...lessonPlanObj,
@@ -767,7 +767,7 @@ class MasterLessonManger extends BaseManager {
 					templateId
 				}
 
-				const existingLp = await this.masterLessonDao.getOne(queryingObj);
+				const existingLp = await this.dao.getOne(queryingObj);
 
 				let lesson;
 				if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
@@ -781,7 +781,7 @@ class MasterLessonManger extends BaseManager {
 						learningOutcomes: lessonPlans[i]?.learning_outcomes,
 						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : []
 					}
-					lesson = await this.masterLessonDao.updateByFilter(lpQuery, lpData)
+					lesson = await this.dao.updateByFilter(lpQuery, lpData)
 					updateCount += 1
 				} else {
 					let lessonPlanObj = {
@@ -805,7 +805,7 @@ class MasterLessonManger extends BaseManager {
 						templateId
 					};
 
-					lesson = await this.masterLessonDao.create(lessonPlanObj);
+					lesson = await this.dao.create(lessonPlanObj);
 					createCount += 1
 				}
 			}
@@ -922,13 +922,12 @@ class MasterLessonManger extends BaseManager {
 					medium,
 					subject: subjectName,
 					chapterId: chapter._id,
-					subTopics: lessonPlans[i].subtopics,
 					isRegenerated: false,
 					isAll: lessonPlans[i].lp_level === 'CHAPTER',
 					templateId
 				}
 
-				const existingLp = await this.masterLessonDao.getOne(queryingObj);
+				const existingLp = await this.dao.getOne(queryingObj);
 
 				let lesson;
 
@@ -948,10 +947,11 @@ class MasterLessonManger extends BaseManager {
 						sections: oldFormatStructuredData(instructionSet, lessonPlans[i]?.checklist, templateDetails[0]?.sections),
 						learningOutcomes: lessonPlans[i]?.learning_outcomes,
 						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
+						subTopics: lessonPlans[i]?.subtopics,
 					}
 
 
-					lesson = await this.masterLessonDao.updateByFilter(lpQuery, lpData)
+					lesson = await this.dao.updateByFilter(lpQuery, lpData)
 					updateCount += 1
 				}
 				else {
@@ -976,7 +976,7 @@ class MasterLessonManger extends BaseManager {
 						templateId
 					};
 
-					lesson = await this.masterLessonDao.create(lessonPlanObj);
+					lesson = await this.dao.create(lessonPlanObj);
 					createCount += 1
 				}
 			}

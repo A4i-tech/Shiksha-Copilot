@@ -5,10 +5,10 @@ const SchoolDao = require("../dao/school.dao");
 const BoardDao = require("../dao/board.dao");
 const { getSemester, formatSubject } = require("../helper/formatter");
 
+/** @extends {BaseManager<MasterSubjectDao>} */
 class MasterSubjectManager extends BaseManager {
 	constructor() {
 		super(new MasterSubjectDao());
-		this.masterSubjectDao = new MasterSubjectDao();
 		this.schoolDao = new SchoolDao();
 		this.boardDao = new BoardDao();
 	}
@@ -47,7 +47,7 @@ class MasterSubjectManager extends BaseManager {
 				return formatApiReponse(false, "Invalid board for school", null);
 			}
 
-			const subject = await this.masterSubjectDao.getByNameAndBoard(
+			const subject = await this.dao.getByNameAndBoard(
 				subjectName,
 				board
 			);
@@ -62,7 +62,7 @@ class MasterSubjectManager extends BaseManager {
 
 	async getByBoard(boardName) {
 		try {
-			let masterSubjects = await this.masterSubjectDao.filter({
+			let masterSubjects = await this.dao.filter({
 				boards: boardName,
 			});
 
@@ -74,7 +74,7 @@ class MasterSubjectManager extends BaseManager {
 
 	async updateSubject(id, updates) {
 		try {
-			const updatedSubject = await this.masterSubjectDao.update(id, updates);
+			const updatedSubject = await this.dao.update(id, updates);
 			if (!updatedSubject) {
 				return formatApiReponse(false, "Subject not found", null);
 			}

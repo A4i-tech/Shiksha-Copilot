@@ -29,7 +29,7 @@ describe('ScheduleController', () => {
             getBySchool: jest.fn(),
             getMySchedules: jest.fn()
         };
-        scheduleController.scheduleManager = mockScheduleManager;
+        scheduleController.manager = mockScheduleManager;
         jest.clearAllMocks();
     });
 

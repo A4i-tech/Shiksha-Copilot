@@ -372,7 +372,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         title: 'Learning Outcomes',
         content: lo,
         outputFormat: 'plain_text',
-        editable: false,
+        editable: true,
       });
     }
 
@@ -473,7 +473,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       reqBody = {
         lessonId: this.planId,
         sections: this.getFormattedSectionData(),
-        learningOutcomes: this.planDetails?.learningOutcomes,
+        learningOutcomes: this.getFormattedLearningOutcomes(),
       };
     } else {
       const { resources, additionalResources } = this.lessonResourceFormatter(
@@ -543,7 +543,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       let saveTeacherData: any = {
         isCompleted,
         lessonId,
-        learningOutcomes: this.planDetails?.learningOutcomes,
+        learningOutcomes: this.getFormattedLearningOutcomes(),
         isVideoSelected: this.videosEnabled(),
       };
       saveTeacherData.sections = this.getFormattedSectionData();
@@ -832,5 +832,19 @@ export class LessonPlanViewEditComponent implements OnInit {
       });
 
     return sectionData;
+  }
+
+  getFormattedLearningOutcomes(): string[] {
+    const lines = (this.sections.find((item) => item.title === 'Learning Outcomes')?.content || '')
+      .split('\n')
+      .map((line: string) => line.trim())
+      .filter(Boolean);
+    if (!lines.some((line: string) => /^[-*•]\s+/.test(line))) return lines;
+    return lines.reduce((out: string[], line: string) => {
+      if (/^[-*•]\s+/.test(line)) out.push(line.replace(/^[-*•]\s+/, ''));
+      else if (out.length) out[out.length - 1] += `\n${line}`;
+      else out.push(line);
+      return out;
+    }, []);
   }
 }

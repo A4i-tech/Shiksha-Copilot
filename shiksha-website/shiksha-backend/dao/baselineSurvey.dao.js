@@ -8,22 +8,17 @@ class BaselineSurveyDao extends BaseDao {
     this.model = BaselineSurvey;
   }
 
-  async existsByUser(userId, year = new Date().getFullYear()) {
-    const exists = await this.model.exists({ userId, year });
+  async existsByUser(userId, academicYear) {
+    const exists = await this.model.exists({ userId, academicYear });
     return !!exists;
   }
 
-  async findByUser(userId, year = new Date().getFullYear()) {
-    return this.model.findOne({ userId, year }).lean();
+  async findByUser(userId, academicYear) {
+    return this.model.findOne({ userId, academicYear }).lean();
   }
 
   async createSurvey(payload, session = null) {
-    // use create to allow unique index to throw E11000 for dup userId
-    const withYear = {
-      year: new Date().getFullYear(),
-      ...payload,
-    };
-    return this.model.create([withYear], { session }).then(([doc]) => doc);
+    return this.model.create([payload], { session }).then(([doc]) => doc);
   }
 }
 
