@@ -1,3 +1,36 @@
+[project]
+name = "shiksha-ingestion"
+version = "0.1.0"
+description = "Shiksha Copilot Ingestion Pipeline"
+requires-python = "~=3.11"
+dependencies = [
+    "pytest>=7.0.0",
+    "python-dotenv>=1.0.0",
+    "pandas>=2.3.1",
+    "requests>=2.32.4",
+    "tqdm>=4.67.1",
+    "openpyxl>=3.1.5",
+    "azure-storage-blob>=12.26.0",
+    "networkx>=3.0",
+    "matplotlib>=3.7.0",
+    "plotly>=5.17.0",
+    "dash>=2.14.0",
+    "pydantic>=2.5.0",
+    "httpx>=0.27.0",
+    "beautifulsoup4>=4.12.0",
+    "playwright>=1.44.0",
+    "pymupdf>=1.24.0",
+    "motor>=3.3.0",
+    "openai>=1.0.0",
+    "omni-ingest",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+omni-ingest = { git = "https://github.com/A4i-tech/OmniIngest.git", branch = "a4i/main" }
+
 [tool.poetry]
 name = "shiksha-ingestion"
 version = "0.1.0"
@@ -59,13 +92,6 @@ python-louvain = "^0.16"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.dependencies.ingestion-pipeline]
-path = "/home/kchourasia/ShikshaOSSNew/Shiksha-Copilot/components/ingestion-pipeline"
-develop = true
-
-[tool.poetry.dependencies.vellm-rag-wrapper]
-path = "/home/kchourasia/ShikshaOSSNew/Shiksha-Copilot/components/rag-wrapper"
-develop = true
 
 [tool.poetry.extras]
 # Core graph functionality (included by default)

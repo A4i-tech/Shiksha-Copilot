@@ -6,15 +6,27 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from omni_ingest.core.model import (
-    IngestionContext,
-    KnowledgeItem,
-    ResolvedResource,
-    Step,
-    StepResult,
-    StepStatus,
-)
-from omni_ingest.core.pipeline import PipelineRunner, register_step
+try:
+    from omni_ingest.core.model import (
+        KnowledgeItem,
+        ResolvedResource,
+        Step,
+        StepResult,
+        StepStatus,
+    )
+    from omni_ingest.core.pipeline import IngestionContext, PipelineRunner, register_step
+    _OMNI_AVAILABLE = True
+except Exception:
+    _OMNI_AVAILABLE = False
+    KnowledgeItem = None  # type: ignore[assignment,misc]
+    ResolvedResource = None  # type: ignore[assignment,misc]
+    Step = object  # type: ignore[assignment,misc]
+    StepResult = None  # type: ignore[assignment,misc]
+    StepStatus = None  # type: ignore[assignment,misc]
+    IngestionContext = None  # type: ignore[assignment,misc]
+    PipelineRunner = None  # type: ignore[assignment,misc]
+    def register_step(*a, **kw): pass  # type: ignore[misc]
+
 from pydantic import BaseModel
 
 from .base_scraper import PDFEntry
@@ -184,30 +196,93 @@ register_step("lba_extraction", LBAExtractionStep)
 
 
 async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> list[dict[str, Any]]:
-    from omni_ingest.parser import parse
+    import os
+    import fitz
+    from openai import AsyncOpenAI
 
-    with open(pdf_path, "rb") as f:
-        raw_text, metadata = await parse(str(pdf_path), f)
+    client = AsyncOpenAI(
+        api_key=os.environ["OPENAI_API_KEY"],
+        base_url=os.environ.get("OPENAI_BASE_URL"),
+    )
+    deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
+    chunk_size = 60_000
 
-    resource = ResolvedResource(uri=str(pdf_path), content=raw_text, metadata=metadata)
-    ctx = IngestionContext(resource=resource, store=_NullStore())
+    force_vision = medium.lower() in ("telugu", "kannada", "hindi")
 
-    steps: list[Step] = [LBAExtractionStep(medium=medium)]
+    doc = fitz.open(str(pdf_path))
+    raw_text = "".join(page.get_text() for page in doc)
+    doc.close()
 
-    runner = PipelineRunner(steps=steps)
-    await runner.run(ctx)
+    all_questions: list[dict[str, Any]] = []
 
-    return [item.metadata for item in ctx.items]
+    if not force_vision and _text_is_usable(raw_text):
+        log.info("_extract_questions: text path, %d chars", len(raw_text))
+        for start in range(0, len(raw_text), chunk_size):
+            chunk = raw_text[start:start + chunk_size]
+            r = await client.chat.completions.create(
+                model=deployment,
+                messages=[{"role": "user", "content": EXTRACTION_PROMPT_TEXT.format(text=chunk)}],
+                response_format={"type": "json_object"},
+            )
+            raw = r.choices[0].message.content or "{}"
+            try:
+                d = json.loads(raw)
+                chunk_qs = d.get("questions", []) if isinstance(d, dict) else []
+                log.info("Chunk %d-%d: %d questions", start, start + chunk_size, len(chunk_qs))
+                all_questions.extend(chunk_qs)
+            except json.JSONDecodeError:
+                pass
+    else:
+        log.info("_extract_questions: vision path, medium=%s", medium)
+        images = _pdf_pages_to_images(pdf_path)
+        if not images:
+            log.warning("No pages rendered from %s", pdf_path)
+            return []
 
+        content: list[dict[str, Any]] = [{"type": "text", "text": EXTRACTION_PROMPT_VISION}]
+        for img_b64 in images:
+            content.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:image/png;base64,{img_b64}", "detail": "high"},
+            })
+
+        resp = await client.chat.completions.create(
+            model=deployment,
+            messages=[{"role": "user", "content": content}],
+            response_format={"type": "json_object"},
+        )
+        raw = resp.choices[0].message.content or "{}"
+        try:
+            d = json.loads(raw)
+            all_questions = d.get("questions", []) if isinstance(d, dict) else []
+        except json.JSONDecodeError:
+            log.warning("Vision LLM returned non-JSON for %s", pdf_path)
+
+    log.info("_extract_questions: extracted %d questions", len(all_questions))
+    return all_questions
+
+
+# Maps LLM-returned answerType → backend canonical key (QUESTION_TYPE_DETAILS keys in question-bank-paper-config.json)
+_ANSWER_TYPE_CANONICAL: dict[str, str] = {
+    "mcq": "mcq",
+    "fill_in_the_blank": "fill_in_the_blank",
+    "fill_in_the_blanks": "fill_in_the_blank",
+    "answer_fill_in_the_blank": "fill_in_the_blank",
+    "answer_very_short": "ANSWER_VERY_SHORT",
+    "answer_short": "ANSWER_SHORT",
+    "answer_medium": "answer_medium",
+    "answer_long": "long_answer",
+    "matching": "match_the_following",
+}
 
 _GROUP_HEADING: dict[str, str] = {
     "mcq": "Multiple Choice Questions",
     "fill_in_the_blank": "Fill in the Blanks",
-    "answer_very_short": "Very Short Answer",
-    "answer_short": "Short Answer",
+    "ANSWER_VERY_SHORT": "Very Short Answer",
+    "ANSWER_SHORT": "Short Answer",
     "answer_medium": "Medium Answer",
-    "answer_long": "Long Answer",
-    "matching": "Matching",
+    "long_answer": "Long Answer",
+    "match_the_following": "Matching",
 }
 
 
@@ -281,8 +356,14 @@ async def _resolve_or_create_master_subject(mongo_db, subject: str, board: str):
     return result.inserted_id
 
 
+def _normalize_dashes(s: str) -> str:
+    """Replace en-dash/em-dash with regular hyphen for comparison."""
+    return s.replace("–", "-").replace("—", "-")
+
+
 async def _upsert_chapters(mongo_db, questions: list[dict], entry: PDFEntry) -> dict[str, Any]:
     """Upsert chapters into the chapters collection. Returns {unitName: ObjectId} map."""
+    import re
     coll = mongo_db["chapters"]
     canonical_board = _BOARD_CANONICAL.get(entry.board.lower(), entry.board)
     subject = _SUBJECT_CANONICAL.get(entry.subject, entry.subject)
@@ -296,23 +377,45 @@ async def _upsert_chapters(mongo_db, questions: list[dict], entry: PDFEntry) -> 
 
     chapter_id_map: dict[str, Any] = {}
     for unit_name, chapter_num in seen_order.items():
-        filter_ = {
-            "topics": unit_name,
+        # Build a regex that matches both hyphen and en/em-dash variants so we
+        # don't create duplicate docs when the LLM normalizes dashes differently
+        # from what's already stored.
+        normalized = _normalize_dashes(unit_name)
+        dash_pattern = re.escape(normalized).replace(r"\-", r"[\-–—]")
+        lookup_filter = {
+            "topics": {"$regex": f"^{dash_pattern}$", "$options": "i"},
             "standard": entry.grade,
             "medium": entry.medium.lower(),
             "subjectId": subject_id,
         }
-        await coll.update_one(
-            filter_,
-            {
-                "$set": {"orderNumber": chapter_num, "board": canonical_board},
-                "$setOnInsert": {"subTopics": [], "isDeleted": False, "learningOutcomes": []},
-            },
-            upsert=True,
-        )
-        doc = await coll.find_one(filter_, {"_id": 1})
-        chapter_id_map[unit_name] = doc["_id"]
-        log.info("Upserted chapter '%s' → _id=%s", unit_name, doc["_id"])
+        existing = await coll.find_one(lookup_filter, {"_id": 1, "topics": 1})
+        if existing:
+            # Update order on existing doc; use its exact topics string as key
+            await coll.update_one(
+                {"_id": existing["_id"]},
+                {"$set": {"orderNumber": chapter_num, "board": canonical_board}},
+            )
+            chapter_id_map[unit_name] = existing["_id"]
+            log.info("Matched existing chapter '%s' (_id=%s)", existing.get("topics", unit_name), existing["_id"])
+        else:
+            # Create new doc using the LLM-extracted name
+            insert_filter = {
+                "topics": unit_name,
+                "standard": entry.grade,
+                "medium": entry.medium.lower(),
+                "subjectId": subject_id,
+            }
+            await coll.update_one(
+                insert_filter,
+                {
+                    "$set": {"orderNumber": chapter_num, "board": canonical_board},
+                    "$setOnInsert": {"subTopics": [], "isDeleted": False, "learningOutcomes": []},
+                },
+                upsert=True,
+            )
+            doc = await coll.find_one(insert_filter, {"_id": 1})
+            chapter_id_map[unit_name] = doc["_id"]
+            log.info("Created chapter '%s' → _id=%s", unit_name, doc["_id"])
 
     return chapter_id_map
 
@@ -324,7 +427,8 @@ def _to_mongo_doc(
     chapter_number: int = 0,
 ) -> dict[str, Any]:
     from datetime import datetime, timezone
-    answer_type = q.get("answerType", "")
+    raw_answer_type = q.get("answerType", "")
+    answer_type = _ANSWER_TYPE_CANONICAL.get(raw_answer_type, raw_answer_type)
     now = datetime.now(timezone.utc)
     subject = _SUBJECT_CANONICAL.get(entry.subject, entry.subject)
     canonical_board = _BOARD_CANONICAL.get(entry.board.lower(), entry.board)
@@ -343,7 +447,7 @@ def _to_mongo_doc(
         "difficulty": "",
         "marksPerQuestion": q.get("marks", 1),
         "text": q.get("question", ""),
-        "keyAnswer": q.get("keyAnswer", ""),
+        "keyAnswer": ", ".join(q["keyAnswer"]) if isinstance(q.get("keyAnswer"), list) else q.get("keyAnswer", ""),
         "items": [],
         "correctOrderById": [],
         "correctOrderIndices": [],
