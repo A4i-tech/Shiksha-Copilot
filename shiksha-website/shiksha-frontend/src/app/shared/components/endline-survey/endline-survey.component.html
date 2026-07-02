@@ -2,10 +2,10 @@
   <header><strong>{{ 'Endline Survey' | translate }}</strong><span>{{ 'Takes about 1 minute' | translate }}</span><p>{{ 'Your responses help us improve Shiksha Copilot.' | translate }}</p></header>
   <form [formGroup]="form" (ngSubmit)="submit()">
     <label>1. {{ 'How much time do you take to prepare a lesson plan using Shiksha Copilot?' | translate }}</label>
-    <select formControlName="shikshaTimeUsage"><option value="">{{ 'Select' | translate }}</option><option *ngFor="let option of options['shikshaTimeUsage']">{{ option | translate }}</option></select>
+    <select formControlName="shikshaTimeUsage"><option value="">{{ 'Select' | translate }}</option><option *ngFor="let option of options['shikshaTimeUsage']" [value]="option">{{ option | translate }}</option></select>
 
     <label>2. {{ 'Is content from Shiksha Copilot directly usable?' | translate }}</label>
-    <select formControlName="shikshaUsability"><option value="">{{ 'Select' | translate }}</option><option *ngFor="let option of options['shikshaUsability']">{{ option | translate }}</option></select>
+    <select formControlName="shikshaUsability"><option value="">{{ 'Select' | translate }}</option><option *ngFor="let option of options['shikshaUsability']" [value]="option">{{ option | translate }}</option></select>
 
     <label>3. {{ 'Which benefits have you experienced?' | translate }}</label>
     <label class="option" *ngFor="let option of options['shikshaBenefits']">
@@ -13,7 +13,7 @@
     </label>
 
     <label>4. {{ 'How do you use the time saved?' | translate }}</label>
-    <select formControlName="shikshaTimeUtilization"><option value="">{{ 'Select' | translate }}</option><option *ngFor="let option of options['shikshaTimeUtilization']">{{ (option === 'Other:' ? 'Other' : option) | translate }}{{ option === 'Other:' ? ':' : '' }}</option></select>
+    <select formControlName="shikshaTimeUtilization"><option value="">{{ 'Select' | translate }}</option><option *ngFor="let option of options['shikshaTimeUtilization']" [value]="option">{{ (option === 'Other:' ? 'Other' : option) | translate }}{{ option === 'Other:' ? ':' : '' }}</option></select>
     <input *ngIf="form.value.shikshaTimeUtilization === 'Other:'" formControlName="shikshaTimeUtilizationOther" [placeholder]="'Please specify' | translate">
 
     <label>5. {{ 'Which generated content do you use in class?' | translate }}</label>
