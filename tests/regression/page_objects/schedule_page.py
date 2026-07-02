@@ -24,7 +24,7 @@ class SchedulePage(BasePage):
         
         # Close/Cancel buttons often inside the component
         self.close_popup_btn = self.popup_container.locator("img[src*='remove'], button.close, [aria-label='Close'], .close-icon, span.cursor-pointer")
-        self.save_btn = self.popup_container.locator("button[type='submit'], button.btn-primary")
+        self.save_btn = self.popup_container.locator("button[type='submit']")
 
         # --- Tooltip / Context Menu ---
         # Defined as <div id="dialogue"> in the HTML

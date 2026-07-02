@@ -56,3 +56,34 @@ def test_schedule_tooltip_elements(schedule_page, step):
         assert schedule_page.tooltip_menu is not None
         assert schedule_page.edit_details_opt is not None
         assert schedule_page.delete_opt is not None
+
+
+def test_schedule_add_event_form(schedule_page, step):
+    """
+    Regression SCH-02: Verify the Add Schedule popup contains the expected
+    form elements for event creation (subject, time, save button).
+    """
+    with step("Open Add Schedule Popup"):
+        schedule_page.open_add_schedule_popup()
+
+    with step("Verify Popup Header"):
+        expect(schedule_page.popup_header).to_be_visible()
+
+    with step("Verify Form Elements in Popup"):
+        # The popup should contain form fields for creating an event
+        popup = schedule_page.popup_container
+        # Check for input fields or dropdowns inside the popup
+        form_inputs = popup.locator("input, select, app-form-dropdown, textarea")
+        input_count = form_inputs.count()
+        assert input_count >= 1, (
+            f"Expected form inputs in the add-event popup, found {input_count}"
+        )
+
+    with step("Verify Save/Submit Button"):
+        expect(schedule_page.save_btn).to_be_visible()
+
+    with step("Close Popup"):
+        schedule_page.close_add_schedule_popup()
+
+    with step("Verify Popup Closed"):
+        expect(schedule_page.popup_header).to_be_hidden()
