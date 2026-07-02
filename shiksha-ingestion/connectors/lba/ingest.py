@@ -226,19 +226,120 @@ def _parse_options(raw: list) -> list[dict[str, str]]:
     return result
 
 
-def _to_mongo_doc(q: dict[str, Any], entry: PDFEntry) -> dict[str, Any]:
+_SUBJECT_CANONICAL: dict[str, str] = {
+    "social_studies": "social_science",
+    "maths": "maths",
+    "science": "science",
+    "english": "English",
+}
+
+_BOARD_CANONICAL: dict[str, str] = {
+    "telangana": "BSE-TG",
+    "karnataka": "KSEEB",
+    "cbse": "CBSE",
+}
+
+# Maps canonical subject → display names to search in MasterSubject collection
+_SUBJECT_DISPLAY_NAMES: dict[str, list[str]] = {
+    "social_science": ["Social Science", "Social", "social_science"],
+    "maths": ["Mathematics", "Maths", "Math"],
+    "science": ["Science"],
+    "English": ["English"],
+}
+
+
+async def _resolve_or_create_master_subject(mongo_db, subject: str, board: str):
+    """Find or create a MasterSubject doc for this subject+board. Returns ObjectId."""
+    import re
+    from bson import ObjectId
+
+    coll = mongo_db["mastersubjects"]
+    canonical_board = _BOARD_CANONICAL.get(board.lower(), board)
+    name_variants = _SUBJECT_DISPLAY_NAMES.get(subject, [subject])
+
+    for name in name_variants:
+        doc = await coll.find_one({
+            "$or": [
+                {"name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}},
+                {"subjectName": {"$regex": f"^{re.escape(name)}$", "$options": "i"}},
+            ],
+            "boards": canonical_board,
+            "isDeleted": {"$ne": True},
+        })
+        if doc:
+            log.info("Found MasterSubject '%s' _id=%s", doc.get("name"), doc["_id"])
+            return doc["_id"]
+
+    display_name = subject.replace("_", " ").title()
+    result = await coll.insert_one({
+        "subjectName": display_name,
+        "name": display_name,
+        "sem": 1,
+        "boards": [canonical_board],
+        "applicableClasses": [],
+        "isDeleted": False,
+    })
+    log.info("Created MasterSubject '%s' _id=%s", display_name, result.inserted_id)
+    return result.inserted_id
+
+
+async def _upsert_chapters(mongo_db, questions: list[dict], entry: PDFEntry) -> dict[str, Any]:
+    """Upsert chapters into the chapters collection. Returns {unitName: ObjectId} map."""
+    coll = mongo_db["chapters"]
+    canonical_board = _BOARD_CANONICAL.get(entry.board.lower(), entry.board)
+    subject = _SUBJECT_CANONICAL.get(entry.subject, entry.subject)
+    subject_id = await _resolve_or_create_master_subject(mongo_db, subject, entry.board)
+
+    seen_order: dict[str, int] = {}
+    for q in questions:
+        unit = (q.get("unitName") or "").strip()
+        if unit and unit not in seen_order:
+            seen_order[unit] = len(seen_order) + 1
+
+    chapter_id_map: dict[str, Any] = {}
+    for unit_name, chapter_num in seen_order.items():
+        filter_ = {
+            "topics": unit_name,
+            "standard": entry.grade,
+            "medium": entry.medium.lower(),
+            "subjectId": subject_id,
+        }
+        await coll.update_one(
+            filter_,
+            {
+                "$set": {"orderNumber": chapter_num, "board": canonical_board},
+                "$setOnInsert": {"subTopics": [], "isDeleted": False, "learningOutcomes": []},
+            },
+            upsert=True,
+        )
+        doc = await coll.find_one(filter_, {"_id": 1})
+        chapter_id_map[unit_name] = doc["_id"]
+        log.info("Upserted chapter '%s' → _id=%s", unit_name, doc["_id"])
+
+    return chapter_id_map
+
+
+def _to_mongo_doc(
+    q: dict[str, Any],
+    entry: PDFEntry,
+    chapter_id: Any = None,
+    chapter_number: int = 0,
+) -> dict[str, Any]:
     from datetime import datetime, timezone
     answer_type = q.get("answerType", "")
     now = datetime.now(timezone.utc)
+    subject = _SUBJECT_CANONICAL.get(entry.subject, entry.subject)
+    canonical_board = _BOARD_CANONICAL.get(entry.board.lower(), entry.board)
 
     doc: dict[str, Any] = {
-        "subject": entry.subject,
+        "subject": subject,
         "medium": entry.medium.lower(),
         "class": str(entry.grade),
         "year": "2024-25",
         "examType": "LBA",
-        "board": entry.board,
-        "chapter": {"title": q.get("unitName", "")},
+        "board": canonical_board,
+        "chapter": {"title": q.get("unitName", ""), "chapterNumber": chapter_number},
+        "chapterId": chapter_id,
         "groupHeading": _GROUP_HEADING.get(answer_type, answer_type),
         "answerType": answer_type,
         "difficulty": "",
@@ -257,7 +358,13 @@ def _to_mongo_doc(q: dict[str, Any], entry: PDFEntry) -> dict[str, Any]:
     return doc
 
 
-async def run_ingestion(manifest: Manifest, mongo_collection, data_dir: Path | None = None) -> None:
+async def run_ingestion(
+    manifest: Manifest,
+    mongo_db,
+    data_dir: Path | None = None,
+    collection_name: str = "lba_questions",
+) -> None:
+    collection = mongo_db[collection_name]
     pending = manifest.entries_with_status("downloaded", "failed")
     log.info("Entries to ingest: %d", len(pending))
 
@@ -272,9 +379,26 @@ async def run_ingestion(manifest: Manifest, mongo_collection, data_dir: Path | N
         log.info("Ingesting %s", pdf_path)
         try:
             questions = await _extract_questions(pdf_path, entry.board, medium=entry.medium)
-            docs = [_to_mongo_doc(q, entry) for q in questions]
+
+            chapter_id_map = await _upsert_chapters(mongo_db, questions, entry)
+
+            seen_order: dict[str, int] = {}
+            for q in questions:
+                unit = (q.get("unitName") or "").strip()
+                if unit and unit not in seen_order:
+                    seen_order[unit] = len(seen_order) + 1
+
+            docs = [
+                _to_mongo_doc(
+                    q,
+                    entry,
+                    chapter_id=chapter_id_map.get((q.get("unitName") or "").strip()),
+                    chapter_number=seen_order.get((q.get("unitName") or "").strip(), 0),
+                )
+                for q in questions
+            ]
             if docs:
-                await mongo_collection.insert_many(docs)
+                await collection.insert_many(docs)
                 log.info("Inserted %d questions from %s", len(docs), pdf_path.name)
             else:
                 log.warning("No questions extracted from %s", pdf_path.name)

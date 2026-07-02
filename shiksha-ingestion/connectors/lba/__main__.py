@@ -69,7 +69,7 @@ async def _ingest(board: str) -> None:
             "or set MONGODB_DB env var."
         )
     client = AsyncIOMotorClient(mongo_uri)
-    collection = client[db_name]["lba_questions"]
+    db = client[db_name]
 
     manifest = Manifest(MANIFEST_PATH)
     manifest.load()
@@ -78,7 +78,7 @@ async def _ingest(board: str) -> None:
         manifest.entries = [e for e in manifest.entries if e.board == board]
 
     try:
-        await run_ingestion(manifest, collection, data_dir=DATA_DIR)
+        await run_ingestion(manifest, db, data_dir=DATA_DIR)
     finally:
         client.close()
 
