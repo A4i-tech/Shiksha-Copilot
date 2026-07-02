@@ -2,14 +2,15 @@
 LBA connector CLI.
 
 Usage:
-    python -m connectors.lba scrape --board karnataka|telangana|all
-    python -m connectors.lba ingest  --board karnataka|telangana|all
+    python -m connectors.lba scrape --board telangana
+    python -m connectors.lba ingest  --board telangana
     python -m connectors.lba status
 
 Environment variables for ingest:
-    OPENAI_API_KEY   Required for question extraction
-    MONGODB_URI      MongoDB connection string (default: mongodb://localhost:27017)
-    MONGODB_DB       Database name (default: shiksha)
+    AZURE_OPENAI_API_KEY        Required for question extraction
+    AZURE_OPENAI_ENDPOINT       Required
+    AZURE_OPENAI_DEPLOYMENT_NAME  Defaults to gpt-4o
+    MONGODB_URI      MongoDB connection string with database (e.g. mongodb://localhost:27017/prod_dump2)
 """
 from __future__ import annotations
 
@@ -25,13 +26,8 @@ MANIFEST_PATH = Path(__file__).parent / "manifest.json"
 
 
 def _get_scrapers(board: str):
-    from .boards.karnataka import KarnatakaScraper
     from .boards.telangana import TelanganaScraperLive
-    if board == "karnataka":
-        return [KarnatakaScraper()]
-    if board == "telangana":
-        return [TelanganaScraperLive()]
-    return [KarnatakaScraper(), TelanganaScraperLive()]
+    return [TelanganaScraperLive()]
 
 
 async def _scrape(board: str) -> None:
@@ -110,10 +106,10 @@ def main() -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_scrape = sub.add_parser("scrape", help="Discover and download PDFs")
-    p_scrape.add_argument("--board", choices=["karnataka", "telangana", "all"], default="all")
+    p_scrape.add_argument("--board", choices=["telangana"], default="telangana")
 
     p_ingest = sub.add_parser("ingest", help="Extract questions and insert into MongoDB")
-    p_ingest.add_argument("--board", choices=["karnataka", "telangana", "all"], default="all")
+    p_ingest.add_argument("--board", choices=["telangana"], default="telangana")
 
     sub.add_parser("status", help="Show manifest status summary")
 

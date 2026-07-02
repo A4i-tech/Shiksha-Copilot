@@ -235,8 +235,6 @@ _SUBJECT_CANONICAL: dict[str, str] = {
 
 _BOARD_CANONICAL: dict[str, str] = {
     "telangana": "BSE-TG",
-    "karnataka": "KSEEB",
-    "cbse": "CBSE",
 }
 
 # Maps canonical subject → display names to search in MasterSubject collection
