@@ -422,6 +422,36 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     this.router.navigate(['/content-generation/lesson-chat'],{queryParams:{recordId,chapterId}})
   }
 
+  showDeletePopup = false;
+  deleteHeading = '';
+  private itemPendingDelete: any;
+
+  onDelete(item: any) {
+    this.itemPendingDelete = item;
+    this.deleteHeading = item.isLesson ? 'Delete Lesson Plan' : 'Delete Lesson Resource';
+    this.showDeletePopup = true;
+  }
+
+  confirmDelete(action: string) {
+    this.showDeletePopup = false;
+    const item = this.itemPendingDelete;
+    this.itemPendingDelete = null;
+    if (action !== 'delete' || !item) return;
+
+    const id = item.isLesson ? item.lesson._id : item.resource._id;
+    const request = item.isLesson
+      ? this.contentGenService.deleteLessonPlan(id)
+      : this.contentGenService.deleteResourcePlan(id);
+
+    request.subscribe({
+      next: (res) => {
+        this.utilityservice.handleResponse(res);
+        this.getAllList(this.getListParams());
+      },
+      error: (err) => this.utilityservice.handleError(err),
+    });
+  }
+
   private filterPresentationJobs(list: PresentationListItem[], params: ListParams): PresentationListItem[] {
     let filteredList = list.filter(item => item.status === 'complete');
 

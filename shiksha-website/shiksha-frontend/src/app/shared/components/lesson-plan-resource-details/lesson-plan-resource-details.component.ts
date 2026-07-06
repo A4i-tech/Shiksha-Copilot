@@ -765,6 +765,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     this.subtopicsDropdownOptions = [];
   }
 
+  backNavigation() {
+    this.router.navigate(['/content-generation']);
+  }
+
   confirm(value: string) {
     if (value === 'ok') {
       this.on_form_submit();
