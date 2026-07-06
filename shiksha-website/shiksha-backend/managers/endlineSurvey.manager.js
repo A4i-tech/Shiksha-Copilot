@@ -18,9 +18,11 @@ class EndlineSurveyManager {
     this.dao = new EndlineSurveyDao();
     this.baselineDao = new BaselineSurveyDao();
     this.trainingDao = new TeacherTrainingBatchDao();
+    this.endlineSurvey = process.env.ENDLINE_SURVEY === 'true';
   }
 
   async eligibility(userId) {
+    if (!this.endlineSurvey) return { status: 'disabled' };
     const academicYear = getAcademicYear();
     if (!await this.trainingDao.getTrainingDateForUser(userId)) return { status: 'not_trained' };
     const baseline = await this.baselineDao.findByUser(userId, academicYear);
