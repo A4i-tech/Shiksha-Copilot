@@ -295,6 +295,50 @@ class TeacherLessonPlanController extends BaseController {
         }
     }
 
+    async sectionAiEdit(req, res) {
+        try {
+            const payload = req.body;
+            const teacherId = req.user._id;
+            if (!req.user.role.includes("power")) {
+                return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
+            }
+
+            const result = await this.manager.sectionAiEdit(teacherId, payload);
+
+            if (result.success) {
+                return res.status(200).json(result);
+            } else {
+                handleError(result, res);
+                return;
+            }
+        } catch (error) {
+            console.error("Error -> TeacherLessonPlanController -> sectionAiEdit", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    }
+
+    async planAiEdit(req, res) {
+        try {
+            const payload = req.body;
+            const teacherId = req.user._id;
+            if (!req.user.role.includes("power")) {
+                return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
+            }
+
+            const result = await this.manager.planAiEdit(teacherId, payload);
+
+            if (result.success) {
+                return res.status(200).json(result);
+            } else {
+                handleError(result, res);
+                return;
+            }
+        } catch (error) {
+            console.error("Error -> TeacherLessonPlanController -> planAiEdit", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    }
+
 	async handleWebhook(req, res) {
         try {
             const data = req.body;

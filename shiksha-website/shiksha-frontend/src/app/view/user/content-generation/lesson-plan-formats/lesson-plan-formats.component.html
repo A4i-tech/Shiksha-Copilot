@@ -37,6 +37,56 @@
         </div>
       </div>
     </div>
+
+    <!-- AI enhance (per-section) -->
+    <div class="ai-enhance mb-4" *ngIf="section.editable && !editMode[i]">
+      <div *ngIf="!aiMode[i]">
+        <button class="ai-btn ai-btn-primary" (click)="startAiPrompt(i)">
+          {{ 'AI enhance' | translate }}
+        </button>
+      </div>
+
+      <div class="ai-panel" *ngIf="aiMode[i] === 'prompt'">
+        <div class="ai-panel-header">
+          <span class="ai-panel-title">{{ 'AI enhance' | translate }}: {{ section.title | translate }}</span>
+          <button class="ai-btn ai-btn-ghost" (click)="cancelAi(i)">{{ 'Close' | translate }}</button>
+        </div>
+        <textarea
+          class="ai-textarea"
+          [(ngModel)]="aiPrompt[i]"
+          [disabled]="aiLoading[i]"
+          rows="3"
+          placeholder="{{ 'Describe the change you want' | translate }}"
+          (keydown.enter)="submitAiPrompt(i); $event.preventDefault()"
+        ></textarea>
+        <div class="ai-actions">
+          <button class="ai-btn ai-btn-primary" (click)="submitAiPrompt(i)" [disabled]="aiLoading[i] || !aiPrompt[i]">
+            {{ (aiLoading[i] ? 'Generating...' : 'Generate') | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div class="ai-panel" *ngIf="aiMode[i] === 'diff'">
+        <div class="ai-panel-header">
+          <span class="ai-panel-title">{{ 'AI enhance' | translate }}: {{ section.title | translate }}</span>
+          <div class="ai-actions">
+            <button class="ai-btn ai-btn-reject" (click)="rejectDiff(i)">{{ 'Reject' | translate }}</button>
+            <button class="ai-btn ai-btn-accept" (click)="acceptDiff(i)">{{ 'Accept' | translate }}</button>
+          </div>
+        </div>
+        <div class="ai-diff">
+          <span
+            *ngFor="let part of aiDiff[i]"
+            [ngClass]="{
+              'ai-diff-add': part.added,
+              'ai-diff-del': part.removed,
+              'ai-diff-ctx': !part.added && !part.removed
+            }"
+            >{{ part.value }}</span>
+        </div>
+      </div>
+    </div>
+
     <ng-container *ngIf="section.outputFormat === 'plain_text'">
       <markdown [data]="section.content" *ngIf="!editMode[i]" katex></markdown>
       <textarea

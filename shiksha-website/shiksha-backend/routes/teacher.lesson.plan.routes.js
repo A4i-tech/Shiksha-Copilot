@@ -71,6 +71,26 @@ router.post(
 );
 
 router.post(
+	"/teacher-lesson-plan/section-ai-edit",
+	isAuthenticated,
+	asyncMiddleware(
+		teacherLessonPlanController.sectionAiEdit.bind(
+			teacherLessonPlanController
+		)
+	)
+);
+
+router.post(
+	"/teacher-lesson-plan/plan-ai-edit",
+	isAuthenticated,
+	asyncMiddleware(
+		teacherLessonPlanController.planAiEdit.bind(
+			teacherLessonPlanController
+		)
+	)
+);
+
+router.post(
     "/teacher-lesson-plan/webhook",
     asyncMiddleware(
         teacherLessonPlanController.handleWebhook.bind(

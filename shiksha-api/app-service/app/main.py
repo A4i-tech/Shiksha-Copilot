@@ -59,6 +59,7 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(presentation_router)
 app.include_router(question_paper_router)
+app.include_router(lesson_plan_router)
 chat_router_mcp(mcp)
 
 @mcp.tool("version")

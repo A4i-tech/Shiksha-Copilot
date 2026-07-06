@@ -3,7 +3,7 @@ const formatApiReponse = require("../helper/response");
 const TeacherLessonPlanModel = require("../models/teacher.lesson.plan.model");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const teacherLessonPlanAggregation = require("../aggregation/teacher.lesson.plan.aggregation");
-const { postToCopilotBot } = require("../services/copilot.bot.service.js");
+const { postToCopilotBot, postToSectionEditBot, postToPlanEditBot } = require("../services/copilot.bot.service.js");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterLessonDao = require("../dao/master.lesson.dao");
@@ -294,6 +294,44 @@ class TeacherLessonPlanManager extends BaseManager {
 		});
 	}
 	
+	async sectionAiEdit(teacherId, payload) {
+		try {
+			const { lessonId, sectionId, currentContent, outputFormat, prompt } = payload;
+			const requestData = { lessonId, sectionId, currentContent, outputFormat, prompt };
+			const result = await postToSectionEditBot(requestData);
+
+			if (result.status !== 200) {
+				logger.error(`Unexpected status code from section-edit bot: ${result.status}`);
+				throw new Error(`Unexpected status code from section-edit bot: ${result.status}`);
+			}
+
+			const proposedContent = result.data?.proposed_content;
+			return formatApiReponse(true, "Section edit generated", { proposedContent });
+		} catch (error) {
+			logger.error('Error handling section AI edit', { message: error.message, stack: error.stack });
+			return formatApiReponse(false, "Failed to generate section edit", error);
+		}
+	}
+
+	async planAiEdit(teacherId, payload) {
+		try {
+			const { lessonId, sections, learningOutcomes, prompt } = payload;
+			const requestData = { lessonId, sections, learningOutcomes, prompt };
+			const result = await postToPlanEditBot(requestData);
+
+			if (result.status !== 200) {
+				logger.error(`Unexpected status code from plan-edit bot: ${result.status}`);
+				throw new Error(`Unexpected status code from plan-edit bot: ${result.status}`);
+			}
+
+			const proposedSections = result.data?.proposed_sections ?? [];
+			return formatApiReponse(true, "Plan edit generated", { proposedSections });
+		} catch (error) {
+			logger.error('Error handling plan AI edit', { message: error.message, stack: error.stack });
+			return formatApiReponse(false, "Failed to generate plan edit", error);
+		}
+	}
+
 	async regenerateContent(teacherId, payload) {
 		try {
 			const regenerationCount = await this.regeneratedCount(teacherId);
