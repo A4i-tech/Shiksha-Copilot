@@ -7,12 +7,15 @@ const { postToCopilotBot, postToSectionEditBot, postToPlanEditBot } = require(".
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterLessonDao = require("../dao/master.lesson.dao");
+const MasterResourceDao = require("../dao/master.resource.dao");
 const logger = require("../config/loggers"); 
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
 const {
 	formatTemplate,
-	formatSections
+	formatSections,
+	convertToCamelCase,
+	convertToSnakeCase
 } = require("../helper/formatter");
 const { REGENERATION_LIMIT } = require("../config/constants.js");
 const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
@@ -32,6 +35,28 @@ class TeacherLessonPlanManager extends BaseManager {
 		this.subjectDao = new MasterSubjectDao();
 		this.regeneratedLessonResource = new RegeneratedLessonResourceDao();
 		this.lessonFeedbackDao = new LessonFeedbackDao();
+		this.masterResourceDao = new MasterResourceDao();
+	}
+
+	async _resolveIndexPath(recordId) {
+		try {
+			const teacherLessonPlan = await this.dao.getById(recordId);
+			if (!teacherLessonPlan) return null;
+
+			const chapterId = teacherLessonPlan.lessonId
+				? (await this.masterLessonDao.getById(teacherLessonPlan.lessonId))?.chapterId
+				: (await this.masterResourceDao.getById(teacherLessonPlan.resourceId))?.chapterId;
+			if (!chapterId) return null;
+
+			const chapter = await this.chapterDao.getById(chapterId);
+			if (!chapter) return null;
+
+			const subject = await this.subjectDao.getById(chapter.subjectId);
+			return chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject?.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`;
+		} catch (error) {
+			logger.error('Error resolving index path for AI edit', { message: error.message, stack: error.stack });
+			return null;
+		}
 	}
 
 	async getByTeacherAndPagination(
@@ -268,8 +293,9 @@ class TeacherLessonPlanManager extends BaseManager {
 	
 	async sectionAiEdit(teacherId, payload) {
 		try {
-			const { lessonId, sectionId, currentContent, outputFormat, prompt } = payload;
-			const requestData = { lessonId, sectionId, currentContent, outputFormat, prompt };
+			const { lessonId, sectionId, currentContent, prompt } = payload;
+			const indexPath = await this._resolveIndexPath(lessonId);
+			const requestData = convertToSnakeCase({ indexPath, sectionId, currentContent, prompt });
 			const result = await postToSectionEditBot(requestData);
 
 			if (result.status !== 200) {
@@ -277,7 +303,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				throw new Error(`Unexpected status code from section-edit bot: ${result.status}`);
 			}
 
-			const proposedContent = result.data?.proposed_content;
+			const { proposedContent } = convertToCamelCase(result.data);
 			return formatApiReponse(true, "Section edit generated", { proposedContent });
 		} catch (error) {
 			logger.error('Error handling section AI edit', { message: error.message, stack: error.stack });
@@ -288,7 +314,8 @@ class TeacherLessonPlanManager extends BaseManager {
 	async planAiEdit(teacherId, payload) {
 		try {
 			const { lessonId, sections, learningOutcomes, prompt } = payload;
-			const requestData = { lessonId, sections, learningOutcomes, prompt };
+			const indexPath = await this._resolveIndexPath(lessonId);
+			const requestData = convertToSnakeCase({ indexPath, sections, learningOutcomes, prompt });
 			const result = await postToPlanEditBot(requestData);
 
 			if (result.status !== 200) {
@@ -296,7 +323,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				throw new Error(`Unexpected status code from plan-edit bot: ${result.status}`);
 			}
 
-			const proposedSections = result.data?.proposed_sections ?? [];
+			const { proposedSections = [] } = convertToCamelCase(result.data);
 			return formatApiReponse(true, "Plan edit generated", { proposedSections });
 		} catch (error) {
 			logger.error('Error handling plan AI edit', { message: error.message, stack: error.stack });

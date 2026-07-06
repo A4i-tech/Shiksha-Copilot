@@ -11,6 +11,7 @@ from app.services.lesson_edit_service import LessonEditService
 async def lifespan(app: FastAPI):
     app.state.lesson_edit_svc = LessonEditService()
     yield
+    await app.state.lesson_edit_svc.cleanup()
 
 
 def svc(request: Request) -> LessonEditService:
@@ -21,36 +22,34 @@ router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"], lifespan=lifespa
 
 
 class SectionEditRequest(BaseModel):
-    lessonId: Optional[str] = None
-    sectionId: str
-    currentContent: Any
-    outputFormat: str
+    index_path: Optional[str] = None
+    section_id: str
+    current_content: Any
     prompt: str
 
 
 @router.post("/section-edit", summary="Generate an AI-edited revision of a lesson plan section")
 async def section_edit(body: SectionEditRequest = Body(...), service: LessonEditService = Depends(svc)):
-    proposed = await service.edit_section(body.currentContent, body.outputFormat, body.prompt)
+    proposed = await service.edit_section(body.current_content, body.prompt, body.index_path)
     return {"proposed_content": proposed}
 
 
 class PlanSectionInput(BaseModel):
     id: str
     title: str
-    outputFormat: str
     content: Any
 
 
 class PlanEditRequest(BaseModel):
-    lessonId: Optional[str] = None
+    index_path: Optional[str] = None
     sections: list[PlanSectionInput]
-    learningOutcomes: list = []
+    learning_outcomes: list = []
     prompt: str
 
 
 @router.post("/plan-edit", summary="Generate an AI-edited revision of the entire lesson plan")
 async def plan_edit(body: PlanEditRequest = Body(...), service: LessonEditService = Depends(svc)):
     proposed = await service.edit_plan(
-        [s.model_dump() for s in body.sections], body.learningOutcomes, body.prompt
+        [s.model_dump() for s in body.sections], body.learning_outcomes, body.prompt, body.index_path
     )
     return {"proposed_sections": proposed}
