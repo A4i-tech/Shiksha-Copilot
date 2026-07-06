@@ -161,7 +161,9 @@
         <app-lesson-plan-formats
           [sections]="sections"
           [editMode]="editMode"
+          [planId]="planId"
           (unsavedChanges)="updateUnsavedChanges($event)"
+          (aiAccepted)="onAiAccepted()"
         ></app-lesson-plan-formats>
       </div>
 
@@ -187,10 +189,88 @@
     </div>
   </div>
 
-  <div class="text-content rounded my-4 p-4 md:p-4 bg-white">
-    <h2 class="text-xl font-bold text-content-100 md:leading-[48px]">
-      {{ currentType | translate}} {{ "Feedback" | translate }}
-    </h2>
+  <div class="text-content rounded my-4 p-4 md:p-4 bg-white feedback-panel">
+    <div class="flex justify-between items-center flex-wrap gap-2">
+      <h2 class="text-xl font-bold text-content-100 md:leading-[48px]">
+        {{ currentType | translate}} {{ "Feedback" | translate }}
+      </h2>
+      <div class="flex gap-2" *ngIf="isLesson && !planAiMode">
+        <button class="btn-primary flex gap-2 items-center" (click)="startPlanAiPrompt()">
+          <span>{{ "AI enhance entire lesson plan" | translate }}</span>
+        </button>
+        <button class="btn-primary-outline" (click)="showRevertConfirmation = true">
+          {{ "Revert AI edits" | translate }}
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white border rounded p-4 mt-3" *ngIf="planAiMode === 'prompt'">
+      <div class="flex justify-between items-center mb-2">
+        <span class="font-semibold text-content">{{
+          "AI enhance: entire lesson plan" | translate
+        }}</span>
+        <button class="text-gray-500 text-sm" (click)="cancelPlanAi()">
+          {{ "Close" | translate }}
+        </button>
+      </div>
+      <textarea
+        class="p-2 border rounded-sm w-full focus:outline-none"
+        rows="3"
+        [(ngModel)]="planAiPrompt"
+        [disabled]="planAiLoading"
+        placeholder="{{
+          'Describe the change you want across the lesson plan' | translate
+        }}"
+        (keydown.enter)="submitPlanAiPrompt(); $event.preventDefault()"
+      ></textarea>
+      <div class="flex justify-end mt-2">
+        <button
+          class="btn-primary"
+          (click)="submitPlanAiPrompt()"
+          [disabled]="planAiLoading || !planAiPrompt"
+        >
+          {{ (planAiLoading ? "Generating..." : "Generate") | translate }}
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white border rounded p-4 mt-3" *ngIf="planAiMode === 'diff'">
+      <div class="flex justify-between items-center mb-3">
+        <span class="font-semibold text-content">{{
+          "AI enhance: entire lesson plan" | translate
+        }}</span>
+        <div class="flex gap-2">
+          <button class="btn-primary-outline" (click)="rejectPlanDiff()">
+            {{ "Reject" | translate }}
+          </button>
+          <button
+            class="btn-primary"
+            (click)="acceptPlanDiff()"
+            [disabled]="!planAiDiffs.length"
+          >
+            {{ "Accept" | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!planAiDiffs.length" class="text-sm text-gray-500">
+        {{ "The AI did not propose any changes for this request." | translate }}
+      </div>
+
+      <div *ngFor="let d of planAiDiffs" class="mb-4">
+        <div class="font-semibold text-primary mb-1">{{ d.title | translate }}</div>
+        <div class="text-sm whitespace-pre-wrap border rounded p-2">
+          <span
+            *ngFor="let part of d.parts"
+            [ngClass]="{
+              'bg-green-50 text-green-700': part.added,
+              'bg-red-50 text-red-700 line-through': part.removed
+            }"
+            >{{ part.value }}</span
+          >
+        </div>
+      </div>
+    </div>
 
     <div class="mt-3 gap-4 flex text-[14px] flex-col xl:flex-row">
       <div
@@ -246,22 +326,6 @@
         {{ "Save" | translate }} {{ currentType | translate }}
       </button>
 
-      <!-- <button
-        *ngIf="subjectDetails.chapter.medium === 'english' && isLesson"
-        [hasPermission]="['power']"
-        (click)="openRegeneratePopup()"
-        class="btn-primary-outline"
-        [disabled]="
-          !feedback ||
-          feedback === feedbackValues[2].value ||
-          regenerationLimitReached
-        "
-      >
-        <div class="flex items-center gap-2">
-          <img src="assets/icons/Replay.svg" alt="" />
-          <span>{{ "Regenerate" | translate }}</span>
-        </div>
-      </button> -->
     </div>
 
     <div class="bg-warn-50 p-2 my-4" *ngIf="isLesson && regenerationLimitReached">
@@ -289,12 +353,17 @@
     }"
     (close)="confirmDraft($event)"
   ></app-delete-detail>
+
+  <app-delete-detail
+    *ngIf="showRevertConfirmation"
+    [config]="{
+      heading: 'Revert AI edits?',
+      confirmationText: 'This will discard all AI-enhanced changes and restore the original content. This cannot be undone.',
+      primaryButtonLabel: 'Revert',
+      primaryButtonType: 'ok',
+      cancelButtonLabel: 'Cancel'
+    }"
+    (close)="confirmRevert($event)"
+  ></app-delete-detail>
 </div>
 
-<app-modal *ngIf="modalService.showRenegenerateDialog">
-  <app-regenerate-popup
-    (regenerate)="regenerateContent($event)"
-    [regenerateReason]="{ title: feedback, reason: feedbackReason }"
-    [sections]="sections"
-  ></app-regenerate-popup>
-</app-modal>
