@@ -3,6 +3,7 @@ const mockBaselineDao = { findByUser: jest.fn() };
 const mockTrainingDao = { getTrainingDateForUser: jest.fn() };
 const mockLessonPlan = { countDocuments: jest.fn() };
 const mockQuestionBank = { countDocuments: jest.fn() };
+process.env.ENDLINE_SURVEY = 'true';
 
 jest.mock('../../../dao/endlineSurvey.dao', () => jest.fn(() => mockEndlineDao));
 jest.mock('../../../dao/baselineSurvey.dao', () => jest.fn(() => mockBaselineDao));
