@@ -36,6 +36,7 @@ data:
         subject     TEXT NOT NULL,
         grade       INT NOT NULL,
         status      TEXT NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
+        medium      TEXT NOT NULL DEFAULT 'Unknown',
         created_at  TIMESTAMP NOT NULL
     );
 
@@ -126,12 +127,13 @@ data:
           ('u014', 'Vijay Sharma',    'DDPI',       NULL, 1),
           ('u015', 'Nirmala Rao',     'StateAdmin', NULL, 1);
 
-        INSERT INTO fact_lesson_plans (user_id, subject, grade, status, created_at)
+        INSERT INTO fact_lesson_plans (user_id, subject, grade, status, medium, created_at)
         SELECT
           'u00' || (1 + (n % 6))::text,
           (ARRAY['Maths','Science','Kannada','English','Social'])[1 + (n % 5)],
           (1 + (n % 5)),
           (ARRAY['draft','published','archived'])[1 + (n % 3)],
+          (ARRAY['Kannada','English'])[1 + (n % 2)],
           NOW() - ((n % 90) || ' days')::interval
         FROM generate_series(1, 300) AS n;
 

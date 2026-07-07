@@ -226,9 +226,10 @@ data:
                 subject = meta.get("subject", "General")
                 grade   = meta.get("grade", 1)
                 status  = STATUS_MAP.get(lp.get("status", ""), "draft")
-                lp_rows.append((uid, subject, grade, status, coerce_dt(lp.get("createdAt"))))
+                medium  = lp.get("medium") or "Unknown"
+                lp_rows.append((uid, subject, grade, status, medium, coerce_dt(lp.get("createdAt"))))
             if lp_rows:
-                execute_values(cur, "INSERT INTO fact_lesson_plans (user_id, subject, grade, status, created_at) VALUES %s", lp_rows)
+                execute_values(cur, "INSERT INTO fact_lesson_plans (user_id, subject, grade, status, medium, created_at) VALUES %s", lp_rows)
             logger.info("  %d lesson plans", len(lp_rows))
 
             logger.info("Syncing fact_user_activities ...")
