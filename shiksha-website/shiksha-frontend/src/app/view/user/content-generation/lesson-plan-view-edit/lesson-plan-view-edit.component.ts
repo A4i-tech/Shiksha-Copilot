@@ -755,6 +755,7 @@ export class LessonPlanViewEditComponent implements OnInit {
     this.contentGenService
       .planAiEdit({
         lessonId: this.planId,
+        isLesson: true,
         sections: this.sections
           .filter((s) => s.editable)
           .map((s) => ({
