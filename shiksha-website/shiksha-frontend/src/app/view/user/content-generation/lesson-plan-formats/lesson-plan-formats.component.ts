@@ -58,6 +58,7 @@ export class LessonPlanFormatsComponent {
     this.contentGenService
       .sectionAiEdit({
         lessonId: this.planId,
+        isLesson: true,
         sectionId: section.id,
         currentContent: section.content,
         outputFormat: section.outputFormat,

@@ -38,9 +38,11 @@ class TeacherLessonPlanManager extends BaseManager {
 		this.masterResourceDao = new MasterResourceDao();
 	}
 
-	async _resolveIndexPath(recordId) {
+	async _resolveIndexPath(teacherId, recordId, isLesson) {
 		try {
-			const teacherLessonPlan = await this.dao.getById(recordId);
+			const teacherLessonPlan = isLesson
+				? await this.dao.getByTeacherAndLesson(teacherId, recordId)
+				: await this.dao.getByTeacherAndResource(teacherId, recordId);
 			if (!teacherLessonPlan) return null;
 
 			const chapterId = teacherLessonPlan.lessonId
@@ -321,8 +323,8 @@ class TeacherLessonPlanManager extends BaseManager {
 	
 	async sectionAiEdit(teacherId, payload) {
 		try {
-			const { lessonId, sectionId, currentContent, prompt } = payload;
-			const indexPath = await this._resolveIndexPath(lessonId);
+			const { lessonId, sectionId, currentContent, prompt, isLesson } = payload;
+			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
 			const requestData = convertToSnakeCase({ indexPath, sectionId, currentContent, prompt });
 			const result = await postToSectionEditBot(requestData);
 
@@ -331,7 +333,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				throw new Error(`Unexpected status code from section-edit bot: ${result.status}`);
 			}
 
-			const { proposedContent } = convertToCamelCase(result.data);
+			const proposedContent = result.data;
 			return formatApiReponse(true, "Section edit generated", { proposedContent });
 		} catch (error) {
 			logger.error('Error handling section AI edit', { message: error.message, stack: error.stack });
@@ -341,8 +343,8 @@ class TeacherLessonPlanManager extends BaseManager {
 
 	async planAiEdit(teacherId, payload) {
 		try {
-			const { lessonId, sections, learningOutcomes, prompt } = payload;
-			const indexPath = await this._resolveIndexPath(lessonId);
+			const { lessonId, sections, learningOutcomes, prompt, isLesson } = payload;
+			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
 			const requestData = convertToSnakeCase({ indexPath, sections, learningOutcomes, prompt });
 			const result = await postToPlanEditBot(requestData);
 
@@ -351,7 +353,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				throw new Error(`Unexpected status code from plan-edit bot: ${result.status}`);
 			}
 
-			const { proposedSections = [] } = convertToCamelCase(result.data);
+			const proposedSections = result.data || [];
 			return formatApiReponse(true, "Plan edit generated", { proposedSections });
 		} catch (error) {
 			logger.error('Error handling plan AI edit', { message: error.message, stack: error.stack });

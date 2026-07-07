@@ -1,9 +1,8 @@
 from contextlib import asynccontextmanager
-from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Depends, FastAPI, Request
-from pydantic import BaseModel
 
+from app.models.lesson_plan import PlanEditRequest, SectionEditRequest
 from app.services.lesson_edit_service import LessonEditService
 
 
@@ -21,35 +20,11 @@ def svc(request: Request) -> LessonEditService:
 router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"], lifespan=lifespan)
 
 
-class SectionEditRequest(BaseModel):
-    index_path: Optional[str] = None
-    section_id: str
-    current_content: Any
-    prompt: str
-
-
 @router.post("/section-edit", summary="Generate an AI-edited revision of a lesson plan section")
-async def section_edit(body: SectionEditRequest = Body(...), service: LessonEditService = Depends(svc)):
-    proposed = await service.edit_section(body.current_content, body.prompt, body.index_path)
-    return {"proposed_content": proposed}
-
-
-class PlanSectionInput(BaseModel):
-    id: str
-    title: str
-    content: Any
-
-
-class PlanEditRequest(BaseModel):
-    index_path: Optional[str] = None
-    sections: list[PlanSectionInput]
-    learning_outcomes: list = []
-    prompt: str
+async def section_edit(body: SectionEditRequest = Body(...), service: LessonEditService = Depends(svc)) -> str:
+    return await service.edit_section(body)
 
 
 @router.post("/plan-edit", summary="Generate an AI-edited revision of the entire lesson plan")
-async def plan_edit(body: PlanEditRequest = Body(...), service: LessonEditService = Depends(svc)):
-    proposed = await service.edit_plan(
-        [s.model_dump() for s in body.sections], body.learning_outcomes, body.prompt, body.index_path
-    )
-    return {"proposed_sections": proposed}
+async def plan_edit(body: PlanEditRequest = Body(...), service: LessonEditService = Depends(svc)) -> list[dict]:
+    return await service.edit_plan(body)
