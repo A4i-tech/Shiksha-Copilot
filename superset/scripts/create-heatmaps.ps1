@@ -25,9 +25,9 @@ function Invoke-Superset {
         if ($Body -is [string]) { $Body } else { $Body | ConvertTo-Json -Depth 20 }
     } else { $null }
     if ($script:Session) {
-        Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers -Body $json -WebSession $script:Session
+        Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers -Body $json -WebSession $script:Session -TimeoutSec 30
     } else {
-        $resp = Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers -Body $json -SessionVariable "S"
+        $resp = Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers -Body $json -SessionVariable "S" -TimeoutSec 30
         $script:Session = $S
         $resp
     }

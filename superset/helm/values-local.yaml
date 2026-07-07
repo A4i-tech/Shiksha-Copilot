@@ -16,7 +16,8 @@ init:
 
 configOverrides:
   secret: |
-    SECRET_KEY = 'Ey2zq5LISJI4nar44gF56WNw/QUBJbKQKUjXr4sULqbnBvJ0QFt81yiq'
+    import os, secrets
+    SECRET_KEY = os.environ.get('SUPERSET_SECRET_KEY') or secrets.token_hex(42)
   rls: |
     FEATURE_FLAGS = {
         "ROW_LEVEL_SECURITY": True,

@@ -85,13 +85,15 @@ redis:
     persistence:
       size: 5Gi
 
-# Azure LoadBalancer — gets a public IP automatically
+# Internal load balancer — accessible only within Azure VNet.
+# For external access, configure ingress-nginx with a hostname instead.
+# To allow specific external CIDRs, replace the internal annotation with:
+#   service.beta.kubernetes.io/azure-load-balancer-source-ranges: "x.x.x.x/32,y.y.y.y/32"
 service:
   type: LoadBalancer
   nodePort:
     http: null
   annotations:
-    # Uncomment to restrict access to specific CIDRs:
-    # service.beta.kubernetes.io/azure-load-balancer-source-ranges: "1.2.3.4/32"
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
 
 # Analytics DB deployed separately as analytics-postgres

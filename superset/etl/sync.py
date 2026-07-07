@@ -78,6 +78,14 @@ def _mask_uri(uri: str) -> str:
     return re.sub(r'://[^:@]+:[^@]+@', '://***:***@', uri)
 
 
+def _to_float(val, default=0.0) -> float:
+    try:
+        return float(val) if val is not None else default
+    except (ValueError, TypeError):
+        logger.warning("Invalid numeric value %r — using %s", val, default)
+        return default
+
+
 def coerce_dt(val):
     if val is None:
         return NOW
@@ -300,7 +308,7 @@ def main() -> None:
             if uid not in valid_user_ids:
                 continue
             subject = AI_MODULE_SUBJECT.get(a.get("moduleName", ""), "General")
-            score   = min(float(a.get("interactionTime") or 0) / 3.0, 100.0)
+            score   = min(_to_float(a.get("interactionTime")) / 3.0, 100.0)
             lba_rows.append((uid, subject, 1, round(score, 2), coerce_dt(a.get("createdAt"))))
 
         if lba_rows:
