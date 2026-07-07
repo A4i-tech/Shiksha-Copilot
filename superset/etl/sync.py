@@ -39,8 +39,6 @@ ROLE_MAP = {
     "admin":    "StateAdmin",
     "state":    "StateAdmin",
 }
-VALID_ROLES = {"HM", "CRP", "BEO", "DDPI", "StateAdmin"}
-
 # useractivities modules that represent AI feature usage
 AI_MODULES = {
     "lp-generation":            "lesson_plan_gen",
@@ -85,6 +83,7 @@ def coerce_dt(val):
         return NOW
     if isinstance(val, datetime):
         return val
+    logger.warning("Unexpected timestamp type %s — using NOW", type(val).__name__)
     return NOW
 
 

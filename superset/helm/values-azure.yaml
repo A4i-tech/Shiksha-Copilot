@@ -1,5 +1,11 @@
 # AKS (Azure) deployment values
 # Usage: helm install superset superset/superset -f values-azure.yaml -n superset --create-namespace
+#
+# Passwords sourced from superset-app-secrets K8s Secret (provisioned by ESO from Key Vault).
+# Before first sync, set these Key Vault secrets:
+#   az keyvault secret set --vault-name a4i-kube-dev-kv --name superset-admin-password --value "<pw>"
+#   az keyvault secret set --vault-name a4i-kube-dev-kv --name superset-secret-key     --value "<key>"
+#   az keyvault secret set --vault-name a4i-kube-dev-kv --name superset-pg-password    --value "<pw>"
 
 image:
   repository: apache/superset
@@ -12,17 +18,33 @@ init:
     firstname: Superset
     lastname: Admin
     email: admin@shiksha.local
-    # Set a strong password — override via --set or a separate secret
-    password: changeme
+    passwordSecret: superset-app-secrets
+    passwordSecretKey: admin-password
 
 configOverrides:
   secret: |
     import os
-    SECRET_KEY = os.environ.get('SUPERSET_SECRET_KEY', 'CHANGE_ME_STRONG_KEY')
+    SECRET_KEY = os.environ.get('SUPERSET_SECRET_KEY', '')
+  db_uri: |
+    import os
+    _pg = os.environ.get('SUPERSET_PG_PASSWORD', '')
+    SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg2://superset:{_pg}@superset-postgresql:5432/superset'
   rls: |
     FEATURE_FLAGS = {
         "ROW_LEVEL_SECURITY": True,
     }
+
+extraEnvRaw:
+  - name: SUPERSET_SECRET_KEY
+    valueFrom:
+      secretKeyRef:
+        name: superset-app-secrets
+        key: secret-key
+  - name: SUPERSET_PG_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: superset-app-secrets
+        key: pg-password
 
 supersetNode:
   replicaCount: 2
@@ -48,8 +70,11 @@ postgresql:
   enabled: true
   auth:
     username: superset
-    password: superset         # override via --set postgresql.auth.password=<strong>
     database: superset
+    existingSecret: superset-app-secrets
+    secretKeys:
+      adminPasswordKey: pg-password
+      userPasswordKey: pg-password
   primary:
     persistence:
       size: 10Gi
@@ -63,8 +88,8 @@ redis:
 # Azure LoadBalancer — gets a public IP automatically
 service:
   type: LoadBalancer
-  port: 80
-  targetPort: 8088
+  nodePort:
+    http: null
   annotations:
     # Uncomment to restrict access to specific CIDRs:
     # service.beta.kubernetes.io/azure-load-balancer-source-ranges: "1.2.3.4/32"

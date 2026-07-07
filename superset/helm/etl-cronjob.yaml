@@ -47,8 +47,6 @@ data:
         "admin":    "StateAdmin",
         "state":    "StateAdmin",
     }
-    VALID_ROLES = {"HM", "CRP", "BEO", "DDPI", "StateAdmin"}
-
     AI_MODULES = {
         "lp-generation":            "lesson_plan_gen",
         "question-bank-generation": "qb_gen",
@@ -91,6 +89,7 @@ data:
             return NOW
         if isinstance(val, datetime):
             return val
+        logger.warning("Unexpected timestamp type %s — using NOW", type(val).__name__)
         return NOW
 
 

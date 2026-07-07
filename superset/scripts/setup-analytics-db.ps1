@@ -3,9 +3,10 @@
 # Usage: .\setup-analytics-db.ps1 [-BaseUrl http://localhost:8088] [-Username admin] [-Password admin]
 
 param(
-    [string]$BaseUrl  = "http://localhost:8088",
-    [string]$Username = "admin",
-    [string]$Password = "admin"
+    [string]$BaseUrl      = "http://localhost:8088",
+    [string]$Username     = "admin",
+    [string]$Password     = "admin",
+    [string]$AnalyticsDsn = $env:ANALYTICS_DSN
 )
 
 $ErrorActionPreference = "Stop"
@@ -50,7 +51,7 @@ Write-Host "  Got CSRF: $($csrf.Substring(0,10))..."
 Write-Host "Creating database connection 'Analytics DB' ..."
 $dbBody = @{
     database_name              = "Analytics DB"
-    sqlalchemy_uri             = "postgresql+psycopg2://analytics:analytics@analytics-db:5432/analytics"
+    sqlalchemy_uri             = if ($AnalyticsDsn) { $AnalyticsDsn } else { "postgresql+psycopg2://analytics:analytics@analytics-db.superset.svc.cluster.local:5432/analytics" }
     expose_in_sqllab           = $true
     allow_run_async            = $false
     allow_ctas                 = $false
