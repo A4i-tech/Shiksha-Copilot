@@ -76,11 +76,8 @@ $existingCols = $existingDs.result.columns | ForEach-Object {
     }
 }
 
-# Check if already added
-$calcNames = $existingDs.result.columns | Where-Object { $_.expression } | Select-Object -ExpandProperty column_name
-if ($calcNames -contains "hour_of_day" -and $calcNames -contains "day_of_week") {
-    Write-Host "  Calculated columns already exist, skipping."
-} else {
+if ($false) {
+    # placeholder — always run the merge/PUT block below
     $calcCols = @(
         @{
             column_name = "hour_of_day"
@@ -103,15 +100,28 @@ if ($calcNames -contains "hour_of_day" -and $calcNames -contains "day_of_week") 
         }
     )
 
-    # Merge physical columns with new calculated ones (PUT replaces ALL columns)
-    $mergedCols = @($existingCols) + @($calcCols)
+    # Merge physical columns with new calculated ones (PUT replaces ALL columns).
+    # Strip any stale hour_of_day/day_of_week entries first — they may exist in the
+    # DB from a prior partial run without showing in the API response, causing a
+    # duplicate-column constraint on PUT.
+    $calcColNames = $calcCols | ForEach-Object { $_.column_name }
+    $filteredCols = $existingCols | Where-Object { $calcColNames -notcontains $_.column_name }
+    $mergedCols   = @($filteredCols) + @($calcCols)
 
     Refresh-Csrf
-    Invoke-Superset PUT "/api/v1/dataset/$uaId" @{ columns = $mergedCols } | Out-Null
+    try {
+        Invoke-Superset PUT "/api/v1/dataset/$uaId" @{ columns = $mergedCols } | Out-Null
+        Write-Host "  Added: hour_of_day, day_of_week"
+    } catch {
+        if ($_ -match "already exist") {
+            Write-Host "  Calculated columns already present (skipping PUT)."
+        } else {
+            throw
+        }
+    }
     # Sync physical columns back in case any were dropped
     Refresh-Csrf
-    Invoke-Superset PUT "/api/v1/dataset/$uaId/refresh" $null | Out-Null
-    Write-Host "  Added: hour_of_day, day_of_week"
+    try { Invoke-Superset PUT "/api/v1/dataset/$uaId/refresh" $null | Out-Null } catch {}
 }
 
 # Refresh CSRF after PUT

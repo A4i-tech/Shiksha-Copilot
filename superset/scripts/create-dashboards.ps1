@@ -120,7 +120,8 @@ $dashboards = @(
         charts = @(
             "Lesson Plans Created Over Time",
             "LBA Avg Score by Subject",
-            "App Usage by Section"
+            "App Usage by Section",
+            "Lesson Plans: Subject x Grade Heatmap"
         )
     }
     @{
@@ -128,7 +129,8 @@ $dashboards = @(
         charts = @(
             "Lesson Plans Created Over Time",
             "LBA Avg Score by Subject",
-            "AI Actions by Type"
+            "AI Actions by Type",
+            "Lesson Plans: Subject x Grade Heatmap"
         )
     }
     @{
@@ -136,7 +138,8 @@ $dashboards = @(
         charts = @(
             "App Usage by Section",
             "Lesson Plans Created Over Time",
-            "Users by Role"
+            "Users by Role",
+            "App Usage: Day x Hour Heatmap"
         )
     }
     @{
@@ -147,28 +150,50 @@ $dashboards = @(
             "AI Actions by Type",
             "App Usage by Section",
             "Chatbot Resolution Rate",
-            "Users by Role"
+            "Users by Role",
+            "Lesson Plans: Subject x Grade Heatmap",
+            "App Usage: Day x Hour Heatmap"
         )
     }
 )
+
+# Sync dashboard_slices via kubectl exec into the superset-postgresql pod.
+# Superset 3.x POST /api/v1/dashboard/ does not populate the dashboard_slices
+# junction table, so charts appear as "deleted" even though IDs are correct in
+# position_json. SQL Lab API blocks DML, so we use psql directly.
+function Sync-DashboardSlices([int]$DashboardId, [int[]]$ChartIds) {
+    $rows = $ChartIds | ForEach-Object { "($DashboardId,$_)" }
+    $sql  = "INSERT INTO dashboard_slices (dashboard_id, slice_id) VALUES $($rows -join ',') ON CONFLICT DO NOTHING;"
+    try {
+        $pgPod = kubectl get pods -n superset -l app.kubernetes.io/name=postgresql `
+            --field-selector=status.phase=Running -o jsonpath="{.items[0].metadata.name}" 2>$null
+        if (-not $pgPod) { $pgPod = "superset-postgresql-0" }
+        kubectl exec -n superset $pgPod -- `
+            psql -U superset -d superset -c $sql 2>&1 | Out-Null
+        Write-Host "    dashboard_slices synced ($($ChartIds.Count) charts)"
+    } catch {
+        Write-Warning "    dashboard_slices sync failed (non-fatal): $_"
+    }
+}
 
 # --- Create dashboards ---
 Write-Host "Creating $($dashboards.Count) dashboards ..."
 $createdIds = @()
 
 foreach ($d in $dashboards) {
+    $ids   = $d.charts | ForEach-Object { Get-ChartId $_ }
+    $names = $d.charts
+
     # Check if already exists
     $enc      = [Uri]::EscapeDataString("(filters:!((col:dashboard_title,opr:eq,value:'$($d.title)')))")
     $existing = Invoke-Superset GET "/api/v1/dashboard/?q=$enc"
     if ($existing.count -gt 0) {
         $id = $existing.result[0].id
-        Write-Host "  [$($d.title)] already exists id=$id, skipping."
+        Write-Host "  [$($d.title)] already exists id=$id - re-syncing slices."
         $createdIds += $id
+        Sync-DashboardSlices $id $ids
         continue
     }
-
-    $ids   = $d.charts | ForEach-Object { Get-ChartId $_ }
-    $names = $d.charts
 
     $body = @{
         dashboard_title = $d.title
@@ -179,6 +204,7 @@ foreach ($d in $dashboards) {
     $resp = Invoke-Superset POST "/api/v1/dashboard/" $body
     Write-Host "  [$($d.title)] created id=$($resp.id)"
     $createdIds += $resp.id
+    Sync-DashboardSlices $resp.id $ids
 }
 
 Write-Host ""
