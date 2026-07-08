@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastmcp import FastMCP
 from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
-from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router
+from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router, lesson_plan_router
 
 # Initialize Langfuse instrumentation at import time.
 from app.observability.langfuse_setup import init_langfuse
@@ -78,6 +78,7 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(presentation_router)
 app.include_router(question_paper_router)
+app.include_router(lesson_plan_router)
 chat_router_mcp(mcp)
 
 @mcp.tool("version")

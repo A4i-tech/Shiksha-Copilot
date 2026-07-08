@@ -4,6 +4,7 @@ const logger = require('../config/loggers');
 require("dotenv").config();
 const checkListUrl = process.env.LLM_CHECKLIST_URL
 const workflowUrl = process.env.LLM_WORKFLOW_URL
+const llmBaseUrl = process.env.LLM_API_BASE_URL
 
 try{
 axiosRetry(axios, {
@@ -50,4 +51,28 @@ async function post5ETables(payload)
   }
 }
 
-module.exports = { postToCopilotBot , post5ETables } ;
+async function postToSectionEditBot(payload) {
+  const apiUrl = `${llmBaseUrl}/lesson-plan/section-edit`;
+
+  try {
+    const response = await axios.post(apiUrl, payload);
+    return response;
+  } catch (error) {
+    logger.error("Error in postToSectionEditBot", { message: error.message, stack: error.stack });
+    throw error;
+  }
+}
+
+async function postToPlanEditBot(payload) {
+  const apiUrl = `${llmBaseUrl}/lesson-plan/plan-edit`;
+
+  try {
+    const response = await axios.post(apiUrl, payload);
+    return response;
+  } catch (error) {
+    logger.error("Error in postToPlanEditBot", { message: error.message, stack: error.stack });
+    throw error;
+  }
+}
+
+module.exports = { postToCopilotBot , post5ETables , postToSectionEditBot , postToPlanEditBot } ;

@@ -1,0 +1,81 @@
+.ai-enhance {
+  .ai-btn {
+    border: 1px solid #9aa0a6;
+    border-radius: 5px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    background: #fff;
+    cursor: pointer;
+  }
+  .ai-btn-primary {
+    border-color: var(--primary-DEFAULT);
+    color: var(--primary-DEFAULT);
+    background: var(--primary-40);
+  }
+  .ai-btn-ghost {
+    color: #6b7075;
+  }
+  .ai-btn-reject {
+    border-color: #cf222e;
+    color: #cf222e;
+    background: #fdeef0;
+  }
+  .ai-btn-accept {
+    border-color: #1a7f37;
+    color: #1a7f37;
+    background: #eaf7ee;
+  }
+
+  .ai-panel {
+    border: 1px solid var(--primary-80);
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 8px;
+  }
+  .ai-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .ai-panel-title {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .ai-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .ai-textarea {
+    width: 100%;
+    border: 1px solid #d4d7da;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 13px;
+    resize: vertical;
+  }
+
+  .ai-diff {
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    border: 1px solid #d4d7da;
+    border-radius: 4px;
+    padding: 10px;
+    background: #faf9f5;
+  }
+  .ai-diff-add {
+    background: #eaf7ee;
+    color: #1a7f37;
+  }
+  .ai-diff-del {
+    background: #fdeef0;
+    color: #cf222e;
+    text-decoration: line-through;
+  }
+  .ai-diff-ctx {
+    color: #333;
+  }
+}
