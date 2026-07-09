@@ -1,5 +1,5 @@
 # create-dashboards.ps1
-# Creates 4 role-specific dashboards in Superset via REST API.
+# Creates one "Leaders Dashboard" in Superset with all 7 charts (C1-C7).
 # Run after create-charts.ps1.
 # Usage: .\create-dashboards.ps1 [-BaseUrl http://localhost:8088] [-Username admin] [-Password admin]
 
@@ -16,12 +16,14 @@ $script:Token   = $null
 $script:Csrf    = $null
 
 function Invoke-Superset {
-    param([string]$Method, [string]$Path, [hashtable]$Body)
+    param([string]$Method, [string]$Path, $Body)
     $uri     = "$BaseUrl$Path"
     $headers = @{ "Content-Type" = "application/json" }
     if ($script:Token) { $headers["Authorization"] = "Bearer $($script:Token)" }
     if ($script:Csrf)  { $headers["X-CSRFToken"]   = $script:Csrf }
-    $json = if ($Body) { $Body | ConvertTo-Json -Depth 20 } else { $null }
+    $json = if ($null -ne $Body) {
+        if ($Body -is [string]) { $Body } else { $Body | ConvertTo-Json -Depth 20 }
+    } else { $null }
     if ($script:Session) {
         Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers -Body $json -WebSession $script:Session -TimeoutSec 30
     } else {
@@ -31,23 +33,24 @@ function Invoke-Superset {
     }
 }
 
+function Refresh-Csrf {
+    $script:Csrf = (Invoke-Superset GET "/api/v1/security/csrf_token/").result
+}
+
 # --- Auth ---
 Write-Host "Logging in ..."
 $login = Invoke-Superset POST "/api/v1/security/login" @{
     username = $Username; password = $Password; provider = "db"; refresh = $false
 }
 $script:Token = $login.access_token
-$csrfResp     = Invoke-Superset GET "/api/v1/security/csrf_token/"
-$script:Csrf  = $csrfResp.result
+Refresh-Csrf
 Write-Host "  Auth OK"
 
 # --- Fetch chart IDs by name ---
 Write-Host "Fetching chart IDs ..."
 $chartMap = @{}
-$chartResp = Invoke-Superset GET "/api/v1/chart/?q=(page_size:50)"
-foreach ($c in $chartResp.result) {
-    $chartMap[$c.slice_name] = $c.id
-}
+$chartResp = Invoke-Superset GET "/api/v1/chart/?q=(page_size:100)"
+foreach ($c in $chartResp.result) { $chartMap[$c.slice_name] = $c.id }
 Write-Host "  Found: $($chartMap.Keys -join ', ')"
 
 function Get-ChartId($name) {
@@ -55,9 +58,7 @@ function Get-ChartId($name) {
     $chartMap[$name]
 }
 
-# --- Layout builder ---
-# Arranges chart IDs in a 2-column grid (width=6 each).
-# Odd last chart gets full width (12).
+# --- Layout builder: 2-column grid (width=6 each), last odd chart full-width (12) ---
 function Build-Layout([int[]]$chartIds, [string[]]$chartNames) {
     $rows      = [System.Collections.Generic.List[object]]::new()
     $allCharts = [System.Collections.Generic.Dictionary[string,object]]::new()
@@ -95,7 +96,7 @@ function Build-Layout([int[]]$chartIds, [string[]]$chartNames) {
         "DASHBOARD_VERSION_KEY" = "v2"
         "ROOT_ID" = [PSCustomObject]@{ type = "ROOT"; id = "ROOT_ID"; children = @("GRID_ID") }
         "GRID_ID" = [PSCustomObject]@{
-            type    = "GRID"; id = "GRID_ID"
+            type     = "GRID"; id = "GRID_ID"
             children = @($rows | ForEach-Object { $_.id })
             parents  = @("ROOT_ID")
         }
@@ -112,55 +113,7 @@ function Build-Layout([int[]]$chartIds, [string[]]$chartNames) {
     $layout | ConvertTo-Json -Depth 20
 }
 
-# --- Dashboard definitions ---
-# Chart names → IDs resolved at runtime
-$dashboards = @(
-    @{
-        title  = "HM Dashboard"
-        charts = @(
-            "Lesson Plans Created Over Time",
-            "LBA Avg Score by Subject",
-            "App Usage by Section",
-            "Lesson Plans: Subject x Grade Heatmap"
-        )
-    }
-    @{
-        title  = "CRP Dashboard"
-        charts = @(
-            "Lesson Plans Created Over Time",
-            "LBA Avg Score by Subject",
-            "AI Actions by Type",
-            "Lesson Plans: Subject x Grade Heatmap"
-        )
-    }
-    @{
-        title  = "BEO Dashboard"
-        charts = @(
-            "App Usage by Section",
-            "Lesson Plans Created Over Time",
-            "Users by Role",
-            "App Usage: Day x Hour Heatmap"
-        )
-    }
-    @{
-        title  = "DDPI Dashboard"
-        charts = @(
-            "Lesson Plans Created Over Time",
-            "LBA Avg Score by Subject",
-            "AI Actions by Type",
-            "App Usage by Section",
-            "Chatbot Resolution Rate",
-            "Users by Role",
-            "Lesson Plans: Subject x Grade Heatmap",
-            "App Usage: Day x Hour Heatmap"
-        )
-    }
-)
-
-# Sync dashboard_slices via kubectl exec into the superset-postgresql pod.
-# Superset 3.x POST /api/v1/dashboard/ does not populate the dashboard_slices
-# junction table, so charts appear as "deleted" even though IDs are correct in
-# position_json. SQL Lab API blocks DML, so we use psql directly.
+# Sync dashboard_slices via psql (Superset 3.x POST /api/v1/dashboard/ doesn't populate junction table)
 function Sync-DashboardSlices([int]$DashboardId, [int[]]$ChartIds) {
     $rows = $ChartIds | ForEach-Object { "($DashboardId,$_)" }
     $sql  = "INSERT INTO dashboard_slices (dashboard_id, slice_id) VALUES $($rows -join ',') ON CONFLICT DO NOTHING;"
@@ -168,45 +121,55 @@ function Sync-DashboardSlices([int]$DashboardId, [int[]]$ChartIds) {
         $pgPod = kubectl get pods -n superset -l app.kubernetes.io/name=postgresql `
             --field-selector=status.phase=Running -o jsonpath="{.items[0].metadata.name}" 2>$null
         if (-not $pgPod) { $pgPod = "superset-postgresql-0" }
-        kubectl exec -n superset $pgPod -- `
-            psql -U superset -d superset -c $sql 2>&1 | Out-Null
+        kubectl exec -n superset $pgPod -- psql -U superset -d superset -c $sql 2>&1 | Out-Null
         Write-Host "    dashboard_slices synced ($($ChartIds.Count) charts)"
     } catch {
         Write-Warning "    dashboard_slices sync failed (non-fatal): $_"
     }
 }
 
-# --- Create dashboards ---
-Write-Host "Creating $($dashboards.Count) dashboards ..."
-$createdIds = @()
+# --- Single "Leaders Dashboard" with all 7 charts ---
+$chartNames = @(
+    "Lesson Plans by Zone",
+    "Lesson Plans by Subject",
+    "Lesson Plans by Medium",
+    "Active / Inactive Users",
+    "User Activity Table",
+    "Avg Feedback Score on Generated Content",
+    "Chatbot Requests by Month"
+)
 
-foreach ($d in $dashboards) {
-    $ids   = $d.charts | ForEach-Object { Get-ChartId $_ }
-    $names = $d.charts
+Write-Host ""
+Write-Host "Resolving chart IDs ..."
+$ids = $chartNames | ForEach-Object { Get-ChartId $_ }
+Write-Host "  IDs: $($ids -join ', ')"
 
-    # Check if already exists
-    $enc      = [Uri]::EscapeDataString("(filters:!((col:dashboard_title,opr:eq,value:'$($d.title)')))")
-    $existing = Invoke-Superset GET "/api/v1/dashboard/?q=$enc"
-    if ($existing.count -gt 0) {
-        $id = $existing.result[0].id
-        Write-Host "  [$($d.title)] already exists id=$id - re-syncing slices."
-        $createdIds += $id
-        Sync-DashboardSlices $id $ids
-        continue
-    }
+$dashTitle = "Leaders Dashboard"
 
+$enc      = [Uri]::EscapeDataString("(filters:!((col:dashboard_title,opr:eq,value:'$dashTitle')))")
+$existing = Invoke-Superset GET "/api/v1/dashboard/?q=$enc"
+
+if ($existing.count -gt 0) {
+    $dashId = $existing.result[0].id
+    Write-Host "[$dashTitle] already exists id=$dashId — re-syncing slices."
+    Sync-DashboardSlices $dashId $ids
+} else {
     $body = @{
-        dashboard_title = $d.title
-        position_json   = Build-Layout $ids $names
+        dashboard_title = $dashTitle
+        position_json   = Build-Layout $ids $chartNames
         published       = $true
     }
-
+    Refresh-Csrf
     $resp = Invoke-Superset POST "/api/v1/dashboard/" $body
-    Write-Host "  [$($d.title)] created id=$($resp.id)"
-    $createdIds += $resp.id
-    Sync-DashboardSlices $resp.id $ids
+    $dashId = $resp.id
+    Write-Host "[$dashTitle] created id=$dashId"
+    Sync-DashboardSlices $dashId $ids
 }
 
 Write-Host ""
-Write-Host "Dashboard IDs: $($createdIds -join ', ')"
-Write-Host "View at: $BaseUrl/dashboard/list"
+Write-Host "Dashboard ID: $dashId"
+Write-Host "View at: $BaseUrl/superset/dashboard/$dashId/"
+Write-Host ""
+Write-Host "Fetch UUID for embedding:"
+Write-Host "  GET $BaseUrl/api/v1/dashboard/$dashId"
+Write-Host "  (look for 'uuid' in the response)"

@@ -46,7 +46,7 @@ Geography hierarchy: **State → Zone → District → Mandal/Taluk → Block �
 | C6 | Avg Feedback Score on Generated Content | Donut (Very good / Needs improvement / Doesn't meet requirement) | `fact_lba_attempts.score` | Teacher Training |
 | C7 | Chatbot Requests by Month | Grouped bar (Edu Chat / Lesson Chat) | `fact_chatbot_sessions` + `fact_ai_actions` | Teacher Usage / Classroom Insights |
 
-> **Note:** C3 (Medium) is not yet in the ETL schema — `fact_lesson_plans` has no `medium` column. Either needs to be sourced from MongoDB `teacherlessonplans.medium` or treated as out of scope until schema is extended.
+> C3 (Medium) is fully supported. `fact_lesson_plans.medium` is populated by the ETL via `masterlessons.medium` (joined on `lessonId`).
 
 ---
 
@@ -146,5 +146,5 @@ All roles see the same charts but data is filtered by their geographic scope.
 
 `medium TEXT NOT NULL DEFAULT 'Unknown'` added to `fact_lesson_plans`.
 
-ETL reads `teacherlessonplans.medium` from MongoDB (`lp.get("medium") or "Unknown"`).  
-C3 (Lesson Plans by Medium) is now fully supported — no outstanding gap.
+ETL reads `masterlessons.medium` from MongoDB (joined via `lessonId` — field does not exist on `teacherlessonplans`).  
+C3 (Lesson Plans by Medium) is fully supported — no outstanding gap.
