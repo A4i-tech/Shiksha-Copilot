@@ -215,8 +215,12 @@ def main() -> None:
 
         # ------------------------------------------------------------------ lesson lookup
         lessons = {
-            str(l["_id"]): {"subject": l.get("subject", "General"), "grade": int(l.get("class") or 1)}
-            for l in db.masterlessons.find({}, {"subject": 1, "class": 1})
+            str(l["_id"]): {
+                "subject": l.get("subject", "General"),
+                "grade":   int(l.get("class") or 1),
+                "medium":  (l.get("medium") or "unknown").capitalize(),
+            }
+            for l in db.masterlessons.find({}, {"subject": 1, "class": 1, "medium": 1})
         }
 
         # ------------------------------------------------------------------ fact_lesson_plans
@@ -230,7 +234,7 @@ def main() -> None:
             subject = meta.get("subject", "General")
             grade   = meta.get("grade", 1)
             status  = STATUS_MAP.get(lp.get("status", ""), "draft")
-            medium  = lp.get("medium") or "Unknown"
+            medium  = meta.get("medium", "Unknown")
             lp_rows.append((uid, subject, grade, status, medium, coerce_dt(lp.get("createdAt"))))
 
         if lp_rows:
