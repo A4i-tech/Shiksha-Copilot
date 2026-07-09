@@ -29,10 +29,15 @@ configOverrides:
     import os
     _pg = os.environ.get('SUPERSET_PG_PASSWORD', '')
     SQLALCHEMY_DATABASE_URI = f'postgresql+psycopg2://superset:{_pg}@superset-postgresql:5432/superset'
-  rls: |
+  feature_flags: |
     FEATURE_FLAGS = {
         "ROW_LEVEL_SECURITY": True,
+        "EMBEDDED_SUPERSET": True,
     }
+  embedding: |
+    GUEST_ROLE_NAME = "Public"
+    GUEST_TOKEN_JWT_EXP_SECONDS = 300
+    HTTP_HEADERS = {"X-Frame-Options": "ALLOWALL"}
 
 extraEnvRaw:
   - name: SUPERSET_SECRET_KEY
