@@ -1,5 +1,5 @@
 import { Injectable, NgZone, inject } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { firstValueFrom, of } from 'rxjs';
 
 import { AuthorizationService } from '../services/authorization.service';
@@ -14,6 +14,7 @@ export class BaselineSurveyGuard implements CanActivate {
   private survey = inject(BaselineSurveyService);
   private dialog = inject(BaselineSurveyDialogService);
   private zone = inject(NgZone);
+  private router = inject(Router);
 
   async canActivate(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Promise<boolean> {
     // If not logged in, don’t block routing here.
@@ -37,7 +38,13 @@ export class BaselineSurveyGuard implements CanActivate {
 
     // 2) Check completion
     try {
+      
       const resp = await firstValueFrom(this.survey.checkCompleted());
+      // Backend unreachable: don't treat as "not completed", show 503 instead
+      if (!resp?.success) {
+        this.router.navigate(['/error/503']);
+        return false;
+      }
       const completed = !!resp?.data?.completed;
       const remindLaterCount = resp?.data?.remindLaterCount;
       const isMandatory = !!resp?.data?.isMandatory;
