@@ -12,15 +12,24 @@ const routes: Routes = [
   },
   {
     path: 'create-batch',
-    component: CreateBatchComponent
+    component: CreateBatchComponent,
+    data:{
+      idleTracking:'custom',
+    }
   },
   {
     path: 'view-batch',
-    component: ViewBatchComponent
+    component: ViewBatchComponent,
+    data:{
+      idleTracking:'custom',
+    }
   },
   {
     path: 'view-teachers/:batchId',
-    component: ViewAssignedTeachersComponent
+    component: ViewAssignedTeachersComponent,
+    data:{
+      idleTracking:'custom',
+    }
   }
 ];
 

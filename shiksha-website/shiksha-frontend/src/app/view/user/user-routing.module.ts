@@ -20,6 +20,7 @@ const routes: Routes = [
     component:DashboardComponent,
     data: {
       permissions: ['standard', 'power'],
+      trackingTag: 'home',
     },
     canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
@@ -39,6 +40,7 @@ const routes: Routes = [
     component:GenerationStatusComponent,
     data: {
       permissions: ['power'],
+      trackingTag: 'generation-status',
     },
     canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
@@ -47,6 +49,7 @@ const routes: Routes = [
     component: ProfileComponent,
     data: {
       permissions: ['standard', 'power'],
+      trackingTag: 'profile',
     },
     canActivate: [PermissionGuard, EndlineSurveyGuard],
   },
@@ -55,7 +58,8 @@ const routes: Routes = [
     component:ChatbotComponent,
     data: {
       permissions: ['power'],
-      type:'general'
+      type:'general',
+      trackingTag: 'chatbot',
     },
     canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
   },
@@ -81,6 +85,7 @@ const routes: Routes = [
     loadComponent:()=> import('./help/help.component').then((c)=>c.HelpComponent),
     data: {
       permissions: ['standard', 'power'],
+      trackingTag: 'help',
     },
     canActivate: [PermissionGuard, EndlineSurveyGuard],
   }

@@ -5,7 +5,10 @@ import { ScheduleViewComponent } from './schedule-view/schedule-view.component';
 const routes: Routes = [
   {
     path: '',
-    component:ScheduleViewComponent
+    component:ScheduleViewComponent,
+    data: {
+      trackingTag: 'schedule',
+    },
   }
 ];
 

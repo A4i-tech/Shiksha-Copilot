@@ -8,14 +8,24 @@ const routes: Routes = [
   {
     path: '',
     component: QuestionBankListComponent,
+    data: {
+      trackingTag: 'question-paper-list',
+      idleTracking: 'custom',
+    },
   },
   {
     path: 'generate',
     component: QuestionBankGenerationComponent,
+    data: {
+      trackingTag: 'question-paper-generate',
+    },
   },
   {
     path: 'view/:id',
     component: QuestionBankViewComponent,
+    data: {
+      trackingTag: 'view-question-bank',
+    },
   },
 ];
 
