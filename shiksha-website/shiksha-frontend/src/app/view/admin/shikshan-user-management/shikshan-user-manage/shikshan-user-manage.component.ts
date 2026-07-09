@@ -23,6 +23,7 @@ export class ShikshanUserManageComponent implements OnInit {
     fieldName: 'Staff Role',
     bindLabel: 'name',
     bindValue: '_id',
+    multi: true,
     required: true
   };
 
@@ -87,7 +88,7 @@ export class ShikshanUserManageComponent implements OnInit {
     this.initialize_add_form();
     if (this.mode === 'view') this.addForm.disable();
     this.shikshanaUserService.getRoles().subscribe((res: any) => {
-      this.userRolesDropdownOptions = res.data.results.filter((role: any) => role.permissions.includes('dashboard.admin.view'));
+      this.userRolesDropdownOptions = res.data.results.filter((role: any) => !role.isSuperUser && role.permissions.includes('dashboard.admin.view'));
       this.getRegionsData();
     });
     this.handleRoleChange();
@@ -98,7 +99,7 @@ export class ShikshanUserManageComponent implements OnInit {
       name: [null, [Validators.required, Validators.minLength(3)]],
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
       email: [null, [Validators.required, Validators.email]],
-      role: [null, [Validators.required]],
+      roles: [[], [Validators.required]],
       isDeleted: [false, [Validators.required]],
       state: [null],
       zones: [[]],
@@ -119,7 +120,7 @@ export class ShikshanUserManageComponent implements OnInit {
   }
 
   handleRoleChange() {
-    this.addForm.get('role')?.valueChanges.subscribe((role) => {
+    this.addForm.get('roles')?.valueChanges.subscribe(() => {
       if (this.selectedRoleHas('scope.regional')) {
         this.addForm.get('state')?.setValidators([Validators.required]);
         this.addForm.get('zones')?.setValidators([Validators.required]);
@@ -237,7 +238,7 @@ export class ShikshanUserManageComponent implements OnInit {
       name: string;
       phone: string;
       email: string;
-      role: string;
+      roles: string[];
       isDeleted: boolean;
       state?: string;
       zones?: string[];
@@ -249,7 +250,7 @@ export class ShikshanUserManageComponent implements OnInit {
       name: formData.name?.trim(),
       phone: formData.phone?.toString(),
       email: formData.email?.trim().toLowerCase(),
-      role: formData.role,
+      roles: formData.roles,
       isDeleted: formData.isDeleted
     };
 
@@ -302,16 +303,16 @@ export class ShikshanUserManageComponent implements OnInit {
     this.commonStaffUserService.getUserDetails(id, 'admin').subscribe({
       next: (res: any) => {
         const userData = res.data;
-        const roleValue = userData.role[0]._id;
+        const roleIds = userData.role.map((role: any) => role._id);
 
-        if (this.roleHas(roleValue, 'scope.regional') && userData.state) {
+        if (this.roleHas(roleIds, 'scope.regional') && userData.state) {
           this.updateZoneOptions(userData.state);
           this.updateDistrictOptions(userData.zones);
           this.addForm.patchValue({
             name: userData.name,
             phone: userData.phone,
             email: userData.email,
-            role: roleValue,
+            roles: roleIds,
             isDeleted: userData.isDeleted,
             state: userData.state,
             zones: userData.zones,
@@ -322,7 +323,7 @@ export class ShikshanUserManageComponent implements OnInit {
             name: userData.name,
             phone: userData.phone,
             email: userData.email,
-            role: roleValue,
+            roles: roleIds,
             isDeleted: userData.isDeleted,
             state: null,
             zones: [],
@@ -346,11 +347,11 @@ export class ShikshanUserManageComponent implements OnInit {
   }
 
   selectedRoleHas(permission: string): boolean {
-    return this.roleHas(this.addForm.get('role')!.value, permission);
+    return this.roleHas(this.addForm.get('roles')!.value, permission);
   }
 
-  roleHas(roleId: string, permission: string): boolean {
-    return this.userRolesDropdownOptions.find((role) => role._id === roleId).permissions.includes(permission);
+  roleHas(roleIds: string[], permission: string): boolean {
+    return this.userRolesDropdownOptions.some((role) => roleIds.includes(role._id) && role.permissions.includes(permission));
   }
 
 }

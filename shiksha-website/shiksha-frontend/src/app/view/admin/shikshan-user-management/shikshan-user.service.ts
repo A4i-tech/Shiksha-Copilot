@@ -23,7 +23,7 @@ export class ShikshanService extends BaseRestService {
         email: data.email,
         address: data.address,
       },
-      roles: [data.role],
+      roles: data.roles,
       profiles: {
         admin: {
           state: data.state,
@@ -48,7 +48,7 @@ export class ShikshanService extends BaseRestService {
         email: data.email,
         address: data.address,
       },
-      roles: [data.role],
+      roles: data.roles,
       profiles: {
         admin: {
           state: data.state,

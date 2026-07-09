@@ -17,7 +17,7 @@ function normalizePhone(phone) {
 }
 
 function mapRoles(roles) {
-  return [...new Set([].concat(roles).map((role) => {
+  return [...new Set((Array.isArray(roles) ? roles : [roles]).map((role) => {
     const roleId = mongoose.Types.ObjectId.isValid(role) ? role : ROLE_MAP[String(role).toLowerCase()];
     return new mongoose.Types.ObjectId(roleId);
   }))];

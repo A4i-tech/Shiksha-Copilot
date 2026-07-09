@@ -277,7 +277,7 @@ describe("TeacherLessonPlanController", () => {
     it("should generate content successfully for power user", async () => {
       const mockResult = { success: true, data: { lessonPlan: {} } };
       mockManager.generateContent = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-plan.generate"];
       mockReq.body = { lessonId: "lesson-123" };
 
       await controller.generateContent(mockReq, mockRes);
@@ -301,7 +301,7 @@ describe("TeacherLessonPlanController", () => {
     it("should handle errors in content generation", async () => {
       const mockResult = { success: false, message: "Generation failed" };
       mockManager.generateContent = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-plan.generate"];
 
       await controller.generateContent(mockReq, mockRes);
 
@@ -311,7 +311,7 @@ describe("TeacherLessonPlanController", () => {
     it("should handle exceptions", async () => {
       const error = new Error("Server error");
       mockManager.generateContent = jest.fn().mockRejectedValue(error);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-plan.generate"];
 
       await controller.generateContent(mockReq, mockRes);
 
@@ -324,7 +324,7 @@ describe("TeacherLessonPlanController", () => {
     it("should regenerate content successfully", async () => {
       const mockResult = { success: true, data: { lessonPlan: {} } };
       mockManager.regenerateContent = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-plan.generate"];
       mockReq.body = { lessonPlanId: "lesson-123" };
 
       await controller.regenerateContent(mockReq, mockRes);
@@ -454,7 +454,7 @@ describe("TeacherLessonPlanController", () => {
     it("should retry lesson plan for power user", async () => {
       const mockResult = { success: true, data: {} };
       mockManager.retryLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-plan.generate"];
       mockReq.body = { regeneratedId: "regen-123", _id: "lesson-123" };
 
       await controller.retryLessonPlan(mockReq, mockRes);
@@ -474,7 +474,7 @@ describe("TeacherLessonPlanController", () => {
     it("should handle retry errors", async () => {
       const mockResult = { success: false, message: "Retry failed" };
       mockManager.retryLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-plan.generate"];
       mockReq.body = { regeneratedId: "regen-123", _id: "lesson-123" };
 
       await controller.retryLessonPlan(mockReq, mockRes);

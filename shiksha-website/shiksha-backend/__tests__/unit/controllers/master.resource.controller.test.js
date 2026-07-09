@@ -30,6 +30,7 @@ describe("MasterResourceController", () => {
 
     mockReq = {
       user: { _id: "user-123", role: "teacher" },
+      permissions: ["lesson-resource.generate"],
       params: {},
       query: {},
       body: {},
@@ -88,7 +89,7 @@ describe("MasterResourceController", () => {
         data: { resourceId: "resource-123", regenerated: true },
       };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-resource.generate"];
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Outdated content",

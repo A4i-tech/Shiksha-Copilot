@@ -8,7 +8,7 @@ const ExcelJS = require('exceljs');
 const mongoose = require('mongoose');
 // const ejs = require('ejs');
 const path = require('path');
-const { resolvePermissions } = require('../helper/permission.helper');
+const { getRolePermissions } = require('../helper/permission.helper');
 
 /** @extends {BaseManager<TeacherTrainingBatchDao>} */
 class TeacherTrainingBatchManager extends BaseManager {
@@ -20,7 +20,7 @@ class TeacherTrainingBatchManager extends BaseManager {
   async getBatches(user) {
     try {
       let query = {};
-      const permissions = resolvePermissions(user.roles);
+      const permissions = user ? getRolePermissions(user.roles) : [];
       if (permissions.includes('scope.regional') && !permissions.includes('scope.global')) query.createdBy = user._id;
       const batches = await TeacherTrainingBatch.find(query).populate([
         { path: 'assignedTeachers', select: 'identity profiles.teacher' },

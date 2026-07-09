@@ -6,7 +6,7 @@ const UserDao = require("../dao/user.dao");
 const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
-const { resolvePermissions } = require("../helper/permission.helper");
+const { getRolePermissions } = require("../helper/permission.helper");
 const CAPTCHA_ATTEMPT = 3, MAX_LOGIN_ATTEMPTS = 6;
 const LOGIN_LOCK_MINUTES = 5, LOGIN_LOCK_TTL = LOGIN_LOCK_MINUTES * 60 * 1000;
 const PENDING_PIN_TTL_MINUTES = 5, PENDING_PIN_TTL = PENDING_PIN_TTL_MINUTES * 60 * 1000;
@@ -147,7 +147,7 @@ class AuthManager {
         const { roles, ...sessionUser } = user.toObject();
         return formatApiReponse(true, "PIN verified successfully!", {
             user: sessionUser,
-            permissions: resolvePermissions(user.roles),
+            permissions: getRolePermissions(user.roles),
             token,
         });
     }

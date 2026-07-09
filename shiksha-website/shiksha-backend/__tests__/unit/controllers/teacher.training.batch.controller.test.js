@@ -1,10 +1,12 @@
 const TeacherTrainingBatch = require("../../../models/teacher.training.batch.model");
 const User = require("../../../models/user.model");
 const TeacherAbsent = require("../../../models/teacher.absent.model");
+const Role = require("../../../models/role.model");
 
 jest.mock("../../../models/teacher.training.batch.model");
 jest.mock("../../../models/user.model");
 jest.mock("../../../models/teacher.absent.model");
+jest.mock("../../../models/role.model");
 jest.mock("../../../managers/teacher.training.batch.manager");
 jest.mock("../../../services/azure.blob.service");
 
@@ -21,6 +23,7 @@ describe("TeacherTrainingBatchController", () => {
 
     mockReq = {
       user: { _id: "user-123", roles: ["admin"] },
+      permissions: [],
       params: {},
       query: {},
       body: {},
@@ -73,6 +76,9 @@ describe("TeacherTrainingBatchController", () => {
   describe("getTeacherTrainingStats", () => {
     it("should get training stats successfully", async () => {
       const mockTeachers = [{ _id: "teacher-1" }, { _id: "teacher-2" }];
+      Role.find = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue([{ _id: "teacher-role" }]),
+      });
       User.find = jest.fn().mockReturnValue({
         select: jest.fn().mockResolvedValue(mockTeachers),
       });

@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
-const { resolvePermissions } = require("../helper/permission.helper");
+const { getRolePermissions } = require("../helper/permission.helper");
 
 const { JWT_SECRET } = process.env;
 
@@ -21,7 +21,7 @@ exports.isAuthenticated = function isAuthenticated(req, res, next) {
       if (!user.isLoginAllowed) return res.status(401).json({ success: false, message: "Account details updated. Please login to continue" });
 
       req.user = user;
-      req.permissions = resolvePermissions(user.roles);
+      req.permissions = getRolePermissions(user.roles);
       next();
     } catch (error) {
       next(error);

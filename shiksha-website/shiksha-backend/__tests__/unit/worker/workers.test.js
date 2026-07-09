@@ -281,6 +281,11 @@ describe("worker modules", () => {
       findOne: jest.fn(() => Promise.resolve(null)),
       insertMany: jest.fn((rows) => Promise.resolve(rows)),
     }));
+    jest.doMock("../../../models/role.model", () => ({
+      find: jest.fn(() => ({
+        select: jest.fn(() => Promise.resolve([{ _id: "role-teacher", name: "Teacher" }])),
+      })),
+    }));
     jest.doMock("../../../models/school.model", () => ({
       findOne: jest.fn(() =>
         Promise.resolve({

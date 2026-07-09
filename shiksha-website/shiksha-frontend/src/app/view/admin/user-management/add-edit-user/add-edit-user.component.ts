@@ -75,6 +75,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     fieldName: 'Teacher Role',
     bindLabel: 'name',
     bindValue: '_id',
+    multi: true,
     required: true
   };
 
@@ -120,7 +121,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     this.initialize_add_form();
     if (this.mode === 'view') this.addForm.disable();
     this.userManagementService.getRoles().subscribe((res: any) => {
-      this.userRolesDropdownOptions = res.data.results.filter((role: any) => role.permissions.includes('dashboard.teacher.view'));
+      this.userRolesDropdownOptions = res.data.results.filter((role: any) => !role.isSuperUser && role.permissions.includes('dashboard.teacher.view'));
     });
     if (this.mode !== 'view' && this.mode !== 'edit') this.getRegionsData();
   }
@@ -298,7 +299,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       district: [null, [Validators.required]],
       block: [null, [Validators.required]],
       school: [null, [Validators.required]],
-      role: [null, [Validators.required]],
+      roles: [[], [Validators.required]],
     });
   }
 
@@ -377,7 +378,8 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       data,
       keysToRemove
     );
-    newObj.role = newObj.role[0]._id;
+    newObj.roles = newObj.role.map((role: any) => role._id);
+    delete newObj.role;
     this.dependentPatchData = removedObj;
     this.getRegionsData();
     this.addForm.patchValue(newObj);

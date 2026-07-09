@@ -47,7 +47,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", roles: ["admin"] };
+      const user = { _id: "user-123", roles: [{ permissions: ["scope.global"] }] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
@@ -67,7 +67,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", roles: ["manager"] };
+      const user = { _id: "user-123", roles: [{ permissions: ["scope.regional"] }] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({
@@ -85,7 +85,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", roles: ["manager", "admin"] };
+      const user = { _id: "user-123", roles: [{ permissions: ["scope.regional"] }, { permissions: ["scope.global"] }] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
@@ -111,7 +111,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: jest.fn().mockRejectedValue(new Error("Database error")),
       });
 
-      const user = { _id: "user-123", roles: ["admin"] };
+      const user = { _id: "user-123", roles: [{ permissions: ["scope.global"] }] };
       const result = await manager.getBatches(user);
 
       expect(result.success).toBe(false);
@@ -126,7 +126,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", roles: ["teacher"] };
+      const user = { _id: "user-123", roles: [{ permissions: ["dashboard.teacher.view"] }] };
       const result = await manager.getBatches(user);
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});

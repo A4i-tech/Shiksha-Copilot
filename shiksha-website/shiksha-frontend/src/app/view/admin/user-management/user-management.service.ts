@@ -18,7 +18,7 @@ export class UserManagementService extends BaseRestService {
   editUserDetails(id: string, data: any): Observable<any> {
     return this.http.put(`${this.baseUrl}/users/${id}`, {
       identity: { name: data.name, phone: data.phone, email: data.email, address: data.address },
-      roles: [data.role],
+      roles: data.roles,
       profiles: {
         teacher: {
           state: data.state,

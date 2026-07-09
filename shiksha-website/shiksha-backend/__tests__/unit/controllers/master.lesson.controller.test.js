@@ -35,6 +35,7 @@ describe("MasterLessonController", () => {
 
     mockReq = {
       user: { _id: "teacher-123", role: "teacher", name: "Test Teacher" },
+      permissions: ["lesson-plan.edit", "lesson-resource.edit"],
       params: {},
       query: {},
       body: {},
@@ -178,7 +179,7 @@ describe("MasterLessonController", () => {
         data: { lessonId: "lesson-123", regenerated: true },
       };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["presentation.generate.lesson_plan"];
+      mockReq.permissions = ["lesson-plan.generate"];
       mockReq.body = { lessonId: "lesson-123", reason: "Outdated content" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);

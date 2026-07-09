@@ -26,7 +26,9 @@ describe("UserController", () => {
         _id: "user-123",
         identity: { name: "Test User", phone: "9876543210" },
         roles: ["teacher"],
+        profiles: { admin: { zones: ["zone1", "zone2"], districts: ["dist1", "dist2"] } },
       },
+      permissions: [],
       file: null
     };
 
@@ -360,10 +362,10 @@ describe("UserController", () => {
       const mockResult = { success: true, data: { results: [], total: 0 } };
       mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
       mockReq.user = {
-        role: ["manager"],
-        zones: ["zone1", "zone2"],
-        districts: ["dist1", "dist2"]
+        _id: "user-123",
+        profiles: { admin: { zones: ["zone1", "zone2"], districts: ["dist1", "dist2"] } }
       };
+      mockReq.permissions = ["scope.regional"];
       mockReq.query = {};
 
       await controller.getAll(mockReq, mockRes);
@@ -392,7 +394,7 @@ describe("UserController", () => {
         10,
         expect.objectContaining({
           $or: expect.arrayContaining([
-            { name: expect.objectContaining({ $regex: expect.any(RegExp) }) }
+            { "identity.name": expect.objectContaining({ $regex: expect.any(RegExp) }) }
           ])
         }),
         {},

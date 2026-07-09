@@ -21,7 +21,7 @@ export class StaffUserCommonService extends BaseRestService {
         email: data.email,
         address: data.address,
       },
-      roles: [data.role],
+      roles: data.roles,
       profiles: isTeacher
         ? {
             teacher: {
