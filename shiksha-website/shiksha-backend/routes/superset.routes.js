@@ -47,16 +47,31 @@ function buildRlsClause(uid, mappedRole) {
   }
 }
 
-async function getSupersetAdminToken() {
-  const resp = await axios.post(`${SUPERSET_URL}/api/v1/security/login`, {
+async function getSupersetAuth() {
+  const loginResp = await axios.post(`${SUPERSET_URL}/api/v1/security/login`, {
     username: SUPERSET_ADMIN_USERNAME,
     password: SUPERSET_ADMIN_PASSWORD,
     provider: "db",
     refresh: false,
   });
-  const token = resp.data?.access_token;
-  if (!token) throw new Error("Superset admin login failed — no token returned");
-  return token;
+  const accessToken = loginResp.data?.access_token;
+  if (!accessToken) throw new Error("Superset admin login failed — no token returned");
+
+  // Carry session cookie so Superset CSRF validation can find the session token
+  const loginCookies = loginResp.headers["set-cookie"] || [];
+  const cookieHeader = loginCookies.map((c) => c.split(";")[0]).join("; ");
+
+  const csrfResp = await axios.get(`${SUPERSET_URL}/api/v1/security/csrf_token/`, {
+    headers: { Authorization: `Bearer ${accessToken}`, Cookie: cookieHeader },
+  });
+  const csrfToken = csrfResp.data?.result;
+  if (!csrfToken) throw new Error("Failed to get CSRF token from Superset");
+
+  // Merge any new cookies set by csrf_token endpoint
+  const csrfCookies = (csrfResp.headers["set-cookie"] || []).map((c) => c.split(";")[0]);
+  const mergedCookies = [...loginCookies.map((c) => c.split(";")[0]), ...csrfCookies].join("; ");
+
+  return { accessToken, csrfToken, cookieHeader: mergedCookies };
 }
 
 // POST /api/superset/guest-token
@@ -77,7 +92,7 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
 
     const rlsClause = buildRlsClause(uid, mappedRole);
 
-    const adminToken = await getSupersetAdminToken();
+    const { accessToken: adminToken, csrfToken, cookieHeader } = await getSupersetAuth();
 
     const body = {
       user: {
@@ -92,7 +107,7 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
     const guestResp = await axios.post(
       `${SUPERSET_URL}/api/v1/security/guest_token/`,
       body,
-      { headers: { Authorization: `Bearer ${adminToken}` } }
+      { headers: { Authorization: `Bearer ${adminToken}`, "X-CSRFToken": csrfToken, Cookie: cookieHeader, Referer: SUPERSET_URL } }
     );
 
     const token = guestResp.data?.token;
@@ -100,7 +115,7 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
 
     res.json({ token });
   } catch (err) {
-    console.error("[superset] guest-token error:", err?.response?.data || err.message);
+    console.error("[superset] guest-token error step:", err?.config?.url, err?.response?.status, err?.response?.data || err.message);
     res.status(500).json({ error: "Failed to generate dashboard token" });
   }
 });

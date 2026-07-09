@@ -38,6 +38,7 @@ configOverrides:
     GUEST_ROLE_NAME = "Public"
     GUEST_TOKEN_JWT_EXP_SECONDS = 300
     HTTP_HEADERS = {"X-Frame-Options": "ALLOWALL"}
+    TALISMAN_CONFIG = {"frame_options": "ALLOWALL", "force_https": False, "content_security_policy": None}
 
 extraEnvRaw:
   - name: SUPERSET_SECRET_KEY
