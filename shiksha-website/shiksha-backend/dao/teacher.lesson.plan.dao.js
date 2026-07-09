@@ -251,6 +251,34 @@ class TeacherLessonPlanDao extends BaseDao {
 		}
 	}
 
+	async deleteLessonPlan(teacherId, lessonPlanId) {
+		try {
+			const lessonPlan = await TeacherLessonPlan.findOneAndUpdate(
+				{ teacherId, lessonId: lessonPlanId, isLesson: true, isDeleted: { $ne: true } },
+				{ $set: { isDeleted: true } },
+				{ new: true }
+			);
+			return lessonPlan;
+		} catch (error) {
+			console.error("Error deleting lesson plan:", error);
+			throw new Error("Internal server error");
+		}
+	}
+
+	async deleteResourcePlan(teacherId, resourcePlanId) {
+		try {
+			const resourcePlan = await TeacherLessonPlan.findOneAndUpdate(
+				{ teacherId, resourceId: resourcePlanId, isLesson: false, isDeleted: { $ne: true } },
+				{ $set: { isDeleted: true } },
+				{ new: true }
+			);
+			return resourcePlan;
+		} catch (error) {
+			console.error("Error deleting resource plan:", error);
+			throw new Error("Internal server error");
+		}
+	}
+
 	async getRegeneratedLessonPlansCount(teacherId, fromDate, toDate){
 		try{
 			const query = {
