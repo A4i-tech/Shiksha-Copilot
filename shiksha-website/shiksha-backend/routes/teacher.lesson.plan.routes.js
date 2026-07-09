@@ -202,6 +202,7 @@ router.get(
 router.delete(
 	"/teacher-lesson-plan/lesson/:lessonPlanId",
 	isAuthenticated,
+	requirePermission("lesson-plan.delete"),
 	asyncMiddleware(
 		teacherLessonPlanController.deleteLessonPlan.bind(
 			teacherLessonPlanController
@@ -212,6 +213,7 @@ router.delete(
 router.delete(
 	"/teacher-lesson-plan/resource/:resourcePlanId",
 	isAuthenticated,
+	requirePermission("lesson-resource.delete"),
 	asyncMiddleware(
 		teacherLessonPlanController.deleteResourcePlan.bind(
 			teacherLessonPlanController

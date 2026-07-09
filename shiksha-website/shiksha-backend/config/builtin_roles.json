@@ -27,7 +27,7 @@
     "_id": "7368696b7368615f74636872",
     "name": "Teacher",
     "description": "Uses the teacher workspace to manage profile details, create lesson plans and question papers, view schedules, and complete surveys.",
-    "permissions": ["dashboard.teacher.view", "school.read", "profile.view", "profile.edit", "content.view", "lesson-plan.generate", "lesson-plan.edit", "lesson-plan.enhance", "lesson-resource.generate", "lesson-resource.edit", "question-paper.generate", "schedule.view", "schedule.edit", "help.view", "survey.baseline.complete", "survey.endline.complete"],
+    "permissions": ["dashboard.teacher.view", "school.read", "profile.view", "profile.edit", "content.view", "lesson-plan.generate", "lesson-plan.edit", "lesson-plan.enhance", "lesson-plan.delete", "lesson-resource.generate", "lesson-resource.edit", "lesson-resource.delete", "question-paper.generate", "schedule.view", "schedule.edit", "help.view", "survey.baseline.complete", "survey.endline.complete"],
     "isSystem": true,
     "isDeleted": false
   },
@@ -35,7 +35,7 @@
     "_id": "7368696b7368615f70777221",
     "name": "Power Teacher",
     "description": "Extends the teacher workspace with chat, generation status, and presentation generation tools.",
-    "permissions": ["dashboard.teacher.view", "school.read", "profile.view", "profile.edit", "content.view", "lesson-plan.generate", "lesson-plan.edit", "lesson-plan.enhance", "lesson-resource.generate", "lesson-resource.edit", "question-paper.generate", "schedule.view", "schedule.edit", "help.view", "survey.baseline.complete", "survey.endline.complete", "generation.status.view", "chat.use", "presentation.generate.arbitrary", "presentation.generate.lesson_plan"],
+    "permissions": ["dashboard.teacher.view", "school.read", "profile.view", "profile.edit", "content.view", "lesson-plan.generate", "lesson-plan.edit", "lesson-plan.enhance", "lesson-plan.delete", "lesson-resource.generate", "lesson-resource.edit", "lesson-resource.delete", "question-paper.generate", "schedule.view", "schedule.edit", "help.view", "survey.baseline.complete", "survey.endline.complete", "generation.status.view", "chat.use", "presentation.generate.arbitrary", "presentation.generate.lesson_plan"],
     "isSystem": true,
     "isDeleted": false
   }
