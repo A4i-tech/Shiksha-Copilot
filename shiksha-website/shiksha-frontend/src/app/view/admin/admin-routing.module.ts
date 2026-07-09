@@ -88,6 +88,17 @@ const routes: Routes = [
       idleTracking:'custom',
     },
     canActivate: [PermissionGuard],
+  },
+  {
+    path: 'leaders-dashboard',
+    loadComponent: () =>
+      import('./leaders-dashboard/leaders-dashboard.component').then(
+        (c) => c.LeadersDashboardComponent
+      ),
+    data: {
+      permissions: ['admin', 'manager'],
+    },
+    canActivate: [PermissionGuard],
   }
 ];
 @NgModule({
