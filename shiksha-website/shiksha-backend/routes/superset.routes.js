@@ -10,7 +10,8 @@ const SUPERSET_DASHBOARD_UUID = process.env.SUPERSET_DASHBOARD_UUID;
 
 const ROLE_MAP = {
   power: "HM", standard: "HM", hm: "HM",
-  crp: "CRP", beo: "BEO", ddpi: "DDPI",
+  crp: "CRP", beo: "BEO", meo: "MEO",
+  deo: "DEO", ddpi: "DDPI",
   admin: "StateAdmin", manager: "StateAdmin", state: "StateAdmin",
 };
 
@@ -37,8 +38,10 @@ function buildRlsClause(uid, mappedRole) {
       return `user_id IN (SELECT user_id FROM dim_users WHERE school_id = (SELECT school_id FROM dim_users WHERE user_id = '${uid}'))`;
     case "CRP":
     case "BEO":
+    case "MEO":
       // block-level: teachers in same region (block)
       return `user_id IN (SELECT user_id FROM dim_users WHERE region_id = (SELECT region_id FROM dim_users WHERE user_id = '${uid}'))`;
+    case "DEO":
     case "DDPI":
       // district-level: all blocks under same district parent
       return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (SELECT r.region_id FROM dim_regions r WHERE r.parent_id = (SELECT dr.parent_id FROM dim_regions dr JOIN dim_users du ON du.region_id = dr.region_id WHERE du.user_id = '${uid}')))`;
@@ -85,9 +88,8 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
     const mongoUser = req.adminUser || req.user;
     if (!mongoUser) return res.status(401).json({ error: "No authenticated user" });
 
-    const isAdmin = !!req.adminUser;
     const roles = mongoUser.role || [];
-    const mappedRole = isAdmin ? "StateAdmin" : mapRole(roles);
+    const mappedRole = mapRole(roles);
     const uid = String(mongoUser._id);
 
     const rlsClause = buildRlsClause(uid, mappedRole);
