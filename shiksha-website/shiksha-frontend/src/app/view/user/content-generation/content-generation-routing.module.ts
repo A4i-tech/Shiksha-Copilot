@@ -37,7 +37,9 @@ const routes: Routes = [
     path:'presentation',
     component:PresentationGenerationComponent,
     data:{
+      mode:'generate',
       trackingTag:'presentation',
+      idleTracking:'skip',
     }
   },
   {

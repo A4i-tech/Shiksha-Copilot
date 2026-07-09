@@ -23,16 +23,7 @@ export class IdleService {
 
   idleIndicator: Subject<any> = new Subject();
 
-  customIdleTrackerRoutes: string[] = [
-    '/auth/signin',
-    '/dashboard',
-    '/school-management',
-    '/teacher-management',
-    '/staff-management',
-    '/content-activity',
-    '/audit-log',
-    '/teacher-training',
-  ];
+  customIdleTrackerRoutes: string[] = [];
 
   skipIdleActivityRoutes: string[] = [];
 

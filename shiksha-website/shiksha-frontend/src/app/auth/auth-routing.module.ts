@@ -10,7 +10,10 @@ const routes:Routes=[
     },
     {
         path:'signin',
-        component:SignInComponent
+        component:SignInComponent,
+        data:{
+            idleTracking:'custom',
+        }
     }
 ]
 
