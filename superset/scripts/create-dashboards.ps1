@@ -151,7 +151,7 @@ $existing = Invoke-Superset GET "/api/v1/dashboard/?q=$enc"
 
 if ($existing.count -gt 0) {
     $dashId = $existing.result[0].id
-    Write-Host "[$dashTitle] already exists id=$dashId — re-syncing slices."
+    Write-Host "[$dashTitle] already exists id=$dashId - re-syncing slices."
     Sync-DashboardSlices $dashId $ids
 } else {
     $body = @{

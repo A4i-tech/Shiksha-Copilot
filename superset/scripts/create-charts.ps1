@@ -101,8 +101,10 @@ Write-Host ""
 Write-Host "Ensuring virtual datasets ..."
 
 # C1: lesson plans with region name (fact_lesson_plans -> dim_users -> dim_regions)
+# user_id included so per-user RLS clause applies
 $lpByRegionId = Ensure-VirtualDataset "v_lp_by_region" @"
 SELECT
+    flp.user_id,
     dr.name     AS zone_name,
     dr.type     AS zone_type,
     flp.subject,
@@ -130,9 +132,10 @@ LEFT JOIN fact_user_activities fa ON du.user_id = fa.user_id
 GROUP BY du.user_id, du.name, du.role
 "@
 
-# C6: feedback score bucketed into categories
+# C6: feedback score bucketed into categories; user_id for RLS
 $feedbackId = Ensure-VirtualDataset "v_feedback_score" @"
 SELECT
+    user_id,
     CASE
         WHEN score >= 80 THEN 'Very Good'
         WHEN score >= 60 THEN 'Good'
@@ -142,11 +145,11 @@ SELECT
 FROM fact_lba_attempts
 "@
 
-# C7: lesson chat and edu chat (chatbot) unified for time-series by type
+# C7: lesson chat and edu chat unified for time-series; user_id for RLS
 $chatbotId = Ensure-VirtualDataset "v_chatbot_by_type" @"
-SELECT created_at, 'Lesson Chat' AS chat_type FROM fact_chatbot_sessions
+SELECT user_id, created_at, 'Lesson Chat' AS chat_type FROM fact_chatbot_sessions
 UNION ALL
-SELECT created_at, 'Edu Chat'   AS chat_type FROM fact_ai_actions WHERE action_type = 'chatbot'
+SELECT user_id, created_at, 'Edu Chat'   AS chat_type FROM fact_ai_actions WHERE action_type = 'chatbot'
 "@
 
 # --- Chart definitions (C1 – C7, matching Shiksha Copilot dashboard) ---
