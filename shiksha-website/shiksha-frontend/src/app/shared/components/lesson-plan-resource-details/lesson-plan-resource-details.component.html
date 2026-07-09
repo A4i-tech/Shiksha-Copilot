@@ -1,7 +1,10 @@
 <div class="rounded-sm bg-shade-50 p-5">
-	<h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
-		{{(getLessonType()?.type === 'plan' ? 'Lesson Plan Details':'Lesson Resources') | translate}}
-	</h1>
+	<div class="flex gap-2 items-center">
+		<img src="assets/icons/back-arrow.svg" alt="" class="cursor-pointer" (click)="backNavigation()" />
+		<h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
+			{{(getLessonType()?.type === 'plan' ? 'Lesson Plan Details':'Lesson Resources') | translate}}
+		</h1>
+	</div>
 	<p class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">{{'Info' | translate}}: {{(getLessonType()?.type === 'plan' ? 'Lesson':'Resource')}} Plan, {{'Board' | translate}}-{{getBoards()}} </p>
 
 	<div class="text-content rounded my-5 ">

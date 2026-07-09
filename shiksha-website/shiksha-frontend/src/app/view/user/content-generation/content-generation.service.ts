@@ -275,6 +275,14 @@ export class ContentGenerationService extends BaseRestService {
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/resource/${id}`);
   }
 
+  deleteLessonPlan(id:any){
+    return this.http.delete(`${this.baseUrl}/teacher-lesson-plan/lesson/${id}`);
+  }
+
+  deleteResourcePlan(id:any){
+    return this.http.delete(`${this.baseUrl}/teacher-lesson-plan/resource/${id}`);
+  }
+
   getRegenerationLimit(){
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/regeneration-limit`);
   }

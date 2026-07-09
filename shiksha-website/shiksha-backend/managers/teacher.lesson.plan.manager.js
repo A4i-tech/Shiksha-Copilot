@@ -281,6 +281,34 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 	}
 
+	async deleteLessonPlan(teacherId, lessonPlanId) {
+		try {
+			const lessonPlan = await this.dao.deleteLessonPlan(teacherId, lessonPlanId);
+			if (lessonPlan) {
+				return formatApiReponse(true, "", lessonPlan);
+			} else {
+				return formatApiReponse(false, "Lesson plan not found", null);
+			}
+		} catch (error) {
+			console.error("Error deleting lesson plan:", error);
+			return formatApiReponse(false, "Internal server error", error);
+		}
+	}
+
+	async deleteResourcePlan(teacherId, resourcePlanId) {
+		try {
+			const resourcePlan = await this.dao.deleteResourcePlan(teacherId, resourcePlanId);
+			if (resourcePlan) {
+				return formatApiReponse(true, "", resourcePlan);
+			} else {
+				return formatApiReponse(false, "Resource plan not found", null);
+			}
+		} catch (error) {
+			console.error("Error deleting resource plan:", error);
+			return formatApiReponse(false, "Internal server error", error);
+		}
+	}
+
 	async _createRegeneratedLessonResource(teacherLessonPlan, masterLesson) {
 		await this.regeneratedLessonResource.create({
 			isLesson: true,
