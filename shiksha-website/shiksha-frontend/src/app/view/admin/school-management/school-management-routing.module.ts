@@ -15,6 +15,7 @@ const routes:Routes = [
         component:SchoolListComponent,
         data: {
             permissions: ['admin','manager'],
+            idleTracking:'custom',
           },
           canActivate: [PermissionGuard]
     },
@@ -23,6 +24,7 @@ const routes:Routes = [
         component:SchoolAddEditComponent,
         data: {
             permissions: ['admin'],
+            idleTracking:'custom',
           },
           canActivate: [PermissionGuard]
     },
@@ -31,6 +33,7 @@ const routes:Routes = [
         component:SchoolAddEditComponent,
         data: {
             permissions: ['admin','manager'],
+            idleTracking:'custom',
           },
           canActivate: [PermissionGuard]
     }

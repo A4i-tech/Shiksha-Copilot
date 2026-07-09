@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { DEFAULT_INTERRUPTSOURCES, Idle } from '@ng-idle/core';
 import { filter, Subject } from 'rxjs';
-import { NavigationEnd, Router } from '@angular/router';
+import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { TimerService } from './timer.service';
 import {
   IDLE_START_THRESHOLD,
@@ -18,30 +18,14 @@ export class IdleService {
   private idleThreshold = IDLE_START_THRESHOLD;
   private warningThreshold = IDLE_WARNING_THRESHOLD;
 
-  private moduleName: any;
-  private previousModule: any;
+  private currentModuleTag: string | null = null;
+  private previousModuleTag: string | null = null;
 
   idleIndicator: Subject<any> = new Subject();
 
-  customIdleTrackerRoutes: any[] = [
-    '/auth/signin',
-    '/content-generation',
-    '/question-paper',
-    '/content-generation/lesson-plan',
-    '/content-generation/lesson-resources',
-    '/dashboard',
-    '/school-management',
-    '/teacher-management',
-    '/staff-management',
-    '/content-activity',
-    '/audit-log',
-    '/teacher-training',
-  ];
+  customIdleTrackerRoutes: string[] = [];
 
-  skipIdleActivityRoutes: any[] = [
-    '/content-generation/inspect/lesson-plan',
-    '/content-generation/inspect/resource-plan',
-  ];
+  skipIdleActivityRoutes: string[] = [];
 
   isCustom = false;
 
@@ -65,16 +49,18 @@ export class IdleService {
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe({
         next: (val: any) => {
-          this.moduleName = val.url;
-          this.isCustom =
-            this.customIdleTrackerRoutes.includes(val.urlAfterRedirects);
-          this.isSkip = this.skipIdleActivityRoutes.includes(
+          const leaf = this.getLeafSnapshot();
+          const flags = this.resolveIdleFlags(leaf, val.urlAfterRedirects);
+          this.isCustom = flags.isCustom;
+          this.isSkip = flags.isSkip;
+          this.currentModuleTag = this.resolveTrackingTag(
+            leaf,
             val.urlAfterRedirects
           );
 
           if (this.timerService.getCurrentTime('interaction') && !this.isSkip) {
             let trackObj: any = {
-              moduleName: this.getModuleName(this.previousModule),
+              moduleName: this.previousModuleTag,
               idleTime: this.timerService.getCurrentTime('idle'),
               interactionTime: this.timerService.getCurrentTime('interaction'),
             };
@@ -131,35 +117,46 @@ export class IdleService {
     });
   }
 
-  private getModuleName(url: string): string {
-    const matchedModuleName = this.customModuleMatcher(url);
-
-    if (matchedModuleName) {
-      return matchedModuleName;
+  private getLeafSnapshot(): ActivatedRouteSnapshot {
+    let route = this.router.routerState.snapshot.root;
+    while (route.firstChild) {
+      route = route.firstChild;
     }
-    return url.split('/').filter(Boolean)[0] || '';
+    return route;
   }
 
-  customModuleMatcher(url: string): string | null {
-    const routePatterns = {
-      'view-lp': /^\/content-generation\/lesson-plan\/([a-f0-9]{24})$/,
-      'view-lr': /^\/content-generation\/resource-plan\/([a-f0-9]{24})$/,
-      'lesson-chat': /^\/content-generation\/lesson-chat/,
-      'view-question-bank': /^\/question-paper\/view\/([a-f0-9]{24})$/
-    };
-
-    for (const [routeName, pattern] of Object.entries(routePatterns)) {
-      if (pattern.test(url)) {
-        return routeName;
-      }
+  private resolveTrackingTag(
+    leaf: ActivatedRouteSnapshot,
+    url: string
+  ): string | null {
+    const map = leaf.data?.['trackingTagMap'];
+    const planType = map ? leaf.paramMap.get('planType') : null;
+    if (map && planType && map[planType]) {
+      return map[planType];
     }
+    return leaf.data?.['trackingTag'] ?? url.split('/').filter(Boolean)[0] ?? null;
+  }
 
-    return null;
+  private resolveIdleFlags(
+    leaf: ActivatedRouteSnapshot,
+    url: string
+  ): { isCustom: boolean; isSkip: boolean } {
+    const tracking = leaf.data?.['idleTracking'];
+    if (tracking === 'custom') {
+      return { isCustom: true, isSkip: false };
+    }
+    if (tracking === 'skip') {
+      return { isCustom: false, isSkip: true };
+    }
+    return {
+      isCustom: this.customIdleTrackerRoutes.includes(url),
+      isSkip: this.skipIdleActivityRoutes.includes(url),
+    };
   }
 
   startWatching() {
     if (!this.isCustom) {
-      this.previousModule = this.moduleName;
+      this.previousModuleTag = this.currentModuleTag;
     }
     this.idle.watch();
     this.timerService.startTimer('interaction');
@@ -190,12 +187,11 @@ export class IdleService {
   }
 
   getCurrentModuleName() {
-    const isDraft = this.moduleName.includes('draft');
+    const isDraft = this.getLeafSnapshot().data?.['mode'] === 'draft';
     if (this.isCustom || this.isSkip || isDraft) {
       return null;
-    } else {
-      return this.getModuleName(this.moduleName);
     }
+    return this.currentModuleTag;
   }
 
   resetIdler() {

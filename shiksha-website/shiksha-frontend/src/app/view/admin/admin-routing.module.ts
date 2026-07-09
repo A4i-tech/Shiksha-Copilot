@@ -18,6 +18,7 @@ const routes: Routes = [
       ),
     data: {
       permissions: ['admin','manager'],
+      idleTracking:'custom',
     },
     canActivate: [PermissionGuard],
   },
@@ -59,6 +60,7 @@ const routes: Routes = [
     component:ContentActivityComponent,
     data: {
       permissions: ['admin','manager'],
+      idleTracking:'custom',
     },
     canActivate: [PermissionGuard],
   },
@@ -83,6 +85,7 @@ const routes: Routes = [
     loadComponent:()=> import('./audit-log/audit-log.component').then((c)=>c.AuditLogComponent),
     data: {
       permissions: ['admin','manager'],
+      idleTracking:'custom',
     },
     canActivate: [PermissionGuard],
   }

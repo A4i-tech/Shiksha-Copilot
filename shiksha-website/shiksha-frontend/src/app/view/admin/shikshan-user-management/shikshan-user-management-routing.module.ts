@@ -11,15 +11,24 @@ const routes: Routes = [
   },
   {
     path: 'list',
-    component:UserStaffListComponent
+    component:UserStaffListComponent,
+    data:{
+      idleTracking:'custom',
+    }
   },
   {
     path: 'add',
-    component:ShikshanUserManageComponent
+    component:ShikshanUserManageComponent,
+    data:{
+      idleTracking:'custom',
+    }
   },
   {
     path: ':id',
-    component:ShikshanUserManageComponent
+    component:ShikshanUserManageComponent,
+    data:{
+      idleTracking:'custom',
+    }
   }
 
 ];
