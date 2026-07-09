@@ -215,19 +215,6 @@ describe("MasterLessonController", () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
-    it("should deny access for unauthorized role", async () => {
-      mockReq.permissions = [];
-      mockReq.body = { lessonId: "lesson-123", reason: "Test" };
-
-      await controller.regenerateLessonPlan(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: "Forbidden: You do not have the required permissions to perform this action.",
-      });
-      expect(mockManager.regenerateLessonPlan).not.toHaveBeenCalled();
-    });
-
     it("should handle regeneration failure", async () => {
       const mockResult = { success: false, message: "Regeneration failed" };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);

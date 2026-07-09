@@ -171,8 +171,7 @@ export class ContentActivityComponent implements OnInit {
         'state',
         selectedStateValue
       );
-      if (this.utilityService.isRegionallyScoped() && loggedInUser?.profiles?.admin?.zones?.length > 0) {
-        // Only show manager's zones
+      if (this.utilityService.isRegionallyScoped()) {
         this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) =>
           loggedInUser.profiles.admin.zones.includes(zone.name)
         );

@@ -9,17 +9,23 @@ class RoleManager extends BaseManager {
   }
 
   async create(req) {
+    const exists = await this.dao.Model.exists({ name: req.body.name, isDeleted: false });
+    if (exists) return formatApiReponse(false, "A role with this name already exists", null);
     return formatApiReponse(true, "Role created", await this.dao.create(req.body));
   }
 
   async update(req) {
     const role = await this.dao.getById(req.params.id);
-    if (role.isSuperUser && "permissions" in req.body) return formatApiReponse(false, "Superuser permissions cannot be changed", null);
-    return formatApiReponse(true, "Role updated", await this.dao.Model.findByIdAndUpdate(role._id, { $set: req.body }, { new: true, runValidators: true }));
+    if (!role) return formatApiReponse(false, "Role not found", null);
+    const allowed = role.isSystem ? ["name", "description"] : ["name", "description", "permissions"];
+    const update = Object.fromEntries(allowed.filter((k) => k in req.body).map((k) => [k, req.body[k]]));
+    if (!Object.keys(update).length) return formatApiReponse(false, "No valid fields to update", null);
+    return formatApiReponse(true, "Role updated", await this.dao.Model.findByIdAndUpdate(role._id, { $set: update }, { new: true, runValidators: true }));
   }
 
   async delete(req) {
     const role = await this.dao.getById(req.params.id);
+    if (!role) return formatApiReponse(false, "Role not found", null);
     if (role.isSystem) return formatApiReponse(false, "System roles cannot be deleted", null);
     await this.dao.delete(role._id);
     return formatApiReponse(true, "Role deleted", null);
@@ -27,7 +33,9 @@ class RoleManager extends BaseManager {
 
   async getAll(...args) {
     const result = await super.getAll(...args);
-    if (result.success) result.data.results = result.data.results.map((role) => role.isSuperUser ? { ...role, permissions: ALL_PERMISSIONS } : role);
+    if (result.success) {
+      result.data.results = result.data.results.map((r) => (r.isSuperUser ? { ...r, permissions: ALL_PERMISSIONS } : r));
+    }
     return result;
   }
 

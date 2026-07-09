@@ -287,17 +287,6 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should return 403 for non-power users", async () => {
-      mockReq.permissions = [];
-
-      await controller.generateContent(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: "Forbidden: You do not have the required role to perform this action"
-      });
-    });
-
     it("should handle errors in content generation", async () => {
       const mockResult = { success: false, message: "Generation failed" };
       mockManager.generateContent = jest.fn().mockResolvedValue(mockResult);
@@ -333,13 +322,6 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
-    it("should return 403 for non-power users", async () => {
-      mockReq.permissions = [];
-
-      await controller.regenerateContent(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-    });
   });
 
   describe("handleWebhook", () => {
@@ -461,14 +443,6 @@ describe("TeacherLessonPlanController", () => {
 
       expect(mockManager.retryLessonPlan).toHaveBeenCalledWith("regen-123", "lesson-123");
       expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should return 403 for non-power users", async () => {
-      mockReq.permissions = [];
-
-      await controller.retryLessonPlan(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
     });
 
     it("should handle retry errors", async () => {

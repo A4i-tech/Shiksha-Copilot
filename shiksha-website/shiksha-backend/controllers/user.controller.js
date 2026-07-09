@@ -29,7 +29,7 @@ class UserController extends BaseController {
   async update(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.update(id, req.body);
+      let result = await this.manager.update(id, req.body, req.user);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -280,16 +280,21 @@ class UserController extends BaseController {
         processedFilter.role = role;
       }
 
-      if (req.permissions.includes("scope.regional")) {
-        processedFilter.zone = zone || req.user.profiles.admin.zones;
-        processedFilter.district = district || req.user.profiles.admin.districts;
+      const isRegional =
+        req.permissions.includes("scope.regional") &&
+        !req.permissions.includes("scope.global");
+
+      if (isRegional) {
+        const zones = [].concat(zone || req.user.profiles?.admin?.zones || []).filter(Boolean);
+        const districts = [].concat(district || req.user.profiles?.admin?.districts || []).filter(Boolean);
+        if (!zones.length && !districts.length) {
+          return res.status(403).json({ success: false, message: "No regional scope assigned" });
+        }
+        if (zones.length) processedFilter.zone = zones;
+        if (districts.length) processedFilter.district = districts;
       } else {
-        if (zone) {
-          processedFilter.zone = zone;
-        }
-        if (district) {
-          processedFilter.district = district;
-        }
+        if (zone) processedFilter.zone = zone;
+        if (district) processedFilter.district = district;
       }
 
       const searchFilter = {};

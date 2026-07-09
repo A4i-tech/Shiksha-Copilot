@@ -28,10 +28,14 @@ class OperationsManager {
 
   async exportContentActivity(req) {
     try {
-      const { filter, search } = req.query;
-      const searchFilter = search ? { $or: ["user.name", "user.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
+      const { filter = {}, search = "" } = req.query;
+      const searchFilter = search ? { $or: ["user.identity.name", "user.profiles.teacher.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
       const activities = await this.regeneratedLogDao.getAllContentActivity({ ...filter, ...searchFilter });
       const worker = new Worker(path.resolve(__dirname, "../worker/exportcontentactivityworker.js"));
+      worker.on("error", (err) => console.error("Content activity export worker error", { userId: String(req.user._id), error: err.message }));
+      worker.on("exit", (code) => {
+        if (code !== 0) console.error("Content activity export worker exited", { userId: String(req.user._id), code });
+      });
       worker.postMessage({
         contentActivities: activities.results,
         userId: String(req.user._id),

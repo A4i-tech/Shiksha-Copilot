@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
-const { isAuthenticated, requireAnyPermission, requirePermission } = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const MasterResourceController = require("../controllers/master.resource.controller.js");
 const {
 	validateMasterResource,
@@ -36,7 +36,7 @@ router.put(
 router.post(
 	"/resource-plan/regenerate",
 	isAuthenticated,
-	requireAnyPermission("content.activity.view", "lesson-resource.generate"),
+	requirePermission("content.activity.view"),
 	asyncMiddleware(
 		masterResourceController.regenerate.bind(masterResourceController)
 	)

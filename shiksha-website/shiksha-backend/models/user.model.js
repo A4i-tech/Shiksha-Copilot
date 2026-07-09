@@ -1,60 +1,114 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
-
 const ObjectId = mongoose.Types.ObjectId;
 const JWT_SECRET = process.env.JWT_SECRET;
 
-const classSchema = new mongoose.Schema(
-  {
-    board: { type: String, required: true },
-    class: { type: Number, required: true },
-    medium: { type: String, required: true },
-    subject: { type: String, required: true },
-    name: { type: String, required: true },
-    sem: { type: Number, required: true },
+const classSchema = new mongoose.Schema({
+  board: {
+    type: String,
+    required: true,
   },
-  { _id: false }
-);
-
-const identitySchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true, trim: true },
-    phone: { type: String, required: true, trim: true },
-    normalizedPhone: { type: String, required: true, select: false },
-    email: { type: String, trim: true, lowercase: true },
-    address: String,
+  class: {
+    type: Number,
+    required: true,
   },
-  { _id: false }
-);
-
-const teacherProfileSchema = new mongoose.Schema(
-  {
-    state: String,
-    zone: String,
-    district: String,
-    block: String,
-    school: { type: ObjectId, ref: "School" },
-    preferredLanguage: { type: String, enum: ["en", "kn"], default: "en" },
-    facilities: { type: [mongoose.Schema.Types.Mixed], default: [] },
-    classes: { type: [classSchema], default: [] },
-    isProfileCompleted: { type: Boolean, default: false },
+  medium: {
+    type: String,
+    required: true,
   },
-  { _id: false }
-);
-
-const adminProfileSchema = new mongoose.Schema(
-  {
-    state: String,
-    zones: { type: [String], default: [] },
-    districts: { type: [String], default: [] },
+  subject: {
+    type: String,
+    required: true,
   },
-  { _id: false }
-);
+  name: {
+    type: String,
+    required: true,
+  },
+  sem: {
+    type: Number,
+    required: true,
+  },
+});
 
-const userSchema = new mongoose.Schema(
+const identitySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  phone: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  normalizedPhone: {
+    type: String,
+    required: true,
+    select: false,
+  },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+  },
+  address: {
+    type: String,
+  },
+}, { _id: false });
+
+const teacherProfileSchema = new mongoose.Schema({
+  state: {
+    type: String,
+  },
+  zone: {
+    type: String,
+  },
+  district: {
+    type: String,
+  },
+  block: {
+    type: String,
+  },
+  school: {
+    type: ObjectId,
+    ref: "School",
+  },
+  preferredLanguage: {
+    type: String,
+    enum: ["en", "kn"],
+    default: "en",
+  },
+  facilities: [],
+  isProfileCompleted: {
+    type: Boolean,
+    default: false,
+  },
+  classes: {
+    type: [classSchema],
+  },
+}, { _id: false });
+
+const adminProfileSchema = new mongoose.Schema({
+  state: {
+    type: String,
+  },
+  zones: {
+    type: [String],
+    default: [],
+  },
+  districts: {
+    type: [String],
+    default: [],
+  },
+}, { _id: false });
+
+const userSchema = mongoose.Schema(
   {
-    identity: { type: identitySchema, required: true },
+    identity: {
+      type: identitySchema,
+      required: true,
+    },
     roles: {
       type: [{ type: ObjectId, ref: "Role" }],
       required: true,
@@ -67,46 +121,66 @@ const userSchema = new mongoose.Schema(
       teacher: teacherProfileSchema,
       admin: adminProfileSchema,
     },
-    profileImage: { type: String, default: "" },
+    profileImage: {
+      type: String,
+      default: "",
+    },
     profileImageExpiresIn: {
       type: Number,
-      default: () => Math.floor(Date.now() / 1000),
+      default: parseInt(Date.now() / 1000),
     },
-    isDeleted: { type: Boolean, default: false },
-    otp: { type: String, select: false },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    otp: {
+      type: String,
+      select: false,
+    },
     loginAttempts: { type: [Date], default: [], select: false },
     recovery: { type: Object, select: false },
-    rememberMeToken: { type: Boolean, default: false, select: false },
-    isLoginAllowed: { type: Boolean, default: true },
+    rememberMeToken: {
+      type: Boolean,
+      default: false,
+      select: false,
+    },
+    isLoginAllowed: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
 
 userSchema.pre("validate", function normalizePhone(next) {
-  if (this.identity?.phone) {
+  if (this.identity && this.identity.phone) {
     const digits = String(this.identity.phone).replace(/\D/g, "");
     this.identity.normalizedPhone = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
   }
   next();
 });
 
-userSchema.methods.generateAuthToken = function generateAuthToken() {
-  return jwt.sign({ _id: this._id }, JWT_SECRET, { expiresIn: "7d" });
+userSchema.methods.generateAuthToken = function () {
+  const token = jwt.sign(
+    { _id: this._id },
+    JWT_SECRET,
+    {
+      expiresIn: "7d",
+    }
+  );
+  return token;
 };
 
 userSchema.index(
   { "identity.normalizedPhone": 1 },
   { unique: true, name: "uniq_user_normalized_phone" }
 );
+
 userSchema.index(
-  {
-    "profiles.teacher.school": 1,
-    "profiles.teacher.state": 1,
-    "profiles.teacher.zone": 1,
-    "profiles.teacher.district": 1,
-    "profiles.teacher.block": 1,
-  },
+  { "profiles.teacher.school": 1, "profiles.teacher.state": 1, "profiles.teacher.zone": 1, "profiles.teacher.district": 1, "profiles.teacher.block": 1 },
   { name: "idx_user_teacher_location", background: true }
 );
 
-module.exports = mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+
+module.exports = User;

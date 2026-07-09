@@ -120,7 +120,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
 
     this.initialize_add_form();
     if (this.mode === 'view') this.addForm.disable();
-    this.userManagementService.getRoles().subscribe((res: any) => {
+    this.commonStaffUserService.getRoles().subscribe((res: any) => {
       this.userRolesDropdownOptions = res.data.results.filter((role: any) => !role.isSuperUser && role.permissions.includes('dashboard.teacher.view'));
     });
     if (this.mode !== 'view' && this.mode !== 'edit') this.getRegionsData();
@@ -188,9 +188,11 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       );
       // Only show manager's zones if role is manager
       const loggedInUser = this.utilityService.loggedInUserData;
-      const adminProfile = loggedInUser?.profiles?.admin;
-      if (this.utilityService.isRegionallyScoped() && adminProfile?.zones) {
-        this.zoneDropdownOptions = this.utilityService.getZonesForManager(this.regionsData, adminProfile);
+      if (this.utilityService.isRegionallyScoped()) {
+        this.zoneDropdownOptions = this.utilityService.getZonesForManager(
+          this.regionsData,
+          loggedInUser.profiles.admin
+        );
       } else {
         this.zoneDropdownOptions = this.selectedStateObj.zones;
       }
@@ -317,7 +319,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       }
       // Check if the school value has changed
       if (currentSchoolValue !== this.initialSchoolValue) {
-        this.userManagementService.editUserDetails(this.userId, updatedData).subscribe({
+        this.commonStaffUserService.updateTeacher(this.userId, updatedData).subscribe({
           next: (res: any) => {
             this.router.navigate(['/teachers/list']);
             this.utilityService.handleResponse(res);
@@ -329,7 +331,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
         });
       }
       else {
-        this.userManagementService.editUserDetails(this.userId, this.addForm.value).subscribe({
+        this.commonStaffUserService.updateTeacher(this.userId, this.addForm.value).subscribe({
           next: (res: any) => {
             this.router.navigate(['/teachers/list']);
             this.utilityService.handleResponse(res);
@@ -344,7 +346,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     }
     else {
 
-      this.commonStaffUserService.addUser(this.addForm.value, 'user').subscribe({
+      this.commonStaffUserService.createTeacher(this.addForm.value).subscribe({
         next: (res: any) => {
           this.router.navigate(['/teachers/list']);
           this.utilityService.handleResponse(res);
@@ -366,33 +368,42 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     return this.addForm.controls;
   }
 
-  setFormValue(data: any) {
-    const keysToRemove = [
-      'state',
-      'zone',
-      'district',
-      'block',
-      'school'
-    ];
-    const { newObj, removedObj } = this.utilityService.removeKeys(
-      data,
-      keysToRemove
-    );
-    newObj.roles = newObj.role.map((role: any) => role._id);
-    delete newObj.role;
-    this.dependentPatchData = removedObj;
+  patchStatus() {
+    if (this.addForm.value.isDeleted === false) {
+      this.addForm.patchValue({
+        isDeleted: true
+      });
+    } else {
+      this.addForm.patchValue({
+        isDeleted: false
+      });
+    }
+  }
+
+  setFormValue(user: any) {
+    const teacher = user.profiles.teacher;
+    this.dependentPatchData = {
+      state: teacher.state,
+      zone: teacher.zone,
+      district: teacher.district,
+      block: teacher.block,
+      school: teacher.school,
+    };
     this.getRegionsData();
-    this.addForm.patchValue(newObj);
-
-    this.initialSchoolValue = newObj.school; // Set the initial school value
-
+    this.addForm.patchValue({
+      name: user.identity.name,
+      phone: user.identity.phone,
+      roles: user.roles.map((role: any) => role._id),
+      isDeleted: user.isDeleted,
+    });
+    this.initialSchoolValue = teacher.school._id;
   }
 
   getUserDetails(id: string) {
-    this.commonStaffUserService.getUserDetails(id, 'user').subscribe({
+    this.commonStaffUserService.getById(id).subscribe({
       next: (res: any) => {
         const userData = res.data;
-        this.savedSchoolId = userData?.school?._id
+        this.savedSchoolId = userData.profiles.teacher.school._id;
         this.setFormValue(userData);
       },
       error: (err) => {

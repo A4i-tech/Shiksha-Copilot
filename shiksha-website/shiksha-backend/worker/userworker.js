@@ -180,6 +180,11 @@ dbService.getConnection().then(async (client) => {
       );
       if (isEmptyRow) return;
 
+      const roles = rowData.role.map((role) => roleByName.get(String(role).toLowerCase()));
+      if (roles.some((id) => !id)) {
+        validationErrors.push({ row: rowNumber + 1, message: `Unknown role in: ${rowData.role.join("|")}` });
+        return;
+      }
       const userDataRow = {
         identity: {
           name: rowData.name,
@@ -188,7 +193,7 @@ dbService.getConnection().then(async (client) => {
             .replace(/\D/g, "")
             .replace(/^91(?=\d{10}$)/, ""),
         },
-        roles: rowData.role.map((role) => roleByName.get(role.toLowerCase())),
+        roles,
         profiles: {
           teacher: {
             school: Number(rowData.school),

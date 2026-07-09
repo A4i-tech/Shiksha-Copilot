@@ -4,7 +4,7 @@ const ALL_PERMISSIONS = Object.freeze(permissions.map((permission) => permission
 
 function getRolePermissions(roles) {
   if (roles.some((role) => role.isSuperUser)) return ALL_PERMISSIONS;
-  return [...new Set(roles.flatMap((role) => role.permissions))].sort();
+  return [...new Set(roles.flatMap((role) => role.permissions))];
 }
 
 module.exports = {

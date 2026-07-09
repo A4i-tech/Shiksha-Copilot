@@ -159,18 +159,11 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     this.getRegionsData();
 
     const loggedInUser = this.utilityService.loggedInUserData;
-    const adminProfile = loggedInUser?.profiles?.admin;
     if (this.utilityService.isRegionallyScoped()) {
-      if (adminProfile?.state) {
-        this.filterObj.state = adminProfile.state;
-      }
-      if (adminProfile?.zones?.length > 0) {
-        this.filterObj.zone = adminProfile.zones;
-      }
-      if (adminProfile?.districts?.length > 0) {
-        this.filterObj.district = adminProfile.districts;
-      }
-      // Only show manager's zones in dropdown
+      const admin = loggedInUser.profiles.admin;
+      this.filterObj.state = admin.state;
+      this.filterObj.zone = admin.zones;
+      this.filterObj.district = admin.districts;
       setTimeout(() => this.setZoneDropdownOptionsForManager(), 0);
       this.getShcoolList(this.filterObj);
     } else {
@@ -209,8 +202,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
         'state',
         selectedStateValue
       );
-      if (this.utilityService.isRegionallyScoped() && loggedInUser?.profiles?.admin?.zones?.length > 0) {
-        // Only show manager's zones
+      if (this.utilityService.isRegionallyScoped()) {
         this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) =>
           loggedInUser.profiles.admin.zones.includes(zone.name)
         );
@@ -534,19 +526,15 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     }
 
     setZoneDropdownOptionsForManager() {
-      const loggedInUser = this.utilityService.loggedInUserData;
-      const adminProfile = loggedInUser?.profiles?.admin;
-      if (adminProfile?.zones && this.regionsData) {
-        // Find the state object
-        const stateObj = this.regionsData.find(
-          (state: any) => state.state === adminProfile.state
+      const admin = this.utilityService.loggedInUserData.profiles.admin;
+      if (!this.regionsData) return;
+      const stateObj = this.regionsData.find(
+        (state: any) => state.state === admin.state
+      );
+      if (stateObj) {
+        this.zoneDropdownOptions = stateObj.zones.filter((zone: any) =>
+          admin.zones.includes(zone.name)
         );
-        if (stateObj) {
-          // Only include zones assigned to the manager
-          this.zoneDropdownOptions = stateObj.zones.filter((zone: any) =>
-            adminProfile.zones.includes(zone.name)
-          );
-        }
       }
     }
 

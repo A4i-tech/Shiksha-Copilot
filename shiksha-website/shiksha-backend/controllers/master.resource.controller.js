@@ -27,9 +27,6 @@ class MasterResourceController extends BaseController {
 
 	async regenerate(req, res) {
 		try {
-			if (!req.permissions.includes("content.activity.view") && !req.permissions.includes("lesson-resource.generate")) {
-				return res.status(403).json({ message: "Forbidden: You do not have the required permissions to perform this action." });
-			}
 			const { resourceId, reason, userId } = req.body;
 			const result = await this.manager.regenerateResourcePlan({
 				resourceId,

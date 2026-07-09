@@ -41,7 +41,7 @@ import { environment } from 'src/environments/environment';
             <label class="form-control-label">Permissions</label>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-80 overflow-auto border rounded p-3">
               <label *ngFor="let permission of permissions" class="flex gap-3 items-start text-sm border rounded p-3 bg-surface-muted">
-                <input class="mt-1" type="checkbox" [checked]="selectedPermissions.has(permission.name)" [disabled]="editing && editing.isSuperUser" (change)="togglePermission(permission.name, $event)">
+                <input class="mt-1" type="checkbox" [checked]="selectedPermissions.has(permission.name)" [disabled]="editing && editing.isSystem" (change)="togglePermission(permission.name, $event)">
                 <span>
                   <span class="block font-medium text-content break-all">{{ permission.name }}</span>
                   <span class="block text-xs text-content-60 mt-1">{{ permission.description }}</span>
@@ -187,12 +187,16 @@ export class RoleManagementComponent implements OnInit {
     this.selectedPermissions.clear();
   }
   save() {
-    const payload = this.editing && this.editing.isSuperUser ? this.form.value : { ...this.form.value, permissions: [...this.selectedPermissions] };
-    const request = this.editing ? this.http.put(`${this.baseUrl}/roles/${this.editing._id}`, payload) : this.http.post(`${this.baseUrl}/roles`, payload);
-    request.subscribe({
+    const payload = this.editing?.isSystem
+      ? this.form.value
+      : { ...this.form.value, permissions: [...this.selectedPermissions] };
+    const req$ = this.editing
+      ? this.http.put(`${this.baseUrl}/roles/${this.editing._id}`, payload)
+      : this.http.post(`${this.baseUrl}/roles`, payload);
+    req$.subscribe({
       next: (res: any) => {
         this.utility.handleResponse(res);
-        if (this.editing) this.edit({ ...this.editing, ...res.data, permissions: this.editing.isSuperUser ? this.editing.permissions : res.data.permissions });
+        if (this.editing) this.edit({ ...this.editing, ...res.data, permissions: this.editing.isSystem ? this.editing.permissions : res.data.permissions });
         else this.reset();
         this.load();
       },

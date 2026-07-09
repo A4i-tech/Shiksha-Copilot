@@ -12,10 +12,10 @@ export class LandingComponent implements OnInit {
 
   ngOnInit() {
     const user = this.utility.loggedInUserData;
-    if (user?.profiles?.teacher && !user.profiles.teacher.isProfileCompleted) {
+    if (user.profiles.teacher && !user.profiles.teacher.isProfileCompleted) {
       this.router.navigate(['/profile']);
-      return;
+    } else {
+      this.router.navigate([this.utility.hasPermission(['dashboard.teacher.view']) ? '/dashboard' : '/leaders-dashboard']);
     }
-    this.router.navigate([this.utility.hasPermission(['dashboard.teacher.view']) ? '/dashboard' : '/leaders-dashboard']);
   }
 }

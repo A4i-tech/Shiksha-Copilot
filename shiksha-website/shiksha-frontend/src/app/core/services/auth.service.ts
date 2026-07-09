@@ -89,10 +89,13 @@ export class AuthService {
 
   getUserLocation(): { state: string | null; zone: string | null; district: string | null } {
     const user = this.getCurrentUser();
+    if (!user) return { state: null, zone: null, district: null };
+    const teacher = user.profiles.teacher;
+    const admin = user.profiles.admin;
     return {
-      state: user?.profiles.teacher?.state || user?.profiles.admin?.state || null,
-      zone: user?.profiles.teacher?.zone || null,
-      district: user?.profiles.teacher?.district || null
+      state: teacher?.state || admin?.state || null,
+      zone: teacher?.zone || null,
+      district: teacher?.district || null,
     };
   }
 

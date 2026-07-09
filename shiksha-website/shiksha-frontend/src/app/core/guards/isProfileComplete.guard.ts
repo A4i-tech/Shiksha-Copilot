@@ -16,11 +16,12 @@ export const IsProfileCompleteGuard: CanActivateFn = (
   const utilityServcie = inject(UtilityService);
   const router = inject(Router);
 
-  if (!loggedInUser.profiles?.teacher || loggedInUser.profiles.teacher.isProfileCompleted) {
+  // Staff/admin have no teacher profile; only incomplete teachers are blocked.
+  const teacher = loggedInUser.profiles.teacher;
+  if (!teacher || teacher.isProfileCompleted) {
     return true;
-  } else {
-    utilityServcie.showWarning('Please complete the profile for further access');
-    router.navigate(['/profile']);
-    return false;
   }
+  utilityServcie.showWarning('Please complete the profile for further access');
+  router.navigate(['/profile']);
+  return false;
 };

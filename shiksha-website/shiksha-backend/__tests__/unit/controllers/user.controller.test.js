@@ -91,7 +91,7 @@ describe("UserController", () => {
 
       await controller.update(mockReq, mockRes);
 
-      expect(mockUserManager.update).toHaveBeenCalledWith("user-123", mockReq.body);
+      expect(mockUserManager.update).toHaveBeenCalledWith("user-123", mockReq.body, mockReq.user);
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
@@ -380,6 +380,43 @@ describe("UserController", () => {
         {},
         expect.any(Object)
       );
+    });
+
+    it("should deny regional users with no zone or district assignment", async () => {
+      mockUserManager.getAll = jest.fn();
+      mockReq.user = {
+        _id: "user-123",
+        profiles: { admin: { zones: [], districts: [] } },
+      };
+      mockReq.permissions = ["scope.regional"];
+      mockReq.query = {};
+
+      await controller.getAll(mockReq, mockRes);
+
+      expect(mockUserManager.getAll).not.toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+    });
+
+    it("should not force regional filters when scope.global is present", async () => {
+      const mockResult = { success: true, data: { results: [], total: 0 } };
+      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
+      mockReq.user = {
+        _id: "user-123",
+        profiles: { admin: { zones: [], districts: [] } },
+      };
+      mockReq.permissions = ["scope.regional", "scope.global"];
+      mockReq.query = {};
+
+      await controller.getAll(mockReq, mockRes);
+
+      expect(mockUserManager.getAll).toHaveBeenCalledWith(
+        1,
+        10,
+        expect.not.objectContaining({ zone: expect.anything(), district: expect.anything() }),
+        {},
+        expect.any(Object)
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
     it("should handle search filter with regex", async () => {

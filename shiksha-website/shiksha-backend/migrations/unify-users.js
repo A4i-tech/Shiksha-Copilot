@@ -19,6 +19,7 @@ function normalizePhone(phone) {
 function mapRoles(roles) {
   return [...new Set((Array.isArray(roles) ? roles : [roles]).map((role) => {
     const roleId = mongoose.Types.ObjectId.isValid(role) ? role : ROLE_MAP[String(role).toLowerCase()];
+    if (!roleId) throw new Error(`Unknown legacy role: ${role}`);
     return new mongoose.Types.ObjectId(roleId);
   }))];
 }
@@ -52,6 +53,8 @@ function teacherDocument(document) {
     profileImageExpiresIn: document.profileImageExpiresIn,
     isDeleted: Boolean(document.isDeleted),
     otp: document.otp,
+    loginAttempts: document.loginAttempts || [],
+    recovery: document.recovery,
     rememberMeToken: Boolean(document.rememberMeToken),
     isLoginAllowed: document.isLoginAllowed !== false,
     createdAt: document.createdAt,
@@ -80,6 +83,8 @@ function adminDocument(document) {
     profileImage: "",
     isDeleted: Boolean(document.isDeleted),
     otp: document.otp,
+    loginAttempts: document.loginAttempts || [],
+    recovery: document.recovery,
     rememberMeToken: Boolean(document.rememberMeToken),
     isLoginAllowed: document.isLoginAllowed !== false,
     createdAt: document.createdAt,
@@ -153,12 +158,14 @@ async function unifyUsers() {
     }
   }
 
-  for (const user of byPhone.values()) await users.replaceOne({ _id: user._id }, user, { upsert: true });
+  const unified = [...byPhone.values()];
+  // Remove phone-colliding leftovers before the unique index is applied.
+  await users.deleteMany({ _id: { $nin: unified.map((user) => user._id) } });
+  for (const user of unified) await users.replaceOne({ _id: user._id }, user, { upsert: true });
   await rewriteReferences(db, adminIdMap);
-
   await users.createIndex({ "identity.normalizedPhone": 1 }, { unique: true, name: "uniq_user_normalized_phone" });
   await admins.drop();
-  console.log(`Unified ${existingUsers.length} users and ${adminUsers.length} admin users`);
+  console.log(`Unified ${existingUsers.length} users and ${adminUsers.length} admin users into ${unified.length} records`);
 }
 
 module.exports = unifyUsers;

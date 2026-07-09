@@ -137,23 +137,6 @@ describe("MasterResourceController", () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
-    it("should deny access for unauthorized role", async () => {
-      mockReq.permissions = [];
-      mockReq.body = {
-        resourceId: "resource-123",
-        reason: "Test",
-        userId: "user-123",
-      };
-
-      await controller.regenerate(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: "Forbidden: You do not have the required permissions to perform this action.",
-      });
-      expect(mockManager.regenerateResourcePlan).not.toHaveBeenCalled();
-    });
-
     it("should return 404 when regeneration fails", async () => {
       const mockResult = { success: false, message: "Regeneration failed" };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);

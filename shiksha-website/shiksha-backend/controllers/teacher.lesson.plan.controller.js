@@ -255,9 +255,6 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            if (!req.permissions.includes("lesson-plan.generate")) {
-                return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
-            }
 
             const result = await this.manager.generateContent(teacherId, payload);
 
@@ -277,9 +274,6 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            if (!req.permissions.includes("lesson-plan.generate")) {
-                return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
-            }
 
             const result = await this.manager.regenerateContent(teacherId, payload);
 
@@ -430,9 +424,6 @@ class TeacherLessonPlanController extends BaseController {
 	async retryLessonPlan(req, res) {
 		try {
 			const { regeneratedId, _id } = req.body; 
-            if (!req.permissions.includes("lesson-plan.generate")) {
-				return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
-			}
 	
 			const result = await this.manager.retryLessonPlan(regeneratedId, _id);
 	

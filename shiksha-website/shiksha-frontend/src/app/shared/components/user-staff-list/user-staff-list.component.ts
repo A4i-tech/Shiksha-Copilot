@@ -231,17 +231,11 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
 
     const loggedInUser = this.utility.loggedInUserData;
 
-    const adminProfile = loggedInUser?.profiles?.admin;
     if (this.utility.isRegionallyScoped()) {
-      if (adminProfile?.state) {
-        this.filterObj.state = adminProfile.state;
-      }
-      if (adminProfile?.zones?.length > 0) {
-        this.filterObj.zone = adminProfile.zones;
-      }
-      if (adminProfile?.districts?.length > 0) {
-        this.filterObj.district = adminProfile.districts;
-      }
+      const admin = loggedInUser.profiles.admin;
+      this.filterObj.state = admin.state;
+      this.filterObj.zone = admin.zones;
+      this.filterObj.district = admin.districts;
     }
 
     this.getUsersList(this.filterObj);
@@ -331,7 +325,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       data: {
         status: item.isDeleted ? 'Inactive' : 'Active',
         isAction: true,
-        user_name: item.name,
+        user_name: item.identity.name,
         role_name: this.roleName(item),
         more_icon: false
       }
@@ -340,17 +334,19 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
 
   loadRoles() {
     const permission = this.getType()?.type === 'user' ? 'dashboard.teacher.view' : 'dashboard.admin.view';
-    this.userManagementService.getRoles().subscribe((res: any) => {
-      this.userRolesDropdownOptions = res.data.results.filter((role: any) => !role.isSuperUser && role.permissions.includes(permission));
+    this.commonStaffUserService.getRoles().subscribe((res: any) => {
+      this.userRolesDropdownOptions = res.data.results.filter(
+        (role: any) => !role.isSuperUser && role.permissions.includes(permission)
+      );
     });
   }
 
   roleName(item: any) {
-    return item.role.join(', ');
+    return item.roles.map((r: any) => r.name).join(', ');
   }
 
-  ondisableUser(item: any) {    
-    this.commonStaffUserService.disableUser(item.id,this.getType()?.type).subscribe({
+  ondisableUser(item: any) {
+    this.commonStaffUserService.deactivate(item.id).subscribe({
       next: (res: any) => {
         this.modalService.showDeleteUserDialog = false;
         this.utility.handleResponse(res);
@@ -359,7 +355,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       error: (err) => {
         console.error(err);
         this.utility.handleError(err);
-      }
+      },
     });
   }
 
@@ -400,33 +396,24 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     this.showAdditionalFilters = !this.showAdditionalFilters;
   }
   
-  getUsersList(filter?:any): void {
-    let observable: Observable<any>;
+  getUsersList(filter?: any): void {
+    const profileType = this.getType()?.type === 'user' ? 'teacher' : 'admin';
+    const observable = this.commonStaffUserService.list({
+      profileType,
+      page: this.currentPage,
+      limit: this.pageSize,
+      filters: filter,
+    });
 
-    if (filter) {
-      observable = this.commonStaffUserService.getUsers(
-        this.getType()?.type,
-        this.currentPage,
-        this.pageSize,
-        filter
-      );
-    } else {
-      observable = this.commonStaffUserService.getUsers(
-        this.getType()?.type,
-        this.currentPage,
-        this.pageSize
-      );
-    }
-
-    if(this.paginationSubscription){
+    if (this.paginationSubscription) {
       this.paginationSubscription.unsubscribe();
     }
-  
+
     this.paginationSubscription = observable.subscribe({
       next: (res: any) => {
         if (res?.data?.results) {
-        this.usersList = res.data['results'];
-        this.totalItems = res.data.totalItems;
+          this.usersList = res.data.results;
+          this.totalItems = res.data.totalItems;
         } else {
           this.usersList = [];
           this.totalItems = 0;
@@ -436,7 +423,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
         console.error('Error while fetching list', err);
         this.usersList = [];
         this.totalItems = 0;
-      }
+      },
     });
   }
 
@@ -464,20 +451,20 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       const formData = new FormData();
       formData.append('file', this.fileToUpload);
 
-      this.commonStaffUserService.bulkUpload(formData,this.getType()?.type).subscribe({
-        next: (res:any)=>{
+      this.commonStaffUserService.importUsers(formData).subscribe({
+        next: (res: any) => {
           this.utility.showSuccess(res.message);
           this.modalService.showBlukUploadDialog = false;
         },
-        error: (err)=>{
-          if(err?.error?.errorUrl){
+        error: (err) => {
+          if (err?.error?.errorUrl) {
             this.errorUrl = err?.error?.errorUrl;
             this.modalService.showBlukUploadDialog = false;
             this.modalService.showUploadErrorDialog = true;
-            }else{
+          } else {
             this.utility.showError(err.error.message);
-            }
-        }
+          }
+        },
       });
     }
   }
@@ -498,31 +485,31 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     }
   }
 
-  activateUser(id:any){
-    this.commonStaffUserService.activateUser(id, this.getType()?.type).subscribe({
-      next:(res:any)=>{
+  activateUser(id: any) {
+    this.commonStaffUserService.activate(id).subscribe({
+      next: (res: any) => {
         this.utility.handleResponse(res);
         this.getUsersList();
       },
-      error:(err)=>{
+      error: (err) => {
         this.utility.handleError(err);
-      }
+      },
     });
   }
 
-  exportUsersListToExcel(){
-    if(!this.usersList.length){
-      return
+  exportUsersListToExcel() {
+    if (!this.usersList.length) {
+      return;
     }
-    this.commonStaffUserService.exportTeacher(this.filterObj).
-    subscribe({
-      next:(res) => {
-       this.utility.handleResponse(res)        
+    this.commonStaffUserService.exportTeachers(this.filterObj).subscribe({
+      next: (res) => {
+        this.utility.handleResponse(res);
       },
-      error:(err)=>{
-        this.utility.handleError(err)
-      }
-    })
+      error: (err) => {
+        this.utility.handleError(err);
+      },
+    });
+
   }
 
   navigateToTraining() {
@@ -680,9 +667,11 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
         );
         // Only show manager's zones if role is manager
         const loggedInUser = this.utility.loggedInUserData;
-        const adminProfile = loggedInUser?.profiles?.admin;
-        if (this.utility.isRegionallyScoped() && adminProfile?.zones) {
-          this.zoneDropdownOptions = this.utility.getZonesForManager(this.regionsData, adminProfile);
+        if (this.utility.isRegionallyScoped()) {
+          this.zoneDropdownOptions = this.utility.getZonesForManager(
+            this.regionsData,
+            loggedInUser.profiles.admin
+          );
         } else {
           this.zoneDropdownOptions = this.selectedStateObj.zones;
         }

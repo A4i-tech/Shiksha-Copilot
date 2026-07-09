@@ -27,12 +27,12 @@ parentPort.once("message", async (data) => {
 
       users.forEach((ele) => {
         userWorkSheet.addRow({
-          teacherName: ele.name,
-          schoolName: ele.school.name,
-          phoneNumber: ele.phone,
-          teacherType: ele.role[0],
+          teacherName: ele.identity.name,
+          schoolName: ele.profiles.teacher.school.name,
+          phoneNumber: ele.identity.phone,
+          teacherType: ele.roles[0].name,
           teacherStatus: ele.isDeleted ? "Inactive" : "Active",
-          trainingStatus: ele.trainingStatus === 'trained' ? 'Trained' : 'Untrained',
+          trainingStatus: ele.trainingStatus === "trained" ? "Trained" : "Untrained",
         });
       });
 

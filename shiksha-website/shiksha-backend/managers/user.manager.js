@@ -13,13 +13,29 @@ const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../services/variform.service");
 const { MESSAGES } = require("../config/constants");
 const ClassDao = require("../dao/school.class.dao");
+const Role = require("../models/role.model");
+const { getRolePermissions, ALL_PERMISSIONS } = require("../helper/permission.helper");
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
 const logger = require("../config/loggers");
+
+/** Roles must exist and only grant permissions the actor already has (no privilege escalation). */
+async function assertAssignableRoles(roleIds, actor) {
+  const ids = [...new Set(roleIds.map(String))];
+  const roles = await Role.find({ _id: { $in: ids }, isDeleted: false });
+  if (roles.length !== ids.length) return false;
+  const actorIsSuper = actor.roles.some((r) => r.isSuperUser);
+  const actorPerms = new Set(getRolePermissions(actor.roles));
+  for (const role of roles) {
+    if (role.isSuperUser && !actorIsSuper) return false;
+    const granted = role.isSuperUser ? ALL_PERMISSIONS : role.permissions;
+    if (granted.some((p) => !actorPerms.has(p))) return false;
+  }
+  return true;
+}
 
 class UserManager extends BaseManager {
   constructor() {
     super(new UserDao());
-    this.userDao = new UserDao();
     this.schoolDao = new SchoolDao();
     this.classDao = new ClassDao();
   }
@@ -27,17 +43,21 @@ class UserManager extends BaseManager {
   async create(req) {
     try {
       const { identity, roles, profiles } = req.body;
-      const existingUser = await this.userDao.getByPhone(identity.phone);
+      const existingUser = await this.dao.getByPhone(identity.phone);
 
       if (existingUser)
         return { success: false, message: "Phone already exists!" };
+
+      if (!(await assertAssignableRoles(roles, req.user))) {
+        return { success: false, message: "Cannot assign one or more of the selected roles" };
+      }
 
       if (profiles.teacher) {
         const school = await this.schoolDao.getById(profiles.teacher.school);
         if (!school) return { success: false, message: "School does not exist!" };
       }
 
-      const result = await this.userDao.create({ identity, roles, profiles });
+      const result = await this.dao.create({ identity, roles, profiles });
 
       sendWelcomeSMS(identity.phone, identity.name).catch((error) => {
         logger.warn("Welcome SMS failed", { userId: String(result._id), error: error.message });
@@ -51,13 +71,13 @@ class UserManager extends BaseManager {
 
   async getProfileById(id) {
     try {
-      let user = await this.userDao.getById(id);
+      let user = await this.dao.getById(id);
 
       let plainUser = user.toObject();
       delete plainUser.roles;
 
       // Refresh profile image SAS URL if expired
-      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.userDao.update(id, updates));
+      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.dao.update(id, updates));
 
       let groupByBoards = await this.classDao.getGroupClassesByBoard(
         user.profiles.teacher.school
@@ -105,7 +125,7 @@ class UserManager extends BaseManager {
 
   async getByPhone(req) {
     try {
-      let data = await this.userDao.getByPhone(req.body.phone);
+      let data = await this.dao.getByPhone(req.body.phone);
       if (data) return formatApiReponse(true, "", data);
       return formatApiReponse(false, "", null);
     } catch (err) {
@@ -113,32 +133,45 @@ class UserManager extends BaseManager {
     }
   }
 
-  async update(id, payload) {
+  async update(id, payload, actor) {
     try {
-      let user = await this.userDao.getById(id);
+      const user = await this.dao.getById(id);
       if (!user) return formatApiReponse(false, "User not found", null);
 
-      const requestedPhone = payload.identity.phone;
-      const duplicate = await this.userDao.getByPhone(requestedPhone);
-      if (duplicate && String(duplicate._id) !== String(id)) {
-        return formatApiReponse(false, "Phone number already exists!", null);
+      if (payload.identity?.phone) {
+        const duplicate = await this.dao.getByPhone(payload.identity.phone);
+        if (duplicate && String(duplicate._id) !== String(id)) {
+          return formatApiReponse(false, "Phone number already exists!", null);
+        }
       }
 
-      const currentRoles = user.roles.map((role) => String(role._id)).sort();
-      const nextRoles = payload.roles.map(String).sort();
-      const isRoleChanged = JSON.stringify(currentRoles) !== JSON.stringify(nextRoles);
-      if (payload.isSchoolChanged) {
-        payload.profiles.teacher.isProfileCompleted = false;
-        payload.profiles.teacher.classes = [];
+      if (payload.roles && !(await assertAssignableRoles(payload.roles, actor))) {
+        return formatApiReponse(false, "Cannot assign one or more of the selected roles", null);
       }
-      const isPhoneChanged = requestedPhone && user.identity.phone !== requestedPhone;
-      if (isPhoneChanged || isRoleChanged || payload.isSchoolChanged) payload.isLoginAllowed = false;
-      delete payload.isSchoolChanged;
-      user = await this.userDao.update(id, payload);
 
-      if (user) return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, user.identity.phone);
+      let forceRelogin = Boolean(payload.isSchoolChanged);
+      if (payload.identity) {
+        forceRelogin ||= payload.identity.phone && payload.identity.phone !== user.identity.phone;
+        Object.assign(user.identity, payload.identity);
+      }
+      if (payload.roles) {
+        const next = payload.roles.map(String);
+        forceRelogin ||= next.length !== user.roles.length || user.roles.some((r) => !next.includes(String(r._id)));
+        user.roles = payload.roles;
+      }
+      if (payload.profiles?.teacher) {
+        Object.assign(user.profiles.teacher, payload.profiles.teacher);
+        if (payload.isSchoolChanged) {
+          user.profiles.teacher.isProfileCompleted = false;
+          user.profiles.teacher.classes = [];
+        }
+      }
+      if (payload.profiles?.admin) Object.assign(user.profiles.admin, payload.profiles.admin);
+      if (payload.isDeleted !== undefined) user.isDeleted = payload.isDeleted;
+      if (forceRelogin) user.isLoginAllowed = false;
 
-      return formatApiReponse(false, MESSAGES.UPDATE_FAIL, null);
+      await user.save();
+      return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, user.identity.phone);
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
     }
@@ -233,23 +266,11 @@ class UserManager extends BaseManager {
 
   async getById(userId) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "User not found" };
       }
-      const value = user.toObject();
-      return {
-        success: true,
-        data: {
-          _id: value._id,
-          ...value.identity,
-          role: value.roles,
-          ...value.profiles.teacher,
-          ...value.profiles.admin,
-          isDeleted: value.isDeleted,
-          isLoginAllowed: value.isLoginAllowed,
-        },
-      };
+      return { success: true, data: user };
     } catch (err) {
       console.log("Error --> UserManager -> getById()", err);
       return { success: false, error: err };
@@ -258,7 +279,7 @@ class UserManager extends BaseManager {
 
   async setProfile(userId, profileData) {
     try {
-      const updatedUser = await this.userDao.setProfile(userId, profileData);
+      const updatedUser = await this.dao.setProfile(userId, profileData);
       if (!updatedUser) {
         return formatApiReponse(false, "Teacher not found", null);
       }
@@ -272,14 +293,14 @@ class UserManager extends BaseManager {
 
   async uploadProfileImage(userId, filePath) {
     try {
-      let user = await this.userDao.getById(userId);
+      let user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "Teacher not found" };
       }
 
       let expireLimit = 5 * 24 * 60 * 60;
 
-      user = await this.userDao.update(userId, {
+      user = await this.dao.update(userId, {
         profileImage: filePath,
         profileImageExpiresIn:
           parseInt(Date.now() / 1000) + Number(expireLimit),
@@ -303,12 +324,12 @@ class UserManager extends BaseManager {
 
   async removeProfileImage(userId) {
     try {
-      let user = await this.userDao.getById(userId);
+      let user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "Teacher not found" };
       }
 
-      user = await this.userDao.update(user._id, {
+      user = await this.dao.update(user._id, {
         profileImage: "",
         profileImageExpiresIn: parseInt(Date.now() / 1000),
       });
@@ -327,7 +348,7 @@ class UserManager extends BaseManager {
 
   async activate(userId) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
       }
@@ -343,7 +364,7 @@ class UserManager extends BaseManager {
         return formatApiReponse(false, "Teacher is already active", null);
       }
 
-      const updatedUser = await this.userDao.update(userId, {
+      const updatedUser = await this.dao.update(userId, {
         isDeleted: false,
       });
       return formatApiReponse(
@@ -358,7 +379,7 @@ class UserManager extends BaseManager {
 
   async deactivate(userId) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
 
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
@@ -366,7 +387,7 @@ class UserManager extends BaseManager {
       if (user.isDeleted) {
         return formatApiReponse(false, "Teacher is already inactive", null);
       }
-      const updatedUser = await this.userDao.update(userId, {
+      const updatedUser = await this.dao.update(userId, {
         isDeleted: true,
       });
 
@@ -382,13 +403,13 @@ class UserManager extends BaseManager {
 
   async updatePreferredLanguage(userId, preferredLanguage) {
     try {
-      const user = await this.userDao.getById(userId);
+      const user = await this.dao.getById(userId);
 
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
       }
 
-      await this.userDao.update(userId, { "profiles.teacher.preferredLanguage": preferredLanguage });
+      await this.dao.update(userId, { "profiles.teacher.preferredLanguage": preferredLanguage });
 
       return formatApiReponse(true, "Language updated successfully", null);
     } catch (err) {
@@ -416,27 +437,12 @@ class UserManager extends BaseManager {
       if (search) {
         const searchFields = ["identity.name", "identity.phone"];
 
-        const regexExpressions = (searchFields || []).map((field) => ({
+        searchFilter.$or = searchFields.map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
-
-        if (!isNaN(parseInt(search))) {
-          regexExpressions.push({ schoolId: parseInt(search) });
-        }
-
-        searchFilter.$or = regexExpressions;
       }
 
-      const transformedFilter = { ...filter };
-      if (transformedFilter._id) {
-        try {
-          transformedFilter._id = new ObjectId(transformedFilter._id);
-        } catch (err) {
-          console.error("Invalid _id format:", transformedFilter._id);
-          return res.status(400).json({ error: "Invalid _id format" });
-        }
-      }
-      const mergedFilter = { ...transformedFilter, ...searchFilter };
+      const mergedFilter = { ...filter, ...searchFilter };
 
       let status = {};
 
@@ -445,18 +451,16 @@ class UserManager extends BaseManager {
       } else if (includeDeleted === "0") {
         status = { isDeleted: false };
       }
-      const users = await this.userDao.getAll(
+      const users = await this.dao.getAll(
         parseInt(page),
         parseInt(limit),
         mergedFilter,
         sortOrderObject,
-        status,
-        req?.user?._id
+        status
       );
 
-      const userId = req?.user?._id;
-
-      const userName = req?.user?.identity?.name;
+      const userId = req.user._id;
+      const userName = req.user.identity.name;
 
       const worker = new Worker(
         path.resolve(__dirname, "../worker/exportuserworker.js")
@@ -524,7 +528,7 @@ class UserManager extends BaseManager {
   async activityLog(req) {
     try {
       const { _id } = req.user;
-      const userActivity = await this.userDao.activityLog(_id, req.body);
+      const userActivity = await this.dao.activityLog(_id, req.body);
       return formatApiReponse(true, "Logs saved successfully!", userActivity);
     }
     catch (err) {

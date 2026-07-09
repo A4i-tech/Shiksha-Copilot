@@ -300,41 +300,32 @@ export class ShikshanUserManageComponent implements OnInit {
   }
 
   getUserDetails(id: string) {
-    this.commonStaffUserService.getUserDetails(id, 'admin').subscribe({
+    this.commonStaffUserService.getById(id).subscribe({
       next: (res: any) => {
-        const userData = res.data;
-        const roleIds = userData.role.map((role: any) => role._id);
-
-        if (this.roleHas(roleIds, 'scope.regional') && userData.state) {
-          this.updateZoneOptions(userData.state);
-          this.updateDistrictOptions(userData.zones);
-          this.addForm.patchValue({
-            name: userData.name,
-            phone: userData.phone,
-            email: userData.email,
-            roles: roleIds,
-            isDeleted: userData.isDeleted,
-            state: userData.state,
-            zones: userData.zones,
-            districts: userData.districts
-          });
-        } else {
-          this.addForm.patchValue({
-            name: userData.name,
-            phone: userData.phone,
-            email: userData.email,
-            roles: roleIds,
-            isDeleted: userData.isDeleted,
-            state: null,
-            zones: [],
-            districts: []
-          });
+        const u = res.data;
+        const roleIds = u.roles.map((r: any) => r._id);
+        const admin = u.profiles.admin;
+        const patch: any = {
+          name: u.identity.name,
+          phone: u.identity.phone,
+          email: u.identity.email,
+          roles: roleIds,
+          isDeleted: u.isDeleted,
+          state: null,
+          zones: [],
+          districts: [],
+        };
+        if (this.roleHas(roleIds, 'scope.regional') && admin?.state) {
+          this.updateZoneOptions(admin.state);
+          this.updateDistrictOptions(admin.zones);
+          Object.assign(patch, { state: admin.state, zones: admin.zones, districts: admin.districts });
         }
+        this.addForm.patchValue(patch);
       },
       error: (err) => {
         console.error(err);
         this.utilityService.handleError(err);
-      }
+      },
     });
   }
 

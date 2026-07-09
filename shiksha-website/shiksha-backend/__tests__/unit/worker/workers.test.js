@@ -171,10 +171,9 @@ describe("worker modules", () => {
     await parentPort.emit("message", {
       users: [
         {
-          name: "T",
-          school: { name: "S" },
-          phone: "1",
-          role: ["teacher"],
+          identity: { name: "T", phone: "1" },
+          roles: [{ name: "Teacher" }],
+          profiles: { teacher: { school: { name: "S" } } },
           isDeleted: false,
           trainingStatus: "trained",
         },

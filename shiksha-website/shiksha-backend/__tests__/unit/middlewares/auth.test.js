@@ -9,6 +9,15 @@ const {
 jest.mock("jsonwebtoken");
 jest.mock("../../../models/user.model");
 
+function mockUserQuery(user) {
+  const query = {
+    populate: jest.fn().mockReturnThis(),
+    then: (resolve, reject) => Promise.resolve(user).then(resolve, reject),
+  };
+  User.findById.mockReturnValue(query);
+  return query;
+}
+
 describe("permission authentication middleware", () => {
   beforeEach(() => jest.clearAllMocks());
 
@@ -18,11 +27,7 @@ describe("permission authentication middleware", () => {
       isDeleted: false,
       isLoginAllowed: true,
     };
-    const query = {
-      populate: jest.fn().mockReturnThis(),
-      select: jest.fn().mockResolvedValue(user),
-    };
-    User.findById.mockReturnValue(query);
+    mockUserQuery(user);
     jwt.verify.mockImplementation((_token, _secret, callback) => callback(null, { _id: "user-1" }));
     const req = { headers: { authorization: "token" } };
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
@@ -37,15 +42,11 @@ describe("permission authentication middleware", () => {
   });
 
   it("rejects deleted users", async () => {
-    const query = {
-      populate: jest.fn().mockReturnThis(),
-      select: jest.fn().mockResolvedValue({
-        roles: [{ permissions: ["presentation.generate.lesson_plan"] }],
-        isDeleted: true,
-        isLoginAllowed: true,
-      }),
-    };
-    User.findById.mockReturnValue(query);
+    mockUserQuery({
+      roles: [{ permissions: ["presentation.generate.lesson_plan"] }],
+      isDeleted: true,
+      isLoginAllowed: true,
+    });
     jwt.verify.mockImplementation((_token, _secret, callback) => callback(null, { _id: "user-1" }));
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
     isAuthenticated({ headers: { authorization: "token" } }, res, jest.fn());

@@ -52,7 +52,7 @@ router.get(
 router.post(
 	"/lesson-plan/regenerate",
 	isAuthenticated,
-	requireAnyPermission("content.activity.view", "lesson-plan.generate"),
+	requirePermission("content.activity.view"),
 	asyncMiddleware(
 		masterLessonController.regenerateLessonPlan.bind(masterLessonController)
 	)

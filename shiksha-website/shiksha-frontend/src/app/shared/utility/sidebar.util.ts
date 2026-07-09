@@ -1,29 +1,158 @@
-const assetUrl = 'assets/icons';
-const item = (text: string, route: string, darkIcon: string, lightIcon: string, permission: string[]) => ({
-  text,
-  route,
-  darkIcon: `${assetUrl}/${darkIcon}`,
-  lightIcon: `${assetUrl}/${lightIcon}`,
-  match: route,
-  permission,
-});
-
+const assetURl = 'assets/icons';
 export const menuItem = [
-  item('Dashboard', '/dashboard', 'dashboard.svg', 'dashboard-light.svg', ['dashboard.teacher.view']),
-  item('Leaders Dashboard', '/leaders-dashboard', 'dashboard.svg', 'dashboard-light.svg', ['dashboard.admin.view']),
-  item('Operations', '/operations', 'dashboard.svg', 'dashboard-light.svg', ['dashboard.admin.view']),
-  item('Profile', '/profile', 'profile.svg', 'profile-light.svg', ['profile.view']),
-  item('Content Generation', '/content', 'content-generation.svg', 'content-generation-light.svg', ['content.view']),
-  item('Chatbot', '/chat', 'chatbot.svg', 'chatbot-light.svg', ['chat.use']),
-  item('Question Paper Generation', '/question-papers', 'question-bank.svg', 'question-bank-light.svg', ['question-paper.generate']),
-  item('My Schedules', '/schedule', 'schedule.svg', 'schedule-light.svg', ['schedule.view']),
-  item('School Management', '/schools', 'school-management.svg', 'school-management-light.svg', ['school.view']),
-  item('Teacher Management', '/teachers', 'user-management.svg', 'user-management-light.svg', ['teacher.view']),
-  item('Staff Management', '/staff', 'staff-management.svg', 'staff-management-light.svg', ['staff.view']),
-  item('Role Management', '/roles', 'role-management.svg', 'role-management-light.svg', ['role.view']),
-  item('Content Activity', '/content-activity', 'content-activity.svg', 'content-activity-light.svg', ['content.activity.view']),
-  item('Audit Log', '/audit-log', 'audit-log-light.svg', 'audit-log.svg', ['audit.view']),
-  item('Teacher Training', '/training', 'teacher-training-light.svg', 'teacher-training.svg', ['training.view']),
-  item('Help', '/help', 'help-light.svg', 'help.svg', ['help.view']),
-  item('FAQ', '/faq', 'faq-light.svg', 'faq.svg', ['help.view']),
+  getMenuItems(
+    'Dashboard',
+    '/dashboard',
+    'dashboard.svg',
+    'dashboard-light.svg',
+    'dashboard',
+    ['dashboard.teacher.view']
+  ),
+  getMenuItems(
+    'Leaders Dashboard',
+    '/leaders-dashboard',
+    'dashboard.svg',
+    'dashboard-light.svg',
+    'leaders-dashboard',
+    ['dashboard.admin.view']
+  ),
+  getMenuItems(
+    'Operations',
+    '/operations',
+    'dashboard.svg',
+    'dashboard-light.svg',
+    'operations',
+    ['dashboard.admin.view']
+  ),
+  getMenuItems(
+    'Profile',
+    '/profile',
+    'profile.svg',
+    'profile-light.svg',
+    'profile',
+    ['profile.view']
+  ),
+  getMenuItems(
+    'School Management',
+    '/schools',
+    'school-management.svg',
+    'school-management-light.svg',
+    'schools',
+    ['school.view']
+  ),
+  getMenuItems(
+    'Teacher Management',
+    '/teachers',
+    'user-management.svg',
+    'user-management-light.svg',
+    'teachers',
+    ['teacher.view']
+  ),
+  getMenuItems(
+    'Staff Management',
+    '/staff',
+    'staff-management.svg',
+    'staff-management-light.svg',
+    'staff',
+    ['staff.view']
+  ),
+  getMenuItems(
+    'Role Management',
+    '/roles',
+    'role-management.svg',
+    'role-management-light.svg',
+    'roles',
+    ['role.view']
+  ),
+  getMenuItems(
+    'Content Generation',
+    '/content',
+    'content-generation.svg',
+    'content-generation-light.svg',
+    'content',
+    ['content.view']
+  ),
+  getMenuItems(
+    'Question Paper Generation',
+    '/question-papers',
+    'question-bank.svg',
+    'question-bank-light.svg',
+    'question-papers',
+    ['question-paper.generate']
+  ),
+  getMenuItems(
+    'Chatbot',
+    '/chat',
+    'chatbot.svg',
+    'chatbot-light.svg',
+    'chat',
+    ['chat.use']
+  ),
+  getMenuItems(
+    'My Schedules',
+    '/schedule',
+    'schedule.svg',
+    'schedule-light.svg',
+    'schedule',
+    ['schedule.view']
+  ),
+  getMenuItems(
+    'Teacher Training',
+    '/training',
+    'teacher-training-light.svg',
+    'teacher-training.svg',
+    'training',
+    ['training.view']
+  ),
+  getMenuItems(
+    'Content Activity',
+    '/content-activity',
+    'content-activity.svg',
+    'content-activity-light.svg',
+    'content-activity',
+    ['content.activity.view']
+  ),
+  getMenuItems(
+    'Audit Log',
+    '/audit-log',
+    'audit-log-light.svg',
+    'audit-log.svg',
+    'audit-log',
+    ['audit.view']
+  ),
+  getMenuItems(
+    'Help',
+    '/help',
+    'help-light.svg',
+    'help.svg',
+    'help',
+    ['help.view']
+  ),
+  getMenuItems(
+    'FAQ',
+    '/faq',
+    'faq-light.svg',
+    'faq.svg',
+    'faq',
+    ['help.view']
+  )
+
 ];
+
+function getMenuItems(
+  text: string,
+  route: string,
+  darkIcon: string,
+  lightIcon: string,
+  match: string,
+  permission: string[]
+) {
+  return {
+    text,
+    route,
+    darkIcon: `${assetURl}/${darkIcon}`,
+    lightIcon: `${assetURl}/${lightIcon}`,
+    match,
+    permission,
+  };
+}

@@ -89,14 +89,14 @@ export class UtilityService {
    * @param premissions
    * @returns
    */
-  hasPermission(premissions: string[]) {
-    const permissions = this.loggedInUserData?.permissions || [];
-    return premissions.some((permission) => permissions.includes(permission));
+  hasPermission(permissions: string[]) {
+    const perms = this.loggedInUserData?.permissions;
+    return !!perms && permissions.some((p) => perms.includes(p));
   }
 
   isRegionallyScoped() {
-    const permissions = this.loggedInUserData?.permissions || [];
-    return permissions.includes('scope.regional') && !permissions.includes('scope.global');
+    const perms = this.loggedInUserData?.permissions;
+    return !!perms && perms.includes('scope.regional') && !perms.includes('scope.global');
   }
 
   /**
