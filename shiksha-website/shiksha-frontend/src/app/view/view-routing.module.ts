@@ -13,6 +13,7 @@ import { DashboardComponent as AdminDashboardComponent } from './admin/dashboard
 import { ContentActivityComponent } from './admin/content-activity/content-activity.component';
 import { ViewLessonPlanComponent } from './admin/view-lesson-plan/view-lesson-plan.component';
 import { LandingComponent } from './landing.component';
+import { RoleManagementComponent } from './admin/role-management/role-management.component';
 
 const routes: Routes = [
   {
@@ -95,7 +96,7 @@ const routes: Routes = [
       },
       {
         path: 'roles',
-        loadComponent: () => import('./admin/role-management/role-management.component').then((component) => component.RoleManagementComponent),
+        component: RoleManagementComponent,
         data: { permissions: ['role.view'] },
         canActivate: [PermissionGuard],
       },
