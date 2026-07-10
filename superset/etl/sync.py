@@ -35,10 +35,16 @@ ROLE_MAP = {
     "hm":       "HM",
     "crp":      "CRP",
     "beo":      "BEO",
+    "meo":      "MEO",
+    "deo":      "DEO",
     "ddpi":     "DDPI",
     "admin":    "StateAdmin",
+    "manager":  "StateAdmin",
     "state":    "StateAdmin",
 }
+STATE_ADMIN_ROLES = {"StateAdmin"}
+# roles that need no region lookup — RLS not applied
+SKIP_RLS_ROLES = {"StateAdmin"}
 # useractivities modules that represent AI feature usage
 AI_MODULES = {
     "lp-generation":            "lesson_plan_gen",
@@ -203,9 +209,73 @@ def main() -> None:
             _insert_user(str(u["_id"]), u.get("name", "Unknown"), mapped,
                          mongo_school_to_pg.get(str(u.get("school"))), region)
 
+        # Build a reverse lookup: district_name -> first block region_id
+        # Used by DEO/DDPI resolution below.
+        dist_to_first_block: dict[str, int] = {}
+        for (s, d, b), rid in block_id.items():
+            if d not in dist_to_first_block:
+                dist_to_first_block[d] = rid
+
         for u in db.adminusers.find({"isDeleted": {"$ne": True}}):
-            _insert_user(str(u["_id"]), u.get("name", "Unknown"), "StateAdmin",
-                         None, fallback_region)
+            uid  = str(u["_id"])
+            name = u.get("name", "Unknown")
+            roles = [r.lower() for r in (u.get("role") or [])]
+            mapped = next(
+                (ROLE_MAP[r] for r in roles if r in ROLE_MAP),
+                None
+            )
+            if mapped is None:
+                logger.warning("adminuser %s has unmapped role %s — skipping", uid, roles)
+                continue
+
+            if mapped in SKIP_RLS_ROLES:
+                # StateAdmin: no scoping needed, use fallback region
+                _insert_user(uid, name, mapped, None, fallback_region)
+                continue
+
+            # --- role-specific region resolution ---
+            meta = u.get("metadata") or {}
+
+            if mapped == "HM":
+                school_ref = meta.get("school") or u.get("school")
+                school_pg  = mongo_school_to_pg.get(str(school_ref)) if school_ref else None
+                if not school_pg:
+                    logger.warning("adminuser HM %s: school %r not in dim_schools — skipping", uid, school_ref)
+                    continue
+                # region = block that school belongs to (already in dim_schools via block_id insert)
+                cur.execute("SELECT block_id FROM dim_schools WHERE school_id = %s", (school_pg,))
+                row = cur.fetchone()
+                region = row[0] if row else None
+
+            elif mapped in ("CRP", "BEO", "MEO"):
+                block_name = meta.get("block") or u.get("block")
+                if not block_name:
+                    logger.warning("adminuser %s (%s) missing block — skipping", uid, mapped)
+                    continue
+                # block_id dict is keyed (state, district, block); search by block name only
+                region = next(
+                    (rid for (_, _, b), rid in block_id.items() if b == block_name),
+                    None
+                )
+                if not region:
+                    logger.warning("adminuser %s: block %r not in dim_regions — skipping", uid, block_name)
+                    continue
+
+            elif mapped in ("DEO", "DDPI"):
+                dist_name = meta.get("district") or u.get("district")
+                if not dist_name:
+                    logger.warning("adminuser %s (%s) missing district — skipping", uid, mapped)
+                    continue
+                region = dist_to_first_block.get(dist_name)
+                if not region:
+                    logger.warning("adminuser %s: district %r has no blocks in dim_regions — skipping", uid, dist_name)
+                    continue
+
+            else:
+                logger.warning("adminuser %s: unhandled mapped role %s — skipping", uid, mapped)
+                continue
+
+            _insert_user(uid, name, mapped, None, region)
 
         logger.info("  %d users", len(valid_user_ids))
         if not valid_user_ids:
