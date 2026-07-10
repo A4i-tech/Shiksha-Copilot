@@ -26,3 +26,5 @@ tests/tests-env
 **/__pycache__/
 superset/.env
 superset/screenshots/
+superset/ROLE_DASHBOARD_MAPPING.md
+docs/superpowers/specs/2026-07-09-superset-leaders-dashboard-design.md
