@@ -17,6 +17,9 @@ class QuestionBankDao extends BaseDao {
     sort = {}
   ) {
     try {
+      filters = { ...filters };
+      const { fields } = filters;
+      delete filters.fields;
       let processedFilters = { ...filters };
 
       for (const key in filters) {
@@ -42,6 +45,10 @@ class QuestionBankDao extends BaseDao {
         { $match: processedFilters },
         { $sort: sort },
       ];
+
+      if (fields) {
+        pipeline.push({ $project: Object.fromEntries(fields.map((field) => [field, 1])) });
+      }
 
       if (limit > 0) {
         pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });

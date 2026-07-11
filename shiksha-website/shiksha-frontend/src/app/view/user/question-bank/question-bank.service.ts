@@ -66,7 +66,8 @@ export class QuestionBankService extends BaseRestService {
    * @returns
    */
   getAllQuestionBanks(filters?: { [key: string]: any }, search?: any) {
-    let params = new HttpParams().set('page', '1').set('limit', '999');
+    const fields = ['_id', 'createdAt', 'subject', 'grade', 'examinationName', 'topics'];
+    let params = new HttpParams({ fromObject: { page: 1, limit: 999, fields } });
     if (filters) {
       Object.keys(filters).forEach((key) => {
         if (filters[key]) {

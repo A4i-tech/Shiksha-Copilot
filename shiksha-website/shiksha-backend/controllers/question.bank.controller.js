@@ -19,6 +19,7 @@ class QuestionBankController extends BaseController {
         sortBy = "createdAt",
         sortOrder = "desc",
         search,
+        fields,
       } = req.query;
       const sortOrderObject =
         sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
@@ -50,7 +51,7 @@ class QuestionBankController extends BaseController {
           return res.status(400).json({ error: "Invalid _id format" });
         }
       }
-      const mergedFilter = { ...transformedFilter, ...searchFilter };
+      const mergedFilter = { ...transformedFilter, ...searchFilter, fields };
 
       const result = await this.manager.getTeacherQuestionPapers(
         teacherId,
