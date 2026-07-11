@@ -513,7 +513,7 @@ class UserManager extends BaseManager {
         ""
       );
     } catch (err) {
-      return formatApiReponse(false, err.message, e);
+      return formatApiReponse(false, err.message, err);
     }
   }
 
