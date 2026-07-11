@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-const QUESTION_BANK_CACHE_TTL_SECONDS = 60 * 60 * 6;
+const QUESTION_BANK_CACHE_TTL_SECONDS = Number(process.env.QUESTION_BANK_CACHE_TTL_SECONDS) || 60 * 60 * 24 * 7;
 
 const questionSchema = new Schema({
   question: {

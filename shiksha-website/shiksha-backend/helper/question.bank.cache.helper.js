@@ -32,16 +32,13 @@ function filterTemplate(qbConfigList) {
  * @param {*} cacheDocs 
  * @returns question from cache, not found template, not found index, cache summary
  */
-async function getQuestions(templateList, cacheDocs, options = {}) {
+async function getQuestions(templateList, cacheDocs) {
   try {
     let res = [];
     let notFoundRes = [];
     let notFoundIndices = [];
     let includedQuestionKeys = [];
-    const CACHE_USAGE_RATE = parseFloat(process.env.CACHE_USAGE_RATE) || 0.9;
-    const shouldUseCache = () => Math.random() <= CACHE_USAGE_RATE;
 
-    let totalDecisions = 0;
     let cacheHitCount = 0;
     let cacheMissCount = 0;
 
@@ -49,14 +46,11 @@ async function getQuestions(templateList, cacheDocs, options = {}) {
       const {
         responseModel,
         notFound,
-        notFoundIndexData,
-        decisions
+        notFoundIndexData
       } = await _processTemplateQuestions(
         template,
         cacheDocs,
-        shouldUseCache,
-        includedQuestionKeys,
-        options
+        includedQuestionKeys
       );
 
       res.push(responseModel);
@@ -68,18 +62,18 @@ async function getQuestions(templateList, cacheDocs, options = {}) {
         notFoundIndices.push({});
       }
 
-      totalDecisions += decisions.total;
-      cacheHitCount += decisions.hits;
-      cacheMissCount += decisions.misses;
+      cacheHitCount += responseModel.questions.length;
+      cacheMissCount += notFound.numberOfQuestions;
     }
 
+    const totalDecisions = cacheHitCount + cacheMissCount;
     const hitPercent = totalDecisions ? ((cacheHitCount / totalDecisions) * 100).toFixed(2) : 0;
     const missPercent = totalDecisions ? ((cacheMissCount / totalDecisions) * 100).toFixed(2) : 0;
 
     console.log(`📊 Cache Summary:`);
     console.log(`- Total Questions: ${totalDecisions}`);
     console.log(`- Cache Hits: ${cacheHitCount} (${hitPercent}%)`);
-    console.log(`- Cache Misses/API Calls: ${cacheMissCount} (${missPercent}%)`);
+    console.log(`- Questions Generated: ${cacheMissCount} (${missPercent}%)`);
 
     const cacheSummary = {
       totalDecisions,
@@ -94,14 +88,7 @@ async function getQuestions(templateList, cacheDocs, options = {}) {
   }
 }
 
-async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, includedQuestionKeys, options = {}) {
-  let total = 0;
-  let hits = 0;
-  let misses = 0;
-  const handledPoolKeys = new Set();
-  const returnPool = options.returnPool === true;
-  const poolLimit = parseInt(process.env.CACHE_QUESTION_PER_TYPE) || 10;
-
+async function _processTemplateQuestions(template, cacheDocs, includedQuestionKeys) {
   const questionTypeResponse = new QuestionTypeResponse(
     template.type,
     template.marksPerQuestion
@@ -115,19 +102,9 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
   const questionDistribution = template.questionDistribution;
 
   for (let i = 0; i < questionDistribution.length; i++) {
-    total++;
     const unitName = questionDistribution[i].unitName.toLowerCase().trim();
     const objective = questionDistribution[i].objective.toLowerCase();
     const marks = template.marksPerQuestion;
-    const poolKey = `${unitName}|${objective}|${template.type}|${marks}`;
-
-    if (!shouldUseCache()) {
-      misses++;
-      notFoundTemplate.questionDistribution.push(questionDistribution[i]);
-      notFoundQuestionIndices.push(i);
-      continue;
-    }
-
     // Collect all valid candidates first (Single pass)
     const validCandidates = [];
     for (const cacheDoc of cacheDocs) {
@@ -147,19 +124,12 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
     }
 
     if (validCandidates.length === 0) {
-      misses++;
       notFoundTemplate.questionDistribution.push(questionDistribution[i]);
       notFoundQuestionIndices.push(i);
       continue;
     }
 
-    if (returnPool && handledPoolKeys.has(poolKey)) {
-      hits++;
-      continue;
-    }
-
     let foundQuestion = false;
-    let addedFromPool = 0;
 
     const shuffledCandidates = validCandidates.sort(() => 0.5 - Math.random());
 
@@ -173,18 +143,11 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
         questionTypeResponse.questions.push(selectedQuestion);
         includedQuestionKeys.push(questionKey);
         foundQuestion = true;
-        addedFromPool++;
-        if (!returnPool || addedFromPool >= poolLimit) {
-          break;
-        }
+        break;
       }
     }
 
-    if (foundQuestion) {
-      hits++;
-      handledPoolKeys.add(poolKey);
-    } else {
-      misses++;
+    if (!foundQuestion) {
       notFoundTemplate.questionDistribution.push(questionDistribution[i]);
       notFoundQuestionIndices.push(i);
     }
@@ -199,8 +162,7 @@ async function _processTemplateQuestions(template, cacheDocs, shouldUseCache, in
     notFoundIndexData: {
       type: notFoundTemplate.type,
       indices: notFoundQuestionIndices
-    },
-    decisions: { total, hits, misses }
+    }
   };
 }
 

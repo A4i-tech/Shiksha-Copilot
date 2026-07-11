@@ -17,7 +17,7 @@ import { concat, distinctUntilChanged } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
-import { map, switchMap, catchError, finalize, toArray } from 'rxjs/operators';
+import { map, catchError, finalize, toArray } from 'rxjs/operators';
 import { questionContentItems, questionText } from 'src/app/shared/utility/question-bank-display.util';
 
 // Import Child Component for Step 2 access
@@ -755,11 +755,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }));
     payload.isPreview = true;
 
-    return this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
-      switchMap((bpRes: any) => {
-        payload.template = bpRes.data;
-        return this.questionBankService.generateQuestionBank(payload);
-      }),
+    return this.questionBankService.generateQuestionBank(payload).pipe(
       map((finalRes: any) => {
         const flatQuestions: any[] = [];
         const chapterName = Array.isArray(this.f.chapter.value) ? this.f.chapter.value[0] : this.f.chapter.value;
@@ -821,6 +817,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       grade: String(formVal.grade),
       subject: subjectName, // Send Name for AI
       totalMarks: Number(formVal.totalMarks),
+      surplus: true,
       examinationName: formVal.examinationName,
       chapter: Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter],
       chapterIds: validChapterIds,

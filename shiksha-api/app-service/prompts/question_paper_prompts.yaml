@@ -10,15 +10,26 @@ grammar_question_types_guide: |
   Ensure all grammar questions are drawn from the unit's grammar topics listed above.
 
 question_bank_parts_gen_retrieval_query_template: |
-  Generate questions by following the rules listed below. `keyAnswer` field must be non-empty if the question model supports it.
+  ## Examination Details
+  - **Board:** {BOARD}
+  - **Medium:** {MEDIUM}
+  - **Grade:** {GRADE}
+  - **Subject:** {SUBJECT}
+  - **Total Marks:** {TOTAL_MARKS}
+  - **Chapters (unit names):** {CHAPTERS}
+  - **Unit:** {CHAPTER}
+  - **Unit-Wise Learning Outcomes:** {UNIT_WISE_LEARNING_OUTCOMES}
 
-  Unit: {CHAPTER}
-
-  Learning Outcomes:
+  ## Learning Outcomes
   {LEARNING_OUTCOMES}
 
-  Rules by question type:
+  ## Rules
   {RULES}
+
+  ## EXISTING QUESTIONS
+  ```json
+  {EXISTING_QUESTIONS_JSON}
+  ```
 
 question_bank_parts_gen: |
       You are a specialist in educational assessment design with advanced expertise in Bloom's Taxonomy and question generation. Your task is to generate a bank of unique, high-quality questions that are aligned with the provided learning outcomes, textbook content, and cognitive objectives. Use the RAG (Retrieval-Augmented Generation) approach to reference textbook content for the specified chapters (units).
@@ -36,27 +47,15 @@ question_bank_parts_gen: |
 
       ----------------------------------------------------------------------------------------
       ## Examination Details
-
-      - **Board:** {BOARD}
-      - **Medium:** {MEDIUM}
-      - **Grade:** {GRADE}
-      - **Subject:** {SUBJECT}
-      - **Total Marks:** {TOTAL_MARKS}
-      - **Chapters (unit names):** {CHAPTERS}
-      - **Unit-Wise Learning Outcomes:** {UNIT_WISE_LEARNING_OUTCOMES}
+      The user will provide board, medium, grade, subjectt, total marks, chapters, and unit-wise learning outcomes.
 
       ----------------------------------------------------------------------------------------
       
-      {QUESTION_BANK_BLOOM_TAXONOMY_GUIDE}
+      {BLOOM_TAXONOMY_GUIDE}
 
       ----------------------------------------------------------------------------------------
       ## EXISTING QUESTIONS
-
-      Below is a JSON array of questions that are already part of the question bank. **You must ensure that none of your generated questions are similar in wording, structure, or concept to any of these.**
-
-      ```json
-      {EXISTING_QUESTIONS_JSON}
-      ```
+      The user will provide a JSON array of questions that are already part of the question bank. **You must ensure that none of your generated questions are similar in wording, structure, or concept to any of these.**
 
       ----------------------------------------------------------------------------------------
       ## Generation Instructions
@@ -84,56 +83,3 @@ question_bank_parts_gen: |
 
       7. Mathematical Notation:
         Use TeX delimiters for mathematical expressions: `\\(...\\)` for inline math and `\\[...\\]` for display math.
-
-question_bank_distribution: |
-  You are an expert in educational assessment design and Bloom's Taxonomy. Your task is to **assign a reasonable question distribution** across selected chapters (units) and objectives for a given examination template.
-  ---
-
-  ## Exam Details
-  - **Board:** {BOARD}
-  - **Medium:** {MEDIUM}
-  - **Grade:** {GRADE}
-  - **Subject:** {SUBJECT}
-  - **Total Marks:** {TOTAL_MARKS}
-  - **Chapters (unit names):** {CHAPTERS}
-  - **Marks Distribution per Unit:** {MARKS_DISTRIBUTION}
-  - **Objective-Based Distribution:** {OBJECTIVE_DISTRIBUTION}
-
-  ---
-
-  {QUESTION_BANK_BLOOM_TAXONOMY_GUIDE}
-
-  ---
-
-  ## Existing Question Template
-  A predefined question template (JSON) is provided, specifying question types, the number of questions, and marks per question. Your role is to generate question distribution for each question type. The template is given as:
-
-  ```json
-  {TEMPLATE_JSON}
-  ```
-
-  **Each template item currently does not have a question distribution. You must fill in this distribution according to the guidelines below.**
-
-  Guidelines for Assigning Question Distribution:
-  - Use Bloom’s Taxonomy for Mapping Objectives to Questions
-      Automatically infer mappings based on the provided question types.
-      Align question demands (cognitive complexity) with the corresponding objectives (e.g., a direct question on factual recall may align with Knowledge/Remember).
-  - Ensure Compliance with Mark and Objective Distributions
-      The total marks allocated per unit should match **Marks Distribution per Unit**.
-      The overall objective-based distribution should guide the proportion of questions testing different cognitive levels.
-  - Assign a Balanced Mix of Topics
-      Distribute questions fairly across different chapters (units).
-      Ensure each question type is assigned to appropriate chapters.
-      Some chapters (units) may contain more questions depending on their weight in **Marks Distribution per Unit**.
-
-  Output requirements:
-  - Each question_distribution entry represents one question.
-  - The unit_name should reference a valid chapter/unit from **Chapters**.
-  - The objective should reference one of the objectives described above (e.g., "Knowledge", "Understanding", "Application", "Skill", "Comprehension", "Expression", "Appreciation").
-
-  Final Task
-  Generate a complete list of question templates (based on the **Existing Question Template** above) with an added question_distribution, ensuring:
-    - Coverage of all chapters (units) according to **Marks Distribution per Unit**.
-    - Proportions of cognitive levels in line with **Objective-Based Distribution**.
-    - Appropriate mappings to the objectives defined above.
-    - Avoid placing questions from same unit together under one question type.
