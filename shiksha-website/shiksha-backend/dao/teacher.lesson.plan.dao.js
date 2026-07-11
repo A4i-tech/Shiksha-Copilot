@@ -83,6 +83,9 @@ class TeacherLessonPlanDao extends BaseDao {
 		sort = {}
 	) {
 		try {
+			filters = { ...filters };
+			const { fields } = filters;
+			delete filters.fields;
 			const processedFilters = {};
 
 			for (const key in filters) {
@@ -154,7 +157,8 @@ class TeacherLessonPlanDao extends BaseDao {
 					page,
 					limit,
 					processedFilters,
-					sort
+					sort,
+					fields
 				);
 
 

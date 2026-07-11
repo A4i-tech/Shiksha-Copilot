@@ -203,7 +203,7 @@ class TeacherLessonPlanAggregation {
 		}
 	}
 
-	async getByTeacherAndPagination(teacherId, page, limit, filter, sort) {
+	async getByTeacherAndPagination(teacherId, page, limit, filter, sort, fields) {
 		const { isGroupedSubTopics, ...cleanedFilter } = filter;
 		try {
 			let pipeline = [
@@ -301,7 +301,7 @@ class TeacherLessonPlanAggregation {
 				);
 			} else {
 				pipeline.push({
-					$project: {
+					$project: fields ? Object.fromEntries(fields.map((field) => [field, 1])) : {
 						lesson: 1,
 						resource: 1,
 						resources: 1,
