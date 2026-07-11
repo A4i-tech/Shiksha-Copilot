@@ -6,6 +6,9 @@ const workerMocks = () => {
     on: jest.fn((event, cb) => {
       listeners[event] = cb;
     }),
+    once: jest.fn((event, cb) => {
+      listeners[event] = cb;
+    }),
     postMessage: jest.fn(),
     emit: async (event, payload) => {
       if (listeners[event]) {
