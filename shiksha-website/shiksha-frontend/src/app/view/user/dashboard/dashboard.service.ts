@@ -25,7 +25,7 @@ export class DashboardService extends BaseRestService {
    */
   getRecentLessonPlan(): Observable<any> {
     let params = new HttpParams()
-    .set('limit', '999')
+    .set('limit', '1')
     .set('sortBy','updatedAt')
     .set('filter[type]','all')
     .set('filter[isCompleted]','true')
