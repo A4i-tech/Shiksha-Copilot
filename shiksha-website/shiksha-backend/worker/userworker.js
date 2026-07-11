@@ -4,7 +4,7 @@ if (!globalThis.crypto) {
 }
 const { workerData, parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
-const { sendWelcomeSMS } = require("../helper/worker.helper");
+const { sendWelcomeSMS } = require("../services/variform.service");
 const User = require("../models/user.model");
 const School = require("../models/school.model");
 const dbService = require("../config/db.js");

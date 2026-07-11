@@ -44,4 +44,28 @@ describe("variform.service", () => {
       'Variform SMS API error (undefined): {"msg":"bad"}'
     );
   });
+
+  it("sends welcome sms", async () => {
+    process.env.VARIFORM_SMS_WELCOME_TEMPLATE = "welcome_tpl";
+    axios.post.mockResolvedValue({ data: { success: true } });
+    const { sendWelcomeSMS } = require(servicePath);
+
+    await sendWelcomeSMS("9999999999");
+
+    expect(axios.post.mock.calls[0][1]).toMatchObject({
+      templateId: "welcome_tpl",
+      to: "919999999999",
+      custom: ["9999999999"],
+    });
+  });
+
+  it("skips welcome sms when Variform is not configured", async () => {
+    const { sendWelcomeSMS } = require(servicePath);
+    delete process.env.VARIFORM_BEARER_TOKEN;
+
+    await expect(sendWelcomeSMS("999")).resolves.toEqual({
+      message: "SMS skipped (Variform not configured)",
+    });
+    expect(axios.post).not.toHaveBeenCalled();
+  });
 });
