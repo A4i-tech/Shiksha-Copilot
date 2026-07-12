@@ -11,6 +11,7 @@
     bindValue="{{ config.bindValue ? config.bindValue : 'value' }}"
     [disabled]="config.disabled ? config.disabled : false"
     [placeholder]="config.placeHolderTxt | translate"
+    [notFoundText]="'No items found' | translate"
     [dropdownPosition]="'auto'"
     [searchable]="config.searchable || false"
     [clearable]="config.clearableOff ? false : true"

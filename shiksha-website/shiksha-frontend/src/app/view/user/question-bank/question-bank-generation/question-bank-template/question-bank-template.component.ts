@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnInit, Output, OnChanges, SimpleChanges, ViewChild } from '@angular/core';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
-import { hasQuestionImage, questionText } from 'src/app/shared/utility/question-bank-display.util';
+import { questionText, sourceBorderClass } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
 @Component({
@@ -12,6 +12,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   @ViewChild('questionSelectionContent') questionSelectionContent!: ElementRef<HTMLElement>;
 
   @Input() currentStep: number = 2;
+  @Input() totalSteps: number = 3;
   @Input() totalMarks: number = 0; // Target marks
 
   // NEW INPUT: The merged pool from Parent
@@ -31,20 +32,23 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   // Local State
   filteredQuestions: any[] = [];
   selectedQuestions: any[] = [];
+  activePane: 'POOL' | 'SELECTED' = 'POOL';
 
   // Filter State
   filterSource: string = 'ALL';
   filterDifficulty: string = 'ALL';
+  filterMarks: string | number = 'ALL';
   filterQuestionType: string = 'ALL';
   searchText: string = '';
   isFilterMenuOpen: boolean = false;
   availableHeadings: string[] = [];
   availableSources: string[] = [];
   availableDifficulties: string[] = [];
+  availableMarks: number[] = [];
   readonly QUESTION_SOURCE = QUESTION_SOURCE;
   readonly formatMarks = formatMarks;
-  readonly hasQuestionImage = hasQuestionImage;
   readonly questionText = questionText;
+  readonly sourceBorderClass = sourceBorderClass;
 
   constructor() { }
 
@@ -52,6 +56,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     // Initialize from pre-selected questions if any
     if (this.preSelectedQuestions && this.preSelectedQuestions.length > 0) {
       this.selectedQuestions = [...this.preSelectedQuestions];
+      this.activePane = 'SELECTED';
     }
     // Initial load
     this.extractFilters();
@@ -91,11 +96,13 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     const headings = new Set<string>();
     const sources = new Set<string>();
     const difficulties = new Set<string>();
+    const marks = new Set<number>();
 
     this.availableQuestions.forEach(q => {
       if (q.heading) headings.add(q.heading);
       if (q.source) sources.add(q.source);
       if (q.difficulty) difficulties.add(q.difficulty);
+      if (q.marks != null && q.marks !== '') marks.add(Number(q.marks));
     });
 
     this.availableHeadings = Array.from(headings).sort();
@@ -114,6 +121,8 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
       if (idxA !== -1 && idxB !== -1) return idxA - idxB;
       return a.localeCompare(b);
     });
+
+    this.availableMarks = Array.from(marks).filter(m => !Number.isNaN(m)).sort((a, b) => a - b);
   }
 
   // --- FILTERING ---
@@ -131,6 +140,11 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     this.applyFilters();
   }
 
+  setMarksFilter(marks: string | number) {
+    this.filterMarks = marks;
+    this.applyFilters();
+  }
+
   setTypeFilter(type: string) {
     this.filterQuestionType = type;
     this.applyFilters();
@@ -139,6 +153,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   resetFilters() {
     this.filterSource = 'ALL';
     this.filterDifficulty = 'ALL';
+    this.filterMarks = 'ALL';
     this.filterQuestionType = 'ALL';
     this.searchText = '';
     this.applyFilters();
@@ -153,16 +168,19 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
       const matchDifficulty = this.filterDifficulty === 'ALL' ||
         (q.difficulty && q.difficulty.toLowerCase() === this.filterDifficulty.toLowerCase());
 
-      // 3. Question Type Filter
+      // 3. Marks Filter
+      const matchMarks = this.filterMarks === 'ALL' || Number(q.marks) === Number(this.filterMarks);
+
+      // 4. Question Type Filter
       const matchType = this.filterQuestionType === 'ALL' || q.heading === this.filterQuestionType;
 
-      // 4. Search Filter
+      // 5. Search Filter
       const matchSearch = !this.searchText || this.questionText(q).toLowerCase().includes(this.searchText.toLowerCase());
 
-      // 5. Exclude already selected
+      // 6. Exclude already selected
       const isSelected = this.selectedQuestions.some(sq => sq._id === q._id);
 
-      return matchSource && matchDifficulty && matchType && matchSearch && !isSelected;
+      return matchSource && matchDifficulty && matchMarks && matchType && matchSearch && !isSelected;
     });
     if (this.questionSelectionContent) renderTexMath(this.questionSelectionContent.nativeElement);
   }
@@ -173,7 +191,12 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   }
 
   // --- SELECTION LOGIC ---
+  wouldExceedTotal(q: any): boolean {
+    return this.currentTotalMarks + Number(q.marks) > this.totalMarks;
+  }
+
   selectQuestion(q: any) {
+    if (this.wouldExceedTotal(q)) return;
     this.selectedQuestions.push(q);
     this.selectionChange.emit(this.selectedQuestions);
     this.applyFilters(); // Remove from left list
@@ -194,6 +217,15 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     return this.currentTotalMarks === this.totalMarks;
   }
 
+  get remainingMarks(): number {
+    return this.totalMarks - this.currentTotalMarks;
+  }
+
+  /** True when the pool has items greyed out because marks are full / insufficient. */
+  get showCapacityHint(): boolean {
+    return this.filteredQuestions.length > 0 && this.filteredQuestions.some(q => this.wouldExceedTotal(q));
+  }
+
   // --- ACTIONS ---
   previousStep() {
     this.backClick.emit(true);
@@ -204,13 +236,4 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     this.nextClick.emit(this.selectedQuestions);
   }
 
-  getDifficultyColor(difficulty: string): string {
-    if (!difficulty) return 'bg-gray-100 text-gray-700 border-gray-200';
-    switch (difficulty.toLowerCase()) {
-      case 'easy': return 'bg-green-100 text-green-700 border-green-200';
-      case 'average': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'difficult': return 'bg-red-100 text-red-700 border-red-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  }
 }

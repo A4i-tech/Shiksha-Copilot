@@ -2,51 +2,63 @@
   <!-- Top Header Info -->
   <div class="flex flex-col md:flex-row justify-between items-start mb-6 border-b pb-4">
     <div>
-      <h2 class="text-xl font-bold text-content">Step 3/3: Preview & Blue Print</h2>
-      <p class="text-sm text-gray-500">Exam: <span class="font-semibold text-primary">{{ examName }}</span> | Total
-        Marks: <span class="font-semibold text-primary">{{ formatMarks(totalMarks) }}</span></p>
+      <h2 class="text-xl font-bold text-content">{{ 'Step' | translate }} {{ currentStep }}/{{ totalSteps }}: {{ 'Preview' | translate }}</h2>
+      <p class="text-sm text-gray-500">{{ 'Exam' | translate }}: <span class="font-semibold text-primary">{{ examName }}</span> | {{ 'Total Marks' | translate }}: <span class="font-semibold text-primary">{{ formatMarks(totalMarks) }}</span></p>
     </div>
     <div class="bg-blue-50 border border-blue-100 p-3 rounded-lg flex items-center gap-2 mt-3 md:mt-0">
       <img src="assets/icons/Info 2.svg" alt="info" class="w-5 h-5" />
-      <small class="text-blue-800 font-medium">Review your distribution and selections before final generation.</small>
+      <small class="text-blue-800 font-medium">{{ 'Drag sections and questions to rearrange the paper order.' | translate }}</small>
     </div>
   </div>
 
   <div class="flex flex-col lg:flex-row gap-8">
 
     <!-- LEFT SIDE: GROUPED QUESTION LIST -->
-    <div class="flex-1 flex flex-col">
-      <div #bluePrintContent class="max-h-[55vh] overflow-y-auto pr-2" tabindex="0" role="region" aria-label="Question list — scroll to see all questions">
-        <div *ngFor="let group of groupedBlueprintData; let i = index" class="mb-8 bg-gray-50 rounded-lg border p-4">
-          <div class="flex justify-between items-center border-b pb-2 mb-4">
-            <h3 class="font-bold text-lg text-content">
-              {{ i + 1 }}. {{ group.type }}
-            </h3>
-            <span class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold">
-              {{ group.questions.length }} Questions x {{ formatMarks(group.marksPerQuestion) }} Marks
-            </span>
-          </div>
+    <div class="min-w-0 w-full">
+      <div #bluePrintContent [ngClass]="{ 'max-h-[55vh] overflow-y-auto': !fullWidth }" class="pr-2" tabindex="0" role="region" aria-label="Question list">
+        <div cdkDropList [cdkDropListData]="groupedBlueprintData" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropSection($event)">
+          <div *ngFor="let group of groupedBlueprintData; let i = index" cdkDrag class="mb-8 bg-gray-50 rounded-lg border p-4 section-drag">
+            <div class="flex justify-between items-center border-b pb-2 mb-4 gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <button type="button" cdkDragHandle class="drag-handle shrink-0" [attr.aria-label]="'Reorder section' | translate" title="{{ 'Drag to reorder' | translate }}">
+                  <img src="assets/icons/drag-handle.svg" alt="" class="w-4 h-4" />
+                </button>
+                <h3 class="font-bold text-lg text-content truncate">
+                  {{ i + 1 }}. {{ group.type | translate }}
+                </h3>
+              </div>
+              <span class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold shrink-0">
+                {{ 'Questions x Marks' | translate:{ count: group.questions.length, marks: formatMarks(group.marksPerQuestion) } }}
+              </span>
+            </div>
 
-          <div class="space-y-3">
-            <div *ngFor="let q of group.questions; let j = index" class="bg-white p-3 rounded border flex gap-3">
-              <span class="text-gray-400 font-bold text-sm">{{ j + 1 }}.</span>
-              <div class="flex-1">
-                <p class="text-sm text-content mb-2">
-                  <ng-container *ngFor="let item of questionContentItems(q); trackBy: trackContent">
-                    <span *ngIf="item.contentType === 'text/plain'">{{ item.content }}</span>
-                    <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-2 max-h-40 max-w-full" />
-                  </ng-container>
-                </p>
-                <div *ngIf="q.options && q.options.length > 0" class="ml-4 mb-2">
-                  <div *ngFor="let option of q.options" class="text-xs text-gray-600">
-                    <b *ngIf="option.label">{{ option.label }}.</b>
-                    <ng-container *ngFor="let item of contentItems(option.text); trackBy: trackContent">
-                      <span *ngIf="item.contentType === 'text/plain'"> {{ item.content }}</span>
-                      <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-1 max-h-24 max-w-full" />
-                    </ng-container>
+            <div class="space-y-3" cdkDropList [cdkDropListData]="group.questions" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropQuestion($event)">
+              <div *ngFor="let q of group.questions; let j = index" cdkDrag class="bg-white p-3 rounded border border-l-4 flex gap-3 question-drag"
+                [ngClass]="sourceBorderClass(q.source)">
+                <button type="button" cdkDragHandle class="drag-handle shrink-0 self-start mt-0.5" [attr.aria-label]="'Reorder question' | translate" title="{{ 'Drag to reorder' | translate }}">
+                  <img src="assets/icons/drag-handle.svg" alt="" class="w-3.5 h-3.5" />
+                </button>
+                <span class="text-gray-400 font-bold text-sm">{{ j + 1 }}.</span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-2">
+                    <p class="text-sm text-content flex-1 sm:mr-2">
+                      <ng-container *ngFor="let item of questionContentItems(q); trackBy: trackContent">
+                        <span *ngIf="item.contentType === 'text/plain'">{{ item.content }}</span>
+                        <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-2 max-h-40 max-w-full" />
+                      </ng-container>
+                    </p>
+                    <app-question-tags [question]="q"></app-question-tags>
+                  </div>
+                  <div *ngIf="q.options?.length" class="ml-4 mb-2">
+                    <div *ngFor="let option of q.options" class="text-xs text-gray-600">
+                      <b *ngIf="option.label">{{ option.label }}.</b>
+                      <ng-container *ngFor="let item of contentItems(option.text); trackBy: trackContent">
+                        <span *ngIf="item.contentType === 'text/plain'"> {{ item.content }}</span>
+                        <img *ngIf="item.contentType !== 'text/plain'" [src]="mediaSrc(item)" class="mt-1 max-h-24 max-w-full" />
+                      </ng-container>
+                    </div>
                   </div>
                 </div>
-                <!-- Removed Topic, Obj, Source per user request -->
               </div>
             </div>
           </div>
@@ -54,7 +66,7 @@
       </div>
       <!-- Source Footer -->
       <div class="mt-2 pt-2 border-t text-xs font-bold text-gray-500 text-right">
-        Sources included:
+        {{ 'Sources included' | translate }}:
         <span *ngFor="let s of uniqueSources; let last = last" class="text-primary uppercase ml-1">
           {{ s }}{{ !last ? ',' : '' }}
         </span>
@@ -62,7 +74,7 @@
     </div>
 
     <!-- RIGHT SIDE: ANALYTICS CHART -->
-    <div class="lg:w-80 flex flex-col items-center">
+    <div *ngIf="!fullWidth" class="lg:w-80 flex flex-col items-center">
       <div class="sticky top-0 w-full bg-white border rounded-xl p-6 shadow-sm">
 
         <!-- UPDATED DYNAMIC TITLE -->
@@ -78,11 +90,11 @@
 
         <div class="mt-6 space-y-2 border-t pt-4">
           <div class="flex justify-between text-sm">
-            <span class="text-gray-500">Selected Questions:</span>
+            <span class="text-gray-500">{{ 'Selected Questions' | translate }}:</span>
             <span class="font-bold">{{ finalSelectedQuestions.length }}</span>
           </div>
           <div class="flex justify-between text-sm">
-            <span class="text-gray-500">Current Marks:</span>
+            <span class="text-gray-500">{{ 'Current Marks' | translate }}:</span>
             <span class="font-bold" [ngClass]="selectedQuestionsMarks === totalMarks ? 'text-primary' : 'text-error'">
               {{ formatMarks(selectedQuestionsMarks) }} / {{ formatMarks(totalMarks) }}
             </span>

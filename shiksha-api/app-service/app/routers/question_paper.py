@@ -36,6 +36,7 @@ LANGUAGE_MAP = {
     "kannada": "kn",
     "hindi": "hi",
     "telugu": "te",
+    "tg": "te",
     "tamil": "ta",
     "malayalam": "ml",
     "marathi": "mr",

@@ -8,6 +8,12 @@ const MulterUploadMiddleware = require('../middlewares/multerUploadMiddleware');
 const questionBankController = new QuestionBankController();
 
 router.post(
+  "/question-bank/generate-blue-print",
+  isAuthenticated,
+  asyncMiddleware(questionBankController.generateQuestionBankBluePrint.bind(questionBankController))
+);
+
+router.post(
   "/question-bank/generate",
   isAuthenticated,
   validateQuestionBankCreate,

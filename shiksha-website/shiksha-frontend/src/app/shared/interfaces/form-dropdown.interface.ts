@@ -23,6 +23,7 @@ export interface FormDropDownConfig {
   placeHolderTxt: string;
   disabled?: boolean;
   fieldName: string;
+  info?: string;
   multi?: boolean;
   clearableOff?: boolean;
   hideLabel?: boolean;

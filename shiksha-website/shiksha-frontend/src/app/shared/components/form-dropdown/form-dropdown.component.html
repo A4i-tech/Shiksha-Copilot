@@ -1,14 +1,23 @@
 <div class="select-wrapper" [formGroup]="formGroupTemp">
-  <label class="form-control-label" [for]="inputId" [class.sr-only]="config.hideLabel">
+  <label class="form-control-label inline-flex items-center gap-1" [for]="inputId" [class.sr-only]="config.hideLabel">
     {{ config.fieldName | translate }}
     <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span>
+    <span *ngIf="config.info" class="relative group cursor-help" tabindex="0">
+      <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="" />
+      <span role="tooltip"
+        class="pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute top-5 left-0 z-50 w-72 rounded border bg-white p-3 text-xs font-normal leading-snug text-content-60 shadow-md">
+        {{ config.info | translate }}
+      </span>
+    </span>
   </label>
-  <span *ngIf="config.multi && dropDownCtrl?.value?.length > 0" class="area-label"
+  <span *ngIf="config.multi && !config.hideChips && dropDownCtrl?.value?.length > 0" class="area-label"
     [ngClass]="config.hideLabel ? 'top-[9px]' : 'top-[39px]'">
     {{ config.placeHolderTxt | translate }}
   </span>
-  <ng-select [labelForId]="inputId" [items]="dropDownValues" [ngClass]="config.isBackground && (dropDownCtrl.disabled || config.disabled) ? 'with-background' : ''"
+  <ng-select [labelForId]="inputId" [items]="dropDownValues" [class.external-chips]="config.multi && !config.hideChips"
+    [ngClass]="config.isBackground && (dropDownCtrl.disabled || config.disabled) ? 'with-background' : ''" [readonly]="!!config.disabled"
     [style]="{ height: config.height }" [placeholder]="config.placeHolderTxt | translate"
+    [notFoundText]="'No items found' | translate"
     bindLabel="{{ config.bindLable ? config.bindLable : 'name' }}"
     bindValue="{{ config.bindValue ? config.bindValue : 'value' }}" [dropdownPosition]="'auto'"
     [searchable]="config.searchable || false" [clearable]="config.clearableOff ? false : true"
@@ -20,15 +29,16 @@
       <div class="flex items-center gap-2">
         <input type="checkbox"
           [checked]="dropDownCtrl.value?.includes(config.selectAllValue ? item[config.selectAllValue] : item)">
-        <span class="whitespace-nowrap overflow-x-hidden text-ellipsis">{{ config.selectAllValue ?
-          item[config.selectAllValue] : item }}</span>
+        <span class="whitespace-nowrap overflow-x-hidden text-ellipsis">{{
+          (config.bindLable ? item[config.bindLable] : item) | translate
+        }}</span>
       </div>
     </ng-template>
 
     <ng-template ng-header-tmp *ngIf="config.multi && config.selectAllOption && dropDownValues.length">
       <label class="flex items-center gap-2">
         <input type="checkbox" (change)="toggleSelectAll($event)" [checked]="isSelectAll()" />
-        Select All
+        {{ 'Select All' | translate }}
       </label>
     </ng-template>
   </ng-select>
