@@ -67,7 +67,7 @@
 
 <!-- pop up modal  -->
 <div class="pop-up-container" [ngClass]="modalStatus? 'visible-modal':'hidden-modal'"
-	(keydown.escape)="closeModal()" role="dialog" aria-modal="true" [attr.aria-label]="recoveryMode ? 'Enter recovery PIN' : 'Enter PIN'">
+	(keydown.escape)="closeModal()" role="dialog" aria-modal="true" aria-label="Enter PIN">
 	<div class="backdrop"></div>
 	<form>
 		<div class="modal" cdkTrapFocus [cdkTrapFocusAutoCapture]="modalStatus">
@@ -75,22 +75,8 @@
 				(click)="closeModal()">
 				<img src="assets/icons/remove.svg" alt="close-modal" class="w-full h-full  hover:bg-shade-50">
 			</div>
-			<div *ngIf="recoveredPin; else enterPin" class="otp-container flex flex-col justify-center gap-4 md:gap-6 items-center relative">
-				<h2 class="md:text-3xl text-lg text-content font-semibold">Your login PIN</h2>
-				<p class="text-[#323842] font-normal text-sm">Use this PIN to sign in next time.</p>
-				<div class="relative">
-					<input class="bg-gray-100 text-center text-xl rounded-lg py-2.5 px-12 outline-none" readonly
-						[type]="showRecoveredPin ? 'text' : 'password'" [value]="recoveredPin" aria-label="Your access PIN">
-					<button type="button" class="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent"
-						(click)="showRecoveredPin = !showRecoveredPin; hasViewedPin = true" [attr.aria-label]="showRecoveredPin ? 'Hide PIN' : 'Show PIN'">
-						<img src="assets/icons/Visibility.svg" alt="" class="w-6 h-6">
-					</button>
-				</div>
-				<button type="button" class="btn-success font-normal text-sm md:text-lg text-center w-full disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
-					[disabled]="!hasViewedPin" (click)="finishRecovery()">{{ hasViewedPin ? 'Continue' : 'Please view your login PIN to continue' }}</button>
-			</div>
-			<ng-template #enterPin><div class="otp-container flex flex-col justify-center gap-4 md:gap-6 items-center relative ">
-				<h2 class="md:text-3xl text-lg text-content font-semibold">{{ recoveryMode ? 'Enter recovery PIN' : 'Enter PIN' }}</h2>
+			<div class="otp-container flex flex-col justify-center gap-4 md:gap-6 items-center relative ">
+				<h2 class="md:text-3xl text-lg text-content font-semibold">Enter PIN</h2>
 				<p class=" text-[#323842] font-normal text-sm" *ngIf="otpTriggered">Please type the PIN we sent you into
 					your phone.</p>
 				<div role="group" aria-label="Enter PIN">
@@ -101,15 +87,15 @@
 				<button class="btn-success font-normal text-sm md:text-lg  text-center w-full" (click)="onVerifyOTP()"
 					[disabled]="otpValue.length!=4 || (captchaRequired && !captchaToken)"> Verify</button>
 				<ng-container *ngIf="otpTriggered">
-					<a class="text-success underline cursor-pointer md:text-lg text-sm" (click)="onResendOTP()">Resend
-						PIN</a>
-					<!-- <p class="timer" *ngIf="!showResendOTP">{{otpTimer | timeformat }}</p> -->
+					<a class="text-success underline cursor-pointer md:text-lg text-sm" *ngIf="showResendOTP"
+						(click)="onResendOTP()">Resend PIN</a>
+					<p class="timer text-content text-sm" *ngIf="!showResendOTP">Resend PIN in {{ otpTimer | timeformat }}</p>
 				</ng-container>
 				<a class="text-success underline cursor-pointer md:text-lg text-sm" *ngIf="!otpTriggered"
 					(click)="forgotPin()">Forgot PIN</a>
 				<p class="text-content font-normal text-sm text-center">Having trouble accessing application?
 					<br>Contact Sikshana Representative</p>
-			</div></ng-template>
+			</div>
 		</div>
 	</form>
 </div>
