@@ -31,6 +31,13 @@ class DBService {
 				QuestionBankCache.createIndexes(),
 				QuestionBankConfiguration.createIndexes(),
 			]);
+			await this.connection.db.command({
+				collMod: QuestionBankCache.collection.collectionName,
+				index: {
+					name: "question_bank_cache_updated_at_ttl",
+					expireAfterSeconds: Number(process.env.QUESTION_BANK_CACHE_TTL_SECONDS) || 60 * 60 * 24 * 7,
+				},
+			});
 			await runMigrations();
 			if (!this.isOnConnectExecuted) {
 				this.isOnConnectExecuted = true;
