@@ -52,6 +52,7 @@ describe("AuthManager dual-role login", () => {
     jest.clearAllMocks();
     process.env.PIN_SECRET_KEY = "pin-secret";
     process.env.VARIFORM_SMS_TEMPLATE = "template";
+    process.env.PIN_WRONG_DELAY_SECONDS = "0";
     mockUserDao.update.mockResolvedValue({});
     mockAdminDao.update.mockResolvedValue({});
     mockUserDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
@@ -183,9 +184,9 @@ describe("AuthManager dual-role login", () => {
     expect(authHelper.validateCaptcha).not.toHaveBeenCalled();
   });
 
-  it("allows a valid recovery PIN to clear permanent lockout and log in", async () => {
-    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 0 };
-    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(6).fill(new Date()), recovery }));
+  it("promotes a pending PIN to permanent only after successful entry", async () => {
+    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 0, sentAt: new Date() };
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(6).fill(new Date()), otp: "old-pin", recovery }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
 
     const result = await manager.validateOtp({
@@ -193,47 +194,43 @@ describe("AuthManager dual-role login", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data.pin).toBe("1234");
+    expect(result.data.pin).toBeUndefined();
+    expect(mockUserDao.update).toHaveBeenCalledWith("teacher-1", { otp: "encrypted-pin" });
     expect(mockUserDao.clearLoginAttempts).toHaveBeenCalledWith("teacher-1");
     expect(mockUserDao.clearRecovery).toHaveBeenCalledWith("teacher-1");
   });
 
-  it("issues an initial login PIN when recovery is requested without one", async () => {
-    mockUserDao.getByPhone.mockResolvedValue(teacher({ otp: undefined }));
+  it("sends a pending PIN on forgot without overwriting the permanent PIN", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ otp: "existing-encrypted" }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
 
     const result = await manager.getOtp({ body: { phone: "9876543210", forgotPassword: true } });
 
-    expect(result.data).toEqual({ user: "9876543210", otpTriggered: true });
-    expect(mockUserDao.update).toHaveBeenCalledWith("teacher-1", expect.objectContaining({ otp: "encrypted-pin" }));
-    expect(mockUserDao.setRecovery).not.toHaveBeenCalled();
+    expect(result.data.recoveryTriggered).toBe(true);
+    expect(mockUserDao.setRecovery).toHaveBeenCalled();
+    expect(mockUserDao.update).not.toHaveBeenCalledWith("teacher-1", expect.objectContaining({ otp: expect.anything() }));
   });
 
-  it("does not complete recovery when the permanent PIN is missing", async () => {
-    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 0 };
-    mockUserDao.getByPhone.mockResolvedValue(teacher({ otp: undefined, recovery }));
+  it("sends first-time PIN as pending too", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ otp: undefined, rememberMeToken: false }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
 
-    const result = await manager.validateOtp({
-      body: { phone: "9876543210", otp: "1234", recovery: true }, useragent: {},
-    });
+    const result = await manager.getOtp({ body: { phone: "9876543210" } });
 
-    expect(result.message).toBe("PIN not found");
-    expect(jwt.sign).not.toHaveBeenCalled();
-    expect(mockUserDao.clearRecovery).not.toHaveBeenCalled();
+    expect(result.data.recoveryTriggered).toBe(true);
+    expect(mockUserDao.setRecovery).toHaveBeenCalled();
+    expect(mockUserDao.update).not.toHaveBeenCalledWith("teacher-1", expect.objectContaining({ otp: expect.anything() }));
   });
 
-  it("limits recovery verification to three attempts", async () => {
-    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), attempts: 3 };
-    mockUserDao.getByPhone.mockResolvedValue(teacher({ loginAttempts: Array(6).fill(new Date()), recovery }));
+  it("enforces resend cooldown for forgot PIN", async () => {
+    const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), sentAt: new Date() };
+    mockUserDao.getByPhone.mockResolvedValue(teacher({ recovery }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
-    mockUserDao.reserveRecoveryAttempt.mockResolvedValue(null);
 
-    const result = await manager.validateOtp({
-      body: { phone: "9876543210", otp: "9999", recovery: true },
-    });
+    const result = await manager.getOtp({ body: { phone: "9876543210", forgotPassword: true } });
 
-    expect(result.code).toBe("RECOVERY_LOCKED");
+    expect(result.code).toBe("PIN_COOLDOWN");
+    expect(authHelper.sendOtp).not.toHaveBeenCalled();
   });
 
 });
