@@ -1066,5 +1066,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   previousStep() { if (this.currentStep > 1) this.currentStep--; }
   totalTemplateMarksChange(val: any) { this.totalTemplateMarks = val; }
 
+  onTotalMarksChange(newTotal: number): void {
+    this.totalMarks = newTotal;
+    this.questionBankConfigForm.get('totalMarks')?.setValue(newTotal, { emitEvent: false });
+  }
+
   ngOnDestroy(): void { this.idleService.resetIdler(); }
 }

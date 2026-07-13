@@ -25,12 +25,15 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   @Output() backClick = new EventEmitter<boolean>();
   @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
   @Output() selectionChange = new EventEmitter<any[]>();
+  @Output() totalMarksChange = new EventEmitter<number>();
 
   // Pre-selected questions from parent (e.g. when navigating back to Step 2)
 
   // Local State
   filteredQuestions: any[] = [];
   selectedQuestions: any[] = [];
+  isEditingTarget: boolean = false;
+  editableTotalMarks: number = this.totalMarks;
 
   // Filter State
   filterSource: string = 'ALL';
@@ -194,9 +197,34 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     return this.currentTotalMarks === this.totalMarks;
   }
 
+  get isOverTarget(): boolean {
+    return this.currentTotalMarks > this.totalMarks;
+  }
+
+  get overTargetBy(): number {
+    return this.currentTotalMarks - this.totalMarks;
+  }
+
   // --- ACTIONS ---
   previousStep() {
     this.backClick.emit(true);
+  }
+
+  // --- TARGET EDITING ---
+  startEditingTarget() {
+    this.editableTotalMarks = this.totalMarks;
+    this.isEditingTarget = true;
+  }
+
+  commitTargetEdit() {
+    const parsed = Number(this.editableTotalMarks);
+    this.isEditingTarget = false;
+    if (isNaN(parsed) || parsed <= 0 || parsed === this.totalMarks) return;
+    this.totalMarksChange.emit(parsed);
+  }
+
+  cancelEditingTarget() {
+    this.isEditingTarget = false;
   }
 
   proceedToNext() {

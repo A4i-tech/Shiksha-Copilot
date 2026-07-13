@@ -144,10 +144,22 @@
   <div class="w-full md:flex-1 min-h-[20rem] bg-white border rounded-lg flex flex-col shadow-sm overflow-hidden relative">
     <div class="p-3 border-b bg-gray-50 flex flex-wrap justify-between items-center gap-2">
       <h3 class="font-bold text-gray-700">Selected Questions</h3>
-      <div class="text-sm">
-        <span class="font-bold" [ngClass]="isTotalMet ? 'text-green-600' : 'text-primary'">{{ formatMarks(currentTotalMarks) }}</span>
-        <span class="text-gray-500"> / {{ formatMarks(totalMarks) }} Marks</span>
+      <div class="text-sm flex items-center gap-1">
+        <span class="font-bold" [ngClass]="isOverTarget ? 'text-warn' : (isTotalMet ? 'text-green-600' : 'text-primary')">{{ formatMarks(currentTotalMarks) }}</span>
+        <span class="text-gray-500">/</span>
+        <button *ngIf="!isEditingTarget" type="button" (click)="startEditingTarget()"
+          class="font-bold underline decoration-dotted decoration-gray-400 hover:decoration-primary hover:text-primary"
+          title="Click to edit target marks">{{ formatMarks(totalMarks) }}</button>
+        <input *ngIf="isEditingTarget" type="number" min="1" [(ngModel)]="editableTotalMarks"
+          (keydown.enter)="commitTargetEdit()" (keydown.escape)="cancelEditingTarget()" (blur)="commitTargetEdit()"
+          class="w-16 px-1 py-0.5 text-sm border border-primary rounded outline-none focus:ring-1 focus:ring-primary/30"
+          autofocus>
+        <span class="text-gray-500">Marks</span>
       </div>
+    </div>
+
+    <div *ngIf="isOverTarget" class="px-3 py-1.5 bg-warn/10 text-warn text-xs border-b flex items-center gap-1">
+      <span>Exceeds target by {{ formatMarks(overTargetBy) }} marks — remove a question, or adjust the target above.</span>
     </div>
 
     <div class="p-2 space-y-2 md:flex-1 md:overflow-y-auto">
