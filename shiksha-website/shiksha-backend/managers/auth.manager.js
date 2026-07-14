@@ -14,7 +14,6 @@ const LOGIN_LOCK_MINUTES = 5, LOGIN_LOCK_TTL = LOGIN_LOCK_MINUTES * 60 * 1000;
 const PENDING_PIN_TTL_MINUTES = 10, PENDING_PIN_TTL = PENDING_PIN_TTL_MINUTES * 60 * 1000;
 const RESEND_COOLDOWN_SECONDS = Number(process.env.PIN_RESEND_COOLDOWN_SECONDS) || 120;
 const RESEND_COOLDOWN_MS = RESEND_COOLDOWN_SECONDS * 1000;
-const wrongPinDelay = () => new Promise((r) => setTimeout(r, +(process.env.PIN_WRONG_DELAY_SECONDS ?? 10) * 1000));
 
 class AuthManager {
     constructor() {
@@ -80,6 +79,7 @@ class AuthManager {
                     otp: CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString(),
                     expiresAt: new Date(Date.now() + PENDING_PIN_TTL),
                     sentAt: new Date(),
+                    attempts: 0,
                 });
                 await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
                 return formatApiReponse(true, "PIN sent successfully", {
@@ -202,15 +202,22 @@ class AuthManager {
     }
 
     async validateRecovery(req, activeUsers) {
-        // Pending-PIN path: ignores loginAttempts lock/captcha; wrong guesses just delay.
         const recovery = (activeUsers.teacher || activeUsers.admin).recovery;
         if (!recovery || new Date(recovery.expiresAt).getTime() <= Date.now()) {
             return formatApiReponse(false, "PIN expired. Request a new one.", null);
         }
 
+        if ((await this.updateUsers(activeUsers, "reserveRecoveryAttempt")).some((user) => !user)) {
+            return {
+                ...formatApiReponse(false, "Too many attempts. Request a new PIN.", {
+                    retryAfterSeconds: Math.ceil((new Date(recovery.expiresAt).getTime() - Date.now()) / 1000),
+                }),
+                code: "RECOVERY_LOCKED",
+            };
+        }
+
         const decrypted = CryptoJS.AES.decrypt(recovery.otp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
         if (req.body.otp !== decrypted) {
-            await wrongPinDelay();
             return formatApiReponse(false, "Invalid PIN", null);
         }
 
