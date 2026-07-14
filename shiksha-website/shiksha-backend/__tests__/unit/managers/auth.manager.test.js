@@ -3,7 +3,7 @@ const mockUserDao = {
   update: jest.fn(),
   reserveLoginAttempt: jest.fn(),
   clearLoginAttempts: jest.fn(),
-  setRecovery: jest.fn(),
+  reserveRecovery: jest.fn(),
   reserveRecoveryAttempt: jest.fn(),
   clearRecovery: jest.fn(),
 };
@@ -12,7 +12,7 @@ const mockAdminDao = {
   update: jest.fn(),
   reserveLoginAttempt: jest.fn(),
   clearLoginAttempts: jest.fn(),
-  setRecovery: jest.fn(),
+  reserveRecovery: jest.fn(),
   reserveRecoveryAttempt: jest.fn(),
   clearRecovery: jest.fn(),
 };
@@ -59,6 +59,8 @@ describe("AuthManager dual-role login", () => {
     mockAdminDao.reserveLoginAttempt.mockResolvedValue({ loginAttempts: [new Date()] });
     mockUserDao.clearLoginAttempts.mockResolvedValue({});
     mockAdminDao.clearLoginAttempts.mockResolvedValue({});
+    mockUserDao.reserveRecovery.mockResolvedValue({});
+    mockAdminDao.reserveRecovery.mockResolvedValue({});
     mockUserDao.reserveRecoveryAttempt.mockResolvedValue({ recovery: { attempts: 1 } });
     mockAdminDao.reserveRecoveryAttempt.mockResolvedValue({ recovery: { attempts: 1 } });
     mockUserDao.clearRecovery.mockResolvedValue({});
@@ -220,7 +222,9 @@ describe("AuthManager dual-role login", () => {
     const result = await manager.getOtp({ body: { phone: "9876543210", forgotPassword: true } });
 
     expect(result.data.recoveryTriggered).toBe(true);
-    expect(mockUserDao.setRecovery).toHaveBeenCalledWith("teacher-1", expect.objectContaining({ attempts: 0 }));
+    expect(mockUserDao.reserveRecovery).toHaveBeenCalledWith(
+      "teacher-1", expect.objectContaining({ attempts: 0 }), expect.any(Date)
+    );
     expect(mockUserDao.update).not.toHaveBeenCalledWith("teacher-1", expect.objectContaining({ otp: expect.anything() }));
   });
 
@@ -231,7 +235,7 @@ describe("AuthManager dual-role login", () => {
     const result = await manager.getOtp({ body: { phone: "9876543210" } });
 
     expect(result.data.recoveryTriggered).toBe(true);
-    expect(mockUserDao.setRecovery).toHaveBeenCalled();
+    expect(mockUserDao.reserveRecovery).toHaveBeenCalled();
     expect(mockUserDao.update).not.toHaveBeenCalledWith("teacher-1", expect.objectContaining({ otp: expect.anything() }));
   });
 
@@ -239,6 +243,7 @@ describe("AuthManager dual-role login", () => {
     const recovery = { otp: "encrypted-pin", expiresAt: new Date(Date.now() + 60_000), sentAt: new Date() };
     mockUserDao.getByPhone.mockResolvedValue(teacher({ recovery }));
     mockAdminDao.getByPhone.mockResolvedValue(false);
+    mockUserDao.reserveRecovery.mockResolvedValue(null);
 
     const result = await manager.getOtp({ body: { phone: "9876543210", forgotPassword: true } });
 
