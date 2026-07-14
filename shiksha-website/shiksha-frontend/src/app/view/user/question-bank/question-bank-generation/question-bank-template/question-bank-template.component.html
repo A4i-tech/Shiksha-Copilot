@@ -9,13 +9,19 @@
   </p>
 </div>
 
-<div class="grid grid-cols-2 mx-4 mt-4 rounded border md:mx-8 xl:hidden">
-  <button class="p-2 font-semibold" [ngClass]="activePane === 'POOL' ? 'bg-primary text-white' : 'bg-white text-content'" (click)="activePane = 'POOL'">
-    {{ 'Available' | translate }} ({{ filteredQuestions.length }})
-  </button>
-  <button class="p-2 font-semibold" [ngClass]="activePane === 'SELECTED' ? 'bg-primary text-white' : 'bg-white text-content'" (click)="activePane = 'SELECTED'">
-    {{ 'Selected' | translate }} ({{ selectedQuestions.length }})
-  </button>
+<div class="mx-4 mt-4 overflow-hidden rounded border md:mx-8 xl:hidden">
+  <div class="p-3 border-b bg-gray-50 text-right text-sm">
+    <span class="font-bold" [ngClass]="isTotalMet ? 'text-green-600' : 'text-red-600'">{{ formatMarks(currentTotalMarks) }}</span>
+    <span class="text-gray-500"> / {{ formatMarks(totalMarks) }} {{ 'Marks' | translate }}</span>
+  </div>
+  <div class="grid grid-cols-2">
+    <button class="p-2 font-semibold border-r" [ngClass]="activePane === 'POOL' ? 'bg-primary text-white' : 'bg-white text-content'" (click)="activePane = 'POOL'">
+      {{ 'Available' | translate }} ({{ filteredQuestions.length }})
+    </button>
+    <button class="p-2 font-semibold" [ngClass]="activePane === 'SELECTED' ? 'bg-primary text-white' : 'bg-white text-content'" (click)="activePane = 'SELECTED'">
+      {{ 'Selected' | translate }} ({{ selectedQuestions.length }})
+    </button>
+  </div>
 </div>
 
 <div #questionSelectionContent class="p-4 md:p-8 flex flex-col xl:flex-row gap-6 xl:h-[70vh]">
@@ -164,10 +170,10 @@
   <!-- RIGHT: SELECTED QUESTIONS -->
   <div class="w-full xl:flex-1 min-h-[20rem] bg-white border rounded-lg flex flex-col shadow-sm overflow-hidden relative"
     [ngClass]="{ 'hidden xl:!flex': activePane !== 'SELECTED' }">
-    <div class="p-3 border-b bg-gray-50 flex flex-wrap justify-between items-center gap-2">
+    <div class="p-3 border-b bg-gray-50 hidden xl:flex flex-wrap justify-between items-center gap-2">
       <h3 class="font-bold text-gray-700">{{ 'Selected Questions' | translate }}</h3>
       <div class="text-sm">
-        <span class="font-bold" [ngClass]="isTotalMet ? 'text-green-600' : 'text-primary'">{{ formatMarks(currentTotalMarks) }}</span>
+        <span class="font-bold" [ngClass]="isTotalMet ? 'text-green-600' : 'text-red-600'">{{ formatMarks(currentTotalMarks) }}</span>
         <span class="text-gray-500"> / {{ formatMarks(totalMarks) }} {{ 'Marks' | translate }}</span>
       </div>
     </div>
