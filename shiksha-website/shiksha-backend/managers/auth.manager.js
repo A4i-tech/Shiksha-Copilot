@@ -81,9 +81,7 @@ class AuthManager {
                     expiresAt: new Date(Date.now() + PENDING_PIN_TTL),
                     sentAt: new Date(),
                 });
-                if (rememberMe !== undefined) {
-                    await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
-                }
+                await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
                 return formatApiReponse(true, "PIN sent successfully", {
                     user: user.phone, otpTriggered: true, recoveryTriggered: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS,
                 });
