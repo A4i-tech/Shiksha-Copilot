@@ -83,6 +83,8 @@ const teacherTrainingBatchSchema = new mongoose.Schema({
   }
 });
 
+teacherTrainingBatchSchema.index({ attendance: 1, isSubmitted: 1 });
+
 teacherTrainingBatchSchema.pre('save', function(next) {
   this.updatedAt = Date.now(); 
   next();
@@ -90,4 +92,4 @@ teacherTrainingBatchSchema.pre('save', function(next) {
 
 const TeacherTrainingBatch = mongoose.model('TeacherTrainingBatch', teacherTrainingBatchSchema);
 
-module.exports = TeacherTrainingBatch; 
+module.exports = TeacherTrainingBatch;

@@ -1,5 +1,4 @@
 const User = require("../models/user.model");
-const TeacherTrainingBatch = require("../models/teacher.training.batch.model");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 class UserAggregation {
@@ -7,25 +6,14 @@ class UserAggregation {
     try {
       // Extract trainingStatus filter and remove it from processedFilters
       const { trainingStatus, ...otherFilters } = processedFilters;
-      const trainedUserIds = trainingStatus && await TeacherTrainingBatch.distinct("attendance", { isSubmitted: true });
-      const trainingFilter = trainingStatus && { _id: { [trainingStatus === "trained" ? "$in" : "$nin"]: trainedUserIds } };
-      
       const trainingStages = [
         {
           $lookup: {
             from: "teachertrainingbatches",
-            let: { userId: "$_id" },
+            localField: "_id",
+            foreignField: "attendance",
             pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ["$isSubmitted", true] },
-                      { $in: ["$$userId", "$attendance"] }
-                    ]
-                  }
-                }
-              },
+              { $match: { isSubmitted: true } },
               { $limit: 1 }
             ],
             as: "trainingAttendance"
@@ -43,6 +31,7 @@ class UserAggregation {
           }
         }
       ];
+      const remainingTrainingStages = trainingStatus ? [] : trainingStages;
       const paginationStages = [
         { $sort: Object.keys(sort).length > 0 ? sort : { _id: 1 } },
         ...(limit > 0 ? [{ $skip: (page - 1) * limit }, { $limit: limit }] : []),
@@ -59,19 +48,19 @@ class UserAggregation {
         },
         { $unwind: { path: "$school", preserveNullAndEmptyArrays: true } },
         { $match: otherFilters },
-        ...(trainingFilter ? [{ $match: trainingFilter }] : []),
+        ...(trainingStatus ? [...trainingStages, { $match: { trainingStatus } }] : []),
       ];
 
       if (!limit) {
-        pipeline.push(...trainingStages, projectStage, ...paginationStages);
+        pipeline.push(...remainingTrainingStages, projectStage, ...paginationStages);
       } else if (sort.trainingStatus) {
-        pipeline.push(...trainingStages, projectStage, {
+        pipeline.push(...remainingTrainingStages, projectStage, {
           $facet: { data: paginationStages, totalCount: [{ $count: "count" }] }
         });
       } else {
         pipeline.push({
           $facet: {
-            data: [...paginationStages, ...trainingStages, projectStage],
+            data: [...paginationStages, ...remainingTrainingStages, projectStage],
             totalCount: [{ $count: "count" }],
           }
         });
