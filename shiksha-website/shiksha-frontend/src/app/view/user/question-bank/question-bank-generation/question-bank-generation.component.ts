@@ -103,6 +103,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   selectedQuestionsMarks: number = 0;
   selectedQuestions: any[] = [];
+  private previewBlueprint = '';
   stepArray = Array(this.totalSteps).fill(0)
 
   constructor(
@@ -490,6 +491,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   previewQuestions(): void {
+    const blueprint = JSON.stringify(this.questionBankBluePrintData);
+    if (this.selectedQuestions.length && blueprint === this.previewBlueprint) {
+      this.updatePreview();
+      this.currentStep = 4;
+      this.pickerOpen = this.selectedQuestionsMarks !== this.totalMarks;
+      return;
+    }
     this.isLoadingQuestions = true;
     concat(
       this.useLBA ? this.fetchLBAQuestionsPool() : of([] as any[]),
@@ -500,6 +508,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: questions => {
+        this.previewBlueprint = blueprint;
         this.allAvailableQuestions = questions;
         this.selectedQuestions = this.pickToTotalMarks(questions);
         this.updatePreview();
@@ -547,7 +556,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   onPickerSelectionChange(questions: any[]): void {
-    this.selectedQuestions = this.sortQuestionsByMarks(questions);
+    this.selectedQuestions = [...questions];
     this.updatePreview();
   }
 
