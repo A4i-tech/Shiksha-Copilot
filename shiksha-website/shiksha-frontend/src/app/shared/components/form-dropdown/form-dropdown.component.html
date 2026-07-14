@@ -10,17 +10,14 @@
       </span>
     </span>
   </label>
-  <span *ngIf="config.multi && !config.hideChips && dropDownCtrl?.value?.length > 0" class="area-label"
-    [ngClass]="config.hideLabel ? 'top-[9px]' : 'top-[39px]'">
-    {{ config.placeHolderTxt | translate }}
-  </span>
-  <ng-select [labelForId]="inputId" [items]="dropDownValues" [class.external-chips]="config.multi && !config.hideChips"
+  <ng-select [labelForId]="inputId" [items]="dropDownValues"
     [ngClass]="config.isBackground && (dropDownCtrl.disabled || config.disabled) ? 'with-background' : ''" [readonly]="!!config.disabled"
     [style]="{ height: config.height }" [placeholder]="config.placeHolderTxt | translate"
     [notFoundText]="'No items found' | translate"
-    bindLabel="{{ config.bindLable ? config.bindLable : 'name' }}"
-    bindValue="{{ config.bindValue ? config.bindValue : 'value' }}" [dropdownPosition]="'auto'"
+    [bindLabel]="config.addTag ? 'label' : config.bindLable || 'name'"
+    [bindValue]="config.addTag ? '' : config.bindValue || 'value'" [dropdownPosition]="'auto'"
     [searchable]="config.searchable || false" [clearable]="config.clearableOff ? false : true"
+    [addTag]="config.addTag || false"
     [multiple]="config.multi ? true : false" [formControl]="dropDownCtrl" (change)="valueSelected($event)"
     [closeOnSelect]="config.openOnSelect ? false : true"
     [attr.aria-invalid]="submitted && dropDownCtrl.invalid ? 'true' : null"
@@ -46,23 +43,4 @@
     <ng-container *ngIf="dropDownCtrl.errors?.['required']">{{ config.fieldName | translate }} {{'is required' | translate}}</ng-container>
   </small>
 
-  <ng-container *ngIf="config.hideChips ? false : true && config.multi">
-    <div class="mt-2 flex-wrap">
-      <ng-container *ngFor="let item of dropDownCtrl?.value; let i = index">
-        <span class="chip" *ngIf="item">
-          <img *ngIf="getItemForValue(item)?.info && !config.hideChipIcons" [title]="getSafeInfo($any(getItemForValue(item)))"
-            [attr.aria-label]="getSafeInfo($any(getItemForValue(item))) || 'Info'" src="assets/icons/info-primary.svg"
-            class="inline-block w-4 h-4 mr-1 cursor-help" alt="">
-          <span *ngIf="config?.chipValueType === 'titlecase'">{{
-            getLabelForValue(item) | titlecase
-            }}</span>
-          <span *ngIf="config?.chipValueType === 'uppercase'">{{
-            getLabelForValue(item) | uppercase
-            }}</span>
-          <span *ngIf="!config?.chipValueType">{{ getLabelForValue(item) | titlecase }}</span>
-          <span *ngIf="config?.chipClearableOff ? false: true" class="close-icon" (click)="removeItem(i)">×</span>
-        </span>
-      </ng-container>
-    </div>
-  </ng-container>
 </div>
