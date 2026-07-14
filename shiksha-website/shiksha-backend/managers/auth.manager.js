@@ -32,6 +32,10 @@ class AuthManager {
             .map(([user, dao]) => dao[method](user._id, ...args)));
     }
 
+    getUserDao({ teacher, admin }) {
+        return teacher ? [teacher, this.userDao] : [admin, this.adminUserDao];
+    }
+
     mergeUser(teacher, admin) {
         const user = (teacher || admin).toObject();
         Object.assign(user, {
@@ -56,31 +60,26 @@ class AuthManager {
             }
 
             const activeUsers = { teacher: users.teacher?.isDeleted ? null : users.teacher, admin: users.admin?.isDeleted ? null : users.admin };
-            const user = activeUsers.teacher || activeUsers.admin;
+            const [user, dao] = this.getUserDao(activeUsers);
             if (!user) {
                 return formatApiReponse(false, "User is inactive", {});
             }
 
             // SMS PIN (first-time or forgot/resend): pending only — no permanent otp until validated.
             if (forgotPassword || (!user.otp && !user.rememberMeToken)) {
-                const sentAt = user.recovery?.sentAt ? new Date(user.recovery.sentAt).getTime() : 0;
-                const waitMs = RESEND_COOLDOWN_MS - (Date.now() - sentAt);
-                if (sentAt && waitMs > 0) {
-                    return {
-                        ...formatApiReponse(false, "Please wait before requesting another PIN.", {
-                            retryAfterSeconds: Math.ceil(waitMs / 1000),
-                        }),
-                        code: "PIN_COOLDOWN",
-                    };
-                }
                 const otp = authHelper.getOtp();
-                await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
-                await this.updateUsers(activeUsers, "setRecovery", {
+                const recovery = {
                     otp: CryptoJS.AES.encrypt(otp, process.env.PIN_SECRET_KEY).toString(),
                     expiresAt: new Date(Date.now() + PENDING_PIN_TTL),
                     sentAt: new Date(),
                     attempts: 0,
-                });
+                };
+                if (!await dao.reserveRecovery(user._id, recovery, new Date(Date.now() - RESEND_COOLDOWN_MS))) {
+                    return { ...formatApiReponse(false, "Please wait before requesting another PIN.", {
+                        retryAfterSeconds: RESEND_COOLDOWN_SECONDS,
+                    }), code: "PIN_COOLDOWN" };
+                }
+                await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
                 await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
                 return formatApiReponse(true, "PIN sent successfully", {
                     user: user.phone, otpTriggered: true, recoveryTriggered: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS,
@@ -202,12 +201,13 @@ class AuthManager {
     }
 
     async validateRecovery(req, activeUsers) {
-        const recovery = (activeUsers.teacher || activeUsers.admin).recovery;
+        const [user, dao] = this.getUserDao(activeUsers);
+        const recovery = user.recovery;
         if (!recovery || new Date(recovery.expiresAt).getTime() <= Date.now()) {
             return formatApiReponse(false, "PIN expired. Request a new one.", null);
         }
 
-        if ((await this.updateUsers(activeUsers, "reserveRecoveryAttempt")).some((user) => !user)) {
+        if (!await dao.reserveRecoveryAttempt(user._id)) {
             return {
                 ...formatApiReponse(false, "Too many attempts. Request a new PIN.", {
                     retryAfterSeconds: Math.ceil((new Date(recovery.expiresAt).getTime() - Date.now()) / 1000),
