@@ -285,11 +285,18 @@ class UserController extends BaseController {
         !req.permissions.includes("scope.global");
 
       if (isRegional) {
-        const zones = [].concat(zone || req.user.profiles?.admin?.zones || []).filter(Boolean);
-        const districts = [].concat(district || req.user.profiles?.admin?.districts || []).filter(Boolean);
-        if (!zones.length && !districts.length) {
+        const allowedZones = [].concat(req.user.profiles?.admin?.zones || []).filter(Boolean);
+        const allowedDistricts = [].concat(req.user.profiles?.admin?.districts || []).filter(Boolean);
+        if (!allowedZones.length && !allowedDistricts.length) {
           return res.status(403).json({ success: false, message: "No regional scope assigned" });
         }
+        const zones = [].concat(zone || filter.zone || []).filter(Boolean);
+        const districts = [].concat(district || filter.district || []).filter(Boolean);
+        if (zones.some(value => !allowedZones.includes(value)) || districts.some(value => !allowedDistricts.includes(value))) {
+          return res.status(403).json({ success: false, message: "Requested zone/district outside your assigned scope" });
+        }
+        if (!zones.length) zones.push(...allowedZones);
+        if (!districts.length) districts.push(...allowedDistricts);
         if (zones.length) processedFilter.zone = zones;
         if (districts.length) processedFilter.district = districts;
       } else {
