@@ -1,91 +1,145 @@
 
-
 const BaseManager = require('./base.manager');
 const formatApiResponse = require('../helper/response');
 const BaselineSurveyDao = require('../dao/baselineSurvey.dao');
-const { getAcademicYear } = require('../helper/academic.year.helper');
+const BaselineSurveyReminder = require('../models/baselineSurveyReminder.model');
+
+const MAX_REMIND_LATER = 2;
 
 class BaselineSurveyManager extends BaseManager {
   constructor() {
     const dao = new BaselineSurveyDao();
     super(dao);
     this.dao = dao;
-    this.baselineSurvey = process.env.BASELINE_SURVEY === 'true';
+  }
+
+  /**
+   * Calculate Academic Year.
+   * Academic Year X starts June 1, Year X and ends March 31, Year X+1.
+   */
+  getAcademicYearInfo() {
+    const now = new Date();
+    const month = now.getMonth(); // 0-11. June is 5, March is 2.
+    const year = now.getFullYear();
+
+    if (month >= 5) { // June onwards
+      return year;
+    } else {
+      return year - 1;
+    }
+  }
+
+  async getRemindLaterCount(userId) {
+    try {
+      const rec = await BaselineSurveyReminder.findOne({ userId }).lean();
+      return rec ? rec.remindLaterCount : 0;
+    } catch (err) {
+      console.error('BaselineSurveyManager.getRemindLaterCount', err);
+      return 0;
+    }
   }
 
   async checkCompleted(userId) {
     try {
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
-      if (!this.baselineSurvey) return formatApiResponse(true, 'OK', { completed: true });
-      const academicYear = getAcademicYear();
+
+      const academicYear = this.getAcademicYearInfo();
       const exists = await this.dao.existsByUser(userId, academicYear);
-      return formatApiResponse(true, 'OK', { completed: !!exists, academicYear });
+      const remindLaterCount = await this.getRemindLaterCount(userId);
+
+      return formatApiResponse(true, 'OK', {
+        completed: !!exists,
+        academicYear,
+        remindLaterCount,
+        isMandatory: remindLaterCount >= MAX_REMIND_LATER,
+      });
     } catch (err) {
       console.error('BaselineSurveyManager.checkCompleted', err);
       return formatApiResponse(false, 'Server error', null);
     }
   }
 
-  async submitSurvey(userId, body, session = null) {
+  async incrementRemindLater(userId) {
     try {
-      if (!this.baselineSurvey) return formatApiResponse(false, 'Survey is disabled', null);
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
-      const academicYear = getAcademicYear();
+      const rec = await BaselineSurveyReminder.findOneAndUpdate(
+        { userId },
+        { $inc: { remindLaterCount: 1 } },
+        { upsert: true, new: true }
+      );
+
+      return formatApiResponse(true, 'Remind later recorded', {
+        remindLaterCount: rec.remindLaterCount,
+        isMandatory: rec.remindLaterCount >= MAX_REMIND_LATER,
+      });
+    } catch (err) {
+      console.error('BaselineSurveyManager.incrementRemindLater', err);
+      return formatApiResponse(false, 'Server error', null);
+    }
+  }
+
+  async submitSurvey(userId, body, session = null) {
+    try {
+      if (!userId) return formatApiResponse(false, 'Missing userId', null);
+
+      const academicYear = this.getAcademicYearInfo();
       const already = await this.dao.findByUser(userId, academicYear);
       if (already) return formatApiResponse(false, 'Already submitted for this academic year', null);
 
-      // ---- NORMALIZE ARRAYS ----
+      // ---- Q1: plans (multi-select) ----
       const plans = Array.isArray(body.plans) ? body.plans : [];
+      const plansOther = (body.plansOther || '').trim();
+
+      // ---- Q2: devices (multi-select) ----
       const devices = Array.isArray(body.devices) ? body.devices : [];
-      let lessonPlanComponents = Array.isArray(body.lessonPlanComponents)
-        ? body.lessonPlanComponents
-        : [];
-      let resourcesUsed = Array.isArray(body.resourcesUsed) ? body.resourcesUsed : [];
+      const devicesOther = (body.devicesOther || '').trim();
 
-      const otherLessonPlanComponent = (body.otherLessonPlanComponent || '').trim();
-      const otherResourceUsed = (body.otherResourceUsed || '').trim();
+      // ---- Q3: weeklyLessonPlans (single) ----
+      const weeklyLessonPlans = body.weeklyLessonPlans || '';
 
-      // If user typed "Others" for components, store it as "Others: <text>"
-      if (otherLessonPlanComponent) {
-        // remove bare "Others" from array if present
-        lessonPlanComponents = lessonPlanComponents.filter(v => v !== 'Others');
-        lessonPlanComponents.push(`Others: ${otherLessonPlanComponent}`);
-      }
+      // ---- Q4: lessonPlanComponents (multi-select) ----
+      const lessonPlanComponents = Array.isArray(body.lessonPlanComponents) ? body.lessonPlanComponents : [];
+      const lessonPlanComponentsOther = (body.lessonPlanComponentsOther || '').trim();
 
-      // If user typed "Others" for resources, store it as "Others: <text>"
-      if (otherResourceUsed) {
-        resourcesUsed = resourcesUsed.filter(v => v !== 'Others');
-        resourcesUsed.push(`Others: ${otherResourceUsed}`);
-      }
+      // ---- Q5: timePerLessonPlan (radio) ----
+      const timePerLessonPlan = body.timePerLessonPlan || '';
+      const timePerLessonPlanOther = (body.timePerLessonPlanOther || '').trim();
 
-      // ---- NORMALIZE TIME FIELDS ----
-      let timePerLessonPlan = body.timePerLessonPlan || '';
-      let timeForAssessments = body.timeForAssessments || '';
+      // ---- Q6: resourcesUsed (multi-select) ----
+      const resourcesUsed = Array.isArray(body.resourcesUsed) ? body.resourcesUsed : [];
+      const resourcesUsedOther = (body.resourcesUsedOther || '').trim();
 
-      const otherTimePerLessonPlan = (body.otherTimePerLessonPlan || '').trim();
-      const otherTimeForAssessments = (body.otherTimeForAssessments || '').trim();
+      // ---- Q7: timeForAssessments (radio) ----
+      const timeForAssessments = body.timeForAssessments || '';
+      const timeForAssessmentsOther = (body.timeForAssessmentsOther || '').trim();
 
-      // If dropdown value is "Others" and text is given, replace it with the text
-      if (timePerLessonPlan === 'Others' && otherTimePerLessonPlan) {
-        timePerLessonPlan = otherTimePerLessonPlan;
-      }
+      // ---- Q8: questionBalance (multi-select checkboxes) ----
+      const questionBalance = Array.isArray(body.questionBalance) ? body.questionBalance : [];
+      const questionBalanceOther = (body.questionBalanceOther || '').trim();
 
-      if (timeForAssessments === 'Others' && otherTimeForAssessments) {
-        timeForAssessments = otherTimeForAssessments;
-      }
+      // ---- Q9: additional comments ----
+      const otherNotes = body.otherNotes || '';
 
       const payload = {
         userId,
         academicYear,
         plans,
+        plansOther,
         devices,
-        weeklyLessonPlans: body.weeklyLessonPlans || '',
+        devicesOther,
+        weeklyLessonPlans,
         lessonPlanComponents,
+        lessonPlanComponentsOther,
         timePerLessonPlan,
+        timePerLessonPlanOther,
         resourcesUsed,
+        resourcesUsedOther,
         timeForAssessments,
-        otherNotes: body.otherNotes || '',
+        timeForAssessmentsOther,
+        questionBalance,
+        questionBalanceOther,
+        otherNotes,
       };
 
       const doc = await this.dao.createSurvey(payload, session);

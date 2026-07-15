@@ -12,6 +12,9 @@ import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
 import { environment } from 'src/environments/environment';
+import { BaselineSurveyService } from 'src/app/core/services/baseline-survey.service';
+import { BaselineSurveyDialogService } from 'src/app/core/services/baseline-survey-dialog.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-sign-in',
@@ -71,7 +74,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     private authService:AuthorizationService,
     private sidebarService:SidebarService,
     private translateService: TranslateService,
-    private secureCookieService:SecureCookieService
+    private secureCookieService:SecureCookieService,
+    private baselineSurveyService: BaselineSurveyService,
+    private baselineSurveyDialog: BaselineSurveyDialogService
   ) {}
 
   /**
@@ -90,14 +95,35 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
 
   navigateAfterLogin(userData: any) {
     const roles = userData?.role || [];
-    const isTeacher = roles.includes('standard') || roles.includes('power');
+    const isTeacherOnly = (roles.includes('standard') || roles.includes('power'))
+      && !roles.includes('admin') && !roles.includes('manager')
+      && !roles.includes('super_admin') && !roles.includes('coordinator')
+      && !roles.includes('trainer');
 
-    if (isTeacher && !userData.isProfileCompleted) {
+    if (isTeacherOnly && !userData.isProfileCompleted) {
       this.router.navigate(['/profile']);
-    } else if (isTeacher) {
+    } else if (isTeacherOnly) {
       this.router.navigate(['/home']);
+      // Reset session state and immediately trigger survey check on login
+      this.baselineSurveyService.resetSession();
+      this.triggerSurveyCheck();
     } else {
       this.router.navigate(['/dashboard']);
+    }
+  }
+
+  /** Checks the survey after login and shows the popup if pending */
+  private async triggerSurveyCheck(): Promise<void> {
+    try {
+      const resp = await firstValueFrom(this.baselineSurveyService.checkCompleted());
+      if (resp?.success && !resp?.data?.completed) {
+        void this.baselineSurveyDialog.openSurvey(
+          !!resp.data.isMandatory,
+          resp.data.remindLaterCount ?? 0
+        );
+      }
+    } catch {
+      // swallow errors — login flow should not be blocked
     }
   }
 

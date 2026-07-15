@@ -16,4 +16,10 @@ router.post(
   asyncMiddleware(baselineController.submitSurvey.bind(baselineController))
 );
 
+router.patch(
+  '/baseline-surveys/remind-later',
+  isAuthenticated,
+  asyncMiddleware(baselineController.remindLater.bind(baselineController))
+);
+
 module.exports = router;

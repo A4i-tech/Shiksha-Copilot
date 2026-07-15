@@ -30,19 +30,26 @@ export class BaselineSurveyGuard implements CanActivate {
     const user = this.getUser();
     if (!this.isEndUser(user)) return true; // skip for managers/admins
 
+    // Skip if already dismissed/postponed in the current session
+    if (this.survey.isDismissed()) {
+      return true;
+    }
+
     // 2) Check completion
     try {
       const resp = await firstValueFrom(this.survey.checkCompleted());
       const completed = !!resp?.data?.completed;
+      const remindLaterCount = resp?.data?.remindLaterCount ?? 0;
+      const isMandatory = !!resp?.data?.isMandatory;
 
-      // 3) Open dialog if not completed
-      if (!completed) {
+      // 3) Open dialog ONLY if API request succeeded AND survey is not completed
+      if (resp?.success && !completed) {
         // Defer dialog open to next macrotask to avoid change detection race with navigation
         this.zone.runOutsideAngular(() => {
           setTimeout(() => {
             this.zone.run(() => {
               // fire-and-forget so guard returns immediately
-              void this.dialog.openSurvey(true);
+              void this.dialog.openSurvey(isMandatory, remindLaterCount);
             });
           }, 0);
         });
