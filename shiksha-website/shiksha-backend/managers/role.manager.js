@@ -17,7 +17,7 @@ class RoleManager extends BaseManager {
   async update(req) {
     const role = await this.dao.getById(req.params.id);
     if (!role) return formatApiReponse(false, "Role not found", null);
-    const allowed = role.isSystem ? ["name", "description"] : ["name", "description", "permissions"];
+    const allowed = role.isSuperUser ? ["name", "description"] : ["name", "description", "permissions"];
     const update = Object.fromEntries(allowed.filter((k) => k in req.body).map((k) => [k, req.body[k]]));
     if (!Object.keys(update).length) return formatApiReponse(false, "No valid fields to update", null);
     return formatApiReponse(true, "Role updated", await this.dao.Model.findByIdAndUpdate(role._id, { $set: update }, { new: true, runValidators: true }));

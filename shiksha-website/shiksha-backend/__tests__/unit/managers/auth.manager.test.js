@@ -108,7 +108,7 @@ describe("AuthManager", () => {
     expect(result.code).toBe("CAPTCHA_REQUIRED");
   });
 
-  it("returns recovered pin after successful recovery validation", async () => {
+  it("promotes the verified recovery pin and completes login", async () => {
     const user = baseUser({
       recovery: {
         otp: encrypt("9999"),
@@ -128,8 +128,8 @@ describe("AuthManager", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data.pin).toBe("1234");
     expect(result.data.token).toBe("jwt-token");
+    expect(manager.userDao.update).toHaveBeenCalledWith(user._id, { otp: user.recovery.otp });
   });
 
   it("rejects expired recovery pin", async () => {

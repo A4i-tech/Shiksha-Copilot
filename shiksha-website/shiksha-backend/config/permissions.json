@@ -12,7 +12,6 @@
   { "name": "help.view", "description": "View help and support content." },
   { "name": "lesson-plan.delete", "description": "Delete saved lesson plans from own lesson content list." },
   { "name": "lesson-plan.edit", "description": "Edit, save, regenerate, and attach media to lesson plans." },
-  { "name": "lesson-plan.enhance", "description": "Use AI enhancement tools to improve generated lesson-plan sections." },
   { "name": "lesson-plan.generate", "description": "Generate new lesson plans from selected chapter, topic, and learning outcome inputs." },
   { "name": "lesson-resource.delete", "description": "Delete saved lesson resources from own lesson content list." },
   { "name": "lesson-resource.edit", "description": "Edit, save, and attach media to generated lesson resources." },
