@@ -36,6 +36,7 @@ const questionBankCommonSchema = {
     ).required(),
     isMultiChapter: Joi.boolean().required(),
     marksDistribution: Joi.array()
+        .min(1)
         .items({
             unitName: Joi.string(),
             marks: Joi.number(),
@@ -52,7 +53,7 @@ const questionBankTemplateSchemaCreate = Joi.object({
 // 2. Generate Schema
 const questionBankSchemaCreate = Joi.object({
     ...questionBankCommonSchema,
-    objectiveDistribution: Joi.array().items(Joi.object().unknown(true)).required(),
+    objectiveDistribution: Joi.array().min(1).items(Joi.object().unknown(true)).required(),
 
     questionBankTemplate: Joi.array()
         .items(questionBankTemplateItemSchema).optional(),

@@ -87,6 +87,15 @@ describe("Question Bank Validation", () => {
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();
     });
+
+    it.each(["marksDistribution", "objectiveDistribution"])("should reject an empty %s", (field) => {
+      mockReq.body = { ...validGenerateData, [field]: [] };
+
+      validateQuestionBankCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
   });
 
   describe("validateGetQuestionTypes", () => {

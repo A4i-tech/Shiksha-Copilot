@@ -123,6 +123,32 @@ describe("QuestionBankManager", () => {
     });
   });
 
+  describe("blueprint distribution", () => {
+    it("builds the exact requested blueprint", () => {
+      const template = manager._applyQuestionCounts([
+        { type: "MCQ", marksPerQuestion: 1 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5 },
+      ], 7);
+      const result = manager._distributeBlueprint(template, [
+        { unitName: "Unit A", marks: 5 },
+        { unitName: "Unit B", marks: 2 },
+      ], [
+        { objective: "Knowledge", percentageDistribution: 34 },
+        { objective: "Application", percentageDistribution: 66 },
+      ]);
+
+      expect(result).toEqual([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, questionDistribution: [
+          { unitName: "Unit B", objective: "Knowledge" },
+          { unitName: "Unit B", objective: "Application" },
+        ] },
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, questionDistribution: [
+          { unitName: "Unit A", objective: "Application" },
+        ] },
+      ]);
+    });
+  });
+
   describe("updateFeedback", () => {
     it("should update feedback successfully", async () => {
       mockQuestionBankDao.update.mockResolvedValue({});
