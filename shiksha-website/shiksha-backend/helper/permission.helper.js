@@ -3,8 +3,9 @@ const permissions = require("../config/permissions.json");
 const ALL_PERMISSIONS = Object.freeze(permissions.map((permission) => permission.name));
 
 function getRolePermissions(roles) {
-  if (roles.some((role) => role.isSuperUser)) return ALL_PERMISSIONS;
-  return [...new Set(roles.flatMap((role) => role.permissions))];
+  const activeRoles = roles.filter((role) => !role.isDeleted);
+  if (activeRoles.some((role) => role.isSuperUser)) return ALL_PERMISSIONS;
+  return [...new Set(activeRoles.flatMap((role) => role.permissions))];
 }
 
 module.exports = {
