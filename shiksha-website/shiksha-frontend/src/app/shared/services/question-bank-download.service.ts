@@ -174,7 +174,7 @@ export class QuestionBankDownloadService {
           paragraphs.push(
             new Paragraph({
               children: [
-                new TextRun({ text: '   Ans: ', bold: true, color: COLOR_ANSWER }),
+                new TextRun({ text: `   ${this.translateService.instant('Hint')}: `, bold: true, color: COLOR_ANSWER }),
                 ...this.contentRuns(q.keyAnswer),
               ],
               spacing: DOCX_CONFIG.spacing.optionItem,
