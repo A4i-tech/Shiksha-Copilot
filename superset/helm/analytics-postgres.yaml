@@ -24,7 +24,7 @@ data:
     CREATE TABLE IF NOT EXISTS dim_users (
         user_id     TEXT PRIMARY KEY,
         name        TEXT NOT NULL,
-        role        TEXT NOT NULL CHECK (role IN ('HM', 'CRP', 'BEO', 'DDPI', 'StateAdmin')),
+        role        TEXT NOT NULL CHECK (role IN ('HM', 'CRP', 'BEO', 'MEO', 'DEO', 'DDPI', 'StateAdmin')),
         school_id   INT REFERENCES dim_schools(school_id),
         region_id   INT NOT NULL REFERENCES dim_regions(region_id)
     );

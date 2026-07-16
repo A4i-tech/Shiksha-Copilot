@@ -117,17 +117,9 @@ def main() -> None:
         cur = pg.cursor()
         logger.info("PostgreSQL OK")
 
-        # ------------------------------------------------------------------ truncate
-        logger.info("Truncating tables ...")
-        cur.execute("""
-            TRUNCATE fact_lba_attempts, fact_chatbot_sessions, fact_ai_actions,
-                     fact_user_activities, fact_lesson_plans CASCADE;
-            TRUNCATE dim_users CASCADE;
-            TRUNCATE dim_schools CASCADE;
-            TRUNCATE dim_regions CASCADE;
-        """)
-
         # ------------------------------------------------------------------ dim_regions
+        # Read all MongoDB data before touching PostgreSQL so a Mongo failure
+        # never leaves analytics tables empty.
         logger.info("Syncing dim_regions ...")
         users_raw = list(db.users.find(
             {"isDeleted": {"$ne": True}},
@@ -137,6 +129,17 @@ def main() -> None:
         state_id = {}   # state_name       -> region_id
         dist_id  = {}   # (state, dist)    -> region_id
         block_id = {}   # (state, dist, b) -> region_id
+
+        # Truncate only after all MongoDB reads succeed — PostgreSQL TRUNCATE is
+        # transactional so any subsequent failure rolls this back automatically.
+        logger.info("Truncating tables ...")
+        cur.execute("""
+            TRUNCATE fact_lba_attempts, fact_chatbot_sessions, fact_ai_actions,
+                     fact_user_activities, fact_lesson_plans CASCADE;
+            TRUNCATE dim_users CASCADE;
+            TRUNCATE dim_schools CASCADE;
+            TRUNCATE dim_regions CASCADE;
+        """)
 
         for s in sorted({u.get("state") for u in users_raw if u.get("state")}):
             cur.execute(

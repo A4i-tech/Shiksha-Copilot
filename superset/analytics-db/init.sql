@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS dim_schools (
 CREATE TABLE IF NOT EXISTS dim_users (
     user_id     TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
-    role        TEXT NOT NULL CHECK (role IN ('HM', 'CRP', 'BEO', 'DDPI', 'StateAdmin')),
+    role        TEXT NOT NULL CHECK (role IN ('HM', 'CRP', 'BEO', 'MEO', 'DEO', 'DDPI', 'StateAdmin')),
     school_id   INT REFERENCES dim_schools(school_id),
     region_id   INT NOT NULL REFERENCES dim_regions(region_id)
 );
@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS fact_lesson_plans (
     subject     TEXT NOT NULL,
     grade       INT NOT NULL,
     status      TEXT NOT NULL CHECK (status IN ('draft', 'published', 'archived')),
+    medium      TEXT NOT NULL DEFAULT 'Unknown',
     created_at  TIMESTAMP NOT NULL
 );
 
@@ -130,12 +131,13 @@ INSERT INTO dim_users (user_id, name, role, school_id, region_id) VALUES
 -- Seed: Facts (generated over last 90 days)
 -- ============================================================
 
-INSERT INTO fact_lesson_plans (user_id, subject, grade, status, created_at)
+INSERT INTO fact_lesson_plans (user_id, subject, grade, status, medium, created_at)
 SELECT
   'u00' || (1 + (n % 6))::text,
   (ARRAY['Maths','Science','Kannada','English','Social'])[1 + (n % 5)],
   (1 + (n % 5)),
   (ARRAY['draft','published','archived'])[1 + (n % 3)],
+  (ARRAY['Kannada','English'])[1 + (n % 2)],
   NOW() - ((n % 90) || ' days')::interval
 FROM generate_series(1, 300) AS n;
 

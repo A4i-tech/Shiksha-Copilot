@@ -8,6 +8,15 @@ const SUPERSET_ADMIN_USERNAME = process.env.SUPERSET_ADMIN_USERNAME;
 const SUPERSET_ADMIN_PASSWORD = process.env.SUPERSET_ADMIN_PASSWORD;
 const SUPERSET_DASHBOARD_UUID = process.env.SUPERSET_DASHBOARD_UUID;
 
+const AXIOS_TIMEOUT_MS = 10_000;
+
+// In-memory cache for Superset admin session — avoids a full login per request.
+let _authCache = null; // { accessToken, csrfToken, cookieHeader, expiresAt }
+
+function _authCacheValid() {
+  return _authCache && _authCache.expiresAt > Date.now() + 30_000;
+}
+
 const ROLE_MAP = {
   power: "HM", standard: "HM", hm: "HM",
   crp: "CRP", beo: "BEO", meo: "MEO",
@@ -51,12 +60,14 @@ function buildRlsClause(uid, mappedRole) {
 }
 
 async function getSupersetAuth() {
+  if (_authCacheValid()) return _authCache;
+
   const loginResp = await axios.post(`${SUPERSET_URL}/api/v1/security/login`, {
     username: SUPERSET_ADMIN_USERNAME,
     password: SUPERSET_ADMIN_PASSWORD,
     provider: "db",
     refresh: false,
-  });
+  }, { timeout: AXIOS_TIMEOUT_MS });
   const accessToken = loginResp.data?.access_token;
   if (!accessToken) throw new Error("Superset admin login failed — no token returned");
 
@@ -66,6 +77,7 @@ async function getSupersetAuth() {
 
   const csrfResp = await axios.get(`${SUPERSET_URL}/api/v1/security/csrf_token/`, {
     headers: { Authorization: `Bearer ${accessToken}`, Cookie: cookieHeader },
+    timeout: AXIOS_TIMEOUT_MS,
   });
   const csrfToken = csrfResp.data?.result;
   if (!csrfToken) throw new Error("Failed to get CSRF token from Superset");
@@ -74,7 +86,14 @@ async function getSupersetAuth() {
   const csrfCookies = (csrfResp.headers["set-cookie"] || []).map((c) => c.split(";")[0]);
   const mergedCookies = [...loginCookies.map((c) => c.split(";")[0]), ...csrfCookies].join("; ");
 
-  return { accessToken, csrfToken, cookieHeader: mergedCookies };
+  // Cache for 4 minutes (Superset JWT default expiry is 5 min)
+  _authCache = {
+    accessToken,
+    csrfToken,
+    cookieHeader: mergedCookies,
+    expiresAt: Date.now() + 4 * 60 * 1000,
+  };
+  return _authCache;
 }
 
 // POST /api/superset/guest-token
@@ -106,19 +125,41 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
       rls: rlsClause ? [{ clause: rlsClause }] : [],
     };
 
-    const guestResp = await axios.post(
-      `${SUPERSET_URL}/api/v1/security/guest_token/`,
-      body,
-      { headers: { Authorization: `Bearer ${adminToken}`, "X-CSRFToken": csrfToken, Cookie: cookieHeader, Referer: SUPERSET_URL } }
-    );
+    let guestResp;
+    try {
+      guestResp = await axios.post(
+        `${SUPERSET_URL}/api/v1/security/guest_token/`,
+        body,
+        { headers: { Authorization: `Bearer ${adminToken}`, "X-CSRFToken": csrfToken, Cookie: cookieHeader, Referer: SUPERSET_URL }, timeout: AXIOS_TIMEOUT_MS }
+      );
+    } catch (guestErr) {
+      // Admin token expired — clear cache and retry once
+      if (guestErr?.response?.status === 401) {
+        _authCache = null;
+        const fresh = await getSupersetAuth();
+        guestResp = await axios.post(
+          `${SUPERSET_URL}/api/v1/security/guest_token/`,
+          body,
+          { headers: { Authorization: `Bearer ${fresh.accessToken}`, "X-CSRFToken": fresh.csrfToken, Cookie: fresh.cookieHeader, Referer: SUPERSET_URL }, timeout: AXIOS_TIMEOUT_MS }
+        );
+      } else {
+        throw guestErr;
+      }
+    }
 
     const token = guestResp.data?.token;
     if (!token) throw new Error("No token in Superset guest_token response");
 
     res.json({ token });
   } catch (err) {
-    console.error("[superset] guest-token error step:", err?.config?.url, err?.response?.status, err?.response?.data || err.message);
-    res.status(500).json({ error: "Failed to generate dashboard token" });
+    const isTimeout = err.code === "ECONNABORTED";
+    const statusCode = err?.response?.status;
+    console.error("[superset] guest-token failed", {
+      url: err?.config?.url,
+      statusCode,
+      message: isTimeout ? "timeout" : err.message,
+    });
+    res.status(isTimeout ? 503 : 500).json({ error: "Failed to generate dashboard token" });
   }
 });
 
