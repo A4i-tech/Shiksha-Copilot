@@ -47,7 +47,7 @@ question_bank_parts_gen: |
 
       ----------------------------------------------------------------------------------------
       ## Examination Details
-      The user will provide board, medium, grade, subjectt, total marks, chapters, and unit-wise learning outcomes.
+      The user will provide board, medium, grade, subject, total marks, chapters, and unit-wise learning outcomes.
 
       ----------------------------------------------------------------------------------------
       
