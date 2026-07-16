@@ -251,4 +251,20 @@ describe("AuthManager dual-role login", () => {
     expect(authHelper.sendOtp).not.toHaveBeenCalled();
   });
 
+  it("clears recovery when sending the PIN fails", async () => {
+    mockUserDao.getByPhone.mockResolvedValue(teacher());
+    mockAdminDao.getByPhone.mockResolvedValue(false);
+    authHelper.sendOtp.mockRejectedValue(new Error("SMS unavailable"));
+
+    const result = await manager.getOtp({ body: { phone: "9876543210", forgotPassword: true } });
+
+    expect(mockUserDao.clearRecovery).toHaveBeenCalledWith("teacher-1");
+    expect(mockUserDao.update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      success: false,
+      message: "Unable to send PIN. Please try again shortly.",
+      data: null,
+    });
+  });
+
 });

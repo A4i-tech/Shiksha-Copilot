@@ -79,7 +79,12 @@ class AuthManager {
                         retryAfterSeconds: RESEND_COOLDOWN_SECONDS,
                     }), code: "PIN_COOLDOWN" };
                 }
-                await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
+                try {
+                    await authHelper.sendOtp(process.env.VARIFORM_SMS_TEMPLATE, phone, otp);
+                } catch {
+                    await dao.clearRecovery(user._id);
+                    return formatApiReponse(false, "Unable to send PIN. Please try again shortly.", null);
+                }
                 await this.updateUsers(activeUsers, "update", { rememberMeToken: rememberMe === true });
                 return formatApiReponse(true, "PIN sent successfully", {
                     user: user.phone, otpTriggered: true, recoveryTriggered: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS,
