@@ -23,7 +23,7 @@ class BaselineSurveyController {
       if (!userId) return res.status(401).json(formatResponse(false, 'Unauthorized', null));
 
       const result = await baselineSurveyManager.submitSurvey(userId, req.body);
-      const status = result.success ? 200 : (result.message === 'Already submitted' ? 409 : 400);
+      const status = result.success ? 200 : (result.message?.includes('Already submitted') ? 409 : 400);
       return res.status(status).json(result);
     } catch (err) {
       console.error('BaselineSurveyController.submitSurvey', err);
@@ -33,6 +33,7 @@ class BaselineSurveyController {
       return res.status(500).json(formatResponse(false, 'Server error', null));
     }
   }
+  
 
   // PATCH /api/baseline-surveys/remind-later
   async remindLater(req, res) {

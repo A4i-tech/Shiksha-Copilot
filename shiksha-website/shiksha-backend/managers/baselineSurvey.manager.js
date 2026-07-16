@@ -87,36 +87,58 @@ class BaselineSurveyManager extends BaseManager {
       const already = await this.dao.findByUser(userId, academicYear);
       if (already) return formatApiResponse(false, 'Already submitted for this academic year', null);
 
+      /**
+       * Helper: if the array contains 'Others' and there is a corresponding
+       * text value, replace the 'Others' entry with 'Others: <text>'.
+       */
+      const mergeOthers = (arr, otherText) => {
+        if (!Array.isArray(arr)) return [];
+        if (!otherText) return arr;
+        return arr.map(v => (v === 'Others' ? `Others: ${otherText.trim()}` : v));
+      };
+
+      /**
+       * Helper: for single-select radio fields that support an 'Others' option,
+       * replace the value with the free-text entry when selected.
+       */
+      const resolveOther = (value, otherText) =>
+        value === 'Others' && otherText ? otherText.trim() : value;
+
       // ---- Q1: plans (multi-select) ----
-      const plans = Array.isArray(body.plans) ? body.plans : [];
-      const plansOther = (body.plansOther || '').trim();
+      const plans = mergeOthers(body.plans, body.plansOther);
 
       // ---- Q2: devices (multi-select) ----
-      const devices = Array.isArray(body.devices) ? body.devices : [];
-      const devicesOther = (body.devicesOther || '').trim();
+      const devices = mergeOthers(body.devices, body.devicesOther);
 
       // ---- Q3: weeklyLessonPlans (single) ----
       const weeklyLessonPlans = body.weeklyLessonPlans || '';
 
       // ---- Q4: lessonPlanComponents (multi-select) ----
-      const lessonPlanComponents = Array.isArray(body.lessonPlanComponents) ? body.lessonPlanComponents : [];
-      const lessonPlanComponentsOther = (body.lessonPlanComponentsOther || '').trim();
+      const lessonPlanComponents = mergeOthers(
+        body.lessonPlanComponents,
+        body.otherLessonPlanComponent || body.lessonPlanComponentsOther
+      );
 
       // ---- Q5: timePerLessonPlan (radio) ----
-      const timePerLessonPlan = body.timePerLessonPlan || '';
-      const timePerLessonPlanOther = (body.timePerLessonPlanOther || '').trim();
+      const timePerLessonPlan = resolveOther(
+        body.timePerLessonPlan || '',
+        body.otherTimePerLessonPlan || body.timePerLessonPlanOther
+      );
 
       // ---- Q6: resourcesUsed (multi-select) ----
-      const resourcesUsed = Array.isArray(body.resourcesUsed) ? body.resourcesUsed : [];
-      const resourcesUsedOther = (body.resourcesUsedOther || '').trim();
+      const resourcesUsed = mergeOthers(
+        body.resourcesUsed,
+        body.otherResourceUsed || body.resourcesUsedOther
+      );
 
       // ---- Q7: timeForAssessments (radio) ----
-      const timeForAssessments = body.timeForAssessments || '';
-      const timeForAssessmentsOther = (body.timeForAssessmentsOther || '').trim();
+      const timeForAssessments = resolveOther(
+        body.timeForAssessments || '',
+        body.otherTimeForAssessments || body.timeForAssessmentsOther
+      );
 
-      // ---- Q8: questionBalance (multi-select checkboxes) ----
-      const questionBalance = Array.isArray(body.questionBalance) ? body.questionBalance : [];
-      const questionBalanceOther = (body.questionBalanceOther || '').trim();
+      // ---- Q8: questionBalance (multi-select) ----
+      const questionBalance = mergeOthers(body.questionBalance, body.questionBalanceOther);
 
       // ---- Q9: additional comments ----
       const otherNotes = body.otherNotes || '';
@@ -125,20 +147,13 @@ class BaselineSurveyManager extends BaseManager {
         userId,
         academicYear,
         plans,
-        plansOther,
         devices,
-        devicesOther,
         weeklyLessonPlans,
         lessonPlanComponents,
-        lessonPlanComponentsOther,
         timePerLessonPlan,
-        timePerLessonPlanOther,
         resourcesUsed,
-        resourcesUsedOther,
         timeForAssessments,
-        timeForAssessmentsOther,
         questionBalance,
-        questionBalanceOther,
         otherNotes,
       };
 
