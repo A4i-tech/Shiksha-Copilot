@@ -387,17 +387,25 @@ export class BaselineSurveyComponent {
     });
   }
 
+  readonly MAX_REMINDERS = 3;
+
   onRemindLater(): void {
     if (this.isMandatory) return;
     this.reminding = true;
+    this.error = null;
     this.surveyService.remindLater().subscribe({
-      next: () => {
+      next: (res) => {
         this.reminding = false;
-        this.dialogRef.close('remind');
+        if (res && res.success) {
+          this.dialogRef.close('remind');
+        } else {
+          this.error = 'Failed to postpone the survey. Please try again.';
+        }
       },
-      error: () => {
+      error: (err) => {
+        console.error('Error postponing survey:', err);
         this.reminding = false;
-        this.dialogRef.close('remind');
+        this.error = 'An error occurred while postponing. Please try again.';
       }
     });
   }

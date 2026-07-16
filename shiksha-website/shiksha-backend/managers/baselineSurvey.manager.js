@@ -4,7 +4,7 @@ const formatApiResponse = require('../helper/response');
 const BaselineSurveyDao = require('../dao/baselineSurvey.dao');
 const BaselineSurveyReminder = require('../models/baselineSurveyReminder.model');
 
-const MAX_REMIND_LATER = 2;
+const MAX_REMIND_LATER = 3;
 
 class BaselineSurveyManager extends BaseManager {
   constructor() {
@@ -29,9 +29,9 @@ class BaselineSurveyManager extends BaseManager {
     }
   }
 
-  async getRemindLaterCount(userId) {
+  async getRemindLaterCount(userId, academicYear) {
     try {
-      const rec = await BaselineSurveyReminder.findOne({ userId }).lean();
+      const rec = await BaselineSurveyReminder.findOne({ userId, academicYear }).lean();
       return rec ? rec.remindLaterCount : 0;
     } catch (err) {
       console.error('BaselineSurveyManager.getRemindLaterCount', err);
@@ -45,7 +45,7 @@ class BaselineSurveyManager extends BaseManager {
 
       const academicYear = this.getAcademicYearInfo();
       const exists = await this.dao.existsByUser(userId, academicYear);
-      const remindLaterCount = await this.getRemindLaterCount(userId);
+      const remindLaterCount = await this.getRemindLaterCount(userId, academicYear);
 
       return formatApiResponse(true, 'OK', {
         completed: !!exists,
@@ -63,8 +63,9 @@ class BaselineSurveyManager extends BaseManager {
     try {
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
+      const academicYear = this.getAcademicYearInfo();
       const rec = await BaselineSurveyReminder.findOneAndUpdate(
-        { userId },
+        { userId, academicYear },
         { $inc: { remindLaterCount: 1 } },
         { upsert: true, new: true }
       );
@@ -94,7 +95,7 @@ class BaselineSurveyManager extends BaseManager {
       const mergeOthers = (arr, otherText) => {
         if (!Array.isArray(arr)) return [];
         if (!otherText) return arr;
-        return arr.map(v => (v === 'Others' ? `Others: ${otherText.trim()}` : v));
+        return arr.map(v => (v === 'Other' ? `Other: ${otherText.trim()}` : v));
       };
 
       /**
@@ -102,7 +103,7 @@ class BaselineSurveyManager extends BaseManager {
        * replace the value with the free-text entry when selected.
        */
       const resolveOther = (value, otherText) =>
-        value === 'Others' && otherText ? otherText.trim() : value;
+        value === 'Other' && otherText ? otherText.trim() : value;
 
       // ---- Q1: plans (multi-select) ----
       const plans = mergeOthers(body.plans, body.plansOther);

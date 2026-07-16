@@ -121,6 +121,7 @@ const setupSharedMocks = () => {
       jest.doMock(p, () => ({
         checkIfCompleted: jest.fn(),
         submitSurvey: jest.fn(),
+        remindLater: jest.fn(),
       }));
     } else {
       jest.doMock(p, () => mockControllerClass());

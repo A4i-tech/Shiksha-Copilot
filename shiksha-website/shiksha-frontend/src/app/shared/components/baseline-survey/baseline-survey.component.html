@@ -24,7 +24,7 @@
           (click)="onRemindLater()">
           <span *ngIf="!reminding">Remind me later</span>
           <mat-spinner *ngIf="reminding" diameter="18"></mat-spinner>
-          <span class="remind-count" *ngIf="remindLaterCount > 0">({{ 3 - remindLaterCount }} left)</span>
+          <span class="remind-count" *ngIf="remindLaterCount > 0">({{ MAX_REMINDERS - remindLaterCount }} left)</span>
         </button>
         <button type="button" class="btn btn-start" (click)="goNext()">Let's start →</button>
       </div>
