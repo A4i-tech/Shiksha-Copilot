@@ -108,5 +108,10 @@ async function variforrmSMSService(templateId, recipientPhone, data) {
 	}
 }
 
+async function sendWelcomeSMS(phone) {
+	return await variforrmSMSService(process.env.VARIFORM_SMS_WELCOME_TEMPLATE, phone, phone);
+}
+
 module.exports = variforrmSMSService;
 module.exports.isVariformConfigured = isVariformConfigured;
+module.exports.sendWelcomeSMS = sendWelcomeSMS;

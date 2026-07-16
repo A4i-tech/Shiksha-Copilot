@@ -5,7 +5,6 @@ const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
 const {
-  postToQuestionBankDistribution,
   postToQuestionBankParts,
   getQuestionTypes,
 } = require("../services/question.bank.bot.service");
@@ -112,33 +111,6 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async generateQuestionBankBluePrint(req, user) {
-    try {
-      const body = convertToCamelCase(req.body);
-      const { objectiveDistribution, template } = body;
-      const templatePayload = await this._createQuestionBankPayload(body, user);
-      const payload = convertToSnakeCase({
-        ...templatePayload,
-        template: this._applyQuestionCounts(this._withQuestionTypeMetadata(template), body.totalMarks),
-        objectiveDistribution,
-      });
-
-      const response = await postToQuestionBankDistribution(payload);
-
-      if (response.status !== 200) {
-        throw new Error(`Something went wrong with copilot! Please try later`);
-      }
-
-      if (!response.data) {
-        throw new Error("Something went wrong with copilot! Please try later");
-      }
-
-      return formatApiReponse(true, "Question bank blue print generated successfully!", convertToCamelCase(response.data));
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
-    }
-  }
-
   async generateQuestionBank(req, user) {
     // Standalone MongoDB doesn't support transactions.
     // Uncomment these lines if running with a Replica Set.
@@ -151,7 +123,9 @@ class QuestionBankManager extends BaseManager {
       const body = convertToCamelCase(req.body);
       const context = this._prepareGenerationContext(body);
       if (!context.questions || context.questions.length === 0) {
-        context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template));
+        const needsBlueprint = context.template.every(item => !item.questionDistribution.length);
+        context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template), needsBlueprint ? context.totalMarks : undefined, context.surplus);
+        if (needsBlueprint) context.template = this._distributeBlueprint(context.template, context.marksDistribution, context.objectiveDistribution);
       }
       const {
         language,
@@ -248,6 +222,7 @@ class QuestionBankManager extends BaseManager {
       language,
       questions,
       isPreview,
+      surplus,
       examinationName,
       unitLevel,
       objectiveDistribution
@@ -275,6 +250,7 @@ class QuestionBankManager extends BaseManager {
       language,
       questions,
       isPreview,
+      surplus,
       examinationName,
       objectiveDistribution,
       processedUnitNames,
@@ -339,11 +315,7 @@ class QuestionBankManager extends BaseManager {
 
     rawCacheHit = fullCacheHit.map((doc) => doc.toObject());
 
-    const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
-      template,
-      cacheHit,
-      { returnPool: context.isPreview === true }
-    );
+    const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(template, cacheHit);
     cacheSummary = summary;
     notFoundQuestions = JSON.parse(JSON.stringify(notFoundRes));
 
@@ -559,14 +531,74 @@ class QuestionBankManager extends BaseManager {
     });
   }
 
-  _applyQuestionCounts(template, totalMarks) {
-    return template.map((item) => {
+  _applyQuestionCounts(template, totalMarks, surplus = false) {
+    const result = template.map((item) => {
       if (!Number.isFinite(Number(item.marksPerQuestion))) throw new Error(`Question type "${item.type}" is missing marksPerQuestion`);
       return {
         ...item,
-        ...(totalMarks && { numberOfQuestions: Math.ceil(Number(totalMarks) / item.marksPerQuestion) }),
+        ...(totalMarks && { numberOfQuestions: 0 }),
       };
     });
+    if (!totalMarks) return result;
+
+    let remaining = surplus
+      ? PAPER_CONFIG.blueprintPolicy.surplusBaseMarks + Number(totalMarks) * PAPER_CONFIG.blueprintPolicy.surplusMultiplier
+      : Number(totalMarks);
+    while (true) {
+      const item = result.filter(item => item.marksPerQuestion <= remaining)
+        .sort((a, b) => a.numberOfQuestions * a.marksPerQuestion - b.numberOfQuestions * b.marksPerQuestion)[0];
+      if (!item) break;
+      item.numberOfQuestions++;
+      remaining -= item.marksPerQuestion;
+    }
+    return result.filter(item => item.numberOfQuestions);
+  }
+
+  _distributeBlueprint(template, marksDistribution, objectiveDistribution) {
+    const slots = template.flatMap((item, templateIndex) => Array.from(
+      { length: item.numberOfQuestions },
+      (_, questionIndex) => ({ templateIndex, questionIndex, marks: Number(item.marksPerQuestion), type: item.type })
+    ));
+    const quotas = this._allocateCounts(objectiveDistribution, slots.length);
+    const objectives = quotas.flatMap(({ objective, count }) => Array(count).fill(objective))
+      .sort((a, b) => PAPER_CONFIG.blueprintPolicy.objectiveDemand[a] - PAPER_CONFIG.blueprintPolicy.objectiveDemand[b]);
+    const byDemand = [...slots].sort((a, b) =>
+      PAPER_CONFIG.blueprintPolicy.questionTypeDemand[a.type] - PAPER_CONFIG.blueprintPolicy.questionTypeDemand[b.type]
+      || a.templateIndex - b.templateIndex || a.questionIndex - b.questionIndex
+    );
+    byDemand.forEach((slot, index) => { slot.objective = objectives[index]; });
+
+    const totalRequestedMarks = marksDistribution.reduce((sum, item) => sum + Number(item.marks), 0);
+    const units = marksDistribution.map(item => ({
+      unitName: item.unitName.trim(),
+      share: Number(item.marks) / totalRequestedMarks,
+      assigned: 0,
+    }));
+    let assignedMarks = 0;
+    [...slots].sort((a, b) => b.marks - a.marks).forEach(slot => {
+      const unit = units.reduce((best, item) =>
+        item.share * (assignedMarks + slot.marks) - item.assigned > best.share * (assignedMarks + slot.marks) - best.assigned ? item : best
+      );
+      slot.unitName = unit.unitName;
+      unit.assigned += slot.marks;
+      assignedMarks += slot.marks;
+    });
+
+    return template.map((item, templateIndex) => ({
+      ...item,
+      questionDistribution: slots.filter(slot => slot.templateIndex === templateIndex)
+        .map(({ unitName, objective }) => ({ unitName, objective })),
+    }));
+  }
+
+  _allocateCounts(distribution, total) {
+    const counts = distribution.map(item => {
+      const exact = total * Number(item.percentageDistribution) / 100;
+      return { objective: item.objective, count: Math.floor(exact), remainder: exact % 1 };
+    });
+    for (let remaining = total - counts.reduce((sum, item) => sum + item.count, 0); remaining > 0; remaining--)
+      counts.sort((a, b) => b.remainder - a.remainder)[0].count++;
+    return counts;
   }
 
   async _createQuestionBankPayload(reqBody, user) {

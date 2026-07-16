@@ -17,6 +17,7 @@ class TeacherLessonPlanController extends BaseController {
 				sortBy = "createdAt",
 				sortOrder = "desc",
 				search = "",
+				fields,
 			} = req.query;
 
 			const { _id: teacherId } = req.user;
@@ -48,7 +49,7 @@ class TeacherLessonPlanController extends BaseController {
 					teacherId,
 					parseInt(page),
 					parseInt(limit),
-					{ ...filter, ...searchFilter },
+					{ ...filter, ...searchFilter, fields },
 					sortOrderObject
 				);
 

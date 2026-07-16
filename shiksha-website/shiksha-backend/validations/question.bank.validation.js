@@ -29,12 +29,14 @@ const questionBankCommonSchema = {
     totalMarks: Joi.number().required(),
     examinationName: Joi.string().required(),
     isPreview: Joi.boolean(),
+    surplus: Joi.boolean(),
     chapterIds: Joi.alternatives().try(
         Joi.array().items(Joi.string()),
         Joi.string()
     ).required(),
     isMultiChapter: Joi.boolean().required(),
     marksDistribution: Joi.array()
+        .min(1)
         .items({
             unitName: Joi.string(),
             marks: Joi.number(),
@@ -48,21 +50,10 @@ const questionBankTemplateSchemaCreate = Joi.object({
     ...questionBankCommonSchema
 }).unknown(true); // Allow extra fields
 
-// 2. Blueprint Schema (Step 2)
-const questionBankBluePrintSchemaCreate = Joi.object({
-    ...questionBankCommonSchema,
-    objectiveDistribution: Joi.array()
-        .items(Joi.object().unknown(true))
-        .required(),
-    template: Joi.array()
-        .items(questionBankTemplateItemSchema)
-        .required(),
-}).unknown(true); // Allow extra fields
-
-// 3. Generate Schema (Step 3 - The one failing)
+// 2. Generate Schema
 const questionBankSchemaCreate = Joi.object({
     ...questionBankCommonSchema,
-    objectiveDistribution: Joi.array().items(Joi.object().unknown(true)).required(),
+    objectiveDistribution: Joi.array().min(1).items(Joi.object().unknown(true)).required(),
 
     questionBankTemplate: Joi.array()
         .items(questionBankTemplateItemSchema).optional(),
@@ -87,20 +78,6 @@ const getGrammarTopicsQuerySchema = Joi.object({
 }).unknown(true);
 
 // Middleware functions
-const validateQuestionBankBluePrintCreate = (req, res, next) => {
-    const data = req.body;
-    let isValid = questionBankBluePrintSchemaCreate.validate(data, { abortEarly: false });
-    if (isValid.error) {
-        return res.status(400).json({
-            success: false,
-            data: false,
-            error: isValid.error.details.map((i) => i.message),
-        });
-    }
-    req.body = isValid.value;
-    next();
-};
-
 const validateQuestionBankCreate = (req, res, next) => {
     const data = req.body;
     let isValid = questionBankSchemaCreate.validate(data, { abortEarly: false });
@@ -159,7 +136,6 @@ const validateGetGrammarTopics = (req, res, next) => {
 
 module.exports = {
     validateQuestionBankCreate,
-    validateQuestionBankBluePrintCreate,
     validateQuestionBankFeedbackCreate,
     validateGetQuestionTypes,
     validateGetGrammarTopics

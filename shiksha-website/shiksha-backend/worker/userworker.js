@@ -4,13 +4,14 @@ if (!globalThis.crypto) {
 }
 const { workerData, parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
-const { sendWelcomeSMS } = require("../helper/worker.helper");
+const { sendWelcomeSMS } = require("../services/variform.service");
 const User = require("../models/user.model");
 const School = require("../models/school.model");
 const dbService = require("../config/db.js");
 const { bulkUploadSchema } = require("../validations/user.validation");
 const { uploadToStorage } = require("../services/azure.blob.service");
 const AuditLog = require("../models/audit.log.model");
+const logger = require("../config/loggers");
 
 async function processRow(
   userDataRow,
@@ -106,9 +107,9 @@ async function processValidData(userData, client, userId, userName) {
       failureCount = totalRecords - successCount;
 
       await Promise.all(
-        userData.map((user) =>
+        insertResult.map((user) =>
           sendWelcomeSMS(user.phone, user.name).catch((error) => {
-            console.error("Error sending welcome SMS:", error);
+            logger.warn("Welcome SMS failed", { userId: String(user._id), error: error.message });
           })
         )
       );

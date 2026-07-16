@@ -101,16 +101,12 @@ class TestFormatSystemPrompt:
     def test_format_system_prompt(self, service):
         """Test system prompt formatting."""
         service.prompts = {
-            "question_bank_parts_gen": (
-                "Board: {BOARD}, Medium: {MEDIUM}, Grade: {GRADE}, Subject: {SUBJECT}, "
-                "Total: {TOTAL_MARKS}, Chapters: {CHAPTERS}, LOs: {UNIT_WISE_LEARNING_OUTCOMES}, "
-                "Existing: {EXISTING_QUESTIONS_JSON}, Blooms: {QUESTION_BANK_BLOOM_TAXONOMY_GUIDE}, "
-                "Grammar: {GRAMMAR_TOPICS}"
-            ),
+            "question_bank_parts_gen": "Blooms: {BLOOM_TAXONOMY_GUIDE}, Grammar: {GRAMMAR_TOPICS}",
             "blooms-taxonomy": {"general": "Test Blooms"},
+            "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
         }
 
-        request = MagicMock(board="CBSE", grade=10, subject="Math", medium="English", total_marks=100, chapters=[])
+        request = MagicMock(subject="Math", chapters=[])
         record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
         template = GeneratedTemplate(
             type=QuestionType.MCQ,
@@ -120,10 +116,10 @@ class TestFormatSystemPrompt:
         )
         slot = [((0, 0), template, template.question_distribution[0])]
 
-        result = service._format_system_prompt(request, [], record, slot)
+        result = service._format_system_prompt(request, record, slot)
 
-        assert "CBSE" in result
-        assert "Chapter 1" in result
+        assert "Test Blooms" in result
+        assert "Grammar:" in result
 
 
 class TestBuildGenerationSlots:
