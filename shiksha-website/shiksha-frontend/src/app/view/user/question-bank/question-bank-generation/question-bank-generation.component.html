@@ -20,6 +20,9 @@
       </div>
     </div>
   </div>
+  <div aria-live="polite" aria-atomic="true" class="sr-only" id="step-announcement">
+    Step {{ currentStep }} of {{ totalSteps }}: {{ stepNames[currentStep - 1] }}
+  </div>
 
   <div class="rounded-b bg-white border border-t-0 pb-4">
     <ng-container [ngSwitch]="currentStep">
