@@ -19,6 +19,7 @@ class QuestionBankController extends BaseController {
         sortBy = "createdAt",
         sortOrder = "desc",
         search,
+        fields,
       } = req.query;
       const sortOrderObject =
         sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
@@ -50,7 +51,7 @@ class QuestionBankController extends BaseController {
           return res.status(400).json({ error: "Invalid _id format" });
         }
       }
-      const mergedFilter = { ...transformedFilter, ...searchFilter };
+      const mergedFilter = { ...transformedFilter, ...searchFilter, fields };
 
       const result = await this.manager.getTeacherQuestionPapers(
         teacherId,
@@ -69,26 +70,6 @@ class QuestionBankController extends BaseController {
       return;
     } catch (err) {
       console.log("Error --> BaseController -> getAll()", err);
-      return res.status(400).json(err);
-    }
-  }
-
-  async generateQuestionBankBluePrint(req, res) {
-    try {
-      const user = req.user;
-      const result = await this.manager.generateQuestionBankBluePrint(
-        req,
-        user
-      );
-      if (!result.success) {
-        return handleError(result, res);
-      }
-      return res.status(200).json(result);
-    } catch (err) {
-      console.log(
-        "Error --> QuestionBankController -> generateQuestionBankBluePrint()",
-        err
-      );
       return res.status(400).json(err);
     }
   }

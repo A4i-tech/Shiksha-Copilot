@@ -8,8 +8,8 @@ const dbService = require("../config/db.js");
 const { uploadToStorage } = require("../services/azure.blob.service");
 const AuditLog = require("../models/audit.log.model");
 
-dbService.getConnection().then(async (client) => {
-  parentPort.on("message", async (data) => {
+parentPort.once("message", async (data) => {
+    const { client, openedHere } = await dbService.connectToMongoForWorker();
     try {
       const { users, userId, userName } = data;
       const userWorkBook = new ExcelJS.Workbook();
@@ -98,7 +98,6 @@ dbService.getConnection().then(async (client) => {
       });
       parentPort.postMessage({ success: false, error: e });
     } finally {
-      await client.close();
+      if (openedHere) await client.close();
     }
-  });
 });

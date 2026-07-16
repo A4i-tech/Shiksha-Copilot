@@ -26,9 +26,12 @@ export class ContentGenerationService extends BaseRestService {
   }
 
   getAllList(paramVals: any): Observable<any> {
-    let params = new HttpParams()
-      .set('page', '1')
-      .set('limit', '999');
+    const fields = [
+      '_id', 'isLesson', 'isCompleted', 'isGenerated', 'status', 'createdAt', 'updatedAt',
+      'lesson._id', 'lesson.class', 'lesson.subTopics', 'lesson.subjects', 'lesson.chapter',
+      'resource._id', 'resource.class', 'resource.subTopics', 'resource.subjects', 'resource.chapter'
+    ];
+    let params = new HttpParams({ fromObject: { page: 1, limit: 999, fields } });
     if (paramVals.selectedType) {
       params = params.set('filter[type]', paramVals.selectedType);
     }

@@ -6,39 +6,19 @@ class UserAggregation {
     try {
       // Extract trainingStatus filter and remove it from processedFilters
       const { trainingStatus, ...otherFilters } = processedFilters;
-      
-      const pipeline = [
-        {
-          $lookup: {
-            from: "schools",
-            localField: "school",
-            foreignField: "_id",
-            as: "school",
-          },
-        },
-        { $unwind: { path: "$school", preserveNullAndEmptyArrays: true } },
+      const trainingStages = [
         {
           $lookup: {
             from: "teachertrainingbatches",
-            let: { userId: "$_id" },
+            localField: "_id",
+            foreignField: "attendance",
             pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ["$isSubmitted", true] },
-                      { $in: ["$$userId", "$attendance"] }
-                    ]
-                  }
-                }
-              },
+              { $match: { isSubmitted: true } },
               { $limit: 1 }
             ],
             as: "trainingAttendance"
           }
         },
-        // Apply other filters first (before trainingStatus is calculated)
-        { $match: otherFilters },
         {
           $addFields: {
             trainingStatus: {
@@ -49,33 +29,46 @@ class UserAggregation {
               }
             }
           }
-        },
-        // Apply trainingStatus filter after the field is calculated
-        ...(trainingStatus ? [{ $match: { trainingStatus: trainingStatus } }] : []),
-        {
-          $project: {
-            otp: 0,
-            loginAttempts: 0,
-            recovery: 0,
-            trainingAttendance: 0
-          },
-        },
-        {
-          $facet: {
-            data: [
-              { $sort: Object.keys(sort).length > 0 ? sort : { _id: 1 } },
-              ...(limit > 0
-                ? [{ $skip: (page - 1) * limit }, { $limit: limit }]
-                : []),
-            ],
-            totalCount: [{ $count: "count" }],
-          },
-        },
+        }
       ];
+      const remainingTrainingStages = trainingStatus ? [] : trainingStages;
+      const paginationStages = [
+        { $sort: Object.keys(sort).length > 0 ? sort : { _id: 1 } },
+        ...(limit > 0 ? [{ $skip: (page - 1) * limit }, { $limit: limit }] : []),
+      ];
+      const projectStage = { $project: { otp: 0, loginAttempts: 0, recovery: 0, trainingAttendance: 0 } };
+      const pipeline = [
+        {
+          $lookup: {
+            from: "schools",
+            localField: "school",
+            foreignField: "_id",
+            as: "school",
+          },
+        },
+        { $unwind: { path: "$school", preserveNullAndEmptyArrays: true } },
+        { $match: otherFilters },
+        ...(trainingStatus ? [...trainingStages, { $match: { trainingStatus } }] : []),
+      ];
+
+      if (!limit) {
+        pipeline.push(...remainingTrainingStages, projectStage, ...paginationStages);
+      } else if (sort.trainingStatus) {
+        pipeline.push(...remainingTrainingStages, projectStage, {
+          $facet: { data: paginationStages, totalCount: [{ $count: "count" }] }
+        });
+      } else {
+        pipeline.push({
+          $facet: {
+            data: [...paginationStages, ...remainingTrainingStages, projectStage],
+            totalCount: [{ $count: "count" }],
+          }
+        });
+      }
 
       let users = await User.aggregate(pipeline);
 
-      return users;
+      return limit ? users : [{ data: users, totalCount: [{ count: users.length }] }];
     } catch (err) {
       console.log("Error --> UserAggregation, getUserList", err);
       throw err;

@@ -3,7 +3,7 @@ const BaseManager = require("./base.manager");
 const AdminUserDao = require("../dao/admin.user.dao");
 const formatApiReponse = require("../helper/response");
 const ExcelJS = require("exceljs");
-const { sendWelcomeSMS } = require("../helper/worker.helper");
+const { sendWelcomeSMS } = require("../services/variform.service");
 const {
 	adminUserSchemaCreate,
 } = require("../validations/admin.user.validation");
@@ -12,6 +12,7 @@ const dashboardAggregation = require("../aggregation/admin.dashboard.aggregation
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const { Worker } = require("worker_threads");
 const path = require("path");
+const logger = require("../config/loggers");
 
 
 /** @extends {BaseManager<AdminUserDao>} */
@@ -47,7 +48,7 @@ class AdminUserManager extends BaseManager {
 			// Only send SMS if both phone and name are available
 			if (req.body.phone && req.body.name) {
 				sendWelcomeSMS(req.body.phone, req.body.name).catch((error) => {
-					console.error("Error sending welcome SMS:", error);
+					logger.warn("Welcome SMS failed", { userId: String(result._id), error: error.message });
 				});
 			}
 
@@ -176,9 +177,9 @@ class AdminUserManager extends BaseManager {
 
 			if (validationErrors.length === 0) {
 				const result = await this.dao.bulkUpload(adminUserData);
-				adminUserData.forEach((user) => {
+				result.forEach((user) => {
 					sendWelcomeSMS(user.phone, user.name).catch((error) => {
-						console.error("Error sending welcome SMS:", error);
+						logger.warn("Welcome SMS failed", { userId: String(user._id), error: error.message });
 					});
 				});
 				return { success: true, message: "Bulk upload successful", result };
