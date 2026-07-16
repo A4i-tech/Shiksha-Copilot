@@ -63,6 +63,27 @@ const questionBankSchemaCreate = Joi.object({
         .required(),
 }).unknown(true); //  Allows extra fields in the root payload
 
+const questionBankBluePrintSchemaCreate = Joi.object({
+    template: Joi.array().min(1).items({
+        ...questionBankTemplateItemSchema,
+        numberOfQuestions: Joi.number().integer().positive().required(),
+        marksPerQuestion: Joi.number().positive().required(),
+        questionDistribution: Joi.array().items({
+            unitName: Joi.string().required(),
+            objective: Joi.string().required(),
+        }).required(),
+    }).required(),
+    marksDistribution: Joi.array().min(1).items({
+        unitName: Joi.string().required(),
+        marks: Joi.number().positive().required(),
+        percentageDistribution: Joi.number().min(0).max(100),
+    }).required(),
+    objectiveDistribution: Joi.array().min(1).items({
+        objective: Joi.string().required(),
+        percentageDistribution: Joi.number().min(0).max(100).required(),
+    }).required(),
+}).unknown(true);
+
 const questionBankFeedbackSchema = Joi.object({
     question: Joi.string().required(),
     feedback: Joi.string().required(),
@@ -85,6 +106,19 @@ const validateQuestionBankCreate = (req, res, next) => {
         // Log the actual error to the console for debugging
         console.log("Validation Error Details:", isValid.error.details.map((i) => i.message));
         
+        return res.status(400).json({
+            success: false,
+            data: false,
+            error: isValid.error.details.map((i) => i.message),
+        });
+    }
+    req.body = isValid.value;
+    next();
+};
+
+const validateQuestionBankBluePrintCreate = (req, res, next) => {
+    const isValid = questionBankBluePrintSchemaCreate.validate(req.body, { abortEarly: false });
+    if (isValid.error) {
         return res.status(400).json({
             success: false,
             data: false,
@@ -136,6 +170,7 @@ const validateGetGrammarTopics = (req, res, next) => {
 
 module.exports = {
     validateQuestionBankCreate,
+    validateQuestionBankBluePrintCreate,
     validateQuestionBankFeedbackCreate,
     validateGetQuestionTypes,
     validateGetGrammarTopics
