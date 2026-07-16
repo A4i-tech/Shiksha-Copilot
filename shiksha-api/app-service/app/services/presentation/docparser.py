@@ -97,11 +97,11 @@ async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader
 
     await textbook.seek(0)
     try:
-        figures = await asyncio.to_thread(_extract_figures, await textbook.read())
+        raw_figures = await asyncio.to_thread(_extract_figures, await textbook.read())
     except pymupdf.FileDataError:
         return []
 
-    for page_text, content in figures:
+    for page_text, content in raw_figures:
         tasks.append(asyncio.create_task(proc(page_text, '%d.png' % zlib.crc32(content), content)))
 
     logger.info("Captioning %d figures", len(tasks))
