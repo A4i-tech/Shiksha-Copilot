@@ -11,6 +11,7 @@ const dbService = require("../config/db.js");
 const { bulkUploadSchema } = require("../validations/user.validation");
 const { uploadToStorage } = require("../services/azure.blob.service");
 const AuditLog = require("../models/audit.log.model");
+const logger = require("../config/loggers");
 
 async function processRow(
   userDataRow,
@@ -106,9 +107,9 @@ async function processValidData(userData, client, userId, userName) {
       failureCount = totalRecords - successCount;
 
       await Promise.all(
-        userData.map((user) =>
+        insertResult.map((user) =>
           sendWelcomeSMS(user.phone, user.name).catch((error) => {
-            console.error("Error sending welcome SMS:", error);
+            logger.warn("Welcome SMS failed", { userId: String(user._id), error: error.message });
           })
         )
       );

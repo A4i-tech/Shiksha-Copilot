@@ -59,13 +59,11 @@ describe("variform.service", () => {
     });
   });
 
-  it("skips welcome sms when Variform is not configured", async () => {
+  it("rejects welcome sms when Variform is not configured", async () => {
     const { sendWelcomeSMS } = require(servicePath);
     delete process.env.VARIFORM_BEARER_TOKEN;
 
-    await expect(sendWelcomeSMS("999")).resolves.toEqual({
-      message: "SMS skipped (Variform not configured)",
-    });
+    await expect(sendWelcomeSMS("999")).rejects.toMatchObject({ code: "VARIFORM_NOT_CONFIGURED" });
     expect(axios.post).not.toHaveBeenCalled();
   });
 });

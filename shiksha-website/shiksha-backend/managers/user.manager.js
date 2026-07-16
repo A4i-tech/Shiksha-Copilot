@@ -14,6 +14,7 @@ const { sendWelcomeSMS } = require("../services/variform.service");
 const { MESSAGES } = require("../config/constants");
 const ClassDao = require("../dao/school.class.dao");
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
+const logger = require("../config/loggers");
 
 /** @extends {BaseManager<UserDao>} */
 class UserManager extends BaseManager {
@@ -37,7 +38,7 @@ class UserManager extends BaseManager {
       const result = await this.dao.create(req.body);
 
       sendWelcomeSMS(req.body.phone, req.body.name).catch((error) => {
-        console.error("Error sending welcome SMS:", error);
+        logger.warn("Welcome SMS failed", { userId: String(result._id), error: error.message });
       });
 
       return { success: true, data: result, message: "Teacher created" };

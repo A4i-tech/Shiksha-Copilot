@@ -109,16 +109,7 @@ async function variforrmSMSService(templateId, recipientPhone, data) {
 }
 
 async function sendWelcomeSMS(phone) {
-	if (!isVariformConfigured()) {
-		return { message: 'SMS skipped (Variform not configured)' };
-	}
-
-	try {
-		return await variforrmSMSService(process.env.VARIFORM_SMS_WELCOME_TEMPLATE, phone, phone);
-	} catch (error) {
-		console.error(`[SMS] Welcome message failed: ${error.message}`);
-		return { message: 'SMS send failed but user creation succeeded', error: error.message };
-	}
+	return await variforrmSMSService(process.env.VARIFORM_SMS_WELCOME_TEMPLATE, phone, phone);
 }
 
 module.exports = variforrmSMSService;
