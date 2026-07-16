@@ -408,6 +408,13 @@ spec:
                       key: analytics-pg-password
                 - name: PG_DSN
                   value: "postgresql://analytics:$(ANALYTICS_PG_PASSWORD)@analytics-db.superset.svc.cluster.local:5432/analytics"
+                # Optional: set ALERT_WEBHOOK_URL in etl-secrets to receive Slack/Teams alerts on failure
+                - name: ALERT_WEBHOOK_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: etl-secrets
+                      key: ALERT_WEBHOOK_URL
+                      optional: true
               resources:
                 requests:
                   cpu: 100m

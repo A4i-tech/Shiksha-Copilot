@@ -1,7 +1,10 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { SupersetService } from 'src/app/core/services/superset.service';
 import { environment } from 'src/environments/environment';
+
+const MOBILE_BREAKPOINT = '(max-width: 768px)';
 
 @Component({
   selector: 'app-leaders-dashboard',
@@ -16,7 +19,16 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   loading = true;
   error = '';
 
-  constructor(private supersetService: SupersetService) {}
+  constructor(
+    private supersetService: SupersetService,
+    private breakpointObserver: BreakpointObserver,
+  ) {}
+
+  private get dashboardUuid(): string {
+    const isMobile = this.breakpointObserver.isMatched(MOBILE_BREAKPOINT);
+    const mobileUuid = environment.supersetMobileDashboardUuid;
+    return (isMobile && mobileUuid) ? mobileUuid : environment.supersetDashboardUuid;
+  }
 
   async ngOnInit() {
     if (!environment.supersetUrl || !environment.supersetDashboardUuid) {
@@ -28,7 +40,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       // Dynamic import avoids CommonJS bundle warnings at build time
       const { embedDashboard } = await import('@superset-ui/embedded-sdk');
       embedDashboard({
-        id: environment.supersetDashboardUuid,
+        id: this.dashboardUuid,
         supersetDomain: environment.supersetUrl,
         mountPoint: this.mountPoint.nativeElement,
         fetchGuestToken: () => this.supersetService.getGuestToken(),

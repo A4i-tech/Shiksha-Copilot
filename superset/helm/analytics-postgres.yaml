@@ -81,6 +81,39 @@ data:
     CREATE INDEX IF NOT EXISTS idx_fact_lba_attempts_user_created ON fact_lba_attempts(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_fact_lba_attempts_subject ON fact_lba_attempts(subject);
 
+    -- Enriched views (used by Superset charts — include user_id for RLS)
+    CREATE OR REPLACE VIEW vw_lesson_plans AS
+    SELECT lp.lp_id, lp.user_id, lp.subject, lp.grade, lp.status, lp.medium, lp.created_at,
+           u.role, u.school_id, u.region_id,
+           r.name AS region_name, r.type AS region_type,
+           rp.name AS parent_name, rp.type AS parent_type, rp.region_id AS parent_region_id
+    FROM fact_lesson_plans lp
+    JOIN dim_users u ON u.user_id = lp.user_id
+    JOIN dim_regions r ON r.region_id = u.region_id
+    LEFT JOIN dim_regions rp ON rp.region_id = r.parent_id;
+
+    CREATE OR REPLACE VIEW vw_user_activities AS
+    SELECT a.activity_id, a.user_id, a.activity_type, a.app_section, a.created_at,
+           u.role, u.school_id, u.region_id, r.name AS region_name, r.type AS region_type
+    FROM fact_user_activities a
+    JOIN dim_users u ON u.user_id = a.user_id
+    JOIN dim_regions r ON r.region_id = u.region_id;
+
+    CREATE OR REPLACE VIEW vw_chatbot_sessions AS
+    SELECT cs.session_id, cs.user_id, cs.message_count, cs.resolved, cs.created_at,
+           DATE_TRUNC('month', cs.created_at) AS month,
+           u.role, u.region_id, r.name AS region_name
+    FROM fact_chatbot_sessions cs
+    JOIN dim_users u ON u.user_id = cs.user_id
+    JOIN dim_regions r ON r.region_id = u.region_id;
+
+    CREATE OR REPLACE VIEW vw_lba_attempts AS
+    SELECT la.attempt_id, la.user_id, la.subject, la.grade, la.score, la.created_at,
+           u.role, u.region_id, r.name AS region_name
+    FROM fact_lba_attempts la
+    JOIN dim_users u ON u.user_id = la.user_id
+    JOIN dim_regions r ON r.region_id = u.region_id;
+
     -- Seed: only on fresh DB (skipped if data already present — idempotent)
     DO $$
     BEGIN

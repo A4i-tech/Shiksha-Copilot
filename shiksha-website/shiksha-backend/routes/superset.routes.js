@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const axios = require("axios");
 const { isAuthenticated } = require("../middlewares/auth.js");
+const AuditLog = require("../models/audit.log.model.js");
 
 const SUPERSET_URL = process.env.SUPERSET_URL;
 const SUPERSET_ADMIN_USERNAME = process.env.SUPERSET_ADMIN_USERNAME;
@@ -149,6 +150,14 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
 
     const token = guestResp.data?.token;
     if (!token) throw new Error("No token in Superset guest_token response");
+
+    // Fire-and-forget audit log — don't fail the request if this errors
+    AuditLog.create({
+      eventType: "Dashboard Token",
+      status: "success",
+      userId: mongoUser._id,
+      name: mongoUser.name || "Unknown",
+    }).catch((e) => console.error("[superset] audit log failed:", e.message));
 
     res.json({ token });
   } catch (err) {

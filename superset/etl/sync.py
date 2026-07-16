@@ -7,12 +7,14 @@ Env vars:
   MONGO_URI  - mongodb://host:port/dbname  (required; sourced from K8s secret etl-secrets)
   PG_DSN     - postgresql://user:pass@host:port/db  (required; sourced from K8s secret superset-app-secrets)
 """
+import json
 import logging
 import os
 import re
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
+from urllib.request import Request, urlopen
 
 from pymongo import MongoClient
 import psycopg2
@@ -26,8 +28,20 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017/proddb")
-PG_DSN    = os.environ.get("PG_DSN",    "postgresql://analytics:analytics@localhost:5432/analytics")
+MONGO_URI          = os.environ.get("MONGO_URI", "mongodb://localhost:27017/proddb")
+PG_DSN             = os.environ.get("PG_DSN",    "postgresql://analytics:analytics@localhost:5432/analytics")
+ALERT_WEBHOOK_URL  = os.environ.get("ALERT_WEBHOOK_URL", "")  # optional: Slack/Teams incoming webhook
+
+
+def _send_alert(message: str) -> None:
+    if not ALERT_WEBHOOK_URL:
+        return
+    try:
+        payload = json.dumps({"text": message}).encode()
+        req = Request(ALERT_WEBHOOK_URL, data=payload, headers={"Content-Type": "application/json"})
+        urlopen(req, timeout=5)
+    except Exception as exc:
+        logger.warning("Failed to send alert webhook: %s", exc)
 
 ROLE_MAP = {
     "power":    "HM",
@@ -400,10 +414,12 @@ def main() -> None:
         # ------------------------------------------------------------------ commit
         pg.commit()
         logger.info("Sync complete.")
+        _send_alert(":white_check_mark: Shiksha ETL sync completed successfully.")
 
-    except Exception:
+    except Exception as _exc:
         if pg and not pg.closed:
             pg.rollback()
+        _send_alert(f":x: Shiksha ETL sync FAILED: {_exc}")
         raise
     finally:
         if cur:

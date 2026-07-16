@@ -6,7 +6,7 @@ const auditLogSchema = new Schema(
   {
     eventType: {
       type: String,
-      enum: ["Schools Import", "Schools Export", "Teachers Import", "Teachers Export","Content Activity Export"],
+      enum: ["Schools Import", "Schools Export", "Teachers Import", "Teachers Export", "Content Activity Export", "Dashboard Token"],
       required: true,
     },
     status: {
