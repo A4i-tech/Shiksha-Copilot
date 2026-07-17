@@ -6,6 +6,9 @@ const workerMocks = () => {
     on: jest.fn((event, cb) => {
       listeners[event] = cb;
     }),
+    once: jest.fn((event, cb) => {
+      listeners[event] = cb;
+    }),
     postMessage: jest.fn(),
     emit: async (event, payload) => {
       if (listeners[event]) {
@@ -271,7 +274,7 @@ describe("worker modules", () => {
     }));
     mockDbSimple();
     jest.doMock("exceljs", () => makeExcelMock());
-    jest.doMock("../../../helper/worker.helper", () => ({
+    jest.doMock("../../../services/variform.service", () => ({
       sendWelcomeSMS: jest.fn(() => Promise.resolve()),
     }));
     jest.doMock("../../../models/user.model", () => ({

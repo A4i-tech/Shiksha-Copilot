@@ -190,11 +190,6 @@ const routeCases = [
     method: "post",
     path: "/master-subject/create",
   },
-  {
-    file: "question.bank.routes.js",
-    method: "post",
-    path: "/question-bank/generate-blue-print",
-  },
   { file: "region.routes.js", method: "get", path: "/regions/list" },
   { file: "schedule.routes.js", method: "post", path: "/schedule/create" },
   { file: "school.class.routes.js", method: "post", path: "/class/create" },

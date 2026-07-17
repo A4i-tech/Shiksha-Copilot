@@ -6,7 +6,7 @@ from pydantic import Field, create_model
 import yaml
 import asyncio
 from pathlib import Path
-from typing import Annotated, List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
@@ -26,7 +26,6 @@ from app.models.question_paper import (
     GeneratedTemplate,
     _LearningRecord,
     MatchingListQuestion,
-    QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
     QuestionBankMetadata,
@@ -163,26 +162,14 @@ class QuestionPaperService:
                 yield lr, questions[i : i + self.max_questions_per_slot]
 
 
-    def _format_system_prompt(
-        self,
-        request: QuestionBankPartsGenerationRequest,
-        existing_questions: List[str],
-        record: _LearningRecord,
-        slot: list[GenerationSlot],
-    ) -> str:
+    def _format_system_prompt(self, request: QuestionBankPartsGenerationRequest, record: _LearningRecord, slot: list[GenerationSlot]) -> str:
         """Format the system prompt using YAML templates for a specific unit slot."""
         # Get the main template
-        template = self.prompts.get("question_bank_parts_gen", "")
+        template = self.prompts["question_bank_parts_gen"]
 
         # Get Bloom's taxonomy guide
         bloom_lang = "english" if "english" in request.subject.lower() else "general"
-        blooms_guide = self.prompts.get("blooms-taxonomy", {}).get(bloom_lang, "")
-
-        # Format learning outcomes for this specific unit
-        if record.learning_outcomes:
-            unit_los_text = f"Unit Name: {record.title}:\n" + "\n".join(f"  - {lo}" for lo in record.learning_outcomes)
-        else:
-            unit_los_text = f"Unit Name: {record.title} (No specific LOs provided)"
+        blooms_guide = self.prompts["blooms-taxonomy"][bloom_lang]
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
         grammar_topics_text = self._get_grammar_topics(request, record)
@@ -192,8 +179,26 @@ class QuestionPaperService:
             if grammar_guide:
                 grammar_topics_text = (grammar_topics_text + "\n\n" + grammar_guide).strip()
 
-        # Format the prompt for this specific unit
-        return template.format(
+        return self.prompts["question_bank_parts_gen"].format(BLOOM_TAXONOMY_GUIDE=blooms_guide, GRAMMAR_TOPICS=grammar_topics_text)
+
+
+    @observe(name="question_generation")
+    async def _generate_questions_batch(self, system_prompt: str, request: QuestionBankPartsGenerationRequest, existing_questions: list[str], record: _LearningRecord, slot: list[GenerationSlot], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedSlotQuestion]:
+        """
+        Generate questions for a batch of slots.
+        Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
+        """
+
+        # Format learning outcomes for this specific unit
+        if record.learning_outcomes:
+            unit_los_text = f"Unit Name: {record.title}:\n" + "\n".join(f"  - {lo}" for lo in record.learning_outcomes)
+        else:
+            unit_los_text = f"Unit Name: {record.title} (No specific LOs provided)"
+
+        user_message = self.prompts["question_bank_parts_gen_retrieval_query_template"].format(
+            RULES="\n".join(f"- {q.value}: {q.description}" for q in set(t.type for _, t, _ in slot)),
+            CHAPTER=record.title,
+            LEARNING_OUTCOMES="\n".join(f"- {lo}" for lo in record.learning_outcomes),
             BOARD=request.board,
             MEDIUM=request.medium,
             GRADE=request.grade,
@@ -202,22 +207,6 @@ class QuestionPaperService:
             CHAPTERS=record.title,  # Single unit for this batch
             UNIT_WISE_LEARNING_OUTCOMES=unit_los_text,
             EXISTING_QUESTIONS_JSON=json.dumps(existing_questions, ensure_ascii=False),
-            QUESTION_BANK_BLOOM_TAXONOMY_GUIDE=blooms_guide,
-            GRAMMAR_TOPICS=grammar_topics_text,
-        )
-
-
-    @observe(name="question_generation")
-    async def _generate_questions_batch(self, system_prompt: str, record: _LearningRecord, slot: list[GenerationSlot], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedSlotQuestion]:
-        """
-        Generate questions for a batch of slots.
-        Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
-        """
-
-        user_message = self.prompts["question_bank_parts_gen_retrieval_query_template"].format(
-            RULES="\n".join(f"- {q.value}: {q.description}" for q in set(t.type for _, t, _ in slot)),
-            CHAPTER=record.title,
-            LEARNING_OUTCOMES="\n".join(f"- {lo}" for lo in record.learning_outcomes),
         )
 
         slot_indexed = {local_unique_id(i): v for i, v in enumerate(slot)}
@@ -272,7 +261,7 @@ class QuestionPaperService:
             for k, (slot_id, template, question) in slot_indexed.items()
         ]
 
-    async def _generate_questions_batch_async(self, system_prompt: str, record: _LearningRecord, slot: list[GenerationSlot]) -> list[GeneratedSlotQuestion]:
+    async def _generate_questions_batch_async(self, system_prompt: str, request: QuestionBankPartsGenerationRequest, existing_questions: list[str], record: _LearningRecord, slot: list[GenerationSlot]) -> list[GeneratedSlotQuestion]:
         async with self.concurrency:
             if not record.index_path.strip():
                 fut = asyncio.Future()
@@ -289,7 +278,7 @@ class QuestionPaperService:
 
             if rag_adapter is None:
                 logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{record.index_path}'")
-            return await self._generate_questions_batch(system_prompt, record, slot, rag_adapter)
+            return await self._generate_questions_batch(system_prompt, request, existing_questions, record, slot, rag_adapter)
 
     @observe(name="output_formatting")
     def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedSlotQuestion]) -> List[QuestionTypeResponse]:
@@ -375,8 +364,8 @@ class QuestionPaperService:
         tasks = []
         for lr, questions in self._build_generation_slots(request):
             logger.debug(f"[SLOT_PROCESSING] unit='{lr.title}' | index_path='{lr.index_path}'")
-            system_prompt = self._format_system_prompt(request, existing_flat, lr, questions)
-            tasks.append(self._generate_questions_batch_async(system_prompt, lr, questions))
+            system_prompt = self._format_system_prompt(request, lr, questions)
+            tasks.append(self._generate_questions_batch_async(system_prompt, request, existing_flat, lr, questions))
 
         if not tasks:
             raise ValueError("No generation slots could be built from template/distribution.")
@@ -394,90 +383,3 @@ class QuestionPaperService:
             school_name=request.school_name,
             examination_name=request.examination_name,
         ), questions=response_questions)
-
-
-    @observe(name="Shiksha-QB")
-    async def get_question_distribution(self, request: QBQuestionDistributionGenerationRequest) -> List[GeneratedTemplate]:
-        """
-        Generate question paper template based on unit-wise marks distribution.
-        """
-        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
-        get_client().update_current_trace(
-            user_id=request.user_id,
-            session_id=request.session_id,
-            tags=[
-                "chat_type:question-distribution",
-                f"board:{request.board}",
-                f"grade:{request.grade}",
-                f"subject:{request.subject}",
-            ],
-            metadata={
-                "board": request.board,
-                "grade": request.grade,
-                "subject": request.subject,
-                "medium": request.medium,
-                "chapters": [ch.title for ch in request.chapters],
-                "learning_outcomes": all_los,
-                "total_marks": request.total_marks,
-                "model": self.chat_deployment,
-            },
-        )
-
-        templates = {local_unique_id(i): t for i, t in enumerate(request.template)}
-
-        def prepare_context() -> dict[str, Any]:
-            lrs = request.chapters[0].subtopics if request.unit_level == "SUBTOPIC" else request.chapters
-            units_str = ", ".join(lr.title for lr in lrs)
-
-            # Helper to safely serialize pydantic models
-            marks_distribution_str = json.dumps([md.model_dump(mode="json") for md in request.marks_distribution], indent=2)
-            objective_distribution_str = json.dumps([od.model_dump(mode="json") for od in request.objective_distribution], indent=2)
-            template_str = json.dumps({k: v.model_dump(mode="json") for k, v in templates.items()}, indent=2)
-
-            # Get Bloom's taxonomy guide
-            bloom_lang = "english" if "english" in request.subject.lower() else "general"
-            blooms_guide = self.prompts.get("blooms-taxonomy", {}).get(bloom_lang, "")
-
-            return {
-                "BOARD": request.board,
-                "MEDIUM": request.medium,
-                "GRADE": str(request.grade),
-                "SUBJECT": request.subject,
-                "TOTAL_MARKS": str(request.total_marks),
-                "CHAPTERS": units_str,
-                "QUESTION_BANK_BLOOM_TAXONOMY_GUIDE": blooms_guide,
-                "MARKS_DISTRIBUTION": marks_distribution_str,
-                "OBJECTIVE_DISTRIBUTION": objective_distribution_str,
-                "TEMPLATE_JSON": template_str,
-            }
-
-        response_format = create_model("TemplateResponse", **{
-            k: (Annotated[list[QuestionDistribution], Field(min_length=v.number_of_questions, max_length=v.number_of_questions)], Field(description=f"Distributions for template {k}"))
-            for k, v in templates.items()
-        })  # type: ignore[call-overload]
-
-        # Prepare Prompt Context
-        prompt_context = prepare_context()
-        prompt_template = self.prompts.get("question_bank_distribution", "")
-        prompt = prompt_template.format(**prompt_context)
-        # Call Azure OpenAI with Strict System Instructions
-        response = await self.client.responses.parse(
-            model=self.chat_deployment,
-            instructions=(
-                "You are a strict data generation assistant.\n"
-                "You must output only a valid JSON object matching the requested schema.\n"
-                "Do not add any conversational text, markdown formatting, or explanations."
-            ),
-            input=prompt,
-            temperature=0.1,
-            text_format=response_format
-        )
-
-        if not response.output_parsed:
-            logger.error(f"Failed raw response: {response.output_text}")
-            raise RuntimeError("The AI model failed to generate a valid JSON structure.")
-
-        return [
-            GeneratedTemplate.model_validate({"question_distribution": getattr(response.output_parsed, k), **v.model_dump()})
-            for k, v in templates.items()
-        ]

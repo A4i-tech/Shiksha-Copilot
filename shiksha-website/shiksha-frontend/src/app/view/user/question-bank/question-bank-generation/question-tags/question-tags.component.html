@@ -1,0 +1,16 @@
+<div class="flex flex-wrap items-center gap-1">
+  <img *ngIf="hasQuestionImage(question)" src="assets/icons/image.svg" [alt]="'Contains image' | translate"
+    [title]="'Contains image' | translate" class="w-4 h-4 text-gray-500" />
+  <span *ngIf="question.heading"
+    class="text-[10px] font-bold px-1 rounded uppercase tracking-wider bg-purple-100 text-purple-700 border border-purple-200">
+    {{ question.heading | translate }}
+  </span>
+  <span *ngIf="question.difficulty" class="text-[10px] font-bold px-1 rounded uppercase tracking-wider border"
+    [ngClass]="difficultyColor(question.difficulty)">
+    {{ question.difficulty | translate }}
+  </span>
+  <span class="text-[10px] font-bold px-1 rounded uppercase tracking-wider" [ngClass]="sourceTagClass(question.source)">
+    {{ question.source | translate }}
+  </span>
+  <span class="text-xs font-bold text-gray-600">{{ formatMarks(question.marks) }}M</span>
+</div>

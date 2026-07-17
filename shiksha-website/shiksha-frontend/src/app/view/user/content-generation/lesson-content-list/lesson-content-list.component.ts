@@ -3,7 +3,7 @@ import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
 import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, forkJoin, of } from 'rxjs';
+import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, of } from 'rxjs';
 interface ListParams {
   currentPage: number;
   pageSize: number;
@@ -117,6 +117,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   classList: any[] = []
   isCompleted:any = '';
   private searchSubscription!: Subscription;
+  private listSubscription = new Subscription();
 
 
   @ViewChild('typeDropDown') typedropdown: any;
@@ -320,28 +321,27 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   getAllList(params: ListParams) {
     const lessonListRequest = params.selectedType === 'presentation' ? of({ data: [] }) : this.contentGenService.getAllList(params);
     const presentationListRequest = (params.selectedType === 'all' || params.selectedType === 'presentation') ? this.contentGenService.getPresentationJobs(params) : of([]);
-
-    forkJoin({
-      lessonList: lessonListRequest.pipe(catchError(_ => of(null))),
-      presentationList: presentationListRequest.pipe(catchError(_ => of(null))),
-    }).subscribe({
-      next: (res: any) => {
-        const lessonList = Array.isArray(res.lessonList?.data) ? res.lessonList.data : [];
-        const presentationList = this.filterPresentationJobs(
-          Array.isArray(res.presentationList) ? res.presentationList : [],
-          params
-        ).map((item: PresentationListItem) => this.mapPresentationJob(item));
-        const nextList = [...lessonList, ...presentationList].sort((a: any, b: any) => this.getItemTimestamp(b) - this.getItemTimestamp(a));
-        if (this.getListSignature(this.list) !== this.getListSignature(nextList)) {
-          this.list = nextList;
-          this.totalItems = nextList.length;
-        }
-      },
-      error: (err) => {
-        console.error(err);
-        this.utilityservice.handleError(err);
+    let lessonList: any[] = [];
+    let presentationList: any[] = [];
+    const render = () => {
+      const nextList = [...lessonList, ...presentationList].sort((a: any, b: any) => this.getItemTimestamp(b) - this.getItemTimestamp(a));
+      if (this.getListSignature(this.list) !== this.getListSignature(nextList)) {
+        this.list = nextList;
+        this.totalItems = nextList.length;
       }
-    });
+    };
+
+    this.listSubscription.unsubscribe();
+    this.listSubscription = new Subscription();
+    this.listSubscription.add(lessonListRequest.pipe(catchError(_ => of(null))).subscribe(res => {
+      lessonList = Array.isArray(res?.data) ? res.data : [];
+      render();
+    }));
+    this.listSubscription.add(presentationListRequest.pipe(catchError(_ => of(null))).subscribe(res => {
+      presentationList = this.filterPresentationJobs(Array.isArray(res) ? res : [], params)
+        .map((item: PresentationListItem) => this.mapPresentationJob(item));
+      render();
+    }));
   }
 
   getBoardsList(userDetails: any) {
@@ -422,6 +422,36 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     this.router.navigate(['/content-generation/lesson-chat'],{queryParams:{recordId,chapterId}})
   }
 
+  showDeletePopup = false;
+  deleteHeading = '';
+  private itemPendingDelete: any;
+
+  onDelete(item: any) {
+    this.itemPendingDelete = item;
+    this.deleteHeading = item.isLesson ? 'Delete Lesson Plan' : 'Delete Lesson Resource';
+    this.showDeletePopup = true;
+  }
+
+  confirmDelete(action: string) {
+    this.showDeletePopup = false;
+    const item = this.itemPendingDelete;
+    this.itemPendingDelete = null;
+    if (action !== 'delete' || !item) return;
+
+    const id = item.isLesson ? item.lesson._id : item.resource._id;
+    const request = item.isLesson
+      ? this.contentGenService.deleteLessonPlan(id)
+      : this.contentGenService.deleteResourcePlan(id);
+
+    request.subscribe({
+      next: (res) => {
+        this.utilityservice.handleResponse(res);
+        this.getAllList(this.getListParams());
+      },
+      error: (err) => this.utilityservice.handleError(err),
+    });
+  }
+
   private filterPresentationJobs(list: PresentationListItem[], params: ListParams): PresentationListItem[] {
     let filteredList = list.filter(item => item.status === 'complete');
 
@@ -469,6 +499,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   ngOnDestroy(): void {
+    this.listSubscription.unsubscribe();
     if (this.searchSubscription) {
       this.searchSubscription.unsubscribe();
     }

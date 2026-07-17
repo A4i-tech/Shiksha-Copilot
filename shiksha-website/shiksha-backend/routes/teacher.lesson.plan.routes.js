@@ -183,5 +183,25 @@ router.get(
 	)
 );
 
+router.delete(
+	"/teacher-lesson-plan/lesson/:lessonPlanId",
+	isAuthenticated,
+	asyncMiddleware(
+		teacherLessonPlanController.deleteLessonPlan.bind(
+			teacherLessonPlanController
+		)
+	)
+);
+
+router.delete(
+	"/teacher-lesson-plan/resource/:resourcePlanId",
+	isAuthenticated,
+	asyncMiddleware(
+		teacherLessonPlanController.deleteResourcePlan.bind(
+			teacherLessonPlanController
+		)
+	)
+);
+
 
 module.exports = router;

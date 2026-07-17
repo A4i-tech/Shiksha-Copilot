@@ -27,7 +27,9 @@
             "inlineStyleLanguage": "scss",
             "assets": [
               "src/favicon.ico",
+              "src/_headers",
               "src/health.json",
+              "src/staticwebapp.config.json",
               "src/assets"
             ],
             "styles": [

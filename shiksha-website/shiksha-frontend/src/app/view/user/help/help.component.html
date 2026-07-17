@@ -8,7 +8,7 @@
   <div class="video-grid">
     <article *ngFor="let video of videos">
       <iframe [src]="video.link" height="185" title="Video guide" frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       <p>{{ video.title | translate }}</p>
     </article>
   </div>

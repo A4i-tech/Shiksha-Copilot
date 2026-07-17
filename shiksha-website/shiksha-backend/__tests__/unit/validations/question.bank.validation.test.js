@@ -1,6 +1,6 @@
 const {
-  validateQuestionBankBluePrintCreate,
   validateQuestionBankCreate,
+  validateQuestionBankBluePrintCreate,
   validateGetQuestionTypes,
   validateGetGrammarTopics,
 } = require("../../../validations/question.bank.validation");
@@ -19,78 +19,6 @@ describe("Question Bank Validation", () => {
       json: jest.fn().mockReturnThis(),
     };
     mockNext = jest.fn();
-  });
-
-  describe("validateQuestionBankBluePrintCreate", () => {
-    const validBlueprintData = {
-      medium: "English",
-      board: "CBSE",
-      grade: 10,
-      subject: "Mathematics",
-      chapter: "Algebra",
-      totalMarks: 100,
-      examinationName: "Final Exam",
-      chapterIds: ["chapter123"],
-      isMultiChapter: false,
-      marksDistribution: [
-        {
-          unitName: "Unit 1",
-          marks: 50,
-          percentageDistribution: 50,
-        },
-      ],
-      objectiveDistribution: [
-        {
-          objective: "Understanding",
-          percentageDistribution: 40,
-        },
-      ],
-      template: [
-        {
-          type: "MCQ",
-          numberOfQuestions: 10,
-          marksPerQuestion: 1,
-          questionDistribution: [],
-        },
-      ],
-    };
-
-    it("should pass validation with valid blueprint data", () => {
-      mockReq.body = { ...validBlueprintData };
-
-      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
-
-      expect(mockNext).toHaveBeenCalled();
-      expect(mockRes.status).not.toHaveBeenCalled();
-    });
-
-    it("should fail when objectiveDistribution is missing", () => {
-      const { objectiveDistribution, ...dataWithoutObjective } =
-        validBlueprintData;
-      mockReq.body = dataWithoutObjective;
-
-      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        data: false,
-        error: expect.arrayContaining([
-          expect.stringContaining("objectiveDistribution"),
-        ]),
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it("should fail when template is missing", () => {
-      const { template, ...dataWithoutTemplate } = validBlueprintData;
-      mockReq.body = dataWithoutTemplate;
-
-      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockNext).not.toHaveBeenCalled();
-    });
   });
 
   describe("validateQuestionBankCreate", () => {
@@ -156,6 +84,51 @@ describe("Question Bank Validation", () => {
       mockReq.body = dataWithoutGrade;
 
       validateQuestionBankCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it.each(["marksDistribution", "objectiveDistribution"])("should reject an empty %s", (field) => {
+      mockReq.body = { ...validGenerateData, [field]: [] };
+
+      validateQuestionBankCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("validateQuestionBankBluePrintCreate", () => {
+    const validBluePrintData = {
+      template: [{
+        type: "MCQ",
+        numberOfQuestions: 10,
+        marksPerQuestion: 1,
+        questionDistribution: [],
+      }],
+      marksDistribution: [{ unitName: "Unit 1", marks: 10 }],
+      objectiveDistribution: [{ objective: "Understanding", percentageDistribution: 100 }],
+    };
+
+    it("should pass validation with valid blueprint data", () => {
+      mockReq.body = validBluePrintData;
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["missing template", { ...validBluePrintData, template: undefined }],
+      ["empty marks distribution", { ...validBluePrintData, marksDistribution: [] }],
+      ["invalid question count", { ...validBluePrintData, template: [{ ...validBluePrintData.template[0], numberOfQuestions: 0 }] }],
+      ["invalid objective percentage", { ...validBluePrintData, objectiveDistribution: [{ objective: "Understanding", percentageDistribution: 101 }] }],
+    ])("should reject %s", (_description, body) => {
+      mockReq.body = body;
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();

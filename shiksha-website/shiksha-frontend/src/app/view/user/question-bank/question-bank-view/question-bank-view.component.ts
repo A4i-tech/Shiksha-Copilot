@@ -7,7 +7,7 @@ import { IdleService } from 'src/app/shared/services/idle.service';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 import { formatMarks } from 'src/app/shared/utility/constant.util';
-import { contentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
 @Component({
@@ -54,6 +54,7 @@ export class QuestionBankViewComponent implements OnInit {
   generatedTotalMarks = 0;
   readonly formatMarks = formatMarks;
   readonly contentItems = contentItems;
+  readonly questionContentItems = questionContentItems;
 
   docTypes = [
     {

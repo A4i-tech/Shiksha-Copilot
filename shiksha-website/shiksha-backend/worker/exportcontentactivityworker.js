@@ -4,8 +4,8 @@ const dbService = require("../config/db.js");
 const { uploadToStorage } = require("../services/e2e.storage.service");
 const AuditLog = require("../models/audit.log.model");
 
-dbService.getConnection().then(async (client) => {
-  parentPort.on("message", async (data) => {
+parentPort.once("message", async (data) => {
+    const { client, openedHere } = await dbService.connectToMongoForWorker();
     try {
       const { contentActivities, userId, userName } = data;
       const contentActivityWorkBook = new ExcelJS.Workbook();
@@ -90,7 +90,6 @@ dbService.getConnection().then(async (client) => {
       });
       parentPort.postMessage({ success: false, error: e });
     } finally {
-      await client.close();
+      if (openedHere) await client.close();
     }
-  });
 });

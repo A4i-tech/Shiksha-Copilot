@@ -1,8 +1,6 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
-const QUESTION_BANK_CACHE_TTL_SECONDS = 60 * 60 * 6;
-
 const questionSchema = new Schema({
   question: {
     type: Schema.Types.Mixed,
@@ -33,11 +31,6 @@ const questionBankCacheSchema = new Schema(
   },
   { timestamps: true }
 );
-
-questionBankCacheSchema.index({ updatedAt: 1 }, {
-  expireAfterSeconds: QUESTION_BANK_CACHE_TTL_SECONDS,
-  name: "question_bank_cache_updated_at_ttl",
-});
 
 questionBankCacheSchema.index({
   chapterId: 1,

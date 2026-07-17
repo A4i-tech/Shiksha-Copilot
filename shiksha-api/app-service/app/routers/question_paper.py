@@ -6,8 +6,6 @@ from langdetect.detector import Detector
 from pydantic import BaseModel
 
 from app.models.question_paper import (
-    GeneratedTemplate,
-    QBQuestionDistributionGenerationRequest,
     QuestionBankPartsGenerationRequest,
     QuestionBankResponse,
     get_question_types_for_subject,
@@ -38,6 +36,7 @@ LANGUAGE_MAP = {
     "kannada": "kn",
     "hindi": "hi",
     "telugu": "te",
+    "tg": "te",
     "tamil": "ta",
     "malayalam": "ml",
     "marathi": "mr",
@@ -153,16 +152,3 @@ async def generate_question_paper_by_parts(request: QuestionBankPartsGenerationR
     except Exception as e:
         logger.exception(e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to generate question paper") from e
-
-
-@router.post("/questiondistribution", summary="Generate Question Distribution Templates")
-async def get_question_distribution(request: QBQuestionDistributionGenerationRequest, service: QuestionPaperService = Depends(svc)) -> List[GeneratedTemplate]:
-    """
-    Creates optimized question paper templates based on specified marks distribution,
-    objective distribution, and educational parameters.
-    """
-    try:
-        return await service.get_question_distribution(request)
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred.") from e

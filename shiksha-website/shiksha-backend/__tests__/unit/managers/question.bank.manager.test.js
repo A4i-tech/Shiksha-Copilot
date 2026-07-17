@@ -123,48 +123,29 @@ describe("QuestionBankManager", () => {
     });
   });
 
-  describe("generateQuestionBankBluePrint", () => {
-    it("should generate blueprint successfully", async () => {
-      const mockUser = { _id: "user-123" };
-      const mockReq = {
-        body: {
-          board: "KSEEB",
-          medium: "English",
-          grade: "5",
-          subject: "Mathematics",
-          totalMarks: 100,
-          isMultiChapter: true,
-          chapterIds: ["507f1f77bcf86cd799439011"],
-          marksDistribution: [{ unitName: "Unit 1", marks: 100, percentageDistribution: 100 }],
-          objectiveDistribution: [
-            { objective: "Knowledge", percentageDistribution: 40 },
-          ],
-          template: [{ type: "MCQ", marksPerQuestion: 1, questionDistribution: [] }],
-        },
-      };
+  describe("blueprint distribution", () => {
+    it("builds the exact requested blueprint", () => {
+      const template = manager._applyQuestionCounts([
+        { type: "MCQ", marksPerQuestion: 1 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5 },
+      ], 7);
+      const result = manager._distributeBlueprint(template, [
+        { unitName: "Unit A", marks: 5 },
+        { unitName: "Unit B", marks: 2 },
+      ], [
+        { objective: "Knowledge", percentageDistribution: 34 },
+        { objective: "Application", percentageDistribution: 66 },
+      ]);
 
-      const mockBlueprint = { blueprint: "data" };
-
-      const {
-        postToQuestionBankDistribution,
-      } = require("../../../services/question.bank.bot.service");
-      postToQuestionBankDistribution.mockResolvedValue({
-        status: 200,
-        data: mockBlueprint,
-      });
-
-      const chapterAggregation = require("../../../aggregation/chapter.aggregation");
-      chapterAggregation.getChapterByIdsAndFilterObject = jest
-        .fn()
-        .mockResolvedValue([]);
-
-      const result = await manager.generateQuestionBankBluePrint(
-        mockReq,
-        mockUser
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockBlueprint);
+      expect(result).toEqual([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, questionDistribution: [
+          { unitName: "Unit B", objective: "Knowledge" },
+          { unitName: "Unit B", objective: "Application" },
+        ] },
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, questionDistribution: [
+          { unitName: "Unit A", objective: "Application" },
+        ] },
+      ]);
     });
   });
 

@@ -7,7 +7,7 @@ import zlib
 from PIL import Image
 from app.models.presentation import FigureInfo
 from app.utils.storage import Storage
-from pptx import presentation
+from pptx import Presentation, presentation
 from pptx.enum.shapes import PP_PLACEHOLDER
 
 from pydantic_ai import AgentRunError, BinaryContent
@@ -62,6 +62,26 @@ def _page_figures(doc: pymupdf.Document, page: pymupdf.Page) -> Iterator[tuple[i
     return page, result
 
 
+def _extract_figures(data: bytes) -> list[tuple[str, bytes]]:
+    figures = []
+    with pymupdf.open(stream=data) as doc:
+        for page in doc.pages():
+            page_text = None
+            for w, h, ext, content in _page_figures(doc, page):
+                if w < 180 or h < 120:
+                    continue
+                if page_text is None:
+                    page_text = page.get_text()
+                figures.append((page_text, content))
+    return figures
+
+
+def _to_png(content: bytes) -> bytes:
+    data = io.BytesIO()
+    Image.open(io.BytesIO(content)).convert("RGB").save(data, format="PNG")
+    return data.getvalue()
+
+
 async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader, out_dir: str, caption_concurrency: int) -> list[FigureInfo]:
     logger = logging.getLogger(__name__)
     sem = asyncio.Semaphore(caption_concurrency)
@@ -71,29 +91,18 @@ async def _actually_read_figures(storage: Storage, textbook: AsyncBufferedReader
         storage_path = storage.path(out_dir, figure_name)
         if await storage.exists(storage_path):
             return None
-        data = io.BytesIO()
-        Image.open(io.BytesIO(content)).convert("RGB").save(data, format="PNG")
+        data = io.BytesIO(await asyncio.to_thread(_to_png, content))
         await storage.write_bytes(storage_path, data.getvalue())
         return await _caption(data, figure_name, page_text, sem)
 
     await textbook.seek(0)
     try:
-        doc = await asyncio.to_thread(pymupdf.open, stream=await textbook.read())
+        raw_figures = await asyncio.to_thread(_extract_figures, await textbook.read())
     except pymupdf.FileDataError:
         return []
 
-    try:
-        for page in doc.pages():
-            assert isinstance(page, pymupdf.Page)
-            page_text = None
-            for w, h, ext, content in _page_figures(doc, page):
-                if w < 180 or h < 120:
-                    continue
-                figure_name = '%d.png' % zlib.crc32(content)
-                if page_text is None: page_text = page.get_text()
-                tasks.append(asyncio.create_task(proc(page_text, figure_name, content)))
-    finally:
-        doc.close()
+    for page_text, content in raw_figures:
+        tasks.append(asyncio.create_task(proc(page_text, '%d.png' % zlib.crc32(content), content)))
 
     logger.info("Captioning %d figures", len(tasks))
     figures = await asyncio.gather(*tasks)
@@ -148,5 +157,9 @@ def list_slide_content(prs: presentation.Presentation) -> list[dict[str, Any]]:
 
 async def save_pptx(storage: Storage, prs: presentation.Presentation, path: str):
     data = io.BytesIO()
-    prs.save(data)
+    await asyncio.to_thread(prs.save, data)
     await storage.write_bytes(path, data.getvalue())
+
+
+async def load_pptx(data: bytes) -> presentation.Presentation:
+    return await asyncio.to_thread(Presentation, io.BytesIO(data))

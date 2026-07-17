@@ -17,6 +17,7 @@ class TeacherLessonPlanController extends BaseController {
 				sortBy = "createdAt",
 				sortOrder = "desc",
 				search = "",
+				fields,
 			} = req.query;
 
 			const { _id: teacherId } = req.user;
@@ -48,7 +49,7 @@ class TeacherLessonPlanController extends BaseController {
 					teacherId,
 					parseInt(page),
 					parseInt(limit),
-					{ ...filter, ...searchFilter },
+					{ ...filter, ...searchFilter, fields },
 					sortOrderObject
 				);
 
@@ -222,6 +223,30 @@ class TeacherLessonPlanController extends BaseController {
 			}
 		} catch (error) {
 			console.error("Error getting Resource plan by ID:", error);
+			return res.status(500).json({ error: "Internal server error" });
+		}
+	}
+
+	async deleteLessonPlan(req, res) {
+		try {
+			const { lessonPlanId } = req.params;
+			const teacherId = req.user._id;
+			const result = await this.manager.deleteLessonPlan(teacherId, lessonPlanId);
+			return result.success ? res.status(200).json(result) : res.status(404).json(result);
+		} catch (error) {
+			console.error("Error deleting lesson plan:", error);
+			return res.status(500).json({ error: "Internal server error" });
+		}
+	}
+
+	async deleteResourcePlan(req, res) {
+		try {
+			const { resourcePlanId } = req.params;
+			const teacherId = req.user._id;
+			const result = await this.manager.deleteResourcePlan(teacherId, resourcePlanId);
+			return result.success ? res.status(200).json(result) : res.status(404).json(result);
+		} catch (error) {
+			console.error("Error deleting resource plan:", error);
 			return res.status(500).json({ error: "Internal server error" });
 		}
 	}

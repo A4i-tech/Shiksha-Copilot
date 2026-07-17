@@ -29,12 +29,14 @@ const questionBankCommonSchema = {
     totalMarks: Joi.number().required(),
     examinationName: Joi.string().required(),
     isPreview: Joi.boolean(),
+    surplus: Joi.boolean(),
     chapterIds: Joi.alternatives().try(
         Joi.array().items(Joi.string()),
         Joi.string()
     ).required(),
     isMultiChapter: Joi.boolean().required(),
     marksDistribution: Joi.array()
+        .min(1)
         .items({
             unitName: Joi.string(),
             marks: Joi.number(),
@@ -48,21 +50,10 @@ const questionBankTemplateSchemaCreate = Joi.object({
     ...questionBankCommonSchema
 }).unknown(true); // Allow extra fields
 
-// 2. Blueprint Schema (Step 2)
-const questionBankBluePrintSchemaCreate = Joi.object({
-    ...questionBankCommonSchema,
-    objectiveDistribution: Joi.array()
-        .items(Joi.object().unknown(true))
-        .required(),
-    template: Joi.array()
-        .items(questionBankTemplateItemSchema)
-        .required(),
-}).unknown(true); // Allow extra fields
-
-// 3. Generate Schema (Step 3 - The one failing)
+// 2. Generate Schema
 const questionBankSchemaCreate = Joi.object({
     ...questionBankCommonSchema,
-    objectiveDistribution: Joi.array().items(Joi.object().unknown(true)).required(),
+    objectiveDistribution: Joi.array().min(1).items(Joi.object().unknown(true)).required(),
 
     questionBankTemplate: Joi.array()
         .items(questionBankTemplateItemSchema).optional(),
@@ -71,6 +62,27 @@ const questionBankSchemaCreate = Joi.object({
         .items(questionBankTemplateItemSchema)
         .required(),
 }).unknown(true); //  Allows extra fields in the root payload
+
+const questionBankBluePrintSchemaCreate = Joi.object({
+    template: Joi.array().min(1).items({
+        ...questionBankTemplateItemSchema,
+        numberOfQuestions: Joi.number().integer().positive().required(),
+        marksPerQuestion: Joi.number().positive().required(),
+        questionDistribution: Joi.array().items({
+            unitName: Joi.string().required(),
+            objective: Joi.string().required(),
+        }).required(),
+    }).required(),
+    marksDistribution: Joi.array().min(1).items({
+        unitName: Joi.string().required(),
+        marks: Joi.number().positive().required(),
+        percentageDistribution: Joi.number().min(0).max(100),
+    }).required(),
+    objectiveDistribution: Joi.array().min(1).items({
+        objective: Joi.string().required(),
+        percentageDistribution: Joi.number().min(0).max(100).required(),
+    }).required(),
+}).unknown(true);
 
 const questionBankFeedbackSchema = Joi.object({
     question: Joi.string().required(),
@@ -87,10 +99,13 @@ const getGrammarTopicsQuerySchema = Joi.object({
 }).unknown(true);
 
 // Middleware functions
-const validateQuestionBankBluePrintCreate = (req, res, next) => {
+const validateQuestionBankCreate = (req, res, next) => {
     const data = req.body;
-    let isValid = questionBankBluePrintSchemaCreate.validate(data, { abortEarly: false });
+    let isValid = questionBankSchemaCreate.validate(data, { abortEarly: false });
     if (isValid.error) {
+        // Log the actual error to the console for debugging
+        console.log("Validation Error Details:", isValid.error.details.map((i) => i.message));
+        
         return res.status(400).json({
             success: false,
             data: false,
@@ -101,13 +116,9 @@ const validateQuestionBankBluePrintCreate = (req, res, next) => {
     next();
 };
 
-const validateQuestionBankCreate = (req, res, next) => {
-    const data = req.body;
-    let isValid = questionBankSchemaCreate.validate(data, { abortEarly: false });
+const validateQuestionBankBluePrintCreate = (req, res, next) => {
+    const isValid = questionBankBluePrintSchemaCreate.validate(req.body, { abortEarly: false });
     if (isValid.error) {
-        // Log the actual error to the console for debugging
-        console.log("Validation Error Details:", isValid.error.details.map((i) => i.message));
-        
         return res.status(400).json({
             success: false,
             data: false,

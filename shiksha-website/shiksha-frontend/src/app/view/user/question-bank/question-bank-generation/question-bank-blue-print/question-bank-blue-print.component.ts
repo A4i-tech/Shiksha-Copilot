@@ -1,7 +1,8 @@
+import { CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
-import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { contentItems, questionContentItems, sourceBorderClass } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
 @Component({
@@ -13,6 +14,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   @ViewChild('bluePrintContent') bluePrintContent!: ElementRef<HTMLElement>;
 
   @Input() currentStep: number = 3;
+  @Input() totalSteps: number = 3;
+  @Input() fullWidth: boolean = false;
   @Input() totalMarks: number = 0;
   @Input() selectedQuestionsMarks: number = 0;
   @Input() examName: string = '';
@@ -25,11 +28,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
+  @Output() questionsReorder = new EventEmitter<any[]>();
   readonly formatMarks = formatMarks;
   readonly contentItems = contentItems;
   readonly questionContentItems = questionContentItems;
-
-  totalSteps: number = 3;
+  readonly sourceBorderClass = sourceBorderClass;
 
   // Chart Properties
   objectivesChartData!: ChartData<'doughnut'>;
@@ -37,6 +40,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   chartTitle: string = 'Objective Analysis';
 
   groupedBlueprintData: any[] = [];
+  /** Prevents re-rendering the drop lists while CDK is finishing a drop (leaves blank scroll space). */
+  private skipNextRebuild = false;
 
   objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
@@ -66,15 +71,19 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['finalSelectedQuestions']) {
-      this.processDataForView();
+    if (!changes['finalSelectedQuestions']) return;
+    if (this.skipNextRebuild) {
+      this.skipNextRebuild = false;
+      return;
     }
+    this.processDataForView();
   }
 
   processDataForView() {
     if (!this.finalSelectedQuestions || this.finalSelectedQuestions.length === 0) return;
 
     const groups: { [key: string]: any } = {};
+    const orderedKeys: string[] = [];
 
     this.finalSelectedQuestions.forEach(q => {
       const sectionName = `${q.type}:${q.marks}`;
@@ -85,13 +94,31 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
           marksPerQuestion: q.marks,
           questions: []
         };
+        orderedKeys.push(sectionName);
       }
       groups[sectionName].questions.push(q);
     });
 
-    this.groupedBlueprintData = Object.values(groups);
+    this.groupedBlueprintData = orderedKeys.map(key => groups[key]);
     this.updateChartData();
     if (this.bluePrintContent) renderTexMath(this.bluePrintContent.nativeElement);
+  }
+
+  dropSection(event: CdkDragDrop<any[]>) {
+    if (event.previousIndex === event.currentIndex) return;
+    moveItemInArray(this.groupedBlueprintData, event.previousIndex, event.currentIndex);
+    this.emitOrder();
+  }
+
+  dropQuestion(event: CdkDragDrop<any[]>) {
+    if (event.previousIndex === event.currentIndex) return;
+    moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
+    this.emitOrder();
+  }
+
+  private emitOrder() {
+    this.skipNextRebuild = true;
+    this.questionsReorder.emit(this.groupedBlueprintData.flatMap(g => g.questions));
   }
 
   updateChartData() {

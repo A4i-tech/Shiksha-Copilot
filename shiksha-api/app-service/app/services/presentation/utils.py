@@ -236,9 +236,11 @@ class LibreOffice:
         with tempfile.TemporaryDirectory() as profile, tempfile.TemporaryDirectory() as tmp:
             tmpdir = pathlib.Path(tmp)
             in_path = tmpdir / "input.pptx"
-            in_path.write_bytes(data.read())
+            async with aiofiles.open(in_path, "wb") as f:
+                await f.write(data.read())
             await self._call("-env:UserInstallation=file://" + profile, "--convert-to", output_format, "--outdir", str(tmpdir), str(in_path))
 
             # soffice creates 'input.xyz'
             out_path = tmpdir / ("input.%s" % output_format)
-            return out_path.read_bytes()
+            async with aiofiles.open(out_path, "rb") as f:
+                return await f.read()

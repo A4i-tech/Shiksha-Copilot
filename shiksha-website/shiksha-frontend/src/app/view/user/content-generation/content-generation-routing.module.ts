@@ -12,29 +12,51 @@ const routes: Routes = [
   {
     path:'',
     component:LessonContentListComponent,
+    data:{
+      trackingTag:'content-generation-list',
+      idleTracking:'custom',
+    }
   },
   {
     path:'lesson-resources',
-    component:LessonPlanResourceDetailsComponent
+    component:LessonPlanResourceDetailsComponent,
+    data:{
+      trackingTag:'lesson-resources',
+      idleTracking:'custom',
+    }
   },
   {
     path:'lesson-plan',
-    component:LessonPlanResourceDetailsComponent
+    component:LessonPlanResourceDetailsComponent,
+    data:{
+      trackingTag:'lesson-plan-list',
+      idleTracking:'custom',
+    }
   },
   {
     path:'presentation',
-    component:PresentationGenerationComponent
+    component:PresentationGenerationComponent,
+    data:{
+      mode:'generate',
+      trackingTag:'presentation',
+      idleTracking:'skip',
+    }
   },
   {
     path:'presentation/:id',
-    component:PresentationGenerationComponent
+    component:PresentationGenerationComponent,
+    data:{
+      trackingTag:'view-presentation',
+    }
   },
   {
     path:'inspect/:planType',
     component:LessonPlanViewEditComponent,
     canDeactivate:[DraftGuard],
     data:{
-      mode:'generate'
+      mode:'generate',
+      trackingTag:'generate-content',
+      idleTracking:'skip',
     }
   },
   {
@@ -42,7 +64,9 @@ const routes: Routes = [
     component:LessonPlanViewEditComponent,
     canDeactivate:[DraftGuard],
     data:{
-      mode:'view'
+      mode:'view',
+      trackingTag:'view-content',
+      trackingTagMap:{'lesson-plan':'view-lp','resource-plan':'view-lr'},
     }
   },
   {
@@ -50,7 +74,8 @@ const routes: Routes = [
     component:LessonPlanViewEditComponent,
     canDeactivate:[DraftGuard],
     data:{
-      mode:'draft'
+      mode:'draft',
+      trackingTag:'draft-content',
     }
   },
   {
@@ -59,6 +84,7 @@ const routes: Routes = [
     data:{
       type:'index',
       permissions: ['power'],
+      trackingTag:'lesson-chat',
     },
     canActivate: [PermissionGuard],
   }

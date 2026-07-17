@@ -66,7 +66,8 @@ export class QuestionBankService extends BaseRestService {
    * @returns
    */
   getAllQuestionBanks(filters?: { [key: string]: any }, search?: any) {
-    let params = new HttpParams().set('page', '1').set('limit', '999');
+    const fields = ['_id', 'createdAt', 'subject', 'grade', 'examinationName', 'topics'];
+    let params = new HttpParams({ fromObject: { page: 1, limit: 999, fields } });
     if (filters) {
       Object.keys(filters).forEach((key) => {
         if (filters[key]) {
@@ -93,15 +94,8 @@ export class QuestionBankService extends BaseRestService {
     return this.get(id);
   }
 
-  /**
-   * Function to generate question bank blue print
-   * @param data
-   * @returns
-   */
   generateQuestionBankBluePrint(data: any): Observable<any> {
-    return this.http.post(`${this.getUrl()}generate-blue-print`, data, {
-      context: new HttpContext().set(LOADER_MESSAGE, 'Generating blueprint...')
-    });
+    return this.http.post(`${this.getUrl()}generate-blue-print`, data);
   }
 
   /**
@@ -111,7 +105,7 @@ export class QuestionBankService extends BaseRestService {
    */
   generateQuestionBank(data: any) {
     return this.http.post(`${this.getUrl()}generate`, data, {
-      context: new HttpContext().set(LOADER_MESSAGE, data.isPreview ? 'Generating questions...' : 'Creating question paper...')
+      context: new HttpContext().set(LOADER_MESSAGE, data.isPreview ? 'Generating AI questions...' : 'Creating question paper...')
     });
   }
 

@@ -1,0 +1,39 @@
+.drag-handle {
+  cursor: grab;
+  border: none;
+  background: transparent;
+  padding: 0.15rem;
+  line-height: 0;
+  border-radius: 0.25rem;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.section-drag.cdk-drag-preview,
+.question-drag.cdk-drag-preview {
+  box-sizing: border-box;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+.section-drag.cdk-drag-placeholder,
+.question-drag.cdk-drag-placeholder {
+  opacity: 0.35;
+}
+
+.section-drag.cdk-drag-animating,
+.question-drag.cdk-drag-animating {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.cdk-drop-list-dragging .section-drag:not(.cdk-drag-placeholder),
+.cdk-drop-list-dragging .question-drag:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}

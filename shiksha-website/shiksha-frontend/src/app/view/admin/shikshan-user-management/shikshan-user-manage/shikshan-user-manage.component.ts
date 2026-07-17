@@ -52,7 +52,6 @@ export class ShikshanUserManageComponent implements OnInit {
     required: true,
     multi: true,
     selectAllOption: true,
-    hideChips: false,
     chipValueType: 'titlecase'
   };
 
@@ -66,7 +65,6 @@ export class ShikshanUserManageComponent implements OnInit {
     required: true,
     multi: true,
     selectAllOption: true,
-    hideChips: false,
     chipValueType: 'titlecase'
   };
 

@@ -83,6 +83,9 @@ class TeacherLessonPlanDao extends BaseDao {
 		sort = {}
 	) {
 		try {
+			filters = { ...filters };
+			const { fields } = filters;
+			delete filters.fields;
 			const processedFilters = {};
 
 			for (const key in filters) {
@@ -154,7 +157,8 @@ class TeacherLessonPlanDao extends BaseDao {
 					page,
 					limit,
 					processedFilters,
-					sort
+					sort,
+					fields
 				);
 
 
@@ -247,6 +251,34 @@ class TeacherLessonPlanDao extends BaseDao {
 			return resourcePlan;
 		} catch (error) {
 			console.error("Error getting resource plan by ID:", error);
+			throw new Error("Internal server error");
+		}
+	}
+
+	async deleteLessonPlan(teacherId, lessonPlanId) {
+		try {
+			const lessonPlan = await TeacherLessonPlan.findOneAndUpdate(
+				{ teacherId, lessonId: lessonPlanId, isLesson: true, isDeleted: { $ne: true } },
+				{ $set: { isDeleted: true } },
+				{ new: true }
+			);
+			return lessonPlan;
+		} catch (error) {
+			console.error("Error deleting lesson plan:", error);
+			throw new Error("Internal server error");
+		}
+	}
+
+	async deleteResourcePlan(teacherId, resourcePlanId) {
+		try {
+			const resourcePlan = await TeacherLessonPlan.findOneAndUpdate(
+				{ teacherId, resourceId: resourcePlanId, isLesson: false, isDeleted: { $ne: true } },
+				{ $set: { isDeleted: true } },
+				{ new: true }
+			);
+			return resourcePlan;
+		} catch (error) {
+			console.error("Error deleting resource plan:", error);
 			throw new Error("Internal server error");
 		}
 	}

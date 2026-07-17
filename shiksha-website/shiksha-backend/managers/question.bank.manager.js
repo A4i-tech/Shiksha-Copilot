@@ -5,7 +5,6 @@ const QuestionDao = require("../dao/question.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const formatApiReponse = require("../helper/response");
 const {
-  postToQuestionBankDistribution,
   postToQuestionBankParts,
   getQuestionTypes,
 } = require("../services/question.bank.bot.service");
@@ -62,22 +61,24 @@ const transformWeakLbaQuestion = async (q) => {
   const meta = QUESTION_TYPE_META[q.answerType];
   if (!meta) throw new Error(`Unexpected LBA answer type "${q.answerType}" in question result`);
   const { unit_name, ...question } = q;
+  const text = await toQuestionContent(q.text);
   const base = {
     ...question,
     ...meta,
     type: meta.key,
     heading: meta.label,
     marks: q.marksPerQuestion,
-    unitName: unit_name,
+    unitName: unit_name || q.chapter?.title,
     objective: q.objective,
-    text: await toQuestionContent(q.text),
+    text,
+    question: text,
     keyAnswer: await toQuestionContent(q.keyAnswer ?? q.keyanswer),
     options: q.options ? await Promise.all(q.options.map(async option => ({ ...option, text: await toQuestionContent(option.text) }))) : q.options,
   };
   delete q.keyanswer;
   return q.pairs?.length ? Promise.all(q.pairs.map(async (pair, index) => {
     const value1 = await toQuestionContent(pair.left);
-    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, value1, value2: await toQuestionContent(pair.right) };
+    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, question: value1, value1, value2: await toQuestionContent(pair.right) };
   })) : base;
 };
 /** @extends {BaseManager<QuestionBankDao>} */
@@ -112,30 +113,17 @@ class QuestionBankManager extends BaseManager {
     }
   }
 
-  async generateQuestionBankBluePrint(req, user) {
+  generateQuestionBankBluePrint(req) {
     try {
       const body = convertToCamelCase(req.body);
-      const { objectiveDistribution, template } = body;
-      const templatePayload = await this._createQuestionBankPayload(body, user);
-      const payload = convertToSnakeCase({
-        ...templatePayload,
-        template: this._applyQuestionCounts(this._withQuestionTypeMetadata(template), body.totalMarks),
-        objectiveDistribution,
-      });
-
-      const response = await postToQuestionBankDistribution(payload);
-
-      if (response.status !== 200) {
-        throw new Error(`Something went wrong with copilot! Please try later`);
-      }
-
-      if (!response.data) {
-        throw new Error("Something went wrong with copilot! Please try later");
-      }
-
-      return formatApiReponse(true, "Question bank blue print generated successfully!", convertToCamelCase(response.data));
+      const template = this._withQuestionTypeMetadata(body.template).map(item => ({
+        ...item,
+        numberOfQuestions: Number(item.numberOfQuestions),
+        marksPerQuestion: Number(item.marksPerQuestion),
+      }));
+      return formatApiReponse(true, "Question bank blue print generated successfully!", this._distributeBlueprint(template, body.marksDistribution, body.objectiveDistribution));
     } catch (err) {
-      return formatApiReponse(false, err?.message, err);
+      return formatApiReponse(false, err.message, err);
     }
   }
 
@@ -151,7 +139,9 @@ class QuestionBankManager extends BaseManager {
       const body = convertToCamelCase(req.body);
       const context = this._prepareGenerationContext(body);
       if (!context.questions || context.questions.length === 0) {
-        context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template));
+        const needsBlueprint = context.template.every(item => !item.questionDistribution.length);
+        context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template), needsBlueprint ? context.totalMarks : undefined, context.surplus);
+        if (needsBlueprint) context.template = this._distributeBlueprint(context.template, context.marksDistribution, context.objectiveDistribution);
       }
       const {
         language,
@@ -248,6 +238,7 @@ class QuestionBankManager extends BaseManager {
       language,
       questions,
       isPreview,
+      surplus,
       examinationName,
       unitLevel,
       objectiveDistribution
@@ -275,6 +266,7 @@ class QuestionBankManager extends BaseManager {
       language,
       questions,
       isPreview,
+      surplus,
       examinationName,
       objectiveDistribution,
       processedUnitNames,
@@ -314,7 +306,8 @@ class QuestionBankManager extends BaseManager {
         questions: await Promise.all(section.questions.map(async q => {
           if (!q.lbaQuestionId) return q;
           const transformed = await transformWeakLbaQuestion(rawQuestionById.get(String(q.lbaQuestionId)));
-          return { ...(Array.isArray(transformed) && q.lbaPairIndex != null ? transformed[q.lbaPairIndex] : transformed), unitName: q.unitName, objective: q.objective, marks: q.marks };
+          const item = Array.isArray(transformed) ? transformed[q.lbaPairIndex ?? 0] : transformed;
+          return { ...item, unitName: q.unitName || item.unitName, objective: q.objective, marks: q.marks };
         })),
       })));
       return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
@@ -339,11 +332,7 @@ class QuestionBankManager extends BaseManager {
 
     rawCacheHit = fullCacheHit.map((doc) => doc.toObject());
 
-    const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(
-      template,
-      cacheHit,
-      { returnPool: context.isPreview === true }
-    );
+    const [res, notFoundRes, notFoundIndices, summary] = await getQuestions(template, cacheHit);
     cacheSummary = summary;
     notFoundQuestions = JSON.parse(JSON.stringify(notFoundRes));
 
@@ -559,14 +548,74 @@ class QuestionBankManager extends BaseManager {
     });
   }
 
-  _applyQuestionCounts(template, totalMarks) {
-    return template.map((item) => {
+  _applyQuestionCounts(template, totalMarks, surplus = false) {
+    const result = template.map((item) => {
       if (!Number.isFinite(Number(item.marksPerQuestion))) throw new Error(`Question type "${item.type}" is missing marksPerQuestion`);
       return {
         ...item,
-        ...(totalMarks && { numberOfQuestions: Math.ceil(Number(totalMarks) / item.marksPerQuestion) }),
+        ...(totalMarks && { numberOfQuestions: 0 }),
       };
     });
+    if (!totalMarks) return result;
+
+    let remaining = surplus
+      ? PAPER_CONFIG.blueprintPolicy.surplusBaseMarks + Number(totalMarks) * PAPER_CONFIG.blueprintPolicy.surplusMultiplier
+      : Number(totalMarks);
+    while (true) {
+      const item = result.filter(item => item.marksPerQuestion <= remaining)
+        .sort((a, b) => a.numberOfQuestions * a.marksPerQuestion - b.numberOfQuestions * b.marksPerQuestion)[0];
+      if (!item) break;
+      item.numberOfQuestions++;
+      remaining -= item.marksPerQuestion;
+    }
+    return result.filter(item => item.numberOfQuestions);
+  }
+
+  _distributeBlueprint(template, marksDistribution, objectiveDistribution) {
+    const slots = template.flatMap((item, templateIndex) => Array.from(
+      { length: item.numberOfQuestions },
+      (_, questionIndex) => ({ templateIndex, questionIndex, marks: Number(item.marksPerQuestion), type: item.type })
+    ));
+    const quotas = this._allocateCounts(objectiveDistribution, slots.length);
+    const objectives = quotas.flatMap(({ objective, count }) => Array(count).fill(objective))
+      .sort((a, b) => PAPER_CONFIG.blueprintPolicy.objectiveDemand[a] - PAPER_CONFIG.blueprintPolicy.objectiveDemand[b]);
+    const byDemand = [...slots].sort((a, b) =>
+      PAPER_CONFIG.blueprintPolicy.questionTypeDemand[a.type] - PAPER_CONFIG.blueprintPolicy.questionTypeDemand[b.type]
+      || a.templateIndex - b.templateIndex || a.questionIndex - b.questionIndex
+    );
+    byDemand.forEach((slot, index) => { slot.objective = objectives[index]; });
+
+    const totalRequestedMarks = marksDistribution.reduce((sum, item) => sum + Number(item.marks), 0);
+    const units = marksDistribution.map(item => ({
+      unitName: item.unitName.trim(),
+      share: Number(item.marks) / totalRequestedMarks,
+      assigned: 0,
+    }));
+    let assignedMarks = 0;
+    [...slots].sort((a, b) => b.marks - a.marks).forEach(slot => {
+      const unit = units.reduce((best, item) =>
+        item.share * (assignedMarks + slot.marks) - item.assigned > best.share * (assignedMarks + slot.marks) - best.assigned ? item : best
+      );
+      slot.unitName = unit.unitName;
+      unit.assigned += slot.marks;
+      assignedMarks += slot.marks;
+    });
+
+    return template.map((item, templateIndex) => ({
+      ...item,
+      questionDistribution: slots.filter(slot => slot.templateIndex === templateIndex)
+        .map(({ unitName, objective }) => ({ unitName, objective })),
+    }));
+  }
+
+  _allocateCounts(distribution, total) {
+    const counts = distribution.map(item => {
+      const exact = total * Number(item.percentageDistribution) / 100;
+      return { objective: item.objective, count: Math.floor(exact), remainder: exact % 1 };
+    });
+    for (let remaining = total - counts.reduce((sum, item) => sum + item.count, 0); remaining > 0; remaining--)
+      counts.sort((a, b) => b.remainder - a.remainder)[0].count++;
+    return counts;
   }
 
   async _createQuestionBankPayload(reqBody, user) {
@@ -609,16 +658,15 @@ class QuestionBankManager extends BaseManager {
       // Prepare base chapters
       let formattedChapters = chapterData.length
         ? chapterData.map((chapter) => {
-          const chapterIndexPath = chapter.indexPath;
           const ch = {
             title: chapter.title.trim(),
-            indexPath: chapterIndexPath,
+            indexPath: chapter.indexPath ?? "",
             learningOutcomes: chapter.learningOutcomes,
             isGrammar: !!chapter.isGrammar,
             grammarTopics: chapter.grammarTopics,
             subtopics: chapter.subtopics.map((sub) => ({
               title: sub.title.trim(),
-              indexPath: sub.indexPath,
+              indexPath: sub.indexPath ?? "",
               learningOutcomes: sub.learningOutcomes,
             })),
           };

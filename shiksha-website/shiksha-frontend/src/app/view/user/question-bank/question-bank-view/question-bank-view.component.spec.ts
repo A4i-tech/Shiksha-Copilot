@@ -46,7 +46,7 @@ describe('QuestionBankViewComponent', () => {
     const ANSWER_KEY_TRANSLATION_KEYS: Record<string, string> = {
       'Show Answer Keys': 'Show Answer Keys',
       'Hide Answer Keys': 'Hide Answer Keys',
-      'Answer': 'Answer',
+      'Hint': 'Hint',
       'Correct Mapping': 'Correct Mapping',
       'Left': 'Left',
       'Right (Answer)': 'Right (Answer)',
@@ -74,7 +74,7 @@ describe('QuestionBankViewComponent', () => {
       expect(button?.textContent).toContain('Hide Answer Keys');
     });
 
-    it('should display translated "Answer" label for standard question answer keys', () => {
+    it('should display translated "Hint" label for standard question answer keys', () => {
       component.showAnswerKeys = true;
       component.questionBank = {
         questions: [{
@@ -86,7 +86,7 @@ describe('QuestionBankViewComponent', () => {
       };
       fixture.detectChanges();
       const answerLabel = fixture.nativeElement.querySelector('.bg-green-50 .text-green-700');
-      expect(answerLabel?.textContent).toContain('Answer');
+      expect(answerLabel?.textContent).toContain('Hint');
     });
 
     it('should display translated "Correct Mapping" label for match-the-following answer keys', () => {

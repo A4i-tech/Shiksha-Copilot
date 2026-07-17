@@ -203,13 +203,14 @@ class TeacherLessonPlanAggregation {
 		}
 	}
 
-	async getByTeacherAndPagination(teacherId, page, limit, filter, sort) {
+	async getByTeacherAndPagination(teacherId, page, limit, filter, sort, fields) {
 		const { isGroupedSubTopics, ...cleanedFilter } = filter;
 		try {
 			let pipeline = [
 				{
 					$match: {
 						teacherId: new ObjectId(teacherId),
+						isDeleted: { $ne: true },
 					},
 				},
 				{
@@ -300,7 +301,7 @@ class TeacherLessonPlanAggregation {
 				);
 			} else {
 				pipeline.push({
-					$project: {
+					$project: fields ? Object.fromEntries(fields.map((field) => [field, 1])) : {
 						lesson: 1,
 						resource: 1,
 						resources: 1,
@@ -434,6 +435,7 @@ class TeacherLessonPlanAggregation {
 						teacherId: new ObjectId(teacherId),
 						lessonId: new ObjectId(lessonPlanId),
 						isLesson: true,
+						isDeleted: { $ne: true },
 					},
 				},
 				this._lessonLookupStage(),
@@ -513,6 +515,7 @@ class TeacherLessonPlanAggregation {
 						teacherId: new ObjectId(teacherId),
 						resourceId: new ObjectId(resourcePlanId),
 						isLesson: false,
+						isDeleted: { $ne: true },
 					},
 				},
 				this._resourceLookupStage(),

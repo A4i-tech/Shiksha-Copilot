@@ -124,5 +124,31 @@
     "BSE-TG": {
       "default": "telangana"
     }
+  },
+  "blueprintPolicy": {
+    "surplusBaseMarks": 5,
+    "surplusMultiplier": 2,
+    "objectiveDemand": {
+      "Knowledge": 1,
+      "Understanding": 2,
+      "Comprehension": 2,
+      "Application": 3,
+      "Skill": 3,
+      "Expression": 4,
+      "Appreciation": 4,
+      "Higher order thinking": 5
+    },
+    "questionTypeDemand": {
+      "MCQ": 1,
+      "FILL_BLANKS": 1,
+      "ANSWER_VERY_SHORT": 2,
+      "ANSWER_SHORT": 3,
+      "ANSWER_MEDIUM": 3,
+      "ANSWER_LONG": 4,
+      "MATCHING": 1,
+      "GRAMMAR_MCQ": 2,
+      "GRAMMAR_FILL_BLANKS": 3,
+      "GRAMMAR_EDITING": 4
+    }
   }
 }

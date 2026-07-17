@@ -1,17 +1,23 @@
 <div class="select-wrapper" [formGroup]="formGroupTemp">
-  <label class="form-control-label" [for]="inputId" [class.sr-only]="config.hideLabel">
+  <label class="form-control-label inline-flex items-center gap-1" [for]="inputId" [class.sr-only]="config.hideLabel">
     {{ config.fieldName | translate }}
     <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span>
+    <span *ngIf="config.info" class="relative group cursor-help" tabindex="0">
+      <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="" />
+      <span role="tooltip"
+        class="pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute top-5 left-0 z-50 w-72 rounded border bg-white p-3 text-xs font-normal leading-snug text-content-60 shadow-md">
+        {{ config.info | translate }}
+      </span>
+    </span>
   </label>
-  <span *ngIf="config.multi && dropDownCtrl?.value?.length > 0" class="area-label"
-    [ngClass]="config.hideLabel ? 'top-[9px]' : 'top-[39px]'">
-    {{ config.placeHolderTxt | translate }}
-  </span>
-  <ng-select [labelForId]="inputId" [items]="dropDownValues" [ngClass]="config.isBackground && (dropDownCtrl.disabled || config.disabled) ? 'with-background' : ''"
+  <ng-select [labelForId]="inputId" [items]="dropDownValues"
+    [ngClass]="config.isBackground && (dropDownCtrl.disabled || config.disabled) ? 'with-background' : ''" [readonly]="!!config.disabled"
     [style]="{ height: config.height }" [placeholder]="config.placeHolderTxt | translate"
-    bindLabel="{{ config.bindLable ? config.bindLable : 'name' }}"
-    bindValue="{{ config.bindValue ? config.bindValue : 'value' }}" [dropdownPosition]="'auto'"
+    [notFoundText]="'No items found' | translate"
+    [bindLabel]="config.addTag ? 'label' : config.bindLable || 'name'"
+    [bindValue]="config.addTag ? '' : config.bindValue || 'value'" [dropdownPosition]="'auto'"
     [searchable]="config.searchable || false" [clearable]="config.clearableOff ? false : true"
+    [addTag]="config.addTag || false"
     [multiple]="config.multi ? true : false" [formControl]="dropDownCtrl" (change)="valueSelected($event)"
     [closeOnSelect]="config.openOnSelect ? false : true"
     [attr.aria-invalid]="submitted && dropDownCtrl.invalid ? 'true' : null"
@@ -20,15 +26,16 @@
       <div class="flex items-center gap-2">
         <input type="checkbox"
           [checked]="dropDownCtrl.value?.includes(config.selectAllValue ? item[config.selectAllValue] : item)">
-        <span class="whitespace-nowrap overflow-x-hidden text-ellipsis">{{ config.selectAllValue ?
-          item[config.selectAllValue] : item }}</span>
+        <span class="whitespace-nowrap overflow-x-hidden text-ellipsis">{{
+          (config.bindLable ? item[config.bindLable] : item) | translate
+        }}</span>
       </div>
     </ng-template>
 
     <ng-template ng-header-tmp *ngIf="config.multi && config.selectAllOption && dropDownValues.length">
       <label class="flex items-center gap-2">
         <input type="checkbox" (change)="toggleSelectAll($event)" [checked]="isSelectAll()" />
-        Select All
+        {{ 'Select All' | translate }}
       </label>
     </ng-template>
   </ng-select>
@@ -36,23 +43,4 @@
     <ng-container *ngIf="dropDownCtrl.errors?.['required']">{{ config.fieldName | translate }} {{'is required' | translate}}</ng-container>
   </small>
 
-  <ng-container *ngIf="config.hideChips ? false : true && config.multi">
-    <div class="mt-2 flex-wrap">
-      <ng-container *ngFor="let item of dropDownCtrl?.value; let i = index">
-        <span class="chip" *ngIf="item">
-          <img *ngIf="getItemForValue(item)?.info && !config.hideChipIcons" [title]="getSafeInfo($any(getItemForValue(item)))"
-            [attr.aria-label]="getSafeInfo($any(getItemForValue(item))) || 'Info'" src="assets/icons/info-primary.svg"
-            class="inline-block w-4 h-4 mr-1 cursor-help" alt="">
-          <span *ngIf="config?.chipValueType === 'titlecase'">{{
-            getLabelForValue(item) | titlecase
-            }}</span>
-          <span *ngIf="config?.chipValueType === 'uppercase'">{{
-            getLabelForValue(item) | uppercase
-            }}</span>
-          <span *ngIf="!config?.chipValueType">{{ getLabelForValue(item) | titlecase }}</span>
-          <span *ngIf="config?.chipClearableOff ? false: true" class="close-icon" (click)="removeItem(i)">×</span>
-        </span>
-      </ng-container>
-    </div>
-  </ng-container>
 </div>

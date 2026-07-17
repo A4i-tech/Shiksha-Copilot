@@ -151,8 +151,11 @@ class BaseDao {
 		return this.Model.findByIdAndUpdate(id, { $set: { loginAttempts: [] } });
 	}
 
-	setRecovery(id, recovery) {
-		return this.Model.findByIdAndUpdate(id, { $set: { recovery } });
+	reserveRecovery(id, recovery, cooldownAt) {
+		return this.Model.findOneAndUpdate(
+			{ _id: id, $or: [{ "recovery.sentAt": { $exists: false } }, { "recovery.sentAt": { $lt: cooldownAt } }] },
+			{ $set: { recovery } }
+		);
 	}
 
 	reserveRecoveryAttempt(id) {

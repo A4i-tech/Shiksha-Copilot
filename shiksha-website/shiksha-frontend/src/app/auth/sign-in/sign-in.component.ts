@@ -34,10 +34,6 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   captchaToken = '';
   captchaWidgetId: string | null = null;
   recoveryMode = false;
-  recoveredPin = '';
-  showRecoveredPin = false;
-  hasViewedPin = false;
-  recoveredUser: any;
   images: Carousel[] = images; //utility from the utility folder
 
   rememberMe= false;
@@ -48,6 +44,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     length: 4,
     allowNumbersOnly:true,
     isPasswordInput:true,
+    inputMode:'numeric',
     inputStyles:{
       'width': '35px',
       'height': '35px',
@@ -232,78 +229,72 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         this.captchaWidgetId = null;
         this.otpTriggered = res?.data?.otpTriggered || res?.data?.recoveryTriggered;
         this.modalStatus = true;
-        this.showResendOTP = false;
         this.clearOTPFiled();
-        // this.startTimer();
+        if (this.otpTriggered) this.startTimer(res.data.resendAfterSeconds);
+        else this.stopTimer();
         this.utility.showSuccess(this.otpTriggered ? 'Please enter the PIN sent to your phone number to continue' : 'Please enter your access PIN');
-        if(this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone){
+        if(this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone && !this.otpTriggered){
           this.ngOtp.setValue(this.storedUserInfo.apin)
         }
+        setTimeout(() => this.ngOtp.focusTo(this.ngOtp.getBoxId(0)));
       },
       error: (err: any) => {
+        if (err.error?.code === 'PIN_COOLDOWN') {
+          this.modalStatus = true;
+          this.otpTriggered = true;
+          this.recoveryMode = true;
+          this.startTimer(err.error.data.retryAfterSeconds);
+          setTimeout(() => this.ngOtp.focusTo(this.ngOtp.getBoxId(0)));
+        }
         this.utility.handleError(err);
       },
     });
   }
 
   forgotPin(){
-    this.recoveryMode = true;
-    const reqBody = {
-      phone:this.phoneNumber,
-      rememberMe:this.rememberMe,
-      forgotPassword:true
-    }
     this.clearOTPFiled();
     this.secureCookieService.deleteCookie("userInfo");
     this.storedUserInfo=null;
-   this.getOtp(reqBody);
+    this.getOtp({ phone: this.phoneNumber, rememberMe: this.rememberMe, forgotPassword: true });
   }
 
   /**
    * update the loader and navigate the user on correct otp
    */
   onVerifyOTP() {
-    if (this.otpValue) {
-      this.service
-        .validateOTP(this.otpValue, this.phoneNumber.toString(), this.captchaToken, this.recoveryMode)
-        .subscribe({
-          next: (res: any) => {
-            this.invalidOtp = false;
-            if (this.recoveryMode) {
-              this.recoveredPin = res.data.pin;
-              this.hasViewedPin = false;
-              this.recoveredUser = res.data;
-              return;
-            }
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('userData', JSON.stringify(res.data.user));
-            const profileUrl = res?.data?.user?.profileImage || ''
-            this.sidebarService.profileImg.set(profileUrl);
+    if (this.otpValue.length !== 4 || (this.captchaRequired && !this.captchaToken)) return;
+    // SMS-sent PIN always validates via pending path (no login throttling).
+    this.service
+      .validateOTP(this.otpValue, this.phoneNumber.toString(), this.captchaToken, this.otpTriggered || this.recoveryMode)
+      .subscribe({
+        next: (res: any) => {
+          this.invalidOtp = false;
+          localStorage.setItem('token', res.data.token);
+          localStorage.setItem('userData', JSON.stringify(res.data.user));
+          this.sidebarService.profileImg.set(res?.data?.user?.profileImage || '');
 
-            if (res?.data.user?.preferredLanguage) {
-                this.translateService.use(res.data.user.preferredLanguage);
-            }
+          if (res?.data.user?.preferredLanguage) {
+              this.translateService.use(res.data.user.preferredLanguage);
+          }
 
-            if(this.rememberMe && !this.recoveryMode){
-              const userInfo = {
-                phone:this.phoneNumber,
-                apin:this.otpValue
-              }
-              this.secureCookieService.setObjectCookie("userInfo",userInfo);
-            }else{
-              this.secureCookieService.deleteCookie("userInfo");
-            }
+          if (this.rememberMe) {
+            this.secureCookieService.setObjectCookie("userInfo", {
+              phone: this.phoneNumber,
+              apin: this.otpValue,
+            });
+          } else {
+            this.secureCookieService.deleteCookie("userInfo");
+          }
 
-            this.utility.showSuccess("You've successfully logged in.");
-            this.navigateAfterLogin(res.data.user);
-          },
-          error: (err: any) => {
-            this.invalidOtp = true;
-            if (err.error?.code === 'CAPTCHA_REQUIRED') this.requireCaptcha();
-            this.utility.handleError(err);
-          },
-        }); //api call
-    }
+          this.utility.showSuccess("You've successfully logged in.");
+          this.navigateAfterLogin(res.data.user);
+        },
+        error: (err: any) => {
+          this.invalidOtp = true;
+          if (err.error?.code === 'CAPTCHA_REQUIRED') this.requireCaptcha();
+          this.utility.handleError(err);
+        },
+      });
   }
 
   requireCaptcha() {
@@ -328,45 +319,27 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    */
   closeModal() {
     this.modalStatus = false;
-    this.recoveredPin = '';
-    this.hasViewedPin = false;
-    this.recoveredUser = null;
-    // this.stopTimer();
+    this.stopTimer();
   }
 
-  finishRecovery() {
-    if (!this.hasViewedPin) return;
-    localStorage.setItem('token', this.recoveredUser.token);
-    localStorage.setItem('userData', JSON.stringify(this.recoveredUser.user));
-    this.sidebarService.profileImg.set(this.recoveredUser.user.profileImage || '');
-    if (this.recoveredUser.user.preferredLanguage) {
-      this.translateService.use(this.recoveredUser.user.preferredLanguage);
-    }
-    this.modalStatus = false;
-    this.utility.showSuccess("You've successfully logged in.");
-    this.navigateAfterLogin(this.recoveredUser.user);
-  }
-
-  startTimer() {
-    this.otpTimer = 60;
+  startTimer(seconds: number) {
+    this.stopTimer();
+    this.otpTimer = seconds;
+    this.showResendOTP = false;
     this.timeInterval = setInterval(() => {
-      if (this.otpTimer > 0) {
-        this.otpTimer--;
-      } else {
-        // this.stopTimer();
+      if (--this.otpTimer <= 0) {
+        this.stopTimer();
         this.showResendOTP = true;
       }
     }, 1000);
   }
 
   stopTimer() {
-    this.otpTimer = 60; //reset the timer
     clearInterval(this.timeInterval);
+    this.timeInterval = null;
   }
 
   onResendOTP() {
-    this.showResendOTP = false;
-    // this.startTimer();
     this.clearOTPFiled();
     this.forgotPin();
   }
@@ -379,7 +352,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    * clean up the slider interval and timerInterval
    */
   ngOnDestroy(): void {
-    // this.stopTimer();
+    this.stopTimer();
     clearInterval(this.sliderInterval);
   }
 }
