@@ -10,7 +10,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
-import { DEFAULT_LANGUAGE, formatMarks, LOC_LANGUAGES, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { DEFAULT_LANGUAGE, formatMarks, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
@@ -57,10 +57,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
   sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'value', openOnSelect: true, hideLabel: true };
-  mediumDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Class first', height: 'auto', fieldName: 'Medium', info: 'Select the language of the textbook. Questions will be created from that textbook.', bindLable: 'mediumLabel', bindValue: 'medium', required: true, clearableOff: true, disabled: true };
   languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', height: 'auto', fieldName: 'Translate to', info: 'The language the generated question paper will be translated into.', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
   classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
-  subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Medium first', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, disabled: true };
+  subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Class first', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, disabled: true };
   chapterDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Subject first', height: 'auto', fieldName: 'Chapter', bindLable: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: false, selectAllOption: true, selectAllValue: 'topics', openOnSelect: false, disabled: true };
   subTopicDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter first', height: 'auto', fieldName: 'Sub-Topic', bindLable: 'topics', bindValue: 'topics', selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true, disabled: true };
 
@@ -282,9 +281,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       }));
     }
     this.syncDependentDropdowns();
-    if (this.mediumDropdownOptions.length === 1) {
-      this.f.medium.setValue(this.mediumDropdownOptions[0].medium);
-      this.onMediumChange({ medium: this.mediumDropdownOptions[0].medium });
+    const medium = this.mediumDropdownOptions.find(option => option.medium === MEDIUMS[0].value) || this.mediumDropdownOptions[0];
+    if (medium) {
+      this.f.medium.setValue(medium.medium);
+      this.onMediumChange(medium);
     }
   }
 
@@ -413,11 +413,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const chapterVal = this.f.chapter.value;
     const hasChapter = Array.isArray(chapterVal) ? chapterVal.length > 0 : !!chapterVal;
 
-    this.mediumDropdownconfig.disabled = !hasClass || this.mediumDropdownOptions.length === 1;
-    this.mediumDropdownconfig.placeHolderTxt = hasClass ? 'Select Medium' : 'Select Class first';
-
     this.subjectDropdownconfig.disabled = !hasMedium || this.subjectDropdownOptions.length === 1;
-    this.subjectDropdownconfig.placeHolderTxt = hasMedium ? 'Select Subject' : 'Select Medium first';
+    this.subjectDropdownconfig.placeHolderTxt = hasClass ? 'Select Subject' : 'Select Class first';
 
     this.chapterDropdownconfig.disabled = !hasSubject;
     this.chapterDropdownconfig.placeHolderTxt = hasSubject ? 'Select Chapter' : 'Select Subject first';

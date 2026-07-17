@@ -42,9 +42,6 @@
           </div>
 
           <div class="grid lg:grid-cols-2 gap-4 mt-7">
-            <app-form-dropdown [dropDownControlName]="'medium'" (valueChange)="onMediumChange($event)"
-              [dropDownCtrl]="convertToFormControl(f.medium)" [dropDownValues]="mediumDropdownOptions"
-              [config]="mediumDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
             <app-form-dropdown [dropDownControlName]="'subject'" (valueChange)="onSubjectChange($event)"
               [dropDownCtrl]="convertToFormControl(f.subject)" [dropDownValues]="subjectDropdownOptions"
               [config]="subjectDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
