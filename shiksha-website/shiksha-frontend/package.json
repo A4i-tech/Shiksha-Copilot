@@ -43,7 +43,7 @@
     "image-size": "^2.0.2",
     "katex": "^0.16.25",
     "marked": "^4.3.0",
-    "ng-otp-input": "^1.9.3",
+    "ng-otp-input": "^2.0.10",
     "ng-toggle-button": "~1.6.0",
     "ng2-charts": "^4.0.0",
     "ngx-clipboard": "^16.0.0",

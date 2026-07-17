@@ -29,7 +29,7 @@
 							<div class="relative">
 								<span
 									class="absolute left-0 h-full w-10 leading-[40px] text-sm bg-shade-100 rounded-l-lg">+91</span>
-								<input type="text" id="mNumber"
+								<input type="tel" inputmode="numeric" id="mNumber"
 									oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')"
 									class="bg-gray-100  text-gray-900 text-sm rounded-lg   block  p-2.5 outline-none w-full pl-12"
 									placeholder="Enter Phone Number" [(ngModel)]="phoneNumber" name="userMobileNumber"
@@ -69,7 +69,7 @@
 <div class="pop-up-container" [ngClass]="modalStatus? 'visible-modal':'hidden-modal'"
 	(keydown.escape)="closeModal()" role="dialog" aria-modal="true" aria-label="Enter PIN">
 	<div class="backdrop"></div>
-	<form>
+	<form (ngSubmit)="onVerifyOTP()">
 		<div class="modal" cdkTrapFocus [cdkTrapFocusAutoCapture]="modalStatus">
 			<div class="close-btn p-1 hover:bg-shade-50 w-9 h-9 absolute top-3 md:top-6 right-6 cursor-pointer rounded-full"
 				(click)="closeModal()">
@@ -84,7 +84,7 @@
 						[ngClass]="{'error':invalidOtp}"></ng-otp-input>
 				</div>
 				<div *ngIf="captchaRequired" id="turnstile-container"></div>
-				<button class="btn-success font-normal text-sm md:text-lg  text-center w-full" (click)="onVerifyOTP()"
+				<button type="submit" class="btn-success font-normal text-sm md:text-lg  text-center w-full"
 					[disabled]="otpValue.length!=4 || (captchaRequired && !captchaToken)"> Verify</button>
 				<ng-container *ngIf="otpTriggered">
 					<a class="text-success underline cursor-pointer md:text-lg text-sm" *ngIf="showResendOTP"
