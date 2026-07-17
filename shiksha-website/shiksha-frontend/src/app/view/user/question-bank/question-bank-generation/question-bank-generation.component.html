@@ -32,16 +32,13 @@
           <p class="text-sm md:text-base">{{ 'Configure the question paper here.' | translate }}</p>
         </div>
         <form [formGroup]="questionBankConfigForm" class="bg-white rounded-lg p-3 md:p-8">
-          <div class="grid lg:grid-cols-2 gap-4">
+          <div class="grid lg:grid-cols-3 gap-4">
             <app-form-dropdown [dropDownControlName]="'board'" (valueChange)="onBoardChange($event)"
               [dropDownCtrl]="convertToFormControl(f.board)" [dropDownValues]="boardDropdownOptions"
               [config]="boardDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
             <app-form-dropdown [dropDownControlName]="'grade'" (valueChange)="onStandardChange($event)"
               [dropDownCtrl]="convertToFormControl(f.grade)" [dropDownValues]="classDropdownOptions"
               [config]="classDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
-          </div>
-
-          <div class="grid lg:grid-cols-2 gap-4 mt-7">
             <app-form-dropdown [dropDownControlName]="'subject'" (valueChange)="onSubjectChange($event)"
               [dropDownCtrl]="convertToFormControl(f.subject)" [dropDownValues]="subjectDropdownOptions"
               [config]="subjectDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
