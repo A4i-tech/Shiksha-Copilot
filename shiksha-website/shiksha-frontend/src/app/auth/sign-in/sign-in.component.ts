@@ -44,6 +44,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     length: 4,
     allowNumbersOnly:true,
     isPasswordInput:true,
+    inputMode:'numeric',
     inputStyles:{
       'width': '35px',
       'height': '35px',
@@ -235,6 +236,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         if(this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone && !this.otpTriggered){
           this.ngOtp.setValue(this.storedUserInfo.apin)
         }
+        setTimeout(() => this.ngOtp.focusTo(this.ngOtp.getBoxId(0)));
       },
       error: (err: any) => {
         if (err.error?.code === 'PIN_COOLDOWN') {
@@ -242,6 +244,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           this.otpTriggered = true;
           this.recoveryMode = true;
           this.startTimer(err.error.data.retryAfterSeconds);
+          setTimeout(() => this.ngOtp.focusTo(this.ngOtp.getBoxId(0)));
         }
         this.utility.handleError(err);
       },
@@ -259,7 +262,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
    * update the loader and navigate the user on correct otp
    */
   onVerifyOTP() {
-    if (!this.otpValue) return;
+    if (this.otpValue.length !== 4 || (this.captchaRequired && !this.captchaToken)) return;
     // SMS-sent PIN always validates via pending path (no login throttling).
     this.service
       .validateOTP(this.otpValue, this.phoneNumber.toString(), this.captchaToken, this.otpTriggered || this.recoveryMode)
