@@ -39,8 +39,9 @@ export class BaselineSurveyGuard implements CanActivate {
     try {
       const resp = await firstValueFrom(this.survey.checkCompleted());
       const completed = !!resp?.data?.completed;
-      const remindLaterCount = resp?.data?.remindLaterCount ?? 0;
+      const remindLaterCount = resp?.data?.remindLaterCount;
       const isMandatory = !!resp?.data?.isMandatory;
+      const maxReminders = resp?.data?.maxReminders;
 
       // 3) Open dialog ONLY if API request succeeded AND survey is not completed
       if (resp?.success && !completed) {
@@ -49,7 +50,7 @@ export class BaselineSurveyGuard implements CanActivate {
           setTimeout(() => {
             this.zone.run(() => {
               // fire-and-forget so guard returns immediately
-              void this.dialog.openSurvey(isMandatory, remindLaterCount);
+              void this.dialog.openSurvey(isMandatory, remindLaterCount, maxReminders);
             });
           }, 0);
         });

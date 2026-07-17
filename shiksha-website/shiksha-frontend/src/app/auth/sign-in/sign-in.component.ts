@@ -12,9 +12,6 @@ import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
 import { environment } from 'src/environments/environment';
-import { BaselineSurveyService } from 'src/app/core/services/baseline-survey.service';
-import { BaselineSurveyDialogService } from 'src/app/core/services/baseline-survey-dialog.service';
-import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-sign-in',
@@ -75,8 +72,6 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     private sidebarService:SidebarService,
     private translateService: TranslateService,
     private secureCookieService:SecureCookieService,
-    private baselineSurveyService: BaselineSurveyService,
-    private baselineSurveyDialog: BaselineSurveyDialogService
   ) {}
 
   /**
@@ -104,26 +99,8 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
       this.router.navigate(['/profile']);
     } else if (isTeacherOnly) {
       this.router.navigate(['/home']);
-      // Reset session state and immediately trigger survey check on login
-      this.baselineSurveyService.resetSession();
-      this.triggerSurveyCheck();
     } else {
       this.router.navigate(['/dashboard']);
-    }
-  }
-
-  /** Checks the survey after login and shows the popup if pending */
-  private async triggerSurveyCheck(): Promise<void> {
-    try {
-      const resp = await firstValueFrom(this.baselineSurveyService.checkCompleted());
-      if (resp?.success && !resp?.data?.completed) {
-        void this.baselineSurveyDialog.openSurvey(
-          !!resp.data.isMandatory,
-          resp.data.remindLaterCount ?? 0
-        );
-      }
-    } catch {
-      // swallow errors — login flow should not be blocked
     }
   }
 

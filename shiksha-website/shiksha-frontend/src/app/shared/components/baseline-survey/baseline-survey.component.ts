@@ -148,7 +148,7 @@ export class BaselineSurveyComponent {
   };
 
   get remindLaterCount(): number {
-    return this.data?.remindLaterCount ?? 0;
+    return this.data.remindLaterCount;
   }
 
   get isMandatory(): boolean {
@@ -387,7 +387,9 @@ export class BaselineSurveyComponent {
     });
   }
 
-  readonly MAX_REMINDERS = 3;
+  get maxReminders(): number {
+    return this.data?.maxReminders ?? 3;
+  }
 
   onRemindLater(): void {
     if (this.isMandatory) return;

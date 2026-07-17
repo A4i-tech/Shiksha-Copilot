@@ -57,7 +57,7 @@ export class BaselineSurveyService {
 
   checkCompleted(): Observable<{
     success: boolean;
-    data: { completed: boolean; remindLaterCount: number; isMandatory: boolean };
+    data: { completed: boolean; remindLaterCount: number; isMandatory: boolean; maxReminders: number };
   }> {
     const uid = this.getUserId();
     this.resetCacheIfNeeded(uid);
@@ -65,12 +65,12 @@ export class BaselineSurveyService {
     if (this.surveyCompleted === true) {
       return of({
         success: true,
-        data: { completed: true, remindLaterCount: 0, isMandatory: false },
+        data: { completed: true, remindLaterCount: 0, isMandatory: false, maxReminders: 0 },
       });
     }
 
     return this.http
-      .get<{ success: boolean; data: { completed: boolean; remindLaterCount: number; isMandatory: boolean } }>(
+      .get<{ success: boolean; data: { completed: boolean; remindLaterCount: number; isMandatory: boolean; maxReminders: number } }>(
         `${this.baseUrl}/check`
       )
       .pipe(
@@ -83,12 +83,13 @@ export class BaselineSurveyService {
               completed,
               remindLaterCount: res?.data?.remindLaterCount ?? 0,
               isMandatory: !!res?.data?.isMandatory,
+              maxReminders: res?.data?.maxReminders ?? 0,
             },
           };
         }),
         catchError(error => {
           console.error('Error checking survey status:', error);
-          return of({ success: false, data: { completed: false, remindLaterCount: 0, isMandatory: false } });
+          return of({ success: false, data: { completed: false, remindLaterCount: 0, isMandatory: false, maxReminders: 0 } });
         })
       );
   }
