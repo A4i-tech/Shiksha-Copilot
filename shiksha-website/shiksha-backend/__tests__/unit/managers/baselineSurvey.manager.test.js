@@ -322,21 +322,21 @@ describe("BaselineSurveyManager", () => {
       expect(result.data.isMandatory).toBe(false);
     });
 
-    it("should set isMandatory=true when reminder count reaches MAX_REMIND_LATER (3)", async () => {
+    it("should set isMandatory=true when reminder count reaches MAX_REMIND_LATER (2)", async () => {
       mockDao.existsByUser.mockResolvedValue(false);
-      mockReminderDao.getCount.mockResolvedValue(2);
-      mockReminderDao.increment.mockResolvedValue({ remindLaterCount: 3 });
+      mockReminderDao.getCount.mockResolvedValue(1);
+      mockReminderDao.increment.mockResolvedValue({ remindLaterCount: 2 });
 
       const result = await baselineSurveyManager.incrementRemindLater("user-123");
 
       expect(result.success).toBe(true);
-      expect(result.data.remindLaterCount).toBe(3);
+      expect(result.data.remindLaterCount).toBe(2);
       expect(result.data.isMandatory).toBe(true);
     });
 
     it("should not increment reminder count if survey already completed", async () => {
       mockDao.existsByUser.mockResolvedValue(true);
-      mockReminderDao.getCount.mockResolvedValue(2);
+      mockReminderDao.getCount.mockResolvedValue(1);
 
       const result = await baselineSurveyManager.incrementRemindLater("user-123");
 
@@ -344,19 +344,19 @@ describe("BaselineSurveyManager", () => {
       expect(result.success).toBe(true);
       expect(result.message).toBe("Survey already completed");
       expect(result.data.completed).toBe(true);
-      expect(result.data.remindLaterCount).toBe(2);
+      expect(result.data.remindLaterCount).toBe(1);
     });
 
     it("should not increment past MAX_REMIND_LATER (ceiling)", async () => {
       mockDao.existsByUser.mockResolvedValue(false);
-      mockReminderDao.getCount.mockResolvedValue(3);
+      mockReminderDao.getCount.mockResolvedValue(2);
 
       const result = await baselineSurveyManager.incrementRemindLater("user-123");
 
       expect(mockReminderDao.increment).not.toHaveBeenCalled();
       expect(result.success).toBe(true);
       expect(result.message).toBe("Maximum reminders reached");
-      expect(result.data.remindLaterCount).toBe(3);
+      expect(result.data.remindLaterCount).toBe(2);
       expect(result.data.isMandatory).toBe(true);
     });
 
