@@ -1,4 +1,3 @@
-import io
 import mimetypes
 import time
 import traceback
@@ -10,7 +9,7 @@ import pathlib
 from datetime import datetime
 from typing import Any
 
-from pptx import presentation, Presentation
+from pptx import presentation
 
 from app.config import settings
 from app.services.presentation import agent, docparser, template
@@ -173,7 +172,7 @@ class PresentationService:
                 await docparser.save_pptx(self.storage, prs, out_path)
             else:
                 async with self.storage.read(out_path) as f:
-                    prs = Presentation(io.BytesIO(await f.read()))
+                    prs = await docparser.load_pptx(await f.read())
 
             outline = agent.PresentationOutline.model_validate(job.metadata["plan"]["outline"])
             metadata = job.metadata.get("design", {})
@@ -206,7 +205,7 @@ class PresentationService:
             out_path = self.storage.path("out", stem, f"{job.id}.pptx")
             async with self.finalizer_sem:
                 async with self.storage.read(out_path) as f:
-                    prs = Presentation(io.BytesIO(await f.read()))
+                    prs = await docparser.load_pptx(await f.read())
 
                 metadata = job.metadata.get("finalize", {})
                 if not isinstance(metadata, dict):
@@ -223,7 +222,7 @@ class PresentationService:
             stem = pathlib.Path(job.textbook_file).stem
             out_path = self.storage.path("out", stem, f"{job.id}.pptx")
             async with self.storage.read(out_path) as f:
-                prs = Presentation(io.BytesIO(await f.read()))
+                prs = await docparser.load_pptx(await f.read())
 
                 quality_score = 1.0
                 quality_issues = []

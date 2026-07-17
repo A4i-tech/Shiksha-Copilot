@@ -3,9 +3,16 @@ const router = express.Router();
 const QuestionBankController = require("../controllers/question.bank.controller");
 const asyncMiddleware = require("../middlewares/asyncMiddleware");
 const { isAuthenticated, isAdmin } = require("../middlewares/auth");
-const { validateQuestionBankCreate, validateQuestionBankFeedbackCreate, validateGetQuestionTypes, validateGetGrammarTopics } = require("../validations/question.bank.validation");
+const { validateQuestionBankCreate, validateQuestionBankBluePrintCreate, validateQuestionBankFeedbackCreate, validateGetQuestionTypes, validateGetGrammarTopics } = require("../validations/question.bank.validation");
 const MulterUploadMiddleware = require('../middlewares/multerUploadMiddleware');
 const questionBankController = new QuestionBankController();
+
+router.post(
+  "/question-bank/generate-blue-print",
+  isAuthenticated,
+  validateQuestionBankBluePrintCreate,
+  asyncMiddleware(questionBankController.generateQuestionBankBluePrint.bind(questionBankController))
+);
 
 router.post(
   "/question-bank/generate",

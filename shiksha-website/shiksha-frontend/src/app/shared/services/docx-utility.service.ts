@@ -196,7 +196,6 @@ export class DocxUtilityService {
                   children: [new TextRun(option)],
                   spacing: { after: 40 },
                 })),
-                ...(mcq.answer ? [new Paragraph({ text: mcq.answer, spacing: { after: 100 } })] : []),
               ];
             }
 
@@ -231,14 +230,13 @@ export class DocxUtilityService {
 
     const question = lines.slice(0, firstOption).join(' ');
     const tail = lines.slice(firstOption);
-    const answer = /^Ans:\s+/i.test(tail[tail.length - 1] || '') ? tail.pop() : '';
     const options = tail.map((line, index) => {
       const match = line.match(/^([a-z])\)\s+(.+)$/i);
       return match?.[1].toLowerCase() === String.fromCharCode(97 + index) ? match[2] : null;
     });
 
     return options.length > 1 && options.every(Boolean)
-      ? { question, options: options as string[], answer }
+      ? { question, options: options as string[] }
       : null;
   }
 

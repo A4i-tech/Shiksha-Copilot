@@ -1,5 +1,6 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import { QuestionBankGenerationComponent } from './question-bank-generation/question-bank-generation.component';
 import { QuestionBankListComponent } from './question-bank-list/question-bank-list.component';
 import { QuestionBankViewComponent } from './question-bank-view/question-bank-view.component';
@@ -12,12 +13,14 @@ import { DeleteDetailComponent } from 'src/app/shared/components/delete-detail/d
 import { NgChartsModule } from 'ng2-charts';
 import { QuestionBankTemplateComponent } from './question-bank-generation/question-bank-template/question-bank-template.component';
 import { QuestionBankBluePrintComponent } from './question-bank-generation/question-bank-blue-print/question-bank-blue-print.component';
+import { QuestionTagsComponent } from './question-bank-generation/question-tags/question-tags.component';
 
 @NgModule({
   declarations: [
     QuestionBankGenerationComponent,
     QuestionBankTemplateComponent,
     QuestionBankBluePrintComponent,
+    QuestionTagsComponent,
     QuestionBankListComponent,
     QuestionBankViewComponent,
   ],
@@ -25,6 +28,7 @@ import { QuestionBankBluePrintComponent } from './question-bank-generation/quest
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
+    DragDropModule,
     questionBankRoutingModule,
     TranslateModule,
     FormDropdownComponent,

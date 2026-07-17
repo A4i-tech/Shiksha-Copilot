@@ -94,6 +94,10 @@ export class QuestionBankService extends BaseRestService {
     return this.get(id);
   }
 
+  generateQuestionBankBluePrint(data: any): Observable<any> {
+    return this.http.post(`${this.getUrl()}generate-blue-print`, data);
+  }
+
   /**
    * Function to generate question bank
    * @param data
@@ -101,7 +105,7 @@ export class QuestionBankService extends BaseRestService {
    */
   generateQuestionBank(data: any) {
     return this.http.post(`${this.getUrl()}generate`, data, {
-      context: new HttpContext().set(LOADER_MESSAGE, data.isPreview ? 'Generating questions...' : 'Creating question paper...')
+      context: new HttpContext().set(LOADER_MESSAGE, data.isPreview ? 'Generating AI questions...' : 'Creating question paper...')
     });
   }
 

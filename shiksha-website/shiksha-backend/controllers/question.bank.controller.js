@@ -94,6 +94,11 @@ class QuestionBankController extends BaseController {
     }
   }
 
+  async generateQuestionBankBluePrint(req, res) {
+    const result = this.manager.generateQuestionBankBluePrint(req);
+    return res.status(result.success ? 200 : 400).json(result);
+  }
+
   async updateFeedback(req, res) {
     try {
       const questionBankId = req.params.id;

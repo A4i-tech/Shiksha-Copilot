@@ -61,22 +61,24 @@ const transformWeakLbaQuestion = async (q) => {
   const meta = QUESTION_TYPE_META[q.answerType];
   if (!meta) throw new Error(`Unexpected LBA answer type "${q.answerType}" in question result`);
   const { unit_name, ...question } = q;
+  const text = await toQuestionContent(q.text);
   const base = {
     ...question,
     ...meta,
     type: meta.key,
     heading: meta.label,
     marks: q.marksPerQuestion,
-    unitName: unit_name,
+    unitName: unit_name || q.chapter?.title,
     objective: q.objective,
-    text: await toQuestionContent(q.text),
+    text,
+    question: text,
     keyAnswer: await toQuestionContent(q.keyAnswer ?? q.keyanswer),
     options: q.options ? await Promise.all(q.options.map(async option => ({ ...option, text: await toQuestionContent(option.text) }))) : q.options,
   };
   delete q.keyanswer;
   return q.pairs?.length ? Promise.all(q.pairs.map(async (pair, index) => {
     const value1 = await toQuestionContent(pair.left);
-    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, value1, value2: await toQuestionContent(pair.right) };
+    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, question: value1, value1, value2: await toQuestionContent(pair.right) };
   })) : base;
 };
 /** @extends {BaseManager<QuestionBankDao>} */
@@ -106,6 +108,20 @@ class QuestionBankManager extends BaseManager {
         sort
       );
       return formatApiReponse(true, "", data);
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  generateQuestionBankBluePrint(req) {
+    try {
+      const body = convertToCamelCase(req.body);
+      const template = this._withQuestionTypeMetadata(body.template).map(item => ({
+        ...item,
+        numberOfQuestions: Number(item.numberOfQuestions),
+        marksPerQuestion: Number(item.marksPerQuestion),
+      }));
+      return formatApiReponse(true, "Question bank blue print generated successfully!", this._distributeBlueprint(template, body.marksDistribution, body.objectiveDistribution));
     } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
@@ -290,7 +306,8 @@ class QuestionBankManager extends BaseManager {
         questions: await Promise.all(section.questions.map(async q => {
           if (!q.lbaQuestionId) return q;
           const transformed = await transformWeakLbaQuestion(rawQuestionById.get(String(q.lbaQuestionId)));
-          return { ...(Array.isArray(transformed) && q.lbaPairIndex != null ? transformed[q.lbaPairIndex] : transformed), unitName: q.unitName, objective: q.objective, marks: q.marks };
+          const item = Array.isArray(transformed) ? transformed[q.lbaPairIndex ?? 0] : transformed;
+          return { ...item, unitName: q.unitName || item.unitName, objective: q.objective, marks: q.marks };
         })),
       })));
       return { mergedList, notFoundQuestions, cacheSummary, rawCacheHit };
@@ -641,16 +658,15 @@ class QuestionBankManager extends BaseManager {
       // Prepare base chapters
       let formattedChapters = chapterData.length
         ? chapterData.map((chapter) => {
-          const chapterIndexPath = chapter.indexPath;
           const ch = {
             title: chapter.title.trim(),
-            indexPath: chapterIndexPath,
+            indexPath: chapter.indexPath ?? "",
             learningOutcomes: chapter.learningOutcomes,
             isGrammar: !!chapter.isGrammar,
             grammarTopics: chapter.grammarTopics,
             subtopics: chapter.subtopics.map((sub) => ({
               title: sub.title.trim(),
-              indexPath: sub.indexPath,
+              indexPath: sub.indexPath ?? "",
               learningOutcomes: sub.learningOutcomes,
             })),
           };

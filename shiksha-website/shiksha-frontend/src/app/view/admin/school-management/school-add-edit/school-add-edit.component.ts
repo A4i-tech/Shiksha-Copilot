@@ -60,8 +60,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
 
   resourceDetailsDropdownOptions: any[] = [];
 
-  resourceOtherValue: any[] = [''];
-
   schoolIdError: boolean = false;
 
   stateDropdownconfig: FormDropDownConfig = {
@@ -159,8 +157,14 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     multi: true,
     clearableOff: true,
     hideLabel: true,
-    hideChips: true,
     required: true,
+  };
+  resourceOtherDetailsDropdownconfig: FormDropDownConfig = {
+    ...this.resourceDetailsDropdownconfig,
+    placeHolderTxt: 'Enter resource details',
+    hideLabel: false,
+    searchable: true,
+    addTag: true,
   };
 
   classBoardOptions: any[] = [];
@@ -1012,7 +1016,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
         detailsChipSet: [true],
       })
     );
-    this.resourceOtherValue.push('');
   }
 
   /**
@@ -1025,7 +1028,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
       this.deleteIndex = index
     } else {
       this.facilities.removeAt(index);
-      this.resourceOtherValue = this.resourceOtherValue.splice(index, 1);
     }
   }
 
@@ -1037,7 +1039,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
       next:(res)=>{
             this.utilityService.handleResponse(res);
             this.facilities.removeAt(this.deleteIndex);
-            this.resourceOtherValue = this.resourceOtherValue.splice(this.deleteIndex, 1);
           },
       error:(err)=>{
             this.utilityService.handleError(err)
@@ -1045,21 +1046,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
         })
     }
 
-  }
-
-  /**
-   * Function to add other resource
-   * @param control
-   * @param i
-   * @param event
-   */
-  addOtherResource(control: AbstractControl, i: any, event: Event) {
-    if (this.resourceOtherValue[i]) {
-      let updatedArr: string[] = structuredClone(control.get('details')?.value);
-      updatedArr.push(this.resourceOtherValue[i]);
-      control.get('details')?.setValue(updatedArr);
-      this.resourceOtherValue[i] = '';
-    }
   }
 
   /**
@@ -1076,19 +1062,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    */
   convertToFormControl(absCtrl: AbstractControl | null): FormControl {
     return absCtrl as FormControl;
-  }
-
-  /**
-   * Function to remove chip item
-   * @param control
-   * @param i
-   */
-  removeItem(control: AbstractControl, i: any) {
-    let updatedArr: string[] = structuredClone(control.get('details')?.value);
-    updatedArr = updatedArr.filter(
-      (item) => item !== control.get('details')?.value[i]
-    );
-    control.get('details')?.setValue(updatedArr);
   }
 
   /**

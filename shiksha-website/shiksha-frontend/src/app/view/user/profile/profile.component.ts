@@ -103,8 +103,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
     bindValue: 'type',
   };
 
-  resourceOtherValue: any[] = [''];
-
   resourceDetailsDropdownOptions: any[] = [];
   resourceDetailsDropdownconfig: FormDropDownConfig = {
     isBackground: false,
@@ -114,7 +112,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
     multi: true,
     clearableOff: true,
     hideLabel: true,
-    hideChips: true,
+  };
+  resourceOtherDetailsDropdownconfig: FormDropDownConfig = {
+    ...this.resourceDetailsDropdownconfig,
+    placeHolderTxt: 'Enter resource details',
+    hideLabel: false,
+    searchable: true,
+    addTag: true,
   };
 
   userData: any;
@@ -634,7 +638,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
         detailsChipSet: [true],
       })
     );
-    this.resourceOtherValue.push('');
   }
 
   /**
@@ -643,35 +646,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   removeResource(index: any) {
     this.facilities.removeAt(index);
-    this.resourceOtherValue = this.resourceOtherValue.splice(index, 1);
-  }
-
-  /**
-   * Function to add other resource
-   * @param control
-   * @param i
-   * @param event
-   */
-  addOtherResource(control: AbstractControl, i: any, event: Event) {
-    if (this.resourceOtherValue[i]) {
-      let updatedArr: string[] = structuredClone(control.get('details')?.value);
-      updatedArr.push(this.resourceOtherValue[i]);
-      control.get('details')?.setValue(updatedArr);
-      this.resourceOtherValue[i] = '';
-    }
-  }
-
-  /**
-   * Function to remove chip item
-   * @param control
-   * @param i
-   */
-  removeItem(control: AbstractControl, i: any) {
-    let updatedArr: string[] = structuredClone(control.get('details')?.value);
-    updatedArr = updatedArr.filter(
-      (item) => item !== control.get('details')?.value[i]
-    );
-    control.get('details')?.setValue(updatedArr);
   }
 
   /**

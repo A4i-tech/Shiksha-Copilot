@@ -369,40 +369,13 @@
                       </div>
 
                       <div *ngIf="!resource.get('detailsChipSet')?.value">
-                        <div class="flex gap-2">
-                          <div class="w-full">
-                            <label
-                          class="form-control-label"
-                        >
-                        {{ 'Resource Details' | translate }}
-                        </label>
-                          <input
-                            class="form-control h-9"
-                            type="text"
-                            placeholder="{{ 'Enter resource details' | translate}}"
-                            autocomplete="off"
-                            [(ngModel)]="resourceOtherValue[i]"
-                            [ngModelOptions]="{ standalone: true }"
-                            (keydown.enter)="
-                              $event.preventDefault();
-                              $event.stopPropagation();
-                              addOtherResource(resource, i, $event)
-                            "
-                          />
-                          </div>
-                          <button
-                            class="btn-primary h-9 mt-[26px]"
-                            (click)="addOtherResource(resource, i, $event)"
-                            type="button"
-                          >
-                            <div class="flex content-center">
-                              <img
-                                src="assets/icons/add.svg"
-                                alt=""
-                              />
-                            </div>
-                          </button>
-                        </div>
+                        <app-form-dropdown
+                          [dropDownControlName]="'details'"
+                          [dropDownCtrl]="convertToFormControl(resource.get('details'))"
+                          [dropDownValues]="resourceDetailsDropdownOptions[i]"
+                          [config]="resourceOtherDetailsDropdownconfig"
+                          [submitted]="submitted"
+                        ></app-form-dropdown>
                         <p
                           class="form-control-error"
                           *ngIf="!resource.get('detailsChipSet')?.value && submitted && resource.get('details')?.errors?.['required']"
@@ -410,25 +383,6 @@
                           {{ 'Resource details required' | translate }}
                         </p>
                       </div>
-                    </div>
-
-                    <div class="selected-items mt-2" >
-                      <ng-container
-                        *ngFor="
-                          let item of resource.get('details')?.value;
-                          let i = index
-                        "
-                      >
-                        <span class="chip"
-                          >{{ item }}
-                          <span
-                            class="close-icon"
-                            (click)="removeItem(resource, i)"
-                            >×</span
-                          >
-                        </span>
-                        
-                      </ng-container>
                     </div>
                   </div>
                   <div

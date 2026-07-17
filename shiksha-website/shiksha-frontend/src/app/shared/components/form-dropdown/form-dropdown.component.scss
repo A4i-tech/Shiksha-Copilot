@@ -67,27 +67,4 @@
     background-color: var(--shade-80) !important;
   }
 
-  ::ng-deep
-    .ng-select.ng-select-multiple
-    .ng-select-container
-    .ng-value-container
-    .ng-value {
-    display: none;
-  }
-
-  ::ng-deep
-    .ng-select.ng-select-multiple
-    .ng-select-container
-    .ng-value-container
-    .ng-placeholder {
-    top: 8px;
-  }
-
-  .area-label {
-    position: absolute;
-    left: 11px;
-    color: var(--content-50);
-    z-index: 1;
-    font-size: 0.875rem;
-  }
 }
