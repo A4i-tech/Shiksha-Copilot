@@ -52,7 +52,7 @@
             </div>
             <div>
               <label class="form-control-label">{{ 'Total Marks' | translate }} <span class="text-error">*</span></label>
-              <input class="form-control h-9" formControlName="totalMarks" maxlength="3"
+              <input class="form-control h-9" formControlName="totalMarks" inputmode="numeric" maxlength="3"
                 oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 3)" [placeholder]="'Total Marks' | translate" />
               <small class="form-control-error" *ngIf="submittedConfig && f.totalMarks.errors?.required">{{ 'Required' | translate }}</small>
             </div>
