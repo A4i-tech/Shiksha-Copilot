@@ -89,11 +89,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   navigateAfterLogin(userData: any) {
-    const roles = userData?.role || [];
-    const isTeacherOnly = (roles.includes('standard') || roles.includes('power'))
-      && !roles.includes('admin') && !roles.includes('manager')
-      && !roles.includes('super_admin') && !roles.includes('coordinator')
-      && !roles.includes('trainer');
+    const isTeacherOnly = this.authService.isTeacherOnly(userData);
 
     if (isTeacherOnly && !userData.isProfileCompleted) {
       this.router.navigate(['/profile']);

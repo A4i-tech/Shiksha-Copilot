@@ -80,4 +80,19 @@ export class AuthorizationService {
     this.loggedIn.next(false);
     this.router.navigate(['/login']);
   }
+
+  /**
+   * Helper to identify if a user is a teacher only (end-user for surveys)
+   * i.e. has standard or power role, and does not have administrative/management roles
+   */
+  isTeacherOnly(user: any): boolean {
+    const roles: string[] = Array.isArray(user?.role) ? user.role : [user?.role].filter(Boolean);
+    if (!roles.length) return false;
+    const lower = roles.map(r => String(r).toLowerCase());
+    const hasTeacherRole = lower.some(r => r === 'standard' || r === 'power');
+    const hasExcludeRole = lower.some(r => {
+      return ['admin', 'manager', 'super_admin', 'coordinator', 'trainer'].includes(r);
+    });
+    return hasTeacherRole && !hasExcludeRole;
+  }
 }

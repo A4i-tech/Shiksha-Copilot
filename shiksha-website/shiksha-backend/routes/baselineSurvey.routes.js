@@ -5,6 +5,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const asyncMiddleware = require('../middlewares/asyncMiddleware');
 const { isAuthenticated } = require('../middlewares/auth');
 const baselineController = require('../controllers/baselineSurvey.controller');
+const { validateSubmitSurvey, validateRemindLater } = require('../validations/baselineSurvey.validation');
 
 // Per-user rate limit for the remind-later endpoint
 const remindLaterLimiter = rateLimit({
@@ -25,6 +26,7 @@ router.get(
 router.post(
   '/baseline-surveys',
   isAuthenticated,
+  validateSubmitSurvey,
   asyncMiddleware(baselineController.submitSurvey.bind(baselineController))
 );
 
@@ -32,6 +34,7 @@ router.patch(
   '/baseline-surveys/remind-later',
   isAuthenticated,
   remindLaterLimiter,
+  validateRemindLater,
   asyncMiddleware(baselineController.remindLater.bind(baselineController))
 );
 
