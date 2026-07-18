@@ -45,7 +45,7 @@ class GeneralChatService:
             final_response_obj = None
             # we deliberately use trace_name="Shiksha-QA" over @observe() here cause the latter
             # spams LF 'output' with each individual event yielded by this streaming function
-            with propagate_attributes(trace_name="Shiksha-QA", user_id=user_id, tags=["chat_type:general", "has_web_search:true"]):
+            with propagate_attributes(trace_name="Shiksha-QA", user_id=user_id, tags=["chat_type:general"]):
                 stream = await self.client.responses.create(
                     model=settings.general_chat_model,
                     input=formatted_messages,
