@@ -6,7 +6,7 @@ from app.models.chat import LessonChatRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
 from llama_index.core.llms import ChatMessage
-from langfuse import observe, get_client
+from langfuse import observe, propagate_attributes
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
 
@@ -27,10 +27,7 @@ class LessonChatService:
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
     @observe(name="Shiksha-QA")
-    async def __call__(
-        self,
-        request: LessonChatRequest,
-    ) -> dict:
+    async def __call__(self, request: LessonChatRequest) -> dict:
         """
         Process a lesson chat request and return the response.
 
@@ -41,15 +38,6 @@ class LessonChatService:
             dict: Contains 'response' (str) and 'references' (list of dicts)
         """
         chapter_details = self._extract_details(request.chapter_id)
-        get_client().update_current_trace(
-            user_id=request.user_id,
-            tags=[
-                "chat_type:lesson",
-                f"board:{chapter_details['BOARD']}",
-                f"grade:{chapter_details['GRADE']}",
-                f"subject:{chapter_details['SUBJECT']}",
-            ],
-        )
         try:
             # Get or create cached RAG adapter instance
             rag_adapter = await self._rags.get(request.index_path, self._rag_llm, self._rag_embed)
@@ -71,9 +59,13 @@ class LessonChatService:
             ] + chat_messages[:-1]
 
             # Get response from RAG system using current message and chat history
-            result = await rag_adapter.chat_with_index(
-                curr_message=chat_messages[-1].content, chat_history=chat_history
-            )
+            with propagate_attributes(user_id=request.user_id, tags=[
+                "chat_type:lesson",
+                f"board:{chapter_details['BOARD']}",
+                f"grade:{chapter_details['GRADE']}",
+                f"subject:{chapter_details['SUBJECT']}",
+            ]):
+                result = await rag_adapter.chat_with_index(curr_message=chat_messages[-1].content, chat_history=chat_history)
 
             response_text = result.get("response", "")
             source_nodes = result.get("source_nodes", [])

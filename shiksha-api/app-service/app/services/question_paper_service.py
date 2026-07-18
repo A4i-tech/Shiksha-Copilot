@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from langfuse import observe, get_client
+from langfuse import observe, propagate_attributes
 from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
@@ -205,18 +205,6 @@ class QuestionPaperService:
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 
-        get_client().update_current_span(
-            input={"system_prompt": system_prompt, "user_message": user_message},
-            metadata={
-                "unit_name": record.title,
-                "question_types": [t.type.value for _, t, _ in slot],
-                "slot_count": len(slot),
-                "model": settings.question_paper_model,
-                "rag_enabled": rag_adapter is not None,
-                "index_path": record.index_path,
-            },
-        )
-
         try:
             if not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
@@ -235,14 +223,17 @@ class QuestionPaperService:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
+                with propagate_attributes(metadata={
+                    "unit_name": record.title,
+                    "question_types": [t.type.value for _, t, _ in slot],
+                    "slot_count": len(slot),
+                    "model": settings.question_paper_model,
+                    "rag_enabled": rag_adapter is not None,
+                    "index_path": record.index_path,
+                }):
+                    response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
                 items = response_format.model_validate(response_content["response"])
         except Exception as e:
-            get_client().update_current_span(
-                level="ERROR",
-                status_message=f"{type(e).__name__}: {e}",
-                output={"items_count": 0},
-            )
             logger.exception(e)
             return []
 
@@ -328,7 +319,8 @@ class QuestionPaperService:
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
         all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
-        get_client().update_current_trace(
+        all_generated: list[GeneratedSlotQuestion] = []
+        with propagate_attributes(
             user_id=request.user_id,
             session_id=request.session_id,
             tags=[
@@ -348,21 +340,19 @@ class QuestionPaperService:
                 "total_marks": request.total_marks,
                 "model": settings.question_paper_model,
             },
-        )
+        ):
+            existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
+            tasks = []
+            for lr, questions in self._build_generation_slots(request):
+                logger.debug(f"[SLOT_PROCESSING] unit='{lr.title}' | index_path='{lr.index_path}'")
+                system_prompt = self._format_system_prompt(request, lr, questions)
+                tasks.append(self._generate_questions_batch_async(system_prompt, request, existing_flat, lr, questions))
 
-        existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
-        tasks = []
-        for lr, questions in self._build_generation_slots(request):
-            logger.debug(f"[SLOT_PROCESSING] unit='{lr.title}' | index_path='{lr.index_path}'")
-            system_prompt = self._format_system_prompt(request, lr, questions)
-            tasks.append(self._generate_questions_batch_async(system_prompt, request, existing_flat, lr, questions))
+            if not tasks:
+                raise ValueError("No generation slots could be built from template/distribution.")
 
-        if not tasks:
-            raise ValueError("No generation slots could be built from template/distribution.")
-
-        all_generated: list[GeneratedSlotQuestion] = []
-        for raw_items in await asyncio.gather(*tasks):
-            all_generated.extend(raw_items)
+            for raw_items in await asyncio.gather(*tasks):
+                all_generated.extend(raw_items)
 
         response_questions = self._organize_questions_into_response(request, all_generated)
         return QuestionBankResponse(metadata=QuestionBankMetadata(

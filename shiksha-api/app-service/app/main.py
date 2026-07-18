@@ -9,17 +9,7 @@ from fastmcp import FastMCP
 from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
 from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router
-
-# Initialize Langfuse instrumentation at import time.
-from app.observability.langfuse_setup import init_langfuse
-_langfuse_client = init_langfuse(app_env=settings.app_env)
-
-# Wire LlamaIndex → Langfuse so RAG-path LLM + embedding calls appear as child spans.
-try:
-    from llama_index.instrumentation.langfuse import LlamaIndexInstrumentor
-    LlamaIndexInstrumentor().instrument()
-except Exception:
-    pass  # no-op if langfuse keys absent or package missing
+from langfuse import get_client
 
 mcp = FastMCP(
     name=settings.app_name,
@@ -50,8 +40,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Error during cleanup: {e}")
 
-    if _langfuse_client is not None:
-        _langfuse_client.flush()
+    get_client().flush()
 
 app = FastAPI(
     title=settings.app_name,
