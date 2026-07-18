@@ -5,7 +5,7 @@ import logging
 from langfuse.openai import AsyncOpenAI
 from langfuse import propagate_attributes
 import json
-from openai.types.responses import ResponseOutputMessage, ResponseOutputText
+from openai.types.responses import ResponseOutputMessage, ResponseOutputText, ToolParam
 from openai.types.responses.response import Response
 from openai.types.responses.response_output_text import AnnotationURLCitation
 
@@ -28,6 +28,9 @@ class GeneralChatService:
             raise ValueError("General chat prompt not found in chat_prompts.yaml")
         self.system_prompt = system_prompt
         self.client = AsyncOpenAI()
+        self.tools: list[ToolParam] = [
+            {"type": "web_search", "user_location": {"type": "approximate", "country": "IN"}}
+        ]
 
 
     @validate_call
@@ -46,13 +49,7 @@ class GeneralChatService:
             # we deliberately use trace_name="Shiksha-QA" over @observe() here cause the latter
             # spams LF 'output' with each individual event yielded by this streaming function
             with propagate_attributes(trace_name="Shiksha-QA", user_id=user_id, tags=["chat_type:general"]):
-                stream = await self.client.responses.create(
-                    model=settings.general_chat_model,
-                    input=formatted_messages,
-                    tools=[{"type": "web_search"}],
-                    stream=True,
-                )
-
+                stream = await self.client.responses.create(model=settings.general_chat_model, input=formatted_messages, tools=self.tools, stream=True)
                 async for event in stream:
                     # Streaming text deltas
                     if event.type == "response.output_text.delta":
