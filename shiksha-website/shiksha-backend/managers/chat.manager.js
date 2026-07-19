@@ -22,15 +22,29 @@ class ChatManager extends BaseManager {
 		this.schoolDao = new SchoolDao();
 	}
 
-	async #buildUserContext(userId, includeClasses){
+	async #buildUserContext(userId, includeClasses = true){
 		const user = await this.userDao.getById(userId);
 		const school = await this.schoolDao.getById(user.school);
 		const classes = includeClasses ? [`**Classes**:`, ...user.classes.map(b => `- ${b.name} (for class ${b.class}, ${b.board} curriculum)`)] : [];
 		return [
+			"## User information",
 			"I am a school teacher and below are my details:",
 			`**Name**: ${user.name}`,
 			`**School**: ${school.name} (${school.state}, ${school.type})`,
 			...classes
+		].join("\n");
+	}
+
+	async #buildUserContextForLessonPlan(userId, lessonDetails, chapterDetails, subjectDetails){
+		return [
+			await this.#buildUserContext(userId, false),
+			"",
+			"## Lesson plan details",
+			`**Board**: ${chapterDetails.board}`,
+			`**Medium**: ${chapterDetails.medium}`,
+			`**Class**: ${chapterDetails.standard}`,
+			`**Subject**: ${subjectDetails.subjectName}`,
+			`**Chapter**: ${chapterDetails.orderNumber}. ${chapterDetails.topics}`,
 		].join("\n");
 	}
 
@@ -58,7 +72,7 @@ class ChatManager extends BaseManager {
 				return { success: false, message: "Session closed due to request limit exceeded" };
 			}
 
-			let [existingMessages, userContext] = await Promise.all([this.dao.getMessagesBySessionId(chatSession._id), this.#buildUserContext(userId, true)]);
+			let [existingMessages, userContext] = await Promise.all([this.dao.getMessagesBySessionId(chatSession._id), this.#buildUserContext(userId)]);
 
 			let formattedMessages = existingMessages.messages
 				.slice()
@@ -230,7 +244,7 @@ class ChatManager extends BaseManager {
 
 			let [messageHistory, userContext] = await Promise.all([
 				this.dao.getLessonMessages(lessonDetails._id, userId, todayStart, todayEnd),
-				this.#buildUserContext(userId)
+				this.#buildUserContextForLessonPlan(userId, lessonDetails, chapterDetails, subjectDetails)
 			]);
 
 			let formattedMessages = (messageHistory || []).map((chat) => [
