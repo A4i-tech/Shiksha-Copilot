@@ -25,9 +25,9 @@ import { AdminModule } from './admin/admin.module';
     TranslateModule,
     LanguageSwitcherComponent,
     DeleteDetailComponent,
-    ProfileImageComponent
-    ,UserModule
-    ,AdminModule
+    ProfileImageComponent,
+    UserModule,
+    AdminModule
   ]
 })
 export class ViewModule { }

@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { UtilityService } from '../core/services/utility.service';
+import { menuItem } from '../shared/utility/sidebar.util';
 
 @Component({
   standalone: true,
@@ -15,7 +16,7 @@ export class LandingComponent implements OnInit {
     if (user.profiles.teacher && !user.profiles.teacher.isProfileCompleted) {
       this.router.navigate(['/profile']);
     } else {
-      this.router.navigate([this.utility.hasPermission(['dashboard.teacher.view']) ? '/dashboard' : '/leaders-dashboard']);
+      this.router.navigate([menuItem.find((item) => this.utility.hasPermission(item.permission))!.route]);
     }
   }
 }

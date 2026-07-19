@@ -12,25 +12,24 @@ describe("scope helper", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     Region.exists.mockResolvedValue(true);
-    School.exists.mockResolvedValue(true);
     School.findById.mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: schoolId, district: "Mysuru" }) });
   });
 
   it("validates a dependency against its discriminator", async () => {
     const grants = [{ permission: "role.assign", scopeType: "GLOBAL" }];
-    await expect(assertCanGrant(grants, { scopeType: "DISTRICT" }, "Mysuru")).resolves.toBe("Mysuru");
-    await expect(assertCanGrant(grants, { scopeType: "SCHOOL" }, String(schoolId))).resolves.toEqual(schoolId);
+    await expect(assertCanGrant(grants, { scopeType: "DISTRICT", permissions: [] }, "Mysuru")).resolves.toBe("Mysuru");
+    await expect(assertCanGrant(grants, { scopeType: "SCHOOL", permissions: [] }, String(schoolId))).resolves.toEqual(schoolId);
   });
 
   it("uses the dependency in server filters", () => {
     const grant = { scopeType: "DISTRICT", dep: "Mysuru" };
-    const serverFilter = scopeFilter([grant], "", "_id");
+    const serverFilter = scopeFilter([grant]);
     expect(intersectFilters({ district: "Kodagu" }, serverFilter)).toEqual({ $and: [{ district: "Kodagu" }, { $or: [{ district: "Mysuru" }] }] });
   });
 
   it("checks school assignments against the actual school", async () => {
     const grants = [{ permission: "role.assign", scopeType: "DISTRICT", dep: "Mysuru" }];
-    await expect(assertCanGrant(grants, { scopeType: "SCHOOL" }, String(schoolId))).resolves.toEqual(schoolId);
+    await expect(assertCanGrant(grants, { scopeType: "SCHOOL", permissions: [] }, String(schoolId))).resolves.toEqual(schoolId);
   });
 
   it("matches an ObjectId school dependency", () => {

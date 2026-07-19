@@ -60,13 +60,26 @@ function teacherDocument(document, schools) {
   };
 }
 
+function mergeTeachers(existing, duplicate) {
+  const sameName = existing.identity.name === duplicate.identity.name;
+  const sameSchool = String(existing.roles[0].dep) === String(duplicate.roles[0].dep);
+  const existingProfile = existing.profiles.teacher.isProfileCompleted || existing.profiles.teacher.classes.length || existing.profiles.teacher.facilities.length;
+  const duplicateProfile = duplicate.profiles.teacher.isProfileCompleted || duplicate.profiles.teacher.classes.length || duplicate.profiles.teacher.facilities.length;
+  if (!sameName || !sameSchool || existing.isDeleted !== duplicate.isDeleted || (existingProfile && duplicateProfile)) {
+    throw new Error(`Ambiguous duplicate teacher phone: ${existing.identity.phone}`);
+  }
+  const source = duplicateProfile ? duplicate : existing;
+  const roles = new Map([...existing.roles, ...duplicate.roles].map((value) => [`${value.role}:${value.dep}`, value]));
+  return { ...source, _id: existing._id, roles: [...roles.values()], createdAt: existing.createdAt };
+}
+
 function adminDocument(document, districts) {
   const roles = roleIds(document.role);
   const assignments = [];
   for (const role of roles) {
     if (role !== ROLE_MAP.manager) assignments.push(assignment(role));
     else {
-      if (!document.districts.length) throw new Error(`Manager ${document._id} has no districts`);
+      if (!Array.isArray(document.districts) || !document.districts.length) throw new Error(`Manager ${document._id} has no districts`);
       for (const district of document.districts) {
         if (!districts.has(district)) throw new Error(`Manager ${document._id} district ${district} does not exist`);
         assignments.push(assignment(role, district));
@@ -99,6 +112,19 @@ async function rewriteReferences(db, idMap) {
   }
 }
 
+async function rewriteTeacherReferences(db, idMap) {
+  for (const [oldId, newId] of idMap) {
+    const oldValue = new mongoose.Types.ObjectId(oldId), newValue = new mongoose.Types.ObjectId(newId);
+    await db.collection("teachertrainingbatches").updateMany(
+      { $or: [{ assignedTeachers: oldValue }, { attendance: oldValue }] },
+      [{ $set: {
+        assignedTeachers: { $setUnion: [{ $map: { input: "$assignedTeachers", as: "id", in: { $cond: [{ $eq: ["$$id", oldValue] }, newValue, "$$id"] } } }, []] },
+        attendance: { $setUnion: [{ $map: { input: "$attendance", as: "id", in: { $cond: [{ $eq: ["$$id", oldValue] }, newValue, "$$id"] } } }, []] },
+      } }]
+    );
+  }
+}
+
 async function seedBuiltinRoles(db) {
   for (const role of builtinRoles) {
     const { _id, ...data } = role;
@@ -121,19 +147,29 @@ async function unifyUsers() {
 
   const users = db.collection("users");
   const admins = db.collection("adminusers");
-  const existingUsers = await users.find({}).toArray();
+  const existingUsers = await users.find({}).sort({ createdAt: 1, _id: 1 }).toArray();
   const adminUsers = await admins.find({}).toArray();
   const schools = new Set((await db.collection("schools").distinct("_id")).map(String));
   const districts = new Set(await db.collection("regions").distinct("zones.districts.name"));
   const byPhone = new Map();
+  const teacherIdMap = new Map();
   for (const document of existingUsers) {
     const converted = teacherDocument(document, schools);
-    byPhone.set(converted.identity.phone, converted);
+    const existing = byPhone.get(converted.identity.phone);
+    if (!existing) byPhone.set(converted.identity.phone, converted);
+    else {
+      byPhone.set(converted.identity.phone, mergeTeachers(existing, converted));
+      teacherIdMap.set(String(converted._id), String(existing._id));
+    }
   }
   const adminIdMap = new Map();
+  const adminPhones = new Set();
 
   for (const document of adminUsers) {
+    if (document.isDeleted && document.role.every((role) => String(role).toLowerCase() === "manager") && (!Array.isArray(document.districts) || !document.districts.length)) continue;
     const converted = adminDocument(document, districts);
+    if (adminPhones.has(converted.identity.phone)) throw new Error(`Duplicate admin phone: ${converted.identity.phone}`);
+    adminPhones.add(converted.identity.phone);
     const existing = byPhone.get(converted.identity.phone);
     if (existing) {
       existing.roles.push(...converted.roles);
@@ -151,9 +187,13 @@ async function unifyUsers() {
   await users.deleteMany({});
   if (unified.length) await users.insertMany(unified);
   await rewriteReferences(db, adminIdMap);
+  await rewriteTeacherReferences(db, teacherIdMap);
   await users.createIndex({ "identity.phone": 1 }, { unique: true, name: "uniq_user_phone" });
   await admins.drop();
   console.log(`Unified ${existingUsers.length} users and ${adminUsers.length} admin users into ${unified.length} records`);
 }
 
 module.exports = unifyUsers;
+module.exports.teacherDocument = teacherDocument;
+module.exports.adminDocument = adminDocument;
+module.exports.mergeTeachers = mergeTeachers;

@@ -16,11 +16,12 @@ const {
 const userController = new UserController();
 
 router.post(
-	"/users",
+"/users",
 	isAuthenticated,
-	requireAnyPermission("teacher.create", "staff.create"),
-	requirePermission("role.assign"),
 	validateUserCreate,
+	(req, res, next) => req.body.profiles.teacher ? requirePermission("teacher.create")(req, res, next) : next(),
+	(req, res, next) => req.body.profiles.admin ? requirePermission("staff.create")(req, res, next) : next(),
+	requirePermission("role.assign"),
 	asyncMiddleware(userController.create.bind(userController))
 );
 
@@ -93,9 +94,9 @@ router.delete(
 );
 
 router.post(
-	"/users/import",
+"/users/import",
 	isAuthenticated,
-	requireAnyPermission("teacher.import", "staff.import"),
+	requirePermission("teacher.import"),
 	requirePermission("role.assign"),
 	uploadMiddleware,
 	asyncMiddleware(userController.bulkUpload.bind(userController))

@@ -173,13 +173,12 @@ describe("MasterLessonController", () => {
   });
 
   describe("regenerateLessonPlan", () => {
-    it("should regenerate lesson plan for power user", async () => {
+    it("should regenerate a lesson plan", async () => {
       const mockResult = {
         success: true,
         data: { lessonId: "lesson-123", regenerated: true },
       };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["lesson-plan.generate"];
       mockReq.body = { lessonId: "lesson-123", reason: "Outdated content" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);
@@ -193,32 +192,9 @@ describe("MasterLessonController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult.data);
     });
 
-    it("should regenerate lesson plan for admin user", async () => {
-      const mockResult = { success: true, data: { regenerated: true } };
-      mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["content.activity.view"];
-      mockReq.body = { lessonId: "lesson-123", reason: "Test" };
-
-      await controller.regenerateLessonPlan(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should regenerate lesson plan for manager user", async () => {
-      const mockResult = { success: true, data: { regenerated: true } };
-      mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["content.activity.view"];
-      mockReq.body = { lessonId: "lesson-123", reason: "Test" };
-
-      await controller.regenerateLessonPlan(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
     it("should handle regeneration failure", async () => {
       const mockResult = { success: false, message: "Regeneration failed" };
       mockManager.regenerateLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.permissions = ["content.activity.view"];
       mockReq.body = { lessonId: "lesson-123", reason: "Test" };
 
       await controller.regenerateLessonPlan(mockReq, mockRes);

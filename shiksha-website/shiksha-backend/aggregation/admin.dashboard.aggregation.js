@@ -11,11 +11,8 @@ const { scopeFilter, intersectFilters } = require("../helper/scope.helper");
 
 class DashboardAggregation {
 
-	_createHierarchicalMatchAndGroup(query, prefix, scope) {
-		const joinedUser = prefix === "teacher" || prefix === "user";
-		const p = joinedUser ? "schoolDetails." : prefix ? `${prefix}.` : "";
-		const f = (field) => joinedUser && field === "_id" ? `$${prefix}._id` : joinedUser && field === "name" ? `$${prefix}.identity.name` : `$${p}${field}`;
-
+	_createMatchAndGroup(query, prefix, scope) {
+		const user = prefix ? `${prefix}.` : "";
 		let matchConditions = {};
 		let groupByFields = {
 			_id: {},
@@ -23,30 +20,28 @@ class DashboardAggregation {
 		};
 
 		if (query.schoolId && ObjectId.isValid(query.schoolId)) {
-			matchConditions[p + "school"] = new ObjectId(query.schoolId);
-			// One row per teacher at this school; group by teacher _id.
-			groupByFields._id = f("_id");
-			groupByFields.name = { $first: f("name") };
+			matchConditions["schoolDetails._id"] = new ObjectId(query.schoolId);
+			groupByFields._id = `$${user}_id`;
+			groupByFields.name = { $first: `$${user}identity.name` };
 		}
 		else {
-
-			groupByFields._id.state = f("state");
+			groupByFields._id.state = "$schoolDetails.state";
 
 			if (query.state) {
-				matchConditions[p + "state"] = query.state;
-				groupByFields._id.zone = f("zone");
+				matchConditions["schoolDetails.state"] = query.state;
+				groupByFields._id.zone = "$schoolDetails.zone";
 
 				if (query.zone) {
-					matchConditions[p + "zone"] = query.zone;
-					groupByFields._id.district = f("district");
+					matchConditions["schoolDetails.zone"] = query.zone;
+					groupByFields._id.district = "$schoolDetails.district";
 
 					if (query.district) {
-						matchConditions[p + "district"] = query.district;
-						groupByFields._id.block = f("block");
+						matchConditions["schoolDetails.district"] = query.district;
+						groupByFields._id.block = "$schoolDetails.block";
 
 						if (query.block) {
-							matchConditions[p + "block"] = query.block;
-							groupByFields._id.school = f("school");
+							matchConditions["schoolDetails.block"] = query.block;
+							groupByFields._id.school = "$schoolDetails._id";
 							groupByFields.schoolName = { $first: "$schoolDetails.name" }
 						}
 					}
@@ -59,30 +54,16 @@ class DashboardAggregation {
 
 	async getDashboardMetrics(query, grants) {
 		const scopes = getPermission(grants, "dashboard.admin.view");
-		const scope = scopeFilter(scopes, "schoolDetails", "_id");
+		const scope = scopeFilter(scopes, "schoolDetails");
 		const userSchoolStages = [
 			{ $lookup: { from: "schools", localField: "roles.dep", foreignField: "_id", as: "schoolDetails" } },
 			{ $unwind: { path: "$schoolDetails", preserveNullAndEmptyArrays: false } },
 		];
-		const userShapeStage = {
-			$set: {
-				name: "$identity.name",
-				role: "$roles",
-				school: "$schoolDetails._id",
-				state: "$schoolDetails.state",
-				zone: "$schoolDetails.zone",
-				district: "$schoolDetails.district",
-				block: "$schoolDetails.block",
-				classes: "$profiles.teacher.classes",
-			},
-		};
-		// User-level match: same hierarchy as lesson plans (school/state/zone/district/block) so dashboard metrics are consistent.
-		const { matchConditions: userMatchConditions } = this._createHierarchicalMatchAndGroup(query, "", scope);
+		const { matchConditions: userMatchConditions } = this._createMatchAndGroup(query, "", scope);
 
 		// 1. Prepare User Aggregation (Activity/Counts) - runs on User collection
 		const userCountsPipeline = [
 			...userSchoolStages,
-			userShapeStage,
 			...(Object.keys(userMatchConditions).length > 0 ? [{ $match: userMatchConditions }] : []),
 			{
 				$facet: {
@@ -114,9 +95,9 @@ class DashboardAggregation {
 						{
 							$project: {
 								_id: 1,
-								name: 1,
+								name: "$identity.name",
 								isDeleted: 1,
-								role: 1,
+								role: "$roles",
 							},
 						},
 						{
@@ -133,7 +114,7 @@ class DashboardAggregation {
 						{
 							$project: {
 								_id: 1,
-								name: 1,
+								name: "$identity.name",
 							},
 						},
 						{
@@ -150,7 +131,7 @@ class DashboardAggregation {
 						{
 							$project: {
 								_id: 1,
-								name: 1,
+								name: "$identity.name",
 							},
 						},
 						{
@@ -176,18 +157,17 @@ class DashboardAggregation {
 
 		const userMediumsPipeline = [
 			...userSchoolStages,
-			userShapeStage,
 			...(Object.keys(userMatchConditions).length > 0 ? [{ $match: userMatchConditions }] : []),
 			{
 				$unwind: {
-					path: "$classes",
+					path: "$profiles.teacher.classes",
 					preserveNullAndEmptyArrays: true,
 				},
 			},
 			{
 				$group: {
 					_id: {
-						medium: "$classes.medium",
+						medium: "$profiles.teacher.classes.medium",
 						userId: "$_id",
 					},
 					user: { $first: "$$ROOT" },
@@ -215,9 +195,9 @@ class DashboardAggregation {
 									as: "user",
 									in: {
 										_id: "$$user._id",
-										name: "$$user.name",
+										name: "$$user.identity.name",
 										isDeleted: "$$user.isDeleted",
-										role: "$$user.role",
+										role: "$$user.roles",
 									},
 								},
 							},
@@ -232,7 +212,7 @@ class DashboardAggregation {
 		// 2. Prepare Lesson Plan Aggregations - runs on TeacherLessonPlan collection
 		// We invert the join: Start from Plans -> Lookup Users
 
-		const { matchConditions, groupByFields } = this._createHierarchicalMatchAndGroup(query, "teacher", scope);
+		const { matchConditions, groupByFields } = this._createMatchAndGroup(query, "teacher", scope);
 		const teacherStages = [
 			{ $lookup: { from: "users", localField: "teacherId", foreignField: "_id", as: "teacher" } },
 			{ $unwind: { path: "$teacher", preserveNullAndEmptyArrays: true } },
@@ -415,7 +395,7 @@ class DashboardAggregation {
 		];
 
 		// 3. Feedback aggregation - Apply hierarchy filters to match dashboard scope (match on teacher.* after lookup)
-		const { matchConditions: feedbackMatchConditions } = this._createHierarchicalMatchAndGroup(query, "teacher", scope);
+		const { matchConditions: feedbackMatchConditions } = this._createMatchAndGroup(query, "teacher", scope);
 		const feedbackCountBySubject = [
 			...teacherStages,
 			// Apply hierarchy filters on teacher to match dashboard scope
@@ -467,7 +447,7 @@ class DashboardAggregation {
 		const oldestMonthSplit = months[0].month.split("-");
 		const sixMonthsAgo = new Date(oldestMonthSplit[0], oldestMonthSplit[1] - 1, 1);
 
-		const { matchConditions: chatUserMatchConditions } = this._createHierarchicalMatchAndGroup(query, "user", scope);
+		const { matchConditions: chatUserMatchConditions } = this._createMatchAndGroup(query, "user", scope);
 		const combinedChatPipeline = [
 			// ── 1. Chat collection: filter date window + orphan guard ──
 			{

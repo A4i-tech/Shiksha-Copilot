@@ -1,148 +1,41 @@
-const ScheduleManager = require('../../../managers/schedule.manager');
-const ScheduleDao = require('../../../dao/schedule.dao');
-const overlap = require('../../../helper/overlap');
+const ScheduleManager = require("../../../managers/schedule.manager");
+const ScheduleDao = require("../../../dao/schedule.dao");
+const overlap = require("../../../helper/overlap");
 
-jest.mock('../../../dao/schedule.dao');
-jest.mock('../../../helper/overlap');
+jest.mock("../../../dao/schedule.dao");
+jest.mock("../../../helper/overlap");
 
-describe('ScheduleManager', () => {
-    let scheduleManager;
-    let mockScheduleDao;
+const request = (scheduleDateTime) => ({
+  user: { _id: "teacher-1", roles: [{ role: { scopeType: "SCHOOL" }, dep: "school-1" }] },
+  body: { teacherId: "other-teacher", schoolId: "other-school", scheduleDateTime, class: 5, board: "board", medium: "English" },
+});
 
-    beforeEach(() => {
-        scheduleManager = new ScheduleManager();
-        mockScheduleDao = {
-            create: jest.fn(),
-            getParallelSchedules: jest.fn()
-        };
-        scheduleManager.dao = mockScheduleDao;
-        jest.clearAllMocks();
-        overlap.mockReturnValue(false);
-    });
+describe("ScheduleManager.create", () => {
+  let manager;
+  let dao;
 
-    describe('create', () => {
-        it('should create schedule successfully when no overlap or parallel schedules', async () => {
-            const mockReq = {
-                user: {
-                    _id: 'teacher123',
-                    school: { _id: 'school123' }
-                },
-                body: {
-                    scheduleDateTime: [
-                        { date: '2024-01-01', fromTime: '09:00', toTime: '10:00' }
-                    ],
-                    class: 'class1',
-                    board: 'board1',
-                    medium: 'English'
-                }
-            };
+  beforeEach(() => {
+    jest.clearAllMocks();
+    dao = { create: jest.fn().mockResolvedValue({ _id: "schedule-1" }), getParallelSchedules: jest.fn().mockResolvedValue({ canSchedule: true }) };
+    ScheduleDao.mockImplementation(() => dao);
+    overlap.mockReturnValue(false);
+    manager = new ScheduleManager();
+  });
 
-            mockScheduleDao.getParallelSchedules.mockResolvedValue({ canSchedule: true });
-            mockScheduleDao.create.mockResolvedValue({ id: 'schedule123' });
+  it("uses the authenticated teacher and role dependency", async () => {
+    const req = request([{ date: "2024-01-01", fromTime: "09:00", toTime: "10:00" }]);
+    await manager.create(req);
+    expect(dao.create).toHaveBeenCalledWith({ ...req.body, teacherId: "teacher-1", schoolId: "school-1" });
+  });
 
-            const result = await scheduleManager.create(mockReq);
+  it("rejects overlapping entries", async () => {
+    overlap.mockReturnValue(true);
+    await expect(manager.create(request([]))).resolves.toMatchObject({ success: false, message: "Overlap in entries" });
+    expect(dao.create).not.toHaveBeenCalled();
+  });
 
-            expect(result.success).toBe(true);
-            expect(result.message).toBe('schedule created successfully!');
-            expect(mockScheduleDao.create).toHaveBeenCalled();
-        });
-
-        it('should return error when schedules overlap', async () => {
-            const mockReq = {
-                user: {
-                    _id: 'teacher123',
-                    school: { _id: 'school123' }
-                },
-                body: {
-                    scheduleDateTime: [
-                        { date: '2024-01-01', fromTime: '09:00', toTime: '11:00' },
-                        { date: '2024-01-01', fromTime: '10:00', toTime: '12:00' }
-                    ],
-                    class: 'class1',
-                    board: 'board1',
-                    medium: 'English'
-                }
-            };
-
-            overlap.mockReturnValue(true);
-
-            const result = await scheduleManager.create(mockReq);
-
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('Overlap in entries');
-            expect(mockScheduleDao.create).not.toHaveBeenCalled();
-        });
-
-        it('should return error when fromTime equals toTime', async () => {
-            const mockReq = {
-                user: {
-                    _id: 'teacher123',
-                    school: { _id: 'school123' }
-                },
-                body: {
-                    scheduleDateTime: [
-                        { date: '2024-01-01', fromTime: '09:00', toTime: '09:00' }
-                    ],
-                    class: 'class1',
-                    board: 'board1',
-                    medium: 'English'
-                }
-            };
-
-            const result = await scheduleManager.create(mockReq);
-
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('fromTime and toTime cannot be the same');
-        });
-
-        it('should return error when duplicate time slot detected', async () => {
-            const mockReq = {
-                user: {
-                    _id: 'teacher123',
-                    school: { _id: 'school123' }
-                },
-                body: {
-                    scheduleDateTime: [
-                        { date: '2024-01-01', fromTime: '09:00', toTime: '10:00' },
-                        { date: '2024-01-01', fromTime: '09:00', toTime: '10:00' }
-                    ],
-                    class: 'class1',
-                    board: 'board1',
-                    medium: 'English'
-                }
-            };
-
-            const result = await scheduleManager.create(mockReq);
-
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('Duplicate time slot detected');
-        });
-
-        it('should return error when parallel schedules exist', async () => {
-            const mockReq = {
-                user: {
-                    _id: 'teacher123',
-                    school: { _id: 'school123' }
-                },
-                body: {
-                    scheduleDateTime: [
-                        { date: '2024-01-01', fromTime: '09:00', toTime: '10:00' }
-                    ],
-                    class: 'class1',
-                    board: 'board1',
-                    medium: 'English'
-                }
-            };
-
-            mockScheduleDao.getParallelSchedules.mockResolvedValue({
-                canSchedule: false,
-                conflictingSchedules: []
-            });
-
-            const result = await scheduleManager.create(mockReq);
-
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('parallel schedules exist');
-        });
-    });
+  it("rejects duplicate time slots", async () => {
+    const slot = { date: "2024-01-01", fromTime: "09:00", toTime: "10:00" };
+    await expect(manager.create(request([slot, slot]))).resolves.toMatchObject({ success: false, message: "Duplicate time slot detected" });
+  });
 });

@@ -2,8 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { UserManagementService } from '../user-management.service';
-import { MasterService } from 'src/app/shared/services/master.service';
 import { StaffUserCommonService } from 'src/app/shared/services/staff-user-common.service';
 
 @Component({
@@ -25,9 +23,7 @@ export class AddEditUserComponent implements OnInit {
   submitted: boolean = false;
   mode!: any;
   userId!: string;
-  regionsData: any;
-
-  constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private userManagementService: UserManagementService, private router: Router, private masterService: MasterService,private commonStaffUserService:StaffUserCommonService) { }
+  constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private router: Router, private commonStaffUserService: StaffUserCommonService) { }
 
   ngOnInit(): void {
     this.initialize_add_form();
@@ -40,32 +36,10 @@ export class AddEditUserComponent implements OnInit {
     });
 
     if (this.mode === 'view') this.addForm.disable();
-    this.commonStaffUserService.getRoles().subscribe((res: any) => {
-      this.userRolesDropdownOptions = res.data.results.filter((role: any) => !role.isSuperUser && role.permissions.includes('dashboard.teacher.view'));
+    this.commonStaffUserService.getAssignmentData().subscribe(({ roles, scopeOptions }) => {
+      this.userRolesDropdownOptions = roles;
+      this.scopeOptions = scopeOptions;
       if (this.userId) this.getUserDetails(this.userId);
-    });
-    this.getRegionsData();
-    this.userManagementService.getSchoolList(false).subscribe((res: any) => {
-      this.scopeOptions['SCHOOL'] = res.data.results.map((school: any) => ({ value: school._id, label: school.name }));
-    });
-  }
-
-  getRegionsData() {
-    this.masterService.getRegions().subscribe({
-      next: (val) => {
-        this.regionsData = val.data.results;
-        for (const scopeType of ['STATE', 'ZONE', 'DISTRICT', 'BLOCK']) this.scopeOptions[scopeType] = [];
-        for (const region of this.regionsData) {
-          this.scopeOptions['STATE'].push({ value: region.state, label: region.state });
-          for (const zone of region.zones) {
-            this.scopeOptions['ZONE'].push({ value: zone.name, label: `${region.state} / ${zone.name}` });
-            for (const district of zone.districts) {
-              this.scopeOptions['DISTRICT'].push({ value: district.name, label: `${zone.name} / ${district.name}` });
-              for (const block of district.blocks) this.scopeOptions['BLOCK'].push({ value: block.name, label: `${district.name} / ${block.name}` });
-            }
-          }
-        }
-      },
     });
   }
 
@@ -99,7 +73,8 @@ export class AddEditUserComponent implements OnInit {
 
   assignmentChanged(index: number) {
     const dep = this.assignments.at(index).get('dep')!;
-    const required = !['GLOBAL', 'UNBOUND'].includes(this.assignmentRole(index)?.scopeType);
+    const scopeType = this.assignmentRole(index)?.scopeType;
+    const required = scopeType ? !['GLOBAL', 'UNBOUND'].includes(scopeType) : false;
     dep.setValidators(required ? Validators.required : null);
     if (!required) dep.setValue(null);
     dep.updateValueAndValidity();
@@ -149,7 +124,6 @@ export class AddEditUserComponent implements OnInit {
     this.addForm.patchValue({
       name: user.identity.name,
       phone: user.identity.phone,
-      isDeleted: user.isDeleted,
     });
   }
 

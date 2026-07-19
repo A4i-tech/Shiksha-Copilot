@@ -6,12 +6,19 @@ const UserDao = require("../dao/user.dao");
 const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
-const { getRolePermissions } = require("../helper/permission.helper");
+const { getRolePermissions, schoolDependency } = require("../helper/permission.helper");
+const School = require("../models/school.model");
 const CAPTCHA_ATTEMPT = 3, MAX_LOGIN_ATTEMPTS = 6;
 const LOGIN_LOCK_MINUTES = 5, LOGIN_LOCK_TTL = LOGIN_LOCK_MINUTES * 60 * 1000;
 const PENDING_PIN_TTL_MINUTES = 5, PENDING_PIN_TTL = PENDING_PIN_TTL_MINUTES * 60 * 1000;
 const RESEND_COOLDOWN_SECONDS = Number(process.env.PIN_RESEND_COOLDOWN_SECONDS) || 120;
 const RESEND_COOLDOWN_MS = RESEND_COOLDOWN_SECONDS * 1000;
+
+async function sessionUser(user) {
+    const { roles, ...data } = user.toObject();
+    if (data.profiles.teacher) data.school = await School.findById(schoolDependency(user.roles)).select("name state zone district block").lean();
+    return data;
+}
 
 class AuthManager {
     constructor() {
@@ -144,9 +151,8 @@ class AuthManager {
             browserInfo: agent.browser ? `${agent.browser}/${agent.version}` : 'Unknown',
             osInfo: agent.os || 'Unknown',
         });
-        const { roles, ...sessionUser } = user.toObject();
         return formatApiReponse(true, "PIN verified successfully!", {
-            user: sessionUser,
+            user: await sessionUser(user),
             permissions: getRolePermissions(user.roles),
             token,
         });
@@ -179,8 +185,7 @@ class AuthManager {
     async getUserFromToken(req) {
         try {
             await refreshProfileImageIfExpired(req.user, (id, updates) => this.userDao.update(id, updates));
-            const { roles, ...sessionUser } = req.user.toObject();
-            return { success: true, data: { user: sessionUser, permissions: req.permissions }, message: "" };
+            return { success: true, data: { user: await sessionUser(req.user), permissions: req.permissions }, message: "" };
         } catch (err) {
             return formatApiReponse(false, err?.message, err);
         }

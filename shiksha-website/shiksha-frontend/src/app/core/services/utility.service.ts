@@ -532,20 +532,4 @@ shuffleOptions(arr:any[]) {
     this.router.navigate(['/auth']);
   }  
 
-  /**
-   * Returns only the zones assigned to a manager for a given state.
-   * @param regionsData - The full regions data array
-   * @param user - The logged-in user object (should have .state and .zones)
-   * @returns Array of zone objects assigned to the manager for the user's state
-   */
-  getZonesForManager(regionsData: any[], user: any): any[] {
-    if (!user || !user.state || !user.zones || !Array.isArray(user.zones)) {
-      return [];
-    }
-    const stateObj = regionsData.find((state: any) => state.state === user.state);
-    if (!stateObj || !Array.isArray(stateObj.zones)) {
-      return [];
-    }
-    return stateObj.zones.filter((zone: any) => user.zones.includes(zone.name));
-  }
 }

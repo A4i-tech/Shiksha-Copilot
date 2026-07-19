@@ -324,11 +324,8 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   }
 
   loadRoles() {
-    const permission = this.getType()?.type === 'user' ? 'dashboard.teacher.view' : 'dashboard.admin.view';
     this.commonStaffUserService.getRoles().subscribe((res: any) => {
-      this.userRolesDropdownOptions = res.data.results.filter(
-        (role: any) => !role.isSuperUser && role.permissions.includes(permission)
-      );
+      this.userRolesDropdownOptions = res.data.results;
     });
   }
 

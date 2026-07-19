@@ -38,7 +38,7 @@ export const menuItem = [
     'school-management.svg',
     'school-management-light.svg',
     'schools',
-    ['school.view']
+    ['school.read']
   ),
   getMenuItems(
     'Teacher Management',

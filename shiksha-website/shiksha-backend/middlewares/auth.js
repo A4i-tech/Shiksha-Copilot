@@ -15,7 +15,7 @@ exports.isAuthenticated = function isAuthenticated(req, res, next) {
       if (err) return res.status(401).json({ success: false, message: "Session Expired! Please login again." });
 
       const user = await User.findById(payload._id)
-        .populate("roles.role")
+        .populate("roles.role");
 
       if (!user) return res.status(401).json({ success: false, message: "Account doesn't exist!" });
       if (user.isDeleted) return res.status(401).json({ success: false, message: "Your account is inactive!" });
@@ -28,7 +28,7 @@ exports.isAuthenticated = function isAuthenticated(req, res, next) {
       next();
     } catch (error) {
       console.log(error);
-      return res.status(500).json({ success: false, message: "Something went wrong" });
+      return res.status(500).json({ success: false, message: error.message });
     }
   });
 };

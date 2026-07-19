@@ -6,6 +6,7 @@ const UserDao = require("../../../dao/user.dao");
 const authHelper = require("../../../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../../../helper/profile.helper");
 const UserAction = require("../../../models/user.action.logs.model");
+const School = require("../../../models/school.model");
 
 jest.mock("../../../dao/user.dao");
 jest.mock("../../../helper/auth.helper", () => ({
@@ -20,6 +21,7 @@ jest.mock("../../../helper/profile.helper", () => ({
 jest.mock("../../../models/user.action.logs.model", () => ({
   create: jest.fn().mockResolvedValue({}),
 }));
+jest.mock("../../../models/school.model", () => ({ findById: jest.fn() }));
 
 describe("AuthManager", () => {
   let manager;
@@ -28,6 +30,7 @@ describe("AuthManager", () => {
     jest.clearAllMocks();
     manager = new AuthManager();
     authHelper.captchaEnabled = false;
+    School.findById.mockReturnValue({ select: () => ({ lean: () => ({ _id: "school-1", name: "School" }) }) });
   });
 
   function encrypt(value) {
@@ -42,6 +45,7 @@ describe("AuthManager", () => {
       loginAttempts: [],
       isDeleted: false,
       roles: [{ role: { permissions: ["dashboard.teacher.view"], scopeType: "SCHOOL", isDeleted: false }, dep: "school-1" }],
+      profiles: { teacher: { classes: [] } },
       generateAuthToken: jest.fn().mockReturnValue("jwt-token"),
       toObject() {
         const { generateAuthToken, toObject, roles, ...rest } = this;
@@ -82,6 +86,7 @@ describe("AuthManager", () => {
 
     expect(result.success).toBe(true);
     expect(result.data.token).toBe("jwt-token");
+    expect(result.data.user.school).toEqual({ _id: "school-1", name: "School" });
     expect(result.data.permissions).toContainEqual({ permission: "dashboard.teacher.view", scopeType: "SCHOOL", dep: "school-1" });
     expect(UserAction.create).toHaveBeenCalled();
     expect(refreshProfileImageIfExpired).toHaveBeenCalled();

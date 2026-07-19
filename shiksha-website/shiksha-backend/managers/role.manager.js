@@ -31,7 +31,7 @@ class RoleManager extends BaseManager {
   async delete(req) {
     const role = await this.dao.getById(req.params.id);
     if (!role) return formatApiReponse(false, "Role not found", null);
-    if (role.isSystem) return formatApiReponse(false, "System roles cannot be deleted", null);
+    if (role.isSuperUser) return formatApiReponse(false, "Superuser role cannot be deleted", null);
     if (await User.exists({ "roles.role": role._id })) return formatApiReponse(false, "Assigned roles cannot be deleted", null);
     await this.dao.delete(role._id);
     return formatApiReponse(true, "Role deleted", null);

@@ -1,13 +1,7 @@
 const TeacherTrainingBatch = require('../models/teacher.training.batch.model');
 const User = require('../models/user.model');
 const TeacherAbsent = require('../models/teacher.absent.model');
-// const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
-const fs = require('fs').promises; // Use promises version of fs for async/await
 const ExcelJS = require('exceljs');
-const UserDao = require('../dao/user.dao');
-const mongoose = require('mongoose');
-// const ejs = require('ejs');
-const path = require('path');
 const BaseController = require('./base.controller');
 const TeacherTrainingBatchManager = require('../managers/teacher.training.batch.manager');
 const handleError = require('../helper/handleError');
@@ -16,7 +10,6 @@ const {
 } = require("../services/azure.blob.service");
 const { hasGlobalPermission, schoolDependency } = require("../helper/permission.helper");
 const { permissionScopeFilter } = require("../helper/scope.helper");
-const Role = require("../models/role.model");
 const School = require("../models/school.model");
 const teacherPopulate = { path: "assignedTeachers", select: "identity profiles.teacher roles", populate: { path: "roles.role", select: "scopeType" } };
 
@@ -28,16 +21,18 @@ async function withTeacherSchools(batch) {
   return data;
 }
 
+function canAccessBatch(req, batch, permission) {
+  return hasGlobalPermission(req.permissions, permission) || String(batch.createdBy) === String(req.user._id);
+}
+
 class TeacherTrainingBatchController extends BaseController {
   constructor() {
     super(new TeacherTrainingBatchManager());
-    this.batchManager = new TeacherTrainingBatchManager();
     this.getBatches = this.getBatches.bind(this);
-    // Bind other methods as needed
   }
 
   async getBatches(req, res) {
-    const result = await this.batchManager.getBatches(req.user);
+    const result = await this.manager.getBatches(req.user);
     if (result.success) {
       return res.json(result.data);
     }
@@ -92,12 +87,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
     
-    if (!hasGlobalPermission(req.permissions, "training.view")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only view batches you created.' });
-      }
-    }
-    // Admins can access any batch
+    if (!canAccessBatch(req, batch, "training.view")) return res.status(403).json({ message: 'Access denied. You can only view batches you created.' });
     let currentEpoch = parseInt(Date.now() / 1000);
 		let expireLimit = 5 * 24 * 60 * 60;
     let expiryUpdated = false;
@@ -145,11 +135,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    if (!hasGlobalPermission(req.permissions, "training.edit")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only assign teachers to batches you created.' });
-      }
-    }
+    if (!canAccessBatch(req, batch, "training.edit")) return res.status(403).json({ message: 'Access denied. You can only assign teachers to batches you created.' });
 
     // Convert teacherId to string for comparison
     const teacherIdStr = teacherId.toString();
@@ -157,12 +143,11 @@ class TeacherTrainingBatchController extends BaseController {
 
     if (!assignedTeacherIds.includes(teacherIdStr)) {
       // Use findByIdAndUpdate instead of save() to avoid losing createdBy field
-      const updatedBatch = await TeacherTrainingBatch.findByIdAndUpdate(
+      await TeacherTrainingBatch.findByIdAndUpdate(
         batchId,
         { $push: { assignedTeachers: teacherId } },
         { new: true, runValidators: false }
       );
-    } else {
     }
     
     const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
@@ -183,12 +168,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    if (!hasGlobalPermission(req.permissions, "training.edit")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only remove teachers from batches you created.' });
-      }
-    }
-    // Admins can remove teachers from any batch
+    if (!canAccessBatch(req, batch, "training.edit")) return res.status(403).json({ message: 'Access denied. You can only remove teachers from batches you created.' });
 
     // Use findByIdAndUpdate instead of save() to avoid losing createdBy field
     await TeacherTrainingBatch.findByIdAndUpdate(
@@ -219,12 +199,7 @@ class TeacherTrainingBatchController extends BaseController {
       });
     }
 
-    if (!hasGlobalPermission(req.permissions, "training.edit")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only delete batches you created.' });
-      }
-    }
-    // Admins can delete any unsubmitted batch
+    if (!canAccessBatch(req, batch, "training.edit")) return res.status(403).json({ message: 'Access denied. You can only delete batches you created.' });
 
     const deletedBatch = await TeacherTrainingBatch.findByIdAndDelete(batchId);
     res.status(200).json({ message: 'Batch deleted successfully', deletedBatch });
@@ -235,9 +210,8 @@ class TeacherTrainingBatchController extends BaseController {
 
   async getTeacherTrainingStats(req, res) {
   try {
-    const teacherRoleIds = (await Role.find({ permissions: "dashboard.teacher.view", isDeleted: false }).select("_id")).map((role) => role._id);
-    const schoolIds = await School.distinct("_id", permissionScopeFilter(req.permissions, "training.view", "", "_id"));
-    const teacherQuery = { "roles.role": { $in: teacherRoleIds }, "roles.dep": { $in: schoolIds } };
+    const schoolIds = await School.distinct("_id", permissionScopeFilter(req.permissions, "training.view"));
+    const teacherQuery = { "profiles.teacher": { $exists: true }, "roles.dep": { $in: schoolIds } };
 
     const relevantTeachers = await User.find(teacherQuery).select('_id');
     const relevantTeacherIds = new Set(relevantTeachers.map(t => t._id.toString()));
@@ -284,12 +258,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    if (!hasGlobalPermission(req.permissions, "training.edit")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only update batches you created.' });
-      }
-    }
-    // Admins can update any batch
+    if (!canAccessBatch(req, batch, "training.edit")) return res.status(403).json({ message: 'Access denied. You can only update batches you created.' });
 
     // Use findByIdAndUpdate instead of save() to avoid losing createdBy field
     const updatedBatch = await TeacherTrainingBatch.findByIdAndUpdate(
@@ -314,12 +283,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    if (!hasGlobalPermission(req.permissions, "training.edit")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only submit batches you created.' });
-      }
-    }
-    // Admins can submit any batch
+    if (!canAccessBatch(req, batch, "training.edit")) return res.status(403).json({ message: 'Access denied. You can only submit batches you created.' });
 
     if (batch.isSubmitted) {
       return res.status(400).json({ message: 'This batch has already been submitted.' });
@@ -363,12 +327,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    if (!hasGlobalPermission(req.permissions, "training.edit")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only upload files to batches you created.' });
-      }
-    }
-    // Admins can upload files to any batch
+    if (!canAccessBatch(req, batch, "training.edit")) return res.status(403).json({ message: 'Access denied. You can only upload files to batches you created.' });
 
     // Handle multiple file uploads
     if (req.files) {
@@ -404,12 +363,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    if (!hasGlobalPermission(req.permissions, "training.view")) {
-      if (batch.createdBy.toString() !== req.user._id.toString()) {
-        return res.status(403).json({ message: 'Access denied. You can only export reports for batches you created.' });
-      }
-    }
-    // Admins can export reports for any batch
+    if (!canAccessBatch(req, batch, "training.view")) return res.status(403).json({ message: 'Access denied. You can only export reports for batches you created.' });
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Batch Report');

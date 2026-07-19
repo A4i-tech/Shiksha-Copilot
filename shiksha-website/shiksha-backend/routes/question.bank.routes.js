@@ -10,6 +10,7 @@ const questionBankController = new QuestionBankController();
 router.post(
   "/question-bank/generate-blue-print",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   validateQuestionBankBluePrintCreate,
   asyncMiddleware(questionBankController.generateQuestionBankBluePrint.bind(questionBankController))
 );
@@ -17,6 +18,7 @@ router.post(
 router.post(
   "/question-bank/generate",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   validateQuestionBankCreate,
   asyncMiddleware(
     questionBankController.generateQuestionBank.bind(questionBankController)
@@ -26,6 +28,7 @@ router.post(
 router.get(
   "/question-bank/question-types",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   validateGetQuestionTypes,
   asyncMiddleware(
     questionBankController.getQuestionTypes.bind(questionBankController)
@@ -35,6 +38,7 @@ router.get(
 router.get(
   "/question-bank/list",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(
     questionBankController.getTeacherQuestionPapers.bind(questionBankController)
   )
@@ -45,36 +49,42 @@ router.get(
 router.get(
   "/question-bank/meta/classes",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getClasses.bind(questionBankController))
 );
 
 router.get(
   "/question-bank/meta/media",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getMedia.bind(questionBankController))
 );
 
 router.get(
   "/question-bank/meta/chapters",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getChapters.bind(questionBankController))
 );
 
 router.get(
   "/question-bank/meta/difficulties",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getDifficulties.bind(questionBankController))
 );
 
 router.get(
   "/question-bank/meta/answer-types",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getAnswerTypes.bind(questionBankController))
 );
 
 router.get(
   "/question-bank/meta/grammar-topics",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   validateGetGrammarTopics,
   asyncMiddleware(questionBankController.getGrammarTopics.bind(questionBankController))
 );
@@ -82,12 +92,14 @@ router.get(
 router.get(
   "/question-bank/meta/paper-config",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getPaperConfig.bind(questionBankController))
 );
 
 router.get(
   "/question-bank/questions",
   isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getQuestions.bind(questionBankController))
 );
 
@@ -101,11 +113,15 @@ router.post(
 
 router.get(
   "/question-bank/:id",
+  isAuthenticated,
+  requirePermission("question-paper.generate"),
   asyncMiddleware(questionBankController.getById.bind(questionBankController))
 );
 
 router.patch(
   "/question-bank/feedback/:id",
+  isAuthenticated,
+  requirePermission("question-paper.generate"),
   validateQuestionBankFeedbackCreate,
   asyncMiddleware(
     questionBankController.updateFeedback.bind(questionBankController)

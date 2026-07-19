@@ -146,7 +146,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   ngOnInit(): void {
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
-    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedInUser.profiles?.teacher?.classes || []);
+    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedInUser.profiles.teacher.classes);
 
     if (this.boardDropdownOptions.length === 1) {
       this.selectedBoard = this.boardDropdownOptions[0].board;

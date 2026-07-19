@@ -30,18 +30,18 @@ async function assertCanGrant(grants, role, dep) {
   return dep;
 }
 
-function scopeFilter(scopes, path, schoolField) {
+function scopeFilter(scopes, path) {
   if (scopes.some((scope) => scope.scopeType === "GLOBAL")) return {};
   const conditions = scopes.filter((scope) => scope.scopeType !== "UNBOUND").map((scope) => {
-    const name = scope.scopeType === "SCHOOL" ? schoolField : scope.scopeType.toLowerCase();
+    const name = scope.scopeType === "SCHOOL" ? "_id" : scope.scopeType.toLowerCase();
     const value = scope.scopeType === "SCHOOL" ? new mongoose.Types.ObjectId(scope.dep) : scope.dep;
     return { [path ? `${path}.${name}` : name]: value };
   });
   return conditions.length ? { $or: conditions } : NO_ACCESS;
 }
 
-function permissionScopeFilter(grants, permission, path, schoolField) {
-  return scopeFilter(getPermission(grants, permission), path, schoolField);
+function permissionScopeFilter(grants, permission, path) {
+  return scopeFilter(getPermission(grants, permission), path);
 }
 
 function isResourceAllowed(grants, permission, resource) {
@@ -51,7 +51,7 @@ function isResourceAllowed(grants, permission, resource) {
     if (scope.scopeType === "GLOBAL") return true;
     if (scope.scopeType === "UNBOUND") return false;
     const field = scope.scopeType.toLowerCase();
-    const value = field === "school" ? resource._id || resource.school : resource[field];
+    const value = field === "school" ? resource._id : resource[field];
     return String(value) === String(scope.dep);
   });
 }

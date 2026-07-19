@@ -182,6 +182,7 @@ router.get(
 router.post(
 	"/teacher-lesson-plan/presentation/:lessonPlanId",
 	isAuthenticated,
+	requirePermission("presentation.generate.lesson_plan"),
 	asyncMiddleware(
 		teacherLessonPlanController.generateLessonPlanPresentation.bind(
 			teacherLessonPlanController

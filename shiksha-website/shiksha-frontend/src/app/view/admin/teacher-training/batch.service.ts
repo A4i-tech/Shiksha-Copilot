@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { AuthService } from '../../../core/services/auth.service';
 import { environment } from 'src/environments/environment';
 
 export interface Teacher {
@@ -40,7 +39,7 @@ export class BatchService {
   private batchesSubject = new BehaviorSubject<Batch[]>([]);
   batches$ = this.batchesSubject.asObservable();
 
-  constructor(private http: HttpClient, private authService: AuthService) {
+  constructor(private http: HttpClient) {
     this.baseUrl = environment.apiUrl;
   }
 

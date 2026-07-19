@@ -111,7 +111,7 @@ class UserController extends BaseController {
     try {
       const { id } = req.params;
 
-      let result = await this.manager.getById(id, req.permissions);
+      let result = await this.manager.getById(id, req.permissions, req.user._id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -129,7 +129,7 @@ class UserController extends BaseController {
   async getProfile(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.getProfileById(id, req.permissions);
+      let result = await this.manager.getProfileById(id, req.permissions, req.user._id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -244,22 +244,12 @@ class UserController extends BaseController {
       const { 
         page = 1, 
         limit = 10, 
-        role, 
-        zone, 
-        district,
         search,
         includeDeleted,
         filter = {}
       } = req.query;
       
       let processedFilter = { ...filter };
-
-      if (role) {
-        processedFilter.role = role;
-      }
-
-      if (zone) processedFilter.zone = zone;
-      if (district) processedFilter.district = district;
 
       const searchFilter = {};
       if (search) {
@@ -279,16 +269,15 @@ class UserController extends BaseController {
 
       const mergedFilter = { ...processedFilter, ...searchFilter };
 
-      let result = await this.manager.getAll(
-        parseInt(page), 
-        parseInt(limit), 
-        mergedFilter,
-        {}, // sort object
+      let result = await this.manager.getAll({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        filters: mergedFilter,
+        sort: {},
         status,
-        req.user._id,
-        req.permissions,
-        filter.profileType === "admin" ? "staff.view" : "teacher.view"
-      );
+        permissions: req.permissions,
+        permission: filter.profileType === "admin" ? "staff.view" : "teacher.view",
+      });
 
       if (result.success) {
         return res.status(200).json(result);

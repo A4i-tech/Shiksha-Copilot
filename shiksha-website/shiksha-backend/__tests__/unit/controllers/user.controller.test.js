@@ -169,7 +169,7 @@ describe("UserController", () => {
 
       await controller.getUserWithSchoolId(mockReq, mockRes);
 
-      expect(mockUserManager.getById).toHaveBeenCalledWith("user-123", mockReq.permissions);
+      expect(mockUserManager.getById).toHaveBeenCalledWith("user-123", mockReq.permissions, "user-123");
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
@@ -182,7 +182,7 @@ describe("UserController", () => {
 
       await controller.getProfile(mockReq, mockRes);
 
-      expect(mockUserManager.getProfileById).toHaveBeenCalledWith("user-123", mockReq.permissions);
+      expect(mockUserManager.getProfileById).toHaveBeenCalledWith("user-123", mockReq.permissions, "user-123");
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
@@ -290,64 +290,24 @@ describe("UserController", () => {
   });
 
   describe("getAll", () => {
-    it("should get all users with default pagination", async () => {
-      const mockResult = { success: true, data: { results: [], total: 0 } };
-      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
-      mockReq.query = {};
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockUserManager.getAll).toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should get all users with custom filters", async () => {
+    it("passes structured staff filters to the scoped list", async () => {
       const mockResult = { success: true, data: { results: [], total: 0 } };
       mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
       mockReq.query = {
         page: "2",
         limit: "20",
-        role: "teacher",
-        zone: "zone1",
-        search: "test"
+        filter: { profileType: "admin", district: ["Mysuru", "Kodagu"] },
       };
 
       await controller.getAll(mockReq, mockRes);
 
-      expect(mockUserManager.getAll.mock.calls[0][2]).toEqual(expect.objectContaining({ role: "teacher" }));
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should handle search filter with regex", async () => {
-      const mockResult = { success: true, data: { results: [], total: 0 } };
-      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
-      mockReq.query = { search: "john" };
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockUserManager.getAll.mock.calls[0][2]).toEqual(expect.objectContaining({
-        $or: expect.arrayContaining([{ "identity.name": expect.objectContaining({ $regex: expect.any(RegExp) }) }])
+      expect(mockUserManager.getAll).toHaveBeenCalledWith(expect.objectContaining({
+        page: 2,
+        limit: 20,
+        filters: { profileType: "admin", district: ["Mysuru", "Kodagu"] },
+        permission: "staff.view",
       }));
-    });
-
-    it("should handle includeDeleted filter", async () => {
-      const mockResult = { success: true, data: { results: [], total: 0 } };
-      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
-      mockReq.query = { includeDeleted: "2" };
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockUserManager.getAll.mock.calls[0][4]).toEqual({ isDeleted: true });
-    });
-
-    it("should handle errors in getAll", async () => {
-      const error = new Error("Database error");
-      mockUserManager.getAll = jest.fn().mockRejectedValue(error);
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(error);
+      expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
 });

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
-const { isAuthenticated, requireAnyPermission, requirePermission } = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const MasterLessonController = require("../controllers/master.lesson.controller.js");
 const {
 	validateMasterLessonCreate,
@@ -26,7 +26,6 @@ router.get(
 router.post(
 	"/lesson-plan/save-to-teacher",
 	isAuthenticated,
-	requireAnyPermission("lesson-plan.edit", "lesson-resource.edit"),
 	asyncMiddleware(
 		masterLessonController.saveToTeacher.bind(masterLessonController)
 	)

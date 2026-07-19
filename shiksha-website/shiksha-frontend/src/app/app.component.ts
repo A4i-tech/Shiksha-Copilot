@@ -1,5 +1,4 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
 
 import { SignInService } from './auth/sign-in.service';
 import { UtilityService } from './core/services/utility.service';
@@ -20,11 +19,11 @@ export class AppComponent implements OnInit, OnDestroy {
   idleTime = Math.round((IDLE_WARNING_THRESHOLD + IDLE_START_THRESHOLD) / 60);
 
   private clipboardObserver: MutationObserver | null = null;
+  private handleBeforeUnload = () => this.idleService.stopWatching();
 
   constructor(
     private authService: SignInService,
     private utilityService: UtilityService,
-    private router: Router,
     private authorizationService: AuthorizationService,
     public loaderMessage: LoaderMessageService,
     private idleService: IdleService
@@ -54,9 +53,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.authService.authMe().subscribe({
         next: (res: any) => {
           const user = { ...res.data.user, permissions: res.data.permissions };
-
           localStorage.setItem('userData', JSON.stringify(user));
-          window.dispatchEvent(new Event('permissionsChanged'));
         },
         error: (err: any) => {
           this.utilityService.handleError(err);
@@ -64,13 +61,7 @@ export class AppComponent implements OnInit, OnDestroy {
       });
     }
 
-    window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
-  }
-
-  // ------ User leaving tab/window ------
-  handleBeforeUnload(event: BeforeUnloadEvent): void {
-    console.log('User is about to close the tab or navigate away.');
-    this.idleService.stopWatching();
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
   // ------ Idle modal close ------
@@ -81,22 +72,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.showIdleWarning = false;
   }
 
-  // ------ Update basic user data (legacy support) ------
-  updateUserData() {
-    this.authService.authMe().subscribe({
-      next: (res: any) => {
-        const user = { ...res.data.user, permissions: res.data.permissions };
-        localStorage.setItem('userData', JSON.stringify(user));
-        window.dispatchEvent(new Event('permissionsChanged'));
-      },
-      error: (err: any) => {
-        this.utilityService.handleError(err);
-      },
-    });
-  }
-
   ngOnDestroy(): void {
     this.clipboardObserver?.disconnect();
-    window.removeEventListener('beforeunload', this.handleBeforeUnload.bind(this));
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
   }
 }

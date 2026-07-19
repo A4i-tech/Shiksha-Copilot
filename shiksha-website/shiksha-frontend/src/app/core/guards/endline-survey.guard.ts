@@ -15,7 +15,7 @@ export class EndlineSurveyGuard implements CanActivate {
       const response = await firstValueFrom(this.survey.checkStatus());
       if (response?.success && response?.data?.status === 'open') setTimeout(() => this.dialog.open());
     } catch (error) {
-      console.error('[EndlineSurveyGuard] status check failed', error);
+      this.utility.handleError(error);
     }
     return true;
   }

@@ -103,7 +103,7 @@ class SchoolManager extends BaseManager {
 
       const currentSchool = await this.dao.getById(id);
       if (!isResourceAllowed(permissions, "school.edit", currentSchool)) throw new Error("School is outside your scope");
-      if (!isResourceAllowed(permissions, "school.edit", { ...data, _id: id })) throw new Error("School is outside your scope");
+      if (!isResourceAllowed(permissions, "school.edit", { ...currentSchool.toObject(), ...data })) throw new Error("School is outside your scope");
 
       const existingSchool = await this.dao.getBySchoolId(data.schoolId);
 
@@ -416,7 +416,7 @@ class SchoolManager extends BaseManager {
         }
       }
       let mergedFilter = { ...transformedFilter, ...searchFilter };
-      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export", "", "_id"));
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
 
       let status = {};
 

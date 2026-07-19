@@ -280,7 +280,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   setProfileInfo(val:any) {
     const teacherProfile = val?.data?.profiles?.teacher;
-    const schoolFacilities = teacherProfile?.school?.facilities;
+    const schoolFacilities = val.data.school.facilities;
     this.mergeSchoolResource(schoolFacilities);
 
     this.userData = val?.data;
@@ -344,7 +344,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   mergeSchoolResource(schoolResource:any){
-    schoolResource ||= [];
     const schoolOthers = schoolResource.filter((ele:any)=> ele.type =='Others').map((item:any)=> 
       {
       return {
@@ -753,8 +752,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.service.updateProfile(data).subscribe({
       next: (res) => {
         this.utilityService.handleResponse(res);
-        const permissions = this.loggedInUser.permissions;
-        this.loggedInUser = { ...res.data, permissions };
+        this.loggedInUser.profiles.teacher = res.data.profiles.teacher;
         localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
         this.router.navigate(['/']);
       },

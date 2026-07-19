@@ -14,7 +14,7 @@ const routes:Routes = [
         path:'list',
         component:SchoolListComponent,
         data: {
-            permissions: ['school.view'],
+            permissions: ['school.read'],
             idleTracking:'custom',
           },
           canActivate: [PermissionGuard]
@@ -32,7 +32,7 @@ const routes:Routes = [
         path:':id',
         component:SchoolAddEditComponent,
         data: {
-            permissions: ['school.view'],
+            permissions: ['school.read'],
             idleTracking:'custom',
           },
           canActivate: [PermissionGuard]

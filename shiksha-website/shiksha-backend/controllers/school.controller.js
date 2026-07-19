@@ -11,7 +11,7 @@ class SchoolController extends BaseController {
 	}
 
 	getAll(req, res) {
-		req.query.filter = intersectFilters(req.query.filter || {}, permissionScopeFilter(req.permissions, "school.read", "", "_id"));
+		req.query.filter = intersectFilters(req.query.filter || {}, permissionScopeFilter(req.permissions, "school.read"));
 		return super.getAll(req, res);
 	}
 

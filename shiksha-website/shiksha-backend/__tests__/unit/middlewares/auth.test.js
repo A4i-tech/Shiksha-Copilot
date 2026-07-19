@@ -22,7 +22,13 @@ function mockUserQuery(user) {
 describe("permission authentication middleware", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("loads one user collection and resolves permissions", async () => {
+  it("rejects a request without a token", () => {
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+    isAuthenticated({ headers: {} }, res, jest.fn());
+    expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it("resolves scoped permissions for an authenticated user", async () => {
     const user = {
       roles: [{ role: { permissions: ["presentation.generate.lesson_plan"], scopeType: "SCHOOL", isDeleted: false }, dep: "school-1" }],
       isDeleted: false,
@@ -61,6 +67,12 @@ describe("permission authentication middleware", () => {
     expect(next).toHaveBeenCalled();
   });
 
+  it("rejects a missing permission", () => {
+    const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
+    requirePermission("teacher.edit")({ permissions: [] }, res, jest.fn());
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   it("enforces any permission", () => {
     const next = jest.fn();
     requireAnyPermission("teacher.edit", "staff.edit")({ permissions: [{ permission: "staff.edit" }] }, { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() }, next);
@@ -71,5 +83,11 @@ describe("permission authentication middleware", () => {
     const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
     requireUnscopedPermission("role.manage")({ permissions: [{ permission: "role.manage", scopeType: "DISTRICT" }] }, res, jest.fn());
     expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it.each(["GLOBAL", "UNBOUND"])("accepts a %s grant as unscoped", (scopeType) => {
+    const next = jest.fn();
+    requireUnscopedPermission("role.manage")({ permissions: [{ permission: "role.manage", scopeType }] }, {}, next);
+    expect(next).toHaveBeenCalled();
   });
 });

@@ -34,7 +34,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
-  loggedInUser: any;
+  teacherProfile: any;
 
   allAvailableQuestions: any[] = [];
   isLoadingQuestions: boolean = false;
@@ -117,10 +117,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.initializeForm();
 
     const data: string = localStorage.getItem('userData') ?? '';
-    if (data) {
-      this.loggedInUser = JSON.parse(data);
-      this.getBoardsList(this.loggedInUser);
-    }
+    if (data) this.teacherProfile = JSON.parse(data).profiles.teacher;
+    this.getBoardsList();
 
     this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...LOC_LANGUAGES.flatMap(item => item.value)];
     this.setPreferredLanguage();
@@ -184,10 +182,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   get f(): any { return this.questionBankConfigForm.controls; }
 
-  getBoardsList(userDetails: any) {
-    if (!userDetails?.profiles?.teacher) return;
-
-    const rawClasses = userDetails.profiles.teacher.classes;
+  getBoardsList() {
+    const rawClasses = this.teacherProfile.classes;
     const uniqueBoards = new Set<string>();
 
     rawClasses.forEach((c: any) => {
@@ -214,7 +210,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     if (val) {
       const boardName = val.board;
-      const uniqueClasses = new Set(this.loggedInUser.classes.filter((c: any) => c.board === boardName).map((c: any) => c.class));
+      const uniqueClasses = new Set(this.teacherProfile.classes.filter((c: any) => c.board === boardName).map((c: any) => c.class));
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
         .sort((a, b) => parseInt(a.class) - parseInt(b.class));
@@ -269,7 +265,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = val.class;
       const selectedBoard = this.f.board.value;
       const uniqueMediums = new Set<string>();
-      this.loggedInUser.classes.forEach((c: any) => {
+      this.teacherProfile.classes.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium) {
           uniqueMediums.add(c.medium);
         }
@@ -297,7 +293,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
       const subjectMap = new Map<string, string>();
-      this.loggedInUser.classes.forEach((c: any) => {
+      this.teacherProfile.classes.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === val.medium && c.subject) {
           const formatted = this.formatSubjectName(c.subject);
           if (!subjectMap.has(formatted)) subjectMap.set(formatted, c.subject);
@@ -316,7 +312,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   private setPreferredLanguage(): void {
-    this.f.language.setValue(this.loggedInUser.preferredLanguage);
+    this.f.language.setValue(this.teacherProfile.preferredLanguage);
   }
 
   formatSubjectName(subject: string): string {

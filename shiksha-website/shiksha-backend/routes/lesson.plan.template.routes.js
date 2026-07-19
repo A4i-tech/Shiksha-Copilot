@@ -14,11 +14,15 @@ router.post(
 
 router.get(
   "/lesson-plan-template/list",
+  isAuthenticated,
+  requirePermission("content.view"),
   asyncMiddleware(lessonPlanController.findTemplates.bind(lessonPlanController))
 );
 
 router.get(
   "/lesson-plan-template/:id",
+  isAuthenticated,
+  requirePermission("content.view"),
   asyncMiddleware(lessonPlanController.getById.bind(lessonPlanController))
 );
 module.exports = router;

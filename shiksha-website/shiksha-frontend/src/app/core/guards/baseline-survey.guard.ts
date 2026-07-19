@@ -1,79 +1,46 @@
 import { Injectable, NgZone, inject } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { firstValueFrom, of } from 'rxjs';
+import { CanActivate } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 
 import { AuthorizationService } from '../services/authorization.service';
-import { SignInService } from 'src/app/auth/sign-in.service';
 import { BaselineSurveyService } from '../services/baseline-survey.service';
 import { BaselineSurveyDialogService } from '../services/baseline-survey-dialog.service';
+import { UtilityService } from '../services/utility.service';
 
 @Injectable({ providedIn: 'root' })
 export class BaselineSurveyGuard implements CanActivate {
   private authz = inject(AuthorizationService);
-  private auth = inject(SignInService);
   private survey = inject(BaselineSurveyService);
   private dialog = inject(BaselineSurveyDialogService);
   private zone = inject(NgZone);
+  private utility = inject(UtilityService);
 
-  async canActivate(_route: ActivatedRouteSnapshot, _state: RouterStateSnapshot): Promise<boolean> {
-    // If not logged in, don’t block routing here.
+  async canActivate(): Promise<boolean> {
     if (!this.authz.isLoggedIn()) return true;
+    if (!this.utility.hasPermission(['survey.baseline.complete'])) return true;
+    if (this.survey.isDismissed()) return true;
 
-    // 1) Ensure we have fresh user (and roles)
-    try {
-      const res: any = await firstValueFrom(this.auth.authMe());
-      if (res?.data?.user) localStorage.setItem('userData', JSON.stringify({ ...res.data.user, permissions: res.data.permissions }));
-    } catch {
-      // fall back to stored user if present
-    }
-
-    const user = this.getUser();
-    if (!user?.permissions?.some((grant: any) => grant.permission === 'survey.baseline.complete')) return true;
-
-    // Skip if already dismissed/postponed in the current session
-    if (this.survey.isDismissed()) {
-      return true;
-    }
-
-    // 2) Check completion
     try {
       const resp = await firstValueFrom(this.survey.checkCompleted());
-      // Any failure (5xx/network → interceptor redirects to /error/503; 4xx → thrown)
-      // rejects the promise and lands in catch below, so a resolved resp is always success:true.
       const completed = !!resp?.data?.completed;
       const remindLaterCount = resp?.data?.remindLaterCount;
       const isMandatory = !!resp?.data?.isMandatory;
       const maxReminders = resp?.data?.maxReminders;
 
-      // 3) Open dialog ONLY if survey is not completed
       if (!completed) {
-        // Defer dialog open to next macrotask to avoid change detection race with navigation
         this.zone.runOutsideAngular(() => {
           setTimeout(() => {
             this.zone.run(async () => {
-              // fire-and-forget so guard returns immediately
-              const res = await this.dialog.openSurvey(isMandatory, remindLaterCount, maxReminders);
-              if (res === 'remind') {
-                this.survey.setDismissed(true);
-              }
+              const result = await this.dialog.openSurvey(isMandatory, remindLaterCount, maxReminders);
+              if (result === 'remind') this.survey.setDismissed(true);
             });
           }, 0);
         });
       }
-    } catch (e) {
-      // swallow errors so routing isn't blocked
-      console.error('[BaselineSurveyGuard] check/open failed', e);
+    } catch (error) {
+      this.utility.handleError(error);
     }
- 
-    return true;
-  }
 
-  private getUser(): any {
-    try {
-      const s = localStorage.getItem('userData');
-      return s ? JSON.parse(s) : null;
-    } catch {
-      return null;
-    }
+    return true;
   }
 }

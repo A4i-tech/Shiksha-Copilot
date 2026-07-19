@@ -20,7 +20,7 @@ class OperationsManager {
 
   async getContentActivity(page, limit, filters, sort, grants) {
     try {
-      filters = intersectFilters(filters, permissionScopeFilter(grants, "content.activity.view", "user.school", "_id"));
+      filters = intersectFilters(filters, permissionScopeFilter(grants, "content.activity.view", "user.school"));
       const result = await this.regeneratedLogDao.getContentActivity(page, limit, filters, sort);
       return formatApiReponse(true, "", result);
     } catch (err) {
@@ -32,7 +32,7 @@ class OperationsManager {
     try {
       const { filter = {}, search = "" } = req.query;
       const searchFilter = search ? { $or: ["user.identity.name", "user.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
-      const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school", "_id");
+      const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
       const activities = await this.regeneratedLogDao.getAllContentActivity(intersectFilters({ ...filter, ...searchFilter }, scopeFilter));
       const worker = new Worker(path.resolve(__dirname, "../worker/exportcontentactivityworker.js"));
       worker.on("error", (err) => console.error("Content activity export worker error", { userId: String(req.user._id), error: err.message }));

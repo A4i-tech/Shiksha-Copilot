@@ -1,10 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { forkJoin, map, Observable } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
 
-/** Shared /users API. Flat forms → nested payloads. */
 @Injectable({ providedIn: 'root' })
 export class StaffUserCommonService extends BaseRestService {
   baseUrl = environment.apiUrl;
@@ -16,6 +15,27 @@ export class StaffUserCommonService extends BaseRestService {
 
   getById(id: string) { return this.get(id); }
   getRoles() { return this.http.get(`${this.baseUrl}/roles`); }
+  getAssignmentData() {
+    return forkJoin({
+      roles: this.http.get<any>(`${this.baseUrl}/roles`),
+      regions: this.http.get<any>(`${this.baseUrl}/regions/list?limit=999`),
+      schools: this.http.get<any>(`${this.baseUrl}/school/list?limit=999`),
+    }).pipe(map(({ roles, regions, schools }) => {
+      const scopeOptions: Record<string, any[]> = { STATE: [], ZONE: [], DISTRICT: [], BLOCK: [], SCHOOL: [] };
+      for (const region of regions.data.results) {
+        scopeOptions['STATE'].push({ value: region.state, label: region.state });
+        for (const zone of region.zones) {
+          scopeOptions['ZONE'].push({ value: zone.name, label: `${region.state} / ${zone.name}` });
+          for (const district of zone.districts) {
+            scopeOptions['DISTRICT'].push({ value: district.name, label: `${zone.name} / ${district.name}` });
+            for (const block of district.blocks) scopeOptions['BLOCK'].push({ value: block.name, label: `${district.name} / ${block.name}` });
+          }
+        }
+      }
+      scopeOptions['SCHOOL'] = schools.data.results.map((school: any) => ({ value: school._id, label: school.name }));
+      return { roles: roles.data.results, regions: regions.data.results, scopeOptions };
+    }));
+  }
   deactivate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/deactivate`, {}); }
   activate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/activate`, {}); }
   importUsers(formdata: any) { return this.http.post(`${this.baseUrl}/users/import`, formdata); }
@@ -44,7 +64,6 @@ export class StaffUserCommonService extends BaseRestService {
     return this.http.put(`${this.baseUrl}/users/${id}`, {
       identity: { name: form.name, phone: form.phone },
       roles: form.roles,
-      isDeleted: form.isDeleted,
     });
   }
 

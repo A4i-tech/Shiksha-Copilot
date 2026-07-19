@@ -59,7 +59,6 @@ async function processRow(
     validationErrors.push({ row: rowNumber, message: `Cannot assign roles at school with diseCode ${schoolId}` });
     return;
   }
-
   userDataRow.roles = userDataRow.roles.map((role) => ({ roleId: String(role._id), dep: String(existingSchool._id) }));
 
   const { error } = bulkUploadSchema.validate(userDataRow);
@@ -180,7 +179,7 @@ dbService.getConnection().then(async (client) => {
     const userData = [];
     const validationErrors = [];
     const phoneNumbers = new Set();
-    const roleByName = new Map((await Role.find({ isDeleted: false, scopeType: "SCHOOL" }).select("_id name scopeType")).map((role) => [role.name.toLowerCase(), role]));
+    const roleByName = new Map((await Role.find({ isDeleted: false, scopeType: "SCHOOL" }).select("_id name")).map((role) => [role.name.toLowerCase(), role]));
 
     const rowProcessingPromises = [];
     worksheet.forEach((rowData, rowNumber) => {

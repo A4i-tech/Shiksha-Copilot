@@ -20,13 +20,7 @@ class UserDao extends BaseDao {
 		}
 	}
 
-	async getAll(
-		page = 1,
-		limit,
-		filters = {},
-		sort = {},
-		status
-	) {
+	async getAll(page, limit, filters, sort, status) {
 		try {
 			let processedFilters = { ...filters, ...status };
 

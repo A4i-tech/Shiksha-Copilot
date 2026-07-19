@@ -18,7 +18,6 @@ const Role = require("../models/role.model");
 const School = require("../models/school.model");
 const { getRolePermissions, getPermission, schoolDependency } = require("../helper/permission.helper");
 const { assertCanGrant, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
-const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
 const logger = require("../config/loggers");
 
 async function prepareAssignments(input, actor, current, teacher) {
@@ -36,7 +35,7 @@ async function prepareAssignments(input, actor, current, teacher) {
     const role = roleById.get(assignment.roleId);
     if (role.isSuperUser && !actorIsSuper) throw new Error("Only a superuser can assign the superuser role");
     const dep = await assertCanGrant(grants, role, assignment.dep);
-    const key = `${assignment.roleId}:${assignment.dep}`;
+    const key = `${assignment.roleId}:${dep == null ? "" : String(dep)}`;
     if (seen.has(key)) throw new Error("Duplicate role assignment");
     seen.add(key);
     const next = { role: role._id, dep };
@@ -97,20 +96,21 @@ class UserManager extends BaseManager {
     }
   }
 
-  async getProfileById(id, grants) {
+  async getProfileById(id, grants, actorId) {
     try {
       let user = await this.dao.getById(id);
-      if (!user || !await canAccessUser(grants, ["profile.view", "teacher.view"], user)) throw new Error("User is outside your scope");
+      const permission = String(id) === String(actorId) ? "profile.view" : "teacher.view";
+      if (!user || !await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
 
       let plainUser = user.toObject();
       delete plainUser.roles;
+      const school = schoolDependency(user.roles);
+      plainUser.school = await this.schoolDao.getById(school);
 
       // Refresh profile image SAS URL if expired
       await refreshProfileImageIfExpired(plainUser, (id, updates) => this.dao.update(id, updates));
 
-      let groupByBoards = await this.classDao.getGroupClassesByBoard(
-        schoolDependency(user.roles)
-      );
+      let groupByBoards = await this.classDao.getGroupClassesByBoard(school);
 
       let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
 
@@ -143,12 +143,7 @@ class UserManager extends BaseManager {
         message: "Teacher profile retreived successfully",
       };
     } catch (err) {
-      return {
-        success: false,
-        data: false,
-        message: "Something went wrong",
-        err,
-      };
+      return { success: false, data: false, message: err.message, err };
     }
   }
 
@@ -156,8 +151,8 @@ class UserManager extends BaseManager {
     try {
       let data = await this.dao.getByPhone(req.body.phone);
       if (!data) return formatApiReponse(false, "", null);
-      const permissions = data.profiles.teacher ? ["profile.view", "teacher.view"] : "staff.view";
-      if (!await canAccessUser(req.permissions, permissions, data)) throw new Error("User is outside your scope");
+      const permission = String(data._id) === String(req.user._id) ? "profile.view" : data.profiles.teacher ? "teacher.view" : "staff.view";
+      if (!await canAccessUser(req.permissions, permission, data)) throw new Error("User is outside your scope");
       return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
@@ -180,7 +175,7 @@ class UserManager extends BaseManager {
       }
 
       const prepared = payload.roles && await prepareAssignments(payload.roles, actor, user.roles, Boolean(user.profiles.teacher));
-      const schoolChanged = Boolean(prepared && prepared.school && String(prepared.school) !== schoolDependency(user.roles));
+      const schoolChanged = Boolean(user.profiles.teacher && prepared && String(prepared.school) !== schoolDependency(user.roles));
       if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new Error("User is outside your scope");
 
       let forceRelogin = false;
@@ -299,13 +294,13 @@ class UserManager extends BaseManager {
     }
   }
 
-  async getById(userId, grants) {
+  async getById(userId, grants, actorId) {
     try {
       const user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "User not found" };
       }
-      const permission = user.profiles.teacher ? ["profile.view", "teacher.view"] : "staff.view";
+      const permission = String(userId) === String(actorId) ? "profile.view" : user.profiles.teacher ? "teacher.view" : "staff.view";
       if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
       return { success: true, data: user };
     } catch (err) {
@@ -484,7 +479,7 @@ class UserManager extends BaseManager {
       }
 
       let mergedFilter = { ...filter, ...searchFilter };
-      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "teacher.export", "school", "_id"));
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "teacher.export", "school"));
 
       let status = {};
 
@@ -538,20 +533,9 @@ class UserManager extends BaseManager {
     }
   }
 
-  async getAll(
-    page,
-    limit,
-    filters,
-    sort,
-    status,
-    userId,
-    permissions,
-    permission
-  ) {
+  async getAll({ page, limit, filters, sort, status, permissions, permission }) {
     try {
       let processedFilters = { ...filters };
-      processedFilters = normalizeMultiValueFilter(processedFilters, ["zone", "district"]);
-      processedFilters = buildMongoInQuery(processedFilters, ["zone", "district"]);
       const scopes = getPermission(permissions, permission);
       if (!scopes) throw new Error("Access denied");
       let serverScope;
@@ -559,17 +543,10 @@ class UserManager extends BaseManager {
         const dependencies = scopes.filter((scope) => scope.dep).map((scope) => scope.scopeType === "SCHOOL" ? new mongoose.Types.ObjectId(scope.dep) : scope.dep);
         serverScope = scopes.some((scope) => scope.scopeType === "GLOBAL") ? {} : { "roles.dep": { $in: dependencies } };
       } else {
-        serverScope = scopeFilter(scopes, "school", "_id");
+        serverScope = scopeFilter(scopes, "school");
       }
       processedFilters = intersectFilters(processedFilters, serverScope);
-      let data = await this.dao.getAll(
-        page,
-        limit,
-        processedFilters,
-        sort,
-        status,
-        userId
-      );
+      let data = await this.dao.getAll(page, limit, processedFilters, sort, status);
       return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -584,7 +561,7 @@ class UserManager extends BaseManager {
       return formatApiReponse(true, "Logs saved successfully!", userActivity);
     }
     catch (err) {
-      return formatApiReponse(false, err.message, e);
+      return formatApiReponse(false, err.message, err);
     }
   }
 

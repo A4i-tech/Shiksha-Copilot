@@ -56,7 +56,7 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    const state = this.loggedInUser?.profiles?.teacher?.state || this.loggedInUser?.profiles?.admin?.state;
+    const state = this.loggedInUser?.school?.state || this.loggedInUser?.profiles?.admin?.state;
     const localLanguage = LOC_LANGUAGES.find((language) => language.state === state)?.value || [];
     this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...localLanguage];
   }
