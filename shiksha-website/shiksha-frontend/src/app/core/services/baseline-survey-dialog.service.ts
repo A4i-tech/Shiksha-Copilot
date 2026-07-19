@@ -32,6 +32,7 @@ export class BaselineSurveyDialogService {
       width: '720px',
       maxWidth: '95vw',
       disableClose: true,
+      closeOnNavigation: false,
       autoFocus: true,
       data: { force, isMandatory: force, remindLaterCount, maxReminders }
     });
