@@ -1,7 +1,7 @@
 const BaseManager = require("./base.manager");
 const ChatDao = require("../dao/chat.dao");
 const formatApiResponse = require("../helper/response");
-const { postToChatBot, postToLessonChatBot, postToChatBotStream } = require("../services/chat.bot.service");
+const { postToLessonChatBot, postToChatBotStream } = require("../services/chat.bot.service");
 const { CHAT_LIMIT } = require("../config/constants");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
@@ -20,81 +20,6 @@ class ChatManager extends BaseManager {
 		this.teacherLessonPlanDao = new TeacherLessonPlanDao();
 		this.masterLessonDao = new MasterLessonDao();
 		this.schoolDao = new SchoolDao();
-	}
-
-	async sendMessage(userId, message) {
-		try {
-			const today = new Date();
-			today.setUTCHours(0, 0, 0, 0);
-			let chatSession = await this.dao.getActiveSession(userId, today);
-
-			if (!chatSession) {
-				chatSession = await this.dao.create({
-					userId,
-					sessionDate: today,
-					requestCount: 0,
-				});
-				await this.dao.createMessage({
-					chatHistoryId: chatSession._id,
-					messages: [],
-				});
-			}
-
-			const totalMessages = await this.getTotalSessionMessagesCount(userId);
-
-			if (totalMessages >= CHAT_LIMIT) {
-				return formatApiResponse(
-					false,
-					"Session closed due to request limit exceeded",
-					null
-				);
-			}
-
-			let existingMessages = await this.dao.getMessagesBySessionId(
-				chatSession._id
-			);
-
-			let formattedMessages = existingMessages.messages
-				.map((m) => [
-					{ role: "user", message: m.question },
-					{ role: "system", message: m.answer },
-				])
-				.flat();
-			formattedMessages.reverse();
-
-			formattedMessages.push({ role: "user", message });
-
-			const response = await postToChatBot({
-				user_id: userId,
-				messages: formattedMessages,
-			});
-
-			if (response.status !== 200) {
-				throw new Error(`Something went wrong with copilot! Please try later`);
-			}
-
-			if (!response.data || !response.data.response) {
-				throw new Error("Something went wrong with copilot! Please try later");
-			}
-
-			await this.dao.addMessage(chatSession._id, {
-				question: message,
-				answer: response.data.response,
-				references: response.data.references || [],
-			});
-
-			chatSession.requestCount += 1;
-
-			chatSession.save();
-
-			return formatApiResponse(
-				true,
-				"Response from copilot",
-				{ response: response.data.response, references: response.data.references || [] }
-			);
-		} catch (err) {
-			return formatApiResponse(false, err.message, err);
-		}
 	}
 
 	async #buildUserContext(userId, includeClasses){
