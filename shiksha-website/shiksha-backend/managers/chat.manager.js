@@ -61,12 +61,13 @@ class ChatManager extends BaseManager {
 			let [existingMessages, userContext] = await Promise.all([this.dao.getMessagesBySessionId(chatSession._id), this.#buildUserContext(userId, true)]);
 
 			let formattedMessages = existingMessages.messages
+				.slice()
+				.reverse()
 				.map((m) => [
 					{ role: "user", message: m.question },
-					{ role: "system", message: m.answer },
+					{ role: "assistant", message: m.answer },
 				])
 				.flat();
-			formattedMessages.reverse();
 
 			formattedMessages.push({ role: "user", message });
 			formattedMessages.unshift({ role: "user", message: userContext })
@@ -90,24 +91,11 @@ class ChatManager extends BaseManager {
 
 					for (const line of lines) {
 						if (line.trim() === '') continue;
-						if (line.startsWith('data: ')) {
-							const dataStr = line.slice(6);
-							if (dataStr === '[DONE]') continue;
-							try {
-								const data = JSON.parse(dataStr);
-								if (data.type === 'content') {
-									fullAnswer += data.delta;
-								} else if (data.type === 'references') {
-									references = data.data;
-								}
-							} catch (e) {
-								// console.error('Error parsing SSE data for DB save', e);
-								// Sometime chunks might be malformed if cut in middle of JSON, but buffer handles lines.
-								// However, if JSON itself contains \n it might break? 
-								// Standard SSE sends one line per event data. My Python implementation sends json.dumps() + "\n". 
-								// json.dumps usually escapes newlines unless ensure_ascii=False etc. 
-								// So splitting by \n is generally safe for this specific implementation.
-							}
+						const data = JSON.parse(line);
+						if (data.type === 'content') {
+							fullAnswer += data.delta;
+						} else if (data.type === 'references') {
+							references = data.data;
 						}
 					}
 				} catch (err) {
