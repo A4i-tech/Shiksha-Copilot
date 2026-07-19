@@ -303,8 +303,7 @@ async def test_chat(
     _log_token_usage(graph_rag_ops_instance)
 
     # Assertions
-    assert response is not None, "chat_with_index should return a response"
-    assert isinstance(response, str), "Chat response should be a string"
+    assert isinstance(response.response, str), "Chat response should be a string"
 
 
 @pytest.mark.asyncio

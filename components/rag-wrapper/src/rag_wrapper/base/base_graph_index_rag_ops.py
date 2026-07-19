@@ -18,6 +18,7 @@ from llama_index.core import (
     PropertyGraphIndex,
     get_response_synthesizer,
 )
+from llama_index.core.base.response.schema import RESPONSE_TYPE
 from llama_index.core.llms import ChatMessage, LLM
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.schema import TransformComponent, TextNode
@@ -202,7 +203,7 @@ class BaseGraphIndexRagOps(BaseRagOps):
         sub_retrievers: Optional[List[Any]] = None,
         metadata_filter: Optional[Dict[str, str]] = None,
         output_cls: type[T] | None = None,
-    ) -> Any:
+    ) -> RESPONSE_TYPE:
         """
         Engage in conversational interaction with the RAG index using a chat engine.
 

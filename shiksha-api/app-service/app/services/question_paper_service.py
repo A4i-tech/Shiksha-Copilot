@@ -15,6 +15,7 @@ from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.core.llms import ChatMessage
+from llama_index.core.base.response.schema import PydanticResponse
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
 
@@ -225,14 +226,15 @@ class QuestionPaperService:
                 chat_history = [ChatMessage(role="system", content=system_prompt)]
                 with propagate_attributes(metadata={
                     "unit_name": record.title,
-                    "question_types": [t.type.value for _, t, _ in slot],
-                    "slot_count": len(slot),
+                    "question_types": ", ".join(t.type.value for _, t, _ in slot),
+                    "slot_count": str(len(slot)),
                     "model": settings.question_paper_model,
-                    "rag_enabled": rag_adapter is not None,
+                    "rag_enabled": "true" if rag_adapter is not None else "false",
                     "index_path": record.index_path,
                 }):
                     response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
-                items = response_format.model_validate(response_content["response"])
+                    assert isinstance(response_content, PydanticResponse)
+                items = response_content.response
         except Exception as e:
             logger.exception(e)
             return []
@@ -331,13 +333,13 @@ class QuestionPaperService:
             ],
             metadata={
                 "board": request.board,
-                "grade": request.grade,
+                "grade": str(request.grade),
                 "subject": request.subject,
                 "medium": request.medium,
-                "chapters": [ch.title for ch in request.chapters],
-                "learning_outcomes": all_los,
-                "question_types": [t.type.value for t in request.template],
-                "total_marks": request.total_marks,
+                "chapters": ", ".join(ch.title for ch in request.chapters),
+                "learning_outcomes": ", ".join(all_los),
+                "question_types": ", ".join(t.type.value for t in request.template),
+                "total_marks": str(request.total_marks),
                 "model": settings.question_paper_model,
             },
         ):

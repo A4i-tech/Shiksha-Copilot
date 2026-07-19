@@ -1,6 +1,5 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from datetime import datetime
 from enum import Enum
 
 
@@ -20,16 +19,7 @@ class ConversationMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     user_id: str = Field(..., description="User identifier")
-    messages: List[ConversationMessage] = Field(
-        ..., description="List of conversation messages"
-    )
-
-    @field_validator("messages")
-    @classmethod
-    def validate_messages_not_empty(cls, v):
-        if not v:
-            raise ValueError("Messages list cannot be empty")
-        return v
+    messages: List[ConversationMessage] = Field(..., min_length=1, description="List of conversation messages")
 
 
 class Reference(BaseModel):
@@ -46,30 +36,12 @@ class ChatResponse(BaseModel):
 
 class LessonChatRequest(BaseModel):
     user_id: str = Field(..., description="User identifier")
-    chapter_id: str = Field(
-        ...,
-        description="Chapter identifier with board, medium, grade, subject, number and title",
-    )
+    chapter_id: str = Field(..., description="Chapter identifier with board, medium, grade, subject, number and title")
     index_path: str = Field(..., description="Path to the chapter index for retrieval")
-    messages: List[ConversationMessage] = Field(
-        ..., description="List of conversation messages"
-    )
-
-    @field_validator("messages")
-    @classmethod
-    def validate_messages_not_empty(cls, v):
-        if not v:
-            raise ValueError("Messages list cannot be empty")
-        return v
+    messages: List[ConversationMessage] = Field(..., min_length=1, description="List of conversation messages")
 
 
 class LessonChatResponse(BaseModel):
     user_id: str = Field(..., description="User identifier")
     response: str = Field(..., description="AI-generated response")
-    references: Optional[List[Reference]] = Field(default_factory=list, description="List of references/citations used in the response")
-
-
-class ErrorResponse(BaseModel):
-    error: str = Field(..., description="Error message")
-    error_code: Optional[str] = Field(None, description="Error code")
-    details: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    references: List[Reference] = Field(default_factory=list, description="List of references/citations used in the response")

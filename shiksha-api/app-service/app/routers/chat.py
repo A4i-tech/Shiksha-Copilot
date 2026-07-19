@@ -6,7 +6,6 @@ from app.models.chat import (
     ChatRequest,
     LessonChatRequest,
     LessonChatResponse,
-    Reference,
 )
 from app.services.general_chat_service import GeneralChatService
 import logging
@@ -69,12 +68,8 @@ async def lesson_chat(request: LessonChatRequest, service: LessonChatService = D
     of chapter content and curriculum alignment.
     """
     try:
-        response_content = await service(request)
-        return LessonChatResponse(
-            user_id=request.user_id,
-            response=response_content["response"],
-            references=[Reference(**ref) for ref in response_content.get("references", [])],
-        )
+        response, references = await service(request)
+        return LessonChatResponse(user_id=request.user_id, response=response, references=references)
     except ValueError as e:
         logger.error(f"Configuration error in lesson chat: {e}")
         raise HTTPException(
