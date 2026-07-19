@@ -56,6 +56,19 @@ class ChatController extends BaseController {
         }
     }
 
+    async restartSession(req, res) {
+        try {
+            const result = await this.manager.restartSession(req.user._id);
+            if (!result.success) {
+                return res.status(400).json({ message: result.message, data: result.data });
+            }
+            return res.status(200).json({ message: result.message, data: result.data });
+        } catch (err) {
+            console.log('Error --> ChatController -> restartSession()', err);
+            return handleError(err, res);
+        }
+    }
+
     async sendLessonMessage(req, res) {
         try {
             const { recordId, chapterId } = req.params;

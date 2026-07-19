@@ -70,7 +70,7 @@ class ChatManager extends BaseManager {
 				.flat();
 
 			formattedMessages.push({ role: "user", message });
-			formattedMessages.unshift({ role: "user", message: userContext })
+			formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." })
 
 			const response = await postToChatBotStream({
 				user_id: userId,
@@ -139,6 +139,22 @@ class ChatManager extends BaseManager {
 			let messages = await this.dao.getMessagesBySessionId(chatSession._id);
 
 			return formatApiResponse(true, "Chat history fetched!", messages);
+		} catch (err) {
+			return formatApiResponse(false, err.message, err);
+		}
+	}
+
+	async restartSession(userId) {
+		try {
+			const today = new Date();
+			today.setUTCHours(0, 0, 0, 0);
+			const chatSession = await this.dao.getActiveSession(userId, today);
+
+			if (chatSession) {
+				await this.dao.endSession(chatSession._id);
+			}
+
+			return formatApiResponse(true, "New chat started", null);
 		} catch (err) {
 			return formatApiResponse(false, err.message, err);
 		}
@@ -226,7 +242,7 @@ class ChatManager extends BaseManager {
 			formattedMessages.reverse();
 
 			formattedMessages.push({ role: "user", message });
-			formattedMessages.unshift({ role: "user", message: userContext });
+			formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." });
 
 			const payload = this._createChatPayload(chapterDetails, subjectDetails, formattedMessages, userId)
 
@@ -289,16 +305,12 @@ class ChatManager extends BaseManager {
 		const todayEnd = new Date();
 		todayEnd.setUTCHours(23, 59, 59, 999);
 
-		let chatSession = await this.dao.getActiveSession(userId, todayStart);
+		const [generalMessageCount, lessonMessageHistory] = await Promise.all([
+			this.dao.getRequestCount(userId, todayStart, todayEnd),
+			this.dao.getAllLessonMessages(userId, todayStart, todayEnd),
+		]);
 
-		let messageHistory = await this.dao.getAllLessonMessages(
-			userId,
-			todayStart,
-			todayEnd
-		);
-
-		const messageCount = chatSession?.requestCount + messageHistory?.length;
-		return messageCount
+		return generalMessageCount + lessonMessageHistory.length;
 	}
 }
 

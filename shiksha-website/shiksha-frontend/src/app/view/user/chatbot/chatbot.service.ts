@@ -81,6 +81,10 @@ export class ChatbotService extends BaseRestService {
     return this.get('messages');
   }
 
+  restartGeneralChat(): Observable<any> {
+    return this.post('restart', {});
+  }
+
   getIndexMessages(recordId: any, chapterId: any): Observable<any> {
     return this.http.get(`${this.baseUrl}/lessonchat/messages/${recordId}/${chapterId}`);
   }

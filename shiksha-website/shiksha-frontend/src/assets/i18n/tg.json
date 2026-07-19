@@ -649,5 +649,8 @@
   "Grammar: Multiple Choice Questions": "వ్యాకరణం: బహుళ ఎంపిక ప్రశ్నలు",
   "Grammar: Fill in the blanks": "వ్యాకరణం: ఖాళీలను పూరించండి",
   "Grammar: Identify and correct the error": "వ్యాకరణం: తప్పును గుర్తించి సరిచేయండి",
-  "Required": "తప్పనిసరి"
+  "Required": "తప్పనిసరి",
+  "New chat": "కొత్త చాట్",
+  "Start a new chat? Your current conversation will be closed.": "కొత్త చాట్‌ను ప్రారంభించాలా? మీ ప్రస్తుత సంభాషణ మూసివేయబడుతుంది.",
+  "New chat started": "కొత్త చాట్ ప్రారంభించబడింది"
 }
