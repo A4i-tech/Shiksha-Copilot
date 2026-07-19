@@ -76,11 +76,7 @@ class UserController extends BaseController {
       const userId = req.user._id;
       const userName = req.user.identity.name;
 
-      const result = await this.manager.bulkUpload(
-        req.file.buffer,
-        userId.toString(),
-        userName
-      );
+      const result = await this.manager.bulkUpload(req.file.buffer, userId.toString(), userName, req.permissions);
       if (result.success)
         return res.status(200).json({
           message: "Bulk upload initiated , Please verify for audit logs!",
@@ -115,7 +111,7 @@ class UserController extends BaseController {
     try {
       const { id } = req.params;
 
-      let result = await this.manager.getById(id);
+      let result = await this.manager.getById(id, req.permissions);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -133,25 +129,7 @@ class UserController extends BaseController {
   async getProfile(req, res) {
     try {
       const { id } = req.params;
-      const requesterId = String(req.user._id);
-      const isPrivileged =
-        req.user.role?.includes("admin") || req.user.role?.includes("manager");
-
-      if (!isPrivileged && id !== requesterId) {
-        return res.status(403).json({ success: false, message: "Forbidden" });
-      }
-
-      // Auth middleware already loaded the requester's own doc; reuse it
-      // for self-lookups instead of hitting the DB again.
-      const isSelfLookup = id === requesterId;
-      const cachedUser = isSelfLookup ? req.teacherUser || req.adminUser : null;
-      const cachedIsTeacher = isSelfLookup ? !!req.teacherUser : null;
-
-      let result = await this.manager.getProfileById(
-        id,
-        cachedUser,
-        cachedIsTeacher
-      );
+      let result = await this.manager.getProfileById(id, req.permissions);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -209,7 +187,7 @@ class UserController extends BaseController {
   async activate(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.activate(id);
+      let result = await this.manager.activate(id, req.permissions);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -225,7 +203,7 @@ class UserController extends BaseController {
   async deactivate(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.deactivate(id);
+      let result = await this.manager.deactivate(id, req.permissions);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -280,33 +258,12 @@ class UserController extends BaseController {
         processedFilter.role = role;
       }
 
-      const isRegional =
-        req.permissions.includes("scope.regional") &&
-        !req.permissions.includes("scope.global");
-
-      if (isRegional) {
-        const allowedZones = [].concat(req.user.profiles?.admin?.zones || []).filter(Boolean);
-        const allowedDistricts = [].concat(req.user.profiles?.admin?.districts || []).filter(Boolean);
-        if (!allowedZones.length && !allowedDistricts.length) {
-          return res.status(403).json({ success: false, message: "No regional scope assigned" });
-        }
-        const zones = [].concat(zone || filter.zone || []).filter(Boolean);
-        const districts = [].concat(district || filter.district || []).filter(Boolean);
-        if (zones.some(value => !allowedZones.includes(value)) || districts.some(value => !allowedDistricts.includes(value))) {
-          return res.status(403).json({ success: false, message: "Requested zone/district outside your assigned scope" });
-        }
-        if (!zones.length) zones.push(...allowedZones);
-        if (!districts.length) districts.push(...allowedDistricts);
-        if (zones.length) processedFilter.zone = zones;
-        if (districts.length) processedFilter.district = districts;
-      } else {
-        if (zone) processedFilter.zone = zone;
-        if (district) processedFilter.district = district;
-      }
+      if (zone) processedFilter.zone = zone;
+      if (district) processedFilter.district = district;
 
       const searchFilter = {};
       if (search) {
-        const searchFields = ["identity.name", "identity.phone", "profiles.teacher.zone", "profiles.teacher.district"];
+        const searchFields = ["identity.name", "identity.phone", "school.zone", "school.district"];
         const regexExpressions = searchFields.map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
@@ -327,7 +284,10 @@ class UserController extends BaseController {
         parseInt(limit), 
         mergedFilter,
         {}, // sort object
-        status
+        status,
+        req.user._id,
+        req.permissions,
+        filter.profileType === "admin" ? "staff.view" : "teacher.view"
       );
 
       if (result.success) {

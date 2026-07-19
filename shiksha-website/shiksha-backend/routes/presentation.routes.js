@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const { isAuthenticated } = require("../middlewares/auth.js");
 const { createProxyMiddleware } = require("http-proxy-middleware");
+const { hasPermission } = require("../helper/permission.helper.js");
 
 const createPresentationProxy = target => createProxyMiddleware({
 	target,
@@ -12,7 +13,7 @@ const createPresentationProxy = target => createProxyMiddleware({
 	timeout: 310_000,
 	on: {
 		proxyReq: (proxyReq, req, res) => {
-			if (proxyReq.method === "POST" && !req.permissions.includes("presentation.generate.arbitrary") && !req.permissions.includes("presentation.generate.lesson_plan")) {
+			if (proxyReq.method === "POST" && !hasPermission(req.permissions, ["presentation.generate.arbitrary", "presentation.generate.lesson_plan"])) {
 				res.statusCode = 403;
 				res.end("Forbidden");
 				proxyReq.destroy();

@@ -13,21 +13,17 @@ const { bulkUploadSchema } = require("../validations/user.validation");
 const { uploadToStorage } = require("../services/azure.blob.service");
 const AuditLog = require("../models/audit.log.model");
 const logger = require("../config/loggers");
+const { isResourceAllowed } = require("../helper/scope.helper");
 
 async function processRow(
   userDataRow,
+  schoolId,
   rowNumber,
   phoneNumbers,
   validationErrors,
   userData
 ) {
-  const { error } = bulkUploadSchema.validate(userDataRow);
-  if (error) {
-    validationErrors.push({ row: rowNumber, message: error.message });
-    return;
-  }
-
-  if (phoneNumbers.has(userDataRow.identity.normalizedPhone)) {
+  if (phoneNumbers.has(userDataRow.identity.phone)) {
     validationErrors.push({
       row: rowNumber,
       message: `Duplicate phone number ${userDataRow.identity.phone} found within the file`,
@@ -35,9 +31,9 @@ async function processRow(
     return;
   }
 
-  phoneNumbers.add(userDataRow.identity.normalizedPhone);
+  phoneNumbers.add(userDataRow.identity.phone);
 
-  const existingUser = await User.findOne({ "identity.normalizedPhone": userDataRow.identity.normalizedPhone });
+  const existingUser = await User.findOne({ "identity.phone": userDataRow.identity.phone });
   if (existingUser) {
     validationErrors.push({
       row: rowNumber,
@@ -46,20 +42,33 @@ async function processRow(
     return;
   }
 
-  const existingSchool = await School.findOne({ schoolId: userDataRow.profiles.teacher.school });
+  const existingSchool = await School.findOne({ schoolId });
   if (!existingSchool) {
     validationErrors.push({
       row: rowNumber,
-      message: `School with diseCode ${userDataRow.profiles.teacher.school} does not exist`,
+      message: `School with diseCode ${schoolId} does not exist`,
     });
     return;
   }
 
-  userDataRow.profiles.teacher.school = existingSchool._id.toString();
-  userDataRow.profiles.teacher.state = existingSchool.state;
-  userDataRow.profiles.teacher.zone = existingSchool.zone;
-  userDataRow.profiles.teacher.district = existingSchool.district;
-  userDataRow.profiles.teacher.block = existingSchool.block;
+  if (!isResourceAllowed(workerData.permissions, "teacher.import", existingSchool)) {
+    validationErrors.push({ row: rowNumber, message: `School with diseCode ${schoolId} is outside your scope` });
+    return;
+  }
+  if (!isResourceAllowed(workerData.permissions, "role.assign", existingSchool)) {
+    validationErrors.push({ row: rowNumber, message: `Cannot assign roles at school with diseCode ${schoolId}` });
+    return;
+  }
+
+  userDataRow.roles = userDataRow.roles.map((role) => ({ roleId: String(role._id), dep: String(existingSchool._id) }));
+
+  const { error } = bulkUploadSchema.validate(userDataRow);
+  if (error) {
+    validationErrors.push({ row: rowNumber, message: error.message });
+    return;
+  }
+
+  userDataRow.roles = userDataRow.roles.map((assignment) => ({ role: assignment.roleId, dep: existingSchool._id }));
 
   userData.push(userDataRow);
 }
@@ -171,7 +180,7 @@ dbService.getConnection().then(async (client) => {
     const userData = [];
     const validationErrors = [];
     const phoneNumbers = new Set();
-    const roleByName = new Map((await Role.find({ isDeleted: false }).select("_id name")).map((role) => [role.name.toLowerCase(), role._id]));
+    const roleByName = new Map((await Role.find({ isDeleted: false, scopeType: "SCHOOL" }).select("_id name scopeType")).map((role) => [role.name.toLowerCase(), role]));
 
     const rowProcessingPromises = [];
     worksheet.forEach((rowData, rowNumber) => {
@@ -181,22 +190,18 @@ dbService.getConnection().then(async (client) => {
       if (isEmptyRow) return;
 
       const roles = rowData.role.map((role) => roleByName.get(String(role).toLowerCase()));
-      if (roles.some((id) => !id)) {
+      if (roles.some((role) => !role)) {
         validationErrors.push({ row: rowNumber + 1, message: `Unknown role in: ${rowData.role.join("|")}` });
         return;
       }
       const userDataRow = {
         identity: {
           name: rowData.name,
-          phone: rowData.phone,
-          normalizedPhone: String(rowData.phone || "")
-            .replace(/\D/g, "")
-            .replace(/^91(?=\d{10}$)/, ""),
+          phone: String(rowData.phone),
         },
         roles,
         profiles: {
           teacher: {
-            school: Number(rowData.school),
             preferredLanguage: "en",
             facilities: [],
             classes: [],
@@ -205,7 +210,7 @@ dbService.getConnection().then(async (client) => {
         },
       };
       rowProcessingPromises.push(
-        processRow(userDataRow, rowNumber + 1, phoneNumbers, validationErrors, userData)
+        processRow(userDataRow, Number(rowData.school), rowNumber + 1, phoneNumbers, validationErrors, userData)
       );
     });
 

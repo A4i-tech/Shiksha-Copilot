@@ -2,6 +2,8 @@ const RoleDao = require("../dao/role.dao");
 const BaseManager = require("./base.manager");
 const formatApiReponse = require("../helper/response");
 const { ALL_PERMISSIONS, permissions } = require("../helper/permission.helper");
+const { ROLE_SCOPE_TYPES } = require("../config/role.scope");
+const User = require("../models/user.model");
 
 class RoleManager extends BaseManager {
   constructor() {
@@ -17,7 +19,10 @@ class RoleManager extends BaseManager {
   async update(req) {
     const role = await this.dao.getById(req.params.id);
     if (!role) return formatApiReponse(false, "Role not found", null);
-    const allowed = role.isSuperUser ? ["name", "description"] : ["name", "description", "permissions"];
+    if (req.body.scopeType && req.body.scopeType !== role.scopeType && await User.exists({ "roles.role": role._id })) {
+      return formatApiReponse(false, "Assigned role scope cannot be changed", null);
+    }
+    const allowed = role.isSuperUser ? ["name", "description"] : ["name", "description", "permissions", "scopeType"];
     const update = Object.fromEntries(allowed.filter((k) => k in req.body).map((k) => [k, req.body[k]]));
     if (!Object.keys(update).length) return formatApiReponse(false, "No valid fields to update", null);
     return formatApiReponse(true, "Role updated", await this.dao.Model.findByIdAndUpdate(role._id, { $set: update }, { new: true, runValidators: true }));
@@ -27,6 +32,7 @@ class RoleManager extends BaseManager {
     const role = await this.dao.getById(req.params.id);
     if (!role) return formatApiReponse(false, "Role not found", null);
     if (role.isSystem) return formatApiReponse(false, "System roles cannot be deleted", null);
+    if (await User.exists({ "roles.role": role._id })) return formatApiReponse(false, "Assigned roles cannot be deleted", null);
     await this.dao.delete(role._id);
     return formatApiReponse(true, "Role deleted", null);
   }
@@ -47,6 +53,10 @@ class RoleManager extends BaseManager {
 
   permissions() {
     return formatApiReponse(true, "", permissions);
+  }
+
+  scopeTypes() {
+    return formatApiReponse(true, "", ROLE_SCOPE_TYPES);
   }
 }
 

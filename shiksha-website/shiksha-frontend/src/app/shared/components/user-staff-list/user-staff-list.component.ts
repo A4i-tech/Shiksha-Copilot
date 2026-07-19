@@ -229,15 +229,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       this.getRegionsData();
     }  
 
-    const loggedInUser = this.utility.loggedInUserData;
-
-    if (this.utility.isRegionallyScoped()) {
-      const admin = loggedInUser.profiles.admin;
-      this.filterObj.state = admin.state;
-      this.filterObj.zone = admin.zones;
-      this.filterObj.district = admin.districts;
-    }
-
     this.getUsersList(this.filterObj);
     this.loadRoles();
 
@@ -342,7 +333,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   }
 
   roleName(item: any) {
-    return item.roles.map((r: any) => r.name).join(', ');
+    return item.roles.map((assignment: any) => assignment.role.name).join(', ');
   }
 
   ondisableUser(item: any) {
@@ -665,16 +656,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
           'state',
           selectedStateValue
         );
-        // Only show manager's zones if role is manager
-        const loggedInUser = this.utility.loggedInUserData;
-        if (this.utility.isRegionallyScoped()) {
-          this.zoneDropdownOptions = this.utility.getZonesForManager(
-            this.regionsData,
-            loggedInUser.profiles.admin
-          );
-        } else {
-          this.zoneDropdownOptions = this.selectedStateObj.zones;
-        }
+        this.zoneDropdownOptions = this.selectedStateObj.zones;
       }
     }
   

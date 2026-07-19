@@ -41,7 +41,7 @@ describe("AuthManager", () => {
       otp: encrypt("1234"),
       loginAttempts: [],
       isDeleted: false,
-      roles: [{ permissions: ["dashboard.teacher.view"] }],
+      roles: [{ role: { permissions: ["dashboard.teacher.view"], scopeType: "SCHOOL", isDeleted: false }, dep: "school-1" }],
       generateAuthToken: jest.fn().mockReturnValue("jwt-token"),
       toObject() {
         const { generateAuthToken, toObject, roles, ...rest } = this;
@@ -82,7 +82,7 @@ describe("AuthManager", () => {
 
     expect(result.success).toBe(true);
     expect(result.data.token).toBe("jwt-token");
-    expect(result.data.permissions).toContain("dashboard.teacher.view");
+    expect(result.data.permissions).toContainEqual({ permission: "dashboard.teacher.view", scopeType: "SCHOOL", dep: "school-1" });
     expect(UserAction.create).toHaveBeenCalled();
     expect(refreshProfileImageIfExpired).toHaveBeenCalled();
   });

@@ -28,7 +28,7 @@ export class BaselineSurveyGuard implements CanActivate {
     }
 
     const user = this.getUser();
-    if (!user?.permissions?.includes('survey.baseline.complete')) return true;
+    if (!user?.permissions?.some((grant: any) => grant.permission === 'survey.baseline.complete')) return true;
 
     // Skip if already dismissed/postponed in the current session
     if (this.survey.isDismissed()) {

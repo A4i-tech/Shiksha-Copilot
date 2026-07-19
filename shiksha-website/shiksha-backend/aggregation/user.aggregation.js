@@ -50,11 +50,21 @@ class UserAggregation {
           roles: {
             $map: {
               input: "$roles",
-              as: "role",
-              in: { _id: "$$role._id", name: "$$role.name" },
+              as: "assignment",
+              in: {
+                _id: "$$assignment._id",
+                dep: { $toString: "$$assignment.dep" },
+                role: {
+                  $arrayElemAt: [
+                    { $filter: { input: "$roleDefinitions", as: "role", cond: { $eq: ["$$role._id", "$$assignment.role"] } } },
+                    0,
+                  ],
+                },
+              },
             },
           },
           profiles: 1,
+          school: 1,
           profileImage: 1,
           profileImageExpiresIn: 1,
           isDeleted: 1,
@@ -65,24 +75,24 @@ class UserAggregation {
         },
       };
       const pipeline = [
-        { $match: otherFilters },
         {
           $lookup: {
             from: "schools",
-            localField: "profiles.teacher.school",
+            localField: "roles.dep",
             foreignField: "_id",
-            as: "profiles.teacher.school",
+            as: "schools",
           },
         },
-        { $unwind: { path: "$profiles.teacher.school", preserveNullAndEmptyArrays: true } },
+        { $set: { school: { $arrayElemAt: ["$schools", 0] } } },
         {
           $lookup: {
             from: "roles",
-            localField: "roles",
+            localField: "roles.role",
             foreignField: "_id",
-            as: "roles",
+            as: "roleDefinitions",
           },
         },
+        { $match: otherFilters },
         ...(trainingStatus ? [...trainingStages, { $match: { trainingStatus } }] : []),
       ];
 

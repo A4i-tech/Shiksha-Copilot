@@ -65,10 +65,7 @@
             <p
               class="text-content text-xs font-light overflow-hidden whitespace-nowrap text-ellipsis w-[120px]"
             >
-              {{
-                utilityService.loggedInUserData?.profiles?.teacher?.school?.name ||
-                  utilityService.loggedInUserData?.identity?.email
-              }}
+              {{ utilityService.loggedInUserData?.identity?.email }}
             </p>
           </div>
         </div>

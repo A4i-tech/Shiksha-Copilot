@@ -27,7 +27,7 @@ import { environment } from 'src/environments/environment';
           </button>
         </div>
 
-        <form class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6" [formGroup]="form" (ngSubmit)="save()">
+        <form class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6" [formGroup]="form" (ngSubmit)="save()">
           <div>
             <label class="form-control-label">Role Name</label>
             <input #roleNameInput class="form-control h-9" formControlName="name" placeholder="Role name">
@@ -36,8 +36,15 @@ import { environment } from 'src/environments/environment';
             <label class="form-control-label">Description</label>
             <input class="form-control h-9" formControlName="description" placeholder="Description">
           </div>
+          <div>
+            <label class="form-control-label">Scope</label>
+            <select class="form-control h-9" formControlName="scopeType">
+              <option value="" disabled>Select scope</option>
+              <option *ngFor="let scopeType of scopeTypes" [value]="scopeType">{{ scopeType }}</option>
+            </select>
+          </div>
 
-          <div class="md:col-span-2">
+          <div class="md:col-span-3">
             <label class="form-control-label">Permissions</label>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-80 overflow-auto border rounded p-3">
               <label *ngFor="let permission of permissions" class="flex gap-3 items-start text-sm border rounded p-3 bg-surface-muted">
@@ -50,7 +57,7 @@ import { environment } from 'src/environments/environment';
             </div>
           </div>
 
-          <div class="md:col-span-2 flex flex-col sm:flex-row justify-end gap-2">
+          <div class="md:col-span-3 flex flex-col sm:flex-row justify-end gap-2">
             <button type="button" class="btn-outline-primary h-9 w-full sm:w-20" (click)="reset()">Cancel</button>
             <button type="submit" class="btn-primary h-9 w-full sm:w-20" [disabled]="form.invalid">
               <div class="flex items-center justify-center gap-2">
@@ -75,6 +82,7 @@ import { environment } from 'src/environments/environment';
             </div>
             <div class="mt-4 flex items-center justify-between gap-3">
               <span class="text-sm text-content-60">{{ role.permissions.length }} permissions</span>
+              <span class="text-sm text-content-60">{{ role.scopeType }}</span>
               <div class="flex gap-2">
                 <button class="btn-outline-primary h-9 px-3" type="button" (click)="edit(role)">
                   <div class="flex items-center justify-center gap-2">
@@ -100,6 +108,7 @@ import { environment } from 'src/environments/environment';
                 <th class="px-4 py-6 border text-sm">Name</th>
                 <th class="px-4 py-6 border text-sm">Description</th>
                 <th class="px-4 py-6 border text-sm">Type</th>
+                <th class="px-4 py-6 border text-sm">Scope</th>
                 <th class="px-4 py-6 border text-sm">Permissions</th>
                 <th class="px-4 py-6 border text-sm text-center">Actions</th>
               </tr>
@@ -113,6 +122,7 @@ import { environment } from 'src/environments/environment';
                     {{ role.isSystem ? 'System' : 'Custom' }}
                   </span>
                 </td>
+                <td class="px-4 py-6 text-sm border whitespace-nowrap">{{ role.scopeType }}</td>
                 <td class="px-4 py-6 text-sm border whitespace-nowrap">{{ role.permissions.length }}</td>
                 <td class="px-4 py-6 text-sm border">
                   <div class="flex items-center justify-center gap-1">
@@ -132,7 +142,7 @@ import { environment } from 'src/environments/environment';
                 </td>
               </tr>
               <tr *ngIf="!roles.length">
-                <td colspan="5" class="text-center text-content-60 py-2">No Data Found</td>
+                <td colspan="6" class="text-center text-content-60 py-2">No Data Found</td>
               </tr>
             </tbody>
           </table>
@@ -156,10 +166,11 @@ export class RoleManagementComponent implements OnInit {
   @ViewChild('roleNameInput') roleNameInput!: ElementRef<HTMLInputElement>;
   roles: any[] = [];
   permissions: any[] = [];
+  scopeTypes: string[] = [];
   selectedPermissions = new Set<string>();
   editing: any;
   roleToDelete: any;
-  form = this.fb.group({ name: ['', Validators.required], description: [''] });
+  form = this.fb.group({ name: ['', Validators.required], description: [''], scopeType: ['', Validators.required] });
   private baseUrl = environment.apiUrl;
 
   constructor(private http: HttpClient, private fb: FormBuilder, private utility: UtilityService) {}
@@ -168,6 +179,7 @@ export class RoleManagementComponent implements OnInit {
   load() {
     this.http.get<any>(`${this.baseUrl}/roles`).subscribe((res) => this.roles = res.data.results);
     this.http.get<any>(`${this.baseUrl}/roles/permissions`).subscribe((res) => this.permissions = res.data);
+    this.http.get<any>(`${this.baseUrl}/roles/scope-types`).subscribe((res) => this.scopeTypes = res.data);
   }
   startCreate() {
     this.reset();
@@ -178,12 +190,12 @@ export class RoleManagementComponent implements OnInit {
   }
   edit(role: any) {
     this.editing = role;
-    this.form.patchValue({ name: role.name, description: role.description });
+    this.form.patchValue({ name: role.name, description: role.description, scopeType: role.scopeType });
     this.selectedPermissions = new Set(role.permissions);
   }
   reset() {
     this.editing = null;
-    this.form.reset({ name: '', description: '' });
+    this.form.reset({ name: '', description: '', scopeType: '' });
     this.selectedPermissions.clear();
   }
   save() {

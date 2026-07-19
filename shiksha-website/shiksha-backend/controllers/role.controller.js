@@ -10,6 +10,10 @@ class RoleController extends BaseController {
     const result = this.manager.permissions();
     return res.status(200).json(result);
   }
+
+  async scopeTypes(req, res) {
+    return res.status(200).json(this.manager.scopeTypes());
+  }
 }
 
 module.exports = RoleController;

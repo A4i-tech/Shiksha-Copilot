@@ -2,7 +2,7 @@ require("dotenv").config();
 
 const jwt = require("jsonwebtoken");
 const User = require("../models/user.model");
-const { getRolePermissions } = require("../helper/permission.helper");
+const { getRolePermissions, getPermission, hasPermission } = require("../helper/permission.helper");
 
 const { JWT_SECRET } = process.env;
 
@@ -15,8 +15,7 @@ exports.isAuthenticated = function isAuthenticated(req, res, next) {
       if (err) return res.status(401).json({ success: false, message: "Session Expired! Please login again." });
 
       const user = await User.findById(payload._id)
-        .populate("roles")
-        .populate("profiles.teacher.school", "name medium board");
+        .populate("roles.role")
 
       if (!user) return res.status(401).json({ success: false, message: "Account doesn't exist!" });
       if (user.isDeleted) return res.status(401).json({ success: false, message: "Your account is inactive!" });
@@ -35,11 +34,16 @@ exports.isAuthenticated = function isAuthenticated(req, res, next) {
 };
 
 exports.requirePermission = (permission) => (req, res, next) =>
-  req.permissions.includes(permission)
+  hasPermission(req.permissions, permission)
     ? next()
     : res.status(403).json({ success: false, message: "Access Denied!" });
 
 exports.requireAnyPermission = (...permissions) => (req, res, next) =>
-  permissions.some((permission) => req.permissions.includes(permission))
+  hasPermission(req.permissions, permissions)
+    ? next()
+    : res.status(403).json({ success: false, message: "Access Denied!" });
+
+exports.requireUnscopedPermission = (permission) => (req, res, next) =>
+  getPermission(req.permissions, permission)?.some((grant) => grant.scopeType === "GLOBAL" || grant.scopeType === "UNBOUND")
     ? next()
     : res.status(403).json({ success: false, message: "Access Denied!" });

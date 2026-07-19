@@ -182,7 +182,7 @@
 								<div class="mt-4 grid grid-cols-2 gap-3 text-sm">
 										<div *ngIf="getType()?.type === 'user'" class="col-span-2">
 												<p class="text-xs text-content-60">{{'School' | translate}}</p>
-												<p class="break-words">{{ item.profiles.teacher.school.name }}</p>
+												<p class="break-words">{{ item.school.name }}</p>
 										</div>
 										<div>
 												<p class="text-xs text-content-60">{{'Role' | translate}}</p>
@@ -220,7 +220,7 @@
 									<tr *ngFor="let item of usersList; let i = index" class="border-b">
 											<td class="text-sm p-4 border-r w-72 max-w-[20vw] break-all">{{ item.identity.name | titlecase }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36">{{ item.identity.phone }}</td>
-											<td class="text-sm p-4 border-r max-w-[20vw] break-all" *ngIf="getType()?.type === 'user'" >{{ item.profiles.teacher.school.name }}</td>
+											<td class="text-sm p-4 border-r max-w-[20vw] break-all" *ngIf="getType()?.type === 'user'" >{{ item.school.name }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36">{{ roleName(item) }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36 text-center"><span class="px-3 py-2 rounded-full"
 															[ngClass]="{'text-success bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">{{!item.isDeleted

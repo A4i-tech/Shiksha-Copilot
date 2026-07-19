@@ -7,7 +7,7 @@ import { environment } from 'src/environments/environment';
 export interface Teacher {
   _id: string;
   identity: { name: string; phone: string };
-  profiles: { teacher: { zone?: string; district?: string; state?: string; block?: string } };
+  school: { state: string; zone: string; district: string; block: string };
   attendance: string[];
 }
 

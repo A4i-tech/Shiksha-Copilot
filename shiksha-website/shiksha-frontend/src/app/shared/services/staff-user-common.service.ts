@@ -34,7 +34,6 @@ export class StaffUserCommonService extends BaseRestService {
       roles: form.roles,
       profiles: {
         teacher: {
-          state: form.state, zone: form.zone, district: form.district, block: form.block, school: form.school,
           preferredLanguage: 'en', facilities: [], classes: [], isProfileCompleted: false,
         },
       },
@@ -45,10 +44,6 @@ export class StaffUserCommonService extends BaseRestService {
     return this.http.put(`${this.baseUrl}/users/${id}`, {
       identity: { name: form.name, phone: form.phone },
       roles: form.roles,
-      profiles: {
-        teacher: { state: form.state, zone: form.zone, district: form.district, block: form.block, school: form.school },
-      },
-      isSchoolChanged: form.isSchoolChanged,
       isDeleted: form.isDeleted,
     });
   }
@@ -57,7 +52,7 @@ export class StaffUserCommonService extends BaseRestService {
     return this.post('', {
       identity: { name: form.name, phone: form.phone, email: form.email, address: form.address },
       roles: form.roles,
-      profiles: { admin: { state: form.state, zones: form.zones, districts: form.districts } },
+      profiles: { admin: { state: form.state } },
     });
   }
 
@@ -65,7 +60,7 @@ export class StaffUserCommonService extends BaseRestService {
     return this.put(id, {
       identity: { name: form.name, phone: form.phone, email: form.email, address: form.address },
       roles: form.roles,
-      profiles: { admin: { state: form.state, zones: form.zones, districts: form.districts } },
+      profiles: { admin: { state: form.state } },
       isDeleted: form.isDeleted,
     });
   }

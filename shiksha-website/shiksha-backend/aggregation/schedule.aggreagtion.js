@@ -118,7 +118,7 @@ class ScheduleAggregation {
 	async getBySchool(schoolId, teacherClasses, fromDate, toDate, teacherId, teacherSchedule) {
 		try {
 			let getactiveUserSchedules = {
-			"profiles.teacher.school": schoolId,
+			"roles.dep": new mongoose.Types.ObjectId(schoolId),
         		isDeleted: false,
       		};
 

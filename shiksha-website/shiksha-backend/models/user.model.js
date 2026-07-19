@@ -4,6 +4,11 @@ const jwt = require("jsonwebtoken");
 const ObjectId = mongoose.Types.ObjectId;
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const roleAssignmentSchema = new mongoose.Schema({
+	role: { type: ObjectId, ref: "Role", required: true },
+	dep: { type: mongoose.Schema.Types.Mixed },
+});
+
 const classSchema = new mongoose.Schema({
   board: {
     type: String,
@@ -42,11 +47,6 @@ const identitySchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
-  normalizedPhone: {
-    type: String,
-    required: true,
-    select: false,
-  },
   email: {
     type: String,
     trim: true,
@@ -58,22 +58,6 @@ const identitySchema = new mongoose.Schema({
 }, { _id: false });
 
 const teacherProfileSchema = new mongoose.Schema({
-  state: {
-    type: String,
-  },
-  zone: {
-    type: String,
-  },
-  district: {
-    type: String,
-  },
-  block: {
-    type: String,
-  },
-  school: {
-    type: ObjectId,
-    ref: "School",
-  },
   preferredLanguage: {
     type: String,
     enum: ["en", "kn"],
@@ -93,14 +77,6 @@ const adminProfileSchema = new mongoose.Schema({
   state: {
     type: String,
   },
-  zones: {
-    type: [String],
-    default: [],
-  },
-  districts: {
-    type: [String],
-    default: [],
-  },
 }, { _id: false });
 
 const userSchema = mongoose.Schema(
@@ -110,7 +86,7 @@ const userSchema = mongoose.Schema(
       required: true,
     },
     roles: {
-      type: [{ type: ObjectId, ref: "Role" }],
+      type: [roleAssignmentSchema],
       required: true,
       validate: {
         validator: (roles) => Array.isArray(roles) && roles.length > 0,
@@ -152,14 +128,6 @@ const userSchema = mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.pre("validate", function normalizePhone(next) {
-  if (this.identity && this.identity.phone) {
-    const digits = String(this.identity.phone).replace(/\D/g, "");
-    this.identity.normalizedPhone = digits.length === 12 && digits.startsWith("91") ? digits.slice(2) : digits;
-  }
-  next();
-});
-
 userSchema.methods.generateAuthToken = function () {
   const token = jwt.sign(
     { _id: this._id },
@@ -172,14 +140,11 @@ userSchema.methods.generateAuthToken = function () {
 };
 
 userSchema.index(
-  { "identity.normalizedPhone": 1 },
-  { unique: true, name: "uniq_user_normalized_phone" }
+  { "identity.phone": 1 },
+  { unique: true, name: "uniq_user_phone" }
 );
 
-userSchema.index(
-  { "profiles.teacher.school": 1, "profiles.teacher.state": 1, "profiles.teacher.zone": 1, "profiles.teacher.district": 1, "profiles.teacher.block": 1 },
-  { name: "idx_user_teacher_location", background: true }
-);
+userSchema.index({ "roles.dep": 1 }, { name: "idx_user_role_dependency", background: true });
 
 const User = mongoose.model("User", userSchema);
 

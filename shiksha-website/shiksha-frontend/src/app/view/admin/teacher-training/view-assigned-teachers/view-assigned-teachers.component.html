@@ -97,11 +97,11 @@
           <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
               <p class="text-xs text-content-60">Zone</p>
-              <p class="break-words">{{ teacher.profiles.teacher.zone || '-' }}</p>
+              <p class="break-words">{{ teacher.school.zone || '-' }}</p>
             </div>
             <div>
               <p class="text-xs text-content-60">District</p>
-              <p class="break-words">{{ teacher.profiles.teacher.district || '-' }}</p>
+              <p class="break-words">{{ teacher.school.district || '-' }}</p>
             </div>
             <div class="col-span-2">
               <label class="attendance-row">
@@ -134,8 +134,8 @@
             <tr *ngFor="let teacher of selectedBatch.assignedTeachers" class="border-b">
               <td class="text-sm p-4 border-r break-words">{{ teacher.identity.name }}</td>
               <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.identity.phone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.profiles.teacher.zone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.profiles.teacher.district }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.school.zone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.school.district }}</td>
               <td class="text-sm p-4 border-r text-center">
                 <input
                   type="checkbox"

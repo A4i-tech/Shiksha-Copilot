@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { PermissionGrant } from 'src/app/shared/interfaces/permission.interface';
 import { map } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 
@@ -26,11 +27,9 @@ export interface User {
     };
     admin?: {
       state?: string;
-      zones?: string[];
-      districts?: string[];
     };
   };
-  permissions: string[];
+  permissions: PermissionGrant[];
 }
 
 @Injectable({

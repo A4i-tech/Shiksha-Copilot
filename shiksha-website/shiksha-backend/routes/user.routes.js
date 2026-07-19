@@ -96,6 +96,7 @@ router.post(
 	"/users/import",
 	isAuthenticated,
 	requireAnyPermission("teacher.import", "staff.import"),
+	requirePermission("role.assign"),
 	uploadMiddleware,
 	asyncMiddleware(userController.bulkUpload.bind(userController))
 );

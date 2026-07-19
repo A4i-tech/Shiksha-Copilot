@@ -2,11 +2,17 @@ const handleError = require("../helper/handleError.js");
 const SchoolManager = require("../managers/school.manager.js");
 const BaseController = require("./base.controller.js");
 const dbService = require("../config/db");
+const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 
 /** @extends {BaseController<SchoolManager>} */
 class SchoolController extends BaseController {
 	constructor() {
 		super(new SchoolManager());
+	}
+
+	getAll(req, res) {
+		req.query.filter = intersectFilters(req.query.filter || {}, permissionScopeFilter(req.permissions, "school.read", "", "_id"));
+		return super.getAll(req, res);
 	}
 
 	async create(req, res) {
@@ -34,7 +40,7 @@ class SchoolController extends BaseController {
 	async update(req, res) {
 		try {
 			const { id } = req.params;
-			let result = await this.manager.update(id, req.body);
+			let result = await this.manager.update(id, req.body, req.permissions);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -50,7 +56,7 @@ class SchoolController extends BaseController {
 	async updateFacility(req, res) {
 		try {
 			const { id } = req.params;
-			let result = await this.manager.updateFacility(id, req.body);
+			let result = await this.manager.updateFacility(id, req.body, req.permissions);
 
 			if (result.success) {
 				return res.status(200).json(result);
@@ -70,7 +76,7 @@ class SchoolController extends BaseController {
 			if (!req.file) {
 				return res.status(400).json({ error: "File not provided" });
 			}
-			const result = await this.manager.bulkUpload(req.file.buffer ,userId.toString(), userName);
+			const result = await this.manager.bulkUpload(req.file.buffer, userId.toString(), userName, req.permissions);
 			if (result.success)
 			return res.status(200).json({
 			  message: "Bulk upload initiated , Please verify for audit logs!",

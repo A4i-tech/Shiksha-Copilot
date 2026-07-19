@@ -33,8 +33,6 @@
   { "name": "school.export", "description": "Export school lists and school data." },
   { "name": "school.read", "description": "Use school records in dropdowns, forms, and lookups." },
   { "name": "school.view", "description": "View school lists and school details." },
-  { "name": "scope.global", "description": "Work across all regions and schools." },
-  { "name": "scope.regional", "description": "Work only within assigned zones and districts." },
   { "name": "staff.create", "description": "Create staff users." },
   { "name": "staff.delete", "description": "Deactivate staff users." },
   { "name": "staff.edit", "description": "Edit staff user details and assignments." },

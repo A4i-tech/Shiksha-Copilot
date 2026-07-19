@@ -57,7 +57,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
 
     this.loadBatchDetails();
 
-    this.canViewAllBatches = this.utilityService.hasPermission(['scope.global']);
+    this.canViewAllBatches = this.utilityService.hasGlobalPermission('training.view');
   }
 
   fetchBatches(): void {

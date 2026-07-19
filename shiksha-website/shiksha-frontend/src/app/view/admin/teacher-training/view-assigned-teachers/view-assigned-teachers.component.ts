@@ -519,8 +519,8 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         idx + 1,
         teacher.identity.name || '',
         teacher.identity.phone || '',
-        teacher.profiles.teacher.zone || '',
-        teacher.profiles.teacher.district || '',
+        teacher.school.zone || '',
+        teacher.school.district || '',
         formattedDate,
         '' // Signature column left blank
       ]);

@@ -164,8 +164,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get all master data and profile data
    */
   getData() {
-    const school = this.loggedInUser.profiles.teacher.school;
-    const boardMaster = this.service.getClassesByBoard(school?._id || school);
+    const school = this.loggedInUser.permissions.find((grant: any) => grant.scopeType === 'SCHOOL').dep;
+    const boardMaster = this.service.getClassesByBoard(school);
     const resourceMaster = this.masterService.getFacilities();
     const userProfile = this.service.getProfileInfo(this.loggedInUser._id);
 

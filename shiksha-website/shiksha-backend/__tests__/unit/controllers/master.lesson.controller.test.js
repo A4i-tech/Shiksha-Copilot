@@ -35,7 +35,7 @@ describe("MasterLessonController", () => {
 
     mockReq = {
       user: { _id: "teacher-123", role: "teacher", name: "Test Teacher" },
-      permissions: ["lesson-plan.edit", "lesson-resource.edit"],
+      permissions: [{ permission: "lesson-plan.edit" }, { permission: "lesson-resource.edit" }],
       params: {},
       query: {},
       body: {},

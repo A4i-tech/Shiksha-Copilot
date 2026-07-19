@@ -2,11 +2,13 @@ const TeacherTrainingBatch = require("../../../models/teacher.training.batch.mod
 const User = require("../../../models/user.model");
 const TeacherAbsent = require("../../../models/teacher.absent.model");
 const Role = require("../../../models/role.model");
+const School = require("../../../models/school.model");
 
 jest.mock("../../../models/teacher.training.batch.model");
 jest.mock("../../../models/user.model");
 jest.mock("../../../models/teacher.absent.model");
 jest.mock("../../../models/role.model");
+jest.mock("../../../models/school.model");
 jest.mock("../../../managers/teacher.training.batch.manager");
 jest.mock("../../../services/azure.blob.service");
 
@@ -82,6 +84,8 @@ describe("TeacherTrainingBatchController", () => {
       User.find = jest.fn().mockReturnValue({
         select: jest.fn().mockResolvedValue(mockTeachers),
       });
+      School.distinct = jest.fn().mockResolvedValue(["school-1"]);
+      mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
 
       const mockBatches = [
         {

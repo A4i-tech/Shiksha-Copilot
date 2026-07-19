@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { PermissionGrant } from '../interfaces/permission.interface';
 
 export interface User {
   _id: string;
@@ -8,7 +9,7 @@ export interface User {
     teacher?: any;
     admin?: any;
   };
-  permissions: string[];
+  permissions: PermissionGrant[];
 }
 
 @Injectable({
@@ -17,7 +18,6 @@ export interface User {
 export class AuthService {
   private currentUserSubject: BehaviorSubject<User | null>;
   public currentUser$: Observable<User | null>;
-
   constructor() {
     this.currentUserSubject = new BehaviorSubject<User | null>(this.getUserFromStorage());
     this.currentUser$ = this.currentUserSubject.asObservable();

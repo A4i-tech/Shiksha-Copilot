@@ -2,6 +2,11 @@ const Joi = require("joi");
 
 const phoneNumberPattern = /^[6789]\d{9}$/;
 const objectId = Joi.string().hex().length(24);
+const roleAssignment = Joi.object({
+	_id: objectId,
+	roleId: objectId.required(),
+	dep: Joi.string().allow(null),
+});
 
 const identitySchema = Joi.object({
 	name: Joi.string().min(2).required(),
@@ -11,11 +16,6 @@ const identitySchema = Joi.object({
 });
 
 const teacherProfileSchema = Joi.object({
-	state: Joi.string().required(),
-	zone: Joi.string().required(),
-	district: Joi.string().required(),
-	block: Joi.string().required(),
-	school: Joi.string().required(),
 	preferredLanguage: Joi.string().valid("en", "kn"),
 	facilities: Joi.array(),
 	classes: Joi.array(),
@@ -24,8 +24,6 @@ const teacherProfileSchema = Joi.object({
 
 const adminProfileSchema = Joi.object({
 	state: Joi.string().allow("", null),
-	zones: Joi.array().items(Joi.string()),
-	districts: Joi.array().items(Joi.string()),
 });
 
 const profilesSchema = Joi.object({
@@ -35,17 +33,16 @@ const profilesSchema = Joi.object({
 
 const userSchema = Joi.object({
 	identity: identitySchema.required(),
-	roles: Joi.array().items(objectId).min(1).required(),
+	roles: Joi.array().items(roleAssignment).min(1).required(),
 	profiles: profilesSchema.required(),
 	isDeleted: Joi.boolean(),
 });
 
 const bulkUploadSchema = Joi.object({
 	identity: identitySchema,
-	roles: Joi.array().items(objectId).min(1).required(),
+	roles: Joi.array().items(roleAssignment).min(1).required(),
 	profiles: Joi.object({
 		teacher: Joi.object({
-			school: Joi.alternatives().try(Joi.string(), Joi.number()).required(),
 			preferredLanguage: Joi.string().valid("en", "kn"),
 			facilities: Joi.array(),
 			classes: Joi.array(),
@@ -110,11 +107,10 @@ const validateUserUpdate = (req, res, next) => {
 
 	const schema = Joi.object({
 		identity: identitySchema,
-		roles: Joi.array().items(objectId).min(1),
+		roles: Joi.array().items(roleAssignment).min(1),
 		profiles: profilesSchema,
 		isDeleted: Joi.boolean(),
-		isSchoolChanged: Joi.boolean(),
-	}).min(1);
+}).min(1);
 
 	let isValid = schema.validate(data, { abortEarly: false });
 

@@ -3,22 +3,24 @@ const dashboardAggregation = require("../aggregation/admin.dashboard.aggregation
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const { Worker } = require("worker_threads");
 const path = require("path");
+const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 
 class OperationsManager {
   constructor() {
     this.regeneratedLogDao = new RegeneratedLessonResourceDao();
   }
 
-  async getDashboardMetrics(filters) {
+  async getDashboardMetrics(filters, grants) {
     try {
-      return { success: true, data: await dashboardAggregation.getDashboardMetrics(filters) };
+      return { success: true, data: await dashboardAggregation.getDashboardMetrics(filters, grants) };
     } catch (err) {
       return { success: false, error: err.message };
     }
   }
 
-  async getContentActivity(page, limit, filters, sort) {
+  async getContentActivity(page, limit, filters, sort, grants) {
     try {
+      filters = intersectFilters(filters, permissionScopeFilter(grants, "content.activity.view", "user.school", "_id"));
       const result = await this.regeneratedLogDao.getContentActivity(page, limit, filters, sort);
       return formatApiReponse(true, "", result);
     } catch (err) {
@@ -29,8 +31,9 @@ class OperationsManager {
   async exportContentActivity(req) {
     try {
       const { filter = {}, search = "" } = req.query;
-      const searchFilter = search ? { $or: ["user.identity.name", "user.profiles.teacher.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
-      const activities = await this.regeneratedLogDao.getAllContentActivity({ ...filter, ...searchFilter });
+      const searchFilter = search ? { $or: ["user.identity.name", "user.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
+      const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school", "_id");
+      const activities = await this.regeneratedLogDao.getAllContentActivity(intersectFilters({ ...filter, ...searchFilter }, scopeFilter));
       const worker = new Worker(path.resolve(__dirname, "../worker/exportcontentactivityworker.js"));
       worker.on("error", (err) => console.error("Content activity export worker error", { userId: String(req.user._id), error: err.message }));
       worker.on("exit", (code) => {

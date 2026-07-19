@@ -67,7 +67,6 @@ export class AppComponent implements OnInit, OnDestroy {
     window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
   }
 
-
   // ------ User leaving tab/window ------
   handleBeforeUnload(event: BeforeUnloadEvent): void {
     console.log('User is about to close the tab or navigate away.');

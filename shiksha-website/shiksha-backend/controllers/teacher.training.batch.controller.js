@@ -14,8 +14,20 @@ const handleError = require('../helper/handleError');
 const {
   getPreSignedFileUrl,
 } = require("../services/azure.blob.service");
-const isRegionallyScoped = (permissions) => permissions.includes("scope.regional") && !permissions.includes("scope.global");
+const { hasGlobalPermission, schoolDependency } = require("../helper/permission.helper");
+const { permissionScopeFilter } = require("../helper/scope.helper");
 const Role = require("../models/role.model");
+const School = require("../models/school.model");
+const teacherPopulate = { path: "assignedTeachers", select: "identity profiles.teacher roles", populate: { path: "roles.role", select: "scopeType" } };
+
+async function withTeacherSchools(batch) {
+  const data = batch.toObject();
+  const ids = data.assignedTeachers.map((teacher) => schoolDependency(teacher.roles));
+  const schools = new Map((await School.find({ _id: { $in: ids } }).lean()).map((school) => [String(school._id), school]));
+  for (const teacher of data.assignedTeachers) teacher.school = schools.get(schoolDependency(teacher.roles));
+  return data;
+}
+
 class TeacherTrainingBatchController extends BaseController {
   constructor() {
     super(new TeacherTrainingBatchManager());
@@ -73,15 +85,14 @@ class TeacherTrainingBatchController extends BaseController {
   try {
     const { batchId } = req.params;
     const batch = await TeacherTrainingBatch.findById(batchId)
-      .populate('assignedTeachers', 'identity profiles.teacher')
+      .populate(teacherPopulate)
       .select('+permissionLetterPdfPath +attendancePdfPath +photoPaths.path +photoPaths.mimetype'); // Explicitly include photoPaths.path and photoPaths.mimetype
     
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
     }
     
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.view")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only view batches you created.' });
       }
@@ -118,7 +129,7 @@ class TeacherTrainingBatchController extends BaseController {
       await batch.save();
     }
     
-    res.status(200).json(batch);
+    res.status(200).json(await withTeacherSchools(batch));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -134,8 +145,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.edit")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only assign teachers to batches you created.' });
       }
@@ -155,8 +165,8 @@ class TeacherTrainingBatchController extends BaseController {
     } else {
     }
     
-    const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate('assignedTeachers', 'identity profiles.teacher');
-    res.status(200).json(updatedBatch);
+    const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
+    res.status(200).json(await withTeacherSchools(updatedBatch));
   } catch (err) {
     console.error('assignTeacherToBatch - error:', err);
     res.status(500).json({ message: err.message });
@@ -173,8 +183,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.edit")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only remove teachers from batches you created.' });
       }
@@ -188,8 +197,8 @@ class TeacherTrainingBatchController extends BaseController {
       { runValidators: false }
     );
     
-    const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate('assignedTeachers', 'identity profiles.teacher');
-    res.status(200).json(updatedBatch);
+    const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
+    res.status(200).json(await withTeacherSchools(updatedBatch));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -210,8 +219,7 @@ class TeacherTrainingBatchController extends BaseController {
       });
     }
 
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.edit")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only delete batches you created.' });
       }
@@ -228,13 +236,8 @@ class TeacherTrainingBatchController extends BaseController {
   async getTeacherTrainingStats(req, res) {
   try {
     const teacherRoleIds = (await Role.find({ permissions: "dashboard.teacher.view", isDeleted: false }).select("_id")).map((role) => role._id);
-    let teacherQuery = { roles: { $in: teacherRoleIds } };
-
-    if (isRegionallyScoped(req.permissions)) {
-      const { zones, districts } = req.user.profiles.admin;
-      teacherQuery['profiles.teacher.zone'] = { $in: zones };
-      teacherQuery['profiles.teacher.district'] = { $in: districts };
-    }
+    const schoolIds = await School.distinct("_id", permissionScopeFilter(req.permissions, "training.view", "", "_id"));
+    const teacherQuery = { "roles.role": { $in: teacherRoleIds }, "roles.dep": { $in: schoolIds } };
 
     const relevantTeachers = await User.find(teacherQuery).select('_id');
     const relevantTeacherIds = new Set(relevantTeachers.map(t => t._id.toString()));
@@ -281,8 +284,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.edit")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only update batches you created.' });
       }
@@ -306,14 +308,13 @@ class TeacherTrainingBatchController extends BaseController {
   async submitBatch(req, res) {
   try {
     const { batchId } = req.params;
-    const batch = await TeacherTrainingBatch.findById(batchId).populate('assignedTeachers', 'identity profiles.teacher');
+    const batch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
 
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.edit")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only submit batches you created.' });
       }
@@ -325,7 +326,8 @@ class TeacherTrainingBatchController extends BaseController {
     }
 
     // Mark absent teachers for record-keeping
-    const absentTeachers = batch.assignedTeachers.filter(
+    const batchData = await withTeacherSchools(batch);
+    const absentTeachers = batchData.assignedTeachers.filter(
       (teacher) => !batch.attendance.includes(teacher._id)
     );
 
@@ -336,8 +338,8 @@ class TeacherTrainingBatchController extends BaseController {
         batchName: batch.batchName,
         teacherName: teacher.identity.name,
         teacherPhone: teacher.identity.phone,
-        teacherZone: teacher.profiles.teacher.zone,
-        teacherDistrict: teacher.profiles.teacher.district
+        teacherZone: teacher.school.zone,
+        teacherDistrict: teacher.school.district
       }));
       await TeacherAbsent.insertMany(newAbsentees);
     }
@@ -361,8 +363,7 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.edit")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only upload files to batches you created.' });
       }
@@ -397,14 +398,13 @@ class TeacherTrainingBatchController extends BaseController {
   async exportBatchReport(req, res) {
   try {
     const { batchId } = req.params;
-    const batch = await TeacherTrainingBatch.findById(batchId).populate('assignedTeachers', 'identity profiles.teacher');
+    const batch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
 
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
-    // Check if user is a manager (not admin) and if they created this batch
-    if (isRegionallyScoped(req.permissions)) {
+    if (!hasGlobalPermission(req.permissions, "training.view")) {
       if (batch.createdBy.toString() !== req.user._id.toString()) {
         return res.status(403).json({ message: 'Access denied. You can only export reports for batches you created.' });
       }
@@ -444,14 +444,15 @@ class TeacherTrainingBatchController extends BaseController {
     tableHeaderRow.height = 22;
 
     // --- Add Data Rows ---
-    batch.assignedTeachers.forEach((teacher, idx) => {
+    const batchData = await withTeacherSchools(batch);
+    batchData.assignedTeachers.forEach((teacher, idx) => {
       const status = batch.attendance.map(id => id.toString()).includes(teacher._id.toString()) ? 'Present' : 'Absent';
       worksheet.addRow([
         idx + 1,
         teacher.identity.name,
         teacher.identity.phone,
-        teacher.profiles.teacher.zone,
-        teacher.profiles.teacher.district,
+        teacher.school.zone,
+        teacher.school.district,
         status
       ]);
     });

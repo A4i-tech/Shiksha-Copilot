@@ -157,18 +157,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    */
   ngOnInit(): void {
     this.getRegionsData();
-
-    const loggedInUser = this.utilityService.loggedInUserData;
-    if (this.utilityService.isRegionallyScoped()) {
-      const admin = loggedInUser.profiles.admin;
-      this.filterObj.state = admin.state;
-      this.filterObj.zone = admin.zones;
-      this.filterObj.district = admin.districts;
-      setTimeout(() => this.setZoneDropdownOptionsForManager(), 0);
-      this.getShcoolList(this.filterObj);
-    } else {
-      this.getShcoolList();
-    }
+    this.getShcoolList();
 
     this.searchSubscription = this.searchTerms.pipe(
       debounceTime(1000),
@@ -195,20 +184,13 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
-    const loggedInUser = this.utilityService.loggedInUserData;
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,
         'state',
         selectedStateValue
       );
-      if (this.utilityService.isRegionallyScoped()) {
-        this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) =>
-          loggedInUser.profiles.admin.zones.includes(zone.name)
-        );
-      } else {
-        this.zoneDropdownOptions = this.selectedStateObj.zones;
-      }
+      this.zoneDropdownOptions = this.selectedStateObj.zones;
     } else {
       this.zoneDropdownOptions = [];
     }

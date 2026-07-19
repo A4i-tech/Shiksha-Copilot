@@ -1,8 +1,7 @@
-import { AfterViewInit, Component, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import { FormArray, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { UserManagementService } from '../user-management.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { StaffUserCommonService } from 'src/app/shared/services/staff-user-common.service';
@@ -12,72 +11,9 @@ import { StaffUserCommonService } from 'src/app/shared/services/staff-user-commo
   templateUrl: './add-edit-user.component.html',
   styleUrls: ['./add-edit-user.component.scss']
 })
-export class AddEditUserComponent implements OnInit, AfterViewInit {
-  stateDropdownOptions: any[] = [];
-  zoneDropdownOptions: any[] = [];
-  districtDropdownOptions: any[] = [];
-  blockDropdownOptions: any[] = [];
-
-  schoolNamesDropdownOptions: any[] = [];
-
+export class AddEditUserComponent implements OnInit {
   userRolesDropdownOptions: any[] = [];
-
-  stateDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Select state',
-    fieldName: 'State',
-    bindLabel: 'state',
-    bindValue: 'state',
-    required: true
-  };
-
-  zoneDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Zone',
-    fieldName: 'Zone',
-    bindLabel: 'name',
-    bindValue: 'name',
-    required: true
-  };
-
-  districtDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Select district',
-    fieldName: 'District',
-    bindLabel: 'name',
-    bindValue: 'name',
-    required: true
-  };
-
-  blockDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Taluk',
-    fieldName: 'Taluk',
-    bindLabel: 'name',
-    bindValue: 'name',
-    required: true
-  };
-
-
-  schoolNameDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Select School Name',
-    fieldName: 'School Name',
-    bindLabel: 'name',
-    bindValue: '_id',
-    required: true,
-    searchable: true
-  };
-
-  userRoleDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Select Teacher Role',
-    fieldName: 'Teacher Role',
-    bindLabel: 'name',
-    bindValue: '_id',
-    multi: true,
-    required: true
-  };
+  scopeOptions: Record<string, any[]> = { STATE: [], ZONE: [], DISTRICT: [], BLOCK: [], SCHOOL: [] };
 
   toggleconfig = {
     color: {
@@ -89,206 +25,47 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   submitted: boolean = false;
   mode!: any;
   userId!: string;
-  initialSchoolValue: any;
-
   regionsData: any;
-
-  selectedStateObj: any;
-
-  selectedZoneObj: any;
-
-  selectedDistrictObj: any;
-
-  dependentPatchData: any;
-  schools: any;
-
-  savedSchoolId:any;
 
   constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private userManagementService: UserManagementService, private router: Router, private masterService: MasterService,private commonStaffUserService:StaffUserCommonService) { }
 
   ngOnInit(): void {
+    this.initialize_add_form();
     this.route.queryParamMap.subscribe((qparams) => {
       this.mode = qparams?.get('mode');
     });
 
     this.route.params.subscribe((params) => {
       this.userId = params['id'];
-      if (this.userId) {
-        this.getUserDetails(this.userId);
-      }
     });
 
-    this.initialize_add_form();
     if (this.mode === 'view') this.addForm.disable();
     this.commonStaffUserService.getRoles().subscribe((res: any) => {
       this.userRolesDropdownOptions = res.data.results.filter((role: any) => !role.isSuperUser && role.permissions.includes('dashboard.teacher.view'));
+      if (this.userId) this.getUserDetails(this.userId);
     });
-    if (this.mode !== 'view' && this.mode !== 'edit') this.getRegionsData();
-  }
-
-  ngAfterViewInit(): void {
-    this.f.state?.valueChanges.subscribe((val: any) => {
-      if (this.selectedStateObj && this.selectedStateObj.state !== val) {
-        this.f.zone?.reset();
-        this.zoneDropdownOptions = [];
-      }
-      this.setZoneDropdownValues(val);
+    this.getRegionsData();
+    this.userManagementService.getSchoolList(false).subscribe((res: any) => {
+      this.scopeOptions['SCHOOL'] = res.data.results.map((school: any) => ({ value: school._id, label: school.name }));
     });
-
-    this.f.zone?.valueChanges.subscribe((val: any) => {
-      if (this.selectedZoneObj && this.selectedZoneObj.name !== val) {
-        this.f.district?.reset();
-        this.districtDropdownOptions = [];
-      }
-      this.setDistrictDropdownValues(val);
-    });
-
-    this.f.district?.valueChanges.subscribe((val: any) => {
-      if (this.selectedDistrictObj && this.selectedDistrictObj.name !== val) {
-        this.f.block?.reset();
-        this.blockDropdownOptions = []
-      }
-      this.setBlockDropdownValues(val);
-    });
-
-    this.f.block?.valueChanges.subscribe((val:any)=>{
-      this.schoolNamesDropdownOptions = [];
-      this.f.school?.reset();
-      if(val){
-        this.getSchoolList();
-      }
-    })
-
-
-
-
-
-
-
-  }
-
-  /**
-   * Function to set state dropdown values
-   * @param val
-   */
-  setStateDropdownValues(val: any) {
-    this.stateDropdownOptions = val;
-  }
-
-  /**
-   * Function to set zone dropdown values
-   * @param selectedStateValue
-   */
-  setZoneDropdownValues(selectedStateValue: any) {
-    if (selectedStateValue) {
-      this.selectedStateObj = this.utilityService.filterDropdownValues(
-        this.regionsData,
-        'state',
-        selectedStateValue
-      );
-      // Only show manager's zones if role is manager
-      const loggedInUser = this.utilityService.loggedInUserData;
-      if (this.utilityService.isRegionallyScoped()) {
-        this.zoneDropdownOptions = this.utilityService.getZonesForManager(
-          this.regionsData,
-          loggedInUser.profiles.admin
-        );
-      } else {
-        this.zoneDropdownOptions = this.selectedStateObj.zones;
-      }
-    } else {
-      this.f.zone?.reset();
-    }
-  }
-
-  /**
-   * Function to set district dropdown values
-   * @param selectedZone
-   */
-  setDistrictDropdownValues(selectedZone: any) {
-    if (selectedZone) {
-      this.selectedZoneObj = this.utilityService.filterDropdownValues(
-        this.selectedStateObj.zones,
-        'name',
-        selectedZone
-      );
-      // districts is now an array
-      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts)
-          ? this.selectedZoneObj.districts
-          : [this.selectedZoneObj.districts]; // Handle legacy object structure
-      } else {
-        this.districtDropdownOptions = [];
-      }
-    } else {
-      this.f.district?.reset();
-    }
-  }
-
-  /**
-   * Function to set block dropdown values
-   * @param selectedDistrict
-   */
-  setBlockDropdownValues(selectedDistrict: any) {
-    if (selectedDistrict) {
-      // districts is now an array, find the matching district
-      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        const districts = Array.isArray(this.selectedZoneObj.districts)
-          ? this.selectedZoneObj.districts
-          : [this.selectedZoneObj.districts]; // Handle legacy object structure
-
-        this.selectedDistrictObj = this.utilityService.filterDropdownValues(
-          districts,
-          'name',
-          selectedDistrict
-        );
-        this.blockDropdownOptions = this.selectedDistrictObj.blocks;
-      } else {
-        this.selectedDistrictObj = null;
-        this.blockDropdownOptions = [];
-      }
-    } else {
-      this.f.block?.reset();
-    }
   }
 
   getRegionsData() {
     this.masterService.getRegions().subscribe({
       next: (val) => {
-        this.regionsData = val?.data?.results;
-        this.setStateDropdownValues(this.regionsData);
-        if (this.mode === 'edit' || this.mode === 'view') {
-          this.patchRegionDropDown();
+        this.regionsData = val.data.results;
+        for (const scopeType of ['STATE', 'ZONE', 'DISTRICT', 'BLOCK']) this.scopeOptions[scopeType] = [];
+        for (const region of this.regionsData) {
+          this.scopeOptions['STATE'].push({ value: region.state, label: region.state });
+          for (const zone of region.zones) {
+            this.scopeOptions['ZONE'].push({ value: zone.name, label: `${region.state} / ${zone.name}` });
+            for (const district of zone.districts) {
+              this.scopeOptions['DISTRICT'].push({ value: district.name, label: `${zone.name} / ${district.name}` });
+              for (const block of district.blocks) this.scopeOptions['BLOCK'].push({ value: block.name, label: `${district.name} / ${block.name}` });
+            }
+          }
         }
       },
-    });
-  }
-
-  /**
-   * Function to patch regions data
-   */
-  patchRegionDropDown() {
-    this.f.state?.setValue(this.dependentPatchData.state);
-    this.f.zone?.setValue(this.dependentPatchData.zone);
-    this.f.district?.setValue(this.dependentPatchData.district);
-    this.f.block?.setValue(this.dependentPatchData.block);
-    this.f.school?.setValue(this.dependentPatchData.school._id);
-  }
-
-  getSchoolList() {
-
-    const filters = {
-      state: this.addForm.get('state')?.value,
-      district: this.addForm.get('district')?.value,
-      zone: this.addForm.get('zone')?.value,
-      block: this.addForm.get('block')?.value
-    }
-    this.userManagementService.getSchoolList(false, filters).subscribe((res: any) => {
-      this.schools = res.data['results'];
-      this.schoolNamesDropdownOptions = this.schools.map((school: { _id: string, name: string }) => ({
-        _id: school._id,
-        name: school.name
-      }));
     });
   }
 
@@ -296,13 +73,36 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     this.addForm = this.fb.group({
       name: [null, [Validators.required, Validators.minLength(5)]],
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
-      state: [null, [Validators.required]],
-      zone: [null, [Validators.required]],
-      district: [null, [Validators.required]],
-      block: [null, [Validators.required]],
-      school: [null, [Validators.required]],
-      roles: [[], [Validators.required]],
+      roles: this.fb.array([this.createAssignment({})]),
     });
+  }
+
+  createAssignment(value: any) {
+    return this.fb.group({ _id: [value._id], roleId: [value.roleId, Validators.required], dep: [value.dep] });
+  }
+
+  get assignments(): FormArray {
+    return this.addForm.get('roles') as FormArray;
+  }
+
+  addAssignment() {
+    this.assignments.push(this.createAssignment({}));
+  }
+
+  removeAssignment(index: number) {
+    this.assignments.removeAt(index);
+  }
+
+  assignmentRole(index: number) {
+    return this.userRolesDropdownOptions.find((role) => role._id === this.assignments.at(index).get('roleId')?.value);
+  }
+
+  assignmentChanged(index: number) {
+    const dep = this.assignments.at(index).get('dep')!;
+    const required = !['GLOBAL', 'UNBOUND'].includes(this.assignmentRole(index)?.scopeType);
+    dep.setValidators(required ? Validators.required : null);
+    if (!required) dep.setValue(null);
+    dep.updateValueAndValidity();
   }
 
   on_form_submit() {
@@ -310,42 +110,18 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     if (this.addForm.invalid) {
       return
     }
-    const currentSchoolValue = this.f.school?.value;
     if (this.mode === 'edit') {
-
-      const updatedData = {
-        ...this.addForm.value,
-        isSchoolChanged: this.savedSchoolId !== this.addForm.value.school
-      }
-      // Check if the school value has changed
-      if (currentSchoolValue !== this.initialSchoolValue) {
-        this.commonStaffUserService.updateTeacher(this.userId, updatedData).subscribe({
-          next: (res: any) => {
-            this.router.navigate(['/teachers/list']);
-            this.utilityService.handleResponse(res);
-          },
-          error: (err) => {
-            console.error(err);
-            this.utilityService.handleError(err);
-          }
-        });
-      }
-      else {
-        this.commonStaffUserService.updateTeacher(this.userId, this.addForm.value).subscribe({
-          next: (res: any) => {
-            this.router.navigate(['/teachers/list']);
-            this.utilityService.handleResponse(res);
-          },
-          error: (err) => {
-            console.error(err);
-            this.utilityService.handleError(err);
-          }
-        });
-      }
-
-    }
-    else {
-
+      this.commonStaffUserService.updateTeacher(this.userId, this.addForm.value).subscribe({
+        next: (res: any) => {
+          this.router.navigate(['/teachers/list']);
+          this.utilityService.handleResponse(res);
+        },
+        error: (err) => {
+          console.error(err);
+          this.utilityService.handleError(err);
+        }
+      });
+    } else {
       this.commonStaffUserService.createTeacher(this.addForm.value).subscribe({
         next: (res: any) => {
           this.router.navigate(['/teachers/list']);
@@ -360,51 +136,27 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
 
   }
 
-  convertToFormControl(absCtrl: AbstractControl | null): FormControl {
-    return absCtrl as FormControl;
-  }
-
   get f(): any {
     return this.addForm.controls;
   }
 
-  patchStatus() {
-    if (this.addForm.value.isDeleted === false) {
-      this.addForm.patchValue({
-        isDeleted: true
-      });
-    } else {
-      this.addForm.patchValue({
-        isDeleted: false
-      });
-    }
-  }
-
   setFormValue(user: any) {
-    const teacher = user.profiles.teacher;
-    this.dependentPatchData = {
-      state: teacher.state,
-      zone: teacher.zone,
-      district: teacher.district,
-      block: teacher.block,
-      school: teacher.school,
-    };
-    this.getRegionsData();
+    this.assignments.clear();
+    user.roles.forEach((assignment: any) => {
+      this.assignments.push(this.createAssignment({ _id: assignment._id, roleId: assignment.role._id, dep: assignment.dep }));
+      this.assignmentChanged(this.assignments.length - 1);
+    });
     this.addForm.patchValue({
       name: user.identity.name,
       phone: user.identity.phone,
-      roles: user.roles.map((role: any) => role._id),
       isDeleted: user.isDeleted,
     });
-    this.initialSchoolValue = teacher.school._id;
   }
 
   getUserDetails(id: string) {
     this.commonStaffUserService.getById(id).subscribe({
       next: (res: any) => {
-        const userData = res.data;
-        this.savedSchoolId = userData.profiles.teacher.school._id;
-        this.setFormValue(userData);
+        this.setFormValue(res.data);
       },
       error: (err) => {
         console.error(err);

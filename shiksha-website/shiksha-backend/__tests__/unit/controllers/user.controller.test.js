@@ -141,7 +141,8 @@ describe("UserController", () => {
       expect(mockUserManager.bulkUpload).toHaveBeenCalledWith(
         mockReq.file.buffer,
         "user-123",
-        "Test User"
+        "Test User",
+        mockReq.permissions
       );
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
@@ -168,56 +169,21 @@ describe("UserController", () => {
 
       await controller.getUserWithSchoolId(mockReq, mockRes);
 
-      expect(mockUserManager.getById).toHaveBeenCalledWith("user-123");
+      expect(mockUserManager.getById).toHaveBeenCalledWith("user-123", mockReq.permissions);
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
 
   describe("getProfile", () => {
-    it("should get own profile successfully, reusing the auth-middleware doc", async () => {
+    it("should get user profile successfully", async () => {
       const mockResult = { success: true, data: { name: "Test", classes: [] } };
       mockUserManager.getProfileById = jest.fn().mockResolvedValue(mockResult);
       mockReq.params = { id: "user-123" };
-      mockReq.teacherUser = { _id: "user-123", name: "Test User" };
 
       await controller.getProfile(mockReq, mockRes);
 
-      expect(mockUserManager.getProfileById).toHaveBeenCalledWith(
-        "user-123",
-        mockReq.teacherUser,
-        true
-      );
+      expect(mockUserManager.getProfileById).toHaveBeenCalledWith("user-123", mockReq.permissions);
       expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should allow an admin to fetch another user's profile without a cached doc", async () => {
-      const mockResult = { success: true, data: { name: "Other", classes: [] } };
-      mockUserManager.getProfileById = jest.fn().mockResolvedValue(mockResult);
-      mockReq.params = { id: "other-user-456" };
-      mockReq.user = { _id: "user-123", name: "Admin User", role: "admin" };
-
-      await controller.getProfile(mockReq, mockRes);
-
-      expect(mockUserManager.getProfileById).toHaveBeenCalledWith(
-        "other-user-456",
-        null,
-        null
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should return 403 when a non-privileged user requests another user's profile", async () => {
-      mockUserManager.getProfileById = jest.fn();
-      mockReq.params = { id: "other-user-456" };
-
-      await controller.getProfile(mockReq, mockRes);
-
-      expect(mockUserManager.getProfileById).not.toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: "Forbidden",
-      });
     });
   });
 
@@ -279,7 +245,7 @@ describe("UserController", () => {
 
       await controller.activate(mockReq, mockRes);
 
-      expect(mockUserManager.activate).toHaveBeenCalledWith("user-123");
+      expect(mockUserManager.activate).toHaveBeenCalledWith("user-123", mockReq.permissions);
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
@@ -292,7 +258,7 @@ describe("UserController", () => {
 
       await controller.deactivate(mockReq, mockRes);
 
-      expect(mockUserManager.deactivate).toHaveBeenCalledWith("user-123");
+      expect(mockUserManager.deactivate).toHaveBeenCalledWith("user-123", mockReq.permissions);
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
@@ -348,74 +314,7 @@ describe("UserController", () => {
 
       await controller.getAll(mockReq, mockRes);
 
-      expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        2,
-        20,
-        expect.objectContaining({ role: "teacher" }),
-        {},
-        expect.any(Object)
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should apply manager zone/district filters", async () => {
-      const mockResult = { success: true, data: { results: [], total: 0 } };
-      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user = {
-        _id: "user-123",
-        profiles: { admin: { zones: ["zone1", "zone2"], districts: ["dist1", "dist2"] } }
-      };
-      mockReq.permissions = ["scope.regional"];
-      mockReq.query = {};
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        1,
-        10,
-        expect.objectContaining({
-          zone: ["zone1", "zone2"],
-          district: ["dist1", "dist2"]
-        }),
-        {},
-        expect.any(Object)
-      );
-    });
-
-    it("should deny regional users with no zone or district assignment", async () => {
-      mockUserManager.getAll = jest.fn();
-      mockReq.user = {
-        _id: "user-123",
-        profiles: { admin: { zones: [], districts: [] } },
-      };
-      mockReq.permissions = ["scope.regional"];
-      mockReq.query = {};
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockUserManager.getAll).not.toHaveBeenCalled();
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-    });
-
-    it("should not force regional filters when scope.global is present", async () => {
-      const mockResult = { success: true, data: { results: [], total: 0 } };
-      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user = {
-        _id: "user-123",
-        profiles: { admin: { zones: [], districts: [] } },
-      };
-      mockReq.permissions = ["scope.regional", "scope.global"];
-      mockReq.query = {};
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        1,
-        10,
-        expect.not.objectContaining({ zone: expect.anything(), district: expect.anything() }),
-        {},
-        expect.any(Object)
-      );
+      expect(mockUserManager.getAll.mock.calls[0][2]).toEqual(expect.objectContaining({ role: "teacher" }));
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
@@ -426,17 +325,9 @@ describe("UserController", () => {
 
       await controller.getAll(mockReq, mockRes);
 
-      expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        1,
-        10,
-        expect.objectContaining({
-          $or: expect.arrayContaining([
-            { "identity.name": expect.objectContaining({ $regex: expect.any(RegExp) }) }
-          ])
-        }),
-        {},
-        expect.any(Object)
-      );
+      expect(mockUserManager.getAll.mock.calls[0][2]).toEqual(expect.objectContaining({
+        $or: expect.arrayContaining([{ "identity.name": expect.objectContaining({ $regex: expect.any(RegExp) }) }])
+      }));
     });
 
     it("should handle includeDeleted filter", async () => {
@@ -446,13 +337,7 @@ describe("UserController", () => {
 
       await controller.getAll(mockReq, mockRes);
 
-      expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        1,
-        10,
-        expect.any(Object),
-        {},
-        { isDeleted: true }
-      );
+      expect(mockUserManager.getAll.mock.calls[0][4]).toEqual({ isDeleted: true });
     });
 
     it("should handle errors in getAll", async () => {

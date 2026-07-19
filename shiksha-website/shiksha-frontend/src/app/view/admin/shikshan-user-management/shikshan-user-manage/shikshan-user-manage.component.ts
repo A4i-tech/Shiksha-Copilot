@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ShikshanService } from '../shikshan-user.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { StaffUserCommonService } from 'src/app/shared/services/staff-user-common.service';
+import { UserManagementService } from '../../user-management/user-management.service';
 
 @Component({
   selector: 'app-shikshan-user-manage',
@@ -17,50 +18,16 @@ export class ShikshanUserManageComponent implements OnInit {
 
   userRolesDropdownOptions: any[] = [];
 
-  userRoleDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Select Staff Role',
-    fieldName: 'Staff Role',
-    bindLabel: 'name',
-    bindValue: '_id',
-    multi: true,
-    required: true
-  };
-
   stateDropdownOptions: any[] = [];
-  zoneDropdownOptions: any[] = [];
-  districtDropdownOptions: any[] = [];
   regionsData: any[] = [];
+  scopeOptions: Record<string, any[]> = { STATE: [], ZONE: [], DISTRICT: [], BLOCK: [], SCHOOL: [] };
 
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select State',
     fieldName: 'State',
     bindLabel: 'state',
-    bindValue: 'state',
-    required: true
-  };
-
-  zoneDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Select Zone',
-    fieldName: 'Zone',
-    bindLabel: 'name',
-    bindValue: 'name',
-    required: true,
-    multi: true,
-    selectAllOption: true
-  };
-
-  districtDropdownconfig: DropDownConfig = {
-    isBackground: true,
-    placeHolderTxt: 'Select District',
-    fieldName: 'District',
-    bindLabel: 'name',
-    bindValue: 'name',
-    required: true,
-    multi: true,
-    selectAllOption: true
+    bindValue: 'state'
   };
 
   toggleconfig = {
@@ -74,7 +41,7 @@ export class ShikshanUserManageComponent implements OnInit {
   mode!: any;
   userId!: string;
 
-  constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private shikshanaUserService: ShikshanService, private router: Router, private masterService: MasterService, private commonStaffUserService: StaffUserCommonService) { }
+  constructor(private fb: FormBuilder, private route: ActivatedRoute, private utilityService: UtilityService, private shikshanaUserService: ShikshanService, private router: Router, private masterService: MasterService, private commonStaffUserService: StaffUserCommonService, private userManagementService: UserManagementService) { }
 
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((qparams) => {
@@ -91,7 +58,9 @@ export class ShikshanUserManageComponent implements OnInit {
       this.userRolesDropdownOptions = res.data.results.filter((role: any) => !role.isSuperUser && role.permissions.includes('dashboard.admin.view'));
       this.getRegionsData();
     });
-    this.handleRoleChange();
+    this.userManagementService.getSchoolList(false).subscribe((res: any) => {
+      this.scopeOptions['SCHOOL'] = res.data.results.map((school: any) => ({ value: school._id, label: school.name }));
+    });
   }
 
   initialize_add_form() {
@@ -99,12 +68,38 @@ export class ShikshanUserManageComponent implements OnInit {
       name: [null, [Validators.required, Validators.minLength(3)]],
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
       email: [null, [Validators.required, Validators.email]],
-      roles: [[], [Validators.required]],
+      roles: this.fb.array([this.createAssignment({})]),
       isDeleted: [false, [Validators.required]],
       state: [null],
-      zones: [[]],
-      districts: [[]]
     });
+  }
+
+  createAssignment(value: any) {
+    return this.fb.group({ _id: [value._id], roleId: [value.roleId, Validators.required], dep: [value.dep] });
+  }
+
+  get assignments(): FormArray {
+    return this.addForm.get('roles') as FormArray;
+  }
+
+  addAssignment() {
+    this.assignments.push(this.createAssignment({}));
+  }
+
+  removeAssignment(index: number) {
+    this.assignments.removeAt(index);
+  }
+
+  assignmentRole(index: number) {
+    return this.userRolesDropdownOptions.find((role) => role._id === this.assignments.at(index).get('roleId')?.value);
+  }
+
+  assignmentChanged(index: number) {
+    const dep = this.assignments.at(index).get('dep')!;
+    const required = !['GLOBAL', 'UNBOUND'].includes(this.assignmentRole(index)?.scopeType);
+    dep.setValidators(required ? Validators.required : null);
+    if (!required) dep.setValue(null);
+    dep.updateValueAndValidity();
   }
 
   getRegionsData() {
@@ -112,109 +107,22 @@ export class ShikshanUserManageComponent implements OnInit {
       next: (val) => {
         this.regionsData = val.data.results;
         this.stateDropdownOptions = this.regionsData;
+        for (const scopeType of ['STATE', 'ZONE', 'DISTRICT', 'BLOCK']) this.scopeOptions[scopeType] = [];
+        for (const region of this.regionsData) {
+          this.scopeOptions['STATE'].push({ value: region.state, label: region.state });
+          for (const zone of region.zones) {
+            this.scopeOptions['ZONE'].push({ value: zone.name, label: `${region.state} / ${zone.name}` });
+            for (const district of zone.districts) {
+              this.scopeOptions['DISTRICT'].push({ value: district.name, label: `${zone.name} / ${district.name}` });
+              for (const block of district.blocks) this.scopeOptions['BLOCK'].push({ value: block.name, label: `${district.name} / ${block.name}` });
+            }
+          }
+        }
         if (this.userId) {
           this.getUserDetails(this.userId);
         }
       }
     });
-  }
-
-  handleRoleChange() {
-    this.addForm.get('roles')?.valueChanges.subscribe(() => {
-      if (this.selectedRoleHas('scope.regional')) {
-        this.addForm.get('state')?.setValidators([Validators.required]);
-        this.addForm.get('zones')?.setValidators([Validators.required]);
-        this.addForm.get('districts')?.setValidators([Validators.required]);
-      } else {
-        this.addForm.get('state')?.clearValidators();
-        this.addForm.get('zones')?.clearValidators();
-        this.addForm.get('districts')?.clearValidators();
-        this.addForm.get('state')?.setValue(null);
-        this.addForm.get('zones')?.setValue([]);
-        this.addForm.get('districts')?.setValue([]);
-      }
-      this.addForm.get('state')?.updateValueAndValidity();
-      this.addForm.get('zones')?.updateValueAndValidity();
-      this.addForm.get('districts')?.updateValueAndValidity();
-    });
-
-    this.addForm.get('state')?.valueChanges.subscribe((state: string) => {
-      this.updateZoneOptions(state);
-    });
-
-    this.addForm.get('zones')?.valueChanges.subscribe((selectedZones: any[]) => {
-      this.updateDistrictOptions(selectedZones);
-    });
-  }
-
-  updateZoneOptions(state: string) {
-    if (!state) {
-      this.zoneDropdownOptions = [];
-      this.districtDropdownOptions = [];
-      this.addForm.get('zones')?.setValue([]);
-      this.addForm.get('districts')?.setValue([]);
-      return;
-    }
-
-    // Find the selected state object
-    const stateObj = this.regionsData.find((region: any) => region.state === state);
-
-    if (stateObj && stateObj.zones) {
-      // Transform zones into the correct format for the dropdown
-      this.zoneDropdownOptions = stateObj.zones.map((zone: any) => ({
-        name: zone.name,
-        value: zone.name
-      }));
-    } else {
-      this.zoneDropdownOptions = [];
-    }
-
-    // Reset selections when state changes
-    this.addForm.get('zones')?.setValue([]);
-    this.addForm.get('districts')?.setValue([]);
-    this.districtDropdownOptions = [];
-  }
-
-  updateDistrictOptions(selectedZones: any[]) {
-    if (!selectedZones || selectedZones.length === 0) {
-      this.districtDropdownOptions = [];
-      this.addForm.get('districts')?.setValue([]);
-      return;
-    }
-
-    const state = this.addForm.get('state')?.value;
-    const stateObj = this.regionsData.find((region: any) => region.state === state);
-
-    if (!stateObj) {
-      this.districtDropdownOptions = [];
-      return;
-    }
-
-    // Collect all districts from selected zones
-    const allDistricts = new Set();
-    selectedZones.forEach(zoneName => {
-      const zone = stateObj.zones.find((z: any) => z.name === zoneName);
-      if (zone && zone.districts) {
-        if (Array.isArray(zone.districts)) {
-          zone.districts.forEach((district: any) => {
-            if (district.name) {
-              allDistricts.add(district.name);
-            }
-          });
-        } else if (zone.districts.name) {
-          allDistricts.add(zone.districts.name);
-        }
-      }
-    });
-
-    // Transform districts into dropdown format
-    this.districtDropdownOptions = Array.from(allDistricts).map(districtName => ({
-      name: districtName,
-      value: districtName
-    }));
-
-    // Reset districts selection when zones change
-    this.addForm.get('districts')?.setValue([]);
   }
 
   on_form_submit() {
@@ -223,30 +131,8 @@ export class ShikshanUserManageComponent implements OnInit {
       return;
     }
 
-    // Create a copy of the form value to avoid modifying the form directly
     const formData = { ...this.addForm.value };
-
-    if (!this.selectedRoleHas('scope.regional')) {
-      delete formData.state;
-      delete formData.zones;
-      delete formData.districts;
-    }
-
-    // Define the type for the formatted data
-    interface FormattedData {
-      _id?: string;
-      name: string;
-      phone: string;
-      email: string;
-      roles: string[];
-      isDeleted: boolean;
-      state?: string;
-      zones?: string[];
-      districts?: string[];
-    }
-
-    // Format the data according to API requirements
-    const formattedData: FormattedData = {
+    const formattedData: any = {
       name: formData.name?.trim(),
       phone: formData.phone?.toString(),
       email: formData.email?.trim().toLowerCase(),
@@ -254,15 +140,7 @@ export class ShikshanUserManageComponent implements OnInit {
       isDeleted: formData.isDeleted
     };
 
-    if (this.selectedRoleHas('scope.regional')) {
-      if (!formData.state || !formData.zones?.length || !formData.districts?.length) {
-        this.utilityService.handleError({ error: { message: 'State, zones, and districts are required for manager role' } });
-        return;
-      }
-      formattedData.state = formData.state;
-      formattedData.zones = formData.zones;
-      formattedData.districts = formData.districts;
-    }
+    formattedData.state = formData.state;
     if (this.mode === 'edit') {
       formattedData._id = this.userId;
       this.shikshanaUserService.editUserDetails(this.userId, formattedData).subscribe({
@@ -299,27 +177,34 @@ export class ShikshanUserManageComponent implements OnInit {
     return this.addForm.controls;
   }
 
+  patchStatus() {
+    if (this.addForm.value.isDeleted === false) {
+      this.addForm.patchValue({
+        isDeleted: true
+      });
+    } else {
+      this.addForm.patchValue({
+        isDeleted: false
+      });
+    }
+  }
+
   getUserDetails(id: string) {
     this.commonStaffUserService.getById(id).subscribe({
       next: (res: any) => {
         const u = res.data;
-        const roleIds = u.roles.map((r: any) => r._id);
-        const admin = u.profiles.admin;
+        this.assignments.clear();
+        u.roles.forEach((assignment: any) => {
+          this.assignments.push(this.createAssignment({ _id: assignment._id, roleId: assignment.role._id, dep: assignment.dep }));
+          this.assignmentChanged(this.assignments.length - 1);
+        });
         const patch: any = {
           name: u.identity.name,
           phone: u.identity.phone,
           email: u.identity.email,
-          roles: roleIds,
           isDeleted: u.isDeleted,
-          state: null,
-          zones: [],
-          districts: [],
+          state: u.profiles.admin.state,
         };
-        if (this.roleHas(roleIds, 'scope.regional') && admin?.state) {
-          this.updateZoneOptions(admin.state);
-          this.updateDistrictOptions(admin.zones);
-          Object.assign(patch, { state: admin.state, zones: admin.zones, districts: admin.districts });
-        }
         this.addForm.patchValue(patch);
       },
       error: (err) => {
@@ -335,14 +220,6 @@ export class ShikshanUserManageComponent implements OnInit {
   set isActive(val: boolean) {
     this.addForm.get('isDeleted')?.setValue(!val);
     this.addForm.markAsDirty();
-  }
-
-  selectedRoleHas(permission: string): boolean {
-    return this.roleHas(this.addForm.get('roles')!.value, permission);
-  }
-
-  roleHas(roleIds: string[], permission: string): boolean {
-    return this.userRolesDropdownOptions.some((role) => roleIds.includes(role._id) && role.permissions.includes(permission));
   }
 
 }

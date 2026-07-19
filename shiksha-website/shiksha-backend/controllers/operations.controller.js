@@ -17,7 +17,7 @@ class OperationsController {
       fromDate,
       toDate,
       isLesson: isLesson === "true" ? true : isLesson === "false" ? false : undefined,
-    });
+    }, req.permissions);
     if (result.success) return res.status(200).json(result);
     return handleError(result, res);
   }
@@ -35,7 +35,7 @@ class OperationsController {
       ? {
           $or: [
             "user.identity.name",
-            "user.profiles.teacher.school.name",
+            "user.school.name",
             "content.name",
             "content.topics",
           ].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })),
@@ -45,7 +45,8 @@ class OperationsController {
       Number(page),
       Number(limit),
       { ...filter, ...searchFilter },
-      { [sortBy]: sortOrder === "desc" ? -1 : 1 }
+      { [sortBy]: sortOrder === "desc" ? -1 : 1 },
+      req.permissions
     );
     if (result.success) return res.status(200).json(result);
     return handleError(result, res);

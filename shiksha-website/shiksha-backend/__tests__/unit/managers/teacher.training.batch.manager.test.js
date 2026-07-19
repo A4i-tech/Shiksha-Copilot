@@ -8,6 +8,10 @@ jest.mock("../../../models/teacher.training.batch.model");
 describe("TeacherTrainingBatchManager", () => {
   let manager;
   let mockDao;
+  const user = (scopeType) => ({
+    _id: "user-123",
+    roles: [{ role: { permissions: ["training.view"], scopeType, isDeleted: false }, dep: scopeType === "GLOBAL" ? null : { _id: "district-1", value: "Mysuru" } }],
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -47,8 +51,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", roles: [{ permissions: ["scope.global"] }] };
-      const result = await manager.getBatches(user);
+      const result = await manager.getBatches(user("GLOBAL"));
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
       expect(mockPopulate).toHaveBeenCalledWith([
@@ -67,8 +70,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", roles: [{ permissions: ["scope.regional"] }] };
-      const result = await manager.getBatches(user);
+      const result = await manager.getBatches(user("DISTRICT"));
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({
         createdBy: "user-123",
@@ -85,8 +87,7 @@ describe("TeacherTrainingBatchManager", () => {
         populate: mockPopulate,
       });
 
-      const user = { _id: "user-123", roles: [{ permissions: ["scope.regional"] }, { permissions: ["scope.global"] }] };
-      const result = await manager.getBatches(user);
+      const result = await manager.getBatches(user("GLOBAL"));
 
       expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
       expect(result.success).toBe(true);
@@ -111,26 +112,11 @@ describe("TeacherTrainingBatchManager", () => {
         populate: jest.fn().mockRejectedValue(new Error("Database error")),
       });
 
-      const user = { _id: "user-123", roles: [{ permissions: ["scope.global"] }] };
-      const result = await manager.getBatches(user);
+      const result = await manager.getBatches(user("GLOBAL"));
 
       expect(result.success).toBe(false);
       expect(result.message).toBe("Database error");
     });
 
-    it("should get all batches when user role is not manager", async () => {
-      const mockBatches = [{ _id: "batch-1" }];
-
-      const mockPopulate = jest.fn().mockResolvedValue(mockBatches);
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        populate: mockPopulate,
-      });
-
-      const user = { _id: "user-123", roles: [{ permissions: ["dashboard.teacher.view"] }] };
-      const result = await manager.getBatches(user);
-
-      expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
-      expect(result.success).toBe(true);
-    });
   });
 });

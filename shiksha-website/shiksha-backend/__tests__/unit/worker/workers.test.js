@@ -172,8 +172,8 @@ describe("worker modules", () => {
       users: [
         {
           identity: { name: "T", phone: "1" },
-          roles: [{ name: "Teacher" }],
-          profiles: { teacher: { school: { name: "S" } } },
+          roles: [{ role: { name: "Teacher" } }],
+          school: { name: "S" },
           isDeleted: false,
           trainingStatus: "trained",
         },
@@ -269,6 +269,7 @@ describe("worker modules", () => {
         ],
         userId: "u1",
         userName: "tester",
+        permissions: ["teacher.import", "role.assign"].map((permission) => ({ permission, scopeType: "GLOBAL", dep: null })),
       },
     }));
     mockDbSimple();

@@ -25,21 +25,18 @@ describe("UserDao", () => {
   describe("getByPhone", () => {
     it("should successfully retrieve a user by phone", async () => {
       const mockUser = { _id: "1", phone: "1234567890", name: "Test User" };
-      const mockPopulateSchool = jest.fn().mockResolvedValue(mockUser);
-      const mockPopulateRoles = jest.fn().mockReturnValue({ populate: mockPopulateSchool });
+      const mockPopulateRoles = jest.fn().mockResolvedValue(mockUser);
       User.findOne.mockReturnValue({ populate: mockPopulateRoles });
 
       const result = await dao.getByPhone("1234567890");
 
-      expect(User.findOne).toHaveBeenCalledWith({ "identity.normalizedPhone": "1234567890" });
-      expect(mockPopulateRoles).toHaveBeenCalledWith("roles");
-      expect(mockPopulateSchool).toHaveBeenCalledWith("profiles.teacher.school", "_id name");
+      expect(User.findOne).toHaveBeenCalledWith({ "identity.phone": "1234567890" });
+      expect(mockPopulateRoles).toHaveBeenCalledWith("roles.role");
       expect(result).toEqual(mockUser);
     });
 
     it("should return false when user is not found", async () => {
-      const mockPopulateSchool = jest.fn().mockResolvedValue(null);
-      const mockPopulateRoles = jest.fn().mockReturnValue({ populate: mockPopulateSchool });
+      const mockPopulateRoles = jest.fn().mockResolvedValue(null);
       User.findOne.mockReturnValue({ populate: mockPopulateRoles });
 
       const result = await dao.getByPhone("9999999999");

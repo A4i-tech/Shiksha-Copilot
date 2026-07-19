@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { marked } from 'marked';
 import { ClipboardService } from 'ngx-clipboard';
 import { ToastrService } from 'ngx-toastr';
+import { PermissionGrant } from 'src/app/shared/interfaces/permission.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -31,8 +32,8 @@ export class UtilityService {
   };
 
 
-  get loggedInUserData(){
-    const userInfo : any = localStorage.getItem('userData') ?? null;
+  get loggedInUserData(): any {
+    const userInfo = localStorage.getItem('userData');
     return userInfo ? JSON.parse(userInfo) : null;
   }
 
@@ -90,13 +91,18 @@ export class UtilityService {
    * @returns
    */
   hasPermission(permissions: string[]) {
-    const perms = this.loggedInUserData?.permissions;
-    return !!perms && permissions.some((p) => perms.includes(p));
+    return permissions.some((permission) => this.getPermission(permission));
   }
 
-  isRegionallyScoped() {
-    const perms = this.loggedInUserData?.permissions;
-    return !!perms && perms.includes('scope.regional') && !perms.includes('scope.global');
+  getPermission(permission: string): PermissionGrant[] | null {
+    const user = this.loggedInUserData;
+    if (!user) return null;
+    const grants = user.permissions.filter((grant: PermissionGrant) => grant.permission === permission);
+    return grants.length ? grants : null;
+  }
+
+  hasGlobalPermission(permission: string): boolean {
+    return this.getPermission(permission)?.some((grant) => grant.scopeType === 'GLOBAL') === true;
   }
 
   /**
