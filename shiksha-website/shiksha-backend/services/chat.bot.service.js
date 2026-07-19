@@ -44,7 +44,7 @@ async function postToLessonChatBot(payload) {
 }
 
 async function postToChatBotStream(payload) {
-	const apiUrl = `${llmBaseUrl}/chat`;
+	const apiUrl = `${llmBaseUrl}/chat/general`;
 
 	try {
 		logger.info('Sending streaming request to Chat Bot API');
