@@ -5,17 +5,21 @@ const { postToChatBot, postToLessonChatBot, postToChatBotStream } = require("../
 const { CHAT_LIMIT } = require("../config/constants");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
+const SchoolDao = require("../dao/school.dao");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
+const UserDao = require('../dao/user.dao');
 const MasterLessonDao = require("../dao/master.lesson.dao");
 
 /** @extends {BaseManager<ChatDao>} */
 class ChatManager extends BaseManager {
 	constructor() {
 		super(new ChatDao());
+		this.userDao = new UserDao();
 		this.chapterDao = new ChapterDao();
 		this.subjectDao = new MasterSubjectDao();
 		this.teacherLessonPlanDao = new TeacherLessonPlanDao();
 		this.masterLessonDao = new MasterLessonDao();
+		this.schoolDao = new SchoolDao();
 	}
 
 	async sendMessage(userId, message) {
@@ -93,6 +97,18 @@ class ChatManager extends BaseManager {
 		}
 	}
 
+	async #buildUserContext(userId, includeClasses){
+		const user = await this.userDao.getById(userId);
+		const school = await this.schoolDao.getById(user.school);
+		const classes = includeClasses ? [`**Classes**:`, ...user.classes.map(b => `- ${b.name} (for class ${b.class}, ${b.board} curriculum)`)] : [];
+		return [
+			"I am a school teacher and below are my details:",
+			`**Name**: ${user.name}`,
+			`**School**: ${school.name} (${school.state}, ${school.type})`,
+			...classes
+		].join("\n");
+	}
+
 	async sendMessageStream(userId, message) {
 		try {
 			const today = new Date();
@@ -117,9 +133,7 @@ class ChatManager extends BaseManager {
 				return { success: false, message: "Session closed due to request limit exceeded" };
 			}
 
-			let existingMessages = await this.dao.getMessagesBySessionId(
-				chatSession._id
-			);
+			let [existingMessages, userContext] = await Promise.all([this.dao.getMessagesBySessionId(chatSession._id), this.#buildUserContext(userId, true)]);
 
 			let formattedMessages = existingMessages.messages
 				.map((m) => [
@@ -130,6 +144,7 @@ class ChatManager extends BaseManager {
 			formattedMessages.reverse();
 
 			formattedMessages.push({ role: "user", message });
+			formattedMessages.unshift({ role: "user", message: userContext })
 
 			const response = await postToChatBotStream({
 				user_id: userId,
@@ -276,13 +291,6 @@ class ChatManager extends BaseManager {
 
 			const totalMessages = await this.getTotalSessionMessagesCount(userId);
 
-			let messageHistory = await this.dao.getLessonMessages(
-				lessonDetails._id,
-				userId,
-				todayStart,
-				todayEnd
-			);
-
 			if (totalMessages >= CHAT_LIMIT) {
 				return formatApiResponse(
 					false,
@@ -290,6 +298,11 @@ class ChatManager extends BaseManager {
 					null
 				);
 			}
+
+			let [messageHistory, userContext] = await Promise.all([
+				this.dao.getLessonMessages(lessonDetails._id, userId, todayStart, todayEnd),
+				this.#buildUserContext(userId)
+			]);
 
 			let formattedMessages = (messageHistory || []).map((chat) => [
 				{ role: "user", message: chat.message.question },
@@ -300,6 +313,7 @@ class ChatManager extends BaseManager {
 			formattedMessages.reverse();
 
 			formattedMessages.push({ role: "user", message });
+			formattedMessages.unshift({ role: "user", message: userContext });
 
 			const payload = this._createChatPayload(chapterDetails, subjectDetails, formattedMessages, userId)
 
