@@ -26,6 +26,12 @@ class LessonChatService:
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.cleanup()
+
     @observe(name="Shiksha-QA")
     async def __call__(self, request: LessonChatRequest) -> dict:
         """
@@ -162,6 +168,3 @@ class LessonChatService:
     async def cleanup(self) -> None:
         """Clear the RAG adapter cache and associated resources."""
         await self._rags.cleanup()
-
-
-LESSON_CHAT_SERVICE_INSTANCE = LessonChatService()

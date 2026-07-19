@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, status
+from contextlib import asynccontextmanager
+
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from app.models.chat import (
     ChatRequest,
@@ -6,18 +8,34 @@ from app.models.chat import (
     LessonChatResponse,
     Reference,
 )
-from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
+from app.services.general_chat_service import GeneralChatService
 import logging
 
-from app.services.lesson_chat_service import LESSON_CHAT_SERVICE_INSTANCE
+from app.services.lesson_chat_service import LessonChatService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/chat", tags=["Chat"])
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.general_chat_svc = GeneralChatService()
+    app.state.lesson_chat_svc = LessonChatService()
+    async with app.state.general_chat_svc, app.state.lesson_chat_svc:
+        yield
+
+
+router = APIRouter(prefix="/chat", tags=["Chat"], lifespan=lifespan)
+
+
+def general_chat_svc(request: Request) -> GeneralChatService:
+    return request.app.state.general_chat_svc
+
+
+def lesson_chat_svc(request: Request) -> LessonChatService:
+    return request.app.state.lesson_chat_svc
 
 
 @router.post("/general", summary="General Educational Chat")
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, service: GeneralChatService = Depends(general_chat_svc)):
     """
     **General Educational Chat Endpoint**
 
@@ -25,7 +43,7 @@ async def chat(request: ChatRequest):
     """
     try:
         return StreamingResponse(
-            GENERAL_CHAT_SERVICE_INSTANCE(request.messages, user_id=request.user_id),
+            service(request.messages, user_id=request.user_id),
             media_type="text/event-stream"
         )
     except ValueError as e:
@@ -43,7 +61,7 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/lesson", summary="Lesson-Specific Educational Chat")
-async def lesson_chat(request: LessonChatRequest) -> LessonChatResponse:
+async def lesson_chat(request: LessonChatRequest, service: LessonChatService = Depends(lesson_chat_svc)) -> LessonChatResponse:
     """
     **Lesson-Specific Educational Chat Endpoint**
 
@@ -51,7 +69,7 @@ async def lesson_chat(request: LessonChatRequest) -> LessonChatResponse:
     of chapter content and curriculum alignment.
     """
     try:
-        response_content = await LESSON_CHAT_SERVICE_INSTANCE(request)
+        response_content = await service(request)
         return LessonChatResponse(
             user_id=request.user_id,
             response=response_content["response"],

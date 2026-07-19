@@ -32,6 +32,12 @@ class GeneralChatService:
             {"type": "web_search", "user_location": {"type": "approximate", "country": "IN"}}
         ]
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.cleanup()
+
 
     @validate_call
     async def __call__(self, messages: List[ConversationMessage], user_id: str):
@@ -123,7 +129,3 @@ class GeneralChatService:
             await self.client.close()
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
-
-
-# Global instance
-GENERAL_CHAT_SERVICE_INSTANCE = GeneralChatService()

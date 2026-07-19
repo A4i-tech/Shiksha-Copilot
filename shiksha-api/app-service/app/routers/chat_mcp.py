@@ -1,10 +1,10 @@
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
 import logging
 import uuid
 
-from app.services.lesson_chat_service import LESSON_CHAT_SERVICE_INSTANCE
+from app.services.general_chat_service import GeneralChatService
+from app.services.lesson_chat_service import LessonChatService
 from app.models.chat import ConversationMessage, LessonChatRequest, MessageRole
 from fastmcp.server import Context
 from pydantic import Field
@@ -17,6 +17,11 @@ def get_user_id(ctx: Context) -> uuid.UUID:
         except ValueError:
             pass
     raise ToolError("Cannot proceed with requets due to missing or malformed 'user_id' param")
+
+
+def get_services(ctx: Context) -> tuple[GeneralChatService, LessonChatService]:
+    state = ctx.request_context.request.app.state
+    return state.general_chat_svc, state.lesson_chat_svc
 
 def router(mcp: FastMCP):
     logger = logging.getLogger(__name__)
@@ -34,9 +39,10 @@ def router(mcp: FastMCP):
         """
         user_id = str(get_user_id(context))
         try:
+            general_chat_svc, _ = get_services(context)
             logger.info(f"Processing general chat request for user: {user_id}")
 
-            response_content = await GENERAL_CHAT_SERVICE_INSTANCE([
+            response_content = await general_chat_svc([
                 ConversationMessage(role=MessageRole.USER, message=message)
             ], user_id=user_id)
 
@@ -72,11 +78,12 @@ def router(mcp: FastMCP):
             messages=[ConversationMessage(role=MessageRole.USER, message=message)]
         )
         try:
+            _, lesson_chat_svc = get_services(context)
             logger.info(
                 f"Processing lesson chat request for user: {request.user_id}, chapter: {request.chapter_id}"
             )
 
-            response_content = await LESSON_CHAT_SERVICE_INSTANCE(request)
+            response_content = await lesson_chat_svc(request)
 
             logger.info(f"Successfully processed lesson chat for user: {request.user_id}")
 
