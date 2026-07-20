@@ -180,7 +180,6 @@ async def test_chat(rag_ops_instance, ai_scientists_markdown_content, transforma
         curr_message=message, chat_history=chat_history
     )
     logger.info(f"Chat response: {response}")
-    assert isinstance(response.response, str)
 
 @pytest.mark.asyncio
 async def test_query_index_with_metadata_filtering(

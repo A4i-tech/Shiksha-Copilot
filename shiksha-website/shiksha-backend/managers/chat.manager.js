@@ -249,7 +249,7 @@ class ChatManager extends BaseManager {
 
 			let formattedMessages = (messageHistory || []).map((chat) => [
 				{ role: "user", message: chat.message.question },
-				{ role: "system", message: chat.message.answer },
+				{ role: "assistant", message: chat.message.answer },
 			])
 				.flat();
 

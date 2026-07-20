@@ -519,7 +519,7 @@ class BaseRagAdapter(ABC):
     async def initiate_index(self) -> None:
         # Download and prepare index files
 
-    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage]) -> RESPONSE_TYPE:
+    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage]) -> AgentChatResponse:
         # Chat with RAG index using context
 ```
 

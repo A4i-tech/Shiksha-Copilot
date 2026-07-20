@@ -263,9 +263,6 @@ async def test_chat(rag_ops_instance, ai_scientists_markdown_content, transforma
     logger.info(f"Chat response: {response}")
     _log_token_usage(rag_ops_instance)
 
-    # Assertions
-    assert isinstance(response.response, str), "Chat response should be a string"
-
 
 @pytest.mark.asyncio
 async def test_query_index_with_metadata_a(

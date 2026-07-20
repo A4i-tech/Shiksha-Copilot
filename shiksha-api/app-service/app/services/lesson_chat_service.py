@@ -9,7 +9,6 @@ from llama_index.core.llms import ChatMessage
 from langfuse import observe, propagate_attributes
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
-from llama_index.core.base.response.schema import Response
 from llama_index.core.utils import truncate_text
 
 logger = logging.getLogger(__name__)
@@ -75,8 +74,7 @@ class LessonChatService:
             ]):
                 result = await rag_adapter.chat_with_index(curr_message=chat_messages[-1].content, chat_history=chat_history)
 
-            assert isinstance(result, Response)
-            return result.response or "", [
+            return result.response, [
                 Reference(title="Textbook", text=truncate_text(node.node.get_content(), 200), url=None)
                 for node in result.source_nodes
             ]
