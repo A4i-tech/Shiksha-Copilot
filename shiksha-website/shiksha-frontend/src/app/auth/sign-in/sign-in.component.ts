@@ -68,7 +68,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     private authService:AuthorizationService,
     private sidebarService:SidebarService,
     private translateService: TranslateService,
-    private secureCookieService:SecureCookieService
+    private secureCookieService:SecureCookieService,
   ) {}
 
   /**
@@ -86,12 +86,11 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   navigateAfterLogin(userData: any) {
-    const roles = userData?.role || [];
-    const isTeacher = roles.includes('standard') || roles.includes('power');
+    const isTeacherOnly = this.authService.isTeacherOnly(userData);
 
-    if (isTeacher && !userData.isProfileCompleted) {
+    if (isTeacherOnly && !userData.isProfileCompleted) {
       this.router.navigate(['/profile']);
-    } else if (isTeacher) {
+    } else if (isTeacherOnly) {
       this.router.navigate(['/home']);
     } else {
       this.router.navigate(['/dashboard']);

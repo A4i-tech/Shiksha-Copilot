@@ -1,28 +1,38 @@
-import { MAT_DIALOG_DATA } from '@angular/material/dialog';
-import { MatDialogRef } from '@angular/material/dialog';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { NgIdleModule } from '@ng-idle/core';
-import { DatePipe } from '@angular/common';
-import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
-import { TranslateModule } from '@ngx-translate/core';
-import { RouterTestingModule } from '@angular/router/testing';
-import { ToastrModule } from 'ngx-toastr';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ReactiveFormsModule } from '@angular/forms';
+import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { of } from 'rxjs';
 
 import { BaselineSurveyComponent } from './baseline-survey.component';
+import { BaselineSurveyService } from 'src/app/core/services/baseline-survey.service';
 
 describe('BaselineSurveyComponent', () => {
   let component: BaselineSurveyComponent;
   let fixture: ComponentFixture<BaselineSurveyComponent>;
+  let mockBaselineSurveyService: any;
+  let mockDialogRef: any;
 
   beforeEach(() => {
+    mockBaselineSurveyService = jasmine.createSpyObj('BaselineSurveyService', ['submitSurvey', 'remindLater']);
+    mockBaselineSurveyService.submitSurvey.and.returnValue(of({ success: true }));
+    mockBaselineSurveyService.remindLater.and.returnValue(of({ success: true }));
+
+    mockDialogRef = jasmine.createSpyObj('MatDialogRef', ['close']);
+
     TestBed.configureTestingModule({
-      providers: [{ provide: MAT_DIALOG_DATA, useValue: {} }, { provide: MatDialogRef, useValue: {} }, DatePipe],
-      imports: [MatSnackBarModule, NgIdleModule.forRoot(), TranslateModule.forRoot(), RouterTestingModule, ToastrModule.forRoot(), HttpClientTestingModule],
+      imports: [
+        ReactiveFormsModule,
+        MatDialogModule,
+        MatSnackBarModule
+      ],
       declarations: [BaselineSurveyComponent],
-      schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA]});
+      providers: [
+        { provide: BaselineSurveyService, useValue: mockBaselineSurveyService },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: MAT_DIALOG_DATA, useValue: { remindLaterCount: 0, isMandatory: false } }
+      ]
+    });
     fixture = TestBed.createComponent(BaselineSurveyComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
