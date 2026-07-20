@@ -47,7 +47,8 @@ async def main(
             input_data = LessonPlanGenerationInput.model_validate(req.get_json())
             # Start the orchestration asynchronously for regular mode
             client = df.DurableOrchestrationClient(starter)
-            with get_client().start_as_current_span(
+            _langfuse = get_client()
+            with _langfuse.start_as_current_span(
                 name="Shiksha-LP",
                 input=input_data.model_dump(by_alias=True),
             ) as span:
@@ -56,6 +57,7 @@ async def main(
                     "LessonPlanOrchestrator", None, input_data.model_dump(by_alias=True)
                 )
                 span.update(output={"instance_id": instance_id, "status": "started"})
+            _langfuse.flush()
 
             # Post initial status to webhook
             webhook_poster = WebhookPoster()
