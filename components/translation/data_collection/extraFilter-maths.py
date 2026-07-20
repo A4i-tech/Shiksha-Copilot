@@ -10,6 +10,8 @@ from transformers import AutoTokenizer
 
 load_dotenv()
 
+_client = OpenAI()
+
 GPT4_MODEL_NAME = os.getenv('GPT4_MODEL_NAME')
 GPT4_MODEL_ENGINE = os.getenv('GPT4_MODEL_ENGINE')
 CONTEXT_LENGTH = 128000
@@ -58,7 +60,7 @@ def ask_query_on_text(query, content):
         ],
     }
 
-    return ask_model(OpenAI(), sample_msg["messages"])
+    return ask_model(_client, sample_msg["messages"])
 
 def club_sentences(words_to_sent):
     inverse_dict = {}
