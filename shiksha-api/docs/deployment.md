@@ -15,7 +15,6 @@ A Dockerfile is present in the repository's root directory.
 2. Configure environment variables in a `.env` file:
    ```env
    OPENAI_API_KEY=sk-...
-   BING_API_KEY=
    BLOB_STORE_CONNECTION_STRING=
    MONGODB_URI=mongodb+srv://
    ```
