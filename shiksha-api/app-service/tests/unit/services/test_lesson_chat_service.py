@@ -54,8 +54,8 @@ class TestLessonChatServiceCall:
         """Test service uses cached RAG adapter."""
         with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
              patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
-             patch("app.services.lesson_chat_service.new_rag_llm"), \
-             patch("app.services.lesson_chat_service.new_rag_embed"):
+             patch("app.services.lesson_chat_service.OpenAIResponses"), \
+             patch("app.services.lesson_chat_service.OpenAIEmbedding"):
 
             mock_template = Mock()
             mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
@@ -80,8 +80,8 @@ class TestLessonChatServiceCall:
         """Test service builds system message with chapter details."""
         with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
              patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
-             patch("app.services.lesson_chat_service.new_rag_llm"), \
-             patch("app.services.lesson_chat_service.new_rag_embed"):
+             patch("app.services.lesson_chat_service.OpenAIResponses"), \
+             patch("app.services.lesson_chat_service.OpenAIEmbedding"):
 
             mock_template = Mock()
             mock_template.get_prompt_with_variables = Mock(return_value="Teaching Science for Grade 10")
@@ -110,8 +110,8 @@ class TestLessonChatServiceCall:
         """Test service converts messages to LlamaIndex ChatMessage format."""
         with patch("app.services.lesson_chat_service.PromptTemplate") as MockPromptTemplate, \
              patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
-             patch("app.services.lesson_chat_service.new_rag_llm"), \
-             patch("app.services.lesson_chat_service.new_rag_embed"):
+             patch("app.services.lesson_chat_service.OpenAIResponses"), \
+             patch("app.services.lesson_chat_service.OpenAIEmbedding"):
 
             mock_template = Mock()
             mock_template.get_prompt_with_variables = Mock(return_value="System prompt")
@@ -148,8 +148,8 @@ class TestLessonChatServiceCleanup:
         """Test cleanup clears RAG adapter cache."""
         with patch("app.services.lesson_chat_service.PromptTemplate"), \
              patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
-             patch("app.services.lesson_chat_service.new_rag_llm"), \
-             patch("app.services.lesson_chat_service.new_rag_embed"):
+             patch("app.services.lesson_chat_service.OpenAIResponses"), \
+             patch("app.services.lesson_chat_service.OpenAIEmbedding"):
 
             service = LessonChatService()
 

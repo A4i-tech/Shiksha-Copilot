@@ -1,21 +1,13 @@
 """
 Azure AI Search RAG Operations Tests
 
-Tests require Azure AI Search and Azure OpenAI services with these environment variables:
+Tests require Azure AI Search and OpenAI services with these environment variables:
 
 Required:
 - AZURE_SEARCH_SERVICE_NAME: Search service name
 - AZURE_SEARCH_INDEX_NAME: Index name for testing
-- AZURE_OPENAI_API_KEY: OpenAI API key
-- AZURE_OPENAI_ENDPOINT: OpenAI endpoint
-- AZURE_OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
-- AZURE_OPENAI_EMBEDDING_DEPLOYMENT: Embedding deployment name
-- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-35-turbo)
-- AZURE_OPENAI_COMPLETION_DEPLOYMENT: Completion deployment name
-
-Optional:
-- AZURE_SEARCH_API_KEY: Search API key (if not using managed identity)
-- AZURE_OPENAI_API_VERSION: API version (default: 2025-03-01-preview)
+- OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
+- OPENAI_COMPLETION_MODEL: Completion model (default: gpt-4.1)
 
 Note: Creates real data in Azure services and may incur costs.
 """
@@ -23,18 +15,11 @@ Note: Creates real data in Azure services and may incur costs.
 import pytest
 import os
 import logging
-from typing import List
 from dotenv import load_dotenv
 
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from llama_index.core.llms import ChatMessage
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
-from azure.search.documents.aio import SearchClient as AsyncSearchClient
-from llama_index.vector_stores.azureaisearch import AzureAISearchVectorStore
-
-from azure.core.credentials import AzureKeyCredential
-from azure.identity import DefaultAzureCredential
 
 from rag_wrapper.rag_ops.azure_ai_search_rag_ops import AzureAISearchRagOps
 
@@ -79,28 +64,12 @@ def metadata_fields_b():
 
 @pytest.fixture
 def embedding_llm():
-    """Initialize Azure OpenAI embedding model"""
-    return AzureOpenAIEmbedding(
-        model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
-        deployment_name=os.getenv(
-            "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-ada-002"
-        ),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
-    )
+    return OpenAIEmbedding(model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"))
 
 
 @pytest.fixture
 def completion_llm():
-    """Initialize Azure OpenAI completion model"""
-    return AzureOpenAI(
-        model=os.getenv("AZURE_OPENAI_COMPLETION_MODEL", "gpt-35-turbo"),
-        deployment_name=os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-35-turbo"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
-    )
+    return OpenAI(model=os.getenv("OPENAI_COMPLETION_MODEL", "gpt-4.1"))
 
 
 @pytest.fixture

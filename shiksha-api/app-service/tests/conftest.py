@@ -15,6 +15,8 @@ from llama_index.core.llms import MockLLM
 if not os.getenv("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = "sk-xxxx"
 
+os.environ["DEBUG"] = "false"
+
 
 @pytest.fixture
 def mock_settings():
@@ -27,17 +29,11 @@ def mock_settings():
     mock.port = 8000
     mock.log_level = "INFO"
 
-    # Azure OpenAI settings
-    mock.azure_openai_api_key = "test-api-key"
-    mock.azure_openai_endpoint = "https://test.openai.azure.com"
-    mock.azure_openai_api_version = "2025-03-01-preview"
-    mock.azure_openai_deployment_name = "gpt-4"
-    mock.azure_openai_embed_model = "text-embedding-ada-002"
-    mock.azure_chat_deployment_name = "gpt-4-chat"
-
-    # Azure AI Project settings
-    mock.azure_project_endpoint = "https://test-project.azure.com"
-    mock.azure_bing_grounding_connection_id = "test-connection-id"
+    # OpenAI settings
+    mock.embed_model = "text-embedding-ada-002"
+    mock.general_chat_model = "gpt-4-chat"
+    mock.lesson_chat_model = "gpt-4-lesson"
+    mock.question_paper_model = "gpt-4-question-paper"
 
     # Blob Store settings
     mock.blob_store_connection_string = "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test"
@@ -63,8 +59,8 @@ def mock_embedding_llm():
 
 
 @pytest.fixture
-def mock_azure_openai_client():
-    """Mock Azure OpenAI client."""
+def mock_openai_client():
+    """Mock OpenAI client."""
     client = Mock()
 
     # Mock responses API - responses.create is synchronous, not async

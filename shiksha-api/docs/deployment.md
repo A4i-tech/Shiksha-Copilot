@@ -14,12 +14,7 @@ A Dockerfile is present in the repository's root directory.
 1. Run `docker build -t shiksha-api-staging .` in the repository's root.
 2. Configure environment variables in a `.env` file:
    ```env
-   AZURE_OPENAI_API_KEY=sk-...
-   AZURE_OPENAI_API_VERSION=2025-03-01-preview
-   AZURE_OPENAI_DEPLOYMENT_NAME=GPT-4.1
-   AZURE_OPENAI_EMBED_MODEL=text-embedding-3-small
-   AZURE_OPENAI_ENDPOINT=https://...
-   BING_API_KEY=
+   OPENAI_API_KEY=sk-...
    BLOB_STORE_CONNECTION_STRING=
    MONGODB_URI=mongodb+srv://
    ```

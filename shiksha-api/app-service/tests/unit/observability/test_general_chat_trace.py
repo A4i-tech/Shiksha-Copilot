@@ -49,7 +49,7 @@ def test_no_pii_in_general_chat_tags():
 
 
 def test_langfuse_openai_import():
-    """Verify AsyncAzureOpenAI in general_chat_service comes from langfuse.openai."""
+    """Verify AsyncOpenAI in general_chat_service comes from langfuse.openai."""
     mod = pytest.importorskip("app.services.general_chat_service")
     import langfuse.openai as langfuse_openai
-    assert mod.AsyncAzureOpenAI is langfuse_openai.AsyncAzureOpenAI
+    assert mod.AsyncOpenAI is langfuse_openai.AsyncOpenAI

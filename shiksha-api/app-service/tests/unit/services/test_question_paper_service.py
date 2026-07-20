@@ -8,9 +8,9 @@ from app.models.question_paper import Chapter, Content, GeneratedTemplate, Match
 @pytest.fixture
 def service():
     """Create a mocked QuestionPaperService once per test."""
-    with patch("app.services.question_paper_service.AsyncAzureOpenAI"), patch(
-        "app.services.question_paper_service.new_rag_llm"
-    ), patch("app.services.question_paper_service.new_rag_embed"), patch(
+    with patch("app.services.question_paper_service.AsyncOpenAI"), patch(
+        "app.services.question_paper_service.OpenAIResponses"
+    ), patch("app.services.question_paper_service.OpenAIEmbedding"), patch(
         "app.services.question_paper_service.RagAdapterCache"
     ), patch(
         "app.services.question_paper_service.yaml.safe_load", return_value={}
