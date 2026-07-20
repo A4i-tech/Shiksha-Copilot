@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     langfuse_host: Optional[str] = Field(default=None, alias="LANGFUSE_HOST")
 
     # LLM Configuration
+    openai_api_key: str = Field(min_length=1)
     embed_model: str = "text-embedding-ada-002"
     general_chat_model: str = "gpt-4.1"
     lesson_chat_model: str = "gpt-4.1"
