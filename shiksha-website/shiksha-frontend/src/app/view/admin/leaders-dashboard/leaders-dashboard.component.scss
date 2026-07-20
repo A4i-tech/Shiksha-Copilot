@@ -1,24 +1,25 @@
 .leaders-dashboard-wrapper {
   width: 100%;
   height: calc(100vh - 80px);
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .superset-mount {
-  flex: 1;
   width: 100%;
 
   &.hidden {
     display: none;
   }
 
-  // SDK injects an iframe — make it fill the container
   ::ng-deep iframe {
     width: 100%;
-    height: 100%;
     border: none;
     display: block;
+    // Superset does not send postMessage height events in this SDK version.
+    // Force iframe tall enough to contain all dashboard charts so the
+    // wrapper's overflow-y:auto can scroll through the full content.
+    min-height: 4000px;
   }
 }
 

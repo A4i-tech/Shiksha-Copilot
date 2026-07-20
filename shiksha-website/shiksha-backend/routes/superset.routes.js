@@ -8,6 +8,7 @@ const SUPERSET_URL = process.env.SUPERSET_URL;
 const SUPERSET_ADMIN_USERNAME = process.env.SUPERSET_ADMIN_USERNAME;
 const SUPERSET_ADMIN_PASSWORD = process.env.SUPERSET_ADMIN_PASSWORD;
 const SUPERSET_DASHBOARD_UUID = process.env.SUPERSET_DASHBOARD_UUID;
+const SUPERSET_MOBILE_DASHBOARD_UUID = process.env.SUPERSET_MOBILE_DASHBOARD_UUID;
 
 const AXIOS_TIMEOUT_MS = 10_000;
 
@@ -122,7 +123,10 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
         first_name: (mongoUser.name || "").split(" ")[0] || "User",
         last_name:  (mongoUser.name || "").split(" ").slice(1).join(" "),
       },
-      resources: [{ type: "dashboard", id: SUPERSET_DASHBOARD_UUID }],
+      resources: [
+        { type: "dashboard", id: SUPERSET_DASHBOARD_UUID },
+        ...(SUPERSET_MOBILE_DASHBOARD_UUID ? [{ type: "dashboard", id: SUPERSET_MOBILE_DASHBOARD_UUID }] : []),
+      ],
       rls: rlsClause ? [{ clause: rlsClause }] : [],
     };
 

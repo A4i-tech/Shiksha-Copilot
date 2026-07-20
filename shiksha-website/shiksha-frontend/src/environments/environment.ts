@@ -1,9 +1,10 @@
 export const environment = {
     production: false,
-    apiUrl: 'your_backend_url',
+    apiUrl: 'http://localhost:8080/api',
     CRYPTO_SECRET: 'your_crypto_secret',
     EXP_MONTH: 3,
     turnstileSiteKey: '',
-    supersetUrl: 'http://20.219.173.236:8088',
+    supersetUrl: 'http://localhost:8088',
     supersetDashboardUuid: 'a28bffa3-9b9c-447b-be30-f8eb91500711',
+    supersetMobileDashboardUuid: '35d238f0-3150-4c56-93f8-fc9e4f024585',
 };
