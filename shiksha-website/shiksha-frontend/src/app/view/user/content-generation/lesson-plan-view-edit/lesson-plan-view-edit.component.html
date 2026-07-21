@@ -11,16 +11,26 @@
         {{ (isLesson ? "Lesson Plan" : "Lesson Resource") | translate }}
       </h1>
     </div>
-    <button
-      [hasPermission]="['power']"
-      *ngIf="isLesson && mode === 'view'"
-      class="btn-primary flex gap-2 items-center my-2 md:my-0"
-      (click)="chat(planDetails._id, planDetails?.lesson?.chapter?._id)"
-    >
-      <img src="assets/icons/chat-light.svg" alt="" />{{
-        "Chatbot" | translate
-      }}
-    </button>
+    <div class="flex gap-2">
+      <button
+        [hasPermission]="['power']"
+        *ngIf="isLesson && !planAiMode && !sectionAiActive"
+        class="btn-primary flex gap-2 items-center my-2 md:my-0"
+        (click)="startPlanAiPrompt()"
+      >
+        <img src="assets/icons/ai-logo.svg" alt="" />{{ "Enhance" | translate }}
+      </button>
+      <button
+        [hasPermission]="['power']"
+        *ngIf="isLesson && mode !== 'generate'"
+        class="btn-primary flex gap-2 items-center my-2 md:my-0"
+        (click)="chat(planDetails._id, planDetails?.lesson?.chapter?._id)"
+      >
+        <img src="assets/icons/chat-light.svg" alt="" />{{
+          "Chatbot" | translate
+        }}
+      </button>
+    </div>
   </div>
   <div
     class="flex flex-col md:flex-row main-container mt-4"
@@ -162,8 +172,11 @@
           [sections]="sections"
           [editMode]="editMode"
           [planId]="planId"
+          [isLesson]="isLesson"
+          [planAiActive]="!!planAiMode"
           (unsavedChanges)="updateUnsavedChanges($event)"
           (aiAccepted)="onAiAccepted()"
+          (aiModeActive)="sectionAiActive = $event"
         ></app-lesson-plan-formats>
       </div>
 
@@ -195,10 +208,7 @@
         {{ currentType | translate}} {{ "Feedback" | translate }}
       </h2>
       <div class="flex gap-2" *ngIf="isLesson && !planAiMode">
-        <button class="btn-primary flex gap-2 items-center" (click)="startPlanAiPrompt()">
-          <span>{{ "AI enhance entire lesson plan" | translate }}</span>
-        </button>
-        <button class="btn-primary-outline" (click)="showRevertConfirmation = true">
+        <button class="btn-primary" (click)="showRevertConfirmation = true">
           {{ "Revert AI edits" | translate }}
         </button>
       </div>
@@ -240,6 +250,9 @@
           "AI enhance: entire lesson plan" | translate
         }}</span>
         <div class="flex gap-2">
+          <button class="btn-primary-outline" (click)="togglePlanAiSplitView()">
+            {{ (planAiSplitView ? "Unified" : "Split") | translate }}
+          </button>
           <button class="btn-primary-outline" (click)="rejectPlanDiff()">
             {{ "Reject" | translate }}
           </button>
@@ -259,15 +272,71 @@
 
       <div *ngFor="let d of planAiDiffs" class="mb-4">
         <div class="font-semibold text-primary mb-1">{{ d.title | translate }}</div>
-        <div class="text-sm whitespace-pre-wrap border rounded p-2">
-          <span
-            *ngFor="let part of d.parts"
+        <div class="text-xs font-mono border rounded overflow-x-auto bg-white" *ngIf="!planAiSplitView">
+          <div
+            *ngFor="let line of d.parts"
+            class="flex whitespace-pre"
             [ngClass]="{
-              'bg-green-50 text-green-700': part.added,
-              'bg-red-50 text-red-700 line-through': part.removed
+              'bg-green-50 text-green-700': line.type === 'add',
+              'bg-red-50 text-red-700': line.type === 'remove',
+              'text-gray-800': line.type === 'context'
             }"
-            >{{ part.value }}</span
           >
+            <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+              line.oldLine || ''
+            }}</span>
+            <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+              line.newLine || ''
+            }}</span>
+            <span class="flex-none w-4 text-center select-none">{{
+              line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ''
+            }}</span>
+            <span class="flex-1">
+              <ng-container *ngIf="line.segments; else lineText">
+                <span
+                  *ngFor="let seg of line.segments"
+                  [ngClass]="{
+                    'bg-green-200': seg.changed && line.type === 'add',
+                    'bg-red-200': seg.changed && line.type === 'remove'
+                  }"
+                  >{{ seg.text }}</span
+                >
+              </ng-container>
+              <ng-template #lineText>{{ line.text }}</ng-template>
+            </span>
+          </div>
+        </div>
+        <div class="text-xs font-mono border rounded overflow-x-auto bg-white" *ngIf="planAiSplitView">
+          <div *ngFor="let row of d.splitParts" class="flex whitespace-pre-wrap">
+            <div
+              class="flex-1 flex min-w-0 border-r"
+              [ngClass]="{ 'bg-red-50 text-red-700': row.left?.type === 'remove' }"
+            >
+              <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+                row.left?.oldLine || ''
+              }}</span>
+              <span>
+                <ng-container *ngIf="row.left?.segments; else leftText">
+                  <span *ngFor="let seg of row.left?.segments" [class.bg-red-200]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #leftText>{{ row.left?.text }}</ng-template>
+              </span>
+            </div>
+            <div
+              class="flex-1 flex min-w-0"
+              [ngClass]="{ 'bg-green-50 text-green-700': row.right?.type === 'add' }"
+            >
+              <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+                row.right?.newLine || ''
+              }}</span>
+              <span>
+                <ng-container *ngIf="row.right?.segments; else rightText">
+                  <span *ngFor="let seg of row.right?.segments" [class.bg-green-200]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #rightText>{{ row.right?.text }}</ng-template>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

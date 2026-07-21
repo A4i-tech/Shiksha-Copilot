@@ -18,7 +18,7 @@ import {
 } from 'src/app/shared/utility/animations.util';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { CCE_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
-import { buildDiffParts } from 'src/app/shared/utility/ai-diff.util';
+import { buildDiffParts, toSplitDiff } from 'src/app/shared/utility/ai-diff.util';
 
 @Component({
   selector: 'app-lesson-plan-view-edit',
@@ -120,6 +120,10 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   expandedContainer = false;
 
+  private hasSwitchedTab = false;
+
+  sectionAiActive = false;
+
   planAiMode: null | 'prompt' | 'diff' = null;
 
   planAiPrompt = '';
@@ -128,7 +132,13 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   planAiProposedSections: any[] = [];
 
-  planAiDiffs: { id: string; title: string; parts: any[] }[] = [];
+  planAiDiffs: { id: string; title: string; parts: any[]; splitParts: any[] }[] = [];
+
+  planAiSplitView = false;
+
+  togglePlanAiSplitView() {
+    this.planAiSplitView = !this.planAiSplitView;
+  }
 
   unloadHandler = (event: BeforeUnloadEvent) => {
     event.preventDefault();
@@ -221,15 +231,21 @@ export class LessonPlanViewEditComponent implements OnInit {
           (e: any) => !['lessonPresentation', 'planChecklist', 'planChecklistPdf'].includes(e.downloadType)
         );
         }
-      } else {
+      } else if (this.hasSwitchedTab) {
         setTimeout(() => {
           this.scrollToSection(this.sections[0]?.id);
         }, 0);
       }
+      this.hasSwitchedTab = true;
     });
   }
 
   ngOnInit(): void {
+    // Angular doesn't reset scroll position on navigation for a non-window scroll
+    // container, so the outer page shell (.main-content) carries over scrollTop
+    // from whatever page was open before (e.g. the long generation form).
+    document.querySelector('.main-content')?.scrollTo({ top: 0 });
+
     switch (this.mode) {
       case 'generate':
         this.populateGenerate();
@@ -775,10 +791,10 @@ export class LessonPlanViewEditComponent implements OnInit {
               const original = this.sections.find((s) => s.id === proposed.id);
               if (!original) return null;
               const parts = buildDiffParts(original.content, proposed.content, original.outputFormat);
-              if (!parts.some((p) => p.added || p.removed)) return null;
-              return { id: proposed.id, title: original.title, parts };
+              if (!parts.some((p) => p.type !== 'context')) return null;
+              return { id: proposed.id, title: original.title, parts, splitParts: toSplitDiff(parts) };
             })
-            .filter((d: any): d is { id: string; title: string; parts: any[] } => !!d);
+            .filter((d: any): d is { id: string; title: string; parts: any[]; splitParts: any[] } => !!d);
           this.planAiMode = 'diff';
           this.planAiLoading = false;
         },

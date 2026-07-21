@@ -4,14 +4,16 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, TypeVar
 
-from langfuse.openai import AsyncAzureOpenAI  # noqa: F401 — enables langfuse auto-tracing
+from langfuse.openai import AsyncOpenAI  # noqa: F401 — enables langfuse auto-tracing
 from pydantic import BaseModel
+
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.openai import OpenAIResponses
 
 from app.config import settings
 from app.models.lesson_plan import PlanEditRequest, SectionEditRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
-from app.utils.utils import new_rag_embed, new_rag_llm
 
 logger = logging.getLogger(__name__)
 
@@ -60,20 +62,14 @@ class LessonEditService:
     """Service for AI-assisted revision of lesson plan content, with RAG lookup into the chapter."""
 
     def __init__(self):
-        self.client = AsyncAzureOpenAI(
-            api_key=settings.azure_openai_api_key,
-            api_version=settings.azure_openai_api_version,
-            azure_endpoint=settings.azure_openai_endpoint,
-        )
-        if settings.azure_openai_deployment_name is None:
-            raise RuntimeError("OpenAI deployment model must be specified")
-        self.chat_deployment = settings.azure_openai_deployment_name
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.chat_deployment = settings.lesson_chat_model
 
         prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "lesson_edit_prompts.yaml"
         self._prompts = PromptTemplate(str(prompts_file_path))
 
-        self._rag_llm = new_rag_llm()
-        self._rag_embed = new_rag_embed()
+        self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model)
+        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         self._prefetch_tasks: set[asyncio.Task] = set()
 
@@ -114,7 +110,7 @@ class LessonEditService:
         self, instructions: str, input_text: str, index_path: Optional[str], text_format: type[T]
     ) -> T:
         """Run a structured-output generation, transparently resolving any read_chapter tool calls."""
-        tools = [READ_CHAPTER_TOOL] if index_path else None
+        tools = [READ_CHAPTER_TOOL] if index_path else []
         if index_path:
             self._prefetch_chapter_index(index_path)
 
@@ -157,7 +153,7 @@ class LessonEditService:
                     previous_response_id=response.id,
                     input="Provide your final answer now without further tool calls.",
                     temperature=0.3,
-                    tools=None,
+                    tools=[],
                     text_format=text_format,
                 )
 

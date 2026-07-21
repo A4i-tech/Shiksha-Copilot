@@ -39,10 +39,10 @@
     </div>
 
     <!-- AI enhance (per-section) -->
-    <div class="ai-enhance mb-4" *ngIf="section.editable && !editMode[i]">
+    <div class="ai-enhance mb-4" *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive">
       <div *ngIf="!aiMode[i]">
-        <button class="ai-btn ai-btn-primary" (click)="startAiPrompt(i)">
-          {{ 'AI enhance' | translate }}
+        <button class="btn-primary flex gap-2 items-center" (click)="startAiPrompt(i)">
+          <img src="assets/icons/ai-logo.svg" alt="" />{{ 'Enhance' | translate }}
         </button>
       </div>
 
@@ -70,19 +70,57 @@
         <div class="ai-panel-header">
           <span class="ai-panel-title">{{ 'AI enhance' | translate }}: {{ section.title | translate }}</span>
           <div class="ai-actions">
+            <button class="ai-btn ai-btn-ghost" (click)="toggleSplitView()">
+              {{ (splitView ? 'Unified' : 'Split') | translate }}
+            </button>
             <button class="ai-btn ai-btn-reject" (click)="rejectDiff(i)">{{ 'Reject' | translate }}</button>
             <button class="ai-btn ai-btn-accept" (click)="acceptDiff(i)">{{ 'Accept' | translate }}</button>
           </div>
         </div>
-        <div class="ai-diff">
-          <span
-            *ngFor="let part of aiDiff[i]"
+        <div class="ai-diff" *ngIf="!splitView">
+          <div
+            *ngFor="let line of aiDiff[i]"
+            class="ai-diff-row"
             [ngClass]="{
-              'ai-diff-add': part.added,
-              'ai-diff-del': part.removed,
-              'ai-diff-ctx': !part.added && !part.removed
+              'ai-diff-add': line.type === 'add',
+              'ai-diff-del': line.type === 'remove',
+              'ai-diff-ctx': line.type === 'context'
             }"
-            >{{ part.value }}</span>
+          >
+            <span class="ai-diff-lineno">{{ line.oldLine || '' }}</span>
+            <span class="ai-diff-lineno">{{ line.newLine || '' }}</span>
+            <span class="ai-diff-marker">{{
+              line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ''
+            }}</span>
+            <span class="ai-diff-text">
+              <ng-container *ngIf="line.segments; else lineText">
+                <span *ngFor="let seg of line.segments" [class.ai-diff-word-changed]="seg.changed">{{ seg.text }}</span>
+              </ng-container>
+              <ng-template #lineText>{{ line.text }}</ng-template>
+            </span>
+          </div>
+        </div>
+        <div class="ai-diff ai-diff-split" *ngIf="splitView">
+          <div *ngFor="let row of aiSplitDiff[i]" class="ai-diff-split-row">
+            <div class="ai-diff-split-side" [ngClass]="{ 'ai-diff-del': row.left?.type === 'remove' }">
+              <span class="ai-diff-lineno">{{ row.left?.oldLine || '' }}</span>
+              <span class="ai-diff-text">
+                <ng-container *ngIf="row.left?.segments; else leftText">
+                  <span *ngFor="let seg of row.left?.segments" [class.ai-diff-word-changed]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #leftText>{{ row.left?.text }}</ng-template>
+              </span>
+            </div>
+            <div class="ai-diff-split-side" [ngClass]="{ 'ai-diff-add': row.right?.type === 'add' }">
+              <span class="ai-diff-lineno">{{ row.right?.newLine || '' }}</span>
+              <span class="ai-diff-text">
+                <ng-container *ngIf="row.right?.segments; else rightText">
+                  <span *ngFor="let seg of row.right?.segments" [class.ai-diff-word-changed]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #rightText>{{ row.right?.text }}</ng-template>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
