@@ -85,72 +85,72 @@
           </div>
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'state'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(f['state'])"
               [dropDownValues]="stateDropdownOptions"
               [config]="stateDropdownconfig"
               [submitted]="submitted"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'zone'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(f['zone'])"
               [dropDownValues]="zoneDropdownOptions"
               [config]="zoneDropdownconfig"
               [submitted]="submitted"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'district'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(f['district'])"
               [dropDownValues]="districtDropdownOptions"
               [config]="districtDropdownconfig"
               [submitted]="submitted"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'block'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(f['block'])"
               [dropDownValues]="blockDropdownOptions"
               [config]="blockDropdownconfig"
               [submitted]="submitted"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'boards'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(f['boards'])"
               [dropDownValues]="boardDropdownOptions"
               [config]="boardDropdownconfig"
               [submitted]="submitted"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'mediums'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(f['mediums'])"
               [dropDownValues]="mediumDropdownOptions"
               [config]="mediumDropdownconfig"
               [submitted]="submitted"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
           <div>
             <label class="form-control-label" for="academic-start-date">
@@ -352,8 +352,8 @@
                       </p>
                       <ng-container *ngIf="mode !== 'view'">
                         <div>
-                          <app-form-dropdown
-                            [dropDownControlName]="'type'"
+                          <app-dropdown
+
                             [dropDownCtrl]="
                               convertToFormControl(resource.get('type'))
                             "
@@ -366,7 +366,7 @@
                             [submitted]="submitted"
                             [mode]="mode"
                             (valueChange)="setResourceDetailsValues(i, $event)"
-                          ></app-form-dropdown>
+                          ></app-dropdown>
                         </div>
 
                         <input
@@ -394,8 +394,8 @@
 
                       <div *ngIf="mode !== 'view'">
                         <div [hidden]="!resource.get('detailsChipSet')?.value">
-                          <app-form-dropdown
-                            [dropDownControlName]="'details'"
+                          <app-dropdown
+
                             [dropDownCtrl]="
                               convertToFormControl(resource.get('details'))
                             "
@@ -403,17 +403,17 @@
                             [config]="resourceDetailsDropdownconfig"
                             [submitted]="submitted"
                             [mode]="mode"
-                          ></app-form-dropdown>
+                          ></app-dropdown>
                         </div>
 
                         <div *ngIf="!resource.get('detailsChipSet')?.value">
-                          <app-form-dropdown
-                            [dropDownControlName]="'details'"
+                          <app-dropdown
+
                             [dropDownCtrl]="convertToFormControl(resource.get('details'))"
                             [dropDownValues]="resourceDetailsDropdownOptions[i]"
                             [config]="resourceOtherDetailsDropdownconfig"
                             [submitted]="submitted"
-                          ></app-form-dropdown>
+                          ></app-dropdown>
                           <p
                             class="form-control-error"
                             *ngIf="!resource.get('detailsChipSet')?.value && submitted && resource.get('details')?.errors?.['required']"
@@ -490,14 +490,14 @@
         >
           <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6 mt-4">
             <div>
-              <app-common-dropdown
+              <app-dropdown
                 [dropDownValues]="classBoardOptions"
                 [config]="classBoardDropdownconfig"
                 [(ngModel)]="board.board"
                 [ngModelOptions]="{ standalone: true }"
                 [mode]="mode"
                 (valueUpdate)="boardMediumUpdate(i,'board')"
-              ></app-common-dropdown>
+              ></app-dropdown>
               <small
                 class="form-control-error"
                 *ngIf="submitted && !board.board"
@@ -506,14 +506,14 @@
             </div>
 
             <div>
-              <app-common-dropdown
+              <app-dropdown
                 [dropDownValues]="classMediumOptions"
                 [config]="classMediumDropdownconfig"
                 [(ngModel)]="board.medium"
                 [ngModelOptions]="{ standalone: true }"
                 [mode]="mode"
                 (valueUpdate)="boardMediumUpdate(i,'medium')"
-              ></app-common-dropdown>
+              ></app-dropdown>
               <small
                 class="form-control-error"
                 *ngIf="submitted && !board.medium"
@@ -522,28 +522,28 @@
             </div>
 
             <div>
-              <app-common-dropdown
+              <app-dropdown
                 [dropDownValues]="classOptions"
                 [config]="classMinDropdownconfig"
                 [(ngModel)]="board.start"
                 [ngModelOptions]="{ standalone: true }"
                 (valueUpdate)="classRangeUpdate(i, 'start', $event)"
                 [mode]="mode"
-              ></app-common-dropdown>
+              ></app-dropdown>
               <small class="form-control-error" *ngIf="submitted && !board.start"
                 >{{'Class min value is required' | translate}}</small
               >
             </div>
 
             <div>
-              <app-common-dropdown
+              <app-dropdown
                 [dropDownValues]="classOptions"
                 [config]="classMaxDropdownconfig"
                 [(ngModel)]="board.end"
                 [ngModelOptions]="{ standalone: true }"
                 (valueUpdate)="classRangeUpdate(i, 'end', $event)"
                 [mode]="mode"
-              ></app-common-dropdown>
+              ></app-dropdown>
               <small class="form-control-error" *ngIf="submitted && !board.end"
                 >Class max value is required</small
               >

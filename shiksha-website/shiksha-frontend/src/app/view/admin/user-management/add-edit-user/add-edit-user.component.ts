@@ -2,7 +2,7 @@ import { AfterViewInit, Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { UserManagementService } from '../user-management.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { StaffUserCommonService } from 'src/app/shared/services/staff-user-common.service';
@@ -22,64 +22,64 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
 
   userRolesDropdownOptions: any[] = [];
 
-  stateDropdownconfig: FormDropDownConfig = {
+  stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select state',
     height: '44px',
     fieldName: 'State',
-    bindLable: 'state',
+    bindLabel: 'state',
     bindValue: 'state',
     required: true
   };
 
-  zoneDropdownconfig: FormDropDownConfig = {
+  zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Zone',
     height: '44px',
     fieldName: 'Zone',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true
   };
 
-  districtDropdownconfig: FormDropDownConfig = {
+  districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select district',
     height: '44px',
     fieldName: 'District',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true
   };
 
-  blockDropdownconfig: FormDropDownConfig = {
+  blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Taluk',
     height: '44px',
     fieldName: 'Taluk',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true
   };
 
 
-  schoolNameDropdownconfig: FormDropDownConfig = {
+  schoolNameDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select School Name',
     height: '44px',
     fieldName: 'School Name',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: '_id',
     required: true,
     searchable: true
   };
 
-  userRoleDropdownconfig: FormDropDownConfig = {
+  userRoleDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Teacher Role',
     height: '44px',
     fieldName: 'Teacher Role',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'value',
     required: true
   };

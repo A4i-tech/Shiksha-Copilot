@@ -4,7 +4,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { NgChartsModule } from 'ng2-charts';
 import { Chart, ChartConfiguration, ChartData } from 'chart.js';
-import { CommonDropdownComponent } from 'src/app/shared/components/common-dropdown/common-dropdown.component';
+import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { UserManagementService } from '../user-management/user-management.service';
@@ -28,7 +28,7 @@ interface DashboardFilters {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, TranslateModule, NgChartsModule, CommonDropdownComponent, FormsModule],
+  imports: [CommonModule, TranslateModule, NgChartsModule, DropdownComponent, FormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })

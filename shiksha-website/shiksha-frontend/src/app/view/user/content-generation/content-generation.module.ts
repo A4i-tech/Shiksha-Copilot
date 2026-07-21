@@ -3,9 +3,8 @@ import { CommonModule } from '@angular/common';
 
 import { ContentGenerationRoutingModule } from './content-generation-routing.module';
 import { LessonContentListComponent } from './lesson-content-list/lesson-content-list.component';
-import { CommonDropdownComponent } from 'src/app/shared/components/common-dropdown/common-dropdown.component';
+import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { FormDropdownComponent } from 'src/app/shared/components/form-dropdown/form-dropdown.component';
 import { AccordionComponent } from 'src/app/shared/components/accordion/accordion.component';
 import { RegeneratePopupComponent } from 'src/app/shared/components/regenerate-popup/regenerate-popup.component';
 import { ModalComponent } from 'src/app/shared/components/modal/modal.component';
@@ -36,10 +35,9 @@ import { PresentationGenerationComponent } from './presentation-generation/prese
   imports: [
     CommonModule,
     ContentGenerationRoutingModule,
-    CommonDropdownComponent,
+    DropdownComponent,
     FormsModule,
     ReactiveFormsModule,
-    FormDropdownComponent,
     AccordionComponent,
     RegeneratePopupComponent,
     ModalComponent,

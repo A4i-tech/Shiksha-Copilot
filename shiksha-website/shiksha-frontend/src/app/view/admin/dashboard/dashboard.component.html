@@ -18,37 +18,37 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-3 mt-5 items-end">
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="stateDropdownOptions" #stateDropDown 
-            (valueUpdate)="onStateChange($event)" [config]="stateDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="stateDropdownOptions" #stateDropDown
+            (valueUpdate)="onStateChange($event)" [config]="stateDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="zoneDropdownOptions" #zoneDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onZoneChange($event)" [config]="zoneDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="zoneDropdownOptions" #zoneDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onZoneChange($event)" [config]="zoneDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="districtDropdownOptions" #districtDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onDistrictChange($event)" [config]="districtDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="districtDropdownOptions" #districtDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onDistrictChange($event)" [config]="districtDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="blockDropdownOptions" #blockDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onBlockChange($event)" [config]="blockDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="blockDropdownOptions" #blockDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onBlockChange($event)" [config]="blockDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="schoolDropdownOptions" #schoolDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onSchoolChange($event)" [config]="schoolDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="schoolDropdownOptions" #schoolDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onSchoolChange($event)" [config]="schoolDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown
+        <app-dropdown
             [dropDownValues]="planTypeDropdownOptions"
             #planTypeDropDown
             (valueUpdate)="onPlanTypeChange($event)"
             [config]="planTypeDropdownconfig"
-        ></app-common-dropdown>
+        ></app-dropdown>
     </div>
 
     <div class="relative flex-col min-w-0">

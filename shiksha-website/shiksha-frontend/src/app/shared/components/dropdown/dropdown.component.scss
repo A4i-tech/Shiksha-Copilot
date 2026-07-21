@@ -1,3 +1,5 @@
+:host { display: block; min-width: 0; }
+
 .select-wrapper {
   position: relative;
   ::ng-deep
@@ -5,7 +7,6 @@
     > .ng-select-container {
     box-shadow: none;
     border: 1px solid var(--content-50);
-
   }
 
   ::ng-deep .with-background.ng-select .ng-select-container {
@@ -17,20 +18,39 @@
     border: 1px solid var(--content-50);
   }
 
-  ::ng-deep .ng-select .ng-select-container .ng-value-container .ng-input>input[readonly]{
-    user-select: unset;
-    -webkit-user-select: unset;
+  ::ng-deep .ng-select .ng-select-container .ng-value-container {
+    min-width: 0;
   }
 
-  // WCAG AA: ng-select default placeholder (#999, ~2.85:1) fails contrast
+  ::ng-deep .ng-select.wrap-value.ng-select-single .ng-select-container .ng-value-container {
+    white-space: normal;
+    padding-block: 5px;
+  }
+
+  ::ng-deep .ng-select.wrap-value .ng-select-container .ng-value,
+  ::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  ::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value {
+    display: flex;
+    max-width: 100%;
+  }
+
+  ::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  ::ng-deep .ng-select.ng-select-multiple:not(.ng-select-searchable) .ng-input {
+    position: absolute;
+  }
+
   ::ng-deep .ng-select .ng-select-container .ng-value-container .ng-placeholder {
     color: var(--content-60);
   }
-
-  // ::ng-deep
-  //   .ng-select.ng-select-focused:not(.ng-select-opened)
-  //   > .ng-select-container {
-  // }
 
   ::ng-deep .ng-select.ng-select-disabled > .ng-select-container {
     background: var(--shade-80) !important;
@@ -61,6 +81,16 @@
     min-width: 200px !important;
   }
 
+  ::ng-deep .ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  ::ng-deep .ng-select .ng-select-container .ng-value-container .ng-input>input[readonly]{
+    user-select: unset;
+    -webkit-user-select: unset;
+  }
+
   ::ng-deep
     .ng-dropdown-panel
     .ng-dropdown-panel-items
@@ -78,11 +108,4 @@
     background-color: var(--shade-80) !important;
   }
 
-  .area-label {
-    position: absolute;
-    left: 11px;
-    color: var(--content-50);
-    z-index: 1;
-    font-size: 0.875rem;
-  }
 }

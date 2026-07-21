@@ -45,29 +45,29 @@
 							<small class="form-control-error" *ngIf="submitted && addForm.get('email')?.errors?.['email']">{{'Enter valid email' | translate}}.</small>
 					</div>
 					<div class="cursor-pointer">
-						<app-staff-form-dropdown [dropDownControlName]="'role'" [mode]="mode"
+						<app-dropdown [mode]="mode"
 							[dropDownCtrl]="convertToFormControl(f['role'])" [dropDownValues]="userRolesDropdownOptions"
-							[config]="userRoleDropdownconfig" [submitted]="submitted"></app-staff-form-dropdown>
+							[config]="userRoleDropdownconfig" [submitted]="submitted"></app-dropdown>
 					</div>
 				</div>
 
 				<!--manager drop down-->
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 md:mt-8" *ngIf="addForm.get('role')?.value === 'manager'">
 					<div>
-						<app-staff-form-dropdown [dropDownControlName]="'state'" [mode]="mode"
+						<app-dropdown [mode]="mode"
 							[dropDownCtrl]="convertToFormControl(f['state'])" [dropDownValues]="stateDropdownOptions"
-							[config]="stateDropdownconfig" [submitted]="submitted"></app-staff-form-dropdown>
+							[config]="stateDropdownconfig" [submitted]="submitted"></app-dropdown>
 					</div>
 					<div>
-						<app-staff-form-dropdown [dropDownControlName]="'zones'" [mode]="mode"
+						<app-dropdown [mode]="mode"
 							[dropDownCtrl]="convertToFormControl(f['zones'])" [dropDownValues]="zoneDropdownOptions"
-							[config]="zoneDropdownconfig" [submitted]="submitted"></app-staff-form-dropdown>
+							[config]="zoneDropdownconfig" [submitted]="submitted"></app-dropdown>
 					</div>
 				</div>
 				<div class="mt-6 md:mt-8" *ngIf="addForm.get('role')?.value === 'manager'">
-					<app-staff-form-dropdown [dropDownControlName]="'districts'" [mode]="mode"
+					<app-dropdown [mode]="mode"
 						[dropDownCtrl]="convertToFormControl(f['districts'])" [dropDownValues]="districtDropdownOptions"
-						[config]="districtDropdownconfig" [submitted]="submitted"></app-staff-form-dropdown>
+						[config]="districtDropdownconfig" [submitted]="submitted"></app-dropdown>
 				</div>
 				<!--manager drop down-->
 			</div>

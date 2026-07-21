@@ -11,11 +11,11 @@ import {
 import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ContentGenerationService } from 'src/app/view/user/content-generation/content-generation.service';
-import { FormDropDownConfig } from '../../interfaces/form-dropdown.interface';
+import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { ModalService } from '../modal/modal.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CommonModule } from '@angular/common';
-import { FormDropdownComponent } from '../form-dropdown/form-dropdown.component';
+import { DropdownComponent } from '../dropdown/dropdown.component';
 import { Observable } from 'rxjs';
 import { DeleteDetailComponent } from '../delete-detail/delete-detail.component';
 import { HttpParams } from '@angular/common/http';
@@ -38,7 +38,7 @@ export interface LessonTypeConfig {
     TranslateModule,
     CommonModule,
     ReactiveFormsModule,
-    FormDropdownComponent,
+    DropdownComponent,
     DeleteDetailComponent,
     FormsModule,
     HasPermissionDirective,
@@ -67,83 +67,83 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   boardDropdownOptions: any[] = [];
   lpTemplatedownOptions: any[] = [];
 
-  mediumDropdownconfig: FormDropDownConfig = {
+  mediumDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Medium',
     height: 'auto',
     fieldName: 'Medium',
-    bindLable: 'medium',
+    bindLabel: 'medium',
     bindValue: 'medium',
     required: true,
   };
 
-  boardDropdownconfig: FormDropDownConfig = {
+  boardDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Board',
     height: 'auto',
     fieldName: 'Board',
-    bindLable: 'board',
+    bindLabel: 'board',
     bindValue: 'board',
     required: true,
   };
 
-  classDropdownconfig: FormDropDownConfig = {
+  classDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Class',
     height: 'auto',
     fieldName: 'Class',
-    bindLable: 'class',
+    bindLabel: 'class',
     bindValue: 'class',
     required: true,
   };
 
-  semesterDropdownconfig: FormDropDownConfig = {
+  semesterDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Semester1',
     height: 'auto',
     fieldName: 'Semester',
-    bindLable: 'semester',
+    bindLabel: 'semester',
     bindValue: 'semester',
     required: true,
   };
 
-  subjectDropdownconfig: FormDropDownConfig = {
+  subjectDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Subject',
     height: 'auto',
     fieldName: 'Subject',
-    bindLable: 'displayName',
+    bindLabel: 'displayName',
     bindValue: 'subject',
     required: true,
   };
 
-  lpTemplatedownconfig: FormDropDownConfig = {
+  lpTemplatedownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Template',
     height: 'auto',
     fieldName: 'Select Template',
-    bindLable: 'model',
+    bindLabel: 'model',
     bindValue: 'value',
     required: true,
     clearableOff:true,
   };
 
-  topicsDropdownconfig: FormDropDownConfig = {
+  topicsDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Chapter',
     height: 'auto',
     fieldName: 'Chapter',
-    bindLable: 'displayValue',
+    bindLabel: 'displayValue',
     bindValue: 'displayValue',
     required: true,
   };
 
-  subtopicsDropdownconfig: FormDropDownConfig = {
+  subtopicsDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Subtopic',
     height: 'auto',
     fieldName: 'Sub-Topic',
-    bindLable: 'label',
+    bindLabel: 'label',
     bindValue: 'label',
     required: true,
   };

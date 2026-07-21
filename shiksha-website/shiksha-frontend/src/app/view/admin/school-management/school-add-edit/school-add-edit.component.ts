@@ -10,7 +10,6 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
 import { SchoolManagementService } from '../school-management.service';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import {
@@ -62,94 +61,94 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
 
   schoolIdError: boolean = false;
 
-  stateDropdownconfig: FormDropDownConfig = {
+  stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select state',
     height: '44px',
     fieldName: 'State',
-    bindLable: 'state',
+    bindLabel: 'state',
     bindValue: 'state',
     required: true,
   };
 
-  zoneDropdownconfig: FormDropDownConfig = {
+  zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Zone',
     height: '44px',
     fieldName: 'Zone',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
   };
 
-  districtDropdownconfig: FormDropDownConfig = {
+  districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select district',
     height: '44px',
     fieldName: 'District',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
   };
 
-  blockDropdownconfig: FormDropDownConfig = {
+  blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Taluk',
     height: '44px',
     fieldName: 'Taluk',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
   };
 
-  boardDropdownconfig: FormDropDownConfig = {
+  boardDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select board',
-    height: '44px',
+    height: 'auto',
     fieldName: 'Board',
-    bindLable: 'boardName',
+    bindLabel: 'boardName',
     bindValue: 'abbreviation',
     multi: true,
     chipValueType: 'uppercase',
     required: true,
   };
 
-  mediumDropdownconfig: FormDropDownConfig = {
+  mediumDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select medium of instruction',
-    height: '44px',
+    height: 'auto',
     fieldName: 'Medium of instruction',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'value',
     multi: true,
     required: true,
   };
 
-  resourceTypeDropdownconfig: FormDropDownConfig = {
+  resourceTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Type',
     height: 'auto',
     fieldName: 'Type',
     hideLabel: true,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
     required: true,
     clearableOff:true
   };
 
-  resourceTypeDarkDropdownconfig: FormDropDownConfig = {
+  resourceTypeDarkDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Type',
     height: 'auto',
     fieldName: 'Type',
     hideLabel: true,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
     required: true,
     clearableOff:true
   };
 
-  resourceDetailsDropdownconfig: FormDropDownConfig = {
+  resourceDetailsDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select details',
     height: 'auto',
@@ -159,7 +158,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     hideLabel: true,
     required: true,
   };
-  resourceOtherDetailsDropdownconfig: FormDropDownConfig = {
+  resourceOtherDetailsDropdownconfig: DropDownConfig = {
     ...this.resourceDetailsDropdownconfig,
     placeHolderTxt: 'Enter resource details',
     hideLabel: false,

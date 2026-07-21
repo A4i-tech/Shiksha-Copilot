@@ -33,15 +33,15 @@
         </div>
         <form [formGroup]="questionBankConfigForm" class="bg-white rounded-lg p-3 md:p-8">
           <div class="grid lg:grid-cols-3 gap-4">
-            <app-form-dropdown [dropDownControlName]="'board'" (valueChange)="onBoardChange($event)"
+            <app-dropdown (valueChange)="onBoardChange($event)"
               [dropDownCtrl]="convertToFormControl(f.board)" [dropDownValues]="boardDropdownOptions"
-              [config]="boardDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
-            <app-form-dropdown [dropDownControlName]="'grade'" (valueChange)="onStandardChange($event)"
+              [config]="boardDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
+            <app-dropdown (valueChange)="onStandardChange($event)"
               [dropDownCtrl]="convertToFormControl(f.grade)" [dropDownValues]="classDropdownOptions"
-              [config]="classDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
-            <app-form-dropdown [dropDownControlName]="'subject'" (valueChange)="onSubjectChange($event)"
+              [config]="classDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
+            <app-dropdown (valueChange)="onSubjectChange($event)"
               [dropDownCtrl]="convertToFormControl(f.subject)" [dropDownValues]="subjectDropdownOptions"
-              [config]="subjectDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
+              [config]="subjectDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
           </div>
 
           <div class="grid lg:grid-cols-2 gap-4 mt-7">
@@ -74,13 +74,13 @@
                   </span>
                 </span>
               </label>
-              <app-form-dropdown [dropDownControlName]="'sourceGeneration'" (valueChange)="onSourceGenerationChange($event)"
+              <app-dropdown (valueChange)="onSourceGenerationChange($event)"
                 [dropDownCtrl]="convertToFormControl(f.sourceGeneration)" [dropDownValues]="sourceGenerationOptions"
-                [config]="sourceGenerationDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
+                [config]="sourceGenerationDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
             </div>
-            <app-form-dropdown [dropDownControlName]="'language'" (valueChange)="onLanguageChange($event)"
+            <app-dropdown (valueChange)="onLanguageChange($event)"
               [dropDownCtrl]="convertToFormControl(f.language)" [dropDownValues]="languageDropdownOptions"
-              [config]="languageDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
+              [config]="languageDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
           </div>
 
           <div class="grid lg:grid-cols-2 gap-4 mt-8 border-t pt-6">
@@ -97,13 +97,13 @@
           </div>
 
           <div class="grid lg:grid-cols-2 gap-4 mt-7">
-            <app-form-dropdown [dropDownControlName]="'chapter'" (valueChange)="onChapterChange($event)"
+            <app-dropdown (valueChange)="onChapterChange($event)"
               [dropDownCtrl]="convertToFormControl(f.chapter)" [dropDownValues]="chapterDropdownOptions"
-              [config]="chapterDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
-            <app-form-dropdown *ngIf="questionBankTypeValue === 'singleChapter' && hasSubtopics"
-              [dropDownControlName]="'subTopic'" (valueChange)="onSubtopicChange()"
+              [config]="chapterDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
+            <app-dropdown *ngIf="questionBankTypeValue === 'singleChapter' && hasSubtopics"
+ (valueChange)="onSubtopicChange()"
               [dropDownCtrl]="convertToFormControl(f.subTopic)" [dropDownValues]="subtopicsDropdownOptions"
-              [config]="subTopicDropdownconfig" [submitted]="submittedConfig"></app-form-dropdown>
+              [config]="subTopicDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
           </div>
 
           <div class="mt-8" *ngIf="questionBankObjectives.length">
@@ -163,8 +163,8 @@
               class="mb-3 grid grid-cols-2 gap-3 rounded border p-3 md:table-row md:p-0">
               <td class="col-span-2 md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Question Type' | translate }}</label>
-                <app-common-dropdown [dropDownValues]="questionTypeOptions" [config]="questionTypeConfig"
-                [(ngModel)]="row.type" [ngModelOptions]="{ standalone: true }"></app-common-dropdown></td>
+                <app-dropdown [dropDownValues]="questionTypeOptions" [config]="questionTypeConfig"
+                [(ngModel)]="row.type" [ngModelOptions]="{ standalone: true }"></app-dropdown></td>
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Number of Questions' | translate }}</label>
                 <input class="table-form-control w-full" [(ngModel)]="row.numberOfQuestions"
@@ -195,10 +195,10 @@
             </div>
             <div *ngFor="let distribution of block.questionDistribution; let j = index" class="flex gap-3 mt-3 items-center">
               <span class="w-6 shrink-0">{{ j + 1 }}.</span>
-              <div class="flex-1 min-w-0"><app-common-dropdown [dropDownValues]="chapterOptions" [config]="chapterConfig"
-                [(ngModel)]="distribution.unitName" [ngModelOptions]="{ standalone: true }"></app-common-dropdown></div>
-              <div class="flex-1 min-w-0"><app-common-dropdown [dropDownValues]="objectiveOptions" [config]="objectiveConfig"
-                [(ngModel)]="distribution.objective" [ngModelOptions]="{ standalone: true }"></app-common-dropdown></div>
+              <div class="flex-1 min-w-0"><app-dropdown [dropDownValues]="chapterOptions" [config]="chapterConfig"
+                [(ngModel)]="distribution.unitName" [ngModelOptions]="{ standalone: true }"></app-dropdown></div>
+              <div class="flex-1 min-w-0"><app-dropdown [dropDownValues]="objectiveOptions" [config]="objectiveConfig"
+                [(ngModel)]="distribution.objective" [ngModelOptions]="{ standalone: true }"></app-dropdown></div>
             </div>
           </ng-container>
         </div>

@@ -14,39 +14,39 @@
 							<div class="grid lg:grid-cols-2 gap-4">
 									
 									<div>
-											<app-form-dropdown [dropDownControlName]="'board'" (valueChange)="onBoardChange($event)"
+											<app-dropdown (valueChange)="onBoardChange($event)"
 													[dropDownCtrl]="convertToFormControl(f['board'])"
 													[dropDownValues]="boardDropdownOptions" [config]="boardDropdownconfig"
-													[submitted]="submitted"></app-form-dropdown>
+													[submitted]="submitted"></app-dropdown>
 									</div>
 									<div class="cursor-pointer capitalize">
-										<app-form-dropdown [dropDownControlName]="'medium'" (valueChange)="onMediumChange($event)"
+										<app-dropdown (valueChange)="onMediumChange($event)"
 												[dropDownCtrl]="convertToFormControl(f['medium'])" [dropDownValues]="mediumDropdownOptions"
-												[config]="mediumDropdownconfig" [submitted]="submitted"></app-form-dropdown>
+												[config]="mediumDropdownconfig" [submitted]="submitted"></app-dropdown>
 								</div> 
 							</div>
 
 							<div class="grid lg:grid-cols-2 gap-4 mt-7">
 									<div class="cursor-pointer">
-											<app-form-dropdown [dropDownControlName]="'class'" (valueChange)="onStandardChange($event)"
+											<app-dropdown (valueChange)="onStandardChange($event)"
 													[dropDownCtrl]="convertToFormControl(f['class'])" [dropDownValues]="classDropdownOptions"
-													[config]="classDropdownconfig" [submitted]="submitted"></app-form-dropdown>
+													[config]="classDropdownconfig" [submitted]="submitted"></app-dropdown>
 									</div>
 									<div class="cursor-pointer">
-											<app-form-dropdown [dropDownControlName]="'subject'" (valueChange)="onSubjectChange($event)"
+											<app-dropdown (valueChange)="onSubjectChange($event)"
 													[dropDownCtrl]="convertToFormControl(f['subject'])"
 													[dropDownValues]="subjectDropdownOptions" [config]="subjectDropdownconfig"
-													[submitted]="submitted"></app-form-dropdown>
+													[submitted]="submitted"></app-dropdown>
 									</div>
 							</div>
 
 							<div class="grid gap-4" [ngClass]="lpTemplatedownOptions.length > 1 ? 'lg:grid-cols-2':''">
 								<div class="cursor-pointer mt-7" *ngIf="lpTemplatedownOptions.length > 1">
-										<app-form-dropdown [dropDownControlName]="'template'" (valueChange)="onTemplateChange($event)"
+										<app-dropdown (valueChange)="onTemplateChange($event)"
 												[dropDownCtrl]="convertToFormControl(f['template'])" [dropDownValues]="lpTemplatedownOptions"
-												[config]="lpTemplatedownconfig" [submitted]="submitted"></app-form-dropdown>
+												[config]="lpTemplatedownconfig" [submitted]="submitted"></app-dropdown>
 								</div>
-								<div *ngIf="templateDetails" class="px-4 py-2 bg-primary-50 rounded mt-7 w-[84vw] md:w-full">
+								<div *ngIf="templateDetails" class="px-4 py-2 bg-primary-50 rounded mt-7 min-w-0">
 									<div class="flex gap-2 items-start">
 										<img class="w-5" src="assets/icons/info-primary.svg" alt="">
 									<div>
@@ -57,19 +57,15 @@
 						</div>
 
 							<div class="grid lg:grid-cols-1 gap-4 mt-7">                    
-									<div class="w-[84vw] md:w-full">
-											<app-form-dropdown [dropDownControlName]="'topics'" (valueChange)="onTopicSelected($event)"
-													[dropDownCtrl]="convertToFormControl(f['topics'])" [dropDownValues]="topicsDropdownOptions"
-													[config]="topicsDropdownconfig" [submitted]="submitted"></app-form-dropdown>
-									</div>                    
+									<app-dropdown (valueChange)="onTopicSelected($event)"
+										[dropDownCtrl]="convertToFormControl(f['topics'])" [dropDownValues]="topicsDropdownOptions"
+										[config]="topicsDropdownconfig" [submitted]="submitted"></app-dropdown>
 							</div>
 							<div class="grid lg:grid-cols-1 gap-4 mt-7">
-									<div class="w-[84vw] md:w-full">
-											<app-form-dropdown [dropDownControlName]="'subtopics'" (valueChange)="onsubTopicSelected($event)"
-													[dropDownCtrl]="convertToFormControl(f['subtopics'])"
-													[dropDownValues]="subtopicsDropdownOptions" [config]="subtopicsDropdownconfig"
-													[submitted]="submitted"></app-form-dropdown>
-									</div>
+									<app-dropdown (valueChange)="onsubTopicSelected($event)"
+										[dropDownCtrl]="convertToFormControl(f['subtopics'])"
+										[dropDownValues]="subtopicsDropdownOptions" [config]="subtopicsDropdownconfig"
+										[submitted]="submitted"></app-dropdown>
 							</div>                
 					</div>
 					<hr class="border-b-[3px] mt-7 border-shade-80">

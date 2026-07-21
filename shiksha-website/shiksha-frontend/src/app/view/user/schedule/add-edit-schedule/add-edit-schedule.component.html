@@ -14,34 +14,34 @@
 					<div class="form-wrapper max-h-[530px] overflow-y-auto flex flex-col gap-2">						
 						<div class="grid gap-2  md:grid-cols-2">
 							<div class="min-w-[250px] ">
-								<app-form-dropdown [config]="boardDropDownConfig" [dropDownControlName]="'board'" [dropDownValues]="boardDropdownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['board'])" (valueChange)="setMediumDropdownArray($event)" [submitted]="submitted" ></app-form-dropdown>
+								<app-dropdown [config]="boardDropDownConfig" [dropDownValues]="boardDropdownValue" [mode]="mode"
+								[dropDownCtrl]="convertToFormControl(f['board'])" (valueChange)="setMediumDropdownArray($event)" [submitted]="submitted" ></app-dropdown>
 							</div>
 								<div class="min-w-[250px] ">
-								<app-form-dropdown [config]="mediumDropDownConfig" [dropDownControlName]="'medium'" [dropDownValues]="mediumDropdownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['medium'])"(valueChange)="setClassDropdownValue($event)" [submitted]="submitted" ></app-form-dropdown>
+								<app-dropdown [config]="mediumDropDownConfig" [dropDownValues]="mediumDropdownValue" [mode]="mode"
+								[dropDownCtrl]="convertToFormControl(f['medium'])"(valueChange)="setClassDropdownValue($event)" [submitted]="submitted" ></app-dropdown>
 							</div>
 						</div>
 
 						<div class="grid gap-2 md:grid-cols-2">
 							<div class="min-w-[250px] ">
-								<app-form-dropdown [config]="classNameDropDownConfig" [dropDownValues]="classDropDownValues" [submitted]="submitted" [mode]="mode"
-									[dropDownControlName]="'className'" [dropDownCtrl]="convertToFormControl(f['className'])" (valueChange)="setSubjectValue($event)"></app-form-dropdown>
+								<app-dropdown [config]="classNameDropDownConfig" [dropDownValues]="classDropDownValues" [submitted]="submitted" [mode]="mode"
+ [dropDownCtrl]="convertToFormControl(f['className'])" (valueChange)="setSubjectValue($event)"></app-dropdown>
 							</div>
 							<div class="min-w-[250px] ">
-								<app-form-dropdown [config]="subjectDropDownConfig" [dropDownValues]="subjectDropdownValue" [submitted]="submitted" [mode]="mode"
-									[dropDownControlName]="'subject'" [dropDownCtrl]="convertToFormControl(f['subject'])" (valueChange)="setChapterValues($event)"></app-form-dropdown>
+								<app-dropdown [config]="subjectDropDownConfig" [dropDownValues]="subjectDropdownValue" [submitted]="submitted" [mode]="mode"
+ [dropDownCtrl]="convertToFormControl(f['subject'])" (valueChange)="setChapterValues($event)"></app-dropdown>
 							</div>
 						</div>
 
 						<div class="grid gap-2 md:grid-cols-2">
 							<div class="min-w-[250px]">
-								<app-form-dropdown [config]="chapterDropDownConfig" [dropDownControlName]="'chapter'" [dropDownValues]="chapterDropdownValue" [mode]="mode"
-									[dropDownCtrl]="convertToFormControl(f['chapter'])" (valueChange)="setSubTopicValue($event)" [submitted]="submitted"></app-form-dropdown>
+								<app-dropdown [config]="chapterDropDownConfig" [dropDownValues]="chapterDropdownValue" [mode]="mode"
+									[dropDownCtrl]="convertToFormControl(f['chapter'])" (valueChange)="setSubTopicValue($event)" [submitted]="submitted"></app-dropdown>
 							</div>
 							<div class="min-w-[250px]">
-								<app-form-dropdown [config]="subTopicDropDownConfig" [dropDownControlName]="'subTopic'" [dropDownValues]="subTopicDropDownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['subTopic'])" (valueChange)="setLessonPlan($event)" [submitted]="submitted"></app-form-dropdown>
+								<app-dropdown [config]="subTopicDropDownConfig" [dropDownValues]="subTopicDropDownValue" [mode]="mode"
+								[dropDownCtrl]="convertToFormControl(f['subTopic'])" (valueChange)="setLessonPlan($event)" [submitted]="submitted"></app-dropdown>
 							</div>
 						</div>
 						<!-- <div>
@@ -52,8 +52,8 @@
 
 				
 						<div>
-							 <app-form-dropdown [config]="lessonDropDownConfig" [dropDownControlName]="'lessonPlan'" [dropDownValues]="lessonPlanDropDownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['lessonPlan'])" [submitted]="submitted" (valueChange)="getLessonId($event)"></app-form-dropdown> 
+							 <app-dropdown [config]="lessonDropDownConfig" [dropDownValues]="lessonPlanDropDownValue" [mode]="mode"
+								[dropDownCtrl]="convertToFormControl(f['lessonPlan'])" [submitted]="submitted" (valueChange)="getLessonId($event)"></app-dropdown>
 						</div> 
 			
 						<button class="btn-primary  flex items-center justify-center px-4 self-start" type="button" *ngIf="mode === 'add'" routerLink="/content-generation">

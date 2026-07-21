@@ -10,7 +10,7 @@ import { ModalService } from '../modal/modal.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {TranslateModule } from '@ngx-translate/core';
-import { CommonDropdownComponent } from '../common-dropdown/common-dropdown.component';
+import { DropdownComponent } from '../dropdown/dropdown.component';
 import { ModalComponent } from '../modal/modal.component';
 import { DisablePopupComponent } from '../disable-popup/disable-popup.component';
 import { UploadPopupComponent } from '../upload-popup/upload-popup.component';
@@ -34,7 +34,7 @@ interface ContentListConfig {
   templateUrl: './user-staff-list.component.html',
   styleUrls: ['./user-staff-list.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, CommonDropdownComponent,ModalComponent,DisablePopupComponent,UploadPopupComponent,PaginationComponent,TranslateModule, NgSelectModule,HasPermissionDirective, UploadErrorPopupComponent],
+  imports: [CommonModule, FormsModule, DropdownComponent,ModalComponent,DisablePopupComponent,UploadPopupComponent,PaginationComponent,TranslateModule, NgSelectModule,HasPermissionDirective, UploadErrorPopupComponent],
   animations:[slideInOutAnimation]
   
 })

@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
-import { CommonDropdownComponent } from '../common-dropdown/common-dropdown.component';
+import { DropdownComponent } from '../dropdown/dropdown.component';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { DEFAULT_LANGUAGE, LOC_LANGUAGES } from '../../utility/constant.util';
 import { DeleteDetailComponent } from '../delete-detail/delete-detail.component';
@@ -18,7 +18,7 @@ import { DeleteDetailComponent } from '../delete-detail/delete-detail.component'
   selector: 'app-language-switcher',
   templateUrl: './language-switcher.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, CommonDropdownComponent,DeleteDetailComponent],
+  imports: [CommonModule, FormsModule, DropdownComponent,DeleteDetailComponent],
 })
 export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
   @Output() languageChange: EventEmitter<string> = new EventEmitter<string>();

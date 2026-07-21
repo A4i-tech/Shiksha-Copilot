@@ -351,57 +351,57 @@
 <ng-template #elementGroup>
   <div class="flex gap-4 md:gap-1 flex-wrap">
     <div class="w-full md:w-36 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="statusDropdownOptions"
         #statusDropDown
         (valueUpdate)="onStatusChange($event)"
         [config]="statusDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="w-full md:w-36 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="typeDropdownOptions"
         #typeDropDown
         (valueUpdate)="onTypeChange($event)"
         [config]="typeDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="boardDropdownOptions"
         #boardDropDown
         (valueUpdate)="onBoardChange($event)"
         [config]="boardDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="mediumDropdownOptions"
         #mediumDropDown
         (valueUpdate)="onMediumChange($event)"
         [config]="mediumDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="classDropdownOptions"
         #classDropDown
         (valueUpdate)="onClassChange($event)"
         [config]="classDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="subjectDropdownOptions"
         #subjectDropDown
         (valueUpdate)="onSubjectChange($event)"
         [config]="subjectDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="flex flex-col w-full md:w-36">

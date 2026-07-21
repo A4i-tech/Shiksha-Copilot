@@ -64,7 +64,7 @@ export class AddEditScheduleComponent
     height: 'auto',
     fieldName: 'Board',
     hideLabel: false,
-    bindLable: 'board',
+    bindLabel: 'board',
     bindValue: 'board',
     required: true
   };
@@ -75,7 +75,7 @@ export class AddEditScheduleComponent
     height: 'auto',
     fieldName: 'Medium',
     hideLabel: false,
-    bindLable: 'medium',
+    bindLabel: 'medium',
     bindValue: 'medium',
     required: true
   };
@@ -86,7 +86,7 @@ export class AddEditScheduleComponent
     height: 'auto',
     fieldName: 'Class Name',
     hideLabel: false,
-    bindLable: 'class',
+    bindLabel: 'class',
     bindValue: 'class',
     required: true
   };
@@ -97,7 +97,7 @@ export class AddEditScheduleComponent
     height: 'auto',
     fieldName: 'Subject',
     hideLabel: false,
-    bindLable: 'displayName',
+    bindLabel: 'displayName',
     bindValue: 'subject',
     required: true
   };
@@ -108,7 +108,7 @@ export class AddEditScheduleComponent
     height: 'auto',
     fieldName: 'Chapter',
     hideLabel: false,
-    bindLable: 'displayValue',
+    bindLabel: 'displayValue',
     bindValue: 'topics',
     required: true
   };
@@ -119,7 +119,7 @@ export class AddEditScheduleComponent
     height: 'auto',
     fieldName: 'Sub Topic',
     hideLabel: false,
-    bindLable: 'label',
+    bindLabel: 'label',
     bindValue: 'label',
     required: true
   };
@@ -129,7 +129,7 @@ export class AddEditScheduleComponent
     placeHolderTxt: 'Select the Lesson Plan',
     height: 'auto',
     fieldName: 'Lesson Plan',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true
   };

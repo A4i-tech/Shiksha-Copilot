@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, FormControl, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ShikshanService } from '../shikshan-user.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { StaffUserCommonService } from 'src/app/shared/services/staff-user-common.service';
@@ -17,12 +17,12 @@ export class ShikshanUserManageComponent implements OnInit {
 
   userRolesDropdownOptions: any[] = [];
 
-  userRoleDropdownconfig: FormDropDownConfig = {
+  userRoleDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Staff Role',
     height: '44px',
     fieldName: 'Staff Role',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'value',
     required: true
   };
@@ -32,39 +32,41 @@ export class ShikshanUserManageComponent implements OnInit {
   districtDropdownOptions: any[] = [];
   regionsData: any[] = [];
 
-  stateDropdownconfig: FormDropDownConfig = {
+  stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select State',
     height: '44px',
     fieldName: 'State',
-    bindLable: 'state',
+    bindLabel: 'state',
     bindValue: 'state',
     required: true
   };
 
-  zoneDropdownconfig: FormDropDownConfig = {
+  zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Zone',
-    height: '44px',
+    height: 'auto',
     fieldName: 'Zone',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
     multi: true,
     selectAllOption: true,
+    showSelectedChips: true,
     chipValueType: 'titlecase'
   };
 
-  districtDropdownconfig: FormDropDownConfig = {
+  districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select District',
-    height: '44px',
+    height: 'auto',
     fieldName: 'District',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
     multi: true,
     selectAllOption: true,
+    showSelectedChips: true,
     chipValueType: 'titlecase'
   };
 
