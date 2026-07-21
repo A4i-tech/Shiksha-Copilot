@@ -123,6 +123,22 @@ STATUS_MAP = {
     "archived":    "archived",
 }
 
+# Approximate centroid coordinates for known Karnataka regions.
+# Keyed as (name_lower, type) → (lat, lon).
+# ETL uses these when inserting dim_regions rows so Superset map charts work.
+REGION_COORDS: dict[tuple[str, str], tuple[float, float]] = {
+    ("karnataka",       "state"):    (15.3173, 75.7139),
+    ("bengaluru rural", "district"): (13.2257, 77.5778),
+    ("mysuru",          "district"): (12.2958, 76.6394),
+    ("tumkur",          "district"): (13.3379, 77.1173),
+    ("devanahalli",     "block"):    (13.2468, 77.7110),
+    ("doddaballapur",   "block"):    (13.2956, 77.5367),
+    ("hunsur",          "block"):    (12.2993, 76.2913),
+    ("periyapatna",     "block"):    (12.3299, 76.4857),
+    ("tiptur",          "block"):    (13.2583, 76.4783),
+    ("gubbi",           "block"):    (13.3132, 76.9411),
+}
+
 NOW = datetime.now(timezone.utc)
 
 
@@ -187,28 +203,34 @@ def main() -> None:
             TRUNCATE dim_regions CASCADE;
         """)
 
+        def _region_coords(name: str, rtype: str) -> tuple[float | None, float | None]:
+            return REGION_COORDS.get((name.lower(), rtype), (None, None))
+
         for s in sorted({u.get("state") for u in users_raw if u.get("state")}):
+            lat, lon = _region_coords(s, "state")
             cur.execute(
-                "INSERT INTO dim_regions (name, type, parent_id) VALUES (%s, 'state', NULL) RETURNING region_id",
-                (s,)
+                "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'state', NULL, %s, %s) RETURNING region_id",
+                (s, lat, lon)
             )
             state_id[s] = cur.fetchone()[0]
 
         for u in users_raw:
             s, d = u.get("state"), u.get("district")
             if s and d and (s, d) not in dist_id:
+                lat, lon = _region_coords(d, "district")
                 cur.execute(
-                    "INSERT INTO dim_regions (name, type, parent_id) VALUES (%s, 'district', %s) RETURNING region_id",
-                    (d, state_id.get(s))
+                    "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'district', %s, %s, %s) RETURNING region_id",
+                    (d, state_id.get(s), lat, lon)
                 )
                 dist_id[(s, d)] = cur.fetchone()[0]
 
         for u in users_raw:
             s, d, b = u.get("state"), u.get("district"), u.get("block")
             if s and d and b and (s, d, b) not in block_id:
+                lat, lon = _region_coords(b, "block")
                 cur.execute(
-                    "INSERT INTO dim_regions (name, type, parent_id) VALUES (%s, 'block', %s) RETURNING region_id",
-                    (b, dist_id.get((s, d)))
+                    "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'block', %s, %s, %s) RETURNING region_id",
+                    (b, dist_id.get((s, d)), lat, lon)
                 )
                 block_id[(s, d, b)] = cur.fetchone()[0]
 
@@ -225,8 +247,9 @@ def main() -> None:
             if not d_id:
                 continue
             cur.execute(
-                "INSERT INTO dim_schools (name, block_id, district_id) VALUES (%s, %s, %s) RETURNING school_id",
-                (sch.get("name", "Unknown"), b_id or d_id, d_id)
+                "INSERT INTO dim_schools (name, block_id, district_id, latitude, longitude) VALUES (%s, %s, %s, %s, %s) RETURNING school_id",
+                (sch.get("name", "Unknown"), b_id or d_id, d_id,
+                 sch.get("latitude") or None, sch.get("longitude") or None)
             )
             mongo_school_to_pg[str(sch["_id"])] = cur.fetchone()[0]
 

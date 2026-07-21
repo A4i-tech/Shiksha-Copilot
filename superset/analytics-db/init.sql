@@ -6,14 +6,18 @@ CREATE TABLE IF NOT EXISTS dim_regions (
     region_id   SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
     type        TEXT NOT NULL CHECK (type IN ('state', 'district', 'block')),
-    parent_id   INT REFERENCES dim_regions(region_id)
+    parent_id   INT REFERENCES dim_regions(region_id),
+    latitude    DOUBLE PRECISION,
+    longitude   DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS dim_schools (
     school_id   SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
     block_id    INT NOT NULL REFERENCES dim_regions(region_id),
-    district_id INT NOT NULL REFERENCES dim_regions(region_id)
+    district_id INT NOT NULL REFERENCES dim_regions(region_id),
+    latitude    DOUBLE PRECISION,
+    longitude   DOUBLE PRECISION
 );
 
 CREATE TABLE IF NOT EXISTS dim_users (
@@ -102,9 +106,13 @@ SELECT
     u.region_id,
     r.name       AS region_name,
     r.type       AS region_type,
+    r.latitude   AS region_lat,
+    r.longitude  AS region_lon,
     rp.name      AS parent_name,
     rp.type      AS parent_type,
-    rp.region_id AS parent_region_id
+    rp.region_id AS parent_region_id,
+    rp.latitude  AS parent_lat,
+    rp.longitude AS parent_lon
 FROM fact_lesson_plans lp
 JOIN dim_users    u  ON u.user_id   = lp.user_id
 JOIN dim_regions  r  ON r.region_id = u.region_id
@@ -180,17 +188,17 @@ CREATE INDEX IF NOT EXISTS idx_mv_lba_attempts_region  ON vw_lba_attempts(region
 -- Seed: Dimensions
 -- ============================================================
 
-INSERT INTO dim_regions (name, type, parent_id) VALUES
-  ('Karnataka', 'state', NULL),            -- region_id = 1
-  ('Bengaluru Rural', 'district', 1),      -- 2
-  ('Mysuru', 'district', 1),               -- 3
-  ('Tumkur', 'district', 1),               -- 4
-  ('Devanahalli', 'block', 2),             -- 5
-  ('Doddaballapur', 'block', 2),           -- 6
-  ('Hunsur', 'block', 3),                  -- 7
-  ('Periyapatna', 'block', 3),             -- 8
-  ('Tiptur', 'block', 4),                  -- 9
-  ('Gubbi', 'block', 4);                   -- 10
+INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES
+  ('Karnataka',       'state',    NULL,  15.3173,  75.7139),  -- 1
+  ('Bengaluru Rural', 'district',    1,  13.2257,  77.5778),  -- 2
+  ('Mysuru',          'district',    1,  12.2958,  76.6394),  -- 3
+  ('Tumkur',          'district',    1,  13.3379,  77.1173),  -- 4
+  ('Devanahalli',     'block',       2,  13.2468,  77.7110),  -- 5
+  ('Doddaballapur',   'block',       2,  13.2956,  77.5367),  -- 6
+  ('Hunsur',          'block',       3,  12.2993,  76.2913),  -- 7
+  ('Periyapatna',     'block',       3,  12.3299,  76.4857),  -- 8
+  ('Tiptur',          'block',       4,  13.2583,  76.4783),  -- 9
+  ('Gubbi',           'block',       4,  13.3132,  76.9411);  -- 10
 
 INSERT INTO dim_schools (name, block_id, district_id) VALUES
   ('GHPS Devanahalli', 5, 2),     -- school_id = 1
