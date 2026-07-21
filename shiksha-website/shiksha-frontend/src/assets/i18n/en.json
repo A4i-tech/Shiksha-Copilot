@@ -652,5 +652,8 @@
   "Grammar: Multiple Choice Questions": "Grammar: Multiple Choice Questions",
   "Grammar: Fill in the blanks": "Grammar: Fill in the blanks",
   "Grammar: Identify and correct the error": "Grammar: Identify and correct the error",
-  "Required": "Required"
+  "Required": "Required",
+  "New chat": "New chat",
+  "Start a new chat? Your current conversation will be closed.": "Start a new chat? Your current conversation will be closed.",
+  "New chat started": "New chat started"
 }

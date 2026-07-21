@@ -2,13 +2,14 @@ from pathlib import Path
 import logging
 import re
 from app.config import settings
-from app.models.chat import LessonChatRequest
+from app.models.chat import LessonChatRequest, Reference
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
-from llama_index.core.llms import ChatMessage
+from llama_index.core.llms import ChatMessage, MessageRole
 from langfuse import observe, propagate_attributes
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
+from llama_index.core.utils import truncate_text
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,14 @@ class LessonChatService:
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.cleanup()
+
     @observe(name="Shiksha-QA")
-    async def __call__(self, request: LessonChatRequest) -> dict:
+    async def __call__(self, request: LessonChatRequest) -> tuple[str, list[Reference]]:
         """
         Process a lesson chat request and return the response.
 
@@ -55,7 +62,7 @@ class LessonChatService:
 
             # Build chat history with system message and previous messages
             chat_history = [
-                ChatMessage(role="system", content=system_message)
+                ChatMessage(role=MessageRole.SYSTEM, content=system_message)
             ] + chat_messages[:-1]
 
             # Get response from RAG system using current message and chat history
@@ -67,68 +74,13 @@ class LessonChatService:
             ]):
                 result = await rag_adapter.chat_with_index(curr_message=chat_messages[-1].content, chat_history=chat_history)
 
-            response_text = result.get("response", "")
-            source_nodes = result.get("source_nodes", [])
-
-            # Format source nodes as references
-            references = self._format_source_references(source_nodes)
-
-            return {"response": response_text, "references": references}
-
+            return result.response, [
+                Reference(title="Textbook", text=truncate_text(node.node.get_content(), 200), url=None)
+                for node in result.source_nodes
+            ]
         except Exception as e:
             logger.error(f"Error in lesson chat service: {e}", exc_info=True)
             raise
-
-    def _format_source_references(self, source_nodes) -> list:
-        """
-        Format RAG source nodes into a list of reference dicts.
-
-        Args:
-            source_nodes: List of LlamaIndex NodeWithScore objects
-
-        Returns:
-            List of dicts with 'title' and 'text' keys
-        """
-        references = []
-        seen_pages = set()
-
-        for node in source_nodes:
-            metadata = getattr(node, "metadata", {}) or {}
-            if hasattr(node, "node"):
-                metadata = getattr(node.node, "metadata", metadata) or metadata
-
-            page_label = metadata.get("page_label", "")
-            source = metadata.get("source", metadata.get("file_name", ""))
-
-            # Create a meaningful title
-            if page_label:
-                title = f"Page {page_label}"
-                if source:
-                    title += f" - {source}"
-            elif source:
-                title = source
-            else:
-                title = "Source Document"
-
-            # Deduplicate by page
-            dedup_key = f"{source}_{page_label}"
-            if dedup_key in seen_pages:
-                continue
-            seen_pages.add(dedup_key)
-
-            # Get a text snippet from the source node
-            text = ""
-            if hasattr(node, "node") and hasattr(node.node, "text"):
-                text = node.node.text[:200]
-            elif hasattr(node, "text"):
-                text = node.text[:200]
-
-            if text:
-                text = text.strip() + "..."
-
-            references.append({"title": title, "text": text})
-
-        return references
 
     def _extract_details(self, chapter_id: str):
         """
@@ -162,6 +114,3 @@ class LessonChatService:
     async def cleanup(self) -> None:
         """Clear the RAG adapter cache and associated resources."""
         await self._rags.cleanup()
-
-
-LESSON_CHAT_SERVICE_INSTANCE = LessonChatService()

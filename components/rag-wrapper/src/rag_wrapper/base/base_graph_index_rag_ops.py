@@ -2,7 +2,7 @@ import asyncio
 import uuid
 import json
 from abc import abstractmethod
-from typing import Any, List, Dict, Optional, TypeVar, Union
+from typing import Any, List, Dict, Optional, TypeVar, Union, overload
 
 from pydantic import BaseModel
 from tenacity import (
@@ -13,15 +13,17 @@ from tenacity import (
     retry_if_result,
 )
 from llama_index.core import (
-    QueryBundle,
     StorageContext,
     PropertyGraphIndex,
     get_response_synthesizer,
 )
-from llama_index.core.llms import ChatMessage, LLM
+from llama_index.core.base.response.schema import RESPONSE_TYPE
+from llama_index.core.chat_engine.types import AgentChatResponse
+from llama_index.core.llms import ChatMessage, LLM, MessageRole
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.schema import TransformComponent, TextNode
 from llama_index.core.graph_stores.types import EntityNode, Relation
+from llama_index.core.chat_engine import ContextChatEngine
 
 from llama_index.core.callbacks import TokenCountingHandler
 import traceback
@@ -195,14 +197,15 @@ class BaseGraphIndexRagOps(BaseRagOps):
             self.logger.error(f"Query failed for text '{text_str[:50]}...': {e}")
             raise
 
-    async def chat_with_index(
-        self,
-        curr_message: str,
-        chat_history: List[ChatMessage],
-        sub_retrievers: Optional[List[Any]] = None,
-        metadata_filter: Optional[Dict[str, str]] = None,
-        output_cls: type[T] | None = None,
-    ) -> Any:
+    @overload
+    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], sub_retrievers: Optional[List[Any]] = None, metadata_filter: Optional[Dict[str, str]] = None, output_cls: None = None) -> AgentChatResponse:
+        ...
+
+    @overload
+    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], sub_retrievers: Optional[List[Any]] = None, metadata_filter: Optional[Dict[str, str]] = None, output_cls: type[T] = ...) -> RESPONSE_TYPE:
+        ...
+
+    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], sub_retrievers: Optional[List[Any]] = None, metadata_filter: Optional[Dict[str, str]] = None, output_cls: type[T] | None = None) -> AgentChatResponse | RESPONSE_TYPE:
         """
         Engage in conversational interaction with the RAG index using a chat engine.
 
@@ -226,10 +229,20 @@ class BaseGraphIndexRagOps(BaseRagOps):
 
         try:
             retriever = self.rag_index.as_retriever(sub_retrievers=sub_retrievers or self._create_default_sub_retrievers(metadata_filter), include_text=self.include_text, use_async=True)
-            llm = self.completion_llm if output_cls is None else self.completion_llm.as_structured_llm(output_cls=output_cls)
-            response_synthesizer = get_response_synthesizer(llm=llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
-            query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
-            return await query_engine.aquery(QueryBundle(query_str=f"{chr(10).join(f'{m.role}: {m.content}' for m in chat_history[-6:])}{chr(10)}user: {curr_message}" if chat_history else curr_message, custom_embedding_strs=[curr_message]))
+            if output_cls is not None:
+                if chat_history:
+                    if len(chat_history) != 1 or chat_history[0].role != MessageRole.SYSTEM:
+                        raise ValueError("Structured outputs do not support chat history.")
+                    llm = self.completion_llm.as_structured_llm(output_cls=output_cls, system_prompt=chat_history[0].content)
+                else:
+                    llm = self.completion_llm.as_structured_llm(output_cls=output_cls)
+                response_synthesizer = get_response_synthesizer(llm=llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
+                query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
+                response = await query_engine.aquery(curr_message)
+            else:
+                chat_engine = ContextChatEngine.from_defaults(retriever=retriever, llm=self.completion_llm, chat_history=chat_history, callback_manager=self._callback_manager)
+                response = await chat_engine.achat(curr_message)
+            return response
         except Exception as e:
             self.logger.error(f"Chat failed for message '{curr_message[:50]}...': {e}")
             self.logger.error(traceback.format_exc())

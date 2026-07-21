@@ -72,7 +72,10 @@ class TestGeneralChatServiceCall:
             
             assert call_args[1]["model"] == mock_settings.general_chat_model
             assert call_args[1]["stream"] is True
-            assert call_args[1]["tools"] == [{"type": "web_search"}]
+            assert call_args[1]["tools"] == [{
+                "type": "web_search",
+                "user_location": {"type": "approximate", "country": "IN"},
+            }]
 
     @pytest.mark.asyncio
     async def test_call_with_conversation_history(
@@ -323,17 +326,3 @@ class TestGeneralChatServiceCleanup:
 
             # Should not raise errors
             await service.cleanup()
-
-
-
-
-
-class TestGlobalServiceInstance:
-    """Test global GENERAL_CHAT_SERVICE_INSTANCE."""
-
-    def test_global_instance_created(self):
-        """Test that global instance is created on module import."""
-        from app.services.general_chat_service import GENERAL_CHAT_SERVICE_INSTANCE
-
-        assert GENERAL_CHAT_SERVICE_INSTANCE is not None
-        assert isinstance(GENERAL_CHAT_SERVICE_INSTANCE, GeneralChatService)

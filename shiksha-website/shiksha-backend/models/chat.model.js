@@ -15,6 +15,10 @@ const chatSchema = new Schema(
         requestCount: {
             type: Number,
             default: 0,
+        },
+        endedAt: {
+            type: Date,
+            default: null,
         }
     },
     {

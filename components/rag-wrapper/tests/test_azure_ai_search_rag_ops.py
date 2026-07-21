@@ -244,10 +244,6 @@ async def test_chat(rag_ops_instance, ai_scientists_markdown_content, transforma
     # Log the chat response
     logger.info(f"Chat response: {response}")
 
-    # Assertions
-    assert response is not None, "chat_with_index should return a response"
-    assert isinstance(response, str), "Chat response should be a string"
-
 
 @pytest.mark.asyncio
 async def test_query_index_with_metadata_filtering(

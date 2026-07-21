@@ -1,5 +1,6 @@
 <div class="p-4 border-b-2 border-shade-80">
-  <div class="flex gap-2">
+  <div class="flex items-center justify-between gap-2">
+    <div class="flex gap-2">
     <img
     src="assets/icons/back-arrow.svg"
     alt=""
@@ -13,6 +14,16 @@
 >
   {{ (type === 'index' ?  "Lesson Chatbot" : "Edu Chatbot") | translate }}
 </h1>
+    </div>
+    <button
+      *ngIf="type === 'general' && messages.length"
+      class="btn-outline-primary"
+      type="button"
+      [disabled]="isLoading"
+      (click)="restartGeneralChat()"
+    >
+      {{ 'New chat' | translate }}
+    </button>
   </div>
 
   <p *ngIf="type === 'index'" title="{{'Board' | translate}}-{{chapterDetails?.board}}, {{'Medium' | translate}}-{{chapterDetails?.medium}}, {{'Class' | translate}}-{{chapterDetails?.standard}}, {{'Subject' | translate}}-{{chapterDetails?.subject}}, {{'Chapter' | translate}}-{{chapterDetails?.orderNumber}}. {{chapterDetails?.topics}}" class="hidden md:block text-content-60 text-sm ml-8 text-nowrap overflow-hidden overflow-ellipsis">{{'Board' | translate}}-{{chapterDetails?.board}}, {{'Medium' | translate}}-{{chapterDetails?.medium}}, {{'Class' | translate}}-{{chapterDetails?.standard}}, {{'Subject' | translate}}-{{chapterDetails?.subject}}, {{'Chapter' | translate}}-{{chapterDetails?.orderNumber}}. {{chapterDetails?.topics}}</p>

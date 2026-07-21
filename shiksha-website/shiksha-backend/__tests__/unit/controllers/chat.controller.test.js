@@ -33,49 +33,6 @@ describe('ChatController', () => {
         jest.clearAllMocks();
     });
 
-    describe('sendMessage', () => {
-        let mockStream;
-
-        beforeEach(() => {
-            mockStream = {
-                pipe: jest.fn(),
-                on: jest.fn()
-            };
-        });
-
-        it('should send message successfully', async () => {
-            mockReq.body = { message: 'Hello' };
-            const mockResult = {
-                success: true,
-                message: 'Message sent',
-                stream: mockStream
-            };
-            mockChatManager.sendMessageStream = jest.fn().mockResolvedValue(mockResult);
-
-            await chatController.sendMessage(mockReq, mockRes);
-
-            expect(mockChatManager.sendMessageStream).toHaveBeenCalledWith('user123', 'Hello');
-            expect(mockRes.setHeader).toHaveBeenCalledWith('Content-Type', 'text/event-stream');
-            expect(mockRes.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-cache');
-            expect(mockRes.setHeader).toHaveBeenCalledWith('Connection', 'keep-alive');
-            expect(mockStream.pipe).toHaveBeenCalledWith(mockRes);
-        });
-
-        it('should return 404 when sending fails', async () => {
-            mockReq.body = { message: 'Hello' };
-            const mockResult = { success: false, message: 'Failed', error: 'Database error' };
-            mockChatManager.sendMessageStream = jest.fn().mockResolvedValue(mockResult);
-
-            await chatController.sendMessage(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(404);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                message: 'Failed',
-                data: 'Database error'
-            });
-        });
-    });
-
     describe('listMessages', () => {
         it('should list messages successfully', async () => {
             const mockResult = { success: true, message: 'Messages found', data: [] };

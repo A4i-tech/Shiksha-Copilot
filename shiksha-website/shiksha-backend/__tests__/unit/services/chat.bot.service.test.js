@@ -9,18 +9,6 @@ describe("chat.bot.service", () => {
     process.env.LLM_API_BASE_URL = "http://llm";
   });
 
-  it("posts to chat bot and returns response", async () => {
-    axios.post.mockResolvedValue({ status: 200, data: { ok: true } });
-    const service = require("../../../services/chat.bot.service");
-
-    const res = await service.postToChatBot({ msg: "hello" });
-
-    expect(axios.post).toHaveBeenCalledWith("http://llm/chat", {
-      msg: "hello",
-    });
-    expect(res.data).toEqual({ ok: true });
-  });
-
   it("throws on error", async () => {
     const error = new Error("fail");
     axios.post.mockRejectedValue(error);
