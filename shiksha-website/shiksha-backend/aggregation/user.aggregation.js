@@ -10,10 +10,18 @@ class UserAggregation {
         {
           $lookup: {
             from: "teachertrainingbatches",
-            localField: "_id",
-            foreignField: "attendance",
+            let: { userId: "$_id" },
             pipeline: [
-              { $match: { isSubmitted: true } },
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$isSubmitted", true] },
+                      { $in: ["$$userId", "$attendance"] }
+                    ]
+                  }
+                }
+              },
               { $limit: 1 }
             ],
             as: "trainingAttendance"
