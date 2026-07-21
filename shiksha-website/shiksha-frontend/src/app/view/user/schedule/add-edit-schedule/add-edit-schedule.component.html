@@ -17,7 +17,7 @@
 								<app-dropdown [config]="boardDropDownConfig" [dropDownValues]="boardDropdownValue" [mode]="mode"
 								[dropDownCtrl]="convertToFormControl(f['board'])" (valueChange)="setMediumDropdownArray($event)" [submitted]="submitted" ></app-dropdown>
 							</div>
-								<div class="min-w-[250px] ">
+								<div class="min-w-[250px] capitalize">
 								<app-dropdown [config]="mediumDropDownConfig" [dropDownValues]="mediumDropdownValue" [mode]="mode"
 								[dropDownCtrl]="convertToFormControl(f['medium'])"(valueChange)="setClassDropdownValue($event)" [submitted]="submitted" ></app-dropdown>
 							</div>
