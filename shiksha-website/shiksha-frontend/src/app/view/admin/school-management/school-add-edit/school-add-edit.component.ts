@@ -53,7 +53,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
 
   boardDropdownOptions: any[] = [];
 
-  mediumDropdownOptions: any[] = [];
+  mediumDropdownOptions: any[] = structuredClone(MEDIUMS);
 
   resourceTypeDropdownOptions: any[] = [];
 
@@ -280,7 +280,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
       this.getResourceData();
       this.getBoardData();
       this.createBoard();
-      this.mediumDropdownOptions = structuredClone(MEDIUMS);
     }
   }
 
@@ -488,8 +487,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
               ele.disabled = true;
             }
           });
-
-          this.mediumDropdownOptions = structuredClone(MEDIUMS);
 
           this.mediumDropdownOptions.forEach((ele) => {
             if (this.schoolAddEditForm.value.mediums.includes(ele.value)) {
