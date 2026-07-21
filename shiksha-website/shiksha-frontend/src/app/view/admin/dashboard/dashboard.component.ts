@@ -748,6 +748,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         this.chatbotDataAvailable = this.chatbotRequestsBarChartData?.datasets?.length > 0 && this.chatbotRequestsBarChartData.datasets.some(dataset => dataset.data.length > 0);
         this.allUsersList = data.userCounts.allUsers;
         this.userMediumMetrics = data.userMediums;
+        if (this.selectedMedium !== 'all' && !this.userMediumMetrics.some(item => item.medium === this.selectedMedium)) this.selectedMedium = 'all';
         this.filterUsers(this.allUsersList, this.userMediumMetrics, this.selectedMedium);
       },
       error: (err) => {
@@ -845,42 +846,18 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    * Lesson plan by Medium Donut chart   *
    */
   updateMediumDonutChartData(data: any): void {
-    const labels = ['Kannada', 'English'];
-    const dataset = this.createMediumDataset(data);
+    const mediums = data.lessonPlanCountByMedium;
+    const colors = ['#ED7D2D', '#F9D8C0'];
 
     this.byMediumDonutChartData = {
-      labels: labels,
-      datasets: [dataset]
-    };
-  }
-
-  createMediumDataset(data: any): any {
-    // Initialize the counts array with zeros for Kannada and English
-    const counts = [0, 0];
-
-    // Map medium names to index in the counts array
-    const mediumMapping: { [key: string]: number } = {
-      'Kannada': 0,
-      'English': 1
-    };
-
-    // Loop through the mediumLessonPlanCount data and update the counts
-    if (data?.lessonPlanCountByMedium && Array.isArray(data.lessonPlanCountByMedium)) {
-      data.lessonPlanCountByMedium.forEach((item: any) => {
-        const mediumName = this.capitalizeFirstLetter(item.medium);
-        const index = mediumMapping[mediumName];
-        if (index !== undefined) {
-          counts[index] = item.lessonPlanCount;
-        }
-      });
-    }
-
-    return {
-      data: counts,
-      backgroundColor: ['#ED7D2D', '#F9D8C0'],
-      hoverBackgroundColor: ['#ED7D2D', '#F9D8C0'],
-      borderColor: ['rgba(0, 0, 0, 0)'],
-      borderWidth: 0
+      labels: mediums.map((item: any) => this.capitalizeFirstLetter(item.medium)),
+      datasets: [{
+        data: mediums.map((item: any) => item.lessonPlanCount),
+        backgroundColor: mediums.map((_: any, index: number) => colors[index % colors.length]),
+        hoverBackgroundColor: mediums.map((_: any, index: number) => colors[index % colors.length]),
+        borderColor: 'rgba(0, 0, 0, 0)',
+        borderWidth: 0
+      }]
     };
   }
 
