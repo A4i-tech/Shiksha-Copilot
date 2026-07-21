@@ -55,7 +55,7 @@ async function postToSectionEditBot(payload) {
   const apiUrl = `${llmBaseUrl}/lesson-plan/section-edit`;
 
   try {
-    const response = await axios.post(apiUrl, payload);
+    const response = await axios.post(apiUrl, payload, { timeout: 60000 });
     return response;
   } catch (error) {
     logger.error("Error in postToSectionEditBot", { message: error.message, stack: error.stack });
@@ -67,7 +67,7 @@ async function postToPlanEditBot(payload) {
   const apiUrl = `${llmBaseUrl}/lesson-plan/plan-edit`;
 
   try {
-    const response = await axios.post(apiUrl, payload);
+    const response = await axios.post(apiUrl, payload, { timeout: 60000 });
     return response;
   } catch (error) {
     logger.error("Error in postToPlanEditBot", { message: error.message, stack: error.stack });

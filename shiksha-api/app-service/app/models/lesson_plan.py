@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SectionEditRequest(BaseModel):
@@ -19,5 +19,5 @@ class PlanSectionInput(BaseModel):
 class PlanEditRequest(BaseModel):
     index_path: Optional[str]
     sections: list[PlanSectionInput]
-    learning_outcomes: list = []
+    learning_outcomes: list[str] = Field(default_factory=list)
     prompt: str

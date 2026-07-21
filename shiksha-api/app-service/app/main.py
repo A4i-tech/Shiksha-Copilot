@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import signal
 
 from fastapi import FastAPI
@@ -93,6 +94,7 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
+    logging.getLogger(__name__).error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=exc)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 

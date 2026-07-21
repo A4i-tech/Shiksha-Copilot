@@ -21,7 +21,7 @@ router = APIRouter(prefix="/lesson-plan", tags=["Lesson Plan"], lifespan=lifespa
 
 
 @router.post("/section-edit", summary="Generate an AI-edited revision of a lesson plan section")
-async def section_edit(body: SectionEditRequest = Body(...), service: LessonEditService = Depends(svc)) -> str:
+async def section_edit(body: SectionEditRequest = Body(...), service: LessonEditService = Depends(svc)) -> str | dict | list:
     return await service.edit_section(body)
 
 

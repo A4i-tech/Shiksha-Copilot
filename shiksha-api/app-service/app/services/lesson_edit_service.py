@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, TypeVar
+from typing import Optional, TypeVar
 
 from langfuse.openai import AsyncOpenAI  # noqa: F401 — enables langfuse auto-tracing
 from pydantic import BaseModel
@@ -62,7 +62,7 @@ class LessonEditService:
     """Service for AI-assisted revision of lesson plan content, with RAG lookup into the chapter."""
 
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=60.0)
         self.chat_deployment = settings.lesson_chat_model
 
         prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "lesson_edit_prompts.yaml"
@@ -162,7 +162,7 @@ class LessonEditService:
 
         return response.output_parsed
 
-    async def edit_section(self, body: SectionEditRequest) -> Any:
+    async def edit_section(self, body: SectionEditRequest) -> str | dict | list:
         current_content = body.current_content
         is_plain = isinstance(current_content, str)
 
@@ -178,11 +178,7 @@ class LessonEditService:
             f"Requested change:\n{body.prompt}"
         )
 
-        try:
-            result = await self._generate(instructions, input_text, body.index_path, _SectionEditResult)
-        except RuntimeError as e:
-            logger.warning(f"LessonEditService: edit_section generation failed, returning original content: {e}")
-            return current_content
+        result = await self._generate(instructions, input_text, body.index_path, _SectionEditResult)
 
         if is_plain:
             return result.content
@@ -204,11 +200,7 @@ class LessonEditService:
             f"Teacher's requested change:\n{body.prompt}"
         )
 
-        try:
-            result = await self._generate(instructions, input_text, body.index_path, _PlanEditResult)
-        except RuntimeError as e:
-            logger.warning(f"LessonEditService: edit_plan generation failed, returning no changes: {e}")
-            return []
+        result = await self._generate(instructions, input_text, body.index_path, _PlanEditResult)
 
         original_by_id = {s["id"]: s for s in sections}
         proposed = []

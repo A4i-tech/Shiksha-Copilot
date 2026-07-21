@@ -14,8 +14,7 @@ const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
 const {
 	formatTemplate,
 	formatSections,
-	convertToCamelCase,
-	convertToSnakeCase
+	convertToCamelCase
 } = require("../helper/formatter");
 const { REGENERATION_LIMIT } = require("../config/constants.js");
 const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
@@ -325,7 +324,12 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			const { lessonId, sectionId, currentContent, prompt, isLesson } = payload;
 			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
-			const requestData = convertToSnakeCase({ indexPath, sectionId, currentContent, prompt });
+			const requestData = {
+				index_path: indexPath,
+				section_id: sectionId,
+				current_content: currentContent,
+				prompt,
+			};
 			const result = await postToSectionEditBot(requestData);
 
 			if (result.status !== 200) {
@@ -345,7 +349,12 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			const { lessonId, sections, learningOutcomes, prompt, isLesson } = payload;
 			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
-			const requestData = convertToSnakeCase({ indexPath, sections, learningOutcomes, prompt });
+			const requestData = {
+				index_path: indexPath,
+				sections: sections.map((s) => ({ id: s.id, title: s.title, content: s.content })),
+				learning_outcomes: learningOutcomes,
+				prompt,
+			};
 			const result = await postToPlanEditBot(requestData);
 
 			if (result.status !== 200) {

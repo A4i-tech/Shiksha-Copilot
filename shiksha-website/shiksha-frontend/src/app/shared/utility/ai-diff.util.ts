@@ -47,14 +47,18 @@ function annotateWordDiffs(lines: UnifiedDiffLine[]): void {
   }
 }
 
+export type SectionContent = string | Record<string, unknown> | unknown[];
+
 export function buildDiffParts(
-  oldContent: any,
-  newContent: any,
+  oldContent: SectionContent,
+  newContent: SectionContent,
   outputFormat: string
 ): UnifiedDiffLine[] {
   const isPlain = outputFormat === 'plain_text';
-  const oldStr = isPlain ? oldContent || '' : JSON.stringify(oldContent, null, 2);
-  const newStr = isPlain ? newContent || '' : JSON.stringify(newContent, null, 2);
+  const toStr = (content: SectionContent) =>
+    isPlain ? (content as string) || '' : JSON.stringify(content, null, 2);
+  const oldStr = toStr(oldContent);
+  const newStr = toStr(newContent);
   const parts = diffLines(oldStr, newStr);
 
   const lines: UnifiedDiffLine[] = [];

@@ -116,8 +116,7 @@ def router(mcp: FastMCP):
     async def enhance_lesson_section(
         chapter_index: str = Field(..., description="Path to the chapter index for RAG grounding"),
         section_id: str = Field(..., description="Identifier of the lesson plan section to revise"),
-        current_content: str = Field(..., description="The section's current content — plain text, or a JSON-encoded object for structured sections"),
-        is_plain_text: bool = Field(..., description="True if current_content is plain text, false if it is JSON-encoded"),
+        current_content: str | dict | list = Field(..., description="The section's current content — plain text, or a structured object/array for structured sections"),
         prompt: str = Field(..., description="The teacher's requested change to the section"),
         context: Context = Field(...)
     ) -> str:
@@ -130,18 +129,11 @@ def router(mcp: FastMCP):
         user_id = str(get_user_id(context))
         service = get_lesson_edit_service(context)
 
-        content: str | dict = current_content
-        if not is_plain_text:
-            try:
-                content = json.loads(current_content)
-            except json.JSONDecodeError:
-                raise ToolError("current_content is not valid JSON but is_plain_text was false")
-
         try:
             request = SectionEditRequest(
                 index_path=chapter_index,
                 section_id=section_id,
-                current_content=content,
+                current_content=current_content,
                 prompt=prompt,
             )
             proposed = await service.edit_section(request)
