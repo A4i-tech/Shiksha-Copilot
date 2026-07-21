@@ -158,7 +158,7 @@ class BaseVectorIndexRagOps(BaseRagOps):
                 query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
                 response = await query_engine.aquery(curr_message)
             else:
-                chat_engine = ContextChatEngine.from_defaults(retriever=retriever, llm=self.completion_llm, chat_history=chat_history[-6:], callback_manager=self._callback_manager)
+                chat_engine = ContextChatEngine.from_defaults(retriever=retriever, llm=self.completion_llm, chat_history=chat_history, callback_manager=self._callback_manager)
                 response = await chat_engine.achat(curr_message)
             self.logger.debug(f"Chat response generated for message: {curr_message[:50]}...")
             return response
