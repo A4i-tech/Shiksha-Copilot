@@ -33,13 +33,45 @@ PG_DSN             = os.environ.get("PG_DSN",    "postgresql://analytics:analyti
 ALERT_WEBHOOK_URL  = os.environ.get("ALERT_WEBHOOK_URL", "")  # optional: Slack/Teams incoming webhook
 
 
-def _send_alert(message: str) -> None:
+def _send_alert(title: str, success: bool, body_facts: list[dict] | None = None, error: str | None = None) -> None:
     if not ALERT_WEBHOOK_URL:
         return
     try:
-        payload = json.dumps({"text": message}).encode()
+        color   = "Good" if success else "Attention"
+        icon    = "✅" if success else "❌"
+        ts      = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+        items: list[dict] = [
+            {"type": "TextBlock", "text": f"{icon} **{title}**", "size": "Large", "weight": "Bolder", "color": color, "wrap": True},
+            {"type": "TextBlock", "text": ts, "size": "Small", "isSubtle": True, "spacing": "None"},
+        ]
+
+        if body_facts:
+            items.append({
+                "type": "FactSet",
+                "spacing": "Medium",
+                "facts": body_facts,
+            })
+
+        if error:
+            items.append({"type": "TextBlock", "text": "Error", "weight": "Bolder", "spacing": "Medium"})
+            items.append({"type": "TextBlock", "text": error[:500], "wrap": True, "fontType": "Monospace", "color": "Attention"})
+
+        card = {
+            "type": "message",
+            "attachments": [{
+                "contentType": "application/vnd.microsoft.card.adaptive",
+                "content": {
+                    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                    "type": "AdaptiveCard",
+                    "version": "1.4",
+                    "body": items,
+                },
+            }],
+        }
+        payload = json.dumps(card).encode()
         req = Request(ALERT_WEBHOOK_URL, data=payload, headers={"Content-Type": "application/json"})
-        urlopen(req, timeout=5)
+        urlopen(req, timeout=10)
     except Exception as exc:
         logger.warning("Failed to send alert webhook: %s", exc)
 
@@ -414,12 +446,23 @@ def main() -> None:
         # ------------------------------------------------------------------ commit
         pg.commit()
         logger.info("Sync complete.")
-        _send_alert(":white_check_mark: Shiksha ETL sync completed successfully.")
+        _send_alert(
+            "Shiksha ETL Sync Completed",
+            success=True,
+            body_facts=[
+                {"title": "Users",            "value": str(len(valid_user_ids))},
+                {"title": "Lesson Plans",     "value": str(len(lp_rows))},
+                {"title": "User Activities",  "value": str(len(act_rows))},
+                {"title": "AI Actions",       "value": str(len(ai_rows))},
+                {"title": "Chatbot Sessions", "value": str(len(chat_rows))},
+                {"title": "LBA Attempts",     "value": str(len(lba_rows))},
+            ],
+        )
 
     except Exception as _exc:
         if pg and not pg.closed:
             pg.rollback()
-        _send_alert(f":x: Shiksha ETL sync FAILED: {_exc}")
+        _send_alert("Shiksha ETL Sync Failed", success=False, error=str(_exc))
         raise
     finally:
         if cur:
