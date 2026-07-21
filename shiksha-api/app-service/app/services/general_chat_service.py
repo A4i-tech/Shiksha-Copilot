@@ -3,7 +3,7 @@ from pathlib import Path
 import logging
 
 from langfuse.openai import AsyncOpenAI
-from langfuse import observe, get_client
+from langfuse import propagate_attributes
 import json
 from openai.types.responses import ResponseOutputMessage, ResponseOutputText
 from openai.types.responses.response import Response
@@ -22,58 +22,48 @@ class GeneralChatService:
 
     def __init__(self):
         prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
-        self.prompt_template = PromptTemplate(str(prompts_file_path))
+        prompt_template = PromptTemplate(str(prompts_file_path))
+        system_prompt = prompt_template.get_prompt("general_chat")
+        if not system_prompt:
+            raise ValueError("General chat prompt not found in chat_prompts.yaml")
+        self.system_prompt = system_prompt
         self.client = AsyncOpenAI()
 
 
     @validate_call
-    @observe(name="Shiksha-QA")
-    async def __call__(
-        self,
-        messages: List[ConversationMessage],
-        user_id: str,
-    ):
+    async def __call__(self, messages: List[ConversationMessage], user_id: str):
         try:
-            get_client().update_current_trace(
-                user_id=user_id,
-                tags=["chat_type:general", "has_web_search:true"],
-            )
-
-            system_prompt = self.prompt_template.get_prompt("general_chat")
-            if not system_prompt:
-                raise ValueError("General chat prompt not found in chat_prompts.yaml")
-
             yield json.dumps({"type": "status", "message": "Thinking..."}) + "\n"
 
             # Format messages
-            formatted_messages = [{"role": "system", "content": system_prompt}]
+            formatted_messages = [{"role": "system", "content": self.system_prompt}]
             for m in messages:
                 role = m.role.value
                 content = m.message
                 formatted_messages.append({"role": role, "content": content})
 
-            # Responses API with web search
-            stream = await self.client.responses.create(
-                model=settings.general_chat_model,
-                input=formatted_messages,
-                tools=[{"type": "web_search"}],
-                stream=True,
-            )
-
             final_response_obj = None
+            # we deliberately use trace_name="Shiksha-QA" over @observe() here cause the latter
+            # spams LF 'output' with each individual event yielded by this streaming function
+            with propagate_attributes(trace_name="Shiksha-QA", user_id=user_id, tags=["chat_type:general"]):
+                stream = await self.client.responses.create(
+                    model=settings.general_chat_model,
+                    input=formatted_messages,
+                    tools=[{"type": "web_search"}],
+                    stream=True,
+                )
 
-            async for event in stream:
+                async for event in stream:
+                    # Streaming text deltas
+                    if event.type == "response.output_text.delta":
+                        yield json.dumps({
+                            "type": "content",
+                            "delta": event.delta
+                        }) + "\n"
 
-                # Streaming text deltas
-                if event.type == "response.output_text.delta":
-                    yield json.dumps({
-                        "type": "content",
-                        "delta": event.delta
-                    }) + "\n"
-
-                # Final completed response (contains citations)
-                elif event.type == "response.completed":
-                    final_response_obj = event.response
+                    # Final completed response (contains citations)
+                    elif event.type == "response.completed":
+                        final_response_obj = event.response
 
             # Extract references AFTER stream ends
             if final_response_obj:

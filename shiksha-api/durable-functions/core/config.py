@@ -5,9 +5,6 @@ from typing import Dict, Any
 class Config:
     """Configuration class for the lesson plan workflow system"""
 
-    # Application Environment
-    APP_ENV = os.environ.get("APP_ENV", "local").lower()
-
     # OpenAI configuration
     AZURE_OPENAI_API_BASE = os.environ.get(
         "AZURE_OPENAI_API_BASE", "https://api.openai.com"
@@ -23,8 +20,3 @@ class Config:
     WEBHOOK_URL = os.environ.get("WEBHOOK_URL", None)
     QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
     QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", None)
-
-    # Langfuse configuration (optional — no-op when absent)
-    LANGFUSE_SECRET_KEY = os.environ.get("LANGFUSE_SECRET_KEY")
-    LANGFUSE_PUBLIC_KEY = os.environ.get("LANGFUSE_PUBLIC_KEY")
-    LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST")

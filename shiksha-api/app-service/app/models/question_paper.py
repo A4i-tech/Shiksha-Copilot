@@ -207,7 +207,7 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
     examination_name: str = "Class Assessment"
-    session_id: Optional[str] = Field(default=None, description="Frontend session identifier for grouping related traces in Langfuse")
+    session_id: Optional[str] = Field(default=None, description="Optional session identifier for tracking")
 
     def grammar_chapters(self) -> List[Chapter]:
         """Return chapters flagged as grammar (DB ``isGrammar`` true).

@@ -22,19 +22,6 @@ class Settings(BaseSettings):
     # Logging Configuration
     log_level: str = "INFO"
 
-    # Application Environment
-    app_env: str = Field(default="local", alias="APP_ENV")
-
-    @field_validator("app_env", mode="before")
-    @classmethod
-    def normalize_app_env(cls, v: str) -> str:
-        return v.lower()
-
-    # Langfuse Configuration (optional — no-op when absent)
-    langfuse_secret_key: Optional[str] = Field(default=None, alias="LANGFUSE_SECRET_KEY")
-    langfuse_public_key: Optional[str] = Field(default=None, alias="LANGFUSE_PUBLIC_KEY")
-    langfuse_host: Optional[str] = Field(default=None, alias="LANGFUSE_HOST")
-
     # LLM Configuration
     openai_api_key: str = Field(min_length=1)
     embed_model: str = "text-embedding-ada-002"

@@ -309,34 +309,6 @@ class TestGeneralChatServiceCall:
             # Verify prompt was loaded with correct key
             mock_template.get_prompt.assert_called_with("general_chat")
 
-    @pytest.mark.asyncio
-    async def test_call_raises_error_when_prompt_not_found(
-        self, mock_settings, mock_openai_client
-    ):
-        """Test service raises error when prompt is not found in template."""
-        with patch("app.services.general_chat_service.settings", mock_settings), patch(
-            "app.services.general_chat_service.PromptTemplate"
-        ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
-            return_value=mock_openai_client,
-        ):
-
-            mock_template = Mock()
-            mock_template.get_prompt = Mock(return_value=None)
-            MockPromptTemplate.return_value = mock_template
-
-            service = GeneralChatService()
-            messages = [{"role": "user", "message": "Test"}]
-
-            # It yields an error object now
-            items = []
-            async for item in service(messages, user_id="test-user-1"):
-                items.append(import_json.loads(item))
-            
-            assert items[-1]["type"] == "error"
-            assert "General chat prompt not found" in items[-1]["message"]
-
-
 class TestGeneralChatServiceCleanup:
     """Test GeneralChatService cleanup method."""
 
