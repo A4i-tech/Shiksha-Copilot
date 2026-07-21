@@ -120,9 +120,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
 
     this.initialize_add_form();
     if (this.mode === 'view') this.addForm.disable();
-    if (this.mode !== 'view' || this.mode !== 'edit') {
-      this.getRegionsData();
-    }
+    if (this.mode !== 'view' && this.mode !== 'edit') this.getRegionsData();
   }
 
   ngAfterViewInit(): void {
@@ -300,7 +298,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       school: [null, [Validators.required]],
       role: [this.mode === 'edit' || this.mode === 'view' ? null : 'standard', [Validators.required]],
     });
-    this.getRegionsData();
     this.patchStatus();
   }
 
