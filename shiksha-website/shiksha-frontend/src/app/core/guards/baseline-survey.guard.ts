@@ -38,13 +38,15 @@ export class BaselineSurveyGuard implements CanActivate {
     // 2) Check completion
     try {
       const resp = await firstValueFrom(this.survey.checkCompleted());
+      // Any failure (5xx/network → interceptor redirects to /error/503; 4xx → thrown)
+      // rejects the promise and lands in catch below, so a resolved resp is always success:true.
       const completed = !!resp?.data?.completed;
       const remindLaterCount = resp?.data?.remindLaterCount;
       const isMandatory = !!resp?.data?.isMandatory;
       const maxReminders = resp?.data?.maxReminders;
 
-      // 3) Open dialog ONLY if API request succeeded AND survey is not completed
-      if (resp?.success && !completed) {
+      // 3) Open dialog ONLY if survey is not completed
+      if (!completed) {
         // Defer dialog open to next macrotask to avoid change detection race with navigation
         this.zone.runOutsideAngular(() => {
           setTimeout(() => {

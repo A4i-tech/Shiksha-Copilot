@@ -4,17 +4,21 @@ import { AuthGuard } from './core/guards/auth.guard';
 
 const routes: Routes = [
   {
-    path:'',
-    loadChildren:()=> import('./view/view.module').then((m)=>m.ViewModule),
-    canActivate:[AuthGuard]
-  },
-  {
     path:'auth',
     loadChildren:()=> import('./auth/auth.module').then((m)=>m.AuthModule)
   },
   {
     path:'faq',
     loadComponent:()=> import('./components/faq/faq.component').then((c)=>c.FaqComponent)
+  },
+  {
+    path:'error/503',
+    loadComponent:()=> import('./components/service-unavailable/service-unavailable.component').then((c)=>c.ServiceUnavailableComponent)
+  },
+  {
+    path:'',
+    loadChildren:()=> import('./view/view.module').then((m)=>m.ViewModule),
+    canActivate:[AuthGuard]
   },
   {
     path:'**',
