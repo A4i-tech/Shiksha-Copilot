@@ -83,10 +83,12 @@ CREATE INDEX IF NOT EXISTS idx_fact_lba_attempts_user_created ON fact_lba_attemp
 CREATE INDEX IF NOT EXISTS idx_fact_lba_attempts_subject ON fact_lba_attempts(subject);
 
 -- ============================================================
--- Enriched views (used by Superset charts — include user_id for RLS)
+-- Materialized views (used by Superset charts — include user_id for RLS)
+-- Refreshed by ETL after each nightly sync via REFRESH MATERIALIZED VIEW CONCURRENTLY.
+-- CONCURRENTLY requires a unique index on each MV.
 -- ============================================================
 
-CREATE OR REPLACE VIEW vw_lesson_plans AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS vw_lesson_plans AS
 SELECT
     lp.lp_id,
     lp.user_id,
@@ -106,9 +108,14 @@ SELECT
 FROM fact_lesson_plans lp
 JOIN dim_users    u  ON u.user_id   = lp.user_id
 JOIN dim_regions  r  ON r.region_id = u.region_id
-LEFT JOIN dim_regions rp ON rp.region_id = r.parent_id;
+LEFT JOIN dim_regions rp ON rp.region_id = r.parent_id
+WITH DATA;
 
-CREATE OR REPLACE VIEW vw_user_activities AS
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_mv_lesson_plans ON vw_lesson_plans(lp_id);
+CREATE INDEX IF NOT EXISTS idx_mv_lesson_plans_user   ON vw_lesson_plans(user_id);
+CREATE INDEX IF NOT EXISTS idx_mv_lesson_plans_region ON vw_lesson_plans(region_id);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS vw_user_activities AS
 SELECT
     a.activity_id,
     a.user_id,
@@ -122,9 +129,14 @@ SELECT
     r.type AS region_type
 FROM fact_user_activities a
 JOIN dim_users   u  ON u.user_id   = a.user_id
-JOIN dim_regions r  ON r.region_id = u.region_id;
+JOIN dim_regions r  ON r.region_id = u.region_id
+WITH DATA;
 
-CREATE OR REPLACE VIEW vw_chatbot_sessions AS
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_mv_user_activities ON vw_user_activities(activity_id);
+CREATE INDEX IF NOT EXISTS idx_mv_user_activities_user   ON vw_user_activities(user_id);
+CREATE INDEX IF NOT EXISTS idx_mv_user_activities_region ON vw_user_activities(region_id);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS vw_chatbot_sessions AS
 SELECT
     cs.session_id,
     cs.user_id,
@@ -137,9 +149,14 @@ SELECT
     r.name AS region_name
 FROM fact_chatbot_sessions cs
 JOIN dim_users   u  ON u.user_id   = cs.user_id
-JOIN dim_regions r  ON r.region_id = u.region_id;
+JOIN dim_regions r  ON r.region_id = u.region_id
+WITH DATA;
 
-CREATE OR REPLACE VIEW vw_lba_attempts AS
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_mv_chatbot_sessions ON vw_chatbot_sessions(session_id);
+CREATE INDEX IF NOT EXISTS idx_mv_chatbot_sessions_user   ON vw_chatbot_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_mv_chatbot_sessions_region ON vw_chatbot_sessions(region_id);
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS vw_lba_attempts AS
 SELECT
     la.attempt_id,
     la.user_id,
@@ -152,7 +169,12 @@ SELECT
     r.name AS region_name
 FROM fact_lba_attempts la
 JOIN dim_users   u  ON u.user_id   = la.user_id
-JOIN dim_regions r  ON r.region_id = u.region_id;
+JOIN dim_regions r  ON r.region_id = u.region_id
+WITH DATA;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uidx_mv_lba_attempts ON vw_lba_attempts(attempt_id);
+CREATE INDEX IF NOT EXISTS idx_mv_lba_attempts_user    ON vw_lba_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_mv_lba_attempts_region  ON vw_lba_attempts(region_id);
 
 -- ============================================================
 -- Seed: Dimensions

@@ -445,7 +445,12 @@ def main() -> None:
 
         # ------------------------------------------------------------------ commit
         pg.commit()
-        logger.info("Sync complete.")
+        logger.info("Sync complete. Refreshing materialized views ...")
+        for mv in ("vw_lesson_plans", "vw_user_activities", "vw_chatbot_sessions", "vw_lba_attempts"):
+            cur.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {mv}")
+            pg.commit()
+            logger.info("  refreshed %s", mv)
+        logger.info("All materialized views refreshed.")
         _send_alert(
             "Shiksha ETL Sync Completed",
             success=True,
