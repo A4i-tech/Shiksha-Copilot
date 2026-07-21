@@ -18,7 +18,7 @@ from llama_index.core import (
 )
 from llama_index.core.base.response.schema import RESPONSE_TYPE
 from llama_index.core.chat_engine.types import AgentChatResponse
-from llama_index.core.llms import ChatMessage, LLM
+from llama_index.core.llms import ChatMessage, LLM, MessageRole
 from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.core.schema import TransformComponent
 import traceback
@@ -148,7 +148,12 @@ class BaseVectorIndexRagOps(BaseRagOps):
         try:
             retriever = self.rag_index.as_retriever(similarity_top_k=self.similarity_top_k, filters=self._create_metadata_filters(metadata_filter) if metadata_filter else None)
             if output_cls is not None:
-                llm = self.completion_llm.as_structured_llm(output_cls=output_cls)
+                if chat_history:
+                    if len(chat_history) != 1 or chat_history[0].role != MessageRole.SYSTEM:
+                        raise ValueError("Structured outputs do not support chat history.")
+                    llm = self.completion_llm.as_structured_llm(output_cls=output_cls, system_prompt=chat_history[0].content)
+                else:
+                    llm = self.completion_llm.as_structured_llm(output_cls=output_cls)
                 response_synthesizer = get_response_synthesizer(llm=llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
                 query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
                 response = await query_engine.aquery(curr_message)

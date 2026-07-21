@@ -14,7 +14,7 @@ from langfuse import observe, propagate_attributes
 from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
-from llama_index.core.llms import ChatMessage
+from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import PydanticResponse
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
@@ -223,7 +223,7 @@ class QuestionPaperService:
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")
-                chat_history = [ChatMessage(role="system", content=system_prompt)]
+                chat_history = [ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)]
                 with propagate_attributes(metadata={
                     "unit_name": record.title,
                     "question_types": ", ".join(t.type.value for _, t, _ in slot),

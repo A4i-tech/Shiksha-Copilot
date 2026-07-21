@@ -5,7 +5,7 @@ from app.config import settings
 from app.models.chat import LessonChatRequest, Reference
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
-from llama_index.core.llms import ChatMessage
+from llama_index.core.llms import ChatMessage, MessageRole
 from langfuse import observe, propagate_attributes
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
@@ -62,7 +62,7 @@ class LessonChatService:
 
             # Build chat history with system message and previous messages
             chat_history = [
-                ChatMessage(role="system", content=system_message)
+                ChatMessage(role=MessageRole.SYSTEM, content=system_message)
             ] + chat_messages[:-1]
 
             # Get response from RAG system using current message and chat history
