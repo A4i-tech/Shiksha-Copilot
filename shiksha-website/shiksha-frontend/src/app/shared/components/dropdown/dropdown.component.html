@@ -41,12 +41,4 @@
   <small class="form-control-error" [id]="inputId + '-error'" *ngIf="submitted && control.invalid">
     <ng-container *ngIf="control.errors?.['required']">{{ labelText | translate }} {{ 'is required' | translate }}</ng-container>
   </small>
-  <div *ngIf="config.showSelectedChips && config.multi" class="mt-2 flex flex-wrap">
-    <span *ngFor="let item of control.value; let i = index" class="chip">
-      <span *ngIf="config.chipValueType === 'titlecase'">{{ item | titlecase }}</span>
-      <span *ngIf="config.chipValueType === 'uppercase'">{{ item | uppercase }}</span>
-      <span *ngIf="!config.chipValueType">{{ item | titlecase }}</span>
-      <span *ngIf="!config.chipClearableOff" class="close-icon" (click)="removeItem(i)">×</span>
-    </span>
-  </div>
 </div>

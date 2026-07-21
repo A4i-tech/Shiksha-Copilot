@@ -22,9 +22,6 @@ export interface DropDownConfig {
   wrapValue?: boolean;
   bindLabel?: string;
   bindValue?: string;
-  chipValueType?: string;
-  chipClearableOff?: boolean;
-  showSelectedChips?: boolean;
   selectAllOption?: boolean;
   selectAllValue?: string;
   required?: boolean;

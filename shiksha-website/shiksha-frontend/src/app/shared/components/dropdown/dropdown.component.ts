@@ -60,14 +60,6 @@ export class DropdownComponent implements ControlValueAccessor {
     return this.control.value?.length === this.dropDownValues.length;
   }
 
-  removeItem(index: number): void {
-    const updatedValue = this.control.value.filter(
-      (_: DropdownValue, itemIndex: number) => itemIndex !== index
-    );
-    this.control.setValue(updatedValue);
-    this.emit(updatedValue, updatedValue);
-  }
-
   private emit(value: DropdownValue | DropdownValue[] | null, selectedOption: unknown): void {
     this.onChange(value);
     this.valueChange.emit(selectedOption);

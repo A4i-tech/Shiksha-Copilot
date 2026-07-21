@@ -193,23 +193,6 @@ input[type='number'] {
   }
 }
 
-.chip {
-  display: inline-block;
-  margin-right: 5px;
-  margin-bottom: 5px;
-  padding: 5px 10px;
-  background-color: var(--shade-80);
-  border-radius: 20px;
-  font-size: 14px;
-}
-
-.close-icon {
-  cursor: pointer;
-  margin-left: 5px;
-  font-weight: bold;
-  color: var(--content-50);
-}
-
 .search-icon {
   position: relative;
 

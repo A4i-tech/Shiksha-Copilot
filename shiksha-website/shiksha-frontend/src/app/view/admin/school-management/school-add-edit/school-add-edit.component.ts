@@ -104,7 +104,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     bindLabel: 'boardName',
     bindValue: 'abbreviation',
     multi: true,
-    chipValueType: 'uppercase',
     required: true,
   };
 
@@ -789,9 +788,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.mode === 'view') {
       this.disableFields();
     }
-    if (this.mode === 'edit') {
-      this.disableBoardFields();
-    }
   }
 
   boardMediumUpdate(i: any, type: any) {
@@ -911,9 +907,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     this.boardDropdownconfig.isBackground = true;
     this.zoneDropdownconfig.isBackground = true;
     this.stateDropdownconfig.isBackground = true;
-    this.mediumDropdownconfig.chipClearableOff = true;
-    this.boardDropdownconfig.chipClearableOff = true;
-
     this.classBoardDropdownconfig.disabled = true;
     this.classMediumDropdownconfig.disabled = true;
     this.classMinDropdownconfig.disabled = true;
@@ -922,15 +915,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     this.classMediumDropdownconfig.isBackground = true;
     this.classMinDropdownconfig.isBackground = true;
     this.classMaxDropdownconfig.isBackground = true;
-    this.disableBoardFields();
-  }
-
-  /**
-   * Function to disable board fields
-   */
-  disableBoardFields() {
-    this.mediumDropdownconfig.chipClearableOff = true;
-    this.boardDropdownconfig.chipClearableOff = true;
   }
 
   /**

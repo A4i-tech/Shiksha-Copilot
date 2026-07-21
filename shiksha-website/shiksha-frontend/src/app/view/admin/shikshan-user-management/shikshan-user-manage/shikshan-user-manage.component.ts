@@ -48,9 +48,7 @@ export class ShikshanUserManageComponent implements OnInit {
     bindValue: 'name',
     required: true,
     multi: true,
-    selectAllOption: true,
-    showSelectedChips: true,
-    chipValueType: 'titlecase'
+    selectAllOption: true
   };
 
   districtDropdownconfig: DropDownConfig = {
@@ -61,9 +59,7 @@ export class ShikshanUserManageComponent implements OnInit {
     bindValue: 'name',
     required: true,
     multi: true,
-    selectAllOption: true,
-    showSelectedChips: true,
-    chipValueType: 'titlecase'
+    selectAllOption: true
   };
 
   toggleconfig = {
