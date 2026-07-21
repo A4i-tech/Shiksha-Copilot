@@ -41,7 +41,6 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
   languageDropDownConfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Preferred Language',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff:true,

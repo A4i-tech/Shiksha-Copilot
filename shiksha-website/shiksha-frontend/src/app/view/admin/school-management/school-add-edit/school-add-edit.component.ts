@@ -64,7 +64,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select state',
-    height: '44px',
     fieldName: 'State',
     bindLabel: 'state',
     bindValue: 'state',
@@ -74,7 +73,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Zone',
-    height: '44px',
     fieldName: 'Zone',
     bindLabel: 'name',
     bindValue: 'name',
@@ -84,7 +82,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select district',
-    height: '44px',
     fieldName: 'District',
     bindLabel: 'name',
     bindValue: 'name',
@@ -94,7 +91,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Taluk',
-    height: '44px',
     fieldName: 'Taluk',
     bindLabel: 'name',
     bindValue: 'name',
@@ -104,7 +100,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   boardDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select board',
-    height: 'auto',
     fieldName: 'Board',
     bindLabel: 'boardName',
     bindValue: 'abbreviation',
@@ -116,7 +111,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   mediumDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select medium of instruction',
-    height: 'auto',
     fieldName: 'Medium of instruction',
     bindLabel: 'name',
     bindValue: 'value',
@@ -127,7 +121,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   resourceTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Type',
-    height: 'auto',
     fieldName: 'Type',
     hideLabel: true,
     bindLabel: 'type',
@@ -139,7 +132,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   resourceTypeDarkDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Type',
-    height: 'auto',
     fieldName: 'Type',
     hideLabel: true,
     bindLabel: 'type',
@@ -151,7 +143,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   resourceDetailsDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select details',
-    height: 'auto',
     fieldName: 'Details',
     multi: true,
     clearableOff: true,
@@ -171,7 +162,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classBoardDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Board',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Board',
@@ -184,7 +174,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classMediumDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Medium',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     labelTxt: 'Medium',
@@ -197,7 +186,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classMinDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Min class',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Min class',
@@ -208,7 +196,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classMaxDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Max class',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Max class',

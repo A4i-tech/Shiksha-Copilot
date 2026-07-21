@@ -32,7 +32,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   boardDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Board',
-    height: 'auto',
     bindLabel: 'board',
     bindValue: 'board',
     labelTxt: 'Board',
@@ -41,7 +40,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   mediumDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Medium',
-    height: 'auto',
     bindLabel: 'medium',
     bindValue: 'medium',
     labelTxt: 'Medium',
@@ -50,7 +48,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   classDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Class',
-    height: 'auto',
     bindLabel: 'class',
     bindValue: 'class',
     labelTxt: 'Class',
@@ -59,7 +56,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   subjectDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Subject',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Subject',

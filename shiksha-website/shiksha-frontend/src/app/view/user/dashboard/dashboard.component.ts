@@ -49,7 +49,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   analyticsDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select duration',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff: true,

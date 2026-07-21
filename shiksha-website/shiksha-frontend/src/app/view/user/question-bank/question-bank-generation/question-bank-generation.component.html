@@ -47,12 +47,12 @@
           <div class="grid lg:grid-cols-2 gap-4 mt-7">
             <div>
               <label class="form-control-label">{{ 'Examination Name' | translate }} <span class="text-error">*</span></label>
-              <input class="form-control h-9" formControlName="examinationName" [placeholder]="'Examination Name' | translate" />
+              <input class="form-control" formControlName="examinationName" [placeholder]="'Examination Name' | translate" />
               <small class="form-control-error" *ngIf="submittedConfig && f.examinationName.errors?.required">{{ 'Required' | translate }}</small>
             </div>
             <div>
               <label class="form-control-label">{{ 'Total Marks' | translate }} <span class="text-error">*</span></label>
-              <input class="form-control h-9" formControlName="totalMarks" inputmode="numeric" maxlength="3"
+              <input class="form-control" formControlName="totalMarks" inputmode="numeric" maxlength="3"
                 oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 3)" [placeholder]="'Total Marks' | translate" />
               <small class="form-control-error" *ngIf="submittedConfig && f.totalMarks.errors?.required">{{ 'Required' | translate }}</small>
             </div>
@@ -167,11 +167,11 @@
                 [(ngModel)]="row.type" [ngModelOptions]="{ standalone: true }"></app-dropdown></td>
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Number of Questions' | translate }}</label>
-                <input class="table-form-control w-full" [(ngModel)]="row.numberOfQuestions"
+                <input class="form-control" [(ngModel)]="row.numberOfQuestions"
                 [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" /></td>
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Marks per Question' | translate }}</label>
-                <input class="table-form-control w-full" [(ngModel)]="row.marksPerQuestion"
+                <input class="form-control" [(ngModel)]="row.marksPerQuestion"
                 [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" /></td>
               <td class="col-span-2 md:table-cell md:border md:p-2"><div class="flex justify-end gap-2 md:justify-start">
                 <button class="btn-danger" *ngIf="templateData.length > 1" (click)="removeTemplateRow(i)"><img src="assets/icons/delete-icon.svg" alt="Delete" /></button>

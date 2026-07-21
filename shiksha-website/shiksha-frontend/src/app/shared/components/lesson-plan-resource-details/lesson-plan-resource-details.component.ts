@@ -70,7 +70,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   mediumDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Medium',
-    height: 'auto',
     fieldName: 'Medium',
     bindLabel: 'medium',
     bindValue: 'medium',
@@ -80,7 +79,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   boardDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Board',
-    height: 'auto',
     fieldName: 'Board',
     bindLabel: 'board',
     bindValue: 'board',
@@ -90,7 +88,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   classDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Class',
-    height: 'auto',
     fieldName: 'Class',
     bindLabel: 'class',
     bindValue: 'class',
@@ -100,7 +97,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   semesterDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Semester1',
-    height: 'auto',
     fieldName: 'Semester',
     bindLabel: 'semester',
     bindValue: 'semester',
@@ -110,7 +106,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   subjectDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Subject',
-    height: 'auto',
     fieldName: 'Subject',
     bindLabel: 'displayName',
     bindValue: 'subject',
@@ -120,7 +115,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   lpTemplatedownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Template',
-    height: 'auto',
     fieldName: 'Select Template',
     bindLabel: 'model',
     bindValue: 'value',
@@ -131,7 +125,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   topicsDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Chapter',
-    height: 'auto',
     fieldName: 'Chapter',
     bindLabel: 'displayValue',
     bindValue: 'displayValue',
@@ -141,7 +134,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   subtopicsDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Subtopic',
-    height: 'auto',
     fieldName: 'Sub-Topic',
     bindLabel: 'label',
     bindValue: 'label',

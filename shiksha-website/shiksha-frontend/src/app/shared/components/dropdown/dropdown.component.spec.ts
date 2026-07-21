@@ -13,7 +13,7 @@ describe('DropdownComponent', () => {
     });
     fixture = TestBed.createComponent(DropdownComponent);
     component = fixture.componentInstance;
-    component.config = { isBackground: false, height: 'auto', placeHolderTxt: 'Test' };
+    component.config = { isBackground: false, placeHolderTxt: 'Test' };
     component.dropDownCtrl = new FormControl();
     fixture.detectChanges();
   });

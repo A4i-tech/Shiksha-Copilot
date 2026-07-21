@@ -17,7 +17,7 @@
 					<div>
 						<label class="form-control-label">{{'Staff Name' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 						<input formControlName="name" type="text" maxlength="255" autocomplete="off"
-							class="form-control h-[44px]" placeholder="{{'Enter staff name' | translate}}">
+							class="form-control" placeholder="{{'Enter staff name' | translate}}">
 						
 							<small class="form-control-error" *ngIf="submitted && addForm.get('name')?.errors?.['required']">{{'Staff name is required.' | translate}}</small>
 						
@@ -27,7 +27,7 @@
 					<div>
 						<label class="form-control-label">{{'Mobile Number' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 						<input formControlName="phone" type="text" maxlength="10" oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')" autocomplete="off"
-							class="form-control h-[44px]" placeholder="{{'Enter Mobile Number' | translate}}">
+							class="form-control" placeholder="{{'Enter Mobile Number' | translate}}">
 							<small class="form-control-error" *ngIf="submitted && addForm.get('phone')?.errors?.['required']">{{'Mobile Number is required.' | translate}}</small>
 							<small class="form-control-error"
 								*ngIf="submitted && f['phone'].errors?.['minlength']">{{'Phone number required should be 10 digits' | translate}}</small>
@@ -40,7 +40,7 @@
 					<div>
 						<label class="form-control-label">{{'Email' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 						<input formControlName="email" type="email" autocomplete="off"
-							class="form-control h-[44px]" placeholder="{{'Enter Email' | translate}}">
+							class="form-control" placeholder="{{'Enter Email' | translate}}">
 							<small class="form-control-error" *ngIf="submitted && addForm.get('email')?.errors?.['required']">{{'Email is required' | translate}}</small>
 							<small class="form-control-error" *ngIf="submitted && addForm.get('email')?.errors?.['email']">{{'Enter valid email' | translate}}.</small>
 					</div>

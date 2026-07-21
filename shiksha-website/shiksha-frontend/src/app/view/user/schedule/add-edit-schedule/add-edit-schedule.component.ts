@@ -61,7 +61,6 @@ export class AddEditScheduleComponent
   boardDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Board',
-    height: 'auto',
     fieldName: 'Board',
     hideLabel: false,
     bindLabel: 'board',
@@ -72,7 +71,6 @@ export class AddEditScheduleComponent
   mediumDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Medium',
-    height: 'auto',
     fieldName: 'Medium',
     hideLabel: false,
     bindLabel: 'medium',
@@ -83,7 +81,6 @@ export class AddEditScheduleComponent
   classNameDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Class',
-    height: 'auto',
     fieldName: 'Class Name',
     hideLabel: false,
     bindLabel: 'class',
@@ -94,7 +91,6 @@ export class AddEditScheduleComponent
   subjectDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Subject',
-    height: 'auto',
     fieldName: 'Subject',
     hideLabel: false,
     bindLabel: 'displayName',
@@ -105,7 +101,6 @@ export class AddEditScheduleComponent
   chapterDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Chapter',
-    height: 'auto',
     fieldName: 'Chapter',
     hideLabel: false,
     bindLabel: 'displayValue',
@@ -116,7 +111,6 @@ export class AddEditScheduleComponent
   subTopicDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the SubTopic',
-    height: 'auto',
     fieldName: 'Sub Topic',
     hideLabel: false,
     bindLabel: 'label',
@@ -127,7 +121,6 @@ export class AddEditScheduleComponent
   lessonDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Lesson Plan',
-    height: 'auto',
     fieldName: 'Lesson Plan',
     bindLabel: 'name',
     bindValue: 'name',

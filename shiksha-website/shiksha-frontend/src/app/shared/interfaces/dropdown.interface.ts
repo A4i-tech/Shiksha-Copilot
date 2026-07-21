@@ -9,7 +9,6 @@ export interface DropdownOption {
 
 export interface DropDownConfig {
   isBackground: boolean;
-  height: string;
   placeHolderTxt: string;
   disabled?: boolean;
   fieldName?: string;

@@ -25,7 +25,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select state',
-    height: '44px',
     fieldName: 'State',
     bindLabel: 'state',
     bindValue: 'state',
@@ -35,7 +34,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Zone',
-    height: '44px',
     fieldName: 'Zone',
     bindLabel: 'name',
     bindValue: 'name',
@@ -45,7 +43,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select district',
-    height: '44px',
     fieldName: 'District',
     bindLabel: 'name',
     bindValue: 'name',
@@ -55,7 +52,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Taluk',
-    height: '44px',
     fieldName: 'Taluk',
     bindLabel: 'name',
     bindValue: 'name',
@@ -66,7 +62,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   schoolNameDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select School Name',
-    height: '44px',
     fieldName: 'School Name',
     bindLabel: 'name',
     bindValue: '_id',
@@ -77,7 +72,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
   userRoleDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Teacher Role',
-    height: '44px',
     fieldName: 'Teacher Role',
     bindLabel: 'name',
     bindValue: 'value',

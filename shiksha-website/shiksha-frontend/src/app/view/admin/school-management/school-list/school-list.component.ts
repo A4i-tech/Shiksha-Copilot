@@ -49,7 +49,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'State',
-    height: 'auto',
     bindLabel: 'state',
     bindValue: 'state',
     labelTxt: 'State'
@@ -58,7 +57,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'District',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'District'
@@ -67,7 +65,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Taluk',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Taluk'
@@ -76,7 +73,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Zone',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Zone'
@@ -85,7 +81,6 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   schoolDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'School',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: '_id',
     labelTxt: 'School',

@@ -36,6 +36,7 @@
 
   ::ng-deep .ng-select.ng-select-multiple .ng-select-container .ng-value {
     display: flex;
+    font-size: inherit;
     max-width: 100%;
   }
 
@@ -54,7 +55,7 @@
 
   ::ng-deep .ng-select.ng-select-disabled > .ng-select-container {
     background: var(--shade-80) !important;
-    border: none;
+    border-color: var(--content-30);
     cursor: not-allowed;
   }
 

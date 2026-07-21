@@ -20,7 +20,6 @@ export class ShikshanUserManageComponent implements OnInit {
   userRoleDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Staff Role',
-    height: '44px',
     fieldName: 'Staff Role',
     bindLabel: 'name',
     bindValue: 'value',
@@ -35,7 +34,6 @@ export class ShikshanUserManageComponent implements OnInit {
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select State',
-    height: '44px',
     fieldName: 'State',
     bindLabel: 'state',
     bindValue: 'state',
@@ -45,7 +43,6 @@ export class ShikshanUserManageComponent implements OnInit {
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Zone',
-    height: 'auto',
     fieldName: 'Zone',
     bindLabel: 'name',
     bindValue: 'name',
@@ -59,7 +56,6 @@ export class ShikshanUserManageComponent implements OnInit {
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select District',
-    height: 'auto',
     fieldName: 'District',
     bindLabel: 'name',
     bindValue: 'name',

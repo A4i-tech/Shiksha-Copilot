@@ -24,7 +24,6 @@ export class CreateBatchComponent implements OnInit {
   trainingTypeDropdownConfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select mode',
-    height: '44px',
     fieldName: 'Mode of Training',
     bindLabel: 'name',
     bindValue: 'value',

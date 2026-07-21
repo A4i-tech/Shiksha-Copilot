@@ -54,7 +54,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   typeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Type',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff :true,
@@ -63,7 +62,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   boardDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Board',
-    height: 'auto',
     bindLabel: 'board',
     bindValue: 'board',
     labelTxt:'Board'
@@ -71,7 +69,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   mediumDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Medium',
-    height: 'auto',
     bindLabel: 'medium',
     bindValue: 'medium',
     labelTxt:'Medium'
@@ -79,7 +76,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   classDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Class',
-    height: 'auto',
     bindLabel: 'class',
     bindValue: 'class',
     labelTxt:'Class'
@@ -87,7 +83,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   subjectDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Subject',
-    height: 'auto',
     bindLabel: 'displayName',
     bindValue: 'subject',
     labelTxt:'Subject'
@@ -96,7 +91,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   statusDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Plan Status',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff:true,

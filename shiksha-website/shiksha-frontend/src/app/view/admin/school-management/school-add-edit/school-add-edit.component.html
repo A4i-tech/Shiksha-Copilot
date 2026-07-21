@@ -230,7 +230,7 @@
                       <div *ngIf="mode !== 'view'">
                         <div>
                           <input 
-                            class="form-control h-9 focus:outline-none"
+                            class="form-control"
                             type="date"
                             [min]="schoolAddEditForm.get('academicYearStartDate')?.value | date:'yyyy-MM-dd'"
                             [max]="schoolAddEditForm.get('academicYearEndDate')?.value | date:'yyyy-MM-dd'"
@@ -256,7 +256,7 @@
                       <div *ngIf="mode !== 'view'">
                         <div>
                           <input
-                            class="form-control h-9"
+                            class="form-control"
                             type="text"
                             placeholder="{{'Reason' | translate}}"
                             autocomplete="off"
@@ -371,7 +371,7 @@
 
                         <input
                           *ngIf="!resource.get('typeChipSet')?.value"
-                          class="form-control h-9 mt-4"
+                          class="form-control mt-4"
                           type="text"
                           placeholder="{{'Enter resource type' | translate}}"
                           autocomplete="off"

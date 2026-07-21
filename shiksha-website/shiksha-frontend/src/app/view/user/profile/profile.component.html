@@ -69,11 +69,10 @@
         <input
           type="text"
           id="profile-name"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your name' | translate }}"
           required
-          readonly
-          aria-readonly="true"
+          disabled
           [value]="userData?.name"
         />
       </div>
@@ -84,11 +83,10 @@
         <input
           type="text"
           id="profile-phone"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your phone number' | translate }}"
           required
-          readonly
-          aria-readonly="true"
+          disabled
           [value]="userData?.phone"
         />
       </div>
@@ -99,10 +97,9 @@
         <input
           type="text"
           id="profile-school"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           required
-          readonly
-          aria-readonly="true"
+          disabled
           [value]="userData?.school?.name"
         />
       </div>
@@ -116,11 +113,10 @@
         <input
           type="text"
           id="profile-state"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your cluster' | translate }}"
-          readonly
+          disabled
           required
-          aria-readonly="true"
           [value]="userData?.state"
         />
       </div>
@@ -132,11 +128,10 @@
           <input
             type="text"
             id="profile-zone"
-            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            class="form-control"
             placeholder="{{ 'Enter your zone' | translate }}"
-            readonly
+            disabled
             required
-            aria-readonly="true"
             [value]="userData?.zone"
           />
         </div>
@@ -147,11 +142,10 @@
           <input
             type="text"
             id="profile-district"
-            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            class="form-control"
             placeholder="{{ 'Enter your district' | translate }}"
-            readonly
+            disabled
             required
-            aria-readonly="true"
             [value]="userData?.district"
           />
         </div>
@@ -162,11 +156,10 @@
           <input
             type="text"
             id="profile-taluk"
-            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            class="form-control"
             placeholder="{{ 'Enter Taluk' | translate }}"
-            readonly
+            disabled
             required
-            aria-readonly="true"
             [value]="userData?.block"
           />
         </div>
@@ -338,7 +331,7 @@
 
                       <input
                         *ngIf="!resource.get('typeChipSet')?.value"
-                        class="form-control h-9 mt-4"
+                        class="form-control mt-4"
                         type="text"
                         placeholder="{{ 'Enter resource type' | translate }}"
                         autocomplete="off"

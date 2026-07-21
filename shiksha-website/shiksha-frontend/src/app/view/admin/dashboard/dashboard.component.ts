@@ -38,7 +38,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select State',
-    height: 'auto',
     bindLabel: 'state',
     bindValue: 'state',
     clearableOff: true,
@@ -49,7 +48,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Zone',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -60,7 +58,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select District',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -71,7 +68,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Taluk',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -82,7 +78,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   schoolDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select School',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: '_id',
     clearableOff: false,
@@ -94,7 +89,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   planTypeDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Plan Type',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     labelTxt: 'Plan Type',

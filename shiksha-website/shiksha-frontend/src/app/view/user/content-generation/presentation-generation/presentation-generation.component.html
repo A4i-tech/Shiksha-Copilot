@@ -153,7 +153,7 @@
               {{ "Target slide count" | translate }}
               <span class="text-[16px] text-error">*</span>
             </label>
-            <select formControlName="slideCount" class="form-control h-9">
+            <select formControlName="slideCount" class="form-control">
               <option *ngFor="let slideCount of slideOptions" [ngValue]="slideCount">
                 {{ slideCount }} {{ "slides" | translate }}
               </option>

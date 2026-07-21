@@ -33,7 +33,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   langDropDownConfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Preferred Language',
-    height: 'auto',
     fieldName: 'languege',
   };
 
@@ -43,7 +42,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   boardTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select board',
-    height: 'auto',
     fieldName: 'Board',
     hideLabel: true,
     bindLabel: '_id',
@@ -54,7 +52,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   mediumTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select medium',
-    height: 'auto',
     fieldName: 'Medium',
     hideLabel: true,
     bindLabel: 'medium',
@@ -65,7 +62,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   classTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select class',
-    height: 'auto',
     fieldName: 'Standard',
     hideLabel: true,
     bindLabel: 'standard',
@@ -76,7 +72,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   subjectTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select subject',
-    height: 'auto',
     fieldName: 'Subject',
     hideLabel: true,
     bindLabel: '_id',
@@ -87,7 +82,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   resourceTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Resource',
-    height: 'auto',
     fieldName: 'Resource Type',
     hideLabel: false,
     bindLabel: 'type',
@@ -97,7 +91,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   resourceTypeDarkDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Type',
-    height: 'auto',
     fieldName: 'Resource Type',
     hideLabel: false,
     bindLabel: 'type',
@@ -108,7 +101,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   resourceDetailsDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select details',
-    height: 'auto',
     fieldName: 'Resource Details',
     multi: true,
     clearableOff: true,
