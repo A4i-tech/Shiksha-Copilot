@@ -75,7 +75,7 @@
 				<label class="form-control-label">{{'Status of staff' | translate}}</label>
 				<div class="flex items-center space-x-4">
 					<span>{{'Active' | translate}}</span>
-					<ng-toggle formControlName="isDeleted" [color]="toggleconfig.color"></ng-toggle>
+					<ng-toggle [(ngModel)]="isActive" [ngModelOptions]="{ standalone: true }" [disabled]="mode === 'view'" [color]="toggleconfig.color"></ng-toggle>
 				</div>
 			</div>
 			<div class="buttons mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2" *ngIf="mode !== 'view'">

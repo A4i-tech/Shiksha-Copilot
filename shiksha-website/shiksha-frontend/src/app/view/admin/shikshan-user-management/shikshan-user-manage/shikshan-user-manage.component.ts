@@ -303,18 +303,6 @@ export class ShikshanUserManageComponent implements OnInit {
     return this.addForm.controls;
   }
 
-  patchStatus() {
-    if (this.addForm.value.isDeleted === false) {
-      this.addForm.patchValue({
-        isDeleted: true
-      });
-    } else {
-      this.addForm.patchValue({
-        isDeleted: false
-      });
-    }
-  }
-
   getUserDetails(id: string) {
     this.commonStaffUserService.getUserDetails(id, 'admin').subscribe({
       next: (res: any) => {
@@ -360,6 +348,7 @@ export class ShikshanUserManageComponent implements OnInit {
   }
   set isActive(val: boolean) {
     this.addForm.get('isDeleted')?.setValue(!val);
+    this.addForm.markAsDirty();
   }
 
 }
