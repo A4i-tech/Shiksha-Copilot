@@ -91,6 +91,7 @@ export class ShikshanUserManageComponent implements OnInit {
     });
 
     this.initialize_add_form();
+    if (this.mode === 'view') this.addForm.disable();
     this.getRegionsData();
     this.handleRoleChange();
   }

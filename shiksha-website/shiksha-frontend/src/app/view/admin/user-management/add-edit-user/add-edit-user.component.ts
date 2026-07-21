@@ -119,6 +119,7 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     });
 
     this.initialize_add_form();
+    if (this.mode === 'view') this.addForm.disable();
     if (this.mode !== 'view' || this.mode !== 'edit') {
       this.getRegionsData();
     }
