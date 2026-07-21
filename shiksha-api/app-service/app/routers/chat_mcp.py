@@ -1,3 +1,6 @@
+import io
+import json
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 import logging
@@ -42,13 +45,19 @@ def router(mcp: FastMCP):
             general_chat_svc, _ = get_services(context)
             logger.info(f"Processing general chat request for user: {user_id}")
 
-            response_content = await general_chat_svc([
+            content = io.StringIO()
+            async for event_raw in general_chat_svc([
                 ConversationMessage(role=MessageRole.USER, message=message)
-            ], user_id=user_id)
+            ], user_id=user_id):
+                event = json.loads(event_raw)
+                if event["type"] == "content":
+                    content.write(event["delta"])
+                elif event["type"] == "error":
+                    raise ToolError(event["data"])
 
             logger.info(f"Successfully processed general chat for user: {user_id}")
 
-            return response_content
+            return content.getvalue()
 
         except ValueError as e:
             logger.error(f"Configuration error in general chat: {e}")
@@ -87,7 +96,7 @@ def router(mcp: FastMCP):
 
             logger.info(f"Successfully processed lesson chat for user: {request.user_id}")
 
-            return response_content
+            return response_content[0]
 
         except ValueError as e:
             logger.error(f"Configuration error in lesson chat: {e}")
