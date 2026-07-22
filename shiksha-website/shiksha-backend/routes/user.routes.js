@@ -59,6 +59,7 @@ router.get(
 
 router.get(
 	"/user/get-profile/:id",
+	isAuthenticated,
 	asyncMiddleware(userController.getProfile.bind(userController))
 );
 

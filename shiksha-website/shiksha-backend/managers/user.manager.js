@@ -64,15 +64,25 @@ class UserManager extends BaseManager {
     }
   }
 
-  async getProfileById(id) {
+  async getProfileById(id, cachedUser = null, cachedIsTeacher = null) {
     try {
-      const { dao, user, isTeacher } = await this._resolveUserDao(id);
+      let dao, user, isTeacher;
+      if (cachedUser) {
+        dao = cachedIsTeacher ? this.dao : this.adminUserDao;
+        user = cachedUser;
+        isTeacher = cachedIsTeacher;
+      } else {
+        ({ dao, user, isTeacher } = await this._resolveUserDao(id));
+      }
 
       if (!user) {
         return { success: false, data: false, message: "User not found" };
       }
 
       let plainUser = user.toObject();
+      delete plainUser.otp;
+      delete plainUser.rememberMeToken;
+      delete plainUser.isLoginAllowed;
 
       // Refresh profile image SAS URL if expired
       await refreshProfileImageIfExpired(plainUser, (id, updates) => dao.update(id, updates));
@@ -81,7 +91,7 @@ class UserManager extends BaseManager {
         return {
           success: true,
           data: plainUser,
-          message: "Profile retreived successfully",
+          message: "Profile retrieved successfully",
         };
       }
 
@@ -129,7 +139,7 @@ class UserManager extends BaseManager {
       return {
         success: true,
         data: plainUser,
-        message: "Teacher profile retreived successfully",
+        message: "Teacher profile retrieved successfully",
       };
     } catch (err) {
       return {
