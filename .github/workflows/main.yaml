@@ -60,18 +60,29 @@ jobs:
   cicd-frontend:
     name: Deploy frontend
     needs: cd-backend
-    if: (github.event_name == 'pull_request' && github.base_ref == 'a4i/staging') || (github.event_name == 'push' && github.ref_name == 'a4i/staging')
+    if: always() && github.event_name == 'push' && github.ref_name == 'a4i/staging' && needs.cd-backend.result == 'success'
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
     with:
       deploy_name: shiksha-frontend-staging
-      deploy_target: ${{ needs.cd-backend.result == 'success' && 'github-pages' || '' }}
+      deploy_target: github-pages
       environment: uat
-      api_url: ${{ needs.cd-backend.result == 'success' && format('{0}/api', needs.cd-backend.outputs['service-url']) || '' }}
+      api_url: ${{ format('{0}/api', needs.cd-backend.outputs['service-url']) }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
       superset_url: ${{ vars.SUPERSET_URL }}
       superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
       superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
+
+  cd-frontend-render:
+    name: Deploy frontend preview (Render)
+    if: github.event_name == 'pull_request' && github.base_ref == 'a4i/staging'
+    uses: ./.github/workflows/deploy-render.yaml
+    with:
+      deploy-name: shiksha-frontend-preview
+      service-id: ${{ vars.RENDER_FRONTEND_SERVICE_ID }}
+      branch: ${{ github.head_ref }}
+    secrets:
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
   cd-api-prod:
     name: Deploy api
@@ -241,10 +252,98 @@ jobs:
           name: k6-summary
           path: k6_summary.json
 
+  accessibility-tests:
+    name: Accessibility Tests
+    needs: [cd-frontend-render, health-check]
+    if: |
+      always() &&
+      github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
+      needs.cd-frontend-render.result == 'success' &&
+      (needs.health-check.result == 'success' || needs.health-check.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm ci --prefix tests/accessibility
+
+      - name: Install Playwright browsers
+        run: npx --prefix tests/accessibility playwright install chromium --with-deps
+
+      # PR previews hit the pre-existing staging api/backend (cd-api/cd-backend
+      # don't run for PRs); a Render cold-start can outlast the scanner's login
+      # timeouts, so resolve their URLs and ping them awake before the scan.
+      - name: Warm up backend + api
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: |
+          AUTH="Authorization: Bearer $RENDER_API_KEY"
+          get_service_url() {
+            curl -fsS -H "$AUTH" -H "Accept: application/json" \
+              "https://api.render.com/v1/services/$1" | jq -r '.serviceDetails.url'
+          }
+          BACKEND_URL=$(get_service_url "${{ vars.RENDER_BACKEND_SERVICE_ID }}")
+          API_URL=$(get_service_url "${{ vars.RENDER_API_SERVICE_ID }}")
+          echo "Backend: $BACKEND_URL"
+          echo "API: $API_URL"
+
+          for ((i=1; i<=30; i++)); do
+            echo "--- Ping attempt $i/30 ---"
+            curl -sf --max-time 30 "$BACKEND_URL/health" >/dev/null && \
+            curl -sf --max-time 30 "$API_URL/health" >/dev/null && \
+            { echo "Backend + API awake"; break; }
+            sleep 15 & wait $!
+          done
+
+          if [ $i -gt 30 ]; then
+            echo "Services did not respond in time"
+            exit 1
+          fi
+
+      # deploy-render.yaml already waits for the Render deploy to hit "live",
+      # but the static site can lag behind that briefly; poll for HTTP 200
+      # before running tests as a safety net.
+      - name: Wait for frontend deployment
+        env:
+          FRONTEND_URL: ${{ needs.cd-frontend-render.outputs['service-url'] }}
+        run: |
+          echo "Waiting for $FRONTEND_URL to become reachable..."
+          for ((i=1; i<=40; i++)); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$FRONTEND_URL") || true
+            echo "  Attempt $i/40: HTTP $status"
+            if [ "$status" = "200" ]; then
+              echo "Frontend is live!"
+              exit 0
+            fi
+            sleep 15 & wait $!
+          done
+          echo "Frontend at $FRONTEND_URL did not become reachable (last status: $status)"
+          exit 1
+
+      - name: Run Accessibility Tests
+        env:
+          FRONTEND_URL: ${{ needs.cd-frontend-render.outputs['service-url'] }}
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
+          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
+        run: node tests/accessibility/run-accessibility.js
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-report
+          path: tests/accessibility/results/
+
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests, accessibility-tests]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -295,10 +394,10 @@ jobs:
               try:
                   with open(filepath, 'r') as f: data = json.load(f)
                   metrics = data.get('metrics', {})
-                  
+
                   req_dur = metrics.get('http_req_duration', {})
                   p95 = req_dur.get('values', {}).get('p(95)', req_dur.get('p(95)', 0))
-                  
+
                   req_fail = metrics.get('http_req_failed', {})
                   rate = req_fail.get('values', {}).get('rate', req_fail.get('rate', 0))
 
@@ -335,7 +434,7 @@ jobs:
               {"name": "Regression", "description": regr_desc, "url": os.environ.get('RUN_URL')},
               {"name": "Performance", "description": perf_desc, "url": os.environ.get('RUN_URL')}
           ]
-          
+
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"heading_color={color}\n")
               f.write(f"services_json={json.dumps(services)}\n")

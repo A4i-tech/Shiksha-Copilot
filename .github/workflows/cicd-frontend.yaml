@@ -16,8 +16,8 @@ on:
         description: "Backend API URL this frontend resource must call"
         required: true
         type: string
-      turnstile_site_key:
-        description: "Cloudflare Turnstile site key; leave blank to disable CAPTCHA"
+      deploy_target:
+        description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
         required: false
         type: string
         default: ""
@@ -36,8 +36,8 @@ on:
         required: false
         type: string
         default: ""
-      deploy_target:
-        description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
+      turnstile_site_key:
+        description: "Cloudflare Turnstile site key for bot-protection widget"
         required: false
         type: string
         default: ""
@@ -50,11 +50,8 @@ on:
         description: "GitHub Pages deployment URL (empty when not deployed)"
         value: ${{ jobs.build.outputs.page_url }}
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
@@ -67,11 +64,11 @@ jobs:
     runs-on: ubuntu-latest
 
     environment:
-      name: ${{ inputs.deploy_target != '' && inputs.deploy_name || '' }}
-      url: ${{ steps.deployment.outputs.page_url || steps.deploy-azure-swa.outputs.static_web_app_url || '' }}
+      name: ${{ inputs.deploy_target != '' && inputs.deploy_name }}
+      url: ${{ inputs.deploy_target == 'github-pages' && steps.ctx.outputs.page_url }}
 
     outputs:
-      page_url: ${{ steps.deployment.outputs.page_url || steps.deploy-azure-swa.outputs.static_web_app_url }}
+      page_url: ${{ steps.ctx.outputs.page_url || steps.set-azure-url.outputs.page_url }}
 
     env:
       BACKEND_URL: ${{ inputs.api_url }}
@@ -92,6 +89,16 @@ jobs:
           cache: npm
           cache-dependency-path: shiksha-website/shiksha-frontend/package-lock.json
 
+      # peaceiris/actions-gh-pages doesn't emit a page_url output like
+      # actions/deploy-pages does, so we build it ourselves.
+      - name: Compute Pages context
+        if: inputs.deploy_target == 'github-pages'
+        id: ctx
+        run: |
+          bh="/Shiksha-Copilot/"
+          echo "base_href=$bh" >> "$GITHUB_OUTPUT"
+          echo "page_url=https://${{ github.repository_owner }}.github.io$bh" >> "$GITHUB_OUTPUT"
+
       - name: Build Angular app
         working-directory: shiksha-website/shiksha-frontend
         run: |
@@ -106,23 +113,19 @@ jobs:
             -exec sed -i "s|your_superset_mobile_dashboard_uuid|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" {} \;
 
           npm ci
-          npm run build -- --configuration ${{ inputs.environment }} \
-            ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
+          if [ "${{ inputs.deploy_target }}" == "github-pages" ]; then
+            npm run build -- --configuration ${{ inputs.environment }} \
+              --base-href "${{ steps.ctx.outputs.base_href }}"
+          else
+            npm run build -- --configuration ${{ inputs.environment }}
+          fi
 
-      - name: Setup Pages
+      - name: Deploy to GitHub Pages (gh-pages branch)
         if: inputs.deploy_target == 'github-pages'
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        if: inputs.deploy_target == 'github-pages'
-        uses: actions/upload-pages-artifact@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: shiksha-website/shiksha-frontend/dist/shiksha-frontend
-
-      - name: Deploy to GitHub Pages
-        if: inputs.deploy_target == 'github-pages'
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: shiksha-website/shiksha-frontend/dist/shiksha-frontend
 
       - name: Deploy to Azure Static Web App
         id: deploy-azure-swa
