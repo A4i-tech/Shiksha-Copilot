@@ -28,7 +28,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  FRONTEND_IMAGE_NAME: shiksha-copilot/frontend
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
 
 jobs:
   build:
@@ -57,6 +57,8 @@ jobs:
       - name: Set image name and tag output
         id: set_tag_primary
         run: |
+          IMAGE_NAME=$(echo '${{ env.FRONTEND_IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
+          echo "FRONTEND_IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
           echo "image_tag_primary=$(echo '${{ steps.frontend_meta.outputs.tags }}' | tr ',' '\n' | grep ':sha-' | head -1)" >> $GITHUB_OUTPUT
 
       - name: Build frontend image (no push)
@@ -97,6 +99,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Debug
+        run: |
+          echo "repository=${{ github.repository }}"
+          echo "owner=${{ github.repository_owner }}"
+          echo "actor=${{ github.actor }}"
+
       - name: Push frontend image
         id: push
         uses: docker/build-push-action@v5
@@ -105,5 +113,6 @@ jobs:
           file: shiksha-website/shiksha-frontend/Dockerfile
           push: true
           tags: ${{ needs.build.outputs.image_tags }}
+          build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
