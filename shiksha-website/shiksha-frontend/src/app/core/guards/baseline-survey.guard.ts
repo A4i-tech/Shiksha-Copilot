@@ -28,21 +28,34 @@ export class BaselineSurveyGuard implements CanActivate {
     }
 
     const user = this.getUser();
-    if (!this.isEndUser(user)) return true; // skip for managers/admins
+    if (!this.authz.isTeacherOnly(user)) return true; // skip for managers/admins/non-teachers
+
+    // Skip if already dismissed/postponed in the current session
+    if (this.survey.isDismissed()) {
+      return true;
+    }
 
     // 2) Check completion
     try {
       const resp = await firstValueFrom(this.survey.checkCompleted());
+      // Any failure (5xx/network → interceptor redirects to /error/503; 4xx → thrown)
+      // rejects the promise and lands in catch below, so a resolved resp is always success:true.
       const completed = !!resp?.data?.completed;
+      const remindLaterCount = resp?.data?.remindLaterCount;
+      const isMandatory = !!resp?.data?.isMandatory;
+      const maxReminders = resp?.data?.maxReminders;
 
-      // 3) Open dialog if not completed
+      // 3) Open dialog ONLY if survey is not completed
       if (!completed) {
         // Defer dialog open to next macrotask to avoid change detection race with navigation
         this.zone.runOutsideAngular(() => {
           setTimeout(() => {
-            this.zone.run(() => {
+            this.zone.run(async () => {
               // fire-and-forget so guard returns immediately
-              void this.dialog.openSurvey(true);
+              const res = await this.dialog.openSurvey(isMandatory, remindLaterCount, maxReminders);
+              if (res === 'remind') {
+                this.survey.setDismissed(true);
+              }
             });
           }, 0);
         });
@@ -51,7 +64,7 @@ export class BaselineSurveyGuard implements CanActivate {
       // swallow errors so routing isn't blocked
       console.error('[BaselineSurveyGuard] check/open failed', e);
     }
-
+ 
     return true;
   }
 
@@ -62,17 +75,5 @@ export class BaselineSurveyGuard implements CanActivate {
     } catch {
       return null;
     }
-  }
-
-  /** Treat everyone who is NOT an admin/manager as an end-user */
-  private isEndUser(user: any): boolean {
-    const roles: string[] = Array.isArray(user?.role) ? user.role : [user?.role].filter(Boolean);
-    if (!roles.length) return false;
-
-    const lower = roles.map(r => String(r).toLowerCase());
-    const EXCLUDE = new Set(['admin', 'manager', 'super_admin', 'coordinator', 'trainer']);
-
-    if (lower.some(r => EXCLUDE.has(r))) return false;
-    return true;
   }
 }

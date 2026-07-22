@@ -19,6 +19,12 @@ router.get(
 );
 
 router.post(
+    '/chat/restart',
+    isAuthenticated,
+    asyncMiddleware(chatController.restartSession.bind(chatController))
+);
+
+router.post(
     '/lessonchat/message/:recordId/:chapterId',
     isAuthenticated,
     asyncMiddleware(chatController.sendLessonMessage.bind(chatController))

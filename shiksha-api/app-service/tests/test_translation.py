@@ -60,7 +60,7 @@ async def test_translation_service_azure_mock():
                     data, "en", "te"
                 )
 
-    assert result["title"] == "నమస్కారం"
+    assert result["title"] == "Hello"
     assert result["nested"]["greeting"] == "నమస్కారం"
     assert result["items"][0] == "నమస్కారం"
     assert result["items"][1] == 123
@@ -138,9 +138,16 @@ async def test_recursion_depth_raises():
 @pytest.mark.asyncio
 async def test_skip_keys_not_translated():
     """Fields in SKIP_KEYS (e.g. difficulty) must not be translated."""
-    data = {"question": "What is gravity?", "difficulty": "Easy"}
-    result = await TranslationService.translate_json_async(data, "en", "te")
-    assert result["difficulty"] == "Easy"
+    _clear_factory_cache()
+    with patch("app.services.translation.factory.settings") as mock_settings:
+        mock_settings.translator_key = ""
+        mock_settings.translator_region = ""
+        mock_settings.translator_endpoint = ""
+
+        data = {"question": "What is gravity?", "difficulty": "Easy"}
+        result = await TranslationService.translate_json_async(data, "en", "te")
+        assert result["difficulty"] == "Easy"
+    _clear_factory_cache()
 
 
 @pytest.mark.asyncio

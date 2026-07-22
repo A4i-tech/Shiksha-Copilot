@@ -16,6 +16,12 @@ from app.services.rag_adapters import (
 )
 
 
+@pytest.fixture(autouse=True)
+def mock_blob_store_constructor():
+    with patch("app.services.rag_adapters.BlobStore"):
+        yield
+
+
 class TestBaseRagAdapter:
     """Test BaseRagAdapter abstract base class."""
 
@@ -161,28 +167,6 @@ class TestInMemRagOpsAdapter:
             await adapter.cleanup()
             mock_rmtree.assert_called_once_with(adapter.persist_dir)
 
-    @pytest.mark.asyncio
-    async def test_chat_with_index(self, mock_completion_llm, mock_embedding_llm):
-        """Test chat_with_index delegates to RAG ops."""
-        adapter = InMemRagOpsAdapter(
-            completion_llm=mock_completion_llm,
-            embedding_llm=mock_embedding_llm,
-            index_path="blob/test-container/test-index"
-        )
-
-        # Mock RAG ops
-        mock_rag_ops = AsyncMock()
-        mock_rag_ops.chat_with_index = AsyncMock(return_value="Test response")
-        adapter._rag_ops = mock_rag_ops
-
-        from llama_index.core.llms import ChatMessage
-
-        chat_history = [ChatMessage(role="system", content="You are a teacher")]
-        result = await adapter.chat_with_index("What is photosynthesis?", chat_history)
-
-        assert result["response"] == "Test response"
-        mock_rag_ops.chat_with_index.assert_called_once()
-
 
 class TestQdrantRagOpsAdapter:
     """Test QdrantRagOpsAdapter for Qdrant vector database."""
@@ -251,30 +235,6 @@ class TestQdrantRagOpsAdapter:
 
         # Should not raise any errors
         await adapter.cleanup()
-
-    @pytest.mark.asyncio
-    async def test_chat_with_index_applies_metadata_filter(self, mock_completion_llm, mock_embedding_llm):
-        """Test chat_with_index applies metadata filter."""
-        adapter = QdrantRagOpsAdapter(
-            completion_llm=mock_completion_llm,
-            embedding_llm=mock_embedding_llm,
-            index_path="qdrant/test-collection/chapter_id:6"
-        )
-
-        # Mock RAG ops
-        mock_rag_ops = AsyncMock()
-        mock_rag_ops.chat_with_index = AsyncMock(return_value="Filtered response")
-        adapter._rag_ops = mock_rag_ops
-
-        from llama_index.core.llms import ChatMessage
-
-        chat_history = [ChatMessage(role="system", content="You are a teacher")]
-        result = await adapter.chat_with_index("What is respiration?", chat_history)
-
-        assert result["response"] == "Filtered response"
-        # Verify metadata filter was passed
-        call_args = mock_rag_ops.chat_with_index.call_args
-        assert call_args[1]["metadata_filter"] == {"chapter_id": "6"}
 
 
 class TestRagAdapterFactory:

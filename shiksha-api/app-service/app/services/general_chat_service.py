@@ -1,13 +1,11 @@
 from typing import List
 from pathlib import Path
 import logging
-import traceback
 
-from langfuse.openai import AsyncAzureOpenAI
-from langfuse import observe, get_client
+from langfuse.openai import AsyncOpenAI
+from langfuse import propagate_attributes
 import json
-import asyncio
-from openai.types.responses import ResponseOutputMessage, ResponseOutputText
+from openai.types.responses import ResponseOutputMessage, ResponseOutputText, ToolParam
 from openai.types.responses.response import Response
 from openai.types.responses.response_output_text import AnnotationURLCitation
 
@@ -20,82 +18,55 @@ logger = logging.getLogger(__name__)
 
 
 class GeneralChatService:
-    """Service for handling chat interactions using Azure OpenAI client."""
+    """Service for handling chat interactions using OpenAI client."""
 
     def __init__(self):
-        # Initialize prompt template with the chat prompts file
-        prompts_file_path = (
-            Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
-        )
-        self.prompt_template = PromptTemplate(str(prompts_file_path))
+        prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
+        prompt_template = PromptTemplate(str(prompts_file_path))
+        system_prompt = prompt_template.get_prompt("general_chat")
+        if not system_prompt:
+            raise ValueError("General chat prompt not found in chat_prompts.yaml")
+        self.system_prompt = system_prompt
+        self.client = AsyncOpenAI()
+        self.tools: list[ToolParam] = [
+            {"type": "web_search", "user_location": {"type": "approximate", "country": "IN"}}
+        ]
 
-        # Check configuration
-        if not settings.azure_openai_api_key:
-            raise ValueError("AZURE_OPENAI_API_KEY environment variable is required")
-        if not settings.azure_openai_endpoint:
-            raise ValueError("AZURE_OPENAI_ENDPOINT environment variable is required")
-        if not settings.azure_openai_api_version:
-            raise ValueError("AZURE_OPENAI_API_VERSION environment variable is required")
-        if not settings.azure_openai_deployment_name:
-            raise ValueError("AZURE_OPENAI_DEPLOYMENT_NAME environment variable is required")
-        if not settings.azure_chat_deployment_name:
-            raise ValueError("AZURE_CHAT_DEPLOYMENT_NAME environment variable is required")
+    async def __aenter__(self):
+        return self
 
-        self.client = AsyncAzureOpenAI(
-                api_key=settings.azure_openai_api_key,
-                api_version=settings.azure_openai_api_version,
-                azure_endpoint=settings.azure_openai_endpoint,
-            )
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.cleanup()
 
 
     @validate_call
-    @observe(name="Shiksha-QA")
-    async def __call__(
-        self,
-        messages: List[ConversationMessage],
-        user_id: str,
-    ):
+    async def __call__(self, messages: List[ConversationMessage], user_id: str):
         try:
-            get_client().update_current_trace(
-                user_id=user_id,
-                tags=["chat_type:general", "has_web_search:true"],
-            )
-
-            system_prompt = self.prompt_template.get_prompt("general_chat")
-            if not system_prompt:
-                raise ValueError("General chat prompt not found in chat_prompts.yaml")
-
             yield json.dumps({"type": "status", "message": "Thinking..."}) + "\n"
 
             # Format messages
-            formatted_messages = [{"role": "system", "content": system_prompt}]
+            formatted_messages = [{"role": "system", "content": self.system_prompt}]
             for m in messages:
                 role = m.role.value
                 content = m.message
                 formatted_messages.append({"role": role, "content": content})
 
-            # Responses API with web search
-            stream = await self.client.responses.create(
-                model=settings.azure_chat_deployment_name,
-                input=formatted_messages,
-                tools=[{"type": "web_search"}],
-                stream=True,
-            )
-
             final_response_obj = None
+            # we deliberately use trace_name="Shiksha-QA" over @observe() here cause the latter
+            # spams LF 'output' with each individual event yielded by this streaming function
+            with propagate_attributes(trace_name="Shiksha-QA", user_id=user_id, tags=["chat_type:general"]):
+                stream = await self.client.responses.create(model=settings.general_chat_model, input=formatted_messages, tools=self.tools, stream=True)
+                async for event in stream:
+                    # Streaming text deltas
+                    if event.type == "response.output_text.delta":
+                        yield json.dumps({
+                            "type": "content",
+                            "delta": event.delta
+                        }) + "\n"
 
-            async for event in stream:
-
-                # Streaming text deltas
-                if event.type == "response.output_text.delta":
-                    yield json.dumps({
-                        "type": "content",
-                        "delta": event.delta
-                    }) + "\n"
-
-                # Final completed response (contains citations)
-                elif event.type == "response.completed":
-                    final_response_obj = event.response
+                    # Final completed response (contains citations)
+                    elif event.type == "response.completed":
+                        final_response_obj = event.response
 
             # Extract references AFTER stream ends
             if final_response_obj:
@@ -106,7 +77,7 @@ class GeneralChatService:
                 }) + "\n"
 
         except Exception as e:
-            logger.error(f"Error in Azure OpenAI chat: {e}", exc_info=True)
+            logger.error(f"Error in OpenAI chat: {e}", exc_info=True)
             yield json.dumps({
                 "type": "error",
                 "message": str(e)
@@ -114,7 +85,7 @@ class GeneralChatService:
 
     def _extract_url_citations(self, response: Response) -> list:
         """
-        Extract URL citations from Azure OpenAI Responses API output annotations.
+        Extract URL citations from OpenAI Responses API output annotations.
 
         The Responses API returns output items that may contain 'url_citation'
         annotations within message content blocks.
@@ -158,7 +129,3 @@ class GeneralChatService:
             await self.client.close()
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
-
-
-# Global instance
-GENERAL_CHAT_SERVICE_INSTANCE = GeneralChatService()

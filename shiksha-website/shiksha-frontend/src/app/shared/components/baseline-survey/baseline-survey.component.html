@@ -1,294 +1,267 @@
-<div class="survey-wrapper"><div class="survey-container">
-  <!-- HEADER -->
-  <div class="survey-hero">
-    <div class="survey-header">
-      <div class="survey-title-block">
-        <div class="survey-pill-row">
-          <span class="survey-pill primary">Please fill the Baseline Survey</span>
-          <span class="survey-pill">Takes ~ 1 minute</span>
-        </div>
+<div class="survey-wrapper">
+  <div class="wizard-card">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet">
+    <!-- INTRO SCREEN -->
+    <div class="intro-screen" *ngIf="currentStep === -1">
+      <div class="intro-badge">📝</div>
 
-        <div class="survey-info-banner">
-          <div class="info-icon">💡</div>
-          <div class="info-text">
-            <strong>Your responses will directly help us to improve the Shiksha copilot portal.</strong>
-          </div>
-        </div>
+      <div class="intro-pills">
+        <span class="pill pill-time">⏱ About 3 minutes</span>
+        <span class="pill">9 quick questions</span>
+        <span class="pill pill-warn" *ngIf="isMandatory">You have reached the maximum number of reminders. Please
+          complete the survey to continue.</span>
       </div>
 
-      <!-- Right-side illustration -->
-      <div class="hero-illustration">
-        <div class="illustration-container">
-          <div class="teacher-avatar">
-            <div class="teacher-icon">👩‍🏫</div>
-          </div>
-          <div class="floating-elements">
-            <div class="floating-item item-1">📚</div>
-            <div class="floating-item item-2">✏️</div>
-            <div class="floating-item item-3">📝</div>
-          </div>
-        </div>
+      <h1>Baseline Survey</h1>
+      <p>Your feedback helps us make Shiksha copilot more useful for teachers. This is not a test or evaluation, please
+        answer based on your actual experience.</p>
+
+      <div class="intro-actions">
+        <button type="button" class="btn btn-remind" *ngIf="!isMandatory" [disabled]="reminding"
+          (click)="onRemindLater()">
+          <span *ngIf="!reminding">Remind me later</span>
+          <mat-spinner *ngIf="reminding" diameter="18"></mat-spinner>
+          <span class="remind-count" *ngIf="remindLaterCount > 0">({{ maxReminders - remindLaterCount }} left)</span>
+        </button>
+        <button type="button" class="btn btn-start" (click)="goNext()">Let's start →</button>
       </div>
     </div>
+
+    <!-- THANK YOU SCREEN -->
+    <div class="done-screen" *ngIf="submitted">
+      <div class="done-badge">✓</div>
+      <h1>Thank you!</h1>
+      <p>Your responses were submitted. They'll help make shiksha copilot more useful for teachers.</p>
+    </div>
+
+    <!-- QUESTION WIZARD -->
+    <form [formGroup]="surveyForm" *ngIf="currentStep > -1 && !submitted" class="wizard-form">
+
+      <div class="progress-block">
+        <div class="progress-top">
+          <span class="progress-label">Question {{ currentStep + 1 }} of {{ totalSteps }}</span>
+        </div>
+        <div class="tally-track">
+          <div class="tally" *ngFor="let s of stepProgressArray; let i = index" [class.done]="i < currentStep"
+            [class.current]="i === currentStep"></div>
+        </div>
+      </div>
+
+      <div class="stage">
+
+        <!-- Q1: plans -->
+        <ng-container *ngIf="currentStep === 0">
+          <h2 class="question">How do you currently prepare your lesson plans?</h2>
+          <p class="hint">Select all that apply</p>
+          <div class="options">
+            <div class="opt check" *ngFor="let o of planOptions" [class.selected]="isChecked('plans', o)"
+              (click)="toggleArray('plans', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="other-box" *ngIf="showPlansOther">
+            <input type="text" formControlName="plansOther" placeholder="Please specify" />
+            <div class="field-nudge"
+              *ngIf="surveyForm.get('plansOther')?.invalid && surveyForm.get('plansOther')?.touched">
+              Please specify.
+            </div>
+          </div>
+          <div class="field-nudge" *ngIf="surveyForm.get('plans')?.invalid && surveyForm.get('plans')?.touched">
+            Please select at least one option to continue.
+          </div>
+        </ng-container>
+
+        <!-- Q2: devices -->
+        <ng-container *ngIf="currentStep === 1">
+          <h2 class="question">Which of these do you use while preparing lesson plans?</h2>
+          <p class="hint">Select all that apply</p>
+          <div class="options">
+            <div class="opt check" *ngFor="let o of deviceOptions" [class.selected]="isChecked('devices', o)"
+              (click)="toggleArray('devices', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="other-box" *ngIf="showDevicesOther">
+            <input type="text" formControlName="devicesOther" placeholder="Please specify" />
+            <div class="field-nudge"
+              *ngIf="surveyForm.get('devicesOther')?.invalid && surveyForm.get('devicesOther')?.touched">
+              Please specify.
+            </div>
+          </div>
+          <div class="field-nudge" *ngIf="surveyForm.get('devices')?.invalid && surveyForm.get('devices')?.touched">
+            Please select at least one option to continue.
+          </div>
+        </ng-container>
+
+        <!-- Q3: weeklyLessonPlans -->
+        <ng-container *ngIf="currentStep === 2">
+          <h2 class="question">How many lesson plans do you create in a week?</h2>
+          <p class="hint">Pick one</p>
+          <div class="options grid2">
+            <div class="opt radio" *ngFor="let o of weeklyOptions"
+              [class.selected]="surveyForm.get('weeklyLessonPlans')?.value === o"
+              (click)="selectRadioValue('weeklyLessonPlans', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="field-nudge"
+            *ngIf="surveyForm.get('weeklyLessonPlans')?.invalid && surveyForm.get('weeklyLessonPlans')?.touched">
+            Please select how many lesson plans you create.
+          </div>
+        </ng-container>
+
+        <!-- Q4: lessonPlanComponents -->
+        <ng-container *ngIf="currentStep === 3">
+          <h2 class="question">Which components do you include in your lesson plans?</h2>
+          <p class="hint">Select all that apply</p>
+          <div class="exclusive-note" *ngIf="isExclusiveOptionActive('lessonPlanComponents')">
+            ℹ️ {{ exclusiveOptionMessage('lessonPlanComponents') }}
+          </div>
+          <div class="options">
+            <div class="opt check" *ngFor="let o of componentOptions"
+              [class.selected]="isChecked('lessonPlanComponents', o)"
+              [class.disabled]="isOptionDisabled('lessonPlanComponents', o)"
+              [title]="isOptionDisabled('lessonPlanComponents', o) ? exclusiveOptionMessage('lessonPlanComponents') : null"
+              (click)="!isOptionDisabled('lessonPlanComponents', o) && toggleArray('lessonPlanComponents', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="other-box" *ngIf="showLessonComponentsOther">
+            <input type="text" formControlName="lessonPlanComponentsOther"
+              placeholder="Please specify other components" />
+            <div class="field-nudge"
+              *ngIf="surveyForm.get('lessonPlanComponentsOther')?.invalid && surveyForm.get('lessonPlanComponentsOther')?.touched">
+              Please specify.
+            </div>
+          </div>
+          <div class="field-nudge"
+            *ngIf="surveyForm.get('lessonPlanComponents')?.invalid && surveyForm.get('lessonPlanComponents')?.touched">
+            Please select at least one component.
+          </div>
+        </ng-container>
+
+        <!-- Q5: timePerLessonPlan -->
+        <ng-container *ngIf="currentStep === 4">
+          <h2 class="question">On average, how much time do you spend preparing one lesson plan?</h2>
+          <p class="hint">Pick one</p>
+          <div class="options">
+            <div class="opt radio" *ngFor="let o of timePerLessonOptions"
+              [class.selected]="surveyForm.get('timePerLessonPlan')?.value === o"
+              (click)="selectRadioValue('timePerLessonPlan', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="other-box" *ngIf="showTimePerLessonOther">
+            <input type="text" formControlName="timePerLessonPlanOther" placeholder="Please specify" />
+            <div class="field-nudge"
+              *ngIf="surveyForm.get('timePerLessonPlanOther')?.invalid && surveyForm.get('timePerLessonPlanOther')?.touched">
+              Please specify.
+            </div>
+          </div>
+          <div class="field-nudge"
+            *ngIf="surveyForm.get('timePerLessonPlan')?.invalid && surveyForm.get('timePerLessonPlan')?.touched">
+            Please select an approximate time.
+          </div>
+        </ng-container>
+
+        <!-- Q6: resourcesUsed -->
+        <ng-container *ngIf="currentStep === 5">
+          <h2 class="question">Which resources do you use while preparing lesson plans?</h2>
+          <p class="hint">Select all that apply</p>
+          <div class="options">
+            <div class="opt check" *ngFor="let o of resourceOptions" [class.selected]="isChecked('resourcesUsed', o)"
+              (click)="toggleArray('resourcesUsed', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="other-box" *ngIf="showResourcesOther">
+            <input type="text" formControlName="resourcesUsedOther" placeholder="Please specify other resources" />
+            <div class="field-nudge"
+              *ngIf="surveyForm.get('resourcesUsedOther')?.invalid && surveyForm.get('resourcesUsedOther')?.touched">
+              Please specify.
+            </div>
+          </div>
+          <div class="field-nudge"
+            *ngIf="surveyForm.get('resourcesUsed')?.invalid && surveyForm.get('resourcesUsed')?.touched">
+            Please select at least one resource.
+          </div>
+        </ng-container>
+
+        <!-- Q7: timeForAssessments -->
+        <ng-container *ngIf="currentStep === 6">
+          <h2 class="question">On average, how much time do you spend creating questions for one Formative Assessment?
+          </h2>
+          <p class="hint">Pick one</p>
+          <div class="options">
+            <div class="opt radio" *ngFor="let o of timeAssessmentOptions"
+              [class.selected]="surveyForm.get('timeForAssessments')?.value === o"
+              (click)="selectRadioValue('timeForAssessments', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="other-box" *ngIf="showTimeAssessmentsOther">
+            <input type="text" formControlName="timeForAssessmentsOther" placeholder="Please specify" />
+            <div class="field-nudge"
+              *ngIf="surveyForm.get('timeForAssessmentsOther')?.invalid && surveyForm.get('timeForAssessmentsOther')?.touched">
+              Please specify.
+            </div>
+          </div>
+          <div class="field-nudge"
+            *ngIf="surveyForm.get('timeForAssessments')?.invalid && surveyForm.get('timeForAssessments')?.touched">
+            Please select how much time you spend on assessments.
+          </div>
+        </ng-container>
+
+        <!-- Q8: questionBalance -->
+        <ng-container *ngIf="currentStep === 7">
+          <h2 class="question">How do you ensure your question paper has a good balance of easy, medium and difficult
+            questions?</h2>
+          <p class="hint">Select all that apply</p>
+          <div class="options">
+            <div class="opt check" *ngFor="let o of questionBalanceOptions"
+              [class.selected]="isChecked('questionBalance', o)" (click)="toggleArray('questionBalance', o)">
+              <span class="mark"></span><span>{{ o }}</span>
+            </div>
+          </div>
+          <div class="other-box" *ngIf="showQuestionBalanceOther">
+            <input type="text" formControlName="questionBalanceOther" placeholder="Please specify" />
+            <div class="field-nudge"
+              *ngIf="surveyForm.get('questionBalanceOther')?.invalid && surveyForm.get('questionBalanceOther')?.touched">
+              Please specify.
+            </div>
+          </div>
+          <div class="field-nudge"
+            *ngIf="surveyForm.get('questionBalance')?.invalid && surveyForm.get('questionBalance')?.touched">
+            Please select at least one option.
+          </div>
+        </ng-container>
+
+        <!-- Q9: otherNotes (optional, final step) -->
+        <ng-container *ngIf="currentStep === 8">
+          <h2 class="question">Anything else you'd like us to know?</h2>
+          <p class="hint">Optional</p>
+          <textarea formControlName="otherNotes" rows="4" placeholder="Share any thoughts..."></textarea>
+        </ng-container>
+
+      </div>
+
+      <div class="nav">
+        <button type="button" class="btn btn-back" [disabled]="currentStep === 0" (click)="goBack()">← Back</button>
+        <button type="button" class="btn btn-next" [disabled]="submitting" (click)="goNext()">
+          <span *ngIf="!submitting">{{ nextButtonLabel }}</span>
+          <mat-spinner *ngIf="submitting" diameter="20"></mat-spinner>
+        </button>
+      </div>
+
+      <div *ngIf="error" class="error-message">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error }}</span>
+      </div>
+    </form>
+
   </div>
-
-  <!-- FORM -->
-  <form [formGroup]="surveyForm" (ngSubmit)="onSubmit()" class="survey-form">
-    <!-- Q1 -->
-    <div class="form-group"
-         [class.has-error]="surveyForm.get('plans')?.invalid && surveyForm.get('plans')?.touched">
-      <div class="question-header">
-        <div class="question-number">1</div>
-        <label>
-          How do you currently plan your lessons?
-          <span class="label-pill">Select all that apply</span>
-        </label>
-      </div>
-      <div class="checkbox-group">
-        <label *ngFor="let o of planOptions" class="checkbox-card">
-          <input
-            type="checkbox"
-            (change)="toggleArray('plans', o)"
-            [checked]="isChecked('plans', o)"
-          />
-          <span class="checkmark"></span>
-          <span class="checkbox-text">{{ o }}</span>
-        </label>
-      </div>
-      <div class="field-error" *ngIf="surveyForm.get('plans')?.invalid && surveyForm.get('plans')?.touched">
-        Please select at least one option.
-      </div>
-    </div>
-
-    <!-- Q2 -->
-    <div class="form-group"
-         [class.has-error]="surveyForm.get('devices')?.invalid && surveyForm.get('devices')?.touched">
-      <div class="question-header">
-        <div class="question-number">2</div>
-        <label>
-          Which device do you use while creating lesson plans?
-          <span class="label-pill">Select all that apply</span>
-        </label>
-      </div>
-      <div class="checkbox-group">
-        <label *ngFor="let o of deviceOptions" class="checkbox-card">
-          <input
-            type="checkbox"
-            (change)="toggleArray('devices', o)"
-            [checked]="isChecked('devices', o)"
-          />
-          <span class="checkmark"></span>
-          <span class="checkbox-text">{{ o }}</span>
-        </label>
-      </div>
-      <div class="field-error" *ngIf="surveyForm.get('devices')?.invalid && surveyForm.get('devices')?.touched">
-        Please select at least one option.
-      </div>
-    </div>
-
-    <!-- Q3 -->
-    <div class="form-group"
-         [class.has-error]="surveyForm.get('weeklyLessonPlans')?.invalid && surveyForm.get('weeklyLessonPlans')?.touched">
-      <div class="question-header">
-        <div class="question-number">3</div>
-        <label>
-          How many lesson plans do you create in a week?
-          <span class="required-star">*</span>
-        </label>
-      </div>
-      <div class="select-wrapper">
-        <select formControlName="weeklyLessonPlans" class="form-control">
-          <option value="">Select</option>
-          <option *ngFor="let o of weeklyOptions" [value]="o">{{ o }}</option>
-        </select>
-        <div class="select-arrow">▼</div>
-      </div>
-      <div class="field-error" *ngIf="surveyForm.get('weeklyLessonPlans')?.invalid && surveyForm.get('weeklyLessonPlans')?.touched">
-        Please select how many lesson plans you create.
-      </div>
-    </div>
-
-    <!-- Q4 -->
-    <div class="form-group"
-         [class.has-error]="surveyForm.get('lessonPlanComponents')?.invalid && surveyForm.get('lessonPlanComponents')?.touched">
-      <div class="question-header">
-        <div class="question-number">4</div>
-        <label>
-          Which components do you include in your lesson plans?
-          <span class="label-pill">Select all that apply</span>
-        </label>
-      </div>
-      <div class="checkbox-group">
-        <label *ngFor="let o of componentOptions" class="checkbox-card">
-          <input
-            type="checkbox"
-            (change)="toggleArray('lessonPlanComponents', o)"
-            [checked]="isChecked('lessonPlanComponents', o)"
-          />
-          <span class="checkmark"></span>
-          <span class="checkbox-text">{{ o }}</span>
-        </label>
-      </div>
-      <div class="field-error" *ngIf="surveyForm.get('lessonPlanComponents')?.invalid && surveyForm.get('lessonPlanComponents')?.touched">
-        Please select at least one component.
-      </div>
-
-      <!-- Others input -->
-      <div class="other-input" *ngIf="showOtherLessonComponent">
-        <input
-          type="text"
-          class="form-control"
-          formControlName="otherLessonPlanComponent"
-          placeholder="Please specify other components"
-        />
-      </div>
-    </div>
-
-    <!-- Q5 -->
-    <div class="form-group"
-         [class.has-error]="surveyForm.get('timePerLessonPlan')?.invalid && surveyForm.get('timePerLessonPlan')?.touched">
-      <div class="question-header">
-        <div class="question-number">5</div>
-        <label>
-         On average, how much time do you spend creating a single lesson plan (including activities such as hands-on tasks, real-world examples, stories, and videos)?
-          <span class="required-star">*</span>
-        </label>
-      </div>
-      <div class="select-wrapper">
-        <select formControlName="timePerLessonPlan" class="form-control">
-          <option value="">Select</option>
-          <option *ngFor="let o of timeOptions" [value]="o">{{ o }}</option>
-        </select>
-        <div class="select-arrow">▼</div>
-      </div>
-      <div class="field-error" *ngIf="surveyForm.get('timePerLessonPlan')?.invalid && surveyForm.get('timePerLessonPlan')?.touched">
-        Please select an approximate time.
-      </div>
-
-      <!-- Others input -->
-      <div class="other-input" *ngIf="showOtherTimePerLessonPlan">
-        <input
-          type="text"
-          class="form-control"
-          formControlName="otherTimePerLessonPlan"
-          placeholder="Please specify the time taken"
-        />
-      </div>
-    </div>
-
-    <!-- Q6 -->
-    <div class="form-group"
-         [class.has-error]="surveyForm.get('resourcesUsed')?.invalid && surveyForm.get('resourcesUsed')?.touched">
-      <div class="question-header">
-        <div class="question-number">6</div>
-        <label>
-          Which resources do you use while planning?
-          <span class="label-pill">Select all that apply</span>
-        </label>
-      </div>
-      <div class="checkbox-group">
-        <label *ngFor="let o of resourceOptions" class="checkbox-card">
-          <input
-            type="checkbox"
-            (change)="toggleArray('resourcesUsed', o)"
-            [checked]="isChecked('resourcesUsed', o)"
-          />
-          <span class="checkmark"></span>
-          <span class="checkbox-text">{{ o }}</span>
-        </label>
-      </div>
-      <div class="field-error" *ngIf="surveyForm.get('resourcesUsed')?.invalid && surveyForm.get('resourcesUsed')?.touched">
-        Please select at least one resource.
-      </div>
-
-      <!-- Others input -->
-      <div class="other-input" *ngIf="showOtherResourceUsed">
-        <input
-          type="text"
-          class="form-control"
-          formControlName="otherResourceUsed"
-          placeholder="Please specify other resources"
-        />
-      </div>
-    </div>
-
-    <!-- Q7 -->
-    <div class="form-group"
-         [class.has-error]="surveyForm.get('timeForAssessments')?.invalid && surveyForm.get('timeForAssessments')?.touched">
-      <div class="question-header">
-        <div class="question-number">7</div>
-        <label>
-           On average, how much time do you spend creating assessments for each subject (Unit level, Formative Assessment, Summative Assessment)?
-          <span class="required-star">*</span>
-        </label>
-      </div>
-      <div class="select-wrapper">
-        <select formControlName="timeForAssessments" class="form-control">
-          <option value="">Select</option>
-          <option *ngFor="let o of assessOptions" [value]="o">{{ o }}</option>
-        </select>
-        <div class="select-arrow">▼</div>
-      </div>
-      <div class="field-error" *ngIf="surveyForm.get('timeForAssessments')?.invalid && surveyForm.get('timeForAssessments')?.touched">
-        Please select how much time you spend on assessments.
-      </div>
-
-      <!-- Others input -->
-      <div class="other-input" *ngIf="showOtherTimeForAssessments">
-        <input
-          type="text"
-          class="form-control"
-          formControlName="otherTimeForAssessments"
-          placeholder="Please specify the time spent on assessments"
-        />
-      </div>
-    </div>
-
-    <!-- NOTES -->
-    <div class="form-group">
-      <div class="question-header">
-        <div class="question-number">8</div>
-        <label>Other notes or comments (optional)</label>
-      </div>
-      <div class="textarea-wrapper">
-        <textarea
-          formControlName="otherNotes"
-          rows="3"
-          class="form-control"
-          placeholder="Anything else about your lesson planning process that you would like us to know?"
-        ></textarea>
-      </div>
-    </div>
-
-    <!-- ACTIONS -->
-    <div class="form-actions">
-      <button
-        mat-button
-        type="button"
-        (click)="onClose()"
-        [disabled]="submitting"
-        *ngIf="!data?.force"
-        class="btn-cancel"
-      >
-        Cancel
-      </button>
-      <button
-        mat-raised-button
-        color="primary"
-        type="submit"
-        [disabled]="surveyForm.invalid || submitting"
-        class="btn-submit"
-      >
-        <span *ngIf="!submitting">Submit Survey</span>
-        <mat-spinner *ngIf="submitting" diameter="20"></mat-spinner>
-      </button>
-    </div>
-
-    <!-- ERROR -->
-    <div *ngIf="error" class="error-message">
-      <mat-icon>error_outline</mat-icon>
-      <span>{{ error }}</span>
-    </div>
-  </form>
-</div>
 </div>

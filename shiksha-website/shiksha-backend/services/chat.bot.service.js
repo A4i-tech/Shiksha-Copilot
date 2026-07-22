@@ -24,24 +24,6 @@ catch (configError) {
 	logger.error('Error configuring axios-retry', { message: configError.message, stack: configError.stack });
 }
 
-async function postToChatBot(payload) {
-	const apiUrl = `${llmBaseUrl}/chat`;
-	try {
-		logger.info('Sending request to Chat Bot API');
-		const response = await axios.post(apiUrl, payload);
-
-		if (response.status !== 200) {
-			logger.warn(`Unexpected status code from Chat Bot: ${response.status}`);
-		}
-
-		logger.info('Request successful');
-		return response;
-	} catch (error) {
-		logger.error('Error in postToChatBot', { message: error.message, stack: error.stack });
-		throw error;
-	}
-}
-
 async function postToLessonChatBot(payload) {
 	const apiUrl = `${llmBaseUrl}/chat/lesson`;
 
@@ -56,13 +38,13 @@ async function postToLessonChatBot(payload) {
 		logger.info('Request successful');
 		return response;
 	} catch (error) {
-		logger.error('Error in postToChatBot', { message: error.message, stack: error.stack });
+		logger.error('Error in postToLessonChatBot', { message: error.message, stack: error.stack });
 		throw error;
 	}
 }
 
 async function postToChatBotStream(payload) {
-	const apiUrl = `${llmBaseUrl}/chat`;
+	const apiUrl = `${llmBaseUrl}/chat/general`;
 
 	try {
 		logger.info('Sending streaming request to Chat Bot API');
@@ -82,4 +64,4 @@ async function postToChatBotStream(payload) {
 	}
 }
 
-module.exports = { postToChatBot, postToLessonChatBot, postToChatBotStream };
+module.exports = { postToLessonChatBot, postToChatBotStream };

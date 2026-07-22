@@ -10,11 +10,13 @@ import shutil
 import logging
 import tempfile
 from abc import ABC, abstractmethod
-from typing import List, Optional, TypeVar, Union
+from typing import List, Optional, TypeVar, Union, overload
 from app.config import settings
 from app.utils.blob_store import BlobStore
 from pydantic import BaseModel
 from rag_wrapper import InMemRagOps, QdrantRagOps
+from llama_index.core.base.response.schema import RESPONSE_TYPE
+from llama_index.core.chat_engine.types import AgentChatResponse
 from llama_index.llms.openai import OpenAIResponses
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.llms import ChatMessage
@@ -76,26 +78,16 @@ class BaseRagAdapter(ABC):
             raise RuntimeError("RAG adapter not initialized. Call initialize() first.")
         return self._rag_ops
 
-    async def chat_with_index(
-        self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] | None = None
-    ) -> dict:
-        """
-        Chat with the RAG index.
+    @overload
+    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: None = None) -> AgentChatResponse:
+        ...
 
-        Args:
-            curr_message: Current user message
-            chat_history: List of previous chat messages
+    @overload
+    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] = ...) -> RESPONSE_TYPE:
+        ...
 
-        Returns:
-            dict: Contains 'response' (str) and 'source_nodes' (list) from the RAG system
-        """
-        result = await self.rag_ops.chat_with_index(
-            curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls
-        )
-        # result is the full LlamaIndex AgentChatResponse object
-        response_text = result.response if hasattr(result, 'response') else str(result)
-        source_nodes = getattr(result, 'source_nodes', [])
-        return {"response": response_text, "source_nodes": source_nodes}
+    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] | None = None) -> AgentChatResponse | RESPONSE_TYPE:
+        return await self.rag_ops.chat_with_index(curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls)
 
     async def index_exists(self) -> bool:
         """Check if the index exists."""

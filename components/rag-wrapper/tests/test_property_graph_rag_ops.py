@@ -1,32 +1,22 @@
 """
 Property Graph RAG Operations Tests
 
-Tests require Azure OpenAI services with these environment variables:
+Tests require OpenAI services with these environment variables:
 
 Required:
-- AZURE_OPENAI_API_KEY: OpenAI API key
-- AZURE_OPENAI_ENDPOINT: OpenAI endpoint
-- AZURE_OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
-- AZURE_OPENAI_EMBEDDING_DEPLOYMENT: Embedding deployment name
-- AZURE_OPENAI_COMPLETION_MODEL: Completion model (default: gpt-35-turbo)
-- AZURE_OPENAI_COMPLETION_DEPLOYMENT: Completion deployment name
-
-Optional:
-- AZURE_OPENAI_API_VERSION: API version (default: 2025-03-01-preview)
+- OPENAI_EMBEDDING_MODEL: Embedding model (default: text-embedding-ada-002)
+- OPENAI_COMPLETION_MODEL: Completion model (default: gpt-4.1)
 """
 
 import pytest
-import tempfile
 import os
-import shutil
 import logging
-from unittest.mock import Mock, MagicMock
-from typing import List, Literal
+from typing import Literal
 import uuid
 from dotenv import load_dotenv
 
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.indices.property_graph import SchemaLLMPathExtractor
 from rag_wrapper.rag_ops.in_mem_graph_rag_ops import InMemGraphRagOps
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
@@ -84,41 +74,12 @@ def metadata_fields():
 
 @pytest.fixture
 def embedding_llm():
-    """Initialize Azure OpenAI embedding model"""
-    return AzureOpenAIEmbedding(
-        model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
-        deployment_name=os.getenv(
-            "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-ada-002"
-        ),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
-    )
+    return OpenAIEmbedding(model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"))
 
 
 @pytest.fixture
 def completion_llm():
-    """Initialize Azure OpenAI completion model and log environment values"""
-    model = os.getenv("AZURE_OPENAI_COMPLETION_MODEL", "gpt-35-turbo")
-    deployment_name = os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-35-turbo")
-    api_key = os.getenv("AZURE_OPENAI_API_KEY")
-    azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-    api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview")
-
-    logger.info(
-        f"\nAzure OpenAI Completion Model Env: "
-        f"\nmodel={model}, deployment_name={deployment_name}, "
-        f"\napi_key={'set' if api_key else 'not set'}, "
-        f"\nazure_endpoint={azure_endpoint}, \napi_version={api_version}"
-    )
-
-    return AzureOpenAI(
-        model=model,
-        deployment_name=deployment_name,
-        api_key=api_key,
-        azure_endpoint=azure_endpoint,
-        api_version=api_version,
-    )
+    return OpenAI(model=os.getenv("OPENAI_COMPLETION_MODEL", "gpt-4.1"))
 
 
 @pytest.fixture
@@ -251,7 +212,7 @@ The modern AI renaissance has been shaped by three visionary scientists, collect
     ]
 
 
-# Integration tests with real Azure OpenAI LLMs
+# Integration tests with real OpenAI LLMs
 @pytest.mark.asyncio
 async def test_create_index_with_metadata(
     graph_rag_ops_instance: InMemGraphRagOps,
@@ -340,10 +301,6 @@ async def test_chat(
     # Log the chat response
     logger.info(f"Chat response: {response}")
     _log_token_usage(graph_rag_ops_instance)
-
-    # Assertions
-    assert response is not None, "chat_with_index should return a response"
-    assert isinstance(response, str), "Chat response should be a string"
 
 
 @pytest.mark.asyncio

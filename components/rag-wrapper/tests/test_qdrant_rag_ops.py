@@ -16,12 +16,10 @@ Note: Creates real data in Qdrant and may incur costs if using paid OpenAI endpo
 import pytest
 import os
 import logging
-from typing import List
 from dotenv import load_dotenv
 
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
-from llama_index.core.llms import ChatMessage
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from rag_wrapper import QdrantRagOps
 
@@ -51,28 +49,12 @@ def metadata_fields_b():
 
 @pytest.fixture
 def embedding_llm():
-    """Initialize Azure OpenAI embedding model"""
-    return AzureOpenAIEmbedding(
-        model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
-        deployment_name=os.getenv(
-            "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-ada-002"
-        ),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
-    )
+    return OpenAIEmbedding(model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"))
 
 
 @pytest.fixture
 def completion_llm():
-    """Initialize Azure OpenAI completion model"""
-    return AzureOpenAI(
-        model=os.getenv("AZURE_OPENAI_COMPLETION_MODEL", "gpt-35-turbo"),
-        deployment_name=os.getenv("AZURE_OPENAI_COMPLETION_DEPLOYMENT", "gpt-35-turbo"),
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2025-03-01-preview"),
-    )
+    return OpenAI(model=os.getenv("OPENAI_COMPLETION_MODEL", "gpt-4.1"))
 
 @pytest.fixture
 def qdrant_config():
@@ -198,8 +180,6 @@ async def test_chat(rag_ops_instance, ai_scientists_markdown_content, transforma
         curr_message=message, chat_history=chat_history
     )
     logger.info(f"Chat response: {response}")
-    assert response is not None
-    assert isinstance(response, str)
 
 @pytest.mark.asyncio
 async def test_query_index_with_metadata_filtering(

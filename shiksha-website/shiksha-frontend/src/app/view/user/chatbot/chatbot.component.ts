@@ -5,7 +5,7 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 import { SidebarService } from 'src/app/layout/sidebar/sidebar.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TranslateModule } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ProfileImageComponent } from 'src/app/shared/components/profile-image/profile-image.component';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -91,7 +91,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     public sidebarService: SidebarService,
     private activatedRoute: ActivatedRoute,
     private router: Router,
-    public modalService: ModalService
+    public modalService: ModalService,
+    private translateService: TranslateService
   ) {
     this.typeSubscription = this.activatedRoute.data.subscribe((data: any) => {
       this.type = data.type;
@@ -157,6 +158,27 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.messages = res.data.messages;
         this.isLoading = false;
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.utilityService.handleError(err);
+      },
+    });
+  }
+
+  restartGeneralChat() {
+    if (!confirm(this.translateService.instant('Start a new chat? Your current conversation will be closed.'))) {
+      return;
+    }
+
+    this.isLoading = true;
+    this.chatbotService.restartGeneralChat().subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.messages = [];
+        this.chatValue = null;
+        this.loadingStatus = '';
+        this.utilityService.showSuccess(this.translateService.instant('New chat started'));
       },
       error: (err) => {
         this.isLoading = false;

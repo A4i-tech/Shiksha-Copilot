@@ -1,99 +1,171 @@
 
-
 const BaseManager = require('./base.manager');
 const formatApiResponse = require('../helper/response');
 const BaselineSurveyDao = require('../dao/baselineSurvey.dao');
+const BaselineSurveyReminderDao = require('../dao/baselineSurveyReminder.dao');
 const { getAcademicYear } = require('../helper/academic.year.helper');
+const { MAX_REMIND_LATER } = require('../config/constants');
+const logger = require('../config/loggers');
+
+/**
+ * Helper: if the array contains 'Other' and there is a corresponding
+ * text value, replace the 'Other' entry with 'Other: <text>'.
+ */
+const mergeOthers = (arr, otherText) => {
+  if (!Array.isArray(arr)) return [];
+  if (!otherText) return arr;
+  return arr.map(v => (v === 'Other' ? `Other: ${otherText.trim()}` : v));
+};
+
+/**
+ * Helper: for single-select radio fields that support an 'Other' option,
+ * replace the value with the free-text entry when selected.
+ */
+const resolveOther = (value, otherText) =>
+  value === 'Other' && otherText ? otherText.trim() : value;
 
 class BaselineSurveyManager extends BaseManager {
   constructor() {
     const dao = new BaselineSurveyDao();
     super(dao);
     this.dao = dao;
-    this.baselineSurvey = process.env.BASELINE_SURVEY === 'true';
+    this.reminderDao = new BaselineSurveyReminderDao();
+  }
+
+  /**
+   * Get the remind-later count for a user.
+   * DB errors propagate to the caller — they must NOT be swallowed.
+   */
+  async getRemindLaterCount(userId, academicYear) {
+    return this.reminderDao.getCount(userId, academicYear);
   }
 
   async checkCompleted(userId) {
     try {
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
-      if (!this.baselineSurvey) return formatApiResponse(true, 'OK', { completed: true });
+
       const academicYear = getAcademicYear();
       const exists = await this.dao.existsByUser(userId, academicYear);
-      return formatApiResponse(true, 'OK', { completed: !!exists, academicYear });
+      const remindLaterCount = await this.getRemindLaterCount(userId, academicYear);
+
+      return formatApiResponse(true, 'OK', {
+        completed: !!exists,
+        academicYear,
+        remindLaterCount,
+        isMandatory: remindLaterCount >= MAX_REMIND_LATER,
+        maxReminders: MAX_REMIND_LATER,
+      });
     } catch (err) {
-      console.error('BaselineSurveyManager.checkCompleted', err);
+      logger.error('checkCompleted failed', { functionName: 'checkCompleted', userId, message: err.message, stack: err.stack });
+      return formatApiResponse(false, 'Server error', null);
+    }
+  }
+
+  async incrementRemindLater(userId, session = null) {
+    try {
+      if (!userId) return formatApiResponse(false, 'Missing userId', null);
+
+      const academicYear = getAcademicYear();
+
+      // Guard: do not mutate reminder records for users who already submitted
+      const alreadyCompleted = await this.dao.existsByUser(userId, academicYear);
+      if (alreadyCompleted) {
+        const remindLaterCount = await this.getRemindLaterCount(userId, academicYear);
+        return formatApiResponse(true, 'Survey already completed', {
+          remindLaterCount,
+          isMandatory: remindLaterCount >= MAX_REMIND_LATER,
+          completed: true,
+        });
+      }
+
+      // Ceiling: do not increment past the maximum
+      const currentCount = await this.getRemindLaterCount(userId, academicYear);
+      if (currentCount >= MAX_REMIND_LATER) {
+        return formatApiResponse(true, 'Maximum reminders reached', {
+          remindLaterCount: currentCount,
+          isMandatory: true,
+        });
+      }
+
+      const rec = await this.reminderDao.increment(userId, academicYear, session);
+
+      return formatApiResponse(true, 'Remind later recorded', {
+        remindLaterCount: rec.remindLaterCount,
+        isMandatory: rec.remindLaterCount >= MAX_REMIND_LATER,
+      });
+    } catch (err) {
+      logger.error('incrementRemindLater failed', { functionName: 'incrementRemindLater', userId, message: err.message, stack: err.stack });
       return formatApiResponse(false, 'Server error', null);
     }
   }
 
   async submitSurvey(userId, body, session = null) {
     try {
-      if (!this.baselineSurvey) return formatApiResponse(false, 'Survey is disabled', null);
       if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
       const academicYear = getAcademicYear();
       const already = await this.dao.findByUser(userId, academicYear);
-      if (already) return formatApiResponse(false, 'Already submitted for this academic year', null);
+      if (already) return formatApiResponse(false, 'Already submitted for this academic year', null, 'ALREADY_SUBMITTED');
 
-      // ---- NORMALIZE ARRAYS ----
-      const plans = Array.isArray(body.plans) ? body.plans : [];
-      const devices = Array.isArray(body.devices) ? body.devices : [];
-      let lessonPlanComponents = Array.isArray(body.lessonPlanComponents)
-        ? body.lessonPlanComponents
-        : [];
-      let resourcesUsed = Array.isArray(body.resourcesUsed) ? body.resourcesUsed : [];
+      // ---- Q1: plans (multi-select) ----
+      const plans = mergeOthers(body.plans, body.plansOther);
 
-      const otherLessonPlanComponent = (body.otherLessonPlanComponent || '').trim();
-      const otherResourceUsed = (body.otherResourceUsed || '').trim();
+      // ---- Q2: devices (multi-select) ----
+      const devices = mergeOthers(body.devices, body.devicesOther);
 
-      // If user typed "Others" for components, store it as "Others: <text>"
-      if (otherLessonPlanComponent) {
-        // remove bare "Others" from array if present
-        lessonPlanComponents = lessonPlanComponents.filter(v => v !== 'Others');
-        lessonPlanComponents.push(`Others: ${otherLessonPlanComponent}`);
-      }
+      // ---- Q3: weeklyLessonPlans (single) ----
+      const weeklyLessonPlans = body.weeklyLessonPlans || '';
 
-      // If user typed "Others" for resources, store it as "Others: <text>"
-      if (otherResourceUsed) {
-        resourcesUsed = resourcesUsed.filter(v => v !== 'Others');
-        resourcesUsed.push(`Others: ${otherResourceUsed}`);
-      }
+      // ---- Q4: lessonPlanComponents (multi-select) ----
+      const lessonPlanComponents = mergeOthers(
+        body.lessonPlanComponents,
+        body.otherLessonPlanComponent || body.lessonPlanComponentsOther
+      );
 
-      // ---- NORMALIZE TIME FIELDS ----
-      let timePerLessonPlan = body.timePerLessonPlan || '';
-      let timeForAssessments = body.timeForAssessments || '';
+      // ---- Q5: timePerLessonPlan (radio) ----
+      const timePerLessonPlan = resolveOther(
+        body.timePerLessonPlan || '',
+        body.otherTimePerLessonPlan || body.timePerLessonPlanOther
+      );
 
-      const otherTimePerLessonPlan = (body.otherTimePerLessonPlan || '').trim();
-      const otherTimeForAssessments = (body.otherTimeForAssessments || '').trim();
+      // ---- Q6: resourcesUsed (multi-select) ----
+      const resourcesUsed = mergeOthers(
+        body.resourcesUsed,
+        body.otherResourceUsed || body.resourcesUsedOther
+      );
 
-      // If dropdown value is "Others" and text is given, replace it with the text
-      if (timePerLessonPlan === 'Others' && otherTimePerLessonPlan) {
-        timePerLessonPlan = otherTimePerLessonPlan;
-      }
+      // ---- Q7: timeForAssessments (radio) ----
+      const timeForAssessments = resolveOther(
+        body.timeForAssessments || '',
+        body.otherTimeForAssessments || body.timeForAssessmentsOther
+      );
 
-      if (timeForAssessments === 'Others' && otherTimeForAssessments) {
-        timeForAssessments = otherTimeForAssessments;
-      }
+      // ---- Q8: questionBalance (multi-select) ----
+      const questionBalance = mergeOthers(body.questionBalance, body.questionBalanceOther);
+
+      // ---- Q9: additional comments ----
+      const otherNotes = body.otherNotes || '';
 
       const payload = {
         userId,
         academicYear,
         plans,
         devices,
-        weeklyLessonPlans: body.weeklyLessonPlans || '',
+        weeklyLessonPlans,
         lessonPlanComponents,
         timePerLessonPlan,
         resourcesUsed,
         timeForAssessments,
-        otherNotes: body.otherNotes || '',
+        questionBalance,
+        otherNotes,
       };
 
       const doc = await this.dao.createSurvey(payload, session);
       return formatApiResponse(true, 'Survey submitted', doc);
     } catch (err) {
-      console.error('BaselineSurveyManager.submitSurvey', err);
+      logger.error('submitSurvey failed', { functionName: 'submitSurvey', userId, message: err.message, stack: err.stack });
       if (err && err.code === 11000) {
-        return formatApiResponse(false, 'Already submitted for this academic year', null);
+        return formatApiResponse(false, 'Already submitted for this academic year', null, 'ALREADY_SUBMITTED');
       }
       return formatApiResponse(false, 'Server error', null);
     }

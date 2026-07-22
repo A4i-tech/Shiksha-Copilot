@@ -13,8 +13,9 @@ class ChatDao extends BaseDao {
         try {
             return await Chat.findOne({
                 userId: new ObjectId(userId),
-                sessionDate: date
-            })
+                sessionDate: date,
+                endedAt: null,
+            }).sort({ createdAt: -1 })
         } catch (err) {
             throw new Error('Error retrieving active session: ' + err.message);
         }
@@ -80,6 +81,31 @@ class ChatDao extends BaseDao {
             return await Message.findOne({ chatHistoryId });
         } catch (err) {
             throw new Error(`Failed to get messages by date for chat session: ${err.message}`);
+        }
+    }
+
+    async endSession(chatSessionId) {
+        try {
+            return await Chat.findByIdAndUpdate(chatSessionId, { endedAt: new Date() });
+        } catch (err) {
+            throw new Error(`Failed to end chat session: ${err.message}`);
+        }
+    }
+
+    async getRequestCount(userId, fromDate, toDate) {
+        try {
+            const [result] = await Chat.aggregate([
+                {
+                    $match: {
+                        userId: new ObjectId(userId),
+                        sessionDate: { $gte: fromDate, $lte: toDate },
+                    },
+                },
+                { $group: { _id: null, count: { $sum: "$requestCount" } } },
+            ]);
+            return result ? result.count : 0;
+        } catch (err) {
+            throw new Error(`Failed to count chat requests: ${err.message}`);
         }
     }
 

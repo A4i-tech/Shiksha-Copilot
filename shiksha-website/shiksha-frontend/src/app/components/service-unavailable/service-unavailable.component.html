@@ -1,0 +1,22 @@
+<div class="fixed bg-shade-50 w-full h-12 service-unavailable-header">
+  <div class="flex items-center gap-4 mt-3 ml-3">
+    <img class="logo" src="assets/images/logo.svg" alt="" />
+  </div>
+</div>
+
+<div class="service-unavailable-wrapper p-4 min-h-screen flex items-center justify-center">
+  <div class="w-[90%] md:w-1/2 text-center">
+    <h1 class="text-4xl text-content mb-4">503</h1>
+    <h2 class="font-bold text-primary mb-4">Service Unavailable</h2>
+    <p class="text-content-70 mb-8">
+      We're having trouble reaching our servers right now. Please check again after some time.
+    </p>
+    <button
+      type="button"
+      class="px-6 py-4 bg-primary text-white rounded"
+      (click)="retry()"
+    >
+      Retry
+    </button>
+  </div>
+</div>

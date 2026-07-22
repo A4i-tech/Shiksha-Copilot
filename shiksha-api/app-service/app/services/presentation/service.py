@@ -9,6 +9,7 @@ import pathlib
 from datetime import datetime
 from typing import Any
 
+from langfuse import get_client, observe, propagate_attributes
 from pptx import presentation
 
 from app.config import settings
@@ -123,6 +124,14 @@ class PresentationService:
 
 
     async def _run_job(self, job: JobDetail):
+        langfuse = get_client()
+        trace_id = langfuse.create_trace_id(seed=f"presentation:{job.id}")
+        with langfuse.start_as_current_observation(as_type="span", name=job.status, input=job, trace_context={"trace_id": trace_id}):
+            with propagate_attributes(trace_name="Shiksha-Presentation", user_id=job.user_id, session_id=f"pres-{job.id}", metadata={"tags": ",".join(job.tags)}):
+                await self._actually_run_job(job)
+
+
+    async def _actually_run_job(self, job: JobDetail):
         if job.status == "init":
             await self.jobs.update(job.id, {"status": "extracting_figures", "message": "Extracting figures from textbook"})
         elif job.status == "extracting_figures":

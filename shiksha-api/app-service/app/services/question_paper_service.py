@@ -1,7 +1,7 @@
 from collections import defaultdict
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
-from app.utils.utils import local_unique_id, new_rag_embed, new_rag_llm
+from app.utils.utils import local_unique_id
 from pydantic import Field, create_model
 import yaml
 import asyncio
@@ -10,12 +10,14 @@ from typing import List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from openai.types import ResponsesModel
-from langfuse import observe, get_client
-from langfuse.openai import AsyncAzureOpenAI  # noqa: F401 — enables langfuse auto-tracing; test asserts this import
+from langfuse import observe, propagate_attributes
+from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
-from llama_index.core.llms import ChatMessage
+from llama_index.core.llms import ChatMessage, MessageRole
+from llama_index.core.base.response.schema import PydanticResponse
+from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.llms.openai import OpenAIResponses
 
 # 3. Import only the Factory and Base Adapter
 from app.services.rag_adapters import BaseRagAdapter
@@ -44,21 +46,13 @@ GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
 
 
 class QuestionPaperService:
-    """Service for handling question paper generation using Azure OpenAI."""
+    """Service for handling question paper generation using OpenAI."""
 
-    chat_deployment: ResponsesModel
     def __init__(self):
-        self.client = AsyncAzureOpenAI(
-            api_key=settings.azure_openai_api_key,
-            api_version=settings.azure_openai_api_version,
-            azure_endpoint=settings.azure_openai_endpoint,
-        )
-        if settings.azure_openai_deployment_name is None:
-            raise RuntimeError("OpenAI deployment model must be specified")
-        self.chat_deployment = settings.azure_openai_deployment_name
-        self.embedding_deployment = settings.azure_openai_embed_model
-
-        # Load YAML prompts
+        self.client = AsyncOpenAI()
+        self._rag_llm = OpenAIResponses(model=settings.question_paper_model)
+        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
+        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
         self.max_questions_per_slot = 20
@@ -66,9 +60,6 @@ class QuestionPaperService:
 
 
     async def __aenter__(self):
-        self._rag_llm = new_rag_llm()
-        self._rag_embed = new_rag_embed()
-        self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         return self
 
 
@@ -186,7 +177,7 @@ class QuestionPaperService:
     async def _generate_questions_batch(self, system_prompt: str, request: QuestionBankPartsGenerationRequest, existing_questions: list[str], record: _LearningRecord, slot: list[GenerationSlot], rag_adapter: Optional[BaseRagAdapter]) -> list[GeneratedSlotQuestion]:
         """
         Generate questions for a batch of slots.
-        Uses RAG Adapter if available, otherwise uses direct Azure OpenAI call.
+        Uses RAG Adapter if available, otherwise uses direct OpenAI call.
         """
 
         # Format learning outcomes for this specific unit
@@ -215,24 +206,12 @@ class QuestionPaperService:
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 
-        get_client().update_current_span(
-            input={"system_prompt": system_prompt, "user_message": user_message},
-            metadata={
-                "unit_name": record.title,
-                "question_types": [t.type.value for _, t, _ in slot],
-                "slot_count": len(slot),
-                "model": self.chat_deployment,
-                "rag_enabled": rag_adapter is not None,
-                "index_path": record.index_path,
-            },
-        )
-
         try:
             if not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
                 response = await self.client.responses.parse(
-                    model=self.chat_deployment,
+                    model=settings.question_paper_model,
                     instructions=system_prompt,
                     input=user_message,
                     text_format=response_format,
@@ -244,15 +223,19 @@ class QuestionPaperService:
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")
-                chat_history = [ChatMessage(role="system", content=system_prompt)]
-                response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
-                items = response_format.model_validate(response_content["response"])
+                chat_history = [ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)]
+                with propagate_attributes(metadata={
+                    "unit_name": record.title,
+                    "question_types": ", ".join(t.type.value for _, t, _ in slot),
+                    "slot_count": str(len(slot)),
+                    "model": settings.question_paper_model,
+                    "rag_enabled": "true" if rag_adapter is not None else "false",
+                    "index_path": record.index_path,
+                }):
+                    response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
+                    assert isinstance(response_content, PydanticResponse)
+                items = response_content.response
         except Exception as e:
-            get_client().update_current_span(
-                level="ERROR",
-                status_message=f"{type(e).__name__}: {e}",
-                output={"items_count": 0},
-            )
             logger.exception(e)
             return []
 
@@ -338,7 +321,8 @@ class QuestionPaperService:
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
         all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
-        get_client().update_current_trace(
+        all_generated: list[GeneratedSlotQuestion] = []
+        with propagate_attributes(
             user_id=request.user_id,
             session_id=request.session_id,
             tags=[
@@ -349,30 +333,28 @@ class QuestionPaperService:
             ],
             metadata={
                 "board": request.board,
-                "grade": request.grade,
+                "grade": str(request.grade),
                 "subject": request.subject,
                 "medium": request.medium,
-                "chapters": [ch.title for ch in request.chapters],
-                "learning_outcomes": all_los,
-                "question_types": [t.type.value for t in request.template],
-                "total_marks": request.total_marks,
-                "model": getattr(self, "chat_deployment", None),
+                "chapters": ", ".join(ch.title for ch in request.chapters),
+                "learning_outcomes": ", ".join(all_los),
+                "question_types": ", ".join(t.type.value for t in request.template),
+                "total_marks": str(request.total_marks),
+                "model": settings.question_paper_model,
             },
-        )
+        ):
+            existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
+            tasks = []
+            for lr, questions in self._build_generation_slots(request):
+                logger.debug(f"[SLOT_PROCESSING] unit='{lr.title}' | index_path='{lr.index_path}'")
+                system_prompt = self._format_system_prompt(request, lr, questions)
+                tasks.append(self._generate_questions_batch_async(system_prompt, request, existing_flat, lr, questions))
 
-        existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
-        tasks = []
-        for lr, questions in self._build_generation_slots(request):
-            logger.debug(f"[SLOT_PROCESSING] unit='{lr.title}' | index_path='{lr.index_path}'")
-            system_prompt = self._format_system_prompt(request, lr, questions)
-            tasks.append(self._generate_questions_batch_async(system_prompt, request, existing_flat, lr, questions))
+            if not tasks:
+                raise ValueError("No generation slots could be built from template/distribution.")
 
-        if not tasks:
-            raise ValueError("No generation slots could be built from template/distribution.")
-
-        all_generated: list[GeneratedSlotQuestion] = []
-        for raw_items in await asyncio.gather(*tasks):
-            all_generated.extend(raw_items)
+            for raw_items in await asyncio.gather(*tasks):
+                all_generated.extend(raw_items)
 
         response_questions = self._organize_questions_into_response(request, all_generated)
         return QuestionBankResponse(metadata=QuestionBankMetadata(

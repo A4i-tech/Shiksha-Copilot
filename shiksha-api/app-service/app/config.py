@@ -22,30 +22,12 @@ class Settings(BaseSettings):
     # Logging Configuration
     log_level: str = "INFO"
 
-    # Application Environment
-    app_env: str = Field(default="local", alias="APP_ENV")
-
-    @field_validator("app_env", mode="before")
-    @classmethod
-    def normalize_app_env(cls, v: str) -> str:
-        return v.lower()
-
-    # Langfuse Configuration (optional — no-op when absent)
-    langfuse_secret_key: Optional[str] = Field(default=None, alias="LANGFUSE_SECRET_KEY")
-    langfuse_public_key: Optional[str] = Field(default=None, alias="LANGFUSE_PUBLIC_KEY")
-    langfuse_host: Optional[str] = Field(default=None, alias="LANGFUSE_HOST")
-
-    # Azure OpenAI Configuration
-    azure_openai_api_key: Optional[str] = None
-    azure_openai_endpoint: Optional[str] = None
-    azure_openai_api_version: Optional[str] = None
-    azure_openai_deployment_name: Optional[str] = None
-    azure_openai_embed_model: Optional[str] = None
-    azure_chat_deployment_name : Optional[str] = None
-
-    # Azure AI Project Configuration
-    azure_project_endpoint: Optional[str] = None
-    azure_bing_grounding_connection_id: Optional[str] = None
+    # LLM Configuration
+    openai_api_key: str = Field(min_length=1)
+    embed_model: str = "text-embedding-ada-002"
+    general_chat_model: str = "gpt-4.1"
+    lesson_chat_model: str = "gpt-4.1"
+    question_paper_model: str = "gpt-4.1"
 
     # Blob Store Configuration
     blob_store_connection_string: Optional[str] = None

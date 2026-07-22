@@ -2,16 +2,14 @@ from datetime import datetime
 import json
 import azure.functions as func
 import azure.durable_functions as df
+from langfuse import get_client
 
 from core.models.requests import LessonPlanGenerationInput
 from core.models.status_webhook import GenStatus, StatusEnum, WebhookPoster
 from core.logger import LoggerFactory
-from core.observability.langfuse_setup import init_langfuse
-from core.config import Config
 
 # Get logger for this module
 logger = LoggerFactory.get_function_logger("LessonPlanHttpTrigger")
-_langfuse = init_langfuse(app_env=Config.APP_ENV)
 
 
 async def main(
@@ -49,24 +47,17 @@ async def main(
             input_data = LessonPlanGenerationInput.model_validate(req.get_json())
             # Start the orchestration asynchronously for regular mode
             client = df.DurableOrchestrationClient(starter)
-            if _langfuse is not None:
-                with _langfuse.start_as_current_span(
-                    name="Shiksha-LP",
-                    input=input_data.model_dump(by_alias=True),
-                ) as span:
-                    _langfuse.update_current_trace(
-                        user_id=input_data.user_id,
-                        tags=["flow:lesson-plan"],
-                    )
-                    instance_id = await client.start_new(
-                        "LessonPlanOrchestrator", None, input_data.model_dump(by_alias=True)
-                    )
-                    span.update(output={"instance_id": instance_id, "status": "started"})
-                _langfuse.flush()
-            else:
+            _langfuse = get_client()
+            with _langfuse.start_as_current_span(
+                name="Shiksha-LP",
+                input=input_data.model_dump(by_alias=True),
+            ) as span:
+                span.update_trace(user_id=input_data.user_id, tags=["flow:lesson-plan"])
                 instance_id = await client.start_new(
                     "LessonPlanOrchestrator", None, input_data.model_dump(by_alias=True)
                 )
+                span.update(output={"instance_id": instance_id, "status": "started"})
+            _langfuse.flush()
 
             # Post initial status to webhook
             webhook_poster = WebhookPoster()
