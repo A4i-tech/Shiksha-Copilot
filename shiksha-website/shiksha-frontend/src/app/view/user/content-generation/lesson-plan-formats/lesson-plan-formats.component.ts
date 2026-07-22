@@ -1,4 +1,5 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { ContentGenerationService } from '../content-generation.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { buildDiffParts, toSplitDiff, SplitDiffRow, UnifiedDiffLine } from 'src/app/shared/utility/ai-diff.util';
@@ -8,7 +9,7 @@ import { buildDiffParts, toSplitDiff, SplitDiffRow, UnifiedDiffLine } from 'src/
   templateUrl: './lesson-plan-formats.component.html',
   styleUrls: ['./lesson-plan-formats.component.scss'],
 })
-export class LessonPlanFormatsComponent {
+export class LessonPlanFormatsComponent implements OnChanges, OnDestroy {
   @Input() sections: any[] = [];
   @Input() editMode: any[] = [];
   @Input() planId: any;
@@ -25,6 +26,7 @@ export class LessonPlanFormatsComponent {
   aiSplitDiff: SplitDiffRow[][] = [];
   aiLoading: boolean[] = [];
   splitView = false;
+  private pendingSubs: Subscription[] = [];
 
   toggleSplitView() {
     this.splitView = !this.splitView;
@@ -34,6 +36,23 @@ export class LessonPlanFormatsComponent {
     private contentGenService: ContentGenerationService,
     private utilityService: UtilityService
   ) {}
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['sections']) {
+      this.aiMode = [];
+      this.aiPrompt = [];
+      this.aiProposed = [];
+      this.aiDiff = [];
+      this.aiSplitDiff = [];
+      this.aiLoading = [];
+      this.pendingSubs.forEach((s) => s.unsubscribe());
+      this.pendingSubs = [];
+    }
+  }
+
+  ngOnDestroy() {
+    this.pendingSubs.forEach((s) => s.unsubscribe());
+  }
 
   setEditMode(i: any) {
     this.editMode[i] = true;
@@ -70,7 +89,7 @@ export class LessonPlanFormatsComponent {
       return;
     }
     this.aiLoading[i] = true;
-    this.contentGenService
+    const sub = this.contentGenService
       .sectionAiEdit({
         lessonId: this.planId,
         isLesson: this.isLesson,
@@ -93,6 +112,7 @@ export class LessonPlanFormatsComponent {
           this.utilityService.handleError(err);
         },
       });
+    this.pendingSubs.push(sub);
   }
 
   rejectDiff(i: number) {

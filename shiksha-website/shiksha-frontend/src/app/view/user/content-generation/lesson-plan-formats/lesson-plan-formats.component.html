@@ -39,7 +39,9 @@
     </div>
 
     <!-- AI enhance (per-section) -->
-    <div class="ai-enhance mb-4" *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive">
+    <div class="ai-enhance mb-4"
+      [hasPermission]="['power']"
+      *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive">
       <div *ngIf="!aiMode[i]">
         <button class="btn-primary flex gap-2 items-center" (click)="startAiPrompt(i)">
           <img src="assets/icons/ai-logo.svg" alt="" />{{ 'Enhance' | translate }}

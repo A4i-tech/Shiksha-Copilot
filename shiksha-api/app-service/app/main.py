@@ -13,6 +13,8 @@ from app.config import settings
 from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router, lesson_plan_router
 from langfuse import get_client
 
+logger = logging.getLogger(__name__)
+
 mcp = FastMCP(
     name=settings.app_name,
     instructions="AI-powered educational chat API for Shiksha platform",
@@ -94,7 +96,7 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    logging.getLogger(__name__).error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=exc)
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=exc)
     return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 

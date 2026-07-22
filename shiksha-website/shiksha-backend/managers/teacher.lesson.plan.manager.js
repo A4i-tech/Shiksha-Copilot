@@ -13,8 +13,7 @@ const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
 const {
 	formatTemplate,
-	formatSections,
-	convertToCamelCase
+	formatSections
 } = require("../helper/formatter");
 const { REGENERATION_LIMIT } = require("../config/constants.js");
 const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");

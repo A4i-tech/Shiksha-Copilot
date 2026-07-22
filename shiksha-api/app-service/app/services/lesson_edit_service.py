@@ -79,7 +79,8 @@ class LessonEditService:
 
     def _prompt(self, key: str) -> str:
         prompt = self._prompts.get_prompt(key)
-        assert prompt is not None, f"Missing '{key}' prompt in lesson_edit_prompts.yaml"
+        if prompt is None:
+            raise RuntimeError(f"Missing '{key}' prompt in lesson_edit_prompts.yaml")
         return prompt
 
     async def _read_chapter(self, index_path: str, query: str) -> str:
@@ -128,7 +129,11 @@ class LessonEditService:
             if not calls:
                 break
 
-            assert index_path is not None  # tools are only attached when index_path is set
+            if index_path is None:
+                raise RuntimeError(
+                    "Model returned function_call items but no index_path was provided; "
+                    "tools should only be attached when index_path is set."
+                )
 
             tool_outputs = []
             for call in calls:

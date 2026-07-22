@@ -44,6 +44,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   otpInputConfig: NgOtpInputConfig = {
     length: 4,
     allowNumbersOnly:true,
+    inputMode:'numeric',
     isPasswordInput:true,
     inputStyles:{
       'width': '35px',
