@@ -20,12 +20,16 @@ class QuestionBankPage:
         self.template_table = page.locator("table[aria-label='question-configuration-list']")
         self.template_warning_msg = page.locator(".text-warn", has_text="Total Template Marks")
 
+        # --- Step 3->4 nav & Step 4 Preview Elements ---
+        self.preview_questions_btn = page.locator("button.btn-primary:has-text('Preview Questions')")
+        self.preview_sections = page.locator(".section-drag")
+
     def navigate_to_wizard(self, base_url: str):
-        self.page.goto(f"{base_url}/#/user/question-paper/generate")
+        self.page.goto(f"{base_url}/#/question-paper/generate")
         self.wizard_step_header.wait_for()
 
     def navigate_to_list(self, base_url: str):
-        self.page.goto(f"{base_url}/#/user/question-paper")
+        self.page.goto(f"{base_url}/#/question-paper")
         self.page.locator("h1", has_text="Question Papers").wait_for()
 
     def click_create_new_qp(self):
@@ -55,9 +59,48 @@ class QuestionBankPage:
         dropdown.wait_for(state="visible", timeout=10000)
         return dropdown
 
+    def select_subtopic_if_present(self, index: int = 0):
+        """
+        For 'singleChapter' scope, Sub-Topic becomes a required field once the
+        selected chapter has subtopics (*ngIf="questionBankTypeValue === 'singleChapter'
+        && hasSubtopics"). Selects the first one when the control is present;
+        no-op otherwise (chapter has no subtopics).
+        """
+        subtopic_dd = self.page.locator("app-form-dropdown[ng-reflect-drop-down-control-name='subTopic']").first
+        if subtopic_dd.count() == 0:
+            return
+        self.select_dropdown_option("subTopic", index=index)
+
+    def wait_for_dropdown_enabled(self, control_name: str, timeout: int = 20000):
+        """
+        Waits for a cascaded dropdown (e.g. 'chapter' after selecting subject) to
+        become enabled, i.e. its upstream async data (chapters/paper config) has
+        loaded. More reliable than wait_for_load_state('networkidle'), which never
+        resolves on deployments with persistent background requests.
+        """
+        dropdown = self._get_dropdown_locator(control_name)
+        ng_select = dropdown.locator("ng-select")
+        expect(ng_select).not_to_have_class(re.compile(r"ng-select-disabled"), timeout=timeout)
+
+    def is_dropdown_disabled(self, control_name: str) -> bool:
+        """
+        True when the app has disabled this dropdown — it auto-selected a single
+        resolved value (e.g. only one board on this account) or is a cascaded
+        field still awaiting an upstream selection. A disabled ng-select never
+        opens its panel on click.
+        """
+        dropdown = self._get_dropdown_locator(control_name)
+        ng_select_class = dropdown.locator("ng-select").get_attribute("class") or ""
+        return "ng-select-disabled" in ng_select_class
+
     def select_dropdown_option(self, control_name: str, value_text: str = None, index: int = 0, clear_first: bool = False):
         dropdown = self._get_dropdown_locator(control_name)
         dropdown.scroll_into_view_if_needed()
+
+        # Nothing to pick if the dropdown is disabled with an auto-selected value.
+        if self.is_dropdown_disabled(control_name) and not clear_first:
+            return
+
         if clear_first:
             clear_btn = dropdown.locator(".ng-clear-wrapper")
             try:
@@ -82,8 +125,10 @@ class QuestionBankPage:
         options.first.wait_for(state="visible", timeout=5000)
         
         if value_text == "SELECT_ALL":
-            # For multi-select with "Select All" header
-            select_all_checkbox = panel.locator(".ng-header-tmp input[type='checkbox']")
+            # For multi-select with "Select All" header. The header markup is
+            # ".ng-dropdown-header" on the current app version (".ng-header-tmp"
+            # was a stale selector from an older build and never matched).
+            select_all_checkbox = panel.locator(".ng-dropdown-header input[type='checkbox']")
             if select_all_checkbox.is_visible(timeout=2000):
                 select_all_checkbox.click(force=True)
             else:
@@ -183,3 +228,45 @@ class QuestionBankPage:
 
     def click_generate(self):
         self.page.locator("button.btn-primary", has_text="Generate Question Paper").click()
+
+    def click_preview_questions(self):
+        """Step 3 -> Step 4: generates the question pool and opens the final preview/blueprint."""
+        self.preview_questions_btn.click()
+
+    def ensure_preview_visible(self):
+        """
+        Step 4 opens in the question picker (not the blueprint preview) whenever
+        the auto-picked questions don't sum to exactly totalMarks (pickerOpen).
+        Toggles to the preview via the 'Show Preview' button if the picker is
+        currently showing.
+        """
+        show_preview_btn = self.page.locator("button.btn-outline-primary:has-text('Show Preview')")
+        if show_preview_btn.is_visible(timeout=3000):
+            show_preview_btn.click()
+
+    def get_preview_sections(self):
+        """
+        Returns (type, marksPerQuestion) for every section rendered in the Step 4
+        blueprint preview (app-question-bank-blue-print), in display order.
+        Two sections of the same type but different marks are valid (e.g. 1-mark
+        MCQ and 2-mark MCQ); only an exact (type, marks) repeat is a regression
+        of the duplicate-section merge bug (issue #421).
+
+        Parses the visible "N. <Type>" heading and the "<count> Questions x
+        <marks> Marks" badge (en.json translation) rather than relying on any
+        new markup/attributes.
+        """
+        self.preview_sections.first.wait_for(state="visible", timeout=20000)
+        count = self.preview_sections.count()
+        sections = []
+        for i in range(count):
+            section = self.preview_sections.nth(i)
+            heading_text = section.locator("h3").inner_text()
+            question_type = re.sub(r"^\d+\.\s*", "", heading_text).strip()
+
+            badge_text = section.locator("span.bg-primary-10").inner_text()
+            marks_match = re.search(r"x\s*([\d½.]+)\s*Marks", badge_text)
+            marks = marks_match.group(1) if marks_match else badge_text.strip()
+
+            sections.append((question_type, marks))
+        return sections
