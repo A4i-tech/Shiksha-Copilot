@@ -14,7 +14,7 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { Router } from '@angular/router';
 import { SidebarService } from 'src/app/layout/sidebar/sidebar.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
 
 @Component({
@@ -23,6 +23,7 @@ import { TranslateService } from '@ngx-translate/core';
   styleUrls: ['./profile.component.scss'],
 })
 export class ProfileComponent implements OnInit, OnDestroy {
+  isTeacherRole!: boolean;
   showDeleteClassDetailsConfirm!: boolean;
   showDeleteResourceConfirm!: boolean;
   selectedClassIndex!:any;
@@ -164,6 +165,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const data: string = localStorage.getItem('userData') ?? '';
     this.loggedInUser = JSON.parse(data);
+    this.isTeacherRole = this.utilityService.hasPermission(['standard', 'power']);
     this.createUserForm();
     this.getData();
   }
@@ -172,15 +174,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get all master data and profile data
    */
   getData() {
-    const boardMaster = this.service.getClassesByBoard(
-      this.loggedInUser.school._id
-    );
+    const boardMaster = this.isTeacherRole
+      ? this.service.getClassesByBoard(this.loggedInUser.school._id)
+      : of(null);
     const resourceMaster = this.masterService.getFacilities();
     const userProfile = this.service.getProfileInfo(this.loggedInUser._id);
 
     forkJoin([boardMaster, resourceMaster, userProfile]).subscribe({
       next: ([boardRes, resourceRes, profileRes]) => {
-        this.setClassesByBoard(boardRes);
+        if (this.isTeacherRole) {
+          this.setClassesByBoard(boardRes);
+        }
         this.setResourceData(resourceRes);
         this.setProfileInfo(profileRes);
       },
@@ -288,8 +292,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get profile info
    */
   setProfileInfo(val:any) {
-    const schoolFacilities = val?.data?.school?.facilities;
-    this.mergeSchoolResource(schoolFacilities);
+    if (this.isTeacherRole) {
+      this.mergeSchoolResource(val?.data?.school?.facilities);
+    }
 
     this.userData = val?.data;
     const keysToRemove = ['classes', 'facilities'];

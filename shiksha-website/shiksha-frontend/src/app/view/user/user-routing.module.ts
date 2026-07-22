@@ -48,7 +48,7 @@ const routes: Routes = [
     path: 'profile',
     component: ProfileComponent,
     data: {
-      permissions: ['standard', 'power'],
+      permissions: ['standard', 'power', 'admin', 'manager'],
       trackingTag: 'profile',
     },
     canActivate: [PermissionGuard, EndlineSurveyGuard],

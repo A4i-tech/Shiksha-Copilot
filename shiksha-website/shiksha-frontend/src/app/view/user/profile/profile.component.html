@@ -92,7 +92,7 @@
           [value]="userData?.phone"
         />
       </div>
-      <div class="md:col-span-2">
+      <div class="md:col-span-2" *ngIf="isTeacherRole">
         <label for="profile-school" class="block mb-1 form-control-label">{{
           "School/Organization" | translate
         }}</label>
@@ -124,54 +124,56 @@
           [value]="userData?.state"
         />
       </div>
-      <div>
-        <label for="profile-zone" class="block mb-1 form-control-label">{{
-          "Zone" | translate
-        }}</label>
-        <input
-          type="text"
-          id="profile-zone"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
-          placeholder="{{ 'Enter your zone' | translate }}"
-          readonly
-          required
-          aria-readonly="true"
-          [value]="userData?.zone"
-        />
-      </div>
-      <div>
-        <label for="profile-district" class="block mb-1 form-control-label">{{
-          "District" | translate
-        }}</label>
-        <input
-          type="text"
-          id="profile-district"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
-          placeholder="{{ 'Enter your district' | translate }}"
-          readonly
-          required
-          aria-readonly="true"
-          [value]="userData?.district"
-        />
-      </div>
-      <div>
-        <label for="profile-taluk" class="block mb-1 form-control-label">{{
-          "Taluk" | translate
-        }}</label>
-        <input
-          type="text"
-          id="profile-taluk"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
-          placeholder="{{ 'Enter Taluk' | translate }}"
-          readonly
-          required
-          aria-readonly="true"
-          [value]="userData?.block"
-        />
-      </div>
+      <ng-container *ngIf="isTeacherRole">
+        <div>
+          <label for="profile-zone" class="block mb-1 form-control-label">{{
+            "Zone" | translate
+          }}</label>
+          <input
+            type="text"
+            id="profile-zone"
+            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            placeholder="{{ 'Enter your zone' | translate }}"
+            readonly
+            required
+            aria-readonly="true"
+            [value]="userData?.zone"
+          />
+        </div>
+        <div>
+          <label for="profile-district" class="block mb-1 form-control-label">{{
+            "District" | translate
+          }}</label>
+          <input
+            type="text"
+            id="profile-district"
+            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            placeholder="{{ 'Enter your district' | translate }}"
+            readonly
+            required
+            aria-readonly="true"
+            [value]="userData?.district"
+          />
+        </div>
+        <div>
+          <label for="profile-taluk" class="block mb-1 form-control-label">{{
+            "Taluk" | translate
+          }}</label>
+          <input
+            type="text"
+            id="profile-taluk"
+            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            placeholder="{{ 'Enter Taluk' | translate }}"
+            readonly
+            required
+            aria-readonly="true"
+            [value]="userData?.block"
+          />
+        </div>
+      </ng-container>
     </div>
 
-    <div class="relative">
+    <div class="relative" *ngIf="isTeacherRole">
       <h2 class="font-bold text-lg leading-7 mb-2 mt-2 lg:hidden">
         {{ "Class Details" | translate }}
       </h2>
@@ -302,7 +304,7 @@
         </tbody>
       </table>
     </div>
-    <div class="resource-block mt-4">
+    <div class="resource-block mt-4" *ngIf="isTeacherRole">
       <h2 class="font-bold text-lg leading-7 mb-4 text-content">
         {{ "Resources" | translate }}
       </h2>

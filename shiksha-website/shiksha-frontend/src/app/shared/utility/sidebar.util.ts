@@ -22,7 +22,7 @@ export const menuItem = [
     'profile.svg',
     'profile-light.svg',
     'profile',
-    ['standard', 'power']
+    ['standard', 'power', 'admin', 'manager']
   ),
   getMenuItems(
     'School Management',

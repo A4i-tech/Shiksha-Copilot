@@ -1,6 +1,7 @@
 require("dotenv").config();
 const BaseManager = require("./base.manager");
 const UserDao = require("../dao/user.dao");
+const AdminUserDao = require("../dao/admin.user.dao");
 const SchoolDao = require("../dao/school.dao");
 const {
   getClasswithGroupedSubjects,
@@ -20,8 +21,24 @@ const logger = require("../config/loggers");
 class UserManager extends BaseManager {
   constructor() {
     super(new UserDao());
+    this.adminUserDao = new AdminUserDao();
     this.schoolDao = new SchoolDao();
     this.classDao = new ClassDao();
+  }
+
+  /**
+   * Teacher accounts live in the `User` collection, admin/manager accounts in
+   * the separate `AdminUser` collection. Profile actions (image, language)
+   * apply to both, so resolve which collection the id belongs to.
+   */
+  async _resolveUserDao(userId) {
+    const teacher = await this.dao.getById(userId);
+    if (teacher) return { dao: this.dao, user: teacher, isTeacher: true };
+
+    const admin = await this.adminUserDao.getById(userId);
+    if (admin) return { dao: this.adminUserDao, user: admin, isTeacher: false };
+
+    return { dao: null, user: null, isTeacher: false };
   }
 
   async create(req) {
@@ -49,12 +66,24 @@ class UserManager extends BaseManager {
 
   async getProfileById(id) {
     try {
-      let user = await this.dao.getById(id);
+      const { dao, user, isTeacher } = await this._resolveUserDao(id);
+
+      if (!user) {
+        return { success: false, data: false, message: "User not found" };
+      }
 
       let plainUser = user.toObject();
 
       // Refresh profile image SAS URL if expired
-      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.dao.update(id, updates));
+      await refreshProfileImageIfExpired(plainUser, (id, updates) => dao.update(id, updates));
+
+      if (!isTeacher) {
+        return {
+          success: true,
+          data: plainUser,
+          message: "Profile retreived successfully",
+        };
+      }
 
       let groupByBoards = await this.classDao.getGroupClassesByBoard(
         user.school
@@ -290,20 +319,20 @@ class UserManager extends BaseManager {
 
   async uploadProfileImage(userId, filePath) {
     try {
-      let user = await this.dao.getById(userId);
+      const { dao, user } = await this._resolveUserDao(userId);
       if (!user) {
-        return { success: false, message: "Teacher not found" };
+        return { success: false, message: "User not found" };
       }
 
       let expireLimit = 5 * 24 * 60 * 60;
 
-      user = await this.dao.update(userId, {
+      const updatedUser = await dao.update(userId, {
         profileImage: filePath,
         profileImageExpiresIn:
           parseInt(Date.now() / 1000) + Number(expireLimit),
       });
 
-      if (!user) {
+      if (!updatedUser) {
         return {
           success: false,
           message: "Failed to update image!",
@@ -314,7 +343,7 @@ class UserManager extends BaseManager {
       return {
         success: true,
         message: "Image uploaded successfully!",
-        data: user,
+        data: updatedUser,
       };
     } catch (err) {
       console.log("Error --> UserManager -> uploadProfileImage()", err);
@@ -324,24 +353,24 @@ class UserManager extends BaseManager {
 
   async removeProfileImage(userId) {
     try {
-      let user = await this.dao.getById(userId);
+      const { dao, user } = await this._resolveUserDao(userId);
       if (!user) {
-        return { success: false, message: "Teacher not found" };
+        return { success: false, message: "User not found" };
       }
 
-      user = await this.dao.update(user._id, {
+      const updatedUser = await dao.update(user._id, {
         profileImage: "",
         profileImageExpiresIn: parseInt(Date.now() / 1000),
       });
 
-      if (!user) {
+      if (!updatedUser) {
         return { success: false, message: "Failed to remove profile!" };
       }
 
       return {
         success: true,
         message: "Profile Image removed sucessfully!",
-        data: user,
+        data: updatedUser,
       };
     } catch (err) {
       console.log("Error --> UserManager -> removeProfileImage()", err);
@@ -408,13 +437,13 @@ class UserManager extends BaseManager {
 
   async updatePreferredLanguage(userId, preferredLanguage) {
     try {
-      const user = await this.dao.getById(userId);
+      const { dao, user } = await this._resolveUserDao(userId);
 
       if (!user) {
-        return formatApiReponse(false, "Teacher not found", null);
+        return formatApiReponse(false, "User not found", null);
       }
 
-      await this.dao.update(userId, { preferredLanguage });
+      await dao.update(userId, { preferredLanguage });
 
       return formatApiReponse(true, "Language updated successfully", null);
     } catch (err) {
