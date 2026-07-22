@@ -6,7 +6,6 @@ from langdetect import detect
 
 
 @pytest.mark.integration
-@pytest.mark.requires_azure
 async def test_translation():
     question = "Explain how green plants convert sunlight into chemical energy for growth."
     payload = {"target_language": "Kannada", "json_data": {"question": [{"content_type": "text/plain", "content": question}], "difficulty": "Easy", "image": {"content_type": "image/png", "content": "image"}}}

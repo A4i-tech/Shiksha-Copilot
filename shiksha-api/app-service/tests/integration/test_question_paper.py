@@ -132,7 +132,6 @@ async def test_question_types():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_azure
 async def test_question_paper_generation():
     async with aiohttp.ClientSession() as client:
         async with client.post(f'{os.environ["SHIKSHA_BASE_URL"].rstrip("/")}/question-paper/by-parts', json=request().model_dump(mode="json")) as response:
@@ -147,8 +146,6 @@ async def test_question_paper_generation():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_azure
-@pytest.mark.requires_qdrant
 async def test_chapter_rag_generation():
     async with aiohttp.ClientSession() as client:
         async with client.post(f'{os.environ["SHIKSHA_BASE_URL"].rstrip("/")}/question-paper/by-parts', json=chapter_rag_request().model_dump(mode="json")) as response:
@@ -162,8 +159,6 @@ async def test_chapter_rag_generation():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_azure
-@pytest.mark.requires_qdrant
 async def test_subtopic_rag_generation():
     async with aiohttp.ClientSession() as client:
         async with client.post(f'{os.environ["SHIKSHA_BASE_URL"].rstrip("/")}/question-paper/by-parts', json=subtopic_rag_request().model_dump(mode="json")) as response:
@@ -176,7 +171,6 @@ async def test_subtopic_rag_generation():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_azure
 async def test_grammar_generation():
     async with aiohttp.ClientSession() as client:
         async with client.post(f'{os.environ["SHIKSHA_BASE_URL"].rstrip("/")}/question-paper/by-parts', json=grammar_request().model_dump(mode="json")) as response:

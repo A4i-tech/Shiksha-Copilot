@@ -14,7 +14,6 @@ from app.models.chat import (
 
 
 @pytest.mark.integration
-@pytest.mark.requires_azure
 async def test_general_chat():
     request = ChatRequest(
         user_id="integration-test",
@@ -31,8 +30,6 @@ async def test_general_chat():
 
 
 @pytest.mark.integration
-@pytest.mark.requires_azure
-@pytest.mark.requires_qdrant
 async def test_lesson_chat():
     request = LessonChatRequest(
         user_id="integration-test",
