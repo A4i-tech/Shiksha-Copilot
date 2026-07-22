@@ -45,6 +45,7 @@ const supersetRoutes = require('./routes/superset.routes.js');
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1); // trust Azure ingress/LB for HTTPS detection
 
 app.use(express.json());
 
