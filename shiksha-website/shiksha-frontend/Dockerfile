@@ -11,7 +11,6 @@ COPY . .
 # Production build
 RUN npm run build -- --configuration production --base-href /
 
-
 # -------- Stage 2: Runtime --------
 FROM node:20-alpine
 
