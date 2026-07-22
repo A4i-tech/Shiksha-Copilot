@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/staging"]
+    branches: [ "a4i/main", "a4i/staging", "alex/fe-docker"]
   pull_request:
     branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
