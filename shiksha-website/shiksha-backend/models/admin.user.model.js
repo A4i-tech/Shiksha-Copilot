@@ -53,6 +53,15 @@ const adminUserSchema = new mongoose.Schema(
 			type: Boolean,
 			default: true,
 		  },
+		preferredLanguage: {
+			type: String,
+		},
+		profileImage: {
+			type: String,
+		},
+		profileImageExpiresIn: {
+			type: Number,
+		},
 	},
 	{ timestamps: true }
 );

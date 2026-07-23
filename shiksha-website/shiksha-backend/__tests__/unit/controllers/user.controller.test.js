@@ -168,15 +168,50 @@ describe("UserController", () => {
   });
 
   describe("getProfile", () => {
-    it("should get user profile successfully", async () => {
+    it("should get own profile successfully, reusing the auth-middleware doc", async () => {
       const mockResult = { success: true, data: { name: "Test", classes: [] } };
       mockUserManager.getProfileById = jest.fn().mockResolvedValue(mockResult);
       mockReq.params = { id: "user-123" };
+      mockReq.teacherUser = { _id: "user-123", name: "Test User" };
 
       await controller.getProfile(mockReq, mockRes);
 
-      expect(mockUserManager.getProfileById).toHaveBeenCalledWith("user-123");
+      expect(mockUserManager.getProfileById).toHaveBeenCalledWith(
+        "user-123",
+        mockReq.teacherUser,
+        true
+      );
       expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should allow an admin to fetch another user's profile without a cached doc", async () => {
+      const mockResult = { success: true, data: { name: "Other", classes: [] } };
+      mockUserManager.getProfileById = jest.fn().mockResolvedValue(mockResult);
+      mockReq.params = { id: "other-user-456" };
+      mockReq.user = { _id: "user-123", name: "Admin User", role: "admin" };
+
+      await controller.getProfile(mockReq, mockRes);
+
+      expect(mockUserManager.getProfileById).toHaveBeenCalledWith(
+        "other-user-456",
+        null,
+        null
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should return 403 when a non-privileged user requests another user's profile", async () => {
+      mockUserManager.getProfileById = jest.fn();
+      mockReq.params = { id: "other-user-456" };
+
+      await controller.getProfile(mockReq, mockRes);
+
+      expect(mockUserManager.getProfileById).not.toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(403);
+      expect(mockRes.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Forbidden",
+      });
     });
   });
 

@@ -133,7 +133,25 @@ class UserController extends BaseController {
   async getProfile(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.getProfileById(id);
+      const requesterId = String(req.user._id);
+      const isPrivileged =
+        req.user.role?.includes("admin") || req.user.role?.includes("manager");
+
+      if (!isPrivileged && id !== requesterId) {
+        return res.status(403).json({ success: false, message: "Forbidden" });
+      }
+
+      // Auth middleware already loaded the requester's own doc; reuse it
+      // for self-lookups instead of hitting the DB again.
+      const isSelfLookup = id === requesterId;
+      const cachedUser = isSelfLookup ? req.teacherUser || req.adminUser : null;
+      const cachedIsTeacher = isSelfLookup ? !!req.teacherUser : null;
+
+      let result = await this.manager.getProfileById(
+        id,
+        cachedUser,
+        cachedIsTeacher
+      );
 
       if (result.success) {
         return res.status(200).json(result);

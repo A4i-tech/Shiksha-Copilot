@@ -39,7 +39,10 @@ class AdminUserDao extends BaseDao {
 						districts: data?.districts,
 						otp : data?.otp,
 						isLoginAllowed: data?.isLoginAllowed,
-						rememberMeToken:data?.rememberMeToken
+						rememberMeToken:data?.rememberMeToken,
+						preferredLanguage: data?.preferredLanguage,
+						profileImage: data?.profileImage,
+						profileImageExpiresIn: data?.profileImageExpiresIn
 					},
 				},
 				{ new: true, useFindAndModify: false, session: session }
