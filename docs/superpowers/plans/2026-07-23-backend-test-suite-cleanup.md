@@ -113,7 +113,13 @@ inherit. Part of #477."
 
 ---
 
-## Phase 2: Drop global mocks
+## Phase 2: Drop global mocks — COMPLETE (commit `2c46fcb9`)
+
+**What actually happened, for anyone re-running this plan:** `jest --showConfig` confirmed `jest.config.test.js` was dead (empty `setupFilesAfterEnv` in the live config), and its `moduleNameMapper` aliases had zero real usages — deleted outright. That left `__tests__/setup/jest.setup.js` referenced by nothing at all, so it was deleted whole rather than edited (its global mocks, console mock, and `global.expect*Response` helpers were all unreachable dead code — none had any usage outside the file itself). `npm run test:unit` before and after: 102 suites / 891 tests pass identically, confirming none of it was load-bearing.
+
+**Correction to the original Phase 3 premise below:** reading the actual service test files (`chat.bot.service.test.js`, `copilot.bot.service.test.js`, `question.bank.bot.service.test.js`, `variform.service.test.js`, `azure.blob.service.test.js`) shows their `jest.resetModules()` + re-require pattern is NOT dodging the global mock — it's re-evaluating module-top-level `process.env.X` reads (e.g. `chat.bot.service.js:5` captures `LLM_API_BASE_URL` at require-time), so each test needs a fresh module instance after setting its own env var. They already mock `axios` locally. This is legitimate, not brittle. Tasks 7 and 8 below do not apply — skip them.
+
+`routes.test.js` (Task 9) is still a real brittle-mock case and remains valid — see revised note there.
 
 ### Task 5: Resolve the dual jest-config situation
 
