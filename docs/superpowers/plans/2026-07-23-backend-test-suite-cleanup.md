@@ -303,7 +303,15 @@ jest.config.test.js (never wired into any npm script or CI). Part of #477."
 
 ---
 
-## Phase 4: Add real integration tests
+## Phase 4: Add real integration tests — COMPLETE (commits `43a222c4`, `689d2a0f`, `36070f3f`, `0fb771fa`, `991c5f07`, `b52111bf`)
+
+**What actually happened:** `app.js` turned out to be untestable directly — it calls `dbService.connect()` and `app.listen(PORT)` at module scope, plus an `unhandledRejection` handler that calls `process.exit(1)`, which could kill the Jest worker. Each integration test instead mounts the real route file (e.g. `routes/auth.routes.js`) on a fresh `express()` app — same real controller → manager → dao → model → Mongo chain, without app.js's startup side effects.
+
+All four flows needed real seed data read directly from source (models, DAOs, validation schemas) rather than the placeholder sketches below — the actual seeded fields differ per flow. Only the LLM calls were mocked (`postToCopilotBot` for lesson plan generation; question bank's manual-selection path never calls its LLM service at all, so nothing needed mocking there). Auth's SMS send needed no mock either — `authHelper.sendOtp` already no-ops safely when `VARIFORM_*` env vars are unset (test env has none).
+
+**Bug found and fixed along the way:** writing the schedule integration test surfaced that `ScheduleManager.create()` computed `schoolId` for the overlap check but never persisted it on the created document — meaning overlap protection and `getBySchool` had been silently broken for every schedule ever created through that endpoint. Fixed in `0fb771fa` (one-line: include `schoolId` in the doc passed to `dao.create`), verified the overlap-rejection test only passes after the fix.
+
+Final combined suite: 107 test suites / 908 tests, all passing. Combined coverage: 48.19% statements / 48.71% lines / 47.92% functions / 30.69% branches (up from the Phase 1 baseline of 44.78% / 45.25% / 43.95% / 29.3% — despite deleting hundreds of lines of pointless tests, the new integration tests more than made up for it). CI's `--passWithNoTests` fallback on the integration step removed since real tests exist now.
 
 ### Task 11: Wire up the integration test scaffold
 
