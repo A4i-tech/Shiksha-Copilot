@@ -333,7 +333,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   closeModal() {
     this.modalStatus = false;
     this.stopTimer();
-    this.preModalActiveElement?.focus();
+    if (this.preModalActiveElement?.isConnected) {
+      this.preModalActiveElement.focus();
+    }
   }
 
   startTimer(seconds: number) {

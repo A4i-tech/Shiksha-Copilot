@@ -53,7 +53,7 @@ export class CalendarAccessibilityDirective implements AfterViewInit, OnDestroy 
   private _patchDayHeaderParent(el: Element): void {
     if (el.classList?.contains('cal-day-headers') && el.getAttribute('role') === 'row') {
       const parent = el.parentElement;
-      if (parent && !parent.getAttribute('role')) {
+      if (parent && !parent.getAttribute('role') && parent.children.length === 1) {
         parent.setAttribute('role', 'grid');
       }
     }

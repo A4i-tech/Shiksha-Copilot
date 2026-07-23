@@ -835,7 +835,9 @@ export class AddEditScheduleComponent
   }
 
   ngOnDestroy(): void {
-    this.previousActiveElement?.focus();
+    if (this.previousActiveElement?.isConnected) {
+      this.previousActiveElement.focus();
+    }
   }
 
 
