@@ -156,7 +156,7 @@ async function discoverDetailUrls(page) {
     } catch { await dismissModals(page); continue; }
     try {
       await page.waitForURL(u => u !== prevUrl, { timeout: 8000 });
-    } catch { continue; }
+    } catch { await dismissModals(page); continue; }
 
     const url = page.url();
     if (url.includes('/lesson-plan/') && !url.includes('/draft/') && !found['lesson-plan']) {
@@ -604,7 +604,7 @@ const AUDIT_DATA = ${JSON.stringify(
       }));
       return acc;
     }, {})
-  )};
+  ).replace(/<\/script/gi, '<\\/script')};
 
 const rendered = {};
 

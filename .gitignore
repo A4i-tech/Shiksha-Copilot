@@ -27,5 +27,5 @@ tests/tests-env
 superset/.env
 
 # Accessibility tests
-**/node_modules
-**/results
+tests/accessibility/node_modules
+tests/accessibility/results

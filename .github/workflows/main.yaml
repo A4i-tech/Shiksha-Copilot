@@ -75,7 +75,9 @@ jobs:
 
   cd-frontend-render:
     name: Deploy frontend preview (Render)
-    if: github.event_name == 'pull_request' && github.base_ref == 'a4i/staging'
+    if: |
+      github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
+      github.event.pull_request.head.repo.full_name == github.repository
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-frontend-preview
@@ -258,6 +260,7 @@ jobs:
     if: |
       always() &&
       github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
       needs.cd-frontend-render.result == 'success' &&
       (needs.health-check.result == 'success' || needs.health-check.result == 'skipped')
     runs-on: ubuntu-latest

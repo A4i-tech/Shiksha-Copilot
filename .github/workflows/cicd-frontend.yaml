@@ -95,7 +95,7 @@ jobs:
         if: inputs.deploy_target == 'github-pages'
         id: ctx
         run: |
-          bh="/Shiksha-Copilot/"
+          bh="/${{ github.event.repository.name }}/"
           echo "base_href=$bh" >> "$GITHUB_OUTPUT"
           echo "page_url=https://${{ github.repository_owner }}.github.io$bh" >> "$GITHUB_OUTPUT"
 
