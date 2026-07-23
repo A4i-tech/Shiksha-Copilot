@@ -193,7 +193,9 @@ npm run test:unit 2>&1 | grep -B2 "FAIL "
 
 ---
 
-## Phase 3: Fix or replace brittle tests
+## Phase 3: Fix or replace brittle tests — COMPLETE (commit `afd6c48e`)
+
+**What actually happened:** Tasks 7-8 (rewriting the 5 service tests) were skipped per the Phase 2 correction above — their `resetModules` pattern was legitimate, not brittle. Task 9 (`routes.test.js`) was the one real case. Verified by dry-requiring all 27 route files with zero mocking that none connect to Mongo or make network calls at module load (`config/db.js` only connects via an explicit async `connect()` call, never at require time). Rewrote the file to require the real route module and inspect the real `router.stack` for `{path, methods}` instead of mocking `express.Router` as a Proxy-spy and `jest.doMock`-ing every controller/validation/middleware/multer. Same 26 assertions, now checking actual wiring. `npm run test:unit`: 102 suites / 891 tests, unchanged.
 
 The exact file list depends on Task 6 Step 4's output. Known candidates going in (confirm against actual failures):
 
