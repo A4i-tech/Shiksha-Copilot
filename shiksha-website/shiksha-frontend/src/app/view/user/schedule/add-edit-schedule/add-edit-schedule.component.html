@@ -1,8 +1,8 @@
 <div class="backdrop  ">
-	<div class="form-content  bg-white fixed  shadow-2xl rounded " #pop_ele>
-		
+	<div class="form-content  bg-white fixed  shadow-2xl rounded " #pop_ele role="dialog" aria-modal="true" aria-labelledby="schedule-dialog-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
+
 		<div class="header flex justify-between items-center px-4 py-3">
-			<h1 class="text-base font-bold leading-[26px] text-content" > {{(mode === 'view' ? "View Details" : mode === "edit" ? "Edit Details" : "Add Details")  | translate }}       </h1>
+			<h1 id="schedule-dialog-title" class="text-base font-bold leading-[26px] text-content" > {{(mode === 'view' ? "View Details" : mode === "edit" ? "Edit Details" : "Add Details")  | translate }}       </h1>
 			<div class=" bg-shade-50 rounded-full text-center p-1 cursor-pointer" (click)="closePopUP()">
 				<img src="assets/icons/E remove.svg" alt="">
 			</div>
@@ -67,6 +67,7 @@
 									<label for="datepicker" class="block mb-2 form-control-label">{{"Date" | translate}}<span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 									<input id="datepicker" type="date" placeholder="Select Date"
 										class="appearance-none border border-content-50 focus:outline-none bg-surface-muted text-content text-sm rounded block w-full p-2.5 leading-tight" required
+										[attr.aria-required]="mode!='view' ? 'true' : null"
 										formControlName="date" [readOnly]="mode === 'view'" [min]='currentDate | date:"yyyy-MM-dd"'/>
 									<p class="form-control-error">
 										{{(getDateError(controls)) | translate}}  
@@ -76,6 +77,7 @@
 									<label for="timepicker1" class="block mb-2 form-control-label">{{"Start Time" | translate}}<span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 									<input type="time" id="timepicker1" placeholder="Select Start Time"
 										class="appearance-none border border-content-50 bg-surface-muted focus:outline-none text-content text-sm rounded block w-full p-2.5 leading-tight" required
+										[attr.aria-required]="mode!='view' ? 'true' : null"
 										formControlName="fromTime" [readOnly]="mode === 'view'"  min="07:00" max="17:00"/>
 										<p class="form-control-error min-h-[20px]" >
 											{{(getStartTimeError(controls)) | translate}}
@@ -85,6 +87,7 @@
 									<label for="timepicker2" class="block mb-2 form-control-label">{{"End Time" | translate}}<span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 									<input type="time" id="timepicker2" placeholder="Select End Time"
 										class="appearance-none border border-content-50 bg-surface-muted focus:outline-none text-content text-sm rounded block w-full p-2.5 leading-tight" required
+										[attr.aria-required]="mode!='view' ? 'true' : null"
 										formControlName="toTime" [readOnly]="mode === 'view'" min="07:00" max="17:00"/>
 										<p class="form-control-error">
 											{{(getEndTimeError(controls)) | translate}}
@@ -93,10 +96,12 @@
 								</div>
 								<div class="btn-container flex md:col-span-2 gap-2 self-end " *ngIf="mode !== 'view'">
 									<button class="btn-danger flex items-center justify-center   h-[42px]" (click)="deleteScheduleInfo(i)"
+										[attr.aria-label]="'Delete Schedule Slot' | translate"
 										*ngIf="i!==0">
 										<img src="assets/icons/delete.svg" alt="">
 									</button>
 									<button class="btn-primary  flex items-center justify-center   h-[42px]" (click)="addNewScheduleInfo()"
+										[attr.aria-label]="'Add Schedule Slot' | translate"
 										*ngIf="i===getScheduleControls().length-1">
 										<img src="assets/icons/E add.svg" alt="">
 									</button>

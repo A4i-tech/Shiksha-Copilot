@@ -28,3 +28,17 @@ h1 {
 h2, h3, h4, h5, h6 {
   font-family: "Lato", sans-serif; /* Set Lato for sub header tags */
 }
+
+// ng-select's default placeholder color (#999, ~2.85:1 on white) fails WCAG 1.4.3
+.ng-select .ng-select-container .ng-value-container .ng-placeholder {
+  color: var(--content-60);
+}
+
+// Ad-hoc pill/chip colors reused across question-paper, generation-status, dashboard, etc.
+// fail WCAG 1.4.3 against their own light background — darken text, background unchanged.
+[class*="text-[#DE3B40]"] {
+  color: #C62828 !important;
+}
+[class*="text-[#3D8248]"] {
+  color: #2E7D32 !important;
+}

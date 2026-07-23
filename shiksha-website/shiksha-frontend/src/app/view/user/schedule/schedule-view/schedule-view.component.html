@@ -18,7 +18,7 @@
 		
 		<div class="flex justify-between items-center flex-wrap gap-4">
 			<div class="min-w-fit">
-				<h3 class="font-normal md:text-2xl text-lg md:leading-9 text-content-100">{{ viewDate | date:'MMMM YYYY'}}</h3>
+				<h2 class="font-normal md:text-2xl text-lg md:leading-9 text-content-100">{{ viewDate | date:'MMMM YYYY'}}</h2>
 			</div>
 
 			<div class="btn-group flex gap-4 items-center ml-auto min-w-fit">
@@ -58,7 +58,7 @@
 
 		
 			<ng-template #customCellTemplate let-weekEvents="weekEvent" let-locale="locale" let-eventClicked="eventClicked" >
-				<div class="bg-primary-100 text-xs rounded p-2 h-full  min-h-[80px] text-ellipsis overflow-hidden whitespace-nowrap schedule-view" [ngClass]="weekEvents.event.meta.events.multi ? 'multiSchedule':''"  [style.color]="weekEvents.event.color.primary" [style.backgroundColor]="weekEvents.event.color.secondary" [style.border]="'1px solid '+ weekEvents.event.color.primary" 	(click)="handleCustomClick($event,{event: weekEvents,
+				<div class="bg-primary-100 text-xs rounded p-2 h-full  min-h-[80px] text-ellipsis overflow-hidden whitespace-nowrap schedule-view" [ngClass]="weekEvents.event.meta.events.multi ? 'multiSchedule':''"  [style.color]="'#ffffff'" [style.backgroundColor]="weekEvents.event.color.secondary" [style.border]="'1px solid '+ weekEvents.event.color.primary" 	(click)="handleCustomClick($event,{event: weekEvents,
 					sourceEvent: $event.currentTarget},tooltip_modal)" >
 					<!-- <p class="font-bold "  >{{weekEvents.event.start | date:'hh:mm a'}}  </p> -->
 					<div class="font-bold  text-left mb-1 flex items-center gap-1" >
