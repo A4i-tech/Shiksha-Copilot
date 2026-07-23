@@ -21,7 +21,7 @@ class QuestionBankPage:
         self.template_warning_msg = page.locator(".text-warn", has_text="Total Template Marks")
 
         # --- Step 3->4 nav & Step 4 Preview Elements ---
-        self.preview_questions_btn = page.locator("button.btn-primary:has-text('Preview Questions')")
+        self.preview_questions_btn = page.get_by_test_id("preview-questions")
         self.preview_sections = page.locator(".section-drag")
 
     def navigate_to_wizard(self, base_url: str):

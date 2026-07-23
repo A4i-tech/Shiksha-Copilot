@@ -229,7 +229,7 @@
   <div class="flex justify-end gap-2 py-4">
     <button *ngIf="currentStep > 1" class="btn-outline-primary px-6 py-2" (click)="previousStep()">{{ 'Previous' | translate }}</button>
     <button *ngIf="currentStep < 3" class="btn-primary px-8 py-2" (click)="onSubmit(currentStep)" [disabled]="isLoadingQuestions">{{ 'Next' | translate }}</button>
-    <button *ngIf="currentStep === 3" class="btn-primary px-8 py-2" (click)="previewQuestions()" [disabled]="isLoadingQuestions">
+    <button *ngIf="currentStep === 3" data-testid="preview-questions" class="btn-primary px-8 py-2" (click)="previewQuestions()" [disabled]="isLoadingQuestions">
       {{ (isLoadingQuestions ? 'Generating questions...' : 'Preview Questions') | translate }}
     </button>
     <button *ngIf="currentStep === 4" class="btn-outline-primary px-6 py-2" (click)="togglePicker()">
