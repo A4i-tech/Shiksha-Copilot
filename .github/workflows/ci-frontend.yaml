@@ -109,4 +109,4 @@ jobs:
           tags: ${{ needs.build.outputs.image_tags }}
           build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
           cache-from: type=gha
-          cache-to: type=gha,mode=maxs
+          cache-to: type=gha,mode=max
