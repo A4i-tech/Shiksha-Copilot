@@ -80,41 +80,6 @@ describe("worker modules", () => {
     }));
   };
 
-  it("exportcontentactivityworker posts success message", async () => {
-    const { parentPort } = workerMocks();
-    jest.doMock("worker_threads", () => ({ parentPort }));
-    jest.doMock("exceljs", () => makeExcelMock());
-    mockDbSimple();
-    const uploadToStorage = jest.fn(() => Promise.resolve("url"));
-    jest.doMock("../../../services/e2e.storage.service", () => ({
-      uploadToStorage,
-    }));
-    const create = jest.fn(() => Promise.resolve());
-    jest.doMock("../../../models/audit.log.model", () => ({ create }));
-
-    require("../../../worker/exportcontentactivityworker");
-    await Promise.resolve();
-
-    await parentPort.emit("message", {
-      contentActivities: [
-        {
-          userName: "u",
-          genContent: "c",
-          createdAt: "now",
-          teacherLessonPlanStatus: "done",
-        },
-      ],
-      userId: "1",
-      userName: "tester",
-    });
-
-    expect(uploadToStorage).toHaveBeenCalled();
-    expect(create).toHaveBeenCalled();
-    expect(parentPort.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true })
-    );
-  });
-
   it("exportschoolworker posts success message", async () => {
     const { parentPort } = workerMocks();
     jest.doMock("worker_threads", () => ({ parentPort }));

@@ -5,6 +5,31 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const UserActivityLogs = require("../models/user.activity.logs.model.js")
 
+function mapFilters(filters) {
+	const mapped = {};
+	const pathMap = {
+		school: "school._id",
+		state: "school.state",
+		zone: "school.zone",
+		district: "school.district",
+		block: "school.block",
+	};
+	for (const [key, value] of Object.entries(filters)) {
+		if (key === "$and" || key === "$or") {
+			mapped[key] = value.map(mapFilters);
+		} else if (key === "profileType") {
+			mapped[`profiles.${value}`] = { $exists: true, $type: "object" };
+		} else if (key === "role") {
+			mapped["roles.role"] = { $in: [].concat(value).map((role) => new ObjectId(role)) };
+		} else if (!Array.isArray(value) || value.length) {
+			const path = pathMap[key] || key;
+			const converted = [].concat(value).map((item) => key === "school" ? new ObjectId(item) : item);
+			mapped[path] = Array.isArray(value) ? { $in: converted } : converted[0];
+		}
+	}
+	return mapped;
+}
+
 class UserDao extends BaseDao {
 	constructor() {
 		super(User);
@@ -22,52 +47,7 @@ class UserDao extends BaseDao {
 
 	async getAll(page, limit, filters, sort, status) {
 		try {
-			let processedFilters = { ...filters, ...status };
-
-			if (processedFilters.profileType === "teacher") {
-				processedFilters["profiles.teacher"] = { $exists: true, $type: "object" };
-				delete processedFilters.profileType;
-			} else if (processedFilters.profileType === "admin") {
-				processedFilters["profiles.admin"] = { $exists: true, $type: "object" };
-				delete processedFilters.profileType;
-			}
-
-			const pathMap = {
-				school: "school._id",
-				state: "school.state",
-				zone: "school.zone",
-				district: "school.district",
-				block: "school.block",
-			};
-
-			for (const key of Object.keys(filters)) {
-				if (key === "profileType") continue;
-				if (key === "role") {
-					const value = filters.role;
-					processedFilters["roles.role"] = {
-						$in: (Array.isArray(value) ? value : [value]).map((role) => new ObjectId(role)),
-					};
-					delete processedFilters.role;
-					continue;
-				}
-				if (key === "$or") {
-					processedFilters.$or = filters.$or;
-					continue;
-				}
-				const storedPath = pathMap[key] || key;
-				let value = filters[key];
-				if (key === "school") value = new ObjectId(value);
-				if (Array.isArray(value)) {
-					if (!value.length) {
-						delete processedFilters[key];
-						continue;
-					}
-					processedFilters[storedPath] = { $in: value };
-				} else {
-					processedFilters[storedPath] = value;
-				}
-				if (storedPath !== key) delete processedFilters[key];
-			}
+			const processedFilters = { ...mapFilters(filters), ...status };
 
 			let results = await userAggregation.getUserList(page,
 				limit,

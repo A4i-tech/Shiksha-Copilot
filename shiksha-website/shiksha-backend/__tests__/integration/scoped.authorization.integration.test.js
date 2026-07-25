@@ -1,0 +1,487 @@
+require("dotenv").config();
+
+const axios = require("axios");
+const CryptoJS = require("crypto-js");
+const ExcelJS = require("exceljs");
+const mongoose = require("mongoose");
+
+const baseUrl = process.env.SHIKSHA_BASE_URL;
+const superuserPhone = process.env.SHIKSHA_SU_PHONE;
+const superuserPin = process.env.SHIKSHA_SU_PIN;
+
+if (!baseUrl) throw new Error("SHIKSHA_BASE_URL is required");
+if (!superuserPhone) throw new Error("SHIKSHA_SU_PHONE is required");
+if (!superuserPin) throw new Error("SHIKSHA_SU_PIN is required");
+
+async function request(path, method, token, body) {
+  const response = await axios({
+    url: `${baseUrl}${path}`,
+    method,
+    headers: token ? { Authorization: token } : {},
+    data: body,
+    validateStatus: () => true,
+  });
+  return { status: response.status, body: response.data };
+}
+
+function expectSuccess(response) {
+  expect(response).toMatchObject({ status: 200, body: { success: true } });
+  return response.body.data;
+}
+
+function expectDenied(response, message) {
+  expect(response).toMatchObject({ status: 400, body: { success: false } });
+  if (message) expect(response.body.message).toBe(message);
+}
+
+describe("scoped authorisation", () => {
+  const suffix = Date.now();
+  const operatorPermissions = [
+    "dashboard.admin.view", "school.read", "school.list", "school.create", "school.edit", "school.delete", "school.export",
+    "teacher.view", "teacher.create", "teacher.edit", "teacher.delete", "teacher.export",
+    "staff.view", "staff.create", "staff.edit", "staff.delete", "role.assign", "role.view",
+    "content.activity.view", "content.activity.export", "training.view", "training.edit", "audit.view",
+  ];
+  const ids = { roles: [], users: [], schools: [], content: [], activities: [], batches: [] };
+  let db;
+  let rootToken;
+  let actorToken;
+  let schoolActorToken;
+  let actor;
+  let adminRole;
+  let teacherRole;
+  let operatorRole;
+  let localTeacher;
+  let remoteTeacher;
+  let localBatch;
+  let remoteBatch;
+  let localSchool;
+  let remoteSchool;
+
+  const teacherBody = (name, phone, school, roles = [{ roleId: teacherRole._id, dep: school._id }]) => ({
+    identity: { name, phone, email: "", address: "" },
+    roles,
+    profiles: { teacher: { preferredLanguage: "en", facilities: [], classes: [], isProfileCompleted: false } },
+  });
+
+  beforeAll(async () => {
+    db = await mongoose.createConnection(process.env.MONGO_URL).asPromise();
+
+    const login = await request("/api/auth/validate-otp", "POST", null, { phone: superuserPhone, otp: superuserPin });
+    rootToken = expectSuccess(login).token;
+
+    const [me, roles, schools] = await Promise.all([
+      request("/api/auth/me", "GET", rootToken),
+      request("/api/roles?limit=100", "GET", rootToken),
+      request("/api/school/list?limit=1000&includeDeleted=0", "GET", rootToken),
+    ]);
+    const rootUser = expectSuccess(me);
+    const roleList = expectSuccess(roles).results;
+    const schoolList = expectSuccess(schools).results;
+    adminRole = roleList.find((role) => role.name === "Admin");
+    teacherRole = roleList.find((role) => role.name === "Teacher");
+    localSchool = schoolList.find((school) => school.district);
+    remoteSchool = schoolList.find((school) => school.district && school.district !== localSchool.district);
+    expect(adminRole).toBeDefined();
+    expect(teacherRole).toBeDefined();
+    expect(localSchool).toBeDefined();
+    expect(remoteSchool).toBeDefined();
+
+    const createRole = async (name, permissions, scopeType) => {
+      const role = expectSuccess(await request("/api/roles", "POST", rootToken, {
+        name: `${name} ${suffix}`,
+        description: "Scoped authorisation integration fixture",
+        permissions,
+        scopeType,
+      }));
+      ids.roles.push(role._id);
+      return role;
+    };
+
+    operatorRole = await createRole("District operator", operatorPermissions, "DISTRICT");
+    const repeatedGrantRole = await createRole("Repeated grant", ["help.view"], "DISTRICT");
+    const roleManagerRole = await createRole("Role manager", ["role.manage"], "UNBOUND");
+    const schoolReaderRole = await createRole("School reader", ["school.read", "school.list", "teacher.view"], "SCHOOL");
+
+    localTeacher = expectSuccess(await request("/api/users", "POST", rootToken, teacherBody(
+      "Local Integration Teacher",
+      `7${String(suffix).slice(-9)}`,
+      localSchool
+    )));
+    remoteTeacher = expectSuccess(await request("/api/users", "POST", rootToken, teacherBody(
+      "Remote Integration Teacher",
+      `8${String(suffix).slice(-9)}`,
+      remoteSchool
+    )));
+    ids.users.push(localTeacher._id, remoteTeacher._id);
+    const content = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
+    const lesson = await db.collection("masterlessons").findOne({});
+    delete lesson._id;
+    await db.collection("masterlessons").insertMany([
+      { ...lesson, _id: content[0], name: `Local source ${suffix}` },
+      { ...lesson, _id: content[1], name: `Local generated ${suffix}` },
+      { ...lesson, _id: content[2], name: `Remote source ${suffix}` },
+      { ...lesson, _id: content[3], name: `Remote generated ${suffix}` },
+    ]);
+    ids.content.push(...content);
+    const activities = [
+      {
+        _id: new mongoose.Types.ObjectId(),
+        isLesson: true,
+        status: "completed",
+        isMasterContent: false,
+        contentId: content[0],
+        genContentId: content[1],
+        generatedBy: new mongoose.Types.ObjectId(localTeacher._id),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        _id: new mongoose.Types.ObjectId(),
+        isLesson: true,
+        status: "completed",
+        isMasterContent: false,
+        contentId: content[2],
+        genContentId: content[3],
+        generatedBy: new mongoose.Types.ObjectId(remoteTeacher._id),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    await db.collection("regeneratedlessonresources").insertMany(activities);
+    ids.activities.push(...activities.map((activity) => activity._id));
+
+    actor = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "Scoped Integration Actor", phone: `9${String(suffix).slice(-9)}`, email: "", address: "" },
+      roles: [
+        { roleId: operatorRole._id, dep: localSchool.district },
+        { roleId: repeatedGrantRole._id, dep: localSchool.district },
+        { roleId: repeatedGrantRole._id, dep: remoteSchool.district },
+        { roleId: roleManagerRole._id },
+      ],
+      profiles: { admin: { state: localSchool.state } },
+    }));
+    ids.users.push(actor._id);
+    const schoolActor = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "School Integration Actor", phone: `6${String(suffix).slice(-9)}`, email: "", address: "" },
+      roles: [{ roleId: schoolReaderRole._id, dep: localSchool._id }],
+      profiles: { admin: { state: localSchool.state } },
+    }));
+    ids.users.push(schoolActor._id);
+    await db.collection("users").updateOne({ _id: new mongoose.Types.ObjectId(actor._id) }, {
+      $set: { otp: CryptoJS.AES.encrypt(superuserPin, process.env.PIN_SECRET_KEY).toString() },
+    });
+    await db.collection("users").updateOne({ _id: new mongoose.Types.ObjectId(schoolActor._id) }, {
+      $set: { otp: CryptoJS.AES.encrypt(superuserPin, process.env.PIN_SECRET_KEY).toString() },
+    });
+    actorToken = expectSuccess(await request("/api/auth/validate-otp", "POST", null, {
+      phone: actor.identity.phone,
+      otp: superuserPin,
+    })).token;
+    schoolActorToken = expectSuccess(await request("/api/auth/validate-otp", "POST", null, {
+      phone: schoolActor.identity.phone,
+      otp: superuserPin,
+    })).token;
+    localBatch = {
+      _id: new mongoose.Types.ObjectId(),
+      batchName: `Local batch ${suffix}`,
+      description: "Integration batch",
+      scheduleDate: new Date(),
+      trainingType: "offline",
+      assignedTeachers: [],
+      attendance: [],
+      isSubmitted: false,
+      createdBy: new mongoose.Types.ObjectId(actor._id),
+    };
+    remoteBatch = {
+      ...localBatch,
+      _id: new mongoose.Types.ObjectId(),
+      batchName: `Remote batch ${suffix}`,
+      createdBy: new mongoose.Types.ObjectId(remoteTeacher._id),
+    };
+    await db.collection("teachertrainingbatches").insertMany([localBatch, remoteBatch]);
+    ids.batches.push(localBatch._id, remoteBatch._id);
+    expect(rootUser._id).not.toBe(actor._id);
+  });
+
+  afterAll(async () => {
+    if (db) {
+      await db.collection("users").deleteMany({ _id: { $in: ids.users.map((id) => new mongoose.Types.ObjectId(id)) } });
+      await db.collection("schools").deleteMany({ _id: { $in: ids.schools.map((id) => new mongoose.Types.ObjectId(id)) } });
+      await db.collection("roles").deleteMany({ _id: { $in: ids.roles.map((id) => new mongoose.Types.ObjectId(id)) } });
+      await db.collection("masterlessons").deleteMany({ _id: { $in: ids.content } });
+      await db.collection("regeneratedlessonresources").deleteMany({ _id: { $in: ids.activities } });
+      await db.collection("teachertrainingbatches").deleteMany({ _id: { $in: ids.batches } });
+      if (actor) await db.collection("auditlogs").deleteMany({ userId: new mongoose.Types.ObjectId(actor._id) });
+      await db.close();
+    }
+  });
+
+  it("returns every grant when one permission is assigned at two scopes", async () => {
+    const me = expectSuccess(await request("/api/auth/me", "GET", actorToken));
+    const grants = me.permissions.filter((grant) => grant.permission === "help.view");
+
+    expect(grants).toEqual(expect.arrayContaining([
+      { permission: "help.view", scopeType: "DISTRICT", dep: localSchool.district },
+      { permission: "help.view", scopeType: "DISTRICT", dep: remoteSchool.district },
+    ]));
+    expect(grants).toHaveLength(2);
+  });
+
+  it("applies list, filter, and direct-read boundaries across scoped resources", async () => {
+    const lists = [
+      {
+        path: "/api/school/list?limit=1000&includeDeleted=0",
+        hostilePath: `/api/school/list?limit=1000&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
+        local: (item) => item._id === localSchool._id,
+        remote: (item) => item._id === remoteSchool._id,
+      },
+      {
+        path: "/api/users?limit=1000&filter[profileType]=teacher",
+        hostilePath: `/api/users?limit=1000&filter[profileType]=teacher&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
+        local: (item) => item._id === localTeacher._id,
+        remote: (item) => item._id === remoteTeacher._id,
+      },
+      {
+        path: "/api/content-activity?limit=100",
+        hostilePath: `/api/content-activity?limit=100&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
+        local: (item) => item.userName === localTeacher.identity.name,
+        remote: (item) => item.userName === remoteTeacher.identity.name,
+      },
+    ];
+    for (const resource of lists) {
+      const list = expectSuccess(await request(resource.path, "GET", actorToken)).results;
+      const hostile = expectSuccess(await request(resource.hostilePath, "GET", actorToken)).results;
+      expect(list.some(resource.local)).toBe(true);
+      expect(list.some(resource.remote)).toBe(false);
+      expect(hostile).toHaveLength(0);
+    }
+
+    const reads = [
+      {
+        local: `/api/school/${localSchool._id}`,
+        remote: `/api/school/${remoteSchool._id}`,
+        message: "School is outside your scope",
+      },
+      {
+        local: `/api/users/${localTeacher._id}`,
+        remote: `/api/users/${remoteTeacher._id}`,
+      },
+      {
+        local: `/api/master-lesson/activity/${ids.content[0]}?activityId=${ids.activities[0]}`,
+        remote: `/api/master-lesson/activity/${ids.content[2]}?activityId=${ids.activities[1]}`,
+        message: "Activity is outside your scope",
+      },
+    ];
+    for (const resource of reads) {
+      expectSuccess(await request(resource.local, "GET", actorToken));
+      expectDenied(await request(resource.remote, "GET", actorToken), resource.message);
+    }
+  });
+
+  it("limits school-scoped users to their assigned school", async () => {
+    const schools = expectSuccess(await request("/api/school/list?limit=1000&includeDeleted=0", "GET", schoolActorToken));
+    const teachers = expectSuccess(await request("/api/users?limit=1000&filter[profileType]=teacher", "GET", schoolActorToken));
+
+    expect(schools.results.map((school) => school._id)).toEqual([localSchool._id]);
+    expect(teachers.results).toEqual(expect.arrayContaining([expect.objectContaining({ _id: localTeacher._id })]));
+    expect(teachers.results.some((user) => user._id === remoteTeacher._id)).toBe(false);
+    expectDenied(await request(`/api/school/${remoteSchool._id}`, "GET", schoolActorToken), "School is outside your scope");
+  });
+
+  it("intersects dashboard filters with the actor scope", async () => {
+    const [localDashboard, remoteDashboard] = await Promise.all([
+      request(`/api/dashboard/admin?schoolId=${localSchool._id}`, "GET", actorToken),
+      request(`/api/dashboard/admin?schoolId=${remoteSchool._id}`, "GET", actorToken),
+    ]);
+    const localMetrics = expectSuccess(localDashboard);
+    const remoteMetrics = expectSuccess(remoteDashboard);
+    const localCounts = localMetrics.userCounts.userCounts;
+    const remoteCounts = remoteMetrics.userCounts.userCounts;
+
+    expect(localCounts.activeUsers + localCounts.inactiveUsers).toBeGreaterThan(0);
+    expect(remoteCounts.activeUsers + remoteCounts.inactiveUsers).toBe(0);
+  });
+
+  it("keeps non-global training access tied to the batch creator", async () => {
+    const batches = await request("/api/teacher-training-batches/", "GET", actorToken);
+    expect(batches.status).toBe(200);
+    expect(batches.body.map((batch) => batch._id)).toEqual([String(localBatch._id)]);
+    expect((await request(`/api/teacher-training-batches/${localBatch._id}`, "GET", actorToken)).status).toBe(200);
+    expect((await request(`/api/teacher-training-batches/${remoteBatch._id}`, "GET", actorToken)).status).toBe(403);
+    expect((await request(`/api/teacher-training-batches/${remoteBatch._id}`, "DELETE", actorToken)).status).toBe(403);
+  });
+
+  it("exports only data inside the actor scope", async () => {
+    const startedAt = new Date();
+    await Promise.all([
+      request("/api/school/export?limit=1000", "GET", actorToken).then(expectSuccess),
+      request("/api/users/export?limit=1000", "GET", actorToken).then(expectSuccess),
+      request("/api/content-activity/export", "GET", actorToken).then(expectSuccess),
+    ]);
+
+    const eventTypes = ["Schools Export", "Teachers Export", "Content Activity Export"];
+    const logs = [];
+    for (let attempt = 0; attempt < 60 && logs.length < eventTypes.length; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const found = await db.collection("auditlogs").find({
+        userId: new mongoose.Types.ObjectId(actor._id),
+        eventType: { $in: eventTypes },
+        createdAt: { $gte: startedAt },
+      }).toArray();
+      logs.splice(0, logs.length, ...found);
+    }
+    expect(logs).toHaveLength(3);
+    expect(logs.every((log) => log.status === "success")).toBe(true);
+    const sheets = {};
+    for (const log of logs) {
+      const response = await axios.get(log.logUrl, { responseType: "arraybuffer" });
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(response.data);
+      sheets[log.eventType] = workbook.worksheets[0];
+    }
+    const values = (sheet, column) => sheet.getColumn(column).values.slice(2);
+    expect(values(sheets["Schools Export"], 1)).toContain(localSchool.schoolId);
+    expect(values(sheets["Schools Export"], 1)).not.toContain(remoteSchool.schoolId);
+    expect(values(sheets["Teachers Export"], 1)).toContain(localTeacher.identity.name);
+    expect(values(sheets["Teachers Export"], 1)).not.toContain(remoteTeacher.identity.name);
+    expect(values(sheets["Content Activity Export"], 1)).toContain(localTeacher.identity.name);
+    expect(values(sheets["Content Activity Export"], 1)).not.toContain(remoteTeacher.identity.name);
+  }, 60000);
+
+  it("denies staff data without staff.view and applies permission removal immediately", async () => {
+    expectDenied(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken));
+
+    expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, {
+      permissions: operatorPermissions.filter((permission) => permission !== "school.list"),
+    }));
+    const revoked = await request("/api/school/list?limit=1", "GET", actorToken);
+    expect(revoked).toMatchObject({ status: 403, body: { success: false } });
+    expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, { permissions: operatorPermissions }));
+    expectSuccess(await request("/api/school/list?limit=1", "GET", actorToken));
+  });
+
+  it("enforces scope on school create, update, activation, deactivation, and deletion", async () => {
+    const body = {
+      name: `Scoped Integration School ${suffix}`,
+      schoolId: Number(`8${String(suffix).slice(-10)}`),
+      type: "urban",
+      boards: ["BSE-TG"],
+      state: localSchool.state,
+      zone: localSchool.zone,
+      district: localSchool.district,
+      block: localSchool.block,
+      mediums: ["english"],
+      academicYearStartDate: "2026-06-01",
+      academicYearEndDate: "2027-03-31",
+      classes: [],
+    };
+    const createdSchool = expectSuccess(await request("/api/school/create", "POST", actorToken, body));
+    ids.schools.push(createdSchool._id);
+
+    expectDenied(await request("/api/school/create", "POST", actorToken, {
+      ...body,
+      name: `Remote Integration School ${suffix}`,
+      schoolId: body.schoolId + 1,
+      state: remoteSchool.state,
+      zone: remoteSchool.zone,
+      district: remoteSchool.district,
+      block: remoteSchool.block,
+    }), "School is outside your scope");
+
+    const updated = expectSuccess(await request(`/api/school/update/${createdSchool._id}`, "PUT", actorToken, {
+      ...body,
+      name: `Updated Scoped Integration School ${suffix}`,
+    }));
+    expect(updated.name).toBe(`Updated Scoped Integration School ${suffix}`);
+
+    expectSuccess(await request(`/api/school/deactivate/${createdSchool._id}`, "PUT", actorToken));
+    expectSuccess(await request(`/api/school/activate/${createdSchool._id}`, "PUT", actorToken));
+    const remoteMutations = [
+      ["PUT", `/api/school/update/${remoteSchool._id}`, { ...body, schoolId: remoteSchool.schoolId, name: remoteSchool.name }],
+      ["PUT", `/api/school/deactivate/${remoteSchool._id}`],
+      ["PUT", `/api/school/activate/${remoteSchool._id}`],
+      ["DELETE", `/api/school/${remoteSchool._id}`],
+    ];
+    for (const [method, path, data] of remoteMutations) {
+      expectDenied(await request(path, method, actorToken, data), "School is outside your scope");
+    }
+    expectSuccess(await request(`/api/school/${createdSchool._id}`, "DELETE", actorToken));
+  });
+
+  it("enforces scope on user mutations", async () => {
+    expectSuccess(await request(`/api/users/${localTeacher._id}`, "PUT", actorToken, {
+      identity: { ...localTeacher.identity, name: "Updated Local Integration Teacher" },
+    }));
+    expectSuccess(await request(`/api/users/${localTeacher._id}/deactivate`, "PUT", actorToken));
+    expectSuccess(await request(`/api/users/${localTeacher._id}/activate`, "PUT", actorToken));
+    const remoteMutations = [
+      ["PUT", `/api/users/${remoteTeacher._id}`, { profiles: { teacher: { preferredLanguage: "kn" } } }],
+      ["PUT", `/api/users/${remoteTeacher._id}/deactivate`],
+      ["PUT", `/api/users/${remoteTeacher._id}/activate`],
+      ["DELETE", `/api/users/${remoteTeacher._id}`],
+    ];
+    for (const [method, path, data] of remoteMutations) {
+      expectDenied(await request(path, method, actorToken, data), "User is outside your scope");
+    }
+    expectSuccess(await request(`/api/users/${localTeacher._id}`, "DELETE", actorToken));
+  });
+
+  it("allows in-scope user creation and rejects invalid, duplicate, and broader assignments", async () => {
+    const local = expectSuccess(await request("/api/users", "POST", actorToken, teacherBody(
+      "Created Local Integration Teacher",
+      `6${String(suffix + 1).slice(-9)}`,
+      localSchool
+    )));
+    ids.users.push(local._id);
+
+    const adminBody = (name, phone, roles) => ({
+      identity: { name, phone, email: "", address: "" },
+      roles,
+      profiles: { admin: { state: localSchool.state } },
+    });
+    const rejected = [
+      {
+        body: teacherBody("Blocked Remote Integration Teacher", `6${String(suffix + 2).slice(-9)}`, remoteSchool),
+        message: "Role assignment is outside your scope",
+      },
+      {
+        body: teacherBody("Duplicate Assignment Teacher", `6${String(suffix + 3).slice(-9)}`, localSchool, [
+          { roleId: teacherRole._id, dep: localSchool._id },
+          { roleId: teacherRole._id, dep: localSchool._id },
+        ]),
+        message: "Duplicate role assignment",
+      },
+      {
+        body: teacherBody("Invalid Dependency Teacher", `6${String(suffix + 4).slice(-9)}`, localSchool, [
+          { roleId: teacherRole._id, dep: new mongoose.Types.ObjectId().toString() },
+        ]),
+        message: "SCHOOL scope dependency does not exist",
+      },
+      {
+        body: adminBody("Escalated Integration Admin", `6${String(suffix + 5).slice(-9)}`, [{ roleId: adminRole._id }]),
+        message: "Role assignment is outside your scope",
+      },
+      {
+        body: adminBody("Missing Dependency Admin", `6${String(suffix + 6).slice(-9)}`, [{ roleId: operatorRole._id }]),
+        message: "DISTRICT scope requires a dependency",
+      },
+      {
+        body: adminBody("Invalid Dependency Admin", `6${String(suffix + 7).slice(-9)}`, [
+          { roleId: operatorRole._id, dep: `Missing District ${suffix}` },
+        ]),
+        message: "DISTRICT scope dependency does not exist",
+      },
+    ];
+    for (const test of rejected) {
+      expectDenied(await request("/api/users", "POST", actorToken, test.body), test.message);
+    }
+  });
+
+  it("protects assigned roles from deletion and scope changes", async () => {
+    expectDenied(await request(`/api/roles/${operatorRole._id}`, "DELETE", actorToken), "Assigned roles cannot be deleted");
+    expectDenied(await request(`/api/roles/${operatorRole._id}`, "PUT", actorToken, {
+      scopeType: "STATE",
+    }), "Assigned role scope cannot be changed");
+  });
+});

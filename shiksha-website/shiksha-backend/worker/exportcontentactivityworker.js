@@ -1,7 +1,7 @@
 const { parentPort } = require("worker_threads");
 const ExcelJS = require("exceljs");
 const dbService = require("../config/db.js");
-const { uploadToStorage } = require("../services/e2e.storage.service");
+const { uploadToStorage } = require("../services/azure.blob.service");
 const AuditLog = require("../models/audit.log.model");
 
 parentPort.once("message", async (data) => {

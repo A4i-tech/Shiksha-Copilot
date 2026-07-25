@@ -8,8 +8,8 @@
     "test:coverage": "jest --coverage --runInBand",
     "test:unit": "jest __tests__/unit/ --runInBand",
     "test:unit:coverage": "jest __tests__/unit/ --coverage --runInBand",
-    "test:integration": "jest __tests__/integration/ --runInBand",
-    "test:integration:coverage": "jest __tests__/integration/ --coverage --runInBand",
+    "test:integration": "jest --config jest.integration.config.js --runInBand",
+    "test:integration:coverage": "jest --config jest.integration.config.js --coverage --runInBand",
     "start-dev": "pm2-runtime start app.js --name my-app-dev --env development ",
     "start-uat": "pm2-runtime start app.js --name my-app-uat --env uat "
   },
