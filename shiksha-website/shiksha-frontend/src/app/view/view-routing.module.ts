@@ -79,7 +79,7 @@ const routes: Routes = [
       {
         path: 'schools',
         loadChildren: () => import('./admin/school-management/school-management.module').then((module) => module.SchoolManagementModule),
-        data: { permissions: ['school.read'] },
+        data: { permissions: ['school.list'] },
         canActivate: [PermissionGuard],
       },
       {

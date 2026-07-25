@@ -90,7 +90,7 @@ import { environment } from 'src/environments/environment';
                     <span>Edit</span>
                   </div>
                 </button>
-                <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSuperUser" (click)="openDelete(role)">
+                <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSystem" (click)="openDelete(role)">
                   <div class="flex items-center justify-center gap-2">
                     <img src="assets/icons/delete.svg" alt="" class="w-4 h-4">
                     <span>Delete</span>
@@ -132,7 +132,7 @@ import { environment } from 'src/environments/environment';
                         <span>Edit</span>
                       </div>
                     </button>
-                    <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSuperUser" (click)="openDelete(role)">
+                    <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSystem" (click)="openDelete(role)">
                       <div class="flex items-center justify-center gap-2">
                         <img src="assets/icons/delete.svg" alt="" class="w-4 h-4">
                         <span>Delete</span>

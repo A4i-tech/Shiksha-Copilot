@@ -62,7 +62,9 @@ export class ViewLessonPlanComponent
     this.routeSubs = this.route.paramMap.subscribe((params) => {
       this.lessonPlanId = params.get('id');
       if (this.lessonPlanId) {
-        this.getLessonPlanDetails(this.lessonPlanId);
+        const activityId = this.route.snapshot.queryParamMap.get('activityId');
+        if (!activityId) throw new Error('Activity ID is required');
+        this.getLessonPlanDetails(this.lessonPlanId, activityId);
       }
     });
     if (this.isMobile()) {
@@ -125,8 +127,8 @@ export class ViewLessonPlanComponent
     }
   }
 
-  getLessonPlanDetails(id: any) {
-    this.contentActService.getLessonPlanDetFrmContentActivity(id).subscribe({
+  getLessonPlanDetails(id: any, activityId: string) {
+    this.contentActService.getLessonPlanDetFrmContentActivity(id, activityId).subscribe({
       next: (res: any) => {
         console.log(res);
         this.planDetails = res.data[0];

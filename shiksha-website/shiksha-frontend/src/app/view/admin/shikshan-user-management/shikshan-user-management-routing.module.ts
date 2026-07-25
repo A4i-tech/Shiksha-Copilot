@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { ShikshanUserManageComponent } from './shikshan-user-manage/shikshan-user-manage.component';
 import { UserStaffListComponent } from 'src/app/shared/components/user-staff-list/user-staff-list.component';
+import { PermissionGuard } from 'src/app/core/guards/permission.guard';
 
 const routes: Routes = [
   {
@@ -19,16 +20,14 @@ const routes: Routes = [
   {
     path: 'add',
     component:ShikshanUserManageComponent,
-    data:{
-      idleTracking:'custom',
-    }
+    data:{ permissions: ['staff.create'], idleTracking:'custom' },
+    canActivate: [PermissionGuard],
   },
   {
     path: ':id',
     component:ShikshanUserManageComponent,
-    data:{
-      idleTracking:'custom',
-    }
+    data:{ permissions: ['staff.edit'], idleTracking:'custom' },
+    canActivate: [PermissionGuard],
   }
 
 ];

@@ -216,9 +216,6 @@
                                             {{!item.isDeleted ? 'Active' : 'Inactive'}}
                                         </span>
                                     </div>
-                                    <p class="text-sm text-content-60 mt-2 break-words" *ngIf="item?.role?.length">
-                                        {{ item.role.join(', ') | titlecase}}
-                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -237,11 +234,6 @@
                                         <img src="assets/icons/profile.svg" alt="Profile Pic"
                                             class="w-12 h-12 rounded-full">
                                         <span class="font-bold">{{item?.name | titlecase}}</span>
-                                    </td>
-                                    <td class="px-4 py-2 whitespace-nowrap w-[24rem]">
-                                        <span *ngIf="item?.role?.length">
-                                            {{ item.role.join(', ') | titlecase}}
-                                        </span>
                                     </td>
                                     <td class="px-4 py-2 whitespace-nowrap w-[9rem]">
                                         <span class="px-3 py-2 rounded-full"

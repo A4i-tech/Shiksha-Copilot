@@ -36,7 +36,7 @@ router.put(
 router.post(
 	"/resource-plan/regenerate",
 	isAuthenticated,
-	requirePermission("lesson-resource.generate"),
+	requirePermission("lesson-resource.edit"),
 	asyncMiddleware(
 		masterResourceController.regenerate.bind(masterResourceController)
 	)

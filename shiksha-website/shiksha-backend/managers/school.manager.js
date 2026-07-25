@@ -320,12 +320,11 @@ class SchoolManager extends BaseManager {
 
       const users = await this.userDao.getUsersBySchoolId(id);
 
-      const hasFacilityUsers = users.filter((ele) => ele.facilities.some((facility) => facility.type === body.otherType));
+      const hasFacilityUsers = users.filter((user) => user.profiles.teacher.facilities.some((facility) => facility.type === body.otherType));
 
-      for (let i = 0; i < hasFacilityUsers.length; i++) {
-        let user = hasFacilityUsers[i]
-        const updatedUserFacility = user.facilities.filter((ele) => ele.type !== body.otherType);
-        await this.userDao.update(user._id, { facilities: updatedUserFacility })
+      for (const user of hasFacilityUsers) {
+        const facilities = user.profiles.teacher.facilities.filter((facility) => facility.type !== body.otherType);
+        await this.userDao.update(user._id, { "profiles.teacher.facilities": facilities });
       }
 
       return formatApiReponse(true, "Resource Deleted!", school);

@@ -69,11 +69,11 @@
                     </div>
                     <div>
                         <p class="text-xs text-content-60">Generated Content</p>
-                        <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.genContentId]" [class.disableLink]="item?.teacherLessonPlanStatus!=='completed'">{{item?.genContent | titlecase}}</a>
+                        <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.genContentId]" [queryParams]="{ activityId: item?._id }" [class.disableLink]="item?.teacherLessonPlanStatus!=='completed'">{{item?.genContent | titlecase}}</a>
                     </div>
                     <div>
                         <p class="text-xs text-content-60">Source Content</p>
-                        <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.contentId]">{{item?.content | titlecase}}</a>
+                        <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.contentId]" [queryParams]="{ activityId: item?._id }">{{item?.content | titlecase}}</a>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
@@ -107,8 +107,8 @@
                     </tr>
                     <tr class="border" *ngFor="let item of listData">
                         <td class="p-4 border">{{item?.userName | titlecase}}</td>
-                        <td class="p-4 border"><a class="text-primary" [routerLink]="['lesson-plan',item?.genContentId]" [class.disableLink]="item?.teacherLessonPlanStatus!=='completed'">{{item?.genContent | titlecase}}</a></td>
-                        <td class="p-4 border"><a class="text-primary" [routerLink]="['lesson-plan',item?.contentId]">{{item?.content | titlecase}}</a></td>
+                        <td class="p-4 border"><a class="text-primary" [routerLink]="['lesson-plan',item?.genContentId]" [queryParams]="{ activityId: item?._id }" [class.disableLink]="item?.teacherLessonPlanStatus!=='completed'">{{item?.genContent | titlecase}}</a></td>
+                        <td class="p-4 border"><a class="text-primary" [routerLink]="['lesson-plan',item?.contentId]" [queryParams]="{ activityId: item?._id }">{{item?.content | titlecase}}</a></td>
                         <td class="p-4 border text-sm" >
                             <span [ngClass]="{
                                 'success-chip': item?.teacherLessonPlanStatus === 'completed',

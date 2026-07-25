@@ -91,10 +91,11 @@ describe("MasterLessonController", () => {
       };
       mockManager.getActivityById = jest.fn().mockResolvedValue(mockResult);
       mockReq.params = { id: "activity-123" };
+      mockReq.query = { activityId: "log-123" };
 
       await controller.getActivityById(mockReq, mockRes);
 
-      expect(mockManager.getActivityById).toHaveBeenCalledWith("activity-123");
+      expect(mockManager.getActivityById).toHaveBeenCalledWith("activity-123", "log-123", mockReq.permissions);
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });

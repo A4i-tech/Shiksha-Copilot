@@ -5,6 +5,7 @@ const TeacherLessonPlanDao = require("../../../dao/teacher.lesson.plan.dao");
 const ChapterDao = require("../../../dao/chapter.dao");
 const MasterSubjectDao = require("../../../dao/master.subject.dao");
 const RegeneratedLessonResourceDao = require("../../../dao/regenerate.log.dao");
+const School = require("../../../models/school.model");
 
 jest.mock("../../../dao/master.lesson.dao");
 jest.mock("../../../dao/master.resource.dao");
@@ -13,6 +14,7 @@ jest.mock("../../../dao/chapter.dao");
 jest.mock("../../../dao/master.subject.dao");
 jest.mock("../../../dao/regenerate.log.dao");
 jest.mock("../../../dao/user.dao");
+jest.mock("../../../models/school.model");
 jest.mock("../../../helper/formatter", () => ({
   sortDataBySubTopics: jest.fn((data) => data),
 }));
@@ -106,6 +108,14 @@ describe("MasterLessonManager", () => {
   });
 
   describe("getActivityById", () => {
+    const permissions = [{ permission: "content.activity.view", scopeType: "SCHOOL", dep: "school-1" }];
+
+    beforeEach(() => {
+      mockRegeneratedDao.getOne.mockResolvedValue({ contentId: "lesson-123", genContentId: "generated-123", generatedBy: "teacher-1" });
+      mockUserDao.getById.mockResolvedValue({ profiles: { teacher: {} }, roles: [{ role: { scopeType: "SCHOOL" }, dep: "school-1" }] });
+      School.findById.mockReturnValue({ lean: jest.fn().mockResolvedValue({ _id: "school-1" }) });
+    });
+
     it("should get activity by lesson ID successfully", async () => {
       const mockLessonPlan = {
         _id: "lesson-123",
@@ -114,7 +124,7 @@ describe("MasterLessonManager", () => {
       };
       mockMasterLessonDao.generateLessonPlan.mockResolvedValue(mockLessonPlan);
 
-      const result = await manager.getActivityById("lesson-123");
+      const result = await manager.getActivityById("lesson-123", "log-1", permissions);
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockLessonPlan);
@@ -123,10 +133,18 @@ describe("MasterLessonManager", () => {
     it("should return error when lesson plan not found", async () => {
       mockMasterLessonDao.generateLessonPlan.mockResolvedValue(null);
 
-      const result = await manager.getActivityById("invalid-id");
+      mockRegeneratedDao.getOne.mockResolvedValue({ contentId: "invalid-id", generatedBy: "teacher-1" });
+      const result = await manager.getActivityById("invalid-id", "log-1", permissions);
 
       expect(result.success).toBe(false);
       expect(result.message).toBe("Lesson plan not found");
+    });
+
+    it("rejects an activity outside the permission scope", async () => {
+      const result = await manager.getActivityById("lesson-123", "log-1", [{ permission: "content.activity.view", scopeType: "SCHOOL", dep: "school-2" }]);
+
+      expect(result).toMatchObject({ success: false, message: "Activity is outside your scope" });
+      expect(mockMasterLessonDao.generateLessonPlan).not.toHaveBeenCalled();
     });
   });
 

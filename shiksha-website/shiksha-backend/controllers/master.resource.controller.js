@@ -27,11 +27,11 @@ class MasterResourceController extends BaseController {
 
 	async regenerate(req, res) {
 		try {
-			const { resourceId, reason, userId } = req.body;
+			const { resourceId, reason } = req.body;
 			const result = await this.manager.regenerateResourcePlan({
 				resourceId,
 				reason,
-				userId,
+				userId: req.user._id,
 			});
 			if (!result.success) {
 				return res.status(404).json({ message: result.message });

@@ -28,4 +28,10 @@ describe("RoleManager assignment contracts", () => {
     await expect(manager.delete({ params: { id: "role-1" } })).resolves.toMatchObject({ success: false, message: "Assigned roles cannot be deleted" });
     expect(dao.delete).not.toHaveBeenCalled();
   });
+
+  it("rejects deletion of a system role", async () => {
+    dao.getById.mockResolvedValue({ _id: "role-1", isSystem: true });
+    await expect(manager.delete({ params: { id: "role-1" } })).resolves.toMatchObject({ success: false, message: "System roles cannot be deleted" });
+    expect(dao.delete).not.toHaveBeenCalled();
+  });
 });

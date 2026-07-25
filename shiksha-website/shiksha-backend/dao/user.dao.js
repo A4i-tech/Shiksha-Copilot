@@ -24,7 +24,6 @@ class UserDao extends BaseDao {
 		try {
 			let processedFilters = { ...filters, ...status };
 
-			// List kind: teacher vs staff (explicit profile, not a permission proxy).
 			if (processedFilters.profileType === "teacher") {
 				processedFilters["profiles.teacher"] = { $exists: true, $type: "object" };
 				delete processedFilters.profileType;

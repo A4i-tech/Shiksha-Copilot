@@ -33,7 +33,7 @@ interface DashboardFilters {
   styleUrls: ['./dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit, AfterViewInit {
-  tableHeaders = ['User Name', 'Type of User', 'Status'];
+  tableHeaders = ['User Name', 'Status'];
   stateDropdownOptions: any[] = [];
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,

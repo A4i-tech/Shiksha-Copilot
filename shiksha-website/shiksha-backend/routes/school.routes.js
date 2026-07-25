@@ -18,7 +18,7 @@ router.post(
 router.get(
 	"/school/list",
 	isAuthenticated,
-	requirePermission("school.read"),
+	requirePermission("school.list"),
 	asyncMiddleware(schoolController.getAll.bind(schoolController))
 );
 

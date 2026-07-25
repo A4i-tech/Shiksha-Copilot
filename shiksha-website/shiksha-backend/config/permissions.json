@@ -31,6 +31,7 @@
   { "name": "school.delete", "description": "Deactivate schools." },
   { "name": "school.edit", "description": "Edit school details, facilities, holidays, classes, and subjects." },
   { "name": "school.export", "description": "Export school lists and school data." },
+  { "name": "school.list", "description": "List school records." },
   { "name": "school.read", "description": "Use school records in dropdowns, forms, and lookups." },
   { "name": "staff.create", "description": "Create staff users." },
   { "name": "staff.delete", "description": "Deactivate staff users." },

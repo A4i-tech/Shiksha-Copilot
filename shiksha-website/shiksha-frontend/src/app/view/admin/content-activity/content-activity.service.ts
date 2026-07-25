@@ -47,8 +47,8 @@ export class ContentActivityService extends BaseRestService {
     return this.http.get<any>(`${this.baseUrl}/content-activity`, { params });
   }
 
-  getLessonPlanDetFrmContentActivity(id:any){
-    return this.http.get(`${this.baseUrl}/master-lesson/activity/${id}`);
+  getLessonPlanDetFrmContentActivity(id: any, activityId: string) {
+    return this.http.get(`${this.baseUrl}/master-lesson/activity/${id}`, { params: { activityId } });
   }
 
   exportContentActivities(filters?: { [key: string]: any }, search?: string): Observable<any> {

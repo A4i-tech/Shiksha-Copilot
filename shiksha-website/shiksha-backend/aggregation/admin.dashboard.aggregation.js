@@ -56,6 +56,7 @@ class DashboardAggregation {
 		const scopes = getPermission(grants, "dashboard.admin.view");
 		const scope = scopeFilter(scopes, "schoolDetails");
 		const userSchoolStages = [
+			{ $match: { "profiles.teacher": { $type: "object" } } },
 			{ $lookup: { from: "schools", localField: "roles.dep", foreignField: "_id", as: "schoolDetails" } },
 			{ $unwind: { path: "$schoolDetails", preserveNullAndEmptyArrays: false } },
 		];
@@ -97,7 +98,6 @@ class DashboardAggregation {
 								_id: 1,
 								name: "$identity.name",
 								isDeleted: 1,
-								role: "$roles",
 							},
 						},
 						{
@@ -197,7 +197,6 @@ class DashboardAggregation {
 										_id: "$$user._id",
 										name: "$$user.identity.name",
 										isDeleted: "$$user.isDeleted",
-										role: "$$user.roles",
 									},
 								},
 							},

@@ -137,7 +137,7 @@ async function seedBuiltinRoles(db) {
 async function unifyUsers() {
   const db = mongoose.connection.db;
   const collections = await db.listCollections({ name: "adminusers" }, { nameOnly: true }).toArray();
-  if (!collections.length) return;
+  if (!collections.length || !await db.collection("adminusers").countDocuments()) return;
   const backupSuffix = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "_").replace("Z", "");
   for (const name of TOUCHED_COLLECTIONS) {
     const backupName = `${name}_unify_users_backup_${backupSuffix}`;

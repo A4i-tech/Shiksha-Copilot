@@ -92,8 +92,8 @@ describe("MasterResourceController", () => {
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Outdated content",
-        userId: "user-123",
       };
+      mockReq.user = { _id: "user-123" };
 
       await controller.regenerate(mockReq, mockRes);
 

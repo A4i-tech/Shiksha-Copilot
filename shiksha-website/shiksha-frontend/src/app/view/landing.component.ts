@@ -16,7 +16,8 @@ export class LandingComponent implements OnInit {
     if (user.profiles.teacher && !user.profiles.teacher.isProfileCompleted) {
       this.router.navigate(['/profile']);
     } else {
-      this.router.navigate([menuItem.find((item) => this.utility.hasPermission(item.permission))!.route]);
+      const item = menuItem.find((item) => this.utility.hasPermission(item.permission));
+      if (item) this.router.navigate([item.route]);
     }
   }
 }

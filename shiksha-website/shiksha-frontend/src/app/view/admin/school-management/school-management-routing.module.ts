@@ -14,7 +14,7 @@ const routes:Routes = [
         path:'list',
         component:SchoolListComponent,
         data: {
-            permissions: ['school.read'],
+            permissions: ['school.list'],
             idleTracking:'custom',
           },
           canActivate: [PermissionGuard]

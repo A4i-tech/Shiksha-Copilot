@@ -20,7 +20,7 @@ const { getRolePermissions, getPermission, schoolDependency } = require("../help
 const { assertCanGrant, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const logger = require("../config/loggers");
 
-async function prepareAssignments(input, actor, current, teacher) {
+async function prepareAssignments(input, actor, current, teacher, permission) {
   const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });
   const roleById = new Map(roles.map((role) => [String(role._id), role]));
   if (roleById.size !== new Set(input.map((assignment) => assignment.roleId)).size) throw new Error("One or more roles do not exist");
@@ -35,6 +35,7 @@ async function prepareAssignments(input, actor, current, teacher) {
     const role = roleById.get(assignment.roleId);
     if (role.isSuperUser && !actorIsSuper) throw new Error("Only a superuser can assign the superuser role");
     const dep = await assertCanGrant(grants, role, assignment.dep);
+    if (!teacher && !isDependencyAllowed(grants, permission, role.scopeType, dep)) throw new Error("User is outside your scope");
     const key = `${assignment.roleId}:${dep == null ? "" : String(dep)}`;
     if (seen.has(key)) throw new Error("Duplicate role assignment");
     seen.add(key);
@@ -48,7 +49,10 @@ async function prepareAssignments(input, actor, current, teacher) {
   }
   const retainedIds = new Set(input.map((assignment) => assignment._id).filter(Boolean));
   for (const assignment of current) {
-    if (!retainedIds.has(String(assignment._id))) await assertCanGrant(grants, assignment.role, assignment.dep);
+    if (!retainedIds.has(String(assignment._id))) {
+      await assertCanGrant(grants, assignment.role, assignment.dep);
+      if (!teacher && !isDependencyAllowed(grants, permission, assignment.role.scopeType, assignment.dep)) throw new Error("User is outside your scope");
+    }
   }
   if (teacher && !school) throw new Error("A teacher must have one school dependency");
   return { assignments, school };
@@ -77,7 +81,7 @@ class UserManager extends BaseManager {
       if (existingUser)
         return { success: false, message: "Phone already exists!" };
 
-      const prepared = await prepareAssignments(roles, req.user, [], Boolean(profiles.teacher));
+      const prepared = await prepareAssignments(roles, req.user, [], Boolean(profiles.teacher), profiles.teacher ? "teacher.create" : "staff.create");
 
       if (profiles.teacher) {
         const school = await this.schoolDao.getById(prepared.school);
@@ -174,7 +178,7 @@ class UserManager extends BaseManager {
         }
       }
 
-      const prepared = payload.roles && await prepareAssignments(payload.roles, actor, user.roles, Boolean(user.profiles.teacher));
+      const prepared = payload.roles && await prepareAssignments(payload.roles, actor, user.roles, Boolean(user.profiles.teacher), action);
       const schoolChanged = Boolean(user.profiles.teacher && prepared && String(prepared.school) !== schoolDependency(user.roles));
       if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new Error("User is outside your scope");
 

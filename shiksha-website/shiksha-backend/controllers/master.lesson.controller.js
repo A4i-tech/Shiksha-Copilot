@@ -37,7 +37,7 @@ class MasterLessonController extends BaseController {
 		try {
 			const { id } = req.params;
 	
-			const result = await this.manager.getActivityById(id);
+			const result = await this.manager.getActivityById(id, req.query.activityId, req.permissions);
 	
 			if (result.success) {
 				return res.status(200).json(result);
