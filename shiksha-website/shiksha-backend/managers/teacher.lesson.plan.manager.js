@@ -19,8 +19,6 @@ const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
-const ActivityRatingAggregate = require("../models/activity.aggregate.model.js");
-const { attachAggregateRatings } = require("../helper/activity.rating.helper.js");
 
 /** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
@@ -242,8 +240,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				resourcePlanId
 			);
 			if (resourcePlan) {
-				const rattingAttachedResourcePlan = await attachAggregateRatings(resourcePlan,resourcePlanId)
-				return formatApiReponse(true, "", rattingAttachedResourcePlan);
+				return formatApiReponse(true, "", resourcePlan);
 
 			} else {
 				return formatApiReponse(false, " Resource plan not found", null);
@@ -675,144 +672,6 @@ async deleteResourceMedia(teacherId, resourceId, data) {
       throw error.message;
     }
   }
-
-
-async rateActivity(teacherId, resourceId, data) {
-  try {
-    const resourcePlan = await TeacherLessonPlan.findOne({
-      teacherId,
-      resourceId,
-      isLesson: false,
-    });
-
-    if (!resourcePlan) throw new Error("Resource plan not found");
-
-    const resource = resourcePlan.resources.find(r => r.id === data.resourceId);
-    if (!resource) throw new Error("Resource not found");
-
-    const activity = resource.content.find(c => c.id === data.activityId);
-    if (!activity) throw new Error("Activity not found");
-
-    // Keep previous rating if exists
-    const prevRating = activity.rating || {};
-
-    // Update teacher's rating
-    activity.rating = {
-      performed: data.performed,
-      engagement: data.engagement || null,
-      alignment: data.alignment || null,
-      application: data.application || null,
-      notPerformedReason: data.notPerformedReason || null,
-      stars: data.stars != null ? data.stars : null,
-      updatedAt: new Date(),
-    };
-
-    resourcePlan.markModified("resources");
-    await resourcePlan.save();
-
-    // Convert resourceId to ObjectId for masterResourceId
-    const masterResourceObjectId = new mongoose.Types.ObjectId(resourceId);
-
-    // Update aggregate
-    const filter = { activityId: data.activityId, masterResourceId: masterResourceObjectId };
-    let aggregate = await ActivityRatingAggregate.findOne(filter);
-
-    if (!aggregate) {
-      aggregate = new ActivityRatingAggregate({
-        activityId: data.activityId,
-        masterResourceId: masterResourceObjectId,
-        totalReviews: 0,
-        averageStars: 0,
-        engagementCounts: { distracted: 0, motivated: 0, interactive: 0 },
-        alignmentCounts: { notAligned: 0, partial: 0, strong: 0 },
-        applicationCounts: { notRelevant: 0, notApplicable: 0, relevant: 0 },
-        notPerformedCounts: { notSuitable: 0, timeConstraints: 0, resourcesUnavailable: 0 },
-      });
-    }
-
-    // Helper to normalize keys to match aggregate keys
-    const normalizeKey = (str) => {
-      if (!str) return null;
-      switch (str.trim()) {
-        case "Motivated": return "motivated";
-        case "Interactive": return "interactive";
-        case "Distracted": return "distracted";
-        case "Strong": return "strong";
-        case "Partial": return "partial";
-        case "Not Aligned": return "notAligned";
-        case "Relevant": return "relevant";
-        case "Not Relevant": return "notRelevant";
-        case "Not Applicable": return "notApplicable";
-        case "Not Suitable": return "notSuitable";
-        case "Time Constraints": return "timeConstraints";
-        case "Resources Unavailable": return "resourcesUnavailable";
-        default: return str.toLowerCase().replace(/\s+/g, "");
-      }
-    };
-
-    // Remove previous counts if updating
-    if (prevRating.performed !== undefined) {
-      if (prevRating.performed) {
-        if (prevRating.engagement) {
-          const key = normalizeKey(prevRating.engagement);
-          aggregate.engagementCounts[key] = Math.max((aggregate.engagementCounts[key] || 1) - 1, 0);
-        }
-        if (prevRating.alignment) {
-          const key = normalizeKey(prevRating.alignment);
-          aggregate.alignmentCounts[key] = Math.max((aggregate.alignmentCounts[key] || 1) - 1, 0);
-        }
-        if (prevRating.application) {
-          const key = normalizeKey(prevRating.application);
-          aggregate.applicationCounts[key] = Math.max((aggregate.applicationCounts[key] || 1) - 1, 0);
-        }
-        if (prevRating.stars != null) {
-          const prevTotalStars = aggregate.averageStars * aggregate.totalReviews;
-          aggregate.averageStars = (prevTotalStars - prevRating.stars) / Math.max(aggregate.totalReviews - 1, 1);
-        }
-      } else if (prevRating.notPerformedReason) {
-        const key = normalizeKey(prevRating.notPerformedReason);
-        aggregate.notPerformedCounts[key] = Math.max((aggregate.notPerformedCounts[key] || 1) - 1, 0);
-      }
-      aggregate.totalReviews = Math.max((aggregate.totalReviews || 1) - 1, 0);
-    }
-
-    // Add new counts
-    if (data.performed) {
-      if (data.engagement) {
-        const key = normalizeKey(data.engagement);
-        aggregate.engagementCounts[key] = (aggregate.engagementCounts[key] || 0) + 1;
-      }
-      if (data.alignment) {
-        const key = normalizeKey(data.alignment);
-        aggregate.alignmentCounts[key] = (aggregate.alignmentCounts[key] || 0) + 1;
-      }
-      if (data.application) {
-        const key = normalizeKey(data.application);
-        aggregate.applicationCounts[key] = (aggregate.applicationCounts[key] || 0) + 1;
-      }
-      if (data.stars != null) {
-        const prevTotalStars = aggregate.averageStars * aggregate.totalReviews;
-        aggregate.totalReviews += 1;
-        aggregate.averageStars = (prevTotalStars + data.stars) / aggregate.totalReviews;
-      } else {
-        aggregate.totalReviews += 1;
-      }
-    } else if (data.notPerformedReason) {
-      const key = normalizeKey(data.notPerformedReason);
-      aggregate.notPerformedCounts[key] = (aggregate.notPerformedCounts[key] || 0) + 1;
-      aggregate.totalReviews += 1;
-    }
-
-    await aggregate.save();
-
-    return { success: true, message: "Activity rated successfully", rating: activity.rating };
-  } catch (error) {
-    console.error("Error rating activity:", error);
-    throw error.message;
-  }
-}
-
-
 
 
 	async _checkStatusAndThrowError(regeneratedId, recordId) {

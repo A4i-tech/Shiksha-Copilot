@@ -479,10 +479,9 @@ export class LessonPlanViewEditComponent implements OnInit {
       const { resources, additionalResources } = this.lessonResourceFormatter(
         this.sections
       );
-      const cleanedResources = this.removeAggregateRating(resources);
       reqBody = {
         resourceId: this.planId,
-        resources:cleanedResources,
+        resources,
         additionalResources,
         learningOutcomes: this.planDetails?.learningOutcomes,
       };
@@ -599,13 +598,10 @@ export class LessonPlanViewEditComponent implements OnInit {
       const { resources, additionalResources } = this.lessonResourceFormatter(
         this.sections
       );
-      const cleanedResources = this.removeAggregateRating(resources);
-
-
       const body = {
         isCompleted,
         resourceId,
-        resources: cleanedResources,
+        resources,
         additionalResources,
       };
 
@@ -644,22 +640,6 @@ export class LessonPlanViewEditComponent implements OnInit {
       });
     }
   }
-
-  removeAggregateRating(resources:any[]): any[] {
-  if (!Array.isArray(resources)) return resources;
-
-  // Find the "activities" resource
-  const activities = resources.find(r => r.id === "activities");
-  if (!activities?.content) return resources;
-
-  // Remove aggregateRating from each activity
-  activities.content = activities.content.map((activity: any) => {
-    const { aggregateRating, ...rest } = activity; // safely removes it if it exists
-    return rest;
-  });
-
-  return resources;
-}
 
   isMobile(): boolean {
     return window.innerWidth <= 768;

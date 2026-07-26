@@ -18,7 +18,6 @@ const masterLessonRoutes = require("./routes/master.lesson.routes");
 const boardRoutes = require("./routes/board.routes");
 const schoolRoutes = require("./routes/school.routes");
 const schoolClassRoutes = require("./routes/school.class.routes");
-const subjectRoutes = require("./routes/subject.routes");
 const regionRoutes = require("./routes/region.routes");
 const authRoutes = require("./routes/auth.routes");
 const adminRoutes = require("./routes/admin.user.routes");
@@ -40,7 +39,6 @@ const conditionalMorganMiddleware = require('./config/morgan');
 const useragent = require('express-useragent');
 const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.routes.js');
 const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
-const helpVideosRoutes = require('./routes/help.videos.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
 const endlineSurveyRoutes = require('./routes/endlineSurvey.routes');
 const systemRoutes = require('./routes/system.routes.js');
@@ -69,7 +67,6 @@ app.use("/api", masterLessonRoutes);
 app.use("/api", boardRoutes);
 app.use("/api", schoolRoutes);
 app.use("/api", schoolClassRoutes);
-app.use("/api", subjectRoutes);
 app.use("/api", regionRoutes);
 app.use("/api", authRoutes);
 app.use("/api", adminRoutes);
@@ -89,7 +86,6 @@ app.use("/api", questionBankRoutes)
 app.use("/api", lessonPlanTemplateRoutes)
 app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);
-app.use('/api', helpVideosRoutes);
 app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
 

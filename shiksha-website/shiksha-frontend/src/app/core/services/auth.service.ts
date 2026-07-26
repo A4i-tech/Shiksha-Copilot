@@ -79,11 +79,4 @@ export class AuthService {
     };
   }
 
-  getFLNLastViewed(): Observable<{grade: string, day: number}> {
-    return this.http.get<{grade: string, day: number}>(`${this.apiUrl}/user/fln-last-viewed`);
-  }
-
-  setFLNLastViewed(grade: string, day: number): Observable<any> {
-    return this.http.post(`${this.apiUrl}/user/fln-last-viewed`, { grade, day });
-  }
-} 
+}

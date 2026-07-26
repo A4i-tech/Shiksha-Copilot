@@ -8,9 +8,6 @@ jest.mock("../../../dao/master.resource.dao");
 jest.mock("../../../dao/teacher.lesson.plan.dao");
 jest.mock("../../../dao/chapter.dao");
 jest.mock("../../../dao/master.subject.dao");
-jest.mock("../../../helper/activity.rating.helper", () => ({
-  attachAggregateRatings: jest.fn((data) => data),
-}));
 jest.mock("../../../helper/formatter", () => ({
   sortDataBySubTopics: jest.fn((data) => data),
 }));
