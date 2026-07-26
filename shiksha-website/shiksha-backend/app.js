@@ -11,7 +11,6 @@ require("applicationinsights").setup().start();
 const express = require("express");
 const cors = require("cors");
 const logger = require("morgan");
-const path = require("path");
 const dbService = require("./config/db");
 const userRoutes = require("./routes/user.routes.js");
 const masterLessonRoutes = require("./routes/master.lesson.routes");
@@ -51,9 +50,6 @@ app.use(express.json());
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
 app.use(cors({ origin: allowedOrigins, optionsSuccessStatus: 200 }));
 
-const folderPath = path.join(__dirname, 'public', 'images');
-
-app.use('/content', express.static(folderPath));
 app.use(logger("dev"));
 app.use(conditionalMorganMiddleware);
 app.use(useragent.express());
