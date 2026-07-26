@@ -404,14 +404,14 @@
       ></app-dropdown>
     </div>
 
-    <div class="flex flex-col w-full md:w-36">
-      <label for="month" class="form-control-label">{{'Month' | translate}}</label>
+    <div class="w-full md:w-36">
+      <label for="month" class="form-control-label inline-flex items-center gap-1">{{'Month' | translate}}</label>
       <input
         type="month"
         placeholder="Select Month"
         [(ngModel)]="selectedMonth"
         (change)="onMonthSelection($event)"
-        class="appearance-none rounded p-2 text-content leading-tight focus:outline-none bg-white border border-content-50 h-9"
+        class="form-control block"
       />
     </div>
   </div>
