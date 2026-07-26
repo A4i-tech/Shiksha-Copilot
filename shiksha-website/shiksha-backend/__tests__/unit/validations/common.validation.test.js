@@ -62,6 +62,16 @@ describe("Common Validation", () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
 
+    it("should fail validation with missing body", () => {
+      const middleware = validateRequest(Joi.object());
+      mockReq.body = undefined;
+
+      middleware(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
     it("should fail validation with multiple errors", () => {
       const schema = Joi.object({
         name: Joi.string().required(),

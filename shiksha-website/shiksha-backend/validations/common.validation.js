@@ -2,7 +2,7 @@ const validateRequest = (schema) => {
     return (req, res, next) => {
         const data = req.body;
 
-        const isValid = schema.validate(data, { abortEarly: false });
+        const isValid = schema.required().validate(data, { abortEarly: false });
 
         if (isValid.error) {
             return res.status(400).json({

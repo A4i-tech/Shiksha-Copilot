@@ -45,11 +45,6 @@ class TeacherTrainingBatchController extends BaseController {
       return res.status(400).json({ message: 'Missing required batch fields.' });
     }
 
-    // Check if user is authenticated (basic check)
-    if (!req.user) {
-      return res.status(401).json({ message: 'Authentication required.' });
-    }
-
     // Save the batch with the PDF path
     const newBatch = new TeacherTrainingBatch({
       batchName,
