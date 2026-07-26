@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, Validators } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { EndlineSurveyService } from 'src/app/core/services/endline-survey.service';
+import { DropDownConfig, DropdownOption } from '../../interfaces/dropdown.interface';
 
 @Component({ selector: 'app-endline-survey', templateUrl: './endline-survey.component.html', styleUrls: ['./endline-survey.component.scss'] })
 export class EndlineSurveyComponent {
@@ -15,6 +16,8 @@ export class EndlineSurveyComponent {
     shikshaContentUsed: ['Questions', 'Real world examples', 'Activities', 'I have not used any of these in my classroom'],
     shikshaStudentImpact: ['Encourages deeper thinking and curiosity', 'Improves problem-solving and reasoning skills', 'Engagement of students at different learning levels', 'Helps students understand concepts', 'I have not used it enough to notice changes'],
   };
+  readonly dropdownOptions: Record<string, DropdownOption[]> = Object.fromEntries(Object.entries(this.options).map(([field, options]) => [field, options.map(value => ({ name: value, value }))]));
+  readonly dropdownConfig: DropDownConfig = { isBackground: false, placeHolderTxt: 'Select', hideLabel: true };
   readonly exclusive: Record<string, string> = {
     shikshaBenefits: 'Still exploring its usefulness',
     shikshaContentUsed: 'I have not used any of these in my classroom',
