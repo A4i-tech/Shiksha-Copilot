@@ -29,7 +29,6 @@ class ChatManager extends BaseManager {
 		return [
 			"## User information",
 			"I am a school teacher and below are my details:",
-			`**Name**: ${user.name}`,
 			`**School**: ${school.name} (${school.state}, ${school.type})`,
 			...classes
 		].join("\n");
