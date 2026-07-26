@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const validateRequest = require("./common.validation");
 
 const roleValidator = (value, helpers) => {
 	if (typeof value === "string") {
@@ -72,20 +73,7 @@ const validateAdminUserGetById = (req, res, next) => {
 	next();
 };
 
-const validateAdminUserUpdate = (req, res, next) => {
-	const data = req.body;
-
-	let isValid = adminUserSchemaUpdate.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const validateAdminUserUpdate = validateRequest(adminUserSchemaUpdate);
 
 module.exports = {
 	adminUserSchemaCreate,

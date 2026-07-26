@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
+const validateRequest = require("./common.validation");
 
 const VALID_QUESTION_TYPES = Object.keys(PAPER_CONFIG.questionTypes);
 const questionBankTemplateItemSchema = {
@@ -129,18 +130,7 @@ const validateQuestionBankBluePrintCreate = (req, res, next) => {
     next();
 };
 
-const validateQuestionBankFeedbackCreate = (req, res, next) => {
-    const data = req.body;
-    let isValid = questionBankFeedbackSchema.validate(data, { abortEarly: false });
-    if (isValid.error) {
-        return res.status(400).json({
-            success: false,
-            data: false,
-            error: isValid.error.details.map((i) => i.message),
-        });
-    }
-    next();
-};
+const validateQuestionBankFeedbackCreate = validateRequest(questionBankFeedbackSchema);
 
 const validateGetQuestionTypes = (req, res, next) => {
     const isValid = getQuestionTypesQuerySchema.validate(req.query, { abortEarly: false });

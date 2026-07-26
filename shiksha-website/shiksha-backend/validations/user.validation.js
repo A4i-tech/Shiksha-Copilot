@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const validateRequest = require("./common.validation");
 
 const roleValidator = (value, helpers) => {
 	if (typeof value === "string") {
@@ -49,39 +50,11 @@ const bulkUploadSchema = Joi.object({
 	role: Joi.custom(roleValidator, "role validator").required(),
 })
 
-const validatePreferredLanguageUpdate = (req, res, next) => {
-	const data = req.body;
+const validatePreferredLanguageUpdate = validateRequest(Joi.object({
+	preferredLanguage: Joi.string().required(),
+}));
 
-	const schema = Joi.object({
-		preferredLanguage: Joi.string().required(),
-	});
-
-	let isValid = schema.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
-
-const validateUserCreate = (req, res, next) => {
-	const data = req.body;
-
-	let isValid = userSchema.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const validateUserCreate = validateRequest(userSchema);
 
 const validateUserGetById = (req, res, next) => {
 	const data = { id: req?.params?.id };
@@ -100,49 +73,21 @@ const validateUserGetById = (req, res, next) => {
 	next();
 };
 
-const validateUserGetByPhone = (req, res, next) => {
-	const data = req.body;
+const validateUserGetByPhone = validateRequest(Joi.object({
+	phone: Joi.string().required(),
+}));
 
-	const schema = Joi.object({
-		phone: Joi.string().required(),
-	});
-	let isValid = schema.validate(data);
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
-
-const validateUserUpdate = (req, res, next) => {
-	const data = req.body;
-
-	const schema = Joi.object({
-		name: Joi.string(),
-		phone: Joi.string(),
-		state: Joi.string(),
-		zone: Joi.string(),
-		district: Joi.string(),
-		block: Joi.string(),
-		school: Joi.string(),
-		role: Joi.custom(roleValidator, "role validator"),
-		isSchoolChanged: Joi.boolean().optional(),
-	}).min(1);
-
-	let isValid = schema.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const validateUserUpdate = validateRequest(Joi.object({
+	name: Joi.string(),
+	phone: Joi.string(),
+	state: Joi.string(),
+	zone: Joi.string(),
+	district: Joi.string(),
+	block: Joi.string(),
+	school: Joi.string(),
+	role: Joi.custom(roleValidator, "role validator"),
+	isSchoolChanged: Joi.boolean().optional(),
+}).min(1));
 
 const classSchema = Joi.object({
 	class: Joi.number().required(),
@@ -160,43 +105,16 @@ const profileSchema = Joi.object({
 	facilities: Joi.array().items(),
 });
 
-const validateSetProfile = (req, res, next) => {
-	const data = req.body;
+const validateSetProfile = validateRequest(profileSchema);
 
-	const { error } = profileSchema.validate(data, { abortEarly: false });
-
-	if (error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
-
-const validateUserActivityLog = (req,res,next)=>{
-	const data = req.body;
-	const schema = Joi.object({
-		moduleName:Joi.string().required(),
-		idleTime:Joi.number().required(),
-		interactionTime:Joi.number().required(),
-		draftId:Joi.string().optional(),
-		planId:Joi.string().optional(),
-		isCompleted:Joi.boolean().optional(),
-	})
-
-	const {error} = schema.validate(data);
-
-	if(error){
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: error.details.map((i) => i.message),
-		});
-	}
-	next()
-}
+const validateUserActivityLog = validateRequest(Joi.object({
+	moduleName:Joi.string().required(),
+	idleTime:Joi.number().required(),
+	interactionTime:Joi.number().required(),
+	draftId:Joi.string().optional(),
+	planId:Joi.string().optional(),
+	isCompleted:Joi.boolean().optional(),
+}));
 
 module.exports = {
 	userSchema,

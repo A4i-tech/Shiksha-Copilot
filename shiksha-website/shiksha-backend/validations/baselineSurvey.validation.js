@@ -1,4 +1,5 @@
 const Joi = require('joi');
+const validateRequest = require("./common.validation");
 
 const submitSurveySchema = Joi.object({
   plans: Joi.array().items(Joi.string()).min(1).required(),
@@ -26,29 +27,8 @@ const submitSurveySchema = Joi.object({
 
 const remindLaterSchema = Joi.object({}).unknown(true); // allow any fields to avoid strict route checks
 
-const validateSubmitSurvey = (req, res, next) => {
-  const { error } = submitSurveySchema.validate(req.body, { abortEarly: false });
-  if (error) {
-    return res.status(400).json({
-      success: false,
-      data: false,
-      error: error.details.map((d) => d.message),
-    });
-  }
-  next();
-};
-
-const validateRemindLater = (req, res, next) => {
-  const { error } = remindLaterSchema.validate(req.body, { abortEarly: false });
-  if (error) {
-    return res.status(400).json({
-      success: false,
-      data: false,
-      error: error.details.map((d) => d.message),
-    });
-  }
-  next();
-};
+const validateSubmitSurvey = validateRequest(submitSurveySchema);
+const validateRemindLater = validateRequest(remindLaterSchema);
 
 module.exports = {
   validateSubmitSurvey,
