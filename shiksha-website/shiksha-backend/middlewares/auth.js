@@ -49,7 +49,7 @@ exports.isAuthenticated = function (req, res, next) {
 			}
 
 			const [loadedTeacher, loadedAdmin] = await Promise.all([
-				userId ? User.findById(userId).populate("school", "name medium board").select("-otp -zone -district") : null,
+				userId ? User.findById(userId).populate("school", "name medium board facilities").select("-otp") : null,
 				adminUserId ? AdminUser.findById(adminUserId).select("-otp") : null,
 			]);
 			const teacherUser = loadedTeacher?.isDeleted ? null : loadedTeacher;
