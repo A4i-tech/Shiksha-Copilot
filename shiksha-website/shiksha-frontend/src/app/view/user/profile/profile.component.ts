@@ -344,8 +344,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get resource data
    */
   setResourceData(val: any) {
-    this.resourceTypeDropdownOptions = val?.data?.results;
-    this.resourceMasterData = val?.data?.results;
+    this.resourceTypeDropdownOptions = val.data.results;
+    this.resourceMasterData = val.data.results;
   }
 
   mergeSchoolResource(schoolResource:any){

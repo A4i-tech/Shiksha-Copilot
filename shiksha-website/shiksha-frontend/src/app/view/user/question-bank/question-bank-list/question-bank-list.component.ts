@@ -204,7 +204,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
       const classFilter = this.mediumDropdownOptions.filter(
         (item) => item.medium === this.selectedMedium
       );
-      this.classDropdownOptions = classFilter[0].classes?.sort(
+      this.classDropdownOptions = classFilter[0].classes.sort(
         (a: any, b: any) => a.class - b.class
       );
     }

@@ -230,7 +230,7 @@ export class ContentActivityComponent implements OnInit {
           'name',
           selectedDistrict
         );
-        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+        this.blockDropdownOptions = this.selectedDistrictObj.blocks;
       } else {
         this.selectedDistrictObj = null;
         this.blockDropdownOptions = [];
@@ -281,7 +281,7 @@ export class ContentActivityComponent implements OnInit {
       block:this.filterObj.block
     }
     this.userManagementService.getSchoolList(true,filters).subscribe((res: any) => {
-      this.schoolDropdownOptions = res?.data?.results;
+      this.schoolDropdownOptions = res.data.results;
     });
 }
 

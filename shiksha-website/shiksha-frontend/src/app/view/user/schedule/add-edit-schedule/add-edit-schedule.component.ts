@@ -361,7 +361,7 @@ export class AddEditScheduleComponent
   setClassDropdownValue(value: any) {
     this.resetMediumChanges();
     if (value) {
-      this.classDropDownValues = value.classes?.sort((a:any,b:any)=>a.class-b.class);
+      this.classDropDownValues = value.classes.sort((a:any,b:any)=>a.class-b.class);
       if (this.classDropDownValues.length === 1) {
         this.scheduleForm
           .get('className')
@@ -516,7 +516,7 @@ export class AddEditScheduleComponent
     const classValues = dropdownValueArray.filter((item: any) => {
       return value === item.medium;
     });
-    this.classDropDownValues = classValues[0].classes?.sort((a:any,b:any)=>a.class-b.class);
+    this.classDropDownValues = classValues[0].classes.sort((a:any,b:any)=>a.class-b.class);
   }
 
   /**

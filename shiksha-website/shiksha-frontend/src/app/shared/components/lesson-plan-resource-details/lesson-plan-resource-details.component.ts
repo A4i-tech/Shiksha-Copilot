@@ -302,7 +302,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
             this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(classList[0].mediums[0].classes[0].data);
           }
         } else {
-          this.classDropdownOptions = classList[0].mediums[0].classes?.sort(
+          this.classDropdownOptions = classList[0].mediums[0].classes.sort(
             (a: any, b: any) => a.class - b.class
           );
         }
@@ -333,7 +333,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
             this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.mediums[0].classes[0].data);
           }
         } else {
-          this.classDropdownOptions = val.mediums[0].classes?.sort(
+          this.classDropdownOptions = val.mediums[0].classes.sort(
             (a: any, b: any) => a.class - b.class
           );
         }
@@ -345,7 +345,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     this.resetMediumChange();
     if (val) {
       this.selectedMedium = val?.medium
-      this.classDropdownOptions = val.classes?.sort(
+      this.classDropdownOptions = val.classes.sort(
         (a: any, b: any) => a.class - b.class
       );
       if (val.classes.length === 1) {

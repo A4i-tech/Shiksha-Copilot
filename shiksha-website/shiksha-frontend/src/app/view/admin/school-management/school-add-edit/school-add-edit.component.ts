@@ -476,7 +476,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   getBoardData() {
     this.masterService.getBoards().subscribe({
       next: (val) => {
-        this.boardDropdownOptions = val?.data?.results;
+        this.boardDropdownOptions = val.data.results;
 
         if (this.mode === 'edit') {
           this.boardDropdownOptions.forEach((ele) => {
@@ -503,7 +503,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   getResourceData() {
     this.masterService.getFacilities().subscribe({
       next: (val) => {
-        this.resourceTypeDropdownOptions = val?.data?.results;
+        this.resourceTypeDropdownOptions = val.data.results;
 
         const otherObj = {
           type: 'Others',
@@ -511,7 +511,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
 
         this.resourceTypeDropdownOptions.push(otherObj);
 
-        this.resourceMasterData = val?.data?.results;
+        this.resourceMasterData = val.data.results;
         if (this.mode === 'edit' || this.mode === 'view') {
           this.patchResourceDropdown();
         }
@@ -624,7 +624,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
           'name',
           selectedDistrict
         );
-        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+        this.blockDropdownOptions = this.selectedDistrictObj.blocks;
       } else {
         this.selectedDistrictObj = null;
         this.blockDropdownOptions = [];

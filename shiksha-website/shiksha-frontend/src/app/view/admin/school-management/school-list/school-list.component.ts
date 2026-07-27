@@ -533,7 +533,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
           block:this.filterObj.block
         }
         this.userManagementService.getSchoolList(true,filters).subscribe((res: any) => {
-          this.schoolDropdownOptions = res?.data?.results
+          this.schoolDropdownOptions = res.data.results
         });
     }
 
