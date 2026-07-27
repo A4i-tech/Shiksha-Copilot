@@ -3,20 +3,24 @@ require("./setup");
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret";
 
 const request = require("supertest");
-const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const scheduleRoutes = require("../../routes/schedule.routes");
 const User = require("../../models/user.model");
 const School = require("../../models/school.model");
 const MasterSubject = require("../../models/master.subject.model");
 
-// No LLM/SMS externals in this flow at all - everything (auth, overlap
-// check, parallel-schedule aggregation, persistence) is real Mongo.
+// This is a real E2E test against a live app.js instance (see
+// .github/workflows/ci-backend.yaml). No LLM/SMS externals in this flow
+// at all - everything (auth, overlap check, parallel-schedule
+// aggregation, persistence) is real, driven over real HTTP.
 
-const app = express();
-app.use(express.json());
-app.use("/api", scheduleRoutes);
+const baseURL = process.env.SHIKSHA_BASE_URL;
+if (!baseURL) {
+  throw new Error(
+    "SHIKSHA_BASE_URL is not set. These are E2E tests - they need a live " +
+      "backend instance (see .github/workflows/ci-backend.yaml)."
+  );
+}
 
 const authHeaderFor = (user) =>
   jwt.sign({ _id: user._id, isAdmin: false, isDeleted: false }, process.env.JWT_SECRET, {
@@ -72,7 +76,7 @@ describe("Schedule flow (integration)", () => {
   });
 
   it("creates a schedule and makes it visible via my-schedules", async () => {
-    const createRes = await request(app)
+    const createRes = await request(baseURL)
       .post("/api/schedule/create")
       .set("Authorization", authHeaderFor(teacher))
       .send(basePayload());
@@ -81,7 +85,7 @@ describe("Schedule flow (integration)", () => {
     expect(createRes.body.success).toBe(true);
     expect(createRes.body.data.subject).toBe("Mathematics");
 
-    const listRes = await request(app)
+    const listRes = await request(baseURL)
       .get("/api/schedule/my-schedules")
       .set("Authorization", authHeaderFor(teacher));
 
@@ -91,7 +95,7 @@ describe("Schedule flow (integration)", () => {
   });
 
   it("rejects a second schedule that overlaps the teacher's existing slot", async () => {
-    await request(app)
+    await request(baseURL)
       .post("/api/schedule/create")
       .set("Authorization", authHeaderFor(teacher))
       .send(basePayload());
@@ -99,7 +103,7 @@ describe("Schedule flow (integration)", () => {
     const overlapping = basePayload();
     overlapping.scheduleDateTime = [{ date: "2026-08-01", fromTime: "10:30", toTime: "11:30" }];
 
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/schedule/create")
       .set("Authorization", authHeaderFor(teacher))
       .send(overlapping);
@@ -111,7 +115,7 @@ describe("Schedule flow (integration)", () => {
   });
 
   it("rejects a create payload missing required fields", async () => {
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/schedule/create")
       .set("Authorization", authHeaderFor(teacher))
       .send({ subject: "Mathematics" });
@@ -121,7 +125,7 @@ describe("Schedule flow (integration)", () => {
   });
 
   it("rejects requests with no auth token", async () => {
-    const res = await request(app).post("/api/schedule/create").send(basePayload());
+    const res = await request(baseURL).post("/api/schedule/create").send(basePayload());
 
     expect(res.status).toBe(401);
   });

@@ -5,17 +5,30 @@ let mongoServer;
 /** @type {import("mongoose").Connection} */
 let connection;
 
-// Opens its own connection instead of the shared default, so closing it here does not break other test files' model calls.
+const usingSharedMongo = () => Boolean(process.env.MONGO_URL);
+
+/**
+ * Setup test database connection.
+ *
+ * If MONGO_URL is set (E2E mode - see .github/workflows/ci-backend.yaml),
+ * connects to that already-running MongoDB instance, the same one a live
+ * app.js process is using. Otherwise spins up an ephemeral MongoDB Memory
+ * Server for fast, isolated local/unit-style testing.
+ *
+ * Opens its own connection instead of the shared default, so closing it here does not break other test files' model calls.
+ */
 const setupTestDB = async () => {
   try {
-    // Create in-memory MongoDB instance
-    mongoServer = await MongoMemoryServer.create();
-    const mongoUri = mongoServer.getUri();
-
-    connection = await mongoose.createConnection(mongoUri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }).asPromise();
+    if (usingSharedMongo()) {
+      connection = await mongoose.createConnection(process.env.MONGO_URL).asPromise();
+    } else {
+      mongoServer = await MongoMemoryServer.create();
+      const mongoUri = mongoServer.getUri();
+      connection = await mongoose.createConnection(mongoUri, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      }).asPromise();
+    }
 
     console.log("Test database connected successfully");
     return connection;
@@ -45,15 +58,18 @@ const clearTestDB = async () => {
 };
 
 /**
- * Close database connection and stop MongoDB Memory Server
+ * Close database connection and stop MongoDB Memory Server (if owned).
  */
 const closeTestDB = async () => {
   try {
     // Remove all event listeners to prevent memory leaks
     connection.removeAllListeners();
 
-    // Drop database
-    await connection.dropDatabase();
+    if (!usingSharedMongo()) {
+      // Only wipe the DB when we own an ephemeral instance - the shared
+      // E2E Mongo is still in use by the live app.js process.
+      await connection.dropDatabase();
+    }
 
     // Close connection
     await connection.close();

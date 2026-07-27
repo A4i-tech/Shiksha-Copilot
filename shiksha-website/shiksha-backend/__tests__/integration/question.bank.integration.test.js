@@ -3,23 +3,27 @@ require("./setup");
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret";
 
 const request = require("supertest");
-const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const questionBankRoutes = require("../../routes/question.bank.routes");
 const User = require("../../models/user.model");
 require("../../models/school.model");
 const QuestionBank = require("../../models/question.bank.model");
 const QuestionBankConfiguration = require("../../models/question.bank.config.model");
 
-// This exercises the "manual" generation path (teacher picks existing
-// LBA questions rather than asking the LLM for new ones), so the whole
-// flow - route -> validation -> manager -> Mongo (config collection,
-// lba_questions collection) -> response - is real, nothing mocked.
+// This is a real E2E test against a live app.js instance (see
+// .github/workflows/ci-backend.yaml). Exercises the "manual" generation
+// path (teacher picks existing LBA questions rather than asking the LLM
+// for new ones), so the whole flow - route -> validation -> manager ->
+// Mongo (config collection, lba_questions collection) -> response - is
+// real, nothing mocked or stubbed: this path never calls the LLM.
 
-const app = express();
-app.use(express.json());
-app.use("/api", questionBankRoutes);
+const baseURL = process.env.SHIKSHA_BASE_URL;
+if (!baseURL) {
+  throw new Error(
+    "SHIKSHA_BASE_URL is not set. These are E2E tests - they need a live " +
+      "backend instance (see .github/workflows/ci-backend.yaml)."
+  );
+}
 
 const authHeaderFor = (user) =>
   jwt.sign({ _id: user._id, isAdmin: false, isDeleted: false }, process.env.JWT_SECRET, {
@@ -94,7 +98,7 @@ describe("Question bank generation flow (integration)", () => {
   it("builds a question bank from manually selected LBA questions", async () => {
     const chapterId = new mongoose.Types.ObjectId().toString();
 
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/question-bank/generate")
       .set("Authorization", authHeaderFor(teacher))
       .send(basePayload(chapterId));
@@ -119,7 +123,7 @@ describe("Question bank generation flow (integration)", () => {
   });
 
   it("rejects a payload missing the required template/objectiveDistribution fields", async () => {
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/question-bank/generate")
       .set("Authorization", authHeaderFor(teacher))
       .send({ medium: "English", board: "StateBoard" });
@@ -129,7 +133,7 @@ describe("Question bank generation flow (integration)", () => {
   });
 
   it("rejects requests with no auth token", async () => {
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/question-bank/generate")
       .send(basePayload(new mongoose.Types.ObjectId().toString()));
 
