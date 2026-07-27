@@ -54,6 +54,22 @@ jobs:
           mkdir -p ../coverage-unit
           cp -r coverage/* ../coverage-unit/ || true
 
+      - name: Run integration tests
+        working-directory: shiksha-website/shiksha-backend
+        env:
+          NODE_ENV: development
+          CI: true
+        run: |
+          # Runs on the runner (glibc), not inside the built image: the
+          # production image is node:18-alpine, and MongoDB has no official
+          # Alpine build - mongodb-memory-server can't download a binary
+          # there at all. Integration tests exercise app logic against a
+          # real Mongo, not the packaged artifact, so they don't need to
+          # run inside it.
+          npm run test:integration:coverage
+          mkdir -p ../coverage-integration
+          cp -r coverage/* ../coverage-integration/ || true
+
       - name: Extract backend metadata
         id: backend_meta
         uses: docker/metadata-action@v5
