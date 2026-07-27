@@ -847,7 +847,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    */
   updateMediumDonutChartData(data: any): void {
     const mediums = data.lessonPlanCountByMedium;
-    const colors = ['#ED7D2D', '#F9D8C0'];
+    const colors = ['#ED7D2D', '#F9D8C0', '#4E79A7', '#59A14F', '#B07AA1', '#E15759', '#EDC948', '#76B7B2'];
 
     this.byMediumDonutChartData = {
       labels: mediums.map((item: any) => this.capitalizeFirstLetter(item.medium)),
