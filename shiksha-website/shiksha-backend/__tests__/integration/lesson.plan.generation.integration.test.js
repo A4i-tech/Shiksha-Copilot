@@ -2,21 +2,9 @@ require("./setup");
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret";
 
-// The Copilot LLM workflow is a true external dependency (a running
-// LLM backend) - everything else in this flow (auth, DAOs, Mongo) is real.
-jest.mock("../../services/copilot.bot.service", () => ({
-  postToCopilotBot: jest.fn().mockResolvedValue({
-    status: 202,
-    data: { instance_id: "instance-123" },
-  }),
-}));
-
 const request = require("supertest");
-const express = require("express");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
-const teacherLessonPlanRoutes = require("../../routes/teacher.lesson.plan.routes");
-const { postToCopilotBot } = require("../../services/copilot.bot.service");
 const User = require("../../models/user.model");
 require("../../models/school.model");
 const MasterSubject = require("../../models/master.subject.model");
@@ -26,9 +14,21 @@ const LessonPlanTemplate = require("../../models/lesson.plan.template.model");
 const TeacherLessonPlan = require("../../models/teacher.lesson.plan.model");
 const RegeneratedLessonResource = require("../../models/regenerate.lesson.resource.model");
 
-const app = express();
-app.use(express.json());
-app.use("/api", teacherLessonPlanRoutes);
+// This is a real E2E test against a live app.js instance (see
+// .github/workflows/ci-backend.yaml). The Copilot LLM call is the one
+// true external dependency in this flow - CI points the live instance's
+// LLM_WORKFLOW_URL at __tests__/e2e/llm-stub-server.js, which always
+// returns { instance_id: "e2e-stub-instance" }. In-process jest.mock()
+// can't reach a separate process, so that stub is the mock here.
+// Everything else (auth, DAOs, Mongo) is real, driven over real HTTP.
+
+const baseURL = process.env.SHIKSHA_BASE_URL;
+if (!baseURL) {
+  throw new Error(
+    "SHIKSHA_BASE_URL is not set. These are E2E tests - they need a live " +
+      "backend instance (see .github/workflows/ci-backend.yaml)."
+  );
+}
 
 const authHeaderFor = (user) =>
   jwt.sign({ _id: user._id, isAdmin: false, isDeleted: false }, process.env.JWT_SECRET, {
@@ -39,8 +39,6 @@ describe("Lesson plan generation flow (integration)", () => {
   let teacher, subject, chapter, masterLesson;
 
   beforeEach(async () => {
-    jest.clearAllMocks();
-
     teacher = await User.create({
       name: "Power Teacher",
       state: "Karnataka",
@@ -88,7 +86,7 @@ describe("Lesson plan generation flow (integration)", () => {
   });
 
   it("generates lesson content end to end for a power-role teacher", async () => {
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/teacher-lesson-plan/generate")
       .set("Authorization", authHeaderFor(teacher))
       .send({
@@ -99,8 +97,7 @@ describe("Lesson plan generation flow (integration)", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data.data.instance_id).toBe("instance-123");
-    expect(postToCopilotBot).toHaveBeenCalledTimes(1);
+    expect(res.body.data.data.instance_id).toBe("e2e-stub-instance");
 
     const newMasterLesson = await MasterLesson.findOne({
       chapterId: chapter._id,
@@ -114,7 +111,7 @@ describe("Lesson plan generation flow (integration)", () => {
     });
     expect(teacherLessonPlan).toBeTruthy();
     expect(teacherLessonPlan.status).toBe("running");
-    expect(teacherLessonPlan.instanceId).toBe("instance-123");
+    expect(teacherLessonPlan.instanceId).toBe("e2e-stub-instance");
 
     const resourceLog = await RegeneratedLessonResource.findOne({
       contentId: masterLesson._id,
@@ -135,7 +132,7 @@ describe("Lesson plan generation flow (integration)", () => {
       school: new mongoose.Types.ObjectId(),
     });
 
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/teacher-lesson-plan/generate")
       .set("Authorization", authHeaderFor(standardTeacher))
       .send({
@@ -145,11 +142,15 @@ describe("Lesson plan generation flow (integration)", () => {
       });
 
     expect(res.status).toBe(403);
-    expect(postToCopilotBot).not.toHaveBeenCalled();
+
+    const teacherLessonPlan = await TeacherLessonPlan.findOne({
+      teacherId: standardTeacher._id,
+    });
+    expect(teacherLessonPlan).toBeNull();
   });
 
   it("rejects requests with no auth token", async () => {
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/teacher-lesson-plan/generate")
       .send({ lessonId: masterLesson._id.toString(), isAll: true });
 

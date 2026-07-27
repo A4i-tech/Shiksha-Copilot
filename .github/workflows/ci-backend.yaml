@@ -36,6 +36,18 @@ env:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      E2E_PORT: 8080
+      E2E_LLM_STUB_PORT: 4010
+      E2E_MONGO_URL: mongodb://127.0.0.1:27017/shiksha_e2e
+      E2E_JWT_SECRET: e2e-test-jwt-secret
+      E2E_JWT_SECRET_REMEMBER_ME: e2e-test-remember-secret
+      E2E_PIN_SECRET_KEY: e2e-test-pin-secret
     outputs:
       coverage_percentage: ${{ steps.extract_backend_coverage.outputs.percentage }}
       image_tag_primary: ${{ steps.set_tag_primary.outputs.image_tag_primary }}
@@ -54,21 +66,62 @@ jobs:
           mkdir -p ../coverage-unit
           cp -r coverage/* ../coverage-unit/ || true
 
-      - name: Run integration tests
+      - name: Start LLM stub server
+        working-directory: shiksha-website/shiksha-backend
+        env:
+          LLM_STUB_PORT: ${{ env.E2E_LLM_STUB_PORT }}
+        run: |
+          node __tests__/e2e/llm-stub-server.js &
+          echo $! > /tmp/llm-stub.pid
+
+      - name: Start live backend instance for E2E tests
+        working-directory: shiksha-website/shiksha-backend
+        env:
+          NODE_ENV: development
+          PORT: ${{ env.E2E_PORT }}
+          MONGO_URL: ${{ env.E2E_MONGO_URL }}
+          JWT_SECRET: ${{ env.E2E_JWT_SECRET }}
+          JWT_SECRET_REMEMBER_ME: ${{ env.E2E_JWT_SECRET_REMEMBER_ME }}
+          PIN_SECRET_KEY: ${{ env.E2E_PIN_SECRET_KEY }}
+          LLM_API_BASE_URL: http://127.0.0.1:${{ env.E2E_LLM_STUB_PORT }}
+          LLM_WORKFLOW_URL: http://127.0.0.1:${{ env.E2E_LLM_STUB_PORT }}
+          LLM_CHECKLIST_URL: http://127.0.0.1:${{ env.E2E_LLM_STUB_PORT }}/checklist
+        run: |
+          # The mongodb service container above is already running, so
+          # dbService.connect() (called at app.js module scope) has
+          # something to connect to as soon as this starts.
+          node app.js > /tmp/backend.log 2>&1 &
+          echo $! > /tmp/backend.pid
+          for i in $(seq 1 30); do
+            if curl -sf "http://127.0.0.1:${{ env.E2E_PORT }}/health" > /dev/null; then
+              echo "Backend is healthy"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Backend did not become healthy in time"
+          cat /tmp/backend.log
+          exit 1
+
+      - name: Run integration (E2E) tests against the live instance
         working-directory: shiksha-website/shiksha-backend
         env:
           NODE_ENV: development
           CI: true
+          SHIKSHA_BASE_URL: http://127.0.0.1:${{ env.E2E_PORT }}
+          MONGO_URL: ${{ env.E2E_MONGO_URL }}
+          JWT_SECRET: ${{ env.E2E_JWT_SECRET }}
+          PIN_SECRET_KEY: ${{ env.E2E_PIN_SECRET_KEY }}
         run: |
-          # Runs on the runner (glibc), not inside the built image: the
-          # production image is node:18-alpine, and MongoDB has no official
-          # Alpine build - mongodb-memory-server can't download a binary
-          # there at all. Integration tests exercise app logic against a
-          # real Mongo, not the packaged artifact, so they don't need to
-          # run inside it.
           npm run test:integration:coverage
           mkdir -p ../coverage-integration
           cp -r coverage/* ../coverage-integration/ || true
+
+      - name: Stop live backend and LLM stub
+        if: always()
+        run: |
+          kill "$(cat /tmp/backend.pid)" 2>/dev/null || true
+          kill "$(cat /tmp/llm-stub.pid)" 2>/dev/null || true
 
       - name: Extract backend metadata
         id: backend_meta

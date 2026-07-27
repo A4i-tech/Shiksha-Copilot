@@ -4,22 +4,29 @@ process.env.JWT_SECRET = process.env.JWT_SECRET || "test-jwt-secret";
 process.env.PIN_SECRET_KEY = process.env.PIN_SECRET_KEY || "test-pin-secret";
 
 const request = require("supertest");
-const express = require("express");
 const mongoose = require("mongoose");
 const CryptoJS = require("crypto-js");
-const authRoutes = require("../../routes/auth.routes");
 const User = require("../../models/user.model");
 require("../../models/school.model"); // registers the "School" schema that User.populate("school") needs
 
-// No VARIFORM_* env vars are set in the test environment, so
+// This is a real E2E test: SHIKSHA_BASE_URL must point at a live app.js
+// instance (started by CI - see .github/workflows/ci-backend.yaml). This
+// test seeds/reads data through its own Mongo connection (setup.js) while
+// driving the flow entirely over real HTTP against that instance.
+//
+// No VARIFORM_* env vars are set on the live instance, so
 // authHelper.sendOtp's real code path hits the "not configured" branch
 // and short-circuits without a network call (see helper/auth.helper.js).
-// Nothing to mock: this is a real request -> controller -> manager ->
-// dao -> Mongo -> response round trip.
+// Nothing to mock: request -> controller -> manager -> dao -> Mongo ->
+// response is all real.
 
-const app = express();
-app.use(express.json());
-app.use("/api", authRoutes);
+const baseURL = process.env.SHIKSHA_BASE_URL;
+if (!baseURL) {
+  throw new Error(
+    "SHIKSHA_BASE_URL is not set. These are E2E tests - they need a live " +
+      "backend instance (see .github/workflows/ci-backend.yaml)."
+  );
+}
 
 describe("Auth OTP flow (integration)", () => {
   const phone = "9999999990";
@@ -39,7 +46,7 @@ describe("Auth OTP flow (integration)", () => {
   it("issues a PIN, persists it encrypted, and logs in with it", async () => {
     await seedUser();
 
-    const otpRes = await request(app).post("/api/auth/get-otp").send({ phone });
+    const otpRes = await request(baseURL).post("/api/auth/get-otp").send({ phone });
 
     expect(otpRes.status).toBe(200);
     expect(otpRes.body.success).toBe(true);
@@ -55,7 +62,7 @@ describe("Auth OTP flow (integration)", () => {
     ).toString(CryptoJS.enc.Utf8);
     expect(plainOtp).toMatch(/^\d{4}$/);
 
-    const verifyRes = await request(app)
+    const verifyRes = await request(baseURL)
       .post("/api/auth/validate-otp")
       .send({ phone, otp: plainOtp, recovery: true });
 
@@ -68,9 +75,9 @@ describe("Auth OTP flow (integration)", () => {
 
   it("rejects validate-otp with the wrong PIN", async () => {
     await seedUser();
-    await request(app).post("/api/auth/get-otp").send({ phone });
+    await request(baseURL).post("/api/auth/get-otp").send({ phone });
 
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/auth/validate-otp")
       .send({ phone, otp: "0000", recovery: true });
 
@@ -80,7 +87,7 @@ describe("Auth OTP flow (integration)", () => {
   });
 
   it("rejects get-otp for a phone with no account", async () => {
-    const res = await request(app)
+    const res = await request(baseURL)
       .post("/api/auth/get-otp")
       .send({ phone: "0000000000" });
 
