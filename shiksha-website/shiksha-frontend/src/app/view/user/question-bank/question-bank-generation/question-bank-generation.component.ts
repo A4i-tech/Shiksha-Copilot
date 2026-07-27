@@ -59,7 +59,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   languageDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', fieldName: 'Translate to', info: 'The language the generated question paper will be translated into.', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true };
   classDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Class', fieldName: 'Class', bindLabel: 'class', bindValue: 'class', required: true, clearableOff: true };
   subjectDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Class first', fieldName: 'Subject', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true, disabled: true };
-  chapterDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Subject first', fieldName: 'Chapter', bindLabel: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: false, selectAllOption: true, selectAllValue: 'topics', openOnSelect: false, disabled: true, wrapValue: true };
+  chapterDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Subject first', fieldName: 'Chapter', bindLabel: 'topics', bindValue: 'topics', required: true, clearableOff: true, disabled: true, wrapValue: true };
   subTopicDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter first', fieldName: 'Sub-Topic', bindLabel: 'topics', bindValue: 'topics', selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true, disabled: true };
 
   questionTypeOptions: { name: string; value: string }[] = [];
