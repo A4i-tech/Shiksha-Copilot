@@ -12,16 +12,11 @@ COPY . .
 RUN npm run build -- --configuration production --base-href /
 
 # -------- Stage 2: Runtime --------
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Install only what we need
-RUN npm install -g serve
+FROM caddy:2-alpine
 
 # Copy only built output
-COPY --from=builder /app/dist/shiksha-frontend /app/dist
+COPY --from=builder /app/dist/shiksha-frontend /srv
 
 EXPOSE 8000
 
-CMD ["serve", "-s", "dist", "-l", "8000"]
+CMD ["caddy", "file-server", "--listen", ":8000", "--root", "/srv"]
