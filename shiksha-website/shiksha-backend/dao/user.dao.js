@@ -15,7 +15,7 @@ function mapFilters(filters) {
 		block: "school.block",
 	};
 	for (const [key, value] of Object.entries(filters)) {
-		if (key === "$and" || key === "$or") {
+		if (key === "$and" || key === "$or" || key === "$nor") {
 			mapped[key] = value.map(mapFilters);
 		} else if (key === "profileType") {
 			mapped[`profiles.${value}`] = { $exists: true, $type: "object" };

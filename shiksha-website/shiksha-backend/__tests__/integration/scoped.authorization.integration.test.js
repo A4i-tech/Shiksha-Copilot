@@ -40,7 +40,7 @@ describe("scoped authorisation", () => {
     "dashboard.admin.view", "school.read", "school.list", "school.create", "school.edit", "school.delete", "school.export",
     "teacher.view", "teacher.create", "teacher.edit", "teacher.delete", "teacher.export",
     "staff.view", "staff.create", "staff.edit", "staff.delete", "role.assign", "role.view",
-    "content.activity.view", "content.activity.export", "training.view", "training.edit", "audit.view",
+    "content.activity.view", "content.activity.export", "training.view", "training.edit", "audit.view", "chat.use",
   ];
   const ids = { roles: [], users: [], schools: [], content: [], activities: [], batches: [] };
   let db;
@@ -53,6 +53,7 @@ describe("scoped authorisation", () => {
   let operatorRole;
   let localTeacher;
   let remoteTeacher;
+  let mixedStaff;
   let localBatch;
   let remoteBatch;
   let localSchool;
@@ -113,7 +114,15 @@ describe("scoped authorisation", () => {
       `8${String(suffix).slice(-9)}`,
       remoteSchool
     )));
-    ids.users.push(localTeacher._id, remoteTeacher._id);
+    mixedStaff = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "Mixed Scope Integration Staff", phone: `6${String(suffix + 8).slice(-9)}`, email: "", address: "" },
+      roles: [
+        { roleId: operatorRole._id, dep: localSchool.district },
+        { roleId: operatorRole._id, dep: remoteSchool.district },
+      ],
+      profiles: { admin: { state: localSchool.state } },
+    }));
+    ids.users.push(localTeacher._id, remoteTeacher._id, mixedStaff._id);
     const content = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
     const lesson = await db.collection("masterlessons").findOne({});
     delete lesson._id;
@@ -232,18 +241,21 @@ describe("scoped authorisation", () => {
     const lists = [
       {
         path: "/api/school/list?limit=1000&includeDeleted=0",
+        filteredPath: `/api/school/list?limit=1000&filter[district]=${encodeURIComponent(localSchool.district)}`,
         hostilePath: `/api/school/list?limit=1000&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
         local: (item) => item._id === localSchool._id,
         remote: (item) => item._id === remoteSchool._id,
       },
       {
         path: "/api/users?limit=1000&filter[profileType]=teacher",
+        filteredPath: `/api/users?limit=1000&filter[profileType]=teacher&filter[district]=${encodeURIComponent(localSchool.district)}`,
         hostilePath: `/api/users?limit=1000&filter[profileType]=teacher&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
         local: (item) => item._id === localTeacher._id,
         remote: (item) => item._id === remoteTeacher._id,
       },
       {
         path: "/api/content-activity?limit=100",
+        filteredPath: `/api/content-activity?limit=100&filter[district]=${encodeURIComponent(localSchool.district)}`,
         hostilePath: `/api/content-activity?limit=100&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
         local: (item) => item.userName === localTeacher.identity.name,
         remote: (item) => item.userName === remoteTeacher.identity.name,
@@ -251,9 +263,12 @@ describe("scoped authorisation", () => {
     ];
     for (const resource of lists) {
       const list = expectSuccess(await request(resource.path, "GET", actorToken)).results;
+      const filtered = expectSuccess(await request(resource.filteredPath, "GET", actorToken)).results;
       const hostile = expectSuccess(await request(resource.hostilePath, "GET", actorToken)).results;
       expect(list.some(resource.local)).toBe(true);
       expect(list.some(resource.remote)).toBe(false);
+      expect(filtered.some(resource.local)).toBe(true);
+      expect(filtered.some(resource.remote)).toBe(false);
       expect(hostile).toHaveLength(0);
     }
 
@@ -317,7 +332,7 @@ describe("scoped authorisation", () => {
     await Promise.all([
       request("/api/school/export?limit=1000", "GET", actorToken).then(expectSuccess),
       request("/api/users/export?limit=1000", "GET", actorToken).then(expectSuccess),
-      request("/api/content-activity/export", "GET", actorToken).then(expectSuccess),
+      request(`/api/content-activity/export?filter[district]=${encodeURIComponent(localSchool.district)}`, "GET", actorToken).then(expectSuccess),
     ]);
 
     const eventTypes = ["Schools Export", "Teachers Export", "Content Activity Export"];
@@ -349,8 +364,10 @@ describe("scoped authorisation", () => {
     expect(values(sheets["Content Activity Export"], 1)).not.toContain(remoteTeacher.identity.name);
   }, 60000);
 
-  it("denies staff data without staff.view and applies permission removal immediately", async () => {
+  it("enforces complete staff scope and applies permission removal immediately", async () => {
     expectDenied(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken));
+    const staff = expectSuccess(await request("/api/users?limit=100&filter[profileType]=admin", "GET", actorToken)).results;
+    expect(staff.some((user) => user._id === mixedStaff._id)).toBe(false);
 
     expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, {
       permissions: operatorPermissions.filter((permission) => permission !== "school.list"),
@@ -359,6 +376,13 @@ describe("scoped authorisation", () => {
     expect(revoked).toMatchObject({ status: 403, body: { success: false } });
     expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, { permissions: operatorPermissions }));
     expectSuccess(await request("/api/school/list?limit=1", "GET", actorToken));
+
+    expect((await request("/api/chat/restart", "POST", actorToken)).status).toBe(200);
+    expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, {
+      permissions: operatorPermissions.filter((permission) => permission !== "chat.use"),
+    }));
+    expect(await request("/api/chat/restart", "POST", actorToken)).toMatchObject({ status: 403, body: { success: false } });
+    expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, { permissions: operatorPermissions }));
   });
 
   it("enforces scope on school create, update, activation, deactivation, and deletion", async () => {

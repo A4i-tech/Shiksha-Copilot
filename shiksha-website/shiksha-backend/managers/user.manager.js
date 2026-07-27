@@ -544,8 +544,16 @@ class UserManager extends BaseManager {
       if (!scopes) throw new Error("Access denied");
       let serverScope;
       if (permission === "staff.view") {
-        const dependencies = scopes.filter((scope) => scope.dep).map((scope) => scope.scopeType === "SCHOOL" ? new mongoose.Types.ObjectId(scope.dep) : scope.dep);
-        serverScope = scopes.some((scope) => scope.scopeType === "GLOBAL") ? {} : { "roles.dep": { $in: dependencies } };
+        if (scopes.some((scope) => scope.scopeType === "GLOBAL")) {
+          serverScope = {};
+        } else {
+          const roles = await Role.find({ scopeType: { $in: scopes.map((scope) => scope.scopeType) }, isDeleted: false }).select("_id scopeType").lean();
+          const allowed = scopes.map((scope) => ({
+            role: { $in: roles.filter((role) => role.scopeType === scope.scopeType).map((role) => role._id) },
+            dep: scope.scopeType === "UNBOUND" ? { $exists: false } : scope.scopeType === "SCHOOL" ? new mongoose.Types.ObjectId(scope.dep) : scope.dep,
+          }));
+          serverScope = { $nor: [{ roles: { $elemMatch: { $nor: allowed } } }] };
+        }
       } else {
         serverScope = scopeFilter(scopes, "school");
       }

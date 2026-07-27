@@ -4,6 +4,19 @@ const regenerateLogAggregation = require("../aggregation/regenerate.log.aggregat
 const RegeneratedLessonResource = require("../models/regenerate.lesson.resource.model");
 const BaseDao = require("./base.dao.js");
 
+function mapFilters(filters, schoolKey) {
+	const mapped = {};
+	for (const [key, value] of Object.entries(filters)) {
+		if (key === "$and" || key === "$or") mapped[key] = value.map((filter) => mapFilters(filter, schoolKey));
+		else if (key === "class") mapped["content.class"] = Number(value);
+		else if (["state", "district", "block", "zone"].includes(key)) mapped[`user.school.${key}`] = value;
+		else if (key === "subject") mapped["content.subject"] = value;
+		else if (key === schoolKey) mapped["user.school._id"] = new ObjectId(value);
+		else mapped[key] = value;
+	}
+	return mapped;
+}
+
 class RegeneratedLessonResourceDao extends BaseDao {
 	constructor() {
 		super(RegeneratedLessonResource);
@@ -35,35 +48,10 @@ class RegeneratedLessonResourceDao extends BaseDao {
 
 	async getContentActivity(page = 1, limit = 10, filters = {}, sort = {}) {
 		try {
-			const processedFilters = {};
-
-			for (const key in filters) {
-				switch (key) {
-					case "class":
-						processedFilters[`content.class`] = Number(filters[key]);
-						break;
-					case "state":
-					case "district":
-					case "block":
-					case "zone":
-						processedFilters[`user.school.${key}`] = filters[key];
-						break;
-					case "subject":
-						processedFilters[`content.${key}`] = filters[key];
-						break;
-					case "schoolId":
-						processedFilters[`user.school._id`] = new ObjectId(filters[key]);
-						break;
-
-					default:
-						processedFilters[key] = filters[key];
-				}
-			}
-
 			const results = await regenerateLogAggregation.getContentActivity(
 				page,
 				limit,
-				processedFilters,
+				mapFilters(filters, "schoolId"),
 				sort
 			);
 
@@ -87,33 +75,8 @@ class RegeneratedLessonResourceDao extends BaseDao {
 
 	async getAllContentActivity(filters = {}) {
 		try {
-			const processedFilters = {};
-
-			for (const key in filters) {
-				switch (key) {
-					case "class":
-						processedFilters[`content.class`] = Number(filters[key]);
-						break;
-					case "state":
-					case "district":
-					case "block":
-					case "zone":
-						processedFilters[`user.school.${key}`] = filters[key];
-						break;
-					case "subject":
-						processedFilters[`content.${key}`] = filters[key];
-						break;
-					case "_id":
-						processedFilters[`user.school._id`] = new ObjectId(filters[key]);
-						break;
-
-					default:
-						processedFilters[key] = filters[key];
-				}
-			}
-
 			const results = await regenerateLogAggregation.getAllContentActivity(
-				processedFilters
+				mapFilters(filters, "_id")
 			);
 
 			const totalItems =

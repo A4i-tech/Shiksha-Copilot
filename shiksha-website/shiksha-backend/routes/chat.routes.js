@@ -23,6 +23,7 @@ router.get(
 router.post(
     '/chat/restart',
     isAuthenticated,
+    requirePermission("chat.use"),
     asyncMiddleware(chatController.restartSession.bind(chatController))
 );
 
