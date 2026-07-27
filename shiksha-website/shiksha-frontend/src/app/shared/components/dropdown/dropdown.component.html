@@ -11,7 +11,7 @@
     </span>
   </label>
   <ng-select [labelForId]="inputId" [items]="dropDownValues"
-    [class.wrap-value]="config.wrapValue" [class.ng-select-disabled]="config.disabled"
+    [class.wrap-value]="config.wrapValue"
     [ngClass]="config.isBackground && (control.disabled || config.disabled) ? 'with-background' : ''"
     [readonly]="!!config.disabled"
     [placeholder]="config.placeHolderTxt | translate" [notFoundText]="'No items found' | translate"
