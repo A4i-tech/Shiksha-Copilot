@@ -320,7 +320,7 @@ class UserManager extends BaseManager {
     try {
       const updatedUser = await this.dao.setProfile(userId, profileData);
       if (!updatedUser) {
-        return formatApiReponse(false, "Teacher not found", null);
+        return formatApiReponse(false, "Teaching profile not found", null);
       }
       const { roles, ...data } = updatedUser.toObject();
       return formatApiReponse(true, "Saved Teacher Info!", data);

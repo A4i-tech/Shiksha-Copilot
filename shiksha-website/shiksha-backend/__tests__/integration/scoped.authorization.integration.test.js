@@ -259,6 +259,8 @@ describe("scoped authorisation", () => {
     const profile = expectSuccess(await request(`/api/users/${mixedStaff._id}/profile`, "GET", mixedStaffToken));
     expect(profile).toMatchObject({ _id: mixedStaff._id, identity: mixedStaff.identity });
 
+    expectDenied(await request("/api/profile", "PUT", mixedStaffToken, { classes: [], facilities: [] }), "Teaching profile not found");
+    expectSuccess(await request("/api/auth/me", "GET", mixedStaffToken));
     expectSuccess(await request("/api/profile/language", "PATCH", mixedStaffToken, { preferredLanguage: "tg" }));
     const updated = expectSuccess(await request(`/api/users/${mixedStaff._id}/profile`, "GET", mixedStaffToken));
     expect(updated.preferredLanguage).toBe("tg");

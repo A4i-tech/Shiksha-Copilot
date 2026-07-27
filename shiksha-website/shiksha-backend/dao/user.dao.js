@@ -110,8 +110,8 @@ class UserDao extends BaseDao {
 			let updateData = { "profiles.teacher.isProfileCompleted": true };
 			for (const [key, value] of Object.entries(profileData)) updateData[`profiles.teacher.${key}`] = value;
 
-			const updatedUser = await User.findByIdAndUpdate(
-				userId,
+			const updatedUser = await User.findOneAndUpdate(
+				{ _id: userId, "profiles.teacher": { $exists: true } },
 				{ $set: updateData },
 				{ new: true, runValidators: true }
 			).populate("roles.role");
