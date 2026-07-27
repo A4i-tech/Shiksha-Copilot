@@ -1,13 +1,13 @@
 <div class="help-container">
-  <header><h1>{{ 'Explore Our Video Guides' | translate }}</h1><p>{{ 'Step-by-step videos to guide you through Shiksha copilot features and functionalities' | translate }}.</p></header>
+  <header><h1 data-testid="help-heading">{{ 'Explore Our Video Guides' | translate }}</h1><p>{{ 'Step-by-step videos to guide you through Shiksha copilot features and functionalities' | translate }}.</p></header>
   <div class="section-title">
     <span [class.telugu]="isTelangana">{{ isTelangana ? 'తెలుగు' : 'ಕನ್ನಡ' }}</span>
     <h2>{{ (isTelangana ? 'Telugu Videos' : 'Videos') | translate }}</h2>
     <small>{{ videos.length }} {{ 'videos' | translate }}</small>
   </div>
   <div class="video-grid">
-    <article *ngFor="let video of videos">
-      <iframe [src]="video.link" height="185" title="Video guide" frameborder="0"
+    <article *ngFor="let video of videos" data-testid="help-video-card">
+      <iframe [src]="video.link" height="185" title="Video guide" frameborder="0" data-testid="help-video-iframe"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
       <p>{{ video.title | translate }}</p>
     </article>

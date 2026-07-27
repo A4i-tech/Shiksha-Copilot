@@ -6,33 +6,33 @@ class DashboardPage(BasePage):
         super().__init__(page)
         
         # Header and User Info
-        self.welcome_header = page.locator("h1.text-content")
-        self.teacher_toolkit_subtitle = page.locator("h6.text-content-60")
-        
+        self.welcome_header = page.get_by_test_id("welcome-header")
+        self.teacher_toolkit_subtitle = page.get_by_test_id("teacher-toolkit-subtitle")
+
         # Landing Card (Lesson Plan Generation)
-        self.landing_card_title = page.locator(".dashboard-landing-card h2")
-        self.generate_lesson_plan_btn = page.locator(".dashboard-landing-card button")
-        
+        self.landing_card_title = page.get_by_test_id("landing-card-title")
+        self.generate_lesson_plan_btn = page.get_by_test_id("generate-lesson-plan-btn")
+
         # Recently Generated Section
-        self.recent_plans_section = page.locator("h3:has-text('Recently Generated/Modified Plans')")
-        self.view_all_link = page.locator("p:has-text('View All')")
-        self.recent_plan_cards = page.locator(".grid-cols-1.md\\:grid-cols-2 .bg-white.border")
-        self.no_plans_found_container = page.locator("div:has-text('No plans found')")
-        self.empty_state_generate_btn = self.no_plans_found_container.locator("button")
+        self.recent_plans_section = page.get_by_test_id("recent-plans-section-header")
+        self.view_all_link = page.get_by_test_id("view-all-link")
+        self.recent_plan_cards = page.get_by_test_id("recent-plan-card")
+        self.no_plans_found_container = page.get_by_test_id("no-plans-found-container")
+        self.empty_state_generate_btn = page.get_by_test_id("empty-state-generate-btn")
 
         # Analytics/Chart Section
-        self.analytics_container = page.locator(".canvas-container")
-        self.chart_canvas = page.locator("canvas")
-        self.analytics_dropdown = page.locator("app-common-dropdown")
-        
+        self.analytics_container = page.get_by_test_id("analytics-container")
+        self.chart_canvas = page.get_by_test_id("chart-canvas")
+        self.analytics_dropdown = page.get_by_test_id("analytics-dropdown")
+
         # Calendar Section
-        self.calendar_header = page.locator("h2:has-text('Calendar')")
-        self.current_month_display = page.locator("h3.font-normal")
-        self.prev_month_btn = page.locator("button[mwlCalendarPreviousView]")
-        self.next_month_btn = page.locator("button[mwlCalendarNextView]")
-        self.calendar_month_view = page.locator("mwl-calendar-month-view")
-        self.my_schedule_btn = page.locator("button:has-text('My Schedule')")
-        self.calendar_day_view = page.locator("mwl-calendar-day-view")
+        self.calendar_header = page.get_by_test_id("calendar-header")
+        self.current_month_display = page.get_by_test_id("current-month-display")
+        self.prev_month_btn = page.get_by_test_id("prev-month-btn")
+        self.next_month_btn = page.get_by_test_id("next-month-btn")
+        self.calendar_month_view = page.get_by_test_id("calendar-month-view")
+        self.my_schedule_btn = page.get_by_test_id("my-schedule-btn")
+        self.calendar_day_view = page.get_by_test_id("calendar-day-view")
 
     def load(self, base_url: str):
         """Navigates to the user dashboard route."""

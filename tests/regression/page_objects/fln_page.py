@@ -7,43 +7,31 @@ class FlnPage(BasePage):
         super().__init__(page)
 
         # --- Container (only shown when grades.length > 0) ---
-        self.container = page.locator(".fln-lessons-container")
+        self.container = page.get_by_test_id("fln-lessons-container")
 
         # --- Header ---
-        self.header = page.locator("h2", has_text="FLN Teacher Resources")
+        self.header = page.get_by_test_id("fln-header-title")
 
         # --- Controls ---
-        self.grade_select = page.locator("select")
-        self.prev_day_btn = page.locator("button", has_text="← Previous Day")
-        self.next_day_btn = page.locator("button", has_text="Next Day →")
-        self.day_input = page.locator("input[type='number']")
-        self.jump_go_btn = page.locator("button", has_text="Go")
-        self.download_excel_btn = page.locator("button", has_text="Download Excel")
+        self.grade_select = page.get_by_test_id("fln-grade-select")
+        self.prev_day_btn = page.get_by_test_id("fln-prev-day-btn")
+        self.next_day_btn = page.get_by_test_id("fln-next-day-btn")
+        self.day_input = page.get_by_test_id("fln-day-input")
+        self.jump_go_btn = page.get_by_test_id("fln-jump-go-btn")
+        self.download_excel_btn = page.get_by_test_id("fln-download-excel-btn")
 
         # --- Loading ---
-        self.loading_indicator = page.locator(".fln-loading")
+        self.loading_indicator = page.get_by_test_id("fln-loading")
 
         # --- Lesson Details ---
-        self.lesson_details = page.locator(".fln-lesson-details")
-        self.lesson_day_heading = self.lesson_details.locator("h3")
-        self.learning_outcome = self.lesson_details.locator(
-            "p:has(strong:has-text('Learning Outcome'))"
-        )
-        self.concept = self.lesson_details.locator(
-            "p:has(strong:has-text('Concept'))"
-        )
-        self.teaching_strategy = self.lesson_details.locator(
-            "p:has(strong:has-text('Teaching Strategy'))"
-        )
-        self.activity = self.lesson_details.locator(
-            "p:has(strong:has-text('Activity'))"
-        )
-        self.assessment_questions = self.lesson_details.locator(
-            "ul"
-        ).first
-        self.teacher_notes = self.lesson_details.locator(
-            "p:has(strong:has-text('Teacher Notes'))"
-        )
+        self.lesson_details = page.get_by_test_id("fln-lesson-details")
+        self.lesson_day_heading = page.get_by_test_id("fln-lesson-day-heading")
+        self.learning_outcome = page.get_by_test_id("fln-learning-outcome")
+        self.concept = page.get_by_test_id("fln-concept")
+        self.teaching_strategy = page.get_by_test_id("fln-teaching-strategy")
+        self.activity = page.get_by_test_id("fln-activity")
+        self.assessment_questions = page.get_by_test_id("fln-assessment-questions")
+        self.teacher_notes = page.get_by_test_id("fln-teacher-notes")
 
     def navigate(self, base_url: str):
         """Navigate to the FLN page."""

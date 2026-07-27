@@ -6,18 +6,18 @@ class QuestionPaperViewPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
         # h1 "Question Paper"
-        self.paper_heading = page.locator("h1", has_text="Question Paper")
-        # Question type sections: div.mt-5 repeated via *ngFor over questionBank.questions
-        self.sections = page.locator("div.mt-5")
+        self.paper_heading = page.get_by_test_id("question-paper-heading")
+        # Question type sections: repeated via *ngFor over questionBank.questions
+        self.sections = page.get_by_test_id("question-section")
         # Individual question items inside each section
-        self.question_items = page.locator("div.flex.justify-between.items-start.mt-2.gap-2")
-        # Download button: btn-outline-primary with text "Download ..."
-        self.download_btn = page.locator("button.btn-outline-primary").first
+        self.question_items = page.get_by_test_id("question-item")
+        # Download button: repeated per doc type (PDF/DOCX), take the first
+        self.download_btn = page.get_by_test_id("download-btn").first
         # Feedback sidebar container
-        self.feedback_section = page.locator("div.p-4.bg-white.border.rounded-lg")
+        self.feedback_section = page.get_by_test_id("feedback-section")
         # Feedback is radio buttons, not stars
-        self.feedback_radio_btns = page.locator("input[type='radio']")
-        self.submit_feedback_btn = page.locator("button.btn-primary", has_text="Submit Feedback")
+        self.feedback_radio_btns = page.get_by_test_id("feedback-radio")
+        self.submit_feedback_btn = page.get_by_test_id("submit-feedback-btn")
 
     def navigate(self, base_url: str, paper_id: str):
         self.page.goto(f"{base_url}/#/user/question-paper/view/{paper_id}")

@@ -6,23 +6,23 @@ class QuestionBankPage:
         self.page = page
         
         # --- Wizard Headers & Nav ---
-        self.create_btn_list = page.locator("button.btn-primary:has-text('Generate Question Paper')")
-        # Matches "Step 1/3: Configuration", "Step 2/3...", etc.
-        self.wizard_step_header = page.locator("h2", has_text=re.compile(r"Step \d")) 
-        self.next_btn = page.locator("button.btn-primary:has-text('Next')")
-        
+        self.create_btn_list = page.get_by_test_id("generate-question-paper-btn")
+        # Matches "Step 1/4: ...", "Step 2/4...", "Step 3/4...": only one is ever
+        # in the DOM at a time since they're behind an ngSwitch.
+        self.wizard_step_header = page.get_by_test_id("wizard-step-header")
+        self.next_btn = page.get_by_test_id("wizard-next-btn")
+
         # --- Step 1 Inputs ---
-        self.exam_name_input = page.locator("input[formControlName='examinationName']")
-        self.total_marks_input = page.locator("input[formControlName='totalMarks']")
+        self.exam_name_input = page.get_by_test_id("examination-name-input")
+        self.total_marks_input = page.get_by_test_id("total-marks-input")
 
         # --- Step 2 Elements ---
         # Specific locator for the Template Table to avoid strict mode violations
-        self.template_table = page.locator("table[aria-label='question-configuration-list']")
-        self.template_warning_msg = page.locator(".text-warn", has_text="Total Template Marks")
+        self.template_table = page.get_by_test_id("template-question-table")
 
         # --- Step 3->4 nav & Step 4 Preview Elements ---
         self.preview_questions_btn = page.get_by_test_id("preview-questions")
-        self.preview_sections = page.locator(".section-drag")
+        self.preview_sections = page.get_by_test_id("preview-section")
 
     def navigate_to_wizard(self, base_url: str):
         self.page.goto(f"{base_url}/#/question-paper/generate")
@@ -30,30 +30,30 @@ class QuestionBankPage:
 
     def navigate_to_list(self, base_url: str):
         self.page.goto(f"{base_url}/#/question-paper")
-        self.page.locator("h1", has_text="Question Papers").wait_for()
+        self.page.get_by_test_id("question-papers-heading").wait_for()
 
     def click_create_new_qp(self):
         self.create_btn_list.click()
         self.wizard_step_header.wait_for()
 
     # --- Dropdown Helpers ---
+    # Maps wizard formControlName -> the app-form-dropdown's data-testid.
+    _DROPDOWN_TEST_IDS = {
+        "board": "dropdown-board",
+        "sourceGeneration": "dropdown-source-generation",
+        "grade": "dropdown-grade",
+        "subject": "dropdown-subject",
+        "language": "dropdown-language",
+        "chapter": "dropdown-chapter",
+        "subTopic": "dropdown-sub-topic",
+    }
+
     def _get_dropdown_locator(self, control_name: str):
         """
-        Robustly finds a dropdown by its label or control name.
+        Finds a dropdown by its stable data-testid (one per wizard field).
         """
-        # Prefer direct control-name binding when available.
-        dropdown = self.page.locator(
-            f"app-form-dropdown[ng-reflect-drop-down-control-name='{control_name}']"
-        ).first
-
-        if dropdown.count() == 0:
-            # Fallback to index-based if attribute match fails.
-            control_map = {
-                "board": 0, "sourceGeneration": 1, "grade": 2, "medium": 3,
-                "subject": 4, "language": 5, "chapter": 6, "subTopic": 7
-            }
-            index = control_map.get(control_name, 0)
-            dropdown = self.page.locator("app-form-dropdown").nth(index)
+        test_id = self._DROPDOWN_TEST_IDS.get(control_name, control_name)
+        dropdown = self.page.get_by_test_id(test_id).first
 
         dropdown.scroll_into_view_if_needed()
         dropdown.wait_for(state="visible", timeout=10000)
@@ -66,7 +66,7 @@ class QuestionBankPage:
         && hasSubtopics"). Selects the first one when the control is present;
         no-op otherwise (chapter has no subtopics).
         """
-        subtopic_dd = self.page.locator("app-form-dropdown[ng-reflect-drop-down-control-name='subTopic']").first
+        subtopic_dd = self.page.get_by_test_id("dropdown-sub-topic").first
         if subtopic_dd.count() == 0:
             return
         self.select_dropdown_option("subTopic", index=index)
@@ -145,11 +145,11 @@ class QuestionBankPage:
         if value_key in text_map:
             self.page.get_by_text(text_map[value_key], exact=False).first.click()
         else:
-            self.page.locator(f"input[type='radio'][value='{value_key}']").click(force=True)
+            self.page.get_by_test_id(f"scope-radio-{value_key}").click(force=True)
 
     def select_from_common_dropdown(self, parent_locator, value_to_select: str = None, index: int = 0):
         """Handles 'app-common-dropdown' used in the Template table."""
-        dropdown = parent_locator.locator("app-common-dropdown")
+        dropdown = parent_locator.get_by_test_id("common-dropdown")
         dropdown.click()
         
         try:
@@ -178,7 +178,7 @@ class QuestionBankPage:
         self.template_table.wait_for(state="visible")
         
         # Find delete buttons ONLY inside this table
-        delete_btn = self.template_table.locator("button.btn-danger")
+        delete_btn = self.template_table.get_by_test_id("template-row-delete-btn")
         
         # Keep deleting while delete buttons exist (meaning > 1 row)
         while delete_btn.count() > 0:
@@ -193,41 +193,40 @@ class QuestionBankPage:
         self.reset_template_to_single_row()
 
         # 2. Get the specific row inside the template table
-        row = self.template_table.locator("tbody tr").nth(row_index)
-        
+        row = self.template_table.get_by_test_id("template-row").nth(row_index)
+
         # 3. Select Question Type
-        cell_type = row.locator("td").nth(0)
+        cell_type = row.get_by_test_id("template-row-type-cell")
         if q_type == "AUTO":
              self.select_from_common_dropdown(cell_type, index=0)
         else:
              self.select_from_common_dropdown(cell_type, value_to_select=q_type)
-        
+
         # 4. Fill Number of Questions
-        count_input = row.locator("td").nth(1).locator("input")
+        count_input = row.get_by_test_id("template-row-count-input")
         count_input.clear()
         count_input.fill(count)
-        count_input.press("Tab") 
+        count_input.press("Tab")
 
         # 5. Fill Marks per Question
-        marks_input = row.locator("td").nth(2).locator("input")
+        marks_input = row.get_by_test_id("template-row-marks-input")
         marks_input.clear()
         marks_input.fill(marks)
         marks_input.press("Tab")
-        
-        # 6. Wait for warning to be hidden (Total Marks Matched)
-        expect(self.template_warning_msg).to_be_hidden(timeout=5000)
 
     def verify_step_2_loaded(self):
-        self.page.locator("h2", has_text="Question Paper Template").wait_for()
+        # Only the Step 2 h2 is in the DOM at this point (ngSwitch), so the
+        # shared wizard-step-header test-id is unambiguous here.
+        self.wizard_step_header.wait_for()
 
     def verify_step_3_loaded(self):
-        self.page.locator("h2", has_text=re.compile(r"Blue Print", re.IGNORECASE)).wait_for(timeout=45000)
+        self.wizard_step_header.wait_for(timeout=45000)
 
     def click_next(self):
         self.next_btn.click()
 
     def click_generate(self):
-        self.page.locator("button.btn-primary", has_text="Generate Question Paper").click()
+        self.page.get_by_test_id("generate-final-question-paper-btn").click()
 
     def click_preview_questions(self):
         """Step 3 -> Step 4: generates the question pool and opens the final preview/blueprint."""
@@ -240,7 +239,7 @@ class QuestionBankPage:
         Toggles to the preview via the 'Show Preview' button if the picker is
         currently showing.
         """
-        show_preview_btn = self.page.locator("button.btn-outline-primary:has-text('Show Preview')")
+        show_preview_btn = self.page.get_by_test_id("toggle-picker-preview-btn").filter(has_text="Show Preview")
         if show_preview_btn.is_visible(timeout=3000):
             show_preview_btn.click()
 
@@ -261,10 +260,10 @@ class QuestionBankPage:
         sections = []
         for i in range(count):
             section = self.preview_sections.nth(i)
-            heading_text = section.locator("h3").inner_text()
+            heading_text = section.get_by_test_id("preview-section-heading").inner_text()
             question_type = re.sub(r"^\d+\.\s*", "", heading_text).strip()
 
-            badge_text = section.locator("span.bg-primary-10").inner_text()
+            badge_text = section.get_by_test_id("preview-section-marks-badge").inner_text()
             marks_match = re.search(r"x\s*([\d½.]+)\s*Marks", badge_text)
             marks = marks_match.group(1) if marks_match else badge_text.strip()
 

@@ -6,19 +6,19 @@ class ChatbotPage(BasePage):
         super().__init__(page)
         
         
-        self.header_title = page.locator("h1") 
-        
-        self.empty_state_msg = page.locator("text=Hello! I am here to assist you. Just type your question to get started!")
-        self.empty_state_img = page.locator("img[src*='chat-bot-empty.svg']")
+        self.header_title = page.get_by_test_id("chatbot-header-title")
 
-        self.chat_textarea = page.locator("textarea.chat-input")
-        self.send_button = page.locator("button:has(img[src*='send.svg'])")
-        self.daily_limit_text = page.locator("text=Daily chat limit")
-        
-        self.user_message_bubbles = page.locator(".user-chat")
-        self.bot_message_bubbles = page.locator(".chatbot-chat")
-        
-        self.loading_indicator = page.locator(".loading-indicator")
+        self.empty_state_msg = page.get_by_test_id("chatbot-empty-state-msg")
+        self.empty_state_img = page.get_by_test_id("chatbot-empty-state-img")
+
+        self.chat_textarea = page.get_by_test_id("chat-input")
+        self.send_button = page.get_by_test_id("chat-send-button")
+        self.daily_limit_text = page.get_by_test_id("chat-daily-limit")
+
+        self.user_message_bubbles = page.get_by_test_id("chat-user-bubble")
+        self.bot_message_bubbles = page.get_by_test_id("chat-bot-bubble")
+
+        self.loading_indicator = page.get_by_test_id("chat-loading-indicator")
 
     def load(self, base_url: str):
         """Navigates to the specific Chatbot route."""

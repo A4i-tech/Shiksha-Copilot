@@ -6,14 +6,13 @@ class GenerationStatusPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
         # h1 only renders when type === 'status' (route /user/generation-status)
-        self.heading = page.locator("h1.main-heading")
-        # Cards: div.card per item in the grid
-        self.status_cards = page.locator("div.card")
-        # Status badge spans: text-xs text-white inside colored badge divs
-        # Status values in template: 'running', 'completed', 'failed'
-        self.status_badge_spans = page.locator("div.rounded-2xl span.text-xs.text-white")
-        # Empty state: h4 "No items found"
-        self.empty_msg = page.locator("h4", has_text="No items found")
+        self.heading = page.get_by_test_id("generation-status-heading")
+        # Cards: one per item in the grid
+        self.status_cards = page.get_by_test_id("generation-status-card")
+        # Status badge spans: 'running', 'completed', 'failed', or 'Regenerated'
+        self.status_badge_spans = page.get_by_test_id("generation-status-badge")
+        # Empty state: "No items found"
+        self.empty_msg = page.get_by_test_id("generation-status-empty")
 
     def navigate(self, base_url: str):
         self.page.goto(f"{base_url}/#/user/generation-status")

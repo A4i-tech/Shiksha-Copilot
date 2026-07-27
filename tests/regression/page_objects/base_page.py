@@ -3,7 +3,7 @@ from playwright.sync_api import Page, expect
 class BasePage:
     def __init__(self, page: Page):
         self.page = page
-        self.spinner = page.locator("ngx-spinner")
+        self.spinner = page.get_by_test_id("loading-spinner")
         self.backdrop = page.locator(".cdk-overlay-backdrop")
 
     def wait_for_overlays(self, timeout=10000):
