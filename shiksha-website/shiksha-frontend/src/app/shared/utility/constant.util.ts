@@ -1,4 +1,5 @@
 export const LOGIN_ROUTE = '/auth'
+export const SESSION_VERSION = 1;
 
 export const MAX_FILE_SIZE = 16 * 1024 * 1024;
 

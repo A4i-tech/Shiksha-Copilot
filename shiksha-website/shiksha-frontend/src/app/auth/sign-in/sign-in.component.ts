@@ -12,6 +12,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
 import { environment } from 'src/environments/environment';
+import { SESSION_VERSION } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-sign-in',
@@ -280,7 +281,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         next: (res: any) => {
           this.invalidOtp = false;
           localStorage.setItem('token', res.data.token);
-          const session = { ...res.data.user, permissions: res.data.permissions };
+          const session = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(session));
           this.sidebarService.profileImg.set(res?.data?.user?.profileImage || '');
 

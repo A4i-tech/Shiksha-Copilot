@@ -5,7 +5,7 @@ import { UtilityService } from './core/services/utility.service';
 import { AuthorizationService } from './core/services/authorization.service';
 import { LoaderMessageService } from './core/services/loader-message.service';
 import { IdleService } from './shared/services/idle.service';
-import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD } from './shared/utility/constant.util';
+import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD, SESSION_VERSION } from './shared/utility/constant.util';
 
 @Component({
   selector: 'app-root',
@@ -52,7 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.authorizationService.isLoggedIn()) {
       this.authService.authMe().subscribe({
         next: (res: any) => {
-          const user = { ...res.data.user, permissions: res.data.permissions };
+          const user = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(user));
         },
         error: (err: any) => {
