@@ -298,7 +298,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
       school: [null, [Validators.required]],
       role: [this.mode === 'edit' || this.mode === 'view' ? null : 'standard', [Validators.required]],
     });
-    this.patchStatus();
   }
 
   on_form_submit() {
@@ -364,18 +363,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
     return this.addForm.controls;
   }
 
-  patchStatus() {
-    if (this.addForm.value.isDeleted === false) {
-      this.addForm.patchValue({
-        isDeleted: true
-      });
-    } else {
-      this.addForm.patchValue({
-        isDeleted: false
-      });
-    }
-  }
-
   setFormValue(data: any) {
     const keysToRemove = [
       'state',
@@ -403,7 +390,6 @@ export class AddEditUserComponent implements OnInit, AfterViewInit {
         const userData = res.data;
         this.savedSchoolId = userData?.school?._id
         this.setFormValue(userData);
-        this.patchStatus();
       },
       error: (err) => {
         console.error(err);
