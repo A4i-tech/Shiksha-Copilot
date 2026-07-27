@@ -15,7 +15,7 @@ const RESEND_COOLDOWN_SECONDS = Number(process.env.PIN_RESEND_COOLDOWN_SECONDS) 
 const RESEND_COOLDOWN_MS = RESEND_COOLDOWN_SECONDS * 1000;
 
 async function sessionUser(user) {
-    const { roles, ...data } = user.toObject();
+    const { roles, otp, recovery, loginAttempts, rememberMeToken, ...data } = user.toObject();
     if (data.profiles.teacher) data.school = await School.findById(schoolDependency(user.roles)).select("name state zone district block").lean();
     return data;
 }

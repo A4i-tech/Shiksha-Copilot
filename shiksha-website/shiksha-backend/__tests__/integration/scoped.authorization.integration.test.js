@@ -69,7 +69,12 @@ describe("scoped authorisation", () => {
     db = await mongoose.createConnection(process.env.MONGO_URL).asPromise();
 
     const login = await request("/api/auth/validate-otp", "POST", null, { phone: superuserPhone, otp: superuserPin });
-    rootToken = expectSuccess(login).token;
+    const loginData = expectSuccess(login);
+    rootToken = loginData.token;
+    expect(loginData.user).not.toHaveProperty("otp");
+    expect(loginData.user).not.toHaveProperty("recovery");
+    expect(loginData.user).not.toHaveProperty("loginAttempts");
+    expect(loginData.user).not.toHaveProperty("rememberMeToken");
 
     const [me, roles, schools] = await Promise.all([
       request("/api/auth/me", "GET", rootToken),
