@@ -90,7 +90,7 @@
           [value]="userData?.identity?.phone"
         />
       </div>
-      <div class="md:col-span-2">
+      <div *ngIf="isTeacher" class="md:col-span-2">
         <label for="profile-school" class="block mb-1 form-control-label">{{
           "School/Organization" | translate
         }}</label>
@@ -106,7 +106,7 @@
       </div>
     </div>
 
-    <div class="grid gap-6 md:mb-4 md:grid-cols-4">
+    <div *ngIf="isTeacher" class="grid gap-6 md:mb-4 md:grid-cols-4">
       <div>
         <label for="profile-state" class="block mb-1 form-control-label"
           >{{ "State" | translate }}
@@ -169,7 +169,7 @@
       </div>
     </div>
 
-    <div class="relative">
+    <div *ngIf="isTeacher" class="relative">
       <h2 class="font-bold text-lg leading-7 mb-2 mt-2 lg:hidden">
         {{ "Class Details" | translate }}
       </h2>
@@ -300,7 +300,7 @@
         </tbody>
       </table>
     </div>
-    <div class="resource-block mt-4">
+    <div *ngIf="isTeacher" class="resource-block mt-4">
       <h2 class="font-bold text-lg leading-7 mb-4 text-content">
         {{ "Resources" | translate }}
       </h2>

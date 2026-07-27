@@ -284,9 +284,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           localStorage.setItem('userData', JSON.stringify(session));
           this.sidebarService.profileImg.set(res?.data?.user?.profileImage || '');
 
-          if (res?.data.user?.profiles?.teacher?.preferredLanguage) {
-              this.translateService.use(res.data.user.profiles.teacher.preferredLanguage);
-          }
+          this.translateService.use(res.data.user.preferredLanguage);
 
           if (this.rememberMe) {
             this.secureCookieService.setObjectCookie("userInfo", {

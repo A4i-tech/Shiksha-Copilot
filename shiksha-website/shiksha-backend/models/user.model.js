@@ -58,11 +58,6 @@ const identitySchema = new mongoose.Schema({
 }, { _id: false });
 
 const teacherProfileSchema = new mongoose.Schema({
-  preferredLanguage: {
-    type: String,
-    enum: ["en", "kn"],
-    default: "en",
-  },
   facilities: [],
   isProfileCompleted: {
     type: Boolean,
@@ -96,6 +91,11 @@ const userSchema = mongoose.Schema(
     profiles: {
       teacher: teacherProfileSchema,
       admin: adminProfileSchema,
+    },
+    preferredLanguage: {
+      type: String,
+      enum: ["en", "kn", "tg"],
+      default: "en",
     },
     profileImage: {
       type: String,

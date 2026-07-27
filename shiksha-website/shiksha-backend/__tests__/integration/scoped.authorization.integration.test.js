@@ -1,9 +1,8 @@
 require("dotenv").config();
 
 const axios = require("axios");
-const CryptoJS = require("crypto-js");
+const crypto = require("crypto");
 const ExcelJS = require("exceljs");
-const mongoose = require("mongoose");
 
 const baseUrl = process.env.SHIKSHA_BASE_URL;
 const superuserPhone = process.env.SHIKSHA_SU_PHONE;
@@ -39,18 +38,19 @@ describe("scoped authorisation", () => {
   const operatorPermissions = [
     "dashboard.admin.view", "school.read", "school.list", "school.create", "school.edit", "school.delete", "school.export",
     "teacher.view", "teacher.create", "teacher.edit", "teacher.delete", "teacher.export",
-    "staff.view", "staff.create", "staff.edit", "staff.delete", "role.assign", "role.view",
+    "staff.view", "staff.create", "staff.edit", "staff.delete", "role.assign", "role.view", "profile.view", "profile.edit",
     "content.activity.view", "content.activity.export", "training.view", "training.edit", "audit.view", "chat.use",
   ];
   const ids = { roles: [], users: [], schools: [], content: [], activities: [], batches: [] };
-  let db;
   let rootToken;
   let actorToken;
   let schoolActorToken;
+  let mixedStaffToken;
   let actor;
-  let adminRole;
+  let schoolActor;
   let teacherRole;
   let operatorRole;
+  let globalRole;
   let localTeacher;
   let remoteTeacher;
   let mixedStaff;
@@ -62,12 +62,10 @@ describe("scoped authorisation", () => {
   const teacherBody = (name, phone, school, roles = [{ roleId: teacherRole._id, dep: school._id }]) => ({
     identity: { name, phone, email: "", address: "" },
     roles,
-    profiles: { teacher: { preferredLanguage: "en", facilities: [], classes: [], isProfileCompleted: false } },
+    profiles: { teacher: { facilities: [], classes: [], isProfileCompleted: false } },
   });
 
   beforeAll(async () => {
-    db = await mongoose.createConnection(process.env.MONGO_URL).asPromise();
-
     const login = await request("/api/auth/validate-otp", "POST", null, { phone: superuserPhone, otp: superuserPin });
     const loginData = expectSuccess(login);
     rootToken = loginData.token;
@@ -76,20 +74,14 @@ describe("scoped authorisation", () => {
     expect(loginData.user).not.toHaveProperty("loginAttempts");
     expect(loginData.user).not.toHaveProperty("rememberMeToken");
 
-    const [me, roles, schools] = await Promise.all([
+    const [me, schools] = await Promise.all([
       request("/api/auth/me", "GET", rootToken),
-      request("/api/roles?limit=100", "GET", rootToken),
       request("/api/school/list?limit=1000&includeDeleted=0", "GET", rootToken),
     ]);
     const rootUser = expectSuccess(me);
-    const roleList = expectSuccess(roles).results;
     const schoolList = expectSuccess(schools).results;
-    adminRole = roleList.find((role) => role.name === "Admin");
-    teacherRole = roleList.find((role) => role.name === "Teacher");
     localSchool = schoolList.find((school) => school.district);
     remoteSchool = schoolList.find((school) => school.district && school.district !== localSchool.district);
-    expect(adminRole).toBeDefined();
-    expect(teacherRole).toBeDefined();
     expect(localSchool).toBeDefined();
     expect(remoteSchool).toBeDefined();
 
@@ -105,6 +97,8 @@ describe("scoped authorisation", () => {
     };
 
     operatorRole = await createRole("District operator", operatorPermissions, "DISTRICT");
+    teacherRole = await createRole("School user", [], "SCHOOL");
+    globalRole = await createRole("Global user", [], "GLOBAL");
     const repeatedGrantRole = await createRole("Repeated grant", ["help.view"], "DISTRICT");
     const roleManagerRole = await createRole("Role manager", ["role.manage"], "UNBOUND");
     const schoolReaderRole = await createRole("School reader", ["school.read", "school.list", "teacher.view"], "SCHOOL");
@@ -128,42 +122,6 @@ describe("scoped authorisation", () => {
       profiles: { admin: { state: localSchool.state } },
     }));
     ids.users.push(localTeacher._id, remoteTeacher._id, mixedStaff._id);
-    const content = [new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId(), new mongoose.Types.ObjectId()];
-    const lesson = await db.collection("masterlessons").findOne({});
-    delete lesson._id;
-    await db.collection("masterlessons").insertMany([
-      { ...lesson, _id: content[0], name: `Local source ${suffix}` },
-      { ...lesson, _id: content[1], name: `Local generated ${suffix}` },
-      { ...lesson, _id: content[2], name: `Remote source ${suffix}` },
-      { ...lesson, _id: content[3], name: `Remote generated ${suffix}` },
-    ]);
-    ids.content.push(...content);
-    const activities = [
-      {
-        _id: new mongoose.Types.ObjectId(),
-        isLesson: true,
-        status: "completed",
-        isMasterContent: false,
-        contentId: content[0],
-        genContentId: content[1],
-        generatedBy: new mongoose.Types.ObjectId(localTeacher._id),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        _id: new mongoose.Types.ObjectId(),
-        isLesson: true,
-        status: "completed",
-        isMasterContent: false,
-        contentId: content[2],
-        genContentId: content[3],
-        generatedBy: new mongoose.Types.ObjectId(remoteTeacher._id),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-    await db.collection("regeneratedlessonresources").insertMany(activities);
-    ids.activities.push(...activities.map((activity) => activity._id));
 
     actor = expectSuccess(await request("/api/users", "POST", rootToken, {
       identity: { name: "Scoped Integration Actor", phone: `9${String(suffix).slice(-9)}`, email: "", address: "" },
@@ -176,59 +134,47 @@ describe("scoped authorisation", () => {
       profiles: { admin: { state: localSchool.state } },
     }));
     ids.users.push(actor._id);
-    const schoolActor = expectSuccess(await request("/api/users", "POST", rootToken, {
+    schoolActor = expectSuccess(await request("/api/users", "POST", rootToken, {
       identity: { name: "School Integration Actor", phone: `6${String(suffix).slice(-9)}`, email: "", address: "" },
       roles: [{ roleId: schoolReaderRole._id, dep: localSchool._id }],
       profiles: { admin: { state: localSchool.state } },
     }));
     ids.users.push(schoolActor._id);
-    await db.collection("users").updateOne({ _id: new mongoose.Types.ObjectId(actor._id) }, {
-      $set: { otp: CryptoJS.AES.encrypt(superuserPin, process.env.PIN_SECRET_KEY).toString() },
-    });
-    await db.collection("users").updateOne({ _id: new mongoose.Types.ObjectId(schoolActor._id) }, {
-      $set: { otp: CryptoJS.AES.encrypt(superuserPin, process.env.PIN_SECRET_KEY).toString() },
-    });
-    actorToken = expectSuccess(await request("/api/auth/validate-otp", "POST", null, {
-      phone: actor.identity.phone,
-      otp: superuserPin,
-    })).token;
-    schoolActorToken = expectSuccess(await request("/api/auth/validate-otp", "POST", null, {
-      phone: schoolActor.identity.phone,
-      otp: superuserPin,
-    })).token;
-    localBatch = {
-      _id: new mongoose.Types.ObjectId(),
-      batchName: `Local batch ${suffix}`,
-      description: "Integration batch",
-      scheduleDate: new Date(),
-      trainingType: "offline",
-      assignedTeachers: [],
-      attendance: [],
-      isSubmitted: false,
-      createdBy: new mongoose.Types.ObjectId(actor._id),
-    };
-    remoteBatch = {
-      ...localBatch,
-      _id: new mongoose.Types.ObjectId(),
-      batchName: `Remote batch ${suffix}`,
-      createdBy: new mongoose.Types.ObjectId(remoteTeacher._id),
-    };
-    await db.collection("teachertrainingbatches").insertMany([localBatch, remoteBatch]);
-    ids.batches.push(localBatch._id, remoteBatch._id);
+    [actorToken, schoolActorToken, mixedStaffToken] = await Promise.all([actor, schoolActor, mixedStaff].map(async (user) =>
+      expectSuccess(await request("/api/devtools/sessions", "POST", rootToken, { userId: user._id })).token
+    ));
+
+    const fixtures = expectSuccess(await request("/api/devtools/fixtures", "POST", rootToken, {
+      contentActivities: [
+        { generatedBy: localTeacher._id, sourceName: `Local source ${suffix}`, generatedName: `Local generated ${suffix}` },
+        { generatedBy: remoteTeacher._id, sourceName: `Remote source ${suffix}`, generatedName: `Remote generated ${suffix}` },
+      ],
+      trainingBatches: [
+        {
+          batchName: `Local batch ${suffix}`,
+          description: "Integration batch",
+          scheduleDate: new Date(),
+          trainingType: "offline",
+          createdBy: actor._id,
+        },
+        {
+          batchName: `Remote batch ${suffix}`,
+          description: "Integration batch",
+          scheduleDate: new Date(),
+          trainingType: "offline",
+          createdBy: remoteTeacher._id,
+        },
+      ],
+    }));
+    ids.content.push(...fixtures.content);
+    ids.activities.push(...fixtures.activities);
+    ids.batches.push(...fixtures.batches.map((item) => item._id));
+    [localBatch, remoteBatch] = fixtures.batches;
     expect(rootUser._id).not.toBe(actor._id);
   });
 
   afterAll(async () => {
-    if (db) {
-      await db.collection("users").deleteMany({ _id: { $in: ids.users.map((id) => new mongoose.Types.ObjectId(id)) } });
-      await db.collection("schools").deleteMany({ _id: { $in: ids.schools.map((id) => new mongoose.Types.ObjectId(id)) } });
-      await db.collection("roles").deleteMany({ _id: { $in: ids.roles.map((id) => new mongoose.Types.ObjectId(id)) } });
-      await db.collection("masterlessons").deleteMany({ _id: { $in: ids.content } });
-      await db.collection("regeneratedlessonresources").deleteMany({ _id: { $in: ids.activities } });
-      await db.collection("teachertrainingbatches").deleteMany({ _id: { $in: ids.batches } });
-      if (actor) await db.collection("auditlogs").deleteMany({ userId: new mongoose.Types.ObjectId(actor._id) });
-      await db.close();
-    }
+    if (rootToken) await request("/api/devtools/fixtures", "DELETE", rootToken, ids);
   });
 
   it("returns every grant when one permission is assigned at two scopes", async () => {
@@ -309,6 +255,15 @@ describe("scoped authorisation", () => {
     expectDenied(await request(`/api/school/${remoteSchool._id}`, "GET", schoolActorToken), "School is outside your scope");
   });
 
+  it("supports profile self-service without a school dependency", async () => {
+    const profile = expectSuccess(await request(`/api/users/${mixedStaff._id}/profile`, "GET", mixedStaffToken));
+    expect(profile).toMatchObject({ _id: mixedStaff._id, identity: mixedStaff.identity });
+
+    expectSuccess(await request("/api/profile/language", "PATCH", mixedStaffToken, { preferredLanguage: "tg" }));
+    const updated = expectSuccess(await request(`/api/users/${mixedStaff._id}/profile`, "GET", mixedStaffToken));
+    expect(updated.preferredLanguage).toBe("tg");
+  });
+
   it("intersects dashboard filters with the actor scope", async () => {
     const [localDashboard, remoteDashboard] = await Promise.all([
       request(`/api/dashboard/admin?schoolId=${localSchool._id}`, "GET", actorToken),
@@ -344,11 +299,8 @@ describe("scoped authorisation", () => {
     const logs = [];
     for (let attempt = 0; attempt < 60 && logs.length < eventTypes.length; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const found = await db.collection("auditlogs").find({
-        userId: new mongoose.Types.ObjectId(actor._id),
-        eventType: { $in: eventTypes },
-        createdAt: { $gte: startedAt },
-      }).toArray();
+      const found = expectSuccess(await request("/api/audit/log?limit=1000", "GET", rootToken)).results
+        .filter((log) => log.userId === actor._id && eventTypes.includes(log.eventType) && new Date(log.createdAt) >= startedAt);
       logs.splice(0, logs.length, ...found);
     }
     expect(logs).toHaveLength(3);
@@ -445,7 +397,7 @@ describe("scoped authorisation", () => {
     expectSuccess(await request(`/api/users/${localTeacher._id}/deactivate`, "PUT", actorToken));
     expectSuccess(await request(`/api/users/${localTeacher._id}/activate`, "PUT", actorToken));
     const remoteMutations = [
-      ["PUT", `/api/users/${remoteTeacher._id}`, { profiles: { teacher: { preferredLanguage: "kn" } } }],
+      ["PUT", `/api/users/${remoteTeacher._id}`, { profiles: { teacher: { isProfileCompleted: true } } }],
       ["PUT", `/api/users/${remoteTeacher._id}/deactivate`],
       ["PUT", `/api/users/${remoteTeacher._id}/activate`],
       ["DELETE", `/api/users/${remoteTeacher._id}`],
@@ -483,12 +435,12 @@ describe("scoped authorisation", () => {
       },
       {
         body: teacherBody("Invalid Dependency Teacher", `6${String(suffix + 4).slice(-9)}`, localSchool, [
-          { roleId: teacherRole._id, dep: new mongoose.Types.ObjectId().toString() },
+          { roleId: teacherRole._id, dep: crypto.randomBytes(12).toString("hex") },
         ]),
         message: "SCHOOL scope dependency does not exist",
       },
       {
-        body: adminBody("Escalated Integration Admin", `6${String(suffix + 5).slice(-9)}`, [{ roleId: adminRole._id }]),
+        body: adminBody("Escalated Integration Admin", `6${String(suffix + 5).slice(-9)}`, [{ roleId: globalRole._id }]),
         message: "Role assignment is outside your scope",
       },
       {

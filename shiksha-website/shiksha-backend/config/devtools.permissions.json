@@ -1,0 +1,5 @@
+[
+  { "name": "devtools.session", "description": "Issue sessions for integration-test users." },
+  { "name": "devtools.fixture", "description": "Create integration-test fixtures." },
+  { "name": "devtools.cleanup", "description": "Delete integration-test fixtures." }
+]

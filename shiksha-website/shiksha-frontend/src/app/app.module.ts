@@ -104,9 +104,7 @@ export class AppModule {
     const data: string = localStorage.getItem('userData') ?? '';
     if(data){
       const loggedInUser = JSON.parse(data);
-      if (loggedInUser?.profiles?.teacher?.preferredLanguage) {
-        this.translateService.use(loggedInUser.profiles.teacher.preferredLanguage);
-      }
+      this.translateService.use(loggedInUser.preferredLanguage);
     }
   }
 }

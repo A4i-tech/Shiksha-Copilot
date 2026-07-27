@@ -54,7 +54,7 @@ export class StaffUserCommonService extends BaseRestService {
       roles: form.roles,
       profiles: {
         teacher: {
-          preferredLanguage: 'en', facilities: [], classes: [], isProfileCompleted: false,
+          facilities: [], classes: [], isProfileCompleted: false,
         },
       },
     });

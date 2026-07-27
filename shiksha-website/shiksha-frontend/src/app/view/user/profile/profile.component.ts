@@ -116,6 +116,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   userData: any;
   userPorfileForm!: FormGroup;
   loggedInUser: any;
+  isTeacher!: boolean;
   dependentPatchData: any;
   resourceMasterData: any;
   boardMasterData: any;
@@ -156,6 +157,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const data: string = localStorage.getItem('userData') ?? '';
     this.loggedInUser = JSON.parse(data);
+    this.isTeacher = Boolean(this.loggedInUser.profiles.teacher);
     this.createUserForm();
     this.getData();
   }
@@ -164,11 +166,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get all master data and profile data
    */
   getData() {
-    const school = this.loggedInUser.permissions.find((grant: any) => grant.scopeType === 'SCHOOL').dep;
-    const boardMaster = this.service.getClassesByBoard(school);
-    const resourceMaster = this.masterService.getFacilities();
     const userProfile = this.service.getProfileInfo(this.loggedInUser._id);
+    if (!this.isTeacher) {
+      userProfile.subscribe({ next: (profile) => this.setProfileInfo(profile), error: (err) => this.utilityService.handleError(err) });
+      return;
+    }
 
+    const boardMaster = this.service.getClassesByBoard(this.loggedInUser.school._id);
+    const resourceMaster = this.masterService.getFacilities();
     forkJoin([boardMaster, resourceMaster, userProfile]).subscribe({
       next: ([boardRes, resourceRes, profileRes]) => {
         this.setClassesByBoard(boardRes);
@@ -279,11 +284,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get profile info
    */
   setProfileInfo(val:any) {
+    this.userData = val.data;
+    if (!this.isTeacher) return;
+
     const teacherProfile = val?.data?.profiles?.teacher;
     const schoolFacilities = val.data.school.facilities;
     this.mergeSchoolResource(schoolFacilities);
 
-    this.userData = val?.data;
     const keysToRemove = ['classes', 'facilities'];
 
     const { newObj, removedObj } = this.utilityService.removeKeys(
@@ -330,9 +337,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.userPorfileForm = this.fb.group({
       classes: this.fb.array([]),
       facilities: this.fb.array([]),
-      preferredLanguage: [this.loggedInUser?.profiles?.teacher?.preferredLanguage],
     });
-    this.addResource();
+    if (this.isTeacher) this.addResource();
   }
 
   /**
@@ -509,8 +515,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.service.updatePreferedLanguage(lang).
       subscribe({
       next:(res)=>{
-          this.loggedInUser.profiles.teacher.preferredLanguage = lang;
-          this.userPorfileForm.get('preferredLanguage')?.setValue(lang);
+          this.loggedInUser.preferredLanguage = lang;
           this.utilityService.handleResponse(res);
           localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
           this.translateService.use(lang);

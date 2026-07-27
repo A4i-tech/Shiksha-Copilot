@@ -89,6 +89,7 @@ app.use('/api', teacherAbsentRoutes);
 app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
 app.use('/api', supersetRoutes);
+if (process.env.SHIKSHA_DEVTOOLS === "true") app.use("/api/devtools", require("./routes/devtools.routes"));
 
 process.on('unhandledRejection', (reason, promise) => {
 	console.log(promise, reason);

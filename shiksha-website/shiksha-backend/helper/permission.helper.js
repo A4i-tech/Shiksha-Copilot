@@ -1,4 +1,5 @@
 const permissions = require("../config/permissions.json");
+if (process.env.SHIKSHA_DEVTOOLS === "true") permissions.push(...require("../config/devtools.permissions.json"));
 
 const ALL_PERMISSIONS = Object.freeze(permissions.map((permission) => permission.name));
 

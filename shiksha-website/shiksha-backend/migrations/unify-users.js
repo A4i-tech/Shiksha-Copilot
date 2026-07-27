@@ -41,12 +41,12 @@ function teacherDocument(document, schools) {
     roles: roleIds(document.role).map((role) => assignment(role, document.school)),
     profiles: {
       teacher: {
-        preferredLanguage: document.preferredLanguage,
         facilities: document.facilities,
         classes: document.classes,
         isProfileCompleted: document.isProfileCompleted,
       },
     },
+    preferredLanguage: document.preferredLanguage ?? "en",
     profileImage: document.profileImage,
     profileImageExpiresIn: document.profileImageExpiresIn,
     isDeleted: document.isDeleted,
@@ -91,6 +91,7 @@ function adminDocument(document, districts) {
     identity: identity(document),
     roles: assignments,
     profiles: { admin: { state: document.state } },
+    preferredLanguage: document.preferredLanguage ?? "en",
     profileImage: "",
     isDeleted: document.isDeleted,
     otp: document.otp,

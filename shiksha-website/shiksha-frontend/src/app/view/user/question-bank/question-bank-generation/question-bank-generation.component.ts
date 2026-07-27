@@ -35,6 +35,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
   teacherProfile: any;
+  preferredLanguage!: string;
 
   allAvailableQuestions: any[] = [];
   isLoadingQuestions: boolean = false;
@@ -117,7 +118,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.initializeForm();
 
     const data: string = localStorage.getItem('userData') ?? '';
-    if (data) this.teacherProfile = JSON.parse(data).profiles.teacher;
+    if (data) {
+      const user = JSON.parse(data);
+      this.teacherProfile = user.profiles.teacher;
+      this.preferredLanguage = user.preferredLanguage;
+    }
     this.getBoardsList();
 
     this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...LOC_LANGUAGES.flatMap(item => item.value)];
@@ -312,7 +317,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   private setPreferredLanguage(): void {
-    this.f.language.setValue(this.teacherProfile.preferredLanguage);
+    this.f.language.setValue(this.preferredLanguage);
   }
 
   formatSubjectName(subject: string): string {

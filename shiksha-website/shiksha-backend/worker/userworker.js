@@ -201,7 +201,6 @@ dbService.getConnection().then(async (client) => {
         roles,
         profiles: {
           teacher: {
-            preferredLanguage: "en",
             facilities: [],
             classes: [],
             isProfileCompleted: false,

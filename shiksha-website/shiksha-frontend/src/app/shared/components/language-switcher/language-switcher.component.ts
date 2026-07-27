@@ -65,7 +65,7 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
    * ngafterviewinit hook used here to set the preferred language
    */
   ngAfterViewInit(): void {
-    this.languageSwitcher.selectedItem = this.loggedInUser?.profiles?.teacher?.preferredLanguage;
+    this.languageSwitcher.selectedItem = this.loggedInUser.preferredLanguage;
   } 
 
   /**
@@ -84,7 +84,7 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
     if(val === 'ok'){
       this.languageChange.emit(this.selectedLanguage);
     }else{
-      this.languageSwitcher.selectedItem = this.loggedInUser?.profiles?.teacher?.preferredLanguage;
+      this.languageSwitcher.selectedItem = this.loggedInUser.preferredLanguage;
     }
     this.showLanguageSwitcher=false;
   }

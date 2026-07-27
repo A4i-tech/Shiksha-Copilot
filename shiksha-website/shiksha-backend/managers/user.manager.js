@@ -102,18 +102,21 @@ class UserManager extends BaseManager {
 
   async getProfileById(id, grants, actorId) {
     try {
-      let user = await this.dao.getById(id);
-      const permission = String(id) === String(actorId) ? "profile.view" : "teacher.view";
-      if (!user || !await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
+      const user = await this.dao.getById(id);
+      if (!user) throw new Error("User is outside your scope");
+      const permission = String(id) === String(actorId) ? "profile.view" : user.profiles.teacher ? "teacher.view" : "staff.view";
+      if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
 
-      let plainUser = user.toObject();
+      const plainUser = user.toObject();
       delete plainUser.roles;
-      const school = schoolDependency(user.roles);
-      plainUser.school = await this.schoolDao.getById(school);
 
       // Refresh profile image SAS URL if expired
       await refreshProfileImageIfExpired(plainUser, (id, updates) => this.dao.update(id, updates));
 
+      if (!user.profiles.teacher) return { success: true, data: plainUser, message: "Profile retrieved successfully" };
+
+      const school = schoolDependency(user.roles);
+      plainUser.school = await this.schoolDao.getById(school);
       let groupByBoards = await this.classDao.getGroupClassesByBoard(school);
 
       let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
@@ -445,11 +448,9 @@ class UserManager extends BaseManager {
     try {
       const user = await this.dao.getById(userId);
 
-      if (!user) {
-        return formatApiReponse(false, "Teacher not found", null);
-      }
+      if (!user) return formatApiReponse(false, "User not found", null);
 
-      await this.dao.update(userId, { "profiles.teacher.preferredLanguage": preferredLanguage });
+      await this.dao.update(userId, { preferredLanguage });
 
       return formatApiReponse(true, "Language updated successfully", null);
     } catch (err) {

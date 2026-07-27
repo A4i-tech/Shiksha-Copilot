@@ -16,7 +16,6 @@ const identitySchema = Joi.object({
 });
 
 const teacherProfileSchema = Joi.object({
-	preferredLanguage: Joi.string().valid("en", "kn"),
 	facilities: Joi.array(),
 	classes: Joi.array(),
 	isProfileCompleted: Joi.boolean(),
@@ -35,6 +34,7 @@ const userSchema = Joi.object({
 	identity: identitySchema.required(),
 	roles: Joi.array().items(roleAssignment).min(1).required(),
 	profiles: profilesSchema.required(),
+	preferredLanguage: Joi.string().valid("en", "kn", "tg"),
 	isDeleted: Joi.boolean(),
 });
 
@@ -43,7 +43,6 @@ const bulkUploadSchema = Joi.object({
 	roles: Joi.array().items(roleAssignment).min(1).required(),
 	profiles: Joi.object({
 		teacher: Joi.object({
-			preferredLanguage: Joi.string().valid("en", "kn"),
 			facilities: Joi.array(),
 			classes: Joi.array(),
 			isProfileCompleted: Joi.boolean(),
@@ -55,7 +54,7 @@ const validatePreferredLanguageUpdate = (req, res, next) => {
 	const data = req.body;
 
 	const schema = Joi.object({
-		preferredLanguage: Joi.string().valid("en", "kn").required(),
+		preferredLanguage: Joi.string().valid("en", "kn", "tg").required(),
 	});
 
 	let isValid = schema.validate(data, { abortEarly: false });
@@ -135,7 +134,6 @@ const classSchema = Joi.object({
 });
 
 const profileSchema = Joi.object({
-	preferredLanguage: Joi.string().valid("en", "kn"),
 	classes: Joi.array().items(classSchema),
 	facilities: Joi.array().items(),
 });
