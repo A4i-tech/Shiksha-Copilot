@@ -12,21 +12,17 @@ class TeacherTrainingBatchManager extends BaseManager {
   }
 
   async getBatches(user, permissions) {
-    try {
-      const global = hasGlobalPermission(permissions, 'training.view');
-      const teacherIds = global ? [] : await scopedTeacherIds(permissions, 'training.view');
-      const query = global ? {} : { $or: [
-        { assignedTeachers: { $in: teacherIds } },
-        { createdBy: user._id, assignedTeachers: { $size: 0 } },
-      ] };
-      const batches = await TeacherTrainingBatch.find(query).populate([
-        { path: 'assignedTeachers', select: 'identity profiles.teacher' },
-        { path: 'createdBy', select: 'identity' },
-      ]);
-      return formatApiReponse(true, '', global ? batches : batches.filter((batch) => batchTeachersInScope(batch, teacherIds)));
-    } catch (err) {
-      return formatApiReponse(false, err.message, null);
-    }
+    const global = hasGlobalPermission(permissions, 'training.view');
+    const teacherIds = global ? [] : await scopedTeacherIds(permissions, 'training.view');
+    const query = global ? {} : { $or: [
+      { assignedTeachers: { $in: teacherIds } },
+      { createdBy: user._id, assignedTeachers: { $size: 0 } },
+    ] };
+    const batches = await TeacherTrainingBatch.find(query).populate([
+      { path: 'assignedTeachers', select: 'identity profiles.teacher' },
+      { path: 'createdBy', select: 'identity' },
+    ]);
+    return formatApiReponse(true, '', global ? batches : batches.filter((batch) => batchTeachersInScope(batch, teacherIds)));
   }
 }
 

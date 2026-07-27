@@ -59,13 +59,10 @@ describe("BaselineSurveyManager", () => {
       expect(mockDao.existsByUser).not.toHaveBeenCalled();
     });
 
-    it("should handle errors gracefully", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockDao.existsByUser.mockRejectedValue(new Error("Database error"));
 
-      const result = await baselineSurveyManager.checkCompleted("user-123");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Server error");
+      await expect(baselineSurveyManager.checkCompleted("user-123")).rejects.toThrow("Database error");
     });
 
     it("should include maxReminders in the response data", async () => {
@@ -371,13 +368,10 @@ describe("BaselineSurveyManager", () => {
       expect(mockReminderDao.increment).toHaveBeenCalledWith("user-123", expect.any(Number), mockSession);
     });
 
-    it("should handle database errors gracefully", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockDao.existsByUser.mockRejectedValue(new Error("DB failure"));
 
-      const result = await baselineSurveyManager.incrementRemindLater("user-123");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Server error");
+      await expect(baselineSurveyManager.incrementRemindLater("user-123")).rejects.toThrow("DB failure");
     });
   });
 });

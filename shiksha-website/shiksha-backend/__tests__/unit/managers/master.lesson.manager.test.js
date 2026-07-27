@@ -351,17 +351,14 @@ describe("MasterLessonManager", () => {
   });
 
   describe("generate5ETables", () => {
-    it("should return error when master lesson not found", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockMasterLessonDao.getById.mockResolvedValue(null);
 
-      const result = await manager.generate5ETables(
+      await expect(manager.generate5ETables(
         "lesson-123",
         "user-123",
         "User Name"
-      );
-
-      expect(result.success).toBe(false);
-      expect(result.message).toContain("Failed to generate the 5E table content");
+      )).rejects.toThrow();
     });
   });
 

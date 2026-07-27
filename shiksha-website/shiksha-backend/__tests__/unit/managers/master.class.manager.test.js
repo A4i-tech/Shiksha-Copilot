@@ -57,15 +57,12 @@ describe("MasterClassManager", () => {
       });
     });
 
-    it("should return failure on error", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
       mockMasterClassDao.update.mockRejectedValue(error);
 
       const updates = { className: "Class 10" };
-      const result = await masterClassManager.updateClass("class1", updates);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(masterClassManager.updateClass("class1", updates)).rejects.toThrow("Database error");
     });
   });
 });

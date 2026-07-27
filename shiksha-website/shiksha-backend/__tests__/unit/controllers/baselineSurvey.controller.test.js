@@ -73,18 +73,11 @@ describe("BaselineSurveyController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       baselineSurveyManager.checkCompleted = jest.fn().mockRejectedValue(new Error("Database error"));
 
-      await baselineSurveyController.checkIfCompleted(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: "Server error",
-        })
-      );
+      await expect(baselineSurveyController.checkIfCompleted(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -217,18 +210,11 @@ describe("BaselineSurveyController", () => {
       expect(mockRes.status).toHaveBeenCalledWith(400);
     });
 
-    it("should return 500 on exception", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       baselineSurveyManager.incrementRemindLater = jest.fn().mockRejectedValue(new Error("DB down"));
 
-      await baselineSurveyController.remindLater(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith(
-        expect.objectContaining({
-          success: false,
-          message: "Server error",
-        })
-      );
+      await expect(baselineSurveyController.remindLater(mockReq, mockRes)).rejects.toThrow("DB down");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 });

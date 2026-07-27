@@ -73,16 +73,14 @@ describe("BoardController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, res);
     });
 
-    it("should return 400 on exception", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       const error = new Error("Database error");
       mockBoardManager.getByName.mockRejectedValue(error);
 
       req.body = { name: "CBSE" };
 
-      await boardController.getByName(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(error);
+      await expect(boardController.getByName(req, res)).rejects.toThrow("Database error");
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 
@@ -119,16 +117,14 @@ describe("BoardController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, res);
     });
 
-    it("should return 400 on exception", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       const error = new Error("Database error");
       mockBoardManager.update.mockRejectedValue(error);
 
       req.body = { id: "board1", boardName: "Updated" };
 
-      await boardController.update(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(error);
+      await expect(boardController.update(req, res)).rejects.toThrow("Database error");
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 });

@@ -71,14 +71,12 @@ describe("UserController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       const error = new Error("Database error");
       mockUserManager.getByPhone = jest.fn().mockRejectedValue(error);
 
-      await controller.getByPhone(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(error);
+      await expect(controller.getByPhone(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -211,17 +209,12 @@ describe("UserController", () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
-    it("should handle upload error", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockUserManager.uploadProfileImage = jest.fn().mockRejectedValue(new Error("Upload failed"));
       mockReq.file = { path: "/uploads/image.jpg" };
 
-      await controller.uploadProfileImage(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: "Server error"
-      });
+      await expect(controller.uploadProfileImage(mockReq, mockRes)).rejects.toThrow("Upload failed");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -289,4 +282,107 @@ describe("UserController", () => {
     });
   });
 
+  describe("getAll", () => {
+    it("should get all users with default pagination", async () => {
+      const mockResult = { success: true, data: { results: [], total: 0 } };
+      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
+      mockReq.query = {};
+
+      await controller.getAll(mockReq, mockRes);
+
+      expect(mockUserManager.getAll).toHaveBeenCalled();
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should get all users with custom filters", async () => {
+      const mockResult = { success: true, data: { results: [], total: 0 } };
+      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
+      mockReq.query = {
+        page: "2",
+        limit: "20",
+        role: "teacher",
+        zone: "zone1",
+        search: "test"
+      };
+
+      await controller.getAll(mockReq, mockRes);
+
+      expect(mockUserManager.getAll).toHaveBeenCalledWith(
+        2,
+        20,
+        expect.objectContaining({ role: "teacher" }),
+        {},
+        expect.any(Object)
+      );
+      expect(mockRes.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should apply manager zone/district filters", async () => {
+      const mockResult = { success: true, data: { results: [], total: 0 } };
+      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
+      mockReq.user = {
+        role: ["manager"],
+        zones: ["zone1", "zone2"],
+        districts: ["dist1", "dist2"]
+      };
+      mockReq.query = {};
+
+      await controller.getAll(mockReq, mockRes);
+
+      expect(mockUserManager.getAll).toHaveBeenCalledWith(
+        1,
+        10,
+        expect.objectContaining({
+          zone: ["zone1", "zone2"],
+          district: ["dist1", "dist2"]
+        }),
+        {},
+        expect.any(Object)
+      );
+    });
+
+    it("should handle search filter with regex", async () => {
+      const mockResult = { success: true, data: { results: [], total: 0 } };
+      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
+      mockReq.query = { search: "john" };
+
+      await controller.getAll(mockReq, mockRes);
+
+      expect(mockUserManager.getAll).toHaveBeenCalledWith(
+        1,
+        10,
+        expect.objectContaining({
+          $or: expect.arrayContaining([
+            { name: expect.objectContaining({ $regex: expect.any(RegExp) }) }
+          ])
+        }),
+        {},
+        expect.any(Object)
+      );
+    });
+
+    it("should handle includeDeleted filter", async () => {
+      const mockResult = { success: true, data: { results: [], total: 0 } };
+      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
+      mockReq.query = { includeDeleted: "2" };
+
+      await controller.getAll(mockReq, mockRes);
+
+      expect(mockUserManager.getAll).toHaveBeenCalledWith(
+        1,
+        10,
+        expect.any(Object),
+        {},
+        { isDeleted: true }
+      );
+    });
+
+    it("should propagate errors instead of responding directly", async () => {
+      const error = new Error("Database error");
+      mockUserManager.getAll = jest.fn().mockRejectedValue(error);
+
+      await expect(controller.getAll(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
+    });
+  });
 });

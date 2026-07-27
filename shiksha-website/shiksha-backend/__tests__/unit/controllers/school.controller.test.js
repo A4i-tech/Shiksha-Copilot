@@ -87,16 +87,14 @@ describe("SchoolController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle errors", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       const error = new Error("Database error");
       mockReq.params.id = "1";
       mockReq.body = { name: "Updated School" };
       mockManager.update.mockRejectedValue(error);
 
-      await controller.update(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(error);
+      await expect(controller.update(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 });

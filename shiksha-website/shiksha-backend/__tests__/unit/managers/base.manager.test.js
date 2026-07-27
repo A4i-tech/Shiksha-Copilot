@@ -102,10 +102,7 @@ describe("BaseManager", () => {
     it("should handle errors", async () => {
       mockDao.getAll.mockRejectedValue(new Error("Database error"));
 
-      const result = await manager.getAll(1, 10);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBeDefined();
+      await expect(manager.getAll(1, 10)).rejects.toThrow("Database error");
     });
   });
 
@@ -139,10 +136,7 @@ describe("BaseManager", () => {
 
       mockDao.getById.mockRejectedValue(new Error("Database error"));
 
-      const result = await manager.getById(mockReq);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toContain("error");
+      await expect(manager.getById(mockReq)).rejects.toThrow("Database error");
     });
   });
 
@@ -167,10 +161,7 @@ describe("BaseManager", () => {
 
       mockDao.create.mockRejectedValue(new Error("Validation error"));
 
-      const result = await manager.create(mockReq);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toContain("error");
+      await expect(manager.create(mockReq)).rejects.toThrow("Validation error");
     });
   });
 
@@ -312,23 +303,18 @@ describe("BaseManager", () => {
   });
 
   describe("error handling", () => {
-    it("should format error responses consistently", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockDao.getAll.mockRejectedValue(new Error("Test error"));
 
-      const result = await manager.getAll(1, 10);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBeDefined();
-      expect(typeof result.message).toBe("string");
+      await expect(manager.getAll(1, 10)).rejects.toThrow("Test error");
     });
 
-    it("should handle unexpected errors gracefully", async () => {
+    it("should propagate unexpected error types unchanged", async () => {
       mockDao.getById.mockRejectedValue(null); // Unexpected error type
 
       const mockReq = createMockRequest({ params: { id: "123" } });
-      const result = await manager.getById(mockReq);
 
-      expect(result.success).toBe(false);
+      await expect(manager.getById(mockReq)).rejects.toBeNull();
     });
   });
 

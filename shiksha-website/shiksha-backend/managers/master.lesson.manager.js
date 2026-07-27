@@ -50,273 +50,238 @@ class MasterLessonManger extends BaseManager {
 	}
 
 	async getActivityById(lessonId, activityId, permissions) {
-		try {
-			const activity = await this.regeneratedLessonResourceDao.getOne({ _id: activityId });
-			if (!activity) throw new Error("Activity not found");
-			if (![activity.contentId, activity.genContentId].some((id) => String(id) === lessonId)) throw new Error("Lesson does not belong to this activity");
-			const user = await this.userDao.getById(activity.generatedBy);
-			if (!user || !user.profiles.teacher) throw new Error("Activity has no teacher");
-			const school = await School.findById(schoolDependency(user.roles)).lean();
-			if (!isResourceAllowed(permissions, "content.activity.view", school)) throw new Error("Activity is outside your scope");
-			const lessonPlan = await this.dao.generateLessonPlan(lessonId);
-			if (!lessonPlan) {
-				return formatApiReponse(false, "Lesson plan not found", null);
-			}
-			return formatApiReponse(true, "Activity ID retrieved successfully", lessonPlan);
-		} catch (err) {
-			console.error("Error --> MasterLessonManager -> getActivityId()", err);
-			return formatApiReponse(false, err.message, err);
+		const activity = await this.regeneratedLessonResourceDao.getOne({ _id: activityId });
+		if (!activity) throw new Error("Activity not found");
+		if (![activity.contentId, activity.genContentId].some((id) => String(id) === lessonId)) throw new Error("Lesson does not belong to this activity");
+		const user = await this.userDao.getById(activity.generatedBy);
+		if (!user || !user.profiles.teacher) throw new Error("Activity has no teacher");
+		const school = await School.findById(schoolDependency(user.roles)).lean();
+		if (!isResourceAllowed(permissions, "content.activity.view", school)) throw new Error("Activity is outside your scope");
+		const lessonPlan = await this.dao.generateLessonPlan(lessonId);
+		if (!lessonPlan) {
+			return formatApiReponse(false, "Lesson plan not found", null);
 		}
+		return formatApiReponse(true, "Activity ID retrieved successfully", lessonPlan);
 	}
 
 	async saveToTeacher(teacherId, data) {
-		try {
-			let teacher = await this.userDao.getById(teacherId);
+		let teacher = await this.userDao.getById(teacherId);
 
-			if (!teacher) {
-				return formatApiReponse(false, "Invalid teacher id", null);
+		if (!teacher) {
+			return formatApiReponse(false, "Invalid teacher id", null);
+		}
+
+		let content;
+		let messageType;
+
+		if (data?.lessonId) {
+			content = await this.dao.getById(data.lessonId);
+
+			if (!content) {
+				return formatApiReponse(false, "Invalid lesson id", null);
 			}
 
-			let content;
-			let messageType;
+			let lessonPlan = await this.teacherLessonPlanDao.getByTeacherAndLesson(
+				teacher._id,
+				data.lessonId
+			);
 
-			if (data?.lessonId) {
-				content = await this.dao.getById(data.lessonId);
-
-				if (!content) {
-					return formatApiReponse(false, "Invalid lesson id", null);
+			if (lessonPlan) {
+				if (lessonPlan.isCompleted) {
+					delete data.isCompleted;
 				}
 
-				let lessonPlan = await this.teacherLessonPlanDao.getByTeacherAndLesson(
-					teacher._id,
-					data.lessonId
+				let updatedPlan = await this.teacherLessonPlanDao.updatePlan(
+					lessonPlan._id,
+					data
 				);
 
-				if (lessonPlan) {
-					if (lessonPlan.isCompleted) {
-						delete data.isCompleted;
-					}
-
-					let updatedPlan = await this.teacherLessonPlanDao.updatePlan(
-						lessonPlan._id,
-						data
+				if (updatedPlan) {
+					messageType = lessonPlan.isCompleted
+						? "Lesson Plan updated!"
+						: data.isCompleted
+							? "Lesson Plan updated to final version!"
+							: "Lesson Plan saved as draft!";
+					return formatApiReponse(true, messageType, updatedPlan);
+				} else {
+					return formatApiReponse(
+						false,
+						"Failed to update Lesson Plan",
+						null
 					);
-
-					if (updatedPlan) {
-						messageType = lessonPlan.isCompleted
-							? "Lesson Plan updated!"
-							: data.isCompleted
-								? "Lesson Plan updated to final version!"
-								: "Lesson Plan saved as draft!";
-						return formatApiReponse(true, messageType, updatedPlan);
-					} else {
-						return formatApiReponse(
-							false,
-							"Failed to update Lesson Plan",
-							null
-						);
-					}
-				}
-			} else {
-				content = await this.masterResourceDao.getById(data.resourceId);
-
-				if (!content) {
-					return formatApiReponse(false, "Invalid resource id", null);
-				}
-
-				let resourcePlan =
-					await this.teacherLessonPlanDao.getByTeacherAndResource(
-						teacher._id,
-						data.resourceId
-					);
-
-				if (resourcePlan) {
-					if (resourcePlan.isCompleted) {
-						delete data.isCompleted;
-					}
-
-					let updatedPlan = await this.teacherLessonPlanDao.updatePlan(
-						resourcePlan._id,
-						data
-					);
-
-					if (updatedPlan) {
-						messageType = resourcePlan.isCompleted
-							? "Resource Plan updated!"
-							: data.isCompleted
-								? "Resource Plan updated to final version!"
-								: "Resource Plan saved as draft!";
-						return formatApiReponse(true, messageType, updatedPlan);
-					} else {
-						return formatApiReponse(
-							false,
-							"Failed to update Resource Plan",
-							null
-						);
-					}
 				}
 			}
+		} else {
+			content = await this.masterResourceDao.getById(data.resourceId);
 
-			let result = await this.teacherLessonPlanDao.saveToTeacher(
-				teacherId,
-				data
-			);
-
-			if (result) {
-				messageType = data.isCompleted
-					? `Saved Lesson ${data?.lessonId ? "Plan" : "Resource"
-					} as final version!`
-					: `Saved Lesson ${data?.lessonId ? "Plan" : "Resource"} as draft!`;
-				return formatApiReponse(true, messageType, result);
+			if (!content) {
+				return formatApiReponse(false, "Invalid resource id", null);
 			}
 
-			return formatApiReponse(
-				false,
-				`Failed to save Lesson ${data?.lessonId ? "Plan" : "Resource"}`,
-				null
-			);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
+			let resourcePlan =
+				await this.teacherLessonPlanDao.getByTeacherAndResource(
+					teacher._id,
+					data.resourceId
+				);
+
+			if (resourcePlan) {
+				if (resourcePlan.isCompleted) {
+					delete data.isCompleted;
+				}
+
+				let updatedPlan = await this.teacherLessonPlanDao.updatePlan(
+					resourcePlan._id,
+					data
+				);
+
+				if (updatedPlan) {
+					messageType = resourcePlan.isCompleted
+						? "Resource Plan updated!"
+						: data.isCompleted
+							? "Resource Plan updated to final version!"
+							: "Resource Plan saved as draft!";
+					return formatApiReponse(true, messageType, updatedPlan);
+				} else {
+					return formatApiReponse(
+						false,
+						"Failed to update Resource Plan",
+						null
+					);
+				}
+			}
 		}
+
+		let result = await this.teacherLessonPlanDao.saveToTeacher(
+			teacherId,
+			data
+		);
+
+		if (result) {
+			messageType = data.isCompleted
+				? `Saved Lesson ${data?.lessonId ? "Plan" : "Resource"
+				} as final version!`
+				: `Saved Lesson ${data?.lessonId ? "Plan" : "Resource"} as draft!`;
+			return formatApiReponse(true, messageType, result);
+		}
+
+		return formatApiReponse(
+			false,
+			`Failed to save Lesson ${data?.lessonId ? "Plan" : "Resource"}`,
+			null
+		);
 	}
 
 	async getByTeacher(teacherId, reqBody) {
-		try {
-			let data = await this.teacherLessonPlanDao.getByTeacher(
-				teacherId,
-				reqBody
-			);
-			if (data) return formatApiReponse(true, "", data);
-			return formatApiReponse(false, "", null);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
-		}
+		let data = await this.teacherLessonPlanDao.getByTeacher(
+			teacherId,
+			reqBody
+		);
+		if (data) return formatApiReponse(true, "", data);
+		return formatApiReponse(false, "", null);
 	}
 
 	async update(req) {
-		try {
-			let data = await this.dao.update(req.body);
-			if (data) return formatApiReponse(true, "", data);
-			return formatApiReponse(false, "", null);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
-		}
+		let data = await this.dao.update(req.body);
+		if (data) return formatApiReponse(true, "", data);
+		return formatApiReponse(false, "", null);
 	}
 
 	async regenerateLessonPlan({ lessonId, reason, userId }) {
-		try {
-			const lessonPlan = await this.dao.getById(lessonId);
-			if (!lessonPlan) {
-				return formatApiReponse(false, "Lesson plan not found", null);
-			}
-
-			const teacherLessonPlan =
-				await this.teacherLessonPlanDao.getByTeacherAndLesson(userId, lessonId);
-			if (!teacherLessonPlan) {
-				return formatApiReponse(false, "Teacher's lesson plan not found", null);
-			}
-
-			const regeneratedContent = await regenerateLessonPlan();
-
-			const newLessonPlan = {
-				type: lessonPlan.type,
-				class: lessonPlan.class,
-				medium: lessonPlan.medium,
-				semester: lessonPlan.semester,
-				subject: lessonPlan.subject,
-				teachingModel: lessonPlan.teachingModel,
-				level: lessonPlan.level,
-				instructionSet: regeneratedContent.instructionSet,
-				learningOutcomes: regeneratedContent.learningOutcomes,
-				videos: regeneratedContent.videos,
-				documents: lessonPlan.documents,
-				interactOutput: regeneratedContent.interactOutput,
-			};
-
-			const savedNewLessonPlan = await this.dao.create(
-				newLessonPlan
-			);
-
-			await this.teacherLessonPlanDao.update({
-				teacherId: userId,
-				oldLessonId: lessonId,
-				newLessonId: savedNewLessonPlan._id,
-				instructionSet: {},
-			});
-
-			const regeneratedLog = {
-				contentId: lessonId,
-				genContentId: savedNewLessonPlan._id,
-				isLesson: true,
-				reasons: reason,
-				generatedBy: userId,
-			};
-
-			await this.regenerateResourceLog.create(regeneratedLog);
-
-			return formatApiReponse(true, "", savedNewLessonPlan);
-		} catch (err) {
-			console.log("Error -> MasterLessonManager -> regenerateLessonPlan", err);
-			return formatApiReponse(false, err?.message, err);
+		const lessonPlan = await this.dao.getById(lessonId);
+		if (!lessonPlan) {
+			return formatApiReponse(false, "Lesson plan not found", null);
 		}
+
+		const teacherLessonPlan =
+			await this.teacherLessonPlanDao.getByTeacherAndLesson(userId, lessonId);
+		if (!teacherLessonPlan) {
+			return formatApiReponse(false, "Teacher's lesson plan not found", null);
+		}
+
+		const regeneratedContent = await regenerateLessonPlan();
+
+		const newLessonPlan = {
+			type: lessonPlan.type,
+			class: lessonPlan.class,
+			medium: lessonPlan.medium,
+			semester: lessonPlan.semester,
+			subject: lessonPlan.subject,
+			teachingModel: lessonPlan.teachingModel,
+			level: lessonPlan.level,
+			instructionSet: regeneratedContent.instructionSet,
+			learningOutcomes: regeneratedContent.learningOutcomes,
+			videos: regeneratedContent.videos,
+			documents: lessonPlan.documents,
+			interactOutput: regeneratedContent.interactOutput,
+		};
+
+		const savedNewLessonPlan = await this.dao.create(
+			newLessonPlan
+		);
+
+		await this.teacherLessonPlanDao.update({
+			teacherId: userId,
+			oldLessonId: lessonId,
+			newLessonId: savedNewLessonPlan._id,
+			instructionSet: {},
+		});
+
+		const regeneratedLog = {
+			contentId: lessonId,
+			genContentId: savedNewLessonPlan._id,
+			isLesson: true,
+			reasons: reason,
+			generatedBy: userId,
+		};
+
+		await this.regenerateResourceLog.create(regeneratedLog);
+
+		return formatApiReponse(true, "", savedNewLessonPlan);
 	}
 
 	async comboScript(board, medium, isAll) {
-		try {
-			const chapters = await Chapter.find({ board, medium });
-			for (const chapter of chapters) {
-				const subject = await this.masterSubjectDao.getById(chapter.subjectId);
-				if (isAll) {
+		const chapters = await Chapter.find({ board, medium });
+		for (const chapter of chapters) {
+			const subject = await this.masterSubjectDao.getById(chapter.subjectId);
+			if (isAll) {
+				const newLessonPlan = createData(
+					true,
+					chapter,
+					chapter.subTopics,
+					subject,
+					isAll
+				);
+				await this.dao.create(newLessonPlan);
+			} else {
+				for (const subTopic of chapter.subTopics) {
 					const newLessonPlan = createData(
 						true,
 						chapter,
-						chapter.subTopics,
+						subTopic,
 						subject,
 						isAll
 					);
 					await this.dao.create(newLessonPlan);
-				} else {
-					for (const subTopic of chapter.subTopics) {
-						const newLessonPlan = createData(
-							true,
-							chapter,
-							subTopic,
-							subject,
-							isAll
-						);
-						await this.dao.create(newLessonPlan);
-					}
 				}
 			}
-			return formatApiReponse(true, "", "Data inserted!");
-		} catch (err) {
-			console.log("Error -> MasterLessonManager -> ComboScript", err);
-			return formatApiReponse(false, err?.message, err);
 		}
+		return formatApiReponse(true, "", "Data inserted!");
 	}
 
 	async getLessonOutcomes(chapterId, templateIds, filters) {
-		try {
-			let result = await this.dao.getLessonOutcomes(
-				chapterId,
-				templateIds,
-				filters
-			);
+		let result = await this.dao.getLessonOutcomes(
+			chapterId,
+			templateIds,
+			filters
+		);
 
-			result = sortDataBySubTopics(result);
+		result = sortDataBySubTopics(result);
 
-			if (result) {
-				return formatApiReponse(true, "", result);
-			}
-
-			return formatApiReponse(false, "No data available", null);
-		} catch (err) {
-			console.error(
-				"Error --> MasterLessonManager -> getLessonOutcomes()",
-				err
-			);
-			return formatApiReponse(false, err.message, err);
+		if (result) {
+			return formatApiReponse(true, "", result);
 		}
+
+		return formatApiReponse(false, "No data available", null);
 	}
 
 	async getFilteredQuestionBank(lessonId, filters) {
@@ -349,58 +314,48 @@ class MasterLessonManger extends BaseManager {
 	}
 
 	async generateLessonPlan(teacherId, lessonId, filters) {
-		try {
-			const lessonPlan = await this._getLessonPlan(teacherId, lessonId);
+		const lessonPlan = await this._getLessonPlan(teacherId, lessonId);
 
-			const regeneratedMasterLessonPlan = await this._getRegeneratedMasterLessonPlan(teacherId, lessonId);
+		const regeneratedMasterLessonPlan = await this._getRegeneratedMasterLessonPlan(teacherId, lessonId);
 
-			if (regeneratedMasterLessonPlan) {
-				const regeneratedRecord = await this._getRegeneratedRecord(regeneratedMasterLessonPlan.recordId);
-				const regenerationStatusResponse = this._handleRegeneratedRecordStatus(regeneratedRecord);
-				if (regenerationStatusResponse) return regenerationStatusResponse;
-			}
-
-			const draftResponse = this._handleDraft(lessonPlan);
-			if (draftResponse) return draftResponse;
-
-			const result = await this._generateLessonPlanResult(lessonId, filters);
-			if (result) return result;
-
-			return formatApiReponse(false, "No Data available", null);
-		} catch (err) {
-			console.error("Error --> MasterLessonManager -> generateLessonPlan()", err);
-			return formatApiReponse(false, err.message, err);
+		if (regeneratedMasterLessonPlan) {
+			const regeneratedRecord = await this._getRegeneratedRecord(regeneratedMasterLessonPlan.recordId);
+			const regenerationStatusResponse = this._handleRegeneratedRecordStatus(regeneratedRecord);
+			if (regenerationStatusResponse) return regenerationStatusResponse;
 		}
+
+		const draftResponse = this._handleDraft(lessonPlan);
+		if (draftResponse) return draftResponse;
+
+		const result = await this._generateLessonPlanResult(lessonId, filters);
+		if (result) return result;
+
+		return formatApiReponse(false, "No Data available", null);
 	}
 
 	async generate5ETables(lessonId, userId, userName) {
-		try {
-			const masterLesson = await this.dao.getById(lessonId);
-			if (!masterLesson) {
-				throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
-			}
-			const chapter = await this.chapterDao.getById(masterLesson.chapterId);
-			if (!chapter) {
-				throw new Error(`Chapter with ID ${masterLesson.chapterId} not found`);
-			}
-			const subject = await this.masterSubjectDao.getById(chapter.subjectId);
-			if (!subject) {
-				throw new Error(`Subject with ID ${chapter.subjectId} not found`);
-			}
-
-			const requestData = this._create5ETablePayload(chapter, subject, userId, userName, masterLesson);
-
-			const result = await post5ETables(requestData);
-
-			if (result.status !== 200) {
-				logger.error(`Unexpected status code from Copilot bot: ${result.status}`);
-				throw new Error(`Unexpected status code from Copilot bot: ${result.status}`);
-			}
-			return formatApiReponse(true, "5E tables fetched succesfully", result.data);
-		} catch (error) {
-			logger.error('Error handling request', { message: error.message, stack: error.stack });
-			return formatApiReponse(false, "Failed to generate the 5E table content", error);
+		const masterLesson = await this.dao.getById(lessonId);
+		if (!masterLesson) {
+			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
 		}
+		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
+		if (!chapter) {
+			throw new Error(`Chapter with ID ${masterLesson.chapterId} not found`);
+		}
+		const subject = await this.masterSubjectDao.getById(chapter.subjectId);
+		if (!subject) {
+			throw new Error(`Subject with ID ${chapter.subjectId} not found`);
+		}
+
+		const requestData = this._create5ETablePayload(chapter, subject, userId, userName, masterLesson);
+
+		const result = await post5ETables(requestData);
+
+		if (result.status !== 200) {
+			logger.error(`Unexpected status code from Copilot bot: ${result.status}`);
+			throw new Error(`Unexpected status code from Copilot bot: ${result.status}`);
+		}
+		return formatApiReponse(true, "5E tables fetched succesfully", result.data);
 	}
 
 	async _getLessonPlan(teacherId, lessonId) {
@@ -481,65 +436,418 @@ class MasterLessonManger extends BaseManager {
 	}
 
 	async scriptLpDump(req) {
-		try {
-			let lessonPlans = req.body;
-			let failedLessonPlan = [];
-			let createCount = 0;
-			let updateCount = 0
+		let lessonPlans = req.body;
+		let failedLessonPlan = [];
+		let createCount = 0;
+		let updateCount = 0
 
-			if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
-				lessonPlans = [lessonPlans];
+		if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
+			lessonPlans = [lessonPlans];
+		}
+
+		for (let i = 0; i < lessonPlans.length; i++) {
+			let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
+			let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
+			let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
+			let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
+			let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
+			let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
+
+			let structuredInstructionSet = [];
+
+			if (lessonPlans[i].lp_level == "SUBTOPIC") {
+				structuredInstructionSet = restructureInstructionSet(
+					lessonPlans[i].crisp_instruction_set
+				);
+			} else {
+				structuredInstructionSet = restructureInstructionSet(
+					lessonPlans[i].instruction_set
+				);
+			}
+			let learningOutcomes = lessonPlans[i].learning_outcomes;
+			if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
+				learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
 			}
 
-			for (let i = 0; i < lessonPlans.length; i++) {
-				let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
-				let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
-				let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
-				let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
-				let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
-				let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
+			if (!lessonPlans[i]?.extracted_resources) {
+				failedLessonPlan.push(lessonPlans[i]);
+				continue;
+			}
 
-				let structuredInstructionSet = [];
+			let chapter = await this.chapterDao.getOne({
+				board,
+				medium,
+				orderNumber,
+				topics: title,
+				standard: Number(standard),
+			});
 
-				if (lessonPlans[i].lp_level == "SUBTOPIC") {
-					structuredInstructionSet = restructureInstructionSet(
-						lessonPlans[i].crisp_instruction_set
-					);
-				} else {
-					structuredInstructionSet = restructureInstructionSet(
-						lessonPlans[i].instruction_set
-					);
+			if (chapter && lessonPlans[i]?.index_path) {
+				chapter.indexPath = lessonPlans[i]?.index_path
+				await chapter.save();
+			}
+
+			if (!chapter?._id) {
+				let subject = await this.masterSubjectDao.getByNameAndBoard(
+					subjectName,
+					board
+				);
+
+				if (!subject) {
+					subject = await this.masterSubjectDao.create({
+						subjectName,
+						boards: [board],
+						sem: getSemester(subjectName),
+						name: formatSubject(subjectName)
+					});
 				}
-				let learningOutcomes = lessonPlans[i].learning_outcomes;
-				if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
-					learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
+
+				let chapterObj = {
+					subjectId: subject._id,
+					topics: title,
+					subTopics: lessonPlans[i].subtopics,
+					medium: medium,
+					board: board,
+					standard: Number(standard),
+					orderNumber: Number(orderNumber),
+					indexPath: lessonPlans[i]?.index_path
+				};
+
+				chapter = await this.chapterDao.create(chapterObj);
+			}
+
+			let queryingObj = {
+				name: `${subjectName}-${board} Class${standard} ${title}`,
+				class: Number(standard),
+				board,
+				medium,
+				subject: subjectName,
+				chapterId: chapter._id,
+				subTopics: lessonPlans[i].subtopics,
+				isRegenerated: false,
+				isAll: lessonPlans[i].lp_level === 'CHAPTER',
+				templateId: lessonPlans[i].lessonTemplateId
+			}
+
+			const existingLp = await this.dao.getOne(queryingObj);
+
+			let lesson;
+			if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
+				const lpQuery = {
+					_id: existingLp._id,
+					isDeleted: false,
 				}
 
-				if (!lessonPlans[i]?.extracted_resources) {
-					failedLessonPlan.push(lessonPlans[i]);
-					continue;
+				const lpData = {
+					instructionSet: structuredInstructionSet,
+					learningOutcomes: lessonPlans[i]?.learning_outcomes,
+					videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
+					checkList: restructureCheckList(lessonPlans[i].checklist)
 				}
+				lesson = await this.dao.updateByFilter(lpQuery, lpData)
 
-				let chapter = await this.chapterDao.getOne({
+				const lrData = {
+					resources: restructureResources(lessonPlans[i].extracted_resources),
+					additionalResources: lessonPlans[i].additional_resources
+						? restructureResources(lessonPlans[i].additional_resources)
+						: [],
+					learningOutcomes: lessonPlans[i]?.learning_outcomes,
+				}
+				await this.masterResourceDao.updateByFilter({ lessonId: lesson._id }, { lrData });
+				updateCount += 1
+			} else {
+				let lessonPlanObj = {
+					name: `${subjectName}-${board} Class${standard} ${title}`,
+					class: Number(standard),
+					isAll: lessonPlans[i].lp_level === "CHAPTER",
 					board,
 					medium,
-					orderNumber,
-					topics: title,
-					standard: Number(standard),
-				});
+					semester: "1",
+					subject: subjectName,
+					chapterId: chapter._id, //fetch id
+					subTopics: lessonPlans[i].subtopics,
+					teachingModel: [],
+					instructionSet: structuredInstructionSet,
+					videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
+					documents: [],
+					learningOutcomes,
+					interactOutput: lessonPlans[i].interact_output,
+					preferredMot: lessonPlans[i].preferred_mot,
+					checkList: restructureCheckList(lessonPlans[i].checklist),
+					isRegenerated: false
+				};
 
-				if (chapter && lessonPlans[i]?.index_path) {
-					chapter.indexPath = lessonPlans[i]?.index_path
-					await chapter.save();
+				lesson = await this.dao.create({ ...lessonPlanObj, templateId: lessonPlans[i].lessonTemplateId });
+
+				let resourcePlanObj = {
+					...lessonPlanObj,
+					lessonId: lesson._id,
+					lessonName: lessonPlanObj.name,
+					resources: restructureResources(lessonPlans[i].extracted_resources),
+					additionalResources: lessonPlans[i].additional_resources
+						? restructureResources(lessonPlans[i].additional_resources)
+						: [],
+					checkList: restructureCheckList(lessonPlans[i].checklist),
+				};
+				await this.masterResourceDao.create({ ...resourcePlanObj, templateId: lessonPlans[i].resourceTemplateId });
+				createCount += 1
+			}
+		}
+
+		return {
+			success: true,
+			message: "Data Added!",
+			data: {
+				createCount,
+				updateCount,
+				failCount: failedLessonPlan.length,
+				failedLessonPlan,
+			},
+		};
+	}
+
+	async uploadMasterLesson(req) {
+		let lessonPlans = req.body;
+		let failedLessonPlan = [];
+		let createCount = 0;
+		let updateCount = 0
+
+		if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
+			lessonPlans = [lessonPlans];
+		}
+
+		for (let i = 0; i < lessonPlans.length; i++) {
+			let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
+			let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
+			let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
+			let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
+			let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
+			let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
+			let learningOutcomes = lessonPlans[i].learning_outcomes;
+			let templateDetails = await LessonPlanTemplate.find({ workFlowId: lessonPlans[i]?.workflow_id });
+			let templateId = templateDetails[0]?._id || null;
+			if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
+				learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
+			}
+
+			if (!templateId) {
+				failedLessonPlan.push(lessonPlans[i]);
+				continue;
+			}
+
+			let chapter = await this.chapterDao.getOne({
+				board,
+				medium,
+				orderNumber,
+				topics: title,
+				standard: Number(standard),
+			});
+
+			if (chapter && lessonPlans[i]?.index_path) {
+				chapter.indexPath = lessonPlans[i]?.index_path
+				await chapter.save();
+			}
+			let subject = await this.masterSubjectDao.getByNameAndBoard(
+				subjectName,
+				board
+			);
+			if (!chapter?._id) {
+				if (!subject) {
+					let subjectData = await this.masterSubjectDao.getOne({ subjectName });
+					if (subjectData && !subjectData.boards.includes(board)) {
+						subjectData.boards.push(board);
+						subjectData.applicableClasses.push(
+							{
+								board: board,
+								Classes: [standard]
+							}
+						)
+						subject = await subjectData.save();
+					} else {
+						subject = await this.masterSubjectDao.create({
+							subjectName,
+							boards: [board],
+							sem: getSemester(subjectName),
+							name: formatSubject(subjectName),
+							applicableClasses: [
+								{
+									board: board,
+									Classes: [standard]
+								}
+							],
+						});
+					}
 				}
 
-				if (!chapter?._id) {
-					let subject = await this.masterSubjectDao.getByNameAndBoard(
-						subjectName,
-						board
-					);
+				let chapterObj = {
+					subjectId: subject._id,
+					topics: title,
+					subTopics: lessonPlans[i].subtopics,
+					medium: medium,
+					board: board,
+					standard: Number(standard),
+					orderNumber: Number(orderNumber),
+					indexPath: lessonPlans[i]?.index_path
+				};
 
-					if (!subject) {
+				chapter = await this.chapterDao.create(chapterObj);
+			}
+
+			let boardEntry = subject.applicableClasses.find(
+				(entry) => entry.board === board
+			);
+
+			if (boardEntry) {
+				if (!boardEntry.classes.includes(standard)) {
+					boardEntry.classes.push(standard);
+					await subject.save();
+				}
+			} else {
+				subject.applicableClasses.push({
+					board: board,
+					classes: [standard],
+				});
+
+				if (!subject.boards.includes(board)) {
+					subject.boards.push(board);
+				}
+				await subject.save();
+			}
+
+			let queryingObj = {
+				name: `${subjectName}-${board} Class${standard} ${title}`,
+				class: Number(standard),
+				board,
+				medium,
+				subject: subjectName,
+				chapterId: chapter._id,
+				subTopics: lessonPlans[i].subtopics,
+				isRegenerated: false,
+				isAll: lessonPlans[i].lp_level === 'CHAPTER',
+				templateId
+			}
+
+			const existingLp = await this.dao.getOne(queryingObj);
+
+			let lesson;
+			if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
+				const lpQuery = {
+					_id: existingLp._id,
+					isDeleted: false,
+				}
+
+				const lpData = {
+					sections: formatSections(lessonPlans[i]?.sections, templateDetails[0]?.sections),
+					learningOutcomes: lessonPlans[i]?.learning_outcomes,
+					videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : []
+				}
+				lesson = await this.dao.updateByFilter(lpQuery, lpData)
+				updateCount += 1
+			} else {
+				let lessonPlanObj = {
+					name: `${subjectName}-${board} Class${standard} ${title}`,
+					class: Number(standard),
+					isAll: lessonPlans[i].lp_level === "CHAPTER",
+					board,
+					medium,
+					semester: "1",
+					subject: subjectName,
+					chapterId: chapter._id, //fetch id
+					subTopics: lessonPlans[i].subtopics,
+					teachingModel: [],
+					sections: formatSections(lessonPlans[i]?.sections, templateDetails[0]?.sections),
+					videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
+					documents: [],
+					learningOutcomes,
+					interactOutput: lessonPlans[i]?.interact_output,
+					preferredMot: lessonPlans[i]?.preferred_mot,
+					isRegenerated: false,
+					templateId
+				};
+
+				lesson = await this.dao.create(lessonPlanObj);
+				createCount += 1
+			}
+		}
+
+		return {
+			success: true,
+			message: "Data Added!",
+			data: {
+				createCount,
+				updateCount,
+				failCount: failedLessonPlan.length,
+				failedLessonPlan,
+			},
+		};
+	}
+
+
+	async uploadMasterLessonOlderVersion(req) {
+		let lessonPlans = req.body;
+		let failedLessonPlan = [];
+		let createCount = 0;
+		let updateCount = 0
+
+		if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
+			lessonPlans = [lessonPlans];
+		}
+
+		for (let i = 0; i < lessonPlans.length; i++) {
+			let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
+			let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
+			let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
+			let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
+			let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
+			let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
+			let learningOutcomes = lessonPlans[i].learning_outcomes;
+
+			if (board !== 'KSEEB') {
+				failedLessonPlan.push(lessonPlans[i]);
+				continue;
+			}
+
+			const workFlowId = getTemplateWorkflowId(subjectName, lessonPlans[i]?.lp_level);
+
+			let templateDetails = await LessonPlanTemplate.find({ workFlowId });
+			let templateId = templateDetails[0]?._id || null;
+
+			if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
+				learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
+			}
+
+			if (!templateId) {
+				failedLessonPlan.push(lessonPlans[i]);
+				continue;
+			}
+
+
+			let chapter = await this.chapterDao.getOne({
+				board,
+				medium,
+				orderNumber,
+				topics: title,
+				standard: Number(standard),
+			});
+
+
+			if (chapter && lessonPlans[i]?.index_path) {
+				chapter.indexPath = lessonPlans[i]?.index_path
+				await chapter.save();
+			}
+
+			if (!chapter?._id) {
+				let subject = await this.masterSubjectDao.getByNameAndBoard(
+					subjectName,
+					board
+				);
+
+				if (!subject) {
+					let subjectData = await this.masterSubjectDao.getOne({ subjectName });
+					if (subjectData && !subjectData.boards.includes(board)) {
+						subjectData.boards.push(board);
+						subject = await subjectData.save();
+					} else {
 						subject = await this.masterSubjectDao.create({
 							subjectName,
 							boards: [board],
@@ -547,463 +855,98 @@ class MasterLessonManger extends BaseManager {
 							name: formatSubject(subjectName)
 						});
 					}
-
-					let chapterObj = {
-						subjectId: subject._id,
-						topics: title,
-						subTopics: lessonPlans[i].subtopics,
-						medium: medium,
-						board: board,
-						standard: Number(standard),
-						orderNumber: Number(orderNumber),
-						indexPath: lessonPlans[i]?.index_path
-					};
-
-					chapter = await this.chapterDao.create(chapterObj);
 				}
 
-				let queryingObj = {
-					name: `${subjectName}-${board} Class${standard} ${title}`,
-					class: Number(standard),
-					board,
-					medium,
-					subject: subjectName,
-					chapterId: chapter._id,
-					subTopics: lessonPlans[i].subtopics,
-					isRegenerated: false,
-					isAll: lessonPlans[i].lp_level === 'CHAPTER',
-					templateId: lessonPlans[i].lessonTemplateId
-				}
-
-				const existingLp = await this.dao.getOne(queryingObj);
-
-				let lesson;
-				if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
-					const lpQuery = {
-						_id: existingLp._id,
-						isDeleted: false,
-					}
-
-					const lpData = {
-						instructionSet: structuredInstructionSet,
-						learningOutcomes: lessonPlans[i]?.learning_outcomes,
-						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
-						checkList: restructureCheckList(lessonPlans[i].checklist)
-					}
-					lesson = await this.dao.updateByFilter(lpQuery, lpData)
-
-					const lrData = {
-						resources: restructureResources(lessonPlans[i].extracted_resources),
-						additionalResources: lessonPlans[i].additional_resources
-							? restructureResources(lessonPlans[i].additional_resources)
-							: [],
-						learningOutcomes: lessonPlans[i]?.learning_outcomes,
-					}
-					await this.masterResourceDao.updateByFilter({ lessonId: lesson._id }, { lrData });
-					updateCount += 1
-				} else {
-					let lessonPlanObj = {
-						name: `${subjectName}-${board} Class${standard} ${title}`,
-						class: Number(standard),
-						isAll: lessonPlans[i].lp_level === "CHAPTER",
-						board,
-						medium,
-						semester: "1",
-						subject: subjectName,
-						chapterId: chapter._id, //fetch id
-						subTopics: lessonPlans[i].subtopics,
-						teachingModel: [],
-						instructionSet: structuredInstructionSet,
-						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
-						documents: [],
-						learningOutcomes,
-						interactOutput: lessonPlans[i].interact_output,
-						preferredMot: lessonPlans[i].preferred_mot,
-						checkList: restructureCheckList(lessonPlans[i].checklist),
-						isRegenerated: false
-					};
-
-					lesson = await this.dao.create({ ...lessonPlanObj, templateId: lessonPlans[i].lessonTemplateId });
-
-					let resourcePlanObj = {
-						...lessonPlanObj,
-						lessonId: lesson._id,
-						lessonName: lessonPlanObj.name,
-						resources: restructureResources(lessonPlans[i].extracted_resources),
-						additionalResources: lessonPlans[i].additional_resources
-							? restructureResources(lessonPlans[i].additional_resources)
-							: [],
-						checkList: restructureCheckList(lessonPlans[i].checklist),
-					};
-					await this.masterResourceDao.create({ ...resourcePlanObj, templateId: lessonPlans[i].resourceTemplateId });
-					createCount += 1
-				}
-			}
-
-			return {
-				success: true,
-				message: "Data Added!",
-				data: {
-					createCount,
-					updateCount,
-					failCount: failedLessonPlan.length,
-					failedLessonPlan,
-				},
-			};
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
-		}
-	}
-
-	async uploadMasterLesson(req) {
-		try {
-			let lessonPlans = req.body;
-			let failedLessonPlan = [];
-			let createCount = 0;
-			let updateCount = 0
-
-			if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
-				lessonPlans = [lessonPlans];
-			}
-
-			for (let i = 0; i < lessonPlans.length; i++) {
-				let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
-				let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
-				let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
-				let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
-				let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
-				let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
-				let learningOutcomes = lessonPlans[i].learning_outcomes;
-				let templateDetails = await LessonPlanTemplate.find({ workFlowId: lessonPlans[i]?.workflow_id });
-				let templateId = templateDetails[0]?._id || null;
-				if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
-					learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
-				}
-
-				if (!templateId) {
-					failedLessonPlan.push(lessonPlans[i]);
-					continue;
-				}
-
-				let chapter = await this.chapterDao.getOne({
-					board,
-					medium,
-					orderNumber,
+				let chapterObj = {
+					subjectId: subject._id,
 					topics: title,
-					standard: Number(standard),
-				});
-
-				if (chapter && lessonPlans[i]?.index_path) {
-					chapter.indexPath = lessonPlans[i]?.index_path
-					await chapter.save();
-				}
-				let subject = await this.masterSubjectDao.getByNameAndBoard(
-					subjectName,
-					board
-				);
-				if (!chapter?._id) {
-					if (!subject) {
-						let subjectData = await this.masterSubjectDao.getOne({ subjectName });
-						if (subjectData && !subjectData.boards.includes(board)) {
-							subjectData.boards.push(board);
-							subjectData.applicableClasses.push(
-								{
-									board: board,
-									Classes: [standard]
-								}
-							)
-							subject = await subjectData.save();
-						} else {
-							subject = await this.masterSubjectDao.create({
-								subjectName,
-								boards: [board],
-								sem: getSemester(subjectName),
-								name: formatSubject(subjectName),
-								applicableClasses: [
-									{
-										board: board,
-										Classes: [standard]
-									}
-								],
-							});
-						}
-					}
-
-					let chapterObj = {
-						subjectId: subject._id,
-						topics: title,
-						subTopics: lessonPlans[i].subtopics,
-						medium: medium,
-						board: board,
-						standard: Number(standard),
-						orderNumber: Number(orderNumber),
-						indexPath: lessonPlans[i]?.index_path
-					};
-
-					chapter = await this.chapterDao.create(chapterObj);
-				}
-
-				let boardEntry = subject.applicableClasses.find(
-					(entry) => entry.board === board
-				);
-
-				if (boardEntry) {
-					if (!boardEntry.classes.includes(standard)) {
-						boardEntry.classes.push(standard);
-						await subject.save();
-					}
-				} else {
-					subject.applicableClasses.push({
-						board: board,
-						classes: [standard],
-					});
-
-					if (!subject.boards.includes(board)) {
-						subject.boards.push(board);
-					}
-					await subject.save();
-				}
-
-				let queryingObj = {
-					name: `${subjectName}-${board} Class${standard} ${title}`,
-					class: Number(standard),
-					board,
-					medium,
-					subject: subjectName,
-					chapterId: chapter._id,
 					subTopics: lessonPlans[i].subtopics,
-					isRegenerated: false,
-					isAll: lessonPlans[i].lp_level === 'CHAPTER',
-					templateId
-				}
-
-				const existingLp = await this.dao.getOne(queryingObj);
-
-				let lesson;
-				if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
-					const lpQuery = {
-						_id: existingLp._id,
-						isDeleted: false,
-					}
-
-					const lpData = {
-						sections: formatSections(lessonPlans[i]?.sections, templateDetails[0]?.sections),
-						learningOutcomes: lessonPlans[i]?.learning_outcomes,
-						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : []
-					}
-					lesson = await this.dao.updateByFilter(lpQuery, lpData)
-					updateCount += 1
-				} else {
-					let lessonPlanObj = {
-						name: `${subjectName}-${board} Class${standard} ${title}`,
-						class: Number(standard),
-						isAll: lessonPlans[i].lp_level === "CHAPTER",
-						board,
-						medium,
-						semester: "1",
-						subject: subjectName,
-						chapterId: chapter._id, //fetch id
-						subTopics: lessonPlans[i].subtopics,
-						teachingModel: [],
-						sections: formatSections(lessonPlans[i]?.sections, templateDetails[0]?.sections),
-						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
-						documents: [],
-						learningOutcomes,
-						interactOutput: lessonPlans[i]?.interact_output,
-						preferredMot: lessonPlans[i]?.preferred_mot,
-						isRegenerated: false,
-						templateId
-					};
-
-					lesson = await this.dao.create(lessonPlanObj);
-					createCount += 1
-				}
-			}
-
-			return {
-				success: true,
-				message: "Data Added!",
-				data: {
-					createCount,
-					updateCount,
-					failCount: failedLessonPlan.length,
-					failedLessonPlan,
-				},
-			};
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
-		}
-	}
-
-
-	async uploadMasterLessonOlderVersion(req) {
-		try {
-			let lessonPlans = req.body;
-			let failedLessonPlan = [];
-			let createCount = 0;
-			let updateCount = 0
-
-			if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
-				lessonPlans = [lessonPlans];
-			}
-
-			for (let i = 0; i < lessonPlans.length; i++) {
-				let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
-				let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
-				let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
-				let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
-				let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
-				let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
-				let learningOutcomes = lessonPlans[i].learning_outcomes;
-
-				if (board !== 'KSEEB') {
-					failedLessonPlan.push(lessonPlans[i]);
-					continue;
-				}
-
-				const workFlowId = getTemplateWorkflowId(subjectName, lessonPlans[i]?.lp_level);
-
-				let templateDetails = await LessonPlanTemplate.find({ workFlowId });
-				let templateId = templateDetails[0]?._id || null;
-
-				if (typeof learningOutcomes[0] === 'string' && learningOutcomes[0].includes('\n')) {
-					learningOutcomes = (learningOutcomes?.[0] || "").split('\n').map(outcome => outcome.trim());
-				}
-
-				if (!templateId) {
-					failedLessonPlan.push(lessonPlans[i]);
-					continue;
-				}
-
-
-				let chapter = await this.chapterDao.getOne({
-					board,
-					medium,
-					orderNumber,
-					topics: title,
+					medium: medium,
+					board: board,
 					standard: Number(standard),
-				});
+					orderNumber: Number(orderNumber),
+					indexPath: lessonPlans[i]?.index_path
+				};
 
+				chapter = await this.chapterDao.create(chapterObj);
+			}
 
-				if (chapter && lessonPlans[i]?.index_path) {
-					chapter.indexPath = lessonPlans[i]?.index_path
-					await chapter.save();
+			let queryingObj = {
+				name: `${subjectName}-${board} Class${standard} ${title}`,
+				class: Number(standard),
+				board,
+				medium,
+				subject: subjectName,
+				chapterId: chapter._id,
+				isRegenerated: false,
+				isAll: lessonPlans[i].lp_level === 'CHAPTER',
+				templateId
+			}
+
+			const existingLp = await this.dao.getOne(queryingObj);
+
+			let lesson;
+
+			let instructionSet;
+			if (lessonPlans[i].lp_level === "CHAPTER") {
+				instructionSet = lessonPlans[i]?.instruction_set;
+			} else {
+				instructionSet = lessonPlans[i]?.crisp_instruction_set;
+			}
+			if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
+				const lpQuery = {
+					_id: existingLp._id,
+					isDeleted: false,
 				}
 
-				if (!chapter?._id) {
-					let subject = await this.masterSubjectDao.getByNameAndBoard(
-						subjectName,
-						board
-					);
-
-					if (!subject) {
-						let subjectData = await this.masterSubjectDao.getOne({ subjectName });
-						if (subjectData && !subjectData.boards.includes(board)) {
-							subjectData.boards.push(board);
-							subject = await subjectData.save();
-						} else {
-							subject = await this.masterSubjectDao.create({
-								subjectName,
-								boards: [board],
-								sem: getSemester(subjectName),
-								name: formatSubject(subjectName)
-							});
-						}
-					}
-
-					let chapterObj = {
-						subjectId: subject._id,
-						topics: title,
-						subTopics: lessonPlans[i].subtopics,
-						medium: medium,
-						board: board,
-						standard: Number(standard),
-						orderNumber: Number(orderNumber),
-						indexPath: lessonPlans[i]?.index_path
-					};
-
-					chapter = await this.chapterDao.create(chapterObj);
+				const lpData = {
+					sections: oldFormatStructuredData(instructionSet, lessonPlans[i]?.checklist, templateDetails[0]?.sections),
+					learningOutcomes: lessonPlans[i]?.learning_outcomes,
+					videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
+					subTopics: lessonPlans[i]?.subtopics,
 				}
 
-				let queryingObj = {
+
+				lesson = await this.dao.updateByFilter(lpQuery, lpData)
+				updateCount += 1
+			}
+			else {
+				let lessonPlanObj = {
 					name: `${subjectName}-${board} Class${standard} ${title}`,
 					class: Number(standard),
+					isAll: lessonPlans[i].lp_level === "CHAPTER",
 					board,
 					medium,
+					semester: "1",
 					subject: subjectName,
-					chapterId: chapter._id,
+					chapterId: chapter._id, //fetch id
+					subTopics: lessonPlans[i].subtopics,
+					teachingModel: [],
+					sections: oldFormatStructuredData(instructionSet, lessonPlans[i]?.checklist, templateDetails[0]?.sections),
+					videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
+					documents: [],
+					learningOutcomes,
+					interactOutput: lessonPlans[i]?.interact_output,
+					preferredMot: lessonPlans[i]?.preferred_mot,
 					isRegenerated: false,
-					isAll: lessonPlans[i].lp_level === 'CHAPTER',
 					templateId
-				}
+				};
 
-				const existingLp = await this.dao.getOne(queryingObj);
-
-				let lesson;
-
-				let instructionSet;
-				if (lessonPlans[i].lp_level === "CHAPTER") {
-					instructionSet = lessonPlans[i]?.instruction_set;
-				} else {
-					instructionSet = lessonPlans[i]?.crisp_instruction_set;
-				}
-				if (existingLp && compareChapter(lessonPlans[i]._id, chapter, existingLp)) {
-					const lpQuery = {
-						_id: existingLp._id,
-						isDeleted: false,
-					}
-
-					const lpData = {
-						sections: oldFormatStructuredData(instructionSet, lessonPlans[i]?.checklist, templateDetails[0]?.sections),
-						learningOutcomes: lessonPlans[i]?.learning_outcomes,
-						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
-						subTopics: lessonPlans[i]?.subtopics,
-					}
-
-
-					lesson = await this.dao.updateByFilter(lpQuery, lpData)
-					updateCount += 1
-				}
-				else {
-					let lessonPlanObj = {
-						name: `${subjectName}-${board} Class${standard} ${title}`,
-						class: Number(standard),
-						isAll: lessonPlans[i].lp_level === "CHAPTER",
-						board,
-						medium,
-						semester: "1",
-						subject: subjectName,
-						chapterId: chapter._id, //fetch id
-						subTopics: lessonPlans[i].subtopics,
-						teachingModel: [],
-						sections: oldFormatStructuredData(instructionSet, lessonPlans[i]?.checklist, templateDetails[0]?.sections),
-						videos: lessonPlans[i]?.videos?.length ? lessonPlans[i]?.videos : [],
-						documents: [],
-						learningOutcomes,
-						interactOutput: lessonPlans[i]?.interact_output,
-						preferredMot: lessonPlans[i]?.preferred_mot,
-						isRegenerated: false,
-						templateId
-					};
-
-					lesson = await this.dao.create(lessonPlanObj);
-					createCount += 1
-				}
+				lesson = await this.dao.create(lessonPlanObj);
+				createCount += 1
 			}
-
-			return {
-				success: true,
-				message: "Data Added!",
-				data: {
-					createCount,
-					updateCount,
-					failCount: failedLessonPlan.length,
-					failedLessonPlan,
-				},
-			};
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
 		}
+
+		return {
+			success: true,
+			message: "Data Added!",
+			data: {
+				createCount,
+				updateCount,
+				failCount: failedLessonPlan.length,
+				failedLessonPlan,
+			},
+		};
 	}
 
 }

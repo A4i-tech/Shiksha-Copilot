@@ -119,15 +119,12 @@ describe("MasterResourceManager", () => {
       ).toHaveBeenCalledWith("chapter-123", ["template-1"]);
     });
 
-    it("should handle errors gracefully", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockMasterResourceDao.getSubtopicResourceList.mockRejectedValue(
         new Error("Database error")
       );
 
-      const result = await manager.getSubtopicResourceList("chapter-123", []);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(manager.getSubtopicResourceList("chapter-123", [])).rejects.toThrow("Database error");
     });
   });
 

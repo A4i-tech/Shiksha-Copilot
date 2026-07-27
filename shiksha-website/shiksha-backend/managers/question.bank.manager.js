@@ -100,18 +100,14 @@ class QuestionBankManager extends BaseManager {
     filters = {},
     sort = {}
   ) {
-    try {
-      let data = await this.dao.getTeacherQuestionPapers(
-        teacherId,
-        page,
-        limit,
-        filters,
-        sort
-      );
-      return formatApiReponse(true, "", data);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    let data = await this.dao.getTeacherQuestionPapers(
+      teacherId,
+      page,
+      limit,
+      filters,
+      sort
+    );
+    return formatApiReponse(true, "", data);
   }
 
   async getById(req) {
@@ -125,17 +121,13 @@ class QuestionBankManager extends BaseManager {
   }
 
   generateQuestionBankBluePrint(req) {
-    try {
-      const body = convertToCamelCase(req.body);
-      const template = this._withQuestionTypeMetadata(body.template).map(item => ({
-        ...item,
-        numberOfQuestions: Number(item.numberOfQuestions),
-        marksPerQuestion: Number(item.marksPerQuestion),
-      }));
-      return formatApiReponse(true, "Question bank blue print generated successfully!", this._distributeBlueprint(template, body.marksDistribution, body.objectiveDistribution));
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const body = convertToCamelCase(req.body);
+    const template = this._withQuestionTypeMetadata(body.template).map(item => ({
+      ...item,
+      numberOfQuestions: Number(item.numberOfQuestions),
+      marksPerQuestion: Number(item.marksPerQuestion),
+    }));
+    return formatApiReponse(true, "Question bank blue print generated successfully!", this._distributeBlueprint(template, body.marksDistribution, body.objectiveDistribution));
   }
 
   async generateQuestionBank(req, user) {
@@ -225,17 +217,12 @@ class QuestionBankManager extends BaseManager {
   }
 
   async translateQuestionPaper(targetLanguage, jsonData) {
-    try {
-      const pythonUrl = process.env.LLM_API_BASE_URL;
-      const response = await axios.post(
-        `${pythonUrl}/question-paper/translate-json`,
-        convertToSnakeCase({ targetLanguage, jsonData })
-      );
-      return formatApiReponse(true, "Translation processed successfully", convertToCamelCase(response.data));
-    } catch (err) {
-      console.error("Translation Manager Error:", err.message);
-      return formatApiReponse(false, "Translation failed", err.response?.data || err.message);
-    }
+    const pythonUrl = process.env.LLM_API_BASE_URL;
+    const response = await axios.post(
+      `${pythonUrl}/question-paper/translate-json`,
+      convertToSnakeCase({ targetLanguage, jsonData })
+    );
+    return formatApiReponse(true, "Translation processed successfully", convertToCamelCase(response.data));
   }
 
   _prepareGenerationContext(reqBody) {
@@ -632,148 +619,143 @@ class QuestionBankManager extends BaseManager {
   }
 
   async _createQuestionBankPayload(reqBody, user) {
+    const {
+      board,
+      medium,
+      grade,
+      subject,
+      totalMarks,
+      isMultiChapter,
+      unitLevel,
+      marksDistribution,
+      chapterIds,
+      subTopic,
+      template,
+      questions,
+    } = reqBody;
+
+    const objectiveDistribution = reqBody.objectiveDistribution;
+    const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
+    const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
+
+    const validChapterIds = chapterIdsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
+    const validSubTopicIds = subTopicsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
+
+    let chapterData = [];
     try {
-      const {
-        board,
-        medium,
-        grade,
-        subject,
-        totalMarks,
-        isMultiChapter,
-        unitLevel,
-        marksDistribution,
-        chapterIds,
-        subTopic,
-        template,
-        questions,
-      } = reqBody;
+      if (isMultiChapter) {
+        if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
+      } else {
+        if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, subTopicsArr);
+      }
+    } catch (aggErr) {
+      console.warn("[Manager] Chapter lookup failed:", aggErr.message);
+    }
 
-      const objectiveDistribution = reqBody.objectiveDistribution;
-      const chapterIdsArr = Array.isArray(chapterIds) ? chapterIds : (chapterIds ? [chapterIds] : []);
-      const subTopicsArr = Array.isArray(subTopic) ? subTopic : (subTopic ? [subTopic] : []);
+    chapterData = convertToCamelCase(chapterData);
 
-      const validChapterIds = chapterIdsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
-      const validSubTopicIds = subTopicsArr.filter(id => mongoose.Types.ObjectId.isValid(id));
-
-      let chapterData = [];
-      try {
-        if (isMultiChapter) {
-          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdsAndFilterObject(validChapterIds);
-        } else {
-          if (validChapterIds.length > 0) chapterData = await chapterAggregation.getChapterByIdAndSubtopicFilter(validChapterIds, subTopicsArr);
+    // Prepare base chapters
+    let formattedChapters = chapterData.length
+      ? chapterData.map((chapter) => {
+        const ch = {
+          title: chapter.title.trim(),
+          indexPath: chapter.indexPath ?? "",
+          learningOutcomes: chapter.learningOutcomes,
+          isGrammar: !!chapter.isGrammar,
+          grammarTopics: chapter.grammarTopics,
+          subtopics: chapter.subtopics.map((sub) => ({
+            title: sub.title.trim(),
+            indexPath: sub.indexPath ?? "",
+            learningOutcomes: sub.learningOutcomes,
+          })),
+        };
+        if (chapter.grammarSourceChapters?.length) {
+          ch.grammarSourceChapters = chapter.grammarSourceChapters;
         }
-      } catch (aggErr) {
-        console.warn("[Manager] Chapter lookup failed:", aggErr.message);
+        return ch;
+      })
+      : [];
+
+    const requiredUnits = new Set();
+    marksDistribution.forEach(dist => requiredUnits.add(dist.unitName.trim()));
+
+    // Check inputs as well (Hybrid Flow)
+    const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
+    allInputTopics.forEach(t => {
+      if (typeof t === 'string' && t.trim().length > 0 && !mongoose.Types.ObjectId.isValid(t)) {
+        requiredUnits.add(t.trim());
+      }
+    });
+
+    // Inject units referenced in marks distribution but not fetched by ID,
+    // resolving each against chapter and subtopic titles before falling back
+    // to an empty indexPath.
+    const lower = (s) => s.toLowerCase();
+    requiredUnits.forEach(unitName => {
+      const u = lower(unitName);
+      const matchesChapter = formattedChapters.some(fc => lower(fc.title) === u);
+      if (matchesChapter) return;
+
+      for (const fc of formattedChapters) {
+        const sub = fc.subtopics.find(s => lower(s.title) === u);
+        if (sub) {
+          formattedChapters.push({
+            title: unitName,
+            indexPath: sub.indexPath,
+            learningOutcomes: sub.learningOutcomes,
+            subtopics: [],
+          });
+          return;
+        }
       }
 
-      chapterData = convertToCamelCase(chapterData);
-
-      // Prepare base chapters
-      let formattedChapters = chapterData.length
-        ? chapterData.map((chapter) => {
-          const ch = {
-            title: chapter.title.trim(),
-            indexPath: chapter.indexPath ?? "",
-            learningOutcomes: chapter.learningOutcomes,
-            isGrammar: !!chapter.isGrammar,
-            grammarTopics: chapter.grammarTopics,
-            subtopics: chapter.subtopics.map((sub) => ({
-              title: sub.title.trim(),
-              indexPath: sub.indexPath ?? "",
-              learningOutcomes: sub.learningOutcomes,
-            })),
-          };
-          if (chapter.grammarSourceChapters?.length) {
-            ch.grammarSourceChapters = chapter.grammarSourceChapters;
-          }
-          return ch;
-        })
-        : [];
-
-      const requiredUnits = new Set();
-      marksDistribution.forEach(dist => requiredUnits.add(dist.unitName.trim()));
-
-      // Check inputs as well (Hybrid Flow)
-      const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
-      allInputTopics.forEach(t => {
-        if (typeof t === 'string' && t.trim().length > 0 && !mongoose.Types.ObjectId.isValid(t)) {
-          requiredUnits.add(t.trim());
+      for (const chapter of chapterData) {
+        const rawSub = chapter.subtopics.find(s => lower(s.title) === u);
+        if (rawSub) {
+          formattedChapters.push({
+            title: unitName,
+            indexPath: rawSub.indexPath,
+            learningOutcomes: rawSub.learningOutcomes,
+            subtopics: [],
+          });
+          return;
         }
+      }
+
+      formattedChapters.push({
+        title: unitName,
+        indexPath: "",
+        learningOutcomes: [],
+        subtopics: [],
       });
+    });
 
-      // Inject units referenced in marks distribution but not fetched by ID,
-      // resolving each against chapter and subtopic titles before falling back
-      // to an empty indexPath.
-      const lower = (s) => s.toLowerCase();
-      requiredUnits.forEach(unitName => {
-        const u = lower(unitName);
-        const matchesChapter = formattedChapters.some(fc => lower(fc.title) === u);
-        if (matchesChapter) return;
+    const formattedMarksDist = marksDistribution.map((dist) => ({
+      unitName: dist.unitName,
+      percentageDistribution: dist.percentageDistribution,
+      marks: dist.marks,
+    }));
 
-        for (const fc of formattedChapters) {
-          const sub = fc.subtopics.find(s => lower(s.title) === u);
-          if (sub) {
-            formattedChapters.push({
-              title: unitName,
-              indexPath: sub.indexPath,
-              learningOutcomes: sub.learningOutcomes,
-              subtopics: [],
-            });
-            return;
-          }
-        }
+    const formattedObjectiveDist = objectiveDistribution.map((obj) => ({
+      objective: obj.objective,
+      percentageDistribution: obj.percentageDistribution,
+    }));
 
-        for (const chapter of chapterData) {
-          const rawSub = chapter.subtopics.find(s => lower(s.title) === u);
-          if (rawSub) {
-            formattedChapters.push({
-              title: unitName,
-              indexPath: rawSub.indexPath,
-              learningOutcomes: rawSub.learningOutcomes,
-              subtopics: [],
-            });
-            return;
-          }
-        }
-
-        formattedChapters.push({
-          title: unitName,
-          indexPath: "",
-          learningOutcomes: [],
-          subtopics: [],
-        });
-      });
-
-      const formattedMarksDist = marksDistribution.map((dist) => ({
-        unitName: dist.unitName,
-        percentageDistribution: dist.percentageDistribution,
-        marks: dist.marks,
-      }));
-
-      const formattedObjectiveDist = objectiveDistribution.map((obj) => ({
-        objective: obj.objective,
-        percentageDistribution: obj.percentageDistribution,
-      }));
-
-      const payload = {
-        userId: user._id.toString(),
-        board: board,
-        medium: "English",
-        grade: String(grade),
-        subject: subject,
-        unitLevel,
-        totalMarks: Number(totalMarks),
-        chapters: formattedChapters, // Now contains all necessary units
-        marksDistribution: formattedMarksDist,
-        objectiveDistribution: formattedObjectiveDist,
-        template: this._withQuestionTypeMetadata(template),
-      };
-      if (questions && questions.length > 0) payload.questions = questions;
-      return payload;
-    } catch (e) {
-      console.error("Error creating payload:", e);
-      throw e;
-    }
+    const payload = {
+      userId: user._id.toString(),
+      board: board,
+      medium: "English",
+      grade: String(grade),
+      subject: subject,
+      unitLevel,
+      totalMarks: Number(totalMarks),
+      chapters: formattedChapters, // Now contains all necessary units
+      marksDistribution: formattedMarksDist,
+      objectiveDistribution: formattedObjectiveDist,
+      template: this._withQuestionTypeMetadata(template),
+    };
+    if (questions && questions.length > 0) payload.questions = questions;
+    return payload;
   }
 
   async getGrammarTopics(grade) {
@@ -783,361 +765,311 @@ class QuestionBankManager extends BaseManager {
   }
 
   async updateFeedback(questionBankId, feedbackData, teacherId) {
-    try {
-      const paper = await this.dao.getById(questionBankId);
-      if (!paper || String(paper.teacherId) !== String(teacherId)) return formatApiReponse(false, "Question paper not found", null);
-      await this.dao.update(questionBankId, feedbackData);
-      return formatApiReponse(true, "Feedback submitted successfully", null);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const paper = await this.dao.getById(questionBankId);
+    if (!paper || String(paper.teacherId) !== String(teacherId)) return formatApiReponse(false, "Question paper not found", null);
+    await this.dao.update(questionBankId, feedbackData);
+    return formatApiReponse(true, "Feedback submitted successfully", null);
   }
 
   async retryFailedJobs() {
-    try {
-      console.log("Running retry for failed cache updates...");
-      const failedJobs = await QuestionBankCacheSummary.find({
-        isCacheUpdated: false,
-        inProgress: false,
-      });
+    console.log("Running retry for failed cache updates...");
+    const failedJobs = await QuestionBankCacheSummary.find({
+      isCacheUpdated: false,
+      inProgress: false,
+    });
 
-      if (!failedJobs || failedJobs.length === 0) {
-        return formatApiReponse(
-          true,
-          "No failed jobs to process",
-          null
-        );
-      }
-
-      const jobsToProcess = failedJobs.map((doc) => doc.toObject());
-
-      for (const job of jobsToProcess) {
-        const {
-          notFoundQuestions,
-          processedCache,
-          unitLevel,
-          aiQuestionsForCache,
-          notFoundResponse,
-        } = job;
-
-        addCacheJob({
-          notFoundQuestions,
-          processedCache,
-          unitLevel,
-          newResQuestions: aiQuestionsForCache,
-          cacheSummaryId: job._id.toString(),
-        });
-      }
-      return formatApiReponse(true, "Failed job processing initiated", null);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
+    if (!failedJobs || failedJobs.length === 0) {
+      return formatApiReponse(
+        true,
+        "No failed jobs to process",
+        null
+      );
     }
-  }
 
-  async getQuestionTypes(subject) {
-    try {
-      const response = await getQuestionTypes(subject);
-      return formatApiReponse(true, "", response.data);
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
-    }
-  }
+    const jobsToProcess = failedJobs.map((doc) => doc.toObject());
 
-  async retryFailedJob(jobId) {
-    try {
-      console.log(`Running retry for failed job-${jobId}`);
-      let failedJob = await QuestionBankCacheSummary.findById(jobId);
-      if (!failedJob) throw new Error("Job not found");
-      failedJob = failedJob.toObject();
-
-      const { notFoundQuestions, processedCache, unitLevel, aiQuestionsForCache, notFoundResponse } =
-        failedJob;
+    for (const job of jobsToProcess) {
+      const {
+        notFoundQuestions,
+        processedCache,
+        unitLevel,
+        aiQuestionsForCache,
+        notFoundResponse,
+      } = job;
 
       addCacheJob({
         notFoundQuestions,
         processedCache,
         unitLevel,
         newResQuestions: aiQuestionsForCache,
-        cacheSummaryId: failedJob._id.toString(),
+        cacheSummaryId: job._id.toString(),
       });
-
-      return formatApiReponse(
-        true,
-        `Failed job-${jobId} processing initiated`,
-        null
-      );
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
     }
+    return formatApiReponse(true, "Failed job processing initiated", null);
+  }
+
+  async getQuestionTypes(subject) {
+    const response = await getQuestionTypes(subject);
+    return formatApiReponse(true, "", response.data);
+  }
+
+  async retryFailedJob(jobId) {
+    console.log(`Running retry for failed job-${jobId}`);
+    let failedJob = await QuestionBankCacheSummary.findById(jobId);
+    if (!failedJob) throw new Error("Job not found");
+    failedJob = failedJob.toObject();
+
+    const { notFoundQuestions, processedCache, unitLevel, aiQuestionsForCache, notFoundResponse } =
+      failedJob;
+
+    addCacheJob({
+      notFoundQuestions,
+      processedCache,
+      unitLevel,
+      newResQuestions: aiQuestionsForCache,
+      cacheSummaryId: failedJob._id.toString(),
+    });
+
+    return formatApiReponse(
+      true,
+      `Failed job-${jobId} processing initiated`,
+      null
+    );
   }
 
   // --- Unified Meta & Search Methods ---
 
   async getClasses() {
-    try {
-      const classes = await this.chapterDao.getClasses();
-      return formatApiReponse(
-        true,
-        "Classes retrieved successfully",
-        classes.sort((a, b) => Number(a) - Number(b))
-      );
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const classes = await this.chapterDao.getClasses();
+    return formatApiReponse(
+      true,
+      "Classes retrieved successfully",
+      classes.sort((a, b) => Number(a) - Number(b))
+    );
   }
 
   async getMedia(className) {
     if (!className) throw new Error("Class is required");
-    try {
-      const media = await this.chapterDao.getMedia(
-        String(className).trim()
-      );
-      return formatApiReponse(
-        true,
-        "Medium retrieved successfully",
-        media.sort()
-      );
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const media = await this.chapterDao.getMedia(
+      String(className).trim()
+    );
+    return formatApiReponse(
+      true,
+      "Medium retrieved successfully",
+      media.sort()
+    );
   }
 
   async getChapters(className, medium, subject) {
-    try {
-      console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}`);
-      const normalizedClass = String(className).trim();
+    console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}`);
+    const normalizedClass = String(className).trim();
 
-      const { targetSubjectIds } =
-        await this.masterSubjectDao.resolveSubjectContext(subject);
+    const { targetSubjectIds } =
+      await this.masterSubjectDao.resolveSubjectContext(subject);
 
-      // 1. Fetch Chapters (now without headings)
-      const chapters = await this.chapterDao.getChapters(
-        normalizedClass,
-        medium,
-        targetSubjectIds
-      );
+    // 1. Fetch Chapters (now without headings)
+    const chapters = await this.chapterDao.getChapters(
+      normalizedClass,
+      medium,
+      targetSubjectIds
+    );
 
-      // 2. Fetch Aggregated Stats from QuestionDao
-      const chapterIds = chapters.map((ch) => ch._id);
-      let statsMap = new Map();
+    // 2. Fetch Aggregated Stats from QuestionDao
+    const chapterIds = chapters.map((ch) => ch._id);
+    let statsMap = new Map();
 
-      if (chapterIds.length > 0) {
-        statsMap = await this.questionDao.getHeadingStatsByChapterIds(chapterIds);
-      }
-
-      // 3. Merge Stats back into content
-      const enrichedChapters = chapters.map((ch) => ({
-        ...ch,
-        headings: statsMap.has(String(ch._id)) ? statsMap.get(String(ch._id)).map((h) => {
-          const meta = QUESTION_TYPE_META[h.answerType];
-          if (h.answerType && !meta) logger.warn(`Unexpected LBA answer type "${h.answerType}" in chapter heading stats`, { answerType: h.answerType, heading: h.name, chapterId: String(ch._id) });
-          return meta ? { ...h, ...meta } : h;
-        }) : [],
-      }));
-
-      console.log(`[Manager] getChapters: found ${chapters.length} chapters`);
-      return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
-    } catch (err) {
-      console.error("[Manager] getChapters failed:", err);
-      return formatApiReponse(false, err.message, err);
+    if (chapterIds.length > 0) {
+      statsMap = await this.questionDao.getHeadingStatsByChapterIds(chapterIds);
     }
+
+    // 3. Merge Stats back into content
+    const enrichedChapters = chapters.map((ch) => ({
+      ...ch,
+      headings: statsMap.has(String(ch._id)) ? statsMap.get(String(ch._id)).map((h) => {
+        const meta = QUESTION_TYPE_META[h.answerType];
+        if (h.answerType && !meta) logger.warn(`Unexpected LBA answer type "${h.answerType}" in chapter heading stats`, { answerType: h.answerType, heading: h.name, chapterId: String(ch._id) });
+        return meta ? { ...h, ...meta } : h;
+      }) : [],
+    }));
+
+    console.log(`[Manager] getChapters: found ${chapters.length} chapters`);
+    return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
   }
 
   async getPaperConfig(board, grade, subjectName) {
-    try {
-      const marks = BOARD_MARKS[board] || BOARD_MARKS.DEFAULT;
-      const questionTypes = Object.entries(QUESTION_TYPE_DETAILS).map(([key, item]) => ({
-        key,
-        label: item.label,
-        instruction: item.instruction,
-        description: item.description,
-        marksPerQuestion: marks[key],
-      }));
-      const objectives = PAPER_CONFIG.objectives[getObjectiveKey(board, grade, subjectName)];
-      const questionSources = PAPER_CONFIG.questionSources[board] || PAPER_CONFIG.questionSources.DEFAULT;
+    const marks = BOARD_MARKS[board] || BOARD_MARKS.DEFAULT;
+    const questionTypes = Object.entries(QUESTION_TYPE_DETAILS).map(([key, item]) => ({
+      key,
+      label: item.label,
+      instruction: item.instruction,
+      description: item.description,
+      marksPerQuestion: marks[key],
+    }));
+    const objectives = PAPER_CONFIG.objectives[getObjectiveKey(board, grade, subjectName)];
+    const questionSources = PAPER_CONFIG.questionSources[board] || PAPER_CONFIG.questionSources.DEFAULT;
 
-      return formatApiReponse(true, "Question paper config retrieved successfully", { questionTypes, objectives, questionSources });
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    return formatApiReponse(true, "Question paper config retrieved successfully", { questionTypes, objectives, questionSources });
   }
 
   async getDifficulties() {
-    try {
-      const diffs = await this.questionDao.getDifficulties();
-      return formatApiReponse(
-        true,
-        "Difficulties retrieved successfully",
-        diffs.filter(Boolean).sort()
-      );
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const diffs = await this.questionDao.getDifficulties();
+    return formatApiReponse(
+      true,
+      "Difficulties retrieved successfully",
+      diffs.filter(Boolean).sort()
+    );
   }
 
   async getAnswerTypes() {
-    try {
-      const types = await this.questionDao.getAnswerTypes();
-      return formatApiReponse(
-        true,
-        "Answer types retrieved successfully",
-        types.filter(Boolean).sort()
-      );
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const types = await this.questionDao.getAnswerTypes();
+    return formatApiReponse(
+      true,
+      "Answer types retrieved successfully",
+      types.filter(Boolean).sort()
+    );
   }
 
   async getQuestions(filters) {
-    try {
-      console.log("[Manager] getQuestions filters:", JSON.stringify(filters));
-      const {
-        subject,
-        medium,
-        class: className,
-        chapterNumbers,
-        chapterIds,
-        marks,
-        difficulty,
-        type,
-        search,
-        headings,
-      } = filters;
+    console.log("[Manager] getQuestions filters:", JSON.stringify(filters));
+    const {
+      subject,
+      medium,
+      class: className,
+      chapterNumbers,
+      chapterIds,
+      marks,
+      difficulty,
+      type,
+      search,
+      headings,
+    } = filters;
 
-      if (!subject || !medium || !className) {
-        throw new Error("Subject, medium, and class are required");
-      }
-
-      const { subjectCode, targetSubjectIds } =
-        await this.masterSubjectDao.resolveSubjectContext(subject);
-
-      const cleanFilters = {
-        subject,
-        subjectCode,
-        targetSubjectIds,
-        medium,
-        class: String(className).trim(),
-        chapterNumbers: chapterNumbers
-          ? String(chapterNumbers)
-            .split(",")
-            .map((n) => Number(n))
-            .filter((n) => Number.isFinite(n))
-          : [],
-        chapterIds: chapterIds
-          ? String(chapterIds)
-            .split(",")
-            .map((id) => String(id).trim())
-            .filter(Boolean)
-          : [],
-        marks: marks === "Any" ? undefined : marks,
-        difficulty: difficulty === "Any" ? undefined : difficulty,
-        type: type === "Any" ? undefined : type,
-        search,
-        headings,
-      };
-
-      console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
-      let result = await this.questionDao.getQuestions(cleanFilters);
-
-      // Handle translation if targetLanguage is provided
-      if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
-        try {
-          // result comes back as an array of questions, _handleTranslation takes the same
-          result = await this._handleTranslation(filters.targetLanguage, result, "LBA Questions");
-        } catch (transErr) {
-          console.error("[Manager] LBA Question translation failed:", transErr);
-          // fall back to the untranslated result which is already in `result`
-        }
-      }
-      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
-
-      console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
-      return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));
-    } catch (err) {
-      console.error("[Manager] getQuestions error:", err);
-      return formatApiReponse(false, err.message, err);
+    if (!subject || !medium || !className) {
+      throw new Error("Subject, medium, and class are required");
     }
+
+    const { subjectCode, targetSubjectIds } =
+      await this.masterSubjectDao.resolveSubjectContext(subject);
+
+    const cleanFilters = {
+      subject,
+      subjectCode,
+      targetSubjectIds,
+      medium,
+      class: String(className).trim(),
+      chapterNumbers: chapterNumbers
+        ? String(chapterNumbers)
+          .split(",")
+          .map((n) => Number(n))
+          .filter((n) => Number.isFinite(n))
+        : [],
+      chapterIds: chapterIds
+        ? String(chapterIds)
+          .split(",")
+          .map((id) => String(id).trim())
+          .filter(Boolean)
+        : [],
+      marks: marks === "Any" ? undefined : marks,
+      difficulty: difficulty === "Any" ? undefined : difficulty,
+      type: type === "Any" ? undefined : type,
+      search,
+      headings,
+    };
+
+    console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
+    let result = await this.questionDao.getQuestions(cleanFilters);
+
+    // Handle translation if targetLanguage is provided
+    if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
+      try {
+        // result comes back as an array of questions, _handleTranslation takes the same
+        result = await this._handleTranslation(filters.targetLanguage, result, "LBA Questions");
+      } catch (transErr) {
+        console.error("[Manager] LBA Question translation failed:", transErr);
+        // fall back to the untranslated result which is already in `result`
+      }
+    }
+    result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
+
+    console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
+    return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));
   }
 
   async insertChaptersAndQuestions(data) {
-    try {
-      const insertedChapters = [];
-      const insertedQuestions = [];
+    const insertedChapters = [];
+    const insertedQuestions = [];
 
-      for (const entry of data) {
-        const {
+    for (const entry of data) {
+      const {
+        class: className,
+        medium,
+        subject,
+        chapterNumber,
+        title,
+        questions,
+      } = entry;
+
+      if (
+        !className ||
+        !medium ||
+        !subject ||
+        !title ||
+        !Array.isArray(questions)
+      ) {
+        throw new Error(`Invalid entry: ${JSON.stringify(entry)}`);
+      }
+
+      let chapter = await Chapter.findOne({
+        class: className,
+        medium,
+        subject,
+        title,
+      });
+      if (!chapter) {
+        chapter = await Chapter.create({
           class: className,
           medium,
           subject,
           chapterNumber,
           title,
-          questions,
-        } = entry;
-
-        if (
-          !className ||
-          !medium ||
-          !subject ||
-          !title ||
-          !Array.isArray(questions)
-        ) {
-          throw new Error(`Invalid entry: ${JSON.stringify(entry)}`);
-        }
-
-        let chapter = await Chapter.findOne({
-          class: className,
-          medium,
-          subject,
-          title,
         });
-        if (!chapter) {
-          chapter = await Chapter.create({
-            class: className,
-            medium,
-            subject,
-            chapterNumber,
-            title,
-          });
-          insertedChapters.push(chapter);
-        }
-
-        for (const q of questions) {
-          const question = await Question.create({
-            subject,
-            medium,
-            class: className,
-            chapterId: chapter._id,
-            chapter: {
-              chapterNumber: chapter.chapterNumber,
-              title: chapter.title,
-            },
-            groupHeading: q.groupHeading,
-            answerType: q.answerType,
-            difficulty: q.difficulty,
-            marksPerQuestion: q.marksPerQuestion,
-            text: q.text,
-            keyAnswer: q.keyAnswer,
-            options: Array.isArray(q.options) ? q.options : [],
-            pairs: Array.isArray(q.pairs) ? q.pairs : [],
-            items: Array.isArray(q.items) ? q.items : [],
-            correctOrderById: Array.isArray(q.correctOrderById)
-              ? q.correctOrderById
-              : [],
-            correctOrderIndices: Array.isArray(q.correctOrderIndices)
-              ? q.correctOrderIndices
-              : [],
-          });
-          insertedQuestions.push(question);
-        }
+        insertedChapters.push(chapter);
       }
 
-      return formatApiReponse(true, "Bulk upload successful", {
-        chaptersInserted: insertedChapters.length,
-        questionsInserted: insertedQuestions.length,
-      });
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
+      for (const q of questions) {
+        const question = await Question.create({
+          subject,
+          medium,
+          class: className,
+          chapterId: chapter._id,
+          chapter: {
+            chapterNumber: chapter.chapterNumber,
+            title: chapter.title,
+          },
+          groupHeading: q.groupHeading,
+          answerType: q.answerType,
+          difficulty: q.difficulty,
+          marksPerQuestion: q.marksPerQuestion,
+          text: q.text,
+          keyAnswer: q.keyAnswer,
+          options: Array.isArray(q.options) ? q.options : [],
+          pairs: Array.isArray(q.pairs) ? q.pairs : [],
+          items: Array.isArray(q.items) ? q.items : [],
+          correctOrderById: Array.isArray(q.correctOrderById)
+            ? q.correctOrderById
+            : [],
+          correctOrderIndices: Array.isArray(q.correctOrderIndices)
+            ? q.correctOrderIndices
+            : [],
+        });
+        insertedQuestions.push(question);
+      }
     }
+
+    return formatApiReponse(true, "Bulk upload successful", {
+      chaptersInserted: insertedChapters.length,
+      questionsInserted: insertedQuestions.length,
+    });
   }
 }
 

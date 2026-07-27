@@ -156,15 +156,12 @@ describe("TeacherLessonPlanManager", () => {
       expect(result.data).toHaveLength(2);
     });
 
-    it("should handle errors gracefully", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockTeacherLessonPlanDao.getByTeacherAndPagination.mockRejectedValue(
         new Error("Database error")
       );
 
-      const result = await manager.getByTeacherAndPagination("teacher-123");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(manager.getByTeacherAndPagination("teacher-123")).rejects.toThrow("Database error");
     });
   });
 

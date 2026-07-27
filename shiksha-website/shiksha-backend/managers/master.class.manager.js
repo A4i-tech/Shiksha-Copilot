@@ -9,15 +9,11 @@ class MasterClassManager extends BaseManager {
   }
 
   async updateClass(id, updates) {
-    try {
-      const updatedClass = await this.dao.update(id, updates);
-      if (!updatedClass) {
-        return formatApiReponse(false, "Class not found", null);
-      }
-      return formatApiReponse(true, "", updatedClass);
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
+    const updatedClass = await this.dao.update(id, updates);
+    if (!updatedClass) {
+      return formatApiReponse(false, "Class not found", null);
     }
+    return formatApiReponse(true, "", updatedClass);
   }
 }
 

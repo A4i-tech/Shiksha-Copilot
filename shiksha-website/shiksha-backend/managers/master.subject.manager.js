@@ -15,74 +15,58 @@ class MasterSubjectManager extends BaseManager {
 	}
 
 	async create(req) {
-		try {
-			// Auto-derive name and sem from subjectName if not provided
-			const data = { ...req.body };
-			if (data.subjectName) {
-				if (!data.name) {
-					data.name = formatSubject(data.subjectName);
-				}
-				if (data.sem === undefined || data.sem === null) {
-					data.sem = parseInt(getSemester(data.subjectName)) || 0;
-				}
+		// Auto-derive name and sem from subjectName if not provided
+		const data = { ...req.body };
+		if (data.subjectName) {
+			if (!data.name) {
+				data.name = formatSubject(data.subjectName);
 			}
-			
-			let result = await this.dao.create(data);
-			return formatApiReponse(true, "success!", result);
-		} catch (err) {
-			return formatApiReponse(false, err.message, err);
+			if (data.sem === undefined || data.sem === null) {
+				data.sem = parseInt(getSemester(data.subjectName)) || 0;
+			}
 		}
+
+		let result = await this.dao.create(data);
+		return formatApiReponse(true, "success!", result);
 	}
 
 	async getByName(subjectName, user) {
-		try {
-			const school = await this.schoolDao.getById(schoolDependency(user.roles));
+		const school = await this.schoolDao.getById(schoolDependency(user.roles));
 
-			if (!school) {
-				return formatApiReponse(false, "Invalid school for teacher", null);
-			}
-
-			let board = await this.boardDao.getByAbbreviation(school.board);
-
-			if (!board) {
-				return formatApiReponse(false, "Invalid board for school", null);
-			}
-
-			const subject = await this.dao.getByNameAndBoard(
-				subjectName,
-				board
-			);
-			if (!subject) {
-				return formatApiReponse(false, "Subject not found", null);
-			}
-			return formatApiReponse(true, "", subject);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
+		if (!school) {
+			return formatApiReponse(false, "Invalid school for teacher", null);
 		}
+
+		let board = await this.boardDao.getByAbbreviation(school.board);
+
+		if (!board) {
+			return formatApiReponse(false, "Invalid board for school", null);
+		}
+
+		const subject = await this.dao.getByNameAndBoard(
+			subjectName,
+			board
+		);
+		if (!subject) {
+			return formatApiReponse(false, "Subject not found", null);
+		}
+		return formatApiReponse(true, "", subject);
 	}
 
 	async getByBoard(boardName) {
-		try {
-			let masterSubjects = await this.dao.filter({
-				boards: boardName,
-			});
+		let masterSubjects = await this.dao.filter({
+			boards: boardName,
+		});
 
-			return formatApiReponse(true, "", masterSubjects);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
-		}
+		return formatApiReponse(true, "", masterSubjects);
 	}
 
 	async updateSubject(id, updates) {
-		try {
-			const updatedSubject = await this.dao.update(id, updates);
-			if (!updatedSubject) {
-				return formatApiReponse(false, "Subject not found", null);
-			}
-			return formatApiReponse(true, "", updatedSubject);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
+		const updatedSubject = await this.dao.update(id, updates);
+		if (!updatedSubject) {
+			return formatApiReponse(false, "Subject not found", null);
 		}
+		return formatApiReponse(true, "", updatedSubject);
 	}
 }
 

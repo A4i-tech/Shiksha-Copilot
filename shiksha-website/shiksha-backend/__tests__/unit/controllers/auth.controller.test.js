@@ -52,14 +52,12 @@ describe('AuthController', () => {
             expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
         });
 
-        it('should return 400 when exception occurs', async () => {
+        it('should propagate errors instead of responding directly', async () => {
             const error = new Error('Database error');
             mockAuthManager.getOtp.mockRejectedValue(error);
 
-            await authController.getOtp(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(400);
-            expect(mockRes.json).toHaveBeenCalledWith(error);
+            await expect(authController.getOtp(mockReq, mockRes)).rejects.toThrow('Database error');
+            expect(mockRes.status).not.toHaveBeenCalled();
         });
     });
 
@@ -138,14 +136,12 @@ describe('AuthController', () => {
             expect(mockRes.status).toHaveBeenCalledWith(429);
         });
 
-        it('should return 400 when exception occurs', async () => {
+        it('should propagate errors instead of responding directly', async () => {
             const error = new Error('Database error');
             mockAuthManager.validateOtp.mockRejectedValue(error);
 
-            await authController.validateOtp(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(400);
-            expect(mockRes.json).toHaveBeenCalledWith(error);
+            await expect(authController.validateOtp(mockReq, mockRes)).rejects.toThrow('Database error');
+            expect(mockRes.status).not.toHaveBeenCalled();
         });
     });
 
@@ -162,15 +158,26 @@ describe('AuthController', () => {
             expect(mockRes.json).toHaveBeenCalledWith(mockResult);
         });
 
-        it('should return 400 when exception occurs', async () => {
+        it('should return 401 when user is not authenticated', async () => {
+            mockReq.user = null;
+
+            await authController.getUserFromToken(mockReq, mockRes);
+
+            expect(mockRes.status).toHaveBeenCalledWith(401);
+            expect(mockRes.json).toHaveBeenCalledWith({
+                success: false,
+                messaage: 'Token Expired!',
+                data: null
+            });
+        });
+
+        it('should propagate errors instead of responding directly', async () => {
             mockReq.user = { id: '123' };
             const error = new Error('Database error');
             mockAuthManager.getUserFromToken.mockRejectedValue(error);
 
-            await authController.getUserFromToken(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(400);
-            expect(mockRes.json).toHaveBeenCalledWith(error);
+            await expect(authController.getUserFromToken(mockReq, mockRes)).rejects.toThrow('Database error');
+            expect(mockRes.status).not.toHaveBeenCalled();
         });
     });
 });
