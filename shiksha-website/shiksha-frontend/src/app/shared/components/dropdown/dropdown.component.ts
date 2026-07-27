@@ -46,7 +46,6 @@ export class DropdownComponent implements ControlValueAccessor {
 
   valueSelected(selectedOption: unknown): void {
     this.emit(this.control.value, selectedOption);
-    this.onTouched();
   }
 
   toggleSelectAll(event: Event): void {

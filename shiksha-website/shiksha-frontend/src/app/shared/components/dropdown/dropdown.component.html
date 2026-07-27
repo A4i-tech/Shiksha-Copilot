@@ -19,7 +19,7 @@
     [bindValue]="config.addTag ? '' : config.bindValue || 'value'" [dropdownPosition]="'auto'"
     [searchable]="config.searchable || false" [clearable]="config.clearableOff ? false : true"
     [addTag]="config.addTag || false" [multiple]="config.multi || false" [formControl]="control"
-    (change)="valueSelected($event)" [closeOnSelect]="config.openOnSelect ? false : true"
+    (change)="valueSelected($event)" (blur)="onTouched()" [closeOnSelect]="config.openOnSelect ? false : true"
     [attr.aria-invalid]="submitted && control.invalid ? 'true' : null"
     [attr.aria-describedby]="submitted && control.invalid ? (inputId + '-error') : null">
     <ng-template ng-option-tmp let-item="item" let-item$="item$" *ngIf="config.multi && config.selectAllOption">
