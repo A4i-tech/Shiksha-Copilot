@@ -101,11 +101,6 @@ export class LessonPlanViewEditComponent implements OnInit {
       name: '',
       downloadType: 'lessonPresentation',
     },
-    // {
-    //   type: 'ppt',
-    //   name: '',
-    //   downloadType: 'planPPT',
-    // },
     {
       type: 'docx',
       name: '',

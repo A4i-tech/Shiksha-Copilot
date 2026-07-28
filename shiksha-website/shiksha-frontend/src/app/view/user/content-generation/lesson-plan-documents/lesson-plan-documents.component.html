@@ -3,7 +3,7 @@
     <div
       [ngClass]="{ 'disable-download': mode !== 'view' }"
       class="bg-white shadow rounded-lg p-5 flex flex-col md:flex-row items-left md:items-center gap-5 md:gap-0 justify-between border border-primary-50 hover:shadow-md transition"
-      *ngIf="doc.type !== 'ppt' && doc.type !== 'presentation'"
+      *ngIf="doc.type !== 'presentation'"
     >
       <div class="flex items-center space-x-4">
         <div>
@@ -12,12 +12,6 @@
               class="w-8"
               *ngIf="doc.type === 'docx'"
               src="assets/icons/docx-original.svg"
-              alt=""
-            />
-            <img
-              class="w-7"
-              *ngIf="doc.type === 'ppt'"
-              src="assets/icons/ppt-solid.svg"
               alt=""
             />
             <img
