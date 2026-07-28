@@ -10,7 +10,7 @@ import { ModalService } from '../modal/modal.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {TranslateModule } from '@ngx-translate/core';
-import { CommonDropdownComponent } from '../common-dropdown/common-dropdown.component';
+import { DropdownComponent } from '../dropdown/dropdown.component';
 import { ModalComponent } from '../modal/modal.component';
 import { DisablePopupComponent } from '../disable-popup/disable-popup.component';
 import { UploadPopupComponent } from '../upload-popup/upload-popup.component';
@@ -34,7 +34,7 @@ interface ContentListConfig {
   templateUrl: './user-staff-list.component.html',
   styleUrls: ['./user-staff-list.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, CommonDropdownComponent,ModalComponent,DisablePopupComponent,UploadPopupComponent,PaginationComponent,TranslateModule, NgSelectModule,HasPermissionDirective, UploadErrorPopupComponent],
+  imports: [CommonModule, FormsModule, DropdownComponent,ModalComponent,DisablePopupComponent,UploadPopupComponent,PaginationComponent,TranslateModule, NgSelectModule,HasPermissionDirective, UploadErrorPopupComponent],
   animations:[slideInOutAnimation]
   
 })
@@ -66,7 +66,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   schoolNamesDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'School Name',
-    height: 'auto',
     bindLabel:'name',
     bindValue:'_id',
     labelTxt:"School Name",
@@ -76,7 +75,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   userRolesDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Type of Teacher',
-    height: 'auto',
     bindLabel:'name',
     bindValue:'value',
     labelTxt:'Type of Teacher'
@@ -85,7 +83,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   userStatusDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Status of user',
-    height: 'auto',
     bindLabel:'name',
     bindValue:'value',
     labelTxt:'Status of user'
@@ -94,7 +91,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   trainingStatusDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Training Status',
-    height: 'auto',
     bindLabel:'name',
     bindValue:'value',
     labelTxt:'Training Status'
@@ -103,7 +99,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'State',
-    height: 'auto',
     bindLabel: 'state',
     bindValue: 'state',
     labelTxt: 'State'
@@ -112,7 +107,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'District',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'District'
@@ -121,7 +115,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Taluk',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Taluk'
@@ -130,7 +123,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Zone',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Zone'
@@ -139,7 +131,6 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   schoolDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'School',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: '_id',
     labelTxt: 'School',
@@ -581,7 +572,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
             block:this.filterObj.block
           }
           this.userManagementService.getSchoolList(true,filters).subscribe((res: any) => {
-            this.schoolDropdownOptions = res?.data?.results
+            this.schoolDropdownOptions = res.data.results
           });
       }
 

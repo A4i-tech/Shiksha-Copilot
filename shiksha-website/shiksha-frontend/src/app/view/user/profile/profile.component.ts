@@ -9,7 +9,7 @@ import {
 } from '@angular/forms';
 import { languege } from 'src/app/shared/utility/languege.util';
 import { ProfileService } from './profile.service';
-import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { Router } from '@angular/router';
@@ -30,91 +30,83 @@ export class ProfileComponent implements OnInit, OnDestroy {
   selectedResIndex!:any;
   languageConfig = languege;
 
-  langDropDownConfig: FormDropDownConfig = {
+  langDropDownConfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Preferred Language',
-    height: 'auto',
     fieldName: 'languege',
   };
 
   submitted: boolean = false;
 
   boardDropdownOptions: any[] = [];
-  boardTypeDropdownconfig: FormDropDownConfig = {
+  boardTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select board',
-    height: 'auto',
     fieldName: 'Board',
     hideLabel: true,
-    bindLable: '_id',
+    bindLabel: '_id',
     bindValue: '_id',
   };
 
   mediumDropdownOptions: any[] = [];
-  mediumTypeDropdownconfig: FormDropDownConfig = {
+  mediumTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select medium',
-    height: 'auto',
     fieldName: 'Medium',
     hideLabel: true,
-    bindLable: 'medium',
+    bindLabel: 'medium',
     bindValue: 'medium',
   };
 
   classDropdownOptions: any[] = [];
-  classTypeDropdownconfig: FormDropDownConfig = {
+  classTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select class',
-    height: 'auto',
     fieldName: 'Standard',
     hideLabel: true,
-    bindLable: 'standard',
+    bindLabel: 'standard',
     bindValue: 'standard',
   };
 
   subjectDropdownOptions: any[] = [];
-  subjectTypeDropdownconfig: FormDropDownConfig = {
+  subjectTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select subject',
-    height: 'auto',
     fieldName: 'Subject',
     hideLabel: true,
-    bindLable: '_id',
+    bindLabel: '_id',
     bindValue: '_id',
   };
 
   resourceTypeDropdownOptions: any[] = [];
-  resourceTypeDropdownconfig: FormDropDownConfig = {
+  resourceTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Resource',
-    height: 'auto',
     fieldName: 'Resource Type',
     hideLabel: false,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
   };
 
-  resourceTypeDarkDropdownconfig: FormDropDownConfig = {
+  resourceTypeDarkDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Type',
-    height: 'auto',
     fieldName: 'Resource Type',
     hideLabel: false,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
   };
 
   resourceDetailsDropdownOptions: any[] = [];
-  resourceDetailsDropdownconfig: FormDropDownConfig = {
+  resourceDetailsDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select details',
-    height: 'auto',
     fieldName: 'Resource Details',
     multi: true,
     clearableOff: true,
     hideLabel: true,
   };
-  resourceOtherDetailsDropdownconfig: FormDropDownConfig = {
+  resourceOtherDetailsDropdownconfig: DropDownConfig = {
     ...this.resourceDetailsDropdownconfig,
     placeHolderTxt: 'Enter resource details',
     hideLabel: false,
@@ -352,8 +344,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get resource data
    */
   setResourceData(val: any) {
-    this.resourceTypeDropdownOptions = val?.data?.results;
-    this.resourceMasterData = val?.data?.results;
+    this.resourceTypeDropdownOptions = val.data.results;
+    this.resourceMasterData = val.data.results;
   }
 
   mergeSchoolResource(schoolResource:any){

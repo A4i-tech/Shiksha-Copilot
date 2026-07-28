@@ -10,7 +10,6 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
 import { SchoolManagementService } from '../school-management.service';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import {
@@ -54,7 +53,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
 
   boardDropdownOptions: any[] = [];
 
-  mediumDropdownOptions: any[] = [];
+  mediumDropdownOptions: any[] = structuredClone(MEDIUMS);
 
   resourceTypeDropdownOptions: any[] = [];
 
@@ -62,104 +61,94 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
 
   schoolIdError: boolean = false;
 
-  stateDropdownconfig: FormDropDownConfig = {
+  stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select state',
-    height: '44px',
     fieldName: 'State',
-    bindLable: 'state',
+    bindLabel: 'state',
     bindValue: 'state',
     required: true,
   };
 
-  zoneDropdownconfig: FormDropDownConfig = {
+  zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Zone',
-    height: '44px',
     fieldName: 'Zone',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
   };
 
-  districtDropdownconfig: FormDropDownConfig = {
+  districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select district',
-    height: '44px',
     fieldName: 'District',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
   };
 
-  blockDropdownconfig: FormDropDownConfig = {
+  blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Taluk',
-    height: '44px',
     fieldName: 'Taluk',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true,
   };
 
-  boardDropdownconfig: FormDropDownConfig = {
+  boardDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select board',
-    height: '44px',
     fieldName: 'Board',
-    bindLable: 'boardName',
+    bindLabel: 'boardName',
     bindValue: 'abbreviation',
     multi: true,
-    chipValueType: 'uppercase',
     required: true,
   };
 
-  mediumDropdownconfig: FormDropDownConfig = {
+  mediumDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select medium of instruction',
-    height: '44px',
     fieldName: 'Medium of instruction',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'value',
     multi: true,
     required: true,
   };
 
-  resourceTypeDropdownconfig: FormDropDownConfig = {
+  resourceTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Type',
-    height: 'auto',
     fieldName: 'Type',
     hideLabel: true,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
     required: true,
     clearableOff:true
   };
 
-  resourceTypeDarkDropdownconfig: FormDropDownConfig = {
+  resourceTypeDarkDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Type',
-    height: 'auto',
     fieldName: 'Type',
     hideLabel: true,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
     required: true,
     clearableOff:true
   };
 
-  resourceDetailsDropdownconfig: FormDropDownConfig = {
+  resourceDetailsDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select details',
-    height: 'auto',
     fieldName: 'Details',
     multi: true,
     clearableOff: true,
     hideLabel: true,
     required: true,
   };
-  resourceOtherDetailsDropdownconfig: FormDropDownConfig = {
+  resourceOtherDetailsDropdownconfig: DropDownConfig = {
     ...this.resourceDetailsDropdownconfig,
     placeHolderTxt: 'Enter resource details',
     hideLabel: false,
@@ -172,7 +161,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classBoardDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Board',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Board',
@@ -185,7 +173,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classMediumDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Medium',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     labelTxt: 'Medium',
@@ -198,7 +185,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classMinDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Min class',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Min class',
@@ -209,7 +195,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   classMaxDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Max class',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Max class',
@@ -294,7 +279,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
       this.getResourceData();
       this.getBoardData();
       this.createBoard();
-      this.mediumDropdownOptions = structuredClone(MEDIUMS);
     }
   }
 
@@ -492,7 +476,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   getBoardData() {
     this.masterService.getBoards().subscribe({
       next: (val) => {
-        this.boardDropdownOptions = val?.data?.results;
+        this.boardDropdownOptions = val.data.results;
 
         if (this.mode === 'edit') {
           this.boardDropdownOptions.forEach((ele) => {
@@ -502,8 +486,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
               ele.disabled = true;
             }
           });
-
-          this.mediumDropdownOptions = structuredClone(MEDIUMS);
 
           this.mediumDropdownOptions.forEach((ele) => {
             if (this.schoolAddEditForm.value.mediums.includes(ele.value)) {
@@ -521,7 +503,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   getResourceData() {
     this.masterService.getFacilities().subscribe({
       next: (val) => {
-        this.resourceTypeDropdownOptions = val?.data?.results;
+        this.resourceTypeDropdownOptions = val.data.results;
 
         const otherObj = {
           type: 'Others',
@@ -529,7 +511,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
 
         this.resourceTypeDropdownOptions.push(otherObj);
 
-        this.resourceMasterData = val?.data?.results;
+        this.resourceMasterData = val.data.results;
         if (this.mode === 'edit' || this.mode === 'view') {
           this.patchResourceDropdown();
         }
@@ -642,7 +624,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
           'name',
           selectedDistrict
         );
-        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+        this.blockDropdownOptions = this.selectedDistrictObj.blocks;
       } else {
         this.selectedDistrictObj = null;
         this.blockDropdownOptions = [];
@@ -806,9 +788,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     if (this.mode === 'view') {
       this.disableFields();
     }
-    if (this.mode === 'edit') {
-      this.disableBoardFields();
-    }
   }
 
   boardMediumUpdate(i: any, type: any) {
@@ -928,9 +907,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     this.boardDropdownconfig.isBackground = true;
     this.zoneDropdownconfig.isBackground = true;
     this.stateDropdownconfig.isBackground = true;
-    this.mediumDropdownconfig.chipClearableOff = true;
-    this.boardDropdownconfig.chipClearableOff = true;
-
     this.classBoardDropdownconfig.disabled = true;
     this.classMediumDropdownconfig.disabled = true;
     this.classMinDropdownconfig.disabled = true;
@@ -939,15 +915,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
     this.classMediumDropdownconfig.isBackground = true;
     this.classMinDropdownconfig.isBackground = true;
     this.classMaxDropdownconfig.isBackground = true;
-    this.disableBoardFields();
-  }
-
-  /**
-   * Function to disable board fields
-   */
-  disableBoardFields() {
-    this.mediumDropdownconfig.chipClearableOff = true;
-    this.boardDropdownconfig.chipClearableOff = true;
   }
 
   /**

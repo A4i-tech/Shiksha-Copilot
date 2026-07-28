@@ -6,7 +6,7 @@
             {{'Teacher Management' | translate}}
         </h1>
     </div>
-    <div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white" [ngClass]="{'pointer-events-none': mode === 'view'}">
+    <div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white">
         <h2 class="text-content text-2xl md:text-3xl font-bold md:leading-[48px]">{{ (mode === "view" ? "View" : mode === "edit" ? "Edit" : "Add") | translate }} {{'Teacher' | translate}}
     </h2>
 
@@ -15,7 +15,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="form-control-label">{{'Teacher Name' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
-                        <input formControlName="name" type="text" maxlength="255" autocomplete="off" class="form-control h-[44px]"
+                        <input formControlName="name" type="text" maxlength="255" autocomplete="off" class="form-control"
                             placeholder="{{'Enter Teacher Name' | translate}}">
                        
                             <small class="form-control-error" *ngIf="submitted && f['name']?.errors?.['required']">{{'Teacher Name is required' | translate}}.</small>
@@ -24,7 +24,7 @@
                     </div>
                     <div>
                         <label class="form-control-label">{{'Mobile Number' | translate}} <span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
-                        <input formControlName="phone" type="text" maxlength="10" oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')" autocomplete="off" class="form-control h-[44px]"
+                        <input formControlName="phone" type="text" maxlength="10" oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')" autocomplete="off" class="form-control"
                             placeholder="{{'Enter Mobile Number' | translate}}">
                         
                             <small class="form-control-error" *ngIf="submitted && f['phone']?.errors?.['required']">{{'Mobile Number is required' | translate}}.</small>
@@ -39,17 +39,17 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 md:mt-8">
                     <div>
                         <div class="cursor-pointer">
-                            <app-form-dropdown [dropDownControlName]="'state'" [mode]="mode"
+                            <app-dropdown [mode]="mode"
                                 [dropDownCtrl]="convertToFormControl(f['state'])" [dropDownValues]="stateDropdownOptions"
-                                [config]="stateDropdownconfig" [submitted]="submitted"></app-form-dropdown>
+                                [config]="stateDropdownconfig" [submitted]="submitted"></app-dropdown>
                                 
                         </div>
                     </div>
                     <div>
                         <div class="cursor-pointer">
-                            <app-form-dropdown [dropDownControlName]="'zone'" [mode]="mode"
+                            <app-dropdown [mode]="mode"
                                 [dropDownCtrl]="convertToFormControl(f['zone'])" [dropDownValues]="zoneDropdownOptions"
-                                [config]="zoneDropdownconfig" [submitted]="submitted"></app-form-dropdown>
+                                [config]="zoneDropdownconfig" [submitted]="submitted"></app-dropdown>
                                 
                         </div>
                     </div>                    
@@ -57,19 +57,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 md:mt-8">                    
                     <div>
                         <div class="cursor-pointer">
-                            <app-form-dropdown [dropDownControlName]="'district'" [mode]="mode"
+                            <app-dropdown [mode]="mode"
                                 [dropDownCtrl]="convertToFormControl(f['district'])"
                                 [dropDownValues]="districtDropdownOptions" [config]="districtDropdownconfig"
-                                [submitted]="submitted"></app-form-dropdown>
+                                [submitted]="submitted"></app-dropdown>
                                 
                         </div>
                     </div>
                     <div>
                         <div class="cursor-pointer">
-                            <app-form-dropdown [dropDownControlName]="'block'" [mode]="mode"
+                            <app-dropdown [mode]="mode"
                                 [dropDownCtrl]="convertToFormControl(f['block'])"
                                 [dropDownValues]="blockDropdownOptions" [config]="blockDropdownconfig"
-                                [submitted]="submitted"></app-form-dropdown>
+                                [submitted]="submitted"></app-dropdown>
                                 
                         </div>
                     </div>
@@ -77,19 +77,19 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 md:mt-8">
                     <div>
                         <div class="cursor-pointer">
-                            <app-form-dropdown [dropDownControlName]="'school'" [mode]="mode"
+                            <app-dropdown [mode]="mode"
                                 [dropDownCtrl]="convertToFormControl(f['school'])"
                                 [dropDownValues]="schoolNamesDropdownOptions" [config]="schoolNameDropdownconfig"
-                                [submitted]="submitted"></app-form-dropdown>
+                                [submitted]="submitted"></app-dropdown>
                                 
                         </div>
                     </div>
                     <div>
                         <div class="cursor-pointer">
-                            <app-form-dropdown [dropDownControlName]="'role'" [mode]="mode"
+                            <app-dropdown [mode]="mode"
                                 [dropDownCtrl]="convertToFormControl(f['role'])"
                                 [dropDownValues]="userRolesDropdownOptions" [config]="userRoleDropdownconfig"
-                                [submitted]="submitted"></app-form-dropdown>
+                                [submitted]="submitted"></app-dropdown>
                                 
                         </div>
                     </div>

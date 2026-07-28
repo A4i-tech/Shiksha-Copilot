@@ -18,37 +18,37 @@
         
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-8 gap-3 mt-5 items-end">
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="stateDropdownOptions" #stateDropDown 
-            (valueUpdate)="onStateChange($event)" [config]="stateDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="stateDropdownOptions" #stateDropDown
+            (valueUpdate)="onStateChange($event)" [config]="stateDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="zoneDropdownOptions" #zoneDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onZoneChange($event)" [config]="zoneDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="zoneDropdownOptions" #zoneDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onZoneChange($event)" [config]="zoneDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="districtDropdownOptions" #districtDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onDistrictChange($event)" [config]="districtDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="districtDropdownOptions" #districtDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onDistrictChange($event)" [config]="districtDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="blockDropdownOptions" #blockDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onBlockChange($event)" [config]="blockDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="blockDropdownOptions" #blockDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onBlockChange($event)" [config]="blockDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown [dropDownValues]="schoolDropdownOptions" #schoolDropDown (valueCleared)="resetData()"
-            (valueUpdate)="onSchoolChange($event)" [config]="schoolDropdownconfig"></app-common-dropdown>
+        <app-dropdown [dropDownValues]="schoolDropdownOptions" #schoolDropDown (valueCleared)="resetData()"
+            (valueUpdate)="onSchoolChange($event)" [config]="schoolDropdownconfig"></app-dropdown>
     </div>
 
     <div class="w-full min-w-0 cursor-pointer">
-        <app-common-dropdown
+        <app-dropdown
             [dropDownValues]="planTypeDropdownOptions"
             #planTypeDropDown
             (valueUpdate)="onPlanTypeChange($event)"
             [config]="planTypeDropdownconfig"
-        ></app-common-dropdown>
+        ></app-dropdown>
     </div>
 
     <div class="relative flex-col min-w-0">
@@ -61,7 +61,7 @@
             [(ngModel)]="selectedFromDate" 
             (change)="onFrmDateSelection($event)" 
             name="fromDate" 
-            class="form-control h-[35px] pr-3 pl-2" />
+            class="form-control pr-3 pl-2" />
             <button type="button" (click)="clearFrmDate()" *ngIf="selectedFromDate" class="absolute inset-y-0 right-6 flex items-center pr-3 cursor-pointer" >
             <svg width="10" fill="#6E7787" class="bi bi-x" viewBox="0 0 16 16" >
                 <path d="M1.5 1.5a.75.75 0 0 1 1.061 0L8 6.439 13.439 1.5a.75.75 0 1 1 1.061 1.061L9.061 8l5.439 5.439a.75.75 0 0 1-1.061 1.061L8 9.061 2.561 14.5a.75.75 0 0 1-1.061-1.061L6.939 8 1.5 2.561a.75.75 0 0 1 0-1.061z"/>
@@ -80,7 +80,7 @@
             [(ngModel)]="selectedToDate" 
             (change)="onToDateSelection($event)" 
             name="toDate" 
-            class="form-control h-[35px] pr-3 pl-2" />
+            class="form-control pr-3 pl-2" />
             <button type="button" (click)="clearToDate()" *ngIf="selectedToDate" class="absolute inset-y-0 right-6 flex items-center pr-3 cursor-pointer" >
             <svg width="10" fill="#6E7787" class="bi bi-x" viewBox="0 0 16 16" >
                 <path d="M1.5 1.5a.75.75 0 0 1 1.061 0L8 6.439 13.439 1.5a.75.75 0 1 1 1.061 1.061L9.061 8l5.439 5.439a.75.75 0 0 1-1.061 1.061L8 9.061 2.561 14.5a.75.75 0 0 1-1.061-1.061L6.939 8 1.5 2.561a.75.75 0 0 1 0-1.061z"/>
@@ -200,10 +200,8 @@
                 <div class="flex flex-wrap gap-x-4 gap-y-2 text-content">
                     <p (click)="setMedium('all')" [class.text-primary]="selectedMedium === 'all'"
                         class="cursor-pointer">All</p>
-                    <p (click)="setMedium('english')" [class.text-primary]="selectedMedium === 'english'"
-                        class="cursor-pointer">English Medium</p>
-                    <p (click)="setMedium('kannada')" [class.text-primary]="selectedMedium === 'kannada'"
-                        class="cursor-pointer">Kannada Medium</p>
+                    <p *ngFor="let item of userMediumMetrics" (click)="setMedium(item.medium)"
+                        [class.text-primary]="selectedMedium === item.medium" class="cursor-pointer">{{ item.medium | titlecase }} Medium</p>
                 </div>
                 <div *ngIf="filteredUsersList.length > 0; else notableData" class="mt-5">
                     <div class="space-y-3 md:hidden">

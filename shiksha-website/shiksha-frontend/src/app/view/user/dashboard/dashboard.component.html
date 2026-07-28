@@ -136,12 +136,12 @@
           {{ "Lesson Plan/Resources Generated" | translate }}
         </h2>
         <div class="w-44">
-          <app-common-dropdown
+          <app-dropdown
             #analyticsDropdown
             [dropDownValues]="analyticsDropdownOptions"
             [config]="analyticsDropdownconfig"
             (valueUpdate)="onFilterChange($event)"
-          ></app-common-dropdown>
+          ></app-dropdown>
         </div>
       </div>
       <canvas

@@ -25,7 +25,6 @@ export class ContentActivityComponent implements OnInit {
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select State',
-    height: 'auto',
     bindLabel: 'state',
     bindValue: 'state',
     clearableOff: false,
@@ -36,7 +35,6 @@ export class ContentActivityComponent implements OnInit {
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Zone',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -47,7 +45,6 @@ export class ContentActivityComponent implements OnInit {
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select District',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -58,7 +55,6 @@ export class ContentActivityComponent implements OnInit {
   blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Taluk',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -69,7 +65,6 @@ export class ContentActivityComponent implements OnInit {
   schoolDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select School',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: '_id',
     clearableOff: false,
@@ -235,7 +230,7 @@ export class ContentActivityComponent implements OnInit {
           'name',
           selectedDistrict
         );
-        this.blockDropdownOptions = this.selectedDistrictObj?.blocks || [];
+        this.blockDropdownOptions = this.selectedDistrictObj.blocks;
       } else {
         this.selectedDistrictObj = null;
         this.blockDropdownOptions = [];
@@ -286,7 +281,7 @@ export class ContentActivityComponent implements OnInit {
       block:this.filterObj.block
     }
     this.userManagementService.getSchoolList(true,filters).subscribe((res: any) => {
-      this.schoolDropdownOptions = res?.data?.results;
+      this.schoolDropdownOptions = res.data.results;
     });
 }
 

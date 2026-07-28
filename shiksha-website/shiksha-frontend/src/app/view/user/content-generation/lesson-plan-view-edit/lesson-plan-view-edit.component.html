@@ -366,7 +366,7 @@
       <textarea
         [(ngModel)]="feedbackReason"
         [disabled]="mode === 'view'"
-        class="p-2 mt-2 border rounded-sm w-fullfocus:outline-none w-full"
+        class="form-control mt-2"
         placeholder="{{ 'Leave your comments here' | translate }}"
         rows="3"
         (change)="hasUnsavedChanges = true"

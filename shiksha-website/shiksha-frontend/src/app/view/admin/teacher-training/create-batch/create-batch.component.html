@@ -60,13 +60,13 @@
           </div>
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'trainingType'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(batchForm.get('trainingType'))"
               [dropDownValues]="trainingTypeDropdownOptions"
               [config]="trainingTypeDropdownConfig"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
 
           <div>

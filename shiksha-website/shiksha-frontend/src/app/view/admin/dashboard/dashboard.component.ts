@@ -4,7 +4,7 @@ import { TranslateModule } from '@ngx-translate/core';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { NgChartsModule } from 'ng2-charts';
 import { Chart, ChartConfiguration, ChartData } from 'chart.js';
-import { CommonDropdownComponent } from 'src/app/shared/components/common-dropdown/common-dropdown.component';
+import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { UserManagementService } from '../user-management/user-management.service';
@@ -28,7 +28,7 @@ interface DashboardFilters {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, TranslateModule, NgChartsModule, CommonDropdownComponent, FormsModule],
+  imports: [CommonModule, TranslateModule, NgChartsModule, DropdownComponent, FormsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
@@ -38,7 +38,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   stateDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select State',
-    height: 'auto',
     bindLabel: 'state',
     bindValue: 'state',
     clearableOff: true,
@@ -49,7 +48,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   zoneDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Zone',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -60,7 +58,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   districtDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select District',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -71,7 +68,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   blockDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Taluk',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     clearableOff: false,
@@ -82,7 +78,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   schoolDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select School',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: '_id',
     clearableOff: false,
@@ -94,7 +89,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   planTypeDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Plan Type',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     labelTxt: 'Plan Type',
@@ -754,6 +748,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         this.chatbotDataAvailable = this.chatbotRequestsBarChartData?.datasets?.length > 0 && this.chatbotRequestsBarChartData.datasets.some(dataset => dataset.data.length > 0);
         this.allUsersList = data.userCounts.allUsers;
         this.userMediumMetrics = data.userMediums;
+        if (this.selectedMedium !== 'all' && !this.userMediumMetrics.some(item => item.medium === this.selectedMedium)) this.selectedMedium = 'all';
         this.filterUsers(this.allUsersList, this.userMediumMetrics, this.selectedMedium);
       },
       error: (err) => {
@@ -851,42 +846,18 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    * Lesson plan by Medium Donut chart   *
    */
   updateMediumDonutChartData(data: any): void {
-    const labels = ['Kannada', 'English'];
-    const dataset = this.createMediumDataset(data);
+    const mediums = data.lessonPlanCountByMedium;
+    const colors = ['#ED7D2D', '#F9D8C0', '#4E79A7', '#59A14F', '#B07AA1', '#E15759', '#EDC948', '#76B7B2'];
 
     this.byMediumDonutChartData = {
-      labels: labels,
-      datasets: [dataset]
-    };
-  }
-
-  createMediumDataset(data: any): any {
-    // Initialize the counts array with zeros for Kannada and English
-    const counts = [0, 0];
-
-    // Map medium names to index in the counts array
-    const mediumMapping: { [key: string]: number } = {
-      'Kannada': 0,
-      'English': 1
-    };
-
-    // Loop through the mediumLessonPlanCount data and update the counts
-    if (data?.lessonPlanCountByMedium && Array.isArray(data.lessonPlanCountByMedium)) {
-      data.lessonPlanCountByMedium.forEach((item: any) => {
-        const mediumName = this.capitalizeFirstLetter(item.medium);
-        const index = mediumMapping[mediumName];
-        if (index !== undefined) {
-          counts[index] = item.lessonPlanCount;
-        }
-      });
-    }
-
-    return {
-      data: counts,
-      backgroundColor: ['#ED7D2D', '#F9D8C0'],
-      hoverBackgroundColor: ['#ED7D2D', '#F9D8C0'],
-      borderColor: ['rgba(0, 0, 0, 0)'],
-      borderWidth: 0
+      labels: mediums.map((item: any) => this.capitalizeFirstLetter(item.medium)),
+      datasets: [{
+        data: mediums.map((item: any) => item.lessonPlanCount),
+        backgroundColor: mediums.map((_: any, index: number) => colors[index % colors.length]),
+        hoverBackgroundColor: mediums.map((_: any, index: number) => colors[index % colors.length]),
+        borderColor: 'rgba(0, 0, 0, 0)',
+        borderWidth: 0
+      }]
     };
   }
 

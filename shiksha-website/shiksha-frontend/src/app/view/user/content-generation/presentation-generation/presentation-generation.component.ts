@@ -7,6 +7,7 @@ import { Subscription } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { MAX_FILE_SIZE } from 'src/app/shared/utility/constant.util';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
+import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
 
 type PresentationJobStatus =
@@ -64,7 +65,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   latestToolText = '';
 
   readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt'];
-  readonly slideOptions = [6, 8, 10, 12, 15, 18, 20];
+  readonly slideOptions = [6, 8, 10, 12, 15, 18, 20].map(value => ({ name: `${value} slides`, value }));
+  readonly slideDropdownConfig: DropDownConfig = { isBackground: false, placeHolderTxt: 'Select slide count', fieldName: 'Target slide count', required: true, clearableOff: true };
   readonly instructionSuggestions = [
     {
       label: 'More visual content',

@@ -49,18 +49,18 @@
 
 				
 								<div class="w-full min-w-0 cursor-pointer">
-										<app-common-dropdown [dropDownValues]="userRolesDropdownOptions" (valueUpdate)="onFilterChange('role', $event)"
-												[config]="userRolesDropdownconfig"></app-common-dropdown>
+										<app-dropdown [dropDownValues]="userRolesDropdownOptions" (valueUpdate)="onFilterChange('role', $event)"
+												[config]="userRolesDropdownconfig"></app-dropdown>
 								</div>
 
 								<div class="w-full min-w-0 cursor-pointer">
-									<app-common-dropdown [dropDownValues]="userStatusDropdownOptions" (valueUpdate)="onStatusChange($event)"
-											[config]="userStatusDropdownconfig"></app-common-dropdown>
+									<app-dropdown [dropDownValues]="userStatusDropdownOptions" (valueUpdate)="onStatusChange($event)"
+											[config]="userStatusDropdownconfig"></app-dropdown>
 							</div>
 
 							<div class="w-full min-w-0 cursor-pointer" *ngIf="getType()?.type === 'user'">
-								<app-common-dropdown [dropDownValues]="trainingStatusDropdownOptions" (valueUpdate)="onTrainingStatusChange($event)"
-										[config]="trainingStatusDropdownconfig"></app-common-dropdown>
+								<app-dropdown [dropDownValues]="trainingStatusDropdownOptions" (valueUpdate)="onTrainingStatusChange($event)"
+										[config]="trainingStatusDropdownconfig"></app-dropdown>
 						</div>
 
 							<button 
@@ -76,47 +76,47 @@
 						<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 my-4" [@slideInOut]="showAdditionalFilters" *ngIf="getType()?.type === 'user' && showAdditionalFilters">
 
 							<div class="w-full min-w-0">
-								<app-common-dropdown
+								<app-dropdown
 								  [dropDownValues]="stateDropdownOptions"
 								  [config]="stateDropdownconfig"
 							  (valueUpdate)="onFilterChange('state', $event)"
-								></app-common-dropdown>
+								></app-dropdown>
 							  </div>
 							
 							  <div class="w-full min-w-0">
-								<app-common-dropdown
+								<app-dropdown
 								  #zoneDropdown
 								  [dropDownValues]="zoneDropdownOptions"
 							  [config]="zoneDropdownconfig"
 							  (valueUpdate)="onFilterChange('zone', $event)"
-								></app-common-dropdown>
+								></app-dropdown>
 							  </div>
 							
 							  <div class="w-full min-w-0">
-								<app-common-dropdown
+								<app-dropdown
 								  #districtDropdown
 								  [dropDownValues]="districtDropdownOptions"
 							  [config]="districtDropdownconfig"
 							  (valueUpdate)="onFilterChange('district', $event)"
-								></app-common-dropdown>
+								></app-dropdown>
 							  </div>
 							
 							  <div class="w-full min-w-0">
-								<app-common-dropdown
+								<app-dropdown
 								  #blockDropdown
 								  [dropDownValues]="blockDropdownOptions"
 							  [config]="blockDropdownconfig"
 							  (valueUpdate)="onFilterChange('block', $event)"
-								></app-common-dropdown>
+								></app-dropdown>
 							  </div>
 							
 							  <div class="w-full min-w-0">
-								<app-common-dropdown
+								<app-dropdown
 								  #schoolDropdown
 								  [dropDownValues]="schoolDropdownOptions"
 							  [config]="schoolDropdownconfig"
 							  (valueUpdate)="onFilterChange('school', $event)"
-							></app-common-dropdown>
+							></app-dropdown>
 						  </div>
 					</div>
 					

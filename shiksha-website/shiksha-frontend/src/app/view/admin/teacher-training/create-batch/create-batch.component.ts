@@ -3,7 +3,7 @@ import { AbstractControl, FormBuilder, FormGroup, UntypedFormControl, Validators
 import { BatchService } from 'src/app/view/admin/teacher-training/batch.service';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig, DropdownOption } from 'src/app/shared/interfaces/dropdown.interface';
 
 @Component({
   selector: 'app-create-batch',
@@ -15,18 +15,17 @@ export class CreateBatchComponent implements OnInit {
   selectedFile: File | null = null;
   mode = 'add';
 
-  trainingTypeDropdownOptions: FormDropDownOption[] = [
+  trainingTypeDropdownOptions: DropdownOption[] = [
     { name: 'OFFLINE/ Face to Face', value: 'offline' },
     { name: 'ONLINE/ Virtual', value: 'online' },
     { name: 'School-Level', value: 'School-Level' },
   ];
 
-  trainingTypeDropdownConfig: FormDropDownConfig = {
+  trainingTypeDropdownConfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select mode',
-    height: '44px',
     fieldName: 'Mode of Training',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'value',
     required: true,
   };

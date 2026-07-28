@@ -3,6 +3,6 @@ header { background: #eef2ff; border-radius: .75rem; padding: 1rem; margin-botto
 header strong { font-size: 1.4rem; } header span { float: right; color: #6b7280; } header p { margin: .5rem 0 0; }
 form { display: flex; flex-direction: column; gap: .7rem; }
 form > label:not(.option) { font-weight: 600; margin-top: .75rem; }
-select, form > input { width: 100%; border: 1px solid #d1d5db; border-radius: .5rem; padding: .65rem; background: white; }
+form > input { width: 100%; border: 1px solid #d1d5db; border-radius: .5rem; padding: .65rem; background: white; }
 .option { border: 1px solid #e5e7eb; border-radius: .5rem; padding: .6rem; cursor: pointer; }
 .error { color: #b91c1c; } button { margin-top: 1rem; } button:disabled { opacity: .6; }

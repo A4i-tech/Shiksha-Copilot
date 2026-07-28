@@ -8,8 +8,7 @@ import {
 } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
-import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig, DropdownOption } from 'src/app/shared/interfaces/dropdown.interface';
 import { DEFAULT_LANGUAGE, formatMarks, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
@@ -19,7 +18,7 @@ import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { map, finalize, toArray } from 'rxjs/operators';
 import { questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 
-const SOURCE_GENERATION_OPTIONS: FormDropDownOption[] = [
+const SOURCE_GENERATION_OPTIONS: DropdownOption[] = [
   { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
   { name: QUESTION_SOURCE.LBA, value: 'LBA', info: 'These are LBA Questions as recommended by the educational board.' },
 ];
@@ -48,34 +47,34 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   chapterDropdownOptions: any[] = [];
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
-  sourceGenerationOptions: FormDropDownOption[] = [];
+  sourceGenerationOptions: DropdownOption[] = [];
 
   paperQuestionTypes: any[] = [];
   hasSubtopics: boolean = false;
   sourceHelpOpen = false;
   pickerOpen = false;
 
-  boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
-  sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'value', openOnSelect: true, hideLabel: true };
-  languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', height: 'auto', fieldName: 'Translate to', info: 'The language the generated question paper will be translated into.', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
-  classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
-  subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Class first', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, disabled: true };
-  chapterDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Subject first', height: 'auto', fieldName: 'Chapter', bindLable: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: false, selectAllOption: true, selectAllValue: 'topics', openOnSelect: false, disabled: true };
-  subTopicDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter first', height: 'auto', fieldName: 'Sub-Topic', bindLable: 'topics', bindValue: 'topics', selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true, disabled: true };
+  boardDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Board', fieldName: 'Board', bindLabel: 'board', bindValue: 'board', required: true, clearableOff: true };
+  sourceGenerationDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', fieldName: 'Source', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'value', openOnSelect: true, hideLabel: true };
+  languageDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', fieldName: 'Translate to', info: 'The language the generated question paper will be translated into.', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true };
+  classDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Class', fieldName: 'Class', bindLabel: 'class', bindValue: 'class', required: true, clearableOff: true };
+  subjectDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Class first', fieldName: 'Subject', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true, disabled: true };
+  chapterDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Subject first', fieldName: 'Chapter', bindLabel: 'topics', bindValue: 'topics', required: true, clearableOff: true, disabled: true, wrapValue: true };
+  subTopicDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter first', fieldName: 'Sub-Topic', bindLabel: 'topics', bindValue: 'topics', selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true, disabled: true };
 
   questionTypeOptions: { name: string; value: string }[] = [];
   chapterOptions: { name: string }[] = [];
   objectiveOptions: { objective: string; name: string }[] = [];
   questionTypeConfig: DropDownConfig = {
-    isBackground: false, placeHolderTxt: 'Select Type', height: 'auto',
+    isBackground: false, placeHolderTxt: 'Select Type',
     bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true,
   };
   chapterConfig: DropDownConfig = {
-    isBackground: false, placeHolderTxt: 'Topic', height: 'auto',
+    isBackground: false, placeHolderTxt: 'Topic',
     bindLabel: 'name', bindValue: 'name', required: true, clearableOff: true,
   };
   objectiveConfig: DropDownConfig = {
-    isBackground: false, placeHolderTxt: 'Objective', height: 'auto',
+    isBackground: false, placeHolderTxt: 'Objective',
     bindLabel: 'name', bindValue: 'objective', required: true, clearableOff: true,
   };
 

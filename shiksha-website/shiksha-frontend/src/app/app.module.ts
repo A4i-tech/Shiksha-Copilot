@@ -40,6 +40,7 @@ import { MatIconModule } from '@angular/material/icon';
 // Components
 import { BaselineSurveyComponent } from './shared/components/baseline-survey/baseline-survey.component';
 import { EndlineSurveyComponent } from './shared/components/endline-survey/endline-survey.component';
+import { DropdownComponent } from './shared/components/dropdown/dropdown.component';
 
 // Services
 import { BaselineSurveyDialogService } from './core/services/baseline-survey-dialog.service';
@@ -73,6 +74,7 @@ import { BaselineSurveyDialogService } from './core/services/baseline-survey-dia
       },
     }),
     LanguageSwitcherComponent,
+    DropdownComponent,
     ToastrModule.forRoot({
       timeOut: 5000,
       positionClass: 'toast-bottom-right',

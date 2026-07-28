@@ -61,10 +61,9 @@ export class AddEditScheduleComponent
   boardDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Board',
-    height: 'auto',
     fieldName: 'Board',
     hideLabel: false,
-    bindLable: 'board',
+    bindLabel: 'board',
     bindValue: 'board',
     required: true
   };
@@ -72,10 +71,9 @@ export class AddEditScheduleComponent
   mediumDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Medium',
-    height: 'auto',
     fieldName: 'Medium',
     hideLabel: false,
-    bindLable: 'medium',
+    bindLabel: 'medium',
     bindValue: 'medium',
     required: true
   };
@@ -83,10 +81,9 @@ export class AddEditScheduleComponent
   classNameDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Class',
-    height: 'auto',
     fieldName: 'Class Name',
     hideLabel: false,
-    bindLable: 'class',
+    bindLabel: 'class',
     bindValue: 'class',
     required: true
   };
@@ -94,10 +91,9 @@ export class AddEditScheduleComponent
   subjectDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Subject',
-    height: 'auto',
     fieldName: 'Subject',
     hideLabel: false,
-    bindLable: 'displayName',
+    bindLabel: 'displayName',
     bindValue: 'subject',
     required: true
   };
@@ -105,10 +101,9 @@ export class AddEditScheduleComponent
   chapterDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Chapter',
-    height: 'auto',
     fieldName: 'Chapter',
     hideLabel: false,
-    bindLable: 'displayValue',
+    bindLabel: 'displayValue',
     bindValue: 'topics',
     required: true
   };
@@ -116,10 +111,9 @@ export class AddEditScheduleComponent
   subTopicDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the SubTopic',
-    height: 'auto',
     fieldName: 'Sub Topic',
     hideLabel: false,
-    bindLable: 'label',
+    bindLabel: 'label',
     bindValue: 'label',
     required: true
   };
@@ -127,9 +121,8 @@ export class AddEditScheduleComponent
   lessonDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Lesson Plan',
-    height: 'auto',
     fieldName: 'Lesson Plan',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true
   };
@@ -368,7 +361,7 @@ export class AddEditScheduleComponent
   setClassDropdownValue(value: any) {
     this.resetMediumChanges();
     if (value) {
-      this.classDropDownValues = value.classes?.sort((a:any,b:any)=>a.class-b.class);
+      this.classDropDownValues = value.classes.sort((a:any,b:any)=>a.class-b.class);
       if (this.classDropDownValues.length === 1) {
         this.scheduleForm
           .get('className')
@@ -523,7 +516,7 @@ export class AddEditScheduleComponent
     const classValues = dropdownValueArray.filter((item: any) => {
       return value === item.medium;
     });
-    this.classDropDownValues = classValues[0].classes?.sort((a:any,b:any)=>a.class-b.class);
+    this.classDropDownValues = classValues[0].classes.sort((a:any,b:any)=>a.class-b.class);
   }
 
   /**

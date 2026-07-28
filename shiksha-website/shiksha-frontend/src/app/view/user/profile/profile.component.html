@@ -69,11 +69,9 @@
         <input
           type="text"
           id="profile-name"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your name' | translate }}"
-          required
           readonly
-          aria-readonly="true"
           [value]="userData?.name"
         />
       </div>
@@ -84,11 +82,9 @@
         <input
           type="text"
           id="profile-phone"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your phone number' | translate }}"
-          required
           readonly
-          aria-readonly="true"
           [value]="userData?.phone"
         />
       </div>
@@ -99,10 +95,8 @@
         <input
           type="text"
           id="profile-school"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
-          required
+          class="form-control"
           readonly
-          aria-readonly="true"
           [value]="userData?.school?.name"
         />
       </div>
@@ -116,11 +110,9 @@
         <input
           type="text"
           id="profile-state"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your cluster' | translate }}"
           readonly
-          required
-          aria-readonly="true"
           [value]="userData?.state"
         />
       </div>
@@ -132,11 +124,9 @@
           <input
             type="text"
             id="profile-zone"
-            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            class="form-control"
             placeholder="{{ 'Enter your zone' | translate }}"
             readonly
-            required
-            aria-readonly="true"
             [value]="userData?.zone"
           />
         </div>
@@ -147,11 +137,9 @@
           <input
             type="text"
             id="profile-district"
-            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            class="form-control"
             placeholder="{{ 'Enter your district' | translate }}"
             readonly
-            required
-            aria-readonly="true"
             [value]="userData?.district"
           />
         </div>
@@ -162,11 +150,9 @@
           <input
             type="text"
             id="profile-taluk"
-            class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+            class="form-control"
             placeholder="{{ 'Enter Taluk' | translate }}"
             readonly
-            required
-            aria-readonly="true"
             [value]="userData?.block"
           />
         </div>
@@ -210,53 +196,53 @@
               <label class="lg:hidden mb-1 form-control-label">{{
                 "Board" | translate
               }} <span class="text-[16px] text-error">*</span></label>
-              <app-form-dropdown
-                [dropDownControlName]="'board'"
+              <app-dropdown
+
                 [dropDownCtrl]="convertToFormControl(class.get('board'))"
                 [dropDownValues]="boardDropdownOptions"
                 [config]="boardTypeDropdownconfig"
                 [submitted]="submitted"
                 (valueChange)="setMediumSubjectDropdown(i, $event,'add')"
-              ></app-form-dropdown>
+              ></app-dropdown>
             </td>
-            <td class="px-1 py-1 lg:px-4 lg:py-4">
+            <td class="px-1 py-1 lg:px-4 lg:py-4 capitalize">
               <label class="lg:hidden mb-1 form-control-label">{{
                 "Medium" | translate
               }} <span class="text-[16px] text-error">*</span></label>
-              <app-form-dropdown
-                [dropDownControlName]="'medium'"
+              <app-dropdown
+
                 [dropDownCtrl]="convertToFormControl(class.get('medium'))"
                 [dropDownValues]="mediumDropdownOptions[i]"
                 [config]="mediumTypeDropdownconfig"
                 [submitted]="submitted"
                 (valueChange)="setClassDropdown(i, $event)"
-              ></app-form-dropdown>
+              ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
               <label class="lg:hidden mb-1 form-control-label">{{
                 "Class" | translate
               }} <span class="text-[16px] text-error">*</span></label>
-              <app-form-dropdown
-                [dropDownControlName]="'class'"
+              <app-dropdown
+
                 [dropDownCtrl]="convertToFormControl(class.get('class'))"
                 [dropDownValues]="classDropdownOptions[i]"
                 [config]="classTypeDropdownconfig"
                 [submitted]="submitted"
                 (valueChange)="setStrength(i, $event)"
-              ></app-form-dropdown>
+              ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
               <label class="lg:hidden mb-1 form-control-label">{{
                 "Subject" | translate
               }} <span class="text-[16px] text-error">*</span></label>
-              <app-form-dropdown
-                [dropDownControlName]="'subject'"
+              <app-dropdown
+
                 [dropDownCtrl]="convertToFormControl(class.get('subject'))"
                 [dropDownValues]="subjectDropdownOptions[i]"
                 [config]="subjectTypeDropdownconfig"
                 [submitted]="submitted"
                 (valueChange)="subjectMapper(i, $event)"
-              ></app-form-dropdown>
+              ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
               <label class="lg:hidden mb-1 form-control-label">{{
@@ -320,8 +306,8 @@
                   <div class="py-2 md:py-4 text-sm  content-start md:col-span-5">
                     <ng-container>
                       <div>
-                        <app-form-dropdown
-                          [dropDownControlName]="'type'"
+                        <app-dropdown
+
                           [dropDownCtrl]="
                             convertToFormControl(resource.get('type'))
                           "
@@ -333,12 +319,12 @@
                           "
                           [submitted]="submitted"
                           (valueChange)="setResourceDetailsValues(i, $event)"
-                        ></app-form-dropdown>
+                        ></app-dropdown>
                       </div>
 
                       <input
                         *ngIf="!resource.get('typeChipSet')?.value"
-                        class="form-control h-9 mt-4"
+                        class="form-control mt-4"
                         type="text"
                         placeholder="{{ 'Enter resource type' | translate }}"
                         autocomplete="off"
@@ -359,25 +345,25 @@
                         "Resource Details" | translate
                       }}</label>
                       <div [hidden]="!resource.get('detailsChipSet')?.value">
-                        <app-form-dropdown
-                          [dropDownControlName]="'details'"
+                        <app-dropdown
+
                           [dropDownCtrl]="
                             convertToFormControl(resource.get('details'))
                           "
                           [dropDownValues]="resourceDetailsDropdownOptions[i]"
                           [config]="resourceDetailsDropdownconfig"
                           [submitted]="submitted"
-                        ></app-form-dropdown>
+                        ></app-dropdown>
                       </div>
 
                       <div *ngIf="!resource.get('detailsChipSet')?.value">
-                        <app-form-dropdown
-                          [dropDownControlName]="'details'"
+                        <app-dropdown
+
                           [dropDownCtrl]="convertToFormControl(resource.get('details'))"
                           [dropDownValues]="resourceDetailsDropdownOptions[i]"
                           [config]="resourceOtherDetailsDropdownconfig"
                           [submitted]="submitted"
-                        ></app-form-dropdown>
+                        ></app-dropdown>
                         <p
                           class="form-control-error"
                           *ngIf="!resource.get('detailsChipSet')?.value && submitted && resource.get('details')?.errors?.['required']"

@@ -54,7 +54,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   typeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Type',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff :true,
@@ -63,7 +62,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   boardDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Board',
-    height: 'auto',
     bindLabel: 'board',
     bindValue: 'board',
     labelTxt:'Board'
@@ -71,7 +69,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   mediumDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Medium',
-    height: 'auto',
     bindLabel: 'medium',
     bindValue: 'medium',
     labelTxt:'Medium'
@@ -79,7 +76,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   classDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Class',
-    height: 'auto',
     bindLabel: 'class',
     bindValue: 'class',
     labelTxt:'Class'
@@ -87,7 +83,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   subjectDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Subject',
-    height: 'auto',
     bindLabel: 'displayName',
     bindValue: 'subject',
     labelTxt:'Subject'
@@ -96,7 +91,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   statusDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Plan Status',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff:true,
@@ -161,7 +155,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
 
     if (this.mediumDropdownOptions.length === 1) {
       this.selectedMedium = this.mediumDropdownOptions[0].medium;
-      this.classDropdownOptions = this.filterClassByMedium(this.mediumDropdownOptions, this.selectedMedium)[0].classes?.sort((a:any,b:any)=>a.class-b.class);
+      this.classDropdownOptions = this.filterClassByMedium(this.mediumDropdownOptions, this.selectedMedium)[0].classes.sort((a:any,b:any)=>a.class-b.class);
     }
 
     if (this.classDropdownOptions.length === 1) {
@@ -258,7 +252,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     this.resetMediumChange();
     if (val) {
       const classFilter = this.mediumDropdownOptions.filter(item => item.medium === this.selectedMedium);
-      this.classDropdownOptions = classFilter[0].classes?.sort((a:any,b:any)=>a.class-b.class)    
+      this.classDropdownOptions = classFilter[0].classes.sort((a:any,b:any)=>a.class-b.class)
     }
     const params = this.getListParams();
     this.getAllList(params);
