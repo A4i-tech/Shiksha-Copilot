@@ -24,6 +24,13 @@ jobs:
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
+  ci-frontend:
+    uses: ./.github/workflows/ci-frontend.yaml
+    secrets: inherit
+    with:
+      publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+
   shiksha-coverage-summary:
     needs: [ci-api, ci-backend]
     if: always()
