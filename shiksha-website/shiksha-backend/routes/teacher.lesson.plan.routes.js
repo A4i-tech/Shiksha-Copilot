@@ -76,6 +76,7 @@ router.post(
 router.post(
 	"/teacher-lesson-plan/section-ai-edit",
 	isAuthenticated,
+	requirePermission("lesson-plan.edit"),
 	asyncMiddleware(
 		teacherLessonPlanController.sectionAiEdit.bind(
 			teacherLessonPlanController
@@ -86,6 +87,7 @@ router.post(
 router.post(
 	"/teacher-lesson-plan/plan-ai-edit",
 	isAuthenticated,
+	requirePermission("lesson-plan.edit"),
 	asyncMiddleware(
 		teacherLessonPlanController.planAiEdit.bind(
 			teacherLessonPlanController

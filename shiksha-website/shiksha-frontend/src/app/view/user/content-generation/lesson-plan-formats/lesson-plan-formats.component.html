@@ -42,7 +42,7 @@
 
     <!-- AI enhance (per-section) -->
     <div class="ai-enhance mb-4"
-      [hasPermission]="['power']"
+      [hasPermission]="['lesson-plan.edit']"
       *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive">
       <div *ngIf="!aiMode[i]">
         <button class="btn-primary flex gap-2 items-center" (click)="startAiPrompt(i)">

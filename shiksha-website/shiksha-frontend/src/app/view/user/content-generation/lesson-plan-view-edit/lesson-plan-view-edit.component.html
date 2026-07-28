@@ -208,7 +208,7 @@
       <h2 class="text-xl font-bold text-content-100 md:leading-[48px]">
         {{ currentType | translate}} {{ "Feedback" | translate }}
       </h2>
-      <div class="flex gap-2" *ngIf="isLesson && !planAiMode" [hasPermission]="['power']">
+      <div class="flex gap-2" *ngIf="isLesson && !planAiMode" [hasPermission]="['lesson-plan.edit']">
         <button class="btn-primary" (click)="showRevertConfirmation = true">
           {{ "Revert AI edits" | translate }}
         </button>
