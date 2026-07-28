@@ -24,14 +24,14 @@
 			<div class="btn-group flex gap-4 items-center ml-auto min-w-fit">
 				<button class="bg-shade-80 p-1 md:py-1 md:px-4 rounded text-sm md:text-lg text-primary" mwlCalendarPreviousView [view]="view" [(viewDate)]="viewDate"
 					(viewDateChange)="closeOpenMonthViewDay()">
-					<img src="assets/icons/Chevron left large.svg" alt="" class="inline-block mb-[2px]"> <span class="hidden md:inline text-base">{{"Previous Week" | translate}}</span>
+					<img src="assets/icons/Chevron left large.svg" alt="" class="inline-block mb-[2px]"> <span class="sr-only md:not-sr-only md:inline text-base">{{"Previous Week" | translate}}</span>
 				</button>
 				<div class="mb-0">
 					<h3 class="mb-0 text-xs md:text-base text-content" >{{ viewDate | calendarDate:(view + 'ViewTitle'):'en':1 }}</h3>
 				</div>
 				<button class="bg-shade-80 p-1 md:py-1 md:px-4 rounded text-primary text-sm md:text-lg" mwlCalendarNextView [view]="view" [(viewDate)]="viewDate" 
 					(viewDateChange)="closeOpenMonthViewDay()">
-					<span class="hidden md:inline text-base">{{"Next week" | translate}}</span><img src="assets/icons/Chevron right large.svg" alt="" class="inline-block">
+					<span class="sr-only md:not-sr-only md:inline text-base">{{"Next week" | translate}}</span><img src="assets/icons/Chevron right large.svg" alt="" class="inline-block">
 				</button>
 			</div>
 
