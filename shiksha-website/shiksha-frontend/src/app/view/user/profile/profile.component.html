@@ -71,8 +71,7 @@
           id="profile-name"
           class="form-control"
           placeholder="{{ 'Enter your name' | translate }}"
-          required
-          disabled
+          readonly
           [value]="userData?.name"
         />
       </div>
@@ -85,8 +84,7 @@
           id="profile-phone"
           class="form-control"
           placeholder="{{ 'Enter your phone number' | translate }}"
-          required
-          disabled
+          readonly
           [value]="userData?.phone"
         />
       </div>
@@ -98,8 +96,7 @@
           type="text"
           id="profile-school"
           class="form-control"
-          required
-          disabled
+          readonly
           [value]="userData?.school?.name"
         />
       </div>
@@ -115,8 +112,7 @@
           id="profile-state"
           class="form-control"
           placeholder="{{ 'Enter your cluster' | translate }}"
-          disabled
-          required
+          readonly
           [value]="userData?.state"
         />
       </div>
@@ -130,8 +126,7 @@
             id="profile-zone"
             class="form-control"
             placeholder="{{ 'Enter your zone' | translate }}"
-            disabled
-            required
+            readonly
             [value]="userData?.zone"
           />
         </div>
@@ -144,8 +139,7 @@
             id="profile-district"
             class="form-control"
             placeholder="{{ 'Enter your district' | translate }}"
-            disabled
-            required
+            readonly
             [value]="userData?.district"
           />
         </div>
@@ -158,8 +152,7 @@
             id="profile-taluk"
             class="form-control"
             placeholder="{{ 'Enter Taluk' | translate }}"
-            disabled
-            required
+            readonly
             [value]="userData?.block"
           />
         </div>
