@@ -427,25 +427,6 @@ class TeacherLessonPlanController extends BaseController {
     }
 
 
-	async resourceActivityRating(req, res) {
-        try {
-			
-			const { resourcePlanId } = req.params;
-			const teacherId = req.user._id;
-            const data = req.body;
-            const result = await this.manager.rateActivity(teacherId,resourcePlanId,data);
-            if (result.success) {
-                return res.status(200).json(result);
-            } else {
-                handleError(result, res);
-                return;
-            }
-        } catch (error) {
-            console.error("Error Activity Rating:", error);
-            res.status(500).send({ success: false, error});
-        }
-    }
-	
 	async retryLessonPlan(req, res) {
 		try {
 			const { regeneratedId, _id } = req.body; 

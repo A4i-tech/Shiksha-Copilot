@@ -1,5 +1,6 @@
 const {
-  validateFacility,
+  validateFacilityCreate,
+  validateFacilityUpdate,
 } = require("../../../validations/facility.validation");
 
 describe("Facility Validation", () => {
@@ -31,7 +32,7 @@ describe("Facility Validation", () => {
         facilities: ["Computer Lab", "Smart Board"],
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityCreate(mockReq, mockRes, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockRes.status).not.toHaveBeenCalled();
@@ -43,7 +44,7 @@ describe("Facility Validation", () => {
         facilities: ["Computer Lab"],
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityCreate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -60,7 +61,7 @@ describe("Facility Validation", () => {
         facilities: ["Computer Lab"],
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityCreate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -77,7 +78,7 @@ describe("Facility Validation", () => {
         type: "Lab",
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityCreate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -95,7 +96,7 @@ describe("Facility Validation", () => {
         facilities: "Computer Lab",
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityCreate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();
@@ -115,7 +116,7 @@ describe("Facility Validation", () => {
         facilities: ["Computer Lab", "Smart Board"],
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityUpdate(mockReq, mockRes, mockNext);
 
       expect(mockNext).toHaveBeenCalled();
       expect(mockRes.status).not.toHaveBeenCalled();
@@ -128,7 +129,7 @@ describe("Facility Validation", () => {
         facilities: ["Computer Lab"],
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityUpdate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockRes.json).toHaveBeenCalledWith({
@@ -146,7 +147,7 @@ describe("Facility Validation", () => {
         facilities: ["Computer Lab"],
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityUpdate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();
@@ -159,7 +160,7 @@ describe("Facility Validation", () => {
         facilities: ["Computer Lab"],
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityUpdate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();
@@ -172,7 +173,7 @@ describe("Facility Validation", () => {
         type: "Lab",
       };
 
-      validateFacility(mockReq, mockRes, mockNext);
+      validateFacilityUpdate(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();

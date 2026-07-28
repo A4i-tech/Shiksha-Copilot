@@ -50,9 +50,6 @@ class AuthController {
 
     async getUserFromToken(req, res) {
         try {
-            if (!req.user) {
-                return res.status(401).json({ success: false, messaage: "Token Expired!", data: null });
-            }
             let result = await this.authManager.getUserFromToken(req);
             if (result.success) {
                 return res.status(200).json(result);

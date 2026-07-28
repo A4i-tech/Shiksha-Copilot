@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, StringConstraints
+from typing import Annotated, List, Optional, Dict, Any
 from enum import Enum
 
 
@@ -11,7 +11,7 @@ class MessageRole(str, Enum):
 
 class ConversationMessage(BaseModel):
     role: MessageRole = Field(..., description="Role of the message sender")
-    message: str = Field(..., description="Content of the message")
+    message: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)] = Field(..., description="Content of the message")
 
 
 ################# Request and Response Models #################

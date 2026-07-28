@@ -1,4 +1,5 @@
 const Joi = require("joi");
+const validateRequest = require("./common.validation");
 
 const shape = {
 	teacherId: Joi.string().required(),
@@ -32,35 +33,8 @@ const scheduleSchemaUpdate = Joi.object({
 	_id: Joi.string().required(),
 });
 
-const validateScheduleCreate = (req, res, next) => {
-	const data = req.body;
-
-	let isValid = scheduleSchemaCreate.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
-
-const validateScheduleUpdate = (req, res, next) => {
-	const data = req.body;
-
-	let isValid = scheduleSchemaUpdate.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const validateScheduleCreate = validateRequest(scheduleSchemaCreate);
+const validateScheduleUpdate = validateRequest(scheduleSchemaUpdate);
 
 module.exports = {
 	validateScheduleCreate,

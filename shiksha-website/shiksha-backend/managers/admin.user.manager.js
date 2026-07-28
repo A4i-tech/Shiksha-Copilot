@@ -24,18 +24,6 @@ class AdminUserManager extends BaseManager {
 
 	async create(req) {
 		try {
-			if (!req.body) {
-				return { success: false, message: "Request body is missing" };
-			}
-
-			if (!req.body.phone) {
-				return { success: false, message: "Phone number is required" };
-			}
-
-			if (!req.body.name) {
-				return { success: false, message: "Name is required" };
-			}
-
 			const existingAdminUser = await this.dao.getByPhone(
 				req.body.phone
 			);
@@ -45,12 +33,9 @@ class AdminUserManager extends BaseManager {
 
 			const result = await this.dao.create(req.body);
 
-			// Only send SMS if both phone and name are available
-			if (req.body.phone && req.body.name) {
-				sendWelcomeSMS(req.body.phone, req.body.name).catch((error) => {
-					logger.warn("Welcome SMS failed", { userId: String(result._id), error: error.message });
-				});
-			}
+			sendWelcomeSMS(req.body.phone, req.body.name).catch((error) => {
+				logger.warn("Welcome SMS failed", { userId: String(result._id), error: error.message });
+			});
 
 			return { success: true, data: result, message: "Admin user created" };
 		} catch (err) {

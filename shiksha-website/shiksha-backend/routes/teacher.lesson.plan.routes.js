@@ -139,17 +139,6 @@ router.delete(
     )
 );
 
-router.post(
-    "/teacher-lesson-plan/resource/:resourcePlanId/rating",
-	isAuthenticated,
-    asyncMiddleware(
-        teacherLessonPlanController.resourceActivityRating.bind(
-            teacherLessonPlanController
-        )
-    )
-);
-
-
 router.get(
 	"/teacher-lesson-plan/exists/:lessonPlanId",
 	isAuthenticated,

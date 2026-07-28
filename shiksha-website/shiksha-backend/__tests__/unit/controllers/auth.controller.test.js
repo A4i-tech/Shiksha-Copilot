@@ -162,19 +162,6 @@ describe('AuthController', () => {
             expect(mockRes.json).toHaveBeenCalledWith(mockResult);
         });
 
-        it('should return 401 when user is not authenticated', async () => {
-            mockReq.user = null;
-
-            await authController.getUserFromToken(mockReq, mockRes);
-
-            expect(mockRes.status).toHaveBeenCalledWith(401);
-            expect(mockRes.json).toHaveBeenCalledWith({
-                success: false,
-                messaage: 'Token Expired!',
-                data: null
-            });
-        });
-
         it('should return 400 when exception occurs', async () => {
             mockReq.user = { id: '123' };
             const error = new Error('Database error');
