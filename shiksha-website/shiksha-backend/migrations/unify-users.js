@@ -108,13 +108,15 @@ function adminDocument(document, districts) {
   };
 }
 
-async function rewriteReferences(db, idMap) {
+async function rewriteReferences(db, idMap, userIds) {
   const references = [["teachertrainingbatches", "createdBy"], ["auditlogs", "userId"], ["lessonplantemplates", "approvedBy"]];
   for (const [collectionName, field] of references) {
     for (const [oldId, newId] of idMap) {
       await db.collection(collectionName).updateMany({ [field]: new mongoose.Types.ObjectId(oldId) }, { $set: { [field]: new mongoose.Types.ObjectId(newId) } });
     }
   }
+  const cleared = await db.collection("auditlogs").updateMany({ userId: { $type: "objectId", $nin: userIds } }, { $set: { userId: null } });
+  if (cleared.modifiedCount) console.log(`Cleared ${cleared.modifiedCount} orphaned audit log user references`);
 }
 
 async function rewriteTeacherReferences(db, idMap, userIds) {
@@ -195,7 +197,7 @@ async function validateReferences(db, migration) {
     const target = migration.idMap.get(String(id)) || String(id);
     if (!userIds.has(target)) issues.push(`${collection} ${document._id} field ${field} references missing user ${id}`);
   };
-  for (const [collection, field] of [["teachertrainingbatches", "createdBy"], ["auditlogs", "userId"], ["lessonplantemplates", "approvedBy"]]) {
+  for (const [collection, field] of [["teachertrainingbatches", "createdBy"], ["lessonplantemplates", "approvedBy"]]) {
     for await (const document of db.collection(collection).find({ [field]: { $type: "objectId" } }, { projection: { [field]: 1 } })) {
       validate(collection, document, field, document[field]);
     }
@@ -288,7 +290,7 @@ async function unifyUsers() {
     await users.deleteMany({});
     if (migration.unified.length) await users.insertMany(migration.unified);
     await renewLease();
-    await rewriteReferences(db, migration.idMap);
+    await rewriteReferences(db, migration.idMap, migration.unified.map((user) => user._id));
     await rewriteTeacherReferences(db, migration.teacherIdMap, migration.unified.map((user) => user._id));
     await renewLease();
     await users.createIndex({ "identity.phone": 1 }, { unique: true, name: "uniq_user_phone" });
