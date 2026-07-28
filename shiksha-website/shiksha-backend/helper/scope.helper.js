@@ -22,11 +22,13 @@ async function assertCanGrant(grants, role, dep) {
     const school = await School.findById(dep).lean();
     if (!school) throw new Error("SCHOOL scope dependency does not exist");
     if (!isResourceAllowed(grants, "role.assign", school)) throw new Error("Role assignment is outside your scope");
+    if (role.permissions.some((permission) => !isResourceAllowed(grants, permission, school))) throw new Error("Cannot grant permissions you do not hold at this scope");
     return school._id;
   }
   const paths = { STATE: "state", ZONE: "zones.name", DISTRICT: "zones.districts.name", BLOCK: "zones.districts.blocks.name" };
   if (paths[role.scopeType] && !await Region.exists({ [paths[role.scopeType]]: dep })) throw new Error(`${role.scopeType} scope dependency does not exist`);
   if (!isDependencyAllowed(grants, "role.assign", role.scopeType, dep)) throw new Error("Role assignment is outside your scope");
+  if (role.permissions.some((permission) => !isDependencyAllowed(grants, permission, role.scopeType, dep))) throw new Error("Cannot grant permissions you do not hold at this scope");
   return dep;
 }
 

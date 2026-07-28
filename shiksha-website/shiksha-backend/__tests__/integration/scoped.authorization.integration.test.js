@@ -52,6 +52,7 @@ describe("scoped authorisation", () => {
   let teacherRole;
   let operatorRole;
   let globalRole;
+  let elevatedRole;
   let localTeacher;
   let remoteTeacher;
   let mixedStaff;
@@ -100,6 +101,7 @@ describe("scoped authorisation", () => {
     operatorRole = await createRole("District operator", operatorPermissions, "DISTRICT");
     teacherRole = await createRole("School user", [], "SCHOOL");
     globalRole = await createRole("Global teacher reader", ["teacher.view"], "GLOBAL");
+    elevatedRole = await createRole("Elevated district role", ["generation.status.view"], "DISTRICT");
     const repeatedGrantRole = await createRole("Repeated grant", ["help.view"], "DISTRICT");
     const roleManagerRole = await createRole("Role manager", ["role.manage"], "UNBOUND");
     const schoolReaderRole = await createRole("School reader", ["school.read", "school.list", "teacher.view"], "SCHOOL");
@@ -477,6 +479,10 @@ describe("scoped authorisation", () => {
         message: "Role assignment is outside your scope",
       },
       {
+        body: adminBody("Overpowered Integration Admin", `6${String(suffix + 9).slice(-9)}`, [{ roleId: elevatedRole._id, dep: localSchool.district }]),
+        message: "Cannot grant permissions you do not hold at this scope",
+      },
+      {
         body: adminBody("Missing Dependency Admin", `6${String(suffix + 6).slice(-9)}`, [{ roleId: operatorRole._id }]),
         message: "DISTRICT scope requires a dependency",
       },
@@ -492,10 +498,19 @@ describe("scoped authorisation", () => {
     }
   });
 
-  it("protects assigned roles from deletion and scope changes", async () => {
+  it("prevents privilege escalation through role management", async () => {
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "DELETE", actorToken), "Assigned roles cannot be deleted");
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "PUT", actorToken, {
       scopeType: "STATE",
-    }), "Assigned role scope cannot be changed");
+    }), "Roles assigned to your account cannot be edited");
+    expectDenied(await request("/api/roles", "POST", actorToken, {
+      name: `Escalated role ${suffix}`,
+      description: "",
+      permissions: ["generation.status.view"],
+      scopeType: "UNBOUND",
+    }), "Cannot grant permissions you do not hold");
+    expectDenied(await request(`/api/roles/${globalRole._id}`, "PUT", actorToken, {
+      permissions: ["teacher.view"],
+    }), "Role assignment is outside your scope");
   });
 });
