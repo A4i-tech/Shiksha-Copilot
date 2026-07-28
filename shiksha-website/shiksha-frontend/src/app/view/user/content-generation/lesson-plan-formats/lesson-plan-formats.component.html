@@ -37,6 +37,96 @@
         </div>
       </div>
     </div>
+
+    <!-- AI enhance (per-section) -->
+    <div class="ai-enhance mb-4"
+      [hasPermission]="['power']"
+      *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive">
+      <div *ngIf="!aiMode[i]">
+        <button class="btn-primary flex gap-2 items-center" (click)="startAiPrompt(i)">
+          <img src="assets/icons/ai-logo.svg" alt="" />{{ 'Enhance' | translate }}
+        </button>
+      </div>
+
+      <div class="ai-panel" *ngIf="aiMode[i] === 'prompt'">
+        <div class="ai-panel-header">
+          <span class="ai-panel-title">{{ 'AI enhance' | translate }}: {{ section.title | translate }}</span>
+          <button class="ai-btn ai-btn-ghost" (click)="cancelAi(i)">{{ 'Close' | translate }}</button>
+        </div>
+        <textarea
+          class="ai-textarea"
+          [(ngModel)]="aiPrompt[i]"
+          [disabled]="aiLoading[i]"
+          rows="3"
+          placeholder="{{ 'Describe the change you want' | translate }}"
+          (keydown.enter)="submitAiPrompt(i); $event.preventDefault()"
+        ></textarea>
+        <div class="ai-actions">
+          <button class="ai-btn ai-btn-primary" (click)="submitAiPrompt(i)" [disabled]="aiLoading[i] || !aiPrompt[i]">
+            {{ (aiLoading[i] ? 'Generating...' : 'Generate') | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div class="ai-panel" *ngIf="aiMode[i] === 'diff'">
+        <div class="ai-panel-header">
+          <span class="ai-panel-title">{{ 'AI enhance' | translate }}: {{ section.title | translate }}</span>
+          <div class="ai-actions">
+            <button class="ai-btn ai-btn-ghost" (click)="toggleSplitView()">
+              {{ (splitView ? 'Unified' : 'Split') | translate }}
+            </button>
+            <button class="ai-btn ai-btn-reject" (click)="rejectDiff(i)">{{ 'Reject' | translate }}</button>
+            <button class="ai-btn ai-btn-accept" (click)="acceptDiff(i)">{{ 'Accept' | translate }}</button>
+          </div>
+        </div>
+        <div class="ai-diff" *ngIf="!splitView">
+          <div
+            *ngFor="let line of aiDiff[i]"
+            class="ai-diff-row"
+            [ngClass]="{
+              'ai-diff-add': line.type === 'add',
+              'ai-diff-del': line.type === 'remove',
+              'ai-diff-ctx': line.type === 'context'
+            }"
+          >
+            <span class="ai-diff-lineno">{{ line.oldLine || '' }}</span>
+            <span class="ai-diff-lineno">{{ line.newLine || '' }}</span>
+            <span class="ai-diff-marker">{{
+              line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ''
+            }}</span>
+            <span class="ai-diff-text">
+              <ng-container *ngIf="line.segments; else lineText">
+                <span *ngFor="let seg of line.segments" [class.ai-diff-word-changed]="seg.changed">{{ seg.text }}</span>
+              </ng-container>
+              <ng-template #lineText>{{ line.text }}</ng-template>
+            </span>
+          </div>
+        </div>
+        <div class="ai-diff ai-diff-split" *ngIf="splitView">
+          <div *ngFor="let row of aiSplitDiff[i]" class="ai-diff-split-row">
+            <div class="ai-diff-split-side" [ngClass]="{ 'ai-diff-del': row.left?.type === 'remove' }">
+              <span class="ai-diff-lineno">{{ row.left?.oldLine || '' }}</span>
+              <span class="ai-diff-text">
+                <ng-container *ngIf="row.left?.segments; else leftText">
+                  <span *ngFor="let seg of row.left?.segments" [class.ai-diff-word-changed]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #leftText>{{ row.left?.text }}</ng-template>
+              </span>
+            </div>
+            <div class="ai-diff-split-side" [ngClass]="{ 'ai-diff-add': row.right?.type === 'add' }">
+              <span class="ai-diff-lineno">{{ row.right?.newLine || '' }}</span>
+              <span class="ai-diff-text">
+                <ng-container *ngIf="row.right?.segments; else rightText">
+                  <span *ngFor="let seg of row.right?.segments" [class.ai-diff-word-changed]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #rightText>{{ row.right?.text }}</ng-template>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <ng-container *ngIf="section.outputFormat === 'plain_text'">
       <markdown [data]="section.content" *ngIf="!editMode[i]" katex></markdown>
       <textarea

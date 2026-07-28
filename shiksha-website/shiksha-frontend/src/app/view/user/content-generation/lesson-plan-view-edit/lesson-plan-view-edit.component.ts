@@ -18,6 +18,7 @@ import {
 } from 'src/app/shared/utility/animations.util';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { CCE_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
+import { buildDiffParts, toSplitDiff } from 'src/app/shared/utility/ai-diff.util';
 
 @Component({
   selector: 'app-lesson-plan-view-edit',
@@ -57,6 +58,8 @@ export class LessonPlanViewEditComponent implements OnInit {
   modeSubscription: Subscription;
 
   routerEventsSubscription: Subscription;
+
+  private planAiSub: Subscription | null = null;
 
   nextUrl: any;
 
@@ -118,6 +121,26 @@ export class LessonPlanViewEditComponent implements OnInit {
   isOpen = true;
 
   expandedContainer = false;
+
+  private hasSwitchedTab = false;
+
+  sectionAiActive = false;
+
+  planAiMode: null | 'prompt' | 'diff' = null;
+
+  planAiPrompt = '';
+
+  planAiLoading = false;
+
+  planAiProposedSections: any[] = [];
+
+  planAiDiffs: { id: string; title: string; parts: any[]; splitParts: any[] }[] = [];
+
+  planAiSplitView = false;
+
+  togglePlanAiSplitView() {
+    this.planAiSplitView = !this.planAiSplitView;
+  }
 
   unloadHandler = (event: BeforeUnloadEvent) => {
     event.preventDefault();
@@ -210,15 +233,21 @@ export class LessonPlanViewEditComponent implements OnInit {
           (e: any) => !['lessonPresentation', 'planChecklist', 'planChecklistPdf'].includes(e.downloadType)
         );
         }
-      } else {
+      } else if (this.hasSwitchedTab) {
         setTimeout(() => {
           this.scrollToSection(this.sections[0]?.id);
         }, 0);
       }
+      this.hasSwitchedTab = true;
     });
   }
 
   ngOnInit(): void {
+    // Angular doesn't reset scroll position on navigation for a non-window scroll
+    // container, so the outer page shell (.main-content) carries over scrollTop
+    // from whatever page was open before (e.g. the long generation form).
+    document.querySelector('.main-content')?.scrollTo({ top: 0 });
+
     switch (this.mode) {
       case 'generate':
         this.populateGenerate();
@@ -691,66 +720,119 @@ export class LessonPlanViewEditComponent implements OnInit {
     }
   }
 
-  openRegeneratePopup() {
-    if (!this.feedback) {
-      return;
-    }
-    if (this.regenerationLimitReached) {
-      return;
-    }
-    this.modalService.showRenegenerateDialog = true;
+  onAiAccepted() {
+    setTimeout(() => {
+      document
+        .querySelector('.feedback-panel')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
   }
 
-  regenerateContent(regenFeedback: any) {
-    if (this.regenerationLimitReached) {
+  showRevertConfirmation = false;
+
+  confirmRevert(val: any) {
+    this.showRevertConfirmation = false;
+    if (val === 'ok') {
+      this.revertAllAiEdits();
+    }
+  }
+
+  revertAllAiEdits() {
+    this.cancelPlanAi();
+    this.editMode = [];
+    this.hasUnsavedChanges = false;
+    switch (this.mode) {
+      case 'generate':
+        this.populateGenerate();
+        break;
+      case 'view':
+      case 'draft':
+        this.populateViewAndDraft();
+        break;
+      default:
+        break;
+    }
+  }
+
+  startPlanAiPrompt() {
+    this.planAiMode = 'prompt';
+  }
+
+  cancelPlanAi() {
+    this.planAiMode = null;
+    this.planAiPrompt = '';
+    this.planAiProposedSections = [];
+    this.planAiDiffs = [];
+  }
+
+  submitPlanAiPrompt() {
+    if (!this.planAiPrompt || !this.planAiPrompt.trim()) {
       return;
     }
-    if (regenFeedback) {
-      const lessonId =
-        this.mode === 'draft' ? this.planId : this.planDetails._id;
-      const chapterId =
-        this.mode === 'draft'
-          ? this.planDetails?.lesson?.chapter?._id
-          : this.planDetails.chapterId;
-      const isAll =
-        this.mode === 'draft'
-          ? this.planDetails?.lesson?.isAll
-          : this.planDetails.isAll;
-      const subTopics =
-        this.mode === 'draft'
-          ? this.planDetails?.lesson?.subTopics
-          : this.planDetails.subTopics;
-      const data = {
-        chapterId,
-        lessonId,
-        isAll,
-        subTopics,
-        feedbackPerSets: [],
-        feedback: this.feedback,
-        overallFeedbackReason: this.feedbackReason,
-        regenFeedback,
-      };
-
-      this.contentGenService.regenerateContent(data).subscribe({
-        next: (res) => {
-          this.hasUnsavedChanges = false;
-          this.utilityService.handleResponse(res);
-          this.modalService.showRenegenerateDialog = false;
-          this.idleService.planId = lessonId;
-          this.idleService.stopWatching('feedback-regeneration');
-          this.router.navigate(['/generation-status']);
+    this.planAiLoading = true;
+    this.planAiSub?.unsubscribe();
+    this.planAiSub = this.contentGenService
+      .planAiEdit({
+        lessonId: this.planId,
+        isLesson: true,
+        sections: this.sections
+          .filter((s) => s.editable)
+          .map((s) => ({
+            id: s.id,
+            title: s.title,
+            outputFormat: s.outputFormat,
+            content: s.content,
+          })),
+        learningOutcomes: this.getFormattedLearningOutcomes(),
+        prompt: this.planAiPrompt,
+      })
+      .subscribe({
+        next: (res: any) => {
+          this.planAiProposedSections = res?.data?.proposedSections || [];
+          this.planAiDiffs = this.planAiProposedSections
+            .map((proposed: any) => {
+              const original = this.sections.find((s) => s.id === proposed.id);
+              if (!original) return null;
+              const parts = buildDiffParts(original.content, proposed.content, original.outputFormat);
+              if (!parts.some((p) => p.type !== 'context')) return null;
+              return { id: proposed.id, title: original.title, parts, splitParts: toSplitDiff(parts) };
+            })
+            .filter((d: any): d is { id: string; title: string; parts: any[]; splitParts: any[] } => !!d);
+          this.planAiMode = 'diff';
+          this.planAiLoading = false;
         },
-        error: (err) => {
+        error: (err: any) => {
+          this.planAiLoading = false;
           this.utilityService.handleError(err);
-          this.modalService.showRenegenerateDialog = false;
         },
       });
-    }
+  }
+
+  rejectPlanDiff() {
+    this.planAiMode = 'prompt';
+    this.planAiProposedSections = [];
+    this.planAiDiffs = [];
+  }
+
+  acceptPlanDiff() {
+    this.planAiProposedSections.forEach((proposed: any) => {
+      const target = this.sections.find((s) => s.id === proposed.id);
+      if (target) {
+        target.content = proposed.content;
+      }
+    });
+    this.hasUnsavedChanges = true;
+    this.planAiMode = null;
+    this.planAiPrompt = '';
+    this.planAiProposedSections = [];
+    this.planAiDiffs = [];
+    this.onAiAccepted();
   }
 
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
     this.modeSubscription.unsubscribe();
+    this.planAiSub?.unsubscribe();
     window.removeEventListener('beforeunload', this.unloadHandler);
 
     if (!this.isSaved && this.mode !== 'view') {

@@ -1,15 +1,19 @@
 import asyncio
+import logging
 import signal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
 from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
-from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router
+from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router, lesson_plan_router
 from langfuse import get_client
+
+logger = logging.getLogger(__name__)
 
 mcp = FastMCP(
     name=settings.app_name,
@@ -59,6 +63,7 @@ app.add_middleware(
 app.include_router(chat_router)
 app.include_router(presentation_router)
 app.include_router(question_paper_router)
+app.include_router(lesson_plan_router)
 chat_router_mcp(mcp)
 
 @mcp.tool("version")
@@ -91,7 +96,8 @@ async def health_check():
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    return HTTPException(status_code=500, detail="Internal server error")
+    logger.error(f"Unhandled exception on {request.method} {request.url.path}: {exc}", exc_info=exc)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
 if __name__ == "__main__":

@@ -302,6 +302,14 @@ export class ContentGenerationService extends BaseRestService {
    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/retry`,data)
   }
 
+  sectionAiEdit(data:any):Observable<any>{
+    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/section-ai-edit`,data)
+  }
+
+  planAiEdit(data:any):Observable<any>{
+    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/plan-ai-edit`,data)
+  }
+
   downloadLPDetails(lessonId:any):Observable<any>{
     return this.http.get(`${this.baseUrl}/master-lesson/lesson/tables/${lessonId}`)
   }

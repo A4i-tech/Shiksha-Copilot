@@ -3,10 +3,11 @@ const formatApiReponse = require("../helper/response");
 const TeacherLessonPlanModel = require("../models/teacher.lesson.plan.model");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const teacherLessonPlanAggregation = require("../aggregation/teacher.lesson.plan.aggregation");
-const { postToCopilotBot } = require("../services/copilot.bot.service.js");
+const { postToCopilotBot, postToSectionEditBot, postToPlanEditBot } = require("../services/copilot.bot.service.js");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterLessonDao = require("../dao/master.lesson.dao");
+const MasterResourceDao = require("../dao/master.resource.dao");
 const logger = require("../config/loggers"); 
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
@@ -32,6 +33,30 @@ class TeacherLessonPlanManager extends BaseManager {
 		this.subjectDao = new MasterSubjectDao();
 		this.regeneratedLessonResource = new RegeneratedLessonResourceDao();
 		this.lessonFeedbackDao = new LessonFeedbackDao();
+		this.masterResourceDao = new MasterResourceDao();
+	}
+
+	async _resolveIndexPath(teacherId, recordId, isLesson) {
+		try {
+			const teacherLessonPlan = isLesson
+				? await this.dao.getByTeacherAndLesson(teacherId, recordId)
+				: await this.dao.getByTeacherAndResource(teacherId, recordId);
+			if (!teacherLessonPlan) return null;
+
+			const chapterId = teacherLessonPlan.lessonId
+				? (await this.masterLessonDao.getById(teacherLessonPlan.lessonId))?.chapterId
+				: (await this.masterResourceDao.getById(teacherLessonPlan.resourceId))?.chapterId;
+			if (!chapterId) return null;
+
+			const chapter = await this.chapterDao.getById(chapterId);
+			if (!chapter) return null;
+
+			const subject = await this.subjectDao.getById(chapter.subjectId);
+			return chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject?.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`;
+		} catch (error) {
+			logger.error('Error resolving index path for AI edit', { message: error.message, stack: error.stack });
+			return null;
+		}
 	}
 
 	async getByTeacherAndPagination(
@@ -294,6 +319,56 @@ class TeacherLessonPlanManager extends BaseManager {
 		});
 	}
 	
+	async sectionAiEdit(teacherId, payload) {
+		try {
+			const { lessonId, sectionId, currentContent, prompt, isLesson } = payload;
+			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
+			const requestData = {
+				index_path: indexPath,
+				section_id: sectionId,
+				current_content: currentContent,
+				prompt,
+			};
+			const result = await postToSectionEditBot(requestData);
+
+			if (result.status !== 200) {
+				logger.error(`Unexpected status code from section-edit bot: ${result.status}`);
+				throw new Error(`Unexpected status code from section-edit bot: ${result.status}`);
+			}
+
+			const proposedContent = result.data;
+			return formatApiReponse(true, "Section edit generated", { proposedContent });
+		} catch (error) {
+			logger.error('Error handling section AI edit', { message: error.message, stack: error.stack });
+			return formatApiReponse(false, "Failed to generate section edit", error);
+		}
+	}
+
+	async planAiEdit(teacherId, payload) {
+		try {
+			const { lessonId, sections, learningOutcomes, prompt, isLesson } = payload;
+			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
+			const requestData = {
+				index_path: indexPath,
+				sections: sections.map((s) => ({ id: s.id, title: s.title, content: s.content })),
+				learning_outcomes: learningOutcomes,
+				prompt,
+			};
+			const result = await postToPlanEditBot(requestData);
+
+			if (result.status !== 200) {
+				logger.error(`Unexpected status code from plan-edit bot: ${result.status}`);
+				throw new Error(`Unexpected status code from plan-edit bot: ${result.status}`);
+			}
+
+			const proposedSections = result.data || [];
+			return formatApiReponse(true, "Plan edit generated", { proposedSections });
+		} catch (error) {
+			logger.error('Error handling plan AI edit', { message: error.message, stack: error.stack });
+			return formatApiReponse(false, "Failed to generate plan edit", error);
+		}
+	}
+
 	async regenerateContent(teacherId, payload) {
 		try {
 			const regenerationCount = await this.regeneratedCount(teacherId);
