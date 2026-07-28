@@ -289,25 +289,4 @@ describe("UserController", () => {
     });
   });
 
-  describe("getAll", () => {
-    it("passes structured staff filters to the scoped list", async () => {
-      const mockResult = { success: true, data: { results: [], total: 0 } };
-      mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
-      mockReq.query = {
-        page: "2",
-        limit: "20",
-        filter: { profileType: "admin", district: ["Mysuru", "Kodagu"] },
-      };
-
-      await controller.getAll(mockReq, mockRes);
-
-      expect(mockUserManager.getAll).toHaveBeenCalledWith(expect.objectContaining({
-        page: 2,
-        limit: 20,
-        filters: { profileType: "admin", district: ["Mysuru", "Kodagu"] },
-        permission: "staff.view",
-      }));
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-  });
 });

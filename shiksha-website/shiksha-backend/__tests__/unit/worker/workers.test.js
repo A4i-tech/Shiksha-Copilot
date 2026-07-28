@@ -64,19 +64,13 @@ describe("worker modules", () => {
   });
 
   const mockDbSimple = () => {
+    const client = {
+      startSession: jest.fn(() => ({ withTransaction: async (fn) => fn(), endSession: jest.fn() })),
+      close: jest.fn(),
+    };
     jest.doMock("../../../config/db.js", () => ({
-      getConnection: jest.fn(() =>
-        Promise.resolve({
-          startSession: jest.fn(() => ({
-            withTransaction: async (fn) => fn(),
-            endSession: jest.fn(),
-          })),
-          close: jest.fn(),
-        })
-      ),
-      connectToMongoForWorker: jest.fn(() =>
-        Promise.resolve({ client: { close: jest.fn() }, openedHere: true })
-      ),
+      getConnection: jest.fn(() => Promise.resolve(client)),
+      connectToMongoForWorker: jest.fn(() => Promise.resolve({ client, openedHere: true })),
     }));
   };
 
