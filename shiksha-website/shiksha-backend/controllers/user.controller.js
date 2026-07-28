@@ -276,7 +276,7 @@ class UserController extends BaseController {
         sort: {},
         status,
         permissions: req.permissions,
-        permission: filter.profileType === "admin" ? "staff.view" : "teacher.view",
+        permission: req.userListPermission,
       });
 
       if (result.success) {

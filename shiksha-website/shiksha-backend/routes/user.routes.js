@@ -8,6 +8,7 @@ const {
 	validateUserCreate,
 	validateUserUpdate,
 	validateUserGetByPhone,
+	validateUserList,
 	validateSetProfile,
 	validatePreferredLanguageUpdate,
 	validateUserActivityLog,
@@ -52,7 +53,8 @@ router.patch(
 router.get(
 	"/users",
 	isAuthenticated,
-	requireAnyPermission("teacher.view", "staff.view"),
+	validateUserList,
+	(req, res, next) => requirePermission(req.userListPermission)(req, res, next),
 	asyncMiddleware(userController.getAll.bind(userController))
 );
 

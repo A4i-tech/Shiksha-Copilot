@@ -101,6 +101,15 @@ const validateUserGetByPhone = (req, res, next) => {
 	next();
 };
 
+const validateUserList = (req, res, next) => {
+	const isValid = Joi.object({
+		filter: Joi.object({ profileType: Joi.string().valid("teacher", "admin").required() }).unknown(true).required(),
+	}).unknown(true).validate(req.query);
+	if (isValid.error) return res.status(400).json({ success: false, data: false, error: isValid.error.details.map((i) => i.message) });
+	req.userListPermission = isValid.value.filter.profileType === "teacher" ? "teacher.view" : "staff.view";
+	next();
+};
+
 const validateUserUpdate = (req, res, next) => {
 	const data = req.body;
 
@@ -180,6 +189,7 @@ module.exports = {
 	bulkUploadSchema,
 	validateUserCreate,
 	validateUserGetByPhone,
+	validateUserList,
 	validateUserUpdate,
 	validateSetProfile,
 	validatePreferredLanguageUpdate,

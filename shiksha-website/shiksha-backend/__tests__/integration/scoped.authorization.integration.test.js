@@ -46,6 +46,7 @@ describe("scoped authorisation", () => {
   let actorToken;
   let schoolActorToken;
   let mixedStaffToken;
+  let globalTeacherToken;
   let actor;
   let schoolActor;
   let teacherRole;
@@ -98,7 +99,7 @@ describe("scoped authorisation", () => {
 
     operatorRole = await createRole("District operator", operatorPermissions, "DISTRICT");
     teacherRole = await createRole("School user", [], "SCHOOL");
-    globalRole = await createRole("Global user", [], "GLOBAL");
+    globalRole = await createRole("Global teacher reader", ["teacher.view"], "GLOBAL");
     const repeatedGrantRole = await createRole("Repeated grant", ["help.view"], "DISTRICT");
     const roleManagerRole = await createRole("Role manager", ["role.manage"], "UNBOUND");
     const schoolReaderRole = await createRole("School reader", ["school.read", "school.list", "teacher.view"], "SCHOOL");
@@ -134,13 +135,19 @@ describe("scoped authorisation", () => {
       profiles: { admin: { state: localSchool.state } },
     }));
     ids.users.push(actor._id);
+    const globalTeacher = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "Global Teacher Reader", phone: `7${String(suffix + 8).slice(-9)}`, email: "", address: "" },
+      roles: [{ roleId: globalRole._id }],
+      profiles: { admin: { state: localSchool.state } },
+    }));
+    ids.users.push(globalTeacher._id);
     schoolActor = expectSuccess(await request("/api/users", "POST", rootToken, {
       identity: { name: "School Integration Actor", phone: `6${String(suffix).slice(-9)}`, email: "", address: "" },
       roles: [{ roleId: schoolReaderRole._id, dep: localSchool._id }],
       profiles: { admin: { state: localSchool.state } },
     }));
     ids.users.push(schoolActor._id);
-    [actorToken, schoolActorToken, mixedStaffToken] = await Promise.all([actor, schoolActor, mixedStaff].map(async (user) =>
+    [actorToken, schoolActorToken, mixedStaffToken, globalTeacherToken] = await Promise.all([actor, schoolActor, mixedStaff, globalTeacher].map(async (user) =>
       expectSuccess(await request("/api/devtools/sessions", "POST", rootToken, { userId: user._id })).token
     ));
 
@@ -255,6 +262,14 @@ describe("scoped authorisation", () => {
     expectDenied(await request(`/api/school/${remoteSchool._id}`, "GET", schoolActorToken), "School is outside your scope");
   });
 
+  it("binds user list permissions to the requested profile type", async () => {
+    expectDenied(await request("/api/users?limit=100", "GET", globalTeacherToken));
+    const teachers = expectSuccess(await request("/api/users?limit=100&filter[profileType]=teacher", "GET", globalTeacherToken)).results;
+    expect(teachers.every((user) => user.profiles.teacher)).toBe(true);
+    expect(await request("/api/users?limit=100&filter[profileType]=admin", "GET", globalTeacherToken))
+      .toMatchObject({ status: 403, body: { success: false } });
+  });
+
   it("supports profile self-service without a school dependency", async () => {
     const profile = expectSuccess(await request(`/api/users/${mixedStaff._id}/profile`, "GET", mixedStaffToken));
     expect(profile).toMatchObject({ _id: mixedStaff._id, identity: mixedStaff.identity });
@@ -324,7 +339,8 @@ describe("scoped authorisation", () => {
   }, 60000);
 
   it("enforces complete staff scope and applies permission removal immediately", async () => {
-    expectDenied(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken));
+    expect(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken))
+      .toMatchObject({ status: 403, body: { success: false } });
     const staff = expectSuccess(await request("/api/users?limit=100&filter[profileType]=admin", "GET", actorToken)).results;
     expect(staff.some((user) => user._id === mixedStaff._id)).toBe(false);
 
