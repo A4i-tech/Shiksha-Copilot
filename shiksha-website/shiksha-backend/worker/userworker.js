@@ -105,7 +105,7 @@ async function handleValidationErrors(validationErrors, userId, userName) {
   return { errorFileBuffer, errorUrl };
 }
 
-async function processValidData(userData, client, userId, userName) {
+async function processValidData(userData, client, openedHere, userId, userName) {
   try {
     const totalRecords = userData.length;
     let successCount = 0;
@@ -169,11 +169,11 @@ async function processValidData(userData, client, userId, userName) {
       error: error.message,
     });
   } finally {
-    await client.close();
+    if (openedHere) await client.close();
   }
 }
 
-dbService.getConnection().then(async (client) => {
+dbService.connectToMongoForWorker().then(async ({ client, openedHere }) => {
   try {
     const worksheet = workerData.worksheetData;
     const userData = [];
@@ -219,7 +219,7 @@ dbService.getConnection().then(async (client) => {
       workerData.userName
     );
 
-    await processValidData(userData, client, workerData.userId, workerData.userName);
+    await processValidData(userData, client, openedHere, workerData.userId, workerData.userName);
   } catch (error) {
     console.error("Error processing data in worker:", error);
     parentPort.postMessage({

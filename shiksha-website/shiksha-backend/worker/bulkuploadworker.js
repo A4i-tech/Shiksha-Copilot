@@ -14,7 +14,7 @@ const { uploadToStorage } = require("../services/azure.blob.service");
 const checkRegionValidation = require("../helper/region.helper");
 const AuditLog = require("../models/audit.log.model");
 
-dbService.getConnection().then(async (client) => {
+dbService.connectToMongoForWorker().then(async ({ client, openedHere }) => {
 
   const processSheet = (
     worksheet,
@@ -452,7 +452,7 @@ dbService.getConnection().then(async (client) => {
       parentPort.postMessage({ success: false, error: err });
     } finally {
       session.endSession();
-      await client.close();
+      if (openedHere) await client.close();
     }
   });
 });

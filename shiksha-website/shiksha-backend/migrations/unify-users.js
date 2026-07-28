@@ -9,6 +9,7 @@ const ROLE_MAP = {
 };
 const TOUCHED_COLLECTIONS = ["users", "adminusers", "roles", "teachertrainingbatches", "auditlogs", "lessonplantemplates"];
 const MIGRATION_ID = "unify-users";
+const LEASE_MS = 10 * 60 * 1000;
 
 function identity(document) {
   return {
@@ -116,7 +117,7 @@ async function rewriteReferences(db, idMap) {
   }
 }
 
-async function rewriteTeacherReferences(db, idMap) {
+async function rewriteTeacherReferences(db, idMap, userIds) {
   for (const [oldId, newId] of idMap) {
     const oldValue = new mongoose.Types.ObjectId(oldId), newValue = new mongoose.Types.ObjectId(newId);
     await db.collection("teachertrainingbatches").updateMany(
@@ -127,6 +128,10 @@ async function rewriteTeacherReferences(db, idMap) {
       } }]
     );
   }
+  await db.collection("teachertrainingbatches").updateMany({}, [{ $set: {
+    assignedTeachers: { $filter: { input: "$assignedTeachers", as: "id", cond: { $in: ["$$id", userIds] } } },
+    attendance: { $filter: { input: "$attendance", as: "id", cond: { $in: ["$$id", userIds] } } },
+  } }]);
 }
 
 async function seedBuiltinRoles(db) {
@@ -195,70 +200,111 @@ async function validateReferences(db, migration) {
       validate(collection, document, field, document[field]);
     }
   }
-  for await (const batch of db.collection("teachertrainingbatches").find({}, { projection: { assignedTeachers: 1, attendance: 1 } })) {
-    for (const field of ["assignedTeachers", "attendance"]) {
-      for (const id of batch[field] || []) validate("teachertrainingbatches", batch, field, id);
-    }
-  }
   return issues;
 }
 
-async function restoreBackups(db, backupSuffix) {
+async function restoreBackups(db, backupSuffix, renewLease) {
+  await renewLease();
   const users = db.collection("users");
   const indexes = await users.indexes();
   if (indexes.some((index) => index.name === "uniq_user_phone")) await users.dropIndex("uniq_user_phone");
   for (const name of TOUCHED_COLLECTIONS) {
+    await renewLease();
     await db.collection(name).deleteMany({});
     await db.collection(`${name}_unify_users_backup_${backupSuffix}`).aggregate([
       { $match: {} },
       { $merge: { into: name, whenMatched: "replace", whenNotMatched: "insert" } },
     ]).toArray();
+    await renewLease();
+  }
+}
+
+async function acquireLease(states) {
+  const owner = String(new mongoose.Types.ObjectId());
+  const now = new Date();
+  try {
+    const previous = await states.findOneAndUpdate(
+      {
+        _id: MIGRATION_ID,
+        $or: [
+          { status: { $ne: "running" } },
+          { heartbeatAt: { $lte: new Date(now.getTime() - LEASE_MS) } },
+          { heartbeatAt: { $exists: false } },
+        ],
+      },
+      { $set: { status: "running", owner, heartbeatAt: now } },
+      { upsert: true, returnDocument: "before" }
+    );
+    return { owner, previous };
+  } catch (error) {
+    if (error.code === 11000) throw new Error("User migration is already running");
+    throw error;
   }
 }
 
 async function unifyUsers() {
   const db = mongoose.connection.db;
   const states = db.collection("migrationstates");
-  const interrupted = await states.findOne({ _id: MIGRATION_ID, status: "running" });
-  if (interrupted) {
-    await restoreBackups(db, interrupted.backupSuffix);
-    await states.deleteOne({ _id: MIGRATION_ID });
-  }
-
+  const state = await states.findOne({ _id: MIGRATION_ID });
   const collections = await db.listCollections({ name: "adminusers" }, { nameOnly: true }).toArray();
-  if (!collections.length || !await db.collection("adminusers").countDocuments()) return;
-  const users = db.collection("users");
-  const admins = db.collection("adminusers");
-  const existingUsers = await users.find({}).sort({ createdAt: 1, _id: 1 }).toArray();
-  const adminUsers = await admins.find({}).toArray();
-  const schools = new Set((await db.collection("schools").distinct("_id")).map(String));
-  const districts = new Set(await db.collection("regions").distinct("zones.districts.name"));
-  const migration = buildMigration(existingUsers, adminUsers, schools, districts);
-  migration.issues.push(...await validateReferences(db, migration));
-  if (migration.issues.length) throw new Error(`User migration preflight failed:\n${migration.issues.join("\n")}`);
+  const hasAdmins = collections.length && await db.collection("adminusers").countDocuments();
+  if (!hasAdmins && state?.status !== "running") return;
 
-  const backupSuffix = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "_").replace("Z", "");
-  for (const name of TOUCHED_COLLECTIONS) {
-    const backupName = `${name}_unify_users_backup_${backupSuffix}`;
-    await db.collection(name).aggregate([{ $match: {} }, { $out: backupName }]).toArray();
-  }
-  await states.replaceOne({ _id: MIGRATION_ID }, { _id: MIGRATION_ID, status: "running", backupSuffix }, { upsert: true });
+  const { owner, previous } = await acquireLease(states);
+  const renewLease = async () => {
+    const result = await states.updateOne({ _id: MIGRATION_ID, status: "running", owner }, { $set: { heartbeatAt: new Date() } });
+    if (!result.matchedCount) throw new Error("User migration lease lost");
+  };
 
   try {
+    if (previous?.status === "running" && previous.backupSuffix) {
+      await restoreBackups(db, previous.backupSuffix, renewLease);
+    }
+    await states.updateOne({ _id: MIGRATION_ID, owner }, { $unset: { backupSuffix: "" } });
+
+    const users = db.collection("users");
+    const admins = db.collection("adminusers");
+    const existingUsers = await users.find({}).sort({ createdAt: 1, _id: 1 }).toArray();
+    const adminUsers = await admins.find({}).toArray();
+    const schools = new Set((await db.collection("schools").distinct("_id")).map(String));
+    const districts = new Set(await db.collection("regions").distinct("zones.districts.name"));
+    const migration = buildMigration(existingUsers, adminUsers, schools, districts);
+    migration.issues.push(...await validateReferences(db, migration));
+    if (migration.issues.length) throw new Error(`User migration preflight failed:\n${migration.issues.join("\n")}`);
+    await renewLease();
+
+    const backupSuffix = new Date().toISOString().replace(/[-:.]/g, "").replace("T", "_").replace("Z", "");
+    for (const name of TOUCHED_COLLECTIONS) {
+      await renewLease();
+      const backupName = `${name}_unify_users_backup_${backupSuffix}`;
+      await db.collection(name).aggregate([{ $match: {} }, { $out: backupName }]).toArray();
+      await renewLease();
+    }
+    const backupState = await states.updateOne({ _id: MIGRATION_ID, status: "running", owner }, { $set: { backupSuffix } });
+    if (!backupState.matchedCount) throw new Error("User migration lease lost");
+
     await seedBuiltinRoles(db);
+    await renewLease();
     await users.deleteMany({});
     if (migration.unified.length) await users.insertMany(migration.unified);
+    await renewLease();
     await rewriteReferences(db, migration.idMap);
-    await rewriteTeacherReferences(db, migration.teacherIdMap);
+    await rewriteTeacherReferences(db, migration.teacherIdMap, migration.unified.map((user) => user._id));
+    await renewLease();
     await users.createIndex({ "identity.phone": 1 }, { unique: true, name: "uniq_user_phone" });
     await admins.drop();
-    await states.updateOne({ _id: MIGRATION_ID }, { $set: { status: "completed" } });
+    const result = await states.updateOne(
+      { _id: MIGRATION_ID, status: "running", owner },
+      { $set: { status: "completed", completedAt: new Date() }, $unset: { owner: "", heartbeatAt: "" } }
+    );
+    if (!result.matchedCount) throw new Error("User migration lease lost");
+    console.log(`Unified ${existingUsers.length} users and ${adminUsers.length} admin users into ${migration.unified.length} records`);
   } catch (error) {
-    await restoreBackups(db, backupSuffix);
-    await states.deleteOne({ _id: MIGRATION_ID });
+    const owned = await states.findOne({ _id: MIGRATION_ID, status: "running", owner });
+    if (owned?.backupSuffix) await restoreBackups(db, owned.backupSuffix, renewLease);
+    if (owned) await states.deleteOne({ _id: MIGRATION_ID, owner });
     throw error;
   }
-  console.log(`Unified ${existingUsers.length} users and ${adminUsers.length} admin users into ${migration.unified.length} records`);
 }
 
 module.exports = unifyUsers;
