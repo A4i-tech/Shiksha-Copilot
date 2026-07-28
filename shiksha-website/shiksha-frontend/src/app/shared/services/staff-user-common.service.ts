@@ -80,7 +80,6 @@ export class StaffUserCommonService extends BaseRestService {
       identity: { name: form.name, phone: form.phone, email: form.email, address: form.address },
       roles: form.roles,
       profiles: { admin: { state: form.state } },
-      isDeleted: form.isDeleted,
     });
   }
 

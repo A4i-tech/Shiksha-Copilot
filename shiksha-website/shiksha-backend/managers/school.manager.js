@@ -337,7 +337,7 @@ class SchoolManager extends BaseManager {
     try {
       const schoolId = req.params.id;
       const currentSchool = await this.dao.getById(schoolId);
-      if (!isResourceAllowed(req.permissions, "school.edit", currentSchool)) throw new Error("School is outside your scope");
+      if (!isResourceAllowed(req.permissions, "school.delete", currentSchool)) throw new Error("School is outside your scope");
 
       const school = await this.dao.update(schoolId, { isDeleted: true });
 
@@ -367,7 +367,7 @@ class SchoolManager extends BaseManager {
   async activate(req) {
     try {
       const school = await this.dao.getById(req.params.id);
-      if (!isResourceAllowed(req.permissions, "school.edit", school)) throw new Error("School is outside your scope");
+      if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
       return formatApiReponse(true, "", await this.dao.update(req.params.id, { isDeleted: false }));
     } catch (err) {
       return formatApiReponse(false, err.message, err);

@@ -204,7 +204,6 @@ class UserManager extends BaseManager {
         user.profiles.teacher.classes = [];
       }
       if (payload.profiles?.admin) Object.assign(user.profiles.admin, payload.profiles.admin);
-      if (payload.isDeleted !== undefined) user.isDeleted = payload.isDeleted;
       if (forceRelogin) user.isLoginAllowed = false;
 
       await user.save();
@@ -391,7 +390,7 @@ class UserManager extends BaseManager {
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
       }
-      const permission = user.profiles.teacher ? "teacher.edit" : "staff.edit";
+      const permission = user.profiles.teacher ? "teacher.delete" : "staff.delete";
       if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
       if (user.profiles.teacher && (await this.schoolDao.getOne({ _id: schoolDependency(user.roles) })).isDeleted) {
         return formatApiReponse(
@@ -425,7 +424,7 @@ class UserManager extends BaseManager {
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
       }
-      const permission = user.profiles.teacher ? "teacher.edit" : "staff.edit";
+      const permission = user.profiles.teacher ? "teacher.delete" : "staff.delete";
       if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
       if (user.isDeleted) {
         return formatApiReponse(false, "Teacher is already inactive", null);

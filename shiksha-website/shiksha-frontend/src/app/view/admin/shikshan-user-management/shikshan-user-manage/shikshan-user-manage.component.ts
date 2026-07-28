@@ -27,12 +27,6 @@ export class ShikshanUserManageComponent implements OnInit {
     bindValue: 'state'
   };
 
-  toggleconfig = {
-    color: {
-      checked: '#4069E5',
-      unchecked: '#dcdcdc',
-    }
-  };
   addForm!: FormGroup;
   submitted: boolean = false;
   mode!: any;
@@ -65,7 +59,6 @@ export class ShikshanUserManageComponent implements OnInit {
       phone: ['', [Validators.required, Validators.minLength(10), Validators.pattern(this.utilityService.regexPattern.phoneRegex)]],
       email: [null, [Validators.required, Validators.email]],
       roles: this.fb.array([this.createAssignment({})]),
-      isDeleted: [false, [Validators.required]],
       state: [null],
     });
   }
@@ -111,7 +104,6 @@ export class ShikshanUserManageComponent implements OnInit {
       phone: formData.phone?.toString(),
       email: formData.email?.trim().toLowerCase(),
       roles: formData.roles,
-      isDeleted: formData.isDeleted,
       state: formData.state,
     };
 
@@ -158,7 +150,6 @@ export class ShikshanUserManageComponent implements OnInit {
           name: u.identity.name,
           phone: u.identity.phone,
           email: u.identity.email,
-          isDeleted: u.isDeleted,
           state: u.profiles.admin.state,
         };
         this.addForm.patchValue(patch);
@@ -168,14 +159,6 @@ export class ShikshanUserManageComponent implements OnInit {
         this.utilityService.handleError(err);
       },
     });
-  }
-
-  get isActive(): boolean {
-    return !this.addForm.get('isDeleted')?.value;
-  }
-  set isActive(val: boolean) {
-    this.addForm.get('isDeleted')?.setValue(!val);
-    this.addForm.markAsDirty();
   }
 
 }

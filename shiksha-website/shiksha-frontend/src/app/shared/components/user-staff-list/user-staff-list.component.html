@@ -158,7 +158,7 @@
 																</a>
 														</li>
 
-												<li *ngIf="!item.isDeleted && loggedUser() !== item._id" [hasPermission]="getType()?.type === 'user' ? ['teacher.edit'] : ['staff.edit']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+												<li *ngIf="!item.isDeleted && loggedUser() !== item._id" [hasPermission]="getType()?.type === 'user' ? ['teacher.delete'] : ['staff.delete']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
 																<a class="block px-4 py-2 text-sm text-content" role="menuitem"
 																		(click)="openModalForDeleteConfirm(item)">
 																		<div class="flex items-center">
@@ -167,7 +167,7 @@
 																		</div>
 																</a>
 														</li>
-												<li *ngIf="item.isDeleted" [hasPermission]="getType()?.type === 'user' ? ['teacher.edit'] : ['staff.edit']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+												<li *ngIf="item.isDeleted" [hasPermission]="getType()?.type === 'user' ? ['teacher.delete'] : ['staff.delete']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
 															<a class="block px-4 py-2 text-sm text-content" role="menuitem"  (click)="activateUser(item._id)">
 															  <div class="flex items-center">
 																<img class="mx-2 w-7" src="assets/icons/switch-on.svg"  alt=""/>
@@ -265,7 +265,7 @@
 																			</li>
 
 																			
-																					<li *ngIf="!item.isDeleted && loggedUser() !== item._id" [hasPermission]="getType()?.type === 'user' ? ['teacher.edit'] : ['staff.edit']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+																					<li *ngIf="!item.isDeleted && loggedUser() !== item._id" [hasPermission]="getType()?.type === 'user' ? ['teacher.delete'] : ['staff.delete']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
 																					<a class="block px-4 py-2 text-sm text-content" role="menuitem"
 																							(click)="openModalForDeleteConfirm(item)">
 																							<div class="flex items-center">
@@ -275,7 +275,7 @@
 																							</div>
 																					</a>
 																			</li>
-																					<li *ngIf="item.isDeleted" [hasPermission]="getType()?.type === 'user' ? ['teacher.edit'] : ['staff.edit']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+																					<li *ngIf="item.isDeleted" [hasPermission]="getType()?.type === 'user' ? ['teacher.delete'] : ['staff.delete']" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
 																				<a class="block px-4 py-2 text-sm text-content" role="menuitem"  (click)="activateUser(item._id)"	>
 																				  <div class="flex items-center">
 																					<img class="mx-2 w-7" src="assets/icons/switch-on.svg"  alt=""/>

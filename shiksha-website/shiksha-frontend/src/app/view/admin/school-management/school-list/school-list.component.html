@@ -156,7 +156,7 @@
                 </a>
               </li>
 
-              <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.edit']">
+              <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                 <a
                   class="block px-4 py-2 text-sm text-content"
                   role="menuitem"
@@ -168,7 +168,7 @@
                   </div>
                 </a>
               </li>
-              <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+              <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                 <a
                   class="block px-4 py-2 text-sm text-content"
                   role="menuitem"
@@ -325,7 +325,7 @@
                       </a>
                     </li>
   
-                    <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.edit']">
+                    <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                       <a
                         class="block px-4 py-2 text-sm text-content"
                         role="menuitem"
@@ -341,7 +341,7 @@
                         </div>
                       </a>
                     </li>
-                    <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+                    <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                       <a
                         class="block px-4 py-2 text-sm text-content"
                         role="menuitem"

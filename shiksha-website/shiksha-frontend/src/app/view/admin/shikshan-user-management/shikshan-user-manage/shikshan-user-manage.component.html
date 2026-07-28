@@ -68,13 +68,6 @@
 					<button type="button" class="btn-outline-primary px-4" *ngIf="mode !== 'view'" (click)="addAssignment()">{{'Add Role' | translate}}</button>
 				</div>
 			</div>
-			<div class="mt-8">
-				<label class="form-control-label">{{'Status of staff' | translate}}</label>
-				<div class="flex items-center space-x-4">
-					<span>{{'Active' | translate}}</span>
-					<ng-toggle formControlName="isDeleted" [color]="toggleconfig.color"></ng-toggle>
-				</div>
-			</div>
 			<div class="buttons mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2" *ngIf="mode !== 'view'">
 				<button type="button" class="w-full sm:w-20 btn-outline-primary"
 					routerLink="/staff/list">{{'Cancel' | translate}}</button>

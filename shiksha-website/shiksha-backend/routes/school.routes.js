@@ -47,14 +47,14 @@ router.put(
 router.put(
 	"/school/activate/:id",
 	isAuthenticated,
-	requirePermission("school.edit"),
+	requirePermission("school.delete"),
 	asyncMiddleware(schoolController.activate.bind(schoolController))
 );
 
 router.put(
 	"/school/deactivate/:id",
 	isAuthenticated,
-	requirePermission("school.edit"),
+	requirePermission("school.delete"),
 	asyncMiddleware(schoolController.deactivate.bind(schoolController))
 );
 

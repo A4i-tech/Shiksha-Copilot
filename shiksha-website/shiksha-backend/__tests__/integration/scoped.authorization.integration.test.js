@@ -344,6 +344,21 @@ describe("scoped authorisation", () => {
     expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, { permissions: operatorPermissions }));
   });
 
+  it("keeps lifecycle changes behind delete permissions", async () => {
+    expectDenied(await request(`/api/users/${localTeacher._id}`, "PUT", actorToken, { isDeleted: true }));
+    expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, {
+      permissions: operatorPermissions.filter((permission) => !["school.delete", "teacher.delete", "staff.delete"].includes(permission)),
+    }));
+    for (const [method, path] of [
+      ["PUT", `/api/school/deactivate/${localSchool._id}`],
+      ["PUT", `/api/users/${localTeacher._id}/deactivate`],
+      ["PUT", `/api/users/${mixedStaff._id}/deactivate`],
+    ]) {
+      expect(await request(path, method, actorToken)).toMatchObject({ status: 403, body: { success: false } });
+    }
+    expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, { permissions: operatorPermissions }));
+  });
+
   it("enforces scope on school create, update, activation, deactivation, and deletion", async () => {
     const body = {
       name: `Scoped Integration School ${suffix}`,

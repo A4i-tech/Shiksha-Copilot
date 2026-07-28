@@ -108,8 +108,7 @@ const validateUserUpdate = (req, res, next) => {
 		identity: identitySchema,
 		roles: Joi.array().items(roleAssignment).min(1),
 		profiles: profilesSchema,
-		isDeleted: Joi.boolean(),
-}).min(1);
+	}).min(1);
 
 	let isValid = schema.validate(data, { abortEarly: false });
 

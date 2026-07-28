@@ -120,14 +120,14 @@ router.delete(
 router.put(
 	"/users/:id/activate",
 	isAuthenticated,
-	requireAnyPermission("teacher.edit", "staff.edit"),
+	requireAnyPermission("teacher.delete", "staff.delete"),
 	asyncMiddleware(userController.activate.bind(userController))
 );
 
 router.put(
 	"/users/:id/deactivate",
 	isAuthenticated,
-	requireAnyPermission("teacher.edit", "staff.edit"),
+	requireAnyPermission("teacher.delete", "staff.delete"),
 	asyncMiddleware(userController.deactivate.bind(userController))
 );
 
