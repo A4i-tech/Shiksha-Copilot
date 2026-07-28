@@ -59,6 +59,8 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   routerEventsSubscription: Subscription;
 
+  private planAiSub: Subscription | null = null;
+
   nextUrl: any;
 
   subjectDetails: any;
@@ -768,7 +770,8 @@ export class LessonPlanViewEditComponent implements OnInit {
       return;
     }
     this.planAiLoading = true;
-    this.contentGenService
+    this.planAiSub?.unsubscribe();
+    this.planAiSub = this.contentGenService
       .planAiEdit({
         lessonId: this.planId,
         isLesson: true,
@@ -829,6 +832,7 @@ export class LessonPlanViewEditComponent implements OnInit {
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
     this.modeSubscription.unsubscribe();
+    this.planAiSub?.unsubscribe();
     window.removeEventListener('beforeunload', this.unloadHandler);
 
     if (!this.isSaved && this.mode !== 'view') {
