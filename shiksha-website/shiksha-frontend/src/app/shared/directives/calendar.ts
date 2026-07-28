@@ -40,7 +40,22 @@ export class CalendarAccessibilityDirective implements AfterViewInit, OnDestroy 
     if (root.getAttribute('role') === 'application') {
       root.setAttribute('role', 'button');
     }
+    // .cal-day-headers[role=row] holds role=columnheader children (needs a `row` ancestor —
+    // satisfied), but its own parent has no grid/table/rowgroup role, so `row` itself is
+    // orphaned (aria-required-parent). Give its direct parent role="grid": a self-contained
+    // header-only grid (one row child), without touching the broader week-view body markup.
+    this._patchDayHeaderParent(root);
     root.querySelectorAll('.cal-week-view[role="grid"]').forEach((g) => g.removeAttribute('role'));
     root.querySelectorAll('[role="application"]').forEach((e) => e.setAttribute('role', 'button'));
+    root.querySelectorAll('.cal-day-headers[role="row"]').forEach((h) => this._patchDayHeaderParent(h));
+  }
+
+  private _patchDayHeaderParent(el: Element): void {
+    if (el.classList?.contains('cal-day-headers') && el.getAttribute('role') === 'row') {
+      const parent = el.parentElement;
+      if (parent && !parent.getAttribute('role') && parent.children.length === 1) {
+        parent.setAttribute('role', 'grid');
+      }
+    }
   }
 }

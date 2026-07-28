@@ -65,7 +65,7 @@
                 <span class="relative group cursor-help" tabindex="0" (focus)="sourceHelpOpen = true"
                   (blur)="sourceHelpOpen = false" (click)="sourceHelpOpen = true">
                   <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="Source information" />
-                  <span role="tooltip" [class.opacity-100]="sourceHelpOpen"
+                  <span role="tooltip" [attr.aria-label]="'Source information' | translate" [class.opacity-100]="sourceHelpOpen"
                     class="grid pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute top-5 left-0 z-50 w-72 gap-1 rounded border bg-white p-3 text-xs font-normal shadow-md">
                     <ng-container *ngFor="let option of sourceGenerationOptions">
                       <strong>{{ option.name }}</strong>

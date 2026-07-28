@@ -3,8 +3,10 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
+  OnDestroy,
   OnInit,
   Output,
   SimpleChanges,
@@ -31,7 +33,14 @@ import { forkJoin } from 'rxjs';
   providers: [DatePipe],
 })
 export class AddEditScheduleComponent
-  implements AfterViewInit, OnInit, OnChanges {
+  implements AfterViewInit, OnInit, OnChanges, OnDestroy {
+  private previousActiveElement: HTMLElement | null = null;
+
+  @HostListener('document:keydown.escape')
+  handleEscape() {
+    this.closePopUP();
+  }
+
   @Input() cordinate: any;
   @Input() formData: any;
   @Input() cellData: any;
@@ -176,6 +185,7 @@ export class AddEditScheduleComponent
    * @param changes
    */
   ngOnInit(): void {
+    this.previousActiveElement = document.activeElement as HTMLElement;
     const userData = localStorage.getItem('userData'); //user data for teacher id and school id
     if (userData) {
       const parsedUserData = JSON.parse(userData);
@@ -822,6 +832,12 @@ export class AddEditScheduleComponent
    */
   closePopUP() {
     this.close.emit();
+  }
+
+  ngOnDestroy(): void {
+    if (this.previousActiveElement?.isConnected) {
+      this.previousActiveElement.focus();
+    }
   }
 
 

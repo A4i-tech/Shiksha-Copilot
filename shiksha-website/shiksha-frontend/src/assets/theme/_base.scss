@@ -116,7 +116,9 @@ input[type='number'] {
 }
 
 .form-control-error{
-  @apply text-xs text-error-100
+  // Accessible red (#C62828 ~5.6:1 on white) — error-100 (#E77E7E) is ~2.7:1, fails WCAG 1.4.3
+  @apply text-xs;
+  color: #C62828;
 }
 
 .btn-primary-light {

@@ -76,9 +76,9 @@
 					<div class="mt-7" *ngIf="getLessonType()?.type !== 'plan'">
 							<div class="flex items-center">
 									<img class="me-4" src="assets/icons/level_Button.svg" alt="">
-									<h3 class="font-bold text-base md:text-[24px] text-content-100">
+									<h2 class="font-bold text-base md:text-[24px] text-content-100">
 									{{'Student Comprehension Level' | translate}}
-							</h3>
+							</h2>
 							</div>
 							
 							<div class="mt-4 p-2 rounded-sm bg-[#ED7D2D0F] flex items-center flex-wrap">
@@ -162,12 +162,13 @@
 							</h2>
 					</div>
 
-					<div>
+					<fieldset>
+							<legend class="sr-only">{{'Include Videos' | translate}}</legend>
 							<div class="inline-flex space-x-1 me-5 mt-5 mb-0" *ngFor="let item of radioBtn">
-									<input type="radio" formControlName="videos" [value]="item.value"  [id]="item" autocomplete="off" />
-									<label>{{item.name | translate}}</label>                    
+									<input type="radio" formControlName="videos" [value]="item.value" [id]="'videos-' + item.name" autocomplete="off" />
+									<label [for]="'videos-' + item.name">{{item.name | translate}}</label>
 							</div>
-					</div>
+					</fieldset>
 					</div>
 					
 					<small class="form-control-error" *ngIf="submitted && f['videos']?.errors?.['required']">{{'Please select if videos to include' | translate}}.</small>

@@ -67,10 +67,10 @@
 
 <!-- pop up modal  -->
 <div class="pop-up-container" [ngClass]="modalStatus? 'visible-modal':'hidden-modal'"
-	(keydown.escape)="closeModal()" role="dialog" aria-modal="true" aria-label="Enter PIN">
+	[attr.inert]="!modalStatus ? '' : null" (keydown.escape)="closeModal()" role="dialog" aria-modal="true" aria-label="Enter PIN">
 	<div class="backdrop"></div>
 	<form (ngSubmit)="onVerifyOTP()">
-		<div class="modal" cdkTrapFocus [cdkTrapFocusAutoCapture]="modalStatus">
+		<div class="modal" [cdkTrapFocus]="modalStatus" [cdkTrapFocusAutoCapture]="modalStatus">
 			<div class="close-btn p-1 hover:bg-shade-50 w-9 h-9 absolute top-3 md:top-6 right-6 cursor-pointer rounded-full"
 				(click)="closeModal()">
 				<img src="assets/icons/remove.svg" alt="close-modal" class="w-full h-full  hover:bg-shade-50">

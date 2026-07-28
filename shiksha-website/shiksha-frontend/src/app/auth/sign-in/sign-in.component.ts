@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnDestroy, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { Carousel } from 'src/app/shared/interfaces/carousel';
 import { scaleAnimation } from 'src/app/shared/utility/animations.util';
 import { images } from 'src/app/shared/utility/carousel.util';
@@ -39,12 +39,12 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   rememberMe= false;
   storedUserInfo:any;
   otpTriggered = false;
+  private preModalActiveElement: HTMLElement | null = null;
 
   otpInputConfig: NgOtpInputConfig = {
     length: 4,
     allowNumbersOnly:true,
     isPasswordInput:true,
-    inputMode:'numeric',
     inputStyles:{
       'width': '35px',
       'height': '35px',
@@ -69,7 +69,20 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     private sidebarService:SidebarService,
     private translateService: TranslateService,
     private secureCookieService:SecureCookieService,
+    private renderer: Renderer2,
+    private hostElement: ElementRef,
   ) {}
+
+  /**
+   * ng-otp-input renders its boxes as `.otp-input` elements with no accessible name;
+   * label each digit box once the boxes exist in the DOM.
+   */
+  labelOtpInputs() {
+    const inputs: NodeListOf<HTMLElement> = this.hostElement.nativeElement.querySelectorAll('.otp-input');
+    inputs.forEach((el, i) => {
+      this.renderer.setAttribute(el, 'aria-label', `Digit ${i + 1} of ${inputs.length}`);
+    });
+  }
 
   /**
    * autoslide enabled
@@ -98,7 +111,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    this.phone.nativeElement.focus();
+    this.labelOtpInputs();
   }
 
   getCookies(){
@@ -219,6 +232,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   getOtp(reqBody:any){
+    this.preModalActiveElement = document.activeElement as HTMLElement;
     this.service.validateMobileNumber(reqBody).subscribe({
       next: (res: any) => {
         this.recoveryMode = res?.data?.recoveryTriggered === true;
@@ -235,7 +249,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         if(this.storedUserInfo && this.phoneNumber === this.storedUserInfo?.phone && !this.otpTriggered){
           this.ngOtp.setValue(this.storedUserInfo.apin)
         }
-        setTimeout(() => this.ngOtp.focusTo(this.ngOtp.getBoxId(0)));
+        setTimeout(() => { this.ngOtp.focusTo(this.ngOtp.getBoxId(0)); this.labelOtpInputs(); });
       },
       error: (err: any) => {
         if (err.error?.code === 'PIN_COOLDOWN') {
@@ -243,7 +257,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           this.otpTriggered = true;
           this.recoveryMode = true;
           this.startTimer(err.error.data.retryAfterSeconds);
-          setTimeout(() => this.ngOtp.focusTo(this.ngOtp.getBoxId(0)));
+          setTimeout(() => { this.ngOtp.focusTo(this.ngOtp.getBoxId(0)); this.labelOtpInputs(); });
         }
         this.utility.handleError(err);
       },
@@ -319,6 +333,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   closeModal() {
     this.modalStatus = false;
     this.stopTimer();
+    if (this.preModalActiveElement?.isConnected) {
+      this.preModalActiveElement.focus();
+    }
   }
 
   startTimer(seconds: number) {
