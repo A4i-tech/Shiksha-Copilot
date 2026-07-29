@@ -19,6 +19,10 @@ function _authCacheValid() {
   return _authCache && _authCache.expiresAt > Date.now() + 30_000;
 }
 
+// TODO(RLS): AdminUser.role is currently restricted to ["manager","admin"] by the
+// Mongoose enum, so only StateAdmin is reachable here. All dashboard viewers see
+// state-wide data — per-role scoping (HM/CRP/BEO/DEO/DDPI) is intentionally deferred
+// until the role model is extended. Tracked in issue #XXX.
 const ROLE_MAP = {
   power: "HM", standard: "HM", hm: "HM",
   crp: "CRP", beo: "BEO", meo: "MEO",
