@@ -386,6 +386,20 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }
   }
 
+  loadQuestionTypeNames(subjectName: string) {
+    this.questionBankService.getQuestionTypes(subjectName).subscribe({
+      next: (res) => {
+        const types = res.data ?? [];
+        this.grammarTypeNames = types.filter(t => t.value?.startsWith('GRAMMAR_')).map(t => t.name);
+        this.aiStandardTypeNames = types.filter(t => !t.value?.startsWith('GRAMMAR_')).map(t => t.name);
+      },
+      error: () => {
+        this.grammarTypeNames = [];
+        this.aiStandardTypeNames = [];
+      }
+    });
+  }
+
   onChapterChange(val: any) {
     this.distributeMarks();
     this.f.subTopic.reset();
