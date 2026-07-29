@@ -210,7 +210,6 @@ class TeacherLessonPlanAggregation {
 				{
 					$match: {
 						teacherId: new ObjectId(teacherId),
-						isDeleted: { $ne: true },
 					},
 				},
 				{
@@ -435,7 +434,6 @@ class TeacherLessonPlanAggregation {
 						teacherId: new ObjectId(teacherId),
 						lessonId: new ObjectId(lessonPlanId),
 						isLesson: true,
-						isDeleted: { $ne: true },
 					},
 				},
 				this._lessonLookupStage(),
@@ -515,7 +513,6 @@ class TeacherLessonPlanAggregation {
 						teacherId: new ObjectId(teacherId),
 						resourceId: new ObjectId(resourcePlanId),
 						isLesson: false,
-						isDeleted: { $ne: true },
 					},
 				},
 				this._resourceLookupStage(),

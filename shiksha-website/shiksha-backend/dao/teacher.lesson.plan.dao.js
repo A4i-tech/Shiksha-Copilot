@@ -257,10 +257,8 @@ class TeacherLessonPlanDao extends BaseDao {
 
 	async deleteLessonPlan(teacherId, lessonPlanId) {
 		try {
-			const lessonPlan = await TeacherLessonPlan.findOneAndUpdate(
-				{ teacherId, lessonId: lessonPlanId, isLesson: true, isDeleted: { $ne: true } },
-				{ $set: { isDeleted: true } },
-				{ new: true }
+			const lessonPlan = await TeacherLessonPlan.findOneAndDelete(
+				{ teacherId, lessonId: lessonPlanId, isLesson: true }
 			);
 			return lessonPlan;
 		} catch (error) {
@@ -271,10 +269,8 @@ class TeacherLessonPlanDao extends BaseDao {
 
 	async deleteResourcePlan(teacherId, resourcePlanId) {
 		try {
-			const resourcePlan = await TeacherLessonPlan.findOneAndUpdate(
-				{ teacherId, resourceId: resourcePlanId, isLesson: false, isDeleted: { $ne: true } },
-				{ $set: { isDeleted: true } },
-				{ new: true }
+			const resourcePlan = await TeacherLessonPlan.findOneAndDelete(
+				{ teacherId, resourceId: resourcePlanId, isLesson: false }
 			);
 			return resourcePlan;
 		} catch (error) {

@@ -72,10 +72,6 @@ const teacherLessonPlan = new Schema(
 			type: Boolean,
 			default: false,
 		},
-		isDeleted: {
-			type: Boolean,
-			default: false,
-		},
 		isVideoSelected :{
 			type: Boolean,
 			default: false,
