@@ -96,7 +96,7 @@ const routes: Routes = [
         (c) => c.LeadersDashboardComponent
       ),
     data: {
-      permissions: ['admin', 'manager', 'state', 'hm', 'crp', 'beo', 'meo', 'deo', 'ddpi'],
+      permissions: ['admin', 'manager'],
     },
     canActivate: [PermissionGuard],
   }

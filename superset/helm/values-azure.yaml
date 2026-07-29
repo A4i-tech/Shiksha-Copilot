@@ -13,13 +13,32 @@ image:
   pullPolicy: IfNotPresent
 
 init:
+  # createAdmin: false — admin is provisioned by initScripts/create_admin.py
+  # using SUPERSET_ADMIN_PASSWORD from extraEnvRaw, so the password never appears
+  # in values files or Helm --set arguments.
+  createAdmin: false
   adminUser:
     username: admin
     firstname: Superset
     lastname: Admin
     email: admin@shiksha.local
-    passwordSecret: superset-app-secrets
-    passwordSecretKey: admin-password
+
+initScripts:
+  create_admin.py: |
+    import os, subprocess, sys
+    password = os.environ.get("SUPERSET_ADMIN_PASSWORD", "")
+    if not password:
+        raise RuntimeError("SUPERSET_ADMIN_PASSWORD env var not set — cannot provision admin")
+    result = subprocess.run(
+        ["superset", "fab", "create-admin",
+         "--username", "admin", "--firstname", "Superset", "--lastname", "Admin",
+         "--email", "admin@shiksha.local", "--password", password],
+        capture_output=True, text=True,
+    )
+    print(result.stdout)
+    if result.returncode not in (0, 1):  # exit 1 = user already exists, that's fine
+        print(result.stderr, file=sys.stderr)
+        sys.exit(result.returncode)
 
 configOverrides:
   secret: |
@@ -66,6 +85,18 @@ extraEnvRaw:
       secretKeyRef:
         name: superset-app-secrets
         key: pg-password
+  - name: SUPERSET_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: superset-app-secrets
+        key: admin-password
+  # Angular app origin for frame-ancestors CSP — required for embedded dashboard.
+  # Set via: az keyvault secret set --vault-name a4i-kube-dev-kv --name superset-embed-origin --value "https://app.shiksha.ai"
+  - name: ALLOWED_EMBED_ORIGIN
+    valueFrom:
+      secretKeyRef:
+        name: superset-app-secrets
+        key: embed-origin
 
 supersetNode:
   replicaCount: 2
