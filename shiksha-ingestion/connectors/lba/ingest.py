@@ -1,40 +1,21 @@
 from __future__ import annotations
 
+import asyncio
 import base64
+import hashlib
 import json
 import logging
 from pathlib import Path
 from typing import Any
-
-try:
-    from omni_ingest.core.model import (
-        KnowledgeItem,
-        ResolvedResource,
-        Step,
-        StepResult,
-        StepStatus,
-    )
-    from omni_ingest.core.pipeline import IngestionContext, PipelineRunner, register_step
-    _OMNI_AVAILABLE = True
-except Exception:
-    _OMNI_AVAILABLE = False
-    KnowledgeItem = None  # type: ignore[assignment,misc]
-    ResolvedResource = None  # type: ignore[assignment,misc]
-    Step = object  # type: ignore[assignment,misc]
-    StepResult = None  # type: ignore[assignment,misc]
-    StepStatus = None  # type: ignore[assignment,misc]
-    IngestionContext = None  # type: ignore[assignment,misc]
-    PipelineRunner = None  # type: ignore[assignment,misc]
-    def register_step(*a, **kw): pass  # type: ignore[misc]
-
-from pydantic import BaseModel
 
 from .base_scraper import PDFEntry
 from .manifest import Manifest
 
 log = logging.getLogger(__name__)
 
-MAX_PAGES = 10
+PAGES_PER_VISION_BATCH = 10
+TEXT_CHUNK_SIZE = 60_000
+TEXT_CHUNK_OVERLAP = 500
 
 EXTRACTION_PROMPT_TEXT = """You are extracting practice questions from a state board school textbook.
 
@@ -74,35 +55,6 @@ For each question return a JSON object with EXACTLY these fields:
 Return {{"questions": [...]}}. If no questions found return {{"questions": []}}."""
 
 
-class _NullStore:
-    async def create_pipeline_run(self, tenant_id, pipeline_version_id, source_uri, id=None):
-        from uuid import uuid4
-        return id or uuid4()
-
-    async def update_pipeline_run(self, run_id, status, completed_at=None, error=None):
-        pass
-
-    async def create_step_run(self, run_id, step_name):
-        from uuid import uuid4
-        return uuid4()
-
-    async def update_step_run(self, step_id, status, metadata=None, error=None):
-        pass
-
-
-def _pdf_pages_to_images(pdf_path: Path, max_pages: int = MAX_PAGES) -> list[str]:
-    import fitz
-    doc = fitz.open(str(pdf_path))
-    images: list[str] = []
-    for i, page in enumerate(doc):
-        if i >= max_pages:
-            break
-        pix = page.get_pixmap(dpi=150)
-        images.append(base64.b64encode(pix.tobytes("png")).decode())
-    doc.close()
-    return images
-
-
 def _text_is_usable(text: str) -> bool:
     if not text or len(text) < 100:
         return False
@@ -110,89 +62,46 @@ def _text_is_usable(text: str) -> bool:
     return (printable / len(text)) > 0.5
 
 
-class LBAExtractionStep(BaseModel, Step):
-    """OmniIngest pipeline step: extracts LBA questions via Azure OpenAI (text or vision path)."""
-
-    medium: str = ""
-    chunk_size: int = 60_000
-
-    async def run(self, ctx: IngestionContext[ResolvedResource]) -> StepResult:
-        import os
-        from openai import AsyncAzureOpenAI
-
-        client = AsyncAzureOpenAI(
-            api_key=os.environ["AZURE_OPENAI_API_KEY"],
-            azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-            api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2025-04-01-preview"),
-        )
-        deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-
-        force_vision = self.medium.lower() in ("telugu", "kannada", "hindi")
-        text = ctx.resource.content
-        all_questions: list[dict[str, Any]] = []
-
-        if not force_vision and _text_is_usable(text):
-            log.info("LBAExtractionStep: text path, %d chars", len(text))
-            for start in range(0, len(text), self.chunk_size):
-                chunk = text[start:start + self.chunk_size]
-                r = await client.chat.completions.create(
-                    model=deployment,
-                    messages=[{"role": "user", "content": EXTRACTION_PROMPT_TEXT.format(text=chunk)}],
-                    response_format={"type": "json_object"},
-                )
-                raw = r.choices[0].message.content or "{}"
-                try:
-                    d = json.loads(raw)
-                    chunk_qs = d.get("questions", []) if isinstance(d, dict) else []
-                    log.info("Chunk %d-%d: %d questions", start, start + self.chunk_size, len(chunk_qs))
-                    all_questions.extend(chunk_qs)
-                except json.JSONDecodeError:
-                    pass
-        else:
-            log.info("LBAExtractionStep: vision path, medium=%s", self.medium)
-            images = _pdf_pages_to_images(Path(ctx.resource.uri))
-            if not images:
-                log.warning("No pages rendered from %s", ctx.resource.uri)
-                ctx.items = []
-                return StepResult(status=StepStatus.SUCCESS, items=[], metadata={"question_count": 0})
-
-            content: list[dict[str, Any]] = [{"type": "text", "text": EXTRACTION_PROMPT_VISION}]
-            for img_b64 in images:
-                content.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:image/png;base64,{img_b64}", "detail": "high"},
-                })
-
-            resp = await client.chat.completions.create(
-                model=deployment,
-                messages=[{"role": "user", "content": content}],
-                response_format={"type": "json_object"},
-            )
-            raw = resp.choices[0].message.content or "{}"
-            try:
-                d = json.loads(raw)
-                all_questions = d.get("questions", []) if isinstance(d, dict) else []
-            except json.JSONDecodeError:
-                log.warning("Vision LLM returned non-JSON for %s", ctx.resource.uri)
-
-        ctx.items = [
-            KnowledgeItem(
-                source_uri=ctx.resource.uri,
-                content=q.get("question", ""),
-                metadata=q,
-            )
-            for q in all_questions
-        ]
-
-        log.info("LBAExtractionStep: extracted %d questions", len(ctx.items))
-        return StepResult(
-            status=StepStatus.SUCCESS,
-            items=ctx.items,
-            metadata={"question_count": len(ctx.items)},
-        )
+def _iter_pdf_page_image_batches(pdf_path: Path, batch_size: int = PAGES_PER_VISION_BATCH):
+    """Yields (start, end, total, images) batches covering every page of the PDF."""
+    import fitz
+    doc = fitz.open(str(pdf_path))
+    try:
+        total = doc.page_count
+        for start in range(0, total, batch_size):
+            end = min(start + batch_size, total)
+            images = [base64.b64encode(doc[i].get_pixmap(dpi=150).tobytes("png")).decode() for i in range(start, end)]
+            yield start, end, total, images
+    finally:
+        doc.close()
 
 
-register_step("lba_extraction", LBAExtractionStep)
+async def _create_with_retry(client, **kwargs):
+    from openai import RateLimitError
+
+    delay = 1
+    for attempt in range(4):
+        try:
+            return await client.chat.completions.create(**kwargs)
+        except RateLimitError:
+            if attempt == 3:
+                raise
+            log.warning("Rate limited, retrying in %ds (attempt %d/4)", delay, attempt + 1)
+            await asyncio.sleep(delay)
+            delay *= 2
+
+
+def _dedupe_questions(questions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Drops duplicates caused by overlapping text chunks, keyed on normalized question text."""
+    seen: set[str] = set()
+    deduped = []
+    for q in questions:
+        key = " ".join(str(q.get("question", "")).split()).casefold()
+        if key and key in seen:
+            continue
+        seen.add(key)
+        deduped.append(q)
+    return deduped
 
 
 async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> list[dict[str, Any]]:
@@ -205,7 +114,6 @@ async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> li
         base_url=os.environ.get("OPENAI_BASE_URL"),
     )
     deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4o")
-    chunk_size = 60_000
 
     force_vision = medium.lower() in ("telugu", "kannada", "hindi")
 
@@ -217,9 +125,11 @@ async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> li
 
     if not force_vision and _text_is_usable(raw_text):
         log.info("_extract_questions: text path, %d chars", len(raw_text))
-        for start in range(0, len(raw_text), chunk_size):
-            chunk = raw_text[start:start + chunk_size]
-            r = await client.chat.completions.create(
+        step = TEXT_CHUNK_SIZE - TEXT_CHUNK_OVERLAP
+        for start in range(0, len(raw_text), step):
+            chunk = raw_text[start:start + TEXT_CHUNK_SIZE]
+            r = await _create_with_retry(
+                client,
                 model=deployment,
                 messages=[{"role": "user", "content": EXTRACTION_PROMPT_TEXT.format(text=chunk)}],
                 response_format={"type": "json_object"},
@@ -228,35 +138,40 @@ async def _extract_questions(pdf_path: Path, board: str, medium: str = "") -> li
             try:
                 d = json.loads(raw)
                 chunk_qs = d.get("questions", []) if isinstance(d, dict) else []
-                log.info("Chunk %d-%d: %d questions", start, start + chunk_size, len(chunk_qs))
+                log.info("Chunk %d-%d: %d questions", start, start + TEXT_CHUNK_SIZE, len(chunk_qs))
                 all_questions.extend(chunk_qs)
             except json.JSONDecodeError:
-                pass
+                log.warning("Failed to parse LLM JSON for chunk %d-%d of %s", start, start + TEXT_CHUNK_SIZE, pdf_path.name)
+        all_questions = _dedupe_questions(all_questions)
     else:
         log.info("_extract_questions: vision path, medium=%s", medium)
-        images = _pdf_pages_to_images(pdf_path)
-        if not images:
+        batches = list(_iter_pdf_page_image_batches(pdf_path))
+        if not batches:
             log.warning("No pages rendered from %s", pdf_path)
             return []
 
-        content: list[dict[str, Any]] = [{"type": "text", "text": EXTRACTION_PROMPT_VISION}]
-        for img_b64 in images:
-            content.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:image/png;base64,{img_b64}", "detail": "high"},
-            })
+        for start, end, total, images in batches:
+            content: list[dict[str, Any]] = [{"type": "text", "text": EXTRACTION_PROMPT_VISION}]
+            for img_b64 in images:
+                content.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{img_b64}", "detail": "high"},
+                })
 
-        resp = await client.chat.completions.create(
-            model=deployment,
-            messages=[{"role": "user", "content": content}],
-            response_format={"type": "json_object"},
-        )
-        raw = resp.choices[0].message.content or "{}"
-        try:
-            d = json.loads(raw)
-            all_questions = d.get("questions", []) if isinstance(d, dict) else []
-        except json.JSONDecodeError:
-            log.warning("Vision LLM returned non-JSON for %s", pdf_path)
+            resp = await _create_with_retry(
+                client,
+                model=deployment,
+                messages=[{"role": "user", "content": content}],
+                response_format={"type": "json_object"},
+            )
+            raw = resp.choices[0].message.content or "{}"
+            try:
+                d = json.loads(raw)
+                batch_qs = d.get("questions", []) if isinstance(d, dict) else []
+                log.info("Pages %d-%d/%d: %d questions", start + 1, end, total, len(batch_qs))
+                all_questions.extend(batch_qs)
+            except json.JSONDecodeError:
+                log.warning("Vision LLM returned non-JSON for pages %d-%d of %s", start + 1, end, pdf_path.name)
 
     log.info("_extract_questions: extracted %d questions", len(all_questions))
     return all_questions
@@ -275,15 +190,30 @@ _ANSWER_TYPE_CANONICAL: dict[str, str] = {
     "matching": "match_the_following",
 }
 
-_GROUP_HEADING: dict[str, str] = {
-    "mcq": "Multiple Choice Questions",
-    "fill_in_the_blank": "Fill in the Blanks",
-    "ANSWER_VERY_SHORT": "Very Short Answer",
-    "ANSWER_SHORT": "Short Answer",
-    "answer_medium": "Medium Answer",
-    "long_answer": "Long Answer",
-    "match_the_following": "Matching",
-}
+def _load_question_type_labels() -> dict[str, str]:
+    """Maps every valid answerType (canonical key or alias) → its display label.
+
+    Loaded from question-bank-paper-config.json — the same source the backend's
+    QUESTION_TYPE_META uses — so an LBA answerType is only ever considered valid
+    if the backend would actually recognize it.
+    """
+    config_path = Path(__file__).resolve().parents[3] / "shiksha-website" / "shiksha-backend" / "config" / "question-bank-paper-config.json"
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        labels: dict[str, str] = {}
+        for key, item in config["questionTypes"].items():
+            labels[key] = item["label"]
+            for alias in item.get("aliases", []):
+                labels[alias] = item["label"]
+        return labels
+    except (OSError, KeyError, json.JSONDecodeError) as exc:
+        log.warning("Could not load question-bank-paper-config.json (%s); answerType validation disabled", exc)
+        return {}
+
+
+# Every answerType accepted by the backend's QUESTION_TYPE_META (config keys + aliases).
+# A question whose answerType isn't in here would crash paper generation, so it's dropped instead.
+_LABEL_BY_ANSWER_TYPE: dict[str, str] = _load_question_type_labels()
 
 
 def _parse_options(raw: list) -> list[dict[str, str]]:
@@ -382,35 +312,35 @@ async def _upsert_chapters(mongo_db, questions: list[dict], entry: PDFEntry) -> 
         # from what's already stored.
         normalized = _normalize_dashes(unit_name)
         dash_pattern = re.escape(normalized).replace(r"\-", r"[\-–—]")
+        # board + isDeleted are part of the lookup (not just the insert) so a subject shared
+        # across boards (e.g. a MasterSubject already listing BSE-TG) can never match — and
+        # then overwrite — a KSEEB/CBSE chapter with the same topics/standard/medium.
         lookup_filter = {
             "topics": {"$regex": f"^{dash_pattern}$", "$options": "i"},
             "standard": entry.grade,
             "medium": entry.medium.lower(),
             "subjectId": subject_id,
+            "board": canonical_board,
+            "isDeleted": {"$ne": True},
         }
         existing = await coll.find_one(lookup_filter, {"_id": 1, "topics": 1})
         if existing:
-            # Update order on existing doc; use its exact topics string as key
-            await coll.update_one(
-                {"_id": existing["_id"]},
-                {"$set": {"orderNumber": chapter_num, "board": canonical_board}},
-            )
             chapter_id_map[unit_name] = existing["_id"]
             log.info("Matched existing chapter '%s' (_id=%s)", existing.get("topics", unit_name), existing["_id"])
         else:
-            # Create new doc using the LLM-extracted name
+            # Create new doc using the LLM-extracted name. orderNumber only applies on insert —
+            # it's first-appearance order in this run's LLM output, unstable run-to-run, and
+            # must never clobber a chapter's real order on a match.
             insert_filter = {
                 "topics": unit_name,
                 "standard": entry.grade,
                 "medium": entry.medium.lower(),
                 "subjectId": subject_id,
+                "board": canonical_board,
             }
             await coll.update_one(
                 insert_filter,
-                {
-                    "$set": {"orderNumber": chapter_num, "board": canonical_board},
-                    "$setOnInsert": {"subTopics": [], "isDeleted": False, "learningOutcomes": []},
-                },
+                {"$setOnInsert": {"orderNumber": chapter_num, "subTopics": [], "isDeleted": False, "learningOutcomes": []}},
                 upsert=True,
             )
             doc = await coll.find_one(insert_filter, {"_id": 1})
@@ -425,15 +355,30 @@ def _to_mongo_doc(
     entry: PDFEntry,
     chapter_id: Any = None,
     chapter_number: int = 0,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
+    """Returns None when the LLM's answerType doesn't map to a backend-recognized type —
+    inserting it anyway would crash paper generation the first time it's selected."""
     from datetime import datetime, timezone
     raw_answer_type = q.get("answerType", "")
     answer_type = _ANSWER_TYPE_CANONICAL.get(raw_answer_type, raw_answer_type)
+    if _LABEL_BY_ANSWER_TYPE and answer_type not in _LABEL_BY_ANSWER_TYPE:
+        log.warning("Dropping question with unrecognized answerType %r: %.80s", raw_answer_type, q.get("question", ""))
+        return None
+
     now = datetime.now(timezone.utc)
     subject = _SUBJECT_CANONICAL.get(entry.subject, entry.subject)
     canonical_board = _BOARD_CANONICAL.get(entry.board.lower(), entry.board)
+    text = q.get("question", "")
 
+    try:
+        marks_per_question = int(q.get("marks", 1))
+    except (TypeError, ValueError):
+        marks_per_question = 1
+
+    # No difficulty signal from the extraction prompt yet, so LBA questions never match
+    # a difficulty filter (dao/question.dao.js only applies the filter when non-empty).
     doc: dict[str, Any] = {
+        "_id": hashlib.sha256(f"{canonical_board}|{entry.grade}|{subject}|{entry.medium.lower()}|{text}".encode()).hexdigest(),
         "subject": subject,
         "medium": entry.medium.lower(),
         "class": str(entry.grade),
@@ -442,17 +387,17 @@ def _to_mongo_doc(
         "board": canonical_board,
         "chapter": {"title": q.get("unitName", ""), "chapterNumber": chapter_number},
         "chapterId": chapter_id,
-        "groupHeading": _GROUP_HEADING.get(answer_type, answer_type),
+        "groupHeading": _LABEL_BY_ANSWER_TYPE.get(answer_type, answer_type),
         "answerType": answer_type,
         "difficulty": "",
-        "marksPerQuestion": q.get("marks", 1),
-        "text": q.get("question", ""),
+        "marksPerQuestion": marks_per_question,
+        "text": text,
         "keyAnswer": ", ".join(q["keyAnswer"]) if isinstance(q.get("keyAnswer"), list) else q.get("keyAnswer", ""),
         "items": [],
         "correctOrderById": [],
         "correctOrderIndices": [],
         "options": _parse_options(q.get("options", [])) if answer_type == "mcq" else [],
-        "pairs": [{"value1": q.get("value1", ""), "value2": q.get("value2", "")}] if answer_type == "matching" else [],
+        "pairs": [{"left": q.get("value1", ""), "right": q.get("value2", "")}] if answer_type == "match_the_following" else [],
         "createdAt": now,
         "updatedAt": now,
         "__v": 0,
@@ -490,7 +435,7 @@ async def run_ingestion(
                 if unit and unit not in seen_order:
                     seen_order[unit] = len(seen_order) + 1
 
-            docs = [
+            all_docs = [
                 _to_mongo_doc(
                     q,
                     entry,
@@ -499,11 +444,14 @@ async def run_ingestion(
                 )
                 for q in questions
             ]
+            docs = [d for d in all_docs if d is not None]
+            skipped = len(all_docs) - len(docs)
             if docs:
-                await collection.insert_many(docs)
-                log.info("Inserted %d questions from %s", len(docs), pdf_path.name)
+                from pymongo import ReplaceOne
+                await collection.bulk_write([ReplaceOne({"_id": d["_id"]}, d, upsert=True) for d in docs])
+                log.info("Upserted %d questions from %s (%d skipped: unrecognized answerType)", len(docs), pdf_path.name, skipped)
             else:
-                log.warning("No questions extracted from %s", pdf_path.name)
+                log.warning("No questions extracted from %s (%d skipped: unrecognized answerType)", pdf_path.name, skipped)
             manifest.update_status(entry, "ingested")
         except Exception as exc:
             log.exception("Error ingesting %s", pdf_path.name)

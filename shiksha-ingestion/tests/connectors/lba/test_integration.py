@@ -5,7 +5,7 @@ Skipped unless env var LBA_INTEGRATION_TEST=1 is set.
 import os
 import pytest
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 pytestmark = pytest.mark.skipif(
     os.environ.get("LBA_INTEGRATION_TEST") != "1",
@@ -41,13 +41,23 @@ async def test_ingest_single_pdf(tmp_path):
     manifest = Manifest(tmp_path / "manifest.json")
     manifest.add(entry)
 
-    mock_collection = AsyncMock()
-    mock_collection.insert_many = AsyncMock()
+    # run_ingestion(manifest, mongo_db, ...) takes a database handle, not a collection —
+    # it does mongo_db["lba_questions"], mongo_db["chapters"], mongo_db["mastersubjects"].
+    # Give each its own mock so assertions target what the code actually calls.
+    mock_lba_questions = AsyncMock()
+    mock_chapters = AsyncMock()
+    mock_chapters.find_one = AsyncMock(return_value={"_id": "existing-chapter-id", "topics": "unit"})
+    mock_mastersubjects = AsyncMock()
+    mock_mastersubjects.find_one = AsyncMock(return_value={"_id": "existing-subject-id"})
 
-    await run_ingestion(manifest, mock_collection)
+    collections = {"lba_questions": mock_lba_questions, "chapters": mock_chapters, "mastersubjects": mock_mastersubjects}
+    mock_db = MagicMock()
+    mock_db.__getitem__ = MagicMock(side_effect=collections.__getitem__)
+
+    await run_ingestion(manifest, mock_db)
 
     updated = manifest.entries_with_status("ingested")
     assert len(updated) == 1, (
         f"Expected ingested, got: {manifest.entries[0].status} / {manifest.entries[0].error}"
     )
-    mock_collection.insert_many.assert_called()
+    mock_lba_questions.bulk_write.assert_called()

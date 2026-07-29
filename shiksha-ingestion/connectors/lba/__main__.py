@@ -7,8 +7,8 @@ Usage:
     python -m connectors.lba status
 
 Environment variables for ingest:
-    AZURE_OPENAI_API_KEY        Required for question extraction
-    AZURE_OPENAI_ENDPOINT       Required
+    OPENAI_API_KEY       Required for question extraction
+    OPENAI_BASE_URL      Optional, for Azure/OpenAI-compatible endpoints
     AZURE_OPENAI_DEPLOYMENT_NAME  Defaults to gpt-4o
     MONGODB_URI      MongoDB connection string with database (e.g. mongodb://localhost:27017/prod_dump2)
 """
