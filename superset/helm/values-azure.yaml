@@ -35,10 +35,23 @@ configOverrides:
         "EMBEDDED_SUPERSET": True,
     }
   embedding: |
-    GUEST_ROLE_NAME = "Public"
+    import os
+    # Dedicated role — not "Public" which also governs unauthenticated Superset access.
+    # Create the "Embedded" role in Superset with read-only dashboard permissions before deploy.
+    GUEST_ROLE_NAME = "Embedded"
     GUEST_TOKEN_JWT_EXP_SECONDS = 300
-    HTTP_HEADERS = {"X-Frame-Options": "ALLOWALL"}
-    TALISMAN_CONFIG = {"frame_options": "ALLOWALL", "force_https": False, "content_security_policy": None}
+    # ALLOWED_EMBED_ORIGIN must be set to the Angular app origin, e.g. https://app.shiksha.ai
+    _origin = os.environ.get("ALLOWED_EMBED_ORIGIN", "")
+    HTTP_HEADERS = {}
+    TALISMAN_CONFIG = {
+        # No HTTP→HTTPS redirect: Superset is behind a TLS-terminating ingress that enforces HTTPS.
+        "force_https": False,
+        "content_security_policy": {
+            "frame-ancestors": ["'self'", _origin] if _origin else ["'self'"],
+        },
+    }
+    # SESSION_COOKIE_SECURE=True is correct: browsers reach Superset over HTTPS via the ingress.
+    # force_https=False is also correct: the HTTPS termination happens at the ingress, not here.
     SESSION_COOKIE_SAMESITE = "None"
     SESSION_COOKIE_SECURE = True
 

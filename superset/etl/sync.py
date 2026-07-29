@@ -448,6 +448,12 @@ def main() -> None:
         logger.info("  %d chatbot sessions", len(chat_rows))
 
         # ------------------------------------------------------------------ fact_lba_attempts
+        # NOTE: No real LBA (Learning-Based Assessment) data in MongoDB yet.
+        # fact_lba_attempts is temporarily populated from useractivities as a proxy.
+        # score = interactionTime (seconds) / 3, capped at 100 — NOT an assessment score.
+        # Dashboard charts reading this table must be labelled accordingly,
+        # e.g. "Avg Engagement Time (scaled)" rather than "Avg Score".
+        # resolved in fact_chatbot_sessions = 3+ messages (engagement proxy, not actual resolution).
         logger.info("Syncing fact_lba_attempts ...")
         lba_rows = []
         for a in db.useractivities.find({"moduleName": {"$in": list(AI_MODULE_SUBJECT.keys())}}):
@@ -455,8 +461,9 @@ def main() -> None:
             if uid not in valid_user_ids:
                 continue
             subject = AI_MODULE_SUBJECT.get(a.get("moduleName", ""), "General")
-            score   = min(_to_float(a.get("interactionTime")) / 3.0, 100.0)
-            lba_rows.append((uid, subject, 1, round(score, 2), coerce_dt(a.get("createdAt"))))
+            # Proxy score: interactionTime (seconds) / 3, capped at 100. Replace once real LBA exists.
+            interaction_time_score = min(_to_float(a.get("interactionTime")) / 3.0, 100.0)
+            lba_rows.append((uid, subject, 1, round(interaction_time_score, 2), coerce_dt(a.get("createdAt"))))
 
         if lba_rows:
             execute_values(
