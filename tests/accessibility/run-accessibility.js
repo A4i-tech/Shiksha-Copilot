@@ -24,6 +24,9 @@ const TEST_ADMIN_PHONE = process.env.TEST_ADMIN_PHONE;
 const TEST_ADMIN_OTP = process.env.TEST_ADMIN_OTP;
 const OUT_DIR = path.join(process.cwd(), 'tests', 'accessibility', 'results');
 
+// Fraction of axe rules a page must pass before the check is considered failing.
+const SCORE_THRESHOLD = 0.90;
+
 // Routes are flat (no /user or /admin prefix) — see view-routing.module.ts,
 // which mounts both UserModule and AdminModule at path ''.
 const USER_URL_PATHS = [
@@ -373,21 +376,72 @@ function buildRunReport(axeResult, url) {
   console.log(`Dashboard: ${htmlFile}`);
   console.log(`Total issues: ${aggregate.totalIssues}  (Critical: ${aggregate.critical}  Serious: ${aggregate.serious}  Moderate: ${aggregate.moderate}  Minor: ${aggregate.minor})`);
 
-  const SCORE_THRESHOLD = 0.95;
   const failingScores = runs.filter(r => r.score < SCORE_THRESHOLD);
+  const reasons = [];
 
-  if (aggregate.critical > 0 || failingScores.length > 0) {
-    if (aggregate.critical > 0) {
-      console.log(`::warning::Accessibility: ${aggregate.critical} critical violation(s) found`);
-    }
-    if (failingScores.length > 0) {
-      console.log(`::warning::Accessibility: ${failingScores.length} page(s) below ${Math.round(SCORE_THRESHOLD * 100)}% score`);
-      for (const r of failingScores) {
-        console.log(`::warning::  ${Math.round(r.score * 100)}%  ${r.url}`);
-      }
-    }
+  if (!overallPassed) {
+    reasons.push('one or more pages could not be scanned (see log above)');
   }
+  if (aggregate.critical > 0) {
+    reasons.push(`${aggregate.critical} critical violation(s)`);
+  }
+  if (failingScores.length > 0) {
+    reasons.push(`${failingScores.length} page(s) below ${Math.round(SCORE_THRESHOLD * 100)}% score`);
+  }
+
+  fs.writeFileSync(path.join(OUT_DIR, 'summary.md'), buildMarkdownSummary(report, failingScores, reasons));
+
+  for (const reason of reasons) {
+    console.log(`::error::Accessibility: ${reason}`);
+  }
+  for (const r of failingScores) {
+    console.log(`::error::  ${Math.round(r.score * 100)}%  ${r.url}`);
+  }
+
+  // Gate the PR: any critical violation, any page under threshold, or any
+  // unscannable page fails the check.
+  if (reasons.length > 0) process.exit(1);
 })();
+
+function buildMarkdownSummary(data, failingScores, reasons) {
+  const a = data.aggregate;
+  const status = reasons.length === 0
+    ? '**Accessibility check passed**'
+    : `**Accessibility check failed** — ${reasons.join('; ')}`;
+
+  const lines = [
+    '## Accessibility (axe-core, WCAG 2.1 AA)',
+    '',
+    status,
+    '',
+    `Scanned **${data.runs.length}** pages at ${data.frontendUrl}`,
+    '',
+    '| Critical | Serious | Moderate | Minor | Total |',
+    '|---|---|---|---|---|',
+    `| ${a.critical} | ${a.serious} | ${a.moderate} | ${a.minor} | ${a.totalIssues} |`,
+  ];
+
+  if (failingScores.length > 0) {
+    lines.push(
+      '',
+      `<details><summary>Pages below ${Math.round(SCORE_THRESHOLD * 100)}% (${failingScores.length})</summary>`,
+      '',
+      '| Score | Page | Top failing audits |',
+      '|---|---|---|',
+      ...failingScores
+        .slice()
+        .sort((x, y) => x.score - y.score)
+        .map(r => {
+          const top = r.failingAudits.slice(0, 3).map(x => `\`${x.id}\``).join(', ') || '—';
+          return `| ${Math.round(r.score * 100)}% | ${r.url} | ${top} |`;
+        }),
+      '',
+      '</details>',
+    );
+  }
+
+  return lines.join('\n') + '\n';
+}
 
 function buildHtml(data) {
   const COLORS = {

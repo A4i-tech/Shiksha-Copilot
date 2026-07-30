@@ -264,6 +264,9 @@ jobs:
       needs.cd-frontend-render.result == 'success' &&
       (needs.health-check.result == 'success' || needs.health-check.result == 'skipped')
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
 
@@ -328,7 +331,10 @@ jobs:
           echo "Frontend at $FRONTEND_URL did not become reachable (last status: $status)"
           exit 1
 
+      # Fails the job (and so the PR check) on any critical violation, any page
+      # below the score threshold, or any page that could not be scanned.
       - name: Run Accessibility Tests
+        id: a11y
         env:
           FRONTEND_URL: ${{ needs.cd-frontend-render.outputs['service-url'] }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
@@ -337,11 +343,52 @@ jobs:
           TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
         run: node tests/accessibility/run-accessibility.js
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload accessibility report
+        id: report
         if: always()
+        uses: actions/upload-artifact@v4
         with:
           name: accessibility-report
           path: tests/accessibility/results/
+
+      # Posted as a PR comment because the HTML dashboard is only reachable as a
+      # zip via the artifact URL, and nobody hunts for that.
+      #
+      # Editing the existing comment would pin it to the position it was first
+      # posted at, which is near the top of a long-running PR. Delete the old
+      # one and post fresh instead, so the report always sits at the bottom of
+      # the conversation next to the checks.
+      - name: Comment report on PR
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_URL: ${{ steps.report.outputs.artifact-url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          BODY=tests/accessibility/results/summary.md
+          if [ ! -f "$BODY" ]; then
+            # Scanner died before writing a summary (login failure, timeout, …).
+            mkdir -p "$(dirname "$BODY")"
+            printf '## Accessibility (axe-core, WCAG 2.1 AA)\n\n**Scan did not complete** — see the workflow log.\n' > "$BODY"
+          fi
+          {
+            echo
+            echo "[Download the full HTML report]($ARTIFACT_URL) — unzip and open \`accessibility-report-*.html\`."
+            echo
+            echo "<sub>a11y-report</sub>"
+          } >> "$BODY"
+
+          # <sub>a11y-report</sub> marks our own comments so we only delete those.
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]")
+                      | select(.body | contains("<sub>a11y-report</sub>")) | .id' \
+            | while read -r id; do
+                echo "Removing previous report comment $id"
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id"
+              done
+
+          gh pr comment "$PR_NUMBER" --body-file "$BODY"
 
   notify:
     runs-on: ubuntu-latest
