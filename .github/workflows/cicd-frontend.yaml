@@ -16,8 +16,8 @@ on:
         description: "Backend API URL this frontend resource must call"
         required: true
         type: string
-      deploy_target:
-        description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
+      turnstile_site_key:
+        description: "Cloudflare Turnstile site key; leave blank to disable CAPTCHA"
         required: false
         type: string
         default: ""
@@ -36,8 +36,8 @@ on:
         required: false
         type: string
         default: ""
-      turnstile_site_key:
-        description: "Cloudflare Turnstile site key for bot-protection widget"
+      deploy_target:
+        description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
         required: false
         type: string
         default: ""
