@@ -2,11 +2,11 @@ const assetURl = 'assets/icons';
 export const menuItem = [
   getMenuItems(
     'Dashboard',
-    '/dashboard',
+    '/leaders-dashboard',
     'dashboard.svg',
     'dashboard-light.svg',
-    'dashboard',
-    ['admin','manager']
+    'leaders-dashboard',
+    ['admin', 'manager', 'hm', 'crp', 'beo', 'meo', 'deo', 'ddpi', 'state']
   ),
   getMenuItems(
     'Home',

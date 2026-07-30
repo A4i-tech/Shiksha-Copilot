@@ -21,6 +21,21 @@ on:
         required: false
         type: string
         default: ""
+      superset_url:
+        description: "Superset base URL (e.g. https://superset.example.com)"
+        required: false
+        type: string
+        default: ""
+      superset_dashboard_uuid:
+        description: "Superset desktop dashboard UUID"
+        required: false
+        type: string
+        default: ""
+      superset_mobile_dashboard_uuid:
+        description: "Superset mobile dashboard UUID"
+        required: false
+        type: string
+        default: ""
       deploy_target:
         description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
         required: false
@@ -61,6 +76,9 @@ jobs:
     env:
       BACKEND_URL: ${{ inputs.api_url }}
       TURNSTILE_SITE_KEY: ${{ inputs.turnstile_site_key }}
+      SUPERSET_URL: ${{ inputs.superset_url }}
+      SUPERSET_DASHBOARD_UUID: ${{ inputs.superset_dashboard_uuid }}
+      SUPERSET_MOBILE_DASHBOARD_UUID: ${{ inputs.superset_mobile_dashboard_uuid }}
       SHIKSHA_COPILOT_BUILD: ${{ github.sha }}
 
     steps:
@@ -82,7 +100,10 @@ jobs:
               -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
           fi
           find src/environments -name "environment*.ts" \
-            -exec sed -i "s|your_turnstile_site_key|${TURNSTILE_SITE_KEY}|g" {} \;
+            -exec sed -i "s|your_turnstile_site_key|${TURNSTILE_SITE_KEY}|g" {} \; \
+            -exec sed -i "s|your_superset_url|${SUPERSET_URL}|g" {} \; \
+            -exec sed -i "s|your_superset_dashboard_uuid|${SUPERSET_DASHBOARD_UUID}|g" {} \; \
+            -exec sed -i "s|your_superset_mobile_dashboard_uuid|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" {} \;
 
           npm ci
           npm run build -- --configuration ${{ inputs.environment }} \

@@ -41,9 +41,11 @@ const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
 const endlineSurveyRoutes = require('./routes/endlineSurvey.routes');
 const systemRoutes = require('./routes/system.routes.js');
+const supersetRoutes = require('./routes/superset.routes.js');
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1); // trust Azure ingress/LB for HTTPS detection
 
 app.use(express.json());
 
@@ -84,6 +86,7 @@ app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);
 app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
+app.use('/api', supersetRoutes);
 
 process.on('unhandledRejection', (reason, promise) => {
 	console.log(promise, reason);

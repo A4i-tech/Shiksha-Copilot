@@ -107,7 +107,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     } else if (isTeacherOnly) {
       this.router.navigate(['/home']);
     } else {
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/leaders-dashboard']);
     }
   }
 

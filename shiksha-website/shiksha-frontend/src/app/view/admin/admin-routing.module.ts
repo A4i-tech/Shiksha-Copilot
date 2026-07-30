@@ -7,7 +7,7 @@ import { ViewLessonPlanComponent } from './view-lesson-plan/view-lesson-plan.com
 const routes: Routes = [
   {
     path: '',
-    redirectTo: 'dashboard',
+    redirectTo: 'leaders-dashboard',
     pathMatch: 'full',
   },
   {
@@ -86,6 +86,17 @@ const routes: Routes = [
     data: {
       permissions: ['admin','manager'],
       idleTracking:'custom',
+    },
+    canActivate: [PermissionGuard],
+  },
+  {
+    path: 'leaders-dashboard',
+    loadComponent: () =>
+      import('./leaders-dashboard/leaders-dashboard.component').then(
+        (c) => c.LeadersDashboardComponent
+      ),
+    data: {
+      permissions: ['admin', 'manager', 'hm', 'crp', 'beo', 'meo', 'deo', 'ddpi', 'state'],
     },
     canActivate: [PermissionGuard],
   }

@@ -24,3 +24,4 @@ cover/
 */.env
 tests/tests-env
 **/__pycache__/
+superset/.env

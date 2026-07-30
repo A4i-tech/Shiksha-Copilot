@@ -13,7 +13,7 @@ const DefaultLandingGuard = () => {
     }
     return roles.includes('standard') || roles.includes('power')
         ? router.parseUrl('/home')
-        : router.parseUrl('/dashboard');
+        : router.parseUrl('/leaders-dashboard');
 };
 
 const routes:Routes=[
