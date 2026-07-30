@@ -5,7 +5,7 @@
   { "name": "content.activity.view", "description": "View teacher lesson-plan and resource generation activity." },
   { "name": "content.manage", "description": "Manage shared content records and administrative content workflows." },
   { "name": "content.view", "description": "Open the content generation workspace." },
-  { "name": "dashboard.admin.view", "description": "Access the operations dashboard for school, teacher, and staff oversight." },
+  { "name": "analytics.view", "description": "View analytics dashboards and reports for the assigned organisational scope." },
   { "name": "dashboard.teacher.view", "description": "Access the teacher dashboard and teacher-facing workspace." },
   { "name": "generation.status.view", "description": "Monitor background generation jobs and their current status." },
   { "name": "help.manage", "description": "Create and update help content shown to users." },

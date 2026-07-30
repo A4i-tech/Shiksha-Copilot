@@ -36,7 +36,7 @@ function expectDenied(response, message) {
 describe("scoped authorisation", () => {
   const suffix = Date.now();
   const operatorPermissions = [
-    "dashboard.admin.view", "school.read", "school.list", "school.create", "school.edit", "school.delete", "school.export",
+    "school.read", "school.list", "school.create", "school.edit", "school.delete", "school.export",
     "teacher.view", "teacher.create", "teacher.edit", "teacher.delete", "teacher.export",
     "staff.view", "staff.create", "staff.edit", "staff.delete", "role.assign", "role.view", "profile.view", "profile.edit",
     "content.activity.view", "content.activity.export", "training.view", "training.edit", "audit.view", "chat.use",
@@ -281,20 +281,6 @@ describe("scoped authorisation", () => {
     expectSuccess(await request("/api/profile/language", "PATCH", mixedStaffToken, { preferredLanguage: "tg" }));
     const updated = expectSuccess(await request(`/api/users/${mixedStaff._id}/profile`, "GET", mixedStaffToken));
     expect(updated.preferredLanguage).toBe("tg");
-  });
-
-  it("intersects dashboard filters with the actor scope", async () => {
-    const [localDashboard, remoteDashboard] = await Promise.all([
-      request(`/api/dashboard/admin?schoolId=${localSchool._id}`, "GET", actorToken),
-      request(`/api/dashboard/admin?schoolId=${remoteSchool._id}`, "GET", actorToken),
-    ]);
-    const localMetrics = expectSuccess(localDashboard);
-    const remoteMetrics = expectSuccess(remoteDashboard);
-    const localCounts = localMetrics.userCounts.userCounts;
-    const remoteCounts = remoteMetrics.userCounts.userCounts;
-
-    expect(localCounts.activeUsers + localCounts.inactiveUsers).toBeGreaterThan(0);
-    expect(remoteCounts.activeUsers + remoteCounts.inactiveUsers).toBe(0);
   });
 
   it("keeps non-global training access tied to the batch creator", async () => {

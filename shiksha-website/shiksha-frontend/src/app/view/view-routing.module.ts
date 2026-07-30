@@ -9,7 +9,6 @@ import { DashboardComponent as TeacherDashboardComponent } from './user/dashboar
 import { ProfileComponent } from './user/profile/profile.component';
 import { GenerationStatusComponent } from './user/generation-status/generation-status.component';
 import { ChatbotComponent } from './user/chatbot/chatbot.component';
-import { DashboardComponent as AdminDashboardComponent } from './admin/dashboard/dashboard.component';
 import { ContentActivityComponent } from './admin/content-activity/content-activity.component';
 import { ViewLessonPlanComponent } from './admin/view-lesson-plan/view-lesson-plan.component';
 import { LandingComponent } from './landing.component';
@@ -29,15 +28,9 @@ const routes: Routes = [
         canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
       },
       {
-        path: 'operations',
-        component: AdminDashboardComponent,
-        data: { permissions: ['dashboard.admin.view'], idleTracking: 'custom' },
-        canActivate: [PermissionGuard],
-      },
-      {
         path: 'leaders-dashboard',
         loadComponent: () => import('./admin/leaders-dashboard/leaders-dashboard.component').then((component) => component.LeadersDashboardComponent),
-        data: { permissions: ['dashboard.admin.view'] },
+        data: { permissions: ['analytics.view'] },
         canActivate: [PermissionGuard],
       },
       {

@@ -1,25 +1,9 @@
 const handleError = require("../helper/handleError");
-const OperationsManager = require("../managers/operations.manager");
+const ContentActivityManager = require("../managers/content.activity.manager");
 
-class OperationsController {
+class ContentActivityController {
   constructor() {
-    this.manager = new OperationsManager();
-  }
-
-  async dashboard(req, res) {
-    const { state, zone, block, district, schoolId, fromDate, toDate, isLesson } = req.query;
-    const result = await this.manager.getDashboardMetrics({
-      state,
-      zone,
-      block,
-      district,
-      schoolId,
-      fromDate,
-      toDate,
-      isLesson: isLesson === "true" ? true : isLesson === "false" ? false : undefined,
-    }, req.permissions);
-    if (result.success) return res.status(200).json(result);
-    return handleError(result, res);
+    this.manager = new ContentActivityManager();
   }
 
   async contentActivity(req, res) {
@@ -59,4 +43,4 @@ class OperationsController {
   }
 }
 
-module.exports = OperationsController;
+module.exports = ContentActivityController;

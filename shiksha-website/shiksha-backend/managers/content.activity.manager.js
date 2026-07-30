@@ -1,21 +1,12 @@
 const formatApiReponse = require("../helper/response");
-const dashboardAggregation = require("../aggregation/admin.dashboard.aggregation");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const { Worker } = require("worker_threads");
 const path = require("path");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 
-class OperationsManager {
+class ContentActivityManager {
   constructor() {
     this.regeneratedLogDao = new RegeneratedLessonResourceDao();
-  }
-
-  async getDashboardMetrics(filters, grants) {
-    try {
-      return { success: true, data: await dashboardAggregation.getDashboardMetrics(filters, grants) };
-    } catch (err) {
-      return { success: false, error: err.message };
-    }
   }
 
   async getContentActivity(page, limit, filters, sort, grants) {
@@ -51,4 +42,4 @@ class OperationsManager {
   }
 }
 
-module.exports = OperationsManager;
+module.exports = ContentActivityManager;

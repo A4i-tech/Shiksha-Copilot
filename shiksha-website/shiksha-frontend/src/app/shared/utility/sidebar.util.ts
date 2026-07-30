@@ -2,27 +2,19 @@ const assetURl = 'assets/icons';
 export const menuItem = [
   getMenuItems(
     'Dashboard',
+    '/leaders-dashboard',
+    'dashboard.svg',
+    'dashboard-light.svg',
+    'leaders-dashboard',
+    ['analytics.view']
+  ),
+  getMenuItems(
+    'Home',
     '/dashboard',
     'dashboard.svg',
     'dashboard-light.svg',
     'dashboard',
     ['dashboard.teacher.view']
-  ),
-  getMenuItems(
-    'Leaders Dashboard',
-    '/leaders-dashboard',
-    'dashboard.svg',
-    'dashboard-light.svg',
-    'leaders-dashboard',
-    ['dashboard.admin.view']
-  ),
-  getMenuItems(
-    'Operations',
-    '/operations',
-    'dashboard.svg',
-    'dashboard-light.svg',
-    'operations',
-    ['dashboard.admin.view']
   ),
   getMenuItems(
     'Profile',
