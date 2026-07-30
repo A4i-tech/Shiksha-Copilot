@@ -11,6 +11,7 @@ const MasterResourceDao = require("../dao/master.resource.dao");
 const logger = require("../config/loggers"); 
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
+const TeacherResourceFeedbackDao = require("../dao/teacher.feedback.dao");
 const {
 	formatTemplate,
 	formatSections
@@ -31,6 +32,7 @@ class TeacherLessonPlanManager extends BaseManager {
 		this.subjectDao = new MasterSubjectDao();
 		this.regeneratedLessonResource = new RegeneratedLessonResourceDao();
 		this.lessonFeedbackDao = new LessonFeedbackDao();
+		this.teacherResourceFeedbackDao = new TeacherResourceFeedbackDao();
 		this.masterResourceDao = new MasterResourceDao();
 	}
 
@@ -142,6 +144,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			const lessonPlan = await TeacherLessonPlanModel.findOne({
 				teacherId,
 				lessonId: lessonPlanId,
+				isDeleted: { $ne: true },
 			});
 			return !!lessonPlan;
 		} catch (error) {
@@ -280,7 +283,8 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			const lessonPlan = await this.dao.deleteLessonPlan(teacherId, lessonPlanId);
 			if (lessonPlan) {
-				return formatApiReponse(true, "", lessonPlan);
+				await this._deleteLessonFeedbackSafely(teacherId, lessonPlan.lessonId);
+				return formatApiReponse(true, "Lesson plan deleted successfully", lessonPlan);
 			} else {
 				return formatApiReponse(false, "Lesson plan not found", null);
 			}
@@ -294,13 +298,42 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			const resourcePlan = await this.dao.deleteResourcePlan(teacherId, resourcePlanId);
 			if (resourcePlan) {
-				return formatApiReponse(true, "", resourcePlan);
+				await this._deleteResourceFeedbackSafely(teacherId, resourcePlan.resourceId);
+				return formatApiReponse(true, "Resource plan deleted successfully", resourcePlan);
 			} else {
 				return formatApiReponse(false, "Resource plan not found", null);
 			}
 		} catch (error) {
 			console.error("Error deleting resource plan:", error);
 			return formatApiReponse(false, "Internal server error", error);
+		}
+	}
+
+	// Best-effort cleanup: remove any prior feedback tied to the deleted lesson/resource plan
+	// so a freshly regenerated lesson/resource isn't blocked by a stale "already submitted" feedback record.
+	async _deleteLessonFeedbackSafely(teacherId, lessonId) {
+		try {
+			await this.lessonFeedbackDao.deleteByTeacherAndLessonId(teacherId, lessonId);
+		} catch (error) {
+			logger.error("Error deleting lesson feedback after lesson plan delete", {
+				function: "_deleteLessonFeedbackSafely",
+				teacherId,
+				lessonId,
+				message: error.message,
+			});
+		}
+	}
+
+	async _deleteResourceFeedbackSafely(teacherId, resourceId) {
+		try {
+			await this.teacherResourceFeedbackDao.deleteByTeacherAndResourceId(teacherId, resourceId);
+		} catch (error) {
+			logger.error("Error deleting resource feedback after resource plan delete", {
+				function: "_deleteResourceFeedbackSafely",
+				teacherId,
+				resourceId,
+				message: error.message,
+			});
 		}
 	}
 

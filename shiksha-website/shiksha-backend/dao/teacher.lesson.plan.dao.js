@@ -180,7 +180,7 @@ class TeacherLessonPlanDao extends BaseDao {
 
 	async getByTeacherAndLesson(teacherId, lessonId) {
 		try {
-			return await TeacherLessonPlan.findOne({ teacherId, lessonId });
+			return await TeacherLessonPlan.findOne({ teacherId, lessonId, isDeleted: { $ne: true } });
 		} catch (err) {
 			console.log(
 				"Error --> TeacherLessonPlanDao --> getByTeacherAndLesson",
@@ -192,7 +192,7 @@ class TeacherLessonPlanDao extends BaseDao {
 
 	async getByTeacherAndResource(teacherId, resourceId) {
 		try {
-			return await TeacherLessonPlan.findOne({ teacherId, resourceId });
+			return await TeacherLessonPlan.findOne({ teacherId, resourceId, isDeleted: { $ne: true } });
 		} catch (err) {
 			console.log(
 				"Error --> TeacherLessonPlanDao --> getByTeacherAndResource",
@@ -205,7 +205,7 @@ class TeacherLessonPlanDao extends BaseDao {
 	async updateForRegenerate(teacherId, oldLessonId, newLessonId, instanceId  ) {
 		try {
 			const lessonPlan = await TeacherLessonPlan.findOneAndUpdate(
-				{ teacherId, lessonId: oldLessonId },
+				{ teacherId, lessonId: oldLessonId, isDeleted: { $ne: true } },
 				{
 					$set: {
 						lessonId: newLessonId,
