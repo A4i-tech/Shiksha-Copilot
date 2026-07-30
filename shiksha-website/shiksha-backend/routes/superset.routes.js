@@ -114,13 +114,6 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
     if (!mongoUser) return res.status(401).json({ error: "No authenticated user" });
 
     const roles = mongoUser.role || [];
-    // Only adminusers (manager / admin) may access the leaders dashboard.
-    // Regular teachers (power / standard) are not the target audience; their school-level
-    // RLS scope also shows colleagues' data, which is a privilege escalation for plain teachers.
-    const DASHBOARD_ROLES = new Set(["manager", "admin"]);
-    if (!roles.some(r => DASHBOARD_ROLES.has((r || "").toLowerCase()))) {
-      return res.status(403).json({ error: "Dashboard access restricted to admin users" });
-    }
     const mappedRole = mapRole(roles);
     const uid = String(mongoUser._id);
 

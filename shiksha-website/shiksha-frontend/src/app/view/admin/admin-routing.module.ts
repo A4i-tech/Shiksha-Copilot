@@ -7,7 +7,7 @@ import { ViewLessonPlanComponent } from './view-lesson-plan/view-lesson-plan.com
 const routes: Routes = [
   {
     path: '',
-    redirectTo: 'dashboard',
+    redirectTo: 'leaders-dashboard',
     pathMatch: 'full',
   },
   {
@@ -96,7 +96,7 @@ const routes: Routes = [
         (c) => c.LeadersDashboardComponent
       ),
     data: {
-      permissions: ['admin', 'manager'],
+      permissions: ['admin', 'manager', 'hm', 'crp', 'beo', 'meo', 'deo', 'ddpi', 'state'],
     },
     canActivate: [PermissionGuard],
   }

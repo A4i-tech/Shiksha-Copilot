@@ -69,6 +69,9 @@ jobs:
       environment: uat
       api_url: ${{ needs.cd-backend.result == 'success' && format('{0}/api', needs.cd-backend.outputs['service-url']) || '' }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
+      superset_url: ${{ vars.SUPERSET_URL }}
+      superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
+      superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
 
   cd-api-prod:
     name: Deploy api
@@ -103,6 +106,9 @@ jobs:
       environment: production
       api_url: ${{ needs.cd-backend-prod.result == 'success' && format('{0}/api', needs.cd-backend-prod.outputs['service-url']) || '' }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
+      superset_url: ${{ vars.SUPERSET_URL }}
+      superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
+      superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
 
   health-check:
     name: Health Check
