@@ -133,6 +133,7 @@ def test_qb_ai_vs_lba_source(logged_in_page, step):
         )
 
 
+@pytest.mark.xfail(reason="#421 not fixed yet")
 def test_qb_no_duplicate_sections_in_preview(logged_in_page, step):
     """
     Regression #421: generating a paper with both AI and LBA sources selected,

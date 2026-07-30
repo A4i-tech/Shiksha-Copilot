@@ -35,6 +35,7 @@ class FlnPage(BasePage):
 
     def navigate(self, base_url: str):
         """Navigate to the FLN page."""
+        # NOTE: no /fln route exists in the app yet — this page object targets a route that doesn't exist; leave as-is pending route addition or removal, see PR #144 review comment.
         self.page.goto(f"{base_url}/#/user/fln")
         self.page.wait_for_load_state("networkidle")
 

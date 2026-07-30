@@ -62,7 +62,7 @@ class ContentGenerationPage(BasePage):
 
     def navigate_to_list(self, base_url: str):
         """Navigate to the content generation list page."""
-        self.page.goto(f"{base_url}/#/user/content-generation")
+        self.page.goto(f"{base_url}/#/content-generation")
         self.page.wait_for_load_state("networkidle")
 
     def click_generate_lesson_plan(self):

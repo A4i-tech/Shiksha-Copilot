@@ -20,7 +20,7 @@ class QuestionPaperViewPage(BasePage):
         self.submit_feedback_btn = page.get_by_test_id("submit-feedback-btn")
 
     def navigate(self, base_url: str, paper_id: str):
-        self.page.goto(f"{base_url}/#/user/question-paper/view/{paper_id}")
+        self.page.goto(f"{base_url}/#/question-paper/view/{paper_id}")
         self.page.wait_for_load_state("networkidle")
 
     def get_section_count(self) -> int:

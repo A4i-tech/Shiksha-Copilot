@@ -58,7 +58,7 @@ class ProfilePage(BasePage):
 
     def navigate(self, base_url: str):
         """Navigate to the profile page."""
-        self.page.goto(f"{base_url}/#/user/profile")
+        self.page.goto(f"{base_url}/#/profile")
         self.heading.wait_for(state="visible", timeout=15000)
 
     def get_name_value(self) -> str:

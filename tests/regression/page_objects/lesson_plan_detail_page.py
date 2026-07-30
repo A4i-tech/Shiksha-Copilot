@@ -19,7 +19,7 @@ class LessonPlanDetailPage(BasePage):
         # invented.
 
     def navigate(self, base_url: str, plan_id: str):
-        self.page.goto(f"{base_url}/#/user/content-generation/lesson-plan/{plan_id}")
+        self.page.goto(f"{base_url}/#/content-generation/lesson-plan/{plan_id}")
         self.page.wait_for_load_state("networkidle")
 
     # NOTE: open_chat_sidebar/send_chat_message removed - chat is a separate

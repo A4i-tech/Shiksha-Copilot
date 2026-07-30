@@ -36,7 +36,7 @@ class DashboardPage(BasePage):
 
     def load(self, base_url: str):
         """Navigates to the user dashboard route."""
-        self.page.goto(f"{base_url}/#/user/dashboard")
+        self.page.goto(f"{base_url}/#/home")
         self.welcome_header.wait_for()
 
     def click_generate_lesson_plan(self):

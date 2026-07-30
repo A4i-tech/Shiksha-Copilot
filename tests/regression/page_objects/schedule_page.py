@@ -41,7 +41,7 @@ class SchedulePage(BasePage):
 
     def navigate(self, base_url: str):
         """Goes to the Schedule page."""
-        self.page.goto(f"{base_url}/#/user/schedule")
+        self.page.goto(f"{base_url}/#/schedule")
         self.header_title.wait_for()
 
     def open_add_schedule_popup(self):

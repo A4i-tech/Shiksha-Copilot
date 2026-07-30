@@ -13,7 +13,7 @@ class HelpPage(BasePage):
         self.video_containers = page.get_by_test_id("help-video-card")
 
     def navigate(self, base_url: str):
-        self.page.goto(f"{base_url}/#/user/help")
+        self.page.goto(f"{base_url}/#/help")
         self.page.wait_for_load_state("domcontentloaded")
         self.heading.wait_for(state="visible", timeout=15000)
 

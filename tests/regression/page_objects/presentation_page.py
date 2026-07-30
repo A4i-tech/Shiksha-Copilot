@@ -11,7 +11,7 @@ class PresentationPage(BasePage):
         self.error_msg = page.get_by_test_id("job-error-message")
 
     def navigate(self, base_url: str, job_id: str):
-        self.page.goto(f"{base_url}/#/user/content-generation/presentation/{job_id}")
+        self.page.goto(f"{base_url}/#/content-generation/presentation/{job_id}")
         self.page.wait_for_load_state("networkidle")
 
     def is_complete(self) -> bool:

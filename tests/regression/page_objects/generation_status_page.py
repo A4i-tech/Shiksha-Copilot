@@ -15,7 +15,7 @@ class GenerationStatusPage(BasePage):
         self.empty_msg = page.get_by_test_id("generation-status-empty")
 
     def navigate(self, base_url: str):
-        self.page.goto(f"{base_url}/#/user/generation-status")
+        self.page.goto(f"{base_url}/#/generation-status")
         self.page.wait_for_load_state("networkidle")
 
     def get_card_count(self) -> int:
