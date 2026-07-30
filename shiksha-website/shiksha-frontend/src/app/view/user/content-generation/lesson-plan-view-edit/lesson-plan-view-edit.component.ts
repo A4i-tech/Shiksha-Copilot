@@ -731,6 +731,11 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   startPlanAiPrompt() {
     this.planAiMode = 'prompt';
+    setTimeout(() => {
+      document
+        .querySelector('.plan-ai-prompt')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   }
 
   cancelPlanAi() {

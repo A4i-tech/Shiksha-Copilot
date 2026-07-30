@@ -19,7 +19,7 @@
         class="btn-primary flex gap-2 items-center my-2 md:my-0"
         (click)="startPlanAiPrompt()"
       >
-        <img src="assets/icons/ai-logo.svg" alt="" />{{ "Enhance" | translate }}
+        <img class="brightness-0 invert" src="assets/icons/ai-logo.svg" alt="" />{{ "Enhance" | translate }}
       </button>
       <button
         [hasPermission]="['chat.use']"
@@ -208,19 +208,20 @@
     </div>
   </div>
 
-  <div class="text-content rounded my-4 p-4 md:p-4 bg-white feedback-panel">
+  <div class="text-content rounded my-3 p-3 bg-white feedback-panel">
     <div class="flex justify-between items-center flex-wrap gap-2">
-      <h2 data-testid="feedback-heading" class="text-xl font-bold text-content-100 md:leading-[48px]">
+      <h2 data-testid="feedback-heading" class="text-lg font-bold text-content-100">
         {{ currentType | translate}} {{ "Feedback" | translate }}
       </h2>
       <div class="flex gap-2" *ngIf="isLesson && !planAiMode" [hasPermission]="['lesson-plan.ai-enhance']">
-        <button class="btn-primary" (click)="showRevertConfirmation = true">
+        <button class="btn-primary flex gap-2 items-center" (click)="showRevertConfirmation = true">
+          <img src="assets/icons/Replay_light.svg" alt="" />
           {{ "Revert AI edits" | translate }}
         </button>
       </div>
     </div>
 
-    <div class="bg-white border rounded p-4 mt-3" *ngIf="planAiMode === 'prompt'">
+    <div class="plan-ai-prompt bg-white border rounded p-3 mt-2" *ngIf="planAiMode === 'prompt'">
       <div class="flex justify-between items-center mb-2">
         <span class="font-semibold text-content">{{
           "AI enhance: entire lesson plan" | translate
@@ -250,7 +251,7 @@
       </div>
     </div>
 
-    <div class="bg-white border rounded p-4 mt-3" *ngIf="planAiMode === 'diff'">
+    <div class="bg-white border rounded p-3 mt-2" *ngIf="planAiMode === 'diff'">
       <div class="flex justify-between items-center mb-3">
         <span class="font-semibold text-content">{{
           "AI enhance: entire lesson plan" | translate
@@ -347,7 +348,7 @@
       </div>
     </div>
 
-    <div class="mt-3 gap-4 flex text-[14px] flex-col xl:flex-row">
+    <div class="mt-2 gap-2 flex text-[14px] flex-col xl:flex-row">
       <div
         class="flex items-start md:items-center"
         *ngFor="let feedbackValue of feedbackValues"
@@ -375,13 +376,13 @@
         [disabled]="mode === 'view'"
         class="form-control mt-2"
         placeholder="{{ 'Leave your comments here' | translate }}"
-        rows="3"
+        rows="2"
         (change)="hasUnsavedChanges = true"
       ></textarea>
     </div>
 
     <div
-      class="flex items-center justify-end gap-2 mt-5"
+      class="flex items-center justify-end gap-2 mt-3"
       *ngIf="mode === 'view'"
     >
       <button data-testid="save-changes-btn" [hasPermission]="[isLesson ? 'lesson-plan.edit' : 'lesson-resource.edit']" (click)="saveEditedContent()" type="submit" class="btn-primary">
@@ -390,7 +391,7 @@
     </div>
 
     <div
-      class="flex items-center justify-end gap-2 mt-5"
+      class="flex items-center justify-end gap-2 mt-3"
       *ngIf="mode !== 'view'"
     >
       <button
@@ -442,6 +443,7 @@
       confirmationText: 'This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.',
       primaryButtonLabel: 'Revert',
       primaryButtonType: 'ok',
+      primaryButtonIcon: 'assets/icons/Replay_light.svg',
       cancelButtonLabel: 'Cancel'
     }"
     (close)="confirmRevert($event)"

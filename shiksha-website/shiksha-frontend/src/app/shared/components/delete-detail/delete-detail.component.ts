@@ -8,6 +8,7 @@ export interface DeleteDetailConfig {
   confirmationText: string;
   primaryButtonLabel: string;
   primaryButtonType: string;
+  primaryButtonIcon?: string;
   cancelButtonLabel?:string;
   secondaryButtonLabel?: string;
   secondaryButtonType?: string;
