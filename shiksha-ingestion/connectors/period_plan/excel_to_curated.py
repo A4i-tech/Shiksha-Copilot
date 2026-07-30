@@ -15,11 +15,6 @@ def _get_chapter_number(text: str) -> int | None:
     return int(m.group()) if m else None
 
 
-def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df.columns = df.columns.str.strip().str.replace(" ", "_").str.lower()
-    return df
-
-
 def process_subject_grade(config: ExcelInputConfig, grade: str, output_dir: Path) -> Path:
     if grade not in config.sheet_map:
         raise ValueError(f"Grade {grade!r} not in sheet_map for subject {config.subject!r}")
@@ -36,7 +31,7 @@ def process_subject_grade(config: ExcelInputConfig, grade: str, output_dir: Path
         )
 
     df = pd.read_excel(config.file_path, sheet_name=matching_sheet, engine="openpyxl")
-    df = _normalize_columns(df)
+    df.columns = df.columns.str.strip().str.replace(" ", "_").str.lower()
 
     for col in ("chapter_number", "chapter_title", "period"):
         df[col] = df[col].ffill()
@@ -54,18 +49,8 @@ def process_subject_grade(config: ExcelInputConfig, grade: str, output_dir: Path
                 f"qdrant/SCERT/chapter_id:"
                 f"Medium=english,Grade={grade},Subject={config.subject},Number={num}"
             ),
-            "topic": [],
             "topic_groups": [],
         }
-
-        for _, row in chap_df.iterrows():
-            subtopic = str(row["topic"])
-            lo = str(row["learning_outcomes"])
-            if subtopic.lower() in ("nan", ""):
-                if chapter["topic"]:
-                    chapter["topic"][-1]["learning_outcomes"].append(lo)
-            else:
-                chapter["topic"].append({"title": subtopic, "learning_outcomes": [lo]})
 
         for _, period_df in chap_df.groupby("period", sort=False):
             topic_list = (

@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from connectors.period_plan.config import PeriodPlanConfig, DiscourseTypesConfig, ExecutionConfig
 from connectors.period_plan.curated_to_payloads import generate_for_curated_file, _substitute_workflow
 
 
@@ -48,17 +49,18 @@ def test_generate_for_curated_file_writes_payloads(tmp_path):
     curated_path = tmp_path / "social.json"
     curated_path.write_text(json.dumps(SAMPLE_CHAPTER), encoding="utf-8")
 
+    cfg = PeriodPlanConfig.model_construct(
+        discourse_types=DiscourseTypesConfig(major=["Lab Report"], minor=["Quiz"]),
+        execution=ExecutionConfig(skip_existing_payloads=False),
+    )
     payloads_dir = tmp_path / "payloads"
     count = generate_for_curated_file(
         curated_path=curated_path,
         grade="9",
         subject="social",
+        cfg=cfg,
         base_workflow=SAMPLE_WORKFLOW,
-        workflow_id="telangana_social_chapter_lp_workflow",
         payloads_dir=payloads_dir,
-        discourse_major=["Lab Report"],
-        discourse_minor=["Quiz"],
-        skip_existing=False,
     )
     assert count == 2
     payload_files = list(payloads_dir.rglob("*.json"))
@@ -66,6 +68,7 @@ def test_generate_for_curated_file_writes_payloads(tmp_path):
     first = json.loads(sorted(payload_files)[0].read_text())
     assert first["lp_level"] == "SUBTOPIC"
     assert "Board=BSE-TG" in first["chapter_id"]
+    assert "Board=BSE-TG" in first["chapter_info"]["id"]
 
 
 def test_generate_skips_existing(tmp_path):
@@ -76,15 +79,16 @@ def test_generate_skips_existing(tmp_path):
     first_out.parent.mkdir(parents=True)
     first_out.write_text("{}", encoding="utf-8")
 
+    cfg = PeriodPlanConfig.model_construct(
+        discourse_types=DiscourseTypesConfig(major=["Lab"], minor=["Quiz"]),
+        execution=ExecutionConfig(skip_existing_payloads=True),
+    )
     count = generate_for_curated_file(
         curated_path=curated_path,
         grade="9",
         subject="social",
+        cfg=cfg,
         base_workflow=SAMPLE_WORKFLOW,
-        workflow_id="telangana_social_chapter_lp_workflow",
         payloads_dir=payloads_dir,
-        discourse_major=["Lab"],
-        discourse_minor=["Quiz"],
-        skip_existing=True,
     )
     assert count == 1

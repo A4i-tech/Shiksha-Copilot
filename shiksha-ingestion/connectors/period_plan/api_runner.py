@@ -50,6 +50,7 @@ async def _process_single(
                     status_uri,
                     timeout=aiohttp.ClientTimeout(total=cfg.poll_timeout_secs),
                 ) as status_resp:
+                    status_resp.raise_for_status()
                     status_data: dict[str, Any] = await status_resp.json()
             except Exception as poll_exc:
                 print(f"  [Poll error] {type(poll_exc).__name__}: {poll_exc}; retrying...")
@@ -108,13 +109,10 @@ async def run_async(
     api_results: list[dict[str, Any]] = []
     connector = aiohttp.TCPConnector(limit=cfg.concurrency)
     async with aiohttp.ClientSession(connector=connector) as session:
-        sem = asyncio.Semaphore(cfg.concurrency)
-
-        async def bounded(p: Path) -> dict[str, Any]:
-            async with sem:
-                return await _process_single(session, p, payloads_dir, results_dir, cfg)
-
-        tasks = [asyncio.create_task(bounded(p)) for p in to_process]
+        tasks = [
+            asyncio.create_task(_process_single(session, p, payloads_dir, results_dir, cfg))
+            for p in to_process
+        ]
         for coro in asyncio.as_completed(tasks):
             res = await coro
             api_results.append(res)

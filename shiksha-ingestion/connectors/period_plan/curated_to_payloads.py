@@ -45,13 +45,14 @@ def generate_for_curated_file(
     curated_path: Path,
     grade: str,
     subject: str,
+    cfg: PeriodPlanConfig,
     base_workflow: dict[str, Any],
-    workflow_id: str,
     payloads_dir: Path,
-    discourse_major: list[str],
-    discourse_minor: list[str],
-    skip_existing: bool = True,
 ) -> int:
+    workflow_id: str = base_workflow["_id"]
+    discourse_major = cfg.discourse_types.major
+    discourse_minor = cfg.discourse_types.minor
+    skip_existing = cfg.execution.skip_existing_payloads
     chapters: list[dict[str, Any]] = json.loads(curated_path.read_text(encoding="utf-8"))
     total = 0
     for chapter in chapters:
@@ -102,7 +103,7 @@ def generate_for_curated_file(
                 "subtopics": group_topics,
                 "learning_outcomes": topic_los,
                 "chapter_info": {
-                    "id": chapter_id_str,
+                    "id": chapter_id_str.replace("Board=SCERT", "Board=BSE-TG"),
                     "chapter_title": chap_title,
                     "index_path": base_index_path,
                 },
@@ -119,9 +120,7 @@ def generate_for_curated_file(
 def run(cfg: PeriodPlanConfig, run_dir: Path) -> int:
     curated_dir = run_dir / cfg.outputs.curated_dirname
     payloads_dir = run_dir / cfg.outputs.payloads_dirname
-    template_path = Path(cfg.templates.workflow_template_path)
-    base_workflow = _load_workflow_template(template_path)
-    workflow_id = template_path.stem
+    base_workflow = _load_workflow_template(Path(cfg.templates.workflow_template_path))
     total = 0
     for _key, input_cfg in cfg.inputs.items():
         subject = input_cfg.subject
@@ -135,12 +134,9 @@ def run(cfg: PeriodPlanConfig, run_dir: Path) -> int:
                 curated_path=curated_path,
                 grade=grade,
                 subject=subject,
+                cfg=cfg,
                 base_workflow=base_workflow,
-                workflow_id=workflow_id,
                 payloads_dir=payloads_dir,
-                discourse_major=cfg.discourse_types.major,
-                discourse_minor=cfg.discourse_types.minor,
-                skip_existing=cfg.execution.skip_existing_payloads,
             )
             total += count
             print(f"  [Done] Grade {grade} {subject}: {count} payloads written")

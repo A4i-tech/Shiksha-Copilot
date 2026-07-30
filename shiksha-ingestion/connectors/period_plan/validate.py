@@ -174,7 +174,7 @@ def validate_file(path: Path, mode: Literal["payload", "result", "auto"]) -> tup
 
 def validate_dir(directory: Path, mode: Literal["payload", "result", "auto"] = "auto") -> tuple[int, int]:
     if not directory.exists():
-        return 0, 0
+        raise FileNotFoundError(f"Validation directory not found: {directory}")
     ok = fail = 0
     for f in sorted(directory.rglob("*.json")):
         valid, msg = validate_file(f, mode)
