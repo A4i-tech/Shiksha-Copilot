@@ -246,6 +246,7 @@ async function acquireLease(states) {
 
 async function unifyUsers() {
   const db = mongoose.connection.db;
+  await seedBuiltinRoles(db);
   const states = db.collection("migrationstates");
   const state = await states.findOne({ _id: MIGRATION_ID });
   const collections = await db.listCollections({ name: "adminusers" }, { nameOnly: true }).toArray();
@@ -285,7 +286,6 @@ async function unifyUsers() {
     const backupState = await states.updateOne({ _id: MIGRATION_ID, status: "running", owner }, { $set: { backupSuffix } });
     if (!backupState.matchedCount) throw new Error("User migration lease lost");
 
-    await seedBuiltinRoles(db);
     await renewLease();
     await users.deleteMany({});
     if (migration.unified.length) await users.insertMany(migration.unified);
