@@ -2,11 +2,11 @@ from dataclasses import dataclass
 import json
 import logging
 from pathlib import Path
-from typing import Literal
 
 from app.utils.utils import local_unique_id
 from llama_index.core import Response
 from pydantic import Field, create_model
+from langfuse import observe, propagate_attributes
 
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
@@ -76,6 +76,7 @@ class LessonEditService:
         """Clear the RAG adapter cache and associated resources."""
         await self._rags.cleanup()
 
+    @observe(name="Shiksha-LP")
     async def edit_section(self, body: SectionEditRequest[ContentT]) -> ContentT:
         current_content = body.current_content
         is_plain = isinstance(current_content, str)
@@ -92,9 +93,11 @@ class LessonEditService:
 
         output_type = create_model("Result", content=(type(current_content), Field(description="Final output that replaces the provided 'Requested change'")))
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
-        response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
+        with propagate_attributes(user_id=body.user_id, tags=["scope:section"]):
+            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
         return response.output.content
 
+    @observe(name="Shiksha-LP")
     async def edit_plan(self, body: PlanEditRequest) -> list[PlanEditRecordResponse]:
         sections = [s.model_dump(mode="json") for s in body.sections]
         instructions = self._prompt_plan_edit_instruction + " " + self._prompt_grounding_instruction
@@ -112,7 +115,8 @@ class LessonEditService:
         })
 
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
-        response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
+        with propagate_attributes(user_id=body.user_id, tags=["scope:plan"]):
+            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
         return [
             PlanEditRecordResponse(
                 id=mapping_[k],
