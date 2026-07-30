@@ -144,6 +144,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			const lessonPlan = await TeacherLessonPlanModel.findOne({
 				teacherId,
 				lessonId: lessonPlanId,
+				isDeleted: { $ne: true },
 			});
 			return !!lessonPlan;
 		} catch (error) {
@@ -314,7 +315,12 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			await this.lessonFeedbackDao.deleteByTeacherAndLessonId(teacherId, lessonId);
 		} catch (error) {
-			console.error("Error deleting lesson feedback after lesson plan delete:", error);
+			logger.error("Error deleting lesson feedback after lesson plan delete", {
+				function: "_deleteLessonFeedbackSafely",
+				teacherId,
+				lessonId,
+				message: error.message,
+			});
 		}
 	}
 
@@ -322,7 +328,12 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			await this.teacherResourceFeedbackDao.deleteByTeacherAndResourceId(teacherId, resourceId);
 		} catch (error) {
-			console.error("Error deleting resource feedback after resource plan delete:", error);
+			logger.error("Error deleting resource feedback after resource plan delete", {
+				function: "_deleteResourceFeedbackSafely",
+				teacherId,
+				resourceId,
+				message: error.message,
+			});
 		}
 	}
 

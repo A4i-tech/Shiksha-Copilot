@@ -77,6 +77,10 @@ const teacherLessonPlan = new Schema(
 			default: false,
 		},
 		sections: { type: [SectionSchema], default: [] },
+		isDeleted: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	{ timestamps: true }
 );
