@@ -8,7 +8,7 @@ const ROLE_MAP = {
   admin: "7368696b7368615f61646d6e",
 };
 const TOUCHED_COLLECTIONS = ["users", "adminusers", "roles", "teachertrainingbatches", "auditlogs", "lessonplantemplates"];
-const MIGRATION_ID = "unify-users";
+const MIGRATION_ID = "unify-users-v1";
 const LEASE_MS = 10 * 60 * 1000;
 
 function identity(document) {
@@ -249,9 +249,13 @@ async function unifyUsers() {
   await seedBuiltinRoles(db);
   const states = db.collection("migrationstates");
   const state = await states.findOne({ _id: MIGRATION_ID });
+  if (state?.status === "completed") return;
   const collections = await db.listCollections({ name: "adminusers" }, { nameOnly: true }).toArray();
   const hasAdmins = collections.length && await db.collection("adminusers").countDocuments();
-  if (!hasAdmins && state?.status !== "running") return;
+  if (!hasAdmins && state?.status !== "running") {
+    await states.updateOne({ _id: MIGRATION_ID }, { $set: { status: "completed", completedAt: new Date() } }, { upsert: true });
+    return;
+  }
 
   const { owner, previous } = await acquireLease(states);
   const renewLease = async () => {
