@@ -300,19 +300,31 @@ describe("UserController", () => {
       mockReq.query = {
         page: "2",
         limit: "20",
-        role: "teacher",
-        zone: "zone1",
+        filter: { role: "teacher", zone: "zone1" },
         search: "test"
       };
 
       await controller.getAll(mockReq, mockRes);
 
       expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        2,
-        20,
-        expect.objectContaining({ role: "teacher" }),
-        {},
-        expect.any(Object)
+        expect.objectContaining({
+          page: 2,
+          limit: 20,
+          filters: expect.objectContaining({
+            $and: expect.arrayContaining([
+              expect.objectContaining({ role: "teacher", zone: "zone1" }),
+              expect.objectContaining({
+                $or: expect.arrayContaining([
+                  expect.objectContaining({ "identity.name": expect.any(Object) })
+                ])
+              })
+            ])
+          }),
+          sort: {},
+          status: {},
+          permissions: mockReq.permissions,
+          permission: "user.view"
+        })
       );
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
@@ -320,24 +332,28 @@ describe("UserController", () => {
     it("should apply manager zone/district filters", async () => {
       const mockResult = { success: true, data: { results: [], total: 0 } };
       mockUserManager.getAll = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user = {
-        role: ["manager"],
-        zones: ["zone1", "zone2"],
-        districts: ["dist1", "dist2"]
+      mockReq.query = {
+        filter: {
+          zone: ["zone1", "zone2"],
+          district: ["dist1", "dist2"]
+        }
       };
-      mockReq.query = {};
 
       await controller.getAll(mockReq, mockRes);
 
       expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        1,
-        10,
         expect.objectContaining({
-          zone: ["zone1", "zone2"],
-          district: ["dist1", "dist2"]
-        }),
-        {},
-        expect.any(Object)
+          page: 1,
+          limit: 10,
+          filters: expect.objectContaining({
+            zone: ["zone1", "zone2"],
+            district: ["dist1", "dist2"]
+          }),
+          sort: {},
+          status: {},
+          permissions: mockReq.permissions,
+          permission: "user.view"
+        })
       );
     });
 
@@ -349,15 +365,19 @@ describe("UserController", () => {
       await controller.getAll(mockReq, mockRes);
 
       expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        1,
-        10,
         expect.objectContaining({
-          $or: expect.arrayContaining([
-            { name: expect.objectContaining({ $regex: expect.any(RegExp) }) }
-          ])
-        }),
-        {},
-        expect.any(Object)
+          page: 1,
+          limit: 10,
+          filters: expect.objectContaining({
+            $or: expect.arrayContaining([
+              { "identity.name": expect.objectContaining({ $regex: expect.any(RegExp) }) }
+            ])
+          }),
+          sort: {},
+          status: {},
+          permissions: mockReq.permissions,
+          permission: "user.view"
+        })
       );
     });
 
@@ -369,11 +389,15 @@ describe("UserController", () => {
       await controller.getAll(mockReq, mockRes);
 
       expect(mockUserManager.getAll).toHaveBeenCalledWith(
-        1,
-        10,
-        expect.any(Object),
-        {},
-        { isDeleted: true }
+        expect.objectContaining({
+          page: 1,
+          limit: 10,
+          filters: expect.any(Object),
+          sort: {},
+          status: { isDeleted: true },
+          permissions: mockReq.permissions,
+          permission: "user.view"
+        })
       );
     });
 

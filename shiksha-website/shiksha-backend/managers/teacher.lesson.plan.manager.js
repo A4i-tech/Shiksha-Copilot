@@ -238,8 +238,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			resourcePlanId
 		);
 		if (resourcePlan) {
-			const rattingAttachedResourcePlan = await attachAggregateRatings(resourcePlan,resourcePlanId)
-			return formatApiReponse(true, "", rattingAttachedResourcePlan);
+			return formatApiReponse(true, "", resourcePlan);
 		} else {
 			return formatApiReponse(false, " Resource plan not found", null);
 		}

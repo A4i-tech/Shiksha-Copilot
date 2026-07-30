@@ -93,24 +93,35 @@ class QuestionBankController extends BaseController {
       feedback,
       req.user._id
     );
-    if (result.success) return res.status(200).json(result);
-    return handleError(result, res);
+    if (!result.success) {
+      return handleError(result, res);
+    }
+    return res.status(200).json(result);
   }
 
   async retryFailedJobs(req, res) {
     const result = await this.manager.retryFailedJobs();
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async getQuestionTypes(req, res) {
     const { subject } = req.query;
     const result = await this.manager.getQuestionTypes(subject);
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async retryFailedJob(req, res) {
     const jobId = req.params.id;
     const result = await this.manager.retryFailedJob(jobId);
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
@@ -118,12 +129,18 @@ class QuestionBankController extends BaseController {
 
   async getClasses(req, res) {
     const result = await this.manager.getClasses();
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async getMedia(req, res) {
     const { class: className } = req.query;
     const result = await this.manager.getMedia(className);
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
@@ -134,34 +151,52 @@ class QuestionBankController extends BaseController {
       medium,
       subject
     );
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async getDifficulties(req, res) {
     const result = await this.manager.getDifficulties();
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async getAnswerTypes(req, res) {
     const result = await this.manager.getAnswerTypes();
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async getGrammarTopics(req, res) {
     const { grade } = req.query;
     const result = await this.manager.getGrammarTopics(grade);
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async getPaperConfig(req, res) {
     const { board, grade, subjectName } = req.query;
     const result = await this.manager.getPaperConfig(board, grade, subjectName);
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
   async getQuestions(req, res) {
     const filters = req.query;
     const result = await this.manager.getQuestions(filters);
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 
@@ -180,6 +215,9 @@ class QuestionBankController extends BaseController {
       master,
     ]);
 
+    if (!result.success) {
+      return handleError(result, res);
+    }
     return res.status(200).json(result);
   }
 }

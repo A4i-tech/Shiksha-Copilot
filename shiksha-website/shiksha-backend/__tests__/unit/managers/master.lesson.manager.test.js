@@ -141,9 +141,10 @@ describe("MasterLessonManager", () => {
     });
 
     it("rejects an activity outside the permission scope", async () => {
-      const result = await manager.getActivityById("lesson-123", "log-1", [{ permission: "content.activity.view", scopeType: "SCHOOL", dep: "school-2" }]);
+      await expect(
+        manager.getActivityById("lesson-123", "log-1", [{ permission: "content.activity.view", scopeType: "SCHOOL", dep: "school-2" }])
+      ).rejects.toThrow("Activity is outside your scope");
 
-      expect(result).toMatchObject({ success: false, message: "Activity is outside your scope" });
       expect(mockMasterLessonDao.generateLessonPlan).not.toHaveBeenCalled();
     });
   });

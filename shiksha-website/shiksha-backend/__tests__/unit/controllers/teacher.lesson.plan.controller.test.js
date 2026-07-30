@@ -404,33 +404,6 @@ describe("TeacherLessonPlanController", () => {
     });
   });
 
-  describe("resourceActivityRating", () => {
-    it("should rate activity successfully", async () => {
-      const mockResult = { success: true, message: "Activity rated" };
-      mockManager.rateActivity = jest.fn().mockResolvedValue(mockResult);
-      mockReq.params = { resourcePlanId: "resource-123" };
-      mockReq.body = { activityId: "activity-1", rating: 5 };
-
-      await controller.resourceActivityRating(mockReq, mockRes);
-
-      expect(mockManager.rateActivity).toHaveBeenCalledWith(
-        "teacher-123",
-        "resource-123",
-        mockReq.body
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should propagate errors instead of swallowing them", async () => {
-      const error = new Error("Rating failed");
-      mockManager.rateActivity = jest.fn().mockRejectedValue(error);
-      mockReq.params = { resourcePlanId: "resource-123" };
-
-      await expect(controller.resourceActivityRating(mockReq, mockRes)).rejects.toThrow("Rating failed");
-      expect(mockRes.status).not.toHaveBeenCalled();
-    });
-  });
-
   describe("retryLessonPlan", () => {
     it("should retry a lesson plan", async () => {
       const mockResult = { success: true, data: {} };

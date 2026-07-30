@@ -140,7 +140,7 @@ class MasterLessonDao extends BaseDao {
 			return result.data;
 		}
 
-		return false;
+		throw new AppError("Failed to generate lesson plan", 400);
 	}
 }
 

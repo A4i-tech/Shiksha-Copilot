@@ -166,7 +166,7 @@ describe('AuthController', () => {
             expect(mockRes.status).toHaveBeenCalledWith(401);
             expect(mockRes.json).toHaveBeenCalledWith({
                 success: false,
-                messaage: 'Token Expired!',
+                message: 'Token Expired!',
                 data: null
             });
         });
