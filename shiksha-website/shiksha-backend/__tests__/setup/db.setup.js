@@ -3,26 +3,24 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 
 let mongoServer;
 
-const usingSharedMongo = () => Boolean(process.env.MONGO_URL);
-
 /**
- * Setup test database connection.
- *
- * If MONGO_URL is set (E2E mode - see .github/workflows/ci-backend.yaml),
- * connects to that already-running MongoDB instance, the same one a live
- * app.js process is using. Otherwise spins up an ephemeral MongoDB Memory
- * Server for fast, isolated local/unit-style testing.
+ * Setup test database connection
+ * Uses MongoDB Memory Server for fast, isolated testing
  */
 const setupTestDB = async () => {
   try {
+    // Create in-memory MongoDB instance
+    mongoServer = await MongoMemoryServer.create();
+    const mongoUri = mongoServer.getUri();
+
+    // Disconnect any existing connections
     await mongoose.disconnect();
 
-    if (usingSharedMongo()) {
-      await mongoose.connect(process.env.MONGO_URL);
-    } else {
-      mongoServer = await MongoMemoryServer.create();
-      await mongoose.connect(mongoServer.getUri());
-    }
+    // Connect to in-memory database
+    await mongoose.connect(mongoUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
 
     console.log("Test database connected successfully");
   } catch (error) {
@@ -51,18 +49,15 @@ const clearTestDB = async () => {
 };
 
 /**
- * Close database connection and stop MongoDB Memory Server (if owned).
+ * Close database connection and stop MongoDB Memory Server
  */
 const closeTestDB = async () => {
   try {
     // Remove all event listeners to prevent memory leaks
     mongoose.connection.removeAllListeners();
 
-    if (!usingSharedMongo()) {
-      // Only wipe the DB when we own an ephemeral instance - the shared
-      // E2E Mongo is still in use by the live app.js process.
-      await mongoose.connection.dropDatabase();
-    }
+    // Drop database
+    await mongoose.connection.dropDatabase();
 
     // Close connection
     await mongoose.connection.close();

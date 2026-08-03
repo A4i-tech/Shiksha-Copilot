@@ -242,6 +242,22 @@ jobs:
           name: regression-report
           path: regression_report.csv
 
+  staging-e2e-backend:
+    name: Backend E2E Tests (staging)
+    needs: [cd-backend, health-check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run backend E2E tests against staging
+        working-directory: shiksha-website/shiksha-backend
+        env:
+          SHIKSHA_BASE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
+          SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
+          SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
+        run: |
+          npm ci
+          npm run test:integration
+
   performance-tests:
     name: Performance Tests
     needs: [cicd-frontend, health-check]
@@ -405,7 +421,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests, accessibility-tests]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests, accessibility-tests, staging-e2e-backend]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
