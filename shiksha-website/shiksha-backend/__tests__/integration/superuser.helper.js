@@ -1,17 +1,15 @@
-// Shared login helper for the staging E2E suite (see
-// .github/workflows/main.yaml's staging-e2e job). These tests run
-// against the real deployed staging backend - no direct DB access, no
-// invented secrets. Auth goes through a pre-seeded super-user account
-// (phone/PIN supplied by CI as SHIKSHA_SU_PHONE/SHIKSHA_SU_PIN) that
-// already has a static PIN set, so login skips the SMS-OTP path
-// entirely (see AuthManager.getOtp: an account with `otp` +
-// `rememberMeToken` already set goes straight to "Verify your Pin!").
+// Shared login helpers for the staging E2E suite (see
+// .github/workflows/main.yaml's staging-e2e job). Tests run against the
+// real deployed staging backend - no direct DB access, no invented
+// secrets. Both accounts have a static PIN set (otp + rememberMeToken:true
+// in the DB), so login skips SMS-OTP entirely (AuthManager.getOtp returns
+// otpTriggered:false when rememberMeToken is set).
 //
-// Fresh throwaway teacher accounts can't be created and logged into in
-// this design - creating one via POST /user/create leaves it without a
-// PIN, and the only way to set one is the real SMS-OTP flow, which an
-// automated test can't observe. Every flow that needs an authenticated
-// user reuses this same super-user account.
+// Two accounts:
+//   superUser (8888899999) - admin/manager roles, no school. Auth tests only.
+//   teacher   (9999911111) - power+standard roles, school assigned. Used for
+//                            schedule and lesson-plan-generation flows that
+//                            require req.user.school._id and power role.
 
 const request = require("supertest");
 
@@ -32,27 +30,54 @@ if (!superUserPhone || !superUserPin) {
   );
 }
 
-let cachedLogin = null;
+const teacherPhone = process.env.SHIKSHA_TEACHER_PHONE;
+const teacherPin = process.env.SHIKSHA_TEACHER_PIN;
+if (!teacherPhone || !teacherPin) {
+  throw new Error(
+    "SHIKSHA_TEACHER_PHONE / SHIKSHA_TEACHER_PIN are not set. Schedule and " +
+      "lesson-plan tests require a pre-seeded teacher account (power role + school) " +
+      "on staging - see .github/workflows/main.yaml."
+  );
+}
 
-async function loginAsSuperUser() {
-  if (cachedLogin) return cachedLogin;
-
+async function loginAs(phone, pin) {
   const otpRes = await request(baseURL)
     .post("/api/auth/get-otp")
-    .send({ phone: superUserPhone });
+    .send({ phone });
   if (!otpRes.body.success) {
-    throw new Error(`get-otp failed for the super-user: ${JSON.stringify(otpRes.body)}`);
+    throw new Error(`get-otp failed for ${phone}: ${JSON.stringify(otpRes.body)}`);
   }
 
   const verifyRes = await request(baseURL)
     .post("/api/auth/validate-otp")
-    .send({ phone: superUserPhone, otp: superUserPin });
+    .send({ phone, otp: pin });
   if (!verifyRes.body.success) {
-    throw new Error(`validate-otp failed for the super-user: ${JSON.stringify(verifyRes.body)}`);
+    throw new Error(`validate-otp failed for ${phone}: ${JSON.stringify(verifyRes.body)}`);
   }
 
-  cachedLogin = { token: verifyRes.body.data.token, user: verifyRes.body.data.user };
-  return cachedLogin;
+  return { token: verifyRes.body.data.token, user: verifyRes.body.data.user };
 }
 
-module.exports = { baseURL, superUserPhone, superUserPin, loginAsSuperUser };
+let cachedSuperUser = null;
+async function loginAsSuperUser() {
+  if (cachedSuperUser) return cachedSuperUser;
+  cachedSuperUser = await loginAs(superUserPhone, superUserPin);
+  return cachedSuperUser;
+}
+
+let cachedTeacher = null;
+async function loginAsTeacher() {
+  if (cachedTeacher) return cachedTeacher;
+  cachedTeacher = await loginAs(teacherPhone, teacherPin);
+  return cachedTeacher;
+}
+
+module.exports = {
+  baseURL,
+  superUserPhone,
+  superUserPin,
+  teacherPhone,
+  teacherPin,
+  loginAsSuperUser,
+  loginAsTeacher,
+};

@@ -1,5 +1,5 @@
 const request = require("supertest");
-const { baseURL, loginAsSuperUser } = require("./superuser.helper");
+const { baseURL, loginAsTeacher } = require("./superuser.helper");
 
 // Real E2E test against the live staging deployment (see
 // .github/workflows/main.yaml's staging-e2e job). No LLM/SMS externals
@@ -19,7 +19,7 @@ describe("Schedule flow (E2E)", () => {
   const createdSchedules = [];
 
   beforeAll(async () => {
-    ({ token, user: { _id: teacherId } } = await loginAsSuperUser());
+    ({ token, user: { _id: teacherId } } = await loginAsTeacher());
 
     // getMySchedules' aggregation $lookups into mastersubjects by
     // subjectName and does a non-preserving $unwind - a schedule whose
