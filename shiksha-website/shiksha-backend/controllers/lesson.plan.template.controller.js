@@ -11,7 +11,9 @@ class LessonPlanTemplateController extends BaseController {
   async findTemplates(req, res) {
     let { filter = {} } = req.query;
 
-    filter.classes = parseInt(filter.classes);
+      if (filter.classes !== undefined) {
+        filter.classes = parseInt(filter.classes);
+      }
 
     const result = await this.manager.findAllTemplates(
       filter
