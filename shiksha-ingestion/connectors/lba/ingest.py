@@ -377,8 +377,16 @@ def _to_mongo_doc(
 
     # No difficulty signal from the extraction prompt yet, so LBA questions never match
     # a difficulty filter (dao/question.dao.js only applies the filter when non-empty).
+    #
+    # _id must be a valid ObjectId: managers/question.bank.manager.js:310 does
+    # `new ObjectId(id)` when generating a paper from selected questions (dao/question.dao.js's
+    # pool query uses .lean() with no cast, so that step alone won't catch a bad _id). Truncate
+    # the hash to 24 hex chars rather than emit a real ObjectId, so re-ingestion stays idempotent.
+    # unitName is part of the hash input so identical boilerplate questions ("Fill in the blanks",
+    # "Answer the following") in different chapters don't collide onto the same _id.
+    unit_name = q.get("unitName", "")
     doc: dict[str, Any] = {
-        "_id": hashlib.sha256(f"{canonical_board}|{entry.grade}|{subject}|{entry.medium.lower()}|{text}".encode()).hexdigest(),
+        "_id": hashlib.sha256(f"{canonical_board}|{entry.grade}|{subject}|{entry.medium.lower()}|{unit_name}|{text}".encode()).hexdigest()[:24],
         "subject": subject,
         "medium": entry.medium.lower(),
         "class": str(entry.grade),
