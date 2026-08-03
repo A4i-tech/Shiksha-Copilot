@@ -1,5 +1,5 @@
 const request = require("supertest");
-const { baseURL, loginAsSuperUser } = require("./superuser.helper");
+const { baseURL, loginAsTeacher } = require("./superuser.helper");
 
 // Real E2E test against the live staging deployment (see
 // .github/workflows/main.yaml's staging-e2e job). Uses an EXISTING
@@ -24,7 +24,7 @@ describe("Lesson plan generation flow (E2E)", () => {
   let token, masterLessonId;
 
   beforeAll(async () => {
-    ({ token } = await loginAsSuperUser());
+    ({ token } = await loginAsTeacher());
 
     const listRes = await request(baseURL)
       .get("/api/master-lesson/list?limit=1")
