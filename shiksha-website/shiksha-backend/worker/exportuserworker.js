@@ -20,7 +20,7 @@ parentPort.once("message", async (data) => {
         { header: "Teacher Name", key: "teacherName", width: 30 },
         { header: "School Name", key: "schoolName", width: 30 },
         { header: "Phone Number", key: "phoneNumber", width: 15 },
-        { header: "Type of Teacher", key: "teacherType", width: 15 },
+        { header: "Roles", key: "roles", width: 30 },
         { header: "Status of Teacher", key: "teacherStatus", width: 15 },
         { header: "Training Status", key: "trainingStatus", width: 15 },
       ];
@@ -30,7 +30,7 @@ parentPort.once("message", async (data) => {
           teacherName: ele.identity.name,
           schoolName: ele.school.name,
           phoneNumber: ele.identity.phone,
-          teacherType: ele.roles[0].role.name,
+          roles: ele.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => assignment.role.name).join(", "),
           teacherStatus: ele.isDeleted ? "Inactive" : "Active",
           trainingStatus: ele.trainingStatus === "trained" ? "Trained" : "Untrained",
         });

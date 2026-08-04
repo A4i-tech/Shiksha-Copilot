@@ -129,21 +129,10 @@ const userSchema = mongoose.Schema(
 );
 
 userSchema.methods.generateAuthToken = function () {
-  const token = jwt.sign(
-    { _id: this._id },
-    JWT_SECRET,
-    {
-      expiresIn: "7d",
-    }
-  );
-  return token;
+  return jwt.sign({ _id: this._id }, JWT_SECRET, { expiresIn: "7d" });
 };
 
-userSchema.index(
-  { "identity.phone": 1 },
-  { unique: true, name: "uniq_user_phone" }
-);
-
+userSchema.index({ "identity.phone": 1 }, { unique: true, name: "uniq_user_phone" });
 userSchema.index({ "roles.dep": 1 }, { name: "idx_user_role_dependency", background: true });
 
 const User = mongoose.model("User", userSchema);

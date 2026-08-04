@@ -172,7 +172,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     if (!presentationId) {
       return;
     }
-    this.router.navigate([`/content/presentation/${presentationId}`]);
+    this.router.navigate([`/content-generation/presentation/${presentationId}`]);
   }
 
   get canDownloadLessonPlanPresentation(): boolean {

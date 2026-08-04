@@ -69,10 +69,9 @@
         <input
           type="text"
           id="profile-name"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your name' | translate }}"
           readonly
-          aria-readonly="true"
           [value]="userData?.identity?.name"
         />
       </div>
@@ -83,10 +82,9 @@
         <input
           type="text"
           id="profile-phone"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your phone number' | translate }}"
           readonly
-          aria-readonly="true"
           [value]="userData?.identity?.phone"
         />
       </div>
@@ -97,10 +95,8 @@
         <input
           type="text"
           id="profile-school"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
-          required
+          class="form-control"
           readonly
-          aria-readonly="true"
           [value]="userData?.school?.name"
         />
       </div>
@@ -114,11 +110,9 @@
         <input
           type="text"
           id="profile-state"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your cluster' | translate }}"
           readonly
-          required
-          aria-readonly="true"
           [value]="userData?.school?.state"
         />
       </div>
@@ -129,11 +123,9 @@
         <input
           type="text"
           id="profile-zone"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your zone' | translate }}"
           readonly
-          required
-          aria-readonly="true"
           [value]="userData?.school?.zone"
         />
       </div>
@@ -144,11 +136,9 @@
         <input
           type="text"
           id="profile-district"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter your district' | translate }}"
           readonly
-          required
-          aria-readonly="true"
           [value]="userData?.school?.district"
         />
       </div>
@@ -159,11 +149,9 @@
         <input
           type="text"
           id="profile-taluk"
-          class="appearance-none border border-content-50 rounded-lg block w-full p-2.5 text-content text-sm leading-tight outline-none bg-surface-muted"
+          class="form-control"
           placeholder="{{ 'Enter Taluk' | translate }}"
           readonly
-          required
-          aria-readonly="true"
           [value]="userData?.school?.block"
         />
       </div>
@@ -212,10 +200,10 @@
                 [dropDownValues]="boardDropdownOptions"
                 [config]="boardTypeDropdownconfig"
                 [submitted]="submitted"
-                (valueChange)="setMediumSubjectDropdown(i, $event,'add')"
+                (valueChange)="setMediumSubjectDropdown(i, $event)"
               ></app-dropdown>
             </td>
-            <td class="px-1 py-1 lg:px-4 lg:py-4">
+            <td class="px-1 py-1 lg:px-4 lg:py-4 capitalize">
               <label class="lg:hidden mb-1 form-control-label">{{
                 "Medium" | translate
               }} <span class="text-[16px] text-error">*</span></label>

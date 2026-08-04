@@ -6,6 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TeacherAbsentService } from 'src/app/view/admin/teacher-training/teacher-absent.service';
 import * as ExcelJS from 'exceljs';
 import confetti from 'canvas-confetti';
+import { TranslateService } from '@ngx-translate/core';
 
 interface FileWithObjectURL extends File {
   objectURL: string;
@@ -42,6 +43,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
   private batchService = inject(BatchService);
   private router = inject(Router);
   private teacherAbsentService = inject(TeacherAbsentService);
+  private translate = inject(TranslateService);
 
   ngOnInit(): void {
     this.batchSubscription = this.route.paramMap.subscribe(params => {
@@ -120,13 +122,13 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         console.error('Error fetching batch details:', error);
         
         if (error.status === 403) {
-          alert('Access denied. You can only view batches you created.');
+          alert(error.error.message);
         } else if (error.status === 404) {
-          alert('Batch not found.');
+          alert(this.translate.instant('Batch not found.'));
         } else if (error.status === 401) {
-          alert('Authentication required. Please log in again.');
+          alert(this.translate.instant('Authentication required. Please log in again.'));
         } else {
-          alert('Error fetching batch details. Please try again.');
+          alert(this.translate.instant('Error fetching batch details. Please try again.'));
         }
         
         this.router.navigate(['/training/view-batch']);
@@ -198,11 +200,11 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         }
         
         if (error.status === 403) {
-          alert('Access denied. You can only update batches you created.');
+          alert(error.error.message);
         } else if (error.status === 404) {
-          alert('Batch not found.');
+          alert(this.translate.instant('Batch not found.'));
         } else {
-          alert('Error updating attendance. Please try again.');
+          alert(this.translate.instant('Error updating attendance. Please try again.'));
         }
       }
     });
@@ -219,7 +221,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm(`Are you sure you want to remove ${teacher.identity.name} from ${batch.batchName}?`)) {
+    if (confirm(this.translate.instant('Are you sure you want to remove {{teacher}} from {{batch}}?', { teacher: teacher.identity.name, batch: batch.batchName }))) {
       const currentAttendance = [...(this.selectedBatch?.attendance || [])];
       const updatedAttendance = currentAttendance.filter(id => id !== teacher._id);
       
@@ -235,11 +237,11 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           console.error('Error removing teacher from batch:', error);
           
           if (error.status === 403) {
-            alert('Access denied. You can only remove teachers from batches you created.');
+            alert(error.error.message);
           } else if (error.status === 404) {
-            alert('Batch or teacher not found.');
+            alert(this.translate.instant('Batch or teacher not found.'));
           } else {
-            alert('Error removing teacher from batch. Please try again.');
+            alert(this.translate.instant('Error removing teacher from batch. Please try again.'));
           }
         }
       });
@@ -253,18 +255,18 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
       
       // Validate number of photos
       if (this.selectedPhotos.length + files.length > 2) {
-        this.uploadError = 'You can only upload a maximum of 2 photos';
+        this.uploadError = this.translate.instant('You can only upload a maximum of 2 photos');
         return;
       }
 
       // Validate each file
       for (const file of files) {
         if (!this.allowedPhotoTypes.includes(file.type)) {
-          this.uploadError = 'Only JPG, JPEG, and PNG files are allowed for photos';
+          this.uploadError = this.translate.instant('Only JPG, JPEG, and PNG files are allowed for photos');
           return;
         }
         if (file.size > this.maxPhotoSize) {
-          this.uploadError = 'Photo size should not exceed 5MB';
+          this.uploadError = this.translate.instant('Photo size should not exceed 5MB');
           return;
         }
         // Create object URL immediately and attach it to the file object
@@ -282,11 +284,11 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
       const file = input.files[0];
       
       if (file.type !== this.allowedPdfType) {
-        this.uploadError = 'Only PDF files are allowed';
+        this.uploadError = this.translate.instant('Only PDF files are allowed');
         return;
       }
       if (file.size > this.maxPdfSize) {
-        this.uploadError = 'PDF size should not exceed 10MB';
+        this.uploadError = this.translate.instant('PDF size should not exceed 10MB');
         return;
       }
 
@@ -312,7 +314,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm('Are you sure you want to save and submit this batch? Once submitted, it cannot be modified.')) {
+    if (confirm(this.translate.instant('Are you sure you want to save and submit this batch? Once submitted, it cannot be modified.'))) {
       const currentData = {
         assignedTeachers: this.selectedBatch?.assignedTeachers || [],
         attendance: this.selectedBatch?.attendance || []
@@ -335,7 +337,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           },
           error: (error: HttpErrorResponse) => {
             console.error('Error uploading files:', error);
-            this.uploadError = 'Error uploading files. Please try again.';
+            this.uploadError = this.translate.instant('Error uploading files. Please try again.');
           }
         });
       } else {
@@ -364,11 +366,11 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         console.error('Error submitting batch:', error);
         
         if (error.status === 403) {
-          alert('Access denied. You can only submit batches you created.');
+          alert(error.error.message);
         } else if (error.status === 404) {
-          alert('Batch not found.');
+          alert(this.translate.instant('Batch not found.'));
         } else {
-          alert('Error submitting batch. Please try again.');
+          alert(this.translate.instant('Error submitting batch. Please try again.'));
         }
       }
     });
@@ -472,7 +474,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           }, 100);
         },
         error: () => {
-          alert('Failed to download report');
+          alert(this.translate.instant('Failed to download report'));
         }
       });
     } else {
@@ -482,7 +484,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
 
   async generateAttendanceSheet() {
     if (!this.selectedBatch || !this.selectedBatch.assignedTeachers || this.selectedBatch.assignedTeachers.length === 0) {
-      alert('No teachers assigned to this batch.');
+      alert(this.translate.instant('No teachers assigned to this batch.'));
       return;
     }
 

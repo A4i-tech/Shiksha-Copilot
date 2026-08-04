@@ -19,16 +19,15 @@ const routes: Routes = [
     path: '',
     component: ViewComponent,
     children: [
-      { path: '', redirectTo: 'home', pathMatch: 'full' },
-      { path: 'home', component: LandingComponent },
+      { path: '', component: LandingComponent, pathMatch: 'full' },
       {
-        path: 'dashboard',
+        path: 'home',
         component: TeacherDashboardComponent,
-        data: { permissions: ['dashboard.teacher.view'], trackingTag: 'home' },
+        data: { permissions: ['home.view'], trackingTag: 'home' },
         canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
       },
       {
-        path: 'leaders-dashboard',
+        path: 'dashboard',
         loadComponent: () => import('./admin/leaders-dashboard/leaders-dashboard.component').then((component) => component.LeadersDashboardComponent),
         data: { permissions: ['analytics.view'] },
         canActivate: [PermissionGuard],
@@ -40,7 +39,7 @@ const routes: Routes = [
         canActivate: [PermissionGuard, EndlineSurveyGuard],
       },
       {
-        path: 'content',
+        path: 'content-generation',
         loadChildren: () => import('./user/content-generation/content-generation.module').then((module) => module.ContentGenerationModule),
         data: { permissions: ['content.view'] },
         canActivate: [PermissionGuard, IsProfileCompleteGuard, BaselineSurveyGuard, EndlineSurveyGuard],
@@ -78,13 +77,13 @@ const routes: Routes = [
       {
         path: 'teachers',
         loadChildren: () => import('./admin/user-management/user-management.module').then((module) => module.UserManagementModule),
-        data: { permissions: ['teacher.view'] },
+        data: { permissions: ['user.view'] },
         canActivate: [PermissionGuard],
       },
       {
         path: 'staff',
         loadChildren: () => import('./admin/shikshan-user-management/shikshan-user-management.module').then((module) => module.ShikshanUserManagementModule),
-        data: { permissions: ['staff.view'] },
+        data: { permissions: ['user.view'] },
         canActivate: [PermissionGuard],
       },
       {

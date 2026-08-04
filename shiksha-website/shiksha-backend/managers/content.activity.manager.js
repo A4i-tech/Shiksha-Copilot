@@ -4,14 +4,20 @@ const { Worker } = require("worker_threads");
 const path = require("path");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 
+function activityFilters(query) {
+  const { filter = {}, search } = query;
+  const searchFilter = search ? { $or: ["user.identity.name", "user.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
+  return intersectFilters(filter, searchFilter);
+}
+
 class ContentActivityManager {
   constructor() {
     this.regeneratedLogDao = new RegeneratedLessonResourceDao();
   }
 
-  async getContentActivity(page, limit, filters, sort, grants) {
+  async getContentActivity(page, limit, query, sort, grants) {
     try {
-      filters = intersectFilters(filters, permissionScopeFilter(grants, "content.activity.view", "user.school"));
+      const filters = intersectFilters(activityFilters(query), permissionScopeFilter(grants, "content.activity.view", "user.school"));
       const result = await this.regeneratedLogDao.getContentActivity(page, limit, filters, sort);
       return formatApiReponse(true, "", result);
     } catch (err) {
@@ -21,10 +27,8 @@ class ContentActivityManager {
 
   async exportContentActivity(req) {
     try {
-      const { filter = {}, search = "" } = req.query;
-      const searchFilter = search ? { $or: ["user.identity.name", "user.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
-      const activities = await this.regeneratedLogDao.getAllContentActivity(intersectFilters({ ...filter, ...searchFilter }, scopeFilter));
+      const activities = await this.regeneratedLogDao.getAllContentActivity(intersectFilters(activityFilters(req.query), scopeFilter));
       const worker = new Worker(path.resolve(__dirname, "../worker/exportcontentactivityworker.js"));
       worker.on("error", (err) => console.error("Content activity export worker error", { userId: String(req.user._id), error: err.message }));
       worker.on("exit", (code) => {

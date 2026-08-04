@@ -107,7 +107,10 @@
           </div>
 
           <div class="mt-8" *ngIf="questionBankObjectives.length">
-            <h2 class="text-base font-bold text-content mb-3">{{ 'Objectives Weightage (%)' | translate }}</h2>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-base font-bold text-content">{{ 'Objectives Weightage (%)' | translate }}</h2>
+              <button type="button" class="btn-outline-primary" (click)="resetQuestionDistribution()">{{ 'Reset' | translate }}</button>
+            </div>
             <div class="overflow-x-auto">
               <table class="table-auto w-full text-content border">
                 <thead class="text-xs bg-[#edf6fe]"><tr>

@@ -78,9 +78,7 @@ class SchoolController extends BaseController {
 			}
 			const result = await this.manager.bulkUpload(req.file.buffer, userId.toString(), userName, req.permissions);
 			if (result.success)
-			return res.status(200).json({
-			  message: "Bulk upload initiated , Please verify for audit logs!",
-			});
+				return res.status(200).json(result);
 
 			handleError(result, res);
 		} catch (err) {

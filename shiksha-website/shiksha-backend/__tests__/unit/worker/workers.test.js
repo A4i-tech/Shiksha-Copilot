@@ -131,7 +131,7 @@ describe("worker modules", () => {
       users: [
         {
           identity: { name: "T", phone: "1" },
-          roles: [{ role: { name: "Teacher" } }],
+          roles: [{ role: { name: "Teacher", scopeType: "SCHOOL" } }],
           school: { name: "S" },
           isDeleted: false,
           trainingStatus: "trained",
@@ -228,7 +228,7 @@ describe("worker modules", () => {
         ],
         userId: "u1",
         userName: "tester",
-        permissions: ["teacher.import", "role.assign"].map((permission) => ({ permission, scopeType: "GLOBAL", dep: null })),
+        permissions: [{ permission: "user.import", scopeType: "GLOBAL", dep: null }],
       },
     }));
     mockDbSimple();
@@ -242,7 +242,7 @@ describe("worker modules", () => {
     }));
     jest.doMock("../../../models/role.model", () => ({
       find: jest.fn(() => ({
-        select: jest.fn(() => Promise.resolve([{ _id: "role-teacher", name: "Teacher" }])),
+        select: jest.fn(() => Promise.resolve([{ _id: "role-teacher", name: "Teacher", scopeType: "SCHOOL" }])),
       })),
     }));
     jest.doMock("../../../models/school.model", () => ({

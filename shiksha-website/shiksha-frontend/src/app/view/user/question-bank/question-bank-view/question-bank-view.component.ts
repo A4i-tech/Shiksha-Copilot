@@ -207,7 +207,7 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   submitFeedback() {
-    const questionBankId = this.questionBankDetails?.questionBank?._id;
+    const questionBankId = this.questionBankId;
     const feedback = {
       question: this.questionBankFeedbackQuestion,
       ...this.questionBankFeedback,

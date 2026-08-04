@@ -19,12 +19,12 @@
     />
 
     <div>
-      <h6>
+      <p>
         {{
           "Generate customized question paper that assess students' learning"
             | translate
         }}.
-      </h6>
+      </p>
     </div>
   </div>
 
@@ -70,6 +70,10 @@
   </div>
 
   <!-- List Grid -->
+  <section aria-label="Question Papers">
+  <p class="sr-only" aria-live="polite" aria-atomic="true">
+    {{ list.length }} question paper{{ list.length !== 1 ? 's' : '' }} found.
+  </p>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
     <div
       class="card px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
@@ -81,18 +85,18 @@
             <img src="assets/icons/question-paper.svg" alt="" />
           </div>
           <div class="flex flex-col items-end">
-            <h6 class="text-xs font-normal text-content-70">
+            <p class="text-xs font-normal text-content-70">
               {{ "Generated On" | translate }}:
               <span>{{ item.createdAt | date : "MMM dd,yyyy" }}</span>
-            </h6>
+            </p>
           </div>
         </div>
 
         <div class="mt-5">
-          <h4 class="text-sm font-medium">
+          <p class="text-sm font-medium">
             {{ "Subject" | translate }}:
             <span>{{ item.subject }}</span>
-          </h4>
+          </p>
           <div class="flex items-center justify-start my-2">
             <p
               class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
@@ -106,7 +110,7 @@
               {{ item.examinationName }}
             </p>
           </div>
-          <h6 class="mt-2 text-xs font-normal text-content-70">
+          <p class="mt-2 text-xs font-normal text-content-70">
             {{ "Chapters" | translate }} :
             <ng-container>
               <span *ngFor="let chapters of item.topics">
@@ -117,19 +121,20 @@
                 </p>
               </span>
             </ng-container>
-          </h6>
+          </p>
         </div>
       </div>
       <button
-        class="mt-7 w-full py-2 rounded bg-[#A062F7]"
+        class="mt-7 w-full py-2 rounded bg-tertiary"
         (click)="viewQuestionPaper(item._id)"
       >
-        <h6 class="text-white text-sm font-semibold">
+        <span class="text-white text-sm font-semibold">
           {{ "View Question Paper" | translate }}
-        </h6>
+        </span>
       </button>
     </div>
   </div>
+  </section>
 
   <!-- Empty State -->
   <div *ngIf="list.length === 0" class="flex items-center justify-center">

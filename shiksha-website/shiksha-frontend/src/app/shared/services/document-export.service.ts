@@ -168,7 +168,10 @@ export class DocumentExportService {
           spacing: { after: 100 },
         })
       );
-      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(activity.required_materials, context));
+      const requiredMaterials = Array.isArray(activity.required_materials)
+        ? activity.required_materials.map((material: string) => `- ${material}`).join('\n')
+        : activity.required_materials;
+      paragraphs.push(...this.docxUtility.getMarkdownParagraphs(requiredMaterials, context));
 
       paragraphs.push(
         new Paragraph({

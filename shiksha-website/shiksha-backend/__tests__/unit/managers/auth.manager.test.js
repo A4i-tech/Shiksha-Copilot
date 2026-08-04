@@ -44,7 +44,7 @@ describe("AuthManager", () => {
       otp: encrypt("1234"),
       loginAttempts: [],
       isDeleted: false,
-      roles: [{ role: { permissions: ["dashboard.teacher.view"], scopeType: "SCHOOL", isDeleted: false }, dep: "school-1" }],
+      roles: [{ role: { permissions: ["home.view"], scopeType: "SCHOOL", isDeleted: false }, dep: "school-1" }],
       profiles: { teacher: { classes: [] } },
       generateAuthToken: jest.fn().mockReturnValue("jwt-token"),
       toObject() {
@@ -87,7 +87,7 @@ describe("AuthManager", () => {
     expect(result.success).toBe(true);
     expect(result.data.token).toBe("jwt-token");
     expect(result.data.user.school).toEqual({ _id: "school-1", name: "School" });
-    expect(result.data.permissions).toContainEqual({ permission: "dashboard.teacher.view", scopeType: "SCHOOL", dep: "school-1" });
+    expect(result.data.permissions).toContainEqual({ permission: "home.view", scopeType: "SCHOOL", dep: "school-1" });
     expect(UserAction.create).toHaveBeenCalled();
     expect(refreshProfileImageIfExpired).toHaveBeenCalled();
   });

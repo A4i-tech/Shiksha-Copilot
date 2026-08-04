@@ -13,7 +13,7 @@
     </div>
     <div class="flex gap-2">
       <button
-        [hasPermission]="['lesson-plan.edit']"
+        [hasPermission]="['lesson-plan.ai-enhance']"
         *ngIf="isLesson && !planAiMode && !sectionAiActive"
         class="btn-primary flex gap-2 items-center my-2 md:my-0"
         (click)="startPlanAiPrompt()"
@@ -208,7 +208,7 @@
       <h2 class="text-xl font-bold text-content-100 md:leading-[48px]">
         {{ currentType | translate}} {{ "Feedback" | translate }}
       </h2>
-      <div class="flex gap-2" *ngIf="isLesson && !planAiMode" [hasPermission]="['lesson-plan.edit']">
+      <div class="flex gap-2" *ngIf="isLesson && !planAiMode" [hasPermission]="['lesson-plan.ai-enhance']">
         <button class="btn-primary" (click)="showRevertConfirmation = true">
           {{ "Revert AI edits" | translate }}
         </button>
@@ -420,7 +420,9 @@
           : 'You have unsaved changes. Do you want to save them as a draft before leaving?',
       primaryButtonLabel: mode === 'view' ? 'Save Changes' : 'Save as Draft',
       primaryButtonType: 'ok',
-      cancelButtonLabel: 'Exit Without Saving'
+      cancelButtonLabel: 'Continue Editing',
+      secondaryButtonLabel: 'Exit Without Saving',
+      secondaryButtonType: 'discard'
     }"
     (close)="confirmDraft($event)"
   ></app-delete-detail>

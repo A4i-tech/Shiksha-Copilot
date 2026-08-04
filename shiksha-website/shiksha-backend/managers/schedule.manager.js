@@ -3,6 +3,8 @@ const formatApiReponse = require("../helper/response");
 const BaseManager = require("./base.manager");
 const overlap = require("../helper/overlap")
 const { schoolDependency } = require("../helper/permission.helper");
+const { isResourceAllowed } = require("../helper/scope.helper");
+const School = require("../models/school.model");
 
 /** @extends {BaseManager<ScheduleDao>} */
 class ScheduleManager extends BaseManager {
@@ -226,7 +228,10 @@ class ScheduleManager extends BaseManager {
 	async getById(req) {
 		try {
 			const schedule = await this.dao.getById(req.params.id);
-			if (!schedule || String(schedule.teacherId) !== String(req.user._id)) return formatApiReponse(false, "Schedule not found", null);
+			if (!schedule) return formatApiReponse(false, "Schedule not found", null);
+			const school = await School.findById(schedule.schoolId).lean();
+			if (!school) throw new Error("Schedule school does not exist");
+			if (!isResourceAllowed(req.permissions, "schedule.view", school)) return formatApiReponse(false, "Schedule not found", null);
 			return formatApiReponse(true, "", schedule);
 		} catch (err) {
 			return formatApiReponse(false, err.message, err);

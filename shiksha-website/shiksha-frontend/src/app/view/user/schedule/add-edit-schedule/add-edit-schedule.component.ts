@@ -195,9 +195,7 @@ export class AddEditScheduleComponent
           this.lessonPlanID = this.editableItem.data.lesson._id;
 
           if (this.mode !== 'view') {
-            this.classArray = this.utility.formatResponse(
-              results.schoolInfo.data.classes
-            );
+            this.classArray = this.utility.formatResponse(results.schoolInfo.data.user.profiles.teacher.classes);
             this.boardDropdownValue = this.classArray;
             this.filterMediumByBoard(this.editableItem.data.board,this.classArray);
             this.filterClassByMedium(
@@ -306,8 +304,8 @@ export class AddEditScheduleComponent
 
       this.service.getSchoolInfoByID().subscribe({
         next: (val: any) => {
-          this.teacherId = val.data._id;
-          this.setBoardDropdownValue(val);
+          this.teacherId = val.data.user._id;
+          this.setBoardDropdownValue(val.data.user.profiles.teacher.classes);
         },
         error: (err: any) => {
           this.utility.handleError(err);
@@ -318,21 +316,12 @@ export class AddEditScheduleComponent
 
 
   // =============== ADD FLOW ==========
-
-  /**
-   * format the response and set the board dropdown array value
-   * @param val
-   */
-  setBoardDropdownValue(val: any) {
-    this.classArray = this.utility.formatResponse(val.data.classes);
-    if (val) {
-      this.boardDropdownValue = this.classArray;
-      if (this.boardDropdownValue.length === 1) {
-        this.scheduleForm
-          .get('board')
-          ?.setValue(this.boardDropdownValue[0].board);
-        this.setMediumDropdownArray(this.boardDropdownValue[0]);
-      }
+  setBoardDropdownValue(classes: any[]) {
+    this.classArray = this.utility.formatResponse(classes);
+    this.boardDropdownValue = this.classArray;
+    if (this.boardDropdownValue.length === 1) {
+      this.scheduleForm.get('board')?.setValue(this.boardDropdownValue[0].board);
+      this.setMediumDropdownArray(this.boardDropdownValue[0]);
     }
   }
 

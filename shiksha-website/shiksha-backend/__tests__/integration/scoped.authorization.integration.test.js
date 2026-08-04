@@ -37,21 +37,22 @@ describe("scoped authorisation", () => {
   const suffix = Date.now();
   const operatorPermissions = [
     "school.read", "school.list", "school.create", "school.edit", "school.delete", "school.export",
-    "teacher.view", "teacher.create", "teacher.edit", "teacher.delete", "teacher.export",
-    "staff.view", "staff.create", "staff.edit", "staff.delete", "role.assign", "role.view", "profile.view", "profile.edit",
+    "user.view", "user.create", "user.edit", "user.delete", "user.export",
+    "role.assign", "role.view", "profile.view", "profile.edit",
     "content.activity.view", "content.activity.export", "training.view", "training.edit", "audit.view", "chat.use",
   ];
-  const ids = { roles: [], users: [], schools: [], content: [], activities: [], batches: [] };
+  const ids = { roles: [], users: [], schools: [], classes: [], auditLogs: [], content: [], activities: [], batches: [] };
   let rootToken;
   let actorToken;
+  let delegateToken;
   let schoolActorToken;
   let mixedStaffToken;
-  let globalTeacherToken;
   let actor;
   let schoolActor;
   let teacherRole;
   let operatorRole;
   let globalRole;
+  let unboundRole;
   let elevatedRole;
   let localTeacher;
   let remoteTeacher;
@@ -60,12 +61,17 @@ describe("scoped authorisation", () => {
   let remoteBatch;
   let localSchool;
   let remoteSchool;
+  let collisionToken;
+  let collisionLocalSchool;
+  let collisionRemoteSchool;
 
   const teacherBody = (name, phone, school, roles = [{ roleId: teacherRole._id, dep: school._id }]) => ({
     identity: { name, phone, email: "", address: "" },
     roles,
     profiles: { teacher: { facilities: [], classes: [], isProfileCompleted: false } },
   });
+  const districtDep = (school) => ({ state: school.state, zone: school.zone, district: school.district });
+  const blockDep = (school) => ({ ...districtDep(school), block: school.block });
 
   beforeAll(async () => {
     const login = await request("/api/auth/validate-otp", "POST", null, { phone: superuserPhone, otp: superuserPin });
@@ -78,14 +84,24 @@ describe("scoped authorisation", () => {
 
     const [me, schools] = await Promise.all([
       request("/api/auth/me", "GET", rootToken),
-      request("/api/school/list?limit=1000&includeDeleted=0", "GET", rootToken),
+      request("/api/school/list?limit=0&includeDeleted=0", "GET", rootToken),
     ]);
     const rootUser = expectSuccess(me);
     const schoolList = expectSuccess(schools).results;
     localSchool = schoolList.find((school) => school.district);
     remoteSchool = schoolList.find((school) => school.district && school.district !== localSchool.district);
+    collisionLocalSchool = schoolList.find((school) => school.block && schoolList.some((candidate) =>
+      candidate.block === school.block && candidate._id !== school._id &&
+      (candidate.state !== school.state || candidate.zone !== school.zone || candidate.district !== school.district)
+    ));
+    collisionRemoteSchool = schoolList.find((school) =>
+      school.block === collisionLocalSchool.block &&
+      (school.state !== collisionLocalSchool.state || school.zone !== collisionLocalSchool.zone || school.district !== collisionLocalSchool.district)
+    );
     expect(localSchool).toBeDefined();
     expect(remoteSchool).toBeDefined();
+    expect(collisionLocalSchool).toBeDefined();
+    expect(collisionRemoteSchool).toBeDefined();
 
     const createRole = async (name, permissions, scopeType) => {
       const role = expectSuccess(await request("/api/roles", "POST", rootToken, {
@@ -99,12 +115,15 @@ describe("scoped authorisation", () => {
     };
 
     operatorRole = await createRole("District operator", operatorPermissions, "DISTRICT");
-    teacherRole = await createRole("School user", [], "SCHOOL");
-    globalRole = await createRole("Global teacher reader", ["teacher.view"], "GLOBAL");
+    teacherRole = await createRole("School user", ["generation.status.view"], "SCHOOL");
+    globalRole = await createRole("Global teacher creator", ["role.assign", "user.create", "user.view"], "GLOBAL");
     elevatedRole = await createRole("Elevated district role", ["generation.status.view"], "DISTRICT");
     const repeatedGrantRole = await createRole("Repeated grant", ["help.view"], "DISTRICT");
     const roleManagerRole = await createRole("Role manager", ["role.manage"], "UNBOUND");
-    const schoolReaderRole = await createRole("School reader", ["school.read", "school.list", "teacher.view"], "SCHOOL");
+    const delegateRole = await createRole("Role delegate", ["role.delegate"], "STATE");
+    const schoolReaderRole = await createRole("School reader", ["role.assign", "school.read", "school.list", "user.create", "user.view"], "SCHOOL");
+    unboundRole = await createRole("Unbound user", [], "UNBOUND");
+    const blockReaderRole = await createRole("Block reader", ["school.list"], "BLOCK");
 
     localTeacher = expectSuccess(await request("/api/users", "POST", rootToken, teacherBody(
       "Local Integration Teacher",
@@ -119,8 +138,8 @@ describe("scoped authorisation", () => {
     mixedStaff = expectSuccess(await request("/api/users", "POST", rootToken, {
       identity: { name: "Mixed Scope Integration Staff", phone: `6${String(suffix + 8).slice(-9)}`, email: "", address: "" },
       roles: [
-        { roleId: operatorRole._id, dep: localSchool.district },
-        { roleId: operatorRole._id, dep: remoteSchool.district },
+        { roleId: operatorRole._id, dep: districtDep(localSchool) },
+        { roleId: operatorRole._id, dep: districtDep(remoteSchool) },
       ],
       profiles: { admin: { state: localSchool.state } },
     }));
@@ -129,27 +148,36 @@ describe("scoped authorisation", () => {
     actor = expectSuccess(await request("/api/users", "POST", rootToken, {
       identity: { name: "Scoped Integration Actor", phone: `9${String(suffix).slice(-9)}`, email: "", address: "" },
       roles: [
-        { roleId: operatorRole._id, dep: localSchool.district },
-        { roleId: repeatedGrantRole._id, dep: localSchool.district },
-        { roleId: repeatedGrantRole._id, dep: remoteSchool.district },
+        { roleId: operatorRole._id, dep: districtDep(localSchool) },
+        { roleId: repeatedGrantRole._id, dep: districtDep(localSchool) },
+        { roleId: repeatedGrantRole._id, dep: districtDep(remoteSchool) },
         { roleId: roleManagerRole._id },
       ],
       profiles: { admin: { state: localSchool.state } },
     }));
     ids.users.push(actor._id);
-    const globalTeacher = expectSuccess(await request("/api/users", "POST", rootToken, {
-      identity: { name: "Global Teacher Reader", phone: `7${String(suffix + 8).slice(-9)}`, email: "", address: "" },
-      roles: [{ roleId: globalRole._id }],
+    const delegateActor = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "Role Delegation Integration Actor", phone: `7${String(suffix + 31).slice(-9)}`, email: "", address: "" },
+      roles: [
+        { roleId: roleManagerRole._id },
+        { roleId: delegateRole._id, dep: { state: localSchool.state } },
+      ],
       profiles: { admin: { state: localSchool.state } },
     }));
-    ids.users.push(globalTeacher._id);
+    ids.users.push(delegateActor._id);
     schoolActor = expectSuccess(await request("/api/users", "POST", rootToken, {
       identity: { name: "School Integration Actor", phone: `6${String(suffix).slice(-9)}`, email: "", address: "" },
       roles: [{ roleId: schoolReaderRole._id, dep: localSchool._id }],
       profiles: { admin: { state: localSchool.state } },
     }));
     ids.users.push(schoolActor._id);
-    [actorToken, schoolActorToken, mixedStaffToken, globalTeacherToken] = await Promise.all([actor, schoolActor, mixedStaff, globalTeacher].map(async (user) =>
+    const collisionActor = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "Block Collision Integration Actor", phone: `8${String(suffix + 9).slice(-9)}`, email: "", address: "" },
+      roles: [{ roleId: blockReaderRole._id, dep: blockDep(collisionLocalSchool) }],
+      profiles: { admin: { state: collisionLocalSchool.state } },
+    }));
+    ids.users.push(collisionActor._id);
+    [actorToken, delegateToken, schoolActorToken, mixedStaffToken, collisionToken] = await Promise.all([actor, delegateActor, schoolActor, mixedStaff, collisionActor].map(async (user) =>
       expectSuccess(await request("/api/devtools/sessions", "POST", rootToken, { userId: user._id })).token
     ));
 
@@ -164,7 +192,8 @@ describe("scoped authorisation", () => {
           description: "Integration batch",
           scheduleDate: new Date(),
           trainingType: "offline",
-          createdBy: actor._id,
+          createdBy: remoteTeacher._id,
+          assignedTeachers: [localTeacher._id],
         },
         {
           batchName: `Remote batch ${suffix}`,
@@ -172,6 +201,7 @@ describe("scoped authorisation", () => {
           scheduleDate: new Date(),
           trainingType: "offline",
           createdBy: remoteTeacher._id,
+          assignedTeachers: [remoteTeacher._id],
         },
       ],
     }));
@@ -191,42 +221,70 @@ describe("scoped authorisation", () => {
     const grants = me.permissions.filter((grant) => grant.permission === "help.view");
 
     expect(grants).toEqual(expect.arrayContaining([
-      { permission: "help.view", scopeType: "DISTRICT", dep: localSchool.district },
-      { permission: "help.view", scopeType: "DISTRICT", dep: remoteSchool.district },
+      { permission: "help.view", scopeType: "DISTRICT", dep: districtDep(localSchool) },
+      { permission: "help.view", scopeType: "DISTRICT", dep: districtDep(remoteSchool) },
     ]));
     expect(grants).toHaveLength(2);
+  });
+
+  it("keeps identical block names isolated by their full region path", async () => {
+    const schools = expectSuccess(await request("/api/school/list?limit=0&includeDeleted=0", "GET", collisionToken)).results;
+    expect(schools.some((school) => school._id === collisionLocalSchool._id)).toBe(true);
+    expect(schools.some((school) => school._id === collisionRemoteSchool._id)).toBe(false);
+  });
+
+  it("lists role assignees within the actor's role-view scope", async () => {
+    const allTeachers = expectSuccess(await request(`/api/roles/${teacherRole._id}/users?limit=10`, "GET", rootToken));
+    expect(allTeachers.results.map((user) => user._id)).toEqual(expect.arrayContaining([localTeacher._id, remoteTeacher._id]));
+
+    const districtUsers = expectSuccess(await request(`/api/roles/${operatorRole._id}/users?limit=10`, "GET", actorToken));
+    expect(districtUsers.results.map((user) => user._id)).toEqual(expect.arrayContaining([actor._id, mixedStaff._id]));
+
+    const schoolUsers = expectSuccess(await request(`/api/roles/${teacherRole._id}/users?limit=10`, "GET", actorToken));
+    expect(schoolUsers.results.map((user) => user._id)).toContain(localTeacher._id);
+    expect(schoolUsers.results.map((user) => user._id)).not.toContain(remoteTeacher._id);
+  });
+
+  it("lists roles for assignment without role-management access", async () => {
+    expectSuccess(await request("/api/roles", "GET", schoolActorToken));
+    expect(await request("/api/roles/permissions", "GET", schoolActorToken)).toMatchObject({ status: 403 });
   });
 
   it("applies list, filter, and direct-read boundaries across scoped resources", async () => {
     const lists = [
       {
-        path: "/api/school/list?limit=1000&includeDeleted=0",
-        filteredPath: `/api/school/list?limit=1000&filter[district]=${encodeURIComponent(localSchool.district)}`,
-        hostilePath: `/api/school/list?limit=1000&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
+        path: `/api/school/list?limit=10&search=${localSchool.schoolId}`,
+        remotePath: `/api/school/list?limit=10&search=${remoteSchool.schoolId}`,
+        filteredPath: `/api/school/list?limit=10&search=${localSchool.schoolId}&filter[district]=${encodeURIComponent(localSchool.district)}`,
+        hostilePath: `/api/school/list?limit=10&search=${localSchool.schoolId}&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
         local: (item) => item._id === localSchool._id,
         remote: (item) => item._id === remoteSchool._id,
       },
       {
-        path: "/api/users?limit=1000&filter[profileType]=teacher",
-        filteredPath: `/api/users?limit=1000&filter[profileType]=teacher&filter[district]=${encodeURIComponent(localSchool.district)}`,
-        hostilePath: `/api/users?limit=1000&filter[profileType]=teacher&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
+        path: `/api/users?limit=10&filter[profileType]=teacher&search=${localTeacher.identity.phone}`,
+        remotePath: `/api/users?limit=10&filter[profileType]=teacher&search=${remoteTeacher.identity.phone}`,
+        filteredPath: `/api/users?limit=10&filter[profileType]=teacher&search=${localTeacher.identity.phone}&filter[district]=${encodeURIComponent(localSchool.district)}`,
+        hostilePath: `/api/users?limit=10&filter[profileType]=teacher&search=${localTeacher.identity.phone}&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
         local: (item) => item._id === localTeacher._id,
         remote: (item) => item._id === remoteTeacher._id,
       },
       {
-        path: "/api/content-activity?limit=100",
-        filteredPath: `/api/content-activity?limit=100&filter[district]=${encodeURIComponent(localSchool.district)}`,
-        hostilePath: `/api/content-activity?limit=100&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
+        path: `/api/content-activity?limit=10&search=${encodeURIComponent(localTeacher.identity.name)}`,
+        remotePath: `/api/content-activity?limit=10&search=${encodeURIComponent(remoteTeacher.identity.name)}`,
+        filteredPath: `/api/content-activity?limit=10&search=${encodeURIComponent(localTeacher.identity.name)}&filter[district]=${encodeURIComponent(localSchool.district)}`,
+        hostilePath: `/api/content-activity?limit=10&search=${encodeURIComponent(localTeacher.identity.name)}&filter[district]=${encodeURIComponent(remoteSchool.district)}`,
         local: (item) => item.userName === localTeacher.identity.name,
         remote: (item) => item.userName === remoteTeacher.identity.name,
       },
     ];
     for (const resource of lists) {
       const list = expectSuccess(await request(resource.path, "GET", actorToken)).results;
+      const remote = expectSuccess(await request(resource.remotePath, "GET", actorToken)).results;
       const filtered = expectSuccess(await request(resource.filteredPath, "GET", actorToken)).results;
       const hostile = expectSuccess(await request(resource.hostilePath, "GET", actorToken)).results;
       expect(list.some(resource.local)).toBe(true);
       expect(list.some(resource.remote)).toBe(false);
+      expect(remote).toHaveLength(0);
       expect(filtered.some(resource.local)).toBe(true);
       expect(filtered.some(resource.remote)).toBe(false);
       expect(hostile).toHaveLength(0);
@@ -264,12 +322,12 @@ describe("scoped authorisation", () => {
     expectDenied(await request(`/api/school/${remoteSchool._id}`, "GET", schoolActorToken), "School is outside your scope");
   });
 
-  it("binds user list permissions to the requested profile type", async () => {
-    expectDenied(await request("/api/users?limit=100", "GET", globalTeacherToken));
-    const teachers = expectSuccess(await request("/api/users?limit=100&filter[profileType]=teacher", "GET", globalTeacherToken)).results;
+  it("requires an explicit user profile type", async () => {
+    expectDenied(await request("/api/users?limit=100", "GET", rootToken));
+    const teachers = expectSuccess(await request("/api/users?limit=100&filter[profileType]=teacher", "GET", rootToken)).results;
     expect(teachers.every((user) => user.profiles.teacher)).toBe(true);
-    expect(await request("/api/users?limit=100&filter[profileType]=admin", "GET", globalTeacherToken))
-      .toMatchObject({ status: 403, body: { success: false } });
+    expect(await request("/api/users?limit=100&filter[profileType]=admin", "GET", rootToken))
+      .toMatchObject({ status: 200, body: { success: true } });
   });
 
   it("supports profile self-service without a school dependency", async () => {
@@ -283,13 +341,30 @@ describe("scoped authorisation", () => {
     expect(updated.preferredLanguage).toBe("tg");
   });
 
-  it("keeps non-global training access tied to the batch creator", async () => {
+  it("removes the teaching profile with the final school assignment", async () => {
+    const user = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "Teacher to Staff Integration User", phone: `9${String(suffix + 11).slice(-9)}`, email: "", address: "" },
+      roles: [{ roleId: teacherRole._id, dep: localSchool._id }, { roleId: unboundRole._id }],
+      profiles: { teacher: { facilities: [], classes: [], isProfileCompleted: false }, admin: { state: localSchool.state } },
+    }));
+    ids.users.push(user._id);
+
+    expectSuccess(await request(`/api/users/${user._id}`, "PUT", rootToken, { roles: [{ _id: user.roles[1]._id, roleId: unboundRole._id }] }));
+    const updated = expectSuccess(await request(`/api/users/${user._id}`, "GET", rootToken));
+    expect(updated.profiles).toEqual({ admin: { state: localSchool.state } });
+  });
+
+  it("scopes training batches by their assigned teachers", async () => {
     const batches = await request("/api/teacher-training-batches/", "GET", actorToken);
     expect(batches.status).toBe(200);
-    expect(batches.body.map((batch) => batch._id)).toEqual([String(localBatch._id)]);
+    expect(batches.body.map((batch) => batch._id)).toContain(String(localBatch._id));
+    expect(batches.body.map((batch) => batch._id)).not.toContain(String(remoteBatch._id));
     expect((await request(`/api/teacher-training-batches/${localBatch._id}`, "GET", actorToken)).status).toBe(200);
     expect((await request(`/api/teacher-training-batches/${remoteBatch._id}`, "GET", actorToken)).status).toBe(403);
     expect((await request(`/api/teacher-training-batches/${remoteBatch._id}`, "DELETE", actorToken)).status).toBe(403);
+    expect((await request(`/api/teacher-training-batches/${localBatch._id}/assign-teacher`, "POST", actorToken, {
+      teacherId: remoteTeacher._id,
+    })).status).toBe(403);
   });
 
   it("exports only data inside the actor scope", async () => {
@@ -304,8 +379,8 @@ describe("scoped authorisation", () => {
     const logs = [];
     for (let attempt = 0; attempt < 60 && logs.length < eventTypes.length; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const found = expectSuccess(await request("/api/audit/log?limit=1000", "GET", rootToken)).results
-        .filter((log) => log.userId === actor._id && eventTypes.includes(log.eventType) && new Date(log.createdAt) >= startedAt);
+      const found = expectSuccess(await request(`/api/audit/log?limit=20&filter[userId]=${actor._id}`, "GET", rootToken)).results
+        .filter((log) => eventTypes.includes(log.eventType) && new Date(log.createdAt) >= startedAt);
       logs.splice(0, logs.length, ...found);
     }
     expect(logs).toHaveLength(3);
@@ -327,8 +402,9 @@ describe("scoped authorisation", () => {
   }, 60000);
 
   it("enforces complete staff scope and applies permission removal immediately", async () => {
-    expect(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken))
-      .toMatchObject({ status: 403, body: { success: false } });
+    const schoolStaff = expectSuccess(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken)).results;
+    expect(schoolStaff.map((user) => user._id)).toContain(schoolActor._id);
+    expect(schoolStaff.map((user) => user._id)).not.toContain(mixedStaff._id);
     const staff = expectSuccess(await request("/api/users?limit=100&filter[profileType]=admin", "GET", actorToken)).results;
     expect(staff.some((user) => user._id === mixedStaff._id)).toBe(false);
 
@@ -351,7 +427,7 @@ describe("scoped authorisation", () => {
   it("keeps lifecycle changes behind delete permissions", async () => {
     expectDenied(await request(`/api/users/${localTeacher._id}`, "PUT", actorToken, { isDeleted: true }));
     expectSuccess(await request(`/api/roles/${operatorRole._id}`, "PUT", rootToken, {
-      permissions: operatorPermissions.filter((permission) => !["school.delete", "teacher.delete", "staff.delete"].includes(permission)),
+      permissions: operatorPermissions.filter((permission) => !["school.delete", "user.delete"].includes(permission)),
     }));
     for (const [method, path] of [
       ["PUT", `/api/school/deactivate/${localSchool._id}`],
@@ -398,7 +474,8 @@ describe("scoped authorisation", () => {
     expect(updated.name).toBe(`Updated Scoped Integration School ${suffix}`);
 
     expectSuccess(await request(`/api/school/deactivate/${createdSchool._id}`, "PUT", actorToken));
-    expectSuccess(await request(`/api/school/activate/${createdSchool._id}`, "PUT", actorToken));
+    const activated = expectSuccess(await request(`/api/school/activate/${createdSchool._id}`, "PUT", actorToken));
+    expect(activated.isDeleted).toBe(false);
     const remoteMutations = [
       ["PUT", `/api/school/update/${remoteSchool._id}`, { ...body, schoolId: remoteSchool.schoolId, name: remoteSchool.name }],
       ["PUT", `/api/school/deactivate/${remoteSchool._id}`],
@@ -412,6 +489,17 @@ describe("scoped authorisation", () => {
   });
 
   it("enforces scope on user mutations", async () => {
+    const peer = expectSuccess(await request("/api/users", "POST", rootToken, {
+      identity: { name: "Equal Scope Integration Manager", phone: `6${String(suffix + 30).slice(-9)}`, email: "", address: "" },
+      roles: [{ roleId: operatorRole._id, dep: districtDep(localSchool) }],
+      profiles: { admin: { state: localSchool.state } },
+    }));
+    ids.users.push(peer._id);
+    expectDenied(await request(`/api/users/${peer._id}`, "PUT", actorToken, {
+      identity: { ...peer.identity, name: "Edited Equal Scope Integration Manager" },
+    }));
+    expectDenied(await request(`/api/users/${peer._id}/deactivate`, "PUT", actorToken));
+
     expectSuccess(await request(`/api/users/${localTeacher._id}`, "PUT", actorToken, {
       identity: { ...localTeacher.identity, name: "Updated Local Integration Teacher" },
     }));
@@ -424,7 +512,7 @@ describe("scoped authorisation", () => {
       ["DELETE", `/api/users/${remoteTeacher._id}`],
     ];
     for (const [method, path, data] of remoteMutations) {
-      expectDenied(await request(path, method, actorToken, data), "User is outside your scope");
+      expectDenied(await request(path, method, actorToken, data));
     }
     expectSuccess(await request(`/api/users/${localTeacher._id}`, "DELETE", actorToken));
   });
@@ -435,17 +523,23 @@ describe("scoped authorisation", () => {
       `6${String(suffix + 1).slice(-9)}`,
       localSchool
     )));
-    ids.users.push(local._id);
 
     const adminBody = (name, phone, roles) => ({
       identity: { name, phone, email: "", address: "" },
       roles,
       profiles: { admin: { state: localSchool.state } },
     });
+    const global = expectSuccess(await request("/api/users", "POST", rootToken, teacherBody(
+      "Created Global Integration Teacher",
+      `7${String(suffix + 12).slice(-9)}`,
+      remoteSchool
+    )));
+    ids.users.push(local._id, global._id);
+
     const rejected = [
       {
         body: teacherBody("Blocked Remote Integration Teacher", `6${String(suffix + 2).slice(-9)}`, remoteSchool),
-        message: "Role assignment is outside your scope",
+        message: "Role assignment must be below your scope",
       },
       {
         body: teacherBody("Duplicate Assignment Teacher", `6${String(suffix + 3).slice(-9)}`, localSchool, [
@@ -462,11 +556,7 @@ describe("scoped authorisation", () => {
       },
       {
         body: adminBody("Escalated Integration Admin", `6${String(suffix + 5).slice(-9)}`, [{ roleId: globalRole._id }]),
-        message: "Role assignment is outside your scope",
-      },
-      {
-        body: adminBody("Overpowered Integration Admin", `6${String(suffix + 9).slice(-9)}`, [{ roleId: elevatedRole._id, dep: localSchool.district }]),
-        message: "Cannot grant permissions you do not hold at this scope",
+        message: "Role assignment must be below your scope",
       },
       {
         body: adminBody("Missing Dependency Admin", `6${String(suffix + 6).slice(-9)}`, [{ roleId: operatorRole._id }]),
@@ -474,17 +564,84 @@ describe("scoped authorisation", () => {
       },
       {
         body: adminBody("Invalid Dependency Admin", `6${String(suffix + 7).slice(-9)}`, [
-          { roleId: operatorRole._id, dep: `Missing District ${suffix}` },
+          { roleId: operatorRole._id, dep: { state: localSchool.state, zone: localSchool.zone, district: `Missing District ${suffix}` } },
         ]),
         message: "DISTRICT scope dependency does not exist",
+      },
+      {
+        body: adminBody("Equal Scope Integration Staff", `6${String(suffix + 9).slice(-9)}`, [
+          { roleId: elevatedRole._id, dep: districtDep(localSchool) },
+        ]),
+        message: "Role assignment must be below your scope",
       },
     ];
     for (const test of rejected) {
       expectDenied(await request("/api/users", "POST", actorToken, test.body), test.message);
     }
+    expectDenied(await request("/api/users", "POST", schoolActorToken, teacherBody(
+      "Equal School Scope Integration Teacher",
+      `6${String(suffix + 13).slice(-9)}`,
+      localSchool
+    )), "Role assignment must be below your scope");
+    expectDenied(await request("/api/users", "POST", rootToken, adminBody(
+      "Equal Global Scope Integration Staff",
+      `6${String(suffix + 14).slice(-9)}`,
+      [{ roleId: globalRole._id }]
+    )), "Role assignment must be below your scope");
+    expectDenied(await request(`/api/users/${local._id}`, "PUT", actorToken, {
+      roles: [
+        { _id: local.roles[0]._id, roleId: teacherRole._id, dep: localSchool._id },
+        { roleId: elevatedRole._id, dep: districtDep(localSchool) },
+      ],
+    }), "Role assignment must be below your scope");
+  });
+
+  it("edits mixed-scope teachers and invalidates their session when assignments change", async () => {
+    const capabilityRole = expectSuccess(await request("/api/roles", "POST", rootToken, {
+      name: `School capability ${suffix}`,
+      description: "Mixed-scope teacher integration fixture",
+      permissions: ["generation.status.view"],
+      scopeType: "SCHOOL",
+    }));
+    ids.roles.push(capabilityRole._id);
+
+    const teacher = expectSuccess(await request("/api/users", "POST", rootToken, teacherBody(
+      "Mixed Scope Integration Teacher",
+      `7${String(suffix + 20).slice(-9)}`,
+      localSchool,
+      [{ roleId: capabilityRole._id, dep: localSchool._id }, { roleId: unboundRole._id }]
+    )));
+    ids.users.push(teacher._id);
+    const teacherSession = expectSuccess(await request("/api/devtools/sessions", "POST", rootToken, { userId: teacher._id }));
+    const assignments = [
+      { _id: teacher.roles[0]._id, roleId: capabilityRole._id, dep: localSchool._id },
+      { _id: teacher.roles[1]._id, roleId: unboundRole._id },
+    ];
+
+    expectSuccess(await request(`/api/users/${teacher._id}`, "PUT", rootToken, {
+      identity: { name: "Edited Mixed Scope Integration Teacher", phone: teacher.identity.phone },
+      roles: assignments,
+    }));
+    expectSuccess(await request("/api/auth/me", "GET", teacherSession.token));
+
+    expectSuccess(await request(`/api/users/${teacher._id}`, "PUT", rootToken, {
+      roles: [{ ...assignments[0], dep: remoteSchool._id }, assignments[1]],
+    }));
+    expect(await request("/api/auth/me", "GET", teacherSession.token)).toMatchObject({
+      status: 401,
+      body: { success: false, message: "Account details updated. Please login to continue" },
+    });
+    const updated = expectSuccess(await request(`/api/users/${teacher._id}`, "GET", rootToken));
+    expect(updated.roles).toEqual(expect.arrayContaining([
+      expect.objectContaining({ _id: teacher.roles[0]._id, dep: remoteSchool._id, role: expect.objectContaining({ _id: capabilityRole._id }) }),
+      expect.objectContaining({ _id: teacher.roles[1]._id, role: expect.objectContaining({ _id: unboundRole._id }) }),
+    ]));
   });
 
   it("prevents privilege escalation through role management", async () => {
+    expectDenied(await request(`/api/users/${actor._id}`, "PUT", actorToken, {
+      roles: [{ roleId: operatorRole._id, dep: districtDep(localSchool) }],
+    }), "You cannot change your own role assignments");
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "DELETE", actorToken), "Assigned roles cannot be deleted");
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "PUT", actorToken, {
       scopeType: "STATE",
@@ -495,8 +652,20 @@ describe("scoped authorisation", () => {
       permissions: ["generation.status.view"],
       scopeType: "UNBOUND",
     }), "Cannot grant permissions you do not hold");
-    expectDenied(await request(`/api/roles/${globalRole._id}`, "PUT", actorToken, {
-      permissions: ["teacher.view"],
-    }), "Role assignment is outside your scope");
+  });
+
+  it("allows explicit permission delegation regardless of delegate scope", async () => {
+    const role = expectSuccess(await request("/api/roles", "POST", delegateToken, {
+      name: `Delegated role ${suffix}`,
+      description: "",
+      permissions: ["generation.status.view"],
+      scopeType: "SCHOOL",
+    }));
+    ids.roles.push(role._id);
+
+    const updated = expectSuccess(await request(`/api/roles/${role._id}`, "PUT", delegateToken, {
+      permissions: ["chat.use"],
+    }));
+    expect(updated.permissions).toEqual(["chat.use"]);
   });
 });

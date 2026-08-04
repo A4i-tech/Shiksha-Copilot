@@ -175,6 +175,12 @@ def main() -> None:
         dist_id  = {}   # (state, zone, dist) -> region_id
         block_id = {}   # (state, zone, dist, block) -> region_id
         scope_region = {"STATE": {}, "ZONE": {}, "DISTRICT": {}, "BLOCK": {}}
+        scope_fields = {
+            "STATE": ("state",),
+            "ZONE": ("state", "zone"),
+            "DISTRICT": ("state", "zone", "district"),
+            "BLOCK": ("state", "zone", "district", "block"),
+        }
 
         # Truncate only after all MongoDB reads succeed — PostgreSQL TRUNCATE is
         # transactional so any subsequent failure rolls this back automatically.
@@ -200,7 +206,7 @@ def main() -> None:
                 (s, lat, lon)
             )
             state_id[s] = cur.fetchone()[0]
-            scope_region["STATE"][s] = state_id[s]
+            scope_region["STATE"][(s,)] = state_id[s]
             for zone in region.get("zones") or []:
                 z = zone.get("name")
                 if not z:
@@ -210,7 +216,7 @@ def main() -> None:
                     (z, state_id[s])
                 )
                 zone_id[(s, z)] = cur.fetchone()[0]
-                scope_region["ZONE"][z] = zone_id[(s, z)]
+                scope_region["ZONE"][(s, z)] = zone_id[(s, z)]
                 for district in zone.get("districts") or []:
                     d = district.get("name")
                     if not d:
@@ -221,7 +227,7 @@ def main() -> None:
                         (d, zone_id[(s, z)], lat, lon)
                     )
                     dist_id[(s, z, d)] = cur.fetchone()[0]
-                    scope_region["DISTRICT"][d] = dist_id[(s, z, d)]
+                    scope_region["DISTRICT"][(s, z, d)] = dist_id[(s, z, d)]
                     for block in district.get("blocks") or []:
                         b = block.get("name")
                         if not b:
@@ -232,7 +238,7 @@ def main() -> None:
                             (b, dist_id[(s, z, d)], lat, lon)
                         )
                         block_id[(s, z, d, b)] = cur.fetchone()[0]
-                        scope_region["BLOCK"][b] = block_id[(s, z, d, b)]
+                        scope_region["BLOCK"][(s, z, d, b)] = block_id[(s, z, d, b)]
 
         logger.info("  %d states, %d zones, %d districts, %d blocks", len(state_id), len(zone_id), len(dist_id), len(block_id))
 
@@ -283,7 +289,9 @@ def main() -> None:
             school_dep = next((str(dep) for role, dep in assignments if role.get("scopeType") == "SCHOOL" and dep), None)
             region = school_region.get(school_dep)
             if not region:
-                region = next((scope_region.get(role.get("scopeType"), {}).get(str(dep)) for role, dep in assignments if dep and role.get("scopeType") != "SCHOOL" and scope_region.get(role.get("scopeType"), {}).get(str(dep))), fallback_region)
+                region = next((scope_region[role["scopeType"]].get(tuple(dep[field] for field in scope_fields[role["scopeType"]])) for role, dep in assignments if dep and role.get("scopeType") in scope_fields), None)
+            if not region and any(role.get("scopeType") in ("GLOBAL", "UNBOUND") for role, _ in assignments):
+                region = fallback_region
             identity = user.get("identity") or {}
             _insert_user(str(user["_id"]), identity.get("name", "Unknown"), role_names or "Unknown", mongo_school_to_pg.get(school_dep), region)
 

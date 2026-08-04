@@ -54,7 +54,7 @@ router.post(
 router.post(
     "/teacher-lesson-plan/regenerate",
     isAuthenticated,
-    requirePermission("lesson-plan.edit"),
+    requirePermission("lesson-plan.ai-enhance"),
     asyncMiddleware(
         teacherLessonPlanController.regenerateContent.bind(
             teacherLessonPlanController
@@ -76,7 +76,7 @@ router.post(
 router.post(
 	"/teacher-lesson-plan/section-ai-edit",
 	isAuthenticated,
-	requirePermission("lesson-plan.edit"),
+	requirePermission("lesson-plan.ai-enhance"),
 	asyncMiddleware(
 		teacherLessonPlanController.sectionAiEdit.bind(
 			teacherLessonPlanController
@@ -87,7 +87,7 @@ router.post(
 router.post(
 	"/teacher-lesson-plan/plan-ai-edit",
 	isAuthenticated,
-	requirePermission("lesson-plan.edit"),
+	requirePermission("lesson-plan.ai-enhance"),
 	asyncMiddleware(
 		teacherLessonPlanController.planAiEdit.bind(
 			teacherLessonPlanController
@@ -184,7 +184,7 @@ router.get(
 router.post(
 	"/teacher-lesson-plan/presentation/:lessonPlanId",
 	isAuthenticated,
-	requirePermission("presentation.generate.lesson_plan"),
+	requirePermission("presentation.generate.lesson-plan"),
 	asyncMiddleware(
 		teacherLessonPlanController.generateLessonPlanPresentation.bind(
 			teacherLessonPlanController

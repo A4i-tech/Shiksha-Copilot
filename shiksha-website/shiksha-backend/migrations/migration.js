@@ -2,7 +2,6 @@
 const MasterLesson = require("../models/master.lesson.model");
 const MasterResource = require("../models/master.resource.model");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model")
-const User = require("../models/user.model");
 const Chapter = require("../models/chapter.model");
 const LessonFeedback = require("../models/feedback.lesson.model")
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");

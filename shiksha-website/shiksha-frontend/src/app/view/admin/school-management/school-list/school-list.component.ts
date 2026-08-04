@@ -12,10 +12,12 @@ import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { BULK_UPLOAD_FILE_TYPES } from 'src/app/shared/utility/constant.util';
-import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged} from 'rxjs';
+import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin } from 'rxjs';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UserManagementService } from '../../user-management/user-management.service';
 import { ActionMenuController } from 'src/app/shared/utility/action-menu-controller.util';
+import { RegionDependency } from 'src/app/shared/interfaces/permission.interface';
+import { pathAllowed, regionScopePaths } from 'src/app/shared/utility/scope.util';
 
 @Component({
   selector: 'app-school-list',
@@ -122,6 +124,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   tableData: any;
 
   errorUrl:any;
+  private scopePaths: Partial<RegionDependency>[] = [];
 
   private searchSubscription!: Subscription;
 
@@ -129,6 +132,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
 
   
 
+  @ViewChild('stateDropdown') stateDropdown: any;
   @ViewChild('zoneDropdown') zoneDropdown: any;
   @ViewChild('districtDropdown') districtDropdown: any;
   @ViewChild('blockDropdown') blockDropdown: any;
@@ -174,9 +178,25 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     this.masterService.getRegions().subscribe({
       next: (val) => {
         this.regionsData = val?.data?.results;
-        this.stateDropdownOptions = this.regionsData;
+        const grants = this.utilityService.getPermission('school.list')!;
+        this.scopePaths = regionScopePaths(grants);
+        const schoolGrants = grants.filter((grant) => grant.scopeType === 'SCHOOL');
+        if (!schoolGrants.length) {
+          this.setStateDropdownValues();
+          return;
+        }
+        forkJoin(schoolGrants.map((grant) => this.schoolManagementService.getSchoolList(1, 1, { _id: grant.dep }))).subscribe((responses) => {
+          this.scopePaths.push(...responses.map((response) => response.data.results[0]));
+          this.setStateDropdownValues();
+        });
       },
     });
+  }
+
+  private setStateDropdownValues() {
+    this.stateDropdownOptions = this.regionsData.filter((region: any) => pathAllowed(this.scopePaths, { state: region.state }));
+    this.selectOnly('state', this.stateDropdownOptions, this.stateDropdownconfig, this.stateDropdown, 'state', (state) => this.setZoneDropdownValues(state));
+    if (this.filterObj.state) this.getShcoolList(this.filterObj);
   }
 
   /**
@@ -190,7 +210,8 @@ export class SchoolListComponent implements OnInit, OnDestroy {
         'state',
         selectedStateValue
       );
-      this.zoneDropdownOptions = this.selectedStateObj.zones;
+      this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) => pathAllowed(this.scopePaths, { state: selectedStateValue, zone: zone.name }));
+      this.selectOnly('zone', this.zoneDropdownOptions, this.zoneDropdownconfig, this.zoneDropdown, 'name', (zone) => this.setDistrictDropdownValues(zone));
     } else {
       this.zoneDropdownOptions = [];
     }
@@ -208,7 +229,9 @@ export class SchoolListComponent implements OnInit, OnDestroy {
         'name',
         selectedZone
       );
-      this.districtDropdownOptions = this.selectedZoneObj.districts;
+      this.districtDropdownOptions = this.selectedZoneObj.districts.filter((district: any) =>
+        pathAllowed(this.scopePaths, { state: this.filterObj.state, zone: selectedZone, district: district.name }));
+      this.selectOnly('district', this.districtDropdownOptions, this.districtDropdownconfig, this.districtDropdown, 'name', (district) => this.setBlockDropdownValues(district));
     }
   }
 
@@ -224,8 +247,19 @@ export class SchoolListComponent implements OnInit, OnDestroy {
         'name',
         selectedDistrict
       );
-      this.blockDropdownOptions = this.selectedDistrictObj.blocks;
+      this.blockDropdownOptions = this.selectedDistrictObj.blocks.filter((block: any) =>
+        pathAllowed(this.scopePaths, { state: this.filterObj.state, zone: this.filterObj.zone[0], district: selectedDistrict, block: block.name }));
+      this.selectOnly('block', this.blockDropdownOptions, this.blockDropdownconfig, this.blockDropdown, 'name', () => this.getSchoolFilteredList());
     }
+  }
+
+  private selectOnly(type: string, options: any[], config: DropDownConfig, dropdown: any, valueKey: string, selected: (value: any) => void) {
+    config.disabled = options.length === 1;
+    if (options.length !== 1) return;
+    const value = options[0][valueKey];
+    dropdown.selectedItem = value;
+    this.filterObj[type] = ['zone', 'district'].includes(type) ? [value] : value;
+    selected(value);
   }
 
   @HostListener('click', ['$event'])
@@ -271,6 +305,10 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   }
 
   resetStates() {
+    this.zoneDropdownconfig.disabled = false;
+    this.districtDropdownconfig.disabled = false;
+    this.blockDropdownconfig.disabled = false;
+    this.schoolDropdownconfig.disabled = false;
     this.zoneDropdownOptions = [];
         this.districtDropdownOptions = [];
         this.blockDropdownOptions = [];
@@ -286,6 +324,9 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   }
 
   resetZone() {
+    this.districtDropdownconfig.disabled = false;
+    this.blockDropdownconfig.disabled = false;
+    this.schoolDropdownconfig.disabled = false;
     this.filterObj.district = '';
         this.filterObj.block = '';
         this.filterObj._id = '';
@@ -298,6 +339,8 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   }
 
   resetDistrict() {
+    this.blockDropdownconfig.disabled = false;
+    this.schoolDropdownconfig.disabled = false;
     this.filterObj.block = '';
     this.filterObj._id = '';
         this.blockDropdownOptions = [];
@@ -307,6 +350,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   }
 
   resetBlock() {
+    this.schoolDropdownconfig.disabled = false;
     this.filterObj._id = '';
         this.schoolDropdownOptions = [];
         this.schoolDropdown.selectedItem = null;
@@ -503,21 +547,9 @@ export class SchoolListComponent implements OnInit, OnDestroy {
           block:this.filterObj.block
         }
         this.userManagementService.getSchoolList(true,filters).subscribe((res: any) => {
-          this.schoolDropdownOptions = res.data.results
+          this.schoolDropdownOptions = res.data.results;
+          this.selectOnly('_id', this.schoolDropdownOptions, this.schoolDropdownconfig, this.schoolDropdown, '_id', () => this.getShcoolList(this.filterObj));
         });
-    }
-
-    setZoneDropdownOptionsForManager() {
-      const admin = this.utilityService.loggedInUserData.profiles.admin;
-      if (!this.regionsData) return;
-      const stateObj = this.regionsData.find(
-        (state: any) => state.state === admin.state
-      );
-      if (stateObj) {
-        this.zoneDropdownOptions = stateObj.zones.filter((zone: any) =>
-          admin.zones.includes(zone.name)
-        );
-      }
     }
 
     ngOnDestroy(): void {

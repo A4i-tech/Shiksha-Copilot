@@ -61,6 +61,7 @@ class ScheduleAggregation {
 					section: 1,
 					createdAt: 1,
 					teacherId: 1,
+					schoolId: 1,
 					scheduleType: 1,
 					isDeleted: 1,
 					topic: 1,
@@ -117,13 +118,14 @@ class ScheduleAggregation {
 
 	async getBySchool(schoolId, teacherClasses, fromDate, toDate, teacherId, teacherSchedule) {
 		try {
+			schoolId = new ObjectId(schoolId);
 			let getactiveUserSchedules = {
-			"roles.dep": new mongoose.Types.ObjectId(schoolId),
-        		isDeleted: false,
-      		};
+				"roles.dep": schoolId,
+				isDeleted: false,
+			};
 
-      		const activeTeachers = await User.find(getactiveUserSchedules);
-      		const activeTeacherIds = activeTeachers.map((teacher) => teacher._id);
+			const activeTeachers = await User.find(getactiveUserSchedules);
+			const activeTeacherIds = activeTeachers.map((teacher) => teacher._id);
 
 			let match = {
 				schoolId,
@@ -320,6 +322,7 @@ class ScheduleAggregation {
 	) {
 
 		try {
+			schoolId = new ObjectId(schoolId);
 
 			let pipelineClass = [
 				{

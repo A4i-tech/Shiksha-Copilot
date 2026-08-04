@@ -119,13 +119,13 @@
           <h2 class="question">Which components do you include in your lesson plans?</h2>
           <p class="hint">Select all that apply</p>
           <div class="exclusive-note" *ngIf="isExclusiveOptionActive('lessonPlanComponents')">
-            ℹ️ {{ exclusiveOptionMessage('lessonPlanComponents') }}
+            ℹ️ {{ exclusiveOptionMessage('lessonPlanComponents') | translate }}
           </div>
           <div class="options">
             <div class="opt check" *ngFor="let o of componentOptions"
               [class.selected]="isChecked('lessonPlanComponents', o)"
               [class.disabled]="isOptionDisabled('lessonPlanComponents', o)"
-              [title]="isOptionDisabled('lessonPlanComponents', o) ? exclusiveOptionMessage('lessonPlanComponents') : null"
+              [title]="isOptionDisabled('lessonPlanComponents', o) ? (exclusiveOptionMessage('lessonPlanComponents') | translate) : null"
               (click)="!isOptionDisabled('lessonPlanComponents', o) && toggleArray('lessonPlanComponents', o)">
               <span class="mark"></span><span>{{ o }}</span>
             </div>

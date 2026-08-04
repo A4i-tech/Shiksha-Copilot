@@ -1,4 +1,5 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 
 import { SignInService } from './auth/sign-in.service';
 import { UtilityService } from './core/services/utility.service';
@@ -26,7 +27,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private utilityService: UtilityService,
     private authorizationService: AuthorizationService,
     public loaderMessage: LoaderMessageService,
-    private idleService: IdleService
+    private idleService: IdleService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -54,9 +56,11 @@ export class AppComponent implements OnInit, OnDestroy {
         next: (res: any) => {
           const user = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(user));
+          if (this.router.url === '/error/503') this.router.navigateByUrl('/');
         },
         error: (err: any) => {
-          this.utilityService.handleError(err);
+          if (err.status === 0 || err.status >= 500) this.router.navigate(['/error/503']);
+          else this.utilityService.handleError(err);
         }
       });
     }

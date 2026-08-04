@@ -86,10 +86,6 @@ export class BaselineSurveyService {
               maxReminders: res?.data?.maxReminders ?? 0,
             },
           };
-        }),
-        catchError(error => {
-          console.error('Error checking survey status:', error);
-          return of({ success: false, data: { completed: false, remindLaterCount: 0, isMandatory: false, maxReminders: 0 } });
         })
       );
   }

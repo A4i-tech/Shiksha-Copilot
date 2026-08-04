@@ -60,6 +60,7 @@
       
       <div class="w-full min-w-0">
         <app-dropdown
+          #stateDropdown
           [dropDownValues]="stateDropdownOptions"
           [config]="stateDropdownconfig"
           (valueUpdate)="onFilterChange('state', $event)"

@@ -6,13 +6,17 @@ class RoleController extends BaseController {
     super(new RoleManager());
   }
 
-  async permissions(req, res) {
-    const result = this.manager.permissions();
-    return res.status(200).json(result);
+  permissions(req, res) {
+    return res.status(200).json(this.manager.permissions());
   }
 
-  async scopeTypes(req, res) {
+  scopeTypes(req, res) {
     return res.status(200).json(this.manager.scopeTypes());
+  }
+
+  async users(req, res) {
+    const result = await this.manager.getUsers(req);
+    return res.status(result.success ? 200 : 404).json(result);
   }
 }
 

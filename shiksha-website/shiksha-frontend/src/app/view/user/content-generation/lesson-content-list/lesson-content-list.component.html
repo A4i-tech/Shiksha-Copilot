@@ -14,47 +14,47 @@
     />
 
     <div>
-      <h6>
+      <p>
         {{
           "Create Engaging Lesson Content to boost classroom engagement and improve student learning experiences"
             | translate
         }}.
-      </h6>
-      <h6>
+      </p>
+      <p>
         <span>{{ "Generate Lesson Plan" | translate }}:</span>
         {{
           "Provides 5E model (Engage, Explore, Explain, Elaborate, Evaluate) based Lesson Plan for effective lesson delivery"
             | translate
         }}.
-      </h6>
-      <h6>
+      </p>
+      <p>
         <span>{{ "Generate Lesson Resource" | translate }}:</span>
         {{
           "Provides Resources that include Activities, Real-world scenarios, and Questions tailored to meet your classroom needs"
             | translate
         }}.
-      </h6>
-      <h6>
+      </p>
+      <p>
         <span>{{ "Generate Presentation" | translate }}:</span>
         {{
           "Creates a classroom-ready slide deck by extracting key ideas, planning structure, and assembling media-backed slides from your source document"
             | translate
         }}.
-      </h6>
+      </p>
     </div>
   </div>
 
   <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
     <div class="flex gap-2 flex-wrap items-center">
-      <button [hasPermission]="['lesson-resource.generate']" class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content/lesson-resources">
+      <button [hasPermission]="['lesson-resource.generate']" class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content-generation/lesson-resources">
         <img src="assets/icons/edit_light.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Resource" | translate}}</span>
       </button>
-      <button [hasPermission]="['lesson-plan.generate']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content/lesson-plan">
+      <button [hasPermission]="['lesson-plan.generate']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/lesson-plan">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Plan" | translate}}</span>
       </button>
-      <button [hasPermission]="['presentation.generate.arbitrary']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content/presentation">
+      <button [hasPermission]="['presentation.generate.arbitrary']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/presentation">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Presentation" | translate}}</span>
       </button>
@@ -101,18 +101,18 @@
                 <img src="assets/icons/ppt-solid.svg" alt="" />
               </div>
               <div class="flex flex-col items-end">
-                <h6 class="text-xs font-normal text-content-70">
+                <p class="text-xs font-normal text-content-70">
                   {{'Created On' | translate}}:
                   <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
-                </h6>
+                </p>
               </div>
             </div>
 
             <div class="mt-5">
-              <h4 class="text-base font-medium">
+              <h2 class="text-base font-medium">
                 {{ "Title" | translate }}:
                 <span>{{ item.presentationTitle }}</span>
-              </h4>
+              </h2>
               <div class="flex items-center justify-start my-2">
                 <p
                   class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
@@ -159,14 +159,14 @@
                   <span>{{ item.presentationStatusLabel | translate }}</span>
                 </p>
               </div>
-              <h6 class="my-2 text-xs font-normal text-content-70">
+              <p class="my-2 text-xs font-normal text-content-70">
                 {{ "Status" | translate }} :
                 <span>{{ item.presentationStatusMessage }}</span>
-              </h6>
-              <h6 class="mt-2 text-xs font-normal text-content-70">
+              </p>
+              <p class="mt-2 text-xs font-normal text-content-70">
                 {{ "Instructions" | translate }} :
                 <span>{{ item.instruction || ("No extra instructions" | translate) }}</span>
-              </h6>
+              </p>
             </div>
           </div>
           <div class="flex gap-2 mt-7 items-end">
@@ -174,9 +174,9 @@
               (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
               class="w-full py-2 rounded bg-[#EB7B4A] hover:bg-[#D85B32]"
             >
-              <h6 class="text-white text-sm font-semibold">
+              <span class="text-white text-sm font-semibold">
                 {{ (item.isCompleted ? "View Presentation" : "View Progress") | translate }}
-              </h6>
+              </span>
             </button>
           </div>
       </ng-container>
@@ -202,10 +202,10 @@
                 />
               </div>
               <div class="flex flex-col items-end">
-                <h6 class="text-xs font-normal text-content-70">
+                <p class="text-xs font-normal text-content-70">
                   {{'Modified On' | translate}}:
                   <span>{{ item.updatedAt | date : "MMM dd,yyyy" }}</span>
-                </h6>
+                </p>
                 <div
                   class="bg-warn mt-2 px-4 py-1 rounded-2xl"
                   *ngIf="!item.isCompleted"
@@ -222,12 +222,12 @@
             </div>
 
             <div class="mt-5">
-              <h4 class="text-base font-medium">
+              <h2 class="text-base font-medium">
                 {{ "Subject" | translate }}:
                 <span>{{
                   item.isLesson ? utilityservice.getSubjectDisplayName(item.lesson.subjects) : utilityservice.getSubjectDisplayName(item.resource.subjects)
                 }}</span>
-              </h4>
+              </h2>
               <div class="flex items-center justify-start my-2">
                 <p
                   class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
@@ -241,7 +241,7 @@
                   {{ (item.isLesson ? "Lesson Plan" : "Lesson Resource") | translate }}
                 </p>
               </div>
-              <h6 class="my-2 text-xs font-normal text-content-70">
+              <p class="my-2 text-xs font-normal text-content-70">
                 {{ "Chapter" | translate }} :
                 <span>{{
                   item.isLesson
@@ -252,8 +252,8 @@
                       ". " +
                       item.resource.chapter.topics
                 }}</span>
-              </h6>
-              <h6 class="mt-2 text-xs font-normal text-content-70">
+              </p>
+              <p class="mt-2 text-xs font-normal text-content-70">
                 {{ "Sub-Topic" | translate }} :
                 <ng-container *ngIf="item.isLesson; else resourceSubtopics">
                   <span class="" *ngFor="let subtopic of item.lesson.subTopics">
@@ -273,7 +273,7 @@
                     </p>
                   </span>
                 </ng-template>
-              </h6>
+              </p>
             </div>
           </div>
           <div class="flex flex-col sm:flex-row gap-2 mt-7 sm:items-end">
@@ -281,23 +281,23 @@
               (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
               class="w-full sm:flex-[2] h-10 rounded whitespace-nowrap text-sm"
               [ngClass]="{
-                'bg-[#A062F7]': item.isLesson,
-                'bg-[#70CF97]': !item.isLesson
+                'bg-[#8353E2]': item.isLesson,
+                'bg-[#117B34]': !item.isLesson
               }"
             >
-              <h6
+              <span
                 class="text-white text-sm font-semibold"
                 *ngIf="!item.isCompleted; else viewLR"
               >
                 {{ "Continue Editing" | translate }}
-              </h6>
+              </span>
               <ng-template #viewLR>
-                <h6 class="text-white text-sm font-semibold">
+                <span class="text-white text-sm font-semibold">
                   {{
                     (item.isLesson ? "View Lesson Plan" : "View Lesson Resource")
                       | translate
                   }}
-                </h6>
+                </span>
               </ng-template>
             </button>
             <button [hasPermission]="['chat.use']" (click)="chat(item?._id, item?.lesson?.chapter?._id)" title="{{'Chatbot' | translate}}" *ngIf="item.isLesson && item.isCompleted" class="w-full sm:flex-1 h-10 whitespace-nowrap text-sm border border-[#8353E2] text-[#8353E2] hover:bg-purple-50 rounded font-semibold">{{'Chatbot' | translate}}</button>
@@ -339,9 +339,9 @@
         <img src="assets/icons/no-file.svg" alt="" />
       </div>
       <div>
-        <h4 class="text-base font-medium text-center">
+        <h2 class="text-base font-medium text-center">
           {{ "No items found" | translate }}
-        </h4>
+        </h2>
       </div>
     </div>
   </div>

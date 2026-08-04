@@ -53,7 +53,7 @@ class UserAggregation {
               as: "assignment",
               in: {
                 _id: "$$assignment._id",
-                dep: { $toString: "$$assignment.dep" },
+                dep: "$$assignment.dep",
                 role: {
                   $arrayElemAt: [
                     { $filter: { input: "$roleDefinitions", as: "role", cond: { $eq: ["$$role._id", "$$assignment.role"] } } },

@@ -74,10 +74,6 @@ export class ContentGenerationService extends BaseRestService {
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/list`, options);
   }
 
-  getMedium(): Observable<any> {
-    return this.http.get(`${this.baseUrl}/auth/me`);
-  }
-
   getFromMasterClass(medium: string): Observable<any> {
     let params = new HttpParams();
 

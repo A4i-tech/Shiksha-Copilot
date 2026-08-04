@@ -85,6 +85,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   ];
   questionBankTypeValue = 'singleChapter';
   questionBankObjectives: any[] = [];
+  initialQuestionBankObjectives: any[] = [];
 
   totalMarks = 0;
   totalPercentage = 100;
@@ -357,6 +358,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         next: ({ config, chapters }: any) => {
           this.paperQuestionTypes = config.questionTypes;
           this.questionBankObjectives = structuredClone(config.objectives);
+          this.initialQuestionBankObjectives = structuredClone(config.objectives);
           this.updateSourceOptions(config.questionSources);
           this.chapterDropdownOptions = chapters.map((ch: any) => ({
             ...ch,
@@ -854,6 +856,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   calculateTotalPercentage(i: any) {
     this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentageDistribution), 0);
   }
+  resetQuestionDistribution() {
+    this.questionBankObjectives = structuredClone(this.initialQuestionBankObjectives);
+    this.calculateTotalPercentage(null);
+    this.distributeMarks();
+  }
   resetDistribution() {
     this.f.chapter.reset();
     this.f.subTopic.reset();
@@ -862,6 +869,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.hasSubtopics = false;
     this.marksDistribution = [];
     this.questionBankObjectives = [];
+    this.initialQuestionBankObjectives = [];
     this.paperQuestionTypes = [];
     this.syncDependentDropdowns();
   }

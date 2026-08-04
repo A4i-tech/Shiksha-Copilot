@@ -1,17 +1,17 @@
 <div class="px-4 pt-4 md:px-0 md:pt-0">
   <h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px]">
-    Teacher Training
+    {{ 'Teacher Training' | translate }}
   </h1>
 
   <div class="border rounded bg-white mt-6 px-4 py-6 md:px-6 md:py-8">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
-        <button class="back-link" type="button" (click)="goBack()">← Back to Batches</button>
+        <button class="back-link" type="button" (click)="goBack()">← {{ 'Back to Batches' | translate }}</button>
         <h2 class="mt-2 text-content text-2xl md:text-[30px] font-bold md:leading-[48px] break-words">
-          {{ selectedBatch?.batchName || 'Batch Details' }}
+          {{ selectedBatch?.batchName || ('Batch Details' | translate) }}
         </h2>
         <p class="mt-2 text-content-60 break-words">
-          {{ selectedBatch?.description || 'Track attendance, manage participants, and upload supporting documents.' }}
+          {{ selectedBatch?.description || ('Track attendance, manage participants, and upload supporting documents.' | translate) }}
         </p>
       </div>
 
@@ -23,33 +23,33 @@
           (click)="onSaveAndSubmit(selectedBatch._id)"
         >
           <div class="flex items-center justify-center gap-2">
-            <span>Save and Submit</span>
+            <span>{{ 'Save and Submit' | translate }}</span>
           </div>
         </button>
 
         <span *ngIf="selectedBatch && selectedBatch.isSubmitted" class="inline-flex items-center justify-center px-3 py-1 rounded-full text-green bg-success-50 w-full sm:w-auto">
-          Submitted
+          {{ 'Submitted' | translate }}
         </span>
       </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 mt-6">
       <button type="button" class="metric-card text-left" (click)="downloadReport()">
-        <p class="metric-label">Total Participants</p>
+        <p class="metric-label">{{ 'Total Participants' | translate }}</p>
         <p class="metric-value">{{ selectedBatch?.assignedTeachers?.length || 0 }}</p>
-        <p class="metric-copy">Download batch report</p>
+        <p class="metric-copy">{{ 'Download batch report' | translate }}</p>
       </button>
 
       <div class="metric-card">
-        <p class="metric-label">Present</p>
+        <p class="metric-label">{{ 'Present' | translate }}</p>
         <p class="metric-value text-green">{{ getPresentCount() }}</p>
-        <p class="metric-copy">Attendance marked present</p>
+        <p class="metric-copy">{{ 'Attendance marked present' | translate }}</p>
       </div>
 
       <div class="metric-card">
-        <p class="metric-label">Absent</p>
+        <p class="metric-label">{{ 'Absent' | translate }}</p>
         <p class="metric-value text-orange">{{ getAbsentCount() }}</p>
-        <p class="metric-copy">Assigned but not marked present</p>
+        <p class="metric-copy">{{ 'Assigned but not marked present' | translate }}</p>
       </div>
 
       <button
@@ -58,16 +58,16 @@
         class="metric-card text-left"
         (click)="generateAttendanceSheet()"
       >
-        <p class="metric-label">Attendance Sheet</p>
-        <p class="metric-copy mt-2">Download Excel (.xlsx)</p>
+        <p class="metric-label">{{ 'Attendance Sheet' | translate }}</p>
+        <p class="metric-copy mt-2">{{ 'Download Excel (.xlsx)' | translate }}</p>
       </button>
     </div>
 
     <div class="mt-7">
       <div class="flex items-start justify-between gap-3">
         <div>
-          <p class="text-content text-xl md:text-2xl font-bold">Assigned Teachers</p>
-          <p class="mt-1 text-sm text-content-60">Mark attendance and remove teachers before the batch is submitted.</p>
+          <p class="text-content text-xl md:text-2xl font-bold">{{ 'Assigned Teachers' | translate }}</p>
+          <p class="mt-1 text-sm text-content-60">{{ 'Mark attendance and remove teachers before the batch is submitted.' | translate }}</p>
         </div>
       </div>
 
@@ -83,7 +83,7 @@
               type="button"
               (click)="onRemoveAssignedTeacher(selectedBatch!, teacher)"
               [disabled]="selectedBatch.isSubmitted"
-              [title]="selectedBatch.isSubmitted ? 'Cannot remove teachers from a submitted batch' : 'Remove teacher'"
+              [title]="(selectedBatch.isSubmitted ? 'Cannot remove teachers from a submitted batch' : 'Remove teacher') | translate"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 6h18"></path>
@@ -96,16 +96,16 @@
 
           <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p class="text-xs text-content-60">Zone</p>
+              <p class="text-xs text-content-60">{{ 'Zone' | translate }}</p>
               <p class="break-words">{{ teacher.school.zone || '-' }}</p>
             </div>
             <div>
-              <p class="text-xs text-content-60">District</p>
+              <p class="text-xs text-content-60">{{ 'District' | translate }}</p>
               <p class="break-words">{{ teacher.school.district || '-' }}</p>
             </div>
             <div class="col-span-2">
               <label class="attendance-row">
-                <span>Present</span>
+                <span>{{ 'Present' | translate }}</span>
                 <input
                   type="checkbox"
                   [checked]="getTeacherAttendanceStatus(teacher._id)"
@@ -122,12 +122,12 @@
         <table class="table-auto min-w-[900px] w-full border rounded-lg text-content">
           <thead>
             <tr class="bg-primary-60 rounded-lg border-b">
-              <th class="text-left p-4 rounded border-r text-sm text-content">Name</th>
-              <th class="text-left p-4 border-r text-sm text-content">Phone</th>
-              <th class="text-left p-4 border-r text-sm text-content">Zone</th>
-              <th class="text-left p-4 border-r text-sm text-content">District</th>
-              <th class="text-left p-4 border-r text-sm text-content">Attendance</th>
-              <th class="text-left p-4 text-sm text-content">Actions</th>
+              <th class="text-left p-4 rounded border-r text-sm text-content">{{ 'Name' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'Phone' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'Zone' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'District' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'Attendance' | translate }}</th>
+              <th class="text-left p-4 text-sm text-content">{{ 'Actions' | translate }}</th>
             </tr>
           </thead>
           <tbody class="bg-white">
@@ -150,7 +150,7 @@
                   type="button"
                   (click)="onRemoveAssignedTeacher(selectedBatch!, teacher)"
                   [disabled]="selectedBatch.isSubmitted"
-                  [title]="selectedBatch.isSubmitted ? 'Cannot remove teachers from a submitted batch' : 'Remove teacher'"
+                  [title]="(selectedBatch.isSubmitted ? 'Cannot remove teachers from a submitted batch' : 'Remove teacher') | translate"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M3 6h18"></path>
@@ -166,14 +166,14 @@
       </div>
 
       <div *ngIf="!selectedBatch || !selectedBatch.assignedTeachers || selectedBatch.assignedTeachers.length === 0" class="text-center text-content-60 py-4 border rounded-xl mt-4">
-        No teachers assigned to this batch.
+        {{ 'No teachers assigned to this batch.' | translate }}
       </div>
     </div>
 
     <div class="mt-7">
       <div>
-        <p class="text-content text-xl md:text-2xl font-bold">Proof Documents</p>
-        <p class="mt-1 text-sm text-content-60">Upload photos and the attendance sheet for this batch.</p>
+        <p class="text-content text-xl md:text-2xl font-bold">{{ 'Proof Documents' | translate }}</p>
+        <p class="mt-1 text-sm text-content-60">{{ 'Upload photos and the attendance sheet for this batch.' | translate }}</p>
       </div>
 
       <div *ngIf="uploadError" class="upload-error mt-4">
@@ -182,8 +182,8 @@
 
       <div class="upload-section mt-4">
         <div>
-          <p class="font-semibold text-content">Upload Photos</p>
-          <p class="text-sm text-content-60 mt-1">Maximum 2 images, up to 5MB each. Allowed types: JPG, JPEG, PNG.</p>
+          <p class="font-semibold text-content">{{ 'Upload Photos' | translate }}</p>
+          <p class="text-sm text-content-60 mt-1">{{ 'Maximum 2 images, up to 5MB each. Allowed types: JPG, JPEG, PNG.' | translate }}</p>
         </div>
 
         <div class="upload-actions mt-4">
@@ -204,30 +204,30 @@
             [disabled]="selectedBatch?.isSubmitted"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>Select Photos</span>
+              <span>{{ 'Select Photos' | translate }}</span>
             </div>
           </button>
-          <span class="text-sm text-content-60 break-words">{{ selectedPhotos.length }} photos selected</span>
+          <span class="text-sm text-content-60 break-words">{{ '{{count}} photos selected' | translate: { count: selectedPhotos.length } }}</span>
         </div>
 
         <div class="upload-preview-grid mt-4" *ngIf="!selectedBatch?.isSubmitted">
           <div *ngFor="let photo of selectedPhotos; let i = index" class="upload-preview-card">
-            <img [src]="photo.objectURL" class="upload-preview-image" [alt]="'Selected photo ' + (i + 1)" />
+            <img [src]="photo.objectURL" class="upload-preview-image" [alt]="('Selected photo' | translate) + ' ' + (i + 1)" />
             <button type="button" (click)="removePhoto(i)" class="upload-remove-btn" [disabled]="selectedBatch?.isSubmitted">×</button>
           </div>
         </div>
 
         <div class="upload-preview-grid mt-4" *ngIf="selectedBatch?.isSubmitted">
           <div *ngFor="let photo of batchPhotos; let i = index" class="upload-preview-card">
-            <img [src]="photo.path" class="upload-preview-image" [alt]="'Selected photo ' + (i + 1)" />
+            <img [src]="photo.path" class="upload-preview-image" [alt]="('Selected photo' | translate) + ' ' + (i + 1)" />
           </div>
         </div>
       </div>
 
       <div class="upload-section mt-4">
         <div>
-          <p class="font-semibold text-content">Upload Attendance Sheet</p>
-          <p class="text-sm text-content-60 mt-1">PDF only, up to 10MB.</p>
+          <p class="font-semibold text-content">{{ 'Upload Attendance Sheet' | translate }}</p>
+          <p class="text-sm text-content-60 mt-1">{{ 'PDF only, up to 10MB.' | translate }}</p>
         </div>
 
         <div class="upload-actions mt-4">
@@ -247,15 +247,15 @@
             [disabled]="selectedBatch?.isSubmitted"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>Select PDF</span>
+              <span>{{ 'Select PDF' | translate }}</span>
             </div>
           </button>
 
           <span class="text-sm text-content-60 break-words" *ngIf="!selectedBatch?.isSubmitted">
-            {{ selectedPdf ? selectedPdf.name : 'No file selected' }}
+            {{ selectedPdf ? selectedPdf.name : ('No file selected' | translate) }}
           </span>
           <span class="text-sm text-content-60 break-words" *ngIf="selectedBatch?.isSubmitted">
-            {{ batchPdf ? batchPdf.name : 'No file selected' }}
+            {{ batchPdf ? batchPdf.name : ('No file selected' | translate) }}
           </span>
 
           <button
@@ -265,7 +265,7 @@
             (click)="removePdf()"
             [disabled]="selectedBatch?.isSubmitted"
           >
-            Remove
+            {{ 'Remove' | translate }}
           </button>
         </div>
       </div>

@@ -7,31 +7,8 @@ class ContentActivityController {
   }
 
   async contentActivity(req, res) {
-    const {
-      page = 1,
-      limit = 10,
-      filter = {},
-      sortBy = "createdAt",
-      sortOrder = "desc",
-      search = "",
-    } = req.query;
-    const searchFilter = search
-      ? {
-          $or: [
-            "user.identity.name",
-            "user.school.name",
-            "content.name",
-            "content.topics",
-          ].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })),
-        }
-      : {};
-    const result = await this.manager.getContentActivity(
-      Number(page),
-      Number(limit),
-      { ...filter, ...searchFilter },
-      { [sortBy]: sortOrder === "desc" ? -1 : 1 },
-      req.permissions
-    );
+    const { page = 1, limit = 10, sortBy = "createdAt", sortOrder = "desc" } = req.query;
+    const result = await this.manager.getContentActivity(Number(page), Number(limit), req.query, { [sortBy]: sortOrder === "desc" ? -1 : 1 }, req.permissions);
     if (result.success) return res.status(200).json(result);
     return handleError(result, res);
   }

@@ -135,8 +135,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   defaultBoard = null;
 
-  defaultMedium = null;
-
   showDeleteProfileImageConfirm =false;
 
   currentSubjects:any[]=[];
@@ -199,9 +197,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   presetValues(data: any) {
     if (data.length === 1) {
       this.defaultBoard = data[0]._id;
-      if (data[0].medium.length === 1) {
-        this.defaultMedium = data[0].medium[0].medium;
-      }
     }
   }
 
@@ -210,15 +205,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * @param i
    * @param val
    */
-  setMediumSubjectDropdown(i: any, val: any, mode: any) {
+  setMediumSubjectDropdown(i: any, val: any) {
     this.resetclassInfo('board', i);
     if (val) {
       this.mediumDropdownOptions[i] = val.medium;
       this.currentSubjects[i] = val.subjects;
       // this.subjectDropdownOptions[i] = val.subjects;
-      if (val.medium.length === 1 && mode === 'add') {
+      if (val.medium.length === 1) {
         this.classes.controls[i].get('medium')?.setValue(val.medium[0].medium);
-        this.classDropdownOptions[i] = val.medium[0].classDetails;
+        this.classes.controls[i].get('medium')?.disable();
+        this.setClassDropdown(i, val.medium[0]);
       }
     }
   }
@@ -227,6 +223,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.resetclassInfo('medium', i);
     if (val) {
       this.classDropdownOptions[i] = val.classDetails;
+      if (val.classDetails.length === 1) {
+        this.classes.controls[i].get('class')?.setValue(val.classDetails[0].standard);
+        this.classes.controls[i].get('class')?.disable();
+        this.setStrength(i, val.classDetails[0]);
+      }
     }
   }
 
@@ -240,6 +241,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     if (val) {
       this.subjectDropdownOptions[i] = this.filterSubjects(val.standard,this.currentSubjects[i])
+      if (this.subjectDropdownOptions[i].length === 1) {
+        const subject = this.subjectDropdownOptions[i][0];
+        this.classes.controls[i].get('subject')?.setValue(subject._id);
+        this.classes.controls[i].get('subject')?.disable();
+        this.subjectMapper(i, subject);
+      }
       this.resetclassInfo('strength', i);
       this.classes.controls[i].get('boysStrength')?.setValue(val.boysStrength);
       this.classes.controls[i]
@@ -257,23 +264,23 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   resetclassInfo(type: any, i: any) {
     if (type === 'board') {
-      this.classes.controls[i].get('medium')?.reset();
-      this.classes.controls[i].get('class')?.reset();
-      this.classes.controls[i].get('subject')?.reset();
+      this.classes.controls[i].get('medium')?.reset({ value: null, disabled: false });
+      this.classes.controls[i].get('class')?.reset({ value: null, disabled: false });
+      this.classes.controls[i].get('subject')?.reset({ value: null, disabled: false });
       this.classes.controls[i].get('subjectDetails')?.reset();
       this.classDropdownOptions[i] = [];
       this.mediumDropdownOptions[i] = [];
       this.subjectDropdownOptions[i] = [];
     } else if (type === 'medium') {
-      this.classes.controls[i].get('class')?.reset();
-      this.classes.controls[i].get('subject')?.reset();
+      this.classes.controls[i].get('class')?.reset({ value: null, disabled: false });
+      this.classes.controls[i].get('subject')?.reset({ value: null, disabled: false });
       this.classes.controls[i].get('subjectDetails')?.reset();
       this.classDropdownOptions[i] = [];
       this.subjectDropdownOptions[i] = [];
     }
     else if (type === 'standard') {
       this.subjectDropdownOptions[i] = [];
-      this.classes.controls[i].get('subject')?.reset();
+      this.classes.controls[i].get('subject')?.reset({ value: null, disabled: false });
       this.classes.controls[i].get('subjectDetails')?.reset();
     }
     this.classes.controls[i].get('boysStrength')?.reset();
@@ -405,6 +412,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
   setSubjectDropdown(i:any,val:any,standard:any){
     if (val) {
       this.subjectDropdownOptions[i] = this.filterSubjects(standard,val.subjects);
+      if (this.subjectDropdownOptions[i].length === 1) {
+        const subject = this.subjectDropdownOptions[i][0];
+        this.classes.controls[i].get('subject')?.setValue(subject._id);
+        this.classes.controls[i].get('subject')?.disable();
+        this.subjectMapper(i, subject);
+      }
     }
   }
   /**
@@ -415,10 +428,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
       this.classes.controls[i]
         ?.get('board')
         ?.setValue(this.dependentPatchData.classes[i].board);
+      if (this.boardDropdownOptions.length === 1) {
+        this.classes.controls[i].get('board')?.disable();
+      }
       const mediums = this.boardMasterData.filter(
         (e: any) => e._id === this.dependentPatchData.classes[i].board
       );
-      this.setMediumSubjectDropdown(i, mediums[0], 'edit');
+      this.setMediumSubjectDropdown(i, mediums[0]);
       this.classes.controls[i]
         ?.get('medium')
         ?.setValue(this.dependentPatchData.classes[i].medium);
@@ -594,22 +610,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   defaultPreset() {
     if (this.defaultBoard) {
+      const i = this.classes.length - 1;
       this.boardDropdownOptions = this.boardMasterData;
-      this.mediumDropdownOptions[this.classes.length - 1] =
-        this.boardMasterData[0].medium;
-      // this.subjectDropdownOptions[this.classes.length - 1] =
-      //   this.boardMasterData[0].subjects;
-      this.currentSubjects[this.classes.length - 1] = this.boardMasterData[0].subjects;
-      this.classes.controls[this.classes.length - 1]
-        .get('board')
-        ?.setValue(this.defaultBoard);
-      if (this.defaultMedium) {
-        this.classDropdownOptions[this.classes.length - 1] =
-          this.boardMasterData[0].medium[0].classDetails;
-        this.classes.controls[this.classes.length - 1]
-          .get('medium')
-          ?.setValue(this.defaultMedium);
-      }
+      this.classes.controls[i].get('board')?.setValue(this.defaultBoard);
+      this.classes.controls[i].get('board')?.disable();
+      this.setMediumSubjectDropdown(i, this.boardMasterData[0]);
     }
   }
 
@@ -740,14 +745,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const classDetails = this.splitClasses(this.classes.value);
+    const classDetails = this.splitClasses(this.classes.getRawValue());
 
     if(this.utilityService.hasDuplicates(classDetails)){
       this.utilityService.showWarning('Duplicate class-subject mapping found. Please verify.');
       return
     }
 
-    const data = this.userPorfileForm.value;
+    const data = this.userPorfileForm.getRawValue();
     data.facilities = this.utilityService.removeObjectsWithEmptyType(
       data.facilities
     );

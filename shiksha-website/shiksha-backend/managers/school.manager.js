@@ -275,24 +275,11 @@ class SchoolManager extends BaseManager {
       const worker = new Worker(
         path.resolve(__dirname, "../worker/bulkuploadworker.js")
       );
-
-      worker.postMessage({ fileBuffer, userId, userName, permissions });
-
-      worker.on("message", (result) => {
-        console.log("Worker result:", result);
+      return await new Promise((resolve, reject) => {
+        worker.once("message", resolve);
+        worker.once("error", reject);
+        worker.postMessage({ fileBuffer, userId, userName, permissions });
       });
-
-      worker.on("error", (err) => {
-        console.error("Worker error:", err);
-      });
-
-      worker.on("exit", (code) => {
-        if (code !== 0) {
-          console.error(`Worker stopped with exit code ${code}`);
-        }
-      });
-
-      return { success: true };
     } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
@@ -368,7 +355,7 @@ class SchoolManager extends BaseManager {
     try {
       const school = await this.dao.getById(req.params.id);
       if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
-      return formatApiReponse(true, "", await this.dao.update(req.params.id, { isDeleted: false }));
+      return formatApiReponse(true, "School activated successfully", await this.dao.activate(req.params.id));
     } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
@@ -414,7 +401,7 @@ class SchoolManager extends BaseManager {
           return res.status(400).json({ error: "Invalid _id format" });
         }
       }
-      let mergedFilter = { ...transformedFilter, ...searchFilter };
+      let mergedFilter = intersectFilters(transformedFilter, searchFilter);
       mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
 
       let status = {};

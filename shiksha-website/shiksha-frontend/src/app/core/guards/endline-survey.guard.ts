@@ -9,7 +9,7 @@ import { UtilityService } from '../services/utility.service';
 export class EndlineSurveyGuard implements CanActivate {
   constructor(private survey: EndlineSurveyService, private dialog: EndlineSurveyDialogService, private utility: UtilityService) {}
   async canActivate(): Promise<boolean> {
-    if (!this.utility.hasPermission(['survey.endline.complete'])) return true;
+    if (!this.utility.hasPermission(['survey.endline'])) return true;
 
     try {
       const response = await firstValueFrom(this.survey.checkStatus());

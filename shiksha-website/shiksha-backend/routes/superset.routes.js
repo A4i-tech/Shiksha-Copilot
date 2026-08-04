@@ -31,8 +31,13 @@ function buildRlsClause(scopes) {
     if (scope.scopeType === "SCHOOL") {
       return `user_id IN (SELECT user_id FROM dim_users WHERE school_id IN (SELECT school_id FROM dim_schools WHERE source_id = ${sql(scope.dep)}))`;
     }
-    const type = scope.scopeType.toLowerCase();
-    return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (WITH RECURSIVE scoped AS (SELECT region_id FROM dim_regions WHERE type = ${sql(type)} AND name = ${sql(scope.dep)} UNION ALL SELECT child.region_id FROM dim_regions child JOIN scoped parent ON child.parent_id = parent.region_id) SELECT region_id FROM scoped))`;
+    const starts = {
+      STATE: `SELECT s.region_id FROM dim_regions s WHERE s.type = 'state' AND s.name = ${sql(scope.dep.state)}`,
+      ZONE: `SELECT z.region_id FROM dim_regions z JOIN dim_regions s ON z.parent_id = s.region_id WHERE z.type = 'zone' AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
+      DISTRICT: `SELECT d.region_id FROM dim_regions d JOIN dim_regions z ON d.parent_id = z.region_id JOIN dim_regions s ON z.parent_id = s.region_id WHERE d.type = 'district' AND d.name = ${sql(scope.dep.district)} AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
+      BLOCK: `SELECT b.region_id FROM dim_regions b JOIN dim_regions d ON b.parent_id = d.region_id JOIN dim_regions z ON d.parent_id = z.region_id JOIN dim_regions s ON z.parent_id = s.region_id WHERE b.type = 'block' AND b.name = ${sql(scope.dep.block)} AND d.name = ${sql(scope.dep.district)} AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
+    };
+    return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (WITH RECURSIVE scoped AS (${starts[scope.scopeType]} UNION ALL SELECT child.region_id FROM dim_regions child JOIN scoped parent ON child.parent_id = parent.region_id) SELECT region_id FROM scoped))`;
   });
   return clauses.length ? `(${clauses.join(" OR ")})` : "FALSE";
 }

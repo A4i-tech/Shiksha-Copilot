@@ -75,10 +75,7 @@ describe("TeacherTrainingBatchController", () => {
 
   describe("getTeacherTrainingStats", () => {
     it("should get training stats successfully", async () => {
-      const mockTeachers = [{ _id: "teacher-1" }, { _id: "teacher-2" }];
-      User.find = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockTeachers),
-      });
+      User.distinct = jest.fn().mockResolvedValue(["teacher-1", "teacher-2"]);
       School.distinct = jest.fn().mockResolvedValue(["school-1"]);
       mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
 
@@ -93,7 +90,7 @@ describe("TeacherTrainingBatchController", () => {
 
       await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
 
-      expect(User.find).toHaveBeenCalledWith({ "profiles.teacher": { $exists: true }, "roles.dep": { $in: ["school-1"] } });
+      expect(User.distinct).toHaveBeenCalledWith("_id", { "profiles.teacher": { $exists: true }, "roles.dep": { $in: ["school-1"] } });
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({

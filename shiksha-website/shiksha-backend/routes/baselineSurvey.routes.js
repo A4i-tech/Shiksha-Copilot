@@ -19,14 +19,14 @@ const remindLaterLimiter = rateLimit({
 router.get(
   '/baseline-surveys/check',
   isAuthenticated,
-  requirePermission('survey.baseline.complete'),
+  requirePermission('survey.baseline'),
   asyncMiddleware(baselineController.checkIfCompleted.bind(baselineController))
 );
 
 router.post(
   '/baseline-surveys',
   isAuthenticated,
-  requirePermission('survey.baseline.complete'),
+  requirePermission('survey.baseline'),
   validateSubmitSurvey,
   asyncMiddleware(baselineController.submitSurvey.bind(baselineController))
 );
@@ -34,7 +34,7 @@ router.post(
 router.patch(
   '/baseline-surveys/remind-later',
   isAuthenticated,
-  requirePermission('survey.baseline.complete'),
+  requirePermission('survey.baseline'),
   remindLaterLimiter,
   validateRemindLater,
   asyncMiddleware(baselineController.remindLater.bind(baselineController))

@@ -17,7 +17,7 @@ export class BaselineSurveyGuard implements CanActivate {
 
   async canActivate(): Promise<boolean> {
     if (!this.authz.isLoggedIn()) return true;
-    if (!this.utility.hasPermission(['survey.baseline.complete'])) return true;
+    if (!this.utility.hasPermission(['survey.baseline'])) return true;
     if (this.survey.isDismissed()) return true;
 
     try {

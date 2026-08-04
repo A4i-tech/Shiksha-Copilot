@@ -1,20 +1,15 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
-import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
 
-/** School lookups used by admin screens (not user CRUD). */
 @Injectable({
   providedIn: 'root',
 })
-export class UserManagementService extends BaseRestService {
+export class UserManagementService {
   baseUrl = environment.apiUrl;
 
-  constructor(http: HttpClient) {
-    super(http);
-    this.setUri('users');
-  }
+  constructor(private http: HttpClient) {}
 
   getSchoolList(includeDeleted: boolean, filters?: any): Observable<any> {
     let params = new HttpParams();

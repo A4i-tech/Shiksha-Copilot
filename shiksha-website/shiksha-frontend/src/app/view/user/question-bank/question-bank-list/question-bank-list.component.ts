@@ -115,9 +115,9 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   ngAfterViewInit(): void {
-    const loggedUSer = this.utilityService.loggedInUserData;
+    const loggedInUser = this.utilityService.loggedInUserData;
     this.boardDropdownOptions = this.utilityService.formatResponse(
-      loggedUSer.classes
+      loggedInUser.profiles.teacher.classes
     );
 
     if (this.boardDropdownOptions.length === 1) {

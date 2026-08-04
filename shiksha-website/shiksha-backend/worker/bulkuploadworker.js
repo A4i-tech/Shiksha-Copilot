@@ -433,7 +433,7 @@ dbService.connectToMongoForWorker().then(async ({ client, openedHere }) => {
 
           parentPort.postMessage({
             success: true,
-            message: "Bulk upload initiated successfully and processing",
+            message: `Bulk upload completed: ${successCount} imported, ${failureCount} failed.`,
           });
         } catch (creationError) {
           parentPort.postMessage({

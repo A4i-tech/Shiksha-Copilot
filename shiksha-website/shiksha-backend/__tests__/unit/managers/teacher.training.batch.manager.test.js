@@ -1,13 +1,10 @@
 const TeacherTrainingBatchManager = require("../../../managers/teacher.training.batch.manager");
 const TeacherTrainingBatch = require("../../../models/teacher.training.batch.model");
+const { scopedTeacherIds } = require("../../../helper/training.scope.helper");
 
 jest.mock("../../../dao/teacher.training.batch.dao");
 jest.mock("../../../models/teacher.training.batch.model");
-
-const user = (scopeType) => ({
-  _id: "user-123",
-  roles: [{ role: { permissions: ["training.view"], scopeType, isDeleted: false }, dep: scopeType === "GLOBAL" ? null : "Mysuru" }],
-});
+jest.mock("../../../helper/training.scope.helper");
 
 describe("TeacherTrainingBatchManager.getBatches", () => {
   let manager;
@@ -19,17 +16,22 @@ describe("TeacherTrainingBatchManager.getBatches", () => {
   });
 
   it("allows a global grant to view all batches", async () => {
-    await manager.getBatches(user("GLOBAL"));
+    await manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "GLOBAL", dep: null }]);
     expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
   });
 
-  it("limits a non-global grant to batches created by the user", async () => {
-    await manager.getBatches(user("DISTRICT"));
-    expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({ createdBy: "user-123" });
+  it("queries batches assigned to teachers inside a non-global scope", async () => {
+    scopedTeacherIds.mockResolvedValue(["teacher-123"]);
+    await manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "DISTRICT", dep: {} }]);
+    expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({ $or: [
+      { assignedTeachers: { $in: ["teacher-123"] } },
+      { createdBy: "user-123", assignedTeachers: { $size: 0 } },
+    ] });
   });
 
   it("returns the database error", async () => {
     TeacherTrainingBatch.find.mockReturnValue({ populate: jest.fn().mockRejectedValue(new Error("Database error")) });
-    await expect(manager.getBatches(user("GLOBAL"))).resolves.toMatchObject({ success: false, message: "Database error" });
+    await expect(manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "GLOBAL", dep: null }]))
+      .resolves.toMatchObject({ success: false, message: "Database error" });
   });
 });

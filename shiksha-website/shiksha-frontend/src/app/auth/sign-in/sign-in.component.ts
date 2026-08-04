@@ -104,7 +104,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     if (userData.profiles?.teacher && !userData.profiles.teacher.isProfileCompleted) {
       this.router.navigate(['/profile']);
     } else {
-      this.router.navigate(['/home']);
+      this.router.navigate(['/']);
     }
   }
 

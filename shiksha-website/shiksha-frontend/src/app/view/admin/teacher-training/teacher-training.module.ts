@@ -8,6 +8,7 @@ import { ViewAssignedTeachersComponent } from './view-assigned-teachers/view-ass
 import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 import { HttpClientModule } from '@angular/common/http';
+import { TranslateModule } from '@ngx-translate/core';
 
 @NgModule({
   declarations: [
@@ -22,7 +23,8 @@ import { HttpClientModule } from '@angular/common/http';
     FormsModule,
     DropdownComponent,
     PaginationComponent,
-    HttpClientModule
+    HttpClientModule,
+    TranslateModule
   ]
 })
 export class TeacherTrainingModule { } 

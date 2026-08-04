@@ -51,7 +51,7 @@ router.get(
 router.post(
 	"/lesson-plan/regenerate",
 	isAuthenticated,
-	requirePermission("lesson-plan.edit"),
+	requirePermission("lesson-plan.ai-enhance"),
 	asyncMiddleware(
 		masterLessonController.regenerateLessonPlan.bind(masterLessonController)
 	)

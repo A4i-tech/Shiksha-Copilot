@@ -52,7 +52,7 @@ const routes: Routes = [
     path:'presentation/:id',
     component:PresentationGenerationComponent,
     data:{
-      permissions: ['presentation.generate.arbitrary', 'presentation.generate.lesson_plan'],
+      permissions: ['presentation.generate.arbitrary', 'presentation.generate.lesson-plan'],
       trackingTag:'view-presentation',
     },
     canActivate: [PermissionGuard],

@@ -22,6 +22,11 @@
     (change)="valueSelected($event)" (blur)="onTouched()" [closeOnSelect]="config.openOnSelect ? false : true"
     [attr.aria-invalid]="submitted && control.invalid ? 'true' : null"
     [attr.aria-describedby]="submitted && control.invalid ? (inputId + '-error') : null">
+    <ng-template ng-option-tmp let-item="item" *ngIf="config.showDescription">
+      <span class="block font-bold whitespace-normal">{{ item[config.bindLabel || 'name'] }}</span>
+      <span class="block text-xs text-content-60 whitespace-normal">{{ item.description }}</span>
+    </ng-template>
+
     <ng-template ng-option-tmp let-item="item" let-item$="item$" *ngIf="config.multi && config.selectAllOption">
       <div class="flex items-center gap-2">
         <input type="checkbox" [checked]="item$.selected">

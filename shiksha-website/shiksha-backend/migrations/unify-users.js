@@ -10,6 +10,7 @@ const ROLE_MAP = {
 const TOUCHED_COLLECTIONS = ["users", "adminusers", "roles", "teachertrainingbatches", "auditlogs", "lessonplantemplates"];
 const MIGRATION_ID = "unify-users-v1";
 const LEASE_MS = 10 * 60 * 1000;
+const LEGACY_DISTRICT_NAMES = { Gadwal: "Jogulamba Gadwal" };
 
 function identity(document) {
   return {
@@ -55,7 +56,7 @@ function teacherDocument(document, schools) {
     profileImageExpiresIn: document.profileImageExpiresIn,
     isDeleted: document.isDeleted,
     otp: document.otp,
-    loginAttempts: document.loginAttempts,
+    loginAttempts: document.loginAttempts ?? [],
     recovery: document.recovery,
     rememberMeToken: document.rememberMeToken,
     isLoginAllowed: document.isLoginAllowed,
@@ -85,8 +86,10 @@ function adminDocument(document, districts) {
     else {
       if (!Array.isArray(document.districts) || !document.districts.length) throw new Error(`Manager ${document._id} has no districts`);
       for (const district of document.districts) {
-        if (!districts.has(district)) throw new Error(`Manager ${document._id} district ${district} does not exist`);
-        assignments.push(assignment(role, district));
+        const dependencies = districts.get(LEGACY_DISTRICT_NAMES[district] || district);
+        if (!dependencies) throw new Error(`Manager ${document._id} district ${district} does not exist`);
+        if (dependencies.length !== 1) throw new Error(`Manager ${document._id} district ${district} is ambiguous`);
+        assignments.push(assignment(role, dependencies[0]));
       }
     }
   }
@@ -99,7 +102,7 @@ function adminDocument(document, districts) {
     profileImage: "",
     isDeleted: document.isDeleted,
     otp: document.otp,
-    loginAttempts: document.loginAttempts,
+    loginAttempts: document.loginAttempts ?? [],
     recovery: document.recovery,
     rememberMeToken: document.rememberMeToken,
     isLoginAllowed: document.isLoginAllowed,
@@ -139,9 +142,8 @@ async function rewriteTeacherReferences(db, idMap, userIds) {
 async function seedBuiltinRoles(db) {
   for (const role of builtinRoles) {
     const { _id, ...data } = role;
-    const update = { $set: data, $setOnInsert: { _id: new mongoose.Types.ObjectId(_id) } };
-    if (role.isSuperUser) update.$unset = { permissions: "" };
-    await db.collection("roles").updateOne({ _id: new mongoose.Types.ObjectId(_id) }, update, { upsert: true });
+    const id = new mongoose.Types.ObjectId(_id);
+    await db.collection("roles").updateOne({ _id: id }, { $set: data }, { upsert: true });
   }
 }
 
@@ -274,7 +276,17 @@ async function unifyUsers() {
     const existingUsers = await users.find({}).sort({ createdAt: 1, _id: 1 }).toArray();
     const adminUsers = await admins.find({}).toArray();
     const schools = new Set((await db.collection("schools").distinct("_id")).map(String));
-    const districts = new Set(await db.collection("regions").distinct("zones.districts.name"));
+    const districtRows = await db.collection("regions").aggregate([
+      { $unwind: "$zones" },
+      { $unwind: "$zones.districts" },
+      { $project: { _id: 0, name: "$zones.districts.name", dep: { state: "$state", zone: "$zones.name", district: "$zones.districts.name" } } },
+    ]).toArray();
+    const districts = new Map();
+    for (const district of districtRows) {
+      const dependencies = districts.get(district.name) || [];
+      dependencies.push(district.dep);
+      districts.set(district.name, dependencies);
+    }
     const migration = buildMigration(existingUsers, adminUsers, schools, districts);
     migration.issues.push(...await validateReferences(db, migration));
     if (migration.issues.length) throw new Error(`User migration preflight failed:\n${migration.issues.join("\n")}`);
@@ -314,7 +326,3 @@ async function unifyUsers() {
 }
 
 module.exports = unifyUsers;
-module.exports.buildMigration = buildMigration;
-module.exports.teacherDocument = teacherDocument;
-module.exports.adminDocument = adminDocument;
-module.exports.mergeTeachers = mergeTeachers;

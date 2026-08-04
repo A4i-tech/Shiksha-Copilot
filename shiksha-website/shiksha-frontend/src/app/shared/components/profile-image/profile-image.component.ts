@@ -14,6 +14,8 @@ export class ProfileImageComponent implements OnChanges {
 
   @Input() size: any;
 
+  @Input() name = '';
+
   imageFailed = false;
 
   constructor(private utilityService: UtilityService) {}
@@ -23,6 +25,6 @@ export class ProfileImageComponent implements OnChanges {
   }
 
   get firstCharacter(): string {
-    return this.utilityService.loggedInUserData?.identity?.name?.charAt(0).toUpperCase() || '';
+    return (this.name || this.utilityService.loggedInUserData?.identity?.name).charAt(0).toUpperCase();
   }
 }

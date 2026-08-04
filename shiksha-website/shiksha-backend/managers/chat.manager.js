@@ -9,7 +9,6 @@ const SchoolDao = require("../dao/school.dao");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const UserDao = require('../dao/user.dao');
 const MasterLessonDao = require("../dao/master.lesson.dao");
-const { schoolDependency } = require("../helper/permission.helper");
 
 /** @extends {BaseManager<ChatDao>} */
 class ChatManager extends BaseManager {
@@ -25,12 +24,12 @@ class ChatManager extends BaseManager {
 
 	async #buildUserContext(userId, includeClasses = true){
 		const user = await this.userDao.getById(userId);
-		const school = await this.schoolDao.getById(schoolDependency(user.roles));
-		const classes = includeClasses ? [`**Classes**:`, ...user.profiles.teacher.classes.map(b => `- ${b.name} (for class ${b.class}, ${b.board} curriculum)`)] : [];
+		const schoolIds = [...new Set(user.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => String(assignment.dep)))];
+		const schools = await Promise.all(schoolIds.map((schoolId) => this.schoolDao.getById(schoolId)));
+		const classes = includeClasses && user.profiles.teacher ? [`**Classes**:`, ...user.profiles.teacher.classes.map(b => `- ${b.name} (for class ${b.class}, ${b.board} curriculum)`)] : [];
 		return [
 			"## User information",
-			"I am a school teacher and below are my details:",
-			`**School**: ${school.name} (${school.state}, ${school.type})`,
+			...schools.map((school) => `**School**: ${school.name} (${school.state}, ${school.type})`),
 			...classes
 		].join("\n");
 	}
@@ -147,7 +146,7 @@ class ChatManager extends BaseManager {
 			let chatSession = await this.dao.getActiveSession(userId, today);
 
 			if (!chatSession) {
-				return formatApiResponse(false, "Chat session not found", []);
+				return formatApiResponse(true, "Chat history fetched!", { messages: [] });
 			}
 
 			let messages = await this.dao.getMessagesBySessionId(chatSession._id);

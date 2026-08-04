@@ -1,11 +1,18 @@
 const Joi = require("joi");
+const validateRequest = require("./common.validation");
 
 const phoneNumberPattern = /^[6789]\d{9}$/;
 const objectId = Joi.string().hex().length(24);
+const regionDependency = Joi.object({
+	state: Joi.string().required(),
+	zone: Joi.string(),
+	district: Joi.string(),
+	block: Joi.string(),
+});
 const roleAssignment = Joi.object({
 	_id: objectId,
 	roleId: objectId.required(),
-	dep: Joi.string().allow(null),
+	dep: Joi.alternatives().try(objectId, regionDependency).allow(null),
 });
 
 const identitySchema = Joi.object({
@@ -35,101 +42,31 @@ const userSchema = Joi.object({
 	roles: Joi.array().items(roleAssignment).min(1).required(),
 	profiles: profilesSchema.required(),
 	preferredLanguage: Joi.string().valid("en", "kn", "tg"),
-	isDeleted: Joi.boolean(),
 });
 
 const bulkUploadSchema = Joi.object({
-	identity: identitySchema,
+	identity: identitySchema.required(),
 	roles: Joi.array().items(roleAssignment).min(1).required(),
-	profiles: Joi.object({
-		teacher: Joi.object({
-			facilities: Joi.array(),
-			classes: Joi.array(),
-			isProfileCompleted: Joi.boolean(),
-		}).required(),
-	}).required(),
-})
+	profiles: Joi.object({ teacher: teacherProfileSchema.required() }).required(),
+});
 
-const validatePreferredLanguageUpdate = (req, res, next) => {
-	const data = req.body;
-
-	const schema = Joi.object({
-		preferredLanguage: Joi.string().valid("en", "kn", "tg").required(),
-	});
-
-	let isValid = schema.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
-
-const validateUserCreate = (req, res, next) => {
-	const data = req.body;
-
-	let isValid = userSchema.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
-
-const validateUserGetByPhone = (req, res, next) => {
-	const data = req.body;
-
-	const schema = Joi.object({
-		phone: Joi.string().pattern(phoneNumberPattern).required(),
-	});
-	let isValid = schema.validate(data);
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const validatePreferredLanguageUpdate = validateRequest(Joi.object({ preferredLanguage: Joi.string().valid("en", "kn", "tg").required() }));
+const validateUserCreate = validateRequest(userSchema);
+const validateUserGetByPhone = validateRequest(Joi.object({ phone: Joi.string().pattern(phoneNumberPattern).required() }));
 
 const validateUserList = (req, res, next) => {
 	const isValid = Joi.object({
 		filter: Joi.object({ profileType: Joi.string().valid("teacher", "admin").required() }).unknown(true).required(),
 	}).unknown(true).validate(req.query);
 	if (isValid.error) return res.status(400).json({ success: false, data: false, error: isValid.error.details.map((i) => i.message) });
-	req.userListPermission = isValid.value.filter.profileType === "teacher" ? "teacher.view" : "staff.view";
 	next();
 };
 
-const validateUserUpdate = (req, res, next) => {
-	const data = req.body;
-
-	const schema = Joi.object({
-		identity: identitySchema,
-		roles: Joi.array().items(roleAssignment).min(1),
-		profiles: profilesSchema,
-	}).min(1);
-
-	let isValid = schema.validate(data, { abortEarly: false });
-
-	if (isValid.error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: isValid.error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const validateUserUpdate = validateRequest(Joi.object({
+	identity: identitySchema,
+	roles: Joi.array().items(roleAssignment).min(1),
+	profiles: profilesSchema,
+}).min(1));
 
 const classSchema = Joi.object({
 	class: Joi.number().required(),
@@ -143,46 +80,18 @@ const classSchema = Joi.object({
 
 const profileSchema = Joi.object({
 	classes: Joi.array().items(classSchema),
-	facilities: Joi.array().items(),
+	facilities: Joi.array(),
 });
 
-const validateSetProfile = (req, res, next) => {
-	const data = req.body;
-
-	const { error } = profileSchema.validate(data, { abortEarly: false });
-
-	if (error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
-
-const validateUserActivityLog = (req,res,next)=>{
-	const data = req.body;
-	const schema = Joi.object({
-		moduleName:Joi.string().required(),
-		idleTime:Joi.number().required(),
-		interactionTime:Joi.number().required(),
-		draftId:Joi.string().allow("", null),
-		planId:Joi.string().allow("", null),
-		isCompleted:Joi.boolean().optional(),
-	})
-
-	const {error} = schema.validate(data);
-
-	if(error){
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: error.details.map((i) => i.message),
-		});
-	}
-	next()
-}
+const validateSetProfile = validateRequest(profileSchema);
+const validateUserActivityLog = validateRequest(Joi.object({
+	moduleName: Joi.string().required(),
+	idleTime: Joi.number().required(),
+	interactionTime: Joi.number().required(),
+	draftId: Joi.string().allow("", null),
+	planId: Joi.string().allow("", null),
+	isCompleted: Joi.boolean(),
+}));
 
 module.exports = {
 	userSchema,

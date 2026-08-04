@@ -338,44 +338,31 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     }));
   }
 
-  getBoardsList(userDetails: any) {
-    let classList = [];
-    classList = this.utilityservice.formatResponse(userDetails.classes);
-
-    this.boardDropdownOptions = classList;
-    if(this.boardDropdownOptions.length === 1){
-      console.log(this.boardDropdownOptions[0].board);
-      
-      this.boarddropdown.selectedItem = this.boardDropdownOptions[0].board;
-    }
-
-  }
-
   onView(data: any) {
     if (data.isPresentation) {
-      this.router.navigate([`/content/presentation/${data.id}`]);
+      this.router.navigate([`/content-generation/presentation/${data.id}`]);
       return;
     }
     if (data.isLesson) {
-      this.router.navigate([`/content/lesson-plan/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/${data.lesson._id}`]);
     }
     else {
 
-      this.router.navigate([`/content/resource-plan/${data.resource._id}`]);
+      this.router.navigate([`/content-generation/resource-plan/${data.resource._id}`]);
     }
   }
 
   onViewDraft(data:any){
     if (data.isPresentation) {
-      this.router.navigate([`/content/presentation/${data.id}`]);
+      this.router.navigate([`/content-generation/presentation/${data.id}`]);
       return;
     }
     if (data.isLesson) {
-      this.router.navigate([`/content/lesson-plan/draft/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/draft/${data.lesson._id}`]);
     }
     else {
 
-      this.router.navigate([`/content/resource-plan/draft/${data.resource._id}`]);
+      this.router.navigate([`/content-generation/resource-plan/draft/${data.resource._id}`]);
     }
   }
 
@@ -413,7 +400,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   chat(recordId:any, chapterId:any){
-    this.router.navigate(['/content/lesson-chat'],{queryParams:{recordId,chapterId}})
+    this.router.navigate(['/content-generation/lesson-chat'],{queryParams:{recordId,chapterId}})
   }
 
   showDeletePopup = false;

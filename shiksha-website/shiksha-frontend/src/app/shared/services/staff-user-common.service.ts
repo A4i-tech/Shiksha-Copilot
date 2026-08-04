@@ -15,26 +15,27 @@ export class StaffUserCommonService extends BaseRestService {
 
   getById(id: string) { return this.get(id); }
   getRoles() { return this.http.get(`${this.baseUrl}/roles`); }
+  getRegions() { return this.http.get<any>(`${this.baseUrl}/regions/list?limit=999`).pipe(map((response) => response.data.results)); }
   getAssignmentData() {
     return forkJoin({
       roles: this.http.get<any>(`${this.baseUrl}/roles`),
-      regions: this.http.get<any>(`${this.baseUrl}/regions/list?limit=999`),
-      schools: this.http.get<any>(`${this.baseUrl}/school/list?limit=999`),
-    }).pipe(map(({ roles, regions, schools }) => {
-      const scopeOptions: Record<string, any[]> = { STATE: [], ZONE: [], DISTRICT: [], BLOCK: [], SCHOOL: [] };
-      for (const region of regions.data.results) {
-        scopeOptions['STATE'].push({ value: region.state, label: region.state });
-        for (const zone of region.zones) {
-          scopeOptions['ZONE'].push({ value: zone.name, label: `${region.state} / ${zone.name}` });
-          for (const district of zone.districts) {
-            scopeOptions['DISTRICT'].push({ value: district.name, label: `${zone.name} / ${district.name}` });
-            for (const block of district.blocks) scopeOptions['BLOCK'].push({ value: block.name, label: `${district.name} / ${block.name}` });
-          }
-        }
-      }
-      scopeOptions['SCHOOL'] = schools.data.results.map((school: any) => ({ value: school._id, label: school.name }));
-      return { roles: roles.data.results, regions: regions.data.results, scopeOptions };
-    }));
+      regions: this.getRegions(),
+    }).pipe(map(({ roles, regions }) => ({
+      roles: roles.data.results,
+      regions,
+    })));
+  }
+
+  getSchool(id: string): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/school/${id}`).pipe(map((response) => response.data));
+  }
+
+  getSchools(scope: { state: string; zone: string; district: string; block: string }): Observable<any[]> {
+    const params = new HttpParams().set('limit', '0').set('filter[state]', scope.state).set('filter[zone]', scope.zone)
+      .set('filter[district]', scope.district).set('filter[block]', scope.block);
+    return this.http.get<any>(`${this.baseUrl}/school/list`, { params }).pipe(map((response) =>
+      response.data.results.map((school: any) => ({ ...school, label: `${school.name} (${school.schoolId})` }))
+    ));
   }
   deactivate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/deactivate`, {}); }
   activate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/activate`, {}); }
@@ -50,26 +51,22 @@ export class StaffUserCommonService extends BaseRestService {
 
   createTeacher(form: any) {
     return this.post('', {
-      identity: { name: form.name, phone: form.phone, email: form.email, address: form.address },
+      identity: { name: form.name.trim(), phone: String(form.phone) },
       roles: form.roles,
-      profiles: {
-        teacher: {
-          facilities: [], classes: [], isProfileCompleted: false,
-        },
-      },
+      profiles: { teacher: { facilities: [], classes: [], isProfileCompleted: false } },
     });
   }
 
   updateTeacher(id: string, form: any) {
     return this.http.put(`${this.baseUrl}/users/${id}`, {
-      identity: { name: form.name, phone: form.phone },
+      identity: { name: form.name.trim(), phone: String(form.phone) },
       roles: form.roles,
     });
   }
 
   createStaff(form: any) {
     return this.post('', {
-      identity: { name: form.name, phone: form.phone, email: form.email, address: form.address },
+      identity: { name: form.name.trim(), phone: String(form.phone), email: form.email.trim().toLowerCase() },
       roles: form.roles,
       profiles: { admin: { state: form.state } },
     });
@@ -77,7 +74,7 @@ export class StaffUserCommonService extends BaseRestService {
 
   updateStaff(id: string, form: any) {
     return this.put(id, {
-      identity: { name: form.name, phone: form.phone, email: form.email, address: form.address },
+      identity: { name: form.name.trim(), phone: String(form.phone), email: form.email.trim().toLowerCase() },
       roles: form.roles,
       profiles: { admin: { state: form.state } },
     });

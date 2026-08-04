@@ -11,9 +11,9 @@ function getRolePermissions(assignments) {
   const grants = active.flatMap((assignment) => assignment.role.permissions.map((permission) => ({
     permission,
     scopeType: assignment.role.scopeType,
-    dep: assignment.dep == null ? null : String(assignment.dep),
+    dep: assignment.dep == null ? null : assignment.role.scopeType === "SCHOOL" ? String(assignment.dep) : assignment.dep,
   })));
-  return [...new Map(grants.map((grant) => [`${grant.permission}:${grant.scopeType}:${grant.dep}`, grant])).values()];
+  return [...new Map(grants.map((grant) => [`${grant.permission}:${grant.scopeType}:${JSON.stringify(grant.dep)}`, grant])).values()];
 }
 
 function getPermission(grants, permission) {

@@ -4,6 +4,7 @@ import { BatchService } from 'src/app/view/admin/teacher-training/batch.service'
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { DropDownConfig, DropdownOption } from 'src/app/shared/interfaces/dropdown.interface';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-create-batch',
@@ -14,11 +15,12 @@ export class CreateBatchComponent implements OnInit {
   batchForm!: FormGroup;
   selectedFile: File | null = null;
   mode = 'add';
+  private translate = inject(TranslateService);
 
   trainingTypeDropdownOptions: DropdownOption[] = [
-    { name: 'OFFLINE/ Face to Face', value: 'offline' },
-    { name: 'ONLINE/ Virtual', value: 'online' },
-    { name: 'School-Level', value: 'School-Level' },
+    { name: this.translate.instant('OFFLINE/ Face to Face'), value: 'offline' },
+    { name: this.translate.instant('ONLINE/ Virtual'), value: 'online' },
+    { name: this.translate.instant('School-Level'), value: 'School-Level' },
   ];
 
   trainingTypeDropdownConfig: DropDownConfig = {

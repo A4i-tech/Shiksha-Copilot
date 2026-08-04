@@ -1,0 +1,73 @@
+<div class="px-4 pt-4 md:px-0 md:pt-0">
+  <div class="flex items-center">
+    <img class="w-5 h-5 cursor-pointer" src="assets/icons/Vector (3).svg" [routerLink]="listRoute" alt="">
+    <h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px] ml-4">{{ entity + ' Management' | translate }}</h1>
+  </div>
+  <div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white">
+    <h2 class="text-content text-2xl md:text-[30px] font-bold md:leading-[48px]">{{ (mode === 'view' ? 'View' : mode === 'edit' ? 'Edit' : 'Add') | translate }} {{ entity | translate }}</h2>
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+        <div>
+          <label class="form-control-label">{{ entity + ' Name' | translate }} <span *ngIf="mode !== 'view'" class="text-[16px] text-error">*</span></label>
+          <input formControlName="name" type="text" maxlength="255" autocomplete="off" class="form-control" [placeholder]="'Enter ' + entity + ' Name' | translate">
+          <small class="form-control-error" *ngIf="submitted && form.get('name')?.errors?.['required']">{{ entity + ' Name is required' | translate }}.</small>
+          <small class="form-control-error" *ngIf="submitted && form.get('name')?.errors?.['minlength']">{{ entity + ' Name is too short' | translate }}.</small>
+        </div>
+        <div>
+          <label class="form-control-label">{{ 'Mobile Number' | translate }} <span *ngIf="mode !== 'view'" class="text-[16px] text-error">*</span></label>
+          <input formControlName="phone" type="text" maxlength="10" oninput="this.value=this.value.replace(/(?![0-9])./gmi,'')" autocomplete="off" class="form-control" [placeholder]="'Enter Mobile Number' | translate">
+          <small class="form-control-error" *ngIf="submitted && form.get('phone')?.errors?.['required']">{{ 'Mobile Number is required' | translate }}.</small>
+          <small class="form-control-error" *ngIf="submitted && form.get('phone')?.errors?.['minlength']">{{ 'Phone number required should be 10 digits' | translate }}</small>
+          <small class="form-control-error" *ngIf="submitted && !form.get('phone')?.errors?.['minlength'] && form.get('phone')?.errors?.['pattern']">{{ 'Invalid phone number' | translate }}</small>
+        </div>
+        <ng-container *ngIf="!teacherForm">
+          <div>
+            <label class="form-control-label">{{ 'Email' | translate }} <span *ngIf="mode !== 'view'" class="text-[16px] text-error">*</span></label>
+            <input formControlName="email" type="email" autocomplete="off" class="form-control" [placeholder]="'Enter Email' | translate">
+            <small class="form-control-error" *ngIf="submitted && form.get('email')?.errors?.['required']">{{ 'Email is required' | translate }}</small>
+            <small class="form-control-error" *ngIf="submitted && form.get('email')?.errors?.['email']">{{ 'Enter valid email' | translate }}.</small>
+          </div>
+          <app-dropdown [mode]="mode" [dropDownCtrl]="$any(form.get('state'))" [dropDownValues]="profileRegions" [config]="profileStateConfig" [submitted]="submitted"></app-dropdown>
+        </ng-container>
+      </div>
+
+      <div class="mt-6 md:mt-8" formArrayName="roles">
+        <label class="form-control-label">{{ 'Role assignments' | translate }} <span *ngIf="mode !== 'view'" class="text-[16px] text-error">*</span></label>
+        <div class="border rounded p-4 mb-4" *ngFor="let assignment of assignments.controls; let i = index" [formGroupName]="i">
+          <div class="flex gap-3 items-end">
+            <div class="grow min-w-0">
+              <app-dropdown [mode]="mode" [dropDownCtrl]="$any(assignment.get('roleId'))" [dropDownValues]="scopes[i].roles" [config]="roleConfig" [submitted]="submitted" (valueChange)="assignmentChanged(i)"></app-dropdown>
+            </div>
+            <button type="button" class="btn-danger w-9 h-9 !p-2 flex items-center justify-center shrink-0" *ngIf="assignments.length > 1 && mode !== 'view' && canAssign" (click)="removeAssignment(i)" [title]="'Remove role' | translate">
+              <img class="w-5 h-5" src="assets/icons/delete-icon.svg" [alt]="'Remove role' | translate">
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-3" *ngIf="scopeIncludes(i, 'STATE')">
+            <app-dropdown [mode]="mode" [dropDownCtrl]="scopes[i].state" [dropDownValues]="scopes[i].states" [config]="stateConfig" [submitted]="submitted" (valueUpdate)="stateChanged(i, $event)"></app-dropdown>
+            <app-dropdown *ngIf="scopeIncludes(i, 'ZONE')" [mode]="mode" [dropDownCtrl]="scopes[i].zone" [dropDownValues]="scopes[i].zones" [config]="zoneConfig" [submitted]="submitted" (valueUpdate)="zoneChanged(i, $event)"></app-dropdown>
+            <app-dropdown *ngIf="scopeIncludes(i, 'DISTRICT')" [mode]="mode" [dropDownCtrl]="scopes[i].district" [dropDownValues]="scopes[i].districts" [config]="districtConfig" [submitted]="submitted" (valueUpdate)="districtChanged(i, $event)"></app-dropdown>
+            <app-dropdown *ngIf="scopeIncludes(i, 'BLOCK')" [mode]="mode" [dropDownCtrl]="scopes[i].block" [dropDownValues]="scopes[i].blocks" [config]="blockConfig" [submitted]="submitted" (valueUpdate)="blockChanged(i, $event)"></app-dropdown>
+            <app-dropdown *ngIf="scopeIncludes(i, 'SCHOOL')" [mode]="mode" [dropDownCtrl]="$any(assignment.get('dep'))" [dropDownValues]="scopes[i].schools" [config]="schoolConfig" [submitted]="submitted"></app-dropdown>
+          </div>
+          <div class="mt-3" *ngIf="assignmentRole(i) && !scopeIncludes(i, 'STATE')">
+            <label class="form-control-label">{{ 'Scope' | translate }}</label>
+            <input class="form-control bg-surface-muted" [value]="assignmentRole(i).scopeType" disabled>
+          </div>
+        </div>
+        <button type="button" class="btn-primary px-4 flex items-center gap-2" *ngIf="mode !== 'view' && canAssign" (click)="addAssignment()">
+          <img src="assets/icons/add.svg" alt="">
+          {{ 'Add Role' | translate }}
+        </button>
+      </div>
+
+      <div class="buttons mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2" *ngIf="mode !== 'view'">
+        <button type="button" class="w-full sm:w-20 btn-outline-primary" [routerLink]="listRoute">{{ 'Cancel' | translate }}</button>
+        <button type="submit" [disabled]="form.pristine" class="btn-primary w-full sm:w-20 flex items-center justify-center">
+          <span class="mr-1">{{ 'Save' | translate }}</span>
+          <img src="assets/icons/Vector (4).svg" alt="">
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

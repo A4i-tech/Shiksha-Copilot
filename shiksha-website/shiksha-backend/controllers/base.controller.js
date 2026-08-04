@@ -1,5 +1,6 @@
 const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
+const { intersectFilters } = require("../helper/scope.helper");
 const ObjectId = mongoose.Types.ObjectId;
 
 /**
@@ -53,7 +54,7 @@ class BaseController {
 					return res.status(400).json({ error: "Invalid _id format" });
 				}
 			}
-			const mergedFilter = { ...transformedFilter, ...searchFilter };
+			const mergedFilter = intersectFilters(transformedFilter, searchFilter);
 
 			let status = {};
 

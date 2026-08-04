@@ -13,7 +13,7 @@ const { bulkUploadSchema } = require("../validations/user.validation");
 const { uploadToStorage } = require("../services/azure.blob.service");
 const AuditLog = require("../models/audit.log.model");
 const logger = require("../config/loggers");
-const { isResourceAllowed } = require("../helper/scope.helper");
+const { hasAssignmentScope } = require("../helper/scope.helper");
 
 async function processRow(
   userDataRow,
@@ -51,12 +51,8 @@ async function processRow(
     return;
   }
 
-  if (!isResourceAllowed(workerData.permissions, "teacher.import", existingSchool)) {
+  if (userDataRow.roles.some((role) => !hasAssignmentScope(workerData.permissions, "user.import", role, existingSchool))) {
     validationErrors.push({ row: rowNumber, message: `School with diseCode ${schoolId} is outside your scope` });
-    return;
-  }
-  if (!isResourceAllowed(workerData.permissions, "role.assign", existingSchool)) {
-    validationErrors.push({ row: rowNumber, message: `Cannot assign roles at school with diseCode ${schoolId}` });
     return;
   }
   userDataRow.roles = userDataRow.roles.map((role) => ({ roleId: String(role._id), dep: String(existingSchool._id) }));
@@ -151,10 +147,7 @@ async function processValidData(userData, client, openedHere, userId, userName) 
         name: userName
       });
 
-      parentPort.postMessage({
-        success: true,
-        message: "Bulk upload initiated successfully and in progress!",
-      });
+      parentPort.postMessage({ success: true, message: `Bulk upload completed: ${successCount} imported, ${failureCount} failed.` });
     } else {
       parentPort.postMessage({
         success: false,
@@ -179,7 +172,7 @@ dbService.connectToMongoForWorker().then(async ({ client, openedHere }) => {
     const userData = [];
     const validationErrors = [];
     const phoneNumbers = new Set();
-    const roleByName = new Map((await Role.find({ isDeleted: false, scopeType: "SCHOOL" }).select("_id name")).map((role) => [role.name.toLowerCase(), role]));
+    const roleByName = new Map((await Role.find({ isDeleted: false, scopeType: "SCHOOL" }).select("_id name scopeType")).map((role) => [role.name.toLowerCase(), role]));
 
     const rowProcessingPromises = [];
     worksheet.forEach((rowData, rowNumber) => {
@@ -213,11 +206,17 @@ dbService.connectToMongoForWorker().then(async ({ client, openedHere }) => {
     });
 
     await Promise.all(rowProcessingPromises);
-    await handleValidationErrors(
+    const { errorUrl } = await handleValidationErrors(
       validationErrors,
       workerData.userId,
       workerData.userName
     );
+
+    if (userData.length === 0 && errorUrl) {
+      parentPort.postMessage({ success: false, message: "Bulk upload failed validation.", errorUrl });
+      if (openedHere) await client.close();
+      return;
+    }
 
     await processValidData(userData, client, openedHere, workerData.userId, workerData.userName);
   } catch (error) {

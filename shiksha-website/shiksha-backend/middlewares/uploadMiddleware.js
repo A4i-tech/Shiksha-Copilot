@@ -96,7 +96,7 @@ const uploadMiddleware = (req, res, next) => {
       fileName = filename;
       req.file = { fieldname, filename, encoding, mimetype, buffer: [] };
       try {
-        if (req.route.path.includes('/user/upload-profile-image')) {
+        if (req.route.path === "/profile/image") {
           handleImageUpload(req, res, file, bb,filename);
         } else {
           handleFile(req, res, file, bb,filename);

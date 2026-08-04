@@ -283,7 +283,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       ? this.contentGenService.selectedLessonPlan
       : this.contentGenService.resourcePlanData;
     if (!content) {
-      this.router.navigate(['/content']);
+      this.router.navigate(['/content-generation']);
     } else {
       this.planDetails = content;
 
@@ -485,7 +485,7 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   chat(recordId: any, chapterId: any) {
-    this.router.navigate(['/content/lesson-chat'], {
+    this.router.navigate(['/content-generation/lesson-chat'], {
       queryParams: { recordId, chapterId },
     });
   }
@@ -519,7 +519,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       next: (res) => {
         this.hasUnsavedChanges = false;
         this.utilityService.handleResponse(res);
-        this.router.navigate(['/content']);
+        this.router.navigate(['/content-generation']);
       },
       error: (err) => {
         this.utilityService.handleError(err);
@@ -535,7 +535,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       } else {
         this.save(false);
       }
-    } else if (val === 'close') {
+    } else if (val === 'discard') {
       this.contentGenService.showDraftConfirmation = false;
       this.hasUnsavedChanges = false;
       this.router.navigate([this.nextUrl]);
@@ -601,7 +601,7 @@ export class LessonPlanViewEditComponent implements OnInit {
           if (this.planDetails.isGenerated && !isCompleted) {
             this.router.navigate(['/generation-status']);
           } else {
-            this.router.navigate(['/content']);
+            this.router.navigate(['/content-generation']);
           }
         },
         error: (err: any) => {
@@ -656,7 +656,7 @@ export class LessonPlanViewEditComponent implements OnInit {
           this.utilityService.showSuccess(ResPlanMessage);
           this.utilityService.showSuccess(feedbackMessage);
           this.hasUnsavedChanges = false;
-          this.router.navigate(['/content']);
+          this.router.navigate(['/content-generation']);
         },
         error: (err) => {
           this.utilityService.handleError(err);
@@ -686,11 +686,11 @@ export class LessonPlanViewEditComponent implements OnInit {
       if (this.mode === 'generate') {
         this.router.navigate([
           this.isLesson
-            ? '/content/lesson-plan'
-            : '/content/lesson-resources',
+            ? '/content-generation/lesson-plan'
+            : '/content-generation/lesson-resources',
         ]);
       } else {
-        this.router.navigate(['/content']);
+        this.router.navigate(['/content-generation']);
       }
     }
   }

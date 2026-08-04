@@ -2,6 +2,7 @@ const handleError = require("../helper/handleError.js");
 const UserManager = require("../managers/user.manager.js");
 const BaseController = require("./base.controller.js");
 const User = require("../models/user.model.js");
+const { intersectFilters } = require("../helper/scope.helper");
 
 /** @extends {BaseController<UserManager>} */
 class UserController extends BaseController {
@@ -78,9 +79,7 @@ class UserController extends BaseController {
 
       const result = await this.manager.bulkUpload(req.file.buffer, userId.toString(), userName, req.permissions);
       if (result.success)
-        return res.status(200).json({
-          message: "Bulk upload initiated , Please verify for audit logs!",
-        });
+        return res.status(200).json(result);
       handleError(result, res);
     } catch (err) {
       console.log("Error --> UserController -> bulkUpload()", err);
@@ -267,7 +266,7 @@ class UserController extends BaseController {
         status = { isDeleted: false };
       }
 
-      const mergedFilter = { ...processedFilter, ...searchFilter };
+      const mergedFilter = intersectFilters(processedFilter, searchFilter);
 
       let result = await this.manager.getAll({
         page: parseInt(page),
@@ -276,7 +275,7 @@ class UserController extends BaseController {
         sort: {},
         status,
         permissions: req.permissions,
-        permission: req.userListPermission,
+        permission: "user.view",
       });
 
       if (result.success) {

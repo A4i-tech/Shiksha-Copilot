@@ -63,12 +63,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   resourceColors: any = {
     lesson: {
       iconColor: 'var(--tertiary-100)',
-      btnColor: 'bg-tertiary-100',
+      btnColor: 'bg-tertiary',
       iconBackground: 'bg-purple-100',
     },
     resource: {
       iconColor: 'var(--success-80)',
-      btnColor: 'bg-success-80',
+      btnColor: 'bg-success',
       iconBackground: 'bg-green-100',
     },
   };
@@ -252,9 +252,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    */
   onView(data: any) {
     if (data.isLesson) {
-      this.router.navigate([`/content/lesson-plan/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/${data.lesson._id}`]);
     } else {
-      this.router.navigate([`/content/resource-plan/${data.resource._id}`]);
+      this.router.navigate([`/content-generation/resource-plan/${data.resource._id}`]);
     }
   }
 

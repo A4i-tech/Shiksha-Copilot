@@ -1,26 +1,26 @@
 <div class="px-4 pt-4 md:px-0 md:pt-0">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px]">
-            Content Activity
+            {{ 'Content Activity' | translate }}
         </h1>
     </div>
     
     <div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white">
         <div class="flex flex-col gap-4 sm:gap-5 sm:flex-row sm:justify-between sm:items-start">
-            <h2 class="text-content text-2xl md:text-[30px] font-bold md:leading-[48px]"> Content History </h2>
+            <h2 class="text-content text-2xl md:text-[30px] font-bold md:leading-[48px]">{{ 'Content History' | translate }}</h2>
             <div class="w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
                 <div class="w-full sm:w-[300px]">
                     <div class="search-icon min-w-[100px] flex items-center h-9 ">
                         <img src="assets/icons/search.svg" alt="" class="mr-2" />
                         <input [(ngModel)]="searchText" (input)="searchInputChanged($event)"
                             class="appearance-none border border-content-50 rounded pl-10 py-2 px-3 text-content leading-tight focus:outline-none bg-surface-muted w-full h-9"
-                            type="text" placeholder="Search">
+                            type="text" [placeholder]="'Search' | translate">
                     </div>
                 </div>
                 <button class="btn-primary w-full sm:w-auto" *ngIf="listData" (click)="exportContentActivities()" [disabled]="!listData.length">
                     <div class="flex items-center justify-center gap-2">
                       <img src="assets/icons/upload_light.svg" alt="" />
-                      <span class="text-nowrap">Export</span>
+                      <span class="text-nowrap">{{ 'Export' | translate }}</span>
                     </div>
                   </button>
                 </div>
@@ -28,30 +28,30 @@
 
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3 my-4">
             <div class="w-full min-w-0 cursor-pointer">
-                <app-dropdown [dropDownValues]="stateDropdownOptions" #stateDropdown
+                <app-dropdown [dropDownCtrl]="stateControl" [dropDownValues]="stateDropdownOptions"
                     (valueUpdate)="onFilterChange('state', $event)"
                     [config]="stateDropdownconfig"></app-dropdown>
             </div>
 
             <div class="w-full min-w-0 cursor-pointer">
-                <app-dropdown [dropDownValues]="zoneDropdownOptions" #zoneDropdown
+                <app-dropdown [dropDownCtrl]="zoneControl" [dropDownValues]="zoneDropdownOptions"
                     (valueUpdate)="onFilterChange('zone', $event)" [config]="zoneDropdownconfig"></app-dropdown>
             </div>
 
             <div class="w-full min-w-0 cursor-pointer">
-                <app-dropdown [dropDownValues]="districtDropdownOptions" #districtDropdown
+                <app-dropdown [dropDownCtrl]="districtControl" [dropDownValues]="districtDropdownOptions"
                     (valueUpdate)="onFilterChange('district', $event)"
                     [config]="districtDropdownconfig"></app-dropdown>
             </div>
 
             <div class="w-full min-w-0 cursor-pointer">
-                <app-dropdown [dropDownValues]="blockDropdownOptions" #blockDropdown
+                <app-dropdown [dropDownCtrl]="blockControl" [dropDownValues]="blockDropdownOptions"
                     (valueUpdate)="onFilterChange('block', $event)"
                     [config]="blockDropdownconfig"></app-dropdown>
             </div>
 
             <div class="w-full min-w-0 cursor-pointer">
-                <app-dropdown [dropDownValues]="schoolDropdownOptions" #schoolDropdown
+                <app-dropdown [dropDownCtrl]="schoolControl" [dropDownValues]="schoolDropdownOptions"
                     (valueUpdate)="onFilterChange('_id', $event)" [config]="schoolDropdownconfig"></app-dropdown>
             </div>
 
@@ -60,32 +60,32 @@
 
 
         <div class="space-y-4 md:hidden">
-            <div *ngIf="!listData || listData.length === 0" class="text-center text-content-60 py-4 border rounded-xl">No items found</div>
+            <div *ngIf="!listData || listData.length === 0" class="text-center text-content-60 py-4 border rounded-xl">{{ 'No items found' | translate }}</div>
             <div class="rounded-xl border p-4 bg-white shadow-sm" *ngFor="let item of listData">
                 <div class="space-y-3 text-sm">
                     <div>
-                        <p class="text-xs text-content-60">Teacher</p>
+                        <p class="text-xs text-content-60">{{ 'Teacher' | translate }}</p>
                         <p class="font-semibold break-words">{{item?.userName | titlecase}}</p>
                     </div>
                     <div>
-                        <p class="text-xs text-content-60">Generated Content</p>
+                        <p class="text-xs text-content-60">{{ 'Generated Content' | translate }}</p>
                         <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.genContentId]" [queryParams]="{ activityId: item?._id }" [class.disableLink]="item?.teacherLessonPlanStatus!=='completed'">{{item?.genContent | titlecase}}</a>
                     </div>
                     <div>
-                        <p class="text-xs text-content-60">Source Content</p>
+                        <p class="text-xs text-content-60">{{ 'Source Content' | translate }}</p>
                         <a class="text-primary break-words" [routerLink]="['lesson-plan',item?.contentId]" [queryParams]="{ activityId: item?._id }">{{item?.content | titlecase}}</a>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <p class="text-xs text-content-60">Status</p>
+                            <p class="text-xs text-content-60">{{ 'Status' | translate }}</p>
                             <span [ngClass]="{
                                 'success-chip': item?.teacherLessonPlanStatus === 'completed',
                                 'warning-chip': item?.teacherLessonPlanStatus !== 'completed',
                                 'error-chip': item?.teacherLessonPlanStatus === 'failed'}">
-                                {{item?.teacherLessonPlanStatus | titlecase}}</span>
+                                {{ (item?.teacherLessonPlanStatus | titlecase) | translate }}</span>
                         </div>
                         <div>
-                            <p class="text-xs text-content-60">Updated At</p>
+                            <p class="text-xs text-content-60">{{ 'Updated At' | translate }}</p>
                             <p>{{item?.updatedAt | date:'d/M/yy, h:mm a'}}</p>
                         </div>
                     </div>
@@ -98,12 +98,12 @@
                 <thead>
                     <tr class="bg-primary-60 rounded-lg border-b">
                         <th class="text-left p-4 rounded border-r text-sm text-content"
-                            *ngFor="let header of table_headers">{{ header }}</th>
+                            *ngFor="let header of table_headers">{{ header | translate }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr *ngIf="!listData || listData.length === 0">
-                        <td colspan="6" class="text-center text-content-60 py-2">No items found</td>
+                        <td colspan="6" class="text-center text-content-60 py-2">{{ 'No items found' | translate }}</td>
                     </tr>
                     <tr class="border" *ngFor="let item of listData">
                         <td class="p-4 border">{{item?.userName | titlecase}}</td>
@@ -114,7 +114,7 @@
                                 'success-chip': item?.teacherLessonPlanStatus === 'completed',
                                 'warning-chip': item?.teacherLessonPlanStatus !== 'completed',
                                 'error-chip': item?.teacherLessonPlanStatus === 'failed'}">
-                                {{item?.teacherLessonPlanStatus | titlecase}}</span>
+                                {{ (item?.teacherLessonPlanStatus | titlecase) | translate }}</span>
                         </td>
                         <td class="p-4 border-r whitespace-nowrap ">{{item?.updatedAt | date:'d/M/yy, h:mm a'}}</td>                        
                     </tr>

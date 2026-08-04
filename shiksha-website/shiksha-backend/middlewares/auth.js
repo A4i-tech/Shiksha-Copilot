@@ -14,8 +14,7 @@ exports.isAuthenticated = function isAuthenticated(req, res, next) {
     try {
       if (err) return res.status(401).json({ success: false, message: "Session Expired! Please login again." });
 
-      const user = await User.findById(payload._id)
-        .populate("roles.role");
+      const user = await User.findById(payload._id).populate("roles.role");
 
       if (!user) return res.status(401).json({ success: false, message: "Account doesn't exist!" });
       if (user.isDeleted) return res.status(401).json({ success: false, message: "Your account is inactive!" });

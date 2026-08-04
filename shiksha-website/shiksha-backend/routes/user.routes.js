@@ -17,19 +17,17 @@ const {
 const userController = new UserController();
 
 router.post(
-"/users",
+	"/users",
 	isAuthenticated,
 	validateUserCreate,
-	(req, res, next) => req.body.profiles.teacher ? requirePermission("teacher.create")(req, res, next) : next(),
-	(req, res, next) => req.body.profiles.admin ? requirePermission("staff.create")(req, res, next) : next(),
-	requirePermission("role.assign"),
+	requirePermission("user.create"),
 	asyncMiddleware(userController.create.bind(userController))
 );
 
 router.post(
 	"/users/lookup",
 	isAuthenticated,
-	requireAnyPermission("teacher.view", "staff.view"),
+	requirePermission("user.view"),
 	validateUserGetByPhone,
 	asyncMiddleware(userController.getByPhone.bind(userController))
 );
@@ -54,28 +52,28 @@ router.get(
 	"/users",
 	isAuthenticated,
 	validateUserList,
-	(req, res, next) => requirePermission(req.userListPermission)(req, res, next),
+	requirePermission("user.view"),
 	asyncMiddleware(userController.getAll.bind(userController))
 );
 
 router.get(
 	"/users/export",
 	isAuthenticated,
-	requirePermission("teacher.export"),
+	requirePermission("user.export"),
 	asyncMiddleware(userController.export.bind(userController))
 );
 
 router.get(
 	"/users/:id/profile",
 	isAuthenticated,
-	requireAnyPermission("profile.view", "teacher.view", "staff.view"),
+	requireAnyPermission("profile.view", "user.view"),
 	asyncMiddleware(userController.getProfile.bind(userController))
 );
 
 router.put(
 	"/users/:id",
 	isAuthenticated,
-	requireAnyPermission("teacher.edit", "staff.edit"),
+	requirePermission("user.edit"),
 	(req, res, next) => req.body.roles ? requirePermission("role.assign")(req, res, next) : next(),
 	validateUserUpdate,
 	asyncMiddleware(userController.update.bind(userController))
@@ -84,22 +82,21 @@ router.put(
 router.get(
 	"/users/:id",
 	isAuthenticated,
-	requireAnyPermission("profile.view", "teacher.view", "staff.view"),
+	requireAnyPermission("profile.view", "user.view"),
 	asyncMiddleware(userController.getUserWithSchoolId.bind(userController))
 );
 
 router.delete(
 	"/users/:id",
 	isAuthenticated,
-	requireAnyPermission("teacher.delete", "staff.delete"),
+	requirePermission("user.delete"),
 	asyncMiddleware(userController.delete.bind(userController))
 );
 
 router.post(
 "/users/import",
 	isAuthenticated,
-	requirePermission("teacher.import"),
-	requirePermission("role.assign"),
+	requirePermission("user.import"),
 	uploadMiddleware,
 	asyncMiddleware(userController.bulkUpload.bind(userController))
 );
@@ -122,14 +119,14 @@ router.delete(
 router.put(
 	"/users/:id/activate",
 	isAuthenticated,
-	requireAnyPermission("teacher.delete", "staff.delete"),
+	requirePermission("user.delete"),
 	asyncMiddleware(userController.activate.bind(userController))
 );
 
 router.put(
 	"/users/:id/deactivate",
 	isAuthenticated,
-	requireAnyPermission("teacher.delete", "staff.delete"),
+	requirePermission("user.delete"),
 	asyncMiddleware(userController.deactivate.bind(userController))
 );
 
