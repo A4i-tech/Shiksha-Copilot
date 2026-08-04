@@ -11,6 +11,10 @@ on:
         description: "Whether to set 'latest' tag on published image"
         required: true
         type: boolean
+      publish_nonroot:
+        description: "Whether to set 'nonroot' tag on published image (temporary, for nonroot-user testing)"
+        required: true
+        type: boolean
       update_cov_badge:
         description: "Whether to update Code Coverage Badge"
         required: true
@@ -75,6 +79,7 @@ jobs:
             type=ref,event=branch
             type=raw,value=staging,enable=${{ inputs.publish_staging }}
             type=raw,value=latest,enable=${{ inputs.publish_latest }}
+            type=raw,value=nonroot,enable=${{ inputs.publish_nonroot }}
 
       - name: Set image name and tag output
         id: set_tag_primary
@@ -152,7 +157,7 @@ jobs:
   push:
     runs-on: ubuntu-latest
     needs: build-test
-    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging'
+    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging' || inputs.publish_nonroot
     outputs:
       digest: ${{ steps.push.outputs.digest }}
       tag: ${{ needs.build-test.outputs.image_tag }}
