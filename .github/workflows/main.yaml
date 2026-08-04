@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "a4i/main", "a4i/staging", "alex/docker-nonroot" ]
+    branches: [ "a4i/main", "a4i/staging"]
   pull_request:
     branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
@@ -14,7 +14,6 @@ jobs:
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
-      publish_nonroot: ${{ github.event_name == 'push' && github.ref_name == 'alex/docker-nonroot' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   ci-backend:
@@ -23,7 +22,6 @@ jobs:
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
-      publish_nonroot: ${{ github.event_name == 'push' && github.ref_name == 'alex/docker-nonroot' }}
       update_cov_badge: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
   ci-frontend:
@@ -32,7 +30,6 @@ jobs:
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
-      publish_nonroot: ${{ github.event_name == 'push' && github.ref_name == 'alex/docker-nonroot' }}
 
   shiksha-coverage-summary:
     needs: [ci-api, ci-backend]

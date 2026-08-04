@@ -13,11 +13,6 @@ on:
         required: true
         type: boolean
 
-      publish_nonroot:
-        description: "Whether to set 'nonroot' tag on published image (temporary, for nonroot-user testing)"
-        required: true
-        type: boolean
-
     outputs:
       digest:
         description: "Pushed frontend image digest"
@@ -58,7 +53,6 @@ jobs:
             type=ref,event=branch
             type=raw,value=staging,enable=${{ inputs.publish_staging }}
             type=raw,value=latest,enable=${{ inputs.publish_latest }}
-            type=raw,value=nonroot,enable=${{ inputs.publish_nonroot }}
 
       - name: Set image name and tag output
         id: set_tag_primary
@@ -82,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
 
-    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging' || inputs.publish_nonroot
+    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging'
 
     outputs:
       digest: ${{ steps.push.outputs.digest }}
