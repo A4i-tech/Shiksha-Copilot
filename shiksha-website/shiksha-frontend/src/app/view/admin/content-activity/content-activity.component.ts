@@ -1,10 +1,13 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
+import { FormControl } from '@angular/forms';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UserManagementService } from '../user-management/user-management.service';
-import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin } from 'rxjs';
 import { ContentActivityService } from './content-activity.service';
+import { RegionDependency } from 'src/app/shared/interfaces/permission.interface';
+import { pathAllowed, regionScopePaths } from 'src/app/shared/utility/scope.util';
 
 @Component({
   selector: 'app-content-activity',
@@ -62,6 +65,11 @@ export class ContentActivityComponent implements OnInit {
   };
 
   schoolDropdownOptions: any[] = [];
+  stateControl = new FormControl();
+  zoneControl = new FormControl();
+  districtControl = new FormControl();
+  blockControl = new FormControl();
+  schoolControl = new FormControl();
   schoolDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select School',
@@ -72,12 +80,6 @@ export class ContentActivityComponent implements OnInit {
     searchable: true
   };
 
-  @ViewChild('stateDropdown') stateDropdown: any;
-  @ViewChild('zoneDropdown') zoneDropdown: any;
-  @ViewChild('districtDropdown') districtDropdown: any;
-  @ViewChild('blockDropdown') blockDropdown: any;
-  @ViewChild('schoolDropdown') schoolDropdown: any;
-
   filterObj: any = {
     district: '',
     zone: '',
@@ -87,6 +89,7 @@ export class ContentActivityComponent implements OnInit {
   };
 
   regionsData: any;
+  private scopePaths: Partial<RegionDependency>[] = [];
 
   selectedStateObj: any;
 
@@ -154,9 +157,25 @@ export class ContentActivityComponent implements OnInit {
     this.masterService.getRegions().subscribe({
       next: (val) => {
         this.regionsData = val?.data?.results;
-        this.stateDropdownOptions = this.regionsData;
+        const grants = this.utilityService.getPermission('content.activity.view')!;
+        this.scopePaths = regionScopePaths(grants);
+        const schoolGrants = grants.filter((grant) => grant.scopeType === 'SCHOOL');
+        if (!schoolGrants.length) {
+          this.setStateDropdownValues();
+          return;
+        }
+        forkJoin(schoolGrants.map((grant) => this.userManagementService.getSchoolList(true, { _id: grant.dep }))).subscribe((responses) => {
+          this.scopePaths.push(...responses.map((response) => response.data.results[0]));
+          this.setStateDropdownValues();
+        });
       },
     });
+  }
+
+  private setStateDropdownValues() {
+    this.stateDropdownOptions = this.regionsData.filter((region: any) => pathAllowed(this.scopePaths, { state: region.state }));
+    this.selectOnly('state', this.stateDropdownOptions, this.stateControl, 'state', (state) => this.setZoneDropdownValues(state));
+    if (this.filterObj.state) this.getContentActivityData(this.filterObj);
   }
 
   /**
@@ -164,26 +183,14 @@ export class ContentActivityComponent implements OnInit {
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
-    const loggedInUser = this.utilityService.loggedInUserData;
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,
         'state',
         selectedStateValue
       );
-      if (
-        loggedInUser &&
-        loggedInUser.role.includes('manager') &&
-        loggedInUser.zones &&
-        loggedInUser.zones.length > 0
-      ) {
-        // Only show manager's zones
-        this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) =>
-          loggedInUser.zones.includes(zone.name)
-        );
-      } else {
-        this.zoneDropdownOptions = this.selectedStateObj.zones;
-      }
+      this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) => pathAllowed(this.scopePaths, { state: selectedStateValue, zone: zone.name }));
+      this.selectOnly('zone', this.zoneDropdownOptions, this.zoneControl, 'name', (zone) => this.setDistrictDropdownValues(zone));
     } else {
       this.zoneDropdownOptions = [];
     }
@@ -201,14 +208,9 @@ export class ContentActivityComponent implements OnInit {
         'name',
         selectedZone
       );
-      // districts is now an array
-      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts) 
-          ? this.selectedZoneObj.districts 
-          : [this.selectedZoneObj.districts]; // Handle legacy object structure
-      } else {
-        this.districtDropdownOptions = [];
-      }
+      this.districtDropdownOptions = this.selectedZoneObj.districts.filter((district: any) =>
+        pathAllowed(this.scopePaths, { state: this.filterObj.state, zone: selectedZone, district: district.name }));
+      this.selectOnly('district', this.districtDropdownOptions, this.districtControl, 'name', (district) => this.setBlockDropdownValues(district));
     }
   }
 
@@ -219,23 +221,25 @@ export class ContentActivityComponent implements OnInit {
   setBlockDropdownValues(selectedDistrict: any) {
     this.resetDistrict()
     if (selectedDistrict) {
-      // districts is now an array, find the matching district
-      if (this.selectedZoneObj && this.selectedZoneObj.districts) {
-        const districts = Array.isArray(this.selectedZoneObj.districts) 
-          ? this.selectedZoneObj.districts 
-          : [this.selectedZoneObj.districts]; // Handle legacy object structure
-        
-        this.selectedDistrictObj = this.utilityService.filterDropdownValues(
-          districts,
-          'name',
-          selectedDistrict
-        );
-        this.blockDropdownOptions = this.selectedDistrictObj.blocks;
-      } else {
-        this.selectedDistrictObj = null;
-        this.blockDropdownOptions = [];
-      }
+      this.selectedDistrictObj = this.utilityService.filterDropdownValues(
+        this.selectedZoneObj.districts,
+        'name',
+        selectedDistrict
+      );
+      this.blockDropdownOptions = this.selectedDistrictObj.blocks.filter((block: any) =>
+        pathAllowed(this.scopePaths, { state: this.filterObj.state, zone: this.filterObj.zone, district: selectedDistrict, block: block.name }));
+      this.selectOnly('block', this.blockDropdownOptions, this.blockControl, 'name', () => this.getSchoolFilteredList());
     }
+  }
+
+  private selectOnly(type: string, options: any[], control: FormControl, valueKey: string, selected: (value: any) => void) {
+    control.enable({ emitEvent: false });
+    if (options.length !== 1) return;
+    const value = options[0][valueKey];
+    control.setValue(value, { emitEvent: false });
+    control.disable({ emitEvent: false });
+    this.filterObj[type] = value;
+    selected(value);
   }
 
   onFilterChange(type: any, value: any) {
@@ -275,56 +279,67 @@ export class ContentActivityComponent implements OnInit {
   getSchoolFilteredList() {
     this.resetBlock();
     const filters = {
-      state:this.filterObj.state,
-      district:this.filterObj.district,
-      zone:this.filterObj.zone,
-      block:this.filterObj.block
-    }
-    this.userManagementService.getSchoolList(true,filters).subscribe((res: any) => {
+      state: this.filterObj.state,
+      district: this.filterObj.district,
+      zone: this.filterObj.zone,
+      block: this.filterObj.block
+    };
+    this.userManagementService.getSchoolList(true, filters).subscribe((res: any) => {
       this.schoolDropdownOptions = res.data.results;
+      this.selectOnly('_id', this.schoolDropdownOptions, this.schoolControl, '_id', () => this.getContentActivityData(this.filterObj));
     });
-}
+  }
 
   resetStates() {
+    this.zoneControl.enable({ emitEvent: false });
+    this.districtControl.enable({ emitEvent: false });
+    this.blockControl.enable({ emitEvent: false });
+    this.schoolControl.enable({ emitEvent: false });
     this.zoneDropdownOptions = [];
-        this.districtDropdownOptions = [];
-        this.blockDropdownOptions = [];
-        this.schoolDropdownOptions = [];
-        this.filterObj.zone = '';
-        this.filterObj.district = '';
-        this.filterObj.block = '';
-        this.filterObj._id = ''
-        this.zoneDropdown.selectedItem = null;
-        this.districtDropdown.selectedItem = null;
-        this.blockDropdown.selectedItem = null;
-        this.schoolDropdown.selectedItem = null;
+    this.districtDropdownOptions = [];
+    this.blockDropdownOptions = [];
+    this.schoolDropdownOptions = [];
+    this.filterObj.zone = '';
+    this.filterObj.district = '';
+    this.filterObj.block = '';
+    this.filterObj._id = '';
+    this.zoneControl.reset();
+    this.districtControl.reset();
+    this.blockControl.reset();
+    this.schoolControl.reset();
   }
 
   resetZone() {
+    this.districtControl.enable({ emitEvent: false });
+    this.blockControl.enable({ emitEvent: false });
+    this.schoolControl.enable({ emitEvent: false });
     this.filterObj.district = '';
-        this.filterObj.block = '';
-        this.filterObj._id = '';
-        this.districtDropdownOptions = [];
-        this.blockDropdownOptions = [];
-        this.schoolDropdownOptions = [];
-        this.districtDropdown.selectedItem = null;
-        this.blockDropdown.selectedItem = null;
-        this.schoolDropdown.selectedItem = null;
+    this.filterObj.block = '';
+    this.filterObj._id = '';
+    this.districtDropdownOptions = [];
+    this.blockDropdownOptions = [];
+    this.schoolDropdownOptions = [];
+    this.districtControl.reset();
+    this.blockControl.reset();
+    this.schoolControl.reset();
   }
 
   resetDistrict() {
+    this.blockControl.enable({ emitEvent: false });
+    this.schoolControl.enable({ emitEvent: false });
     this.filterObj.block = '';
     this.filterObj._id = '';
-        this.blockDropdownOptions = [];
-        this.schoolDropdownOptions = [];
-        this.blockDropdown.selectedItem = null;
-        this.schoolDropdown.selectedItem = null;
+    this.blockDropdownOptions = [];
+    this.schoolDropdownOptions = [];
+    this.blockControl.reset();
+    this.schoolControl.reset();
   }
 
   resetBlock() {
+    this.schoolControl.enable({ emitEvent: false });
     this.filterObj._id = '';
-        this.schoolDropdownOptions = [];
-        this.schoolDropdown.selectedItem = null;
+    this.schoolDropdownOptions = [];
+    this.schoolControl.reset();
   }
 
   /**

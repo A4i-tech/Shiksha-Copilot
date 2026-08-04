@@ -276,7 +276,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   getBoardsList(userDetails: any) {
     let classList = [];
-    classList = this.utilityservice.formatResponse(userDetails.classes);
+    classList = this.utilityservice.formatResponse(userDetails.profiles.teacher.classes);
     this.boardDropdownOptions = classList;
 
     if (classList.length === 1) {
@@ -696,6 +696,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   resetBoardChange() {
     this.idleService.resetIdler();
+    this.clearLearningOutcomes();
     this.lessonForm.get('medium')?.reset();
     this.mediumDropdownOptions = [];
     this.lessonForm.get('class')?.reset();
@@ -712,6 +713,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   resetMediumChange() {
     this.idleService.resetIdler();
+    this.clearLearningOutcomes();
     this.lessonForm.get('class')?.reset();
     this.classDropdownOptions = [];
     this.lessonForm.get('subject')?.reset();
@@ -726,6 +728,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   resetClassChange() {
     this.idleService.resetIdler();
+    this.clearLearningOutcomes();
     this.lessonForm.get('subject')?.reset();
     this.subjectDropdownOptions = [];
     this.lessonForm.get('template')?.reset();
@@ -737,6 +740,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   resetSubjectChange() {
+    this.clearLearningOutcomes();
     this.lessonForm.get('template')?.reset();
     this.lpTemplatedownOptions = [];
     this.lessonForm.get('topics')?.reset();
@@ -746,6 +750,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   resetTemplateChange(){
+    this.clearLearningOutcomes();
     this.lessonForm.get('topics')?.reset();
     this.topicsDropdownOptions = [];
     this.lessonForm.get('subtopics')?.reset();
@@ -753,8 +758,19 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   resetTopicChange() {
+    this.clearLearningOutcomes();
     this.lessonForm.get('subtopics')?.reset();
     this.subtopicsDropdownOptions = [];
+  }
+
+  clearLearningOutcomes() {
+    this.learningOutcomes = [];
+    this.combinedLearningOutcomes = null;
+    this.initialLearningOutcomes = null;
+    this.selectedSubtopic = null;
+    this.planId = null;
+    this.isEditable = false;
+    this.generateNew = false;
   }
 
   backNavigation() {

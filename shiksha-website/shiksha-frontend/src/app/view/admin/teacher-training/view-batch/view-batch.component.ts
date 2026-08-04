@@ -5,7 +5,8 @@ import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, concatMap, toArray, finalize } from 'rxjs';
 import { Router, ActivatedRoute } from '@angular/router';
-import { AuthService } from 'src/app/core/services/auth.service';
+import { UtilityService } from 'src/app/core/services/utility.service';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-view-batch',
@@ -36,13 +37,14 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
   teacherSearchTerm = '';
   searchTimeout: NodeJS.Timeout | null = null;
 
-  isAdmin: boolean = false;
+  canViewAllBatches: boolean = false;
 
   private route = inject(ActivatedRoute);
   private batchService = inject(BatchService);
   private teacherService = inject(TeacherService);
   private router = inject(Router);
-  private authService = inject(AuthService);
+  private utilityService = inject(UtilityService);
+  private translate = inject(TranslateService);
 
   constructor() {
     this.batchId = this.route.snapshot.params['id'];
@@ -57,8 +59,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
 
     this.loadBatchDetails();
 
-    const currentUser = this.authService.getCurrentUser();
-    this.isAdmin = !!(currentUser && (Array.isArray(currentUser.role) ? currentUser.role.includes('admin') : currentUser.role === 'admin'));
+    this.canViewAllBatches = this.utilityService.hasGlobalPermission('training.view');
   }
 
   fetchBatches(): void {
@@ -229,7 +230,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm('Are you sure you want to delete this batch? This action cannot be undone.')) {
+    if (confirm(this.translate.instant('Are you sure you want to delete this batch? This action cannot be undone.'))) {
       this.batchService.deleteBatch(batchId).subscribe({
         next: () => {
           // Remove the batch from the local array
@@ -240,11 +241,11 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
           console.error('Error deleting batch:', error);
           
           if (error.status === 403) {
-            alert('Access denied. You can only delete batches you created.');
+            alert(error.error.message);
           } else if (error.status === 404) {
-            alert('Batch not found.');
+            alert(this.translate.instant('Batch not found.'));
           } else {
-            alert('Error deleting batch. Please try again.');
+            alert(this.translate.instant('Error deleting batch. Please try again.'));
           }
         }
       });
@@ -257,17 +258,17 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       this.batchService.getBatchById(batch._id).subscribe({
         next: () => {
           // If we can access the batch, navigate to view teachers
-          this.router.navigate(['/teacher-training/view-teachers', batch._id]);
+          this.router.navigate(['/training/view-teachers', batch._id]);
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error accessing batch:', error);
           
           if (error.status === 403) {
-            alert('Access denied. You can only view batches you created.');
+            alert(error.error.message);
           } else if (error.status === 404) {
-            alert('Batch not found.');
+            alert(this.translate.instant('Batch not found.'));
           } else {
-            alert('Error accessing batch details. Please try again.');
+            alert(this.translate.instant('Error accessing batch details. Please try again.'));
           }
         }
       });
@@ -287,7 +288,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm(`Are you sure you want to remove ${teacher.name} from ${batch.batchName}?`)) {
+    if (confirm(this.translate.instant('Are you sure you want to remove {{teacher}} from {{batch}}?', { teacher: teacher.identity.name, batch: batch.batchName }))) {
       this.batchService.removeTeacherFromBatch(batch._id, teacher._id).subscribe({
         next: (updatedBatch: Batch) => {
           // Update the specific batch in the local array
@@ -307,11 +308,11 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
           console.error('Error removing teacher from batch:', error);
           
           if (error.status === 403) {
-            alert('Access denied. You can only remove teachers from batches you created.');
+            alert(error.error.message);
           } else if (error.status === 404) {
-            alert('Batch or teacher not found.');
+            alert(this.translate.instant('Batch or teacher not found.'));
           } else {
-            alert('Error removing teacher from batch. Please try again.');
+            alert(this.translate.instant('Error removing teacher from batch. Please try again.'));
           }
         }
       });
@@ -413,11 +414,11 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         console.error('Error assigning teachers to batch:', error);
         
         if (error.status === 403) {
-          alert('Access denied. You can only assign teachers to batches you created.');
+          alert(error.error.message);
         } else if (error.status === 404) {
-          alert('Batch or teacher not found.');
+          alert(this.translate.instant('Batch or teacher not found.'));
         } else {
-          alert('Error assigning teachers to batch. Please try again.');
+          alert(this.translate.instant('Error assigning teachers to batch. Please try again.'));
         }
       }
     });
@@ -429,7 +430,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (confirm('Are you sure you want to save and submit this batch? Once submitted, it cannot be modified.')) {
+    if (confirm(this.translate.instant('Are you sure you want to save and submit this batch? Once submitted, it cannot be modified.'))) {
       this.batchService.submitBatch(batchId).subscribe({
         next: (updatedBatch: Batch) => {
           // Update the local batches list and selectedBatch to reflect the submitted status
@@ -449,11 +450,11 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
           console.error('Error submitting batch:', error);
           
           if (error.status === 403) {
-            alert('Access denied. You can only submit batches you created.');
+            alert(error.error.message);
           } else if (error.status === 404) {
-            alert('Batch not found.');
+            alert(this.translate.instant('Batch not found.'));
           } else {
-            alert('Error submitting batch. Please try again.');
+            alert(this.translate.instant('Error submitting batch. Please try again.'));
           }
         }
       });

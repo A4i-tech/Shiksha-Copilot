@@ -2,7 +2,6 @@
 const MasterLesson = require("../models/master.lesson.model");
 const MasterResource = require("../models/master.resource.model");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model")
-const User = require("../models/user.model");
 const Chapter = require("../models/chapter.model");
 const LessonFeedback = require("../models/feedback.lesson.model")
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");
@@ -13,9 +12,11 @@ const QuestionBankConfiguration = require("../models/question.bank.config.model"
 const Classes = require("../models/school.class.model")
 const Chapters = require("../models/chapter.model")
 const Schools = require("../models/school.model")
+const unifyUsers = require("./unify-users");
 
 async function runMigrations() {
     try {
+        await unifyUsers();
         await Promise.all([
             MasterLesson.updateMany(
                 { isRegenerated: { $exists: false } },
@@ -30,34 +31,6 @@ async function runMigrations() {
                 [ { $set: { orderNumber: { $toInt: "$orderNumber" } } } ]
             ),
         ]);
-
-        // Backfill zone/district/block on users that are missing any of these fields.
-        // Values are sourced from the user's school reference.
-        const usersToBackfill = await User.find({
-            $or: [
-                { zone: { $exists: false } },
-                { zone: "" },
-                { district: { $exists: false } },
-                { district: "" },
-                { block: { $exists: false } },
-                { block: "" },
-            ],
-            school: { $exists: true, $ne: null },
-        }).populate("school");
-
-        let geoBackfillCount = 0;
-        for (const user of usersToBackfill) {
-            if (!user.school) continue;
-            const update = {};
-            if (!user.zone     && user.school.zone)     update.zone     = user.school.zone;
-            if (!user.district && user.school.district) update.district = user.school.district;
-            if (!user.block    && user.school.block)    update.block    = user.school.block;
-            if (Object.keys(update).length) {
-                await User.updateOne({ _id: user._id }, { $set: update });
-                geoBackfillCount++;
-            }
-        }
-        console.log(`Geographic scope backfill: updated ${geoBackfillCount} users.`);
 
 //         // --------------------TEMPLETE ID MIGRATION TOTAL - 7-------------------------------
 

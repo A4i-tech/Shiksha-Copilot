@@ -159,7 +159,10 @@ export class ResourceDocxService {
           }
 
           if (item.required_materials) {
-            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(item.required_materials, context));
+            const requiredMaterials = Array.isArray(item.required_materials)
+              ? item.required_materials.map((material: string) => `- ${material}`).join('\n')
+              : item.required_materials;
+            sectionChildren.push(...this.docxUtility.getMarkdownParagraphs(requiredMaterials, context));
           }
 
           if (item.obtaining_materials) {

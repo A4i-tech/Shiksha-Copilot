@@ -23,7 +23,7 @@
       <p>
         <span>{{ "Generate Lesson Plan" | translate }}:</span>
         {{
-          "Provides Lesson Plan for effective lesson delivery"
+          "Provides 5E model (Engage, Explore, Explain, Elaborate, Evaluate) based Lesson Plan for effective lesson delivery"
             | translate
         }}.
       </p>
@@ -46,15 +46,15 @@
 
   <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
     <div class="flex gap-2 flex-wrap items-center">
-      <button class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content-generation/lesson-resources">
+      <button [hasPermission]="['lesson-resource.generate']" class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content-generation/lesson-resources">
         <img src="assets/icons/edit_light.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Resource" | translate}}</span>
       </button>
-      <button class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/lesson-plan">
+      <button [hasPermission]="['lesson-plan.generate']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/lesson-plan">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Plan" | translate}}</span>
       </button>
-      <button [hasPermission]="['power']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/presentation">
+      <button [hasPermission]="['presentation.generate.arbitrary']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/presentation">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Presentation" | translate}}</span>
       </button>
@@ -300,8 +300,9 @@
                 </span>
               </ng-template>
             </button>
-            <button [hasPermission]="['power']" (click)="chat(item?._id, item?.lesson?.chapter?._id)" title="{{'Chatbot' | translate}}" *ngIf="item.isLesson && item.isCompleted" class="w-full sm:flex-1 h-10 whitespace-nowrap text-sm border border-[#8353E2] text-[#8353E2] hover:bg-purple-50 rounded font-semibold">{{'Chatbot' | translate}}</button>
+            <button [hasPermission]="['chat.use']" (click)="chat(item?._id, item?.lesson?.chapter?._id)" title="{{'Chatbot' | translate}}" *ngIf="item.isLesson && item.isCompleted" class="w-full sm:flex-1 h-10 whitespace-nowrap text-sm border border-[#8353E2] text-[#8353E2] hover:bg-purple-50 rounded font-semibold">{{'Chatbot' | translate}}</button>
             <button
+              [hasPermission]="[item.isLesson ? 'lesson-plan.delete' : 'lesson-resource.delete']"
               *ngIf="!item.isPresentation"
               (click)="onDelete(item)"
               title="{{'Delete' | translate}}"

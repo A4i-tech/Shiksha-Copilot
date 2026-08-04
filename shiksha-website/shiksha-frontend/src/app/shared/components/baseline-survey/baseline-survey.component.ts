@@ -263,15 +263,9 @@ export class BaselineSurveyComponent {
     return formArray.value.includes(value);
   }
 
-  /**
-   * True when `option` should be greyed out and unclickable because the
-   * control's exclusive option (e.g. "None of the above") is currently selected.
-   * "Other" is exempt — a teacher can still pick "None of the above" and
-   * additionally specify something via "Other".
-   */
   isOptionDisabled(controlName: string, option: string): boolean {
     const exclusiveOption = this.exclusiveOptionMap[controlName];
-    if (!exclusiveOption || option === exclusiveOption || option === 'Other') return false;
+    if (!exclusiveOption || option === exclusiveOption) return false;
     return this.isChecked(controlName, exclusiveOption);
   }
 
@@ -286,7 +280,7 @@ export class BaselineSurveyComponent {
   exclusiveOptionMessage(controlName: string): string {
     const exclusiveOption = this.exclusiveOptionMap[controlName];
     return exclusiveOption
-      ? `Deselect "${exclusiveOption}" to choose other options, or use "Other" to add specifics.`
+      ? `Deselect "${exclusiveOption}" to choose another option.`
       : '';
   }
 

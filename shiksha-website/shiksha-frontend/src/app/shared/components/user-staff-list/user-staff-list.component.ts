@@ -1,6 +1,6 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription, Subject, debounceTime, distinctUntilChanged, Observable } from 'rxjs';
+import { Subscription, Subject, debounceTime, distinctUntilChanged, Observable, forkJoin } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { UserManagementService } from 'src/app/view/admin/user-management/user-management.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
@@ -8,7 +8,7 @@ import { StaffUserCommonService } from '../../services/staff-user-common.service
 import { BULK_UPLOAD_FILE_TYPES } from '../../utility/constant.util';
 import { ModalService } from '../modal/modal.service';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {TranslateModule } from '@ngx-translate/core';
 import { DropdownComponent } from '../dropdown/dropdown.component';
 import { ModalComponent } from '../modal/modal.component';
@@ -23,6 +23,8 @@ import { SchoolManagementService } from 'src/app/view/admin/school-management/sc
 import { SchoolList } from '../../interfaces/school-list.interface';
 import { slideInOutAnimation } from '../../utility/animations.util';
 import { ActionMenuController } from '../../utility/action-menu-controller.util';
+import { RegionDependency } from '../../interfaces/permission.interface';
+import { pathAllowed, regionScopePaths, scopeBelow } from '../../utility/scope.util';
 
 interface ContentListConfig {
   [key: string]:
@@ -34,7 +36,7 @@ interface ContentListConfig {
   templateUrl: './user-staff-list.component.html',
   styleUrls: ['./user-staff-list.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, DropdownComponent,ModalComponent,DisablePopupComponent,UploadPopupComponent,PaginationComponent,TranslateModule, NgSelectModule,HasPermissionDirective, UploadErrorPopupComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, DropdownComponent,ModalComponent,DisablePopupComponent,UploadPopupComponent,PaginationComponent,TranslateModule, NgSelectModule,HasPermissionDirective, UploadErrorPopupComponent],
   animations:[slideInOutAnimation]
   
 })
@@ -46,7 +48,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   usersList: any[] = [];
   schoolNamesDropdownOptions: any[]=[];
 
-  userRolesDropdownOptions!: any[];
+  userRolesDropdownOptions: any[] = [];
 
   userStatusDropdownOptions: any[]=[{ name: 'Active', value: 'active' },{ name: 'Inactive', value: 'inactive' }];
 
@@ -61,6 +63,11 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   zoneDropdownOptions: any[] = [];
 
   schoolDropdownOptions: any[] = [];
+  stateControl = new FormControl();
+  zoneControl = new FormControl();
+  districtControl = new FormControl();
+  blockControl = new FormControl();
+  schoolControl = new FormControl();
 
 
   schoolNamesDropdownconfig: DropDownConfig = {
@@ -76,7 +83,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     isBackground: true,
     placeHolderTxt: 'Type of Teacher',
     bindLabel:'name',
-    bindValue:'value',
+    bindValue:'_id',
     labelTxt:'Type of Teacher'
   };
 
@@ -163,16 +170,16 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   fileToUpload!: File;
   lessonContentType!: string | null;
   contentListConfig:ContentListConfig = {
-    "/teacher-management/list": {
+    "/teachers/list": {
       type:'user',
-      router: '/teacher-management/',
+      router: '/teachers/',
       table_headers: ['Teacher Name', 'Mobile Number', 'School Name', 'Type of Teacher', 'Status of Teacher', 'Training Status', ''],
       download_file:'user-management'
 
     },
-    "/staff-management/list": {
+    "/staff/list": {
       type:"admin",
-      router: '/staff-management/',
+      router: '/staff/',
       table_headers: ['Staff Name', 'Mobile Number', 'Type of staff', 'Status of staff', ''],
       download_file:'admin-shikshana-user-management'
     }
@@ -188,6 +195,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   private nonPaginationSubscription!: Subscription;
 
   regionsData: any;
+  private scopePaths: Partial<RegionDependency>[] = [];
 
   selectedStateObj: any;
 
@@ -207,19 +215,9 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
 
   schoolListData!: [SchoolList];
 
-  @ViewChild('zoneDropdown') zoneDropdown: any;
-  @ViewChild('districtDropdown') districtDropdown: any;
-  @ViewChild('blockDropdown') blockDropdown: any;
-  @ViewChild('schoolDropdown') schoolDropdown: any;
-
-
   constructor(private elRef:ElementRef, private route: ActivatedRoute, private router: Router, public modalService: ModalService, private userManagementService: UserManagementService, public utility: UtilityService, private commonStaffUserService: StaffUserCommonService, private masterService:MasterService, private schoolManagementService:SchoolManagementService) {
     this.lessonContentType = this.router.url.split('?')[0];
-    if (this.getType()?.type === 'user') {
-      this.userRolesDropdownOptions = [{ name: 'Standard', value: 'standard' }, { name: 'Power', value: 'power' }];
-    } 
     if (this.getType()?.type === 'admin') {
-      this.userRolesDropdownOptions = [{ name: 'Admin', value: 'admin' }, { name: 'Manager', value: 'manager' }];
       this.userRolesDropdownconfig.placeHolderTxt ='Type of staff'
       this.modal_subheader = 'Are you sure you want to delete this Staff? This cannot be undone.';
     }
@@ -233,21 +231,8 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       this.getRegionsData();
     }  
 
-    const loggedInUser = this.utility.loggedInUserData;
-
-    if (loggedInUser && loggedInUser.role.includes('manager')) {
-      if (loggedInUser.state) {
-        this.filterObj.state = loggedInUser.state;
-      }
-      if (loggedInUser.zones && loggedInUser.zones.length > 0) {
-        this.filterObj.zone = loggedInUser.zones;
-      }
-      if (loggedInUser.districts && loggedInUser.districts.length > 0) {
-        this.filterObj.district = loggedInUser.districts;
-      }
-    }
-
     this.getUsersList(this.filterObj);
+    this.loadRoles();
 
     this.searchSubscription = this.searchTerms.pipe(
       debounceTime(1000),
@@ -265,10 +250,26 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       this.masterService.getRegions().subscribe({
         next: (val) => {
           this.regionsData = val?.data?.results;
-          this.stateDropdownOptions = this.regionsData;
+          const grants = this.utility.getPermission('user.view')!;
+          this.scopePaths = regionScopePaths(grants);
+          const schoolGrants = grants.filter((grant) => grant.scopeType === 'SCHOOL');
+          if (!schoolGrants.length) {
+            this.setStateDropdownValues();
+            return;
+          }
+          forkJoin(schoolGrants.map((grant) => this.schoolManagementService.getSchoolList(1, 1, { _id: grant.dep }))).subscribe((responses) => {
+            this.scopePaths.push(...responses.map((response) => response.data.results[0]));
+            this.setStateDropdownValues();
+          });
         },
       });
     }
+
+  private setStateDropdownValues() {
+    this.stateDropdownOptions = this.regionsData.filter((region: any) => pathAllowed(this.scopePaths, { state: region.state }));
+    this.selectOnly('state', this.stateDropdownOptions, this.stateControl, 'state', (state) => this.setZoneDropdownValues(state));
+    if (this.filterObj.state) this.getUsersList(this.filterObj);
+  }
 
   updateDropdownConfig(type: any): void {
     if (type === 'user') {
@@ -286,8 +287,8 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   
 
   ngAfterViewInit(): void {
-    if(this.getType()?.type === 'user' && this.schoolDropdown){
-      this.schoolDropdown.selectedItem = this.schoolId;
+    if(this.getType()?.type === 'user' && this.schoolId){
+      this.schoolControl.setValue(this.schoolId);
     }
   }
 
@@ -333,15 +334,30 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       data: {
         status: item.isDeleted ? 'Inactive' : 'Active',
         isAction: true,
-        user_name: item.name,
-        role_name: item.role,
+        user_name: item.identity.name,
+        role_name: this.roleName(item),
         more_icon: false
       }
     }
   }
 
-  ondisableUser(item: any) {    
-    this.commonStaffUserService.disableUser(item.id,this.getType()?.type).subscribe({
+  loadRoles() {
+    this.commonStaffUserService.getRoles().subscribe((res: any) => {
+      this.userRolesDropdownOptions = this.getType()?.type === 'user'
+        ? res.data.results.filter((role: any) => role.scopeType === 'SCHOOL')
+        : res.data.results;
+    });
+  }
+
+  roleName(item: any) {
+    const roles = this.getType()?.type === 'user'
+      ? item.roles.filter((assignment: any) => assignment.role.scopeType === 'SCHOOL')
+      : item.roles;
+    return roles.map((assignment: any) => assignment.role.name).join(', ');
+  }
+
+  ondisableUser(item: any) {
+    this.commonStaffUserService.deactivate(item.id).subscribe({
       next: (res: any) => {
         this.modalService.showDeleteUserDialog = false;
         this.utility.handleResponse(res);
@@ -350,7 +366,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       error: (err) => {
         console.error(err);
         this.utility.handleError(err);
-      }
+      },
     });
   }
 
@@ -385,39 +401,30 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   }
   
   toggleFilter(){
-    if(this.showAdditionalFilters && this.filterObj?.state){
+    if(this.showAdditionalFilters && this.filterObj?.state && !this.stateControl.disabled){
       this.onFilterChange('state',null)
     }
     this.showAdditionalFilters = !this.showAdditionalFilters;
   }
   
-  getUsersList(filter?:any): void {
-    let observable: Observable<any>;
+  getUsersList(filter?: any): void {
+    const profileType = this.getType()?.type === 'user' ? 'teacher' : 'admin';
+    const observable = this.commonStaffUserService.list({
+      profileType,
+      page: this.currentPage,
+      limit: this.pageSize,
+      filters: filter,
+    });
 
-    if (filter) {
-      observable = this.commonStaffUserService.getUsers(
-        this.getType()?.type,
-        this.currentPage,
-        this.pageSize,
-        filter
-      );
-    } else {
-      observable = this.commonStaffUserService.getUsers(
-        this.getType()?.type,
-        this.currentPage,
-        this.pageSize
-      );
-    }
-
-    if(this.paginationSubscription){
+    if (this.paginationSubscription) {
       this.paginationSubscription.unsubscribe();
     }
-  
+
     this.paginationSubscription = observable.subscribe({
       next: (res: any) => {
         if (res?.data?.results) {
-        this.usersList = res.data['results'];
-        this.totalItems = res.data.totalItems;
+          this.usersList = res.data.results;
+          this.totalItems = res.data.totalItems;
         } else {
           this.usersList = [];
           this.totalItems = 0;
@@ -427,7 +434,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
         console.error('Error while fetching list', err);
         this.usersList = [];
         this.totalItems = 0;
-      }
+      },
     });
   }
 
@@ -455,20 +462,20 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
       const formData = new FormData();
       formData.append('file', this.fileToUpload);
 
-      this.commonStaffUserService.bulkUpload(formData,this.getType()?.type).subscribe({
-        next: (res:any)=>{
+      this.commonStaffUserService.importUsers(formData).subscribe({
+        next: (res: any) => {
           this.utility.showSuccess(res.message);
           this.modalService.showBlukUploadDialog = false;
         },
-        error: (err)=>{
-          if(err?.error?.errorUrl){
+        error: (err) => {
+          if (err?.error?.errorUrl) {
             this.errorUrl = err?.error?.errorUrl;
             this.modalService.showBlukUploadDialog = false;
             this.modalService.showUploadErrorDialog = true;
-            }else{
+          } else {
             this.utility.showError(err.error.message);
-            }
-        }
+          }
+        },
       });
     }
   }
@@ -489,31 +496,37 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
     }
   }
 
-  activateUser(id:any){
-    this.commonStaffUserService.activateUser(id, this.getType()?.type).subscribe({
-      next:(res:any)=>{
+  canManage(item: any, permission: string) {
+    const grants = this.utility.getPermission(permission);
+    return grants && item.roles.every((assignment: any) =>
+      scopeBelow(grants, assignment.role.scopeType, assignment.role.scopeType === 'SCHOOL' ? item.school : assignment.dep));
+  }
+
+  activateUser(id: any) {
+    this.commonStaffUserService.activate(id).subscribe({
+      next: (res: any) => {
         this.utility.handleResponse(res);
         this.getUsersList();
       },
-      error:(err)=>{
+      error: (err) => {
         this.utility.handleError(err);
-      }
+      },
     });
   }
 
-  exportUsersListToExcel(){
-    if(!this.usersList.length){
-      return
+  exportUsersListToExcel() {
+    if (!this.usersList.length) {
+      return;
     }
-    this.commonStaffUserService.exportTeacher(this.filterObj).
-    subscribe({
-      next:(res) => {
-       this.utility.handleResponse(res)        
+    this.commonStaffUserService.exportTeachers(this.filterObj).subscribe({
+      next: (res) => {
+        this.utility.handleResponse(res);
       },
-      error:(err)=>{
-        this.utility.handleError(err)
-      }
-    })
+      error: (err) => {
+        this.utility.handleError(err);
+      },
+    });
+
   }
 
   navigateToTraining() {
@@ -572,12 +585,17 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
             block:this.filterObj.block
           }
           this.userManagementService.getSchoolList(true,filters).subscribe((res: any) => {
-            this.schoolDropdownOptions = res.data.results
+            this.schoolDropdownOptions = res.data.results;
+            this.selectOnly('school', this.schoolDropdownOptions, this.schoolControl, '_id', () => this.getUsersList(this.filterObj));
           });
       }
 
 
   resetStates() {
+    this.zoneControl.enable({ emitEvent: false });
+    this.districtControl.enable({ emitEvent: false });
+    this.blockControl.enable({ emitEvent: false });
+    this.schoolControl.enable({ emitEvent: false });
     this.zoneDropdownOptions = [];
         this.districtDropdownOptions = [];
         this.blockDropdownOptions = [];
@@ -586,37 +604,43 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
         this.filterObj.district = '';
         this.filterObj.block = '';
         this.filterObj.school = ''
-        this.zoneDropdown.selectedItem = null;
-        this.districtDropdown.selectedItem = null;
-        this.blockDropdown.selectedItem = null;
-        this.schoolDropdown.selectedItem = null;
+        this.zoneControl.reset();
+        this.districtControl.reset();
+        this.blockControl.reset();
+        this.schoolControl.reset();
   }
 
   resetZone() {
+    this.districtControl.enable({ emitEvent: false });
+    this.blockControl.enable({ emitEvent: false });
+    this.schoolControl.enable({ emitEvent: false });
     this.filterObj.district = '';
         this.filterObj.block = '';
         this.filterObj.school = '';
         this.districtDropdownOptions = [];
         this.blockDropdownOptions = [];
         this.schoolDropdownOptions = [];
-        this.districtDropdown.selectedItem = null;
-        this.blockDropdown.selectedItem = null;
-        this.schoolDropdown.selectedItem = null;
+        this.districtControl.reset();
+        this.blockControl.reset();
+        this.schoolControl.reset();
   }
 
   resetDistrict() {
+    this.blockControl.enable({ emitEvent: false });
+    this.schoolControl.enable({ emitEvent: false });
     this.filterObj.block = '';
     this.filterObj.school = '';
         this.blockDropdownOptions = [];
         this.schoolDropdownOptions = [];
-        this.blockDropdown.selectedItem = null;
-        this.schoolDropdown.selectedItem = null;
+        this.blockControl.reset();
+        this.schoolControl.reset();
   }
 
   resetBlock() {
+    this.schoolControl.enable({ emitEvent: false });
     this.filterObj.school = '';
         this.schoolDropdownOptions = [];
-        this.schoolDropdown.selectedItem = null;
+        this.schoolControl.reset();
   }
 
   /**
@@ -669,14 +693,8 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
           'state',
           selectedStateValue
         );
-        // Only show manager's zones if role is manager
-        const loggedInUser = this.utility.loggedInUserData;
-        const role = loggedInUser && loggedInUser.role;
-        if (role && (Array.isArray(role) ? role.includes('manager') : role === 'manager') && loggedInUser && loggedInUser.zones) {
-          this.zoneDropdownOptions = this.utility.getZonesForManager(this.regionsData, loggedInUser);
-        } else {
-          this.zoneDropdownOptions = this.selectedStateObj.zones;
-        }
+        this.zoneDropdownOptions = this.selectedStateObj.zones.filter((zone: any) => pathAllowed(this.scopePaths, { state: selectedStateValue, zone: zone.name }));
+        this.selectOnly('zone', this.zoneDropdownOptions, this.zoneControl, 'name', (zone) => this.setDistrictDropdownValues(zone));
       }
     }
   
@@ -692,7 +710,9 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
           'name',
           selectedZone
         );
-        this.districtDropdownOptions = this.selectedZoneObj.districts;
+        this.districtDropdownOptions = this.selectedZoneObj.districts.filter((district: any) =>
+          pathAllowed(this.scopePaths, { state: this.filterObj.state, zone: selectedZone, district: district.name }));
+        this.selectOnly('district', this.districtDropdownOptions, this.districtControl, 'name', (district) => this.setBlockDropdownValues(district));
       }
     }
   
@@ -708,9 +728,21 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
           'name',
           selectedDistrict
         );
-        this.blockDropdownOptions = this.selectedDistrictObj.blocks;
+        this.blockDropdownOptions = this.selectedDistrictObj.blocks.filter((block: any) =>
+          pathAllowed(this.scopePaths, { state: this.filterObj.state, zone: this.filterObj.zone, district: selectedDistrict, block: block.name }));
+        this.selectOnly('block', this.blockDropdownOptions, this.blockControl, 'name', () => this.getSchoolFilteredList());
       }
     }
+
+  private selectOnly(type: string, options: any[], control: FormControl, valueKey: string, selected: (value: any) => void) {
+    control.enable({ emitEvent: false });
+    if (options.length !== 1) return;
+    const value = options[0][valueKey];
+    control.setValue(value, { emitEvent: false });
+    control.disable({ emitEvent: false });
+    this.filterObj[type] = value;
+    selected(value);
+  }
 
   
   ngOnDestroy(): void {

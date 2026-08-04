@@ -1,7 +1,6 @@
 require("dotenv").config();
 const BaseManager = require("./base.manager");
 const UserDao = require("../dao/user.dao");
-const AdminUserDao = require("../dao/admin.user.dao");
 const SchoolDao = require("../dao/school.dao");
 const {
   getClasswithGroupedSubjects,
@@ -14,112 +13,127 @@ const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../services/variform.service");
 const { MESSAGES } = require("../config/constants");
 const ClassDao = require("../dao/school.class.dao");
-const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
+const Role = require("../models/role.model");
+const School = require("../models/school.model");
+const { getRolePermissions, getPermission, schoolDependency } = require("../helper/permission.helper");
+const { dependencyMatches, assertCanAssign, assignmentDependencyFilter, hasAssignmentScope, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
+const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
 
-/** @extends {BaseManager<UserDao>} */
+async function prepareAssignments(input, actor, current, teacher, permission) {
+  const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });
+  const roleById = new Map(roles.map((role) => [String(role._id), role]));
+  if (roleById.size !== new Set(input.map((assignment) => assignment.roleId)).size) throw new Error("One or more roles do not exist");
+  const currentById = new Map(current.map((assignment) => [String(assignment._id), assignment]));
+  const currentIds = new Set(current.map((assignment) => String(assignment._id)));
+  const grants = getRolePermissions(actor.roles);
+  const seen = new Set();
+  const assignments = [];
+  let school;
+  for (const assignment of input) {
+    if (assignment._id && !currentIds.has(assignment._id)) throw new Error("Role assignment does not belong to this user");
+    const role = roleById.get(assignment.roleId);
+    const existing = assignment._id && currentById.get(assignment._id);
+    const unchanged = existing && String(existing.role._id) === assignment.roleId
+      && (["GLOBAL", "UNBOUND"].includes(role.scopeType) ? assignment.dep == null : dependencyMatches(role.scopeType, existing.dep, assignment.dep));
+    const dep = unchanged ? existing.dep : await assertCanAssign(grants, role, assignment.dep, permission);
+    const key = `${assignment.roleId}:${JSON.stringify(dep)}`;
+    if (seen.has(key)) throw new Error("Duplicate role assignment");
+    seen.add(key);
+    const next = { role: role._id, dep };
+    if (assignment._id) next._id = assignment._id;
+    assignments.push(next);
+    if (role.scopeType === "SCHOOL") {
+      if (teacher && school && String(school) !== String(dep)) throw new Error("A teacher cannot have assignments at different schools");
+      if (!school) school = dep;
+    }
+  }
+  return { assignments, school };
+}
+
+async function canAccessUser(grants, permissions, user) {
+  if (user.profiles.teacher) {
+    const school = await School.findById(schoolDependency(user.roles)).lean();
+    return [].concat(permissions).some((permission) => isResourceAllowed(grants, permission, school));
+  }
+  for (const permission of [].concat(permissions)) {
+    const access = await Promise.all(user.roles.map(async (assignment) => assignment.role.scopeType === "SCHOOL"
+      ? isResourceAllowed(grants, permission, await School.findById(assignment.dep).lean())
+      : isDependencyAllowed(grants, permission, assignment.role.scopeType, assignment.dep)));
+    if (access.every(Boolean)) return true;
+  }
+  return false;
+}
+
+async function canManageUser(grants, permission, user) {
+  const access = await Promise.all(user.roles.map(async (assignment) => {
+    const dep = assignment.role.scopeType === "SCHOOL" ? await School.findById(assignment.dep).lean() : assignment.dep;
+    return hasAssignmentScope(grants, permission, assignment.role, dep);
+  }));
+  return access.every(Boolean);
+}
+
 class UserManager extends BaseManager {
   constructor() {
     super(new UserDao());
-    this.adminUserDao = new AdminUserDao();
     this.schoolDao = new SchoolDao();
     this.classDao = new ClassDao();
   }
 
-  /**
-   * Teacher accounts live in the `User` collection, admin/manager accounts in
-   * the separate `AdminUser` collection. Profile actions (image, language)
-   * apply to both, so resolve which collection the id belongs to.
-   */
-  async _resolveUserDao(userId) {
-    const teacher = await this.dao.getById(userId);
-    if (teacher) return { dao: this.dao, user: teacher, isTeacher: true };
-
-    const admin = await this.adminUserDao.getById(userId);
-    if (admin) return { dao: this.adminUserDao, user: admin, isTeacher: false };
-
-    return { dao: null, user: null, isTeacher: false };
-  }
-
   async create(req) {
     try {
-      const existingUser = await this.dao.getByPhone(req.body.phone);
+      const { identity, roles, profiles } = req.body;
+      const existingUser = await this.dao.getByPhone(identity.phone);
 
       if (existingUser)
         return { success: false, message: "Phone already exists!" };
 
-      const school = await this.schoolDao.getById(req.body.school);
+      const prepared = await prepareAssignments(roles, req.user, [], Boolean(profiles.teacher), "user.create");
 
-      if (!school) return { success: false, message: "School does not exist!" };
+      if (profiles.teacher) {
+        if (!prepared.school) throw new Error("A teacher must have one school dependency");
+      }
 
-      const result = await this.dao.create(req.body);
+      const result = await this.dao.create({ identity, roles: prepared.assignments, profiles });
 
-      sendWelcomeSMS(req.body.phone, req.body.name).catch((error) => {
+      sendWelcomeSMS(identity.phone, identity.name).catch((error) => {
         logger.warn("Welcome SMS failed", { userId: String(result._id), error: error.message });
       });
 
-      return { success: true, data: result, message: "Teacher created" };
+      return { success: true, data: result, message: "User created" };
     } catch (err) {
-      return { success: false, data: false, message: "Something went wrong" };
+      return { success: false, data: false, message: err.message };
     }
   }
 
-  async getProfileById(id, cachedUser = null, cachedIsTeacher = null) {
+  async getProfileById(id, grants, actorId) {
     try {
-      let dao, user, isTeacher;
-      if (cachedUser) {
-        dao = cachedIsTeacher ? this.dao : this.adminUserDao;
-        user = cachedUser;
-        isTeacher = cachedIsTeacher;
-      } else {
-        ({ dao, user, isTeacher } = await this._resolveUserDao(id));
-      }
+      const user = await this.dao.getById(id);
+      if (!user) throw new Error("User is outside your scope");
+      const permission = String(id) === String(actorId) ? "profile.view" : "user.view";
+      if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
 
-      if (!user) {
-        return { success: false, data: false, message: "User not found" };
-      }
-
-      let plainUser = user.toObject();
-      delete plainUser.otp;
-      delete plainUser.rememberMeToken;
-      delete plainUser.isLoginAllowed;
+      const plainUser = user.toObject();
+      delete plainUser.roles;
 
       // Refresh profile image SAS URL if expired
-      await refreshProfileImageIfExpired(plainUser, (id, updates) => dao.update(id, updates));
+      await refreshProfileImageIfExpired(plainUser, (id, updates) => this.dao.update(id, updates));
 
-      if (!isTeacher) {
-        return {
-          success: true,
-          data: plainUser,
-          message: "Profile retrieved successfully",
-        };
-      }
+      if (!user.profiles.teacher) return { success: true, data: plainUser, message: "Profile retrieved successfully" };
 
-      let groupByBoards = await this.classDao.getGroupClassesByBoard(
-        user.school
-      );
+      const school = schoolDependency(user.roles);
+      plainUser.school = await this.schoolDao.getById(school);
+      let groupByBoards = await this.classDao.getGroupClassesByBoard(school);
 
       let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
 
-      plainUser.classes = (groupedClasseswithSubjects || []).map((classItem) => {
+      plainUser.profiles.teacher.classes = groupedClasseswithSubjects.map((classItem) => {
         const board = groupByBoards.find(
-          (item) => String(item._id) === String(classItem.board)
+          (item) => item._id === classItem.board
         );
-        if (!board) {
-          console.warn(
-            `getProfileById: no board entry found for board=${classItem.board}, skipping class`
-          );
-          return null;
-        }
         const medium = board.medium.find(
           (item) => item.medium === classItem.medium
         );
-        if (!medium) {
-          console.warn(
-            `getProfileById: no medium entry found for board=${classItem.board} medium=${classItem.medium}, skipping class`
-          );
-          return null;
-        }
         const standard = medium.classDetails.find(
           (item) => item.standard === classItem.class
         );
@@ -131,90 +145,85 @@ class UserManager extends BaseManager {
           subject: classItem.name,
           medium: classItem.medium,
           subjectDetails: classItem.subjects,
-          boysStrength: standard?.boysStrength,
-          girlsStrength: standard?.girlsStrength,
+          boysStrength: standard.boysStrength,
+          girlsStrength: standard.girlsStrength,
         };
-      }).filter(Boolean);
+      });
 
       return {
         success: true,
         data: plainUser,
-        message: "Teacher profile retrieved successfully",
+        message: "Teacher profile retreived successfully",
       };
     } catch (err) {
-      return {
-        success: false,
-        data: false,
-        message: "Something went wrong",
-        err,
-      };
+      return { success: false, data: false, message: err.message, err };
     }
   }
 
   async getByPhone(req) {
     try {
       let data = await this.dao.getByPhone(req.body.phone);
-      if (data) return formatApiReponse(true, "", data);
-      return formatApiReponse(false, "", null);
+      if (!data) return formatApiReponse(false, "", null);
+      const permission = String(data._id) === String(req.user._id) ? "profile.view" : "user.view";
+      if (!await canAccessUser(req.permissions, permission, data)) throw new Error("User is outside your scope");
+      return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
     }
   }
 
-  async update(id, payload) {
+  async update(id, payload, actor) {
     try {
-      let user = await this.dao.getOne({
-        _id: id,
-        phone: payload.phone,
-      });
-      const isRoleChanged =
-        user && JSON.stringify(...user.role) !== JSON.stringify(payload.role);
-      if (user) {
-        if (payload.isSchoolChanged) {
-          payload.isProfileCompleted = false;
-          payload.classes = [];
-          payload.isLoginAllowed = false;
+      const user = await this.dao.getById(id);
+      if (!user) return formatApiReponse(false, "User not found", null);
+      if (payload.roles && String(id) === String(actor._id)) throw new Error("You cannot change your own role assignments");
+      const action = "user.edit";
+      const grants = getRolePermissions(actor.roles);
+      if (!await canManageUser(grants, action, user)) throw new Error("User is not below your scope");
+
+      if (payload.identity?.phone) {
+        const duplicate = await this.dao.getByPhone(payload.identity.phone);
+        if (duplicate && String(duplicate._id) !== String(id)) {
+          return formatApiReponse(false, "Phone number already exists!", null);
         }
-        if (isRoleChanged) payload.isLoginAllowed = false;
-
-        user = await this.dao.update(id, payload);
-        if (user)
-          return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, user.phone);
       }
 
-      user = await this.dao.getOne({ phone: payload.phone });
-      if (user) {
-        return formatApiReponse(
-          false,
-          `Teacher with this phone number already exists!`,
-          null
-        );
+      const prepared = payload.roles && await prepareAssignments(payload.roles, actor, user.roles, Boolean(user.profiles.teacher), "role.assign");
+      const schoolRemoved = Boolean(user.profiles.teacher && prepared && !prepared.school);
+      const schoolChanged = Boolean(user.profiles.teacher && prepared && prepared.school && String(prepared.school) !== schoolDependency(user.roles));
+      if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new Error("User is outside your scope");
+
+      let forceRelogin = false;
+      if (payload.identity) {
+        forceRelogin ||= payload.identity.phone && payload.identity.phone !== user.identity.phone;
+        Object.assign(user.identity, payload.identity);
       }
-
-      let originalUserRecord = await this.dao.getOne({ _id: id });
-
-      if (payload.isSchoolChanged) {
-        payload.isProfileCompleted = false;
-        payload.classes = [];
+      if (payload.roles) {
+        const current = user.roles.map((assignment) => `${assignment._id}:${assignment.role._id}:${JSON.stringify(assignment.dep)}`);
+        const next = prepared.assignments.map((assignment) => `${assignment._id}:${assignment.role}:${JSON.stringify(assignment.dep)}`);
+        forceRelogin ||= current.length !== next.length || current.some((assignment) => !next.includes(assignment));
+        user.roles = prepared.assignments;
       }
-
-      const isPhoneChanged =
-        originalUserRecord && originalUserRecord.phone !== payload.phone;
-      if (isPhoneChanged) payload.isLoginAllowed = false;
-
-      user = await this.dao.update(id, payload);
-
-      if (user) {
-        return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, user.phone);
+      if (payload.profiles?.teacher) {
+        Object.assign(user.profiles.teacher, payload.profiles.teacher);
       }
+      if (schoolRemoved) {
+        user.profiles.teacher = undefined;
+      } else if (schoolChanged) {
+        user.profiles.teacher.isProfileCompleted = false;
+        user.profiles.teacher.classes = [];
+      }
+      if (payload.profiles?.admin) Object.assign(user.profiles.admin, payload.profiles.admin);
+      if (forceRelogin) user.isLoginAllowed = false;
 
-      return formatApiReponse(false, MESSAGES.UPDATE_FAIL, null);
+      await user.save();
+      return formatApiReponse(true, MESSAGES.UPDATE_SUCCESS, user.identity.phone);
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
     }
   }
 
-  async bulkUpload(fileBuffer, userId, userName) {
+  async bulkUpload(fileBuffer, userId, userName, permissions) {
     try {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(fileBuffer);
@@ -272,41 +281,25 @@ class UserManager extends BaseManager {
         worksheetData.push(rowData);
       });
 
-      const worker = new Worker(
-        path.resolve(__dirname, "../worker/userworker.js"),
-        { workerData: { worksheetData, userId, userName } }
-      );
-
-      worker.on("message", (message) => {
-        if (!message.success) {
-          console.error("Worker message error:", message.message);
-        } else {
-          console.log("Worker completed successfully:", message);
-        }
+      const worker = new Worker(path.resolve(__dirname, "../worker/userworker.js"), { workerData: { worksheetData, userId, userName, permissions } });
+      return await new Promise((resolve, reject) => {
+        worker.once("message", resolve);
+        worker.once("error", reject);
       });
-
-      worker.on("error", (error) => {
-        console.error("Worker error:", error);
-      });
-
-      worker.on("exit", (code) => {
-        if (code !== 0) {
-          console.error(`Worker stopped with exit code ${code}`);
-        }
-      });
-      return { success: true };
     } catch (err) {
       console.log("Error --> UserManager -> BulkUpload()", err);
       return { success: false, error: err };
     }
   }
 
-  async getById(userId) {
+  async getById(userId, grants, actorId) {
     try {
       const user = await this.dao.getById(userId);
       if (!user) {
         return { success: false, message: "User not found" };
       }
+      const permission = String(userId) === String(actorId) ? "profile.view" : "user.view";
+      if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
       return { success: true, data: user };
     } catch (err) {
       console.log("Error --> UserManager -> getById()", err);
@@ -318,9 +311,10 @@ class UserManager extends BaseManager {
     try {
       const updatedUser = await this.dao.setProfile(userId, profileData);
       if (!updatedUser) {
-        return formatApiReponse(false, "Teacher not found", null);
+        return formatApiReponse(false, "Teaching profile not found", null);
       }
-      return formatApiReponse(true, "Saved Teacher Info!", updatedUser);
+      const { roles, ...data } = updatedUser.toObject();
+      return formatApiReponse(true, "Saved Teacher Info!", data);
     } catch (err) {
       console.log("Error --> UserManager -> setProfile()", err);
       return { success: false, error: err };
@@ -329,20 +323,20 @@ class UserManager extends BaseManager {
 
   async uploadProfileImage(userId, filePath) {
     try {
-      const { dao, user } = await this._resolveUserDao(userId);
+      let user = await this.dao.getById(userId);
       if (!user) {
-        return { success: false, message: "User not found" };
+        return { success: false, message: "Teacher not found" };
       }
 
       let expireLimit = 5 * 24 * 60 * 60;
 
-      const updatedUser = await dao.update(userId, {
+      user = await this.dao.update(userId, {
         profileImage: filePath,
         profileImageExpiresIn:
           parseInt(Date.now() / 1000) + Number(expireLimit),
       });
 
-      if (!updatedUser) {
+      if (!user) {
         return {
           success: false,
           message: "Failed to update image!",
@@ -350,11 +344,8 @@ class UserManager extends BaseManager {
         };
       }
 
-      return {
-        success: true,
-        message: "Image uploaded successfully!",
-        data: updatedUser,
-      };
+      const { roles, ...data } = user.toObject();
+      return { success: true, message: "Image uploaded successfully!", data };
     } catch (err) {
       console.log("Error --> UserManager -> uploadProfileImage()", err);
       return { success: false, message: "Error uploading image", data: err };
@@ -363,46 +354,42 @@ class UserManager extends BaseManager {
 
   async removeProfileImage(userId) {
     try {
-      const { dao, user } = await this._resolveUserDao(userId);
+      let user = await this.dao.getById(userId);
       if (!user) {
-        return { success: false, message: "User not found" };
+        return { success: false, message: "Teacher not found" };
       }
 
-      const updatedUser = await dao.update(user._id, {
+      user = await this.dao.update(user._id, {
         profileImage: "",
         profileImageExpiresIn: parseInt(Date.now() / 1000),
       });
 
-      if (!updatedUser) {
+      if (!user) {
         return { success: false, message: "Failed to remove profile!" };
       }
 
-      return {
-        success: true,
-        message: "Profile Image removed sucessfully!",
-        data: updatedUser,
-      };
+      const { roles, ...data } = user.toObject();
+      return { success: true, message: "Profile Image removed sucessfully!", data };
     } catch (err) {
       console.log("Error --> UserManager -> removeProfileImage()", err);
       return { success: false, message: "Error removing image", data: err };
     }
   }
 
-  async activate(userId) {
+  async activate(userId, grants) {
     try {
       const user = await this.dao.getById(userId);
-      const school = await this.schoolDao.getOne({ _id: user.school });
-      if (school.isDeleted) {
+      if (!user) {
+        return formatApiReponse(false, "Teacher not found", null);
+      }
+      if (!await canManageUser(grants, "user.delete", user)) throw new Error("User is not below your scope");
+      if (user.profiles.teacher && (await this.schoolDao.getOne({ _id: schoolDependency(user.roles) })).isDeleted) {
         return formatApiReponse(
           false,
           "Cannot activate user since school is deactivated!",
           null
         );
       }
-      if (!user) {
-        return formatApiReponse(false, "Teacher not found", null);
-      }
-
 
       if (!user.isDeleted) {
         return formatApiReponse(false, "Teacher is already active", null);
@@ -414,20 +401,21 @@ class UserManager extends BaseManager {
       return formatApiReponse(
         true,
         "Teacher activated successfully",
-        updatedUser.name
+        updatedUser.identity.name
       );
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
     }
   }
 
-  async deactivate(userId) {
+  async deactivate(userId, grants) {
     try {
       const user = await this.dao.getById(userId);
 
       if (!user) {
         return formatApiReponse(false, "Teacher not found", null);
       }
+      if (!await canManageUser(grants, "user.delete", user)) throw new Error("User is not below your scope");
       if (user.isDeleted) {
         return formatApiReponse(false, "Teacher is already inactive", null);
       }
@@ -438,7 +426,7 @@ class UserManager extends BaseManager {
       return formatApiReponse(
         true,
         "Teacher deactivated successfully",
-        updatedUser.name
+        updatedUser.identity.name
       );
     } catch (err) {
       return formatApiReponse(false, err?.message, err);
@@ -447,18 +435,16 @@ class UserManager extends BaseManager {
 
   async updatePreferredLanguage(userId, preferredLanguage) {
     try {
-      const { dao, user } = await this._resolveUserDao(userId);
+      const user = await this.dao.getById(userId);
 
-      if (!user) {
-        return formatApiReponse(false, "User not found", null);
-      }
+      if (!user) return formatApiReponse(false, "User not found", null);
 
-      await dao.update(userId, { preferredLanguage });
+      await this.dao.update(userId, { preferredLanguage });
 
       return formatApiReponse(true, "Language updated successfully", null);
     } catch (err) {
       console.log("Error --> UserController -> updatePreferredLanguage()", err);
-      return res.status(400).json(err);
+      return formatApiReponse(false, err?.message, err);
     }
   }
 
@@ -479,29 +465,15 @@ class UserManager extends BaseManager {
       const searchFilter = {};
 
       if (search) {
-        const searchFields = ["name", "phone"];
+        const searchFields = ["identity.name", "identity.phone"];
 
-        const regexExpressions = (searchFields || []).map((field) => ({
+        searchFilter.$or = searchFields.map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
-
-        if (!isNaN(parseInt(search))) {
-          regexExpressions.push({ schoolId: parseInt(search) });
-        }
-
-        searchFilter.$or = regexExpressions;
       }
 
-      const transformedFilter = { ...filter };
-      if (transformedFilter._id) {
-        try {
-          transformedFilter._id = new ObjectId(transformedFilter._id);
-        } catch (err) {
-          console.error("Invalid _id format:", transformedFilter._id);
-          return res.status(400).json({ error: "Invalid _id format" });
-        }
-      }
-      const mergedFilter = { ...transformedFilter, ...searchFilter };
+      let mergedFilter = intersectFilters(filter, searchFilter);
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "user.export", "school"));
 
       let status = {};
 
@@ -515,13 +487,11 @@ class UserManager extends BaseManager {
         parseInt(limit),
         mergedFilter,
         sortOrderObject,
-        status,
-        req?.user?._id
+        status
       );
 
-      const userId = req?.user?._id;
-
-      const userName = req?.user?.name;
+      const userId = req.user._id;
+      const userName = req.user.identity.name;
 
       const worker = new Worker(
         path.resolve(__dirname, "../worker/exportuserworker.js")
@@ -557,28 +527,41 @@ class UserManager extends BaseManager {
     }
   }
 
-  async getAll(
-    page = 1,
-    limit,
-    filters = {},
-    sort = {},
-    status,
-    userId
-  ) {
+  async getAll({ page, limit, filters, sort, status, permissions, permission }) {
     try {
-      // Only for User: advanced filter normalization for zone/district
-      let processedFilters = { ...filters, ...status };
-      processedFilters = normalizeMultiValueFilter(processedFilters, ["zone", "district"]);
-      processedFilters = buildMongoInQuery(processedFilters, ["zone", "district"]);
-      // Call DAO getAll with processed filters
-      let data = await this.dao.getAll(
-        page,
-        limit,
-        processedFilters,
-        sort,
-        {}, // status already merged
-        userId
-      );
+      let processedFilters = { ...filters };
+      const scopes = getPermission(permissions, permission);
+      if (!scopes) throw new Error("Access denied");
+      let serverScope;
+      if (filters.profileType === "admin") {
+        if (scopes.some((scope) => scope.scopeType === "GLOBAL")) {
+          serverScope = {};
+        } else {
+          const roles = await Role.find({ isDeleted: false }).select("_id scopeType").lean();
+          const allowed = [];
+          for (const scope of scopes) {
+            if (scope.scopeType === "UNBOUND") {
+              allowed.push({ role: { $in: roles.filter((role) => role.scopeType === "UNBOUND").map((role) => role._id) }, dep: { $exists: false } });
+              continue;
+            }
+            const scopeIndex = ORGANISATION_SCOPE_TYPES.indexOf(scope.scopeType);
+            for (const scopeType of ORGANISATION_SCOPE_TYPES.slice(scopeIndex)) {
+              const roleIds = roles.filter((role) => role.scopeType === scopeType).map((role) => role._id);
+              if (scopeType === "SCHOOL") {
+                const schoolIds = await School.distinct("_id", scopeFilter([scope]));
+                allowed.push({ role: { $in: roleIds }, dep: { $in: schoolIds } });
+              } else {
+                allowed.push({ role: { $in: roleIds }, ...assignmentDependencyFilter(scope.scopeType, scope.dep) });
+              }
+            }
+          }
+          serverScope = { $nor: [{ roles: { $elemMatch: { $nor: allowed } } }] };
+        }
+      } else {
+        serverScope = scopeFilter(scopes, "school");
+      }
+      processedFilters = intersectFilters(processedFilters, serverScope);
+      let data = await this.dao.getAll(page, limit, processedFilters, sort, status);
       return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -593,7 +576,18 @@ class UserManager extends BaseManager {
       return formatApiReponse(true, "Logs saved successfully!", userActivity);
     }
     catch (err) {
-      return formatApiReponse(false, err.message, e);
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async delete(req) {
+    try {
+      const user = await this.dao.getById(req.params.id);
+      if (!user) return formatApiReponse(false, "User not found", null);
+      if (!await canManageUser(req.permissions, "user.delete", user)) throw new Error("User is not below your scope");
+      return formatApiReponse(true, "", await this.dao.delete(req.params.id));
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
     }
   }
 }

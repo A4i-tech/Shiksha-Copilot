@@ -20,19 +20,19 @@ parentPort.once("message", async (data) => {
         { header: "Teacher Name", key: "teacherName", width: 30 },
         { header: "School Name", key: "schoolName", width: 30 },
         { header: "Phone Number", key: "phoneNumber", width: 15 },
-        { header: "Type of Teacher", key: "teacherType", width: 15 },
+        { header: "Roles", key: "roles", width: 30 },
         { header: "Status of Teacher", key: "teacherStatus", width: 15 },
         { header: "Training Status", key: "trainingStatus", width: 15 },
       ];
 
       users.forEach((ele) => {
         userWorkSheet.addRow({
-          teacherName: ele.name,
+          teacherName: ele.identity.name,
           schoolName: ele.school.name,
-          phoneNumber: ele.phone,
-          teacherType: ele.role[0],
+          phoneNumber: ele.identity.phone,
+          roles: ele.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => assignment.role.name).join(", "),
           teacherStatus: ele.isDeleted ? "Inactive" : "Active",
-          trainingStatus: ele.trainingStatus === 'trained' ? 'Trained' : 'Untrained',
+          trainingStatus: ele.trainingStatus === "trained" ? "Trained" : "Untrained",
         });
       });
 

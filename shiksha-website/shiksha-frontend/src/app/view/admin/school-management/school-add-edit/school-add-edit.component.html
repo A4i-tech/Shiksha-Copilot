@@ -2,7 +2,7 @@
   <div class="flex content-center">
     <img
       src="assets/icons/back-arrow.svg"
-      routerLink="/school-management"
+      routerLink="/schools"
       alt=""
       class="cursor-pointer"
     />
@@ -20,7 +20,7 @@
 
       <button
         class="hidden btn-primary h-9"
-        routerLink="/school-management/add"
+        routerLink="/schools/add"
         (click)="blukUpload()"
       >
         <div class="flex content-center">
@@ -665,7 +665,7 @@
           <button
             *ngIf="mode === 'view'"
             class="btn-outline-primary h-9 w-full sm:w-[74px]"
-            routerLink="/school-management"
+            routerLink="/schools"
             type="button"
           >
             {{'Close' | translate}}
@@ -676,7 +676,7 @@
             *ngIf="mode === 'view'"
             (click)="editSchoolDetails()"
             type="button"
-            [hasPermission]="['admin']"
+            [hasPermission]="['school.edit']"
           >
             <div class="flex content-center">
               <span class="mr-[6px]">{{'Edit' | translate}}</span>
@@ -687,13 +687,13 @@
           <button
             *ngIf="mode !== 'view'"
             class="btn-outline-primary h-9 w-full sm:w-[74px]"
-            routerLink="/school-management"
+            routerLink="/schools"
             type="button"
           >
             {{'Cancel' | translate}}
           </button>
 
-          <button class="btn-primary h-9 w-full sm:w-auto" *ngIf="mode !== 'view'" [hasPermission]="['admin']" >
+          <button class="btn-primary h-9 w-full sm:w-auto" *ngIf="mode !== 'view'" [hasPermission]="['school.edit']" >
             <div class="flex items-center justify-center">
               <span class="mr-[6px]">{{'Save' | translate}}</span>
               <img src="assets/icons/check.svg" alt="" />

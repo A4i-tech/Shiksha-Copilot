@@ -1,7 +1,7 @@
 import { HelpComponent } from './help.component';
 
 describe('HelpComponent', () => {
-  const utility = (state: string) => ({ loggedInUserData: { state }, trustUrl: (url: string) => url });
+  const utility = (state: string) => ({ loggedInUserData: { school: { state }, profiles: {} }, trustUrl: (url: string) => url });
 
   it('shows Telugu videos in Telangana', () => {
     const component = new HelpComponent(utility('Telangana') as any);

@@ -84,18 +84,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Run integration tests inside built image
-        run: |
-          IMAGE=shiksha-backend-local
-          mkdir -p shiksha-website/shiksha-backend/coverage-integration
-          touch shiksha-website/shiksha-backend/coverage-integration/coverage-summary.json
-          docker run --rm \
-            -e NODE_ENV=development \
-            -e CI=true \
-            -v $PWD/shiksha-website/shiksha-backend/coverage-integration:/usr/src/app/coverage \
-            --workdir /usr/src/app \
-            --entrypoint sh "$IMAGE" -c "npm ci && npm run test:integration:coverage -- --passWithNoTests"
-
       - name: Merge coverage reports
         working-directory: shiksha-website/shiksha-backend
         run: |

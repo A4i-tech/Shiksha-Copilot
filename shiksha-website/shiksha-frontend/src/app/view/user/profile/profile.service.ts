@@ -16,7 +16,7 @@ export class ProfileService extends BaseRestService {
    */
   constructor(http: HttpClient) {
     super(http);
-    this.setUri('user');
+    this.setUri('');
   }
 
   /**
@@ -25,7 +25,7 @@ export class ProfileService extends BaseRestService {
    * @returns 
    */
   getProfileInfo(id: any): Observable<any>  {
-    return this.get(`get-profile/${id}`);
+    return this.http.get(`${this.baseUrl}/users/${id}/profile`);
   }
 
   /**
@@ -44,7 +44,7 @@ export class ProfileService extends BaseRestService {
    * @returns 
    */
   updateProfile(data:any):Observable<any>{
-    return this.put(`set-profile`,data);
+    return this.http.put(`${this.baseUrl}/profile`, data);
   }
 
   /**
@@ -57,7 +57,7 @@ export class ProfileService extends BaseRestService {
   }
 
   updatePreferedLanguage(language:any):Observable<any>{
-    return this.patch('update-language',{preferredLanguage:language})
+    return this.http.patch(`${this.baseUrl}/profile/language`, {preferredLanguage:language})
   }
 
   /**
@@ -68,11 +68,10 @@ export class ProfileService extends BaseRestService {
    uploadProfileImage(image:any):Observable<any>{
     const formData = new FormData();
     formData.append('file',image)
-    return this.post('upload-profile-image',formData)
+    return this.http.post(`${this.baseUrl}/profile/image`, formData)
   }
 
   removeProfileImage():Observable<any>{
-    return this.post('remove-profile-image',{})
+    return this.http.delete(`${this.baseUrl}/profile/image`)
   }
 }
-

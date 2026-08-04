@@ -75,22 +75,6 @@ def _send_alert(title: str, success: bool, body_facts: list[dict] | None = None,
     except Exception as exc:
         logger.warning("Failed to send alert webhook: %s", exc)
 
-ROLE_MAP = {
-    "power":    "HM",
-    "standard": "HM",
-    "hm":       "HM",
-    "crp":      "CRP",
-    "beo":      "BEO",
-    "meo":      "MEO",
-    "deo":      "DEO",
-    "ddpi":     "DDPI",
-    "admin":    "StateAdmin",
-    "manager":  "StateAdmin",
-    "state":    "StateAdmin",
-}
-STATE_ADMIN_ROLES = {"StateAdmin"}
-# roles that need no region lookup — RLS not applied
-SKIP_RLS_ROLES = {"StateAdmin"}
 # useractivities modules that represent AI feature usage
 AI_MODULES = {
     "lp-generation":            "lesson_plan_gen",
@@ -183,14 +167,20 @@ def main() -> None:
         # Read all MongoDB data before touching PostgreSQL so a Mongo failure
         # never leaves analytics tables empty.
         logger.info("Syncing dim_regions ...")
-        users_raw = list(db.users.find(
-            {"isDeleted": {"$ne": True}},
-            {"state": 1, "district": 1, "block": 1}
-        ))
+        regions_raw = list(db.regions.find({}))
+        roles = {str(role["_id"]): role for role in db.roles.find({"isDeleted": {"$ne": True}})}
 
         state_id = {}   # state_name       -> region_id
-        dist_id  = {}   # (state, dist)    -> region_id
-        block_id = {}   # (state, dist, b) -> region_id
+        zone_id  = {}   # (state, zone)    -> region_id
+        dist_id  = {}   # (state, zone, dist) -> region_id
+        block_id = {}   # (state, zone, dist, block) -> region_id
+        scope_region = {"STATE": {}, "ZONE": {}, "DISTRICT": {}, "BLOCK": {}}
+        scope_fields = {
+            "STATE": ("state",),
+            "ZONE": ("state", "zone"),
+            "DISTRICT": ("state", "zone", "district"),
+            "BLOCK": ("state", "zone", "district", "block"),
+        }
 
         # Truncate only after all MongoDB reads succeed — PostgreSQL TRUNCATE is
         # transactional so any subsequent failure rolls this back automatically.
@@ -206,52 +196,71 @@ def main() -> None:
         def _region_coords(name: str, rtype: str) -> tuple[float | None, float | None]:
             return REGION_COORDS.get((name.lower(), rtype), (None, None))
 
-        for s in sorted({u.get("state") for u in users_raw if u.get("state")}):
+        for region in regions_raw:
+            s = region.get("state")
+            if not s:
+                continue
             lat, lon = _region_coords(s, "state")
             cur.execute(
                 "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'state', NULL, %s, %s) RETURNING region_id",
                 (s, lat, lon)
             )
             state_id[s] = cur.fetchone()[0]
-
-        for u in users_raw:
-            s, d = u.get("state"), u.get("district")
-            if s and d and (s, d) not in dist_id:
-                lat, lon = _region_coords(d, "district")
+            scope_region["STATE"][(s,)] = state_id[s]
+            for zone in region.get("zones") or []:
+                z = zone.get("name")
+                if not z:
+                    continue
                 cur.execute(
-                    "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'district', %s, %s, %s) RETURNING region_id",
-                    (d, state_id.get(s), lat, lon)
+                    "INSERT INTO dim_regions (name, type, parent_id) VALUES (%s, 'zone', %s) RETURNING region_id",
+                    (z, state_id[s])
                 )
-                dist_id[(s, d)] = cur.fetchone()[0]
+                zone_id[(s, z)] = cur.fetchone()[0]
+                scope_region["ZONE"][(s, z)] = zone_id[(s, z)]
+                for district in zone.get("districts") or []:
+                    d = district.get("name")
+                    if not d:
+                        continue
+                    lat, lon = _region_coords(d, "district")
+                    cur.execute(
+                        "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'district', %s, %s, %s) RETURNING region_id",
+                        (d, zone_id[(s, z)], lat, lon)
+                    )
+                    dist_id[(s, z, d)] = cur.fetchone()[0]
+                    scope_region["DISTRICT"][(s, z, d)] = dist_id[(s, z, d)]
+                    for block in district.get("blocks") or []:
+                        b = block.get("name")
+                        if not b:
+                            continue
+                        lat, lon = _region_coords(b, "block")
+                        cur.execute(
+                            "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'block', %s, %s, %s) RETURNING region_id",
+                            (b, dist_id[(s, z, d)], lat, lon)
+                        )
+                        block_id[(s, z, d, b)] = cur.fetchone()[0]
+                        scope_region["BLOCK"][(s, z, d, b)] = block_id[(s, z, d, b)]
 
-        for u in users_raw:
-            s, d, b = u.get("state"), u.get("district"), u.get("block")
-            if s and d and b and (s, d, b) not in block_id:
-                lat, lon = _region_coords(b, "block")
-                cur.execute(
-                    "INSERT INTO dim_regions (name, type, parent_id, latitude, longitude) VALUES (%s, 'block', %s, %s, %s) RETURNING region_id",
-                    (b, dist_id.get((s, d)), lat, lon)
-                )
-                block_id[(s, d, b)] = cur.fetchone()[0]
-
-        logger.info("  %d states, %d districts, %d blocks", len(state_id), len(dist_id), len(block_id))
+        logger.info("  %d states, %d zones, %d districts, %d blocks", len(state_id), len(zone_id), len(dist_id), len(block_id))
 
         # ------------------------------------------------------------------ dim_schools
         logger.info("Syncing dim_schools ...")
         mongo_school_to_pg = {}  # str(mongo _id) -> pg school_id
+        school_region = {}       # str(mongo _id) -> pg region_id
 
         for sch in db.schools.find({"isDeleted": {"$ne": True}}):
-            s, d, b  = sch.get("state"), sch.get("district"), sch.get("block")
-            d_id     = dist_id.get((s, d))
-            b_id     = block_id.get((s, d, b)) or d_id
+            s, z, d, b = sch.get("state"), sch.get("zone"), sch.get("district"), sch.get("block")
+            d_id = dist_id.get((s, z, d))
+            b_id = block_id.get((s, z, d, b)) or d_id
             if not d_id:
                 continue
             cur.execute(
-                "INSERT INTO dim_schools (name, block_id, district_id, latitude, longitude) VALUES (%s, %s, %s, %s, %s) RETURNING school_id",
-                (sch.get("name", "Unknown"), b_id or d_id, d_id,
+                "INSERT INTO dim_schools (source_id, name, block_id, district_id, latitude, longitude) VALUES (%s, %s, %s, %s, %s, %s) RETURNING school_id",
+                (str(sch["_id"]), sch.get("name", "Unknown"), b_id or d_id, d_id,
                  sch.get("latitude") or None, sch.get("longitude") or None)
             )
-            mongo_school_to_pg[str(sch["_id"])] = cur.fetchone()[0]
+            school_key = str(sch["_id"])
+            mongo_school_to_pg[school_key] = cur.fetchone()[0]
+            school_region[school_key] = b_id
 
         logger.info("  %d schools", len(mongo_school_to_pg))
 
@@ -273,81 +282,18 @@ def main() -> None:
             )
             valid_user_ids.add(uid)
 
-        for u in db.users.find({"isDeleted": {"$ne": True}}):
-            roles  = u.get("role") or []
-            mapped = next((ROLE_MAP.get(r.lower()) for r in roles if ROLE_MAP.get((r or "").lower())), "HM")
-            s, d, b = u.get("state"), u.get("district"), u.get("block")
-            region  = block_id.get((s, d, b)) or dist_id.get((s, d)) or state_id.get(s) or fallback_region
-            _insert_user(str(u["_id"]), u.get("name", "Unknown"), mapped,
-                         mongo_school_to_pg.get(str(u.get("school"))), region)
-
-        # Build a reverse lookup: district_name -> first block region_id
-        # Used by DEO/DDPI resolution below.
-        dist_to_first_block: dict[str, int] = {}
-        for (s, d, b), rid in block_id.items():
-            if d not in dist_to_first_block:
-                dist_to_first_block[d] = rid
-
-        for u in db.adminusers.find({"isDeleted": {"$ne": True}}):
-            uid  = str(u["_id"])
-            name = u.get("name", "Unknown")
-            roles = [r.lower() for r in (u.get("role") or [])]
-            mapped = next(
-                (ROLE_MAP[r] for r in roles if r in ROLE_MAP),
-                None
-            )
-            if mapped is None:
-                logger.warning("adminuser %s has unmapped role %s — skipping", uid, roles)
-                continue
-
-            if mapped in SKIP_RLS_ROLES:
-                # StateAdmin: no scoping needed, use fallback region
-                _insert_user(uid, name, mapped, None, fallback_region)
-                continue
-
-            # --- role-specific region resolution ---
-            meta = u.get("metadata") or {}
-
-            if mapped == "HM":
-                school_ref = meta.get("school") or u.get("school")
-                school_pg  = mongo_school_to_pg.get(str(school_ref)) if school_ref else None
-                if not school_pg:
-                    logger.warning("adminuser HM %s: school %r not in dim_schools — skipping", uid, school_ref)
-                    continue
-                # region = block that school belongs to (already in dim_schools via block_id insert)
-                cur.execute("SELECT block_id FROM dim_schools WHERE school_id = %s", (school_pg,))
-                row = cur.fetchone()
-                region = row[0] if row else None
-
-            elif mapped in ("CRP", "BEO", "MEO"):
-                block_name = meta.get("block") or u.get("block")
-                if not block_name:
-                    logger.warning("adminuser %s (%s) missing block — skipping", uid, mapped)
-                    continue
-                # block_id dict is keyed (state, district, block); search by block name only
-                region = next(
-                    (rid for (_, _, b), rid in block_id.items() if b == block_name),
-                    None
-                )
-                if not region:
-                    logger.warning("adminuser %s: block %r not in dim_regions — skipping", uid, block_name)
-                    continue
-
-            elif mapped in ("DEO", "DDPI"):
-                dist_name = meta.get("district") or u.get("district")
-                if not dist_name:
-                    logger.warning("adminuser %s (%s) missing district — skipping", uid, mapped)
-                    continue
-                region = dist_to_first_block.get(dist_name)
-                if not region:
-                    logger.warning("adminuser %s: district %r has no blocks in dim_regions — skipping", uid, dist_name)
-                    continue
-
-            else:
-                logger.warning("adminuser %s: unhandled mapped role %s — skipping", uid, mapped)
-                continue
-
-            _insert_user(uid, name, mapped, None, region)
+        for user in db.users.find({"isDeleted": {"$ne": True}}):
+            assignments = [(roles.get(str(value.get("role"))), value.get("dep")) for value in user.get("roles") or []]
+            assignments = [(role, dep) for role, dep in assignments if role]
+            role_names = ", ".join(dict.fromkeys(role.get("name", "Unknown") for role, _ in assignments))
+            school_dep = next((str(dep) for role, dep in assignments if role.get("scopeType") == "SCHOOL" and dep), None)
+            region = school_region.get(school_dep)
+            if not region:
+                region = next((scope_region[role["scopeType"]].get(tuple(dep[field] for field in scope_fields[role["scopeType"]])) for role, dep in assignments if dep and role.get("scopeType") in scope_fields), None)
+            if not region and any(role.get("scopeType") in ("GLOBAL", "UNBOUND") for role, _ in assignments):
+                region = fallback_region
+            identity = user.get("identity") or {}
+            _insert_user(str(user["_id"]), identity.get("name", "Unknown"), role_names or "Unknown", mongo_school_to_pg.get(school_dep), region)
 
         logger.info("  %d users", len(valid_user_ids))
         if not valid_user_ids:

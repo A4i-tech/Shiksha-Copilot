@@ -27,6 +27,7 @@ describe("QuestionBankManager", () => {
 
     mockQuestionBankDao = {
       getTeacherQuestionPapers: jest.fn(),
+      getById: jest.fn(),
       saveQuestionBank: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -151,23 +152,25 @@ describe("QuestionBankManager", () => {
 
   describe("updateFeedback", () => {
     it("should update feedback successfully", async () => {
+      mockQuestionBankDao.getById.mockResolvedValue({ teacherId: "teacher-123" });
       mockQuestionBankDao.update.mockResolvedValue({});
 
       const result = await manager.updateFeedback("qb-123", {
         rating: 5,
         comments: "Great",
-      });
+      }, "teacher-123");
 
       expect(result.success).toBe(true);
       expect(result.message).toBe("Feedback submitted successfully");
     });
 
     it("should handle errors", async () => {
+      mockQuestionBankDao.getById.mockResolvedValue({ teacherId: "teacher-123" });
       mockQuestionBankDao.update.mockRejectedValue(
         new Error("Update failed")
       );
 
-      const result = await manager.updateFeedback("qb-123", {});
+      const result = await manager.updateFeedback("qb-123", {}, "teacher-123");
 
       expect(result.success).toBe(false);
       expect(result.message).toBe("Update failed");

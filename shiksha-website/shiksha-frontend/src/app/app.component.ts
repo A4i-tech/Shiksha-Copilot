@@ -6,7 +6,7 @@ import { UtilityService } from './core/services/utility.service';
 import { AuthorizationService } from './core/services/authorization.service';
 import { LoaderMessageService } from './core/services/loader-message.service';
 import { IdleService } from './shared/services/idle.service';
-import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD } from './shared/utility/constant.util';
+import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD, SESSION_VERSION } from './shared/utility/constant.util';
 
 @Component({
   selector: 'app-root',
@@ -20,14 +20,15 @@ export class AppComponent implements OnInit, OnDestroy {
   idleTime = Math.round((IDLE_WARNING_THRESHOLD + IDLE_START_THRESHOLD) / 60);
 
   private clipboardObserver: MutationObserver | null = null;
+  private handleBeforeUnload = () => this.idleService.stopWatching();
 
   constructor(
     private authService: SignInService,
     private utilityService: UtilityService,
-    private router: Router,
     private authorizationService: AuthorizationService,
     public loaderMessage: LoaderMessageService,
-    private idleService: IdleService
+    private idleService: IdleService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -53,26 +54,18 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.authorizationService.isLoggedIn()) {
       this.authService.authMe().subscribe({
         next: (res: any) => {
-          const user = res?.data ?? null;
-
-          if (user) {
-            localStorage.setItem('userData', JSON.stringify(user));
-          }
+          const user = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
+          localStorage.setItem('userData', JSON.stringify(user));
+          if (this.router.url === '/error/503') this.router.navigateByUrl('/');
         },
         error: (err: any) => {
-          this.utilityService.handleError(err);
+          if (err.status === 0 || err.status >= 500) this.router.navigate(['/error/503']);
+          else this.utilityService.handleError(err);
         }
       });
     }
 
-    window.addEventListener('beforeunload', this.handleBeforeUnload.bind(this));
-  }
-
-
-  // ------ User leaving tab/window ------
-  handleBeforeUnload(event: BeforeUnloadEvent): void {
-    console.log('User is about to close the tab or navigate away.');
-    this.idleService.stopWatching();
+    window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
   // ------ Idle modal close ------
@@ -83,20 +76,8 @@ export class AppComponent implements OnInit, OnDestroy {
     this.showIdleWarning = false;
   }
 
-  // ------ Update basic user data (legacy support) ------
-  updateUserData() {
-    this.authService.authMe().subscribe({
-      next: (res: any) => {
-        localStorage.setItem('userData', JSON.stringify(res?.data));
-      },
-      error: (err: any) => {
-        this.utilityService.handleError(err);
-      },
-    });
-  }
-
   ngOnDestroy(): void {
     this.clipboardObserver?.disconnect();
-    window.removeEventListener('beforeunload', this.handleBeforeUnload.bind(this));
+    window.removeEventListener('beforeunload', this.handleBeforeUnload);
   }
 }

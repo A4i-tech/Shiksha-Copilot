@@ -33,6 +33,7 @@ describe("SchoolController", () => {
       body: {},
       query: {},
       user: { _id: "user-1", name: "Test User" },
+      permissions: [],
       file: null,
     };
 
@@ -70,7 +71,7 @@ describe("SchoolController", () => {
 
       expect(mockManager.update).toHaveBeenCalledWith("1", {
         name: "Updated School",
-      });
+      }, mockReq.permissions);
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });

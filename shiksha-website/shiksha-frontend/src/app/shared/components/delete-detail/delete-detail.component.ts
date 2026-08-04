@@ -9,6 +9,8 @@ export interface DeleteDetailConfig {
   primaryButtonLabel: string;
   primaryButtonType: string;
   cancelButtonLabel?:string;
+  secondaryButtonLabel?: string;
+  secondaryButtonType?: string;
   idleTime?:number
 }
 

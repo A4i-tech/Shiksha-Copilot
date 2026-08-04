@@ -224,8 +224,8 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     }
     const userData: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(userData);
-    header.schoolName = loggedInUser?.school?.name;
-    header.teacherName = loggedInUser?.name;
+    header.schoolName = loggedInUser.school.name;
+    header.teacherName = loggedInUser.identity.name;
     header.reportGeneratedDate = this.planDetails?.createdAt;
     if (type === 'doc') {
       this.checkListExportService.generateChecklist(

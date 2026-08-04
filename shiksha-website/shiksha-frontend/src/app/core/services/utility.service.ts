@@ -6,6 +6,7 @@ import { Router } from '@angular/router';
 import { marked } from 'marked';
 import { ClipboardService } from 'ngx-clipboard';
 import { ToastrService } from 'ngx-toastr';
+import { PermissionGrant } from 'src/app/shared/interfaces/permission.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -31,9 +32,9 @@ export class UtilityService {
   };
 
 
-  get loggedInUserData(){
-    const userInfo : any = localStorage.getItem('userData') ?? null;
-   return JSON.parse(userInfo);
+  get loggedInUserData(): any {
+    const userInfo = localStorage.getItem('userData');
+    return userInfo ? JSON.parse(userInfo) : null;
   }
 
   /**
@@ -89,13 +90,19 @@ export class UtilityService {
    * @param premissions
    * @returns
    */
-  hasPermission(premissions: string[]) {
-    const data: any = localStorage.getItem('userData') ?? null;
-    const loggedInUser = JSON.parse(data) ;
-    if (loggedInUser) {
-      return premissions.some((element) => loggedInUser.role.includes(element));
-    }
-    return false;
+  hasPermission(permissions: string[]) {
+    return permissions.some((permission) => this.getPermission(permission));
+  }
+
+  getPermission(permission: string): PermissionGrant[] | null {
+    const user = this.loggedInUserData;
+    if (!user) return null;
+    const grants = user.permissions.filter((grant: PermissionGrant) => grant.permission === permission);
+    return grants.length ? grants : null;
+  }
+
+  hasGlobalPermission(permission: string): boolean {
+    return this.getPermission(permission)?.some((grant) => grant.scopeType === 'GLOBAL') === true;
   }
 
   /**
@@ -525,20 +532,4 @@ shuffleOptions(arr:any[]) {
     this.router.navigate(['/auth']);
   }  
 
-  /**
-   * Returns only the zones assigned to a manager for a given state.
-   * @param regionsData - The full regions data array
-   * @param user - The logged-in user object (should have .state and .zones)
-   * @returns Array of zone objects assigned to the manager for the user's state
-   */
-  getZonesForManager(regionsData: any[], user: any): any[] {
-    if (!user || !user.state || !user.zones || !Array.isArray(user.zones)) {
-      return [];
-    }
-    const stateObj = regionsData.find((state: any) => state.state === user.state);
-    if (!stateObj || !Array.isArray(stateObj.zones)) {
-      return [];
-    }
-    return stateObj.zones.filter((zone: any) => user.zones.includes(zone.name));
-  }
 }

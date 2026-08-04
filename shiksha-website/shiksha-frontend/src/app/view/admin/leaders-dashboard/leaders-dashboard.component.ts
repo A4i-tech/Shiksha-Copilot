@@ -41,7 +41,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    if (!environment.supersetUrl || !environment.supersetDashboardUuid) {
+    if (!environment.supersetUrl || !environment.supersetDashboardUuid || environment.supersetUrl.startsWith('your_') || environment.supersetDashboardUuid.startsWith('your_')) {
       this.error = 'Dashboard not configured.';
       this.loading = false;
       return;
@@ -86,6 +86,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
     const uuid = this.dashboardUuid;
     this.activeUuid = uuid;
     this.loading = true;
+    this.error = '';
     this.clearTimers();
     if (this.mountPoint?.nativeElement) {
       this.mountPoint.nativeElement.innerHTML = '';

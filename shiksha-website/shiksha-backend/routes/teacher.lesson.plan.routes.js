@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const TeacherLessonPlanController = require("../controllers/teacher.lesson.plan.controller.js");
-const { isAuthenticated } = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const {
 	validateTeacherLessonPlan,
 } = require("../validations/teacher.lesson.plan.validation.js");
@@ -43,6 +43,7 @@ router.get(
 router.post(
     "/teacher-lesson-plan/generate",
     isAuthenticated,
+    requirePermission("lesson-plan.generate"),
     asyncMiddleware(
         teacherLessonPlanController.generateContent.bind(
             teacherLessonPlanController
@@ -53,6 +54,7 @@ router.post(
 router.post(
     "/teacher-lesson-plan/regenerate",
     isAuthenticated,
+    requirePermission("lesson-plan.ai-enhance"),
     asyncMiddleware(
         teacherLessonPlanController.regenerateContent.bind(
             teacherLessonPlanController
@@ -63,6 +65,7 @@ router.post(
 router.post(
 	"/teacher-lesson-plan/retry",
 	isAuthenticated,
+	requirePermission("lesson-plan.generate"),
 	asyncMiddleware(
 		teacherLessonPlanController.retryLessonPlan.bind(
 			teacherLessonPlanController
@@ -73,6 +76,7 @@ router.post(
 router.post(
 	"/teacher-lesson-plan/section-ai-edit",
 	isAuthenticated,
+	requirePermission("lesson-plan.ai-enhance"),
 	asyncMiddleware(
 		teacherLessonPlanController.sectionAiEdit.bind(
 			teacherLessonPlanController
@@ -83,6 +87,7 @@ router.post(
 router.post(
 	"/teacher-lesson-plan/plan-ai-edit",
 	isAuthenticated,
+	requirePermission("lesson-plan.ai-enhance"),
 	asyncMiddleware(
 		teacherLessonPlanController.planAiEdit.bind(
 			teacherLessonPlanController
@@ -102,6 +107,7 @@ router.post(
 router.post(
     "/teacher-lesson-plan/lesson/:lessonPlanId/media",
 	isAuthenticated,
+    requirePermission("lesson-plan.edit"),
     asyncMiddleware(
         teacherLessonPlanController.lessonMediaUploads.bind(
             teacherLessonPlanController
@@ -112,6 +118,7 @@ router.post(
 router.delete(
     "/teacher-lesson-plan/lesson/:lessonPlanId/media",
 	isAuthenticated,
+    requirePermission("lesson-plan.edit"),
     asyncMiddleware(
         teacherLessonPlanController.deleteLessonMediaUploads.bind(
             teacherLessonPlanController
@@ -122,6 +129,7 @@ router.delete(
 router.post(
     "/teacher-lesson-plan/resource/:resourcePlanId/media",
 	isAuthenticated,
+    requirePermission("lesson-resource.edit"),
     asyncMiddleware(
         teacherLessonPlanController.resourceMediaUploads.bind(
             teacherLessonPlanController
@@ -132,6 +140,7 @@ router.post(
 router.delete(
     "/teacher-lesson-plan/resource/:resourcePlanId/media",
 	isAuthenticated,
+    requirePermission("lesson-resource.edit"),
     asyncMiddleware(
         teacherLessonPlanController.deleteResourceMediaUploads.bind(
             teacherLessonPlanController
@@ -175,6 +184,7 @@ router.get(
 router.post(
 	"/teacher-lesson-plan/presentation/:lessonPlanId",
 	isAuthenticated,
+	requirePermission("presentation.generate.lesson-plan"),
 	asyncMiddleware(
 		teacherLessonPlanController.generateLessonPlanPresentation.bind(
 			teacherLessonPlanController
@@ -195,6 +205,7 @@ router.get(
 router.delete(
 	"/teacher-lesson-plan/lesson/:lessonPlanId",
 	isAuthenticated,
+	requirePermission("lesson-plan.delete"),
 	asyncMiddleware(
 		teacherLessonPlanController.deleteLessonPlan.bind(
 			teacherLessonPlanController
@@ -205,6 +216,7 @@ router.delete(
 router.delete(
 	"/teacher-lesson-plan/resource/:resourcePlanId",
 	isAuthenticated,
+	requirePermission("lesson-resource.delete"),
 	asyncMiddleware(
 		teacherLessonPlanController.deleteResourcePlan.bind(
 			teacherLessonPlanController

@@ -4,6 +4,7 @@ const formatApiReponse = require("../helper/response");
 const SchoolDao = require("../dao/school.dao");
 const BoardDao = require("../dao/board.dao");
 const { getSemester, formatSubject } = require("../helper/formatter");
+const { schoolDependency } = require("../helper/permission.helper");
 
 /** @extends {BaseManager<MasterSubjectDao>} */
 class MasterSubjectManager extends BaseManager {
@@ -35,7 +36,7 @@ class MasterSubjectManager extends BaseManager {
 
 	async getByName(subjectName, user) {
 		try {
-			const school = await this.schoolDao.getById(user.school);
+			const school = await this.schoolDao.getById(schoolDependency(user.roles));
 
 			if (!school) {
 				return formatApiReponse(false, "Invalid school for teacher", null);

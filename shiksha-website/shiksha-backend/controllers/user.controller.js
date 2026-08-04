@@ -2,6 +2,7 @@ const handleError = require("../helper/handleError.js");
 const UserManager = require("../managers/user.manager.js");
 const BaseController = require("./base.controller.js");
 const User = require("../models/user.model.js");
+const { intersectFilters } = require("../helper/scope.helper");
 
 /** @extends {BaseController<UserManager>} */
 class UserController extends BaseController {
@@ -29,7 +30,7 @@ class UserController extends BaseController {
   async update(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.update(id, req.body);
+      let result = await this.manager.update(id, req.body, req.user);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -74,17 +75,11 @@ class UserController extends BaseController {
         return res.status(400).json({ error: "File not provided" });
       }
       const userId = req.user._id;
-      const userName = req.user.name;
+      const userName = req.user.identity.name;
 
-      const result = await this.manager.bulkUpload(
-        req.file.buffer,
-        userId.toString(),
-        userName
-      );
+      const result = await this.manager.bulkUpload(req.file.buffer, userId.toString(), userName, req.permissions);
       if (result.success)
-        return res.status(200).json({
-          message: "Bulk upload initiated , Please verify for audit logs!",
-        });
+        return res.status(200).json(result);
       handleError(result, res);
     } catch (err) {
       console.log("Error --> UserController -> bulkUpload()", err);
@@ -115,7 +110,7 @@ class UserController extends BaseController {
     try {
       const { id } = req.params;
 
-      let result = await this.manager.getById(id);
+      let result = await this.manager.getById(id, req.permissions, req.user._id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -133,25 +128,7 @@ class UserController extends BaseController {
   async getProfile(req, res) {
     try {
       const { id } = req.params;
-      const requesterId = String(req.user._id);
-      const isPrivileged =
-        req.user.role?.includes("admin") || req.user.role?.includes("manager");
-
-      if (!isPrivileged && id !== requesterId) {
-        return res.status(403).json({ success: false, message: "Forbidden" });
-      }
-
-      // Auth middleware already loaded the requester's own doc; reuse it
-      // for self-lookups instead of hitting the DB again.
-      const isSelfLookup = id === requesterId;
-      const cachedUser = isSelfLookup ? req.teacherUser || req.adminUser : null;
-      const cachedIsTeacher = isSelfLookup ? !!req.teacherUser : null;
-
-      let result = await this.manager.getProfileById(
-        id,
-        cachedUser,
-        cachedIsTeacher
-      );
+      let result = await this.manager.getProfileById(id, req.permissions, req.user._id);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -209,7 +186,7 @@ class UserController extends BaseController {
   async activate(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.activate(id);
+      let result = await this.manager.activate(id, req.permissions);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -225,7 +202,7 @@ class UserController extends BaseController {
   async deactivate(req, res) {
     try {
       const { id } = req.params;
-      let result = await this.manager.deactivate(id);
+      let result = await this.manager.deactivate(id, req.permissions);
 
       if (result.success) {
         return res.status(200).json(result);
@@ -266,9 +243,6 @@ class UserController extends BaseController {
       const { 
         page = 1, 
         limit = 10, 
-        role, 
-        zone, 
-        district,
         search,
         includeDeleted,
         filter = {}
@@ -276,51 +250,15 @@ class UserController extends BaseController {
       
       let processedFilter = { ...filter };
 
-      if (role) {
-        processedFilter.role = role;
-      }
-
-      // Modernized: Default to manager's zones/districts if not provided or empty
-      const userZones = req.user?.zones;
-      const userDistricts = req.user?.districts;
-      const userRoles = req.user?.role || [];
-      const isManager = Array.isArray(userRoles) ? userRoles.includes('manager') : userRoles === 'manager';
-
-      // Normalize possible empty string/array
-      const zoneIsEmpty = !zone || (Array.isArray(zone) && zone.length === 0) || (typeof zone === 'string' && zone.trim() === '');
-      const districtIsEmpty = !district || (Array.isArray(district) && district.length === 0) || (typeof district === 'string' && district.trim() === '');
-
-      if (isManager) {
-        if (zoneIsEmpty && userZones && userZones.length > 0) {
-          processedFilter.zone = userZones;
-        } else if (zone) {
-          processedFilter.zone = zone;
-        }
-        if (districtIsEmpty && userDistricts && userDistricts.length > 0) {
-          processedFilter.district = userDistricts;
-        } else if (district) {
-          processedFilter.district = district;
-        }
-      } else {
-        if (zone) {
-          processedFilter.zone = zone;
-        }
-        if (district) {
-          processedFilter.district = district;
-        }
-      }
-
-      // Handle search filter
       const searchFilter = {};
       if (search) {
-        const searchFields = ["name", "phone", "zone", "district"];
+        const searchFields = ["identity.name", "identity.phone", "school.zone", "school.district"];
         const regexExpressions = searchFields.map((field) => ({
           [field]: { $regex: new RegExp(search, "i") },
         }));
         searchFilter.$or = regexExpressions;
       }
 
-      // Handle includeDeleted status
       let status = {};
       if (includeDeleted === '2') {
         status = { isDeleted: true };
@@ -328,15 +266,17 @@ class UserController extends BaseController {
         status = { isDeleted: false };
       }
 
-      const mergedFilter = { ...processedFilter, ...searchFilter };
+      const mergedFilter = intersectFilters(processedFilter, searchFilter);
 
-      let result = await this.manager.getAll(
-        parseInt(page), 
-        parseInt(limit), 
-        mergedFilter,
-        {}, // sort object
-        status
-      );
+      let result = await this.manager.getAll({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        filters: mergedFilter,
+        sort: {},
+        status,
+        permissions: req.permissions,
+        permission: "user.view",
+      });
 
       if (result.success) {
         return res.status(200).json(result);

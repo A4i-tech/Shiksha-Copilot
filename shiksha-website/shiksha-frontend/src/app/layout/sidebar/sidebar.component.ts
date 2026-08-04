@@ -25,9 +25,7 @@ export class SidebarComponent {
     public utilitService: UtilityService,
     public sidebarService: SidebarService
   ) {
-    effect(()=>{
-      this.isSidebarOpen = this.sidebarService.sidebarOpen()
-    })
+    effect(() => this.isSidebarOpen = this.sidebarService.sidebarOpen());
   }
 
   closeSidebar(event: MouseEvent) {

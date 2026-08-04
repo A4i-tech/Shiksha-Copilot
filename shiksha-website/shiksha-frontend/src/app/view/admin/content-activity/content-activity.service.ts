@@ -44,11 +44,11 @@ export class ContentActivityService extends BaseRestService {
         params = params.set('filter[schoolId]', filters._id);
       }
     }
-    return this.get('get-content-activity', params);
+    return this.http.get<any>(`${this.baseUrl}/content-activity`, { params });
   }
 
-  getLessonPlanDetFrmContentActivity(id:any){
-    return this.http.get(`${this.baseUrl}/master-lesson/activity/${id}`);
+  getLessonPlanDetFrmContentActivity(id: any, activityId: string) {
+    return this.http.get(`${this.baseUrl}/master-lesson/activity/${id}`, { params: { activityId } });
   }
 
   exportContentActivities(filters?: { [key: string]: any }, search?: string): Observable<any> {
@@ -70,7 +70,6 @@ export class ContentActivityService extends BaseRestService {
         });
       }
 
-    return this.http.get<any>(`${this.baseUrl}/admin/content-activity/export`, { params: params });
+    return this.http.get<any>(`${this.baseUrl}/content-activity/export`, { params: params });
   }
 }
-

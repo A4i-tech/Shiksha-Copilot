@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, forwardRef, Input, Output } from '@angular/core';
+import { AfterViewInit, Component, EventEmitter, forwardRef, Input, Output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
-import { NgSelectModule } from '@ng-select/ng-select';
+import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
 import { TranslateModule } from '@ngx-translate/core';
 import { DropDownConfig, DropdownValue } from '../../interfaces/dropdown.interface';
 
@@ -13,7 +13,7 @@ import { DropDownConfig, DropdownValue } from '../../interfaces/dropdown.interfa
   styleUrls: ['./dropdown.component.scss'],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => DropdownComponent), multi: true }],
 })
-export class DropdownComponent implements ControlValueAccessor {
+export class DropdownComponent implements AfterViewInit, ControlValueAccessor {
   private static nextId = 0;
   readonly inputId = `dropdown-${DropdownComponent.nextId++}`;
   private readonly internalControl = new FormControl<DropdownValue | DropdownValue[] | null>(null);
@@ -23,12 +23,17 @@ export class DropdownComponent implements ControlValueAccessor {
   @Input() config!: DropDownConfig;
   @Input() submitted = false;
   @Input() mode = '';
+  @ViewChild(NgSelectComponent) select!: NgSelectComponent;
 
   @Output() valueChange = new EventEmitter<unknown>();
   @Output() valueUpdate = new EventEmitter<DropdownValue | DropdownValue[] | null>();
 
   onChange: (value: DropdownValue | DropdownValue[] | null) => void = () => {};
   onTouched: () => void = () => {};
+
+  ngAfterViewInit(): void {
+    this.select.searchInput.nativeElement.autocomplete = 'new-password';
+  }
 
   get control(): FormControl { return this.dropDownCtrl ?? this.internalControl; }
   get labelText(): string { return this.config.fieldName || this.config.labelTxt || this.config.placeHolderTxt; }

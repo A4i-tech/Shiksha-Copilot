@@ -1,10 +1,12 @@
 const TeacherTrainingBatch = require("../../../models/teacher.training.batch.model");
 const User = require("../../../models/user.model");
 const TeacherAbsent = require("../../../models/teacher.absent.model");
+const School = require("../../../models/school.model");
 
 jest.mock("../../../models/teacher.training.batch.model");
 jest.mock("../../../models/user.model");
 jest.mock("../../../models/teacher.absent.model");
+jest.mock("../../../models/school.model");
 jest.mock("../../../managers/teacher.training.batch.manager");
 jest.mock("../../../services/azure.blob.service");
 
@@ -20,7 +22,8 @@ describe("TeacherTrainingBatchController", () => {
     teacherTrainingBatchController = require("../../../controllers/teacher.training.batch.controller");
 
     mockReq = {
-      user: { _id: "user-123", role: ["admin"] },
+      user: { _id: "user-123" },
+      permissions: [],
       params: {},
       query: {},
       body: {},
@@ -72,10 +75,9 @@ describe("TeacherTrainingBatchController", () => {
 
   describe("getTeacherTrainingStats", () => {
     it("should get training stats successfully", async () => {
-      const mockTeachers = [{ _id: "teacher-1" }, { _id: "teacher-2" }];
-      User.find = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockTeachers),
-      });
+      User.distinct = jest.fn().mockResolvedValue(["teacher-1", "teacher-2"]);
+      School.distinct = jest.fn().mockResolvedValue(["school-1"]);
+      mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
 
       const mockBatches = [
         {
@@ -88,6 +90,7 @@ describe("TeacherTrainingBatchController", () => {
 
       await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
 
+      expect(User.distinct).toHaveBeenCalledWith("_id", { "profiles.teacher": { $exists: true }, "roles.dep": { $in: ["school-1"] } });
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({

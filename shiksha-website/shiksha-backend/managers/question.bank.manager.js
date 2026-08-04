@@ -26,6 +26,7 @@ const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.
 const logger = require("../config/loggers");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
 const { getBlobContent } = require("../services/azure.blob.service");
+const School = require("../models/school.model");
 
 // really we should look at dropping the 'aliases' field here. ideally db.lba_questions should use lower-case key
 // as the 'answerType' (e.g., 'answer_short' instead of 'short_answer'/'short_answers'). right now, 'aliases' is
@@ -107,6 +108,16 @@ class QuestionBankManager extends BaseManager {
         filters,
         sort
       );
+      return formatApiReponse(true, "", data);
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async getById(req) {
+    try {
+      const data = await this.dao.getById(req.params.id);
+      if (!data || String(data.teacherId) !== String(req.user._id)) return formatApiReponse(false, "Question paper not found", null);
       return formatApiReponse(true, "", data);
     } catch (err) {
       return formatApiReponse(false, err.message, err);
@@ -440,10 +451,12 @@ class QuestionBankManager extends BaseManager {
       processedUnitNames,
       unitLevel
     } = context;
+    const schoolIds = [...new Set(user.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => String(assignment.dep)))];
+    const school = schoolIds.length === 1 ? await School.findById(schoolIds[0]).select("name").lean() : null;
 
     let questionBankData = {
       metadata: {
-        schoolName: user?.school?.name,
+        ...(school && { schoolName: school.name }),
         language: language,
       },
       questions: mergedList,
@@ -769,8 +782,10 @@ class QuestionBankManager extends BaseManager {
     return formatApiReponse(true, 'Grammar topics retrieved', topics);
   }
 
-  async updateFeedback(questionBankId, feedbackData) {
+  async updateFeedback(questionBankId, feedbackData, teacherId) {
     try {
+      const paper = await this.dao.getById(questionBankId);
+      if (!paper || String(paper.teacherId) !== String(teacherId)) return formatApiReponse(false, "Question paper not found", null);
       await this.dao.update(questionBankId, feedbackData);
       return formatApiReponse(true, "Feedback submitted successfully", null);
     } catch (err) {

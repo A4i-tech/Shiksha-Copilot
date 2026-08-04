@@ -19,7 +19,8 @@ const schoolRoutes = require("./routes/school.routes");
 const schoolClassRoutes = require("./routes/school.class.routes");
 const regionRoutes = require("./routes/region.routes");
 const authRoutes = require("./routes/auth.routes");
-const adminRoutes = require("./routes/admin.user.routes");
+const contentActivityRoutes = require("./routes/content.activity.routes");
+const roleRoutes = require("./routes/role.routes");
 const presentationRoutes = require("./routes/presentation.routes");
 const resourceRoutes = require("./routes/facility.routes");
 const scheduleRoutes = require("./routes/schedule.routes");
@@ -67,7 +68,8 @@ app.use("/api", schoolRoutes);
 app.use("/api", schoolClassRoutes);
 app.use("/api", regionRoutes);
 app.use("/api", authRoutes);
-app.use("/api", adminRoutes);
+app.use("/api", contentActivityRoutes);
+app.use("/api", roleRoutes);
 app.use("/api", resourceRoutes);
 app.use("/api", scheduleRoutes);
 app.use("/api", masterSubjectRoutes);
@@ -87,6 +89,7 @@ app.use('/api', teacherAbsentRoutes);
 app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
 app.use('/api', supersetRoutes);
+if (process.env.SHIKSHA_DEVTOOLS === "true") app.use("/api/devtools", require("./routes/devtools.routes"));
 
 process.on('unhandledRejection', (reason, promise) => {
 	console.log(promise, reason);

@@ -2,6 +2,7 @@ const QuestionBankManager = require("../managers/question.bank.manager");
 const BaseController = require("./base.controller");
 const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
+const { intersectFilters } = require("../helper/scope.helper");
 const ObjectId = mongoose.Types.ObjectId;
 
 /** @extends {BaseController<QuestionBankManager>} */
@@ -51,7 +52,7 @@ class QuestionBankController extends BaseController {
           return res.status(400).json({ error: "Invalid _id format" });
         }
       }
-      const mergedFilter = { ...transformedFilter, ...searchFilter, fields };
+      const mergedFilter = { ...intersectFilters(transformedFilter, searchFilter), fields };
 
       const result = await this.manager.getTeacherQuestionPapers(
         teacherId,
@@ -105,9 +106,11 @@ class QuestionBankController extends BaseController {
       const feedback = req.body;
       const result = await this.manager.updateFeedback(
         questionBankId,
-        feedback
+        feedback,
+        req.user._id
       );
-      return res.status(200).json(result);
+      if (result.success) return res.status(200).json(result);
+      return handleError(result, res);
     } catch (err) {
       console.log("Error --> QuestionBankController -> updateFeedback()", err);
       return res.status(400).json(err);

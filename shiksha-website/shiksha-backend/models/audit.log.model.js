@@ -19,7 +19,7 @@ const auditLogSchema = new Schema(
     },
     userId:{
       type: ObjectId,
-			ref: "AdminUser",
+			ref: "User",
 			required: true,
     },
     name: {

@@ -34,7 +34,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
-  loggedInUser: any;
+  teacherProfile: any;
+  preferredLanguage!: string;
 
   allAvailableQuestions: any[] = [];
   isLoadingQuestions: boolean = false;
@@ -84,6 +85,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   ];
   questionBankTypeValue = 'singleChapter';
   questionBankObjectives: any[] = [];
+  initialQuestionBankObjectives: any[] = [];
 
   totalMarks = 0;
   totalPercentage = 100;
@@ -118,9 +120,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const data: string = localStorage.getItem('userData') ?? '';
     if (data) {
-      this.loggedInUser = JSON.parse(data);
-      this.getBoardsList(this.loggedInUser);
+      const user = JSON.parse(data);
+      this.teacherProfile = user.profiles.teacher;
+      this.preferredLanguage = user.preferredLanguage;
     }
+    this.getBoardsList();
 
     this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...LOC_LANGUAGES.flatMap(item => item.value)];
     this.setPreferredLanguage();
@@ -184,10 +188,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   get f(): any { return this.questionBankConfigForm.controls; }
 
-  getBoardsList(userDetails: any) {
-    if (!userDetails || !userDetails.classes) return;
-
-    const rawClasses = userDetails.classes;
+  getBoardsList() {
+    const rawClasses = this.teacherProfile.classes;
     const uniqueBoards = new Set<string>();
 
     rawClasses.forEach((c: any) => {
@@ -214,7 +216,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     if (val) {
       const boardName = val.board;
-      const uniqueClasses = new Set(this.loggedInUser.classes.filter((c: any) => c.board === boardName).map((c: any) => c.class));
+      const uniqueClasses = new Set(this.teacherProfile.classes.filter((c: any) => c.board === boardName).map((c: any) => c.class));
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
         .sort((a, b) => parseInt(a.class) - parseInt(b.class));
@@ -269,7 +271,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = val.class;
       const selectedBoard = this.f.board.value;
       const uniqueMediums = new Set<string>();
-      this.loggedInUser.classes.forEach((c: any) => {
+      this.teacherProfile.classes.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium) {
           uniqueMediums.add(c.medium);
         }
@@ -297,7 +299,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
       const subjectMap = new Map<string, string>();
-      this.loggedInUser.classes.forEach((c: any) => {
+      this.teacherProfile.classes.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === val.medium && c.subject) {
           const formatted = this.formatSubjectName(c.subject);
           if (!subjectMap.has(formatted)) subjectMap.set(formatted, c.subject);
@@ -316,7 +318,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   private setPreferredLanguage(): void {
-    this.f.language.setValue(this.loggedInUser.preferredLanguage);
+    this.f.language.setValue(this.preferredLanguage);
   }
 
   formatSubjectName(subject: string): string {
@@ -356,6 +358,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         next: ({ config, chapters }: any) => {
           this.paperQuestionTypes = config.questionTypes;
           this.questionBankObjectives = structuredClone(config.objectives);
+          this.initialQuestionBankObjectives = structuredClone(config.objectives);
           this.updateSourceOptions(config.questionSources);
           this.chapterDropdownOptions = chapters.map((ch: any) => ({
             ...ch,
@@ -657,7 +660,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const finalId = res.data?._id;
         if (finalId) {
           this.utilityservice.showSuccess('Question Paper Created Successfully!');
-          this.router.navigate([`/question-paper/view/${finalId}`]);
+          this.router.navigate([`/question-papers/view/${finalId}`]);
         } else {
           this.utilityservice.showError("Paper created but ID not found.");
         }
@@ -853,6 +856,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   calculateTotalPercentage(i: any) {
     this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentageDistribution), 0);
   }
+  resetQuestionDistribution() {
+    this.questionBankObjectives = structuredClone(this.initialQuestionBankObjectives);
+    this.calculateTotalPercentage(null);
+    this.distributeMarks();
+  }
   resetDistribution() {
     this.f.chapter.reset();
     this.f.subTopic.reset();
@@ -861,6 +869,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.hasSubtopics = false;
     this.marksDistribution = [];
     this.questionBankObjectives = [];
+    this.initialQuestionBankObjectives = [];
     this.paperQuestionTypes = [];
     this.syncDependentDropdowns();
   }
@@ -908,7 +917,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.syncDependentDropdowns();
   }
 
-  backNavigation() { this.router.navigate(['/question-paper']); }
+  backNavigation() { this.router.navigate(['/question-papers']); }
   previousStep() { if (this.currentStep > 1) this.currentStep--; }
   ngOnDestroy(): void { this.idleService.resetIdler(); }
 }

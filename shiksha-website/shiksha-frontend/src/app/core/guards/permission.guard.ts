@@ -8,11 +8,6 @@ import { UtilityService } from '../services/utility.service';
 export const PermissionGuard: CanActivateFn = (
   route: ActivatedRouteSnapshot,
 ) => {
-  const utilityServcie = inject(UtilityService);
-
-  if (utilityServcie.hasPermission(route.data?.['permissions'])) {
-    return true;
-  } else {
-    return false;
-  }
+  const utility = inject(UtilityService);
+  return utility.hasPermission(route.data['permissions']);
 };

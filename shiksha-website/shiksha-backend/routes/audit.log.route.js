@@ -2,10 +2,13 @@ const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const AuditLogController = require("../controllers/audit.log.controller.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const auditLogController  = new AuditLogController();
 
 router.get(
     "/audit/log",
+    isAuthenticated,
+    requirePermission("audit.view"),
     asyncMiddleware(auditLogController.getAll.bind(auditLogController)
 ));
 

@@ -64,56 +64,15 @@ describe("worker modules", () => {
   });
 
   const mockDbSimple = () => {
+    const client = {
+      startSession: jest.fn(() => ({ withTransaction: async (fn) => fn(), endSession: jest.fn() })),
+      close: jest.fn(),
+    };
     jest.doMock("../../../config/db.js", () => ({
-      getConnection: jest.fn(() =>
-        Promise.resolve({
-          startSession: jest.fn(() => ({
-            withTransaction: async (fn) => fn(),
-            endSession: jest.fn(),
-          })),
-          close: jest.fn(),
-        })
-      ),
-      connectToMongoForWorker: jest.fn(() =>
-        Promise.resolve({ client: { close: jest.fn() }, openedHere: true })
-      ),
+      getConnection: jest.fn(() => Promise.resolve(client)),
+      connectToMongoForWorker: jest.fn(() => Promise.resolve({ client, openedHere: true })),
     }));
   };
-
-  it("exportcontentactivityworker posts success message", async () => {
-    const { parentPort } = workerMocks();
-    jest.doMock("worker_threads", () => ({ parentPort }));
-    jest.doMock("exceljs", () => makeExcelMock());
-    mockDbSimple();
-    const uploadToStorage = jest.fn(() => Promise.resolve("url"));
-    jest.doMock("../../../services/e2e.storage.service", () => ({
-      uploadToStorage,
-    }));
-    const create = jest.fn(() => Promise.resolve());
-    jest.doMock("../../../models/audit.log.model", () => ({ create }));
-
-    require("../../../worker/exportcontentactivityworker");
-    await Promise.resolve();
-
-    await parentPort.emit("message", {
-      contentActivities: [
-        {
-          userName: "u",
-          genContent: "c",
-          createdAt: "now",
-          teacherLessonPlanStatus: "done",
-        },
-      ],
-      userId: "1",
-      userName: "tester",
-    });
-
-    expect(uploadToStorage).toHaveBeenCalled();
-    expect(create).toHaveBeenCalled();
-    expect(parentPort.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true })
-    );
-  });
 
   it("exportschoolworker posts success message", async () => {
     const { parentPort } = workerMocks();
@@ -171,10 +130,9 @@ describe("worker modules", () => {
     await parentPort.emit("message", {
       users: [
         {
-          name: "T",
+          identity: { name: "T", phone: "1" },
+          roles: [{ role: { name: "Teacher", scopeType: "SCHOOL" } }],
           school: { name: "S" },
-          phone: "1",
-          role: ["teacher"],
           isDeleted: false,
           trainingStatus: "trained",
         },
@@ -270,6 +228,7 @@ describe("worker modules", () => {
         ],
         userId: "u1",
         userName: "tester",
+        permissions: [{ permission: "user.import", scopeType: "GLOBAL", dep: null }],
       },
     }));
     mockDbSimple();
@@ -280,6 +239,11 @@ describe("worker modules", () => {
     jest.doMock("../../../models/user.model", () => ({
       findOne: jest.fn(() => Promise.resolve(null)),
       insertMany: jest.fn((rows) => Promise.resolve(rows)),
+    }));
+    jest.doMock("../../../models/role.model", () => ({
+      find: jest.fn(() => ({
+        select: jest.fn(() => Promise.resolve([{ _id: "role-teacher", name: "Teacher", scopeType: "SCHOOL" }])),
+      })),
     }));
     jest.doMock("../../../models/school.model", () => ({
       findOne: jest.fn(() =>

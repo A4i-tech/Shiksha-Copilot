@@ -146,7 +146,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   ngOnInit(): void {
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
-    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedInUser.classes);
+    this.boardDropdownOptions = this.utilityservice.formatResponse(loggedInUser.profiles.teacher.classes);
 
     if (this.boardDropdownOptions.length === 1) {
       this.selectedBoard = this.boardDropdownOptions[0].board;
@@ -336,19 +336,6 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
         .map((item: PresentationListItem) => this.mapPresentationJob(item));
       render();
     }));
-  }
-
-  getBoardsList(userDetails: any) {
-    let classList = [];
-    classList = this.utilityservice.formatResponse(userDetails.classes);
-
-    this.boardDropdownOptions = classList;
-    if(this.boardDropdownOptions.length === 1){
-      console.log(this.boardDropdownOptions[0].board);
-      
-      this.boarddropdown.selectedItem = this.boardDropdownOptions[0].board;
-    }
-
   }
 
   onView(data: any) {

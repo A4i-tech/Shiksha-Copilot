@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
-const { isAuthenticated } = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
+const { getPermission } = require("../helper/permission.helper.js");
 const AuditLog = require("../models/audit.log.model.js");
 
 const SUPERSET_URL = process.env.SUPERSET_URL;
@@ -19,50 +20,26 @@ function _authCacheValid() {
   return _authCache && _authCache.expiresAt > Date.now() + 30_000;
 }
 
-// TODO(RLS): AdminUser.role is currently restricted to ["manager","admin"] by the
-// Mongoose enum, so only StateAdmin is reachable here. All dashboard viewers see
-// state-wide data — per-role scoping (HM/CRP/BEO/DEO/DDPI) is intentionally deferred
-// until the role model is extended. Tracked in issue #XXX.
-const ROLE_MAP = {
-  power: "HM", standard: "HM", hm: "HM",
-  crp: "CRP", beo: "BEO", meo: "MEO",
-  deo: "DEO", ddpi: "DDPI",
-  admin: "StateAdmin", manager: "StateAdmin", state: "StateAdmin",
-};
-
-function mapRole(roles = []) {
-  for (const r of roles) {
-    const mapped = ROLE_MAP[(r || "").toLowerCase()];
-    if (mapped) return mapped;
-  }
-  return "HM";
+function sql(value) {
+  return `'${String(value).replaceAll("'", "''")}'`;
 }
 
-// uid is a MongoDB ObjectId hex string — validate before interpolating into SQL
-function assertSafeId(uid) {
-  if (!/^[a-f0-9]{24}$/.test(uid)) throw new Error(`Unsafe user id: ${uid}`);
-}
-
-function buildRlsClause(uid, mappedRole) {
-  assertSafeId(uid);
-  switch (mappedRole) {
-    case "StateAdmin":
-      return null;
-    case "HM":
-      // school-level: only teachers at same school
-      return `user_id IN (SELECT user_id FROM dim_users WHERE school_id = (SELECT school_id FROM dim_users WHERE user_id = '${uid}'))`;
-    case "CRP":
-    case "BEO":
-    case "MEO":
-      // block-level: teachers in same region (block)
-      return `user_id IN (SELECT user_id FROM dim_users WHERE region_id = (SELECT region_id FROM dim_users WHERE user_id = '${uid}'))`;
-    case "DEO":
-    case "DDPI":
-      // district-level: all blocks under same district parent
-      return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (SELECT r.region_id FROM dim_regions r WHERE r.parent_id = (SELECT dr.parent_id FROM dim_regions dr JOIN dim_users du ON du.region_id = dr.region_id WHERE du.user_id = '${uid}')))`;
-    default:
-      return `user_id = '${uid}'`;
-  }
+function buildRlsClause(scopes) {
+  if (scopes.some((scope) => scope.scopeType === "GLOBAL")) return null;
+  const clauses = scopes.map((scope) => {
+    if (scope.scopeType === "UNBOUND") return "FALSE";
+    if (scope.scopeType === "SCHOOL") {
+      return `user_id IN (SELECT user_id FROM dim_users WHERE school_id IN (SELECT school_id FROM dim_schools WHERE source_id = ${sql(scope.dep)}))`;
+    }
+    const starts = {
+      STATE: `SELECT s.region_id FROM dim_regions s WHERE s.type = 'state' AND s.name = ${sql(scope.dep.state)}`,
+      ZONE: `SELECT z.region_id FROM dim_regions z JOIN dim_regions s ON z.parent_id = s.region_id WHERE z.type = 'zone' AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
+      DISTRICT: `SELECT d.region_id FROM dim_regions d JOIN dim_regions z ON d.parent_id = z.region_id JOIN dim_regions s ON z.parent_id = s.region_id WHERE d.type = 'district' AND d.name = ${sql(scope.dep.district)} AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
+      BLOCK: `SELECT b.region_id FROM dim_regions b JOIN dim_regions d ON b.parent_id = d.region_id JOIN dim_regions z ON d.parent_id = z.region_id JOIN dim_regions s ON z.parent_id = s.region_id WHERE b.type = 'block' AND b.name = ${sql(scope.dep.block)} AND d.name = ${sql(scope.dep.district)} AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
+    };
+    return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (WITH RECURSIVE scoped AS (${starts[scope.scopeType]} UNION ALL SELECT child.region_id FROM dim_regions child JOIN scoped parent ON child.parent_id = parent.region_id) SELECT region_id FROM scoped))`;
+  });
+  return clauses.length ? `(${clauses.join(" OR ")})` : "FALSE";
 }
 
 async function getSupersetAuth() {
@@ -104,7 +81,7 @@ async function getSupersetAuth() {
 
 // POST /api/superset/guest-token
 // Returns a short-lived Superset guest token scoped to the logged-in user.
-router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
+router.post("/superset/guest-token", isAuthenticated, requirePermission("analytics.view"), async (req, res) => {
   try {
     if (!SUPERSET_URL || !SUPERSET_ADMIN_USERNAME || !SUPERSET_ADMIN_PASSWORD || !SUPERSET_DASHBOARD_UUID) {
       return res.status(503).json({ error: "Superset not configured (missing env vars)" });
@@ -113,19 +90,16 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
     const mongoUser = req.user;
     if (!mongoUser) return res.status(401).json({ error: "No authenticated user" });
 
-    const roles = mongoUser.role || [];
-    const mappedRole = mapRole(roles);
     const uid = String(mongoUser._id);
-
-    const rlsClause = buildRlsClause(uid, mappedRole);
+    const rlsClause = buildRlsClause(getPermission(req.permissions, "analytics.view"));
 
     const { accessToken: adminToken, csrfToken, cookieHeader } = await getSupersetAuth();
 
     const body = {
       user: {
         username: uid,
-        first_name: (mongoUser.name || "").split(" ")[0] || "User",
-        last_name:  (mongoUser.name || "").split(" ").slice(1).join(" "),
+        first_name: (mongoUser.identity.name || "").split(" ")[0] || "User",
+        last_name:  (mongoUser.identity.name || "").split(" ").slice(1).join(" "),
       },
       resources: [
         { type: "dashboard", id: SUPERSET_DASHBOARD_UUID },
@@ -164,7 +138,7 @@ router.post("/superset/guest-token", isAuthenticated, async (req, res) => {
       eventType: "Dashboard Token",
       status: "success",
       userId: mongoUser._id,
-      name: mongoUser.name || "Unknown",
+      name: mongoUser.identity.name || "Unknown",
     }).catch((e) => console.error("[superset] audit log failed:", e.message));
 
     res.json({ token });

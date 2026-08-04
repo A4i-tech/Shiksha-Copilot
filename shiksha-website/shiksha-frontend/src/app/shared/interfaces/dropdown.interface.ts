@@ -22,6 +22,7 @@ export interface DropDownConfig {
   wrapValue?: boolean;
   bindLabel?: string;
   bindValue?: string;
+  showDescription?: boolean;
   selectAllOption?: boolean;
   selectAllValue?: string;
   required?: boolean;

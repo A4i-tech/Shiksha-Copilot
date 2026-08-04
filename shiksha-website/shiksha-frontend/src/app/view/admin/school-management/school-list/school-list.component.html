@@ -25,7 +25,7 @@
         <button
           class="btn-outline-primary h-9 w-full sm:w-auto"
           (click)="blukUpload()"
-          [hasPermission]="['admin']"
+          [hasPermission]="['school.edit']"
         >
           <div class="flex items-center justify-center gap-2">
             <img src="assets/icons/upload.svg" alt="" />
@@ -35,8 +35,8 @@
     
         <button
           class="btn-primary h-9 w-full sm:w-auto"
-          routerLink="/school-management/add"
-          [hasPermission]="['admin']"
+          routerLink="/schools/add"
+          [hasPermission]="['school.edit']"
         >
           <div class="flex items-center justify-center gap-2">
             <img src="assets/icons/add.svg" alt="" />
@@ -60,6 +60,7 @@
       
       <div class="w-full min-w-0">
         <app-dropdown
+          #stateDropdown
           [dropDownValues]="stateDropdownOptions"
           [config]="stateDropdownconfig"
           (valueUpdate)="onFilterChange('state', $event)"
@@ -143,7 +144,7 @@
               <li
                 class="h-10 hover:bg-shade-80 cursor-pointer"
                 (click)="editSchool(schoolData._id)"
-                [hasPermission]="['admin']"
+                [hasPermission]="['school.edit']"
               >
                 <a
                   class="block px-4 py-2 text-sm text-content"
@@ -156,7 +157,7 @@
                 </a>
               </li>
 
-              <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['admin']">
+              <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                 <a
                   class="block px-4 py-2 text-sm text-content"
                   role="menuitem"
@@ -168,7 +169,7 @@
                   </div>
                 </a>
               </li>
-              <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+              <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                 <a
                   class="block px-4 py-2 text-sm text-content"
                   role="menuitem"
@@ -308,7 +309,7 @@
                     <li
                       class="h-10 hover:bg-shade-80 cursor-pointer"
                       (click)="editSchool(schoolData._id)"
-                      [hasPermission]="['admin']"
+                      [hasPermission]="['school.edit']"
                     >
                       <a
                         class="block px-4 py-2 text-sm text-content"
@@ -325,7 +326,7 @@
                       </a>
                     </li>
   
-                    <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['admin']">
+                    <li *ngIf="!schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                       <a
                         class="block px-4 py-2 text-sm text-content"
                         role="menuitem"
@@ -341,7 +342,7 @@
                         </div>
                       </a>
                     </li>
-                    <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer">
+                    <li *ngIf="schoolData.isDeleted" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" [hasPermission]="['school.delete']">
                       <a
                         class="block px-4 py-2 text-sm text-content"
                         role="menuitem"

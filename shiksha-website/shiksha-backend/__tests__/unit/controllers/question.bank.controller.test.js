@@ -178,7 +178,7 @@ describe("QuestionBankController", () => {
 
       await controller.updateFeedback(mockReq, mockRes);
 
-      expect(mockManager.updateFeedback).toHaveBeenCalledWith("qb-123", mockReq.body);
+      expect(mockManager.updateFeedback).toHaveBeenCalledWith("qb-123", mockReq.body, "teacher-123");
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });

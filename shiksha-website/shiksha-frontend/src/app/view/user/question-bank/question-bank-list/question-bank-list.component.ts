@@ -115,9 +115,9 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   ngAfterViewInit(): void {
-    const loggedUSer = this.utilityService.loggedInUserData;
+    const loggedInUser = this.utilityService.loggedInUserData;
     this.boardDropdownOptions = this.utilityService.formatResponse(
-      loggedUSer.classes
+      loggedInUser.profiles.teacher.classes
     );
 
     if (this.boardDropdownOptions.length === 1) {
@@ -259,7 +259,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   viewQuestionPaper(id: any) {
-    this.router.navigate([`/question-paper/view/${id}`]);
+    this.router.navigate([`/question-papers/view/${id}`]);
   }
 
   ngOnDestroy(): void {

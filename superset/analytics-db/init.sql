@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS dim_regions (
     region_id   SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
-    type        TEXT NOT NULL CHECK (type IN ('state', 'district', 'block')),
+    type        TEXT NOT NULL CHECK (type IN ('state', 'zone', 'district', 'block')),
     parent_id   INT REFERENCES dim_regions(region_id),
     latitude    DOUBLE PRECISION,
     longitude   DOUBLE PRECISION
@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS dim_regions (
 
 CREATE TABLE IF NOT EXISTS dim_schools (
     school_id   SERIAL PRIMARY KEY,
+    source_id   TEXT UNIQUE,
     name        TEXT NOT NULL,
     block_id    INT NOT NULL REFERENCES dim_regions(region_id),
     district_id INT NOT NULL REFERENCES dim_regions(region_id),
@@ -23,7 +24,7 @@ CREATE TABLE IF NOT EXISTS dim_schools (
 CREATE TABLE IF NOT EXISTS dim_users (
     user_id     TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
-    role        TEXT NOT NULL CHECK (role IN ('HM', 'CRP', 'BEO', 'MEO', 'DEO', 'DDPI', 'StateAdmin')),
+    role        TEXT NOT NULL,
     school_id   INT REFERENCES dim_schools(school_id),
     region_id   INT NOT NULL REFERENCES dim_regions(region_id)
 );

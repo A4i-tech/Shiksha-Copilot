@@ -102,21 +102,9 @@ export class AppModule {
    */
   constructor(private translateService: TranslateService) {
     const data: string = localStorage.getItem('userData') ?? '';
-    const preferredLanguage = data ? JSON.parse(data)?.preferredLanguage : undefined;
-    if (preferredLanguage) {
-      this.translateService.use(preferredLanguage);
-    } else {
-      this.translateService.use(this.mapBrowserLanguage(navigator.language));
+    if(data){
+      const loggedInUser = JSON.parse(data);
+      this.translateService.use(loggedInUser.preferredLanguage);
     }
-  }
-
-  /**
-   * Maps a browser locale (e.g. 'en-US', 'kn-IN', 'te-IN') to a supported app
-   * language code. Note the app uses 'tg' for Telugu, not the ISO 'te'.
-   */
-  private mapBrowserLanguage(browserLang: string): string {
-    const prefix = browserLang?.split('-')[0];
-    const supported: Record<string, string> = { en: 'en', kn: 'kn', te: 'tg' };
-    return supported[prefix] ?? 'en';
   }
 }

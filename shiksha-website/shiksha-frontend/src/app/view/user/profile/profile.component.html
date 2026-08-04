@@ -72,7 +72,7 @@
           class="form-control"
           placeholder="{{ 'Enter your name' | translate }}"
           readonly
-          [value]="userData?.name"
+          [value]="userData?.identity?.name"
         />
       </div>
       <div>
@@ -85,10 +85,10 @@
           class="form-control"
           placeholder="{{ 'Enter your phone number' | translate }}"
           readonly
-          [value]="userData?.phone"
+          [value]="userData?.identity?.phone"
         />
       </div>
-      <div class="md:col-span-2" *ngIf="isTeacherRole">
+      <div *ngIf="isTeacher" class="md:col-span-2">
         <label for="profile-school" class="block mb-1 form-control-label">{{
           "School/Organization" | translate
         }}</label>
@@ -102,7 +102,7 @@
       </div>
     </div>
 
-    <div class="grid gap-6 md:mb-4 md:grid-cols-4">
+    <div *ngIf="isTeacher" class="grid gap-6 md:mb-4 md:grid-cols-4">
       <div>
         <label for="profile-state" class="block mb-1 form-control-label"
           >{{ "State" | translate }}
@@ -113,53 +113,51 @@
           class="form-control"
           placeholder="{{ 'Enter your cluster' | translate }}"
           readonly
-          [value]="userData?.state"
+          [value]="userData?.school?.state"
         />
       </div>
-      <ng-container *ngIf="isTeacherRole">
-        <div>
-          <label for="profile-zone" class="block mb-1 form-control-label">{{
-            "Zone" | translate
-          }}</label>
-          <input
-            type="text"
-            id="profile-zone"
-            class="form-control"
-            placeholder="{{ 'Enter your zone' | translate }}"
-            readonly
-            [value]="userData?.zone"
-          />
-        </div>
-        <div>
-          <label for="profile-district" class="block mb-1 form-control-label">{{
-            "District" | translate
-          }}</label>
-          <input
-            type="text"
-            id="profile-district"
-            class="form-control"
-            placeholder="{{ 'Enter your district' | translate }}"
-            readonly
-            [value]="userData?.district"
-          />
-        </div>
-        <div>
-          <label for="profile-taluk" class="block mb-1 form-control-label">{{
-            "Taluk" | translate
-          }}</label>
-          <input
-            type="text"
-            id="profile-taluk"
-            class="form-control"
-            placeholder="{{ 'Enter Taluk' | translate }}"
-            readonly
-            [value]="userData?.block"
-          />
-        </div>
-      </ng-container>
+      <div>
+        <label for="profile-zone" class="block mb-1 form-control-label">{{
+          "Zone" | translate
+        }}</label>
+        <input
+          type="text"
+          id="profile-zone"
+          class="form-control"
+          placeholder="{{ 'Enter your zone' | translate }}"
+          readonly
+          [value]="userData?.school?.zone"
+        />
+      </div>
+      <div>
+        <label for="profile-district" class="block mb-1 form-control-label">{{
+          "District" | translate
+        }}</label>
+        <input
+          type="text"
+          id="profile-district"
+          class="form-control"
+          placeholder="{{ 'Enter your district' | translate }}"
+          readonly
+          [value]="userData?.school?.district"
+        />
+      </div>
+      <div>
+        <label for="profile-taluk" class="block mb-1 form-control-label">{{
+          "Taluk" | translate
+        }}</label>
+        <input
+          type="text"
+          id="profile-taluk"
+          class="form-control"
+          placeholder="{{ 'Enter Taluk' | translate }}"
+          readonly
+          [value]="userData?.school?.block"
+        />
+      </div>
     </div>
 
-    <div class="relative" *ngIf="isTeacherRole">
+    <div *ngIf="isTeacher" class="relative">
       <h2 class="font-bold text-lg leading-7 mb-2 mt-2 lg:hidden">
         {{ "Class Details" | translate }}
       </h2>
@@ -202,7 +200,7 @@
                 [dropDownValues]="boardDropdownOptions"
                 [config]="boardTypeDropdownconfig"
                 [submitted]="submitted"
-                (valueChange)="setMediumSubjectDropdown(i, $event,'add')"
+                (valueChange)="setMediumSubjectDropdown(i, $event)"
               ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4 capitalize">
@@ -290,7 +288,7 @@
         </tbody>
       </table>
     </div>
-    <div class="resource-block mt-4" *ngIf="isTeacherRole">
+    <div *ngIf="isTeacher" class="resource-block mt-4">
       <h2 class="font-bold text-lg leading-7 mb-4 text-content">
         {{ "Resources" | translate }}
       </h2>

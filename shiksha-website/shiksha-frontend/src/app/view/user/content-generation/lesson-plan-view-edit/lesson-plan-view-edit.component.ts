@@ -535,7 +535,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       } else {
         this.save(false);
       }
-    } else if (val === 'close') {
+    } else if (val === 'discard') {
       this.contentGenService.showDraftConfirmation = false;
       this.hasUnsavedChanges = false;
       this.router.navigate([this.nextUrl]);

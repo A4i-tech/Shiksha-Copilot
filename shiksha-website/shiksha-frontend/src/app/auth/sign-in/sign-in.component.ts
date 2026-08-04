@@ -12,6 +12,7 @@ import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
 import { environment } from 'src/environments/environment';
+import { SESSION_VERSION } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-sign-in',
@@ -71,7 +72,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     private translateService: TranslateService,
     private secureCookieService:SecureCookieService,
     private renderer: Renderer2,
-    private hostElement: ElementRef,
+    private hostElement: ElementRef
   ) {}
 
   /**
@@ -100,14 +101,10 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   navigateAfterLogin(userData: any) {
-    const isTeacherOnly = this.authService.isTeacherOnly(userData);
-
-    if (isTeacherOnly && !userData.isProfileCompleted) {
+    if (userData.profiles?.teacher && !userData.profiles.teacher.isProfileCompleted) {
       this.router.navigate(['/profile']);
-    } else if (isTeacherOnly) {
-      this.router.navigate(['/home']);
     } else {
-      this.router.navigate(['/leaders-dashboard']);
+      this.router.navigate(['/']);
     }
   }
 
@@ -284,12 +281,11 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
         next: (res: any) => {
           this.invalidOtp = false;
           localStorage.setItem('token', res.data.token);
-          localStorage.setItem('userData', JSON.stringify(res.data.user));
+          const session = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
+          localStorage.setItem('userData', JSON.stringify(session));
           this.sidebarService.profileImg.set(res?.data?.user?.profileImage || '');
 
-          if (res?.data.user?.preferredLanguage) {
-              this.translateService.use(res.data.user.preferredLanguage);
-          }
+          this.translateService.use(res.data.user.preferredLanguage);
 
           if (this.rememberMe) {
             this.secureCookieService.setObjectCookie("userInfo", {
@@ -301,7 +297,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           }
 
           this.utility.showSuccess("You've successfully logged in.");
-          this.navigateAfterLogin(res.data.user);
+          this.navigateAfterLogin(session);
         },
         error: (err: any) => {
           this.invalidOtp = true;

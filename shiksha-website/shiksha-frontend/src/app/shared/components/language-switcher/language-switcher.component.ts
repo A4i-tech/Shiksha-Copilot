@@ -56,9 +56,8 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    const localLanguage = this.loggedInUser
-      ? LOC_LANGUAGES.find((e) => e.state === this.loggedInUser?.state)?.value ?? []
-      : LOC_LANGUAGES.flatMap((e) => e.value);
+    const state = this.loggedInUser?.school?.state || this.loggedInUser?.profiles?.admin?.state;
+    const localLanguage = LOC_LANGUAGES.find((language) => language.state === state)?.value || [];
     this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...localLanguage];
   }
 
@@ -66,7 +65,7 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
    * ngafterviewinit hook used here to set the preferred language
    */
   ngAfterViewInit(): void {
-     this.languageSwitcher.selectedItem = this.loggedInUser?.preferredLanguage;
+    this.languageSwitcher.selectedItem = this.loggedInUser.preferredLanguage;
   } 
 
   /**
@@ -85,7 +84,7 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
     if(val === 'ok'){
       this.languageChange.emit(this.selectedLanguage);
     }else{
-      this.languageSwitcher.selectedItem = this.loggedInUser?.preferedLanguage;
+      this.languageSwitcher.selectedItem = this.loggedInUser.preferredLanguage;
     }
     this.showLanguageSwitcher=false;
   }

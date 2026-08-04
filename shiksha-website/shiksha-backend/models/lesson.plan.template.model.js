@@ -32,7 +32,7 @@ const lessonPlanTemplateSchema = new Schema(
     },
     approvedBy: {
       type: ObjectId,
-      ref: "AdminUser",
+      ref: "User",
     },
     approvedAt: { type: Date },
   },

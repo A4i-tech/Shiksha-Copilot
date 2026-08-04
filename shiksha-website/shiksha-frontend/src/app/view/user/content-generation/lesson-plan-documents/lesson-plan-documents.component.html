@@ -80,6 +80,7 @@
           Generate
         </button>
         <button
+          [hasPermission]="['presentation.generate.lesson-plan']"
           *ngIf="mode === 'view' && !lessonPlanPresentation && !isLoadingLessonPlanPresentation"
           (click)="generateLessonPlanPresentation()"
           class="btn-primary w-full md:w-auto"
