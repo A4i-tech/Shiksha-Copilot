@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { SignInService } from './auth/sign-in.service';
 import { UtilityService } from './core/services/utility.service';
 import { AuthorizationService } from './core/services/authorization.service';
-import { LoaderMessageService } from './core/services/loader-message.service';
 import { IdleService } from './shared/services/idle.service';
 import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD, SESSION_VERSION } from './shared/utility/constant.util';
 
@@ -26,7 +25,6 @@ export class AppComponent implements OnInit, OnDestroy {
     private authService: SignInService,
     private utilityService: UtilityService,
     private authorizationService: AuthorizationService,
-    public loaderMessage: LoaderMessageService,
     private idleService: IdleService,
     private router: Router
   ) {}
