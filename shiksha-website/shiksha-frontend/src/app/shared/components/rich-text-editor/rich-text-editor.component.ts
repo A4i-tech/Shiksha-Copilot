@@ -34,9 +34,11 @@ export class RichTextEditorComponent implements OnChanges {
   htmlContent: string = '';
   modules = { toolbar: TOOLBAR };
   private userHasEdited = false;
+  private lastEmittedValue = '';
 
   ngOnChanges(changes: SimpleChanges) {
-    if (changes['value'] && !this.userHasEdited) {
+    if (changes['value'] && (!this.userHasEdited || this.value !== this.lastEmittedValue)) {
+      this.userHasEdited = false;
       this.htmlContent = marked.parse(this.value ?? '', { async: false });
     }
   }
@@ -45,10 +47,12 @@ export class RichTextEditorComponent implements OnChanges {
     if (event.source !== 'user') return;
     this.userHasEdited = true;
     if (!event.html) {
+      this.lastEmittedValue = '';
       this.valueChange.emit('');
       return;
     }
     const markdown = turndown.turndown(event.html);
+    this.lastEmittedValue = markdown;
     this.valueChange.emit(markdown);
   }
 }
