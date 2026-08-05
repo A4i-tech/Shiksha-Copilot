@@ -14,7 +14,7 @@ from llama_index.llms.openai import OpenAIResponses
 from app.config import settings
 from app.models.lesson_plan import PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
 from app.services.rag_adapter_cache import RagAdapterCache
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, ModelSettings, RunContext, UsageLimits
 import yaml
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class AgentDeps:
 
 # TODO: remove this model prefix hack once we migrate lesson chat to use pydantic-ai exclusively
 model_prefix = "openai:" if ":" not in settings.lesson_chat_model else ""
-_agent = Agent(model=f"{model_prefix}{settings.lesson_chat_model}", name="lesson-plan-editor", deps_type=AgentDeps, retries=3)
+_agent = Agent(model=f"{model_prefix}{settings.lesson_chat_model}", name="lesson-plan-editor", deps_type=AgentDeps, retries=3, model_settings=ModelSettings(temperature=0.3, timeout=60.0))
 
 @_agent.tool(prepare=lambda ctx, tool: tool if ctx.deps.index_path is not None else None)
 async def read_chapter(ctx: RunContext[AgentDeps], query: str) -> str:
@@ -94,7 +94,7 @@ class LessonEditService:
         output_type = create_model("Result", content=(get_json_value_type(current_content), Field(description="Final output that replaces the provided 'Requested change'")))
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
         with propagate_attributes(user_id=body.user_id, tags=["scope:section"]):
-            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
+            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps, usage_limits=UsageLimits(request_limit=8))
         return response.output.content
 
     @observe(name="Shiksha-LP")
@@ -116,7 +116,7 @@ class LessonEditService:
 
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
         with propagate_attributes(user_id=body.user_id, tags=["scope:plan"]):
-            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
+            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps, usage_limits=UsageLimits(request_limit=8))
 
         return [
             PlanEditRecordResponse(
