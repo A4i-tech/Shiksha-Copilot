@@ -1,7 +1,8 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
+import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
 
 @Injectable({
@@ -156,7 +157,9 @@ export class ContentGenerationService extends BaseRestService {
   }
 
   saveLessonPlan(data:any) {
-    return this.http.post(`${this.baseUrl}/lesson-plan/save-to-teacher`, data);
+    return this.http.post(`${this.baseUrl}/lesson-plan/save-to-teacher`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Saving...'),
+    });
   }
 
   getResourcePlan(formvalues: any): Observable<any> {
@@ -193,7 +196,9 @@ export class ContentGenerationService extends BaseRestService {
   }
 
   saveResourcePlan(data:any) {
-    return this.http.post(`${this.baseUrl}/lesson-plan/save-to-teacher`, data);
+    return this.http.post(`${this.baseUrl}/lesson-plan/save-to-teacher`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Saving...'),
+    });
   }
 
   createFeedback(data: any) {
@@ -299,11 +304,15 @@ export class ContentGenerationService extends BaseRestService {
   }
 
   sectionAiEdit(data:any):Observable<any>{
-    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/section-ai-edit`,data)
+    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/section-ai-edit`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Generating edits...'),
+    })
   }
 
   planAiEdit(data:any):Observable<any>{
-    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/plan-ai-edit`,data)
+    return this.http.post(`${this.baseUrl}/teacher-lesson-plan/plan-ai-edit`, data, {
+      context: new HttpContext().set(LOADER_MESSAGE, 'Generating edits...'),
+    })
   }
 
   downloadLPDetails(lessonId:any):Observable<any>{

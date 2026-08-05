@@ -58,7 +58,7 @@
         ></textarea>
         <div class="ai-actions">
           <button class="ai-btn ai-btn-primary" (click)="submitAiPrompt(i)" [disabled]="aiLoading[i] || !aiPrompt[i]">
-            {{ (aiLoading[i] ? 'Generating...' : 'Generate') | translate }}
+            {{ (aiLoading[i] ? 'Generating edits...' : 'Generate') | translate }}
           </button>
         </div>
       </div>
