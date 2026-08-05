@@ -3,7 +3,7 @@ import json
 import logging
 from pathlib import Path
 
-from app.utils.utils import local_unique_id
+from app.utils.utils import get_json_value_type, local_unique_id
 from llama_index.core import Response
 from pydantic import Field, JsonValue, create_model
 from langfuse import observe, propagate_attributes
@@ -91,7 +91,7 @@ class LessonEditService:
             f"Requested change:\n{body.prompt}"
         )
 
-        output_type = create_model("Result", content=(type(current_content), Field(description="Final output that replaces the provided 'Requested change'")))
+        output_type = create_model("Result", content=(get_json_value_type(current_content), Field(description="Final output that replaces the provided 'Requested change'")))
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
         with propagate_attributes(user_id=body.user_id, tags=["scope:section"]):
             response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
@@ -110,7 +110,7 @@ class LessonEditService:
         mapping = {s.id: local_unique_id(idx) for idx, s in enumerate(body.sections)}
         mapping_ = {v: k for k, v in mapping.items()}
         output_type = create_model("Result", **{
-            mapping[s.id]: (type(s.content) | None, Field(default=None, description=f"Value to set to section \"{s.id}\"'s content field (section is titled '{s.title}'). Set this to null to skip making edits."))
+            mapping[s.id]: (get_json_value_type(s.content) | None, Field(default=None, description=f"Value to set to section \"{s.id}\"'s content field (section is titled '{s.title}'). Set this to null to skip making edits."))
             for s in body.sections
         })
 
