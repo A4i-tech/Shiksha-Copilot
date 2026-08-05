@@ -519,7 +519,6 @@ export class LessonPlanViewEditComponent implements OnInit {
       next: (res) => {
         this.hasUnsavedChanges = false;
         this.utilityService.handleResponse(res);
-        this.router.navigate(['/content-generation']);
       },
       error: (err) => {
         this.utilityService.handleError(err);
