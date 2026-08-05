@@ -15,6 +15,8 @@ requests = "^2.32.4"
 tqdm = "^4.67.1"
 openpyxl = "^3.1.5"
 azure-storage-blob = "^12.26.0"
+pymongo = "^4.9.0"
+qdrant-client = ">=1.7.0"
 # Knowledge Graph and Visualization Dependencies
 networkx = "^3.0"
 matplotlib = "^3.7.0"
