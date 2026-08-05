@@ -1,32 +1,28 @@
-from typing import Generic, TypeVar
-
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, JsonValue
 
 
-ContentT = TypeVar("ContentT", bound=str | dict[str, object] | list[object])
-
-class SectionEditRequest(BaseModel, Generic[ContentT]):
+class SectionEditRequest(BaseModel):
     user_id: str
     index_path: str | None = None
     section_id: str
-    current_content: ContentT
+    current_content: JsonValue
     prompt: str
 
 
-class PlanSectionInput(BaseModel, Generic[ContentT]):
+class PlanSectionInput(BaseModel):
     id: str
     title: str
-    content: ContentT
+    content: JsonValue
 
 
-class PlanEditRequest(BaseModel, Generic[ContentT]):
+class PlanEditRequest(BaseModel):
     user_id: str
     index_path: str | None = None
-    sections: list[PlanSectionInput[ContentT]]
+    sections: list[PlanSectionInput]
     learning_outcomes: list[str] = Field(default_factory=list)
     prompt: str
 
 
 class PlanEditRecordResponse(BaseModel):
     id: str
-    content: str
+    content: JsonValue

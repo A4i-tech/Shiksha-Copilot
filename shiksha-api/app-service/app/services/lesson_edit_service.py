@@ -5,14 +5,14 @@ from pathlib import Path
 
 from app.utils.utils import local_unique_id
 from llama_index.core import Response
-from pydantic import Field, create_model
+from pydantic import Field, JsonValue, create_model
 from langfuse import observe, propagate_attributes
 
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAIResponses
 
 from app.config import settings
-from app.models.lesson_plan import ContentT, PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
+from app.models.lesson_plan import PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from pydantic_ai import Agent, RunContext
 import yaml
@@ -77,7 +77,7 @@ class LessonEditService:
         await self._rags.cleanup()
 
     @observe(name="Shiksha-LP")
-    async def edit_section(self, body: SectionEditRequest[ContentT]) -> ContentT:
+    async def edit_section(self, body: SectionEditRequest) -> JsonValue:
         current_content = body.current_content
         is_plain = isinstance(current_content, str)
 
@@ -99,28 +99,29 @@ class LessonEditService:
 
     @observe(name="Shiksha-LP")
     async def edit_plan(self, body: PlanEditRequest) -> list[PlanEditRecordResponse]:
-        sections = [s.model_dump(mode="json") for s in body.sections]
+        sections = "\n".join(f"- id={s.id}, title={s.title}, content={json.dumps(s.content, ensure_ascii=False)}" for s in body.sections)
         instructions = self._prompt_plan_edit_instruction + " " + self._prompt_grounding_instruction
         input_text = (
             f"Learning outcomes:\n{json.dumps(body.learning_outcomes, ensure_ascii=False)}\n\n"
-            f"Sections (JSON):\n{json.dumps(sections, ensure_ascii=False)}\n\n"
+            f"Sections:\n{sections}\n\n"
             f"Teacher's requested change:\n{body.prompt}"
         )
 
         mapping = {s.id: local_unique_id(idx) for idx, s in enumerate(body.sections)}
         mapping_ = {v: k for k, v in mapping.items()}
         output_type = create_model("Result", **{
-            mapping[s.id]: (str | None, Field(default=None, description=f"Content to set for section '{s.id}' (titled '{s.title}'), or null to skip"))
+            mapping[s.id]: (type(s.content) | None, Field(default=None, description=f"Value to set to section \"{s.id}\"'s content field (section is titled '{s.title}'). Set this to null to skip making edits."))
             for s in body.sections
         })
 
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
         with propagate_attributes(user_id=body.user_id, tags=["scope:plan"]):
             response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps)
+
         return [
             PlanEditRecordResponse(
                 id=mapping_[k],
                 content=new if new is not None else next(b.content for b in body.sections if b.id == mapping_[k])
             )
-            for k, new in response.output.model_dump(mode="json").items()
+            for k, new in response.output.model_dump().items()
         ]
