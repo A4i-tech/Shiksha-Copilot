@@ -96,4 +96,8 @@ question_bank_parts_gen: |
         The newly generated questions will be integrated into the existing question bank JSON. Ensure that their style, language, and formatting align seamlessly with the existing questions, making it appear as if a single LLM request generated all questions.
 
       7. Mathematical Notation:
-        Use TeX delimiters for mathematical expressions: `\\(...\\)` for inline math and `\\[...\\]` for display math.
+        Any mathematical symbol, expression, fraction, exponent, equation, or unit-with-superscript/subscript MUST be wrapped in TeX delimiters — never leave math as bare/plain text. Use `\\(...\\)` for inline math and `\\[...\\]` for display math. Every opening delimiter must have exactly one matching closing delimiter; never nest delimiters or leave one unclosed.
+        - Correct inline: "The area is \\(A = \\pi r^2\\) square units."
+        - Correct display: "\\[ x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a} \\]"
+        - Incorrect (do NOT do this — bare, undelimited math): "The area is A = πr^2 square units."
+        Before finalizing each question, answer, and keyAnswer, re-check that all math is delimited and every delimiter pair is balanced.

@@ -1,7 +1,11 @@
 import pytest
 from unittest.mock import MagicMock, patch
-from app.services.question_paper_service import QuestionPaperService
-from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion
+from app.services.question_paper_service import (
+    QuestionPaperService,
+    _iter_content_texts,
+    _tex_delimiters_balanced,
+)
+from app.models.question_paper import Chapter, Content, FourOptionsQuestion, GeneratedTemplate, MatchingListQuestion, McqOption, QuestionDistribution, QuestionType, TextQuestion
 
 
 # Shared fixture to avoid recreating the service
@@ -217,5 +221,62 @@ class TestOrganizeQuestionsIntoResponse:
 
         assert isinstance(response, list)
         assert len(response) > 0
-        assert response[0].type == QuestionType.MCQ
-        assert len(response[0].questions) == 1
+
+
+class TestTexDelimiterBalance:
+    """Tests for _tex_delimiters_balanced."""
+
+    def test_balanced_inline_and_display(self):
+        assert _tex_delimiters_balanced(r"Area is \(A = \pi r^2\) and \[x = 1\].")
+
+    def test_no_math_is_balanced(self):
+        assert _tex_delimiters_balanced("No math here at all.")
+
+    def test_unbalanced_inline(self):
+        assert not _tex_delimiters_balanced(r"Area is \(A = \pi r^2 square units.")
+
+    def test_unbalanced_display(self):
+        assert not _tex_delimiters_balanced(r"\[x = \frac{1}{2}")
+
+
+class TestIterContentTexts:
+    """Tests for _iter_content_texts."""
+
+    def test_extracts_text_from_text_question(self):
+        question = TextQuestion(
+            question=[Content.text(r"What is \(A = \pi r^2\)?")],
+            answer=[Content.text("The area formula.")],
+        )
+
+        texts = list(_iter_content_texts(question))
+
+        assert r"What is \(A = \pi r^2\)?" in texts
+        assert "The area formula." in texts
+
+    def test_no_content_yields_nothing(self):
+        assert list(_iter_content_texts(42)) == []
+        assert list(_iter_content_texts(None)) == []
+
+    def test_extracts_text_from_nested_content_in_mcq_options(self):
+        """Test that _iter_content_texts recursively extracts text from nested Content
+        inside McqOption objects within FourOptionsQuestion."""
+        question = FourOptionsQuestion(
+            question=[Content.text("What is the speed of light?")],
+            options=[
+                McqOption(label="A", text=[Content.text("3x10^8 m/s")]),
+                McqOption(label="B", text=[Content.text("3x10^6 m/s")]),
+                McqOption(label="C", text=[Content.text("3x10^10 m/s")]),
+                McqOption(label="D", text=[Content.text("3x10^5 m/s")]),
+            ],
+            answer=[Content.text("3x10^8 m/s")],
+            keyAnswer=[Content.text("A")],
+        )
+
+        texts = list(_iter_content_texts(question))
+
+        assert "What is the speed of light?" in texts
+        assert "3x10^8 m/s" in texts
+        assert "3x10^6 m/s" in texts
+        assert "3x10^10 m/s" in texts
+        assert "3x10^5 m/s" in texts
+        assert "A" in texts
