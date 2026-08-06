@@ -1,5 +1,5 @@
 const request = require("supertest");
-const { baseURL, loginAsTeacher } = require("./superuser.helper");
+const { baseURL, loginAsSuperUser, createEphemeralTeacher, cleanupEphemeralTeacher } = require("./superuser.helper");
 
 // Real E2E test against the live staging deployment (see
 // .github/workflows/main.yaml's staging-e2e job). Uses an EXISTING
@@ -11,6 +11,10 @@ const { baseURL, loginAsTeacher } = require("./superuser.helper");
 // template). Reading real, already-valid data sidesteps that gap
 // entirely and avoids adding throwaway curriculum rows to staging.
 //
+// An ephemeral teacher account is created in beforeAll via the devtools
+// API and deleted in afterAll - no pre-seeded accounts or secrets needed
+// beyond the superuser credentials.
+//
 // The Copilot LLM call runs for real here (per team decision) - we only
 // assert the generate endpoint succeeds, not the generated content.
 //
@@ -18,13 +22,18 @@ const { baseURL, loginAsTeacher } = require("./superuser.helper");
 // teacher per day. If this suite runs more than 3 times in one UTC day,
 // this test starts getting a "Daily regeneration limit reached" failure
 // instead of a real pass/fail signal on the flow itself - an accepted
-// tradeoff of hitting the real endpoint with real limits.
+// tradeoff of hitting the real endpoint with real limits. Using an
+// ephemeral teacher resets this counter each run.
 
 describe("Lesson plan generation flow (E2E)", () => {
-  let token, masterLessonId;
+  let token, masterLessonId, rootToken, ephemeralIds;
 
   beforeAll(async () => {
-    ({ token } = await loginAsTeacher());
+    ({ token: rootToken } = await loginAsSuperUser());
+
+    const ephemeral = await createEphemeralTeacher(rootToken, ["lesson-plan.generate"]);
+    token = ephemeral.token;
+    ephemeralIds = { userId: ephemeral.userId, roleId: ephemeral.roleId };
 
     const listRes = await request(baseURL)
       .get("/api/master-lesson/list?limit=1")
@@ -36,6 +45,10 @@ describe("Lesson plan generation flow (E2E)", () => {
       );
     }
     masterLessonId = lessons[0]._id;
+  });
+
+  afterAll(async () => {
+    await cleanupEphemeralTeacher(rootToken, ephemeralIds);
   });
 
   it("generates lesson content end to end", async () => {
