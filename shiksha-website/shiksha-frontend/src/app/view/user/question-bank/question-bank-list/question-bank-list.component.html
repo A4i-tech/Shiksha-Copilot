@@ -2,6 +2,7 @@
   <!-- Header Section -->
   <div class="flex justify-between items-center">
     <h1
+      data-testid="question-papers-heading"
       class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]"
     >
       {{ "Question Papers" | translate }}
@@ -35,6 +36,7 @@
     <!-- Buttons Wrapper -->
     <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
       <button
+        data-testid="generate-question-paper-btn"
         class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary"
         routerLink="/question-papers/generate"
       >

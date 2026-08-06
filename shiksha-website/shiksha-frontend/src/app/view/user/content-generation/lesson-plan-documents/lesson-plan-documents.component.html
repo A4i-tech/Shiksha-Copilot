@@ -1,6 +1,7 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
   <ng-container *ngFor="let doc of docTypeValues">
     <div
+      data-testid="document-card"
       [ngClass]="{ 'disable-download': mode !== 'view' }"
       class="bg-white shadow rounded-lg p-5 flex flex-col md:flex-row items-left md:items-center gap-5 md:gap-0 justify-between border border-primary-50 hover:shadow-md transition"
       *ngIf="doc.type !== 'presentation'"
@@ -9,12 +10,20 @@
         <div>
           <div class="text-white p-3 rounded-full bg-primary-30">
             <img
+              data-testid="docx-icon"
               class="w-8"
               *ngIf="doc.type === 'docx'"
               src="assets/icons/docx-original.svg"
               alt=""
             />
             <img
+              class="w-7"
+              *ngIf="doc.type === 'ppt'"
+              src="assets/icons/ppt-solid.svg"
+              alt=""
+            />
+            <img
+              data-testid="pdf-icon"
               class="w-8"
               *ngIf="doc.type === 'pdf'"
               src="assets/icons/pdf-original.svg"
@@ -32,12 +41,14 @@
         </div>
       </div>
       <button
+        data-testid="download-btn"
         (click)="downloadDocument(doc.downloadType)"
         class="md:hidden btn-outline-primary"
       >
         Download
       </button>
       <button
+        data-testid="download-btn"
         (click)="downloadDocument(doc.downloadType)"
         class="hidden md:block btn-primary"
       >
@@ -46,6 +57,7 @@
     </div>
 
     <div
+      data-testid="document-card"
       *ngIf="doc.type === 'presentation'"
       [ngClass]="{ 'disable-download': mode !== 'view' }"
       class="bg-white shadow rounded-lg p-5 flex flex-col md:flex-row items-left md:items-center gap-5 md:gap-0 justify-between border border-primary-50 hover:shadow-md transition"
@@ -103,6 +115,7 @@
             {{ lessonPlanPresentationStatusLabel }}
           </span>
           <button
+            data-testid="download-btn"
             *ngIf="canDownloadLessonPlanPresentation"
             (click)="downloadLessonPlanPresentation()"
             class="btn-outline-primary w-full md:w-auto"
@@ -123,7 +136,7 @@
 <div class="bg-warn-50 p-2 my-4" *ngIf="mode !== 'view'">
   <div class="flex items-center gap-2">
     <img src="assets/icons/Info 2.svg" alt="" />
-    <small>{{
+    <small data-testid="documents-warning-message">{{
       "Documents will be available for download once the lesson plan has been saved."
         | translate
     }}</small>

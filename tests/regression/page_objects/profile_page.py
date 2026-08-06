@@ -7,71 +7,58 @@ class ProfilePage(BasePage):
         super().__init__(page)
 
         # --- Page Heading ---
-        self.heading = page.locator("h1", has_text="Setup Your Profile")
+        self.heading = page.get_by_test_id("profile-heading")
 
         # --- Profile Photo Section ---
-        self.profile_image = page.locator("app-profile-image")
-        self.choose_image_btn = page.locator("button", has_text="Choose Image")
-        self.change_image_btn = page.locator("button", has_text="Change Image")
-        self.remove_image_btn = page.locator("button", has_text="Remove")
-        self.file_input = page.locator("#file_input")
+        self.profile_image = page.get_by_test_id("profile-image")
+        # Choose/Change Image is a single button whose label toggles based on
+        # whether a profile image is already set.
+        self.choose_image_btn = page.get_by_test_id("upload-image-btn")
+        self.change_image_btn = page.get_by_test_id("upload-image-btn")
+        self.remove_image_btn = page.get_by_test_id("remove-image-btn")
+        self.file_input = page.get_by_test_id("profile-image-file-input")
 
         # --- Language ---
-        self.language_label = page.locator("label", has_text="Language")
-        self.language_switcher = page.locator("app-language-switcher")
+        self.language_label = page.get_by_test_id("language-label")
+        self.language_switcher = page.get_by_test_id("language-switcher")
 
         # --- Read-Only Info Fields ---
-        self.name_input = page.locator("#first_name").first
-        self.phone_input = page.locator("#last_name").first
-        self.school_input = page.locator("#company").first
-        # State, Zone, District, Taluk share generic IDs — locate by label context
-        self.state_label = page.locator("label", has_text="State")
-        self.zone_label = page.locator("label", has_text="Zone")
-        self.district_label = page.locator("label", has_text="District")
-        self.taluk_label = page.locator("label", has_text="Taluk")
+        self.name_input = page.get_by_test_id("profile-name-input")
+        self.phone_input = page.get_by_test_id("profile-phone-input")
+        self.school_input = page.get_by_test_id("profile-school-input")
+        self.state_label = page.get_by_test_id("state-label")
+        self.zone_label = page.get_by_test_id("zone-label")
+        self.district_label = page.get_by_test_id("district-label")
+        self.taluk_label = page.get_by_test_id("taluk-label")
 
         # --- Class Details Section ---
-        self.class_details_heading = page.locator("h2", has_text="Class Details")
-        self.class_table = page.locator("table[aria-label='school-profile-list']")
-        self.class_table_rows = self.class_table.locator("tbody tr")
-        self.add_class_btn = page.locator("button", has_text="Add").last
-        self.delete_class_btn = page.locator(
-            "button:has(img[src*='delete'])"
-        )
+        self.class_details_heading = page.get_by_test_id("class-details-heading")
+        self.class_table = page.get_by_test_id("class-table")
+        self.class_table_rows = page.get_by_test_id("class-row")
+        self.add_class_btn = page.get_by_test_id("add-class-btn")
+        self.delete_class_btn = page.get_by_test_id("delete-class-btn")
 
         # --- Class Details Dropdowns (per row) ---
-        # These are inside each table row as app-form-dropdown
-        self.board_dropdowns = self.class_table.locator(
-            "app-form-dropdown[ng-reflect-drop-down-control-name='board'],"
-            + " app-form-dropdown"
-        )
+        self.board_dropdowns = page.get_by_test_id("board-dropdown")
 
         # --- Resources Section ---
-        self.resources_heading = page.locator("h2", has_text="Resources")
-        self.resource_rows = page.locator(
-            "ng-container[formArrayName='facilities'] > div"
-        )
-        self.add_resource_btn = page.locator(
-            "button:has(img[src*='add']):has-text('Add')"
-        ).last
+        self.resources_heading = page.get_by_test_id("resources-heading")
+        self.resource_rows = page.get_by_test_id("resource-row")
+        self.add_resource_btn = page.get_by_test_id("add-resource-btn")
 
         # --- Save Button ---
-        self.save_btn = page.locator("button", has_text="Save profile")
+        self.save_btn = page.get_by_test_id("save-profile-btn")
 
         # --- Confirmation Modals ---
-        self.delete_class_modal = page.locator(
-            "app-delete-detail"
-        ).filter(has_text="Delete Class Details")
-        self.delete_resource_modal = page.locator(
-            "app-delete-detail"
-        ).filter(has_text="Delete Resource")
-        self.delete_profile_image_modal = page.locator(
-            "app-delete-detail"
-        ).filter(has_text="Remove Profile Image")
+        self.delete_class_modal = page.get_by_test_id("delete-class-modal")
+        self.delete_resource_modal = page.get_by_test_id("delete-resource-modal")
+        self.delete_profile_image_modal = page.get_by_test_id(
+            "delete-profile-image-modal"
+        )
 
     def navigate(self, base_url: str):
         """Navigate to the profile page."""
-        self.page.goto(f"{base_url}/#/user/profile")
+        self.page.goto(f"{base_url}/#/profile")
         self.heading.wait_for(state="visible", timeout=15000)
 
     def get_name_value(self) -> str:

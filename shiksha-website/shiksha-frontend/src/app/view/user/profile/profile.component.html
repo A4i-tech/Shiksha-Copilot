@@ -1,5 +1,5 @@
 <section class="profile-wrapper p-8 bg-white rounded">
-  <h1 class="text-xl md:text-[30px] leading-[48px] font-bold text-content">
+  <h1 class="text-xl md:text-[30px] leading-[48px] font-bold text-content" data-testid="profile-heading">
     {{ "Setup Your Profile" | translate }}
   </h1>
   <p class="text-content-50 mt-1 text-sm leading-[48px] tracking-tight">
@@ -8,7 +8,7 @@
   <form class="flex flex-col gap-4" [formGroup]="userPorfileForm">
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
       <div class="dp-setup flex gap-6">
-        <app-profile-image [profileImage]="this.sidebarService.profileImg()" [size]="'lg'" ></app-profile-image>
+        <app-profile-image [profileImage]="this.sidebarService.profileImg()" [size]="'lg'" data-testid="profile-image"></app-profile-image>
         <div class="upload-container">
           <p class="text-sm font-normal text-content leading-[22px]">
             {{ "Upload your photo" | translate }}
@@ -21,11 +21,13 @@
               type="button"
               (click)="image_upload.click()"
               class="relative text-white border  focus:outline-none font-medium rounded text-sm px-5 py-2 text-center  btn-primary"
+              data-testid="upload-image-btn"
             >
               <input
                 #image_upload
                 class="hidden h-0 w-0 absolute text-sm text-gray-900  rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
                 id="file_input"
+                data-testid="profile-image-file-input"
                 type="file"
                 accept="image/*"
                 (change)="onImageSelect(image_upload)"
@@ -38,6 +40,7 @@
               type="button"
               class=" font-normal rounded-lg text-sm ml-4 text-primary"
               (click)="showDeleteProfileImageConfirm = true"
+              data-testid="remove-image-btn"
             >
               {{ "Remove" | translate }}
             </button>
@@ -51,11 +54,13 @@
           <label
             for="lang"
             class="text-content text-sm leading-[22px] font-bold"
+            data-testid="language-label"
             >{{ "Language" | translate }}</label
           >
           <app-language-switcher
             [loggedInUser]="loggedInUser"
             (languageChange)="languageChanged($event)"
+            data-testid="language-switcher"
           ></app-language-switcher>
         </div>
       </div>
@@ -70,6 +75,7 @@
           type="text"
           id="profile-name"
           class="form-control"
+          data-testid="profile-name-input"
           placeholder="{{ 'Enter your name' | translate }}"
           readonly
           [value]="userData?.identity?.name"
@@ -83,6 +89,7 @@
           type="text"
           id="profile-phone"
           class="form-control"
+          data-testid="profile-phone-input"
           placeholder="{{ 'Enter your phone number' | translate }}"
           readonly
           [value]="userData?.identity?.phone"
@@ -96,6 +103,7 @@
           type="text"
           id="profile-school"
           class="form-control"
+          data-testid="profile-school-input"
           readonly
           [value]="userData?.school?.name"
         />
@@ -104,7 +112,7 @@
 
     <div *ngIf="isTeacher" class="grid gap-6 md:mb-4 md:grid-cols-4">
       <div>
-        <label for="profile-state" class="block mb-1 form-control-label"
+        <label for="profile-state" class="block mb-1 form-control-label" data-testid="state-label"
           >{{ "State" | translate }}
         </label>
         <input
@@ -158,7 +166,7 @@
     </div>
 
     <div *ngIf="isTeacher" class="relative">
-      <h2 class="font-bold text-lg leading-7 mb-2 mt-2 lg:hidden">
+      <h2 class="font-bold text-lg leading-7 mb-2 mt-2 lg:hidden" data-testid="class-details-heading">
         {{ "Class Details" | translate }}
       </h2>
       <div
@@ -169,6 +177,7 @@
       <table
       class="table-auto w-full text-content rounded-lg"
         aria-label="school-profile-list"
+        data-testid="class-table"
       >
         <thead class="text-xs text-content uppercase bg-[#edf6fe] hidden lg:table-header-group">
           <tr >
@@ -189,6 +198,7 @@
               let i = index
             "
             class="flex flex-col border rounded lg:rounded-none lg:border-none p-4 lg:p-0 mt-4 lg:mt-0 lg:table-row"
+            data-testid="class-row"
           >
             <td class="px-1 py-1 lg:px-4 lg:py-4">
               <label class="lg:hidden mb-1 form-control-label">{{
@@ -201,6 +211,7 @@
                 [config]="boardTypeDropdownconfig"
                 [submitted]="submitted"
                 (valueChange)="setMediumSubjectDropdown(i, $event)"
+                data-testid="board-dropdown"
               ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4 capitalize">
@@ -261,6 +272,7 @@
                   *ngIf="i !== 0"
                   class="text-white btn-danger btn-danger:hover flex items-center lg:block gap-1  place-self-end font-medium rounded-lg text-sm"
                   (click)="openConfirmPopupforDeleteClass(i)"
+                  data-testid="delete-class-btn"
                 >
                   <img
                     src="assets/icons/delete.svg"
@@ -274,6 +286,7 @@
                   type="button"
                   class="text-white btn-primary btn-primary:hover flex lg:block items-center gap-1 place-self-end font-medium rounded-lg text-sm"
                   (click)="addNewclasses('add')"
+                  data-testid="add-class-btn"
                 >
                   <img
                     src="assets/icons/plus.svg"
@@ -289,7 +302,7 @@
       </table>
     </div>
     <div *ngIf="isTeacher" class="resource-block mt-4">
-      <h2 class="font-bold text-lg leading-7 mb-4 text-content">
+      <h2 class="font-bold text-lg leading-7 mb-4 text-content" data-testid="resources-heading">
         {{ "Resources" | translate }}
       </h2>
 
@@ -299,6 +312,7 @@
               <div
                 class="text-content grid md:grid-cols-12 gap-4 border p-4 mb-4 rounded"
                 *ngFor="let resource of facilities.controls; let i = index"
+                data-testid="resource-row"
               >
                 <ng-container [formGroupName]="i">
                   <div class="py-2 md:py-4 text-sm  content-start md:col-span-5">
@@ -383,6 +397,7 @@
                         (click)="openConfirmPopupforDeleteResource(i)"
                         *ngIf="i !== 0"
                         type="button"
+                        data-testid="delete-resource-btn"
                       >
                         <div class="flex content-center">
                           <img
@@ -397,6 +412,7 @@
                         (click)="addResource()"
                         type="button"
                         *ngIf="i === facilities.controls.length - 1"
+                        data-testid="add-resource-btn"
                       >
                         <div class="flex content-center">
                           <img
@@ -423,6 +439,7 @@
           type="button"
           class="text-white btn-primary btn-primary:hover place-self-end font-medium rounded-lg text-sm px-5 py-2.5 me-2 ml-auto"
           (click)="onSave()"
+          data-testid="save-profile-btn"
         >
           {{ "Save profile" | translate }}
         </button>
@@ -431,29 +448,32 @@
   </form>
 </section>
 
-<app-delete-detail *ngIf="showDeleteClassDetailsConfirm" 
+<app-delete-detail *ngIf="showDeleteClassDetailsConfirm"
 [config]="{
 	heading : 'Delete Class Details',
 	confirmationText : 'Are you sure you want to delete this class details?',
 	primaryButtonLabel : 'Delete',
 	primaryButtonType : 'delete'
-}" 
+}"
+data-testid="delete-class-modal"
 (close)="closeDeleteClass($event)"></app-delete-detail>
 
-<app-delete-detail *ngIf="showDeleteResourceConfirm" 
+<app-delete-detail *ngIf="showDeleteResourceConfirm"
 [config]="{
 	heading : 'Delete Resource',
 	confirmationText : 'Are you sure you want to delete this resource?',
 	primaryButtonLabel : 'Delete',
 	primaryButtonType : 'delete'
-}" 
+}"
+data-testid="delete-resource-modal"
 (close)="closeDeleteResource($event)"></app-delete-detail>
 
-<app-delete-detail *ngIf="showDeleteProfileImageConfirm" 
+<app-delete-detail *ngIf="showDeleteProfileImageConfirm"
 [config]="{
 	heading : 'Remove Profile Image',
 	confirmationText : 'Are you sure you want to remove profile image?',
 	primaryButtonLabel : 'Remove',
 	primaryButtonType : 'delete'
-}" 
+}"
+data-testid="delete-profile-image-modal"
 (close)="closeDeleteProfileImage($event)"></app-delete-detail>

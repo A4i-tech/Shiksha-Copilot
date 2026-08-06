@@ -1,5 +1,6 @@
 <div class="p-8 bg-white rounded-sm min-h-[90vh]">
   <h1
+    data-testid="lesson-content-heading"
     class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]"
   >
     {{ "Lesson Content" | translate }}
@@ -46,11 +47,11 @@
 
   <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
     <div class="flex gap-2 flex-wrap items-center">
-      <button [hasPermission]="['lesson-resource.generate']" class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content-generation/lesson-resources">
+      <button data-testid="generate-lesson-resource-btn" [hasPermission]="['lesson-resource.generate']" class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary" routerLink="/content-generation/lesson-resources">
         <img src="assets/icons/edit_light.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Resource" | translate}}</span>
       </button>
-      <button [hasPermission]="['lesson-plan.generate']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/lesson-plan">
+      <button data-testid="generate-lesson-plan-btn" [hasPermission]="['lesson-plan.generate']" class="btn-outline-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit" routerLink="/content-generation/lesson-plan">
         <img src="assets/icons/edit_primary.svg" alt="" />
         <span class="text-sm md:text-base">{{"Generate Lesson Plan" | translate}}</span>
       </button>
@@ -62,6 +63,7 @@
 
     <div class="relative w-full md:w-72">
       <input
+        data-testid="content-search-input"
         [(ngModel)]="searchText"
         (input)="searchInputChanged($event)"
         class="appearance-none rounded pl-8 py-2 px-3 text-content leading-tight focus:outline-none w-full border border-[#ccc] h-9"
@@ -83,6 +85,7 @@
   </div>
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-5">
     <div
+      data-testid="content-card"
       class="card px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
       *ngFor="let item of list"
     >
@@ -222,7 +225,7 @@
             </div>
 
             <div class="mt-5">
-              <h2 class="text-base font-medium">
+              <h2 data-testid="card-subject-label" class="text-base font-medium">
                 {{ "Subject" | translate }}:
                 <span>{{
                   item.isLesson ? utilityservice.getSubjectDisplayName(item.lesson.subjects) : utilityservice.getSubjectDisplayName(item.resource.subjects)
@@ -278,6 +281,7 @@
           </div>
           <div class="flex flex-col sm:flex-row gap-2 mt-7 sm:items-end">
             <button
+              data-testid="card-view-button"
               (click)="!item.isCompleted ? onViewDraft(item) : onView(item)"
               class="w-full sm:flex-[2] h-10 rounded whitespace-nowrap text-sm"
               [ngClass]="{
@@ -339,7 +343,7 @@
         <img src="assets/icons/no-file.svg" alt="" />
       </div>
       <div>
-        <h2 class="text-base font-medium text-center">
+        <h2 data-testid="no-items-message" class="text-base font-medium text-center">
           {{ "No items found" | translate }}
         </h2>
       </div>
@@ -353,6 +357,7 @@
   <div class="flex gap-4 md:gap-1 flex-wrap">
     <div class="w-full md:w-36 cursor-pointer md:flex-1">
       <app-dropdown
+        data-testid="status-dropdown"
         [dropDownValues]="statusDropdownOptions"
         #statusDropDown
         (valueUpdate)="onStatusChange($event)"
@@ -362,6 +367,7 @@
 
     <div class="w-full md:w-36 cursor-pointer md:flex-1">
       <app-dropdown
+        data-testid="type-dropdown"
         [dropDownValues]="typeDropdownOptions"
         #typeDropDown
         (valueUpdate)="onTypeChange($event)"
@@ -371,6 +377,7 @@
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
       <app-dropdown
+        data-testid="board-dropdown"
         [dropDownValues]="boardDropdownOptions"
         #boardDropDown
         (valueUpdate)="onBoardChange($event)"

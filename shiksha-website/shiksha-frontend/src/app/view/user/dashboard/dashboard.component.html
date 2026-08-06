@@ -1,9 +1,9 @@
 
 <div class="lg:mt-0 mb-0 lg:mb-4 p-4 lg:p-0 pb-0">
-  <h1 class="text-xl text-content md:text-2xl font-bold">
+  <h1 class="text-xl text-content md:text-2xl font-bold" data-testid="welcome-header">
     {{ "Hi" | translate }}, {{ utiltyService.loggedInUserData?.identity?.name }}
   </h1>
-  <p class="text-sm md:text-sm font-light text-content-60">
+  <p class="text-sm md:text-sm font-light text-content-60" data-testid="teacher-toolkit-subtitle">
     {{ "Your Teacher Toolkit at a Glance" | translate }}
   </p>
 </div>
@@ -19,7 +19,7 @@
           alt=""
         />
         <div>
-          <h2 class="mt-1 text-xl text-white font-semibold">
+          <h2 class="mt-1 text-xl text-white font-semibold" data-testid="landing-card-title">
             {{ "Lesson Plan Generation" | translate }}
           </h2>
           <p class="mt-3 text-white text-sm">
@@ -31,6 +31,7 @@
           <button
             routerLink="/content-generation/lesson-plan"
             class="text-primary bg-white px-7 py-2 mt-7 rounded font-medium text-sm"
+            data-testid="generate-lesson-plan-btn"
           >
             <span>{{ "Generate" | translate }}</span>
           </button>
@@ -40,13 +41,14 @@
 
     <div class="mt-10" role="region" [attr.aria-label]="'Recently Generated/Modified Plans' | translate">
       <div class="flex justify-between">
-        <h3 class="text-xl md:text-2xl font-medium text-content-100">
+        <h3 class="text-xl md:text-2xl font-medium text-content-100" data-testid="recent-plans-section-header">
           {{ "Recently Generated/Modified Plans" | translate }}
         </h3>
         <p
           class="text-sm font-medium text-primary cursor-pointer"
           routerLink="/content-generation"
           *ngIf="recentPlans.length > 0"
+          data-testid="view-all-link"
         >
           {{ "View All" | translate }}
         </p>
@@ -56,6 +58,7 @@
         <div
           class="px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
           *ngFor="let plan of recentPlans"
+          data-testid="recent-plan-card"
         >
          <div>
           <div class="flex justify-between">
@@ -111,6 +114,7 @@
         <div
           class="px-6 py-8 rounded-xl bg-white border flex flex-col items-center"
           *ngIf="recentPlans.length === 0"
+          data-testid="no-plans-found-container"
         >
           <div class="rounded-full bg-warn-50 p-4 my-8">
             <img src="assets/icons/no-file.svg" alt="" />
@@ -121,6 +125,7 @@
           <button
           routerLink="/content-generation"
             class="mt-7 w-full py-2 rounded bg-warn"
+            data-testid="empty-state-generate-btn"
           >
             <span class="text-white text-sm">
               {{ "Generate" | translate }}
@@ -130,7 +135,7 @@
       </div>
     </div>
 
-    <div class="canvas-container mt-8 bg-white py-7 px-6 rounded-xl border" role="region" [attr.aria-label]="'Lesson Plan/Resources Generated' | translate">
+    <div class="canvas-container mt-8 bg-white py-7 px-6 rounded-xl border" role="region" [attr.aria-label]="'Lesson Plan/Resources Generated' | translate" data-testid="analytics-container">
       <div class="flex justify-between items-center mb-5">
         <h2 class="text-base text-content">
           {{ "Lesson Plan/Resources Generated" | translate }}
@@ -141,11 +146,13 @@
             [dropDownValues]="analyticsDropdownOptions"
             [config]="analyticsDropdownconfig"
             (valueUpdate)="onFilterChange($event)"
+            data-testid="analytics-dropdown"
           ></app-dropdown>
         </div>
       </div>
       <canvas
         baseChart
+        data-testid="chart-canvas"
         role="img"
         [attr.aria-label]="('Lesson Plan/Resources Generated' | translate) + ' - ' + ('line chart showing the number of lesson plans and resources generated over time' | translate)"
         height="400"
@@ -164,6 +171,7 @@
     >
       <h2
         class="font-bold text-xl md:text-[24px] pl-3 text-content-100"
+        data-testid="calendar-header"
       >
         {{ "Calendar" | translate }}
       </h2>
@@ -171,6 +179,7 @@
         <div class="min-w-fit">
           <h3
             class="font-normal md:text-xl text-lg md:leading-9 text-content-100"
+            data-testid="current-month-display"
           >
             {{ monthViewDate | date : "MMMM YYYY" }}
           </h3>
@@ -185,6 +194,7 @@
             [view]="view"
             [(viewDate)]="monthViewDate"
             (viewDateChange)="closeOpenMonthViewDay()"
+            data-testid="prev-month-btn"
           >
             <img
               src="assets/icons/Chevron left large.svg"
@@ -201,6 +211,7 @@
             [view]="view"
             [(viewDate)]="monthViewDate"
             (viewDateChange)="closeOpenMonthViewDay()"
+            data-testid="next-month-btn"
           >
             <img
               src="assets/icons/Chevron right large.svg"
@@ -213,6 +224,7 @@
 
       <mwl-calendar-month-view
         appCalendarAccessibility
+        data-testid="calendar-month-view"
         [viewDate]="monthViewDate"
         [weekStartsOn]="1"
         (dayClicked)="dayClicked($event.day)"
@@ -223,6 +235,7 @@
       <button
         routerLink="/schedule"
         class="px-6 py-4 bg-primary rounded w-full mt-7 mb-5"
+        data-testid="my-schedule-btn"
       >
         <span class="block text-white text-left font-medium">
           {{ "My Schedule" | translate }}
@@ -232,6 +245,7 @@
       <div class="mt-5 dashboard-events">
         <mwl-calendar-day-view
           appCalendarAccessibility
+          data-testid="calendar-day-view"
           [viewDate]="viewDate"
           [events]="events"
           #calender_ele

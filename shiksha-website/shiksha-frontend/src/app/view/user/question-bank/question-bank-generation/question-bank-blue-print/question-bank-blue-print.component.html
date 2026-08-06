@@ -17,17 +17,17 @@
     <div class="min-w-0 w-full">
       <div #bluePrintContent [ngClass]="{ 'max-h-[55vh] overflow-y-auto': !fullWidth }" class="pr-2" tabindex="0" role="region" aria-label="Question list">
         <div cdkDropList [cdkDropListData]="groupedBlueprintData" [cdkDropListAutoScrollDisabled]="true" (cdkDropListDropped)="dropSection($event)">
-          <div *ngFor="let group of groupedBlueprintData; let i = index" cdkDrag class="mb-8 bg-gray-50 rounded-lg border p-4 section-drag">
+          <div *ngFor="let group of groupedBlueprintData; let i = index" cdkDrag data-testid="preview-section" class="mb-8 bg-gray-50 rounded-lg border p-4 section-drag">
             <div class="flex justify-between items-center border-b pb-2 mb-4 gap-2">
               <div class="flex items-center gap-2 min-w-0">
                 <button type="button" cdkDragHandle class="drag-handle shrink-0" [attr.aria-label]="'Reorder section' | translate" title="{{ 'Drag to reorder' | translate }}">
                   <img src="assets/icons/drag-handle.svg" alt="" class="w-4 h-4" />
                 </button>
-                <h3 class="font-bold text-lg text-content truncate">
+                <h3 data-testid="preview-section-heading" class="font-bold text-lg text-content truncate">
                   {{ i + 1 }}. {{ group.type | translate }}
                 </h3>
               </div>
-              <span class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold shrink-0">
+              <span data-testid="preview-section-marks-badge" class="bg-primary-10 text-primary px-3 py-1 rounded-full text-xs font-bold shrink-0">
                 {{ 'Questions x Marks' | translate:{ count: group.questions.length, marks: formatMarks(group.marksPerQuestion) } }}
               </span>
             </div>

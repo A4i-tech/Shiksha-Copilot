@@ -1,6 +1,6 @@
 <div class="p-8 bg-white rounded-sm min-h-[90vh]">
   <div class="flex items-center justify-between mt-5 gap-4 flex-wrap">
-    <h1 class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]">
+    <h1 class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]" data-testid="generation-status-heading">
       {{ "Generation Status" | translate }}
     </h1>
   </div>
@@ -28,6 +28,7 @@
 
     <div
       class="card px-6 py-5 rounded-xl bg-white border flex flex-col justify-between"
+      data-testid="generation-status-card"
       *ngFor="let item of list"
     >
       <ng-container *ngIf="item.isPresentation; else statusLessonOrResource">
@@ -276,11 +277,13 @@
                   />
                   <span
                     class="text-xs text-white"
+                    data-testid="generation-status-badge"
                     *ngIf="item.status !== 'completed'"
                     >{{ item.status | titlecase | translate}}</span
                   >
                   <span
                     class="text-xs text-white"
+                    data-testid="generation-status-badge"
                     *ngIf="item.status === 'completed'"
                     >{{ "Regenerated" | translate }}</span
                   >
@@ -369,7 +372,7 @@
         <img src="assets/icons/no-file.svg" alt="" />
       </div>
       <div class="min-w-0">
-        <p class="text-base font-medium">
+        <p class="text-base font-medium" data-testid="generation-status-empty">
           {{ "No items found" | translate }}
         </p>
       </div>

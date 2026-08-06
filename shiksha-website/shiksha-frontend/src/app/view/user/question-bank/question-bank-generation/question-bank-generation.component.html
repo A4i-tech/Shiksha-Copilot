@@ -28,18 +28,18 @@
     <ng-container [ngSwitch]="currentStep">
       <div *ngSwitchCase="1" [@fadeInOut]="currentStep === 1">
         <div class="px-4 pt-4 md:px-8 md:pt-8">
-          <h2 class="text-base md:text-xl font-bold text-content">{{ 'Step 1/4: Question Paper Configuration' | translate }}</h2>
+          <h2 data-testid="wizard-step-header" class="text-base md:text-xl font-bold text-content">{{ 'Step 1/4: Question Paper Configuration' | translate }}</h2>
           <p class="text-sm md:text-base">{{ 'Configure the question paper here.' | translate }}</p>
         </div>
         <form [formGroup]="questionBankConfigForm" class="bg-white rounded-lg p-3 md:p-8">
           <div class="grid lg:grid-cols-3 gap-4">
-            <app-dropdown (valueChange)="onBoardChange($event)"
+            <app-dropdown data-testid="dropdown-board" (valueChange)="onBoardChange($event)"
               [dropDownCtrl]="convertToFormControl(f.board)" [dropDownValues]="boardDropdownOptions"
               [config]="boardDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
-            <app-dropdown (valueChange)="onStandardChange($event)"
+            <app-dropdown data-testid="dropdown-grade" (valueChange)="onStandardChange($event)"
               [dropDownCtrl]="convertToFormControl(f.grade)" [dropDownValues]="classDropdownOptions"
               [config]="classDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
-            <app-dropdown (valueChange)="onSubjectChange($event)"
+            <app-dropdown data-testid="dropdown-subject" (valueChange)="onSubjectChange($event)"
               [dropDownCtrl]="convertToFormControl(f.subject)" [dropDownValues]="subjectDropdownOptions"
               [config]="subjectDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
           </div>
@@ -47,12 +47,12 @@
           <div class="grid lg:grid-cols-2 gap-4 mt-7">
             <div>
               <label class="form-control-label">{{ 'Examination Name' | translate }} <span class="text-error">*</span></label>
-              <input class="form-control" formControlName="examinationName" [placeholder]="'Examination Name' | translate" />
+              <input data-testid="examination-name-input" class="form-control" formControlName="examinationName" [placeholder]="'Examination Name' | translate" />
               <small class="form-control-error" *ngIf="submittedConfig && f.examinationName.errors?.required">{{ 'Required' | translate }}</small>
             </div>
             <div>
               <label class="form-control-label">{{ 'Total Marks' | translate }} <span class="text-error">*</span></label>
-              <input class="form-control" formControlName="totalMarks" inputmode="numeric" maxlength="3"
+              <input data-testid="total-marks-input" class="form-control" formControlName="totalMarks" inputmode="numeric" maxlength="3"
                 oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 3)" [placeholder]="'Total Marks' | translate" />
               <small class="form-control-error" *ngIf="submittedConfig && f.totalMarks.errors?.required">{{ 'Required' | translate }}</small>
             </div>
@@ -74,11 +74,11 @@
                   </span>
                 </span>
               </label>
-              <app-dropdown (valueChange)="onSourceGenerationChange($event)"
+              <app-dropdown data-testid="dropdown-source-generation" (valueChange)="onSourceGenerationChange($event)"
                 [dropDownCtrl]="convertToFormControl(f.sourceGeneration)" [dropDownValues]="sourceGenerationOptions"
                 [config]="sourceGenerationDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
             </div>
-            <app-dropdown (valueChange)="onLanguageChange($event)"
+            <app-dropdown data-testid="dropdown-language" (valueChange)="onLanguageChange($event)"
               [dropDownCtrl]="convertToFormControl(f.language)" [dropDownValues]="languageDropdownOptions"
               [config]="languageDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
           </div>
@@ -88,7 +88,7 @@
               <label class="form-control-label">{{ 'Scope' | translate }} <span class="text-error">*</span></label>
               <div class="flex gap-4 items-center mt-2">
                 <label *ngFor="let type of questionBankTypes; let i = index" class="flex items-center gap-2">
-                  <input type="radio" [(ngModel)]="questionBankTypeValue" [ngModelOptions]="{ standalone: true }"
+                  <input type="radio" [attr.data-testid]="'scope-radio-' + type.value" [(ngModel)]="questionBankTypeValue" [ngModelOptions]="{ standalone: true }"
                     [id]="type.name + i" [value]="type.value" (change)="onQuestionTypeChange()" />
                   {{ type.name | translate }}
                 </label>
@@ -97,11 +97,11 @@
           </div>
 
           <div class="grid lg:grid-cols-2 gap-4 mt-7">
-            <app-dropdown (valueChange)="onChapterChange($event)"
+            <app-dropdown data-testid="dropdown-chapter" (valueChange)="onChapterChange($event)"
               [dropDownCtrl]="convertToFormControl(f.chapter)" [dropDownValues]="chapterDropdownOptions"
               [config]="chapterDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
             <app-dropdown *ngIf="questionBankTypeValue === 'singleChapter' && hasSubtopics"
- (valueChange)="onSubtopicChange()"
+              data-testid="dropdown-sub-topic" (valueChange)="onSubtopicChange()"
               [dropDownCtrl]="convertToFormControl(f.subTopic)" [dropDownValues]="subtopicsDropdownOptions"
               [config]="subTopicDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
           </div>
@@ -152,32 +152,32 @@
       <div *ngSwitchCase="2" [@fadeInOut]="currentStep === 2" class="p-4 md:p-8">
         <div class="flex items-center gap-2">
           <img src="assets/icons/back-arrow.svg" alt="Back" class="cursor-pointer w-5" (click)="previousStep()" />
-          <h2 class="text-base md:text-xl font-bold text-content">{{ 'Step 2/4: Question Paper Template' | translate }}</h2>
+          <h2 data-testid="wizard-step-header" class="text-base md:text-xl font-bold text-content">{{ 'Step 2/4: Question Paper Template' | translate }}</h2>
         </div>
         <p class="mb-6">{{ 'Customize the question paper template according to your needs.' | translate }}</p>
         <div class="flex justify-between mb-3"><strong>{{ 'Template' | translate }}</strong><strong>{{ 'Total Marks' | translate }}: {{ formatMarks(totalMarks) }}</strong></div>
         <div class="md:overflow-x-auto">
-          <table class="block w-full text-content md:table md:table-auto md:border">
+          <table data-testid="template-question-table" class="block w-full text-content md:table md:table-auto md:border">
             <thead class="hidden text-xs bg-[#edf6fe] md:table-header-group"><tr>
               <th class="px-4 py-3 border">{{ 'Question Type' | translate }}</th><th class="px-4 py-3 border">{{ 'Number of Questions' | translate }}</th>
               <th class="px-4 py-3 border">{{ 'Marks per Question' | translate }}</th><th class="px-4 py-3 border">{{ 'Action' | translate }}</th>
             </tr></thead>
             <tbody class="block md:table-row-group"><tr *ngFor="let row of templateData; let i = index"
-              class="mb-3 grid grid-cols-2 gap-3 rounded border p-3 md:table-row md:p-0">
-              <td class="col-span-2 md:table-cell md:border md:p-2">
+              data-testid="template-row" class="mb-3 grid grid-cols-2 gap-3 rounded border p-3 md:table-row md:p-0">
+              <td data-testid="template-row-type-cell" class="col-span-2 md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Question Type' | translate }}</label>
-                <app-dropdown [dropDownValues]="questionTypeOptions" [config]="questionTypeConfig"
+                <app-dropdown data-testid="common-dropdown" [dropDownValues]="questionTypeOptions" [config]="questionTypeConfig"
                 [(ngModel)]="row.type" [ngModelOptions]="{ standalone: true }"></app-dropdown></td>
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Number of Questions' | translate }}</label>
-                <input class="form-control" [(ngModel)]="row.numberOfQuestions"
+                <input data-testid="template-row-count-input" class="form-control" [(ngModel)]="row.numberOfQuestions"
                 [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" /></td>
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Marks per Question' | translate }}</label>
-                <input class="form-control" [(ngModel)]="row.marksPerQuestion"
+                <input data-testid="template-row-marks-input" class="form-control" [(ngModel)]="row.marksPerQuestion"
                 [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" /></td>
               <td class="col-span-2 md:table-cell md:border md:p-2"><div class="flex justify-end gap-2 md:justify-start">
-                <button class="btn-danger" *ngIf="templateData.length > 1" (click)="removeTemplateRow(i)"><img src="assets/icons/delete-icon.svg" alt="Delete" /></button>
+                <button data-testid="template-row-delete-btn" class="btn-danger" *ngIf="templateData.length > 1" (click)="removeTemplateRow(i)"><img src="assets/icons/delete-icon.svg" alt="Delete" /></button>
                 <button class="btn-primary" *ngIf="i === templateData.length - 1" (click)="addTemplateRow()"><img src="assets/icons/add-icon.svg" alt="Add" /></button>
               </div></td>
             </tr></tbody>
@@ -188,7 +188,7 @@
 
       <div *ngSwitchCase="3" [@fadeInOut]="currentStep === 3" class="p-4 md:p-8">
         <div class="flex items-center gap-2"><img src="assets/icons/back-arrow.svg" alt="Back" class="cursor-pointer" (click)="previousStep()" />
-          <h2 class="text-base md:text-xl font-bold text-content">{{ 'Step 3/4: Blue Print' | translate }}</h2></div>
+          <h2 data-testid="wizard-step-header" class="text-base md:text-xl font-bold text-content">{{ 'Step 3/4: Blue Print' | translate }}</h2></div>
         <p>{{ 'Review the blue print and generate questions.' | translate }}</p>
         <div class="mt-4 border rounded p-4">
           <ng-container *ngFor="let block of questionBankBluePrintData; let i = index">
@@ -198,9 +198,9 @@
             </div>
             <div *ngFor="let distribution of block.questionDistribution; let j = index" class="flex gap-3 mt-3 items-center">
               <span class="w-6 shrink-0">{{ j + 1 }}.</span>
-              <div class="flex-1 min-w-0"><app-dropdown [dropDownValues]="chapterOptions" [config]="chapterConfig"
+              <div class="flex-1 min-w-0"><app-dropdown data-testid="common-dropdown" [dropDownValues]="chapterOptions" [config]="chapterConfig"
                 [(ngModel)]="distribution.unitName" [ngModelOptions]="{ standalone: true }"></app-dropdown></div>
-              <div class="flex-1 min-w-0"><app-dropdown [dropDownValues]="objectiveOptions" [config]="objectiveConfig"
+              <div class="flex-1 min-w-0"><app-dropdown data-testid="common-dropdown" [dropDownValues]="objectiveOptions" [config]="objectiveConfig"
                 [(ngModel)]="distribution.objective" [ngModelOptions]="{ standalone: true }"></app-dropdown></div>
             </div>
           </ng-container>
@@ -228,14 +228,14 @@
 
   <div class="flex justify-end gap-2 py-4">
     <button *ngIf="currentStep > 1" class="btn-outline-primary px-6 py-2" (click)="previousStep()">{{ 'Previous' | translate }}</button>
-    <button *ngIf="currentStep < 3" class="btn-primary px-8 py-2" (click)="onSubmit(currentStep)" [disabled]="isLoadingQuestions">{{ 'Next' | translate }}</button>
-    <button *ngIf="currentStep === 3" class="btn-primary px-8 py-2" (click)="previewQuestions()" [disabled]="isLoadingQuestions">
+    <button *ngIf="currentStep < 3" data-testid="wizard-next-btn" class="btn-primary px-8 py-2" (click)="onSubmit(currentStep)" [disabled]="isLoadingQuestions">{{ 'Next' | translate }}</button>
+    <button *ngIf="currentStep === 3" data-testid="preview-questions" class="btn-primary px-8 py-2" (click)="previewQuestions()" [disabled]="isLoadingQuestions">
       {{ (isLoadingQuestions ? 'Generating questions...' : 'Preview Questions') | translate }}
     </button>
-    <button *ngIf="currentStep === 4" class="btn-outline-primary px-6 py-2" (click)="togglePicker()">
+    <button *ngIf="currentStep === 4" data-testid="toggle-picker-preview-btn" class="btn-outline-primary px-6 py-2" (click)="togglePicker()">
       {{ (pickerOpen ? 'Show Preview' : 'Change Questions') | translate }}
     </button>
-    <button *ngIf="currentStep === 4" class="btn-primary px-8 py-2" (click)="generateQuestionPaper()" [disabled]="isLoadingQuestions">
+    <button *ngIf="currentStep === 4" data-testid="generate-final-question-paper-btn" class="btn-primary px-8 py-2" (click)="generateQuestionPaper()" [disabled]="isLoadingQuestions">
       {{ (isLoadingQuestions ? 'Creating question paper...' : 'Generate Question Paper') | translate }}
     </button>
   </div>

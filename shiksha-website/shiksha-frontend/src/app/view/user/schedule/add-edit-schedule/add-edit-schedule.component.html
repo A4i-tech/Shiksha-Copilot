@@ -2,8 +2,8 @@
 	<div class="form-content  bg-white fixed  shadow-2xl rounded " #pop_ele role="dialog" aria-modal="true" aria-labelledby="schedule-dialog-title" cdkTrapFocus [cdkTrapFocusAutoCapture]="true">
 
 		<div class="header flex justify-between items-center px-4 py-3">
-			<h1 id="schedule-dialog-title" class="text-base font-bold leading-[26px] text-content" > {{(mode === 'view' ? "View Details" : mode === "edit" ? "Edit Details" : "Add Details")  | translate }}       </h1>
-			<div class=" bg-shade-50 rounded-full text-center p-1 cursor-pointer" (click)="closePopUP()">
+			<h1 id="schedule-dialog-title" data-testid="add-edit-schedule-title" class="text-base font-bold leading-[26px] text-content" > {{(mode === 'view' ? "View Details" : mode === "edit" ? "Edit Details" : "Add Details")  | translate }}       </h1>
+			<div data-testid="add-edit-schedule-close-btn" class=" bg-shade-50 rounded-full text-center p-1 cursor-pointer" (click)="closePopUP()">
 				<img src="assets/icons/E remove.svg" alt="">
 			</div>
 		</div>
@@ -117,7 +117,7 @@
 					<div class="footer-container px-4 py-3 " *ngIf="mode !== 'view'">
 						<div class="buttons flex items-center justify-end gap-2">
 							<button type="button" class="w-20 btn-outline-primary" (click)="closePopUP()">{{"Cancel" | translate}}</button>
-							<button  type="submit" class="btn-primary w-20 flex items-center justify-center" >
+							<button data-testid="add-edit-schedule-save-btn" type="submit" class="btn-primary w-20 flex items-center justify-center" >
 								<span class="mr-1">{{(mode === 'edit' ? "Update" : "Save")  | translate}}</span>
 								<img src="assets/icons/Vector (4).svg" alt="">
 							</button>
