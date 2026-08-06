@@ -1,12 +1,14 @@
 const request = require("supertest");
-const { baseURL, loginAsTeacher } = require("./superuser.helper");
+const { baseURL, loginAsSuperUser, createEphemeralTeacher, cleanupEphemeralTeacher } = require("./superuser.helper");
 
 // Real E2E test against the live staging deployment (see
 // .github/workflows/main.yaml's staging-e2e job). No LLM/SMS externals
 // in this flow at all - everything (auth, overlap check, parallel-
-// schedule aggregation, persistence) is real, driven over real HTTP,
-// authenticated as the pre-seeded super-user (who must already have a
-// School assigned on staging for schedule/create to work).
+// schedule aggregation, persistence) is real, driven over real HTTP.
+//
+// An ephemeral teacher account is created in beforeAll via the devtools
+// API and deleted in afterAll - no pre-seeded accounts or secrets needed
+// beyond the superuser credentials.
 //
 // Every schedule this suite creates is deleted again in afterEach via
 // DELETE /schedule/:id/:timeId - unlike lesson-plan fixtures, this one
@@ -15,20 +17,29 @@ const { baseURL, loginAsTeacher } = require("./superuser.helper");
 const MASTER_SUBJECT_NAME = "E2E Schedule Test Subject";
 
 describe("Schedule flow (E2E)", () => {
-  let token, teacherId;
+  let token, teacherId, rootToken, ephemeralIds;
   const createdSchedules = [];
 
   beforeAll(async () => {
-    ({ token, user: { _id: teacherId } } = await loginAsTeacher());
+    ({ token: rootToken } = await loginAsSuperUser());
+
+    const ephemeral = await createEphemeralTeacher(rootToken, ["schedule.edit", "schedule.view"]);
+    token = ephemeral.token;
+    teacherId = ephemeral.userId;
+    ephemeralIds = { userId: ephemeral.userId, roleId: ephemeral.roleId };
 
     // getMySchedules' aggregation $lookups into mastersubjects by
     // subjectName and does a non-preserving $unwind - a schedule whose
     // subject has no matching MasterSubject silently vanishes from the
     // results, so this fixture has to exist before any create call.
-    await request(baseURL).post("/api/master-subject/create").send({
-      subjectName: MASTER_SUBJECT_NAME,
-      boards: ["StateBoard"],
-    });
+    await request(baseURL)
+      .post("/api/master-subject/create")
+      .set("Authorization", rootToken)
+      .send({ subjectName: MASTER_SUBJECT_NAME, boards: ["StateBoard"] });
+  });
+
+  afterAll(async () => {
+    await cleanupEphemeralTeacher(rootToken, ephemeralIds);
   });
 
   afterEach(async () => {

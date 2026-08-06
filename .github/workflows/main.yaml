@@ -254,8 +254,6 @@ jobs:
           SHIKSHA_BASE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
           SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
           SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
-          SHIKSHA_TEACHER_PHONE: ${{ secrets.SHIKSHA_TEACHER_PHONE }}
-          SHIKSHA_TEACHER_PIN: ${{ secrets.SHIKSHA_TEACHER_PIN }}
         run: |
           npm ci
           npm run test:integration
