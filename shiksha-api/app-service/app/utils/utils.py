@@ -15,4 +15,5 @@ def local_unique_id(counter: int) -> str:
 def get_json_value_type(data: JsonValue) -> type[JsonValue]:
     if isinstance(data, list): return list[JsonValue]
     if isinstance(data, dict): return dict[str, JsonValue]
+    if data is None: return type(None)  # maps to Optional field - pydantic handles NoneType correctly via `| None`
     return type(data)

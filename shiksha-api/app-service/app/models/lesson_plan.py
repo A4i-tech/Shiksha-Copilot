@@ -1,18 +1,27 @@
-from pydantic import BaseModel, Field, JsonValue
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, Field, JsonValue
+
+def not_none(value: JsonValue) -> JsonValue:
+    if value is None: raise ValueError("must not be null")
+    return value
+
+
+NonNullJsonValue = Annotated[JsonValue, AfterValidator(not_none)]
 
 
 class SectionEditRequest(BaseModel):
     user_id: str
     index_path: str | None = None
     section_id: str
-    current_content: JsonValue
+    current_content: NonNullJsonValue
     prompt: str
 
 
 class PlanSectionInput(BaseModel):
     id: str
     title: str
-    content: JsonValue
+    content: NonNullJsonValue
 
 
 class PlanEditRequest(BaseModel):
