@@ -1,0 +1,35 @@
+services:
+  shiksha-mongo-svc:
+    image: mongo:7
+    container_name: shiksha-mongo-container
+    restart: unless-stopped
+    volumes:
+      - /opt/shiksha/data/mongo:/data/db
+    networks:
+      - shiksha-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  shiksha-qdrant-svc:
+    image: qdrant/qdrant:latest
+    container_name: shiksha-qdrant-container
+    restart: unless-stopped
+    volumes:
+      - /opt/shiksha/data/qdrant:/qdrant/storage
+    networks:
+      - shiksha-network
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  shiksha-network:
+    name: shiksha-network
+    driver: bridge

@@ -1,0 +1,70 @@
+services:
+
+  shiksha-api-svc:
+    build:
+      context: .
+      dockerfile: ./shiksha-api/app-service/Dockerfile
+    container_name: shiksha-api-container
+    env_file:
+      - ./shiksha-api/app-service/.env
+    ports:
+      - "0.0.0.0:5000:5000"
+    restart: unless-stopped
+    depends_on:
+      shiksha-mongo-svc:
+        condition: service_healthy
+      shiksha-qdrant-svc:
+        condition: service_healthy
+    networks:
+      - shiksha-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  shiksha-be-svc:
+    build:
+      context: ./shiksha-website/shiksha-backend
+      dockerfile: Dockerfile
+    container_name: shiksha-be-container
+    env_file:
+      - ./shiksha-website/shiksha-backend/.env
+    ports:
+      - "0.0.0.0:8080:8080"
+    restart: unless-stopped
+    depends_on:
+      shiksha-api-svc:
+        condition: service_healthy
+      shiksha-mongo-svc:
+        condition: service_healthy
+    networks:
+      - shiksha-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  shiksha-fe-svc:
+    build:
+      context: ./shiksha-website/shiksha-frontend
+      dockerfile: Dockerfile
+    container_name: shiksha-fe-container
+    env_file:
+      - ./shiksha-website/shiksha-frontend/.env
+    ports:
+      - "0.0.0.0:8000:8000"
+    restart: unless-stopped
+    depends_on:
+      shiksha-be-svc:
+        condition: service_healthy
+    networks:
+      - shiksha-network
+
+networks:
+  shiksha-network:
+    external: true
+    name: shiksha-network
