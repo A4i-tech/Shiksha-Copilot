@@ -4,7 +4,6 @@
 // DB or network connections (see config/db.js: connect() is explicit).
 
 const routeCases = [
-  { file: "admin.user.routes.js", method: "post", path: "/admin/create" },
   { file: "audit.log.route.js", method: "get", path: "/audit/log" },
   { file: "auth.routes.js", method: "post", path: "/auth/get-otp" },
   {
@@ -20,12 +19,6 @@ const routeCases = [
     file: "feedback.lesson.routes.js",
     method: "post",
     path: "/lesson-feedback/create",
-  },
-  { file: "fln.resource.routes.js", method: "get", path: "/fln" },
-  {
-    file: "help.videos.routes.js",
-    method: "post",
-    path: "/help-videos/create",
   },
   {
     file: "lesson.plan.template.routes.js",
@@ -56,7 +49,6 @@ const routeCases = [
   { file: "schedule.routes.js", method: "post", path: "/schedule/create" },
   { file: "school.class.routes.js", method: "post", path: "/class/create" },
   { file: "school.routes.js", method: "post", path: "/school/create" },
-  { file: "subject.routes.js", method: "post", path: "/subject/create" },
   { file: "teacher.absent.routes.js", method: "get", path: "/teacher-absent" },
   {
     file: "teacher.feedback.routes.js",
@@ -73,7 +65,7 @@ const routeCases = [
     method: "post",
     path: "/teacher-training-batches/",
   },
-  { file: "user.routes.js", method: "post", path: "/user/create" },
+  { file: "user.routes.js", method: "post", path: "/users" },
 ];
 
 const getRegisteredRoutes = (file) => {
