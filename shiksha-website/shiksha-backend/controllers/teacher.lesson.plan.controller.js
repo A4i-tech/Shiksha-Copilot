@@ -164,9 +164,10 @@ class TeacherLessonPlanController extends BaseController {
 
 	async getLessonPlanPresentation(req, res) {
 		const { lessonPlanId } = req.params;
+		const teacherId = req.user._id;
 		const pythonUrl = process.env.LLM_API_BASE_URL;
 		const response = await axios.get(`${pythonUrl}/presentation/jobs`, {
-			headers: {"X-User-ID": "0".repeat(24)},
+			headers: {"X-User-ID": String(teacherId)},
 			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
 		});
 		if (response.data.length > 0) {
@@ -182,7 +183,7 @@ class TeacherLessonPlanController extends BaseController {
 
 		const pythonUrl = process.env.LLM_API_BASE_URL;
 		let response = await axios.get(`${pythonUrl}/presentation/jobs`, {
-			headers: {"X-User-ID": "0".repeat(24)},
+			headers: {"X-User-ID": String(teacherId)},
 			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
 		});
 		if (response.data.length > 0) {
@@ -204,7 +205,7 @@ class TeacherLessonPlanController extends BaseController {
 		formData.append("slides", 16);
 		formData.append("tags", `lesson-plan-${lessonPlanId}`);
 		formData.append("instruction", "");
-		response = await axios.post(`${pythonUrl}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": "0".repeat(24)}});
+		response = await axios.post(`${pythonUrl}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": String(teacherId)}});
 		return res.status(200).json(response.data);
 	}
 
