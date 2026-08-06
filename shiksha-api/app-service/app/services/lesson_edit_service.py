@@ -63,8 +63,6 @@ class LessonEditService:
             _prompts = yaml.safe_load(file)
 
         self._prompt_section_edit_base = _prompts["section_edit_base"]
-        self._prompt_section_edit_plain = _prompts["section_edit_plain"]
-        self._prompt_section_edit_json = _prompts["section_edit_json"]
         self._prompt_plan_edit_instruction = _prompts["plan_edit_instruction"]
         self._prompt_grounding_instruction = _prompts["grounding_instruction"]
 
@@ -79,19 +77,17 @@ class LessonEditService:
     @observe(name="Shiksha-LP")
     async def edit_section(self, body: SectionEditRequest) -> JsonValue:
         current_content = body.current_content
-        is_plain = isinstance(current_content, str)
 
         instructions = " ".join((
             self._prompt_section_edit_base,
-            self._prompt_section_edit_plain if is_plain else self._prompt_section_edit_json,
             self._prompt_grounding_instruction
         ))
         input_text = (
-            f"Current content:\n{current_content if is_plain else json.dumps(current_content, ensure_ascii=False)}\n\n"
+            f"Current content:\n{current_content if isinstance(current_content, str) else json.dumps(current_content, ensure_ascii=False)}\n\n"
             f"Requested change:\n{body.prompt}"
         )
 
-        output_type = create_model("Result", content=(get_json_value_type(current_content), Field(description="Final output that replaces the provided 'Requested change'")))
+        output_type = create_model("Result", content=(get_json_value_type(current_content), Field(description="Revised content preserving the original structure")))
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
         with propagate_attributes(user_id=body.user_id, tags=["scope:section"]):
             response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps, usage_limits=UsageLimits(request_limit=8))
@@ -99,7 +95,7 @@ class LessonEditService:
 
     @observe(name="Shiksha-LP")
     async def edit_plan(self, body: PlanEditRequest) -> list[PlanEditRecordResponse]:
-        sections = "\n".join(f"- id={s.id}, title={s.title}, content={json.dumps(s.content, ensure_ascii=False)}" for s in body.sections)
+        sections = "\n".join(f"- Content for section ID={s.id}\n  {json.dumps(s.content, ensure_ascii=False)}" for s in body.sections)
         instructions = self._prompt_plan_edit_instruction + " " + self._prompt_grounding_instruction
         input_text = (
             f"Learning outcomes:\n{json.dumps(body.learning_outcomes, ensure_ascii=False)}\n\n"
@@ -110,7 +106,7 @@ class LessonEditService:
         mapping = {s.id: local_unique_id(idx) for idx, s in enumerate(body.sections)}
         mapping_ = {v: k for k, v in mapping.items()}
         output_type = create_model("Result", **{
-            mapping[s.id]: (get_json_value_type(s.content) | None, Field(default=None, description=f"Value to set to section \"{s.id}\"'s content field (section is titled '{s.title}'). Set this to null to skip making edits."))
+            mapping[s.id]: (get_json_value_type(s.content) | None, Field(default=None, description=f"Revised content for \"{s.id}\" ('{s.title}'), or null to skip"))
             for s in body.sections
         })
 
