@@ -492,6 +492,8 @@
   "Question paper + Answer Key": "ಪ್ರಶ್ನೆ ಪತ್ರಿಕೆ + ಉತ್ತರ ಕೀಲಿ",
   "Download": "ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",
   "Loading...": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+  "Saving...": "ಉಳಿಸಲಾಗುತ್ತಿದೆ...",
+  "Generating edits...": "ತಿದ್ದುಪಡಿಗಳನ್ನು ರಚಿಸಲಾಗುತ್ತಿದೆ...",
   "Generating blueprint...": "ನೀಲನಕ್ಷೆ ರಚಿಸಲಾಗುತ್ತಿದೆ...",
   "Retrieving textbook questions...": "ಪಠ್ಯಪುಸ್ತಕದ ಪ್ರಶ್ನೆಗಳನ್ನು ಪಡೆಯಲಾಗುತ್ತಿದೆ...",
   "Generating questions...": "ಪ್ರಶ್ನೆಗಳನ್ನು ರಚಿಸಲಾಗುತ್ತಿದೆ...",
@@ -812,5 +814,14 @@
   "Only PDF files are allowed": "PDF ಕಡತಗಳನ್ನು ಮಾತ್ರ ಅನುಮತಿಸಲಾಗಿದೆ",
   "PDF size should not exceed 10MB": "PDF ಗಾತ್ರ 10MB ಮೀರಬಾರದು",
   "Error uploading files. Please try again.": "ಕಡತಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡುವಾಗ ದೋಷ ಉಂಟಾಗಿದೆ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
-  "Failed to download report": "ವರದಿಯನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ"
+  "Failed to download report": "ವರದಿಯನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ",
+  "Enhance": "ಸುಧಾರಿಸಿ",
+  "Revert AI edits": "AI ತಿದ್ದುಪಡಿಗಳನ್ನು ಹಿಂತಿರುಗಿಸಿ",
+  "Revert all unsaved changes?": "ಉಳಿಸದ ಎಲ್ಲಾ ಬದಲಾವಣೆಗಳನ್ನು ಹಿಂತಿರುಗಿಸುವುದೇ?",
+  "This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.": "ಇದು ಉಳಿಸದ ಎಲ್ಲಾ ಬದಲಾವಣೆಗಳನ್ನು (AI ಮೂಲಕ ಸುಧಾರಿಸಿದ ತಿದ್ದುಪಡಿಗಳನ್ನು ಒಳಗೊಂಡಂತೆ) ತ್ಯಜಿಸುತ್ತದೆ ಮತ್ತು ಕೊನೆಯದಾಗಿ ಉಳಿಸಿದ ವಿಷಯವನ್ನು ಮರುಸ್ಥಾಪಿಸುತ್ತದೆ. ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ.",
+  "Revert": "ಹಿಂತಿರುಗಿಸಿ",
+  "AI enhance": "AI ಮೂಲಕ ಸುಧಾರಣೆ",
+  "AI enhance: entire lesson plan": "AI ಮೂಲಕ ಸುಧಾರಣೆ: ಸಂಪೂರ್ಣ ಪಾಠ ಯೋಜನೆ",
+  "Describe the change you want across the lesson plan": "ಪಾಠ ಯೋಜನೆಯಾದ್ಯಂತ ನೀವು ಬಯಸುವ ಬದಲಾವಣೆಯನ್ನು ವಿವರಿಸಿ",
+  "Describe the change you want": "ನೀವು ಬಯಸುವ ಬದಲಾವಣೆಯನ್ನು ವಿವರಿಸಿ"
 }

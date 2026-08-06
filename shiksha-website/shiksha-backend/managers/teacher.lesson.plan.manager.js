@@ -354,6 +354,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			const { lessonId, sectionId, currentContent, prompt, isLesson } = payload;
 			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
 			const requestData = {
+				user_id: teacherId,
 				index_path: indexPath,
 				section_id: sectionId,
 				current_content: currentContent,
@@ -379,6 +380,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			const { lessonId, sections, learningOutcomes, prompt, isLesson } = payload;
 			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
 			const requestData = {
+				user_id: teacherId,
 				index_path: indexPath,
 				sections: sections.map((s) => ({ id: s.id, title: s.title, content: s.content })),
 				learning_outcomes: learningOutcomes,

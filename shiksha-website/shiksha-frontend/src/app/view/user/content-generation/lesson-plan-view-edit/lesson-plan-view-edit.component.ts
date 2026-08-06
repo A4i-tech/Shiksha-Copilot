@@ -519,7 +519,6 @@ export class LessonPlanViewEditComponent implements OnInit {
       next: (res) => {
         this.hasUnsavedChanges = false;
         this.utilityService.handleResponse(res);
-        this.router.navigate(['/content-generation']);
       },
       error: (err) => {
         this.utilityService.handleError(err);
@@ -731,6 +730,11 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   startPlanAiPrompt() {
     this.planAiMode = 'prompt';
+    setTimeout(() => {
+      document
+        .querySelector('.plan-ai-prompt')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
   }
 
   cancelPlanAi() {

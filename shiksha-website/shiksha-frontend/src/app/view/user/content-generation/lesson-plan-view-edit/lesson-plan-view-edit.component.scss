@@ -77,3 +77,10 @@
   z-index: 20;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
 }
+
+@media (max-width: 767px) {
+  .feedback-panel {
+    position: static;
+    box-shadow: none;
+  }
+}

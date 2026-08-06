@@ -496,6 +496,8 @@
   "Question paper + Answer Key": "ప్రశ్న పత్రం + సమాధాన కీ",
   "Download": "డౌన్‌లోడ్",
   "Loading...": "లోడ్ అవుతోంది...",
+  "Saving...": "సేవ్ అవుతోంది...",
+  "Generating edits...": "సవరణలు రూపొందుతున్నాయి...",
   "Generating blueprint...": "బ్లూప్రింట్ రూపొందిస్తోంది...",
   "Retrieving textbook questions...": "పాఠ్యపుస్తక ప్రశ్నలను పొందుతోంది...",
   "Generating questions...": "ప్రశ్నలను రూపొందిస్తోంది...",
@@ -817,5 +819,14 @@
   "Only PDF files are allowed": "PDF ఫైళ్లు మాత్రమే అనుమతించబడతాయి",
   "PDF size should not exceed 10MB": "PDF పరిమాణం 10MB మించకూడదు",
   "Error uploading files. Please try again.": "ఫైళ్లను అప్‌లోడ్ చేయడంలో లోపం ఏర్పడింది. మళ్లీ ప్రయత్నించండి.",
-  "Failed to download report": "నివేదికను డౌన్‌లోడ్ చేయడం విఫలమైంది"
+  "Failed to download report": "నివేదికను డౌన్‌లోడ్ చేయడం విఫలమైంది",
+  "Enhance": "మెరుగుపరచండి",
+  "Revert AI edits": "AI సవరణలను వెనక్కి మార్చండి",
+  "Revert all unsaved changes?": "సేవ్ చేయని అన్ని మార్పులను వెనక్కి మార్చాలా?",
+  "This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.": "ఇది సేవ్ చేయని అన్ని మార్పులను (AIతో మెరుగుపరచిన సవరణలతో సహా) విస్మరిస్తుంది మరియు చివరిగా సేవ్ చేసిన కంటెంట్‌ను పునరుద్ధరిస్తుంది. దీన్ని రద్దు చేయడం సాధ్యం కాదు.",
+  "Revert": "వెనక్కి మార్చండి",
+  "AI enhance": "AIతో మెరుగుపరచండి",
+  "AI enhance: entire lesson plan": "AIతో మెరుగుపరచండి: మొత్తం పాఠ్య ప్రణాళిక",
+  "Describe the change you want across the lesson plan": "పాఠ్య ప్రణాళిక అంతటా మీరు కోరుకునే మార్పును వివరించండి",
+  "Describe the change you want": "మీరు కోరుకునే మార్పును వివరించండి"
 }

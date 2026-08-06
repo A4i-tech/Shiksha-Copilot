@@ -5,51 +5,44 @@
     [ngClass]="i + 1 === sections.length ? 'min-h-[80vh]' : ''"
   >
     <div
-      class="flex justify-between items-center rounded mb-4 mt-4 md:mt-8"
+      class="flex flex-wrap justify-between items-center gap-2 rounded mb-4 mt-4 md:mt-8"
       [attr.id]="section.id"
     >
-      <h2 class="text-2xl font-semibold text-primary">
+      <h2 class="flex-1 basis-64 min-w-0 text-2xl font-semibold text-primary">
         {{ section.title | translate}}
       </h2>
-      <div
-        class="flex items-center gap-4 opacity-100 md:opacity-0 md:group-hover:opacity-100"
-      >
-        <div
+      <div class="flex shrink-0 items-center gap-2">
+        <button
+          class="btn-primary-outline flex gap-2 items-center"
           [hasPermission]="[editPermission]"
-          class="flex gap-1 items-center cursor-pointer"
           (click)="setEditMode(i)"
-          *ngIf="!editMode[i] && section.editable"
+          *ngIf="!editMode[i] && section.editable && !aiMode[i]"
         >
-          <img
-            class="w-4"
-            src="assets/icons/edit-pen.svg"
-            alt=""
-          />
-          <small>Edit</small>
-        </div>
+          <img class="w-4" src="assets/icons/edit-pen.svg" alt="" />
+          {{ "Edit" | translate }}
+        </button>
+        <button class="btn-primary flex gap-2 items-center" (click)="startAiPrompt(i)" [hasPermission]="['lesson-plan.ai-enhance']"
+          *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive && !aiMode[i]">
+          <img class="w-4 brightness-0 invert" src="assets/icons/ai-logo.svg" alt="" />
+          {{ "Enhance" | translate }}
+        </button>
 
-        <div
+        <button
+          class="btn-primary flex gap-2 items-center"
           [hasPermission]="[editPermission]"
-          class="flex gap-1 items-center cursor-pointer"
           (click)="saveEdited(i)"
           *ngIf="editMode[i]"
         >
-          <img class="w-4" src="assets/icons/save.svg" alt="" />
-          <small>Save</small>
-        </div>
+          <img class="w-4 brightness-0 invert" src="assets/icons/save.svg" alt="" />
+          {{ "Save" | translate }}
+        </button>
       </div>
     </div>
 
     <!-- AI enhance (per-section) -->
     <div class="ai-enhance mb-4"
       [hasPermission]="['lesson-plan.ai-enhance']"
-      *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive">
-      <div *ngIf="!aiMode[i]">
-        <button class="btn-primary flex gap-2 items-center" (click)="startAiPrompt(i)">
-          <img src="assets/icons/ai-logo.svg" alt="" />{{ 'Enhance' | translate }}
-        </button>
-      </div>
-
+      *ngIf="isLesson && section.editable && !editMode[i] && !planAiActive && aiMode[i]">
       <div class="ai-panel" *ngIf="aiMode[i] === 'prompt'">
         <div class="ai-panel-header">
           <span class="ai-panel-title">{{ 'AI enhance' | translate }}: {{ section.title | translate }}</span>
@@ -65,7 +58,7 @@
         ></textarea>
         <div class="ai-actions">
           <button class="ai-btn ai-btn-primary" (click)="submitAiPrompt(i)" [disabled]="aiLoading[i] || !aiPrompt[i]">
-            {{ (aiLoading[i] ? 'Generating...' : 'Generate') | translate }}
+            {{ (aiLoading[i] ? 'Generating edits...' : 'Generate') | translate }}
           </button>
         </div>
       </div>
@@ -371,8 +364,9 @@
     </ng-container>
 
     <div class="flex justify-end">
-      <button [hasPermission]="[editPermission]" class="btn-primary" (click)="saveEdited(i)" *ngIf="editMode[i]">
-        Save
+      <button [hasPermission]="[editPermission]" class="btn-primary flex gap-2 items-center" (click)="saveEdited(i)" *ngIf="editMode[i]">
+        <img class="w-4 brightness-0 invert" src="assets/icons/save.svg" alt="" />
+        {{ "Save" | translate }}
       </button>
     </div>
   </div>

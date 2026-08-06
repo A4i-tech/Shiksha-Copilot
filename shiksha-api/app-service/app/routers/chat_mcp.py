@@ -131,6 +131,7 @@ def router(mcp: FastMCP):
 
         try:
             request = SectionEditRequest(
+                user_id=user_id,
                 index_path=chapter_index,
                 section_id=section_id,
                 current_content=current_content,

@@ -499,6 +499,8 @@
   "Question paper + Answer Key": "Question paper + Answer Key",
   "Download": "Download",
   "Loading...": "Loading...",
+  "Saving...": "Saving...",
+  "Generating edits...": "Generating edits...",
   "Generating blueprint...": "Generating blueprint...",
   "Retrieving textbook questions...": "Retrieving textbook questions...",
   "Generating questions...": "Generating questions...",
@@ -820,5 +822,14 @@
   "Only PDF files are allowed": "Only PDF files are allowed",
   "PDF size should not exceed 10MB": "PDF size should not exceed 10MB",
   "Error uploading files. Please try again.": "Error uploading files. Please try again.",
-  "Failed to download report": "Failed to download report"
+  "Failed to download report": "Failed to download report",
+  "Enhance": "Enhance",
+  "Revert AI edits": "Revert AI edits",
+  "Revert all unsaved changes?": "Revert all unsaved changes?",
+  "This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.": "This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.",
+  "Revert": "Revert",
+  "AI enhance": "AI enhance",
+  "AI enhance: entire lesson plan": "AI enhance: entire lesson plan",
+  "Describe the change you want across the lesson plan": "Describe the change you want across the lesson plan",
+  "Describe the change you want": "Describe the change you want"
 }
