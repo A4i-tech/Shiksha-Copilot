@@ -10,6 +10,7 @@ const marksDistributionSchema = new Schema({
 
 const objectiveDistributionSchema = new Schema({
   objective: { type: String },
+  shortName: { type: String },
   percentageDistribution: { type: Number }
 });
 

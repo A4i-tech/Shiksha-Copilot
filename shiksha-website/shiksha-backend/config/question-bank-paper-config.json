@@ -85,7 +85,7 @@
       { "objective": "Knowledge", "percentageDistribution": 10 },
       { "objective": "Understanding", "percentageDistribution": 20 },
       { "objective": "Application", "percentageDistribution": 30 },
-      { "objective": "Higher order thinking", "percentageDistribution": 40 }
+      { "objective": "Higher order thinking", "shortName": "HOT", "percentageDistribution": 40 }
     ]
   },
   "boardMarks": {
