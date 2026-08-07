@@ -30,6 +30,7 @@ describe("MasterResourceController", () => {
 
     mockReq = {
       user: { _id: "user-123", role: "teacher" },
+      permissions: ["lesson-resource.generate"],
       params: {},
       query: {},
       body: {},
@@ -82,18 +83,17 @@ describe("MasterResourceController", () => {
   });
 
   describe("regenerate", () => {
-    it("should regenerate resource for power user", async () => {
+    it("should regenerate a resource", async () => {
       const mockResult = {
         success: true,
         data: { resourceId: "resource-123", regenerated: true },
       };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "power";
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Outdated content",
-        userId: "user-123",
       };
+      mockReq.user = { _id: "user-123" };
 
       await controller.regenerate(mockReq, mockRes);
 
@@ -106,57 +106,9 @@ describe("MasterResourceController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult.data);
     });
 
-    it("should regenerate resource for admin user", async () => {
-      const mockResult = { success: true, data: { regenerated: true } };
-      mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "admin";
-      mockReq.body = {
-        resourceId: "resource-123",
-        reason: "Test",
-        userId: "user-123",
-      };
-
-      await controller.regenerate(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should regenerate resource for manager user", async () => {
-      const mockResult = { success: true, data: { regenerated: true } };
-      mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "manager";
-      mockReq.body = {
-        resourceId: "resource-123",
-        reason: "Test",
-        userId: "user-123",
-      };
-
-      await controller.regenerate(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should deny access for unauthorized role", async () => {
-      mockReq.user.role = "teacher";
-      mockReq.body = {
-        resourceId: "resource-123",
-        reason: "Test",
-        userId: "user-123",
-      };
-
-      await controller.regenerate(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        message: "Forbidden: You do not have the required permissions to perform this action.",
-      });
-      expect(mockManager.regenerateResourcePlan).not.toHaveBeenCalled();
-    });
-
     it("should return 404 when regeneration fails", async () => {
       const mockResult = { success: false, message: "Regeneration failed" };
       mockManager.regenerateResourcePlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = "admin";
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Test",
@@ -171,7 +123,6 @@ describe("MasterResourceController", () => {
 
     it("should handle exceptions", async () => {
       mockManager.regenerateResourcePlan = jest.fn().mockRejectedValue(new Error("Error"));
-      mockReq.user.role = "admin";
       mockReq.body = {
         resourceId: "resource-123",
         reason: "Test",

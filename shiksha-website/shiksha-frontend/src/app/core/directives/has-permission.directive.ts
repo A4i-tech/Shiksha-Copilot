@@ -1,23 +1,17 @@
-import { Directive, ElementRef, OnInit, Input } from '@angular/core';
+import { Directive, ElementRef, OnChanges, Input } from '@angular/core';
 import { UtilityService } from '../services/utility.service';
 
 @Directive({
   standalone:true,
   selector: '[hasPermission]',
 })
-export class HasPermissionDirective implements OnInit {
+export class HasPermissionDirective implements OnChanges {
   @Input('hasPermission') permission!: string[];
 
   constructor(private el: ElementRef, private utilityService: UtilityService) {}
 
-  ngOnInit() {
+  ngOnChanges() {
     const result = this.utilityService.hasPermission(this.permission);
-    if(!result){
-      this.hideElement();
-    }
+    this.el.nativeElement.style.setProperty('display', result ? '' : 'none', 'important');
   }
-
-  hideElement() {
-      this.el.nativeElement.style.setProperty('display', 'none', 'important');
-    }
 }

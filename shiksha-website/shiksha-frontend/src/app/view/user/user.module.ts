@@ -1,11 +1,9 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { UserRoutingModule } from './user-routing.module';
 import { ProfileComponent } from './profile/profile.component';
-import { CommonDropdownComponent } from 'src/app/shared/components/common-dropdown/common-dropdown.component';
+import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { FormDropdownComponent } from 'src/app/shared/components/form-dropdown/form-dropdown.component';
 import { LanguageSwitcherComponent } from 'src/app/shared/components/language-switcher/language-switcher.component';
 import { TranslateModule } from '@ngx-translate/core';
 import { DashboardComponent } from './dashboard/dashboard.component';
@@ -16,7 +14,7 @@ import { DeleteDetailComponent } from 'src/app/shared/components/delete-detail/d
 import { ProfileImageComponent } from 'src/app/shared/components/profile-image/profile-image.component';
 import { GenerationStatusComponent } from './generation-status/generation-status.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
-import { CalendarAccessibilityDirective } from 'src/app/shared/directives/calendar';
+import { RouterModule } from '@angular/router';
 
 
 @NgModule({
@@ -27,11 +25,9 @@ import { CalendarAccessibilityDirective } from 'src/app/shared/directives/calend
   ],
   imports: [
     CommonModule,
-    UserRoutingModule,
-    CommonDropdownComponent,
+    DropdownComponent,
     ReactiveFormsModule,
     FormsModule,
-    FormDropdownComponent,
     LanguageSwitcherComponent,
     TranslateModule,
     CalendarModule.forRoot({
@@ -42,7 +38,7 @@ import { CalendarAccessibilityDirective } from 'src/app/shared/directives/calend
     DeleteDetailComponent,
     ProfileImageComponent,
     PaginationComponent,
-    CalendarAccessibilityDirective,
+    RouterModule,
   ]
 })
 export class UserModule { }

@@ -2,6 +2,7 @@ const axios = require("axios");
 const handleError = require("../helper/handleError.js");
 const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manager.js");
 const BaseController = require("./base.controller.js");
+const { intersectFilters } = require("../helper/scope.helper");
 /** @extends {BaseController<TeacherLessonPlanManager>} */
 class TeacherLessonPlanController extends BaseController {
 	constructor() {
@@ -49,7 +50,7 @@ class TeacherLessonPlanController extends BaseController {
 					teacherId,
 					parseInt(page),
 					parseInt(limit),
-					{ ...filter, ...searchFilter, fields },
+					{ ...intersectFilters(filter, searchFilter), fields },
 					sortOrderObject
 				);
 
@@ -255,9 +256,6 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            if (!req.user.role.includes("power")) {
-                return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
-            }
 
             const result = await this.manager.generateContent(teacherId, payload);
 
@@ -277,9 +275,6 @@ class TeacherLessonPlanController extends BaseController {
         try {
             const payload = req.body;
             const teacherId = req.user._id;
-            if (!req.user.role.includes("power")) {
-                return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
-            }
 
             const result = await this.manager.regenerateContent(teacherId, payload);
 
@@ -291,6 +286,44 @@ class TeacherLessonPlanController extends BaseController {
             }
         } catch (error) {
             console.error("Error -> TeacherLessonPlanController -> regenerateContent", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    }
+
+    async sectionAiEdit(req, res) {
+        try {
+            const payload = req.body;
+            const teacherId = req.user._id;
+
+            const result = await this.manager.sectionAiEdit(teacherId, payload);
+
+            if (result.success) {
+                return res.status(200).json(result);
+            } else {
+                handleError(result, res);
+                return;
+            }
+        } catch (error) {
+            console.error("Error -> TeacherLessonPlanController -> sectionAiEdit", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    }
+
+    async planAiEdit(req, res) {
+        try {
+            const payload = req.body;
+            const teacherId = req.user._id;
+
+            const result = await this.manager.planAiEdit(teacherId, payload);
+
+            if (result.success) {
+                return res.status(200).json(result);
+            } else {
+                handleError(result, res);
+                return;
+            }
+        } catch (error) {
+            console.error("Error -> TeacherLessonPlanController -> planAiEdit", error);
             return res.status(500).json({ error: "Internal server error" });
         }
     }
@@ -383,31 +416,9 @@ class TeacherLessonPlanController extends BaseController {
     }
 
 
-	async resourceActivityRating(req, res) {
-        try {
-			
-			const { resourcePlanId } = req.params;
-			const teacherId = req.user._id;
-            const data = req.body;
-            const result = await this.manager.rateActivity(teacherId,resourcePlanId,data);
-            if (result.success) {
-                return res.status(200).json(result);
-            } else {
-                handleError(result, res);
-                return;
-            }
-        } catch (error) {
-            console.error("Error Activity Rating:", error);
-            res.status(500).send({ success: false, error});
-        }
-    }
-	
 	async retryLessonPlan(req, res) {
 		try {
 			const { regeneratedId, _id } = req.body; 
-            if (!req.user.role.includes("power")) {
-				return res.status(403).json({ error: "Forbidden: You do not have the required role to perform this action" });
-			}
 	
 			const result = await this.manager.retryLessonPlan(regeneratedId, _id);
 	

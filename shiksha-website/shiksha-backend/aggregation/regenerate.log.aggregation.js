@@ -49,7 +49,7 @@ class RegenerateLogAggregation {
 			{
 				$lookup: {
 					from: "schools",
-					localField: "user.school",
+					localField: "user.roles.dep",
 					foreignField: "_id",
 					as: "user.school",
 				},
@@ -75,7 +75,7 @@ class RegenerateLogAggregation {
 						content:"$content.name",
 						genContent:"$genContent.name",
 						contentId:1,
-						userName:"$user.name",
+						userName:"$user.identity.name",
 						genContentId:1,
 						updatedAt:1,
 						createdAt:1

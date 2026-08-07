@@ -166,6 +166,7 @@ class TeacherLessonPlanAggregation {
 					$match: {
 						teacherId,
 						isLesson: true,
+						isDeleted: { $ne: true },
 					},
 				},
 				{

@@ -338,17 +338,18 @@ async def plan(textbook_path: str, textbook_mime: str, data: AsyncBufferedReader
         f = BinaryContent(await data.read(), media_type=textbook_mime)
 
     outline = None
-    async for raw_event in planner.run_stream_events([f, PLANNER_USER_PROMPT.safe_substitute(
+    async with planner.run_stream_events([f, PLANNER_USER_PROMPT.safe_substitute(
         slides=slides or "auto",
         local_images="\n".join("- " + f.model_dump_json() for f in figures),
         instruction=instruction or "none"
-    )], usage_limits=UsageLimits(request_limit=100)):
-        if isinstance(raw_event, AgentRunResultEvent):
-            outline = raw_event.result.output
-            break
-        event = _adapt_event(raw_event)
-        if event is not None:
-            yield event
+    )], usage_limits=UsageLimits(request_limit=100)) as events:
+        async for raw_event in events:
+            if isinstance(raw_event, AgentRunResultEvent):
+                outline = raw_event.result.output
+                break
+            event = _adapt_event(raw_event)
+            if event is not None:
+                yield event
 
     if outline is None:
         raise RuntimeError("Failed to generate a presentation outline.")
@@ -390,14 +391,15 @@ async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBu
     if metadata["slides_created"] == 0:
         yield ShikshaCheckpointEvent(message="Creating engaging welcome slide")
         slide_count = len(prs.slides)
-        async for raw_event in designer.run_stream_events(DESIGNER_FIRST_SLIDE_PROMPT.safe_substitute(**subs), usage_limits=UsageLimits(request_limit=8), deps=deps, toolsets=[
+        async with designer.run_stream_events(DESIGNER_FIRST_SLIDE_PROMPT.safe_substitute(**subs), usage_limits=UsageLimits(request_limit=8), deps=deps, toolsets=[
             SlideTrackerToolset(designer_toolset.filtered(lambda _, tool_def: tool_def.name == ppt_add_welcome_slide.__name__))
-        ]):
-            if isinstance(raw_event, AgentRunResultEvent):
-                break
-            event = _adapt_event(raw_event)
-            if event is not None:
-                yield event
+        ]) as events:
+            async for raw_event in events:
+                if isinstance(raw_event, AgentRunResultEvent):
+                    break
+                event = _adapt_event(raw_event)
+                if event is not None:
+                    yield event
         if len(prs.slides) <= slide_count:
             raise RuntimeError("No slide was created")
         yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
@@ -405,16 +407,17 @@ async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBu
     # Process each section and its slides from the outline
     while len(metadata["slides_completed"]) <= deps.outline.total_slides:
         task = DESIGNER_BODY_SLIDE_PROMPT.safe_substitute(**subs)
-        async for raw_event in designer.run_stream_events(task, usage_limits=UsageLimits(request_limit=64), deps=deps, toolsets=[SlideTrackerToolset(designer_toolset)]):
-            if isinstance(raw_event, AgentRunResultEvent):
-                continue
-            event = _adapt_event(raw_event)
-            if event is None:
-                continue
-            yield event
-            if deps.slide is not None:
-                message = "Creating slide %d/%d: %s (%s)" % (len(metadata["slides_completed"]), deps.outline.total_slides, deps.slide.title, deps.slide.slide_type)
-                yield ShikshaCheckpointEvent(message=message, metadata=metadata, reason="op")
+        async with designer.run_stream_events(task, usage_limits=UsageLimits(request_limit=64), deps=deps, toolsets=[SlideTrackerToolset(designer_toolset)]) as events:
+            async for raw_event in events:
+                if isinstance(raw_event, AgentRunResultEvent):
+                    continue
+                event = _adapt_event(raw_event)
+                if event is None:
+                    continue
+                yield event
+                if deps.slide is not None:
+                    message = "Creating slide %d/%d: %s (%s)" % (len(metadata["slides_completed"]), deps.outline.total_slides, deps.slide.title, deps.slide.slide_type)
+                    yield ShikshaCheckpointEvent(message=message, metadata=metadata, reason="op")
         yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
 
     # Final engagement quality report
@@ -437,19 +440,20 @@ async def finalize(prs: presentation.Presentation, metadata: dict[str, Any]):
     videos = metadata["videos"] if "videos" in metadata else []
     if len(videos) == 0:
         yield ShikshaCheckpointEvent(message="Browsing YouTube for videos")
-        async for raw_event in finalizer.run_stream_events(FINALIZER_BROWSE_PROMPT.safe_substitute(
+        async with finalizer.run_stream_events(FINALIZER_BROWSE_PROMPT.safe_substitute(
             slide_content=slide_content,
             videos_found=json.dumps([]),
             videos_relevant=json.dumps([])
-        ), usage_limits=UsageLimits(request_limit=8), deps=deps):
-            if isinstance(raw_event, AgentRunResultEvent):
-                break
-            event = _adapt_event(raw_event)
-            if event is None:
-                continue
-            yield event
-            if event.type == "ToolCallExecutionEvent":
-                videos.append(event.model_dump_json())
+        ), usage_limits=UsageLimits(request_limit=8), deps=deps) as events:
+            async for raw_event in events:
+                if isinstance(raw_event, AgentRunResultEvent):
+                    break
+                event = _adapt_event(raw_event)
+                if event is None:
+                    continue
+                yield event
+                if event.type == "ToolCallExecutionEvent":
+                    videos.append(event.model_dump_json())
         if len(videos) > 0:
             metadata["videos"] = videos
             yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
@@ -457,19 +461,20 @@ async def finalize(prs: presentation.Presentation, metadata: dict[str, Any]):
     if len(videos) > 0 and "relevant_videos" not in metadata:
         yield ShikshaCheckpointEvent(message="Reviewing collected videos for a video slide")
         relevant_videos = []
-        async for raw_event in finalizer.run_stream_events(FINALIZER_REVIEW_PROMPT.safe_substitute(
+        async with finalizer.run_stream_events(FINALIZER_REVIEW_PROMPT.safe_substitute(
             slide_content=slide_content,
             videos_found=json.dumps(metadata["videos"]),
             videos_relevant=json.dumps([])
-        ), usage_limits=UsageLimits(request_limit=8), deps=deps):
-            if isinstance(raw_event, AgentRunResultEvent):
-                break
-            event = _adapt_event(raw_event)
-            if event is None:
-                continue
-            yield event
-            if event.type == "ToolCallExecutionEvent":
-                relevant_videos.append(event.model_dump_json())
+        ), usage_limits=UsageLimits(request_limit=8), deps=deps) as events:
+            async for raw_event in events:
+                if isinstance(raw_event, AgentRunResultEvent):
+                    break
+                event = _adapt_event(raw_event)
+                if event is None:
+                    continue
+                yield event
+                if event.type == "ToolCallExecutionEvent":
+                    relevant_videos.append(event.model_dump_json())
         if len(relevant_videos) > 0:
             metadata["relevant_videos"] = relevant_videos
             yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
@@ -477,16 +482,17 @@ async def finalize(prs: presentation.Presentation, metadata: dict[str, Any]):
     if "thank_you_slide_created" not in metadata:
         yield ShikshaCheckpointEvent(message="Creating a thank-you slide")
         slide_count = len(prs.slides)
-        async for raw_event in finalizer.run_stream_events(FINALIZER_ADD_SLIDE_PROMPT.safe_substitute(
+        async with finalizer.run_stream_events(FINALIZER_ADD_SLIDE_PROMPT.safe_substitute(
             slide_content=slide_content,
             videos_found=json.dumps(metadata.get("videos", [])),
             videos_relevant=json.dumps(metadata.get("relevant_videos", []))
-        ), usage_limits=UsageLimits(request_limit=8), deps=deps):
-            if isinstance(raw_event, AgentRunResultEvent):
-                break
-            event = _adapt_event(raw_event)
-            if event is not None:
-                yield event
+        ), usage_limits=UsageLimits(request_limit=8), deps=deps) as events:
+            async for raw_event in events:
+                if isinstance(raw_event, AgentRunResultEvent):
+                    break
+                event = _adapt_event(raw_event)
+                if event is not None:
+                    yield event
         if len(prs.slides) <= slide_count:
             raise RuntimeError("No slide was created")
         metadata["thank_you_slide_created"] = datetime.now().isoformat()

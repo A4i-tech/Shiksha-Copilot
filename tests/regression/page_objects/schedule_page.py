@@ -6,41 +6,42 @@ class SchedulePage(BasePage):
         super().__init__(page)
         
         # --- Header & Navigation ---
-        self.header_title = page.locator("h1", has_text="My Schedules")
-        self.my_schedule_btn = page.locator("button", has_text="My Schedules").first
-        
+        self.header_title = page.get_by_test_id("schedule-header-title")
+        self.my_schedule_btn = page.get_by_test_id("my-schedules-tab-btn")
+
         # --- Calendar Grid ---
-        # RESTORED: This was missing in the previous version
-        self.calendar_week_view = page.locator("mwl-calendar-week-view")
+        self.calendar_week_view = page.get_by_test_id("calendar-week-view")
         # --- Calendar Grid ---
-        # The library 'angular-calendar' uses .cal-hour-segment for the clickable white boxes
-        self.empty_slots = page.locator(".cal-hour-segment") 
-        self.existing_events = page.locator(".schedule-view")
+        # 'angular-calendar' (mwl-calendar-week-view) renders .cal-hour-segment internally;
+        # it is library-owned DOM, not markup from our own templates, so it cannot be
+        # attributed to a template element and is left as a CSS selector.
+        self.empty_slots = page.locator(".cal-hour-segment")
+        self.existing_events = page.get_by_test_id("schedule-event-card")
 
         # --- Popup / Modal ---
         # The popup is rendered via <app-add-edit-schedule>
-        self.popup_container = page.locator("app-add-edit-schedule")
-        self.popup_header = self.popup_container.locator("h1, .modal-title, .title", has_text="Add Details")
-        
+        self.popup_container = page.get_by_test_id("add-edit-schedule-popup")
+        self.popup_header = page.get_by_test_id("add-edit-schedule-title")
+
         # Close/Cancel buttons often inside the component
-        self.close_popup_btn = self.popup_container.locator("img[src*='remove'], button.close, [aria-label='Close'], .close-icon, span.cursor-pointer")
-        self.save_btn = self.popup_container.locator("button[type='submit']")
+        self.close_popup_btn = page.get_by_test_id("add-edit-schedule-close-btn")
+        self.save_btn = page.get_by_test_id("add-edit-schedule-save-btn")
 
         # --- Tooltip / Context Menu ---
         # Defined as <div id="dialogue"> in the HTML
-        self.tooltip_menu = page.locator("#dialogue")
-        self.view_details_opt = self.tooltip_menu.locator("li", has_text="View Details")
-        self.edit_details_opt = self.tooltip_menu.locator("li.edit")     # matches <li class="... edit">
-        self.delete_opt = self.tooltip_menu.locator("li.delete")         # matches <li class="... delete">
+        self.tooltip_menu = page.get_by_test_id("schedule-tooltip-menu")
+        self.view_details_opt = page.get_by_test_id("tooltip-view-details-option")
+        self.edit_details_opt = page.get_by_test_id("tooltip-edit-details-option")
+        self.delete_opt = page.get_by_test_id("tooltip-delete-option")
 
         # --- Delete Confirmation Modal ---
         # Defined as <app-delete-detail> in the HTML
-        self.delete_confirm_modal = page.locator("app-delete-detail")
-        self.confirm_delete_btn = self.delete_confirm_modal.locator("button.btn-danger, button.delete")
+        self.delete_confirm_modal = page.get_by_test_id("delete-confirm-modal")
+        self.confirm_delete_btn = page.get_by_test_id("delete-detail-primary-btn")
 
     def navigate(self, base_url: str):
         """Goes to the Schedule page."""
-        self.page.goto(f"{base_url}/#/user/schedule")
+        self.page.goto(f"{base_url}/#/schedule")
         self.header_title.wait_for()
 
     def open_add_schedule_popup(self):

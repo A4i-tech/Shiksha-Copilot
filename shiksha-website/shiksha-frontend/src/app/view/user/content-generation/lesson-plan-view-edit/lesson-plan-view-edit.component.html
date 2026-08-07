@@ -2,25 +2,36 @@
   <div class="flex justify-between items-center">
     <div class="flex gap-2">
       <img
+        data-testid="back-arrow-btn"
         src="assets/icons/back-arrow.svg"
         alt=""
         class="cursor-pointer"
         (click)="backNavigation()"
       />
-      <h1 class="text-xl md:text-3xl font-bold text-content">
+      <h1 data-testid="lesson-plan-page-heading" class="text-xl md:text-3xl font-bold text-content">
         {{ (isLesson ? "Lesson Plan" : "Lesson Resource") | translate }}
       </h1>
     </div>
-    <button
-      [hasPermission]="['power']"
-      *ngIf="isLesson && mode === 'view'"
-      class="btn-primary flex gap-2 items-center my-2 md:my-0"
-      (click)="chat(planDetails._id, planDetails?.lesson?.chapter?._id)"
-    >
-      <img src="assets/icons/chat-light.svg" alt="" />{{
-        "Chatbot" | translate
-      }}
-    </button>
+    <div class="flex gap-2">
+      <button
+        [hasPermission]="['lesson-plan.ai-enhance']"
+        *ngIf="isLesson && !planAiMode && !sectionAiActive"
+        class="btn-primary flex gap-2 items-center my-2 md:my-0"
+        (click)="startPlanAiPrompt()"
+      >
+        <img class="brightness-0 invert" src="assets/icons/ai-logo.svg" alt="" />{{ "Enhance" | translate }}
+      </button>
+      <button
+        [hasPermission]="['chat.use']"
+        *ngIf="isLesson && mode !== 'generate'"
+        class="btn-primary flex gap-2 items-center my-2 md:my-0"
+        (click)="chat(planDetails._id, planDetails?.lesson?.chapter?._id)"
+      >
+        <img src="assets/icons/chat-light.svg" alt="" />{{
+          "Chatbot" | translate
+        }}
+      </button>
+    </div>
   </div>
   <div
     class="flex flex-col md:flex-row main-container mt-4"
@@ -31,6 +42,7 @@
       [ngClass]="expandedContainer ? 'w-0' : 'w-full md:w-1/5'"
     >
       <div
+        data-testid="section-navigation"
         class="hidden md:block flex-[70%] overflow-y-auto bg-white border-r border-gray-200 rounded-t-md shadow-sm section-navigation"
         *ngIf="!expandedContainer"
       >
@@ -85,7 +97,7 @@
         *ngIf="!expandedContainer"
       >
         <div class="flex items-center justify-between">
-          <p class="font-semibold">{{ "Chapter Details" | translate }}</p>
+          <p data-testid="chapter-details-toggle" class="font-semibold">{{ "Chapter Details" | translate }}</p>
           <img
             class="md:hidden"
             src="{{
@@ -122,6 +134,7 @@
           <img src="assets/icons/menu.svg" alt="" />
         </button>
         <button
+          data-testid="content-type-tab"
           class="px-4 py-2 -mb-px border-b-2"
           [ngClass]="{
             'border-primary text-primary font-bold':
@@ -133,6 +146,7 @@
           {{ currentType | translate}}
         </button>
         <button
+          data-testid="videos-tab-btn"
           class="px-4 py-2 -mb-px border-b-2"
           [ngClass]="{
             'border-primary text-primary font-bold': activeTab() === 'Videos',
@@ -144,6 +158,7 @@
           {{ 'Videos'| translate }}
         </button>
         <button
+          data-testid="documents-tab-btn"
           class="px-4 py-2 -mb-px border-b-2"
           [ngClass]="{
             'border-primary text-primary font-bold':
@@ -161,7 +176,13 @@
         <app-lesson-plan-formats
           [sections]="sections"
           [editMode]="editMode"
+          [planId]="planId"
+          [isLesson]="isLesson"
+          [planAiActive]="!!planAiMode"
+          [editPermission]="isLesson ? 'lesson-plan.edit' : 'lesson-resource.edit'"
           (unsavedChanges)="updateUnsavedChanges($event)"
+          (aiAccepted)="onAiAccepted()"
+          (aiModeActive)="sectionAiActive = $event"
         ></app-lesson-plan-formats>
       </div>
 
@@ -187,12 +208,147 @@
     </div>
   </div>
 
-  <div class="text-content rounded my-4 p-4 md:p-4 bg-white">
-    <h2 class="text-xl font-bold text-content-100 md:leading-[48px]">
-      {{ currentType | translate}} {{ "Feedback" | translate }}
-    </h2>
+  <div class="text-content rounded my-3 p-3 bg-white feedback-panel">
+    <div class="flex justify-between items-center flex-wrap gap-2">
+      <h2 data-testid="feedback-heading" class="text-lg font-bold text-content-100">
+        {{ currentType | translate}} {{ "Feedback" | translate }}
+      </h2>
+      <div class="flex gap-2" *ngIf="isLesson && !planAiMode" [hasPermission]="['lesson-plan.ai-enhance']">
+        <button class="btn-primary flex gap-2 items-center" (click)="showRevertConfirmation = true">
+          <img src="assets/icons/Replay_light.svg" alt="" />
+          {{ "Revert AI edits" | translate }}
+        </button>
+      </div>
+    </div>
 
-    <div class="mt-3 gap-4 flex text-[14px] flex-col xl:flex-row">
+    <div class="plan-ai-prompt bg-white border rounded p-3 mt-2" *ngIf="planAiMode === 'prompt'">
+      <div class="flex justify-between items-center mb-2">
+        <span class="font-semibold text-content">{{
+          "AI enhance: entire lesson plan" | translate
+        }}</span>
+        <button class="text-gray-500 text-sm" (click)="cancelPlanAi()">
+          {{ "Close" | translate }}
+        </button>
+      </div>
+      <textarea
+        class="p-2 border rounded-sm w-full focus:outline-none"
+        rows="3"
+        [(ngModel)]="planAiPrompt"
+        [disabled]="planAiLoading"
+        placeholder="{{
+          'Describe the change you want across the lesson plan' | translate
+        }}"
+        (keydown.enter)="submitPlanAiPrompt(); $event.preventDefault()"
+      ></textarea>
+      <div class="flex justify-end mt-2">
+        <button
+          class="btn-primary"
+          (click)="submitPlanAiPrompt()"
+          [disabled]="planAiLoading || !planAiPrompt"
+        >
+          {{ (planAiLoading ? "Generating edits..." : "Generate") | translate }}
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white border rounded p-3 mt-2" *ngIf="planAiMode === 'diff'">
+      <div class="flex justify-between items-center mb-3">
+        <span class="font-semibold text-content">{{
+          "AI enhance: entire lesson plan" | translate
+        }}</span>
+        <div class="flex gap-2">
+          <button class="btn-primary-outline" (click)="togglePlanAiSplitView()">
+            {{ (planAiSplitView ? "Unified" : "Split") | translate }}
+          </button>
+          <button class="btn-primary-outline" (click)="rejectPlanDiff()">
+            {{ "Reject" | translate }}
+          </button>
+          <button
+            class="btn-primary"
+            (click)="acceptPlanDiff()"
+            [disabled]="!planAiDiffs.length"
+          >
+            {{ "Accept" | translate }}
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="!planAiDiffs.length" class="text-sm text-gray-500">
+        {{ "The AI did not propose any changes for this request." | translate }}
+      </div>
+
+      <div *ngFor="let d of planAiDiffs" class="mb-4">
+        <div class="font-semibold text-primary mb-1">{{ d.title | translate }}</div>
+        <div class="text-xs font-mono border rounded overflow-x-auto bg-white" *ngIf="!planAiSplitView">
+          <div
+            *ngFor="let line of d.parts"
+            class="flex whitespace-pre"
+            [ngClass]="{
+              'bg-green-50 text-green-700': line.type === 'add',
+              'bg-red-50 text-red-700': line.type === 'remove',
+              'text-gray-800': line.type === 'context'
+            }"
+          >
+            <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+              line.oldLine || ''
+            }}</span>
+            <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+              line.newLine || ''
+            }}</span>
+            <span class="flex-none w-4 text-center select-none">{{
+              line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ''
+            }}</span>
+            <span class="flex-1">
+              <ng-container *ngIf="line.segments; else lineText">
+                <span
+                  *ngFor="let seg of line.segments"
+                  [ngClass]="{
+                    'bg-green-200': seg.changed && line.type === 'add',
+                    'bg-red-200': seg.changed && line.type === 'remove'
+                  }"
+                  >{{ seg.text }}</span
+                >
+              </ng-container>
+              <ng-template #lineText>{{ line.text }}</ng-template>
+            </span>
+          </div>
+        </div>
+        <div class="text-xs font-mono border rounded overflow-x-auto bg-white" *ngIf="planAiSplitView">
+          <div *ngFor="let row of d.splitParts" class="flex whitespace-pre-wrap">
+            <div
+              class="flex-1 flex min-w-0 border-r"
+              [ngClass]="{ 'bg-red-50 text-red-700': row.left?.type === 'remove' }"
+            >
+              <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+                row.left?.oldLine || ''
+              }}</span>
+              <span>
+                <ng-container *ngIf="row.left?.segments; else leftText">
+                  <span *ngFor="let seg of row.left?.segments" [class.bg-red-200]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #leftText>{{ row.left?.text }}</ng-template>
+              </span>
+            </div>
+            <div
+              class="flex-1 flex min-w-0"
+              [ngClass]="{ 'bg-green-50 text-green-700': row.right?.type === 'add' }"
+            >
+              <span class="flex-none w-10 text-right pr-2 text-gray-400 select-none">{{
+                row.right?.newLine || ''
+              }}</span>
+              <span>
+                <ng-container *ngIf="row.right?.segments; else rightText">
+                  <span *ngFor="let seg of row.right?.segments" [class.bg-green-200]="seg.changed">{{ seg.text }}</span>
+                </ng-container>
+                <ng-template #rightText>{{ row.right?.text }}</ng-template>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-2 gap-2 flex text-[14px] flex-col xl:flex-row">
       <div
         class="flex items-start md:items-center"
         *ngFor="let feedbackValue of feedbackValues"
@@ -215,30 +371,33 @@
 
     <div>
       <textarea
+        data-testid="feedback-textarea"
         [(ngModel)]="feedbackReason"
         [disabled]="mode === 'view'"
-        class="p-2 mt-2 border rounded-sm w-fullfocus:outline-none w-full"
+        class="form-control mt-2"
         placeholder="{{ 'Leave your comments here' | translate }}"
-        rows="3"
+        rows="2"
         (change)="hasUnsavedChanges = true"
       ></textarea>
     </div>
 
     <div
-      class="flex items-center justify-end gap-2 mt-5"
+      class="flex items-center justify-end gap-2 mt-3"
       *ngIf="mode === 'view'"
     >
-      <button (click)="saveEditedContent()" type="submit" class="btn-primary">
+      <button data-testid="save-changes-btn" [hasPermission]="[isLesson ? 'lesson-plan.edit' : 'lesson-resource.edit']" (click)="saveEditedContent()" type="submit" class="btn-primary">
         {{ "Save Changes" | translate }}
       </button>
     </div>
 
     <div
-      class="flex items-center justify-end gap-2 mt-5"
+      class="flex items-center justify-end gap-2 mt-3"
       *ngIf="mode !== 'view'"
     >
       <button
+        data-testid="save-content-btn"
         (click)="onSave()"
+        [hasPermission]="[isLesson ? 'lesson-plan.edit' : 'lesson-resource.edit']"
         type="submit"
         class="btn-primary"
         [disabled]="!feedback"
@@ -246,22 +405,6 @@
         {{ "Save" | translate }} {{ currentType | translate }}
       </button>
 
-      <!-- <button
-        *ngIf="subjectDetails.chapter.medium === 'english' && isLesson"
-        [hasPermission]="['power']"
-        (click)="openRegeneratePopup()"
-        class="btn-primary-outline"
-        [disabled]="
-          !feedback ||
-          feedback === feedbackValues[2].value ||
-          regenerationLimitReached
-        "
-      >
-        <div class="flex items-center gap-2">
-          <img src="assets/icons/Replay.svg" alt="" />
-          <span>{{ "Regenerate" | translate }}</span>
-        </div>
-      </button> -->
     </div>
 
     <div class="bg-warn-50 p-2 my-4" *ngIf="isLesson && regenerationLimitReached">
@@ -276,6 +419,7 @@
   </div>
 
   <app-delete-detail
+    data-testid="draft-confirmation-modal"
     *ngIf="contentGenService.showDraftConfirmation"
     [config]="{
       heading: 'Leave Page?',
@@ -285,16 +429,23 @@
           : 'You have unsaved changes. Do you want to save them as a draft before leaving?',
       primaryButtonLabel: mode === 'view' ? 'Save Changes' : 'Save as Draft',
       primaryButtonType: 'ok',
-      cancelButtonLabel: 'Exit Without Saving'
+      cancelButtonLabel: 'Continue Editing',
+      secondaryButtonLabel: 'Exit Without Saving',
+      secondaryButtonType: 'discard'
     }"
     (close)="confirmDraft($event)"
   ></app-delete-detail>
-</div>
 
-<app-modal *ngIf="modalService.showRenegenerateDialog">
-  <app-regenerate-popup
-    (regenerate)="regenerateContent($event)"
-    [regenerateReason]="{ title: feedback, reason: feedbackReason }"
-    [sections]="sections"
-  ></app-regenerate-popup>
-</app-modal>
+  <app-delete-detail
+    *ngIf="showRevertConfirmation"
+    [config]="{
+      heading: 'Revert all unsaved changes?',
+      confirmationText: 'This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.',
+      primaryButtonLabel: 'Revert',
+      primaryButtonType: 'ok',
+      primaryButtonIcon: 'assets/icons/Replay_light.svg',
+      cancelButtonLabel: 'Cancel'
+    }"
+    (close)="confirmRevert($event)"
+  ></app-delete-detail>
+</div>

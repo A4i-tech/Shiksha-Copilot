@@ -11,17 +11,16 @@ require("applicationinsights").setup().start();
 const express = require("express");
 const cors = require("cors");
 const logger = require("morgan");
-const path = require("path");
 const dbService = require("./config/db");
 const userRoutes = require("./routes/user.routes.js");
 const masterLessonRoutes = require("./routes/master.lesson.routes");
 const boardRoutes = require("./routes/board.routes");
 const schoolRoutes = require("./routes/school.routes");
 const schoolClassRoutes = require("./routes/school.class.routes");
-const subjectRoutes = require("./routes/subject.routes");
 const regionRoutes = require("./routes/region.routes");
 const authRoutes = require("./routes/auth.routes");
-const adminRoutes = require("./routes/admin.user.routes");
+const contentActivityRoutes = require("./routes/content.activity.routes");
+const roleRoutes = require("./routes/role.routes");
 const presentationRoutes = require("./routes/presentation.routes");
 const resourceRoutes = require("./routes/facility.routes");
 const scheduleRoutes = require("./routes/schedule.routes");
@@ -40,22 +39,20 @@ const conditionalMorganMiddleware = require('./config/morgan');
 const useragent = require('express-useragent');
 const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.routes.js');
 const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
-const helpVideosRoutes = require('./routes/help.videos.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
 const endlineSurveyRoutes = require('./routes/endlineSurvey.routes');
 const systemRoutes = require('./routes/system.routes.js');
+const supersetRoutes = require('./routes/superset.routes.js');
 
 const app = express();
 app.disable("x-powered-by");
+app.set("trust proxy", 1); // trust Azure ingress/LB for HTTPS detection
 
 app.use(express.json());
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
 app.use(cors({ origin: allowedOrigins, optionsSuccessStatus: 200 }));
 
-const folderPath = path.join(__dirname, 'public', 'images');
-
-app.use('/content', express.static(folderPath));
 app.use(logger("dev"));
 app.use(conditionalMorganMiddleware);
 app.use(useragent.express());
@@ -69,10 +66,10 @@ app.use("/api", masterLessonRoutes);
 app.use("/api", boardRoutes);
 app.use("/api", schoolRoutes);
 app.use("/api", schoolClassRoutes);
-app.use("/api", subjectRoutes);
 app.use("/api", regionRoutes);
 app.use("/api", authRoutes);
-app.use("/api", adminRoutes);
+app.use("/api", contentActivityRoutes);
+app.use("/api", roleRoutes);
 app.use("/api", resourceRoutes);
 app.use("/api", scheduleRoutes);
 app.use("/api", masterSubjectRoutes);
@@ -89,9 +86,10 @@ app.use("/api", questionBankRoutes)
 app.use("/api", lessonPlanTemplateRoutes)
 app.use("/api", teacherTrainingBatchRoutes);
 app.use('/api', teacherAbsentRoutes);
-app.use('/api', helpVideosRoutes);
 app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
+app.use('/api', supersetRoutes);
+if (process.env.SHIKSHA_DEVTOOLS === "true") app.use("/api/devtools", require("./routes/devtools.routes"));
 
 process.on('unhandledRejection', (reason, promise) => {
 	console.log(promise, reason);

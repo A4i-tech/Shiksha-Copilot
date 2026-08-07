@@ -23,7 +23,7 @@ describe("TeacherLessonPlanController", () => {
       params: {},
       body: {},
       query: {},
-      user: { _id: "teacher-123", name: "Test Teacher", role: ["teacher"] },
+      user: { _id: "teacher-123", name: "Test Teacher" },
     };
 
     mockRes = {
@@ -31,16 +31,6 @@ describe("TeacherLessonPlanController", () => {
       json: jest.fn().mockReturnThis(),
       send: jest.fn().mockReturnThis(),
     };
-  });
-
-  describe("Instance creation", () => {
-    it("should create an instance of TeacherLessonPlanController", () => {
-      expect(controller).toBeInstanceOf(TeacherLessonPlanController);
-    });
-
-    it("should have a teacherLessonPlanManager property", () => {
-      expect(controller.manager).toBeDefined();
-    });
   });
 
   describe("getByTeacherAndPagination", () => {
@@ -274,10 +264,9 @@ describe("TeacherLessonPlanController", () => {
   });
 
   describe("generateContent", () => {
-    it("should generate content successfully for power user", async () => {
+    it("should generate content successfully", async () => {
       const mockResult = { success: true, data: { lessonPlan: {} } };
       mockManager.generateContent = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = ["power"];
       mockReq.body = { lessonId: "lesson-123" };
 
       await controller.generateContent(mockReq, mockRes);
@@ -287,21 +276,9 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should return 403 for non-power users", async () => {
-      mockReq.user.role = ["teacher"];
-
-      await controller.generateContent(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        error: "Forbidden: You do not have the required role to perform this action"
-      });
-    });
-
     it("should handle errors in content generation", async () => {
       const mockResult = { success: false, message: "Generation failed" };
       mockManager.generateContent = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = ["power"];
 
       await controller.generateContent(mockReq, mockRes);
 
@@ -311,7 +288,6 @@ describe("TeacherLessonPlanController", () => {
     it("should handle exceptions", async () => {
       const error = new Error("Server error");
       mockManager.generateContent = jest.fn().mockRejectedValue(error);
-      mockReq.user.role = ["power"];
 
       await controller.generateContent(mockReq, mockRes);
 
@@ -324,7 +300,6 @@ describe("TeacherLessonPlanController", () => {
     it("should regenerate content successfully", async () => {
       const mockResult = { success: true, data: { lessonPlan: {} } };
       mockManager.regenerateContent = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = ["power"];
       mockReq.body = { lessonPlanId: "lesson-123" };
 
       await controller.regenerateContent(mockReq, mockRes);
@@ -333,13 +308,6 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
-    it("should return 403 for non-power users", async () => {
-      mockReq.user.role = ["teacher"];
-
-      await controller.regenerateContent(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-    });
   });
 
   describe("handleWebhook", () => {
@@ -450,40 +418,10 @@ describe("TeacherLessonPlanController", () => {
     });
   });
 
-  describe("resourceActivityRating", () => {
-    it("should rate activity successfully", async () => {
-      const mockResult = { success: true, message: "Activity rated" };
-      mockManager.rateActivity = jest.fn().mockResolvedValue(mockResult);
-      mockReq.params = { resourcePlanId: "resource-123" };
-      mockReq.body = { activityId: "activity-1", rating: 5 };
-
-      await controller.resourceActivityRating(mockReq, mockRes);
-
-      expect(mockManager.rateActivity).toHaveBeenCalledWith(
-        "teacher-123",
-        "resource-123",
-        mockReq.body
-      );
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should handle rating errors", async () => {
-      const error = new Error("Rating failed");
-      mockManager.rateActivity = jest.fn().mockRejectedValue(error);
-      mockReq.params = { resourcePlanId: "resource-123" };
-
-      await controller.resourceActivityRating(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.send).toHaveBeenCalledWith({ success: false, error });
-    });
-  });
-
   describe("retryLessonPlan", () => {
-    it("should retry lesson plan for power user", async () => {
+    it("should retry a lesson plan", async () => {
       const mockResult = { success: true, data: {} };
       mockManager.retryLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = ["power"];
       mockReq.body = { regeneratedId: "regen-123", _id: "lesson-123" };
 
       await controller.retryLessonPlan(mockReq, mockRes);
@@ -492,18 +430,9 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 
-    it("should return 403 for non-power users", async () => {
-      mockReq.user.role = ["teacher"];
-
-      await controller.retryLessonPlan(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-    });
-
     it("should handle retry errors", async () => {
       const mockResult = { success: false, message: "Retry failed" };
       mockManager.retryLessonPlan = jest.fn().mockResolvedValue(mockResult);
-      mockReq.user.role = ["power"];
       mockReq.body = { regeneratedId: "regen-123", _id: "lesson-123" };
 
       await controller.retryLessonPlan(mockReq, mockRes);

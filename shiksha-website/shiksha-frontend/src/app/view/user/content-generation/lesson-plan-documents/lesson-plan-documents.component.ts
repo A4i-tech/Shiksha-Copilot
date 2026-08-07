@@ -4,7 +4,6 @@ import { saveAs } from 'file-saver';
 import { CheckListExportService } from 'src/app/shared/services/checklist-export.service';
 import { ChecklistPdfExportService } from '../../../../shared/services/checklist-pdf-export.service';
 import { DocumentExportService } from 'src/app/shared/services/document-export.service';
-import { ResourcePptGeneratorService } from 'src/app/shared/services/resource-ppt-generator.service';
 import { ContentGenerationService } from '../content-generation.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 
@@ -34,7 +33,6 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
   constructor(
     private documentExportService: DocumentExportService,
     private checklistPdfExportService: ChecklistPdfExportService,
-    private resourcePptxService: ResourcePptGeneratorService,
     private checkListExportService: CheckListExportService,
     private contentGenerationService: ContentGenerationService,
     private utilityService: UtilityService,
@@ -101,10 +99,6 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     switch (downloadType) {
       case 'planDoc':
         this.documentExportService.downloadDoc(data, header, fileName);
-        break;
-
-      case 'planPPT':
-        this.resourcePptxService.generatePpt(data, header, fileName);
         break;
 
       case 'planChecklist':
@@ -230,8 +224,8 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     }
     const userData: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(userData);
-    header.schoolName = loggedInUser?.school?.name;
-    header.teacherName = loggedInUser?.name;
+    header.schoolName = loggedInUser.school.name;
+    header.teacherName = loggedInUser.identity.name;
     header.reportGeneratedDate = this.planDetails?.createdAt;
     if (type === 'doc') {
       this.checkListExportService.generateChecklist(

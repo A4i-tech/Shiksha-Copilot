@@ -1,35 +1,24 @@
 const Joi = require("joi");
+const validateRequest = require("./common.validation");
+const { validateRequestForUpdates } = validateRequest;
 
-const validateClassCreate = (req, res, next) => {
-	const data = req.body;
+const createSchema = Joi.object({
+	standard: Joi.number().required(),
+	section: Joi.string().required(),
+	subjects: Joi.array().items(
+		Joi.object({
+			subject: Joi.string().required(),
+			topics: Joi.array().items(Joi.string()),
+		})
+	),
+	girls_strength: Joi.number().required(),
+	boys_strength: Joi.number().required(),
+	total_strength: Joi.number().required(),
+	school_id: Joi.string().required(),
+	medium: Joi.string().required(),
+});
 
-	const schema = Joi.object({
-		standard: Joi.number().required(),
-		section: Joi.string().required(),
-		subjects: Joi.array().items(
-			Joi.object({
-				subject: Joi.string().required(),
-				topics: Joi.array().items(Joi.string()),
-			})
-		),
-		girls_strength: Joi.number().required(),
-		boys_strength: Joi.number().required(),
-		total_strength: Joi.number().required(),
-		school_id: Joi.string().required(),
-		medium: Joi.string().required(),
-	});
-
-	const { error } = schema.validate(data, { abortEarly: false });
-
-	if (error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: error.details.map((i) => i.message),
-		});
-	}
-	next();
-};
+const validateClassCreate = validateRequest(createSchema);
 
 const validateClassGetById = (req, res, next) => {
 	const { id } = req.params;
@@ -48,45 +37,22 @@ const validateClassGetById = (req, res, next) => {
 	next();
 };
 
-const validateClassUpdate = (req, res, next) => {
-	const { id } = req.params;
-	const data = req.body;
+const updateSchema = Joi.object({
+	standard: Joi.number(),
+	section: Joi.string(),
+	subjects: Joi.array().items(
+		Joi.object({
+			subject: Joi.string().required(),
+			topics: Joi.array().items(Joi.string()),
+		})
+	),
+	girls_strength: Joi.number(),
+	boys_strength: Joi.number(),
+	total_strength: Joi.number(),
+	school_id: Joi.string(),
+});
 
-	const schema = Joi.object({
-		standard: Joi.number(),
-		section: Joi.string(),
-		subjects: Joi.array().items(
-			Joi.object({
-				subject: Joi.string().required(),
-				topics: Joi.array().items(Joi.string()),
-			})
-		),
-		girls_strength: Joi.number(),
-		boys_strength: Joi.number(),
-		total_strength: Joi.number(),
-		school_id: Joi.string(),
-	});
-
-	const { error } = schema.validate(data, { abortEarly: false });
-
-	if (error) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: error.details.map((i) => i.message),
-		});
-	}
-
-	if (!id) {
-		return res.status(400).json({
-			success: false,
-			data: false,
-			error: "ID parameter is required",
-		});
-	}
-
-	next();
-};
+const validateClassUpdate = validateRequestForUpdates(updateSchema);
 
 const validateGroupClassByBoard = (req, res, next) => {
 	const { schoolId } = req.params;

@@ -1,5 +1,7 @@
 import hashlib
 
+from pydantic import JsonValue
+
 
 def local_unique_id(counter: int) -> str:
     # key really does not matter here, wee aren't aiming for crypto-secure but rather 'random-enough'. determinism
@@ -8,3 +10,10 @@ def local_unique_id(counter: int) -> str:
     # other mapping. the solution below works well for up to 65,536 generations, far more than the amount an agent
     # would ever request during its runtime.
     return hashlib.blake2s(counter.to_bytes(2, "big"), key=b"shiksha-copilot", digest_size=4).hexdigest()
+
+
+def get_json_value_type(data: JsonValue) -> type[JsonValue]:
+    if isinstance(data, list): return list[JsonValue]
+    if isinstance(data, dict): return dict[str, JsonValue]
+    if data is None: return type(None)  # maps to Optional field - pydantic handles NoneType correctly via `| None`
+    return type(data)

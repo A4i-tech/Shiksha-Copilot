@@ -1,13 +1,14 @@
 const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
-const { isAuthenticated ,isAdmin, isAdminOrManager } = require("../middlewares/auth.js");
+const { isAuthenticated, requireAnyPermission, requirePermission } = require("../middlewares/auth.js");
 const uploadMiddleware = require("../middlewares/uploadMiddleware.js");
 const UserController = require("../controllers/user.controller.js");
 const {
 	validateUserCreate,
 	validateUserUpdate,
 	validateUserGetByPhone,
+	validateUserList,
 	validateSetProfile,
 	validatePreferredLanguageUpdate,
 	validateUserActivityLog,
@@ -16,111 +17,123 @@ const {
 const userController = new UserController();
 
 router.post(
-	"/user/create",
+	"/users",
 	isAuthenticated,
-	isAdmin,
 	validateUserCreate,
+	requirePermission("user.create"),
 	asyncMiddleware(userController.create.bind(userController))
 );
 
 router.post(
-	"/user/get-by-phone",
+	"/users/lookup",
+	isAuthenticated,
+	requirePermission("user.view"),
 	validateUserGetByPhone,
 	asyncMiddleware(userController.getByPhone.bind(userController))
 );
 
 router.put(
-	"/user/set-profile",
-	validateSetProfile,
+	"/profile",
 	isAuthenticated,
+	requirePermission("profile.edit"),
+	validateSetProfile,
 	asyncMiddleware(userController.setProfile.bind(userController))
 );
 
 router.patch(
-	"/user/update-language",
+	"/profile/language",
 	isAuthenticated,
+	requirePermission("profile.edit"),
 	validatePreferredLanguageUpdate,
 	asyncMiddleware(userController.updatePreferredLanguage.bind(userController))
 );
 
 router.get(
-	"/user/list",
+	"/users",
 	isAuthenticated,
-	isAdminOrManager,
+	validateUserList,
+	requirePermission("user.view"),
 	asyncMiddleware(userController.getAll.bind(userController))
 );
 
 router.get(
-	"/user/export",
+	"/users/export",
 	isAuthenticated,
-	isAdminOrManager,
+	requirePermission("user.export"),
 	asyncMiddleware(userController.export.bind(userController))
 );
 
 router.get(
-	"/user/get-profile/:id",
+	"/users/:id/profile",
+	isAuthenticated,
+	requireAnyPermission("profile.view", "user.view"),
 	asyncMiddleware(userController.getProfile.bind(userController))
 );
 
 router.put(
-	"/user/:id",
+	"/users/:id",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("user.edit"),
+	(req, res, next) => req.body.roles ? requirePermission("role.assign")(req, res, next) : next(),
 	validateUserUpdate,
 	asyncMiddleware(userController.update.bind(userController))
 );
 
 router.get(
-	"/user/:id",
+	"/users/:id",
+	isAuthenticated,
+	requireAnyPermission("profile.view", "user.view"),
 	asyncMiddleware(userController.getUserWithSchoolId.bind(userController))
 );
 
 router.delete(
-	"/user/:id",
+	"/users/:id",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("user.delete"),
 	asyncMiddleware(userController.delete.bind(userController))
 );
 
 router.post(
-	"/user/bulk-upload",
+"/users/import",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("user.import"),
 	uploadMiddleware,
 	asyncMiddleware(userController.bulkUpload.bind(userController))
 );
 
 router.post(
-	"/user/upload-profile-image",
+	"/profile/image",
 	isAuthenticated,
+	requirePermission("profile.edit"),
 	uploadMiddleware,
 	asyncMiddleware(userController.uploadProfileImage.bind(userController))
 );
 
-router.post(
-	"/user/remove-profile-image",
+router.delete(
+	"/profile/image",
 	isAuthenticated,
+	requirePermission("profile.edit"),
 	asyncMiddleware(userController.removeProfileImage.bind(userController))
 );
 
 router.put(
-	"/user/activate/:id",
+	"/users/:id/activate",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("user.delete"),
 	asyncMiddleware(userController.activate.bind(userController))
 );
 
 router.put(
-	"/user/deactivate/:id",
+	"/users/:id/deactivate",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("user.delete"),
 	asyncMiddleware(userController.deactivate.bind(userController))
 );
 
 router.post(
-	"/user/activity-log",
-	validateUserActivityLog,
+	"/activity-log",
 	isAuthenticated,
+	validateUserActivityLog,
 	asyncMiddleware(userController.activityLog.bind(userController))
 );
 

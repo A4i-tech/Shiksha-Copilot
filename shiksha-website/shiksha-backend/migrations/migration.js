@@ -2,7 +2,6 @@
 const MasterLesson = require("../models/master.lesson.model");
 const MasterResource = require("../models/master.resource.model");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model")
-const User = require("../models/user.model");
 const Chapter = require("../models/chapter.model");
 const LessonFeedback = require("../models/feedback.lesson.model")
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");
@@ -13,9 +12,11 @@ const QuestionBankConfiguration = require("../models/question.bank.config.model"
 const Classes = require("../models/school.class.model")
 const Chapters = require("../models/chapter.model")
 const Schools = require("../models/school.model")
+const unifyUsers = require("./unify-users");
 
 async function runMigrations() {
     try {
+        await unifyUsers();
         await Promise.all([
             MasterLesson.updateMany(
                 { isRegenerated: { $exists: false } },

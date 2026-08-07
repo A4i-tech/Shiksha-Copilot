@@ -1,0 +1,12 @@
+<div class="leaders-dashboard-wrapper">
+  <div *ngIf="loading" class="state-message">
+    <span class="spinner"></span>
+    Loading dashboard...
+  </div>
+
+  <div *ngIf="error && !loading" class="state-message error">
+    {{ error }}
+  </div>
+
+  <div #mountPoint class="superset-mount" [class.hidden]="loading || error"></div>
+</div>

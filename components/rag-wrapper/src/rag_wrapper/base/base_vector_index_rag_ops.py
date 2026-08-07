@@ -87,7 +87,7 @@ class BaseVectorIndexRagOps(BaseRagOps):
         text_str: str,
         retrieval_query: Optional[str] = None,
         metadata_filter: Optional[Dict[str, str]] = None,
-    ) -> Any:
+    ) -> RESPONSE_TYPE:
         """
         Query the vector store index and generate a response using a query engine.
 

@@ -1,0 +1,49 @@
+<div class="select-wrapper">
+  <label class="form-control-label inline-flex items-center gap-1" [for]="inputId" [class.sr-only]="config.hideLabel || (!config.fieldName && !config.labelTxt)">
+    {{ labelText | translate }}
+    <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span>
+    <span *ngIf="config.info" class="relative group cursor-help" tabindex="0">
+      <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="" />
+      <span role="tooltip"
+        class="pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute top-5 left-0 z-50 w-72 rounded border bg-white p-3 text-xs font-normal leading-snug text-content-60 shadow-md">
+        {{ config.info | translate }}
+      </span>
+    </span>
+  </label>
+  <ng-select [labelForId]="inputId" [items]="dropDownValues"
+    [class.wrap-value]="config.wrapValue"
+    [ngClass]="config.isBackground && (control.disabled || config.disabled) ? 'with-background' : ''"
+    [readonly]="!!config.disabled"
+    [placeholder]="config.placeHolderTxt | translate" [notFoundText]="'No items found' | translate"
+    [bindLabel]="config.addTag ? 'label' : config.bindLabel || 'name'"
+    [bindValue]="config.addTag ? '' : config.bindValue || 'value'" [dropdownPosition]="'auto'"
+    [searchable]="config.searchable || false" [clearable]="config.clearableOff ? false : true"
+    [addTag]="config.addTag || false" [multiple]="config.multi || false" [formControl]="control"
+    (change)="valueSelected($event)" (blur)="onTouched()" [closeOnSelect]="config.openOnSelect ? false : true"
+    [attr.aria-invalid]="submitted && control.invalid ? 'true' : null"
+    [attr.aria-describedby]="submitted && control.invalid ? (inputId + '-error') : null">
+    <ng-template ng-option-tmp let-item="item" *ngIf="config.showDescription">
+      <span class="block font-bold whitespace-normal">{{ item[config.bindLabel || 'name'] }}</span>
+      <span class="block text-xs text-content-60 whitespace-normal">{{ item.description }}</span>
+    </ng-template>
+
+    <ng-template ng-option-tmp let-item="item" let-item$="item$" *ngIf="config.multi && config.selectAllOption">
+      <div class="flex items-center gap-2">
+        <input type="checkbox" [checked]="item$.selected">
+        <span class="min-w-0 whitespace-normal">{{
+          (config.bindLabel ? item[config.bindLabel] : item) | translate
+        }}</span>
+      </div>
+    </ng-template>
+
+    <ng-template ng-header-tmp *ngIf="config.multi && config.selectAllOption && dropDownValues.length">
+      <label class="flex items-center gap-2">
+        <input type="checkbox" (change)="toggleSelectAll($event)" [checked]="isSelectAll()" />
+        {{ 'Select All' | translate }}
+      </label>
+    </ng-template>
+  </ng-select>
+  <small class="form-control-error" [id]="inputId + '-error'" *ngIf="submitted && control.invalid">
+    <ng-container *ngIf="control.errors?.['required']">{{ labelText | translate }} {{ 'is required' | translate }}</ng-container>
+  </small>
+</div>

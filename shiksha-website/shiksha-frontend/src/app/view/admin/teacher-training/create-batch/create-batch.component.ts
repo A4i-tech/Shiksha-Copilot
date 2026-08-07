@@ -3,7 +3,8 @@ import { AbstractControl, FormBuilder, FormGroup, UntypedFormControl, Validators
 import { BatchService } from 'src/app/view/admin/teacher-training/batch.service';
 import { Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig, DropdownOption } from 'src/app/shared/interfaces/dropdown.interface';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-create-batch',
@@ -14,19 +15,19 @@ export class CreateBatchComponent implements OnInit {
   batchForm!: FormGroup;
   selectedFile: File | null = null;
   mode = 'add';
+  private translate = inject(TranslateService);
 
-  trainingTypeDropdownOptions: FormDropDownOption[] = [
-    { name: 'OFFLINE/ Face to Face', value: 'offline' },
-    { name: 'ONLINE/ Virtual', value: 'online' },
-    { name: 'School-Level', value: 'School-Level' },
+  trainingTypeDropdownOptions: DropdownOption[] = [
+    { name: this.translate.instant('OFFLINE/ Face to Face'), value: 'offline' },
+    { name: this.translate.instant('ONLINE/ Virtual'), value: 'online' },
+    { name: this.translate.instant('School-Level'), value: 'School-Level' },
   ];
 
-  trainingTypeDropdownConfig: FormDropDownConfig = {
+  trainingTypeDropdownConfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select mode',
-    height: '44px',
     fieldName: 'Mode of Training',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'value',
     required: true,
   };
@@ -75,7 +76,7 @@ export class CreateBatchComponent implements OnInit {
           console.log('Batch Created:', response);
           this.batchForm.reset();
           this.selectedFile = null;
-          this.router.navigate(['/teacher-training/view-batch']);
+          this.router.navigate(['/training/view-batch']);
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error creating batch:', error);

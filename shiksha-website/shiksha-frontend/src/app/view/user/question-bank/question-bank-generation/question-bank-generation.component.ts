@@ -8,8 +8,7 @@ import {
 } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
-import { FormDropDownConfig, FormDropDownOption } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig, DropdownOption } from 'src/app/shared/interfaces/dropdown.interface';
 import { DEFAULT_LANGUAGE, formatMarks, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
@@ -19,7 +18,7 @@ import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { map, finalize, toArray } from 'rxjs/operators';
 import { questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 
-const SOURCE_GENERATION_OPTIONS: FormDropDownOption[] = [
+const SOURCE_GENERATION_OPTIONS: DropdownOption[] = [
   { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
   { name: QUESTION_SOURCE.LBA, value: 'LBA', info: 'These are LBA Questions as recommended by the educational board.' },
 ];
@@ -35,7 +34,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   questionBankConfigForm!: FormGroup;
   submittedConfig: boolean = false;
-  loggedInUser: any;
+  teacherProfile: any;
+  preferredLanguage!: string;
 
   allAvailableQuestions: any[] = [];
   isLoadingQuestions: boolean = false;
@@ -48,34 +48,34 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   chapterDropdownOptions: any[] = [];
   subtopicsDropdownOptions: any[] = [];
   languageDropdownOptions: any[] = [];
-  sourceGenerationOptions: FormDropDownOption[] = [];
+  sourceGenerationOptions: DropdownOption[] = [];
 
   paperQuestionTypes: any[] = [];
   hasSubtopics: boolean = false;
   sourceHelpOpen = false;
   pickerOpen = false;
 
-  boardDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Board', height: 'auto', fieldName: 'Board', bindLable: 'board', bindValue: 'board', required: true, clearableOff: true };
-  sourceGenerationDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', height: 'auto', fieldName: 'Source', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'value', openOnSelect: true, hideLabel: true };
-  languageDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', height: 'auto', fieldName: 'Translate to', info: 'The language the generated question paper will be translated into.', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true };
-  classDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Class', height: 'auto', fieldName: 'Class', bindLable: 'class', bindValue: 'class', required: true, clearableOff: true };
-  subjectDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Class first', height: 'auto', fieldName: 'Subject', bindLable: 'name', bindValue: 'value', required: true, clearableOff: true, disabled: true };
-  chapterDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Subject first', height: 'auto', fieldName: 'Chapter', bindLable: 'topics', bindValue: 'topics', required: true, clearableOff: true, multi: false, selectAllOption: true, selectAllValue: 'topics', openOnSelect: false, disabled: true };
-  subTopicDropdownconfig: FormDropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter first', height: 'auto', fieldName: 'Sub-Topic', bindLable: 'topics', bindValue: 'topics', selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true, disabled: true };
+  boardDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Board', fieldName: 'Board', bindLabel: 'board', bindValue: 'board', required: true, clearableOff: true };
+  sourceGenerationDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Source', fieldName: 'Source', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true, multi: true, selectAllOption: true, selectAllValue: 'value', openOnSelect: true, hideLabel: true };
+  languageDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Translate to', fieldName: 'Translate to', info: 'The language the generated question paper will be translated into.', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true };
+  classDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Class', fieldName: 'Class', bindLabel: 'class', bindValue: 'class', required: true, clearableOff: true };
+  subjectDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Class first', fieldName: 'Subject', bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true, disabled: true };
+  chapterDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Subject first', fieldName: 'Chapter', bindLabel: 'topics', bindValue: 'topics', required: true, clearableOff: true, disabled: true, wrapValue: true };
+  subTopicDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Select Chapter first', fieldName: 'Sub-Topic', bindLabel: 'topics', bindValue: 'topics', selectAllValue: 'topics', required: true, clearableOff: true, multi: true, selectAllOption: true, openOnSelect: true, disabled: true };
 
   questionTypeOptions: { name: string; value: string }[] = [];
   chapterOptions: { name: string }[] = [];
   objectiveOptions: { objective: string; name: string }[] = [];
   questionTypeConfig: DropDownConfig = {
-    isBackground: false, placeHolderTxt: 'Select Type', height: 'auto',
+    isBackground: false, placeHolderTxt: 'Select Type',
     bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true,
   };
   chapterConfig: DropDownConfig = {
-    isBackground: false, placeHolderTxt: 'Topic', height: 'auto',
+    isBackground: false, placeHolderTxt: 'Topic',
     bindLabel: 'name', bindValue: 'name', required: true, clearableOff: true,
   };
   objectiveConfig: DropDownConfig = {
-    isBackground: false, placeHolderTxt: 'Objective', height: 'auto',
+    isBackground: false, placeHolderTxt: 'Objective',
     bindLabel: 'name', bindValue: 'objective', required: true, clearableOff: true,
   };
 
@@ -85,6 +85,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   ];
   questionBankTypeValue = 'singleChapter';
   questionBankObjectives: any[] = [];
+  initialQuestionBankObjectives: any[] = [];
 
   totalMarks = 0;
   totalPercentage = 100;
@@ -119,9 +120,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     const data: string = localStorage.getItem('userData') ?? '';
     if (data) {
-      this.loggedInUser = JSON.parse(data);
-      this.getBoardsList(this.loggedInUser);
+      const user = JSON.parse(data);
+      this.teacherProfile = user.profiles.teacher;
+      this.preferredLanguage = user.preferredLanguage;
     }
+    this.getBoardsList();
 
     this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...LOC_LANGUAGES.flatMap(item => item.value)];
     this.setPreferredLanguage();
@@ -185,10 +188,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   get f(): any { return this.questionBankConfigForm.controls; }
 
-  getBoardsList(userDetails: any) {
-    if (!userDetails || !userDetails.classes) return;
-
-    const rawClasses = userDetails.classes;
+  getBoardsList() {
+    const rawClasses = this.teacherProfile.classes;
     const uniqueBoards = new Set<string>();
 
     rawClasses.forEach((c: any) => {
@@ -215,7 +216,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
     if (val) {
       const boardName = val.board;
-      const uniqueClasses = new Set(this.loggedInUser.classes.filter((c: any) => c.board === boardName).map((c: any) => c.class));
+      const uniqueClasses = new Set(this.teacherProfile.classes.filter((c: any) => c.board === boardName).map((c: any) => c.class));
       this.classDropdownOptions = Array.from(uniqueClasses)
         .map(c => ({ class: String(c) }))
         .sort((a, b) => parseInt(a.class) - parseInt(b.class));
@@ -270,7 +271,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = val.class;
       const selectedBoard = this.f.board.value;
       const uniqueMediums = new Set<string>();
-      this.loggedInUser.classes.forEach((c: any) => {
+      this.teacherProfile.classes.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium) {
           uniqueMediums.add(c.medium);
         }
@@ -298,7 +299,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const selectedClass = this.f.grade.value;
       const selectedBoard = this.f.board.value;
       const subjectMap = new Map<string, string>();
-      this.loggedInUser.classes.forEach((c: any) => {
+      this.teacherProfile.classes.forEach((c: any) => {
         if (c.board === selectedBoard && String(c.class) === String(selectedClass) && c.medium === val.medium && c.subject) {
           const formatted = this.formatSubjectName(c.subject);
           if (!subjectMap.has(formatted)) subjectMap.set(formatted, c.subject);
@@ -317,7 +318,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   private setPreferredLanguage(): void {
-    this.f.language.setValue(this.loggedInUser.preferredLanguage);
+    this.f.language.setValue(this.preferredLanguage);
   }
 
   formatSubjectName(subject: string): string {
@@ -357,6 +358,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         next: ({ config, chapters }: any) => {
           this.paperQuestionTypes = config.questionTypes;
           this.questionBankObjectives = structuredClone(config.objectives);
+          this.initialQuestionBankObjectives = structuredClone(config.objectives);
           this.updateSourceOptions(config.questionSources);
           this.chapterDropdownOptions = chapters.map((ch: any) => ({
             ...ch,
@@ -658,7 +660,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const finalId = res.data?._id;
         if (finalId) {
           this.utilityservice.showSuccess('Question Paper Created Successfully!');
-          this.router.navigate([`/question-paper/view/${finalId}`]);
+          this.router.navigate([`/question-papers/view/${finalId}`]);
         } else {
           this.utilityservice.showError("Paper created but ID not found.");
         }
@@ -854,6 +856,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   calculateTotalPercentage(i: any) {
     this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentageDistribution), 0);
   }
+  resetQuestionDistribution() {
+    this.questionBankObjectives = structuredClone(this.initialQuestionBankObjectives);
+    this.calculateTotalPercentage(null);
+    this.distributeMarks();
+  }
   resetDistribution() {
     this.f.chapter.reset();
     this.f.subTopic.reset();
@@ -862,6 +869,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.hasSubtopics = false;
     this.marksDistribution = [];
     this.questionBankObjectives = [];
+    this.initialQuestionBankObjectives = [];
     this.paperQuestionTypes = [];
     this.syncDependentDropdowns();
   }
@@ -909,7 +917,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.syncDependentDropdowns();
   }
 
-  backNavigation() { this.router.navigate(['/question-paper']); }
+  backNavigation() { this.router.navigate(['/question-papers']); }
   previousStep() { if (this.currentStep > 1) this.currentStep--; }
   ngOnDestroy(): void { this.idleService.resetIdler(); }
 }

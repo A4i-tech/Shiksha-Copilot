@@ -49,7 +49,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   analyticsDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select duration',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff: true,
@@ -64,12 +63,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   resourceColors: any = {
     lesson: {
       iconColor: 'var(--tertiary-100)',
-      btnColor: 'bg-tertiary', 
+      btnColor: 'bg-tertiary',
       iconBackground: 'bg-purple-100',
     },
     resource: {
       iconColor: 'var(--success-80)',
-      btnColor: 'bg-success', 
+      btnColor: 'bg-success',
       iconBackground: 'bg-green-100',
     },
   };

@@ -1,5 +1,6 @@
 const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
+const { intersectFilters } = require("../helper/scope.helper");
 const ObjectId = mongoose.Types.ObjectId;
 
 /**
@@ -31,7 +32,7 @@ class BaseController {
 			const searchFilter = {};
 
 			if (search) {
-				const searchFields = ["name", "phone"];
+				const searchFields = ["identity.name", "identity.phone"];
 
 				const regexExpressions = searchFields.map((field) => ({
 					[field]: { $regex: new RegExp(search, "i") },
@@ -53,7 +54,7 @@ class BaseController {
 					return res.status(400).json({ error: "Invalid _id format" });
 				}
 			}
-			const mergedFilter = { ...transformedFilter, ...searchFilter };
+			const mergedFilter = intersectFilters(transformedFilter, searchFilter);
 
 			let status = {};
 
@@ -131,6 +132,7 @@ class BaseController {
 			return;
 		} catch (err) {
 			console.log("Error --> BaseController -> update()", err);
+			return res.status(400).json({ success: false, message: err.message });
 		}
 	}
 

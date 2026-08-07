@@ -1,9 +1,9 @@
-<app-common-dropdown
+<app-dropdown
   #languageSwitcher
   [dropDownValues]="languageDropdownOptions"
   [config]="languageDropDownConfig"
   (valueUpdate)="changeLanguage($event)"
-></app-common-dropdown>
+></app-dropdown>
 
 
 <app-delete-detail *ngIf="showLanguageSwitcher"

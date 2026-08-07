@@ -49,8 +49,8 @@
       >
         <div class="flex justify-between items-start gap-4 flex-wrap">
           <div>
-            <h6 class="font-semibold text-content">{{ backendMessage }}</h6>
-            <p class="mt-1 text-content-70" *ngIf="currentJob?.status === 'error'">
+            <h6 class="font-semibold text-content" data-testid="job-status-message">{{ backendMessage }}</h6>
+            <p class="mt-1 text-content-70" data-testid="job-error-message" *ngIf="currentJob?.status === 'error'">
               {{
                 isRecovering
                   ? ('Recovery will be attempted automatically.' | translate)
@@ -71,7 +71,7 @@
           </div>
           <div class="text-sm font-semibold text-primary">{{ progressValue }}%</div>
         </div>
-        <div class="mt-4 h-2 rounded-full bg-white overflow-hidden">
+        <div class="mt-4 h-2 rounded-full bg-white overflow-hidden" data-testid="job-progress-bar">
           <div class="h-full bg-primary transition-all duration-500" [style.width.%]="progressValue"></div>
         </div>
       </div>
@@ -149,15 +149,8 @@
           </small>
 
           <div class="mt-7">
-            <label class="form-control-label">
-              {{ "Target slide count" | translate }}
-              <span class="text-[16px] text-error">*</span>
-            </label>
-            <select formControlName="slideCount" class="form-control h-9">
-              <option *ngFor="let slideCount of slideOptions" [ngValue]="slideCount">
-                {{ slideCount }} {{ "slides" | translate }}
-              </option>
-            </select>
+            <app-dropdown formControlName="slideCount" [dropDownValues]="slideOptions"
+              [config]="slideDropdownConfig" [submitted]="submitted"></app-dropdown>
           </div>
 
           <div class="mt-7">
@@ -336,6 +329,7 @@
                   <button
                     type="button"
                     class="btn-primary px-4 py-2 rounded-lg font-bold flex items-center justify-center gap-2 w-full"
+                    data-testid="download-presentation-btn"
                     [disabled]="isDownloading || !canDownload"
                     [ngClass]="{ 'opacity-50 cursor-not-allowed': isDownloading || !canDownload }"
                     (click)="downloadPresentation()"

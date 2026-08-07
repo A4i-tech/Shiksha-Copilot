@@ -31,6 +31,9 @@ const {
 } = require("../helper/formatter");
 const compareChapter = require("../helper/chapter.helper");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");
+const School = require("../models/school.model");
+const { schoolDependency } = require("../helper/permission.helper");
+const { isResourceAllowed } = require("../helper/scope.helper");
 
 
 /** @extends {BaseManager<MasterLessonDao>} */
@@ -46,8 +49,15 @@ class MasterLessonManger extends BaseManager {
 		this.regeneratedLessonResourceDao = new RegeneratedLessonResourceDao()
 	}
 
-	async getActivityById(lessonId) {
+	async getActivityById(lessonId, activityId, permissions) {
 		try {
+			const activity = await this.regeneratedLessonResourceDao.getOne({ _id: activityId });
+			if (!activity) throw new Error("Activity not found");
+			if (![activity.contentId, activity.genContentId].some((id) => String(id) === lessonId)) throw new Error("Lesson does not belong to this activity");
+			const user = await this.userDao.getById(activity.generatedBy);
+			if (!user || !user.profiles.teacher) throw new Error("Activity has no teacher");
+			const school = await School.findById(schoolDependency(user.roles)).lean();
+			if (!isResourceAllowed(permissions, "content.activity.view", school)) throw new Error("Activity is outside your scope");
 			const lessonPlan = await this.dao.generateLessonPlan(lessonId);
 			if (!lessonPlan) {
 				return formatApiReponse(false, "Lesson plan not found", null);

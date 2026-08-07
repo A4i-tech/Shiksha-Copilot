@@ -5,28 +5,22 @@ from playwright.sync_api import Page
 class LessonPlanDetailPage(BasePage):
     def __init__(self, page: Page):
         super().__init__(page)
-        self.back_arrow = page.locator("img[src*='back-arrow']")
-        self.content_heading = page.locator("h1, h2").first
-        self.chat_sidebar_toggle = page.locator(
-            "button[aria-label*='chat'], button[class*='chat'], app-chat-toggle button"
-        ).first
-        self.chat_sidebar = page.locator("app-chat-sidebar, .chat-sidebar, [class*='chat-panel']")
-        self.chat_input = self.chat_sidebar.locator("textarea, input[type='text']").first
-        self.chat_send_btn = self.chat_sidebar.locator("button[type='submit'], button").last
-        self.edit_btn = page.locator("button[aria-label*='edit'], button:has(img[src*='edit'])")
-        self.save_changes_btn = page.locator("button", has_text="Save Changes")
-        self.download_btn = page.locator("button", has_text="Download")
-        self.share_btn = page.locator("button", has_text="Share")
-        self.draft_label = page.locator("[class*='draft'], span", has_text="Draft")
+        self.back_arrow = page.get_by_test_id("back-arrow-btn")
+        self.content_heading = page.get_by_test_id("lesson-plan-page-heading")
+        self.save_changes_btn = page.get_by_test_id("save-changes-btn")
+        self.download_btn = page.get_by_test_id("download-btn")
+        # NOTE: chat sidebar toggle/panel, edit button, share button, and a
+        # standalone "Draft" label were dropped as locators. There is no chat
+        # sidebar, edit button, share button, or draft badge in the current
+        # lesson-plan-view-edit template (lesson-plan-view-edit.component.html)
+        # or lesson-plan-documents template - chat opens as a separate routed
+        # page (app-chatbot), not an in-page sidebar, and no edit/share/draft
+        # elements exist to attribute a test-id to. Skipped rather than
+        # invented.
 
     def navigate(self, base_url: str, plan_id: str):
-        self.page.goto(f"{base_url}/#/user/content-generation/lesson-plan/{plan_id}")
+        self.page.goto(f"{base_url}/#/content-generation/lesson-plan/{plan_id}")
         self.page.wait_for_load_state("networkidle")
 
-    def open_chat_sidebar(self):
-        self.click_robust(self.chat_sidebar_toggle)
-        self.chat_sidebar.wait_for(state="visible", timeout=10000)
-
-    def send_chat_message(self, text: str):
-        self.chat_input.fill(text)
-        self.click_robust(self.chat_send_btn)
+    # NOTE: open_chat_sidebar/send_chat_message removed - chat is a separate
+    # routed page (app-chatbot), not an in-page sidebar on this page object.

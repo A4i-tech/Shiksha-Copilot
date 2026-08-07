@@ -2,19 +2,19 @@
   <div class="flex content-center">
     <img
       src="assets/icons/back-arrow.svg"
-      routerLink="/teacher-training/view-batch"
+      routerLink="/training/view-batch"
       alt=""
       class="cursor-pointer"
     />
     <h1 class="ml-3 text-[32px] leading-[48px] font-bold text-content">
-      Teacher Training
+      {{ 'Teacher Training' | translate }}
     </h1>
   </div>
 
   <div class="batch-container px-4 py-6 md:px-6 md:py-8 bg-white mt-6 rounded border-content-30 border">
     <div class="flex justify-between content-center">
       <p class="text-content text-[32px] leading-[48px] font-bold tracking-tight">
-        Create Batch
+        {{ 'Create Batch' | translate }}
       </p>
     </div>
 
@@ -23,13 +23,13 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label class="form-control-label" for="batch-name">
-              Batch Name <span class="text-[16px] text-error">*</span>
+              {{ 'Batch Name' | translate }} <span class="text-[16px] text-error">*</span>
             </label>
             <input
               class="form-control"
               id="batch-name"
               type="text"
-              placeholder="Enter batch name"
+              [placeholder]="'Enter batch name' | translate"
               autocomplete="off"
               formControlName="batchName"
             />
@@ -37,13 +37,13 @@
               class="form-control-error"
               *ngIf="batchForm.get('batchName')?.invalid && batchForm.get('batchName')?.touched"
             >
-              Batch Name is required.
+              {{ 'Batch Name is required.' | translate }}
             </small>
           </div>
 
           <div>
             <label class="form-control-label" for="schedule-date">
-              Schedule Date <span class="text-[16px] text-error">*</span>
+              {{ 'Schedule Date' | translate }} <span class="text-[16px] text-error">*</span>
             </label>
             <input
               class="form-control"
@@ -55,23 +55,23 @@
               class="form-control-error"
               *ngIf="batchForm.get('scheduleDate')?.invalid && batchForm.get('scheduleDate')?.touched"
             >
-              Schedule Date is required.
+              {{ 'Schedule Date is required.' | translate }}
             </small>
           </div>
 
           <div>
-            <app-form-dropdown
-              [dropDownControlName]="'trainingType'"
+            <app-dropdown
+
               [dropDownCtrl]="convertToFormControl(batchForm.get('trainingType'))"
               [dropDownValues]="trainingTypeDropdownOptions"
               [config]="trainingTypeDropdownConfig"
               [mode]="mode"
-            ></app-form-dropdown>
+            ></app-dropdown>
           </div>
 
           <div>
             <label class="form-control-label" for="pdf-file">
-              Upload Permission Letter
+              {{ 'Upload Permission Letter' | translate }}
             </label>
             <input
               id="pdf-file"
@@ -81,27 +81,27 @@
               accept=".pdf"
             />
             <small class="text-content-60 text-xs mt-1 block" *ngIf="selectedFile">
-              Selected: {{ selectedFile.name }}
+              {{ 'Selected' | translate }}: {{ selectedFile.name }}
             </small>
           </div>
         </div>
 
         <div class="mt-6">
           <label class="form-control-label" for="description">
-            Description <span class="text-[16px] text-error">*</span>
+            {{ 'Description' | translate }} <span class="text-[16px] text-error">*</span>
           </label>
           <textarea
             id="description"
             formControlName="description"
             rows="4"
             class="form-control min-h-[110px]"
-            placeholder="Provide a brief description"
+            [placeholder]="'Provide a brief description' | translate"
           ></textarea>
           <small
             class="form-control-error"
             *ngIf="batchForm.get('description')?.invalid && batchForm.get('description')?.touched"
           >
-            Description is required.
+            {{ 'Description is required.' | translate }}
           </small>
         </div>
 
@@ -109,16 +109,16 @@
           <button
             type="button"
             class="btn-outline-primary h-9"
-            routerLink="/teacher-training/view-batch"
+            routerLink="/training/view-batch"
           >
-            Cancel
+            {{ 'Cancel' | translate }}
           </button>
           <button
             type="submit"
             [disabled]="batchForm.invalid"
             class="btn-primary h-9"
           >
-            Create Batch
+            {{ 'Create Batch' | translate }}
           </button>
         </div>
       </form>

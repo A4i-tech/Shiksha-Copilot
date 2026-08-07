@@ -20,7 +20,9 @@
 		<div class="footer-container p-4">
 			<div class="buttons flex items-center justify-end gap-2">
 				<button *ngIf="showCancelBtn" type="button" class="btn-outline-primary" (click)="closePopUp('close')">{{(config.cancelButtonLabel ? config.cancelButtonLabel : 'Cancel') | translate}}</button>
-				<button type="submit" class="flex items-center justify-center" [ngClass]="{'btn-danger': config.primaryButtonType === 'delete', 'btn-primary': ['ok', 'logout'].includes(config.primaryButtonType)}" (click)="onPrimaryAction()">
+				<button *ngIf="config.secondaryButtonLabel" type="button" class="btn-outline-primary" (click)="closePopUp(config.secondaryButtonType)">{{ config.secondaryButtonLabel | translate }}</button>
+				<button data-testid="delete-detail-primary-btn" type="submit" class="flex items-center justify-center" [ngClass]="{'btn-danger': config.primaryButtonType === 'delete', 'btn-primary': ['ok', 'logout'].includes(config.primaryButtonType)}" (click)="onPrimaryAction()">
+					<img *ngIf="config.primaryButtonIcon" class="mr-2" [src]="config.primaryButtonIcon" alt="">
 					<span class="mr-1">{{ config.primaryButtonLabel | translate }}</span>
 					<img *ngIf="config.primaryButtonType === 'delete'" src="assets/icons/delete.svg" alt="">
 				</button>

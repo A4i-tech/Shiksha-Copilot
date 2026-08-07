@@ -76,6 +76,11 @@
     .cal-month-view .cal-day-cell.cal-weekend .cal-day-number {
       color: unset;
     }
+    // library default dims out-of-month numbers to opacity:.1 (~#ededed on white), fails WCAG 1.4.3
+    .cal-month-view .cal-day-cell.cal-out-month .cal-day-number {
+      opacity: 1;
+      color: var(--content-60);
+    }
     .cal-month-view .cal-cell-row .cal-cell:hover{
       background-color: unset;
     }

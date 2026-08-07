@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { SESSION_VERSION } from 'src/app/shared/utility/constant.util';
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +25,9 @@ export class AuthorizationService {
    * @returns boolean
    */
   isLoggedIn(): boolean {
-    return !!this.getLocalStorageItem('token');
+    const token = this.getLocalStorageItem('token');
+    const userData = this.getLocalStorageItem('userData');
+    return !!token && !!userData && JSON.parse(userData)._sessionVersion === SESSION_VERSION;
   }
 
   /**
@@ -81,14 +84,4 @@ export class AuthorizationService {
     this.router.navigate(['/login']);
   }
 
-  /**
-   * Helper to identify if a user is a teacher only (end-user for surveys)
-   * i.e. has standard or power role, and does not have administrative/management roles
-   */
-  isTeacherOnly(user: any): boolean {
-    const roles: string[] = Array.isArray(user?.role) ? user.role : [user?.role].filter(Boolean);
-    if (!roles.length) return false;
-    const lower = roles.map(r => String(r).toLowerCase());
-    return lower.every(r => r === 'standard' || r === 'power');
-  }
 }

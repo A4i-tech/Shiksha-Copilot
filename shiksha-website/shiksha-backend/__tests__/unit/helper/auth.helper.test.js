@@ -4,8 +4,17 @@ const variforrmSMSService = require('../../../services/variform.service');
 jest.mock('../../../services/variform.service');
 
 describe('AuthHelper', () => {
+    const devtools = process.env.SHIKSHA_DEVTOOLS;
+
     beforeEach(() => {
+        process.env.SHIKSHA_DEVTOOLS = 'false';
         jest.clearAllMocks();
+        authHelper.clearSms('1234567890');
+    });
+
+    afterAll(() => {
+        if (devtools === undefined) delete process.env.SHIKSHA_DEVTOOLS;
+        else process.env.SHIKSHA_DEVTOOLS = devtools;
     });
 
     describe('getOtp', () => {
@@ -44,6 +53,16 @@ describe('AuthHelper', () => {
 
             await expect(authHelper.sendOtp('template123', '1234567890', '1234'))
                 .rejects.toThrow('SMS service error');
+        });
+
+        it('should capture SMS when devtools are enabled', async () => {
+            process.env.SHIKSHA_DEVTOOLS = 'true';
+
+            const result = await authHelper.sendOtp('template123', '1234567890', '7476');
+
+            expect(variforrmSMSService).not.toHaveBeenCalled();
+            expect(result).toEqual({ success: true, message: 'SMS captured by devtools' });
+            expect(authHelper.getLatestSms('1234567890')).toMatchObject({ phone: '1234567890', pin: '7476' });
         });
     });
 

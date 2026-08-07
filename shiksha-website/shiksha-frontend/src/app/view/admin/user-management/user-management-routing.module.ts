@@ -1,7 +1,8 @@
 import { NgModule } from "@angular/core";
 import { RouterModule, Routes } from "@angular/router";
-import { AddEditUserComponent } from "./add-edit-user/add-edit-user.component";
 import { UserStaffListComponent } from "src/app/shared/components/user-staff-list/user-staff-list.component";
+import { PermissionGuard } from "src/app/core/guards/permission.guard";
+import { UserManageComponent } from "src/app/shared/components/user-manage/user-manage.component";
 
 const routes:Routes =[
     {
@@ -18,17 +19,15 @@ const routes:Routes =[
     },
     {
         path:'add',
-        component:AddEditUserComponent,
-        data:{
-            idleTracking:'custom',
-        }
+        component:UserManageComponent,
+        data:{ permissions: ['user.create'], teacherForm: true, idleTracking:'custom' },
+        canActivate: [PermissionGuard],
     },
     {
         path:':id',
-        component:AddEditUserComponent,
-        data:{
-            idleTracking:'custom',
-        }
+        component:UserManageComponent,
+        data:{ permissions: ['user.view'], teacherForm: true, idleTracking:'custom' },
+        canActivate: [PermissionGuard],
     }
 ]
 

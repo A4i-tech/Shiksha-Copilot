@@ -1,7 +1,7 @@
 <div class="rounded-sm bg-shade-50 p-5">
   <div class="flex gap-2">
     <img src="assets/icons/back-arrow.svg" alt="" class="cursor-pointer" (click)="backNavigation()" />
-    <h1 class="text-lg md:text-xl font-bold text-content leading-[48px]">
+    <h1 class="text-lg md:text-xl font-bold text-content leading-[48px]" data-testid="question-paper-heading">
       {{ "Question Paper" | translate }}
     </h1>
   </div>
@@ -73,7 +73,7 @@
 
       <div #questionPaperContent class="question-bank-container p-4 md:px-12 rounded-md border h-[88vh] bg-white overflow-y-auto" tabindex="0" role="region" [attr.aria-label]="'Question paper content — scroll to read all questions' | translate">
         <h2 class="text-center text-base font-bold text-content">
-          {{ questionBankDetails?.questionBank?.metadata.schoolName }}
+          {{ questionBankDetails?.questionBank?.metadata?.schoolName }}
         </h2>
         <h2 class="text-center text-sm mt-1 font-bold text-content">
           {{ questionBankDetails?.examinationName}}
@@ -88,7 +88,7 @@
         </div>
         <hr />
 
-        <div class="mt-5" *ngFor="let questionBankData of questionBank?.questions; let q=index">
+        <div class="mt-5" data-testid="question-section" *ngFor="let questionBankData of questionBank?.questions; let q=index">
           <div class="flex items-start justify-between gap-2">
             <h2 class="font-bold text-content">
               {{utilityService.intToRoman(q+1)}}. {{ (questionTypeLabels[questionBankData.type] || questionBankData.type) | translate }}
@@ -102,7 +102,7 @@
             <div *ngFor="let questionData of questionBankData.questions;
             let i = index
           ">
-              <div class="flex justify-between items-start mt-2 gap-2">
+              <div class="flex justify-between items-start mt-2 gap-2" data-testid="question-item">
                 <p class="text-content">
                   {{ i + 1 }}.
                   <ng-container *ngFor="let item of questionContentItems(questionData)">
@@ -188,7 +188,7 @@
       </div>
     </div>
 
-    <div class="p-4 bg-white border rounded-lg">
+    <div class="p-4 bg-white border rounded-lg" data-testid="feedback-section">
       <div>
         <h2 class="font-semibold text-content mb-2">
           {{ "Question Paper Feedback" | translate }}
@@ -201,7 +201,7 @@
           <div *ngFor="let feedbackType of questionBankFeedbackValues; let i = index">
             <input [disabled]="questionBankDetails?.questionBank?.feedback?.feedback" type="radio"
               [id]="feedbackType.name + i" [name]="feedbackType.name + i" [value]="feedbackType.name"
-              [(ngModel)]="questionBankFeedback.feedback" class="mt-[3px] md:mt-0" />
+              [(ngModel)]="questionBankFeedback.feedback" class="mt-[3px] md:mt-0" data-testid="feedback-radio" />
             <label [for]="feedbackType.name + i" class="ms-1">{{ feedbackType.name | translate }}
               {{ feedbackType.symbol }}</label>
           </div>
@@ -210,13 +210,13 @@
         <div>
           <textarea [disabled]="questionBankDetails?.questionBank?.feedback?.feedback"
             [(ngModel)]="questionBankFeedback.overallFeedback"
-            class="p-2 mt-2 border rounded-sm w-fullfocus:outline-none w-full"
+            class="form-control mt-2"
             placeholder="{{ 'Leave your comments here' | translate }}" rows="3"></textarea>
         </div>
 
         <button [disabled]="!questionBankFeedback.feedback"
           *ngIf="!questionBankDetails?.questionBank?.feedback?.feedback" type="button" class="btn-primary w-full"
-          (click)="submitFeedback()">
+          data-testid="submit-feedback-btn" (click)="submitFeedback()">
           {{ "Submit Feedback" | translate }}
         </button>
       </div>
@@ -233,7 +233,7 @@
             <p class="text-content text-sm font-semibold">{{doc.name | translate}}</p>
             <button
               class="btn-outline-primary mt-2 w-full h-8 text-xs hover:text-white hover:bg-primary transition-all font-semibold"
-              (click)="download(doc.type)">{{ "Download" | translate }} {{doc.name | translate}}</button>
+              data-testid="download-btn" (click)="download(doc.type)">{{ "Download" | translate }} {{doc.name | translate}}</button>
           </div>
         </div>
       </div>

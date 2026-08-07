@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
-const { isAuthenticated ,isAdmin} = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const MasterLessonController = require("../controllers/master.lesson.controller.js");
 const {
 	validateMasterLessonCreate,
@@ -42,7 +42,7 @@ router.post(
 router.get(
 	"/master-lesson/activity/:id",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("content.activity.view"),
 	asyncMiddleware(
 		masterLessonController.getActivityById.bind(masterLessonController)
 	)
@@ -51,6 +51,7 @@ router.get(
 router.post(
 	"/lesson-plan/regenerate",
 	isAuthenticated,
+	requirePermission("lesson-plan.ai-enhance"),
 	asyncMiddleware(
 		masterLessonController.regenerateLessonPlan.bind(masterLessonController)
 	)
@@ -73,6 +74,7 @@ router.post(
 router.get(
 	"/master-lesson/:lessonId",
 	isAuthenticated,
+	requirePermission("lesson-plan.generate"),
 	asyncMiddleware(
 		masterLessonController.generateLessonPlan.bind(masterLessonController)
 	)
@@ -95,20 +97,10 @@ router.get(
 	)
 );
 
-// router.post(
-// 	"/master-lesson-and-resource/script-lp-dump",
-// 	isAuthenticated,
-// 	isAdmin,
-// 	MulterUploadMiddleware,
-// 	asyncMiddleware(
-// 		masterLessonController.scriptLpDump.bind(masterLessonController)
-// 	)
-// );
-
 router.post(
 	"/master-lesson/upload",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("content.manage"),
 	MulterUploadMiddleware,
 	asyncMiddleware(
 		masterLessonController.uploadMasterLesson.bind(masterLessonController)
@@ -118,7 +110,7 @@ router.post(
 router.post(
 	"/master-lesson/old-version-upload",
 	isAuthenticated,
-	isAdmin,
+	requirePermission("content.manage"),
 	MulterUploadMiddleware,
 	asyncMiddleware(
 		masterLessonController.uploadMasterLessonOlderVersion.bind(masterLessonController)

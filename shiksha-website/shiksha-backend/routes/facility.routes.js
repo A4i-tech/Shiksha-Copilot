@@ -2,13 +2,13 @@ const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const FacilityController = require("../controllers/facility.controller.js");
-const { validateFacility } = require("../validations/facility.validation.js");
+const { validateFacilityCreate, validateFacilityUpdate } = require("../validations/facility.validation.js");
 
 const facilityController = new FacilityController();
 
 router.post(
 	"/facility/create",
-	validateFacility,
+	validateFacilityCreate,
 	asyncMiddleware(facilityController.create.bind(facilityController))
 );
 
@@ -24,7 +24,7 @@ router.get(
 
 router.put(
 	"/facility/update",
-	validateFacility,
+	validateFacilityUpdate,
 	asyncMiddleware(facilityController.update.bind(facilityController))
 );
 

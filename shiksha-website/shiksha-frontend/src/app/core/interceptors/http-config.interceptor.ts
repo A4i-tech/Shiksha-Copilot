@@ -7,7 +7,6 @@ import {
 } from '@angular/common/http';
 import { Observable, catchError, finalize, throwError } from 'rxjs';
 import { NgxSpinnerService } from 'ngx-spinner';
-import { Router } from '@angular/router';
 import { UtilityService } from '../services/utility.service';
 import { AuthorizationService } from '../services/authorization.service';
 import { LOADER_MESSAGE, LoaderMessageService } from '../services/loader-message.service';
@@ -26,8 +25,7 @@ export class HttpConfigInterceptor implements HttpInterceptor {
     private spinner: NgxSpinnerService,
     private utilityService: UtilityService,
     private authorizationService: AuthorizationService,
-    private loaderMessage: LoaderMessageService,
-    private router: Router
+    private loaderMessage: LoaderMessageService
   ) {}
 
   intercept(
@@ -56,9 +54,6 @@ export class HttpConfigInterceptor implements HttpInterceptor {
       catchError((error) => {
         if (error.status === 401 && this.authorizationService.isLoggedIn()) {
           this.utilityService.logout();
-        } else if (error.status === 0 || error.status >= 500) {
-          console.error('[HttpConfigInterceptor] backend unavailable, redirecting to /error/503', { status: error.status, url: authReq.url });
-          this.router.navigate(['/error/503']);
         }
         return throwError(() => error);
       }),

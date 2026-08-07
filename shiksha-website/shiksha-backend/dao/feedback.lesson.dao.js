@@ -18,11 +18,32 @@ class LessonFeedbackDao extends BaseDao {
 
 	async getByTeacherAndLessonId(teacherId, lessonId) {
 		try {
-			let result = await LessonFeedback.findOne({ teacherId, lessonId });
+			let result = await LessonFeedback.findOne({
+				teacherId,
+				lessonId,
+				isDeleted: { $ne: true },
+			});
 			return result;
 		} catch (err) {
 			console.log(
 				"Error --> LessonFeedbackDao -> getByTeacherAndLessonId()",
+				err
+			);
+			throw err;
+		}
+	}
+
+	async deleteByTeacherAndLessonId(teacherId, lessonId) {
+		try {
+			const result = await LessonFeedback.findOneAndUpdate(
+				{ teacherId, lessonId, isDeleted: { $ne: true } },
+				{ $set: { isDeleted: true } },
+				{ new: true, useFindAndModify: false }
+			);
+			return result;
+		} catch (err) {
+			console.log(
+				"Error --> LessonFeedbackDao -> deleteByTeacherAndLessonId()",
 				err
 			);
 			throw err;

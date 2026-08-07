@@ -1,34 +1,34 @@
 <div class="px-4 pt-4 md:px-0 md:pt-0">
   <h1 class="text-2xl md:text-[30px] font-bold text-content md:leading-[48px]">
-    Teacher Training
+    {{ 'Teacher Training' | translate }}
   </h1>
 
   <div class="border rounded bg-white mt-6 px-4 py-6 md:px-6 md:py-8">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
-        <p class="text-content text-2xl md:text-[30px] font-bold md:leading-[48px]">Batch List</p>
-        <p class="mt-1 text-sm text-content-60">Manage training batches and assign participants.</p>
+        <p class="text-content text-2xl md:text-[30px] font-bold md:leading-[48px]">{{ 'Batch List' | translate }}</p>
+        <p class="mt-1 text-sm text-content-60">{{ 'Manage training batches and assign participants.' | translate }}</p>
       </div>
 
-      <button class="btn-primary h-9 w-full sm:w-auto" routerLink="/teacher-training/create-batch">
+      <button class="btn-primary h-9 w-full sm:w-auto" routerLink="/training/create-batch">
         <div class="flex items-center justify-center gap-2">
           <img src="assets/icons/add.svg" alt="" />
-          <span class="text-nowrap">Create Batch</span>
+          <span class="text-nowrap">{{ 'Create Batch' | translate }}</span>
         </div>
       </button>
     </div>
 
     <div *ngIf="teacherStats" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
       <div class="metric-card">
-        <p class="metric-label">Total Teachers</p>
+        <p class="metric-label">{{ 'Total Teachers' | translate }}</p>
         <p class="metric-value">{{ teacherStats.totalTeachers }}</p>
       </div>
       <div class="metric-card">
-        <p class="metric-label">Trained Teachers</p>
+        <p class="metric-label">{{ 'Trained Teachers' | translate }}</p>
         <p class="metric-value text-green">{{ teacherStats.trainedTeachers }}</p>
       </div>
       <div class="metric-card">
-        <p class="metric-label">Untrained Teachers</p>
+        <p class="metric-label">{{ 'Untrained Teachers' | translate }}</p>
         <p class="metric-value text-orange">{{ teacherStats.untrainedTeachers }}</p>
       </div>
     </div>
@@ -47,25 +47,25 @@
               'text-orange bg-orange-50': !batch.isSubmitted
             }"
           >
-            {{ batch.isSubmitted ? 'Completed' : 'Ongoing' }}
+            {{ (batch.isSubmitted ? 'Completed' : 'Ongoing') | translate }}
           </span>
         </div>
 
         <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
           <div>
-            <p class="text-xs text-content-60">Mode of Training</p>
-            <p class="break-words">{{ batch.trainingType | titlecase }}</p>
+            <p class="text-xs text-content-60">{{ 'Mode of Training' | translate }}</p>
+            <p class="break-words">{{ (batch.trainingType | titlecase) | translate }}</p>
           </div>
-          <div *ngIf="isAdmin">
-            <p class="text-xs text-content-60">Manager</p>
-            <p class="break-words">{{ batch.createdBy?.name || '-' }}</p>
+          <div *ngIf="canViewAllBatches">
+            <p class="text-xs text-content-60">{{ 'Manager' | translate }}</p>
+            <p class="break-words">{{ batch.createdBy?.identity?.name || '-' }}</p>
           </div>
         </div>
 
         <div class="mt-4 flex flex-col gap-2">
           <button class="btn-primary h-9 w-full" (click)="onViewTeachers(batch)">
             <div class="flex items-center justify-center gap-2">
-              <span>View Teachers</span>
+              <span>{{ 'View Teachers' | translate }}</span>
             </div>
           </button>
           <button
@@ -75,7 +75,7 @@
             [disabled]="batch.isSubmitted"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>{{ selectedBatch?._id === batch._id && showTeachersPanel ? 'Close Participants' : 'Add Participants' }}</span>
+              <span>{{ (selectedBatch?._id === batch._id && showTeachersPanel ? 'Close Participants' : 'Add Participants') | translate }}</span>
             </div>
           </button>
           <button
@@ -85,14 +85,14 @@
             [disabled]="batch.isSubmitted"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>Delete Batch</span>
+              <span>{{ 'Delete Batch' | translate }}</span>
             </div>
           </button>
         </div>
       </div>
 
       <div *ngIf="!batches || !batches.length" class="text-center text-content-60 py-4 border rounded-xl">
-        No batches found.
+        {{ 'No batches found.' | translate }}
       </div>
     </div>
 
@@ -100,25 +100,25 @@
       <table class="table-auto min-w-[980px] w-full border rounded-lg text-content">
         <thead>
           <tr class="bg-primary-60 rounded-lg border-b">
-            <th class="text-left p-4 rounded border-r text-sm text-content">Batch Name</th>
-            <th class="text-left p-4 border-r text-sm text-content">Schedule Date</th>
-            <th class="text-left p-4 border-r text-sm text-content">Mode of Training</th>
-            <th *ngIf="isAdmin" class="text-left p-4 border-r text-sm text-content">Manager</th>
-            <th class="text-left p-4 border-r text-sm text-content">View Teacher</th>
-            <th class="text-left p-4 border-r text-sm text-content">Status</th>
-            <th class="text-left p-4 text-sm text-content">Actions</th>
+            <th class="text-left p-4 rounded border-r text-sm text-content">{{ 'Batch Name' | translate }}</th>
+            <th class="text-left p-4 border-r text-sm text-content">{{ 'Schedule Date' | translate }}</th>
+            <th class="text-left p-4 border-r text-sm text-content">{{ 'Mode of Training' | translate }}</th>
+            <th *ngIf="canViewAllBatches" class="text-left p-4 border-r text-sm text-content">{{ 'Manager' | translate }}</th>
+            <th class="text-left p-4 border-r text-sm text-content">{{ 'View Teacher' | translate }}</th>
+            <th class="text-left p-4 border-r text-sm text-content">{{ 'Status' | translate }}</th>
+            <th class="text-left p-4 text-sm text-content">{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody class="bg-white">
           <tr *ngFor="let batch of batches" class="border-b" [ngClass]="{ 'bg-blue-50': selectedBatch?._id === batch._id && showTeachersPanel }">
             <td class="text-sm p-4 border-r break-words">{{ batch.batchName }}</td>
             <td class="text-sm p-4 border-r whitespace-nowrap">{{ batch.scheduleDate | date }}</td>
-            <td class="text-sm p-4 border-r break-words">{{ batch.trainingType | titlecase }}</td>
-            <td *ngIf="isAdmin" class="text-sm p-4 border-r break-words">{{ batch.createdBy?.name || '-' }}</td>
+            <td class="text-sm p-4 border-r break-words">{{ (batch.trainingType | titlecase) | translate }}</td>
+            <td *ngIf="canViewAllBatches" class="text-sm p-4 border-r break-words">{{ batch.createdBy?.identity?.name || '-' }}</td>
             <td class="text-sm p-4 border-r">
               <button class="btn-primary h-9" (click)="onViewTeachers(batch)">
                 <div class="flex items-center justify-center gap-2">
-                  <span>View Teachers</span>
+                  <span>{{ 'View Teachers' | translate }}</span>
                 </div>
               </button>
             </td>
@@ -130,7 +130,7 @@
                   'text-orange bg-orange-50': !batch.isSubmitted
                 }"
               >
-                {{ batch.isSubmitted ? 'Completed' : 'Ongoing' }}
+                {{ (batch.isSubmitted ? 'Completed' : 'Ongoing') | translate }}
               </span>
             </td>
             <td class="text-sm p-4">
@@ -142,7 +142,7 @@
                   [disabled]="batch.isSubmitted"
                 >
                   <div class="flex items-center justify-center gap-2">
-                    <span>{{ selectedBatch?._id === batch._id && showTeachersPanel ? 'Close Participants' : 'Add Participants' }}</span>
+                    <span>{{ (selectedBatch?._id === batch._id && showTeachersPanel ? 'Close Participants' : 'Add Participants') | translate }}</span>
                   </div>
                 </button>
                 <button
@@ -152,7 +152,7 @@
                   [disabled]="batch.isSubmitted"
                 >
                   <div class="flex items-center justify-center gap-2">
-                    <span>Delete Batch</span>
+                    <span>{{ 'Delete Batch' | translate }}</span>
                   </div>
                 </button>
               </div>
@@ -163,7 +163,7 @@
     </div>
 
     <div *ngIf="!batches || !batches.length" class="hidden md:block text-center text-content-60 py-4 border rounded-xl mt-6">
-      No batches found.
+      {{ 'No batches found.' | translate }}
     </div>
   </div>
 </div>
@@ -173,16 +173,16 @@
     type="button"
     class="participants-backdrop"
     (click)="closeAddParticipantsSidebar()"
-    aria-label="Close participants panel"
+    [attr.aria-label]="'Close participants panel' | translate"
   ></button>
 
-  <aside class="participants-panel" aria-label="Add participants to batch">
+  <aside class="participants-panel" [attr.aria-label]="'Add participants to batch' | translate">
     <div class="participants-panel-header">
       <div class="min-w-0">
-        <h3>Add Participants to Batch</h3>
+        <h3>{{ 'Add Participants to Batch' | translate }}</h3>
         <p>{{ selectedBatch.batchName }}</p>
       </div>
-      <button class="participants-close-btn" (click)="closeAddParticipantsSidebar()" type="button">Close</button>
+      <button class="participants-close-btn" (click)="closeAddParticipantsSidebar()" type="button">{{ 'Close' | translate }}</button>
     </div>
 
     <div class="participants-toolbar">
@@ -191,7 +191,7 @@
           <input
             type="text"
             class="search-input"
-            placeholder="Search teachers by name, phone, zone, or district..."
+            [placeholder]="'Search teachers by name, phone, zone, or district...' | translate"
             [(ngModel)]="teacherSearchTerm"
             (input)="onTeacherSearch()"
             (keypress)="onSearchKeyPress($event)"
@@ -208,7 +208,7 @@
             class="clear-search-btn"
             (click)="clearSearch()"
             type="button"
-            title="Clear search"
+            [title]="'Clear search' | translate"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -225,32 +225,32 @@
         [disabled]="!selectedTeachersForAssignment.length || isLoadingTeachers || isAssigningTeachers || selectedBatch.isSubmitted"
       >
         <div class="flex items-center justify-center gap-2">
-          <span>{{ isAssigningTeachers ? 'Assigning...' : 'Assign to Batch' }}<ng-container *ngIf="selectedTeachersForAssignment.length && !isAssigningTeachers"> ({{ selectedTeachersForAssignment.length }})</ng-container></span>
+          <span>{{ (isAssigningTeachers ? 'Assigning...' : 'Assign to Batch') | translate }}<ng-container *ngIf="selectedTeachersForAssignment.length && !isAssigningTeachers"> ({{ selectedTeachersForAssignment.length }})</ng-container></span>
         </div>
       </button>
     </div>
 
     <div class="px-5 pt-3 text-xs text-content-60" *ngIf="!isLoadingTeachers">
-      {{ filteredTeachers.length }} of {{ teachersTotalItems }} teachers
-      <span *ngIf="teacherSearchTerm.trim()"> (searching "{{ teacherSearchTerm }}")</span>
+      {{ '{{count}} of {{total}} teachers' | translate: { count: filteredTeachers.length, total: teachersTotalItems } }}
+      <span *ngIf="teacherSearchTerm.trim()"> ({{ 'searching "{{term}}"' | translate: { term: teacherSearchTerm } }})</span>
     </div>
 
     <div class="participants-panel-body">
       <div *ngIf="isLoadingTeachers" class="loading-indicator">
-        <p>Loading teachers...</p>
+        <p>{{ 'Loading teachers...' | translate }}</p>
       </div>
 
       <div class="participants-table-wrapper" *ngIf="filteredTeachers && filteredTeachers.length > 0 && !isLoadingTeachers">
         <table class="table-auto min-w-[680px] w-full border rounded-lg text-content">
           <thead>
             <tr class="bg-primary-60 rounded-lg border-b">
-              <th class="text-left p-4 rounded border-r text-sm text-content">Select</th>
-              <th class="text-left p-4 border-r text-sm text-content">Name</th>
-              <th class="text-left p-4 border-r text-sm text-content">Phone</th>
-              <th class="text-left p-4 border-r text-sm text-content">Role</th>
-              <th class="text-left p-4 border-r text-sm text-content">Zone</th>
-              <th class="text-left p-4 border-r text-sm text-content">District</th>
-              <th class="text-left p-4 text-sm text-content">Block</th>
+              <th class="text-left p-4 rounded border-r text-sm text-content">{{ 'Select' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'Name' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'Phone' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'Role' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'Zone' | translate }}</th>
+              <th class="text-left p-4 border-r text-sm text-content">{{ 'District' | translate }}</th>
+              <th class="text-left p-4 text-sm text-content">{{ 'Block' | translate }}</th>
             </tr>
           </thead>
           <tbody class="bg-white">
@@ -262,19 +262,19 @@
                   (change)="selectedBatch && onTeacherCheckboxChange(selectedBatch, teacher, $event)"
                 >
               </td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.name }}</td>
-              <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.phone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.role }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.zone }}</td>
-              <td class="text-sm p-4 border-r break-words">{{ teacher.district }}</td>
-              <td class="text-sm p-4 break-words">{{ teacher.block }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.identity.name }}</td>
+              <td class="text-sm p-4 border-r whitespace-nowrap">{{ teacher.identity.phone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ 'Teacher' | translate }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.school.zone }}</td>
+              <td class="text-sm p-4 border-r break-words">{{ teacher.school.district }}</td>
+              <td class="text-sm p-4 break-words">{{ teacher.school.block }}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <p *ngIf="!filteredTeachers || filteredTeachers.length === 0" class="text-content-60 italic px-5 py-4">
-        {{ isLoadingTeachers ? 'Loading teachers...' : 'No teachers found.' }}
+        {{ (isLoadingTeachers ? 'Loading teachers...' : 'No teachers found.') | translate }}
       </p>
 
       <div class="teachers-pagination" *ngIf="teachersTotalItems > 0 && !isLoadingTeachers">
@@ -289,7 +289,7 @@
       <div class="load-more-container" *ngIf="allTeachers.length < teachersTotalItems && !isLoadingTeachers">
         <button class="btn-primary h-9" (click)="loadMoreTeachers()">
           <div class="flex items-center justify-center gap-2">
-            <span>Load More Teachers ({{ allTeachers.length }} of {{ teachersTotalItems }})</span>
+            <span>{{ 'Load More Teachers ({{count}} of {{total}})' | translate: { count: allTeachers.length, total: teachersTotalItems } }}</span>
           </div>
         </button>
       </div>

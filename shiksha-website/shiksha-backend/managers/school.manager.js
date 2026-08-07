@@ -10,6 +10,7 @@ const { Worker } = require("worker_threads");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
+const { permissionScopeFilter, isResourceAllowed, intersectFilters } = require("../helper/scope.helper");
 
 /** @extends {BaseManager<SchoolDao>} */
 class SchoolManager extends BaseManager {
@@ -22,6 +23,7 @@ class SchoolManager extends BaseManager {
   async create(req, session) {
     try {
       session.startTransaction();
+      if (!isResourceAllowed(req.permissions, "school.create", req.body)) throw new Error("School is outside your scope");
       let classes = req.body?.classes || [];
       let school = await this.dao.getOne({ schoolId: req.body.schoolId });
 
@@ -85,6 +87,7 @@ class SchoolManager extends BaseManager {
       if (!school) {
         return formatApiReponse(false, "school not found", null);
       }
+      if (!isResourceAllowed(req.permissions, "school.read", school)) throw new Error("School is outside your scope");
 
       let classes = await this.classDao.getClassesBySchoolId(schoolId);
 
@@ -94,11 +97,13 @@ class SchoolManager extends BaseManager {
     }
   }
 
-  async update(id, data) {
+  async update(id, data, permissions) {
     try {
       const { classes: classesData } = data;
 
       const currentSchool = await this.dao.getById(id);
+      if (!isResourceAllowed(permissions, "school.edit", currentSchool)) throw new Error("School is outside your scope");
+      if (!isResourceAllowed(permissions, "school.edit", { ...currentSchool.toObject(), ...data })) throw new Error("School is outside your scope");
 
       const existingSchool = await this.dao.getBySchoolId(data.schoolId);
 
@@ -196,7 +201,7 @@ class SchoolManager extends BaseManager {
     }
   }
 
-  async bulkUpload(fileBuffer, userId, userName) {
+  async bulkUpload(fileBuffer, userId, userName, permissions) {
     try {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(fileBuffer);
@@ -270,24 +275,11 @@ class SchoolManager extends BaseManager {
       const worker = new Worker(
         path.resolve(__dirname, "../worker/bulkuploadworker.js")
       );
-
-      worker.postMessage({ fileBuffer, userId, userName });
-
-      worker.on("message", (result) => {
-        console.log("Worker result:", result);
+      return await new Promise((resolve, reject) => {
+        worker.once("message", resolve);
+        worker.once("error", reject);
+        worker.postMessage({ fileBuffer, userId, userName, permissions });
       });
-
-      worker.on("error", (err) => {
-        console.error("Worker error:", err);
-      });
-
-      worker.on("exit", (code) => {
-        if (code !== 0) {
-          console.error(`Worker stopped with exit code ${code}`);
-        }
-      });
-
-      return { success: true };
     } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
@@ -295,6 +287,8 @@ class SchoolManager extends BaseManager {
 
   async delete(req) {
     try {
+      const school = await this.dao.getById(req.params.id);
+      if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
       let data = await this.dao.delete(req.params?.id);
       return formatApiReponse(true, "", data);
     } catch (err) {
@@ -302,9 +296,10 @@ class SchoolManager extends BaseManager {
     }
   }
 
-  async updateFacility(id, body) {
+  async updateFacility(id, body, permissions) {
     try {
       let data = await this.dao.getById(id);
+      if (!isResourceAllowed(permissions, "school.edit", data)) throw new Error("School is outside your scope");
       let schoolfacilities = data?.facilities;
       const updatedFacilities = schoolfacilities.filter((ele) => ele.otherType !== body.otherType);
 
@@ -312,12 +307,11 @@ class SchoolManager extends BaseManager {
 
       const users = await this.userDao.getUsersBySchoolId(id);
 
-      const hasFacilityUsers = users.filter((ele) => ele.facilities.some((facility) => facility.type === body.otherType));
+      const hasFacilityUsers = users.filter((user) => user.profiles.teacher.facilities.some((facility) => facility.type === body.otherType));
 
-      for (let i = 0; i < hasFacilityUsers.length; i++) {
-        let user = hasFacilityUsers[i]
-        const updatedUserFacility = user.facilities.filter((ele) => ele.type !== body.otherType);
-        await this.userDao.update(user._id, { facilities: updatedUserFacility })
+      for (const user of hasFacilityUsers) {
+        const facilities = user.profiles.teacher.facilities.filter((facility) => facility.type !== body.otherType);
+        await this.userDao.update(user._id, { "profiles.teacher.facilities": facilities });
       }
 
       return formatApiReponse(true, "Resource Deleted!", school);
@@ -329,6 +323,8 @@ class SchoolManager extends BaseManager {
   async deactivate(req) {
     try {
       const schoolId = req.params.id;
+      const currentSchool = await this.dao.getById(schoolId);
+      if (!isResourceAllowed(req.permissions, "school.delete", currentSchool)) throw new Error("School is outside your scope");
 
       const school = await this.dao.update(schoolId, { isDeleted: true });
 
@@ -350,6 +346,16 @@ class SchoolManager extends BaseManager {
           users,
         }
       );
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
+  }
+
+  async activate(req) {
+    try {
+      const school = await this.dao.getById(req.params.id);
+      if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
+      return formatApiReponse(true, "School activated successfully", await this.dao.activate(req.params.id));
     } catch (err) {
       return formatApiReponse(false, err.message, err);
     }
@@ -395,7 +401,8 @@ class SchoolManager extends BaseManager {
           return res.status(400).json({ error: "Invalid _id format" });
         }
       }
-      const mergedFilter = { ...transformedFilter, ...searchFilter };
+      let mergedFilter = intersectFilters(transformedFilter, searchFilter);
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
 
       let status = {};
 
@@ -416,7 +423,7 @@ class SchoolManager extends BaseManager {
       );
 
       const userId = req.user._id;
-      const userName = req.user.name;
+      const userName = req.user.identity.name;
 
       const worker = new Worker(
         path.resolve(__dirname, '../worker/exportschoolworker.js')

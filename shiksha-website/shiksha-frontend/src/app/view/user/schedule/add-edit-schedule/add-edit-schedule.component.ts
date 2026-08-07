@@ -3,8 +3,10 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostListener,
   Input,
   OnChanges,
+  OnDestroy,
   OnInit,
   Output,
   SimpleChanges,
@@ -31,7 +33,14 @@ import { forkJoin } from 'rxjs';
   providers: [DatePipe],
 })
 export class AddEditScheduleComponent
-  implements AfterViewInit, OnInit, OnChanges {
+  implements AfterViewInit, OnInit, OnChanges, OnDestroy {
+  private previousActiveElement: HTMLElement | null = null;
+
+  @HostListener('document:keydown.escape')
+  handleEscape() {
+    this.closePopUP();
+  }
+
   @Input() cordinate: any;
   @Input() formData: any;
   @Input() cellData: any;
@@ -52,10 +61,9 @@ export class AddEditScheduleComponent
   boardDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Board',
-    height: 'auto',
     fieldName: 'Board',
     hideLabel: false,
-    bindLable: 'board',
+    bindLabel: 'board',
     bindValue: 'board',
     required: true
   };
@@ -63,10 +71,9 @@ export class AddEditScheduleComponent
   mediumDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Medium',
-    height: 'auto',
     fieldName: 'Medium',
     hideLabel: false,
-    bindLable: 'medium',
+    bindLabel: 'medium',
     bindValue: 'medium',
     required: true
   };
@@ -74,10 +81,9 @@ export class AddEditScheduleComponent
   classNameDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Class',
-    height: 'auto',
     fieldName: 'Class Name',
     hideLabel: false,
-    bindLable: 'class',
+    bindLabel: 'class',
     bindValue: 'class',
     required: true
   };
@@ -85,10 +91,9 @@ export class AddEditScheduleComponent
   subjectDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Subject',
-    height: 'auto',
     fieldName: 'Subject',
     hideLabel: false,
-    bindLable: 'displayName',
+    bindLabel: 'displayName',
     bindValue: 'subject',
     required: true
   };
@@ -96,10 +101,9 @@ export class AddEditScheduleComponent
   chapterDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Chapter',
-    height: 'auto',
     fieldName: 'Chapter',
     hideLabel: false,
-    bindLable: 'displayValue',
+    bindLabel: 'displayValue',
     bindValue: 'topics',
     required: true
   };
@@ -107,10 +111,9 @@ export class AddEditScheduleComponent
   subTopicDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the SubTopic',
-    height: 'auto',
     fieldName: 'Sub Topic',
     hideLabel: false,
-    bindLable: 'label',
+    bindLabel: 'label',
     bindValue: 'label',
     required: true
   };
@@ -118,9 +121,8 @@ export class AddEditScheduleComponent
   lessonDropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select the Lesson Plan',
-    height: 'auto',
     fieldName: 'Lesson Plan',
-    bindLable: 'name',
+    bindLabel: 'name',
     bindValue: 'name',
     required: true
   };
@@ -176,6 +178,7 @@ export class AddEditScheduleComponent
    * @param changes
    */
   ngOnInit(): void {
+    this.previousActiveElement = document.activeElement as HTMLElement;
     const userData = localStorage.getItem('userData'); //user data for teacher id and school id
     if (userData) {
       const parsedUserData = JSON.parse(userData);
@@ -192,9 +195,7 @@ export class AddEditScheduleComponent
           this.lessonPlanID = this.editableItem.data.lesson._id;
 
           if (this.mode !== 'view') {
-            this.classArray = this.utility.formatResponse(
-              results.schoolInfo.data.classes
-            );
+            this.classArray = this.utility.formatResponse(results.schoolInfo.data.user.profiles.teacher.classes);
             this.boardDropdownValue = this.classArray;
             this.filterMediumByBoard(this.editableItem.data.board,this.classArray);
             this.filterClassByMedium(
@@ -303,8 +304,8 @@ export class AddEditScheduleComponent
 
       this.service.getSchoolInfoByID().subscribe({
         next: (val: any) => {
-          this.teacherId = val.data._id;
-          this.setBoardDropdownValue(val);
+          this.teacherId = val.data.user._id;
+          this.setBoardDropdownValue(val.data.user.profiles.teacher.classes);
         },
         error: (err: any) => {
           this.utility.handleError(err);
@@ -315,21 +316,12 @@ export class AddEditScheduleComponent
 
 
   // =============== ADD FLOW ==========
-
-  /**
-   * format the response and set the board dropdown array value
-   * @param val
-   */
-  setBoardDropdownValue(val: any) {
-    this.classArray = this.utility.formatResponse(val.data.classes);
-    if (val) {
-      this.boardDropdownValue = this.classArray;
-      if (this.boardDropdownValue.length === 1) {
-        this.scheduleForm
-          .get('board')
-          ?.setValue(this.boardDropdownValue[0].board);
-        this.setMediumDropdownArray(this.boardDropdownValue[0]);
-      }
+  setBoardDropdownValue(classes: any[]) {
+    this.classArray = this.utility.formatResponse(classes);
+    this.boardDropdownValue = this.classArray;
+    if (this.boardDropdownValue.length === 1) {
+      this.scheduleForm.get('board')?.setValue(this.boardDropdownValue[0].board);
+      this.setMediumDropdownArray(this.boardDropdownValue[0]);
     }
   }
 
@@ -358,7 +350,7 @@ export class AddEditScheduleComponent
   setClassDropdownValue(value: any) {
     this.resetMediumChanges();
     if (value) {
-      this.classDropDownValues = value.classes?.sort((a:any,b:any)=>a.class-b.class);
+      this.classDropDownValues = value.classes.sort((a:any,b:any)=>a.class-b.class);
       if (this.classDropDownValues.length === 1) {
         this.scheduleForm
           .get('className')
@@ -513,7 +505,7 @@ export class AddEditScheduleComponent
     const classValues = dropdownValueArray.filter((item: any) => {
       return value === item.medium;
     });
-    this.classDropDownValues = classValues[0].classes?.sort((a:any,b:any)=>a.class-b.class);
+    this.classDropDownValues = classValues[0].classes.sort((a:any,b:any)=>a.class-b.class);
   }
 
   /**
@@ -822,6 +814,12 @@ export class AddEditScheduleComponent
    */
   closePopUP() {
     this.close.emit();
+  }
+
+  ngOnDestroy(): void {
+    if (this.previousActiveElement?.isConnected) {
+      this.previousActiveElement.focus();
+    }
   }
 
 

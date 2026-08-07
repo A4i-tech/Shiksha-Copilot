@@ -14,7 +14,7 @@ import { A11yModule } from '@angular/cdk/a11y';
   declarations: [
     SignInComponent,
     TimeformatPipe
-    
+
   ],
   imports: [
     CommonModule,

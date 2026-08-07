@@ -10,6 +10,10 @@ COPY . .
 ARG SHIKSHA_COPILOT_BUILD
 ENV SHIKSHA_COPILOT_BUILD=$SHIKSHA_COPILOT_BUILD
 
+RUN chown -R node:node /usr/src/app
+
+USER node
+
 EXPOSE 8080
 
 CMD ["node", "app.js"]

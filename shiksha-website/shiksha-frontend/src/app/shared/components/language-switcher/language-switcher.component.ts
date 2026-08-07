@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
-import { CommonDropdownComponent } from '../common-dropdown/common-dropdown.component';
+import { DropdownComponent } from '../dropdown/dropdown.component';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { DEFAULT_LANGUAGE, LOC_LANGUAGES } from '../../utility/constant.util';
 import { DeleteDetailComponent } from '../delete-detail/delete-detail.component';
@@ -18,7 +18,7 @@ import { DeleteDetailComponent } from '../delete-detail/delete-detail.component'
   selector: 'app-language-switcher',
   templateUrl: './language-switcher.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, CommonDropdownComponent,DeleteDetailComponent],
+  imports: [CommonModule, FormsModule, DropdownComponent,DeleteDetailComponent],
 })
 export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
   @Output() languageChange: EventEmitter<string> = new EventEmitter<string>();
@@ -41,7 +41,6 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
   languageDropDownConfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Preferred Language',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'value',
     clearableOff:true,
@@ -57,16 +56,16 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-     const lcl = LOC_LANGUAGES.filter((e)=> e.state === this.loggedInUser?.state);
-    const localLanguage = lcl[0]?.value;
-    this.languageDropdownOptions = [...DEFAULT_LANGUAGE,...localLanguage];
+    const state = this.loggedInUser?.school?.state || this.loggedInUser?.profiles?.admin?.state;
+    const localLanguage = LOC_LANGUAGES.find((language) => language.state === state)?.value || [];
+    this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...localLanguage];
   }
 
   /**
    * ngafterviewinit hook used here to set the preferred language
    */
   ngAfterViewInit(): void {
-     this.languageSwitcher.selectedItem = this.loggedInUser?.preferredLanguage;
+    this.languageSwitcher.selectedItem = this.loggedInUser.preferredLanguage;
   } 
 
   /**
@@ -85,7 +84,7 @@ export class LanguageSwitcherComponent implements OnInit, AfterViewInit {
     if(val === 'ok'){
       this.languageChange.emit(this.selectedLanguage);
     }else{
-      this.languageSwitcher.selectedItem = this.loggedInUser?.preferedLanguage;
+      this.languageSwitcher.selectedItem = this.loggedInUser.preferredLanguage;
     }
     this.showLanguageSwitcher=false;
   }

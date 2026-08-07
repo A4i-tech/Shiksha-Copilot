@@ -13,7 +13,7 @@ import { CustomEventTitleFormatter } from './custom-event-title-formatter.provid
 import { ScheduleService } from '../schedule.service';
 import { DatePipe } from '@angular/common';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { colors } from 'src/app/shared/utility/scheduleClassColors.util';
+import { dashboardColors } from 'src/app/shared/utility/scheduleClassColors.util';
 import { Router } from '@angular/router';
 
 @Component({
@@ -197,7 +197,7 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
   }
 
   getEventColor(key: number) {
-    return colors.get(key) || { primary: '#000000', secondary: '#FFFFFF' }; // Default to black/white if key not found
+    return dashboardColors.get(key) || { primary: '#000000', secondary: '#FFFFFF' }; // Default to black/white if key not found
   }
 
   setEventData(eventVal: any, date_time: any, index: number) {

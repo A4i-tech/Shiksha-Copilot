@@ -16,10 +16,6 @@ jest.mock("../../../dao/lesson.plan.template.dao");
 jest.mock("../../../dao/regenerate.log.dao");
 jest.mock("../../../dao/feedback.lesson.dao");
 jest.mock("../../../services/copilot.bot.service");
-jest.mock("../../../helper/activity.rating.helper", () => ({
-  attachAggregateRatings: jest.fn((data) => Promise.resolve(data)),
-}));
-
 describe("TeacherLessonPlanManager", () => {
   let manager;
   let mockTeacherLessonPlanDao;
@@ -339,7 +335,6 @@ describe("TeacherLessonPlanManager", () => {
 
   // Removed: lessonUploadMedia test - requires complex error handling mocking
 
-  // Removed: rateActivity test - requires complex error handling mocking
 
   describe("_createBotPayload", () => {
     it("should create bot payload correctly", () => {

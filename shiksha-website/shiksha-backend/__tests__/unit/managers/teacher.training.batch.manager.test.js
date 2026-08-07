@@ -1,136 +1,37 @@
 const TeacherTrainingBatchManager = require("../../../managers/teacher.training.batch.manager");
-const TeacherTrainingBatchDao = require("../../../dao/teacher.training.batch.dao");
 const TeacherTrainingBatch = require("../../../models/teacher.training.batch.model");
+const { scopedTeacherIds } = require("../../../helper/training.scope.helper");
 
 jest.mock("../../../dao/teacher.training.batch.dao");
 jest.mock("../../../models/teacher.training.batch.model");
+jest.mock("../../../helper/training.scope.helper");
 
-describe("TeacherTrainingBatchManager", () => {
+describe("TeacherTrainingBatchManager.getBatches", () => {
   let manager;
-  let mockDao;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockDao = {
-      create: jest.fn(),
-      getById: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    };
-
-    TeacherTrainingBatchDao.mockImplementation(() => mockDao);
-
     manager = new TeacherTrainingBatchManager();
+    TeacherTrainingBatch.find.mockReturnValue({ populate: jest.fn().mockResolvedValue([]) });
   });
 
-  describe("constructor", () => {
-    it("should create manager instance successfully", () => {
-      expect(manager).toBeInstanceOf(TeacherTrainingBatchManager);
-      expect(manager.dao).toBeDefined();
-    });
-
-    it("should initialize with TeacherTrainingBatchDao", () => {
-      expect(TeacherTrainingBatchDao).toHaveBeenCalled();
-    });
+  it("allows a global grant to view all batches", async () => {
+    await manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "GLOBAL", dep: null }]);
+    expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
   });
 
-  describe("getBatches", () => {
-    it("should get all batches for admin role", async () => {
-      const mockBatches = [
-        { _id: "batch-1", batchName: "Batch 1" },
-        { _id: "batch-2", batchName: "Batch 2" },
-      ];
+  it("queries batches assigned to teachers inside a non-global scope", async () => {
+    scopedTeacherIds.mockResolvedValue(["teacher-123"]);
+    await manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "DISTRICT", dep: {} }]);
+    expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({ $or: [
+      { assignedTeachers: { $in: ["teacher-123"] } },
+      { createdBy: "user-123", assignedTeachers: { $size: 0 } },
+    ] });
+  });
 
-      const mockPopulate = jest.fn().mockResolvedValue(mockBatches);
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        populate: mockPopulate,
-      });
-
-      const user = { _id: "user-123", role: ["admin"] };
-      const result = await manager.getBatches(user);
-
-      expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
-      expect(mockPopulate).toHaveBeenCalledWith(
-        "assignedTeachers",
-        "name zone district phone"
-      );
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockBatches);
-    });
-
-    it("should get batches for manager role with userId filter", async () => {
-      const mockBatches = [{ _id: "batch-1", createdBy: "user-123" }];
-
-      const mockPopulate = jest.fn().mockResolvedValue(mockBatches);
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        populate: mockPopulate,
-      });
-
-      const user = { _id: "user-123", role: ["manager"] };
-      const result = await manager.getBatches(user);
-
-      expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({
-        createdBy: "user-123",
-      });
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockBatches);
-    });
-
-    it("should get all batches when user has both manager and admin roles", async () => {
-      const mockBatches = [{ _id: "batch-1" }];
-
-      const mockPopulate = jest.fn().mockResolvedValue(mockBatches);
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        populate: mockPopulate,
-      });
-
-      const user = { _id: "user-123", role: ["manager", "admin"] };
-      const result = await manager.getBatches(user);
-
-      expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
-      expect(result.success).toBe(true);
-    });
-
-    it("should get all batches when no user provided", async () => {
-      const mockBatches = [];
-
-      const mockPopulate = jest.fn().mockResolvedValue(mockBatches);
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        populate: mockPopulate,
-      });
-
-      const result = await manager.getBatches(null);
-
-      expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
-      expect(result.success).toBe(true);
-    });
-
-    it("should handle errors gracefully", async () => {
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        populate: jest.fn().mockRejectedValue(new Error("Database error")),
-      });
-
-      const user = { _id: "user-123", role: ["admin"] };
-      const result = await manager.getBatches(user);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
-    });
-
-    it("should get all batches when user role is not manager", async () => {
-      const mockBatches = [{ _id: "batch-1" }];
-
-      const mockPopulate = jest.fn().mockResolvedValue(mockBatches);
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        populate: mockPopulate,
-      });
-
-      const user = { _id: "user-123", role: ["teacher"] };
-      const result = await manager.getBatches(user);
-
-      expect(TeacherTrainingBatch.find).toHaveBeenCalledWith({});
-      expect(result.success).toBe(true);
-    });
+  it("returns the database error", async () => {
+    TeacherTrainingBatch.find.mockReturnValue({ populate: jest.fn().mockRejectedValue(new Error("Database error")) });
+    await expect(manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "GLOBAL", dep: null }]))
+      .resolves.toMatchObject({ success: false, message: "Database error" });
   });
 });

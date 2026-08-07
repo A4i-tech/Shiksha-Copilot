@@ -13,7 +13,6 @@ const { sortDataBySubTopics, transformSections, transformOldResources, getSemest
 const ChapterDao = require("../dao/chapter.dao");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");
 const compareChapter = require("../helper/chapter.helper");
-const { attachAggregateRatings } = require("../helper/activity.rating.helper");
 
 /** @extends {BaseManager<MasterResourceDao>} */
 class MasterResourceManager extends BaseManager {
@@ -153,8 +152,7 @@ class MasterResourceManager extends BaseManager {
 			);
 
 			if (result) {
-				const ratingAttachedResourcePlan = await attachAggregateRatings(result, resourceId);
-				return formatApiReponse(true, "", ratingAttachedResourcePlan);
+				return formatApiReponse(true, "", result);
 			}
 
 			return formatApiReponse(false, "No Data available", null);

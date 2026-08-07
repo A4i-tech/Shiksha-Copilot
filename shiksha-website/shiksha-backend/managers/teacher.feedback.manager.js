@@ -17,6 +17,7 @@ class TeacherResourceFeedbackManager extends BaseManager {
 			let resourceFeedback = await this.dao.getOne({
 				teacherId,
 				resourceId,
+				isDeleted: { $ne: true },
 			});
 
 			if (!resourceFeedback) {

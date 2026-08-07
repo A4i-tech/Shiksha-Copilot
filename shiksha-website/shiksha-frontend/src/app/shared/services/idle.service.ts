@@ -202,7 +202,7 @@ export class IdleService {
 
   logActivity(trackObj: any) {
     this.httpClient
-      .post(`${environment.apiUrl}/user/activity-log`, trackObj)
+      .post(`${environment.apiUrl}/activity-log`, trackObj)
       .subscribe({
         next: (val) => {
           this.draftId = null;

@@ -9,7 +9,7 @@ import {
 } from '@angular/forms';
 import { languege } from 'src/app/shared/utility/languege.util';
 import { ProfileService } from './profile.service';
-import { FormDropDownConfig } from 'src/app/shared/interfaces/form-dropdown.interface';
+import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { Router } from '@angular/router';
@@ -29,91 +29,83 @@ export class ProfileComponent implements OnInit, OnDestroy {
   selectedResIndex!:any;
   languageConfig = languege;
 
-  langDropDownConfig: FormDropDownConfig = {
+  langDropDownConfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Preferred Language',
-    height: 'auto',
     fieldName: 'languege',
   };
 
   submitted: boolean = false;
 
   boardDropdownOptions: any[] = [];
-  boardTypeDropdownconfig: FormDropDownConfig = {
+  boardTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select board',
-    height: 'auto',
     fieldName: 'Board',
     hideLabel: true,
-    bindLable: '_id',
+    bindLabel: '_id',
     bindValue: '_id',
   };
 
   mediumDropdownOptions: any[] = [];
-  mediumTypeDropdownconfig: FormDropDownConfig = {
+  mediumTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select medium',
-    height: 'auto',
     fieldName: 'Medium',
     hideLabel: true,
-    bindLable: 'medium',
+    bindLabel: 'medium',
     bindValue: 'medium',
   };
 
   classDropdownOptions: any[] = [];
-  classTypeDropdownconfig: FormDropDownConfig = {
+  classTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select class',
-    height: 'auto',
     fieldName: 'Standard',
     hideLabel: true,
-    bindLable: 'standard',
+    bindLabel: 'standard',
     bindValue: 'standard',
   };
 
   subjectDropdownOptions: any[] = [];
-  subjectTypeDropdownconfig: FormDropDownConfig = {
+  subjectTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select subject',
-    height: 'auto',
     fieldName: 'Subject',
     hideLabel: true,
-    bindLable: '_id',
+    bindLabel: '_id',
     bindValue: '_id',
   };
 
   resourceTypeDropdownOptions: any[] = [];
-  resourceTypeDropdownconfig: FormDropDownConfig = {
+  resourceTypeDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select Resource',
-    height: 'auto',
     fieldName: 'Resource Type',
     hideLabel: false,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
   };
 
-  resourceTypeDarkDropdownconfig: FormDropDownConfig = {
+  resourceTypeDarkDropdownconfig: DropDownConfig = {
     isBackground: true,
     placeHolderTxt: 'Select Type',
-    height: 'auto',
     fieldName: 'Resource Type',
     hideLabel: false,
-    bindLable: 'type',
+    bindLabel: 'type',
     bindValue: 'type',
   };
 
   resourceDetailsDropdownOptions: any[] = [];
-  resourceDetailsDropdownconfig: FormDropDownConfig = {
+  resourceDetailsDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Select details',
-    height: 'auto',
     fieldName: 'Resource Details',
     multi: true,
     clearableOff: true,
     hideLabel: true,
   };
-  resourceOtherDetailsDropdownconfig: FormDropDownConfig = {
+  resourceOtherDetailsDropdownconfig: DropDownConfig = {
     ...this.resourceDetailsDropdownconfig,
     placeHolderTxt: 'Enter resource details',
     hideLabel: false,
@@ -124,6 +116,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   userData: any;
   userPorfileForm!: FormGroup;
   loggedInUser: any;
+  isTeacher!: boolean;
   dependentPatchData: any;
   resourceMasterData: any;
   boardMasterData: any;
@@ -141,8 +134,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   patchObj: any;
 
   defaultBoard = null;
-
-  defaultMedium = null;
 
   showDeleteProfileImageConfirm =false;
 
@@ -164,6 +155,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const data: string = localStorage.getItem('userData') ?? '';
     this.loggedInUser = JSON.parse(data);
+    this.isTeacher = Boolean(this.loggedInUser.profiles.teacher);
     this.createUserForm();
     this.getData();
   }
@@ -172,12 +164,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get all master data and profile data
    */
   getData() {
-    const boardMaster = this.service.getClassesByBoard(
-      this.loggedInUser.school._id
-    );
-    const resourceMaster = this.masterService.getFacilities();
     const userProfile = this.service.getProfileInfo(this.loggedInUser._id);
+    if (!this.isTeacher) {
+      userProfile.subscribe({ next: (profile) => this.setProfileInfo(profile), error: (err) => this.utilityService.handleError(err) });
+      return;
+    }
 
+    const boardMaster = this.service.getClassesByBoard(this.loggedInUser.school._id);
+    const resourceMaster = this.masterService.getFacilities();
     forkJoin([boardMaster, resourceMaster, userProfile]).subscribe({
       next: ([boardRes, resourceRes, profileRes]) => {
         this.setClassesByBoard(boardRes);
@@ -203,9 +197,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
   presetValues(data: any) {
     if (data.length === 1) {
       this.defaultBoard = data[0]._id;
-      if (data[0].medium.length === 1) {
-        this.defaultMedium = data[0].medium[0].medium;
-      }
     }
   }
 
@@ -214,15 +205,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * @param i
    * @param val
    */
-  setMediumSubjectDropdown(i: any, val: any, mode: any) {
+  setMediumSubjectDropdown(i: any, val: any) {
     this.resetclassInfo('board', i);
     if (val) {
       this.mediumDropdownOptions[i] = val.medium;
       this.currentSubjects[i] = val.subjects;
       // this.subjectDropdownOptions[i] = val.subjects;
-      if (val.medium.length === 1 && mode === 'add') {
+      if (val.medium.length === 1) {
         this.classes.controls[i].get('medium')?.setValue(val.medium[0].medium);
-        this.classDropdownOptions[i] = val.medium[0].classDetails;
+        this.classes.controls[i].get('medium')?.disable();
+        this.setClassDropdown(i, val.medium[0]);
       }
     }
   }
@@ -231,6 +223,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.resetclassInfo('medium', i);
     if (val) {
       this.classDropdownOptions[i] = val.classDetails;
+      if (val.classDetails.length === 1) {
+        this.classes.controls[i].get('class')?.setValue(val.classDetails[0].standard);
+        this.classes.controls[i].get('class')?.disable();
+        this.setStrength(i, val.classDetails[0]);
+      }
     }
   }
 
@@ -244,6 +241,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     if (val) {
       this.subjectDropdownOptions[i] = this.filterSubjects(val.standard,this.currentSubjects[i])
+      if (this.subjectDropdownOptions[i].length === 1) {
+        const subject = this.subjectDropdownOptions[i][0];
+        this.classes.controls[i].get('subject')?.setValue(subject._id);
+        this.classes.controls[i].get('subject')?.disable();
+        this.subjectMapper(i, subject);
+      }
       this.resetclassInfo('strength', i);
       this.classes.controls[i].get('boysStrength')?.setValue(val.boysStrength);
       this.classes.controls[i]
@@ -261,23 +264,23 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   resetclassInfo(type: any, i: any) {
     if (type === 'board') {
-      this.classes.controls[i].get('medium')?.reset();
-      this.classes.controls[i].get('class')?.reset();
-      this.classes.controls[i].get('subject')?.reset();
+      this.classes.controls[i].get('medium')?.reset({ value: null, disabled: false });
+      this.classes.controls[i].get('class')?.reset({ value: null, disabled: false });
+      this.classes.controls[i].get('subject')?.reset({ value: null, disabled: false });
       this.classes.controls[i].get('subjectDetails')?.reset();
       this.classDropdownOptions[i] = [];
       this.mediumDropdownOptions[i] = [];
       this.subjectDropdownOptions[i] = [];
     } else if (type === 'medium') {
-      this.classes.controls[i].get('class')?.reset();
-      this.classes.controls[i].get('subject')?.reset();
+      this.classes.controls[i].get('class')?.reset({ value: null, disabled: false });
+      this.classes.controls[i].get('subject')?.reset({ value: null, disabled: false });
       this.classes.controls[i].get('subjectDetails')?.reset();
       this.classDropdownOptions[i] = [];
       this.subjectDropdownOptions[i] = [];
     }
     else if (type === 'standard') {
       this.subjectDropdownOptions[i] = [];
-      this.classes.controls[i].get('subject')?.reset();
+      this.classes.controls[i].get('subject')?.reset({ value: null, disabled: false });
       this.classes.controls[i].get('subjectDetails')?.reset();
     }
     this.classes.controls[i].get('boysStrength')?.reset();
@@ -288,14 +291,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
    * Function to get profile info
    */
   setProfileInfo(val:any) {
-    const schoolFacilities = val?.data?.school?.facilities;
+    this.userData = val.data;
+    if (!this.isTeacher) return;
+
+    const teacherProfile = val?.data?.profiles?.teacher;
+    const schoolFacilities = val.data.school.facilities;
     this.mergeSchoolResource(schoolFacilities);
 
-    this.userData = val?.data;
     const keysToRemove = ['classes', 'facilities'];
 
     const { newObj, removedObj } = this.utilityService.removeKeys(
-      val?.data,
+      teacherProfile,
       keysToRemove
     );
     this.patchObj = newObj;
@@ -338,17 +344,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.userPorfileForm = this.fb.group({
       classes: this.fb.array([]),
       facilities: this.fb.array([]),
-      preferredLanguage: [this.loggedInUser?.preferredLanguage],
     });
-    this.addResource();
+    if (this.isTeacher) this.addResource();
   }
 
   /**
    * Function to get resource data
    */
   setResourceData(val: any) {
-    this.resourceTypeDropdownOptions = val?.data?.results;
-    this.resourceMasterData = val?.data?.results;
+    this.resourceTypeDropdownOptions = val.data.results;
+    this.resourceMasterData = val.data.results;
   }
 
   mergeSchoolResource(schoolResource:any){
@@ -407,6 +412,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
   setSubjectDropdown(i:any,val:any,standard:any){
     if (val) {
       this.subjectDropdownOptions[i] = this.filterSubjects(standard,val.subjects);
+      if (this.subjectDropdownOptions[i].length === 1) {
+        const subject = this.subjectDropdownOptions[i][0];
+        this.classes.controls[i].get('subject')?.setValue(subject._id);
+        this.classes.controls[i].get('subject')?.disable();
+        this.subjectMapper(i, subject);
+      }
     }
   }
   /**
@@ -417,10 +428,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
       this.classes.controls[i]
         ?.get('board')
         ?.setValue(this.dependentPatchData.classes[i].board);
+      if (this.boardDropdownOptions.length === 1) {
+        this.classes.controls[i].get('board')?.disable();
+      }
       const mediums = this.boardMasterData.filter(
         (e: any) => e._id === this.dependentPatchData.classes[i].board
       );
-      this.setMediumSubjectDropdown(i, mediums[0], 'edit');
+      this.setMediumSubjectDropdown(i, mediums[0]);
       this.classes.controls[i]
         ?.get('medium')
         ?.setValue(this.dependentPatchData.classes[i].medium);
@@ -518,7 +532,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
       subscribe({
       next:(res)=>{
           this.loggedInUser.preferredLanguage = lang;
-          this.userPorfileForm.get('preferredLanguage')?.setValue(lang);
           this.utilityService.handleResponse(res);
           localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
           this.translateService.use(lang);
@@ -597,22 +610,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
    */
   defaultPreset() {
     if (this.defaultBoard) {
+      const i = this.classes.length - 1;
       this.boardDropdownOptions = this.boardMasterData;
-      this.mediumDropdownOptions[this.classes.length - 1] =
-        this.boardMasterData[0].medium;
-      // this.subjectDropdownOptions[this.classes.length - 1] =
-      //   this.boardMasterData[0].subjects;
-      this.currentSubjects[this.classes.length - 1] = this.boardMasterData[0].subjects;
-      this.classes.controls[this.classes.length - 1]
-        .get('board')
-        ?.setValue(this.defaultBoard);
-      if (this.defaultMedium) {
-        this.classDropdownOptions[this.classes.length - 1] =
-          this.boardMasterData[0].medium[0].classDetails;
-        this.classes.controls[this.classes.length - 1]
-          .get('medium')
-          ?.setValue(this.defaultMedium);
-      }
+      this.classes.controls[i].get('board')?.setValue(this.defaultBoard);
+      this.classes.controls[i].get('board')?.disable();
+      this.setMediumSubjectDropdown(i, this.boardMasterData[0]);
     }
   }
 
@@ -743,14 +745,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const classDetails = this.splitClasses(this.classes.value);
+    const classDetails = this.splitClasses(this.classes.getRawValue());
 
     if(this.utilityService.hasDuplicates(classDetails)){
       this.utilityService.showWarning('Duplicate class-subject mapping found. Please verify.');
       return
     }
 
-    const data = this.userPorfileForm.value;
+    const data = this.userPorfileForm.getRawValue();
     data.facilities = this.utilityService.removeObjectsWithEmptyType(
       data.facilities
     );
@@ -760,7 +762,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.service.updateProfile(data).subscribe({
       next: (res) => {
         this.utilityService.handleResponse(res);
-        localStorage.setItem('userData', JSON.stringify(res.data));
+        this.loggedInUser.profiles.teacher = res.data.profiles.teacher;
+        localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
         this.router.navigate(['/']);
       },
       error: (err) => {

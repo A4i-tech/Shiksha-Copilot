@@ -1,4 +1,5 @@
 const validateRequest = require("../../../validations/common.validation");
+const { validateRequestForUpdates } = validateRequest;
 const Joi = require("joi");
 
 describe("Common Validation", () => {
@@ -20,7 +21,7 @@ describe("Common Validation", () => {
   });
 
   describe("validateRequest", () => {
-    it("should pass validation with valid data", () => {
+    it("should not require an id for regular validation", () => {
       const schema = Joi.object({
         name: Joi.string().required(),
         age: Joi.number().required(),
@@ -30,6 +31,7 @@ describe("Common Validation", () => {
         name: "Test User",
         age: 25,
       };
+      mockReq.originalUrl = "/api/users/update";
 
       const middleware = validateRequest(schema);
       middleware(mockReq, mockRes, mockNext);
@@ -60,6 +62,16 @@ describe("Common Validation", () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
 
+    it("should fail validation with missing body", () => {
+      const middleware = validateRequest(Joi.object());
+      mockReq.body = undefined;
+
+      middleware(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
     it("should fail validation with multiple errors", () => {
       const schema = Joi.object({
         name: Joi.string().required(),
@@ -81,7 +93,7 @@ describe("Common Validation", () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it("should require id parameter for update routes", () => {
+    it("should require id parameter for update validation", () => {
       const schema = Joi.object({
         name: Joi.string().required(),
       });
@@ -89,10 +101,9 @@ describe("Common Validation", () => {
       mockReq.body = {
         name: "Test User",
       };
-      mockReq.originalUrl = "/api/users/update";
       mockReq.params = {};
 
-      const middleware = validateRequest(schema);
+      const middleware = validateRequestForUpdates(schema);
       middleware(mockReq, mockRes, mockNext);
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
@@ -104,7 +115,7 @@ describe("Common Validation", () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it("should pass validation for update routes with id", () => {
+    it("should pass update validation with id", () => {
       const schema = Joi.object({
         name: Joi.string().required(),
       });
@@ -112,10 +123,9 @@ describe("Common Validation", () => {
       mockReq.body = {
         name: "Test User",
       };
-      mockReq.originalUrl = "/api/users/update/123";
       mockReq.params = { id: "123" };
 
-      const middleware = validateRequest(schema);
+      const middleware = validateRequestForUpdates(schema);
       middleware(mockReq, mockRes, mockNext);
 
       expect(mockNext).toHaveBeenCalled();

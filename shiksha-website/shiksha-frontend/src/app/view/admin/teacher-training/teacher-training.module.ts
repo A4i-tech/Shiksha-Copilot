@@ -5,10 +5,10 @@ import { CreateBatchComponent } from './create-batch/create-batch.component';
 import { ViewBatchComponent } from './view-batch/view-batch.component';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { ViewAssignedTeachersComponent } from './view-assigned-teachers/view-assigned-teachers.component';
-import { CommonDropdownComponent } from 'src/app/shared/components/common-dropdown/common-dropdown.component';
+import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 import { HttpClientModule } from '@angular/common/http';
-import { FormDropdownComponent } from 'src/app/shared/components/form-dropdown/form-dropdown.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 @NgModule({
   declarations: [
@@ -21,10 +21,10 @@ import { FormDropdownComponent } from 'src/app/shared/components/form-dropdown/f
     TeacherTrainingRoutingModule,
     ReactiveFormsModule,
     FormsModule,
-    CommonDropdownComponent,
-    FormDropdownComponent,
+    DropdownComponent,
     PaginationComponent,
-    HttpClientModule
+    HttpClientModule,
+    TranslateModule
   ]
 })
 export class TeacherTrainingModule { } 

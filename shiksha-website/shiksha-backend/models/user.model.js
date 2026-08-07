@@ -4,6 +4,11 @@ const jwt = require("jsonwebtoken");
 const ObjectId = mongoose.Types.ObjectId;
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const roleAssignmentSchema = new mongoose.Schema({
+	role: { type: ObjectId, ref: "Role", required: true },
+	dep: { type: mongoose.Schema.Types.Mixed },
+});
+
 const classSchema = new mongoose.Schema({
   board: {
     type: String,
@@ -31,63 +36,66 @@ const classSchema = new mongoose.Schema({
   },
 });
 
+const identitySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  phone: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+  },
+  address: {
+    type: String,
+  },
+}, { _id: false });
+
+const teacherProfileSchema = new mongoose.Schema({
+  facilities: [],
+  isProfileCompleted: {
+    type: Boolean,
+    default: false,
+  },
+  classes: {
+    type: [classSchema],
+  },
+}, { _id: false });
+
+const adminProfileSchema = new mongoose.Schema({
+  state: {
+    type: String,
+  },
+}, { _id: false });
+
 const userSchema = mongoose.Schema(
   {
-    name: {
-      type: String,
+    identity: {
+      type: identitySchema,
       required: true,
     },
-
-    state: {
-      type: String,
+    roles: {
+      type: [roleAssignmentSchema],
       required: true,
-    },
-    email: {
-      type: String,
-    },
-    zone: {
-      type: String,
-      required: true,
-    },
-    district: {
-      type: String,
-      required: true,
-    },
-    block: {
-      type: String,
-      required: true,
-    },
-    phone: {
-      type: String,
-      required: true,
-    },
-    address: {
-      type: String,
-    },
-    role: [
-      {
-        type: String,
-        enum: ["power", "standard"],
-        required: true,
+      validate: {
+        validator: (roles) => Array.isArray(roles) && roles.length > 0,
+        message: "At least one role is required",
       },
-    ],
-    school: {
-      type: ObjectId,
-      ref: "School",
-      required: true,
+    },
+    profiles: {
+      teacher: teacherProfileSchema,
+      admin: adminProfileSchema,
     },
     preferredLanguage: {
       type: String,
-      enum: ["en", "kn"],
+      enum: ["en", "kn", "tg"],
       default: "en",
-    },
-    facilities: [],
-    isProfileCompleted: {
-      type: Boolean,
-      default: false,
-    },
-    classes: {
-      type: [classSchema],
     },
     profileImage: {
       type: String,
@@ -103,12 +111,14 @@ const userSchema = mongoose.Schema(
     },
     otp: {
       type: String,
+      select: false,
     },
     loginAttempts: { type: [Date], default: [], select: false },
     recovery: { type: Object, select: false },
     rememberMeToken: {
       type: Boolean,
       default: false,
+      select: false,
     },
     isLoginAllowed: {
       type: Boolean,
@@ -119,20 +129,11 @@ const userSchema = mongoose.Schema(
 );
 
 userSchema.methods.generateAuthToken = function () {
-  const token = jwt.sign(
-    { _id: this._id, isAdmin: false, isDeleted: this.isDeleted },
-    JWT_SECRET,
-    {
-      expiresIn: "7d",
-    }
-  );
-  return token;
+  return jwt.sign({ _id: this._id }, JWT_SECRET, { expiresIn: "7d" });
 };
 
-userSchema.index(
-  { school: 1, state: 1, zone: 1, district: 1, block: 1 },
-  { name: "idx_user_location_hierarchy", background: true }
-);
+userSchema.index({ "identity.phone": 1 }, { unique: true, name: "uniq_user_phone" });
+userSchema.index({ "roles.dep": 1 }, { name: "idx_user_role_dependency", background: true });
 
 const User = mongoose.model("User", userSchema);
 

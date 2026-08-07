@@ -1,130 +1,101 @@
-import { HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { forkJoin, map, Observable } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class StaffUserCommonService extends BaseRestService {
-
   baseUrl = environment.apiUrl;
 
-  addUser(data: any, role: string): Observable<any> { 
-    this.setURI(role);
-    return this.post('create', data);
+  constructor(http: HttpClient) {
+    super(http);
+    this.setUri('users');
   }
 
-  getUserDetails(id: string, role: string): Observable<any> {
-    this.setURI(role);
-    return this.get(`${id}`);
+  getById(id: string) { return this.get(id); }
+  getRoles() { return this.http.get(`${this.baseUrl}/roles`); }
+  getRegions() { return this.http.get<any>(`${this.baseUrl}/regions/list?limit=999`).pipe(map((response) => response.data.results)); }
+  getAssignmentData() {
+    return forkJoin({
+      roles: this.http.get<any>(`${this.baseUrl}/roles`),
+      regions: this.getRegions(),
+    }).pipe(map(({ roles, regions }) => ({
+      roles: roles.data.results,
+      regions,
+    })));
   }
 
-  getUsers(from: string | undefined, page?: number, limit?: number,filters?: { [key: string]: any }, search?: string): Observable<any> { 
-    let params = new HttpParams()
-    
-    // Add pagination parameters if they are provided
-    if (page !== undefined && limit !== undefined) {
-      params = params.set('page', page.toString()).set('limit', limit.toString());
-    }
-
-    if (filters) {
-      
-      Object.keys(filters).forEach(key => {
-        if(filters[key] || filters[key] === 0){
-          
-          if(key === 'search'){
-            params = params.set(`${key}`, filters[key]);
-
-          }
-          else if(key === 'includeDeleted'){
-            
-            params = params.set(`${key}`, filters[key]);
-          }
-          else if (Array.isArray(filters[key])) {
-            filters[key].forEach((item: any) => {
-              params = params.append(`filter[${key}]`, item);
-            });
-          }
-          else{
-            params = params.set(`filter[${key}]`, filters[key]);
-
-          }
-        }
-      });
-    }
-
-    
-
-    if (search) {
-      params = params.set('search', search);
-    }
-    
-    if (from === 'user') {
-      return this.http.get<any>(`${this.baseUrl}/user/list`, { params: params });
-    } else {
-      return this.http.get<any>(`${this.baseUrl}/admin/list`, { params: params });
-    } 
-    
+  getSchool(id: string): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/school/${id}`).pipe(map((response) => response.data));
   }
 
-  disableUser(id: string, role: string | undefined): Observable<any> {
-    this.setURI(role);
-    if(role === 'user'){
-      return this.put(`deactivate/${id}`,{});
+  getSchools(scope: { state: string; zone: string; district: string; block: string }): Observable<any[]> {
+    const params = new HttpParams().set('limit', '0').set('filter[state]', scope.state).set('filter[zone]', scope.zone)
+      .set('filter[district]', scope.district).set('filter[block]', scope.block);
+    return this.http.get<any>(`${this.baseUrl}/school/list`, { params }).pipe(map((response) =>
+      response.data.results.map((school: any) => ({ ...school, label: `${school.name} (${school.schoolId})` }))
+    ));
+  }
+  deactivate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/deactivate`, {}); }
+  activate(id: string) { return this.http.put(`${this.baseUrl}/users/${id}/activate`, {}); }
+  importUsers(formdata: any) { return this.http.post(`${this.baseUrl}/users/import`, formdata); }
+
+  list(opts: { profileType: 'teacher' | 'admin'; page?: number; limit?: number; filters?: any; search?: string }): Observable<any> {
+    let params = this.buildFilterParams(opts.filters, opts.search).set('filter[profileType]', opts.profileType);
+    if (opts.page != null && opts.limit != null) {
+      params = params.set('page', String(opts.page)).set('limit', String(opts.limit));
     }
-    else{
-      return this.delete(`${id}`);
-    }
+    return this.http.get(`${this.baseUrl}/users`, { params });
   }
 
-  activateUser(id:any, role: string | undefined){
-    this.setURI(role);
-    return this.put(`activate/${id}`,{});
+  createTeacher(form: any) {
+    return this.post('', {
+      identity: { name: form.name.trim(), phone: String(form.phone) },
+      roles: form.roles,
+      profiles: { teacher: { facilities: [], classes: [], isProfileCompleted: false } },
+    });
   }
 
-  bulkUpload(formdata: any, role: string | undefined): Observable<any>{   
-    if (role === 'user') {
-      return this.http.post(`${this.baseUrl}/user/bulk-upload`,formdata);
-    } else {
-      return this.http.post(`${this.baseUrl}/admin/bulk-upload`,formdata);
+  updateTeacher(id: string, form: any) {
+    return this.http.put(`${this.baseUrl}/users/${id}`, {
+      identity: { name: form.name.trim(), phone: String(form.phone) },
+      roles: form.roles,
+    });
+  }
+
+  createStaff(form: any) {
+    return this.post('', {
+      identity: { name: form.name.trim(), phone: String(form.phone), email: form.email.trim().toLowerCase() },
+      roles: form.roles,
+      profiles: { admin: { state: form.state } },
+    });
+  }
+
+  updateStaff(id: string, form: any) {
+    return this.put(id, {
+      identity: { name: form.name.trim(), phone: String(form.phone), email: form.email.trim().toLowerCase() },
+      roles: form.roles,
+      profiles: { admin: { state: form.state } },
+    });
+  }
+
+  exportTeachers(filters?: any, search?: string) {
+    return this.http.get(`${this.baseUrl}/users/export`, {
+      params: this.buildFilterParams(filters, search).set('filter[profileType]', 'teacher'),
+    });
+  }
+
+  private buildFilterParams(filters?: any, search?: string): HttpParams {
+    let params = new HttpParams();
+    if (search) params = params.set('search', search);
+    if (!filters) return params;
+    for (const [key, value] of Object.entries(filters)) {
+      if (value == null || value === '') continue;
+      if (key === 'search' || key === 'includeDeleted') params = params.set(key, value as any);
+      else if (Array.isArray(value)) value.forEach((v) => (params = params.append(`filter[${key}]`, v as any)));
+      else params = params.set(`filter[${key}]`, value as any);
     }
+    return params;
   }
-
-  exportTeacher(filters?: { [key: string]: any }, search?: string): Observable<any> { 
-    let params = new HttpParams()
-    
-    if (filters) {
-      
-      Object.keys(filters).forEach(key => {
-        if(filters[key] || filters[key] === 0){
-          
-          if(key === 'search'){
-            params = params.set(`${key}`, filters[key]);
-
-          }
-          else if(key === 'includeDeleted'){
-            
-            params = params.set(`${key}`, filters[key]);
-          }
-          else{
-            params = params.set(`filter[${key}]`, filters[key]);
-
-          }
-        }
-      });
-    }
-
-    if (search) {
-      params = params.set('search', search);
-    }
-    
-      return this.http.get<any>(`${this.baseUrl}/user/export`, { params: params } );
-  }
-
-  setURI(role:string | undefined) {
-    this.setUri(role);
-  }
-
 }

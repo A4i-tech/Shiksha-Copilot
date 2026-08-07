@@ -6,6 +6,23 @@ class TeacherResourceFeedbackDao extends BaseDao {
 		super(TeacherResourceFeedback);
 	}
 
+	async deleteByTeacherAndResourceId(teacherId, resourceId) {
+		try {
+			const result = await TeacherResourceFeedback.findOneAndUpdate(
+				{ teacherId, resourceId, isDeleted: { $ne: true } },
+				{ $set: { isDeleted: true } },
+				{ new: true, useFindAndModify: false }
+			);
+			return result;
+		} catch (err) {
+			console.log(
+				"Error --> TeacherResourceFeedbackDao -> deleteByTeacherAndResourceId()",
+				err
+			);
+			throw err;
+		}
+	}
+
 	async update(id, updates, session = null) {
 		try {
 			const result = await TeacherResourceFeedback.findOneAndUpdate(

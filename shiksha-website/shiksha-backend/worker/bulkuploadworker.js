@@ -14,7 +14,7 @@ const { uploadToStorage } = require("../services/azure.blob.service");
 const checkRegionValidation = require("../helper/region.helper");
 const AuditLog = require("../models/audit.log.model");
 
-dbService.getConnection().then(async (client) => {
+dbService.connectToMongoForWorker().then(async ({ client, openedHere }) => {
 
   const processSheet = (
     worksheet,
@@ -245,12 +245,13 @@ dbService.getConnection().then(async (client) => {
     return groupedData;
   };
 
-  const createSchoolsWithClasses = async (schoolDataWithClasses, session) => {
+  const createSchoolsWithClasses = async (schoolDataWithClasses, session, permissions) => {
     const results = [];
     const errorMessages = [];
     try {
       for (const { school, groupedData } of schoolDataWithClasses) {
         const req = {
+          permissions,
           body: {
             ...school,
             classes: groupedData,
@@ -280,7 +281,7 @@ dbService.getConnection().then(async (client) => {
   };
 
   parentPort.on("message", async (data) => {
-    const { fileBuffer, userId, userName } = data;
+    const { fileBuffer, userId, userName, permissions } = data;
     const session = await client.startSession();
 
     try {
@@ -379,10 +380,7 @@ dbService.getConnection().then(async (client) => {
 
       if (schoolDataWithClasses?.length > 0) {
         try {
-          let { results, errorMessages } = await createSchoolsWithClasses(
-            schoolDataWithClasses,
-            session
-          );
+          let { results, errorMessages } = await createSchoolsWithClasses(schoolDataWithClasses, session, permissions);
           const totalRecords = schoolDataWithClasses.length;
           const successCount = results.length;
           const failureCount = totalRecords - results.length;
@@ -435,7 +433,7 @@ dbService.getConnection().then(async (client) => {
 
           parentPort.postMessage({
             success: true,
-            message: "Bulk upload initiated successfully and processing",
+            message: `Bulk upload completed: ${successCount} imported, ${failureCount} failed.`,
           });
         } catch (creationError) {
           parentPort.postMessage({
@@ -454,7 +452,7 @@ dbService.getConnection().then(async (client) => {
       parentPort.postMessage({ success: false, error: err });
     } finally {
       session.endSession();
-      await client.close();
+      if (openedHere) await client.close();
     }
   });
 });

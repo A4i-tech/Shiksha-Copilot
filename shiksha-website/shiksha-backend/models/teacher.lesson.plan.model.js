@@ -72,15 +72,15 @@ const teacherLessonPlan = new Schema(
 			type: Boolean,
 			default: false,
 		},
-		isDeleted: {
-			type: Boolean,
-			default: false,
-		},
 		isVideoSelected :{
 			type: Boolean,
 			default: false,
 		},
 		sections: { type: [SectionSchema], default: [] },
+		isDeleted: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	{ timestamps: true }
 );

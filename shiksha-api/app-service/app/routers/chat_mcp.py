@@ -8,7 +8,9 @@ import uuid
 
 from app.services.general_chat_service import GeneralChatService
 from app.services.lesson_chat_service import LessonChatService
+from app.services.lesson_edit_service import LessonEditService
 from app.models.chat import ConversationMessage, LessonChatRequest, MessageRole
+from app.models.lesson_plan import SectionEditRequest
 from fastmcp.server import Context
 from pydantic import Field
 
@@ -25,6 +27,10 @@ def get_user_id(ctx: Context) -> uuid.UUID:
 def get_services(ctx: Context) -> tuple[GeneralChatService, LessonChatService]:
     state = ctx.request_context.request.app.state
     return state.general_chat_svc, state.lesson_chat_svc
+
+
+def get_lesson_edit_service(ctx: Context) -> LessonEditService:
+    return ctx.request_context.request.app.state.lesson_edit_svc
 
 def router(mcp: FastMCP):
     logger = logging.getLogger(__name__)
@@ -104,3 +110,37 @@ def router(mcp: FastMCP):
         except Exception as e:
             logger.error(f"Lesson chat failed for user {request.user_id}: {e}")
             raise ToolError("Failed to process lesson chat request")
+
+
+    @mcp.tool
+    async def enhance_lesson_section(
+        chapter_index: str = Field(..., description="Path to the chapter index for RAG grounding"),
+        section_id: str = Field(..., description="Identifier of the lesson plan section to revise"),
+        current_content: str | dict | list = Field(..., description="The section's current content — plain text, or a structured object/array for structured sections"),
+        prompt: str = Field(..., description="The teacher's requested change to the section"),
+        context: Context = Field(...)
+    ) -> str:
+        """
+        Propose an AI-revised version of a lesson plan section, grounded in the chapter's source material.
+
+        This is a suggestion only: it does not save anything. Present the proposed content to the
+        teacher so they can review and apply it themselves in the lesson plan editor.
+        """
+        user_id = str(get_user_id(context))
+        service = get_lesson_edit_service(context)
+
+        try:
+            request = SectionEditRequest(
+                user_id=user_id,
+                index_path=chapter_index,
+                section_id=section_id,
+                current_content=current_content,
+                prompt=prompt,
+            )
+            proposed = await service.edit_section(request)
+
+            return proposed if isinstance(proposed, str) else json.dumps(proposed, ensure_ascii=False)
+
+        except Exception as e:
+            logger.error(f"Lesson section enhance failed for user {user_id}: {e}")
+            raise ToolError("Failed to process lesson section enhance request")

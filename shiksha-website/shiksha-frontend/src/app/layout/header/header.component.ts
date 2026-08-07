@@ -36,7 +36,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    if (this.utilityService.hasPermission(['power'])) {
+    if (this.utilityService.hasPermission(['generation.status.view'])) {
       this.connectGenerationStatusStream();
     }
   }

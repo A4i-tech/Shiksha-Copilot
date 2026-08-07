@@ -14,7 +14,7 @@ interface Video { title: string; link: SafeResourceUrl; }
   imports: [CommonModule, TranslateModule],
 })
 export class HelpComponent {
-  readonly isTelangana = this.utilityService.loggedInUserData?.state === 'Telangana';
+  readonly isTelangana = (this.utilityService.loggedInUserData.school?.state || this.utilityService.loggedInUserData.profiles.admin?.state) === 'Telangana';
   readonly videos: Video[] = (this.isTelangana ? [
     ['User Registration (Telugu)', 'https://youtu.be/DWhDVAWOWrE'],
     ['Edu Chatbot (Telugu)', 'https://youtu.be/hrqmDiH8f04'],

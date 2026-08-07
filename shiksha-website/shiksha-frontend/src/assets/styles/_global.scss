@@ -50,6 +50,11 @@
     background-color: var(--primary-80) !important;
   }
 
+  // primary-blue text (set above) on the primary-80 today highlight is ~3.9:1, fails WCAG 1.4.3
+  .cal-week-view .cal-header.cal-today span {
+    color: var(--content-DEFAULT) !important;
+  }
+
   .cal-week-view .cal-day-headers .cal-header {
     color: var(--content-DEFAULT);
   }

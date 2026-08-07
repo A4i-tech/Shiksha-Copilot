@@ -203,11 +203,11 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   backNavigation() {
-    this.router.navigate(['/question-paper']);
+    this.router.navigate(['/question-papers']);
   }
 
   submitFeedback() {
-    const questionBankId = this.questionBankDetails?.questionBank?._id;
+    const questionBankId = this.questionBankId;
     const feedback = {
       question: this.questionBankFeedbackQuestion,
       ...this.questionBankFeedback,

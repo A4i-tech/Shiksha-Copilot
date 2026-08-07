@@ -2,6 +2,7 @@
   <!-- Header Section -->
   <div class="flex justify-between items-center">
     <h1
+      data-testid="question-papers-heading"
       class="text-xl md:text-3xl font-bold text-content main-heading leading-[48px]"
     >
       {{ "Question Papers" | translate }}
@@ -35,8 +36,9 @@
     <!-- Buttons Wrapper -->
     <div class="flex flex-col md:flex-row gap-2 w-full md:w-auto">
       <button
+        data-testid="generate-question-paper-btn"
         class="btn-primary flex gap-2 items-center justify-center md:justify-start w-full md:w-fit border border-primary"
-        routerLink="/question-paper/generate"
+        routerLink="/question-papers/generate"
       >
         <img src="assets/icons/edit_light.svg" alt="" />
         <span class="text-sm md:text-base">{{
@@ -93,10 +95,10 @@
         </div>
 
         <div class="mt-5">
-          <h3 class="text-sm font-medium">
+          <p class="text-sm font-medium">
             {{ "Subject" | translate }}:
             <span>{{ item.subject }}</span>
-          </h3>
+          </p>
           <div class="flex items-center justify-start my-2">
             <p
               class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px] inline-block me-2"
@@ -144,9 +146,9 @@
       <div class="rounded-full bg-warn-50 p-4 my-8">
         <img src="assets/icons/no-file.svg" alt="" />
       </div>
-      <h4 class="text-base text-center font-medium">
+      <p class="text-base text-center font-medium">
         {{ "No items found" | translate }}
-      </h4>
+      </p>
     </div>
   </div>
 </div>
@@ -155,39 +157,39 @@
 <ng-template #elementGroup>
   <div class="flex gap-4 md:gap-1 flex-wrap">
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="boardDropdownOptions"
         #boardDropDown
         (valueUpdate)="onBoardChange($event)"
         [config]="boardDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
-    <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+    <div class="w-full md:w-28 cursor-pointer capitalize md:flex-1">
+      <app-dropdown
         [dropDownValues]="mediumDropdownOptions"
         #mediumDropDown
         (valueUpdate)="onMediumChange($event)"
         [config]="mediumDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="classDropdownOptions"
         #classDropDown
         (valueUpdate)="onClassChange($event)"
         [config]="classDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
 
     <div class="w-full md:w-28 cursor-pointer md:flex-1">
-      <app-common-dropdown
+      <app-dropdown
         [dropDownValues]="subjectDropdownOptions"
         #subjectDropDown
         (valueUpdate)="onSubjectChange($event)"
         [config]="subjectDropdownconfig"
-      ></app-common-dropdown>
+      ></app-dropdown>
     </div>
   </div>
 </ng-template>

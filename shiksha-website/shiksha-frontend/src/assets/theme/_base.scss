@@ -51,15 +51,19 @@
 }
 
 .form-control{
-  @apply appearance-none border border-content-50 rounded h-11 w-full py-2 px-3 text-content leading-tight focus:outline-none;
+  @apply appearance-none border border-content-50 rounded h-9 w-full py-2 px-3 text-content leading-tight focus:outline-none;
 
-  &:disabled {
-    @apply bg-shade-80 border-0 cursor-not-allowed;
+  &:disabled,
+  &[readonly] {
+    @apply bg-shade-80 border-content-30 cursor-not-allowed;
   }
 }
 
+textarea.form-control {
+  @apply h-auto;
+}
+
 .form-control[type='date'],
-.table-form-control[type='date'],
 .form-control-disabled[type='date'],
 input[type='date'] {
   appearance: auto;
@@ -74,7 +78,6 @@ input[type='date'] {
 }
 
 .form-control[type='date']::-webkit-calendar-picker-indicator,
-.table-form-control[type='date']::-webkit-calendar-picker-indicator,
 .form-control-disabled[type='date']::-webkit-calendar-picker-indicator,
 input[type='date']::-webkit-calendar-picker-indicator {
   position: absolute;
@@ -99,24 +102,18 @@ input[type='number'] {
   appearance: textfield;
 }
 
-.table-form-control{
-  @apply appearance-none border border-content-50 rounded h-9 w-full py-2 px-3 text-content leading-tight focus:outline-none;
-
-  &:disabled {
-    @apply bg-shade-80 border-0 cursor-not-allowed;
-  }
-}
-
 .form-control-disabled{
-  @apply appearance-none border rounded w-full py-2 px-3 text-content leading-tight focus:outline-none bg-shade-80;
+  @apply appearance-none border border-content-30 rounded w-full py-2 px-3 text-content leading-tight focus:outline-none bg-shade-80;
 
   &:disabled {
-    @apply border-0 cursor-not-allowed;
+    @apply cursor-not-allowed;
   }
 }
 
 .form-control-error{
-  @apply text-xs text-error-100
+  // Accessible red (#C62828 ~5.6:1 on white) — error-100 (#E77E7E) is ~2.7:1, fails WCAG 1.4.3
+  @apply text-xs;
+  color: #C62828;
 }
 
 .btn-primary-light {
@@ -194,23 +191,6 @@ input[type='number'] {
   td {
     border: 1px solid var(--warn-80) !important;
   }
-}
-
-.chip {
-  display: inline-block;
-  margin-right: 5px;
-  margin-bottom: 5px;
-  padding: 5px 10px;
-  background-color: var(--shade-80);
-  border-radius: 20px;
-  font-size: 14px;
-}
-
-.close-icon {
-  cursor: pointer;
-  margin-left: 5px;
-  font-weight: bold;
-  color: var(--content-50);
 }
 
 .search-icon {

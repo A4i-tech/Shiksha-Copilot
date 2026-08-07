@@ -1,22 +1,12 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { AuthService } from '../../../core/services/auth.service';
 import { environment } from 'src/environments/environment';
 
 export interface Teacher {
   _id: string;
-  name: string;
-  phone: string;
-  zone: string;
-  district: string;
-  state: string;
-  taluk: string;
-  schoolId: string;
-  block: string;
-  schoolName: string;
-  role: string;
-  // Add any other relevant teacher properties
+  identity: { name: string; phone: string };
+  school: { state: string; zone: string; district: string; block: string };
   attendance: string[];
 }
 
@@ -32,7 +22,7 @@ export interface Batch {
   pdfPath?: string;
   photoPaths?: { path: string; mimetype: string }[];
   attendancePdfPath?: string;
-  createdBy?: { name: string }; // <-- Add this for manager/admin name
+  createdBy?: { identity: { name: string } };
 }
 
 export interface TeacherStats {
@@ -49,7 +39,7 @@ export class BatchService {
   private batchesSubject = new BehaviorSubject<Batch[]>([]);
   batches$ = this.batchesSubject.asObservable();
 
-  constructor(private http: HttpClient, private authService: AuthService) {
+  constructor(private http: HttpClient) {
     this.baseUrl = environment.apiUrl;
   }
 
@@ -170,4 +160,4 @@ extractActualFilename(url:any) {
       responseType: 'blob'
     });
   }
-} 
+}

@@ -32,7 +32,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   boardDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Board',
-    height: 'auto',
     bindLabel: 'board',
     bindValue: 'board',
     labelTxt: 'Board',
@@ -41,7 +40,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   mediumDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Medium',
-    height: 'auto',
     bindLabel: 'medium',
     bindValue: 'medium',
     labelTxt: 'Medium',
@@ -50,7 +48,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   classDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Class',
-    height: 'auto',
     bindLabel: 'class',
     bindValue: 'class',
     labelTxt: 'Class',
@@ -59,7 +56,6 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   subjectDropdownconfig: DropDownConfig = {
     isBackground: false,
     placeHolderTxt: 'Subject',
-    height: 'auto',
     bindLabel: 'name',
     bindValue: 'name',
     labelTxt: 'Subject',
@@ -119,9 +115,9 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   ngAfterViewInit(): void {
-    const loggedUSer = this.utilityService.loggedInUserData;
+    const loggedInUser = this.utilityService.loggedInUserData;
     this.boardDropdownOptions = this.utilityService.formatResponse(
-      loggedUSer.classes
+      loggedInUser.profiles.teacher.classes
     );
 
     if (this.boardDropdownOptions.length === 1) {
@@ -208,7 +204,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
       const classFilter = this.mediumDropdownOptions.filter(
         (item) => item.medium === this.selectedMedium
       );
-      this.classDropdownOptions = classFilter[0].classes?.sort(
+      this.classDropdownOptions = classFilter[0].classes.sort(
         (a: any, b: any) => a.class - b.class
       );
     }
@@ -263,7 +259,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   }
 
   viewQuestionPaper(id: any) {
-    this.router.navigate([`/question-paper/view/${id}`]);
+    this.router.navigate([`/question-papers/view/${id}`]);
   }
 
   ngOnDestroy(): void {

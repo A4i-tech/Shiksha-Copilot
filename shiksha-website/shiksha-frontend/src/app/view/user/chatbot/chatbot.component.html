@@ -11,6 +11,7 @@
   <h1
   class="text-xl md:text-[30px] leading-[48px] font-bold text-content"
   #header
+  data-testid="chatbot-header-title"
 >
   {{ (type === 'index' ?  "Lesson Chatbot" : "Edu Chatbot") | translate }}
 </h1>
@@ -40,8 +41,9 @@
         src="assets/icons/chat-bot-empty.svg"
         class="w-28 h-28 relative"
         alt=""
+        data-testid="chatbot-empty-state-img"
       />
-      <p class="mt-4 text-content-60 text-center">
+      <p class="mt-4 text-content-60 text-center" data-testid="chatbot-empty-state-msg">
         {{ "Hello! I am here to assist you. Just type your question to get started!" | translate}}
       </p>
     </div>
@@ -50,6 +52,7 @@
       <ng-container *ngFor="let message of messages">
         <div
           class="chatbot-chat flex gap-2 md:gap-4 justify-start items-end mb-5"
+          data-testid="chat-bot-bubble"
           *ngIf="message.answer"
         >
           <div
@@ -89,6 +92,7 @@
 
         <div
           class="user-chat flex gap-2 md:gap-4 justify-end items-end mb-9 mt-4"
+          data-testid="chat-user-bubble"
           *ngIf="message.question"
         >
           <div
@@ -104,6 +108,7 @@
   </div>
   <div
     class="loading-indicator flex items-center gap-1 ml-2 relative top-[-25px] md:top-0 px-0 md:px-36"
+    data-testid="chat-loading-indicator"
     [ngClass]="{ show: isLoading }"
   >
     <div
@@ -126,6 +131,7 @@
       >
         <textarea
           type="text"
+          data-testid="chat-input"
           [attr.aria-label]="'Message input' | translate"
           placeholder="{{ 'Send a message' | translate }}"
           class="chat-input"
@@ -140,6 +146,7 @@
         <button
           class="btn-primary p-1 rounded-full"
           type="submit"
+          data-testid="chat-send-button"
           [attr.aria-label]="'Send message' | translate"
           [disabled]="isLoading || !chatValue"
           (click)="sendMessage()"
@@ -148,7 +155,7 @@
         </button>
       </div>
       <div class="flex items-center justify-center gap-1 py-1 mt-1" >
-      <small class="text-content-60" >{{'Daily chat limit: 20 messages per day' | translate }}. <span class="underline cursor-pointer text-primary" (click)="modalService.showChatbotSampleDialog = true; showInstructions=true"> {{'Sample Instructions' | translate}}</span> </small>
+      <small class="text-content-60" data-testid="chat-daily-limit">{{'Daily chat limit: 20 messages per day' | translate }}. <span class="underline cursor-pointer text-primary" (click)="modalService.showChatbotSampleDialog = true; showInstructions=true"> {{'Sample Instructions' | translate}}</span> </small>
       </div>
     </div>
   </div>

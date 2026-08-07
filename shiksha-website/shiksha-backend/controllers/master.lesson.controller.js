@@ -1,6 +1,7 @@
 const handleError = require("../helper/handleError.js");
 const MasterLessonManger = require("../managers/master.lesson.manager.js");
 const BaseController = require("./base.controller.js");
+const { hasPermission } = require("../helper/permission.helper.js");
 
 /** @extends {BaseController<MasterLessonManger>} */
 class MasterLessonController extends BaseController {
@@ -11,6 +12,8 @@ class MasterLessonController extends BaseController {
 	async saveToTeacher(req, res) {
 		try {
 			let { _id: teacherId } = req.user;
+			const permission = req.body.lessonId ? "lesson-plan.edit" : "lesson-resource.edit";
+			if (!hasPermission(req.permissions, permission)) return res.status(403).json({ message: "Forbidden: You do not have the required permissions to perform this action." });
 
 			let result = await this.manager.saveToTeacher(
 				teacherId,
@@ -34,7 +37,7 @@ class MasterLessonController extends BaseController {
 		try {
 			const { id } = req.params;
 	
-			const result = await this.manager.getActivityById(id);
+			const result = await this.manager.getActivityById(id, req.query.activityId, req.permissions);
 	
 			if (result.success) {
 				return res.status(200).json(result);
@@ -89,14 +92,6 @@ class MasterLessonController extends BaseController {
 
 	async regenerateLessonPlan(req, res) {
 		try {
-			const accessibleRoles = ["power", "admin", "manager"];
-			if (!accessibleRoles.includes(req.user.role)) {
-				return res.status(403).json({
-					message:
-						"Forbidden: You do not have the required permissions to perform this action.",
-				});
-			}
-
 			const { lessonId, reason } = req.body;
 
 			const result = await this.manager.regenerateLessonPlan({

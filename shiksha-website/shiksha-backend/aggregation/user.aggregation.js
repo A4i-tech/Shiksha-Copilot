@@ -44,17 +44,54 @@ class UserAggregation {
         { $sort: Object.keys(sort).length > 0 ? sort : { _id: 1 } },
         ...(limit > 0 ? [{ $skip: (page - 1) * limit }, { $limit: limit }] : []),
       ];
-      const projectStage = { $project: { otp: 0, loginAttempts: 0, recovery: 0, trainingAttendance: 0 } };
+      const projectStage = {
+        $project: {
+          identity: 1,
+          roles: {
+            $map: {
+              input: "$roles",
+              as: "assignment",
+              in: {
+                _id: "$$assignment._id",
+                dep: "$$assignment.dep",
+                role: {
+                  $arrayElemAt: [
+                    { $filter: { input: "$roleDefinitions", as: "role", cond: { $eq: ["$$role._id", "$$assignment.role"] } } },
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+          profiles: 1,
+          school: 1,
+          profileImage: 1,
+          profileImageExpiresIn: 1,
+          isDeleted: 1,
+          isLoginAllowed: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          trainingStatus: 1,
+        },
+      };
       const pipeline = [
         {
           $lookup: {
             from: "schools",
-            localField: "school",
+            localField: "roles.dep",
             foreignField: "_id",
-            as: "school",
+            as: "schools",
           },
         },
-        { $unwind: { path: "$school", preserveNullAndEmptyArrays: true } },
+        { $set: { school: { $arrayElemAt: ["$schools", 0] } } },
+        {
+          $lookup: {
+            from: "roles",
+            localField: "roles.role",
+            foreignField: "_id",
+            as: "roleDefinitions",
+          },
+        },
         { $match: otherFilters },
         ...(trainingStatus ? [...trainingStages, { $match: { trainingStatus } }] : []),
       ];
@@ -93,21 +130,21 @@ class UserAggregation {
         },
         {
           $unwind: {
-            path: "$classes"
+            path: "$profiles.teacher.classes"
           },
         },
         {
           $group: {
             _id: {
-              name: "$classes.name",
-              board: "$classes.board",
-              class: "$classes.class",
-              medium: "$classes.medium",
+              name: "$profiles.teacher.classes.name",
+              board: "$profiles.teacher.classes.board",
+              class: "$profiles.teacher.classes.class",
+              medium: "$profiles.teacher.classes.medium",
             },
             subjects: {
               $push: {
-                subjectName: "$classes.subject",
-                sem: "$classes.sem",
+                subjectName: "$profiles.teacher.classes.subject",
+                sem: "$profiles.teacher.classes.sem",
               },
             },
           },

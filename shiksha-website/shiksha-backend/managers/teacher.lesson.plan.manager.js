@@ -3,13 +3,15 @@ const formatApiReponse = require("../helper/response");
 const TeacherLessonPlanModel = require("../models/teacher.lesson.plan.model");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const teacherLessonPlanAggregation = require("../aggregation/teacher.lesson.plan.aggregation");
-const { postToCopilotBot } = require("../services/copilot.bot.service.js");
+const { postToCopilotBot, postToSectionEditBot, postToPlanEditBot } = require("../services/copilot.bot.service.js");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterLessonDao = require("../dao/master.lesson.dao");
+const MasterResourceDao = require("../dao/master.resource.dao");
 const logger = require("../config/loggers"); 
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const LessonFeedbackDao = require("../dao/feedback.lesson.dao");
+const TeacherResourceFeedbackDao = require("../dao/teacher.feedback.dao");
 const {
 	formatTemplate,
 	formatSections
@@ -19,8 +21,6 @@ const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
-const ActivityRatingAggregate = require("../models/activity.aggregate.model.js");
-const { attachAggregateRatings } = require("../helper/activity.rating.helper.js");
 
 /** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
@@ -32,6 +32,31 @@ class TeacherLessonPlanManager extends BaseManager {
 		this.subjectDao = new MasterSubjectDao();
 		this.regeneratedLessonResource = new RegeneratedLessonResourceDao();
 		this.lessonFeedbackDao = new LessonFeedbackDao();
+		this.teacherResourceFeedbackDao = new TeacherResourceFeedbackDao();
+		this.masterResourceDao = new MasterResourceDao();
+	}
+
+	async _resolveIndexPath(teacherId, recordId, isLesson) {
+		try {
+			const teacherLessonPlan = isLesson
+				? await this.dao.getByTeacherAndLesson(teacherId, recordId)
+				: await this.dao.getByTeacherAndResource(teacherId, recordId);
+			if (!teacherLessonPlan) return null;
+
+			const chapterId = teacherLessonPlan.lessonId
+				? (await this.masterLessonDao.getById(teacherLessonPlan.lessonId))?.chapterId
+				: (await this.masterResourceDao.getById(teacherLessonPlan.resourceId))?.chapterId;
+			if (!chapterId) return null;
+
+			const chapter = await this.chapterDao.getById(chapterId);
+			if (!chapter) return null;
+
+			const subject = await this.subjectDao.getById(chapter.subjectId);
+			return chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject?.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`;
+		} catch (error) {
+			logger.error('Error resolving index path for AI edit', { message: error.message, stack: error.stack });
+			return null;
+		}
 	}
 
 	async getByTeacherAndPagination(
@@ -119,6 +144,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			const lessonPlan = await TeacherLessonPlanModel.findOne({
 				teacherId,
 				lessonId: lessonPlanId,
+				isDeleted: { $ne: true },
 			});
 			return !!lessonPlan;
 		} catch (error) {
@@ -242,8 +268,7 @@ class TeacherLessonPlanManager extends BaseManager {
 				resourcePlanId
 			);
 			if (resourcePlan) {
-				const rattingAttachedResourcePlan = await attachAggregateRatings(resourcePlan,resourcePlanId)
-				return formatApiReponse(true, "", rattingAttachedResourcePlan);
+				return formatApiReponse(true, "", resourcePlan);
 
 			} else {
 				return formatApiReponse(false, " Resource plan not found", null);
@@ -258,7 +283,8 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			const lessonPlan = await this.dao.deleteLessonPlan(teacherId, lessonPlanId);
 			if (lessonPlan) {
-				return formatApiReponse(true, "", lessonPlan);
+				await this._deleteLessonFeedbackSafely(teacherId, lessonPlan.lessonId);
+				return formatApiReponse(true, "Lesson plan deleted successfully", lessonPlan);
 			} else {
 				return formatApiReponse(false, "Lesson plan not found", null);
 			}
@@ -272,13 +298,42 @@ class TeacherLessonPlanManager extends BaseManager {
 		try {
 			const resourcePlan = await this.dao.deleteResourcePlan(teacherId, resourcePlanId);
 			if (resourcePlan) {
-				return formatApiReponse(true, "", resourcePlan);
+				await this._deleteResourceFeedbackSafely(teacherId, resourcePlan.resourceId);
+				return formatApiReponse(true, "Resource plan deleted successfully", resourcePlan);
 			} else {
 				return formatApiReponse(false, "Resource plan not found", null);
 			}
 		} catch (error) {
 			console.error("Error deleting resource plan:", error);
 			return formatApiReponse(false, "Internal server error", error);
+		}
+	}
+
+	// Best-effort cleanup: remove any prior feedback tied to the deleted lesson/resource plan
+	// so a freshly regenerated lesson/resource isn't blocked by a stale "already submitted" feedback record.
+	async _deleteLessonFeedbackSafely(teacherId, lessonId) {
+		try {
+			await this.lessonFeedbackDao.deleteByTeacherAndLessonId(teacherId, lessonId);
+		} catch (error) {
+			logger.error("Error deleting lesson feedback after lesson plan delete", {
+				function: "_deleteLessonFeedbackSafely",
+				teacherId,
+				lessonId,
+				message: error.message,
+			});
+		}
+	}
+
+	async _deleteResourceFeedbackSafely(teacherId, resourceId) {
+		try {
+			await this.teacherResourceFeedbackDao.deleteByTeacherAndResourceId(teacherId, resourceId);
+		} catch (error) {
+			logger.error("Error deleting resource feedback after resource plan delete", {
+				function: "_deleteResourceFeedbackSafely",
+				teacherId,
+				resourceId,
+				message: error.message,
+			});
 		}
 	}
 
@@ -294,6 +349,58 @@ class TeacherLessonPlanManager extends BaseManager {
 		});
 	}
 	
+	async sectionAiEdit(teacherId, payload) {
+		try {
+			const { lessonId, sectionId, currentContent, prompt, isLesson } = payload;
+			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
+			const requestData = {
+				user_id: teacherId,
+				index_path: indexPath,
+				section_id: sectionId,
+				current_content: currentContent,
+				prompt,
+			};
+			const result = await postToSectionEditBot(requestData);
+
+			if (result.status !== 200) {
+				logger.error(`Unexpected status code from section-edit bot: ${result.status}`);
+				throw new Error(`Unexpected status code from section-edit bot: ${result.status}`);
+			}
+
+			const proposedContent = result.data;
+			return formatApiReponse(true, "Section edit generated", { proposedContent });
+		} catch (error) {
+			logger.error('Error handling section AI edit', { message: error.message, stack: error.stack });
+			return formatApiReponse(false, "Failed to generate section edit", error);
+		}
+	}
+
+	async planAiEdit(teacherId, payload) {
+		try {
+			const { lessonId, sections, learningOutcomes, prompt, isLesson } = payload;
+			const indexPath = await this._resolveIndexPath(teacherId, lessonId, isLesson);
+			const requestData = {
+				user_id: teacherId,
+				index_path: indexPath,
+				sections: sections.map((s) => ({ id: s.id, title: s.title, content: s.content })),
+				learning_outcomes: learningOutcomes,
+				prompt,
+			};
+			const result = await postToPlanEditBot(requestData);
+
+			if (result.status !== 200) {
+				logger.error(`Unexpected status code from plan-edit bot: ${result.status}`);
+				throw new Error(`Unexpected status code from plan-edit bot: ${result.status}`);
+			}
+
+			const proposedSections = result.data || [];
+			return formatApiReponse(true, "Plan edit generated", { proposedSections });
+		} catch (error) {
+			logger.error('Error handling plan AI edit', { message: error.message, stack: error.stack });
+			return formatApiReponse(false, "Failed to generate plan edit", error);
+		}
+	}
+
 	async regenerateContent(teacherId, payload) {
 		try {
 			const regenerationCount = await this.regeneratedCount(teacherId);
@@ -675,144 +782,6 @@ async deleteResourceMedia(teacherId, resourceId, data) {
       throw error.message;
     }
   }
-
-
-async rateActivity(teacherId, resourceId, data) {
-  try {
-    const resourcePlan = await TeacherLessonPlan.findOne({
-      teacherId,
-      resourceId,
-      isLesson: false,
-    });
-
-    if (!resourcePlan) throw new Error("Resource plan not found");
-
-    const resource = resourcePlan.resources.find(r => r.id === data.resourceId);
-    if (!resource) throw new Error("Resource not found");
-
-    const activity = resource.content.find(c => c.id === data.activityId);
-    if (!activity) throw new Error("Activity not found");
-
-    // Keep previous rating if exists
-    const prevRating = activity.rating || {};
-
-    // Update teacher's rating
-    activity.rating = {
-      performed: data.performed,
-      engagement: data.engagement || null,
-      alignment: data.alignment || null,
-      application: data.application || null,
-      notPerformedReason: data.notPerformedReason || null,
-      stars: data.stars != null ? data.stars : null,
-      updatedAt: new Date(),
-    };
-
-    resourcePlan.markModified("resources");
-    await resourcePlan.save();
-
-    // Convert resourceId to ObjectId for masterResourceId
-    const masterResourceObjectId = new mongoose.Types.ObjectId(resourceId);
-
-    // Update aggregate
-    const filter = { activityId: data.activityId, masterResourceId: masterResourceObjectId };
-    let aggregate = await ActivityRatingAggregate.findOne(filter);
-
-    if (!aggregate) {
-      aggregate = new ActivityRatingAggregate({
-        activityId: data.activityId,
-        masterResourceId: masterResourceObjectId,
-        totalReviews: 0,
-        averageStars: 0,
-        engagementCounts: { distracted: 0, motivated: 0, interactive: 0 },
-        alignmentCounts: { notAligned: 0, partial: 0, strong: 0 },
-        applicationCounts: { notRelevant: 0, notApplicable: 0, relevant: 0 },
-        notPerformedCounts: { notSuitable: 0, timeConstraints: 0, resourcesUnavailable: 0 },
-      });
-    }
-
-    // Helper to normalize keys to match aggregate keys
-    const normalizeKey = (str) => {
-      if (!str) return null;
-      switch (str.trim()) {
-        case "Motivated": return "motivated";
-        case "Interactive": return "interactive";
-        case "Distracted": return "distracted";
-        case "Strong": return "strong";
-        case "Partial": return "partial";
-        case "Not Aligned": return "notAligned";
-        case "Relevant": return "relevant";
-        case "Not Relevant": return "notRelevant";
-        case "Not Applicable": return "notApplicable";
-        case "Not Suitable": return "notSuitable";
-        case "Time Constraints": return "timeConstraints";
-        case "Resources Unavailable": return "resourcesUnavailable";
-        default: return str.toLowerCase().replace(/\s+/g, "");
-      }
-    };
-
-    // Remove previous counts if updating
-    if (prevRating.performed !== undefined) {
-      if (prevRating.performed) {
-        if (prevRating.engagement) {
-          const key = normalizeKey(prevRating.engagement);
-          aggregate.engagementCounts[key] = Math.max((aggregate.engagementCounts[key] || 1) - 1, 0);
-        }
-        if (prevRating.alignment) {
-          const key = normalizeKey(prevRating.alignment);
-          aggregate.alignmentCounts[key] = Math.max((aggregate.alignmentCounts[key] || 1) - 1, 0);
-        }
-        if (prevRating.application) {
-          const key = normalizeKey(prevRating.application);
-          aggregate.applicationCounts[key] = Math.max((aggregate.applicationCounts[key] || 1) - 1, 0);
-        }
-        if (prevRating.stars != null) {
-          const prevTotalStars = aggregate.averageStars * aggregate.totalReviews;
-          aggregate.averageStars = (prevTotalStars - prevRating.stars) / Math.max(aggregate.totalReviews - 1, 1);
-        }
-      } else if (prevRating.notPerformedReason) {
-        const key = normalizeKey(prevRating.notPerformedReason);
-        aggregate.notPerformedCounts[key] = Math.max((aggregate.notPerformedCounts[key] || 1) - 1, 0);
-      }
-      aggregate.totalReviews = Math.max((aggregate.totalReviews || 1) - 1, 0);
-    }
-
-    // Add new counts
-    if (data.performed) {
-      if (data.engagement) {
-        const key = normalizeKey(data.engagement);
-        aggregate.engagementCounts[key] = (aggregate.engagementCounts[key] || 0) + 1;
-      }
-      if (data.alignment) {
-        const key = normalizeKey(data.alignment);
-        aggregate.alignmentCounts[key] = (aggregate.alignmentCounts[key] || 0) + 1;
-      }
-      if (data.application) {
-        const key = normalizeKey(data.application);
-        aggregate.applicationCounts[key] = (aggregate.applicationCounts[key] || 0) + 1;
-      }
-      if (data.stars != null) {
-        const prevTotalStars = aggregate.averageStars * aggregate.totalReviews;
-        aggregate.totalReviews += 1;
-        aggregate.averageStars = (prevTotalStars + data.stars) / aggregate.totalReviews;
-      } else {
-        aggregate.totalReviews += 1;
-      }
-    } else if (data.notPerformedReason) {
-      const key = normalizeKey(data.notPerformedReason);
-      aggregate.notPerformedCounts[key] = (aggregate.notPerformedCounts[key] || 0) + 1;
-      aggregate.totalReviews += 1;
-    }
-
-    await aggregate.save();
-
-    return { success: true, message: "Activity rated successfully", rating: activity.rating };
-  } catch (error) {
-    console.error("Error rating activity:", error);
-    throw error.message;
-  }
-}
-
-
 
 
 	async _checkStatusAndThrowError(regeneratedId, recordId) {

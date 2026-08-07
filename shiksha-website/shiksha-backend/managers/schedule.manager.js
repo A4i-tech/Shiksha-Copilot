@@ -2,6 +2,9 @@ const ScheduleDao = require("../dao/schedule.dao");
 const formatApiReponse = require("../helper/response");
 const BaseManager = require("./base.manager");
 const overlap = require("../helper/overlap")
+const { schoolDependency } = require("../helper/permission.helper");
+const { isResourceAllowed } = require("../helper/scope.helper");
+const School = require("../models/school.model");
 
 /** @extends {BaseManager<ScheduleDao>} */
 class ScheduleManager extends BaseManager {
@@ -11,11 +14,8 @@ class ScheduleManager extends BaseManager {
 
 	async create(req) {
 		try {
-			let { school } = req.user;
-
-			let teacherId = req.user._id;
-
-			let schoolId = school._id;
+			const teacherId = req.user._id;
+			const schoolId = schoolDependency(req.user.roles);
 
 			let { scheduleDateTime, class: teacherClass, board, medium } = req.body;
 
@@ -67,7 +67,7 @@ class ScheduleManager extends BaseManager {
 				);
 			}
 
-			let data = await this.dao.create(req.body);
+			let data = await this.dao.create({ ...req.body, teacherId, schoolId });
 			if (data) {
 				return formatApiReponse(true, "schedule created successfully!", data);
 			}
@@ -96,9 +96,7 @@ class ScheduleManager extends BaseManager {
 				);
 			}
 
-			let { school } = user;
-
-			let schoolId = school._id;
+			const schoolId = schoolDependency(user.roles);
 
 			let { scheduleDateTime, class: teacherClass, board, medium } = data;
 
@@ -152,7 +150,7 @@ class ScheduleManager extends BaseManager {
 				);
 			}
 
-			schedule = await this.dao.update(scheduleId, { ...data, teacherId });
+			schedule = await this.dao.update(scheduleId, { ...data, teacherId, schoolId });
 
 			return formatApiReponse(true, "update success!", schedule);
 		} catch (err) {
@@ -178,11 +176,9 @@ class ScheduleManager extends BaseManager {
 
 	async getBySchool(user, fromDate, toDate, teacherClass ,teacherSchedule) {
 		try {
-			let { school, classes } = user;
-
-			let teacherId = user._id
-
-			let schoolId = school._id;
+			const teacherId = user._id;
+			const schoolId = schoolDependency(user.roles);
+			const classes = user.profiles.teacher.classes;
 
 			let teacherClasses = [];
 
@@ -226,6 +222,19 @@ class ScheduleManager extends BaseManager {
 			return formatApiReponse(true, "", schedules);
 		} catch (err) {
 			return formatApiReponse(false, err?.message, err);
+		}
+	}
+
+	async getById(req) {
+		try {
+			const schedule = await this.dao.getById(req.params.id);
+			if (!schedule) return formatApiReponse(false, "Schedule not found", null);
+			const school = await School.findById(schedule.schoolId).lean();
+			if (!school) throw new Error("Schedule school does not exist");
+			if (!isResourceAllowed(req.permissions, "schedule.view", school)) return formatApiReponse(false, "Schedule not found", null);
+			return formatApiReponse(true, "", schedule);
+		} catch (err) {
+			return formatApiReponse(false, err.message, err);
 		}
 	}
 

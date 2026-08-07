@@ -5,6 +5,31 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const UserActivityLogs = require("../models/user.activity.logs.model.js")
 
+function mapFilters(filters) {
+	const mapped = {};
+	const pathMap = {
+		school: "school._id",
+		state: "school.state",
+		zone: "school.zone",
+		district: "school.district",
+		block: "school.block",
+	};
+	for (const [key, value] of Object.entries(filters)) {
+		if (key === "$and" || key === "$or" || key === "$nor") {
+			mapped[key] = value.map(mapFilters);
+		} else if (key === "profileType") {
+			mapped[`profiles.${value}`] = { $exists: true, $type: "object" };
+		} else if (key === "role") {
+			mapped["roles.role"] = { $in: [].concat(value).map((role) => new ObjectId(role)) };
+		} else if (!Array.isArray(value) || value.length) {
+			const path = pathMap[key] || key;
+			const converted = [].concat(value).map((item) => key === "school" ? new ObjectId(item) : item);
+			mapped[path] = Array.isArray(value) ? { $in: converted } : converted[0];
+		}
+	}
+	return mapped;
+}
+
 class UserDao extends BaseDao {
 	constructor() {
 		super(User);
@@ -12,7 +37,7 @@ class UserDao extends BaseDao {
 
 	async getUsersBySchoolId(schoolId) {
 		try {
-			const users = await User.find({ school: new ObjectId(schoolId) })
+			const users = await User.find({ "roles.dep": new ObjectId(schoolId), "profiles.teacher": { $exists: true } })
 			return users;
 		} catch (err) {
 			console.log("Error --> UserDao -> getUsersBySchoolId()", err);
@@ -20,49 +45,9 @@ class UserDao extends BaseDao {
 		}
 	}
 
-	async getAll(
-		page = 1,
-		limit,
-		filters = {},
-		sort = {},
-		status
-	) {
+	async getAll(page, limit, filters, sort, status) {
 		try {
-			let processedFilters = { ...filters , ...status }
-	
-			for (const key in filters) {
-				if (key === "school") {
-					processedFilters["school._id"] = new ObjectId(filters[key]);
-					delete processedFilters["school"];
-				} else if (key === "role") {
-					if (Array.isArray(filters[key])) {
-						processedFilters[key] = { $in: filters[key] };
-					} else {
-					processedFilters[key] = { $in: [filters[key]] };
-					}
-				} else if (key === "zone") {
-					if (Array.isArray(filters[key])) {
-						processedFilters[key] = { $in: filters[key] };
-					} else {
-						processedFilters[key] = filters[key];
-					}
-				} else if (key === "district") {
-					if (Array.isArray(filters[key])) {
-						processedFilters[key] = { $in: filters[key] };
-					} else {
-						processedFilters[key] = filters[key];
-					}
-				} else if (key === "$or") {
-					// Special case: $or operator should be left as-is
-					processedFilters[key] = filters[key];
-				} else if (Array.isArray(filters[key])) {
-					if (filters[key].length > 0) {
-						processedFilters[key] = { $in: filters[key] };
-					} else {
-						delete processedFilters[key]; // Remove if array is empty
-					}
-				}
-			}
+			const processedFilters = { ...mapFilters(filters), ...status };
 
 			let results = await userAggregation.getUserList(page,
 				limit,
@@ -78,7 +63,7 @@ class UserDao extends BaseDao {
 				limit: limit > 0 ? limit : totalItems,
 				results: results[0].data,
 			};
-	
+
 			return result;
 		} catch (err) {
 			console.log("Error --> UserDao -> getAll()", err);
@@ -88,7 +73,7 @@ class UserDao extends BaseDao {
 
 	async getById(userId) {
 		try {
-			const user = await User.findById(userId).populate("school","name facilities")
+			const user = await User.findById(userId).populate("roles.role")
 			return user;
 		} catch (err) {
 			console.log("Error --> UserDao -> getById()", err);
@@ -96,11 +81,11 @@ class UserDao extends BaseDao {
 		}
 	}
 
-	async getByPhone(phone) {
+	async getByPhone(phone, includeSecrets) {
 		try {
-			let user = await User.findOne({ phone }).select("+loginAttempts +recovery").populate("school", "_id name")
-			if (user) return user;
-			return false;
+			let query = User.findOne({ "identity.phone": phone }).populate("roles.role")
+			if (includeSecrets) query = query.select("+otp +rememberMeToken +loginAttempts +recovery");
+			return query;
 		} catch (err) {
 			console.log("Error -> UserDao -> getByPhone", err);
 		}
@@ -109,37 +94,10 @@ class UserDao extends BaseDao {
 	async update(id, data, session = null) {
 		try {
 			const result = await User.findOneAndUpdate(
-				{
-					_id: id,
-				},
-				{
-					$set: {
-						name: data?.name,
-						email: data?.email,
-						state: data?.state,
-						zone: data?.zone,
-						district: data?.district,
-						block: data?.block,
-						phone: data?.phone,
-						password: data?.password,
-						subjects: data?.subjects,
-						address: data?.address,
-						role: data?.role,
-						school: data?.school,
-						preferredLanguage: data?.preferredLanguage,
-						classes: data?.classes,
-						isProfileCompleted: data?.isProfileCompleted,
-						facilities: data?.facilities,
-						isDeleted: data?.isDeleted,
-						profileImage: data?.profileImage,
-						profileImageExpiresIn: data?.profileImageExpiresIn,
-						otp: data?.otp,
-						isLoginAllowed: data?.isLoginAllowed,
-						rememberMeToken:data?.rememberMeToken
-					},
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
+				{ _id: id },
+				{ $set: data },
+				{ new: true, useFindAndModify: false, runValidators: true, session: session }
+			).populate("roles.role");
 			return result;
 		} catch (err) {
 			console.log("Error -> UserDao -> update", err);
@@ -149,22 +107,14 @@ class UserDao extends BaseDao {
 
 	async setProfile(userId, profileData) {
 		try {
-			const user = await User.findById(userId);
-			let updateData = {
-				preferredLanguage: profileData.preferredLanguage,
-				classes: profileData.classes,
-				facilities: profileData.facilities,
-			};
+			let updateData = { "profiles.teacher.isProfileCompleted": true };
+			for (const [key, value] of Object.entries(profileData)) updateData[`profiles.teacher.${key}`] = value;
 
-			if (!user.isProfileCompleted) {
-				updateData.isProfileCompleted = true;
-			}
-
-			const updatedUser = await User.findByIdAndUpdate(
-				userId,
+			const updatedUser = await User.findOneAndUpdate(
+				{ _id: userId, "profiles.teacher": { $exists: true } },
 				{ $set: updateData },
-				{ new: true }
-			).populate("school", "_id name");
+				{ new: true, runValidators: true }
+			).populate("roles.role");
 
 			return updatedUser;
 		} catch (err) {
@@ -180,16 +130,16 @@ class UserDao extends BaseDao {
 
 			if (draftId) {
 				let activityLog = await UserActivityLogs.findOne({ draftId , userId});
-	
+
 				if (activityLog) {
 					activityLog.idleTime = (activityLog.idleTime || 0) + idleTime;
 					activityLog.interactionTime = (activityLog.interactionTime || 0) + interactionTime;
-					activityLog.isCompleted = isCompleted; 
-	
+					activityLog.isCompleted = isCompleted;
+
 					if (isCompleted) {
-						activityLog.draftId = undefined; 
+						activityLog.draftId = undefined;
 					}
-	
+
 					await activityLog.save();
 					return activityLog
 				} else {
@@ -202,7 +152,7 @@ class UserDao extends BaseDao {
 						userId,
 						isCompleted
 					});
-	
+
 					await activityLog.save();
 					return activityLog
 				}
@@ -215,7 +165,7 @@ class UserDao extends BaseDao {
 						moduleName,
 						userId
 					});
-	
+
 					await activityLog.save();
 					return activityLog
 				}
@@ -226,12 +176,12 @@ class UserDao extends BaseDao {
 					moduleName,
 					userId
 				});
-	
+
 				await activityLog.save();
 				return activityLog
 			}
 
-		
+
 		}catch(err){
 			console.log("Error --> UserDao -> activity", err);
 			throw err;
