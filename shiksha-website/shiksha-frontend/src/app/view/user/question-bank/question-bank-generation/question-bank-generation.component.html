@@ -114,7 +114,8 @@
             <div class="overflow-x-auto">
               <table class="table-auto w-full text-content border">
                 <thead class="text-xs bg-[#edf6fe]"><tr>
-                  <th class="px-4 py-3 border" *ngFor="let objective of questionBankObjectives">{{ objective.objective | translate }}</th>
+                  <th class="px-4 py-3 border" *ngFor="let objective of questionBankObjectives"
+                    [title]="objective.objective | translate">{{ (objective.shortName || objective.objective) | translate }}</th>
                 </tr></thead>
                 <tbody><tr>
                   <td class="p-2 border" *ngFor="let objective of questionBankObjectives; let i = index">

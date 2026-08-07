@@ -81,6 +81,7 @@ const questionBankBluePrintSchemaCreate = Joi.object({
     }).required(),
     objectiveDistribution: Joi.array().min(1).items({
         objective: Joi.string().required(),
+        shortName: Joi.string().max(10).optional(),
         percentageDistribution: Joi.number().min(0).max(100).required(),
     }).required(),
 }).unknown(true);
