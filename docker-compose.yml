@@ -1,6 +1,7 @@
 services:
 
   shiksha-api-svc:
+    image: ${API_IMAGE_TAG:-shiksha-api-local}
     build:
       context: .
       dockerfile: ./shiksha-api/app-service/Dockerfile
@@ -10,11 +11,6 @@ services:
     ports:
       - "0.0.0.0:5000:5000"
     restart: unless-stopped
-    depends_on:
-      shiksha-mongo-svc:
-        condition: service_healthy
-      shiksha-qdrant-svc:
-        condition: service_healthy
     networks:
       - shiksha-network
     healthcheck:
@@ -25,6 +21,7 @@ services:
       start_period: 10s
 
   shiksha-be-svc:
+    image: ${BE_IMAGE_TAG:-shiksha-backend-local}
     build:
       context: ./shiksha-website/shiksha-backend
       dockerfile: Dockerfile
@@ -37,8 +34,6 @@ services:
     depends_on:
       shiksha-api-svc:
         condition: service_healthy
-      shiksha-mongo-svc:
-        condition: service_healthy
     networks:
       - shiksha-network
     healthcheck:
@@ -49,12 +44,11 @@ services:
       start_period: 10s
 
   shiksha-fe-svc:
+    image: ${FE_IMAGE_TAG:-shiksha-frontend-local}
     build:
       context: ./shiksha-website/shiksha-frontend
       dockerfile: Dockerfile
     container_name: shiksha-fe-container
-    env_file:
-      - ./shiksha-website/shiksha-frontend/.env
     ports:
       - "0.0.0.0:8000:8000"
     restart: unless-stopped
