@@ -1,6 +1,8 @@
 services:
   shiksha-mongo-uat-svc:
-    image: mongo:7
+    # ponytail: pinned to 4.4 — UAT host CPU lacks AVX, required by mongo 5.0+.
+    # EOL, no security patches. Upgrade once client provisions an AVX-capable VM.
+    image: mongo:4.4
     container_name: shiksha-mongo-uat-container
     restart: unless-stopped
     labels:
@@ -14,7 +16,7 @@ services:
     networks:
       - shiksha-network
     healthcheck:
-      test: ["CMD", "mongosh", "-u", "${MONGO_ROOT_USER}", "-p", "${MONGO_ROOT_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongo", "-u", "${MONGO_ROOT_USER}", "-p", "${MONGO_ROOT_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
