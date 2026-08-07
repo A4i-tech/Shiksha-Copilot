@@ -31,11 +31,13 @@ interface MarksDistributionUnit {
 
 interface RawQuestionBankObjective {
   objective: string;
+  shortName?: string;
   percentageDistribution: number;
 }
 
 interface QuestionBankObjective extends RawQuestionBankObjective {
   name: string;
+  shortLabel: string;
   description: string;
 }
 
@@ -399,6 +401,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       return {
         ...obj,
         name: this.translateService.instant(obj.objective, { board, subject: subjectName }),
+        shortLabel: obj.shortName
+          ? this.translateService.instant(obj.shortName, { board, subject: subjectName })
+          : this.translateService.instant(obj.objective, { board, subject: subjectName }),
         description: this.translateService.instant(`${obj.objective} description`, { board, subject: subjectName }),
       };
     });
