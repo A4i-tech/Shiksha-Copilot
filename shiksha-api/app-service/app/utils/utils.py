@@ -1,4 +1,5 @@
 import hashlib
+import re
 
 from pydantic import JsonValue
 
@@ -17,3 +18,29 @@ def get_json_value_type(data: JsonValue) -> type[JsonValue]:
     if isinstance(data, dict): return dict[str, JsonValue]
     if data is None: return type(None)  # maps to Optional field - pydantic handles NoneType correctly via `| None`
     return type(data)
+
+
+_TEX_DELIMITER_PATTERN = re.compile(r"\\\(|\\\)|\\\[|\\\]")
+_TEX_DELIMITER_OPENERS = {"\\(": "\\)", "\\[": "\\]"}
+
+
+def validate_tex(text: str) -> None:
+    """Raise ValueError if TeX inline/display delimiters in `text` are
+    unbalanced, out of order, mismatched, or nested.
+
+    Best-effort signal for observability, not a full TeX parser.
+    """
+    expected_close = None
+    for token in _TEX_DELIMITER_PATTERN.findall(text):
+        if expected_close is None:
+            if token not in _TEX_DELIMITER_OPENERS:
+                raise ValueError(f"TeX closer {token!r} has no matching opener in: {text[:200]!r}")
+            expected_close = _TEX_DELIMITER_OPENERS[token]
+        else:
+            if token in _TEX_DELIMITER_OPENERS:
+                raise ValueError(f"Nested TeX opener {token!r} before previous delimiter closed in: {text[:200]!r}")
+            if token != expected_close:
+                raise ValueError(f"Mismatched TeX closer {token!r}, expected {expected_close!r} in: {text[:200]!r}")
+            expected_close = None
+    if expected_close is not None:
+        raise ValueError(f"Unclosed TeX delimiter {expected_close!r} in: {text[:200]!r}")

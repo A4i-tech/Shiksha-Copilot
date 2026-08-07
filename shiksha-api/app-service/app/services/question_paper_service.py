@@ -2,7 +2,7 @@ from collections import defaultdict
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.utils import local_unique_id
-from pydantic import BaseModel, Field, create_model
+from pydantic import Field, create_model
 import yaml
 import asyncio
 from pathlib import Path
@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from langfuse import get_client, observe, propagate_attributes
+from langfuse import observe, propagate_attributes
 from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
@@ -23,7 +23,6 @@ from llama_index.llms.openai import OpenAIResponses
 from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
-    Content,
     FourOptionsQuestion,
     GeneratedQuestionItem,
     GeneratedTemplate,
@@ -45,37 +44,6 @@ SlotId = tuple[int, int]
 GenerationSlot = tuple[SlotId, GeneratedTemplate, QuestionDistribution]
 GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
 MATHS_SUBJECTS = {"math", "maths", "mathematics"}
-
-
-def _iter_content_texts(obj: Any, _seen: Optional[set[int]] = None):
-    """Recursively yield decoded text from every `Content` field nested in a
-    question model (question/answer/keyAnswer/options, at any depth).
-
-    Guards against cycles via an `id()` visited-set rather than a depth cap,
-    so it can't silently truncate legitimately deep-but-acyclic structures.
-    """
-    if _seen is None:
-        _seen = set()
-    if isinstance(obj, Content):
-        yield obj.content.decode("utf-8", errors="ignore")
-    elif isinstance(obj, BaseModel):
-        if id(obj) in _seen:
-            return
-        _seen.add(id(obj))
-        for value in obj.__dict__.values():
-            yield from _iter_content_texts(value, _seen)
-    elif isinstance(obj, (list, tuple)):
-        for value in obj:
-            yield from _iter_content_texts(value, _seen)
-
-
-def _tex_delimiters_balanced(text: str) -> bool:
-    """Return False if TeX inline/display delimiters are unbalanced in `text`.
-
-    Only checks delimiter counts (not nesting/order) — cheap, best-effort
-    signal for observability, not a validator that blocks generation.
-    """
-    return text.count("\\(") == text.count("\\)") and text.count("\\[") == text.count("\\]")
 
 
 class QuestionPaperService:
@@ -277,19 +245,10 @@ class QuestionPaperService:
             logger.exception(e)
             return []
 
-        results = []
-        for k, (slot_id, template, question) in slot_indexed.items():
-            item = getattr(items, k)
-            for text in _iter_content_texts(item):
-                if not _tex_delimiters_balanced(text):
-                    message = (
-                        f"Unbalanced TeX delimiters detected in generated content "
-                        f"(unit='{record.title}', type='{template.type.value}'): {text[:200]!r}"
-                    )
-                    logger.warning(message)
-                    get_client().update_current_span(level="WARNING", status_message=message)
-            results.append((slot_id, GeneratedQuestionItem(unit_name=record.title, type=template.type, objective=question.objective, marks_per_question=template.marks_per_question, item=item)))
-        return results
+        return [
+            (slot_id, GeneratedQuestionItem(unit_name=record.title, type=template.type, objective=question.objective, marks_per_question=template.marks_per_question, item=getattr(items, k)))
+            for k, (slot_id, template, question) in slot_indexed.items()
+        ]
 
     async def _generate_questions_batch_async(self, system_prompt: str, request: QuestionBankPartsGenerationRequest, existing_questions: list[str], record: _LearningRecord, slot: list[GenerationSlot]) -> list[GeneratedSlotQuestion]:
         async with self.concurrency:
