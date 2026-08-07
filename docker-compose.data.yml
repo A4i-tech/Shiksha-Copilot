@@ -1,8 +1,11 @@
 services:
-  shiksha-mongo-svc:
+  shiksha-mongo-uat-svc:
     image: mongo:7
-    container_name: shiksha-mongo-container
+    container_name: shiksha-mongo-uat-container
     restart: unless-stopped
+    labels:
+      environment: "uat"
+      com.shiksha.service: "mongo"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:?MONGO_ROOT_USER not set}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?MONGO_ROOT_PASSWORD not set}
@@ -17,10 +20,13 @@ services:
       retries: 5
       start_period: 10s
 
-  shiksha-qdrant-svc:
+  shiksha-qdrant-uat-svc:
     image: qdrant/qdrant:latest
-    container_name: shiksha-qdrant-container
+    container_name: shiksha-qdrant-uat-container
     restart: unless-stopped
+    labels:
+      environment: "uat"
+      com.shiksha.service: "qdrant"
     volumes:
       - /opt/shiksha/data/qdrant:/qdrant/storage
     networks:

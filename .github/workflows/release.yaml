@@ -87,8 +87,8 @@ jobs:
       - name: Wait for mongo + qdrant healthy
         run: |
           for i in $(seq 1 20); do
-            m=$(docker inspect -f '{{.State.Health.Status}}' shiksha-mongo-container)
-            q=$(docker inspect -f '{{.State.Health.Status}}' shiksha-qdrant-container)
+            m=$(docker inspect -f '{{.State.Health.Status}}' shiksha-mongo-uat-container)
+            q=$(docker inspect -f '{{.State.Health.Status}}' shiksha-qdrant-uat-container)
             [ "$m" = "healthy" ] && [ "$q" = "healthy" ] && echo "data stack healthy" && exit 0
             echo "mongo=$m qdrant=$q, waiting... ($i/20)"; sleep 5
           done
