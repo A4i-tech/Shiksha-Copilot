@@ -13,6 +13,12 @@ on:
         required: true
         type: boolean
 
+      publish_uat:
+        description: "Whether to set 'release' tag on published image"
+        required: false
+        type: boolean
+        default: false
+
     outputs:
       digest:
         description: "Pushed frontend image digest"
@@ -53,6 +59,7 @@ jobs:
             type=ref,event=branch
             type=raw,value=staging,enable=${{ inputs.publish_staging }}
             type=raw,value=latest,enable=${{ inputs.publish_latest }}
+            type=raw,value=release,enable=${{ inputs.publish_uat }}
 
       - name: Set image name and tag output
         id: set_tag_primary
@@ -76,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
 
-    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging'
+    if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging' || github.ref == 'refs/heads/a4i/release' || github.ref == 'refs/heads/feature/uat-docker-deploy'
 
     outputs:
       digest: ${{ steps.push.outputs.digest }}

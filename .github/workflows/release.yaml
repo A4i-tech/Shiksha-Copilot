@@ -1,0 +1,110 @@
+name: Release
+
+on:
+  push:
+    branches: [ "a4i/release", "feature/uat-docker-deploy" ]
+  pull_request:
+    branches: [ "a4i/release" ]
+  workflow_dispatch:
+
+jobs:
+  ci-api:
+    uses: ./.github/workflows/ci-api.yaml
+    secrets: inherit
+    with:
+      publish_staging: false
+      publish_latest: false
+      publish_uat: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/release' || github.ref_name == 'feature/uat-docker-deploy') }}
+      update_cov_badge: false
+
+  ci-backend:
+    uses: ./.github/workflows/ci-backend.yaml
+    secrets: inherit
+    with:
+      publish_staging: false
+      publish_latest: false
+      publish_uat: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/release' || github.ref_name == 'feature/uat-docker-deploy') }}
+      update_cov_badge: false
+
+  ci-frontend:
+    uses: ./.github/workflows/ci-frontend.yaml
+    secrets: inherit
+    with:
+      publish_staging: false
+      publish_latest: false
+      publish_uat: ${{ github.event_name == 'push' && (github.ref_name == 'a4i/release' || github.ref_name == 'feature/uat-docker-deploy') }}
+
+  deploy-uat:
+    name: Deploy to UAT host
+    needs: [ci-api, ci-backend, ci-frontend]
+    if: github.event_name == 'push' && github.ref_name == 'a4i/release'
+    runs-on: [self-hosted, uat]
+    environment: uat
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        # Self-hosted runner: checkout runs `git clean -ffdx` each job,
+        # wiping any .env left from a prior run. Env files are rewritten
+        # from secrets every deploy below — never assumed to persist.
+
+      - name: Write service .env files
+        run: |
+          set -euo pipefail
+
+          cat > shiksha-api/app-service/.env <<EOF
+          OPENAI_API_KEY=${{ secrets.UAT_OPENAI_API_KEY }}
+          BLOB_STORE_CONNECTION_STRING=${{ secrets.UAT_BLOB_STORE_CONNECTION_STRING }}
+          QDRANT_URL=http://shiksha-qdrant-svc:6333
+          QDRANT_API_KEY=${{ secrets.UAT_QDRANT_API_KEY }}
+          APP_ENV=uat
+          EOF
+          chmod 600 shiksha-api/app-service/.env
+
+          cat > shiksha-website/shiksha-backend/.env <<EOF
+          MONGO_URL=mongodb://shiksha-mongo-svc:27017/shiksha_uat
+          JWT_SECRET=${{ secrets.UAT_JWT_SECRET }}
+          JWT_SECRET_REMEMBER_ME=${{ secrets.UAT_JWT_SECRET_REMEMBER_ME }}
+          PIN_SECRET_KEY=${{ secrets.UAT_PIN_SECRET_KEY }}
+          TURNSTILE_SECRET_KEY=${{ secrets.UAT_TURNSTILE_SECRET_KEY }}
+          EOF
+          chmod 600 shiksha-website/shiksha-backend/.env
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bring up data stack (idempotent — no-op if already running)
+        run: docker compose -f docker-compose.data.yml up -d
+
+      - name: Wait for mongo + qdrant healthy
+        run: |
+          for i in $(seq 1 20); do
+            m=$(docker inspect -f '{{.State.Health.Status}}' shiksha-mongo-container)
+            q=$(docker inspect -f '{{.State.Health.Status}}' shiksha-qdrant-container)
+            [ "$m" = "healthy" ] && [ "$q" = "healthy" ] && echo "data stack healthy" && exit 0
+            echo "mongo=$m qdrant=$q, waiting... ($i/20)"; sleep 5
+          done
+          echo "data stack failed to become healthy"; exit 1
+
+      - name: Pull + deploy app stack
+        env:
+          API_IMAGE_TAG: ${{ needs.ci-api.outputs.tag_primary }}
+          BE_IMAGE_TAG: ${{ needs.ci-backend.outputs.tag_primary }}
+          FE_IMAGE_TAG: ${{ needs.ci-frontend.outputs.tag_primary }}
+        run: |
+          docker compose -f docker-compose.yml pull
+          docker compose -f docker-compose.yml up -d
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:5000/health && echo "api OK" && break
+            echo "waiting on api... ($i/15)"; sleep 5
+          done
+          for i in $(seq 1 15); do
+            curl -sf http://localhost:8080/health && echo "backend OK" && break
+            echo "waiting on backend... ($i/15)"; sleep 5
+          done
