@@ -40,34 +40,39 @@ jobs:
     if: github.event_name == 'push' && github.ref_name == 'a4i/release'
     runs-on: [self-hosted, uat]
     environment: uat
+    permissions:
+      id-token: write   # required for Azure OIDC login, no stored client secret
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         # Self-hosted runner: checkout runs `git clean -ffdx` each job,
-        # wiping any .env left from a prior run. Env files are rewritten
-        # from secrets every deploy below — never assumed to persist.
+        # wiping any .env left from a prior run. Env files are fetched
+        # fresh from Key Vault below, every deploy — never assumed to persist.
 
-      - name: Write service .env files
+      - name: Azure login (OIDC, no stored client secret)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch service .env files from Key Vault
         run: |
           set -euo pipefail
 
-          cat > shiksha-api/app-service/.env <<EOF
-          OPENAI_API_KEY=${{ secrets.UAT_OPENAI_API_KEY }}
-          BLOB_STORE_CONNECTION_STRING=${{ secrets.UAT_BLOB_STORE_CONNECTION_STRING }}
-          QDRANT_URL=http://shiksha-qdrant-svc:6333
-          QDRANT_API_KEY=${{ secrets.UAT_QDRANT_API_KEY }}
-          APP_ENV=uat
-          EOF
-          chmod 600 shiksha-api/app-service/.env
+          fetch_env() {
+            local secret_name="$1" out_path="$2"
+            az keyvault secret show \
+              --vault-name "${{ vars.AZURE_KEYVAULT_NAME }}" \
+              --name "$secret_name" \
+              --query value -o tsv \
+              | jq -r 'to_entries[] | "\(.key)=\(.value)"' > "$out_path"
+            chmod 600 "$out_path"
+          }
 
-          cat > shiksha-website/shiksha-backend/.env <<EOF
-          MONGO_URL=mongodb://shiksha-mongo-svc:27017/shiksha_uat
-          JWT_SECRET=${{ secrets.UAT_JWT_SECRET }}
-          JWT_SECRET_REMEMBER_ME=${{ secrets.UAT_JWT_SECRET_REMEMBER_ME }}
-          PIN_SECRET_KEY=${{ secrets.UAT_PIN_SECRET_KEY }}
-          TURNSTILE_SECRET_KEY=${{ secrets.UAT_TURNSTILE_SECRET_KEY }}
-          EOF
-          chmod 600 shiksha-website/shiksha-backend/.env
+          fetch_env api-env shiksha-api/app-service/.env
+          fetch_env be-env  shiksha-website/shiksha-backend/.env
 
       - name: Login to GHCR
         uses: docker/login-action@v3
