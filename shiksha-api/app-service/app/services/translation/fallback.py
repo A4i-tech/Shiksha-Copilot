@@ -1,4 +1,4 @@
-from typing import Annotated, List
+from typing import Annotated
 
 import logging
 
@@ -17,7 +17,7 @@ class FallbackTranslator(TranslatorBase):
 
     @validate_call(config={"arbitrary_types_allowed": True})
     def __init__(
-        self, translators: Annotated[List[TranslatorBase], Field(min_length=1)]
+        self, translators: Annotated[list[TranslatorBase], Field(min_length=1)]
     ):
         self.translators = translators
 
@@ -37,8 +37,8 @@ class FallbackTranslator(TranslatorBase):
         return await self.translators[-1].translate_async(text, src_lang, tgt_lang)
 
     async def translate_batch_async(
-        self, texts: List[str], src_lang: str, tgt_lang: str
-    ) -> List[str]:
+        self, texts: list[str], src_lang: str, tgt_lang: str
+    ) -> list[str]:
         for i, translator in enumerate(self.translators[:-1]):
             try:
                 return await translator.translate_batch_async(

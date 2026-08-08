@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, StringConstraints
-from typing import Annotated, List, Optional, Dict, Any
+from typing import Annotated, Optional, Any
 from enum import Enum
 
 
@@ -19,7 +19,7 @@ class ConversationMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     user_id: str = Field(..., description="User identifier")
-    messages: List[ConversationMessage] = Field(..., min_length=1, description="List of conversation messages")
+    messages: list[ConversationMessage] = Field(..., min_length=1, description="List of conversation messages")
 
 
 class Reference(BaseModel):
@@ -31,17 +31,17 @@ class Reference(BaseModel):
 class ChatResponse(BaseModel):
     user_id: str = Field(..., description="User identifier")
     response: str = Field(..., description="AI-generated response")
-    references: Optional[List[Reference]] = Field(default_factory=list, description="List of references/citations used in the response")
+    references: Optional[list[Reference]] = Field(default_factory=list, description="List of references/citations used in the response")
 
 
 class LessonChatRequest(BaseModel):
     user_id: str = Field(..., description="User identifier")
     chapter_id: str = Field(..., description="Chapter identifier with board, medium, grade, subject, number and title")
     index_path: str = Field(..., description="Path to the chapter index for retrieval")
-    messages: List[ConversationMessage] = Field(..., min_length=1, description="List of conversation messages")
+    messages: list[ConversationMessage] = Field(..., min_length=1, description="List of conversation messages")
 
 
 class LessonChatResponse(BaseModel):
     user_id: str = Field(..., description="User identifier")
     response: str = Field(..., description="AI-generated response")
-    references: List[Reference] = Field(default_factory=list, description="List of references/citations used in the response")
+    references: list[Reference] = Field(default_factory=list, description="List of references/citations used in the response")

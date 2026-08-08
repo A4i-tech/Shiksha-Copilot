@@ -4,7 +4,7 @@ from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.utils import load_yaml_prompts, local_unique_id
 from pydantic import Field, create_model
 import asyncio
-from typing import List, Optional
+from typing import Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
@@ -242,7 +242,7 @@ class QuestionPaperService:
             return await self._generate_questions_batch(system_prompt, request, existing_questions, record, slot, rag_adapter)
 
     @observe(name="output_formatting")
-    def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedSlotQuestion]) -> List[QuestionTypeResponse]:
+    def _organize_questions_into_response(self, request: QuestionBankPartsGenerationRequest, all_generated: list[GeneratedSlotQuestion]) -> list[QuestionTypeResponse]:
         """Organize all generated questions into the final response structure."""
         question_directory = {slot_id: g.item for slot_id, g in all_generated}
 

@@ -2,7 +2,7 @@
 # Extracted from the original standalone FastAPI application
 
 from enum import Enum
-from typing import Annotated, List, Literal, Optional, TypeAlias
+from typing import Annotated, Literal, Optional, TypeAlias
 from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, WithJsonSchema
 
 
@@ -15,7 +15,7 @@ class QuestionBankMetadata(BaseModel):
     user_id: str = Field(..., description="Unique identifier for the requesting user", examples=["teacher123"])
     subject: str = Field(..., description="Subject for question generation", examples=["Science"])
     grade: str = Field(..., description="Student grade/class level", examples=["10"])
-    unit_names: List[str] = Field(..., examples=[["Light", "Electricity"]])
+    unit_names: list[str] = Field(..., examples=[["Light", "Electricity"]])
     school_name: str = Field(..., examples=["ABC School"])
     examination_name: str = Field(..., examples=["Mid-term Exam"])
 
@@ -69,7 +69,7 @@ class McqOption(BaseModel):
 
 class FourOptionsQuestion(BaseModel):
     question: list[Content] = Field(default_factory=list, examples=["What is the speed of light in vacuum?"])
-    options: List[McqOption] = Field(default_factory=list, min_length=4, max_length=4, examples=[[
+    options: list[McqOption] = Field(default_factory=list, min_length=4, max_length=4, examples=[[
         McqOption(label="A", text=[Content.text("3x10^8 m/s")]),
         McqOption(label="B", text=[Content.text("3x10^6 m/s")]),
         McqOption(label="C", text=[Content.text("3x10^10 m/s")]),
@@ -127,16 +127,16 @@ class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: Marking
-    questions: List[QuestionModel]
+    questions: list[QuestionModel]
 
 
 class QuestionBankResponse(BaseModel):
     metadata: QuestionBankMetadata
-    questions: List[QuestionTypeResponse]
+    questions: list[QuestionTypeResponse]
 
 
 # Ordered list is the single source of truth; set is derived for O(1) lookup.
-_GRAMMAR_QUESTION_TYPES_ORDERED: List[QuestionType] = [
+_GRAMMAR_QUESTION_TYPES_ORDERED: list[QuestionType] = [
     QuestionType.GRAMMAR_MCQ,
     QuestionType.GRAMMAR_FILL_BLANKS,
     QuestionType.GRAMMAR_EDITING,
@@ -144,7 +144,7 @@ _GRAMMAR_QUESTION_TYPES_ORDERED: List[QuestionType] = [
 GRAMMAR_QUESTION_TYPES = set(_GRAMMAR_QUESTION_TYPES_ORDERED)
 
 
-def get_question_types_for_subject(subject: str) -> List[QuestionType]:
+def get_question_types_for_subject(subject: str) -> list[QuestionType]:
     """Return the list of question types available for the given subject.
 
     Grammar types are always appended to the response. The frontend filters them
@@ -165,10 +165,10 @@ def get_question_types_for_subject(subject: str) -> List[QuestionType]:
 class _LearningRecord(BaseModel):
     title: str
     index_path: str
-    learning_outcomes: List[str]
-    grammar_source_chapters: Optional[List[str]] = None
+    learning_outcomes: list[str]
+    grammar_source_chapters: Optional[list[str]] = None
     is_grammar: bool = False
-    grammar_topics: Optional[List[str]] = None
+    grammar_topics: Optional[list[str]] = None
 
 
 class ChapterSubtopic(_LearningRecord):
@@ -176,7 +176,7 @@ class ChapterSubtopic(_LearningRecord):
 
 
 class Chapter(_LearningRecord):
-    subtopics: List[ChapterSubtopic]
+    subtopics: list[ChapterSubtopic]
 
 
 class QuestionDistribution(BaseModel):
@@ -191,7 +191,7 @@ class _Template(BaseModel):
 
 
 class GeneratedTemplate(_Template):
-    question_distribution: List[QuestionDistribution] = Field(min_length=1)
+    question_distribution: list[QuestionDistribution] = Field(min_length=1)
 
 
 class QuestionBankPartsGenerationRequest(BaseModel):
@@ -201,15 +201,15 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
     unit_level: Literal["CHAPTER", "SUBTOPIC"]
-    chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
+    chapters: list[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
     total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
-    template: List[GeneratedTemplate] = Field(..., description="Question distribution template specifying types and marks")
-    existing_questions: List[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
+    template: list[GeneratedTemplate] = Field(..., description="Question distribution template specifying types and marks")
+    existing_questions: list[QuestionTypeResponse] = Field(default_factory=list, description="List of pre-existing questions (to avoid duplication)")
     school_name: str = "Shiksha Partner School"
     examination_name: str = "Class Assessment"
     session_id: Optional[str] = Field(default=None, description="Optional session identifier for tracking")
 
-    def grammar_chapters(self) -> List[Chapter]:
+    def grammar_chapters(self) -> list[Chapter]:
         """Return chapters flagged as grammar (DB ``isGrammar`` true).
 
         Encapsulates the filter so callers do not need to inspect

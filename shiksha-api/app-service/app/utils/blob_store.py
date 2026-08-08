@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 from azure.core.exceptions import AzureError
 from azure.identity.aio import DefaultAzureCredential
@@ -39,7 +38,7 @@ class BlobStore:
 
     async def download_blobs_to_folder(
         self, prefix: str, target_folder: str = "blob_downloads"
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Async download all blobs whose names start with `prefix`
         into a local subfolder under /tmp (or wherever you like).
@@ -58,7 +57,7 @@ class BlobStore:
             raise ValueError("Prefix must be in the format 'container/prefix_path'.")
 
         container_name, blob_prefix = prefix.split("/", 1)
-        downloaded_files: List[str] = []
+        downloaded_files: list[str] = []
 
         try:
             async with self._async_svc.get_container_client(container_name) as container_client:
