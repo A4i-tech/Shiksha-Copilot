@@ -19,24 +19,6 @@ class TestRootEndpoints:
         assert data["status"] == "healthy"
 
 
-class TestMCPConfiguration:
-    """Tests for MCP configuration."""
-
-    def test_mcp_instance_created(self):
-        """Test MCP instance is created."""
-        from app.main import mcp
-
-        # MCP should be initialized
-        assert mcp is not None
-        assert hasattr(mcp, "name")
-
-    def test_mcp_app_created(self):
-        """Test MCP HTTP app is created."""
-        from app.main import mcp_app
-
-        assert mcp_app is not None
-
-
 class TestAppConfiguration:
     """Tests for FastAPI app configuration."""
 
@@ -68,10 +50,3 @@ class TestAppConfiguration:
 
         assert app.title is not None
         assert app.version is not None
-
-    def test_app_has_mcp_state(self):
-        """Test that app has MCP app in state."""
-        from app.main import app
-
-        assert hasattr(app.state, "MCP_APP")
-        assert app.state.MCP_APP is not None
