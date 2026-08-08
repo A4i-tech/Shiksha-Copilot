@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from app.utils.utils import get_sample_text
 from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Request, status
 from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
@@ -44,29 +45,9 @@ LANGUAGE_MAP = {
     "urdu": "ur"
 }
 
-def get_sample_text(data: JsonValue) -> str:
-    """Recursively finds the first substantial string to use for language detection."""
-    if isinstance(data, dict):
-        for key, value in data.items():
-            # Prioritize fields likely to contain full sentences or specific language content
-            if key in ['instructions', 'question_text', 'title', 'question', 'text', 'part_name', 'content']:
-                if isinstance(value, str) and len(value.strip().split()) > 2:
-                    return value
-            res = get_sample_text(value)
-            if res:
-                return res
-    elif isinstance(data, list):
-        for item in data:
-            res = get_sample_text(item)
-            if res:
-                return res
-    elif isinstance(data, str) and len(data.strip().split()) > 2:
-        return data
-    return ""
-
 
 @router.post("/translate-json", summary="Translate JSON Content (Auto-Detect Source)")
-async def translate_json_content_to_kannada(
+async def translate_json(
     target_language: str = Body(..., description="The target language to translate to.", examples=["Kannada", "Hindi"]),
     json_data: dict[str, JsonValue] = Body(..., description="The JSON object to be translated.")
 ) -> dict[str, JsonValue]:
@@ -77,10 +58,8 @@ async def translate_json_content_to_kannada(
     2. Compares detected language with `target_language`.
     3. Translates only if they are different.
     """
-    logger.info(f"Processing JSON translation request. Target: {target_language}")
-
     # Detect Source Language
-    sample_text = get_sample_text(json_data)
+    sample_text = next(get_sample_text(json_data, {'instructions', 'question_text', 'title', 'question', 'text', 'part_name', 'content'}), None)
     source_lang_code = Detector.UNKNOWN_LANG
 
     if sample_text:
