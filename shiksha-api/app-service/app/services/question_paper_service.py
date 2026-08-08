@@ -1,12 +1,10 @@
 from collections import defaultdict
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
-from app.utils.utils import local_unique_id
+from app.utils.utils import load_yaml_prompts, local_unique_id
 from pydantic import Field, create_model
-import yaml
 import asyncio
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
@@ -54,46 +52,29 @@ class QuestionPaperService:
         self._rag_llm = OpenAIResponses(model=settings.question_paper_model)
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
-        self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
-        self.prompts = self._load_prompts()
-        self.clarity_guide = self.prompts["question_clarity_guide"]
-        self.maths_clarity_guide = self.prompts["maths_question_clarity_guide"]
         self.max_questions_per_slot = 20
         self.concurrency = asyncio.Semaphore(5)
 
+        prompts_qp = load_yaml_prompts("question_paper_prompts.yaml")
+        self._prompt_qp_grammar_guide = prompts_qp["grammar_question_types_guide"]
+        self._prompt_qp_clarity_guide = prompts_qp["question_clarity_guide"]
+        self._prompt_qp_maths_clarity_guide = prompts_qp["maths_question_clarity_guide"]
+        self._prompt_qp_qb_parts = prompts_qp["question_bank_parts_gen"]
+        self._prompt_qp_qb_parts_retrieval = prompts_qp["question_bank_parts_gen_retrieval_query_template"]
+
+        prompts_bloom = load_yaml_prompts("blooms_taxonomy.yaml")
+        self._prompt_bloom_en = prompts_bloom["english"]
+        self._prompt_bloom_fallback = prompts_bloom["general"]
+
+        prompts_grammar = load_yaml_prompts("grammar_prompt_templates.yaml")
+        self._prompt_grammar_ctx = prompts_grammar["context_prompt"]
+        self._prompt_grammar_simple = prompts_grammar["simple_prompt"]
 
     async def __aenter__(self):
         return self
 
-
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self._rags.cleanup()
-
-
-    def _load_prompts(self) -> Dict[str, Any]:
-        """Load prompts from YAML files."""
-        # Load question paper prompts
-        qp_prompts_path = self.prompt_dir / "question_paper_prompts.yaml"
-        blooms_path = self.prompt_dir / "blooms_taxonomy.yaml"
-
-        prompts = {}
-
-        with open(qp_prompts_path, "r", encoding="utf-8") as f:
-            qp_data = yaml.safe_load(f)
-            prompts.update(qp_data)
-
-        with open(blooms_path, "r", encoding="utf-8") as f:
-            blooms_data = yaml.safe_load(f)
-            prompts.update(blooms_data)
-
-        grammar_prompts_path = self.prompt_dir / "grammar_prompt_templates.yaml"
-        with open(grammar_prompts_path, "r", encoding="utf-8") as f:
-            grammar_prompt_data = yaml.safe_load(f)
-            prompts.update(grammar_prompt_data)
-
-
-        logger.info("Successfully loaded prompt templates")
-        return prompts
 
     def _flatten_questions(self, existing: list[QuestionModel]) -> list[str]:
         to_text = lambda v: "\n".join(c.content.decode("utf-8") for c in v if c.content_type == "text/plain")
@@ -125,17 +106,15 @@ class QuestionPaperService:
             return ""
 
         grammar_topic = "; ".join(grammar_units)
-
         source_chapters = record.grammar_source_chapters or []
         if source_chapters:
-            chapter_names = ", ".join(source_chapters)
-            return self.prompts["grammar_context_prompt"].format(
+            return self._prompt_grammar_ctx.format(
                 GRAMMAR_TOPIC=grammar_topic,
                 GRAMMAR_TOPIC_UPPER=grammar_topic.upper(),
-                CHAPTER_NAMES=chapter_names,
+                CHAPTER_NAMES=", ".join(source_chapters),
             )
 
-        return self.prompts["grammar_simple_prompt"].format(GRAMMAR_TOPIC=grammar_topic)
+        return self._prompt_grammar_simple.format(GRAMMAR_TOPIC=grammar_topic)
 
 
     def _build_generation_slots(self, request: QuestionBankPartsGenerationRequest):
@@ -157,26 +136,19 @@ class QuestionPaperService:
 
 
     def _format_system_prompt(self, request: QuestionBankPartsGenerationRequest, record: _LearningRecord, slot: list[GenerationSlot]) -> str:
-        """Format the system prompt using YAML templates for a specific unit slot."""
-        # Get the main template
-        template = self.prompts["question_bank_parts_gen"]
-
-        # Get Bloom's taxonomy guide
-        bloom_lang = "english" if "english" in request.subject.lower() else "general"
-        blooms_guide = self.prompts["blooms-taxonomy"][bloom_lang]
+        blooms_guide = self._prompt_bloom_en if "english" in request.subject.lower() else self._prompt_bloom_fallback
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
         grammar_topics_text = self._get_grammar_topics(request, record)
         slot_types = {template.type for _, template, _ in slot}
         if slot_types & GRAMMAR_QUESTION_TYPES:
-            grammar_guide = self.prompts["grammar_question_types_guide"]
-            grammar_topics_text = (grammar_topics_text + "\n\n" + grammar_guide).strip()
+            grammar_topics_text += "\n\n" + self._prompt_qp_grammar_guide
 
-        # Build question clarity guide, appending the maths-specific add-on when the subject is maths
-        clarity_guide = self.clarity_guide
+        clarity_guide = self._prompt_qp_clarity_guide
         if set(request.subject.lower().split()) & MATHS_SUBJECTS:
-            clarity_guide = (clarity_guide + "\n\n" + self.maths_clarity_guide).strip()
-        return self.prompts["question_bank_parts_gen"].format(BLOOM_TAXONOMY_GUIDE=blooms_guide, GRAMMAR_TOPICS=grammar_topics_text, QUESTION_CLARITY_GUIDE=clarity_guide)
+            clarity_guide += "\n\n" + self._prompt_qp_maths_clarity_guide
+
+        return self._prompt_qp_qb_parts.format(BLOOM_TAXONOMY_GUIDE=blooms_guide, GRAMMAR_TOPICS=grammar_topics_text, QUESTION_CLARITY_GUIDE=clarity_guide)
 
 
     @observe(name="question_generation")
@@ -192,7 +164,7 @@ class QuestionPaperService:
         else:
             unit_los_text = f"Unit Name: {record.title} (No specific LOs provided)"
 
-        user_message = self.prompts["question_bank_parts_gen_retrieval_query_template"].format(
+        user_message = self._prompt_qp_qb_parts_retrieval.format(
             RULES="\n".join(f"- {q.value}: {q.description}" for q in set(t.type for _, t, _ in slot)),
             CHAPTER=record.title,
             LEARNING_OUTCOMES="\n".join(f"- {lo}" for lo in record.learning_outcomes),

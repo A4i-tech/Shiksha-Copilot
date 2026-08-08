@@ -20,7 +20,7 @@ interface ChatMessages {
   createdAt?: string;
   _id?: string;
   version?: number;
-  references?: { title: string, url?: string, text?: string }[];
+  references: { title: string, url?: string, text?: string }[];
 }
 
 @Component({
@@ -223,6 +223,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
         answer: '',
         createdAt: '',
         _id: '',
+        references: []
       };
 
       this.messages.unshift(questionObj);
@@ -273,28 +274,15 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       next: (data) => {
         const currentMessage = this.messages[0];
 
-        if (data.type === 'status') {
-          // Show status. For now, maybe prepend to answer or distinct UI?
-          // The user execution requested "loading states".
-          // I will set a temporary property or simply use the answer field with a spinner/text if empty.
-          // However, to be cleaner, let's use a separate property if possible, or just log it for now 
-          // and update the answer text if it's "Thinking...".
-          // Actually, let's append status to a "status" field if we had one.
-          // Since we don't, I will use `isLoading` coupled with a status tracking variable if needed.
-          // But `isLoading` is boolean.
-          // Let's just assume `answer` is the content.
-          // If we receive "status", we could show it as a placeholder?
-          // Let's strictly handle 'content' for answer.
-          // For 'status', I'll update a local variable `loadingStatus` and display it in template if I could edit HTML.
-          // Since I am editing TS, I will create a variable `loadingStatus`.
-          this.loadingStatus = data.message;
-        } else if (data.type === 'content') {
+        if (data.event === 'status') {
+          this.loadingStatus = data.data;
+        } else if (data.event === 'content') {
           this.loadingStatus = ''; // Clear status when content starts
-          currentMessage.answer = (currentMessage.answer || '') + data.delta;
-        } else if (data.type === 'references') {
-          currentMessage.references = data.data;
-        } else if (data.type === 'error') {
-          this.utilityService.showError(data.message);
+          currentMessage.answer = (currentMessage.answer || '') + data.data;
+        } else if (data.event === 'reference') {
+          currentMessage.references.push(data.data);
+        } else if (data.event === 'error') {
+          this.utilityService.showError(data.data);
         }
       },
       error: (err) => {
@@ -305,60 +293,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       complete: () => {
         this.isLoading = false;
         this.loadingStatus = '';
-        if (this.messages[0]?.answer) {
-          const extractedRefs = this.extractReferences(this.messages[0].answer);
-          if (extractedRefs.length > 0) {
-            // Merge with existing references if any, avoiding duplicates
-            const existingRefs = this.messages[0].references || [];
-            const existingUrls = new Set(existingRefs.map(r => r.url));
-
-            extractedRefs.forEach(ref => {
-              if (!existingUrls.has(ref.url)) {
-                existingRefs.push(ref);
-                existingUrls.add(ref.url);
-              }
-            });
-            this.messages[0].references = existingRefs;
-          }
-        }
       }
     });
-  }
-
-  extractReferences(text: string) {
-    const references: { title: string, url: string, text?: string }[] = [];
-    const seenUrls = new Set<string>();
-
-    // Pass 1: Extract Markdown links [Title](URL)
-    const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s\)]+)\)/g;
-    let match;
-    while ((match = markdownLinkRegex.exec(text)) !== null) {
-      const title = match[1];
-      let url = match[2];
-      // Clean potential trailing punctuation if regex grabbed it
-      if (url.endsWith(')')) url = url.slice(0, -1);
-
-      if (!seenUrls.has(url)) {
-        seenUrls.add(url);
-        references.push({ title, url });
-      }
-    }
-
-    // Pass 2: Extract bare URLs
-    const urlRegex = /(https?:\/\/[^\s\)]+)/g;
-    let urlMatch;
-    while ((urlMatch = urlRegex.exec(text)) !== null) {
-      let url = urlMatch[1];
-      // Clean common trailing punctuation from bare URLs
-      url = url.replace(/[.,;)]$/, '');
-
-      if (url && !seenUrls.has(url)) {
-        seenUrls.add(url);
-        references.push({ title: url, url });
-      }
-    }
-
-    return references;
   }
 
   sendIndexMessage(messageObj: any) {

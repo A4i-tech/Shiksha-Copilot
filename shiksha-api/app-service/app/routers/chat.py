@@ -1,7 +1,8 @@
+from collections.abc import AsyncIterable
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
 from app.models.chat import (
     ChatRequest,
     LessonChatRequest,
@@ -34,29 +35,14 @@ def lesson_chat_svc(request: Request) -> LessonChatService:
 
 
 @router.post("/general", summary="General Educational Chat")
-async def chat(request: ChatRequest, service: GeneralChatService = Depends(general_chat_svc)):
+async def chat(request: ChatRequest, service: GeneralChatService = Depends(general_chat_svc)) -> AsyncIterable[dict[str, Any]]:
     """
     **General Educational Chat Endpoint**
 
     Process general educational queries using an AI assistant with comprehensive capabilities.
     """
-    try:
-        return StreamingResponse(
-            service(request.messages, user_id=request.user_id),
-            media_type="text/event-stream"
-        )
-    except ValueError as e:
-        logger.error(f"Configuration error in general chat: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Configuration error: {str(e)}",
-        ) from e
-    except Exception as e:
-        logger.error(f"General chat failed for user {request.user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process chat request",
-        ) from e
+    async for event in service(request.messages, user_id=request.user_id):
+        yield event
 
 
 @router.post("/lesson", summary="Lesson-Specific Educational Chat")

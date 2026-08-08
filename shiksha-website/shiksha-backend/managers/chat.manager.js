@@ -98,54 +98,36 @@ class ChatManager extends BaseManager {
 		formattedMessages.push({ role: "user", message });
 		formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." })
 
-		const response = await postToChatBotStream({
-			user_id: userId,
-			messages: formattedMessages,
-		});
-
-		// Handle DB persistence asynchronously
-		const stream = response.data;
+		const stream = await postToChatBotStream({user_id: userId, messages: formattedMessages});
 		let buffer = '';
 		let fullAnswer = '';
 		let references = [];
-
-		stream.on('data', (chunk) => {
-			try {
-				buffer += chunk.toString();
-				const lines = buffer.split('\n');
-				buffer = lines.pop();
-
-				for (const line of lines) {
-					if (line.trim() === '') continue;
-					const data = JSON.parse(line);
-					if (data.type === 'content') {
-						fullAnswer += data.delta;
-					} else if (data.type === 'references') {
-						references = data.data;
-					}
+		stream.on("data", chunk => {
+			buffer += chunk.toString();
+			const lines = buffer.split('\n');
+			buffer = lines.pop();
+			for (const line of lines) {
+				if (line.trim() === '') continue;
+				const data = JSON.parse(line);
+				if (data.event === 'content') {
+					fullAnswer += data.delta;
+				} else if (data.event === 'reference') {
+					references.push(data.data);
 				}
-			} catch (err) {
-				console.error("Error in stream data handler", err);
 			}
 		});
-
-		stream.on('end', async () => {
-			try {
-				if (fullAnswer) {
-					await this.dao.addMessage(chatSession._id, {
-						question: message,
-						answer: fullAnswer,
-						references: references
-					});
-					chatSession.requestCount += 1;
-					await chatSession.save();
-				}
-			} catch (dbError) {
-				console.error("Error saving chat to DB after stream", dbError);
+		stream.on("end", async () => {
+			if (fullAnswer) {
+				await this.dao.addMessage(chatSession._id, {
+					question: message,
+					answer: fullAnswer,
+					references: references
+				});
+				chatSession.requestCount += 1;
+				await chatSession.save();
 			}
 		});
-
-		return { success: true, stream: response.data };
+		return { success: true, stream: stream };
 	}
 
 	async listMessages(userId) {

@@ -52,19 +52,14 @@ def router(mcp: FastMCP):
             logger.info(f"Processing general chat request for user: {user_id}")
 
             content = io.StringIO()
-            async for event_raw in general_chat_svc([
-                ConversationMessage(role=MessageRole.USER, message=message)
-            ], user_id=user_id):
-                event = json.loads(event_raw)
-                if event["type"] == "content":
-                    content.write(event["delta"])
-                elif event["type"] == "error":
-                    raise ToolError(event["data"])
+            async for event in general_chat_svc([ConversationMessage(role=MessageRole.USER, message=message)], user_id=user_id):
+                if event.event == "content":
+                    content.write(event.data)
+                elif event.event == "error":
+                    raise ToolError(event.data)
 
             logger.info(f"Successfully processed general chat for user: {user_id}")
-
             return content.getvalue()
-
         except ValueError as e:
             logger.error(f"Configuration error in general chat: {e}")
             raise ToolError(f"Configuration error: {str(e)}")

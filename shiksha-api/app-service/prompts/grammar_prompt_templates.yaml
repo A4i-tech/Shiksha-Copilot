@@ -1,4 +1,4 @@
-grammar_context_prompt: |
+context_prompt: |
   ⚠ **GRAMMAR IN CONTEXT — {GRAMMAR_TOPIC_UPPER}**
 
   You are an English teacher preparing a grammar assessment on **{GRAMMAR_TOPIC}**.
@@ -20,6 +20,6 @@ grammar_context_prompt: |
 
   **CRITICAL:** In the output JSON, the `unit_name` field MUST be `"GRAMMAR: {GRAMMAR_TOPIC}"` — NOT the source chapter name.
 
-grammar_simple_prompt: |
+simple_prompt: |
   ⚠ **GRAMMAR FOCUS REQUIREMENT**: For English subject only, include grammar-related questions drawn from each unit's content.
   Cover following topics: {GRAMMAR_TOPIC}
