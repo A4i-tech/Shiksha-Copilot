@@ -16,8 +16,7 @@ import logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.qp_svc = QuestionPaperService()
-    async with app.state.qp_svc:
+    async with QuestionPaperService() as app.state.qp_svc:
         yield
 
 

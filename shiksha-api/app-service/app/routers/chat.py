@@ -17,9 +17,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.general_chat_svc = GeneralChatService()
-    app.state.lesson_chat_svc = LessonChatService()
-    async with app.state.general_chat_svc, app.state.lesson_chat_svc:
+    async with GeneralChatService() as app.state.general_chat_svc, LessonChatService() as app.state.lesson_chat_svc:
         yield
 
 
