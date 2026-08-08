@@ -65,8 +65,13 @@ class LessonEditService:
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.cleanup()
+
     async def cleanup(self) -> None:
-        """Clear the RAG adapter cache and associated resources."""
         await self._rags.cleanup()
 
     @observe(name="Shiksha-LP")

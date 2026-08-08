@@ -9,9 +9,8 @@ from pydantic import JsonValue
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.lesson_edit_svc = LessonEditService()
-    yield
-    await app.state.lesson_edit_svc.cleanup()
+    async with LessonEditService() as app.state.lesson_edit_svc:
+        yield
 
 
 def svc(request: Request) -> LessonEditService:
