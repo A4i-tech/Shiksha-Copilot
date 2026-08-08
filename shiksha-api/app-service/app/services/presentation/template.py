@@ -2505,7 +2505,6 @@ def get_metadata(exclude: set[str] = {
     Templates.thank_you.__name__,
 }) -> str:
     out = []
-    defs = {}
     for name in dir(Templates):
         fn = getattr(Templates, name)
         if not callable(fn) or fn.__name__ not in SLIDE_META or fn.__name__ in exclude:

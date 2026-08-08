@@ -209,15 +209,6 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     examination_name: str = "Class Assessment"
     session_id: Optional[str] = Field(default=None, description="Optional session identifier for tracking")
 
-    def grammar_chapters(self) -> list[Chapter]:
-        """Return chapters flagged as grammar (DB ``isGrammar`` true).
-
-        Encapsulates the filter so callers do not need to inspect
-        ``grammar_source_chapters`` directly. Replaces the previous bespoke
-        ``grammar_source_chapters`` plumbing flagged in PR #52 review.
-        """
-        return [c for c in self.chapters if c.is_grammar]
-
 
 class GeneratedQuestionItem(BaseModel):
     unit_name: str
