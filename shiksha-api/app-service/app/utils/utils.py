@@ -1,7 +1,9 @@
 import hashlib
 import re
+from pathlib import Path
 
-from pydantic import JsonValue
+import yaml
+from pydantic import JsonValue, TypeAdapter
 
 
 def local_unique_id(counter: int) -> str:
@@ -55,3 +57,13 @@ def validate_tex(text: str) -> None:
             expected_close = None
     if expected_close is not None:
         raise ValueError(f"Unclosed TeX delimiter {expected_close!r} in: {text[:200]!r}")
+
+
+def load_yaml_kv(path: Path) -> dict[str, str]:
+    with path.open("r", encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+    return TypeAdapter(dict[str, str]).validate_python(data)
+
+
+def load_yaml_prompts(path: str | Path) -> dict[str, str]:
+    return load_yaml_kv(Path(__file__).parent.parent.parent / "prompts" / path)
