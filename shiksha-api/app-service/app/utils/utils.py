@@ -1,3 +1,4 @@
+from collections.abc import Generator
 import hashlib
 from pathlib import Path
 
@@ -29,3 +30,14 @@ def load_yaml_kv(path: Path) -> dict[str, str]:
 
 def load_yaml_prompts(path: str | Path) -> dict[str, str]:
     return load_yaml_kv(Path(__file__).parent.parent.parent / "prompts" / path)
+
+
+def get_sample_text(data: JsonValue, allowed_keys: set[str] | None = None) -> Generator[str]:
+    match data:
+        case dict():
+            values = data.values() if allowed_keys is None else (v for k, v in data.items() if k in allowed_keys)
+            for value in values: yield from get_sample_text(value, allowed_keys)
+        case list():
+            for item in data: yield from get_sample_text(item, allowed_keys)
+        case str() if len(data.strip().split()) > 2:
+            yield data
