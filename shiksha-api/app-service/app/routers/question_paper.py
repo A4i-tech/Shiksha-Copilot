@@ -1,9 +1,8 @@
 from contextlib import asynccontextmanager
-from typing import Any
 from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Request, status
 from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from app.models.question_paper import (
     QuestionBankPartsGenerationRequest,
@@ -46,7 +45,7 @@ LANGUAGE_MAP = {
     "urdu": "ur"
 }
 
-def get_sample_text(data: Any) -> str:
+def get_sample_text(data: JsonValue) -> str:
     """Recursively finds the first substantial string to use for language detection."""
     if isinstance(data, dict):
         for key, value in data.items():
@@ -70,8 +69,8 @@ def get_sample_text(data: Any) -> str:
 @router.post("/translate-json", summary="Translate JSON Content (Auto-Detect Source)")
 async def translate_json_content_to_kannada(
     target_language: str = Body(..., description="The target language to translate to.", examples=["Kannada", "Hindi"]),
-    json_data: dict[str, Any] = Body(..., description="The JSON object to be translated.")
-) -> dict[str, Any]:
+    json_data: dict[str, JsonValue] = Body(..., description="The JSON object to be translated.")
+) -> dict[str, JsonValue]:
     """
     Accepts a JSON object and a target language.
 
