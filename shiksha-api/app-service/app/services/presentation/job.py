@@ -115,20 +115,6 @@ class JobManager:
         for q in dead:
             self.log_subscribers.discard(q)
 
-    async def get_logs(self, job_id: uuid.UUID) -> AsyncGenerator[dict, None]:
-        async for doc in await self.log_collection.aggregate([
-            {"$match": {"job_id": str(job_id)}},
-            {"$sort": {"timestamp": 1}},
-            {"$project": {
-                "_id": 0,
-                "id": "$job_id",
-                "type": 1,
-                "data": 1,
-                "timestamp": {"$dateToString": {"date": "$timestamp", "format": "%Y-%m-%dT%H:%M:%S.%LZ"}}
-            }}
-        ]):
-            yield doc
-
     def _notify_listeners(self, job_id: uuid.UUID):
         dead: list[asyncio.Queue[uuid.UUID | None]] = []
         for listener in list(self.listeners):
