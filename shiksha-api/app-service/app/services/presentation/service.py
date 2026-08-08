@@ -9,7 +9,7 @@ import pathlib
 from datetime import datetime
 from typing import Any
 
-from langfuse import get_client, observe, propagate_attributes
+from langfuse import get_client, propagate_attributes
 from pptx import presentation
 
 from app.config import settings
