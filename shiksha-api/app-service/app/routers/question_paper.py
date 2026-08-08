@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import List, Dict, Any
+from typing import Any
 from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Request, status
 from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
@@ -70,8 +70,8 @@ def get_sample_text(data: Any) -> str:
 @router.post("/translate-json", summary="Translate JSON Content (Auto-Detect Source)")
 async def translate_json_content_to_kannada(
     target_language: str = Body(..., description="The target language to translate to.", examples=["Kannada", "Hindi"]),
-    json_data: Dict[str, Any] = Body(..., description="The JSON object to be translated.")
-) -> Dict[str, Any]:
+    json_data: dict[str, Any] = Body(..., description="The JSON object to be translated.")
+) -> dict[str, Any]:
     """
     Accepts a JSON object and a target language.
 
@@ -126,7 +126,7 @@ class QuestionTypeItem(BaseModel):
 
 
 @router.get("/question-types")
-async def get_question_types(subject: str) -> List[QuestionTypeItem]:
+async def get_question_types(subject: str) -> list[QuestionTypeItem]:
     """Return question types available for the given subject."""
     types = get_question_types_for_subject(subject)
     return [

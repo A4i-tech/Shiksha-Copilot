@@ -1,5 +1,3 @@
-from typing import List
-
 from azure.ai.translation.text.aio import TextTranslationClient
 from azure.core.credentials import AzureKeyCredential
 from app.config import settings
@@ -35,8 +33,8 @@ class AzureTranslator(TranslatorBase):
         return results[0]
 
     async def translate_batch_async(
-        self, texts: List[str], src_lang: str = "en", tgt_lang: str = "te"
-    ) -> List[str]:
+        self, texts: list[str], src_lang: str = "en", tgt_lang: str = "te"
+    ) -> list[str]:
         if not texts:
             return []
 
