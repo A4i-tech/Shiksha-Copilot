@@ -1,5 +1,4 @@
 import logging
-from typing import List
 
 from app.config import settings
 from app.services.translation.base import TranslatorBase
@@ -44,7 +43,7 @@ class TranslatorFactory:
             cls._instances[tgt_lang] = NoOpTranslator()
             return cls._instances[tgt_lang]
 
-        translators: List[TranslatorBase] = [AzureTranslator()]
+        translators: list[TranslatorBase] = [AzureTranslator()]
         if tgt_lang == "te":
             translators = [AzureTranslator()] + translators
         instance = FallbackTranslator(translators=translators)

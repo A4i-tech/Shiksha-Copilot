@@ -1,4 +1,3 @@
-from typing import List
 import logging
 
 from app.utils.utils import load_yaml_prompts
@@ -36,7 +35,7 @@ class GeneralChatService:
 
     @validate_call
     @observe(name="Shiksha-QA", capture_output=False)
-    async def __call__(self, messages: List[ConversationMessage], user_id: str):
+    async def __call__(self, messages: list[ConversationMessage], user_id: str):
         formatted_messages = [{"role": "system", "content": self.system_prompt}, *({"role": m.role.value, "content": m.message} for m in messages)]
         seen_urls = set()
 
