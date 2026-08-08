@@ -202,16 +202,8 @@ class QuestionPaperService:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")
                 chat_history = [ChatMessage(role=MessageRole.SYSTEM, content=system_prompt)]
-                with propagate_attributes(metadata={
-                    "unit_name": record.title,
-                    "question_types": ", ".join(t.type.value for _, t, _ in slot),
-                    "slot_count": str(len(slot)),
-                    "model": settings.question_paper_model,
-                    "rag_enabled": "true" if rag_adapter is not None else "false",
-                    "index_path": record.index_path,
-                }):
-                    response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
-                    assert isinstance(response_content, PydanticResponse)
+                response_content = await rag_adapter.chat_with_index(curr_message=user_message, chat_history=chat_history, output_cls=response_format)
+                assert isinstance(response_content, PydanticResponse)
                 items = response_content.response
         except Exception as e:
             logger.exception(e)
@@ -298,29 +290,12 @@ class QuestionPaperService:
         Generate question bank by parts using parallel processing with delays and RAG.
         Updated to provide default values for school_name and examination_name to prevent DB validation errors.
         """
-        all_los = [lo for ch in request.chapters for lo in ch.learning_outcomes]
         all_generated: list[GeneratedSlotQuestion] = []
-        with propagate_attributes(
-            user_id=request.user_id,
-            session_id=request.session_id,
-            tags=[
-                "chat_type:question-bank",
-                f"board:{request.board}",
-                f"grade:{request.grade}",
-                f"subject:{request.subject}",
-            ],
-            metadata={
-                "board": request.board,
-                "grade": str(request.grade),
-                "subject": request.subject,
-                "medium": request.medium,
-                "chapters": ", ".join(ch.title for ch in request.chapters),
-                "learning_outcomes": ", ".join(all_los),
-                "question_types": ", ".join(t.type.value for t in request.template),
-                "total_marks": str(request.total_marks),
-                "model": settings.question_paper_model,
-            },
-        ):
+        with propagate_attributes(user_id=request.user_id, session_id=request.session_id, tags=[
+            f"board:{request.board}",
+            f"grade:{request.grade}",
+            f"subject:{request.subject}",
+        ]):
             existing_flat = list({q for batch in request.existing_questions for q in self._flatten_questions(batch.questions)})
             tasks = []
             for lr, questions in self._build_generation_slots(request):
