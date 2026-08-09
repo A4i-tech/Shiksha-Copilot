@@ -82,12 +82,6 @@ class MasterLessonDao extends BaseDao {
 		};
 	}
 
-	async getByType(type) {
-		let plan = await MasterLesson.findOne({ type, isDeleted: false });
-		if (plan) return plan;
-		return false;
-	}
-
 	async update(data, session = null) {
 		const result = await MasterLesson.findOneAndUpdate(
 			{

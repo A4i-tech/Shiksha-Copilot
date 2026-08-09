@@ -1,32 +1,6 @@
 const mongoose = require("mongoose");
 
 /**
- * Function to filter the template with match the following type
- * @param {*} qbConfigList 
- * @returns 
- */
-function filterTemplate(qbConfigList) {
-  const filteredTemplate = [];
-  const matchTheFollowingTemplate = [];
-  const matchTheFollowingIndex = [];
-  for (let i = 0; i < qbConfigList.length; i++) {
-    // Handle both type/Type (case-insensitive check if needed, but usually exact)
-    // Handle snake/camel for properties if they define the "Match the following"
-    if (qbConfigList[i].type === "Match the following") {
-      matchTheFollowingTemplate.push(qbConfigList[i]);
-      matchTheFollowingIndex.push(i);
-    } else {
-      filteredTemplate.push(qbConfigList[i]);
-    }
-  }
-  return {
-    matchTheFollowingTemplate,
-    matchTheFollowingIndex,
-    filteredTemplate,
-  };
-}
-
-/**
  * Function GetQuestion - Function to get question from the cache based on the template provided
  * @param {*} templateList 
  * @param {*} cacheDocs 
@@ -164,16 +138,6 @@ async function _processTemplateQuestions(template, cacheDocs, includedQuestionKe
       indices: notFoundQuestionIndices
     }
   };
-}
-
-/**
- * Function to get random index of an array
- * @param {*} array 
- * @returns random index
- */
-function getRandomIndex(array) {
-  const randomIndex = Math.floor(Math.random() * array.length);
-  return randomIndex;
 }
 
 /**
@@ -325,10 +289,6 @@ class TextQuestion {
   constructor(question = "") {
     this.question = question;
   }
-
-  getQuestion() {
-    return this.question;
-  }
 }
 
 class FourOptionsQuestion {
@@ -336,10 +296,6 @@ class FourOptionsQuestion {
     this.question = question;
     this.options = options;
     this.answer = answer;
-  }
-
-  getQuestion() {
-    return this.question;
   }
 }
 
@@ -452,7 +408,6 @@ module.exports = {
   Chapter,
   QuestionBankPartsGenerationRequest,
   getQuestions,
-  filterTemplate,
   mergeQuestions,
   fixObjectIdsInArray,
   processCacheHits,

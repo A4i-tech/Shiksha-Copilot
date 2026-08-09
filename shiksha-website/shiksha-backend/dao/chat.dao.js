@@ -38,21 +38,6 @@ class ChatDao extends BaseDao {
         }
     }
 
-    async findById(id) {
-        try {
-            return await Chat.findById(id);
-        } catch (err) {
-            throw new Error(`Failed to find chat session by ID: ${err.message}`);
-        }
-    }
-
-    async getMessages(chatHistoryId) {
-        try {
-            return await Message.find({ chatHistoryId }).sort({ createdAt: 1 });
-        } catch (err) {
-            throw new Error(`Failed to get messages for chat session: ${err.message}`);
-        }
-    }
     async addMessage(chatHistoryId, messageData) {
         try {
             return await Message.updateOne(

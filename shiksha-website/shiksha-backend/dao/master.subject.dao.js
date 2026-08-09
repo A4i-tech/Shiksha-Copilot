@@ -12,22 +12,6 @@ class MasterSubjectDao extends BaseDao {
 		super(MasterSubject);
 	}
 
-	async resolveSubjectName(identifier) {
-		if (mongoose.Types.ObjectId.isValid(identifier)) {
-			const subjectDoc = await MasterSubject.findById(identifier)
-				.select("name")
-				.lean();
-			return subjectDoc ? subjectDoc.name : str(identifier);
-		}
-		const subjectDoc = await MasterSubject.findOne({
-			$or: [{ name: identifier }, { subjectName: regexExact(identifier) }],
-		})
-			.select("name")
-			.lean();
-
-		return subjectDoc ? subjectDoc.name : str(identifier);
-	}
-
 	async resolveSubjectContext(identifier, board) {
 		let subjectCode = str(identifier);
 		let targetSubjectIds = [];

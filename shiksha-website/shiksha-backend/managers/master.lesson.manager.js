@@ -285,35 +285,6 @@ class MasterLessonManger extends BaseManager {
 		return formatApiReponse(false, "No data available", null);
 	}
 
-	async getFilteredQuestionBank(lessonId, filters) {
-		const evalaute = await this.masterResourceDao.getOne({ lessonId });
-		const questionBank = evalaute.resources.find(
-			(resource) => resource.section === "questionbank"
-		);
-		let filterLevels = filters.levels || [];
-		if (questionBank) {
-			try {
-				filterLevels = JSON.parse(filters.levels);
-			} catch (error) {
-				filterLevels = [];
-			}
-
-			if (!Array.isArray(filterLevels)) {
-				filterLevels = [];
-			}
-
-			const filteredData =
-				filterLevels.length > 0
-					? questionBank.data.filter((item) =>
-						filterLevels.includes(item.difficulty.toLowerCase())
-					)
-					: questionBank.data;
-
-			questionBank.data = filteredData;
-		}
-		return questionBank;
-	}
-
 	async generateLessonPlan(teacherId, lessonId, filters) {
 		const lessonPlan = await this._getLessonPlan(teacherId, lessonId);
 
@@ -419,20 +390,7 @@ class MasterLessonManger extends BaseManager {
 			return formatApiReponse(false, "Video not found!", { hasVideos: false });
 		}
 
-		if (result) {
-			// let filteredQuestionBank = await this.getFilteredQuestionBank(lessonId, filters);
-
-			// let instructionSet = (result[0]?.instructionSet || []).map((is) => {
-			//     if (is.type === "Evaluate") {
-			//         is.info[0].content.main = filteredQuestionBank.data;    // Private methods
-			//     }
-			//     return is;
-			// });
-
-			// result[0].instructionSet = instructionSet;
-
-			return formatApiReponse(true, "", result);
-		}
+		if (result) return formatApiReponse(true, "", result);
 		return null;
 	}
 

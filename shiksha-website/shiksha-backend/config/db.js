@@ -75,17 +75,6 @@ class DBService {
 		}
 	}
 
-	closeConnection() {
-		try {
-			if (this.connection) {
-				this.connection.close();
-				console.log("DB connection closed");
-			}
-		} catch (err) {
-			console.log("Error -> DBService -> closeConnection -> ", err);
-		}
-	}
-
 	async connectToMongoForWorker() {
 		try {
 		  console.log("connectToMongoForWorker");

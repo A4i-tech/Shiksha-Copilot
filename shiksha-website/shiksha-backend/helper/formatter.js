@@ -2,40 +2,6 @@ const _ = require('lodash');
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 
-function groupByBoard(data) {
-	const groupedData = [];
-
-	data.forEach((item) => {
-		const { board, medium, ...itemWithoutBoardMedium } = item;
-
-		let boardEntry = groupedData.find((entry) => entry.board === board);
-
-		if (!boardEntry) {
-			boardEntry = {
-				board: board,
-				mediums: [],
-			};
-			groupedData.push(boardEntry);
-		}
-
-		let mediumEntry = boardEntry.mediums.find(
-			(entry) => entry.medium === medium
-		);
-
-		if (!mediumEntry) {
-			mediumEntry = {
-				medium: medium,
-				classes: [],
-			};
-			boardEntry.mediums.push(mediumEntry);
-		}
-
-		mediumEntry.classes.push(itemWithoutBoardMedium);
-	});
-
-	return groupedData;
-}
-
 function capitalizeFirstLetter(string) {
 	return string.charAt(0).toUpperCase() + string.slice(1);
 }
@@ -81,92 +47,6 @@ function restructureResources(json) {
 
 	return result;
 }
-
-function restructureResourcesNew(sections) {
-	const extractedResult = [];
-	const additionalResult = [];
-
-	const parseByFormat = (resource, format) => {
-		const data = [];
-
-		if (!resource) return data;
-
-		switch (format) {
-			case 'json_1': {
-				for (const [difficulty, types] of Object.entries(resource)) {
-					const difficultyData = { difficulty, content: [] };
-					for (const [type, typeData] of Object.entries(types)) {
-						difficultyData.content.push({
-							type,
-							questions: typeData.content
-						});
-					}
-					data.push(difficultyData);
-				}
-				break;
-			}
-
-			case 'json_2': {
-				for (const [difficulty, topics] of Object.entries(resource)) {
-					const difficultyData = { difficulty, content: [] };
-					for (const topic of Object.values(topics)) {
-						difficultyData.content.push({
-							title: topic.title,
-							question: topic.scenario.question,
-							description: topic.scenario.description
-						});
-					}
-					data.push(difficultyData);
-				}
-				break;
-			}
-
-			case 'json_3': {
-				for (const [id, activity] of Object.entries(resource)) {
-					data.push({ id, ...activity });
-				}
-				break;
-			}
-
-			default:
-				console.warn(`Unsupported output format: ${format}`);
-		}
-
-		return data;
-	};
-
-	for (const section of sections) {
-		const { section_id: id, section_title: title, outputFormat, content } = section;
-		const extracted = content.extracted_resource || content.extracted_resources;
-		const additional = content.additional_resource || content.additional_resources;
-
-		if (extracted) {
-			extractedResult.push({
-				id,
-				title,
-				outputFormat,
-				content: parseByFormat(extracted, outputFormat)
-			});
-		}
-
-		if (additional) {
-			additionalResult.push({
-				id,
-				title,
-				outputFormat,
-				content: parseByFormat(additional, outputFormat)
-			});
-		}
-	}
-
-	return {
-		extracted: extractedResult,
-		additional: additionalResult
-	};
-}
-
-
-
 
 function restructureInstructionSet(data) {
 	let formattedInstructionSet = [];
@@ -247,15 +127,6 @@ function sortDataBySubTopics(data) {
 	return result;
 }
 
-function sortSubTopicsArray(data) {
-	return data.sort((a, b) => {
-		const subTopicA = parseFloat(a.subtopic[0].split(" ")[0]);
-		const subTopicB = parseFloat(b.subtopic[0].split(" ")[0]);
-
-		return subTopicA - subTopicB;
-	})
-}
-
 function sortSubTopicsArrayTeacher(subtopics) {
 	return subtopics
 		.map(subtopic => {
@@ -292,33 +163,6 @@ function sortSubTopicsArrayTeacher(subtopics) {
 		})
 		.map(({ isAnyLessonAll, ...rest }) => rest);
 }
-const parseDate = (dateStr, isStartOfDay = true) => {
-    const [ year , month , day] = dateStr.split('-');
-
-	let date = new Date(`${year}-${month}-${day}`);
-
-	if (isStartOfDay) {
-		date.setHours(0, 0, 0, 0);
-	} else {
-		date.setHours(23, 59, 59, 999);
-	}
-
-	const istOffset = 5.5 * 60 * 60 * 1000;
-	date = new Date(date.getTime() + istOffset);
-
-	return date;
-};
-
-const safeParseDate = (str, isStartOfDay) => {
-	if (!str || typeof str !== "string") return undefined;
-	try {
-		const d = parseDate(str, isStartOfDay);
-		return d && !isNaN(d.getTime()) ? d : undefined;
-	} catch {
-		return undefined;
-	}
-};
-
 function formatSubject(subject) {
 	return subject
 		.replace(/_\d+$/, '')
@@ -771,22 +615,17 @@ function formatTemplateSections(sections){
 
 
 module.exports = {
-	groupByBoard,
 	restructureResources,
 	sortDataBySubTopics,
 	restructureInstructionSet,
 	restructureCheckList,
-	sortSubTopicsArray,
 	sortSubTopicsArrayTeacher,
-	parseDate,
-	safeParseDate,
 	restructureCheckListforLLM,
 	formatSubject,
 	getSemester,
 	convertToCamelCase,
 	convertToSnakeCase,
 	formatSections,
-	restructureResourcesNew,
 	transformSections,
 	oldFormatStructuredData,
 	transformOldResources,

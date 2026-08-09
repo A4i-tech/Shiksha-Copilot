@@ -130,9 +130,6 @@ class BaseDao {
 		return this.Model.findByIdAndUpdate(id, { $unset: { recovery: 1 } });
 	}
 
-	async bulkUpload(dataArray) {
-		return this.Model.insertMany(dataArray);
-	}
 }
 
 module.exports = BaseDao;
