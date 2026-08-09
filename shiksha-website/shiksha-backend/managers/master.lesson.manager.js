@@ -286,12 +286,12 @@ class MasterLessonManger extends BaseManager {
 	}
 
 	async generateLessonPlan(teacherId, lessonId, filters) {
-		const lessonPlan = await this._getLessonPlan(teacherId, lessonId);
+		const lessonPlan = await this.teacherLessonPlanDao.getByTeacherAndLesson(teacherId, lessonId);
 
-		const regeneratedMasterLessonPlan = await this._getRegeneratedMasterLessonPlan(teacherId, lessonId);
+		const regeneratedMasterLessonPlan = await this.regeneratedLessonResourceDao.getOne({ generatedBy: teacherId, contentId: lessonId });
 
 		if (regeneratedMasterLessonPlan) {
-			const regeneratedRecord = await this._getRegeneratedRecord(regeneratedMasterLessonPlan.recordId);
+			const regeneratedRecord = await this.teacherLessonPlanDao.getById(regeneratedMasterLessonPlan.recordId);
 			const regenerationStatusResponse = this._handleRegeneratedRecordStatus(regeneratedRecord);
 			if (regenerationStatusResponse) return regenerationStatusResponse;
 		}
@@ -328,18 +328,6 @@ class MasterLessonManger extends BaseManager {
 			throw new Error(`Unexpected status code from Copilot bot: ${result.status}`);
 		}
 		return formatApiReponse(true, "5E tables fetched succesfully", result.data);
-	}
-
-	async _getLessonPlan(teacherId, lessonId) {
-		return await this.teacherLessonPlanDao.getByTeacherAndLesson(teacherId, lessonId);
-	}
-
-	async _getRegeneratedMasterLessonPlan(teacherId, lessonId) {
-		return await this.regeneratedLessonResourceDao.getOne({ generatedBy: teacherId, contentId: lessonId });
-	}
-
-	async _getRegeneratedRecord(recordId) {
-		return await this.teacherLessonPlanDao.getById(recordId);
 	}
 
 	_handleRegeneratedRecordStatus(regeneratedRecord) {
