@@ -21,14 +21,6 @@ class ChatDao extends BaseDao {
         }
     }
 
-    async create(sessionData) {
-        try {
-            return await Chat.create(sessionData);
-        } catch (err) {
-            throw new Error(`Failed to create chat session: ${err.message}`);
-        }
-    }
-
     async createMessage(data) {
         try {
             const newMessage = await Message.create(data);
