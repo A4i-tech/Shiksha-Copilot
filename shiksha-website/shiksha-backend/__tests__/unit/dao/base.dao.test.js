@@ -242,28 +242,6 @@ describe("BaseDao", () => {
     });
   });
 
-  describe("bulkUpload", () => {
-    it("should insert multiple documents", async () => {
-      const dataArray = [
-        { name: "User 1", email: "user1@example.com" },
-        { name: "User 2", email: "user2@example.com" },
-        { name: "User 3", email: "user3@example.com" },
-      ];
-
-      const result = await testDao.bulkUpload(dataArray);
-
-      expect(result).toHaveLength(3);
-      expect(result[0].name).toBe("User 1");
-      expect(result[1].name).toBe("User 2");
-      expect(result[2].name).toBe("User 3");
-    });
-
-    it("should handle empty array", async () => {
-      const result = await testDao.bulkUpload([]);
-      expect(result).toHaveLength(0);
-    });
-  });
-
   describe("count", () => {
     it("should count non-deleted documents", async () => {
       await testDao.create({ name: "User 1", isDeleted: false });
