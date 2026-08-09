@@ -277,53 +277,6 @@ function processCacheHits(
   return result;
 }
 
-class Question {
-  constructor(question, marks, type) {
-    this.question = question;
-    this.marks = marks;
-    this.type = type;
-  }
-}
-
-class TextQuestion {
-  constructor(question = "") {
-    this.question = question;
-  }
-}
-
-class FourOptionsQuestion {
-  constructor(question = "", options = [], answer = "") {
-    this.question = question;
-    this.options = options;
-    this.answer = answer;
-  }
-}
-
-class MatchingListQuestion {
-  constructor(columnOneValues = [], columnTwoValues = []) {
-    this.columnOneValues = columnOneValues;
-    this.columnTwoValues = columnTwoValues;
-  }
-}
-
-class QuestionBankCacheDoc {
-  constructor(
-    chapterId,
-    unitName,
-    unitLevel,
-    questions,
-    version = "v1",
-    createdAt = new Date().toISOString()
-  ) {
-    this.chapterId = chapterId;
-    this.unitName = unitName;
-    this.unitLevel = unitLevel;
-    this.questions = questions;
-    this.version = version;
-    this.createdAt = createdAt;
-  }
-}
-
 class QuestionTypeResponse {
   constructor(type, marksPerQuestion) {
     this.type = type;
@@ -342,71 +295,7 @@ class QuestionTypeResponse {
   }
 }
 
-class QuestionDistribution {
-  constructor(unitName, objective) {
-    this.unitName = unitName;
-    this.objective = objective;
-  }
-}
-
-class Template {
-  constructor(
-    type,
-    numberOfQuestions,
-    marksPerQuestion,
-    questionDistribution = []
-  ) {
-    this.type = type;
-    this.numberOfQuestions = numberOfQuestions;
-    this.marksPerQuestion = marksPerQuestion;
-    this.questionDistribution = questionDistribution;
-  }
-}
-
-class Chapter {
-  constructor(title, indexPath, learningOutcomes, subtopics = []) {
-    this.title = title;
-    this.indexPath = indexPath;
-    this.learningOutcomes = learningOutcomes;
-    this.subtopics = subtopics;
-  }
-}
-
-class QuestionBankPartsGenerationRequest {
-  constructor(
-    userId,
-    board,
-    medium,
-    grade,
-    subject,
-    chapters,
-    totalMarks,
-    template,
-    existingQuestions = []
-  ) {
-    this.userId = userId;
-    this.board = board;
-    this.medium = medium;
-    this.grade = grade;
-    this.subject = subject;
-    this.chapters = chapters;
-    this.totalMarks = totalMarks;
-    this.template = template;
-    this.existingQuestions = existingQuestions;
-  }
-}
-
 module.exports = {
-  Question,
-  TextQuestion,
-  FourOptionsQuestion,
-  MatchingListQuestion,
-  QuestionBankCacheDoc,
-  QuestionTypeResponse,
-  QuestionDistribution,
-  Template,
-  Chapter,
-  QuestionBankPartsGenerationRequest,
   getQuestions,
   mergeQuestions,
   fixObjectIdsInArray,
