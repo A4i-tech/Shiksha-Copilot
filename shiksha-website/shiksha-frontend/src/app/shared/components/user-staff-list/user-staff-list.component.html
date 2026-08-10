@@ -63,9 +63,10 @@
 										[config]="trainingStatusDropdownconfig"></app-dropdown>
 						</div>
 
-							<button 
+							<button
 							*ngIf="getType()?.type === 'user'"
 							[title]="showAdditionalFilters ? 'Remove Additional Filters' : 'Add Additional Filters'"
+							[attr.aria-label]="showAdditionalFilters ? 'Remove Additional Filters' : 'Add Additional Filters'"
 							(click)="toggleFilter()"
 									class="btn-primary flex items-center justify-center gap-2 w-full sm:w-40 xl:w-9 xl:h-9 xl:p-0 xl:justify-self-start" >
 							<img *ngIf="!showAdditionalFilters" src="assets/icons/filter-plus.svg" alt="">
@@ -134,7 +135,7 @@
 												<p class="text-sm text-content-60 mt-1">{{ item.identity.phone }}</p>
 										</div>
 										<div class="relative shrink-0">
-												<button class="py-1 px-2 rounded inline-flex items-center" (click)="actionMenu.toggleMobileMenu(i, $event)">
+												<button class="py-1 px-2 rounded inline-flex items-center" [attr.aria-label]="'More options' | translate" (click)="actionMenu.toggleMobileMenu(i, $event)">
 														<img class="w-5" src="assets/icons/more_vert.svg" alt="" />
 												</button>
 
@@ -192,7 +193,7 @@
 										<div>
 												<p class="text-xs text-content-60">{{'Status' | translate}}</p>
 												<span class="inline-flex px-3 py-0.5 sm:py-1 rounded-full"
-																[ngClass]="{'text-success bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">{{ (!item.isDeleted
+																[ngClass]="{'text-success bg-success-50': !item.isDeleted, 'text-error-a11y bg-error-50': item.isDeleted}">{{ (!item.isDeleted
 																? 'Active' : 'Inactive') | translate }}</span>
 										</div>
 										<div *ngIf="getType()?.type === 'user'" class="col-span-2">
@@ -224,7 +225,7 @@
 											<td class="text-sm p-4 border-r max-w-[20vw] break-all" *ngIf="getType()?.type === 'user'" >{{ item.school.name }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36">{{ roleName(item) }}</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36 text-center"><span class="px-3 py-2 rounded-full"
-															[ngClass]="{'text-success bg-success-50': !item.isDeleted, 'text-error bg-error-50': item.isDeleted}">{{ (!item.isDeleted
+															[ngClass]="{'text-success bg-success-50': !item.isDeleted, 'text-error-a11y bg-error-50': item.isDeleted}">{{ (!item.isDeleted
 															? 'Active' : 'Inactive') | translate }}</span>
 											</td>
 											<td class="text-sm p-4 border-r whitespace-nowrap w-36 text-center" *ngIf="getType()?.type === 'user'">
@@ -238,7 +239,7 @@
 	
 													<div class="flex justify-center">
 															<div class="relative" [class.open]="actionMenu.openStates[i]" (click)="actionMenu.toggleDesktopMenu(i, $event)">
-																	<button class="py-2 px-4 rounded inline-flex items-center">
+																	<button class="py-2 px-4 rounded inline-flex items-center" [attr.aria-label]="'More options' | translate">
 																			<img class="w-5" src="assets/icons/more_vert.svg" alt="" />
 																	</button>
 

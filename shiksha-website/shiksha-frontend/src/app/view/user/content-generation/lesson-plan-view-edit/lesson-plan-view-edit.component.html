@@ -50,7 +50,7 @@
           class="flex items-center justify-between sticky top-0 bg-white z-10 font-semibold text-content p-4"
         >
           {{ activeTab() | translate}}
-          <button *ngIf="!expandedContainer" (click)="expandedContainer = true">
+          <button *ngIf="!expandedContainer" (click)="expandedContainer = true" aria-label="Collapse navigation panel">
             <img src="assets/icons/left-arrow.svg" alt="" />
           </button>
         </div>
@@ -130,6 +130,7 @@
           class="px-4 py-2 -mb-px"
           *ngIf="expandedContainer"
           (click)="expandedContainer = false"
+          aria-label="Expand navigation panel"
         >
           <img src="assets/icons/menu.svg" alt="" />
         </button>
