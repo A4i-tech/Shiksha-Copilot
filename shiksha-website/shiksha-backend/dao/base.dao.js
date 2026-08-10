@@ -1,8 +1,14 @@
 const mongoose = require("mongoose");
 const AppError = require("../helper/app.error");
 
+/**
+ * @template {mongoose.Model<any>} TModel
+ * @template [TDocument=InstanceType<TModel>]
+ */
 class BaseDao {
+	/** @param {TModel} model */
 	constructor(model) {
+		/** @protected @type {mongoose.Model<any, {}, {}, {}, TDocument>} */
 		this.Model = model;
 	}
 

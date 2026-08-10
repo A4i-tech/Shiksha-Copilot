@@ -1,6 +1,7 @@
 const MasterClass = require("../models/master.class.model.js");
 const BaseDao = require("./base.dao.js");
 
+/** @extends {BaseDao<typeof MasterClass>} */
 class MasterClassDao extends BaseDao {
 	constructor() {
 		super(MasterClass);
@@ -21,7 +22,7 @@ class MasterClassDao extends BaseDao {
 			},
 		];
 
-		const results = await MasterClass.aggregate(pipeline).exec();
+		const results = await this.Model.aggregate(pipeline).exec();
 
 		const totalItems =
 			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
@@ -35,7 +36,7 @@ class MasterClassDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		const result = await MasterClass.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: id,
 				isDeleted: false,

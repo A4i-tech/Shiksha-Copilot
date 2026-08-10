@@ -4,6 +4,7 @@ const BaseDao = require('./base.dao.js');
 const LessonChat = require("../models/lesson.chats.model.js");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+/** @extends {BaseDao<typeof Chat>} */
 class ChatDao extends BaseDao {
     constructor() {
         super(Chat);
@@ -11,7 +12,7 @@ class ChatDao extends BaseDao {
 
     async getActiveSession(userId, date) {
         try {
-            return await Chat.findOne({
+            return await this.Model.findOne({
                 userId: new ObjectId(userId),
                 sessionDate: date,
                 endedAt: null,
@@ -63,7 +64,7 @@ class ChatDao extends BaseDao {
 
     async endSession(chatSessionId) {
         try {
-            return await Chat.findByIdAndUpdate(chatSessionId, { endedAt: new Date() });
+            return await this.Model.findByIdAndUpdate(chatSessionId, { endedAt: new Date() });
         } catch (err) {
             throw new Error(`Failed to end chat session: ${err.message}`);
         }
@@ -71,7 +72,7 @@ class ChatDao extends BaseDao {
 
     async getRequestCount(userId, fromDate, toDate) {
         try {
-            const [result] = await Chat.aggregate([
+            const [result] = await this.Model.aggregate([
                 {
                     $match: {
                         userId: new ObjectId(userId),
@@ -88,7 +89,7 @@ class ChatDao extends BaseDao {
 
     async update(id, updates) {
         try {
-            return await Chat.findByIdAndUpdate(id, updates, { new: true });
+            return await this.Model.findByIdAndUpdate(id, updates, { new: true });
         } catch (err) {
             throw new Error(`Failed to update chat session: ${err.message}`);
         }

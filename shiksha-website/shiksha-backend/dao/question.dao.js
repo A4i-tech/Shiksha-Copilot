@@ -9,17 +9,18 @@ const ObjectId = mongoose.Types.ObjectId;
 const regexExact = (val) => new RegExp(`^${escapeRegExp(String(val).trim())}$`, "i");
 const str = (val) => String(val || "").trim();
 
+/** @extends {BaseDao<typeof Question>} */
 class QuestionDao extends BaseDao {
     constructor() {
         super(Question);
     }
 
     async getDifficulties() {
-        return Question.distinct("difficulty");
+        return this.Model.distinct("difficulty");
     }
 
     async getAnswerTypes() {
-        return Question.distinct("answerType");
+        return this.Model.distinct("answerType");
     }
 
     async getQuestions(filters) {
@@ -142,7 +143,7 @@ class QuestionDao extends BaseDao {
         }
 
         console.log(`[DAO] getQuestions final query: ${JSON.stringify(query)}`);
-        const docs = await Question.find(query)
+        const docs = await this.Model.find(query)
             .sort({ "chapter.chapterNumber": 1, _id: 1 })
             .lean();
         console.log(`[DAO] getQuestions: found ${docs.length} docs`);
@@ -191,7 +192,7 @@ class QuestionDao extends BaseDao {
             return new Map();
         }
 
-        const headingStats = await Question.aggregate([
+        const headingStats = await this.Model.aggregate([
             {
                 $match: {
                     chapterId: { $in: chapterIds },
