@@ -2,13 +2,14 @@ const classAggregation = require("../aggregation/school.class.aggregation.js");
 const ClassModel = require("../models/school.class.model.js");
 const BaseDao = require("./base.dao.js");
 
+/** @extends {BaseDao<typeof ClassModel>} */
 class ClassDao extends BaseDao {
 	constructor() {
 		super(ClassModel);
 	}
 
 	async update(id, updates, session = null) {
-		const result = await ClassModel.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: id,
 				isDeleted: false,
@@ -32,7 +33,7 @@ class ClassDao extends BaseDao {
 
 
 	async updateOne(filter, updates, session = null) {
-		const result = await ClassModel.updateOne(
+		const result = await this.Model.updateOne(
 			filter,
 			updates,
 			{ session: session }

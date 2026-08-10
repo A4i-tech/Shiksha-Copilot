@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const TeacherLessonPlanDao = require("./teacher.lesson.plan.dao");
 const AppError = require("../helper/app.error");
 
+/** @extends {BaseDao<typeof MasterLesson>} */
 class MasterLessonDao extends BaseDao {
 	constructor() {
 		super(MasterLesson);
@@ -88,7 +89,7 @@ class MasterLessonDao extends BaseDao {
 	}
 
 	async update(data, session = null) {
-		const result = await MasterLesson.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: data?.id,
 				isDeleted: false,
@@ -104,7 +105,7 @@ class MasterLessonDao extends BaseDao {
 	}
 
 	async updateByFilter(filter, updateData) {
-		const result = await MasterLesson.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			filter,
 			{ $set: updateData },
 			{ new: true, timestamps:true }

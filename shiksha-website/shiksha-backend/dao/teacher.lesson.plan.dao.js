@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const AppError = require("../helper/app.error");
 
+/** @extends {BaseDao<typeof TeacherLessonPlan>} */
 class TeacherLessonPlanDao extends BaseDao {
 	constructor() {
 		super(TeacherLessonPlan);
@@ -30,7 +31,7 @@ class TeacherLessonPlanDao extends BaseDao {
 
 		let options = { new: true };
 
-		return await TeacherLessonPlan.findByIdAndUpdate(planId, update, options);
+		return await this.Model.findByIdAndUpdate(planId, update, options);
 	}
 
 	async getByTeacher(teacherId, filters) {
@@ -158,15 +159,15 @@ class TeacherLessonPlanDao extends BaseDao {
 	}
 
 	async getByTeacherAndLesson(teacherId, lessonId) {
-		return await TeacherLessonPlan.findOne({ teacherId, lessonId, isDeleted: { $ne: true } });
+		return await this.Model.findOne({ teacherId, lessonId, isDeleted: { $ne: true } });
 	}
 
 	async getByTeacherAndResource(teacherId, resourceId) {
-		return await TeacherLessonPlan.findOne({ teacherId, resourceId, isDeleted: { $ne: true } });
+		return await this.Model.findOne({ teacherId, resourceId, isDeleted: { $ne: true } });
 	}
 
 	async updateForRegenerate(teacherId, oldLessonId, newLessonId, instanceId  ) {
-		const lessonPlan = await TeacherLessonPlan.findOneAndUpdate(
+		const lessonPlan = await this.Model.findOneAndUpdate(
 			{ teacherId, lessonId: oldLessonId, isDeleted: { $ne: true } },
 			{
 				$set: {
@@ -215,7 +216,7 @@ class TeacherLessonPlanDao extends BaseDao {
 
 	async deleteLessonPlan(teacherId, lessonPlanId) {
 		try {
-			const lessonPlan = await TeacherLessonPlan.findOneAndUpdate(
+			const lessonPlan = await this.Model.findOneAndUpdate(
 				{ teacherId, lessonId: lessonPlanId, isLesson: true, isDeleted: { $ne: true } },
 				{ $set: { isDeleted: true } },
 				{ new: true }
@@ -229,7 +230,7 @@ class TeacherLessonPlanDao extends BaseDao {
 
 	async deleteResourcePlan(teacherId, resourcePlanId) {
 		try {
-			const resourcePlan = await TeacherLessonPlan.findOneAndUpdate(
+			const resourcePlan = await this.Model.findOneAndUpdate(
 				{ teacherId, resourceId: resourcePlanId, isLesson: false, isDeleted: { $ne: true } },
 				{ $set: { isDeleted: true } },
 				{ new: true }
@@ -252,7 +253,7 @@ class TeacherLessonPlanDao extends BaseDao {
 				isGenerated:true
 			};
 	
-			const regeneratedLpsCount = await TeacherLessonPlan.countDocuments(query);
+			const regeneratedLpsCount = await this.Model.countDocuments(query);
 			return regeneratedLpsCount
 		}catch(error){
 			console.error("Error getting regenerated lessonplan:", error);
@@ -262,4 +263,3 @@ class TeacherLessonPlanDao extends BaseDao {
 }
 
 module.exports = TeacherLessonPlanDao;
-

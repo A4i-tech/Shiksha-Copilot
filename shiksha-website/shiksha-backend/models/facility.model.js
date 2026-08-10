@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 
-const facilitySchema = mongoose.Schema(
+const facilitySchema = new mongoose.Schema(
 	{
 		subject: {
 			type: ObjectId,
