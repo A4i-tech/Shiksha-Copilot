@@ -30,13 +30,14 @@ function mapFilters(filters) {
 	return mapped;
 }
 
+/** @extends {BaseDao<typeof User>} */
 class UserDao extends BaseDao {
 	constructor() {
 		super(User);
 	}
 
 	async getUsersBySchoolId(schoolId) {
-		const users = await User.find({ "roles.dep": new ObjectId(schoolId), "profiles.teacher": { $exists: true } })
+		const users = await this.Model.find({ "roles.dep": new ObjectId(schoolId), "profiles.teacher": { $exists: true } })
 		return users;
 	}
 
@@ -62,13 +63,13 @@ class UserDao extends BaseDao {
 	}
 
 	async getById(userId) {
-		const user = await User.findById(userId).populate("roles.role")
+		const user = await this.Model.findById(userId).populate("roles.role")
 		return user;
 	}
 
 	async getByPhone(phone, includeSecrets) {
 		try {
-			let query = User.findOne({ "identity.phone": phone }).populate("roles.role")
+			let query = this.Model.findOne({ "identity.phone": phone }).populate("roles.role")
 			if (includeSecrets) query = query.select("+otp +rememberMeToken +loginAttempts +recovery");
 			return query;
 		} catch (err) {
@@ -77,7 +78,7 @@ class UserDao extends BaseDao {
 	}
 
 	async update(id, data, session = null) {
-		const result = await User.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{ _id: id },
 			{ $set: data },
 			{ new: true, useFindAndModify: false, runValidators: true, session: session }
@@ -89,7 +90,7 @@ class UserDao extends BaseDao {
 		let updateData = { "profiles.teacher.isProfileCompleted": true };
 		for (const [key, value] of Object.entries(profileData)) updateData[`profiles.teacher.${key}`] = value;
 
-		const updatedUser = await User.findOneAndUpdate(
+		const updatedUser = await this.Model.findOneAndUpdate(
 			{ _id: userId, "profiles.teacher": { $exists: true } },
 			{ $set: updateData },
 			{ new: true, runValidators: true }

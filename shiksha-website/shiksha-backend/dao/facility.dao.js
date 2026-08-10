@@ -1,6 +1,7 @@
 const Facility = require("../models/facility.model");
 const BaseDao = require("./base.dao");
 
+/** @extends {BaseDao<typeof Facility>} */
 class FacilityDao extends BaseDao {
 	constructor() {
 		super(Facility);
@@ -12,7 +13,7 @@ class FacilityDao extends BaseDao {
 	}
 
 	async update(data, session = null) {
-		const result = await Facility.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: data?._id,
 				isDeleted: false,

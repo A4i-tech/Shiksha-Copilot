@@ -76,7 +76,7 @@ const adminProfileSchema = new mongoose.Schema({
   },
 }, { _id: false });
 
-const userSchema = mongoose.Schema(
+const userSchema = new mongoose.Schema(
   {
     identity: {
       type: identitySchema,

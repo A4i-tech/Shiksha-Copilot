@@ -1,6 +1,7 @@
 const BaseDao = require('./base.dao');
 const TeacherTrainingBatch = require('../models/teacher.training.batch.model');
 
+/** @extends {BaseDao<typeof TeacherTrainingBatch>} */
 class TeacherTrainingBatchDao extends BaseDao {
   constructor() {
     super(TeacherTrainingBatch);

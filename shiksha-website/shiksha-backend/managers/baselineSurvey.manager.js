@@ -24,6 +24,7 @@ const mergeOthers = (arr, otherText) => {
 const resolveOther = (value, otherText) =>
   value === 'Other' && otherText ? otherText.trim() : value;
 
+/** @extends {BaseManager<BaselineSurveyDao>} */
 class BaselineSurveyManager extends BaseManager {
   constructor() {
     const dao = new BaselineSurveyDao();

@@ -1,11 +1,12 @@
 const handleError = require("../helper/handleError");
+const BaseManager = require("../managers/base.manager");
 const mongoose = require("mongoose");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
 const ObjectId = mongoose.Types.ObjectId;
 
 /**
- * @template TManager
+ * @template {BaseManager} TManager
  */
 class BaseController {
 	/**
