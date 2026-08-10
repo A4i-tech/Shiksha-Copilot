@@ -1,0 +1,264 @@
+<section class="p-4" *ngIf="config">
+  <div class="flex gap-2 items-center mb-4">
+    <img
+      src="assets/icons/back-arrow.svg"
+      alt=""
+      class="cursor-pointer"
+      (click)="backNavigation()"
+    />
+    <h1 class="text-xl font-semibold">Content management</h1>
+  </div>
+
+  <nav class="flex flex-wrap gap-2 mb-4" aria-label="Content type">
+    <a
+      *ngFor="let entity of entities"
+      [routerLink]="['/content-management', entity.key]"
+      routerLinkActive="bg-primary text-white"
+      class="px-3 py-2 rounded border border-gray-300 text-sm"
+      [attr.aria-current]="entity.key === config.key ? 'page' : null"
+    >
+      {{ entity.label }}
+    </a>
+  </nav>
+
+  <div class="flex flex-wrap items-end gap-4 mb-4">
+    <div class="flex flex-col">
+      <label class="text-sm mb-1" [attr.for]="'content-search'">Search</label>
+      <input
+        id="content-search"
+        type="text"
+        class="border border-gray-300 rounded px-3 py-2"
+        [placeholder]="'Search ' + config.label.toLowerCase()"
+        [ngModel]="searchText"
+        (ngModelChange)="onSearch($event)"
+        name="search"
+      />
+    </div>
+
+    <div class="flex flex-col">
+      <label class="text-sm mb-1" for="content-state">Records</label>
+      <select
+        id="content-state"
+        class="border border-gray-300 rounded px-3 py-2"
+        [ngModel]="recordState"
+        (ngModelChange)="onRecordStateChange($event)"
+        name="recordState"
+      >
+        <option value="0">Active</option>
+        <option value="2">Deleted</option>
+      </select>
+    </div>
+
+    <a
+      *ngIf="config.canCreate"
+      [routerLink]="['/content-management', config.key, 'new']"
+      class="px-4 py-2 rounded bg-primary text-white text-sm"
+    >
+      Add {{ config.singular.toLowerCase() }}
+    </a>
+
+    <button
+      *ngIf="config.canBulkUpload"
+      type="button"
+      class="btn-outline-primary h-9"
+      [disabled]="isUploading"
+      (click)="openBulkUpload()"
+    >
+      <div class="flex items-center justify-center gap-2">
+        <img src="assets/icons/upload.svg" alt="" />
+        <span class="text-nowrap">Bulk Upload</span>
+      </div>
+    </button>
+  </div>
+
+  <p *ngIf="isUploading" class="py-2 text-sm">
+    The check of {{ uploadFileName }} runs...
+  </p>
+
+  <p *ngIf="isLoading" class="py-4">Loading records...</p>
+
+  <div class="overflow-x-auto" *ngIf="!isLoading">
+    <table class="min-w-full text-left text-sm border border-gray-200">
+      <caption class="sr-only">
+        {{ config.label }} available to the admin
+      </caption>
+      <thead class="bg-gray-100">
+        <tr>
+          <th scope="col" class="px-3 py-2" *ngFor="let column of config.columns">
+            {{ column.label }}
+          </th>
+          <th scope="col" class="px-3 py-2">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let record of listData" class="border-t border-gray-200">
+          <td class="px-3 py-2 align-top" *ngFor="let column of config.columns">
+            {{ getColumnValue(record, column.field) }}
+          </td>
+          <td class="px-3 py-2 align-top whitespace-nowrap">
+            <a
+              class="text-primary underline mr-3"
+              [routerLink]="[
+                '/content-management',
+                config.key,
+                record._id,
+                'edit'
+              ]"
+              >Edit</a
+            >
+            <button
+              *ngIf="recordState === '0'"
+              type="button"
+              class="text-red-600 underline"
+              (click)="openConfirm('delete', record)"
+            >
+              Delete
+            </button>
+            <button
+              *ngIf="recordState === '2'"
+              type="button"
+              class="text-green-700 underline"
+              (click)="openConfirm('restore', record)"
+            >
+              Restore
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="!listData.length">
+          <td class="px-3 py-4" [attr.colspan]="config.columns.length + 1">
+            No records found.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <app-pagination
+    *ngIf="totalItems > pageSize"
+    [totalItems]="totalItems"
+    [pageSize]="pageSize"
+    [currentPage]="currentPage"
+    (pageChange)="onPageChange($event)"
+  ></app-pagination>
+
+  <app-modal *ngIf="confirmAction">
+    <h2 class="text-lg font-semibold mb-2" id="modal-title">
+      {{ confirmAction === 'delete' ? 'Delete' : 'Restore' }}
+      {{ config.singular.toLowerCase() }}
+    </h2>
+    <p class="mb-4">
+      {{
+        confirmAction === 'delete'
+          ? 'The record moves to the deleted list. Teachers can no longer see it.'
+          : 'The record returns to the active list.'
+      }}
+    </p>
+    <div class="flex justify-end gap-3">
+      <button
+        type="button"
+        class="px-4 py-2 border border-gray-300 rounded"
+        (click)="closeConfirm()"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="px-4 py-2 rounded bg-primary text-white"
+        (click)="runConfirmedAction()"
+      >
+        Confirm
+      </button>
+    </div>
+  </app-modal>
+
+  <app-modal *ngIf="modalService.showBlukUploadDialog">
+    <app-upload-popup
+      [allowedFileTypes]="uploadFileTypes"
+      [instructions]="uploadInstructions"
+      [fileHint]="'File supported .json file, up to 5MB in size'"
+      [showDownloadTemplate]="false"
+      (fileUploaded)="uploadedFile($event)"
+      (upload)="upload()"
+    ></app-upload-popup>
+  </app-modal>
+
+  <app-modal *ngIf="showUploadReport">
+    <h2 class="text-lg font-semibold mb-2" id="modal-title">
+      Upload report of {{ uploadFileName }}
+    </h2>
+
+    <p class="mb-2">{{ uploadMessage }}</p>
+
+    <p class="mb-3 text-sm text-gray-700" *ngIf="uploadSummary">
+      Rows: {{ uploadSummary.total }}. Passed: {{ uploadSummary.valid }}.
+      Failed: {{ uploadSummary.invalid }}. Saved: {{ uploadSummary.inserted }}.
+    </p>
+
+    <div class="max-h-72 overflow-y-auto mb-4">
+      <table class="min-w-full text-left text-sm">
+        <caption class="sr-only">
+          One row for each {{ config.singular.toLowerCase() }} of the file
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" class="border-b border-gray-300 px-2 py-1">Row</th>
+            <th scope="col" class="border-b border-gray-300 px-2 py-1">
+              {{ config.singular }}
+            </th>
+            <th scope="col" class="border-b border-gray-300 px-2 py-1">
+              Result
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of uploadReport">
+            <td class="border-b border-gray-200 px-2 py-1 align-top">
+              {{ row.row }}
+            </td>
+            <td class="border-b border-gray-200 px-2 py-1 align-top">
+              {{ row.identity || '-' }}
+            </td>
+            <td class="border-b border-gray-200 px-2 py-1 align-top">
+              <p
+                class="text-red-700"
+                *ngFor="let error of row.errors"
+              >
+                {{ error }}
+              </p>
+              <p
+                class="text-yellow-800"
+                *ngFor="let warning of row.warnings"
+              >
+                {{ warning }}
+              </p>
+              <p
+                class="text-green-700"
+                *ngIf="!row.errors?.length && !row.warnings?.length"
+              >
+                Ready to save.
+              </p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex justify-end gap-3">
+      <button
+        type="button"
+        class="px-4 py-2 border border-gray-300 rounded"
+        (click)="closeUpload()"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="px-4 py-2 rounded bg-primary text-white disabled:opacity-50"
+        [disabled]="!uploadCanSave || isUploading"
+        (click)="saveUpload()"
+      >
+        {{ isUploading ? 'Saving...' : 'Save the ' + config.label.toLowerCase() }}
+      </button>
+    </div>
+  </app-modal>
+</section>

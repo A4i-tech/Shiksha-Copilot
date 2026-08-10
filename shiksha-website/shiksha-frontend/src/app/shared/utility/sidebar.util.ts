@@ -13,6 +13,7 @@ export const menuItem = [
   getMenuItems('My Schedules', '/schedule', 'schedule.svg', 'schedule-light.svg', 'schedule', ['schedule.view']),
   getMenuItems('Teacher Training', '/training', 'teacher-training-light.svg', 'teacher-training.svg', 'training', ['training.view']),
   getMenuItems('Content Activity', '/content-activity', 'content-activity.svg', 'content-activity-light.svg', 'content-activity', ['content.activity.view']),
+  getMenuItems('Content Management', '/content-management', 'content-activity.svg', 'content-activity-light.svg', 'content-management', ['content.manage']),
   getMenuItems('Audit Log', '/audit-log', 'audit-log-light.svg', 'audit-log.svg', 'audit-log', ['audit.view']),
   getMenuItems('Help', '/help', 'help-light.svg', 'help.svg', 'help', ['help.view']),
   getMenuItems('FAQ', '/faq', 'faq-light.svg', 'faq.svg', 'faq', ['help.view']),

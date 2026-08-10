@@ -109,6 +109,23 @@ class BaseController {
 		handleError(result, res);
 	}
 
+	async adminUpdate(req, res) {
+		try {
+			let result = await this.manager.adminUpdate(req);
+
+			if (result.success) {
+				return res.status(200).json(result);
+			}
+
+			handleError(result, res);
+
+			return;
+		} catch (err) {
+			console.log("Error --> BaseController -> adminUpdate()", err);
+			return res.status(400).json(err);
+		}
+	}
+
 	async delete(req, res) {
 		let result = await this.manager.delete(req);
 
