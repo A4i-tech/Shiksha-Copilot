@@ -46,6 +46,19 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
 
   @Input() context!:string | undefined;
 
+  /** lines of the note above the drop zone */
+  @Input() instructions: string[] = [
+    'Make sure that every column in your file is completely filled.',
+    'Do not modify the names of the columns in your file.',
+    'The DISE Code in your file must be an 11-digit number.',
+  ];
+
+  /** hint under the browse button */
+  @Input() fileHint: string = 'File supported .xlsx file, up to 5MB in size';
+
+  /** false hides the template link for uploads that have no template */
+  @Input() showDownloadTemplate: boolean = true;
+
   /**
    * Class constructor
    * @param utilityService UtilityService

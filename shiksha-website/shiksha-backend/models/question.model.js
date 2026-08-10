@@ -92,6 +92,10 @@ const QuestionSchema = new mongoose.Schema(
 
     correctOrderById: { type: [Number], default: [] },
     correctOrderIndices: { type: [Number], default: [] },
+
+    // Soft delete. The admin question routes set this flag instead of removing
+    // the document, because generated papers still point to the question.
+    isDeleted: { type: Boolean, default: false, index: true },
   },
   { timestamps: true, strict: true }
 );

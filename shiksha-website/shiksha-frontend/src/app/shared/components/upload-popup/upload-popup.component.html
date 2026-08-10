@@ -10,9 +10,9 @@
     <h2 id="upload-dialog-title" class="text-lg font-bold mb-4">{{'Bulk Upload' | translate}}</h2>
 
     <div class="my-4 p-4 rounded bg-warn-50 text-sm text-content-80">
-        <p>1. {{ 'Make sure that every column in your file is completely filled.' | translate }}</p>
-        <p>2. {{ 'Do not modify the names of the columns in your file.' | translate }}</p>
-        <p>3. {{ 'The DISE Code in your file must be an 11-digit number.' | translate }}</p>
+        <p *ngFor="let line of instructions; let i = index">
+          {{ i + 1 }}. {{ line | translate }}
+        </p>
     </div>
     <ngx-file-drop
       dropZoneLabel="Drop files here"
@@ -35,9 +35,9 @@
             {{'Browse Files' | translate}}
           </button>
           <p class="text-content-100 text-sm">
-            {{'File supported .xlsx file, up to 5MB in size' | translate}}.
+            {{ fileHint | translate }}.
           </p>
-          <button class="text-nowrap text-base" (click)="downloadTemplate()">{{'Download Template' | translate}}</button>
+          <button *ngIf="showDownloadTemplate" class="text-nowrap text-base" (click)="downloadTemplate()">{{'Download Template' | translate}}</button>
         </div>
       </ng-template>
     </ngx-file-drop>

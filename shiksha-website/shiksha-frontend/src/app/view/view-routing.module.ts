@@ -105,6 +105,29 @@ const routes: Routes = [
         canActivate: [PermissionGuard],
       },
       {
+        path: 'content-management',
+        redirectTo: 'content-management/chapters',
+        pathMatch: 'full',
+      },
+      {
+        path: 'content-management/:entity/new',
+        loadComponent: () => import('./admin/content-management/content-edit/content-edit.component').then((c) => c.ContentEditComponent),
+        data: { permissions: ['content.manage'] },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: 'content-management/:entity/:id/edit',
+        loadComponent: () => import('./admin/content-management/content-edit/content-edit.component').then((c) => c.ContentEditComponent),
+        data: { permissions: ['content.manage'] },
+        canActivate: [PermissionGuard],
+      },
+      {
+        path: 'content-management/:entity',
+        loadComponent: () => import('./admin/content-management/content-list/content-list.component').then((c) => c.ContentListComponent),
+        data: { permissions: ['content.manage'] },
+        canActivate: [PermissionGuard],
+      },
+      {
         path: 'training',
         loadChildren: () => import('./admin/teacher-training/teacher-training.module').then((module) => module.TeacherTrainingModule),
         data: { permissions: ['training.view'] },
