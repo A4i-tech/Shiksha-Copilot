@@ -24,5 +24,6 @@ cover/
 */.env
 **/.env
 .env
+.env-*
 tests/tests-env
 **/__pycache__/
