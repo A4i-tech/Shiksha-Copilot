@@ -64,11 +64,11 @@ jobs:
     runs-on: ubuntu-latest
 
     environment:
-      name: ${{ inputs.deploy_target != '' && inputs.deploy_name }}
-      url: ${{ inputs.deploy_target == 'github-pages' && steps.ctx.outputs.page_url }}
+      name: ${{ inputs.deploy_target != '' && inputs.deploy_name || '' }}
+      url: ${{ steps.ctx.outputs.page_url || steps.deploy-azure-swa.outputs.static_web_app_url || '' }}
 
     outputs:
-      page_url: ${{ steps.ctx.outputs.page_url || steps.set-azure-url.outputs.page_url }}
+      page_url: ${{ steps.ctx.outputs.page_url || steps.deploy-azure-swa.outputs.static_web_app_url }}
 
     env:
       BACKEND_URL: ${{ inputs.api_url }}

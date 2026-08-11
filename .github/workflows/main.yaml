@@ -78,6 +78,13 @@ jobs:
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
       github.event.pull_request.head.repo.full_name == github.repository
+    # One shared preview service, and deploying repoints its branch. Serialise
+    # across PRs so two runs can't repoint it while the other is still
+    # deploying (last writer would otherwise win and the reported branch would
+    # not match what is actually live).
+    concurrency:
+      group: render-frontend-preview
+      cancel-in-progress: false
     uses: ./.github/workflows/deploy-render.yaml
     with:
       deploy-name: shiksha-frontend-preview
@@ -374,7 +381,12 @@ jobs:
           fi
           {
             echo
-            echo "[Download the full HTML report]($ARTIFACT_URL) — unzip and open \`accessibility-report-*.html\`."
+            # Upload can be skipped or fail; an empty URL would render a dead link.
+            if [ -n "${ARTIFACT_URL:-}" ]; then
+              echo "[Download the full HTML report]($ARTIFACT_URL) — unzip and open \`accessibility-report-*.html\`."
+            else
+              echo "_Report artifact was not uploaded — see the workflow log._"
+            fi
             echo
             echo "<sub>a11y-report</sub>"
           } >> "$BODY"
