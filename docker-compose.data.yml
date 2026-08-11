@@ -23,12 +23,16 @@ services:
       start_period: 10s
 
   shiksha-qdrant-uat-svc:
-    image: qdrant/qdrant:latest
+    # ponytail: pinned to v1.15.2 — matches source data's snapshot format.
+    # newer qdrant dropped RocksDB payload index, breaks restore from older snapshots.
+    image: qdrant/qdrant:v1.15.2
     container_name: shiksha-qdrant-uat-container
     restart: unless-stopped
     labels:
       environment: "uat"
       com.shiksha.service: "qdrant"
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?QDRANT_API_KEY not set}
     volumes:
       - /opt/shiksha/data/qdrant:/qdrant/storage
     networks:
