@@ -51,7 +51,7 @@
                 class="inline-flex px-3 py-0.5 sm:py-1 rounded-full capitalize"
                 [ngClass]="{
                   'text-success bg-success-50': auditLogData?.status === 'success',
-                  'text-error bg-error-50': auditLogData?.status === 'failure'
+                  'text-error-a11y bg-error-50': auditLogData?.status === 'failure'
                 }"
               >{{ (auditLogData.status === 'success' ? 'Success' : 'Failure') | translate }}</span>
             </div>
@@ -128,7 +128,7 @@
                 [ngClass]="{
                   'text-success bg-success-50':
                     auditLogData?.status === 'success',
-                  'text-error bg-error-50': auditLogData?.status === 'failure'
+                  'text-error-a11y bg-error-50': auditLogData?.status === 'failure'
                 }"
                 >{{ (auditLogData.status === 'success' ? 'Success' : 'Failure') | translate }}</span
               >

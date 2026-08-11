@@ -38,7 +38,7 @@
             <div class="grow min-w-0">
               <app-dropdown [mode]="mode" [dropDownCtrl]="$any(assignment.get('roleId'))" [dropDownValues]="scopes[i].roles" [config]="roleConfig" [submitted]="submitted" (valueChange)="assignmentChanged(i)"></app-dropdown>
             </div>
-            <button type="button" class="btn-danger w-9 h-9 !p-2 flex items-center justify-center shrink-0" *ngIf="assignments.length > 1 && mode !== 'view' && canAssign" (click)="removeAssignment(i)" [title]="'Remove role' | translate">
+            <button type="button" class="btn-danger w-9 h-9 !p-2 flex items-center justify-center shrink-0" *ngIf="assignments.length > 1 && mode !== 'view' && canAssign" (click)="removeAssignment(i)" [title]="'Remove role' | translate" [attr.aria-label]="'Remove role' | translate">
               <img class="w-5 h-5" src="assets/icons/delete-icon.svg" [alt]="'Remove role' | translate">
             </button>
           </div>

@@ -4,12 +4,12 @@
   </a>
   <ngx-spinner
     data-testid="loading-spinner"
-    bdColor="rgba(240, 240, 240, 0.3)"
+    bdColor="rgba(255, 255, 255, 0.92)"
     size="medium"
     color="#46A0F1"
     type="ball-scale-multiple"
   >
-    <p class="text-black text-sm">{{ (loaderMessage.message$ | async) ?? '' | translate }}</p>
+    <p class="text-gray-800 text-sm">{{ (loaderMessage.message$ | async) ?? '' | translate }}</p>
   </ngx-spinner>
 </div>
 <router-outlet></router-outlet>
