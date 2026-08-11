@@ -170,7 +170,16 @@ class QuestionPaperService:
             if grammar_guide:
                 grammar_topics_text = (grammar_topics_text + "\n\n" + grammar_guide).strip()
 
-        return self.prompts["question_bank_parts_gen"].format(BLOOM_TAXONOMY_GUIDE=blooms_guide, GRAMMAR_TOPICS=grammar_topics_text)
+        # Build question clarity guide, appending the maths-specific add-on when the subject is maths
+        clarity_guide = self.prompts.get("question_clarity_guide", "")
+        if "math" in request.subject.lower():
+            maths_clarity_guide = self.prompts.get("maths_question_clarity_guide", "")
+            if maths_clarity_guide:
+                clarity_guide = (clarity_guide + "\n\n" + maths_clarity_guide).strip()
+
+        return self.prompts["question_bank_parts_gen"].format(
+            BLOOM_TAXONOMY_GUIDE=blooms_guide, GRAMMAR_TOPICS=grammar_topics_text, QUESTION_CLARITY_GUIDE=clarity_guide
+        )
 
 
     @observe(name="question_generation")
