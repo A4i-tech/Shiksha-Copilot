@@ -223,7 +223,7 @@
           <ng-container *ngFor="let block of questionBankBluePrintData; let i = index">
             <div class="flex justify-between mt-5 font-bold">
               <span>{{ i + 1 }}. {{ questionTypeLabel(block.type) | translate }}</span>
-              <span>{{ block.numberOfQuestions }} X {{ formatMarks(block.marksPerQuestion) }} = {{ formatMarks((block.answerCount || block.numberOfQuestions) * block.marksPerQuestion) }}</span>
+              <span>{{ block.numberOfQuestions }} X {{ formatMarks(block.marksPerQuestion) }} = {{ formatMarks(block.answerCount * block.marksPerQuestion) }}</span>
             </div>
             <div *ngFor="let distribution of block.questionDistribution; let j = index" class="flex gap-3 mt-3 items-center">
               <span class="w-6 shrink-0">{{ j + 1 }}.</span>

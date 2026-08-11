@@ -17,8 +17,8 @@ const questionBankTemplateSchema = new Schema({
   type: { type: String },
   numberOfQuestions: { type: Number },
   marksPerQuestion: { type: Number },
-  // "N" of "answer any N of M" internal choice. Absent/equal to numberOfQuestions = no choice.
-  answerCount: { type: Number }
+  // "N" of "answer any N of M" internal choice. Equal to numberOfQuestions = no choice.
+  answerCount: { type: Number, required: true }
 });
 
 const questionDistributionSchema = new Schema({
@@ -30,8 +30,8 @@ const bluePrintTemplateSchema = new Schema({
   type: { type: String },
   numberOfQuestions: { type: Number },
   marksPerQuestion: { type: Number },
-  // "N" of "answer any N of M" internal choice. Absent/equal to numberOfQuestions = no choice.
-  answerCount: { type: Number },
+  // "N" of "answer any N of M" internal choice. Equal to numberOfQuestions = no choice.
+  answerCount: { type: Number, required: true },
   questionDistribution: [questionDistributionSchema]
 });
 

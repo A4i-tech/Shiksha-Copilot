@@ -124,8 +124,8 @@ describe("QuestionBankManager", () => {
   describe("blueprint distribution", () => {
     it("builds the exact requested blueprint", () => {
       const template = manager._applyQuestionCounts([
-        { type: "MCQ", marksPerQuestion: 1 },
-        { type: "ANSWER_LONG", marksPerQuestion: 5 },
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, answerCount: 2 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, answerCount: 1 },
       ], 7);
       const result = manager._distributeBlueprint(template, [
         { unitName: "Unit A", marks: 5 },
@@ -136,13 +136,35 @@ describe("QuestionBankManager", () => {
       ]);
 
       expect(result).toEqual([
-        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, questionDistribution: [
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, answerCount: 2, questionDistribution: [
           { unitName: "Unit B", objective: "Knowledge" },
           { unitName: "Unit B", objective: "Application" },
         ] },
-        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, questionDistribution: [
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, answerCount: 1, questionDistribution: [
           { unitName: "Unit A", objective: "Application" },
         ] },
+      ]);
+    });
+
+    it("clamps answerCount to the re-derived numberOfQuestions", () => {
+      const result = manager._applyQuestionCounts([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 10, answerCount: 8 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 4, answerCount: 2 },
+      ], 7);
+
+      expect(result).toEqual([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, answerCount: 2 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, answerCount: 1 },
+      ]);
+    });
+
+    it("keeps an answerCount that still fits the re-derived numberOfQuestions", () => {
+      const result = manager._applyQuestionCounts([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 3, answerCount: 2 },
+      ], 5);
+
+      expect(result).toEqual([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 5, answerCount: 2 },
       ]);
     });
   });

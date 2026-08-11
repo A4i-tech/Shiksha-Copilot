@@ -643,8 +643,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           picked.push(q); used.add(q._id); need--;
         }
       }
-      const requiredForRow = Number(row.answerCount) || Number(row.numberOfQuestions);
-      marks += requiredForRow * Number(row.marksPerQuestion || 0);
+      const requiredForRow = Number(row.answerCount);
+      marks += requiredForRow * Number(row.marksPerQuestion);
     }
     // Fallback fill: only from questions that don't belong to any template row's
     // (type, marksPerQuestion) group — those groups are already fully handled above,
@@ -685,7 +685,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       if (!row) { total += Number(q.marks); continue; }
       const count = (countByRow.get(row) || 0) + 1;
       countByRow.set(row, count);
-      const cap = Number(row.answerCount) || Number(row.numberOfQuestions) || Infinity;
+      const cap = Number(row.answerCount);
       if (count <= cap) total += Number(q.marks);
     }
     return total;
@@ -731,11 +731,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   recalculateTemplate(): void {
-    this.totalTemplateMarks = this.templateData.reduce((total, row) => {
-      const numberOfQuestions = Number(row.numberOfQuestions) || 0;
-      const answerCount = Number(row.answerCount) || numberOfQuestions;
-      return total + Math.min(answerCount, numberOfQuestions) * Number(row.marksPerQuestion || 0);
-    }, 0);
+    this.totalTemplateMarks = this.templateData.reduce((total, row) => (
+      total + Number(row.answerCount) * Number(row.marksPerQuestion)
+    ), 0);
   }
 
   onNumberOfQuestionsBlur(row: TemplateRow): void {
@@ -781,7 +779,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
           heading: q.heading,
           marksPerQuestion: Number(q.marks),
           numberOfQuestions: 0,
-          answerCount: templateRow ? Number(templateRow.answerCount) : undefined,
+          // No matching template row means no choice group, so every question in the
+          // section is required; numberOfQuestions is filled in below, once counted.
+          answerCount: templateRow ? Number(templateRow.answerCount) : null,
           questions: []
         });
       }
@@ -801,12 +801,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     });
 
     const finalSections = Array.from(sectionsMap.values());
+    // answerCount is mandatory on both the paper and its template now, so a section with
+    // no template row behind it settles at "answer all" once its questions are counted.
+    finalSections.forEach(s => { s.answerCount = s.answerCount ?? s.numberOfQuestions; });
     payload.questions = finalSections;
     payload.template = finalSections.map(s => ({
       type: s.type,
       numberOfQuestions: s.numberOfQuestions,
       marksPerQuestion: s.marksPerQuestion,
-      ...(s.answerCount !== undefined && { answerCount: s.answerCount }),
+      answerCount: s.answerCount,
       questionDistribution: s.questions.map((q: any) => ({ unitName: q.unitName, objective: q.objective }))
     }));
 
@@ -877,6 +880,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     payload.template = slots.map(slot => ({
       type: slot.key,
       marksPerQuestion: slot.marksPerQuestion,
+      // One slot is one question, so it is always required; this pool is only a source of
+      // candidates to pick from, the choice groups get decided on the template screen.
+      answerCount: 1,
       questionDistribution: [],
     }));
     payload.isPreview = true;

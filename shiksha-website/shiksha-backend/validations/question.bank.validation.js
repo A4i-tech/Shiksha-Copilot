@@ -7,9 +7,14 @@ const questionBankTemplateItemSchema = {
     type: Joi.string().valid(...VALID_QUESTION_TYPES).required(),
     numberOfQuestions: Joi.number(),
     marksPerQuestion: Joi.number(),
-    answerCount: Joi.number().integer().min(1).max(Joi.ref('numberOfQuestions'))
-        .optional().default(Joi.ref('numberOfQuestions'))
-        .messages({ 'number.max': '"answerCount" must be less than or equal to "numberOfQuestions"' }),
+    // numberOfQuestions is optional here (the AI question-pool request sends one slot per
+    // question and lets the backend count them), so only cross-check when it was sent.
+    answerCount: Joi.number().integer().min(1).required()
+        .when('numberOfQuestions', {
+            is: Joi.exist(),
+            then: Joi.number().max(Joi.ref('numberOfQuestions'))
+                .messages({ 'number.max': '"answerCount" must be less than or equal to "numberOfQuestions"' }),
+        }),
     description: Joi.string().optional().allow(""),
     questionDistribution: Joi.array().items(Joi.object().unknown(true)).required(),
     // Teacher-authored alternate-choice groups (see choiceGroupSchema in question.bank.model.js).
@@ -77,8 +82,7 @@ const questionBankBluePrintSchemaCreate = Joi.object({
         ...questionBankTemplateItemSchema,
         numberOfQuestions: Joi.number().integer().positive().required(),
         marksPerQuestion: Joi.number().positive().required(),
-        answerCount: Joi.number().integer().min(1).max(Joi.ref('numberOfQuestions'))
-            .optional().default(Joi.ref('numberOfQuestions'))
+        answerCount: Joi.number().integer().min(1).required().max(Joi.ref('numberOfQuestions'))
             .messages({ 'number.max': '"answerCount" must be less than or equal to "numberOfQuestions"' }),
         questionDistribution: Joi.array().items({
             unitName: Joi.string().required(),

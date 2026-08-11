@@ -45,8 +45,9 @@ export interface QuestionBankSection {
   numberOfQuestions: number;
   marksPerQuestion: number;
   questions: QuestionBankQuestion[];
-  // Absent/equal to numberOfQuestions = no choice (answer all).
-  answerCount?: number;
+  // Equal to numberOfQuestions = no choice (answer all). Always present:
+  // the backend backfills it on legacy papers and validation requires it.
+  answerCount: number;
 }
 
 export interface QuestionBankData {
@@ -95,7 +96,7 @@ export class QuestionBankDownloadService {
           children: [
             new TextRun({ text: `${roman}. ${this.translateService.instant(questionTypeLabels[section.type] || section.type)}`, bold: true }),
             new TextRun({
-              text: `\t${section.answerCount || section.numberOfQuestions} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks((section.answerCount || section.numberOfQuestions) * section.marksPerQuestion)}`,
+              text: `\t${section.answerCount} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks(section.answerCount * section.marksPerQuestion)}`,
               bold: true,
             }),
           ],
@@ -104,13 +105,12 @@ export class QuestionBankDownloadService {
         })
       );
 
-      if (section.answerCount) {
-        const allRequired = section.answerCount >= section.numberOfQuestions;
+      if (section.answerCount < section.numberOfQuestions) {
         content.push(
           new Paragraph({
             children: [
               new TextRun({
-                text: `\t${this.translateService.instant(allRequired ? 'Answer all' : 'Answer any')} ${section.answerCount} ${this.translateService.instant('of')} ${section.numberOfQuestions}`,
+                text: `\t${this.translateService.instant('Answer any')} ${section.answerCount} ${this.translateService.instant('of')} ${section.numberOfQuestions}`,
                 bold: true,
                 italics: true,
               }),
@@ -231,7 +231,9 @@ export class QuestionBankDownloadService {
   private createDocument(data: QuestionBankData, children: (Paragraph | Table)[], subtitleSuffix: string): Document {
     let totalMarks = 0;
     for (const section of data.questionBank.questions as QuestionBankSection[]) {
-      totalMarks += Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0);
+      // Only the questions a student must answer count toward the paper total, so a
+      // "answer any 5 of 7" section contributes 5 * marksPerQuestion, not 7.
+      totalMarks += Number(section.answerCount) * Number(section.marksPerQuestion);
     }
     return new Document({
       sections: [

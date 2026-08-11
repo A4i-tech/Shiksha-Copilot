@@ -49,6 +49,7 @@ describe("Question Bank Validation", () => {
         {
           type: "MCQ",
           numberOfQuestions: 10,
+          answerCount: 10,
           marksPerQuestion: 1,
           questionDistribution: [],
         },
@@ -104,6 +105,7 @@ describe("Question Bank Validation", () => {
       template: [{
         type: "MCQ",
         numberOfQuestions: 10,
+        answerCount: 10,
         marksPerQuestion: 1,
         questionDistribution: [],
       }],
@@ -134,7 +136,7 @@ describe("Question Bank Validation", () => {
       expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it("should accept answerCount as optional valid field", () => {
+    it("should accept an answerCount lower than numberOfQuestions", () => {
       mockReq.body = {
         ...validBluePrintData,
         template: [{ ...validBluePrintData.template[0], answerCount: 5 }],

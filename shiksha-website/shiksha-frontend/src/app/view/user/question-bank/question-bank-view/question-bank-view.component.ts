@@ -106,7 +106,7 @@ export class QuestionBankViewComponent implements OnInit {
           this.questionBankDetails.subjectLabel = getLabel(this.questionBankDetails.subject, this.questionBankDetails.subject, { board: this.questionBankDetails.board });
           this.questionBank = this.questionBankDetails.questionBank
           this.generatedTotalMarks = this.questionBank.questions.reduce((sum: number, section: any) => (
-            sum + Number(section.answerCount || section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
+            sum + Number(section.answerCount) * Number(section.marksPerQuestion)
           ), 0);
           this.questionBankService.getPaperConfig({
             board: this.questionBankDetails.board,

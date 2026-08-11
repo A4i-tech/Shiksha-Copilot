@@ -24,8 +24,8 @@ const questionsSchema = new Schema({
     required: true
   },
   // "N" of "answer any N of M" internal choice for this section.
-  // Absent/equal to numberOfQuestions = no choice (answer all).
-  answerCount: { type: Number },
+  // Equal to numberOfQuestions = no choice (answer all).
+  answerCount: { type: Number, required: true },
   // Teacher-authored pairwise/multi-way alternate groups (see choiceGroupSchema).
   // Individual questions carry a matching `choiceGroupId` inside their Mixed object.
   choiceGroups: [choiceGroupSchema],

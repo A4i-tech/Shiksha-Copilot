@@ -28,8 +28,9 @@ export interface QuestionSectionDto {
   numberOfQuestions: number;
   marksPerQuestion: number;
   // "N" of "answer any N of M" internal choice for this section.
-  // Absent/equal to numberOfQuestions = no choice (answer all).
-  answerCount?: number;
+  // Equal to numberOfQuestions = no choice (answer all). Always present:
+  // the backend backfills it on legacy papers and validation requires it.
+  answerCount: number;
   // Teacher-authored pairwise/multi-way alternate groups within this section.
   choiceGroups?: ChoiceGroupDto[];
   questions: QuestionDto[];

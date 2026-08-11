@@ -94,13 +94,13 @@
               {{utilityService.intToRoman(q+1)}}. {{ (questionTypeLabels[questionBankData.type] || questionBankData.type) | translate }}
             </h2>
             <b class="text-content flex items-center justify-end gap-1 min-w-[15vw] md:min-w-[7vw]">{{
-              questionBankData.answerCount || questionBankData.numberOfQuestions }} X {{ formatMarks(questionBankData.marksPerQuestion) }} =
-              {{ formatMarks((questionBankData.answerCount || questionBankData.numberOfQuestions) * questionBankData.marksPerQuestion) }}
+              questionBankData.answerCount }} X {{ formatMarks(questionBankData.marksPerQuestion) }} =
+              {{ formatMarks(questionBankData.answerCount * questionBankData.marksPerQuestion) }}
             </b>
           </div>
-          <p *ngIf="questionBankData.answerCount"
+          <p *ngIf="questionBankData.answerCount < questionBankData.numberOfQuestions"
             class="font-bold text-content" data-testid="question-answer-count-note">
-            <span class="invisible" aria-hidden="true">{{utilityService.intToRoman(q+1)}}. </span><span class="italic">{{ (questionBankData.answerCount >= questionBankData.numberOfQuestions ? 'Answer all' : 'Answer any') | translate }} {{ questionBankData.answerCount }} {{ 'of' | translate }} {{ questionBankData.numberOfQuestions }}</span>
+            <span class="invisible" aria-hidden="true">{{utilityService.intToRoman(q+1)}}. </span><span class="italic">{{ 'Answer any' | translate }} {{ questionBankData.answerCount }} {{ 'of' | translate }} {{ questionBankData.numberOfQuestions }}</span>
           </p>
           <div *ngIf="questionBankData.type !== 'MATCHING'">
             <div *ngFor="let questionData of questionBankData.questions;

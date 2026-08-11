@@ -206,7 +206,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   private marginalMarks(q: any): number {
     const row = this.matchingRow(q);
     if (!row) return Number(q.marks);
-    const cap = Number(row.answerCount) || Number(row.numberOfQuestions) || Infinity;
+    const cap = Number(row.answerCount);
     const countInGroup = this.selectedQuestions.filter(sq => this.matchingRow(sq) === row).length;
     return countInGroup < cap ? Number(q.marks) : 0;
   }
@@ -237,7 +237,7 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
       if (!row) { total += Number(q.marks); continue; }
       const count = (countByRow.get(row) || 0) + 1;
       countByRow.set(row, count);
-      const cap = Number(row.answerCount) || Number(row.numberOfQuestions) || Infinity;
+      const cap = Number(row.answerCount);
       if (count <= cap) total += Number(q.marks);
     }
     return total;
