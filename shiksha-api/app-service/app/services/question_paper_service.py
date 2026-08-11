@@ -1,5 +1,6 @@
 from collections import defaultdict
 import json
+import re
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.utils import local_unique_id
 from pydantic import Field, create_model
@@ -172,7 +173,7 @@ class QuestionPaperService:
 
         # Build question clarity guide, appending the maths-specific add-on when the subject is maths
         clarity_guide = self.prompts.get("question_clarity_guide", "")
-        if "math" in request.subject.lower():
+        if re.search(r"\bmath(s|ematics)?\b", request.subject.lower()):
             maths_clarity_guide = self.prompts.get("maths_question_clarity_guide", "")
             if maths_clarity_guide:
                 clarity_guide = (clarity_guide + "\n\n" + maths_clarity_guide).strip()
