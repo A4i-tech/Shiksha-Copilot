@@ -441,15 +441,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.submittedConfig = true;
     this.totalMarks = Number(this.f.totalMarks.value);
     this.distributeMarks();
-    const hasZeroMarksUnit = this.marksDistribution.some(unit => unit.marks === 0);
-    if (this.questionBankConfigForm.invalid || this.totalPercentage !== 100 || this.totalDistributedMarks !== this.totalMarks || hasZeroMarksUnit) {
-      if (this.totalMarks === 0) {
-        this.utilityservice.showError('Please enter a total marks value greater than 0.');
-      } else if (hasZeroMarksUnit) {
-        this.utilityservice.showError('Increase the total marks or select fewer chapters.');
-      } else {
-        this.utilityservice.showError('Please complete the configuration and distributions.');
-      }
+    if (this.totalMarks === 0) {
+      this.utilityservice.showError(this.translateService.instant('Please enter a total marks value greater than 0.'));
+      return;
+    } else if (this.marksDistribution.some(unit => unit.marks === 0)) {
+      this.utilityservice.showError(this.translateService.instant('Increase the total marks or select fewer chapters.'));
+      return;
+    } else if (this.questionBankConfigForm.invalid || this.totalPercentage !== 100 || this.totalDistributedMarks !== this.totalMarks) {
+      this.utilityservice.showError(this.translateService.instant('Please complete the configuration and distributions.'));
       return;
     }
     if (this.questionBankTypeValue === 'multiChapter' && this.f.chapter.value.length < 2) {
