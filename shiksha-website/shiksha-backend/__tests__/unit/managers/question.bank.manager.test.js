@@ -313,4 +313,76 @@ describe("QuestionBankManager", () => {
       ]);
     });
   });
+
+  describe("answerCount and choiceGroups passthrough", () => {
+    it("should pass through answerCount unchanged in question block", () => {
+      const template = [
+        {
+          type: "MCQ",
+          numberOfQuestions: 10,
+          marksPerQuestion: 1,
+          answerCount: 5,
+          questionDistribution: [
+            { unitName: "Unit A", objective: "Knowledge" },
+            { unitName: "Unit A", objective: "Application" },
+          ],
+        },
+      ];
+
+      const result = manager._withQuestionTypeMetadata(template);
+
+      expect(result[0]).toMatchObject({
+        type: "MCQ",
+        numberOfQuestions: 10,
+        marksPerQuestion: 1,
+        answerCount: 5,
+      });
+    });
+
+    it("should pass through choiceGroupId unchanged in question block", () => {
+      const template = [
+        {
+          type: "MCQ",
+          numberOfQuestions: 10,
+          marksPerQuestion: 1,
+          choiceGroupId: "cg-123",
+          questionDistribution: [
+            { unitName: "Unit A", objective: "Knowledge" },
+          ],
+        },
+      ];
+
+      const result = manager._withQuestionTypeMetadata(template);
+
+      expect(result[0]).toMatchObject({
+        type: "MCQ",
+        choiceGroupId: "cg-123",
+      });
+    });
+
+    it("should preserve both answerCount and choiceGroupId together", () => {
+      const template = [
+        {
+          type: "MCQ",
+          numberOfQuestions: 8,
+          marksPerQuestion: 2,
+          answerCount: 4,
+          choiceGroupId: "cg-456",
+          questionDistribution: [
+            { unitName: "Unit B", objective: "Analysis" },
+          ],
+        },
+      ];
+
+      const result = manager._withQuestionTypeMetadata(template);
+
+      expect(result[0]).toMatchObject({
+        type: "MCQ",
+        numberOfQuestions: 8,
+        marksPerQuestion: 2,
+        answerCount: 4,
+        choiceGroupId: "cg-456",
+      });
+    });
+  });
 });

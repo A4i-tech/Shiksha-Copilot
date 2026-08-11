@@ -8,7 +8,7 @@ import { IdleService } from 'src/app/shared/services/idle.service';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 import { formatMarks, getLabel } from 'src/app/shared/utility/constant.util';
-import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { contentItems, isOrDividerAfter, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
 @Component({
@@ -56,6 +56,7 @@ export class QuestionBankViewComponent implements OnInit {
   readonly formatMarks = formatMarks;
   readonly contentItems = contentItems;
   readonly questionContentItems = questionContentItems;
+  readonly isOrDividerAfter = isOrDividerAfter;
 
   docTypes = [
     {
@@ -105,7 +106,7 @@ export class QuestionBankViewComponent implements OnInit {
           this.questionBankDetails.subjectLabel = getLabel(this.questionBankDetails.subject, this.questionBankDetails.subject, { board: this.questionBankDetails.board });
           this.questionBank = this.questionBankDetails.questionBank
           this.generatedTotalMarks = this.questionBank.questions.reduce((sum: number, section: any) => (
-            sum + Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
+            sum + Number(section.answerCount || section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
           ), 0);
           this.questionBankService.getPaperConfig({
             board: this.questionBankDetails.board,

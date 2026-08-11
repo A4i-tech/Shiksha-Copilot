@@ -133,6 +133,67 @@ describe("Question Bank Validation", () => {
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();
     });
+
+    it("should accept answerCount as optional valid field", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: 5 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockReq.body.template[0].answerCount).toBe(5);
+    });
+
+    it("should reject answerCount if zero", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: 0 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject answerCount if negative", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: -1 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject answerCount if not an integer", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: 5.5 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject answerCount if greater than numberOfQuestions", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], numberOfQuestions: 10, answerCount: 11 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
   });
 
   describe("validateGetQuestionTypes", () => {

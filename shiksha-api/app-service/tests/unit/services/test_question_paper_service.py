@@ -178,6 +178,33 @@ class TestBuildGenerationSlots:
         with pytest.raises(ValueError, match="Unit Name"):
             list(service._build_generation_slots(request))
 
+    def test_build_slots_carries_answer_count(self, service):
+        """Test that answer_count is correctly carried through from template to generation slot."""
+        chapter = MagicMock()
+        chapter.title = "Chapter 1"
+        chapter.learning_outcomes = ["LO1"]
+        chapter.index_path = "/path/to/index"
+        chapter.subtopics = []
+
+        distribution = MagicMock()
+        distribution.unit_name = "Chapter 1"
+        distribution.objective = "remember"
+
+        template = MagicMock()
+        template.marks_per_question = 1
+        template.question_distribution = [distribution]
+        template.type = QuestionType.MCQ
+        template.answer_count = 3  # Set answer_count on template
+
+        request = MagicMock(chapters=[chapter], template=[template], unit_level="CHAPTER")
+
+        slots = list(service._build_generation_slots(request))
+
+        assert len(slots) > 0
+        record, questions = slots[0]
+        # Verify the template in the generation slot has answer_count preserved
+        assert questions[0][1].answer_count == 3
+
 
 class TestOrganizeQuestionsIntoResponse:
     """Tests for _organize_questions_into_response method."""

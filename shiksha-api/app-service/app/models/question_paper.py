@@ -140,6 +140,7 @@ class QuestionTypeResponse(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: Marking
+    answer_count: Optional[int] = None  # "N" of "answer any N of M" internal choice; None/absent means no choice (all must be answered)
     questions: List[QuestionModel]
 
 
@@ -201,6 +202,7 @@ class _Template(BaseModel):
     type: QuestionType
     number_of_questions: int
     marks_per_question: Marking
+    answer_count: Optional[int] = None  # "N" of "answer any N of M" internal choice; None/absent means no choice (all must be answered)
 
 
 class GeneratedTemplate(_Template):

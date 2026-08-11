@@ -21,6 +21,10 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   // Pre-selected questions passed from the parent to restore selections
   @Input() preSelectedQuestions: any[] = [];
 
+  // Template rows: used to cap how many selections per (type, marksPerQuestion) group
+  // actually count toward marks (choice groups let students see more than they answer).
+  @Input() templateData: any[] = [];
+
   @Input() subject: string = '';
 
   @Output() backClick = new EventEmitter<boolean>();
@@ -191,8 +195,24 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   }
 
   // --- SELECTION LOGIC ---
+  /** Template row (if any) whose type+marksPerQuestion match q — defines its choice-group cap. */
+  private matchingRow(q: any): any | undefined {
+    return (this.templateData || []).find(
+      r => r.type === q.type && Number(r.marksPerQuestion) === Number(q.marks)
+    );
+  }
+
+  /** Marks q would actually add: 0 if its group already has its required (answerCount) picks. */
+  private marginalMarks(q: any): number {
+    const row = this.matchingRow(q);
+    if (!row) return Number(q.marks);
+    const cap = Number(row.answerCount) || Number(row.numberOfQuestions) || Infinity;
+    const countInGroup = this.selectedQuestions.filter(sq => this.matchingRow(sq) === row).length;
+    return countInGroup < cap ? Number(q.marks) : 0;
+  }
+
   wouldExceedTotal(q: any): boolean {
-    return this.currentTotalMarks + Number(q.marks) > this.totalMarks;
+    return this.currentTotalMarks + this.marginalMarks(q) > this.totalMarks;
   }
 
   selectQuestion(q: any) {
@@ -210,7 +230,17 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
 
   // --- TOTALS ---
   get currentTotalMarks(): number {
-    return this.selectedQuestions.reduce((sum, q) => sum + q.marks, 0);
+    const countByRow = new Map<any, number>();
+    let total = 0;
+    for (const q of this.selectedQuestions) {
+      const row = this.matchingRow(q);
+      if (!row) { total += Number(q.marks); continue; }
+      const count = (countByRow.get(row) || 0) + 1;
+      countByRow.set(row, count);
+      const cap = Number(row.answerCount) || Number(row.numberOfQuestions) || Infinity;
+      if (count <= cap) total += Number(q.marks);
+    }
+    return total;
   }
 
   get isTotalMet(): boolean {

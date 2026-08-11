@@ -367,6 +367,10 @@ class QuestionBankManager extends BaseManager {
         itemPointer += numNeeded;
         return {
           type: template.type,
+          numberOfQuestions: template.numberOfQuestions,
+          marksPerQuestion: template.marksPerQuestion,
+          ...(template.answerCount !== undefined && { answerCount: template.answerCount }),
+          ...(template.choiceGroups && { choiceGroups: template.choiceGroups }),
           questions: blockQuestions
         };
       });

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { isOrDividerAfter } from 'src/app/shared/utility/question-bank-display.util';
 import {
   Document,
   Packer,
@@ -44,6 +45,8 @@ export interface QuestionBankSection {
   numberOfQuestions: number;
   marksPerQuestion: number;
   questions: QuestionBankQuestion[];
+  // Absent/equal to numberOfQuestions = no choice (answer all).
+  answerCount?: number;
 }
 
 export interface QuestionBankData {
@@ -92,7 +95,7 @@ export class QuestionBankDownloadService {
           children: [
             new TextRun({ text: `${roman}. ${this.translateService.instant(questionTypeLabels[section.type] || section.type)}`, bold: true }),
             new TextRun({
-              text: `\t${section.numberOfQuestions} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks(section.numberOfQuestions * section.marksPerQuestion)}`,
+              text: `\t${section.answerCount || section.numberOfQuestions} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks((section.answerCount || section.numberOfQuestions) * section.marksPerQuestion)}`,
               bold: true,
             }),
           ],
@@ -100,6 +103,22 @@ export class QuestionBankDownloadService {
           spacing: DOCX_CONFIG.spacing.sectionHeader,
         })
       );
+
+      if (section.answerCount) {
+        const allRequired = section.answerCount >= section.numberOfQuestions;
+        content.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `\t${this.translateService.instant(allRequired ? 'Answer all' : 'Answer any')} ${section.answerCount} ${this.translateService.instant('of')} ${section.numberOfQuestions}`,
+                bold: true,
+                italics: true,
+              }),
+            ],
+            spacing: DOCX_CONFIG.spacing.sectionHeader,
+          })
+        );
+      }
 
       if (section.type === 'MATCHING') {
         content.push(this.buildMatchTable(section.questions, !showAnswers));
@@ -181,6 +200,16 @@ export class QuestionBankDownloadService {
             })
           );
         }
+      }
+
+      if (isOrDividerAfter(questions, index)) {
+        paragraphs.push(
+          new Paragraph({
+            children: [new TextRun({ text: this.translateService.instant('OR'), italics: true })],
+            alignment: AlignmentType.CENTER,
+            spacing: DOCX_CONFIG.spacing.optionItem,
+          })
+        );
       }
     });
 
