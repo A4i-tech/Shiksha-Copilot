@@ -1,17 +1,15 @@
 <header class="fixed bg-shade-50 w-full h-12 faq-header">
-  <button
-    type="button"
-    class="flex items-center gap-4 mt-3 ml-3 bg-transparent border-0 p-0 cursor-pointer"
-    (click)="goBack()"
-    aria-label="Go back"
-  >
-    <img
-      class="cursor-pointer"
-      src="assets/icons/back-arrow.svg"
-      alt=""
-    />
+  <div class="flex items-center gap-4 mt-3 ml-3">
+    <button
+      type="button"
+      class="flex items-center bg-transparent border-0 p-0 cursor-pointer"
+      (click)="goBack()"
+      aria-label="Go back"
+    >
+      <img src="assets/icons/back-arrow.svg" alt="" />
+    </button>
     <img class="logo" src="assets/images/logo.svg" alt="" />
-  </button>
+  </div>
 </header>
 
 <main id="main-content" tabindex="-1" class="faq-wrapper p-4">

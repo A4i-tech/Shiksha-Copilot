@@ -9,7 +9,7 @@
     color="#46A0F1"
     type="ball-scale-multiple"
   >
-    <p class="text-black text-sm" style="color: #1f2937">{{ (loaderMessage.message$ | async) ?? '' | translate }}</p>
+    <p class="text-gray-800 text-sm">{{ (loaderMessage.message$ | async) ?? '' | translate }}</p>
   </ngx-spinner>
 </div>
 <router-outlet></router-outlet>

@@ -25,6 +25,7 @@ export const palette = {
   },
   error: {
     DEFAULT:'var(--error-DEFAULT)',
+    a11y: 'var(--error-a11y)',
     100: 'var(--error-100)',
     50: 'var(--error-50)',
     30: 'var(--error-30)'

@@ -144,11 +144,6 @@ input[type='number'] {
   @apply px-3 py-2 rounded-full text-error bg-error-50
 }
 
-.text-error-a11y {
-  // Accessible red (#b3272c ≈ 4.9:1 on bg-error-50 #fff0f0) — text-error (#de3b40) fails 4.5:1 (WCAG 1.4.3)
-  color: #b3272c;
-}
-
 .form-text-area{
   @apply w-full rounded border border-slate-200 px-4 py-2 text-sm text-slate-500 placeholder-transparent outline-none transition-all autofill:bg-white focus:border-primary focus:outline-none  disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400
 }

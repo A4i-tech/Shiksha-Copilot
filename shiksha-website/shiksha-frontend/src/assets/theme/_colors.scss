@@ -25,6 +25,8 @@ $colors: (
   ),
   error: (
     DEFAULT: #de3b40,
+    // Accessible red for text on bg-error-50 (#fff0f0): ~4.9:1, where DEFAULT fails WCAG 1.4.3 (4.5:1)
+    a11y: #b3272c,
     100:#E77E7E,
     50:#fff0f0,
     30:#F5F5F5
