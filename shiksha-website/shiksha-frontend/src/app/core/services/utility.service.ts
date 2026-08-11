@@ -47,16 +47,41 @@ export class UtilityService {
     }
   }
 
+  private readonly KNOWN_ERRORS: Record<string, string> = {
+    'jwt malformed': 'Your session has expired. Please log in again.',
+    'jwt expired': 'Your session has expired. Please log in again.',
+    'Unauthorized': 'You are not authorised to perform this action.',
+    'Cast to ObjectId failed': 'Invalid record identifier. Please refresh and try again.',
+    'Lesson Plan with this combination has already been saved!': 'A lesson plan for this chapter already exists.',
+    'Resource Plan with this combination has already been saved!': 'A resource plan for this chapter already exists.',
+    'Video not found!': 'No video is linked to this chapter yet.',
+  };
+
+  sanitizeErrorMessage(rawMessage: string | undefined, fallback: string): string {
+    if (!rawMessage) return fallback;
+    for (const [key, friendly] of Object.entries(this.KNOWN_ERRORS)) {
+      if (rawMessage.includes(key)) return friendly;
+    }
+    const technicalPattern = /\b(ObjectId|Cast|jwt|TypeError|ReferenceError|SyntaxError|ECONNREFUSED|MongoError|ValidationError)\b/i;
+    if (technicalPattern.test(rawMessage)) return fallback;
+    return rawMessage;
+  }
+
   /**
    * Function to error response and show toaster
    * @param err error
    */
   handleError(err: any) {
-    if (Array.isArray(err.error?.error)) return this.showError(err.error.error.join(', '));
+    if (Array.isArray(err.error?.error)) {
+      return this.showError(err.error.error.join(', '));
+    }
     const fallback = err.status === 401
-      ? 'Unauthorized. Please login again.'
-      : err.status >= 500 ? 'Server error. Please try again later.' : 'An error occurred. Please try again.';
-    this.showError(err.error?.message || err.error?.error || fallback);
+      ? 'Your session has expired. Please log in again.'
+      : err.status >= 500
+        ? 'Something went wrong on our end. Please try again in a moment.'
+        : 'Something went wrong. Please try again.';
+    const raw = err.error?.message || err.error?.error;
+    this.showError(this.sanitizeErrorMessage(raw, fallback));
   }
 
   /**
