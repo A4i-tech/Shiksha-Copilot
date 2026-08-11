@@ -147,6 +147,31 @@ describe("Question Bank Validation", () => {
       expect(mockReq.body.template[0].answerCount).toBe(5);
     });
 
+    it("should accept choiceGroups as optional valid field", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], choiceGroups: [{ groupId: "cg-1", answerCount: 1 }] }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockReq.body.template[0].choiceGroups).toEqual([{ groupId: "cg-1", answerCount: 1 }]);
+    });
+
+    it("should reject choiceGroups missing groupId", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], choiceGroups: [{ answerCount: 1 }] }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
     it("should reject answerCount if zero", () => {
       mockReq.body = {
         ...validBluePrintData,

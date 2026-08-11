@@ -12,6 +12,11 @@ const questionBankTemplateItemSchema = {
         .messages({ 'number.max': '"answerCount" must be less than or equal to "numberOfQuestions"' }),
     description: Joi.string().optional().allow(""),
     questionDistribution: Joi.array().items(Joi.object().unknown(true)).required(),
+    // Teacher-authored alternate-choice groups (see choiceGroupSchema in question.bank.model.js).
+    choiceGroups: Joi.array().items(Joi.object({
+        groupId: Joi.string().required(),
+        answerCount: Joi.number().integer().min(1).optional().default(1),
+    })).optional(),
 };
 
 const questionBankCommonSchema = {
