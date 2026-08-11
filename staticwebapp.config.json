@@ -1,0 +1,10 @@
+{
+  "routes": [
+    {
+      "route": "/*.js",
+      "headers": {
+        "Cache-Control": "public, max-age=1814400, immutable"
+      }
+    }
+  ]
+}
