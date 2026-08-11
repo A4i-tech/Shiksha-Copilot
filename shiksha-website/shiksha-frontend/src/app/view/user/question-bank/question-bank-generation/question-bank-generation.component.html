@@ -196,7 +196,7 @@
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Total Questions' | translate }}</label>
                 <input data-testid="template-row-count-input" class="form-control" [(ngModel)]="row.numberOfQuestions"
-                [ngModelOptions]="{ standalone: true }" (ngModelChange)="onNumberOfQuestionsChange(row)" /></td>
+                [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" (blur)="onNumberOfQuestionsBlur(row)" /></td>
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Marks per Question' | translate }}</label>
                 <input data-testid="template-row-marks-input" class="form-control" [(ngModel)]="row.marksPerQuestion"

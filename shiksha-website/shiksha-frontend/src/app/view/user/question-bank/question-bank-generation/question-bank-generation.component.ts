@@ -542,6 +542,21 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.currentStep = 2;
   }
 
+  /**
+   * `computeGroupAwareMarks`/`pickToTotalMarks` key groups by (type, marksPerQuestion)
+   * since questions aren't tagged with a choiceGroupId yet. Two rows sharing the same
+   * (type, marksPerQuestion) would collide into one group's cap, so block that combo here.
+   */
+  private hasDuplicateRowGroups(): boolean {
+    const seen = new Set<string>();
+    for (const row of this.templateData) {
+      const key = `${row.type}|${Number(row.marksPerQuestion)}`;
+      if (seen.has(key)) return true;
+      seen.add(key);
+    }
+    return false;
+  }
+
   createBluePrint(): void {
     if (!this.templateData.every(row => row.type && Number(row.numberOfQuestions) && Number(row.marksPerQuestion)) || this.totalTemplateMarks !== this.totalMarks) {
       this.utilityservice.showWarning('Template marks must equal the question paper marks.');
@@ -549,6 +564,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }
     if (!this.templateData.every(row => Number(row.answerCount) >= 1 && Number(row.answerCount) <= Number(row.numberOfQuestions))) {
       this.utilityservice.showWarning('Answer Count must be between 1 and the Number of Questions for each row.');
+      return;
+    }
+    if (this.hasDuplicateRowGroups()) {
+      this.utilityservice.showWarning('Each Question Type + Marks combination can only be used in one row. Merge duplicate rows instead of adding another with the same type and marks.');
       return;
     }
     const payload = this.getTemplatePayload();
@@ -627,7 +646,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const requiredForRow = Number(row.answerCount) || Number(row.numberOfQuestions);
       marks += requiredForRow * Number(row.marksPerQuestion || 0);
     }
+    // Fallback fill: only from questions that don't belong to any template row's
+    // (type, marksPerQuestion) group — those groups are already fully handled above,
+    // and topping them up here would silently exceed that row's numberOfQuestions cap.
     for (const q of shuffled.filter(q => !used.has(q._id))) {
+      const belongsToRow = this.templateData.some(
+        row => row.type === q.type && Number(row.marksPerQuestion) === Number(q.marks)
+      );
+      if (belongsToRow) continue;
       if (marks + Number(q.marks) > this.totalMarks) continue;
       picked.push(q); used.add(q._id); marks += Number(q.marks);
       if (marks === this.totalMarks) break;
@@ -712,7 +738,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }, 0);
   }
 
-  onNumberOfQuestionsChange(row: TemplateRow): void {
+  onNumberOfQuestionsBlur(row: TemplateRow): void {
     const numberOfQuestions = Number(row.numberOfQuestions) || 0;
     if (!Number(row.answerCount) || Number(row.answerCount) > numberOfQuestions) {
       row.answerCount = numberOfQuestions;
