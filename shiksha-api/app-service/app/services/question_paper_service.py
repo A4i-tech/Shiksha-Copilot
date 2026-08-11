@@ -1,6 +1,5 @@
 from collections import defaultdict
 import json
-import re
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.utils import local_unique_id
 from pydantic import Field, create_model
@@ -44,6 +43,7 @@ logger = logging.getLogger(__name__)
 SlotId = tuple[int, int]
 GenerationSlot = tuple[SlotId, GeneratedTemplate, QuestionDistribution]
 GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
+MATHS_SUBJECTS = {"math", "maths", "mathematics"}
 
 
 class QuestionPaperService:
@@ -56,6 +56,8 @@ class QuestionPaperService:
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
+        self.clarity_guide = self.prompts["question_clarity_guide"]
+        self.maths_clarity_guide = self.prompts["maths_question_clarity_guide"]
         self.max_questions_per_slot = 20
         self.concurrency = asyncio.Semaphore(5)
 
@@ -167,20 +169,14 @@ class QuestionPaperService:
         grammar_topics_text = self._get_grammar_topics(request, record)
         slot_types = {template.type for _, template, _ in slot}
         if slot_types & GRAMMAR_QUESTION_TYPES:
-            grammar_guide = self.prompts.get("grammar_question_types_guide", "")
-            if grammar_guide:
-                grammar_topics_text = (grammar_topics_text + "\n\n" + grammar_guide).strip()
+            grammar_guide = self.prompts["grammar_question_types_guide"]
+            grammar_topics_text = (grammar_topics_text + "\n\n" + grammar_guide).strip()
 
         # Build question clarity guide, appending the maths-specific add-on when the subject is maths
-        clarity_guide = self.prompts.get("question_clarity_guide", "")
-        if re.search(r"\bmath(s|ematics)?\b", request.subject.lower()):
-            maths_clarity_guide = self.prompts.get("maths_question_clarity_guide", "")
-            if maths_clarity_guide:
-                clarity_guide = (clarity_guide + "\n\n" + maths_clarity_guide).strip()
-
-        return self.prompts["question_bank_parts_gen"].format(
-            BLOOM_TAXONOMY_GUIDE=blooms_guide, GRAMMAR_TOPICS=grammar_topics_text, QUESTION_CLARITY_GUIDE=clarity_guide
-        )
+        clarity_guide = self.clarity_guide
+        if set(request.subject.lower().split()) & MATHS_SUBJECTS:
+            clarity_guide = (clarity_guide + "\n\n" + self.maths_clarity_guide).strip()
+        return self.prompts["question_bank_parts_gen"].format(BLOOM_TAXONOMY_GUIDE=blooms_guide, GRAMMAR_TOPICS=grammar_topics_text, QUESTION_CLARITY_GUIDE=clarity_guide)
 
 
     @observe(name="question_generation")
