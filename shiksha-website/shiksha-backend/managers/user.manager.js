@@ -121,20 +121,13 @@ class UserManager extends BaseManager {
 
     const school = schoolDependency(user.roles);
     plainUser.school = await this.schoolDao.getById(school);
-    let groupByBoards = await this.classDao.getGroupClassesByBoard(school);
-
-    let groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
+    const groupByBoards = await this.classDao.getGroupClassesByBoard(school);
+    const groupedClasseswithSubjects = await getClasswithGroupedSubjects(id);
 
     plainUser.profiles.teacher.classes = groupedClasseswithSubjects.map((classItem) => {
-      const board = groupByBoards.find(
-        (item) => item._id === classItem.board
-      );
-      const medium = board.medium.find(
-        (item) => item.medium === classItem.medium
-      );
-      const standard = medium.classDetails.find(
-        (item) => item.standard === classItem.class
-      );
+      const board = groupByBoards.find((item) => item._id === classItem.board);
+      const medium = board.medium.find((item) => item.medium === classItem.medium);
+      const standard = medium.classDetails.find((item) => item.standard === classItem.class);
 
       return {
         board: classItem.board,
@@ -143,8 +136,8 @@ class UserManager extends BaseManager {
         subject: classItem.name,
         medium: classItem.medium,
         subjectDetails: classItem.subjects,
-        boysStrength: standard.boysStrength,
-        girlsStrength: standard.girlsStrength,
+        boysStrength: classItem.boysStrength ?? standard.boysStrength,
+        girlsStrength: classItem.girlsStrength ?? standard.girlsStrength,
       };
     });
 
