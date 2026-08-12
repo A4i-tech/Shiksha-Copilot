@@ -2,7 +2,7 @@ const ExcelJS = require("exceljs");
 const { PassThrough } = require("stream");
 const { uploadStreamToStorage } = require("../services/azure.blob.service");
 
-async function exportExcel({ rows, filename, worksheetName, columns, toRow, additionalWorksheets = [] }) {
+async function exportExcel({ filename, worksheets }) {
   const fileStream = new PassThrough();
   const upload = uploadStreamToStorage(fileStream, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").catch((err) => {
     fileStream.destroy();
@@ -11,8 +11,8 @@ async function exportExcel({ rows, filename, worksheetName, columns, toRow, addi
   const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: fileStream, useStyles: true });
 
   const write = (async () => {
-    for (const sheet of [{ rows, worksheetName, columns, toRow }, ...additionalWorksheets]) {
-      const worksheet = workbook.addWorksheet(sheet.worksheetName);
+    for (const sheet of worksheets) {
+      const worksheet = workbook.addWorksheet(sheet.name);
       worksheet.columns = sheet.columns;
       const headerRow = worksheet.getRow(1);
       headerRow.height = 20;

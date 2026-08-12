@@ -320,14 +320,16 @@ class UserManager extends BaseManager {
       let errorUrl;
       if (validationErrors.length) {
         errorUrl = await exportExcel({
-          rows: validationErrors,
           filename: `Teacher-Error-Log-${userId}-${Date.now()}`,
-          worksheetName: "Validation Errors",
-          columns: [
-            { header: "Row Number", key: "row", width: 15 },
-            { header: "Error Message", key: "message", width: 50 },
-          ],
-          toRow: (error) => error,
+          worksheets: [{
+            name: "Validation Errors",
+            rows: validationErrors,
+            columns: [
+              { header: "Row Number", key: "row", width: 15 },
+              { header: "Error Message", key: "message", width: 50 },
+            ],
+            toRow: (error) => error,
+          }],
         });
         await AuditLog.create({ eventType: "Teachers Import", status: "failure", logUrl: errorUrl, userId, name: userName });
       }
@@ -342,15 +344,17 @@ class UserManager extends BaseManager {
       const successCount = insertedUsers.length;
       const failureCount = users.length - successCount;
       const uploadUrl = await exportExcel({
-        rows: [{ totalRecords: users.length, successCount, failureCount }],
         filename: `Bulk-Upload-Summary-${userId}-${Date.now()}.xlsx`,
-        worksheetName: "Upload Summary",
-        columns: [
-          { header: "Total Records", key: "totalRecords", width: 20 },
-          { header: "Success Count", key: "successCount", width: 20 },
-          { header: "Failure Count", key: "failureCount", width: 20 },
-        ],
-        toRow: (summary) => summary,
+        worksheets: [{
+          name: "Upload Summary",
+          rows: [{ totalRecords: users.length, successCount, failureCount }],
+          columns: [
+            { header: "Total Records", key: "totalRecords", width: 20 },
+            { header: "Success Count", key: "successCount", width: 20 },
+            { header: "Failure Count", key: "failureCount", width: 20 },
+          ],
+          toRow: (summary) => summary,
+        }],
       });
       await AuditLog.create({ eventType: "Teachers Import", status: "success", logUrl: uploadUrl, userId, name: userName });
 
@@ -521,25 +525,27 @@ class UserManager extends BaseManager {
       }
       const userCursor = await this.dao.getCursor(mergedFilter, sortOrderObject, status);
       const fileUrl = await exportExcel({
-        rows: userCursor,
         filename: `Teacher-Export-${userId}--${Date.now()}`,
-        worksheetName: "Users",
-        columns: [
-          { header: "Teacher Name", key: "teacherName", width: 30 },
-          { header: "School Name", key: "schoolName", width: 30 },
-          { header: "Phone Number", key: "phoneNumber", width: 15 },
-          { header: "Roles", key: "roles", width: 30 },
-          { header: "Status of Teacher", key: "teacherStatus", width: 15 },
-          { header: "Training Status", key: "trainingStatus", width: 15 },
-        ],
-        toRow: (user) => ({
-          teacherName: user.identity.name,
-          schoolName: user.school.name,
-          phoneNumber: user.identity.phone,
-          roles: user.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => assignment.role.name).join(", "),
-          teacherStatus: user.isDeleted ? "Inactive" : "Active",
-          trainingStatus: user.trainingStatus === "trained" ? "Trained" : "Untrained",
-        }),
+        worksheets: [{
+          name: "Users",
+          rows: userCursor,
+          columns: [
+            { header: "Teacher Name", key: "teacherName", width: 30 },
+            { header: "School Name", key: "schoolName", width: 30 },
+            { header: "Phone Number", key: "phoneNumber", width: 15 },
+            { header: "Roles", key: "roles", width: 30 },
+            { header: "Status of Teacher", key: "teacherStatus", width: 15 },
+            { header: "Training Status", key: "trainingStatus", width: 15 },
+          ],
+          toRow: (user) => ({
+            teacherName: user.identity.name,
+            schoolName: user.school.name,
+            phoneNumber: user.identity.phone,
+            roles: user.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => assignment.role.name).join(", "),
+            teacherStatus: user.isDeleted ? "Inactive" : "Active",
+            trainingStatus: user.trainingStatus === "trained" ? "Trained" : "Untrained",
+          }),
+        }],
       });
 
       await AuditLog.create({ eventType: "Teachers Export", status: "success", logUrl: fileUrl, userId, name: userName });
