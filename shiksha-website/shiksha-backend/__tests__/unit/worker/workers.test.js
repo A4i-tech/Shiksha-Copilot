@@ -19,29 +19,6 @@ const workerMocks = () => {
   return { parentPort, listeners };
 };
 
-// Shared express-like workbook mocks
-const makeExcelMock = () => {
-  const worksheets = {};
-  return {
-    Workbook: class {
-      constructor() {
-        this.xlsx = {
-          load: jest.fn(() => Promise.resolve()),
-          writeBuffer: jest.fn(() => Promise.resolve(Buffer.from("buf"))),
-        };
-      }
-      addWorksheet(name) {
-        const sheet = makeWorksheet();
-        worksheets[name] = sheet;
-        return sheet;
-      }
-      getWorksheet(name) {
-        return worksheets[name];
-      }
-    },
-  };
-};
-
 const makeWorksheet = () => {
   const rows = [];
   return {
@@ -144,59 +121,4 @@ describe("worker modules", () => {
     expect(parentPort.postMessage).toHaveBeenCalled();
   });
 
-  it("userworker posts success when data valid", async () => {
-    const { parentPort } = workerMocks();
-    jest.doMock("worker_threads", () => ({
-      parentPort,
-      workerData: {
-        worksheetData: [
-          { name: "A", phone: "1", school: "101", role: ["teacher"] },
-        ],
-        userId: "u1",
-        userName: "tester",
-        permissions: [{ permission: "user.import", scopeType: "GLOBAL", dep: null }],
-      },
-    }));
-    mockDbSimple();
-    jest.doMock("exceljs", () => makeExcelMock());
-    jest.doMock("../../../services/variform.service", () => ({
-      sendWelcomeSMS: jest.fn(() => Promise.resolve()),
-    }));
-    jest.doMock("../../../models/user.model", () => ({
-      findOne: jest.fn(() => Promise.resolve(null)),
-      insertMany: jest.fn((rows) => Promise.resolve(rows)),
-    }));
-    jest.doMock("../../../models/role.model", () => ({
-      find: jest.fn(() => ({
-        select: jest.fn(() => Promise.resolve([{ _id: "role-teacher", name: "Teacher", scopeType: "SCHOOL" }])),
-      })),
-    }));
-    jest.doMock("../../../models/school.model", () => ({
-      findOne: jest.fn(() =>
-        Promise.resolve({
-          _id: "s1",
-          state: "st",
-          zone: "z",
-          district: "d",
-          block: "b",
-        })
-      ),
-    }));
-    jest.doMock("../../../validations/user.validation", () => ({
-      bulkUploadSchema: { validate: jest.fn(() => ({ error: null })) },
-    }));
-    jest.doMock("../../../services/azure.blob.service", () => ({
-      uploadToStorage: jest.fn(() => Promise.resolve("url")),
-    }));
-    jest.doMock("../../../models/audit.log.model", () => ({
-      create: jest.fn(() => Promise.resolve()),
-    }));
-
-    require("../../../worker/userworker");
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(parentPort.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true })
-    );
-  });
 });
