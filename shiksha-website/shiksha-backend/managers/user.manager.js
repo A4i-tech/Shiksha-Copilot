@@ -8,6 +8,7 @@ const {
 } = require("../aggregation/user.aggregation");
 const { Worker } = require("worker_threads");
 const formatApiReponse = require("../helper/response");
+const exportExcel = require("../helper/excel.export.helper");
 const path = require("path");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const AppError = require("../helper/app.error");
@@ -22,6 +23,7 @@ const { getRolePermissions, getPermission, schoolDependency } = require("../help
 const { dependencyMatches, assertCanAssign, assignmentDependencyFilter, hasAssignmentScope, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
+const AuditLog = require("../models/audit.log.model");
 
 async function prepareAssignments(input, actor, current, teacher, permission) {
   const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });
@@ -398,78 +400,70 @@ class UserManager extends BaseManager {
   }
 
   async export(req) {
-    const {
-      page = 1,
-      limit,
-      filter = {},
-      sortBy = "createdAt",
-      sortOrder = "desc",
-      search,
-      includeDeleted,
-    } = req.query;
-    const sortOrderObject =
-      sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
-
-    const searchFilter = {};
-
-    if (search) {
-      const searchFields = ["identity.name", "identity.phone"];
-
-      searchFilter.$or = searchFields.map((field) => ({
-        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
-      }));
-    }
-
-    let mergedFilter = intersectFilters(filter, searchFilter);
-    mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "user.export", "school"));
-
-    let status = {};
-
-    if (includeDeleted === "2") {
-      status = { isDeleted: true };
-    } else if (includeDeleted === "0") {
-      status = { isDeleted: false };
-    }
-    const users = await this.dao.getAll(
-      parseInt(page),
-      parseInt(limit),
-      mergedFilter,
-      sortOrderObject,
-      status
-    );
-
-    const userId = req.user._id;
+    const userId = String(req.user._id);
     const userName = req.user.identity.name;
 
-    const worker = new Worker(
-      path.resolve(__dirname, "../worker/exportuserworker.js")
-    );
+    try {
+      const {
+        filter = {},
+        sortBy = "createdAt",
+        sortOrder = "desc",
+        search,
+        includeDeleted,
+      } = req.query;
+      const sortOrderObject =
+        sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-    worker.postMessage({
-      users: users.results,
-      userId: userId.toString(),
-      userName,
-    });
+      const searchFilter = {};
 
-    worker.on("message", (result) => {
-      console.log("Worker result:", result);
-    });
+      if (search) {
+        const searchFields = ["identity.name", "identity.phone"];
 
-    worker.on("error", (err) => {
-      console.error("Worker error:", err);
-    });
-
-    worker.on("exit", (code) => {
-      if (code !== 0) {
-        console.error(`Worker stopped with exit code ${code}`);
+        searchFilter.$or = searchFields.map((field) => ({
+          [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
+        }));
       }
-    });
 
-    return formatApiReponse(
-      true,
-      "Teacher export initiated, please verify for audit logs!",
-      ""
-    );
+      let mergedFilter = intersectFilters(filter, searchFilter);
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "user.export", "school"));
+
+      let status = {};
+
+      if (includeDeleted === "2") {
+        status = { isDeleted: true };
+      } else if (includeDeleted === "0") {
+        status = { isDeleted: false };
+      }
+      const userCursor = await this.dao.getCursor(mergedFilter, sortOrderObject, status);
+      const fileUrl = await exportExcel({
+        rows: userCursor,
+        filename: `Teacher-Export-${userId}--${Date.now()}`,
+        worksheetName: "Users",
+        columns: [
+          { header: "Teacher Name", key: "teacherName", width: 30 },
+          { header: "School Name", key: "schoolName", width: 30 },
+          { header: "Phone Number", key: "phoneNumber", width: 15 },
+          { header: "Roles", key: "roles", width: 30 },
+          { header: "Status of Teacher", key: "teacherStatus", width: 15 },
+          { header: "Training Status", key: "trainingStatus", width: 15 },
+        ],
+        toRow: (user) => ({
+          teacherName: user.identity.name,
+          schoolName: user.school.name,
+          phoneNumber: user.identity.phone,
+          roles: user.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => assignment.role.name).join(", "),
+          teacherStatus: user.isDeleted ? "Inactive" : "Active",
+          trainingStatus: user.trainingStatus === "trained" ? "Trained" : "Untrained",
+        }),
+      });
+
+      await AuditLog.create({ eventType: "Teachers Export", status: "success", logUrl: fileUrl, userId, name: userName });
+
+      return formatApiReponse(true, "Teacher export completed.", { fileUrl });
+    } catch (err) {
+      await AuditLog.create({ eventType: "Teachers Export", status: "failure", logUrl: null, userId, name: userName });
+      return formatApiReponse(false, err.message, err);
+    }
   }
 
   async getAll({ page, limit, filters, sort, status, permissions, permission }) {

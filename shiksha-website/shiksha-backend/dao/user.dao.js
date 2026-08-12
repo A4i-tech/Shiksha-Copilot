@@ -35,6 +35,10 @@ class UserDao extends BaseDao {
 		super(User);
 	}
 
+	getCursor(filters, sort, status) {
+		return userAggregation.getUserCursor({ ...mapFilters(filters), ...status }, sort);
+	}
+
 	async getUsersBySchoolId(schoolId) {
 		const users = await User.find({ "roles.dep": new ObjectId(schoolId), "profiles.teacher": { $exists: true } })
 		return users;

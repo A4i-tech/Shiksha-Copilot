@@ -74,42 +74,6 @@ describe("worker modules", () => {
     }));
   };
 
-  it("exportuserworker posts success message", async () => {
-    const { parentPort } = workerMocks();
-    jest.doMock("worker_threads", () => ({ parentPort }));
-    jest.doMock("exceljs", () => makeExcelMock());
-    mockDbSimple();
-    const uploadToStorage = jest.fn(() => Promise.resolve("url"));
-    jest.doMock("../../../services/azure.blob.service", () => ({
-      uploadToStorage,
-    }));
-    const create = jest.fn(() => Promise.resolve());
-    jest.doMock("../../../models/audit.log.model", () => ({ create }));
-
-    require("../../../worker/exportuserworker");
-    await Promise.resolve();
-
-    await parentPort.emit("message", {
-      users: [
-        {
-          identity: { name: "T", phone: "1" },
-          roles: [{ role: { name: "Teacher", scopeType: "SCHOOL" } }],
-          school: { name: "S" },
-          isDeleted: false,
-          trainingStatus: "trained",
-        },
-      ],
-      userId: "1",
-      userName: "tester",
-    });
-
-    expect(uploadToStorage).toHaveBeenCalled();
-    expect(create).toHaveBeenCalled();
-    expect(parentPort.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true })
-    );
-  });
-
   it("bulkuploadworker posts validation error message", async () => {
     const { parentPort } = workerMocks();
     jest.doMock("worker_threads", () => ({ parentPort }));
