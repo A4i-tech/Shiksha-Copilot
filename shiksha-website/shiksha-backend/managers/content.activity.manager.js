@@ -1,7 +1,8 @@
 const formatApiReponse = require("../helper/response");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const ExcelJS = require("exceljs");
-const { uploadToStorage } = require("../services/azure.blob.service");
+const { PassThrough } = require("stream");
+const { uploadStreamToStorage } = require("../services/azure.blob.service");
 const AuditLog = require("../models/audit.log.model");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
@@ -33,9 +34,19 @@ class ContentActivityManager {
 
     try {
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
-      const activities = await this.regeneratedLogDao.getAllContentActivity(intersectFilters(activityFilters(req.query), scopeFilter));
+      const activityCursor = this.regeneratedLogDao.getContentActivityCursor(intersectFilters(activityFilters(req.query), scopeFilter));
+      const fileStream = new PassThrough();
+      const filename = `Content-Activity-Export-${userId}--${Date.now()}`;
+      const upload = uploadStreamToStorage(
+        fileStream,
+        filename,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ).catch((err) => {
+        fileStream.destroy();
+        throw err;
+      });
 
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: fileStream, useStyles: true });
       const worksheet = workbook.addWorksheet("ContentActivity");
       worksheet.columns = [
         { header: "Teacher Name", key: "userName", width: 30 },
@@ -43,15 +54,6 @@ class ContentActivityManager {
         { header: "Generated Date", key: "createdAt", width: 30 },
         { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
       ];
-
-      activities.results.forEach((activity) => {
-        worksheet.addRow({
-          userName: activity.userName,
-          genContent: activity.genContent,
-          createdAt: activity.createdAt,
-          teacherLessonPlanStatus: activity.teacherLessonPlanStatus,
-        });
-      });
 
       const headerRow = worksheet.getRow(1);
       headerRow.height = 20;
@@ -67,13 +69,20 @@ class ContentActivityManager {
           size: 12,
         };
       });
+      headerRow.commit();
 
-      const fileBuffer = await workbook.xlsx.writeBuffer();
-      const fileUrl = await uploadToStorage(
-        fileBuffer,
-        `Content-Activity-Export-${userId}--${Date.now()}`,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
+      const write = (async () => {
+        for await (const activity of activityCursor) {
+          worksheet.addRow(activity).commit();
+        }
+        worksheet.commit();
+        await workbook.commit();
+      })().catch((err) => {
+        fileStream.destroy();
+        throw err;
+      });
+
+      const [, fileUrl] = await Promise.all([write, upload]);
 
       await AuditLog.create({
         eventType: "Content Activity Export",

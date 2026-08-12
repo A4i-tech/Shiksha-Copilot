@@ -57,6 +57,18 @@ async function uploadToStorage(file, fileName, mimeType) {
     }
 }
 
+async function uploadStreamToStorage(stream, fileName, mimeType) {
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    if (!await containerClient.exists()) await containerClient.create();
+
+    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+    await blockBlobClient.uploadStream(stream, 4 * 1024 * 1024, 2, {
+        blobHTTPHeaders: { blobContentType: mimeType },
+    });
+
+    return getPreSignedUrl(fileName, 7 * 24 * 60 * 60);
+}
+
 async function getPreSignedUrl(blobName, expiryInSeconds) {
     const now = new Date();
     const expiryTime = new Date(now);
@@ -131,4 +143,4 @@ async function getPreSignedFileUrl(filePath) {
     return fileUrl;
 }
 
-module.exports = { uploadToStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl, getBlobContent };
+module.exports = { uploadToStorage, uploadStreamToStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl, getBlobContent };
