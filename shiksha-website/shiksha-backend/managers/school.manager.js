@@ -5,8 +5,7 @@ const SchoolDao = require("../dao/school.dao");
 const ClassDao = require("../dao/school.class.dao");
 const UserDao = require("../dao/user.dao");
 const ExcelJS = require("exceljs");
-const { PassThrough } = require("stream");
-const { uploadStreamToStorage } = require("../services/azure.blob.service");
+const exportExcel = require("../helper/excel.export.helper");
 const AuditLog = require("../models/audit.log.model");
 const schoolAggregation = require("../aggregation/school.aggregation");
 const mongoose = require("mongoose");
@@ -391,47 +390,21 @@ class SchoolManager extends BaseManager {
 
 
       const schoolCursor = this.dao.getCursor({ ...mergedFilter, ...status }, sortOrderObject);
-      const fileStream = new PassThrough();
-      const upload = uploadStreamToStorage(
-        fileStream,
-        `School-Export-${userId}--${Date.now()}`,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      ).catch((err) => {
-        fileStream.destroy();
-        throw err;
+      const fileUrl = await exportExcel({
+        rows: schoolCursor,
+        filename: `School-Export-${userId}--${Date.now()}`,
+        worksheetName: "Schools",
+        columns: [
+          { header: "DISE Code", key: "schoolId", width: 15 },
+          { header: "School Name", key: "name", width: 45 },
+          { header: "State", key: "state", width: 20 },
+          { header: "Zone", key: "zone", width: 20 },
+          { header: "District", key: "district", width: 20 },
+          { header: "Taluk", key: "block", width: 20 },
+          { header: "Status", key: "status", width: 20 },
+        ],
+        toRow: (school) => ({ ...school, status: school.isDeleted ? "Inactive" : "Active" }),
       });
-      const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: fileStream, useStyles: true });
-      const worksheet = workbook.addWorksheet("Schools");
-      worksheet.columns = [
-        { header: "DISE Code", key: "schoolId", width: 15 },
-        { header: "School Name", key: "name", width: 45 },
-        { header: "State", key: "state", width: 20 },
-        { header: "Zone", key: "zone", width: 20 },
-        { header: "District", key: "district", width: 20 },
-        { header: "Taluk", key: "block", width: 20 },
-        { header: "Status", key: "status", width: 20 },
-      ];
-
-      const headerRow = worksheet.getRow(1);
-      headerRow.height = 20;
-      headerRow.eachCell((cell) => {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF46A0F1" } };
-        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
-      });
-      headerRow.commit();
-
-      const write = (async () => {
-        for await (const school of schoolCursor) {
-          worksheet.addRow({ ...school, status: school.isDeleted ? "Inactive" : "Active" }).commit();
-        }
-        worksheet.commit();
-        await workbook.commit();
-      })().catch((err) => {
-        fileStream.destroy();
-        throw err;
-      });
-
-      const [, fileUrl] = await Promise.all([write, upload]);
       await AuditLog.create({ eventType: "Schools Export", status: "success", logUrl: fileUrl, userId, name: userName });
 
       return formatApiReponse(true, "School export completed.", { fileUrl });

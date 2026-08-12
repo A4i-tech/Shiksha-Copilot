@@ -1,8 +1,6 @@
 const formatApiReponse = require("../helper/response");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
-const ExcelJS = require("exceljs");
-const { PassThrough } = require("stream");
-const { uploadStreamToStorage } = require("../services/azure.blob.service");
+const exportExcel = require("../helper/excel.export.helper");
 const AuditLog = require("../models/audit.log.model");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
@@ -35,54 +33,18 @@ class ContentActivityManager {
     try {
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
       const activityCursor = this.regeneratedLogDao.getContentActivityCursor(intersectFilters(activityFilters(req.query), scopeFilter));
-      const fileStream = new PassThrough();
-      const filename = `Content-Activity-Export-${userId}--${Date.now()}`;
-      const upload = uploadStreamToStorage(
-        fileStream,
-        filename,
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      ).catch((err) => {
-        fileStream.destroy();
-        throw err;
+      const fileUrl = await exportExcel({
+        rows: activityCursor,
+        filename: `Content-Activity-Export-${userId}--${Date.now()}`,
+        worksheetName: "ContentActivity",
+        columns: [
+          { header: "Teacher Name", key: "userName", width: 30 },
+          { header: "Content generated", key: "genContent", width: 50 },
+          { header: "Generated Date", key: "createdAt", width: 30 },
+          { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
+        ],
+        toRow: (activity) => activity,
       });
-
-      const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: fileStream, useStyles: true });
-      const worksheet = workbook.addWorksheet("ContentActivity");
-      worksheet.columns = [
-        { header: "Teacher Name", key: "userName", width: 30 },
-        { header: "Content generated", key: "genContent", width: 50 },
-        { header: "Generated Date", key: "createdAt", width: 30 },
-        { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
-      ];
-
-      const headerRow = worksheet.getRow(1);
-      headerRow.height = 20;
-      headerRow.eachCell((cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FF46A0F1" },
-        };
-        cell.font = {
-          bold: true,
-          color: { argb: "FFFFFFFF" },
-          size: 12,
-        };
-      });
-      headerRow.commit();
-
-      const write = (async () => {
-        for await (const activity of activityCursor) {
-          worksheet.addRow(activity).commit();
-        }
-        worksheet.commit();
-        await workbook.commit();
-      })().catch((err) => {
-        fileStream.destroy();
-        throw err;
-      });
-
-      const [, fileUrl] = await Promise.all([write, upload]);
 
       await AuditLog.create({
         eventType: "Content Activity Export",
