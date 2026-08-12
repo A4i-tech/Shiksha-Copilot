@@ -102,42 +102,42 @@ class TestHelperFunctions:
 
     def test_get_sample_text_from_dict(self):
         """Test extracting sample text from nested dict."""
-        from app.utils.utils import get_sample_text
+        from app.utils.utils import get_sample_texts
 
         data = {"instructions": "This is a test instruction", "title": "Test"}
 
-        result = next(get_sample_text(data))
+        result = next(get_sample_texts(data))
         assert "test instruction" in result.lower()
 
     def test_get_sample_text_from_list(self):
         """Test extracting sample text from list."""
-        from app.utils.utils import get_sample_text
+        from app.utils.utils import get_sample_texts
 
         data = [
             {"question_text": "What is this test question?"},
             {"answer": "This is an answer"},
         ]
 
-        result = next(get_sample_text(data))
+        result = next(get_sample_texts(data))
         assert "test question" in result.lower()
 
     def test_get_sample_text_empty_data(self):
         """Test with empty data structure."""
-        from app.utils.utils import get_sample_text
+        from app.utils.utils import get_sample_texts
 
-        assert next(get_sample_text({}), None) is None
-        assert next(get_sample_text([]), None) is None
+        assert next(get_sample_texts({}), None) is None
+        assert next(get_sample_texts([]), None) is None
 
     def test_get_sample_text_prioritizes_instructions(self):
         """Test that instructions field is prioritized."""
-        from app.utils.utils import get_sample_text
+        from app.utils.utils import get_sample_texts
 
         data = {
             "title": "Short",
             "instructions": "This is a longer instruction text with multiple words",
         }
 
-        result = next(get_sample_text(data))
+        result = next(get_sample_texts(data))
         assert "longer instruction" in result.lower()
 
 
