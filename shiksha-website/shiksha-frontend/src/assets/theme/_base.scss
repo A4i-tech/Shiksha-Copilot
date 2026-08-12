@@ -49,6 +49,9 @@
 .btn-outline-primary:hover {
   @apply bg-primary-50;
 }
+.btn-outline-primary:disabled {
+  @apply pointer-events-none cursor-not-allowed opacity-50;
+}
 
 .form-control{
   @apply appearance-none border border-content-50 rounded h-9 w-full py-2 px-3 text-content leading-tight focus:outline-none;
@@ -138,6 +141,9 @@ input[type='number'] {
 
 .btn-danger:hover {
   @apply bg-error-100;
+}
+.btn-danger:disabled {
+  @apply pointer-events-none cursor-not-allowed opacity-50;
 }
 
 .error-chip{
