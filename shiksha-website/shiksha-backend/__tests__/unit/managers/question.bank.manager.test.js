@@ -239,7 +239,7 @@ describe("QuestionBankManager", () => {
       expect(result.message).toBe("Translation processed successfully");
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringContaining("/question-paper/translate-json"),
-        { target_language: "Kannada", json_data: { title: "Test" } }
+        { target_language: "Kannada", json_data: { title: "Test" }, json_data_allowed_keys: ["content"] }
       );
     });
 

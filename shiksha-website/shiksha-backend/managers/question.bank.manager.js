@@ -220,7 +220,7 @@ class QuestionBankManager extends BaseManager {
     const pythonUrl = process.env.LLM_API_BASE_URL;
     const response = await axios.post(
       `${pythonUrl}/question-paper/translate-json`,
-      convertToSnakeCase({ targetLanguage, jsonData })
+      convertToSnakeCase({ targetLanguage, jsonData, jsonDataAllowedKeys: ["content"] })
     );
     return formatApiReponse(true, "Translation processed successfully", convertToCamelCase(response.data));
   }
