@@ -126,6 +126,10 @@ async function getBlobContent(blobRef, contentType) {
     return {contentType: contentType || properties.contentType, content: buffer.toString("base64")};
 }
 
+async function deleteFromStorage(blobRef) {
+    return blobServiceClient.getContainerClient(containerName).deleteBlob(getBlobName(blobRef));
+}
+
 async function getPreSignedProfileImageUrl(userId) {
     const linkExpiryInSeconds = 7 * 24 * 60 * 60;
     const destinationObject = `${userId}_photo`;
@@ -144,4 +148,4 @@ async function getPreSignedFileUrl(filePath) {
     return fileUrl;
 }
 
-module.exports = { uploadToStorage, uploadStreamToStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl, getBlobContent };
+module.exports = { uploadToStorage, uploadStreamToStorage, deleteFromStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl, getBlobContent };
