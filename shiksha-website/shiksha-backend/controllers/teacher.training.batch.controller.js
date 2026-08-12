@@ -1,18 +1,26 @@
 const TeacherTrainingBatch = require('../models/teacher.training.batch.model');
 const TeacherAbsent = require('../models/teacher.absent.model');
 const ExcelJS = require('exceljs');
+const { randomUUID } = require('crypto');
 const BaseController = require('./base.controller');
 const TeacherTrainingBatchManager = require('../managers/teacher.training.batch.manager');
 const handleError = require('../helper/handleError');
 const {
   getPreSignedFileUrl,
+  uploadToStorage,
 } = require("../services/azure.blob.service");
 const { schoolDependency } = require("../helper/permission.helper");
 const { permissionScopeFilter } = require("../helper/scope.helper");
 const { scopedTeacherIds, canAccessBatch } = require("../helper/training.scope.helper");
+const logger = require("../config/loggers");
 const School = require("../models/school.model");
 const User = require("../models/user.model");
 const teacherPopulate = { path: "assignedTeachers", select: "identity profiles.teacher roles", populate: { path: "roles.role", select: "scopeType" } };
+const fileExtensions = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png" };
+
+function uploadFile(file) {
+  return uploadToStorage(file.buffer, `${randomUUID()}.${fileExtensions[file.mimetype]}`, file.mimetype);
+}
 
 async function withTeacherSchools(batch) {
   const data = batch.toObject();
@@ -51,33 +59,26 @@ class TeacherTrainingBatchController extends BaseController {
     if (!pdfFile || pdfFile.length === 0) {
       return res.status(400).json({ error: "A permission letter PDF file is required and must be of type application/pdf." });
     }
-    const pdfPath = pdfFile[0].path;
-
     const { batchName, description, scheduleDate, trainingType } = req.body;
-    // Validate required fields explicitly
     if (!batchName || !description || !scheduleDate || !trainingType) {
       return res.status(400).json({ message: 'Missing required batch fields.' });
     }
 
-    // Save the batch with the PDF path
     const newBatch = new TeacherTrainingBatch({
       batchName,
       description,
       scheduleDate,
       trainingType,
       createdBy: req.user._id,
-      permissionLetterPdfPath: pdfPath // Save the PDF path to the batch
     });
+    await newBatch.validate();
+    newBatch.permissionLetterPdfPath = await uploadFile(pdfFile[0]);
 
     const savedBatch = await newBatch.save();
     res.status(201).json(savedBatch);
   } catch (err) {
-    // Multer file filter errors
-    if (err.message && err.message.includes('Only PDF files are allowed')) {
-      return res.status(400).json({ error: err.message });
-    }
-    console.error('Error in createBatch:', err);
-    res.status(400).json({ message: err.message || 'An unknown error occurred.' });
+    logger.error(`Teacher training batch creation failed: ${err.message}`);
+    res.status(err.name === 'ValidationError' ? 400 : 500).json({ message: err.message });
   }
   }
 
@@ -313,28 +314,19 @@ class TeacherTrainingBatchController extends BaseController {
 
     if (!await canAccessBatch(req.permissions, req.user._id, batch, "training.edit")) return res.status(403).json({ message: 'Batch is outside your scope.' });
 
-    // Handle multiple file uploads
-    if (req.files) {
-      if (req.files['permissionLetterFile']) {
-        batch.permissionLetterPdfPath = req.files['permissionLetterFile'][0].path;
-      }
-      if (req.files['attendanceSheetFile']) {
-        batch.attendancePdfPath = req.files['attendanceSheetFile'][0].path;
-      }
-      if (req.files['photos']) {
-        req.files['photos'].forEach(file => {
-          batch.photoPaths.push({
-            path: file.path,
-            mimetype: file.mimeType
-          });
-        });
-      }
-    }
+    if (!Object.keys(req.files || {}).length) return res.status(400).json({ message: 'At least one file is required.' });
+    if (req.files.permissionLetterFile) batch.permissionLetterPdfPath = await uploadFile(req.files.permissionLetterFile[0]);
+    if (req.files.attendanceSheetFile) batch.attendancePdfPath = await uploadFile(req.files.attendanceSheetFile[0]);
+    if (req.files.photos) batch.photoPaths.push(...await Promise.all(req.files.photos.map(async (file) => ({
+      path: await uploadFile(file),
+      mimetype: file.mimetype,
+    }))));
 
     const updatedBatch = await batch.save();
     res.status(200).json(updatedBatch);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    logger.error(`Teacher training file upload failed: ${err.message}`);
+    res.status(500).json({ message: err.message });
   }
   }
 
