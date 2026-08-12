@@ -214,10 +214,7 @@
 	primaryButtonType : 'ok'}"
 (close)="confirmDraft($event)"></app-delete-detail>
 
-@if (showExistsPopup) {
-  <app-delete-detail
-    [config]="existsPopupConfig"
-    [showCancelBtn]="true"
-    (close)="onExistsPopupClose($event)"
-  />
-}
+<app-delete-detail *ngIf="showExistsPopup"
+[config]="existsPopupConfig"
+[showCancelBtn]="true"
+(close)="onExistsPopupClose($event)"></app-delete-detail>
