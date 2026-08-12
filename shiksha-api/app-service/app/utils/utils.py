@@ -3,8 +3,10 @@ import hashlib
 import re
 from pathlib import Path
 
-import yaml
+from langdetect import LangDetectException, detect
+from langdetect.detector import Detector
 from pydantic import JsonValue, TypeAdapter
+import yaml
 
 
 def local_unique_id(counter: int) -> str:
@@ -82,3 +84,16 @@ def get_sample_texts(data: JsonValue, allowed_keys: set[str] | None = None) -> G
                 stack.extend(reversed(data))
             case str() if len(data.strip().split()) > 2:
                 yield data
+
+
+def detect_lang(data: JsonValue, allowed_keys: set[str] | None = None) -> tuple[str, str]:
+    lang = Detector.UNKNOWN_LANG
+    sample = ""
+    for sample in get_sample_texts(data, allowed_keys):
+        try:
+            lang = detect(sample)
+        except LangDetectException:
+            continue
+        if lang != Detector.UNKNOWN_LANG:
+            break
+    return lang, sample
