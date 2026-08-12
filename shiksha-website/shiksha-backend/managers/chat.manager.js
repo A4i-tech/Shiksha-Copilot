@@ -6,9 +6,11 @@ const { CHAT_LIMIT } = require("../config/constants");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const SchoolDao = require("../dao/school.dao");
+const ClassDao = require("../dao/school.class.dao");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const UserDao = require('../dao/user.dao');
 const MasterLessonDao = require("../dao/master.lesson.dao");
+const { schoolDependency } = require("../helper/permission.helper");
 
 /** @extends {BaseManager<ChatDao>} */
 class ChatManager extends BaseManager {
@@ -20,13 +22,20 @@ class ChatManager extends BaseManager {
 		this.teacherLessonPlanDao = new TeacherLessonPlanDao();
 		this.masterLessonDao = new MasterLessonDao();
 		this.schoolDao = new SchoolDao();
+		this.classDao = new ClassDao();
 	}
 
 	async #buildUserContext(userId, includeClasses = true){
 		const user = await this.userDao.getById(userId);
 		const schoolIds = [...new Set(user.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => String(assignment.dep)))];
 		const schools = await Promise.all(schoolIds.map((schoolId) => this.schoolDao.getById(schoolId)));
-		const classes = includeClasses && user.profiles.teacher ? [`**Classes**:`, ...user.profiles.teacher.classes.map(b => `- ${b.name} (for class ${b.class}, ${b.board} curriculum)`)] : [];
+		const schoolClasses = includeClasses && user.profiles.teacher ? await this.classDao.getGroupClassesByBoard(schoolDependency(user.roles)) : [];
+		const classes = includeClasses && user.profiles.teacher ? [`**Classes**:`, ...user.profiles.teacher.classes.map(b => {
+			const board = schoolClasses.find((item) => item._id === b.board);
+			const medium = board.medium.find((item) => item.medium === b.medium);
+			const standard = medium.classDetails.find((item) => item.standard === b.class);
+			return `- ${b.name} (for class ${b.class}, ${b.board} curriculum; boys: ${b.boysStrength ?? standard.boysStrength}, girls: ${b.girlsStrength ?? standard.girlsStrength})`;
+		})] : [];
 		return [
 			"## User information",
 			...schools.map((school) => `**School**: ${school.name} (${school.state}, ${school.type})`),
@@ -36,7 +45,7 @@ class ChatManager extends BaseManager {
 
 	async #buildUserContextForLessonPlan(userId, lessonDetails, chapterDetails, subjectDetails){
 		return [
-			await this.#buildUserContext(userId, false),
+			await this.#buildUserContext(userId),
 			"",
 			"## Lesson plan details",
 			`**Board**: ${chapterDetails.board}`,
