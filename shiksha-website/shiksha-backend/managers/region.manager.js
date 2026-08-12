@@ -46,8 +46,7 @@ class RegionManager extends BaseManager {
 		for (const region of regions) {
 			const zoneData = region.zones.find(z => z.name === zone);
 			if (zoneData) {
-				// districts is now an array, return it directly
-				return zoneData.districts || [];
+					return zoneData.districts || [];
 			}
 		}
 		return [];
@@ -63,8 +62,7 @@ class RegionManager extends BaseManager {
 		const regions = response.results || [];
 		for (const region of regions) {
 			for (const zone of region.zones) {
-				// districts is now an array, find the matching district
-				if (Array.isArray(zone.districts)) {
+					if (Array.isArray(zone.districts)) {
 					const districtObj = zone.districts.find(d => d.name === district);
 					if (districtObj) {
 						return districtObj.blocks || [];

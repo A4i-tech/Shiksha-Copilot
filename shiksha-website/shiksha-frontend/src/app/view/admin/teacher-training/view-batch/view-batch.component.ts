@@ -68,14 +68,12 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching batches:', error);
         
-        // Handle specific error cases
         if (error.status === 403) {
           console.error('Access denied: You do not have permission to view these batches');
         } else if (error.status === 401) {
           console.error('Authentication required : Please log in again');
         }
         
-        // Handle error (e.g., show a toast message)
       }
     });
   }
@@ -299,13 +297,10 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       updatedAttendance = updatedAttendance.filter(id => id !== teacherId);
     }
 
-    // Optimistically update the UI
     this.selectedBatch.attendance = updatedAttendance;
 
-    // Call backend service to update attendance for this batch
     this.batchService.updateAttendance(batchId, updatedAttendance).subscribe({
       next: (updatedBatch: Batch) => {
-        // Optionally, update the main batches list if attendance changes affect other views
         const index = this.batches.findIndex(b => b._id === updatedBatch._id);
         if (index !== -1) {
           this.batches[index] = updatedBatch;
@@ -313,8 +308,6 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error updating attendance:', error);
-        // Revert UI if backend update fails, or show an error message
-        // You might want to reload batches or specifically revert the checkbox state
       }
     });
   }

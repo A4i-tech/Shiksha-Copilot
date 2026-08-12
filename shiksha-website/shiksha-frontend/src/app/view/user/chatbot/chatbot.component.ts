@@ -242,7 +242,6 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   }
 
   sendGeneralMessage(messageObj: any) {
-    // initialize empty message holder
     const responseMessage: ChatMessages = {
       question: '',
       answer: '',
@@ -251,24 +250,6 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       references: []
     };
     this.messages.unshift(responseMessage);
-
-    // We already unshifted the question in sendMessage, but wait.
-    // sendMessage unshifts:
-    /*
-      const questionObj: ChatMessages = {
-        question: this.chatValue,
-        answer: '',
-        createdAt: '',
-        _id: '',
-      };
-      this.messages.unshift(questionObj);
-    */
-    // So the top message is the user question.
-    // We need to append the answer to THIS message or add a new one?
-    // The UI likely shows question and answer in same block or separate?
-    // Looking at `messages` structure: `{ answer?: string; question?: string; ... }`
-    // It seems each item in `messages` array is a Q&A pair.
-    // So `messages[0]` is the current Q&A being built.
 
     this.chatbotService.sendGeneralMessage(messageObj).subscribe({
       next: (data) => {
