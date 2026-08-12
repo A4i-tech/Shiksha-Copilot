@@ -17,6 +17,10 @@ const auditLogSchema = new Schema(
     logUrl: {
       type: String
     },
+    metadata: {
+      processedRows: Number,
+      fileSizeBytes: Number,
+    },
     userId:{
       type: ObjectId,
 			ref: "User",

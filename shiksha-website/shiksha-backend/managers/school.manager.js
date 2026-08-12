@@ -394,8 +394,9 @@ class SchoolManager extends BaseManager {
 
 
       const filters = { ...mergedFilter, ...status };
-      const auditLog = await startAuditJob("Schools Export", userId, userName, () => exportExcel({
+      const auditLog = await startAuditJob("Schools Export", userId, userName, (onProgress) => exportExcel({
         filename: `School-Export-${userId}--${Date.now()}`,
+        onProgress,
         worksheets: [{
           name: "Schools",
           rows: this.dao.getCursor(filters, sortOrderObject),

@@ -69,14 +69,15 @@
             <p class="text-xs text-content-60">{{ "Log URL" | translate }}</p>
             <a
               *ngIf="auditLogData?.logUrl"
-              [href]="auditLogData?.logUrl"
+              [href]="auditLogData.logUrl"
               class="block break-all underline text-primary cursor-pointer"
-            >{{ auditLogData?.logUrl }}</a>
+            >{{ auditLogData.logUrl }}</a>
             <p *ngIf="auditLogData?.status === 'failure'">
               {{ auditLogData?.eventType }} {{ 'Failed' | translate }}
             </p>
             <p *ngIf="auditLogData?.status === 'in_progress'">
               {{ 'In Progress' | translate }}
+              · {{ auditLogData.metadata?.processedRows | number }} {{ 'rows processed' | translate }}
             </p>
           </div>
         </div>
@@ -118,15 +119,16 @@
             <td class="px-4 py-6 text-sm border w-96">
               <a
                 *ngIf="auditLogData?.logUrl"
-                [href]="auditLogData?.logUrl"
-                class="block text-nowrap whitespace-nowrap w-80 overflow-x-hidden text-ellipsis underline text-primary cursor-pointer"
-                >{{ auditLogData?.logUrl }}</a
+                [href]="auditLogData.logUrl"
+                class="block whitespace-nowrap w-80 overflow-hidden text-ellipsis underline text-primary cursor-pointer"
+                >{{ auditLogData.logUrl }}</a
               >
               <p *ngIf="auditLogData?.status === 'failure'">
                 {{ auditLogData?.eventType }} {{ 'Failed' | translate }}
               </p>
               <p *ngIf="auditLogData?.status === 'in_progress'">
                 {{ 'In Progress' | translate }}
+                · {{ auditLogData.metadata?.processedRows | number }} {{ 'rows processed' | translate }}
               </p>
             </td>
             <td class="p-4 text-sm border">

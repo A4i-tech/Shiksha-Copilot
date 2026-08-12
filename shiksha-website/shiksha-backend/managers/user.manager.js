@@ -345,7 +345,7 @@ class UserManager extends BaseManager {
       const successCount = insertedUsers.length;
       const failureCount = users.length - successCount;
       const uploadUrl = await exportExcel({
-        filename: `Bulk-Upload-Summary-${userId}-${Date.now()}.xlsx`,
+        filename: `Bulk-Upload-Summary-${userId}-${Date.now()}`,
         worksheets: [{
           name: "Upload Summary",
           rows: [{ totalRecords: users.length, successCount, failureCount }],
@@ -524,8 +524,9 @@ class UserManager extends BaseManager {
       } else if (includeDeleted === "0") {
         status = { isDeleted: false };
       }
-      const auditLog = await startAuditJob("Teachers Export", userId, userName, async () => exportExcel({
+      const auditLog = await startAuditJob("Teachers Export", userId, userName, async (onProgress) => exportExcel({
         filename: `Teacher-Export-${userId}--${Date.now()}`,
+        onProgress,
         worksheets: [{
           name: "Users",
           rows: await this.dao.getCursor(mergedFilter, sortOrderObject, status),

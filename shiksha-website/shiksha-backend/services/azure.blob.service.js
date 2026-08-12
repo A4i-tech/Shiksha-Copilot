@@ -57,13 +57,14 @@ async function uploadToStorage(file, fileName, mimeType) {
     }
 }
 
-async function uploadStreamToStorage(stream, fileName, mimeType) {
+async function uploadStreamToStorage(stream, fileName, mimeType, onProgress) {
     const containerClient = blobServiceClient.getContainerClient(containerName);
     if (!await containerClient.exists()) await containerClient.create();
 
     const blockBlobClient = containerClient.getBlockBlobClient(fileName);
     await blockBlobClient.uploadStream(stream, 4 * 1024 * 1024, 2, {
         blobHTTPHeaders: { blobContentType: mimeType },
+        onProgress,
     });
 
     return getPreSignedUrl(fileName, 7 * 24 * 60 * 60);

@@ -4,5 +4,9 @@ export interface AuditLogList{
     createdAt:string,
     logUrl:string | null,
     status:'in_progress' | 'success' | 'failure',
+    metadata?: {
+        processedRows:number,
+        fileSizeBytes?:number
+    },
     name:string
 }
