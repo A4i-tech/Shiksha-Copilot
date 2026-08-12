@@ -8,6 +8,7 @@ const ExcelJS = require("exceljs");
 const exportExcel = require("../helper/excel.export.helper");
 const importSchools = require("../helper/school.import.helper");
 const AuditLog = require("../models/audit.log.model");
+const startAuditJob = require("../helper/audit.job.helper");
 const schoolAggregation = require("../aggregation/school.aggregation");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
@@ -392,12 +393,12 @@ class SchoolManager extends BaseManager {
       }
 
 
-      const schoolCursor = this.dao.getCursor({ ...mergedFilter, ...status }, sortOrderObject);
-      const fileUrl = await exportExcel({
+      const filters = { ...mergedFilter, ...status };
+      const auditLog = await startAuditJob("Schools Export", userId, userName, () => exportExcel({
         filename: `School-Export-${userId}--${Date.now()}`,
         worksheets: [{
           name: "Schools",
-          rows: schoolCursor,
+          rows: this.dao.getCursor(filters, sortOrderObject),
           columns: [
             { header: "DISE Code", key: "schoolId", width: 15 },
             { header: "School Name", key: "name", width: 45 },
@@ -409,13 +410,11 @@ class SchoolManager extends BaseManager {
           ],
           toRow: (school) => ({ ...school, status: school.isDeleted ? "Inactive" : "Active" }),
         }],
-      });
-      await AuditLog.create({ eventType: "Schools Export", status: "success", logUrl: fileUrl, userId, name: userName });
+      }));
 
-      return formatApiReponse(true, "School export completed.", { fileUrl });
+      return formatApiReponse(true, "School export started.", { auditLogId: auditLog._id });
     }
     catch (err) {
-      await AuditLog.create({ eventType: "Schools Export", status: "failure", logUrl: null, userId, name: userName });
       return formatApiReponse(false, err.message, err);
     }
   }

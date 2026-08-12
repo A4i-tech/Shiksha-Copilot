@@ -11,7 +11,7 @@ const auditLogSchema = new Schema(
     },
     status: {
         type: String,
-        enum: ["success", "failure"],
+        enum: ["in_progress", "success", "failure"],
         required: true,
     },
     logUrl: {
