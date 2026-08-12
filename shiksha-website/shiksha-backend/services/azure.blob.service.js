@@ -12,6 +12,7 @@ const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME;
 
 // Dual auth: connection string (local dev) or DefaultAzureCredential (production)
+/** @type {BlobServiceClient} */
 let blobServiceClient;
 let sharedKeyCredential;
 

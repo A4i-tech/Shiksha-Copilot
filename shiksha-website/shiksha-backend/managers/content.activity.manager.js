@@ -1,7 +1,8 @@
 const formatApiReponse = require("../helper/response");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
-const { Worker } = require("worker_threads");
-const path = require("path");
+const ExcelJS = require("exceljs");
+const { uploadToStorage } = require("../services/azure.blob.service");
+const AuditLog = require("../models/audit.log.model");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
 
@@ -27,21 +28,70 @@ class ContentActivityManager {
   }
 
   async exportContentActivity(req) {
+    const userId = String(req.user._id);
+    const userName = req.user.identity.name;
+
     try {
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
       const activities = await this.regeneratedLogDao.getAllContentActivity(intersectFilters(activityFilters(req.query), scopeFilter));
-      const worker = new Worker(path.resolve(__dirname, "../worker/exportcontentactivityworker.js"));
-      worker.on("error", (err) => console.error("Content activity export worker error", { userId: String(req.user._id), error: err.message }));
-      worker.on("exit", (code) => {
-        if (code !== 0) console.error("Content activity export worker exited", { userId: String(req.user._id), code });
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("ContentActivity");
+      worksheet.columns = [
+        { header: "Teacher Name", key: "userName", width: 30 },
+        { header: "Content generated", key: "genContent", width: 50 },
+        { header: "Generated Date", key: "createdAt", width: 30 },
+        { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
+      ];
+
+      activities.results.forEach((activity) => {
+        worksheet.addRow({
+          userName: activity.userName,
+          genContent: activity.genContent,
+          createdAt: activity.createdAt,
+          teacherLessonPlanStatus: activity.teacherLessonPlanStatus,
+        });
       });
-      worker.postMessage({
-        contentActivities: activities.results,
-        userId: String(req.user._id),
-        userName: req.user.identity.name,
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.height = 20;
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FF46A0F1" },
+        };
+        cell.font = {
+          bold: true,
+          color: { argb: "FFFFFFFF" },
+          size: 12,
+        };
       });
-      return formatApiReponse(true, "Content activity export initiated, please verify the audit log.", "");
+
+      const fileBuffer = await workbook.xlsx.writeBuffer();
+      const fileUrl = await uploadToStorage(
+        fileBuffer,
+        `Content-Activity-Export-${userId}--${Date.now()}`,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      await AuditLog.create({
+        eventType: "Content Activity Export",
+        status: "success",
+        logUrl: fileUrl,
+        userId,
+        name: userName,
+      });
+
+      return formatApiReponse(true, "Content activity export completed.", { fileUrl });
     } catch (err) {
+      await AuditLog.create({
+        eventType: "Content Activity Export",
+        status: "failure",
+        logUrl: null,
+        userId,
+        name: userName,
+      });
       return formatApiReponse(false, err.message, err);
     }
   }
