@@ -24,6 +24,7 @@ const { dependencyMatches, assertCanAssign, assignmentDependencyFilter, hasAssig
 const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
 const AuditLog = require("../models/audit.log.model");
+const startAuditJob = require("../helper/audit.job.helper");
 
 async function prepareAssignments(input, actor, current, teacher, permission) {
   const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });
@@ -523,12 +524,11 @@ class UserManager extends BaseManager {
       } else if (includeDeleted === "0") {
         status = { isDeleted: false };
       }
-      const userCursor = await this.dao.getCursor(mergedFilter, sortOrderObject, status);
-      const fileUrl = await exportExcel({
+      const auditLog = await startAuditJob("Teachers Export", userId, userName, async () => exportExcel({
         filename: `Teacher-Export-${userId}--${Date.now()}`,
         worksheets: [{
           name: "Users",
-          rows: userCursor,
+          rows: await this.dao.getCursor(mergedFilter, sortOrderObject, status),
           columns: [
             { header: "Teacher Name", key: "teacherName", width: 30 },
             { header: "School Name", key: "schoolName", width: 30 },
@@ -546,13 +546,10 @@ class UserManager extends BaseManager {
             trainingStatus: user.trainingStatus === "trained" ? "Trained" : "Untrained",
           }),
         }],
-      });
+      }));
 
-      await AuditLog.create({ eventType: "Teachers Export", status: "success", logUrl: fileUrl, userId, name: userName });
-
-      return formatApiReponse(true, "Teacher export completed.", { fileUrl });
+      return formatApiReponse(true, "Teacher export started.", { auditLogId: auditLog._id });
     } catch (err) {
-      await AuditLog.create({ eventType: "Teachers Export", status: "failure", logUrl: null, userId, name: userName });
       return formatApiReponse(false, err.message, err);
     }
   }

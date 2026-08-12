@@ -1,7 +1,7 @@
 const formatApiReponse = require("../helper/response");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const exportExcel = require("../helper/excel.export.helper");
-const AuditLog = require("../models/audit.log.model");
+const startAuditJob = require("../helper/audit.job.helper");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
 
@@ -32,12 +32,12 @@ class ContentActivityManager {
 
     try {
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
-      const activityCursor = this.regeneratedLogDao.getContentActivityCursor(intersectFilters(activityFilters(req.query), scopeFilter));
-      const fileUrl = await exportExcel({
+      const filters = intersectFilters(activityFilters(req.query), scopeFilter);
+      const auditLog = await startAuditJob("Content Activity Export", userId, userName, () => exportExcel({
         filename: `Content-Activity-Export-${userId}--${Date.now()}`,
         worksheets: [{
           name: "ContentActivity",
-          rows: activityCursor,
+          rows: this.regeneratedLogDao.getContentActivityCursor(filters),
           columns: [
             { header: "Teacher Name", key: "userName", width: 30 },
             { header: "Content generated", key: "genContent", width: 50 },
@@ -46,25 +46,10 @@ class ContentActivityManager {
           ],
           toRow: (activity) => activity,
         }],
-      });
+      }));
 
-      await AuditLog.create({
-        eventType: "Content Activity Export",
-        status: "success",
-        logUrl: fileUrl,
-        userId,
-        name: userName,
-      });
-
-      return formatApiReponse(true, "Content activity export completed.", { fileUrl });
+      return formatApiReponse(true, "Content activity export started.", { auditLogId: auditLog._id });
     } catch (err) {
-      await AuditLog.create({
-        eventType: "Content Activity Export",
-        status: "failure",
-        logUrl: null,
-        userId,
-        name: userName,
-      });
       return formatApiReponse(false, err.message, err);
     }
   }
