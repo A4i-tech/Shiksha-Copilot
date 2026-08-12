@@ -986,6 +986,7 @@ class QuestionBankManager extends BaseManager {
 
       console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
       let result = await this.questionDao.getQuestions(cleanFilters);
+      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
 
       // Handle translation if targetLanguage is provided
       if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
@@ -997,8 +998,6 @@ class QuestionBankManager extends BaseManager {
           // fall back to the untranslated result which is already in `result`
         }
       }
-      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
-
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));
     } catch (err) {

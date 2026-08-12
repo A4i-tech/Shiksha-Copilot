@@ -39,7 +39,7 @@ def get_sample_texts(data: JsonValue, allowed_keys: set[str] | None = None) -> G
             case dict() if allowed_keys is None:
                 stack.extend(reversed(data.values()))
             case dict() if allowed_keys is not None:
-                stack.extend(v for k, v in reversed(data.items()) if k in allowed_keys)
+                stack.extend(v for k, v in reversed(data.items()) if k in allowed_keys or not isinstance(v, str))
             case list():
                 stack.extend(reversed(data))
             case str() if len(data.strip().split()) > 2:
