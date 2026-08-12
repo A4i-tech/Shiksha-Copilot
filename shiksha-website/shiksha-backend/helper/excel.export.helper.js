@@ -2,9 +2,11 @@ const ExcelJS = require("exceljs");
 const { PassThrough } = require("stream");
 const { uploadStreamToStorage } = require("../services/azure.blob.service");
 
-async function exportExcel({ filename, worksheets }) {
+async function exportExcel({ filename, worksheets, onProgress }) {
   const fileStream = new PassThrough();
-  const upload = uploadStreamToStorage(fileStream, filename, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet").catch((err) => {
+  let fileSizeBytes = 0;
+  let processedRows = 0;
+  const upload = uploadStreamToStorage(fileStream, `${filename}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ({ loadedBytes }) => fileSizeBytes = loadedBytes).catch((err) => {
     fileStream.destroy();
     throw err;
   });
@@ -21,7 +23,11 @@ async function exportExcel({ filename, worksheets }) {
         cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
       });
       headerRow.commit();
-      for await (const row of sheet.rows) worksheet.addRow(sheet.toRow(row)).commit();
+      for await (const row of sheet.rows) {
+        worksheet.addRow(sheet.toRow(row)).commit();
+        processedRows += 1;
+        if (onProgress && processedRows % 100 === 0) await onProgress({ processedRows });
+      }
       worksheet.commit();
     }
     await workbook.commit();
@@ -31,6 +37,7 @@ async function exportExcel({ filename, worksheets }) {
   });
 
   const [, fileUrl] = await Promise.all([write, upload]);
+  if (onProgress) await onProgress({ processedRows, fileSizeBytes });
   return fileUrl;
 }
 

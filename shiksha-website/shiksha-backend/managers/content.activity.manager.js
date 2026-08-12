@@ -33,8 +33,9 @@ class ContentActivityManager {
     try {
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
       const filters = intersectFilters(activityFilters(req.query), scopeFilter);
-      const auditLog = await startAuditJob("Content Activity Export", userId, userName, () => exportExcel({
+      const auditLog = await startAuditJob("Content Activity Export", userId, userName, (onProgress) => exportExcel({
         filename: `Content-Activity-Export-${userId}--${Date.now()}`,
+        onProgress,
         worksheets: [{
           name: "ContentActivity",
           rows: this.regeneratedLogDao.getContentActivityCursor(filters),
