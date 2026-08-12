@@ -14,6 +14,8 @@ router.get('/teacher-training-batches/', isAuthenticated, requirePermission('tra
 // Get teacher training stats
 router.get('/teacher-training-batches/stats', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getTeacherTrainingStats);
 
+router.get('/teacher-training-batches/available-teachers', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.getAvailableTeachers);
+
 // Get a single teacher training batch by ID
 router.get('/teacher-training-batches/:batchId', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getBatchById);
 

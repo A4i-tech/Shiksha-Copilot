@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 
 export interface Teacher {
@@ -67,6 +67,11 @@ export class BatchService {
   fetchBatches(): Observable<Batch[]> {
     const headers = this.getAuthHeaders();
     return this.http.get<Batch[]>(`${this.baseUrl}/teacher-training-batches`, { headers });
+  }
+
+  getAvailableTeachers(page: number, limit: number, search: string): Observable<{ success: boolean; data: { results: Teacher[]; totalItems: number } }> {
+    const params = new HttpParams().set('page', page).set('limit', limit).set('search', search);
+    return this.http.get<{ success: boolean; data: { results: Teacher[]; totalItems: number } }>(`${this.baseUrl}/teacher-training-batches/available-teachers`, { params });
   }
 
   assignTeacherToBatch(batchId: string, teacherId: string): Observable<Batch> {

@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { Batch, BatchService, Teacher } from 'src/app/view/admin/teacher-training/batch.service';
-import { TeacherService } from 'src/app/view/admin/teacher-training/teacher.service';
 import { Subscription } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, from, concatMap, toArray, finalize } from 'rxjs';
@@ -41,7 +40,6 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
 
   private route = inject(ActivatedRoute);
   private batchService = inject(BatchService);
-  private teacherService = inject(TeacherService);
   private router = inject(Router);
   private utilityService = inject(UtilityService);
   private translate = inject(TranslateService);
@@ -141,9 +139,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
 
   loadTeachersAndFilter(): void {
     this.isLoadingTeachers = true;
-    this.teacherService.getTeachers(
-      undefined, 
-      undefined, 
+    this.batchService.getAvailableTeachers(
       this.teachersCurrentPage, 
       this.teachersPageSize,
       this.teacherSearchTerm
@@ -154,8 +150,8 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         this.isLoadingTeachers = false;
         if (res.success && res.data) {
           this.allTeachers = res.data.results || [];
+          this.filteredTeachers = this.allTeachers;
           this.teachersTotalItems = res.data.totalItems || 0;
-          this.filterTeachersForSidebar();
         } else {
           this.allTeachers = [];
           this.filteredTeachers = [];
@@ -169,48 +165,6 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         this.teachersTotalItems = 0;
       }
     });
-  }
-
-  filterTeachersForSidebar(): void {
-    
-    const activelyAssignedTeacherIds = new Set<string>();
-
-    // Process all batches to determine which teachers should be filtered out
-    this.batches.forEach(batch => {
-      if (!batch.isSubmitted) {
-        // For unsubmitted batches: All assigned teachers should be filtered out
-        batch.assignedTeachers?.forEach(teacher => {
-          if (teacher._id) {
-            activelyAssignedTeacherIds.add(teacher._id);
-          }
-        });
-      } else {
-        // For submitted batches: Only present teachers should be filtered out
-        // Absent teachers should re-appear in the available list
-        batch.assignedTeachers?.forEach(teacher => {
-          if (teacher._id) {
-            const isPresent = batch.attendance?.includes(teacher._id) || false;
-            if (isPresent) {
-              // Teacher was present in submitted batch - filter them out
-              activelyAssignedTeacherIds.add(teacher._id);
-            } else {
-              // Teacher was absent in submitted batch - they should re-appear
-            }
-          }
-        });
-      }
-    });
-
-
-    // Filter teachers based on assignment status only (search is handled server-side)
-    this.filteredTeachers = this.allTeachers.filter(teacher => {
-      // Check if teacher is actively assigned to an unsubmitted batch or present in submitted batch
-      if (activelyAssignedTeacherIds.has(teacher._id)) {
-        return false;
-      }
-      return true;
-    });
-
   }
 
   onTeacherCheckboxChange(batch: Batch, teacher: Teacher, event: Event): void {
@@ -300,7 +254,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
           
           // Re-filter teachers for the 'Add Participants' sidebar to show the removed teacher
           if (this.showTeachersPanel) {
-            this.filterTeachersForSidebar();
+            this.loadTeachersAndFilter();
           }
           
         },
@@ -407,7 +361,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
           this.batchService.setBatches([...this.batches]);
 
           this.selectedTeachersForAssignment = [];
-          this.filterTeachersForSidebar();
+          this.loadTeachersAndFilter();
         }
       },
       error: (error: HttpErrorResponse) => {
@@ -443,7 +397,7 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
           
           // Re-filter teachers to allow absent teachers from submitted batch to re-appear
           if (this.showTeachersPanel) {
-            this.filterTeachersForSidebar();
+            this.closeAddParticipantsSidebar();
           }
         },
         error: (error: HttpErrorResponse) => {

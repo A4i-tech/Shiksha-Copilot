@@ -24,6 +24,7 @@ class TeacherTrainingBatchController extends BaseController {
   constructor() {
     super(new TeacherTrainingBatchManager());
     this.getBatches = this.getBatches.bind(this);
+    this.getAvailableTeachers = this.getAvailableTeachers.bind(this);
   }
 
   async getBatches(req, res) {
@@ -31,6 +32,13 @@ class TeacherTrainingBatchController extends BaseController {
     if (result.success) {
       return res.json(result.data);
     }
+    handleError(result, res);
+  }
+
+  async getAvailableTeachers(req, res) {
+    const { page = 1, limit = 50, search = '' } = req.query;
+    const result = await this.manager.getAvailableTeachers(parseInt(page), parseInt(limit), search.trim(), req.permissions);
+    if (result.success) return res.status(200).json(result);
     handleError(result, res);
   }
 
