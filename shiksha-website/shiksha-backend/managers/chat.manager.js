@@ -117,14 +117,18 @@ class ChatManager extends BaseManager {
 			}
 		});
 		stream.on("end", async () => {
-			if (fullAnswer) {
-				await this.dao.addMessage(chatSession._id, {
-					question: message,
-					answer: fullAnswer,
-					references: references
-				});
-				chatSession.requestCount += 1;
-				await chatSession.save();
+			try {
+				if (fullAnswer) {
+					await this.dao.addMessage(chatSession._id, {
+						question: message,
+						answer: fullAnswer,
+						references: references
+					});
+					chatSession.requestCount += 1;
+					await chatSession.save();
+				}
+			} catch (dbError) {
+				logger.error("Error saving chat to DB after stream", { message: dbError.message, stack: dbError.stack });
 			}
 		});
 		return { success: true, stream: stream };
