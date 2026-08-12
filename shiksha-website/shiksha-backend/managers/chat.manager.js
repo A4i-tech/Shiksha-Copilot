@@ -110,7 +110,7 @@ class ChatManager extends BaseManager {
 				if (line.trim() === '') continue;
 				const data = JSON.parse(line);
 				if (data.event === 'content') {
-					fullAnswer += data.delta;
+					fullAnswer += data.data;
 				} else if (data.event === 'reference') {
 					references.push(data.data);
 				}
