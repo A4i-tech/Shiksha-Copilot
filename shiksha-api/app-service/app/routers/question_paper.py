@@ -59,7 +59,7 @@ async def translate_json(
     3. Translates only if they are different.
     """
     # Detect Source Language
-    sample_text = next(get_sample_texts(json_data, {'instructions', 'question_text', 'title', 'question', 'text', 'part_name', 'content'}), None)
+    sample_text = next(get_sample_texts(json_data, {'content'}), None)
     source_lang_code = Detector.UNKNOWN_LANG
 
     if sample_text:

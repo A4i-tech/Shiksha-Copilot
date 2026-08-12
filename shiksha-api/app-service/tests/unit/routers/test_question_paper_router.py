@@ -100,14 +100,19 @@ class TestTranslateJsonEndpoint:
 class TestHelperFunctions:
     """Tests for module-level helper functions."""
 
-    def test_get_sample_text_from_dict(self):
-        """Test extracting sample text from nested dict."""
+    def test_get_sample_text_from_nested_allowed_key(self):
         from app.utils.utils import get_sample_texts
 
-        data = {"instructions": "This is a test instruction", "title": "Test"}
+        data = {
+            "parts": [{
+                "questions": [{
+                    "question": [{"content": "What is this test question?"}]
+                }]
+            }]
+        }
 
-        result = next(get_sample_texts(data))
-        assert "test instruction" in result.lower()
+        result = next(get_sample_texts(data, {"content"}))
+        assert "test question" in result.lower()
 
     def test_get_sample_text_from_list(self):
         """Test extracting sample text from list."""
