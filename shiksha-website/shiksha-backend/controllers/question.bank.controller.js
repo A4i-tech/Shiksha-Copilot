@@ -4,6 +4,7 @@ const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
+const logger = require("../config/loggers");
 const ObjectId = mongoose.Types.ObjectId;
 
 /** @extends {BaseController<QuestionBankManager>} */
@@ -203,24 +204,18 @@ class QuestionBankController extends BaseController {
   }
 
   async uploadBulkQuestions(req, res) {
-    if (!req.file) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No file uploaded." });
+    try {
+      const master = req.body?.chapters ? req.body : { chapters: req.body };
+
+      const result = await this.manager.insertChaptersAndQuestions([
+        master,
+      ]);
+
+      return res.status(200).json(result);
+    } catch (err) {
+      logger.error(`Question upload failed: ${err.message}`);
+      return res.status(500).json({ success: false, message: err.message });
     }
-
-    const fileBuffer = req.file.buffer.toString("utf-8");
-    const jsonData = JSON.parse(fileBuffer);
-    const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
-
-    const result = await this.manager.insertChaptersAndQuestions([
-      master,
-    ]);
-
-    if (!result.success) {
-      return handleError(result, res);
-    }
-    return res.status(200).json(result);
   }
 }
 
