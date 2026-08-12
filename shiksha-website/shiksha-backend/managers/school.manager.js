@@ -6,6 +6,7 @@ const ClassDao = require("../dao/school.class.dao");
 const UserDao = require("../dao/user.dao");
 const ExcelJS = require("exceljs");
 const exportExcel = require("../helper/excel.export.helper");
+const importSchools = require("../helper/school.import.helper");
 const AuditLog = require("../models/audit.log.model");
 const schoolAggregation = require("../aggregation/school.aggregation");
 const mongoose = require("mongoose");
@@ -197,83 +198,85 @@ class SchoolManager extends BaseManager {
   }
 
   async bulkUpload(fileBuffer, userId, userName, permissions) {
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(fileBuffer);
 
-    const expectedSchoolHeaders = [
-      "diseCode",
-      "name",
-      "board",
-      "state",
-      "zone",
-      "district",
-      "taluk",
-      "medium",
-      "academicYearStartDate",
-      "academicYearEndDate",
-    ];
+      const expectedSchoolHeaders = [
+        "diseCode",
+        "name",
+        "board",
+        "state",
+        "zone",
+        "district",
+        "taluk",
+        "medium",
+        "academicYearStartDate",
+        "academicYearEndDate",
+      ];
 
-    const expectedClassHeaders = [
-      "diseCode",
-      "board",
-      "medium",
-      "standard",
-      "boys",
-      "girls",
-    ];
+      const expectedClassHeaders = [
+        "diseCode",
+        "board",
+        "medium",
+        "standard",
+        "boys",
+        "girls",
+      ];
 
-    const validateHeaders = (sheet, expectedHeaders) => {
-      const actualHeaders = sheet.getRow(1).values.slice(1);
-      if (actualHeaders.length !== expectedHeaders.length) {
-        return `Do not alter the column headers!`;
-      }
-      for (let i = 0; i < expectedHeaders.length; i++) {
-        if (actualHeaders[i] !== expectedHeaders[i]) {
+      const validateHeaders = (sheet, expectedHeaders) => {
+        const actualHeaders = sheet.getRow(1).values.slice(1);
+        if (actualHeaders.length !== expectedHeaders.length) {
           return `Do not alter the column headers!`;
         }
-      }
-      return null;
-    };
+        for (let i = 0; i < expectedHeaders.length; i++) {
+          if (actualHeaders[i] !== expectedHeaders[i]) {
+            return `Do not alter the column headers!`;
+          }
+        }
+        return null;
+      };
 
-    const schoolSheet = workbook.getWorksheet("school");
-    const classSheet = workbook.getWorksheet("class");
+      const schoolSheet = workbook.getWorksheet("school");
+      const classSheet = workbook.getWorksheet("class");
 
-    if (schoolSheet) {
-      const schoolHeaderError = validateHeaders(
-        schoolSheet,
-        expectedSchoolHeaders
-      );
-      if (schoolHeaderError) {
-        return formatApiReponse(
-          false,
-          "Invalid school sheet template!",
-          null
+      if (schoolSheet) {
+        const schoolHeaderError = validateHeaders(
+          schoolSheet,
+          expectedSchoolHeaders
         );
+        if (schoolHeaderError) {
+          return formatApiReponse(
+            false,
+            "Invalid school sheet template!",
+            null
+          );
+        }
+      } else {
+        return formatApiReponse(false, "School sheet is missing!", null);
       }
-    } else {
-      return formatApiReponse(false, "School sheet is missing!", null);
-    }
 
-    if (classSheet) {
-      const classHeaderError = validateHeaders(
-        classSheet,
-        expectedClassHeaders
-      );
-      if (classHeaderError) {
-        return formatApiReponse(false, "Invalid class sheet template!", null);
+      if (classSheet) {
+        const classHeaderError = validateHeaders(
+          classSheet,
+          expectedClassHeaders
+        );
+        if (classHeaderError) {
+          return formatApiReponse(false, "Invalid class sheet template!", null);
+        }
+      } else {
+        return formatApiReponse(false, "Class sheet is missing!", null);
       }
-    } else {
-      return formatApiReponse(false, "Class sheet is missing!", null);
-    }
 
-    const worker = new Worker(
-      path.resolve(__dirname, "../worker/bulkuploadworker.js")
-    );
-    return await new Promise((resolve, reject) => {
-      worker.once("message", resolve);
-      worker.once("error", reject);
-      worker.postMessage({ fileBuffer, userId, userName, permissions });
-    });
+      const session = await mongoose.startSession();
+      try {
+        return await importSchools(workbook, userId, userName, (school) => this.create({ permissions, body: school }, session));
+      } finally {
+        await session.endSession();
+      }
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
   }
 
   async delete(req) {
