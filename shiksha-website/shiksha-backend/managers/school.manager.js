@@ -4,10 +4,11 @@ const AppError = require("../helper/app.error");
 const SchoolDao = require("../dao/school.dao");
 const ClassDao = require("../dao/school.class.dao");
 const UserDao = require("../dao/user.dao");
-const path = require("path");
 const ExcelJS = require("exceljs");
+const { PassThrough } = require("stream");
+const { uploadStreamToStorage } = require("../services/azure.blob.service");
+const AuditLog = require("../models/audit.log.model");
 const schoolAggregation = require("../aggregation/school.aggregation");
-const { Worker } = require("worker_threads");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
@@ -337,89 +338,108 @@ class SchoolManager extends BaseManager {
   }
 
   async exportSchool(req) {
-    const {
-      page = 1,
-      limit,
-      filter = {},
-      sortBy = "createdAt",
-      sortOrder = "desc",
-      search,
-      includeDeleted,
-    } = req.query;
-    const sortOrderObject =
-      sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
-
-    const searchFilter = {};
-
-    if (search) {
-      const searchFields = ["name", "phone"];
-
-      const regexExpressions = (searchFields || []).map((field) => ({
-        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
-      }));
-
-      if (!isNaN(parseInt(search))) {
-        regexExpressions.push({ schoolId: parseInt(search) });
-      }
-
-      searchFilter.$or = regexExpressions;
-    }
-
-    const transformedFilter = { ...filter };
-
-    if (transformedFilter._id) {
-      try {
-        transformedFilter._id = new ObjectId(transformedFilter._id);
-      } catch (err) {
-        console.error("Invalid _id format:", transformedFilter._id);
-        throw new Error("Invalid _id format");
-      }
-    }
-    let mergedFilter = intersectFilters(transformedFilter, searchFilter);
-    mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
-
-    let status = {};
-
-    if (includeDeleted === '2') {
-      status = { isDeleted: true };
-    } else if (includeDeleted === '0') {
-      status = { isDeleted: false };
-    }
-
-
-    const schools = await this.dao.getAll(
-      parseInt(page),
-      parseInt(limit),
-      mergedFilter,
-      sortOrderObject,
-      status,
-      req?.user?._id
-    );
-
-    const userId = req.user._id;
+    const userId = String(req.user._id);
     const userName = req.user.identity.name;
 
-    const worker = new Worker(
-      path.resolve(__dirname, '../worker/exportschoolworker.js')
-    );
+    try {
+      const {
+        filter = {},
+        sortBy = "createdAt",
+        sortOrder = "desc",
+        search,
+        includeDeleted,
+      } = req.query;
+      const sortOrderObject =
+        sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-    worker.postMessage({ schools: schools.results, userId: userId.toString(), userName });
+      const searchFilter = {};
 
-    worker.on("message", (result) => {
-      console.log("Worker result:", result);
-    });
+      if (search) {
+        const searchFields = ["name", "phone"];
 
-    worker.on("error", (err) => {
-      console.error("Worker error:", err);
-    });
+        const regexExpressions = (searchFields || []).map((field) => ({
+          [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
+        }));
 
-    worker.on("exit", (code) => {
-      if (code !== 0) {
-        console.error(`Worker stopped with exit code ${code}`);
+        if (!isNaN(parseInt(search))) {
+          regexExpressions.push({ schoolId: parseInt(search) });
+        }
+
+        searchFilter.$or = regexExpressions;
       }
-    });
 
-    return formatApiReponse(true, "School export initiated, please verify for audit logs!", "")
+      const transformedFilter = { ...filter };
+
+      if (transformedFilter._id) {
+        try {
+          transformedFilter._id = new ObjectId(transformedFilter._id);
+        } catch (err) {
+          console.error("Invalid _id format:", transformedFilter._id);
+          throw new Error("Invalid _id format");
+        }
+      }
+      let mergedFilter = intersectFilters(transformedFilter, searchFilter);
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
+
+      let status = {};
+
+      if (includeDeleted === '2') {
+        status = { isDeleted: true };
+      } else if (includeDeleted === '0') {
+        status = { isDeleted: false };
+      }
+
+
+      const schoolCursor = this.dao.getCursor({ ...mergedFilter, ...status }, sortOrderObject);
+      const fileStream = new PassThrough();
+      const upload = uploadStreamToStorage(
+        fileStream,
+        `School-Export-${userId}--${Date.now()}`,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ).catch((err) => {
+        fileStream.destroy();
+        throw err;
+      });
+      const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({ stream: fileStream, useStyles: true });
+      const worksheet = workbook.addWorksheet("Schools");
+      worksheet.columns = [
+        { header: "DISE Code", key: "schoolId", width: 15 },
+        { header: "School Name", key: "name", width: 45 },
+        { header: "State", key: "state", width: 20 },
+        { header: "Zone", key: "zone", width: 20 },
+        { header: "District", key: "district", width: 20 },
+        { header: "Taluk", key: "block", width: 20 },
+        { header: "Status", key: "status", width: 20 },
+      ];
+
+      const headerRow = worksheet.getRow(1);
+      headerRow.height = 20;
+      headerRow.eachCell((cell) => {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF46A0F1" } };
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+      });
+      headerRow.commit();
+
+      const write = (async () => {
+        for await (const school of schoolCursor) {
+          worksheet.addRow({ ...school, status: school.isDeleted ? "Inactive" : "Active" }).commit();
+        }
+        worksheet.commit();
+        await workbook.commit();
+      })().catch((err) => {
+        fileStream.destroy();
+        throw err;
+      });
+
+      const [, fileUrl] = await Promise.all([write, upload]);
+      await AuditLog.create({ eventType: "Schools Export", status: "success", logUrl: fileUrl, userId, name: userName });
+
+      return formatApiReponse(true, "School export completed.", { fileUrl });
+    }
+    catch (err) {
+      await AuditLog.create({ eventType: "Schools Export", status: "failure", logUrl: null, userId, name: userName });
+      return formatApiReponse(false, err.message, err);
+    }
   }
 
   async getAll(
