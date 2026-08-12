@@ -8,8 +8,10 @@ const {
   getPreSignedFileUrl,
 } = require("../services/azure.blob.service");
 const { schoolDependency } = require("../helper/permission.helper");
+const { permissionScopeFilter } = require("../helper/scope.helper");
 const { scopedTeacherIds, canAccessBatch } = require("../helper/training.scope.helper");
 const School = require("../models/school.model");
+const User = require("../models/user.model");
 const teacherPopulate = { path: "assignedTeachers", select: "identity profiles.teacher roles", populate: { path: "roles.role", select: "scopeType" } };
 
 async function withTeacherSchools(batch) {
@@ -214,32 +216,16 @@ class TeacherTrainingBatchController extends BaseController {
 
   async getTeacherTrainingStats(req, res) {
   try {
-    const relevantTeacherIds = new Set((await scopedTeacherIds(req.permissions, "training.view")).map(String));
-    const totalTeachers = relevantTeacherIds.size;
-
-    const submittedBatches = await TeacherTrainingBatch.find({ isSubmitted: true }).select('attendance');
-    const attendedTeacherIds = new Set();
-    submittedBatches.forEach(batch => {
-      batch.attendance.forEach(teacherId => {
-        attendedTeacherIds.add(teacherId.toString());
-      });
-    });
-
-    let trainedTeachers = 0;
-    for (const teacherId of attendedTeacherIds) {
-      if (relevantTeacherIds.has(teacherId)) {
-        trainedTeachers++;
-      }
-    }
-
-    const untrainedTeachers = totalTeachers - trainedTeachers;
-
-    res.status(200).json({
-      totalTeachers,
-      trainedTeachers,
-      untrainedTeachers
-    });
-
+    const [schoolIds, attendedTeacherIds] = await Promise.all([
+      School.distinct('_id', permissionScopeFilter(req.permissions, 'training.view')),
+      TeacherTrainingBatch.distinct('attendance', { isSubmitted: true }),
+    ]);
+    const teacherFilter = { 'profiles.teacher': { $exists: true }, 'roles.dep': { $in: schoolIds }, isDeleted: false };
+    const [totalTeachers, trainedTeachers] = await Promise.all([
+      User.countDocuments(teacherFilter),
+      User.countDocuments({ ...teacherFilter, _id: { $in: attendedTeacherIds } }),
+    ]);
+    res.status(200).json({ totalTeachers, trainedTeachers, untrainedTeachers: totalTeachers - trainedTeachers });
   } catch (err) {
     console.error('Error in getTeacherTrainingStats:', err);
     res.status(500).json({ message: err.message });
