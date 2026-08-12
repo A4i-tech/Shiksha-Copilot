@@ -98,22 +98,28 @@ class UserController extends BaseController {
   }
 
   async uploadProfileImage(req, res) {
-    if (!req.file.path) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No file uploaded" });
+    try {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ success: false, message: "No file uploaded" });
+      }
+
+      const result = await this.manager.uploadProfileImage(
+        req.user._id,
+        req.file
+      );
+
+      if (result.success) {
+        return res.status(200).json(result);
+      }
+
+      handleError(result, res);
+      return;
+    } catch (err) {
+      console.log("Error --> UserController -> uploadProfileImage()", err);
+      return res.status(500).json({ success: false, message: "Server error" });
     }
-
-    const result = await this.manager.uploadProfileImage(
-      req.user._id,
-      req.file.path
-    );
-
-    if (result.success) {
-      return res.status(200).json(result);
-    }
-
-    handleError(result, res);
   }
 
   async removeProfileImage(req, res) {

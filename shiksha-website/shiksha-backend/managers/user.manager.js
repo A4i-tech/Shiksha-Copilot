@@ -25,6 +25,7 @@ const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
 const AuditLog = require("../models/audit.log.model");
 const startAuditJob = require("../helper/audit.job.helper");
+const { uploadToStorage } = require("../services/azure.blob.service");
 
 async function prepareAssignments(input, actor, current, teacher, permission) {
   const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });
@@ -385,30 +386,36 @@ class UserManager extends BaseManager {
     return formatApiReponse(true, "Saved Teacher Info!", data);
   }
 
-  async uploadProfileImage(userId, filePath) {
-    let user = await this.dao.getById(userId);
-    if (!user) {
-      return { success: false, message: "Teacher not found" };
+  async uploadProfileImage(userId, file) {
+    try {
+      let user = await this.dao.getById(userId);
+      if (!user) {
+        return { success: false, message: "Teacher not found" };
+      }
+
+      let expireLimit = 5 * 24 * 60 * 60;
+      const filePath = await uploadToStorage(file.buffer, `${userId}_photo`, file.mimetype);
+
+      user = await this.dao.update(userId, {
+        profileImage: filePath,
+        profileImageExpiresIn:
+          parseInt(Date.now() / 1000) + Number(expireLimit),
+      });
+
+      if (!user) {
+        return {
+          success: false,
+          message: "Failed to update image!",
+          data: null,
+        };
+      }
+
+      const { roles, ...data } = user.toObject();
+      return { success: true, message: "Image uploaded successfully!", data };
+    } catch (err) {
+      console.log("Error --> UserManager -> uploadProfileImage()", err);
+      return { success: false, message: "Error uploading image", data: err };
     }
-
-    let expireLimit = 5 * 24 * 60 * 60;
-
-    user = await this.dao.update(userId, {
-      profileImage: filePath,
-      profileImageExpiresIn:
-        parseInt(Date.now() / 1000) + Number(expireLimit),
-    });
-
-    if (!user) {
-      return {
-        success: false,
-        message: "Failed to update image!",
-        data: null,
-      };
-    }
-
-    const { roles, ...data } = user.toObject();
-    return { success: true, message: "Image uploaded successfully!", data };
   }
 
   async removeProfileImage(userId) {
