@@ -516,7 +516,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
               this.modalService.showBlukUploadDialog = false;
               this.modalService.showUploadErrorDialog = true;
               }else{
-              this.utilityService.showError(err?.error?.message || 'Something went wrong. Please try again.');
+              this.utilityService.handleError(err);
               }
             }
           });

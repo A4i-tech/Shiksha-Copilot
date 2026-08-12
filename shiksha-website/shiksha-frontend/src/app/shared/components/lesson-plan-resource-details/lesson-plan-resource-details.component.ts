@@ -154,7 +154,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   showDraftPopup!: boolean;
   showExistsPopup = false;
-  existsLessonId: string | null = null;
+  existsLessonId: string | undefined;
 
   draftDetails = {
     type: '',
@@ -653,8 +653,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
               this.showDraftPopup = true;
               this.draftDetails.id = err?.error?.data?.lessonId;
               this.draftDetails.type = 'lesson';
-            } else if (err?.error?.message?.includes('has already been saved')) {
-              this.existsLessonId = err?.error?.data?.lessonId ?? null;
+            } else if (err?.error?.message === 'Lesson Plan with this combination has already been saved!') {
+              this.existsLessonId = err?.error?.data?.lessonId;
               this.showExistsPopup = true;
             } else {
               this.utilityservice.handleError(err);
