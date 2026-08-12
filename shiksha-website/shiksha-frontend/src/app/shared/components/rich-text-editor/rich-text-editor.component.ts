@@ -11,12 +11,26 @@ import { FormsModule } from '@angular/forms';
 import { ContentChange, QuillModule } from 'ngx-quill';
 import { marked } from 'marked';
 import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
 
-const turndown = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
+const MARKED_OPTIONS = { async: false as const, breaks: true };
+
+const turndown = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-', codeBlockStyle: 'fenced' });
+gfm(turndown);
+
+// Prevent turndown from escaping underscores inside math spans ($...$)
+turndown.addRule('math-inline', {
+  filter(node) {
+    return node.nodeName === 'SPAN' && /^\$[^$]/.test(node.textContent ?? '');
+  },
+  replacement(content) {
+    return content;
+  },
+});
 
 const TOOLBAR = [
   [{ header: [1, 2, 3, false] }],
-  ['bold', 'italic', 'underline', 'strike'],
+  ['bold', 'italic', 'strike'],
   [{ list: 'ordered' }, { list: 'bullet' }],
 ];
 
@@ -39,7 +53,7 @@ export class RichTextEditorComponent implements OnChanges {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['value'] && (!this.userHasEdited || this.value !== this.lastEmittedValue)) {
       this.userHasEdited = false;
-      this.htmlContent = marked.parse(this.value ?? '', { async: false });
+      this.htmlContent = marked.parse(this.value ?? '', MARKED_OPTIONS);
     }
   }
 

@@ -2,7 +2,6 @@
   class="rte-editor"
   [modules]="modules"
   [(ngModel)]="htmlContent"
-  [debounceTime]="300"
   (onContentChanged)="onContentChanged($event)"
   [sanitize]="true"
 ></quill-editor>
