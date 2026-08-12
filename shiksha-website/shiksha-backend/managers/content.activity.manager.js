@@ -34,16 +34,18 @@ class ContentActivityManager {
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
       const activityCursor = this.regeneratedLogDao.getContentActivityCursor(intersectFilters(activityFilters(req.query), scopeFilter));
       const fileUrl = await exportExcel({
-        rows: activityCursor,
         filename: `Content-Activity-Export-${userId}--${Date.now()}`,
-        worksheetName: "ContentActivity",
-        columns: [
-          { header: "Teacher Name", key: "userName", width: 30 },
-          { header: "Content generated", key: "genContent", width: 50 },
-          { header: "Generated Date", key: "createdAt", width: 30 },
-          { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
-        ],
-        toRow: (activity) => activity,
+        worksheets: [{
+          name: "ContentActivity",
+          rows: activityCursor,
+          columns: [
+            { header: "Teacher Name", key: "userName", width: 30 },
+            { header: "Content generated", key: "genContent", width: 50 },
+            { header: "Generated Date", key: "createdAt", width: 30 },
+            { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
+          ],
+          toRow: (activity) => activity,
+        }],
       });
 
       await AuditLog.create({

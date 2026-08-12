@@ -394,19 +394,21 @@ class SchoolManager extends BaseManager {
 
       const schoolCursor = this.dao.getCursor({ ...mergedFilter, ...status }, sortOrderObject);
       const fileUrl = await exportExcel({
-        rows: schoolCursor,
         filename: `School-Export-${userId}--${Date.now()}`,
-        worksheetName: "Schools",
-        columns: [
-          { header: "DISE Code", key: "schoolId", width: 15 },
-          { header: "School Name", key: "name", width: 45 },
-          { header: "State", key: "state", width: 20 },
-          { header: "Zone", key: "zone", width: 20 },
-          { header: "District", key: "district", width: 20 },
-          { header: "Taluk", key: "block", width: 20 },
-          { header: "Status", key: "status", width: 20 },
-        ],
-        toRow: (school) => ({ ...school, status: school.isDeleted ? "Inactive" : "Active" }),
+        worksheets: [{
+          name: "Schools",
+          rows: schoolCursor,
+          columns: [
+            { header: "DISE Code", key: "schoolId", width: 15 },
+            { header: "School Name", key: "name", width: 45 },
+            { header: "State", key: "state", width: 20 },
+            { header: "Zone", key: "zone", width: 20 },
+            { header: "District", key: "district", width: 20 },
+            { header: "Taluk", key: "block", width: 20 },
+            { header: "Status", key: "status", width: 20 },
+          ],
+          toRow: (school) => ({ ...school, status: school.isDeleted ? "Inactive" : "Active" }),
+        }],
       });
       await AuditLog.create({ eventType: "Schools Export", status: "success", logUrl: fileUrl, userId, name: userName });
 

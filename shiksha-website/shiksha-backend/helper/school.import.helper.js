@@ -108,16 +108,18 @@ async function importSchools(workbook, userId, userName, createSchool) {
   let errorUrl;
   if (validationErrors.length) {
     errorUrl = await exportExcel({
-      rows: validationErrors,
       filename: `School-Error-Log-${userId}--${Date.now()}`,
-      worksheetName: "Validation Errors",
-      columns: [
-        { header: "Row Number", key: "row", width: 15 },
-        { header: "DiseCode", key: "schoolId", width: 20 },
-        { header: "School Name", key: "schoolName", width: 30 },
-        { header: "Error Message", key: "message", width: 50 },
-      ],
-      toRow: (error) => error,
+      worksheets: [{
+        name: "Validation Errors",
+        rows: validationErrors,
+        columns: [
+          { header: "Row Number", key: "row", width: 15 },
+          { header: "DiseCode", key: "schoolId", width: 20 },
+          { header: "School Name", key: "schoolName", width: 30 },
+          { header: "Error Message", key: "message", width: 50 },
+        ],
+        toRow: (error) => error,
+      }],
     });
     await AuditLog.create({ eventType: "Schools Import", status: "failure", logUrl: errorUrl, userId, name: userName });
   }
@@ -134,24 +136,25 @@ async function importSchools(workbook, userId, userName, createSchool) {
 
   const failureCount = validSchools.length - successCount;
   const logUrl = await exportExcel({
-    rows: [{ totalRecords: validSchools.length, successCount, failureCount }],
     filename: `School-Success-Error-Log-${userId}--${Date.now()}`,
-    worksheetName: "Summary",
-    columns: [
-      { header: "Total Records Processed", key: "totalRecords", width: 30 },
-      { header: "Success Count", key: "successCount", width: 20 },
-      { header: "Failure Count", key: "failureCount", width: 20 },
-    ],
-    toRow: (summary) => summary,
-    additionalWorksheets: errors.length ? [{
+    worksheets: [{
+      name: "Summary",
+      rows: [{ totalRecords: validSchools.length, successCount, failureCount }],
+      columns: [
+        { header: "Total Records Processed", key: "totalRecords", width: 30 },
+        { header: "Success Count", key: "successCount", width: 20 },
+        { header: "Failure Count", key: "failureCount", width: 20 },
+      ],
+      toRow: (summary) => summary,
+    }, ...(errors.length ? [{
+      name: "Errors",
       rows: errors,
-      worksheetName: "Errors",
       columns: [
         { header: "School ID", key: "schoolId", width: 20 },
         { header: "Error Message", key: "message", width: 50 },
       ],
       toRow: (error) => error,
-    }] : [],
+    }] : [])],
   });
   await AuditLog.create({ eventType: "Schools Import", status: "success", logUrl, userId, name: userName });
   return { success: true, message: `Bulk upload completed: ${successCount} imported, ${failureCount} failed.` };
