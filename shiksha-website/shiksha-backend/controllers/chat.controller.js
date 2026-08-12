@@ -12,27 +12,21 @@ class ChatController extends BaseController {
         const { message } = req.body;
         const userId = req.user._id;
 
-        // Use streaming manager method
         const result = await this.manager.sendMessageStream(userId, message);
 
         if (!result.success) {
             return res.status(404).json({ message: result.message, data: result.error });
         }
 
-        // Set headers for SSE
-        // The Python backend returns 'text/event-stream'.
-        // We should forward that content type.
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
         res.setHeader('Connection', 'keep-alive');
 
-        // Pipe the stream
         result.stream.pipe(res);
 
-        // Handle stream errors
         result.stream.on('error', (err) => {
             console.error('Stream error in controller', err);
-            res.end(); // End response on error
+            res.end();
         });
     }
 

@@ -50,7 +50,6 @@ class LessonChatService:
             for message in request.messages
         ]
 
-        # Build chat history with system message and previous messages
         chat_history = [
             ChatMessage(role=MessageRole.SYSTEM, content=system_message)
         ] + chat_messages[:-1]

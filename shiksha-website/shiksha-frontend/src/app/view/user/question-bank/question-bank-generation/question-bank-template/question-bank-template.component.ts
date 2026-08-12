@@ -18,23 +18,18 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   // NEW INPUT: The merged pool from Parent
   @Input() availableQuestions: any[] = [];
 
-  // Pre-selected questions passed from the parent to restore selections
   @Input() preSelectedQuestions: any[] = [];
 
   @Input() subject: string = '';
 
   @Output() backClick = new EventEmitter<boolean>();
-  @Output() nextClick = new EventEmitter<any>(); // Emits final selected questions
+  @Output() nextClick = new EventEmitter<any>();
   @Output() selectionChange = new EventEmitter<any[]>();
 
-  // Pre-selected questions from parent (e.g. when navigating back to Step 2)
-
-  // Local State
   filteredQuestions: any[] = [];
   selectedQuestions: any[] = [];
   activePane: 'POOL' | 'SELECTED' = 'POOL';
 
-  // Filter State
   filterSource: string = 'ALL';
   filterDifficulty: string = 'ALL';
   filterMarks: string | number = 'ALL';
@@ -53,12 +48,10 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
   constructor() { }
 
   ngOnInit(): void {
-    // Initialize from pre-selected questions if any
     if (this.preSelectedQuestions && this.preSelectedQuestions.length > 0) {
       this.selectedQuestions = [...this.preSelectedQuestions];
       this.activePane = 'SELECTED';
     }
-    // Initial load
     this.extractFilters();
     this.applyFilters();
 
@@ -226,13 +219,11 @@ export class QuestionBankTemplateComponent implements OnInit, OnChanges, AfterVi
     return this.filteredQuestions.length > 0 && this.filteredQuestions.some(q => this.wouldExceedTotal(q));
   }
 
-  // --- ACTIONS ---
   previousStep() {
     this.backClick.emit(true);
   }
 
   proceedToNext() {
-    // We send the selected questions to the parent (Step 3)
     this.nextClick.emit(this.selectedQuestions);
   }
 

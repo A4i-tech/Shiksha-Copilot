@@ -138,7 +138,6 @@ class QuestionPaperService:
     def _format_system_prompt(self, request: QuestionBankPartsGenerationRequest, record: _LearningRecord, slot: list[GenerationSlot]) -> str:
         blooms_guide = self._prompt_bloom_en if "english" in request.subject.lower() else self._prompt_bloom_fallback
 
-        # Build grammar topics text, appending grammar guide if slot has grammar types
         grammar_topics_text = self._get_grammar_topics(request, record)
         slot_types = {template.type for _, template, _ in slot}
         if slot_types & GRAMMAR_QUESTION_TYPES:
@@ -158,7 +157,6 @@ class QuestionPaperService:
         Uses RAG Adapter if available, otherwise uses direct OpenAI call.
         """
 
-        # Format learning outcomes for this specific unit
         if record.learning_outcomes:
             unit_los_text = f"Unit Name: {record.title}:\n" + "\n".join(f"  - {lo}" for lo in record.learning_outcomes)
         else:
@@ -286,10 +284,7 @@ class QuestionPaperService:
 
     @observe(name="Shiksha-QB")
     async def generate_question_bank_by_parts(self, request: QuestionBankPartsGenerationRequest) -> QuestionBankResponse:
-        """
-        Generate question bank by parts using parallel processing with delays and RAG.
-        Updated to provide default values for school_name and examination_name to prevent DB validation errors.
-        """
+        """Generate a question bank by parts."""
         all_generated: list[GeneratedSlotQuestion] = []
         with propagate_attributes(user_id=request.user_id, session_id=request.session_id, tags=[
             f"board:{request.board}",

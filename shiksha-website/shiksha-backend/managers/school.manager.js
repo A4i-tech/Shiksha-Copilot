@@ -57,11 +57,9 @@ class SchoolManager extends BaseManager {
         }
       }
 
-      // If there are classes to create, wait for them; otherwise proceed
       if (classCreates.length > 0) {
         classes = await Promise.all(classCreates);
 
-        // Check if any class creation failed
         const failedClasses = classes.filter(c => !c);
         if (failedClasses.length > 0) {
           await session.abortTransaction();

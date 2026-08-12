@@ -332,8 +332,7 @@ function transformSections(sections, templateSections) {
 			}));
 		}
 
-		// Default fallback
-		else {
+			else {
 			formattedContent = section.content;
 		}
 

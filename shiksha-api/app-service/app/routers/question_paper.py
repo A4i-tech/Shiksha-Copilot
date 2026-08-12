@@ -63,7 +63,6 @@ async def translate_json(
         logger.warning("Language detection failed on sample text: %s", source_lang_sample)
         source_lang = "en"
 
-    # Normalize Target Language
     target_lang_input = target_language.lower().strip()
     target_lang = LANGUAGE_MAP.get(target_lang_input, target_lang_input)
 

@@ -80,7 +80,6 @@ export class CreateBatchComponent implements OnInit {
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error creating batch:', error);
-          // Handle error (e.g., show a toast message)
         }
       });
     } else {

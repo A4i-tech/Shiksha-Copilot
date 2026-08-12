@@ -36,7 +36,6 @@ router.put('/teacher-training-batches/:batchId/attendance', isAuthenticated, req
 // Submit a teacher training batch
 router.put('/teacher-training-batches/:batchId/submit', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.submitBatch);
 
-// New route to upload PDF and photos for a specific batch
 router.post(
   '/teacher-training-batches/:batchId/upload-pdf',
   isAuthenticated,
