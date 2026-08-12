@@ -13,7 +13,7 @@ from pptx import presentation
 from pptx.util import Length
 
 from pydantic import Field, HttpUrl, PositiveInt
-from pydantic_ai import Agent, AgentRunResultEvent, AgentStreamEvent, BinaryContent, FunctionToolCallEvent, FunctionToolResultEvent, FunctionToolset, ModelRetry, PartEndEvent, RunContext, TextContent, TextPart, ThinkingPart, ToolsetTool, WrapperToolset
+from pydantic_ai import Agent, AgentRunResultEvent, AgentStreamEvent, BinaryContent, FunctionToolCallEvent, FunctionToolResultEvent, FunctionToolset, ModelRetry, PartEndEvent, RetryPromptPart, RunContext, TextContent, TextPart, ThinkingPart, ToolsetTool, WrapperToolset
 from pydantic_ai.capabilities import Thinking
 from pydantic_ai.usage import UsageLimits
 
@@ -311,10 +311,10 @@ def _adapt_event(event: AgentStreamEvent) -> ShikshaAgentEvent | None:
 
     if isinstance(event, FunctionToolResultEvent):
         return ShikshaAgentEvent(type="ToolCallExecutionEvent", content=[{
-            "call_id": event.result.tool_call_id,
-            "name": event.result.tool_name,
-            "is_error": getattr(event.result, "outcome", None) != "success",
-            "content": event.result.content,
+            "call_id": event.tool_call_id,
+            "name": event.part.tool_name,
+            "is_error": isinstance(event.part, RetryPromptPart),
+            "content": event.content,
         }])
 
     if isinstance(event, PartEndEvent):
