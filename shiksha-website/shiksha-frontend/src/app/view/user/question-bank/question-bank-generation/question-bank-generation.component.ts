@@ -503,7 +503,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   previewQuestions(): void {
-    const blueprint = JSON.stringify(this.questionBankBluePrintData);
+    const blueprint = JSON.stringify([this.questionBankBluePrintData, this.f.language.value]);
     if (this.selectedQuestions.length && blueprint === this.previewBlueprint) {
       this.updatePreview();
       this.currentStep = 4;
