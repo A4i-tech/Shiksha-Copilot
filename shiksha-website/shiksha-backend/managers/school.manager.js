@@ -12,6 +12,7 @@ const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
 const { permissionScopeFilter, isResourceAllowed, intersectFilters } = require("../helper/scope.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 
 /** @extends {BaseManager<SchoolDao>} */
 class SchoolManager extends BaseManager {
@@ -354,7 +355,7 @@ class SchoolManager extends BaseManager {
       const searchFields = ["name", "phone"];
 
       const regexExpressions = (searchFields || []).map((field) => ({
-        [field]: { $regex: new RegExp(search, "i") },
+        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
       }));
 
       if (!isNaN(parseInt(search))) {

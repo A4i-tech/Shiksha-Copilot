@@ -3,10 +3,11 @@ const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const { Worker } = require("worker_threads");
 const path = require("path");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 
 function activityFilters(query) {
   const { filter = {}, search } = query;
-  const searchFilter = search ? { $or: ["user.identity.name", "user.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(search, "i") } })) } : {};
+  const searchFilter = search ? { $or: ["user.identity.name", "user.school.name", "content.name", "content.topics"].map((field) => ({ [field]: { $regex: new RegExp(escapeRegExp(search), "i") } })) } : {};
   return intersectFilters(filter, searchFilter);
 }
 

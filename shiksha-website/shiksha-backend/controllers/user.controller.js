@@ -3,6 +3,7 @@ const UserManager = require("../managers/user.manager.js");
 const BaseController = require("./base.controller.js");
 const User = require("../models/user.model.js");
 const { intersectFilters } = require("../helper/scope.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 
 /** @extends {BaseController<UserManager>} */
 class UserController extends BaseController {
@@ -175,7 +176,7 @@ class UserController extends BaseController {
     if (search) {
       const searchFields = ["identity.name", "identity.phone", "school.zone", "school.district"];
       const regexExpressions = searchFields.map((field) => ({
-        [field]: { $regex: new RegExp(search, "i") },
+        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
       }));
       searchFilter.$or = regexExpressions;
     }

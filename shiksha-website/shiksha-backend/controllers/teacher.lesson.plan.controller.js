@@ -3,6 +3,7 @@ const handleError = require("../helper/handleError.js");
 const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manager.js");
 const BaseController = require("./base.controller.js");
 const { intersectFilters } = require("../helper/scope.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 /** @extends {BaseController<TeacherLessonPlanManager>} */
 class TeacherLessonPlanController extends BaseController {
 	constructor() {
@@ -38,7 +39,7 @@ class TeacherLessonPlanController extends BaseController {
 			];
 
 			const regexExpressions = searchFields.map((field) => ({
-				[field]: { $regex: new RegExp(search, "i") },
+				[field]: { $regex: new RegExp(escapeRegExp(search), "i") },
 			}));
 
 			searchFilter.$or = regexExpressions;

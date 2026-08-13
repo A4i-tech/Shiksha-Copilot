@@ -339,4 +339,3 @@ module.exports = {
 	nameRegex,
 	getTemplateWorkflowId
 };
-
