@@ -10,6 +10,7 @@ const { Worker } = require("worker_threads");
 const formatApiReponse = require("../helper/response");
 const path = require("path");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
+const AppError = require("../helper/app.error");
 const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../services/variform.service");
 const { MESSAGES } = require("../config/constants");
@@ -105,9 +106,9 @@ class UserManager extends BaseManager {
 
   async getProfileById(id, grants, actorId) {
     const user = await this.dao.getById(id);
-    if (!user) throw new Error("User is outside your scope");
+    if (!user) throw new AppError("User is outside your scope", 403);
     const permission = String(id) === String(actorId) ? "profile.view" : "user.view";
-    if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
+    if (!await canAccessUser(grants, permission, user)) throw new AppError("User is outside your scope", 403);
 
     const plainUser = user.toObject();
     delete plainUser.roles;
@@ -157,7 +158,7 @@ class UserManager extends BaseManager {
     let data = await this.dao.getByPhone(req.body.phone);
     if (!data) return formatApiReponse(false, "", null);
     const permission = String(data._id) === String(req.user._id) ? "profile.view" : "user.view";
-    if (!await canAccessUser(req.permissions, permission, data)) throw new Error("User is outside your scope");
+    if (!await canAccessUser(req.permissions, permission, data)) throw new AppError("User is outside your scope", 403);
     return formatApiReponse(true, "", data);
   }
 
@@ -167,7 +168,7 @@ class UserManager extends BaseManager {
     if (payload.roles && String(id) === String(actor._id)) throw new Error("You cannot change your own role assignments");
     const action = "user.edit";
     const grants = getRolePermissions(actor.roles);
-    if (!await canManageUser(grants, action, user)) throw new Error("User is not below your scope");
+    if (!await canManageUser(grants, action, user)) throw new AppError("User is not below your scope", 403);
 
     if (payload.identity?.phone) {
       const duplicate = await this.dao.getByPhone(payload.identity.phone);
@@ -179,7 +180,7 @@ class UserManager extends BaseManager {
     const prepared = payload.roles && await prepareAssignments(payload.roles, actor, user.roles, Boolean(user.profiles.teacher), "role.assign");
     const schoolRemoved = Boolean(user.profiles.teacher && prepared && !prepared.school);
     const schoolChanged = Boolean(user.profiles.teacher && prepared && prepared.school && String(prepared.school) !== schoolDependency(user.roles));
-    if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new Error("User is outside your scope");
+    if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new AppError("User is outside your scope", 403);
 
     let forceRelogin = false;
     if (payload.identity) {
@@ -278,7 +279,7 @@ class UserManager extends BaseManager {
       return { success: false, message: "User not found" };
     }
     const permission = String(userId) === String(actorId) ? "profile.view" : "user.view";
-    if (!await canAccessUser(grants, permission, user)) throw new Error("User is outside your scope");
+    if (!await canAccessUser(grants, permission, user)) throw new AppError("User is outside your scope", 403);
     return { success: true, data: user };
   }
 
@@ -341,7 +342,7 @@ class UserManager extends BaseManager {
     if (!user) {
       return formatApiReponse(false, "Teacher not found", null);
     }
-    if (!await canManageUser(grants, "user.delete", user)) throw new Error("User is not below your scope");
+    if (!await canManageUser(grants, "user.delete", user)) throw new AppError("User is not below your scope", 403);
     if (user.profiles.teacher && (await this.schoolDao.getOne({ _id: schoolDependency(user.roles) })).isDeleted) {
       return formatApiReponse(
         false,
@@ -370,7 +371,7 @@ class UserManager extends BaseManager {
     if (!user) {
       return formatApiReponse(false, "Teacher not found", null);
     }
-    if (!await canManageUser(grants, "user.delete", user)) throw new Error("User is not below your scope");
+    if (!await canManageUser(grants, "user.delete", user)) throw new AppError("User is not below your scope", 403);
     if (user.isDeleted) {
       return formatApiReponse(false, "Teacher is already inactive", null);
     }
@@ -517,7 +518,7 @@ class UserManager extends BaseManager {
   async delete(req) {
     const user = await this.dao.getById(req.params.id);
     if (!user) return formatApiReponse(false, "User not found", null);
-    if (!await canManageUser(req.permissions, "user.delete", user)) throw new Error("User is not below your scope");
+    if (!await canManageUser(req.permissions, "user.delete", user)) throw new AppError("User is not below your scope", 403);
     return formatApiReponse(true, "", await this.dao.delete(req.params.id));
   }
 }

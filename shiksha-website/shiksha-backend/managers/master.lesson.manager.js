@@ -8,6 +8,7 @@ const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const regenerateLessonPlan = require("../services/copilot.bot.service");
 const UserDao = require("../dao/user.dao");
 const ChapterDao = require("../dao/chapter.dao");
+const AppError = require("../helper/app.error");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterResourceDao = require("../dao/master.resource.dao");
 const Chapter = require("../models/chapter.model");
@@ -56,7 +57,7 @@ class MasterLessonManger extends BaseManager {
 		const user = await this.userDao.getById(activity.generatedBy);
 		if (!user || !user.profiles.teacher) throw new Error("Activity has no teacher");
 		const school = await School.findById(schoolDependency(user.roles)).lean();
-		if (!isResourceAllowed(permissions, "content.activity.view", school)) throw new Error("Activity is outside your scope");
+		if (!isResourceAllowed(permissions, "content.activity.view", school)) throw new AppError("Activity is outside your scope", 403);
 		const lessonPlan = await this.dao.generateLessonPlan(lessonId);
 		if (!lessonPlan) {
 			return formatApiReponse(false, "Lesson plan not found", null);

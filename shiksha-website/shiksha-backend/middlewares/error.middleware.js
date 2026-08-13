@@ -7,6 +7,11 @@ module.exports = (err, req, res, next) => {
 		return res.status(409).json(formatApiReponse(false, "Duplicate entry", null));
 	}
 
+	if (err.name === "CastError" && err.kind === "ObjectId") {
+		return res.status(400).json(formatApiReponse(false, "Invalid ID format", null));
+	}
+
 	const statusCode = err.statusCode || 500;
-	res.status(statusCode).json(formatApiReponse(false, err.message || "Internal server error", null));
+	const message = err.name === "AppError" ? err.message : "Internal server error";
+	res.status(statusCode).json(formatApiReponse(false, message, null));
 };

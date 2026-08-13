@@ -1,5 +1,6 @@
 const BaseManager = require("./base.manager");
 const formatApiReponse = require("../helper/response");
+const AppError = require("../helper/app.error");
 const SchoolDao = require("../dao/school.dao");
 const ClassDao = require("../dao/school.class.dao");
 const UserDao = require("../dao/user.dao");
@@ -23,7 +24,7 @@ class SchoolManager extends BaseManager {
   async create(req, session) {
     try {
       session.startTransaction();
-      if (!isResourceAllowed(req.permissions, "school.create", req.body)) throw new Error("School is outside your scope");
+      if (!isResourceAllowed(req.permissions, "school.create", req.body)) throw new AppError("School is outside your scope", 403);
       let classes = req.body?.classes || [];
       let school = await this.dao.getOne({ schoolId: req.body.schoolId });
 
@@ -86,7 +87,7 @@ class SchoolManager extends BaseManager {
     if (!school) {
       return formatApiReponse(false, "school not found", null);
     }
-    if (!isResourceAllowed(req.permissions, "school.read", school)) throw new Error("School is outside your scope");
+    if (!isResourceAllowed(req.permissions, "school.read", school)) throw new AppError("School is outside your scope", 403);
 
     let classes = await this.classDao.getClassesBySchoolId(schoolId);
 
@@ -97,8 +98,8 @@ class SchoolManager extends BaseManager {
     const { classes: classesData } = data;
 
     const currentSchool = await this.dao.getById(id);
-    if (!isResourceAllowed(permissions, "school.edit", currentSchool)) throw new Error("School is outside your scope");
-    if (!isResourceAllowed(permissions, "school.edit", { ...currentSchool.toObject(), ...data })) throw new Error("School is outside your scope");
+    if (!isResourceAllowed(permissions, "school.edit", currentSchool)) throw new AppError("School is outside your scope", 403);
+    if (!isResourceAllowed(permissions, "school.edit", { ...currentSchool.toObject(), ...data })) throw new AppError("School is outside your scope", 403);
 
     const existingSchool = await this.dao.getBySchoolId(data.schoolId);
 
@@ -276,14 +277,14 @@ class SchoolManager extends BaseManager {
 
   async delete(req) {
     const school = await this.dao.getById(req.params.id);
-    if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
+    if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new AppError("School is outside your scope", 403);
     let data = await this.dao.delete(req.params?.id);
     return formatApiReponse(true, "", data);
   }
 
   async updateFacility(id, body, permissions) {
     let data = await this.dao.getById(id);
-    if (!isResourceAllowed(permissions, "school.edit", data)) throw new Error("School is outside your scope");
+    if (!isResourceAllowed(permissions, "school.edit", data)) throw new AppError("School is outside your scope", 403);
     let schoolfacilities = data?.facilities;
     const updatedFacilities = schoolfacilities.filter((ele) => ele.otherType !== body.otherType);
 
@@ -304,7 +305,7 @@ class SchoolManager extends BaseManager {
   async deactivate(req) {
     const schoolId = req.params.id;
     const currentSchool = await this.dao.getById(schoolId);
-    if (!isResourceAllowed(req.permissions, "school.delete", currentSchool)) throw new Error("School is outside your scope");
+    if (!isResourceAllowed(req.permissions, "school.delete", currentSchool)) throw new AppError("School is outside your scope", 403);
 
     const school = await this.dao.update(schoolId, { isDeleted: true });
 
@@ -330,7 +331,7 @@ class SchoolManager extends BaseManager {
 
   async activate(req) {
     const school = await this.dao.getById(req.params.id);
-    if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
+    if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new AppError("School is outside your scope", 403);
     return formatApiReponse(true, "School activated successfully", await this.dao.activate(req.params.id));
   }
 
