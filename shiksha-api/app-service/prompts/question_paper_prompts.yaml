@@ -34,25 +34,14 @@ maths_question_clarity_guide: |
   5. For word problems, state the real-world scenario in one short sentence before introducing any numbers.
 
 question_bank_parts_gen_retrieval_query_template: |
-  ## Examination Details
-  - **Board:** {BOARD}
-  - **Medium:** {MEDIUM}
-  - **Grade:** {GRADE}
-  - **Subject:** {SUBJECT}
-  - **Total Marks:** {TOTAL_MARKS}
-  - **Chapters (unit names):** {CHAPTERS}
-  - **Unit:** {CHAPTER}
-  - **Unit-Wise Learning Outcomes:** {UNIT_WISE_LEARNING_OUTCOMES}
-
+  ## Chapters 
+  {CHAPTERS}
+  ## Unit 
+  {CHAPTER}
+  ## Unit-Wise Learning Outcomes 
+  {UNIT_WISE_LEARNING_OUTCOMES}
   ## Learning Outcomes
   {LEARNING_OUTCOMES}
-
-  ## Rules
-  {RULES}
-
-  ## EXISTING QUESTIONS
-  ```json
-  {EXISTING_QUESTIONS_JSON}
   ```
 
 question_bank_parts_gen: |

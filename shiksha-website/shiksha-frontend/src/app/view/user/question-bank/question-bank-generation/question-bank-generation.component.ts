@@ -358,7 +358,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
       forkJoin({
         config: this.questionBankService.getPaperConfig({ board, grade: String(standard), subjectName }),
-        chapters: this.questionBankService.getChapters({ class: String(standard), medium: medium, subject: subjectId })
+        chapters: this.questionBankService.getChapters({ class: String(standard), medium: medium, subject: subjectId, board })
       }).pipe(
         finalize(() => this.isLoadingQuestions = false)
       ).subscribe({

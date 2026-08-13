@@ -27,9 +27,10 @@ class MasterSubjectDao extends BaseDao {
 		return subjectDoc ? subjectDoc.name : str(identifier);
 	}
 
-	async resolveSubjectContext(identifier) {
+	async resolveSubjectContext(identifier, board) {
 		let subjectCode = str(identifier);
 		let targetSubjectIds = [];
+		const boardFilter = board ? { boards: board } : {};
 
 		if (mongoose.Types.ObjectId.isValid(identifier)) {
 			const subjectDoc = await MasterSubject.findById(identifier)
@@ -37,7 +38,10 @@ class MasterSubjectDao extends BaseDao {
 				.lean();
 			if (subjectDoc) {
 				subjectCode = subjectDoc.name;
-				const relatedSubjects = await MasterSubject.find({ name: subjectCode })
+				const relatedSubjects = await MasterSubject.find({
+					name: subjectCode,
+					...boardFilter,
+				})
 					.select("_id")
 					.lean();
 				targetSubjectIds = relatedSubjects.map((s) => s._id);
@@ -50,6 +54,7 @@ class MasterSubjectDao extends BaseDao {
 					{ name: subjectCode },
 					{ subjectName: regexExact(subjectCode) },
 				],
+				...boardFilter,
 			})
 				.select("_id name")
 				.lean();
