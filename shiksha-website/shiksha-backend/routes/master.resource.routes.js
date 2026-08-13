@@ -22,6 +22,7 @@ router.post(
 
 router.get(
 	"/resource-plan/list",
+	isAuthenticated,
 	asyncMiddleware(
 		masterResourceController.getAll.bind(masterResourceController)
 	)

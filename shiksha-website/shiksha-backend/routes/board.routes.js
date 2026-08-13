@@ -20,11 +20,13 @@ router.post(
 
 router.get(
     "/board/list",
+    isAuthenticated,
     asyncMiddleware(boardController.getAll.bind(boardController))
 );
 
 router.get(
     "/board/:id",
+    isAuthenticated,
     asyncMiddleware(boardController.getById.bind(boardController))
 );
 

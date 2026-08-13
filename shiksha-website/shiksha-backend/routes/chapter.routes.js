@@ -10,16 +10,19 @@ const chapterController = new ChapterController();
 
 router.get(
 	"/chapter/list",
+	isAuthenticated,
 	asyncMiddleware(chapterController.getAll.bind(chapterController))
 );
 
 router.get(
 	"/chapter/get-by-sem",
+	isAuthenticated,
 	asyncMiddleware(chapterController.getBySemester.bind(chapterController))
 );
 
 router.get(
 	"/chapter/:id",
+	isAuthenticated,
 	asyncMiddleware(chapterController.getById.bind(chapterController))
 );
 

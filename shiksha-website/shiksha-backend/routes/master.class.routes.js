@@ -17,11 +17,13 @@ router.post(
 
 router.get(
   "/master-class/list",
+  isAuthenticated,
   asyncMiddleware(masterClassController.getAll.bind(masterClassController))
 );
 
 router.get(
   "/master-class/:id",
+  isAuthenticated,
   asyncMiddleware(masterClassController.getById.bind(masterClassController))
 );
 

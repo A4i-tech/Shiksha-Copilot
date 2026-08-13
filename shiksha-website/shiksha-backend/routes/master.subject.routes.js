@@ -19,6 +19,7 @@ router.post(
 
 router.get(
 	"/master-subject/list",
+	isAuthenticated,
 	asyncMiddleware(masterSubjectController.getAll.bind(masterSubjectController))
 );
 
@@ -32,6 +33,7 @@ router.post(
 
 router.get(
 	"/master-subject/get-by-board/:board",
+	isAuthenticated,
 	asyncMiddleware(
 		masterSubjectController.getByBoard.bind(masterSubjectController)
 	)
@@ -39,6 +41,7 @@ router.get(
 
 router.get(
 	"/master-subject/:id",
+	isAuthenticated,
 	asyncMiddleware(masterSubjectController.getById.bind(masterSubjectController))
 );
 

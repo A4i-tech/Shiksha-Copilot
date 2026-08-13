@@ -17,11 +17,13 @@ router.post(
 
 router.get(
 	"/facility/list",
+	isAuthenticated,
 	asyncMiddleware(facilityController.getAll.bind(facilityController))
 );
 
 router.get(
 	"/facility/:id",
+	isAuthenticated,
 	asyncMiddleware(facilityController.getById.bind(facilityController))
 );
 

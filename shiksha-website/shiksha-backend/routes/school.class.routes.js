@@ -22,17 +22,20 @@ router.post(
 
 router.get(
 	"/class/list",
+	isAuthenticated,
 	asyncMiddleware(classController.getAll.bind(classController))
 );
 
 router.get(
 	"/class/group-by-board/:schoolId",
+	isAuthenticated,
 	validateGroupClassByBoard,
 	asyncMiddleware(classController.getGroupClassesByBoard.bind(classController))
 );
 
 router.get(
 	"/class/:id",
+	isAuthenticated,
 	validateClassGetById,
 	asyncMiddleware(classController.getById.bind(classController))
 );

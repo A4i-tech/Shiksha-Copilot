@@ -70,6 +70,7 @@ router.post(
 
 router.post(
 	"/master-lesson/learning-outcomes",
+	isAuthenticated,
 	asyncMiddleware(
 		masterLessonController.getLessonOutcomes.bind(masterLessonController)
 	)
