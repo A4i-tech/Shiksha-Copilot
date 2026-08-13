@@ -96,6 +96,76 @@ describe("QuestionBankManager", () => {
     });
   });
 
+  describe("getPaperConfig", () => {
+    it("returns the telangana-science objectives for BSE-TG Science", async () => {
+      const result = await manager.getPaperConfig("BSE-TG", 8, "Science");
+
+      expect(result.success).toBe(true);
+      expect(result.data.objectives).toHaveLength(7);
+      expect(result.data.objectives[0].objective).toBe("Conceptual Understanding");
+    });
+
+    it("returns the same objectives for BSE-TG Biology as BSE-TG Science", async () => {
+      const science = await manager.getPaperConfig("BSE-TG", 8, "Science");
+      const biology = await manager.getPaperConfig("BSE-TG", 8, "Biology");
+
+      expect(biology.data.objectives).toEqual(science.data.objectives);
+    });
+
+    it("returns the same objectives for BSE-TG Physics as BSE-TG Science", async () => {
+      const science = await manager.getPaperConfig("BSE-TG", 8, "Science");
+      const physics = await manager.getPaperConfig("BSE-TG", 8, "Physics");
+
+      expect(physics.data.objectives).toEqual(science.data.objectives);
+    });
+
+    it("returns the telangana-social objectives for BSE-TG Social", async () => {
+      const result = await manager.getPaperConfig("BSE-TG", 8, "Social");
+
+      expect(result.success).toBe(true);
+      expect(result.data.objectives).toHaveLength(5);
+      expect(result.data.objectives.map((o) => o.objective)).toContain(
+        "Reading the text, understanding and interpretation"
+      );
+    });
+
+    it("returns the telangana-math objectives for BSE-TG Math", async () => {
+      const result = await manager.getPaperConfig("BSE-TG", 8, "Math");
+
+      expect(result.success).toBe(true);
+      expect(result.data.objectives).toHaveLength(5);
+      expect(result.data.objectives.map((o) => o.objective)).toContain("Problem solving");
+    });
+
+    it("returns the telangana objectives for BSE-TG English", async () => {
+      const result = await manager.getPaperConfig("BSE-TG", 8, "English");
+
+      expect(result.success).toBe(true);
+      expect(result.data.objectives).toHaveLength(4);
+      expect(result.data.objectives.map((o) => o.objective)).toContain("Higher order thinking");
+    });
+
+    it("returns the generic telangana objectives for BSE-TG with an empty subjectName", async () => {
+      const result = await manager.getPaperConfig("BSE-TG", 8, "");
+
+      expect(result.success).toBe(true);
+      expect(result.data.objectives).toHaveLength(4);
+      expect(result.data.objectives.map((o) => o.objective)).toContain("Higher order thinking");
+    });
+
+    it("still returns the coreGrade10 objectives for KSEEB Science grade 10", async () => {
+      const result = await manager.getPaperConfig("KSEEB", 10, "Science");
+
+      expect(result.success).toBe(true);
+      expect(result.data.objectives).toEqual([
+        { objective: "Knowledge", shortName: "Knowledge", percentageDistribution: 10 },
+        { objective: "Understanding", shortName: "Understanding", percentageDistribution: 55 },
+        { objective: "Application", shortName: "Application", percentageDistribution: 20 },
+        { objective: "Skill", shortName: "Skill", percentageDistribution: 15 },
+      ]);
+    });
+  });
+
   describe("_withQuestionTypeMetadata", () => {
     it("should map template types correctly", () => {
       const template = [
@@ -123,6 +193,74 @@ describe("QuestionBankManager", () => {
 
   describe("blueprint distribution", () => {
     it("builds the exact requested blueprint", () => {
+      const template = manager._applyQuestionCounts([
+        { type: "MCQ", marksPerQuestion: 1 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5 },
+      ], 7);
+      const result = manager._distributeBlueprint(template, [
+        { unitName: "Unit A", marks: 5 },
+        { unitName: "Unit B", marks: 2 },
+      ], [
+        { objective: "Knowledge", percentageDistribution: 34 },
+        { objective: "Application", percentageDistribution: 66 },
+      ]);
+
+      expect(result).toEqual([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, questionDistribution: [
+          { unitName: "Unit B", objective: "Knowledge" },
+          { unitName: "Unit B", objective: "Application" },
+        ] },
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, questionDistribution: [
+          { unitName: "Unit A", objective: "Application" },
+        ] },
+      ]);
+    });
+
+    it("sorts an objective absent from objectiveDemand to the end, deterministically", () => {
+      const template = manager._applyQuestionCounts([
+        { type: "MCQ", marksPerQuestion: 1 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5 },
+      ], 7);
+      const result = manager._distributeBlueprint(template, [
+        { unitName: "Unit A", marks: 5 },
+        { unitName: "Unit B", marks: 2 },
+      ], [
+        { objective: "Knowledge", percentageDistribution: 34 },
+        { objective: "Mystery", percentageDistribution: 66 },
+      ]);
+
+      expect(result).toEqual([
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, questionDistribution: [
+          { unitName: "Unit B", objective: "Knowledge" },
+          { unitName: "Unit B", objective: "Mystery" },
+        ] },
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, questionDistribution: [
+          { unitName: "Unit A", objective: "Mystery" },
+        ] },
+      ]);
+    });
+
+    it("produces an identical order on repeated runs of the same distribution", () => {
+      const buildTemplate = () => manager._applyQuestionCounts([
+        { type: "MCQ", marksPerQuestion: 1 },
+        { type: "ANSWER_LONG", marksPerQuestion: 5 },
+      ], 7);
+      const marksDistribution = [
+        { unitName: "Unit A", marks: 5 },
+        { unitName: "Unit B", marks: 2 },
+      ];
+      const objectiveDistribution = [
+        { objective: "Knowledge", percentageDistribution: 34 },
+        { objective: "Mystery", percentageDistribution: 66 },
+      ];
+
+      const firstRun = manager._distributeBlueprint(buildTemplate(), marksDistribution, objectiveDistribution);
+      const secondRun = manager._distributeBlueprint(buildTemplate(), marksDistribution, objectiveDistribution);
+
+      expect(secondRun).toEqual(firstRun);
+    });
+
+    it("keeps the pre-existing order when all objectives are known (no regression)", () => {
       const template = manager._applyQuestionCounts([
         { type: "MCQ", marksPerQuestion: 1 },
         { type: "ANSWER_LONG", marksPerQuestion: 5 },

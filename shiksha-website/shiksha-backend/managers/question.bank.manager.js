@@ -43,9 +43,22 @@ const QUESTION_TYPE_META = Object.fromEntries(Object.entries(QUESTION_TYPE_DETAI
 }));
 const getObjectiveKey = (board, grade, subjectName) => {
   const policy = PAPER_CONFIG.objectivePolicies[board] || PAPER_CONFIG.objectivePolicies.DEFAULT;
+  if (subjectName in policy.subjectObjectives) return policy.subjectObjectives[subjectName];
   return policy.coreSubject && PAPER_CONFIG.coreSubjects.includes(subjectName)
     ? policy.coreSubjectGrades[String(grade)] || policy.coreSubject
     : policy.default;
+};
+const UNKNOWN_OBJECTIVE_DEMAND_WEIGHT = Infinity;
+const loggedUnknownObjectives = new Set();
+const resolveObjectiveDemand = (objectiveName, board, grade, subject) => {
+  const demand = PAPER_CONFIG.blueprintPolicy.objectiveDemand[objectiveName];
+  if (demand !== undefined) return demand;
+  const dedupeKey = `${objectiveName}|${board}|${grade}|${subject}`;
+  if (!loggedUnknownObjectives.has(dedupeKey)) {
+    loggedUnknownObjectives.add(dedupeKey);
+    logger.warn(`Objective "${objectiveName}" is missing from blueprintPolicy.objectiveDemand for board "${board}", grade "${grade}", subject "${subject}"; sorting it last`);
+  }
+  return UNKNOWN_OBJECTIVE_DEMAND_WEIGHT;
 };
 const b64regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
 const toQuestionContent = async value => {
@@ -121,13 +134,17 @@ class QuestionBankManager extends BaseManager {
   }
 
   generateQuestionBankBluePrint(req) {
-    const body = convertToCamelCase(req.body);
-    const template = this._withQuestionTypeMetadata(body.template).map(item => ({
-      ...item,
-      numberOfQuestions: Number(item.numberOfQuestions),
-      marksPerQuestion: Number(item.marksPerQuestion),
-    }));
-    return formatApiReponse(true, "Question bank blue print generated successfully!", this._distributeBlueprint(template, body.marksDistribution, body.objectiveDistribution));
+    try {
+      const body = convertToCamelCase(req.body);
+      const template = this._withQuestionTypeMetadata(body.template).map(item => ({
+        ...item,
+        numberOfQuestions: Number(item.numberOfQuestions),
+        marksPerQuestion: Number(item.marksPerQuestion),
+      }));
+      return formatApiReponse(true, "Question bank blue print generated successfully!", this._distributeBlueprint(template, body.marksDistribution, body.objectiveDistribution, body.board, body.grade, body.subject));
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
   }
 
   async generateQuestionBank(req, user) {
@@ -144,7 +161,7 @@ class QuestionBankManager extends BaseManager {
       if (!context.questions || context.questions.length === 0) {
         const needsBlueprint = context.template.every(item => !item.questionDistribution.length);
         context.template = this._applyQuestionCounts(this._withQuestionTypeMetadata(context.template), needsBlueprint ? context.totalMarks : undefined, context.surplus);
-        if (needsBlueprint) context.template = this._distributeBlueprint(context.template, context.marksDistribution, context.objectiveDistribution);
+        if (needsBlueprint) context.template = this._distributeBlueprint(context.template, context.marksDistribution, context.objectiveDistribution, context.board, context.grade, context.subject);
       }
       const {
         language,
@@ -571,14 +588,14 @@ class QuestionBankManager extends BaseManager {
     return result.filter(item => item.numberOfQuestions);
   }
 
-  _distributeBlueprint(template, marksDistribution, objectiveDistribution) {
+  _distributeBlueprint(template, marksDistribution, objectiveDistribution, board, grade, subject) {
     const slots = template.flatMap((item, templateIndex) => Array.from(
       { length: item.numberOfQuestions },
       (_, questionIndex) => ({ templateIndex, questionIndex, marks: Number(item.marksPerQuestion), type: item.type })
     ));
     const quotas = this._allocateCounts(objectiveDistribution, slots.length);
     const objectives = quotas.flatMap(({ objective, count }) => Array(count).fill(objective))
-      .sort((a, b) => PAPER_CONFIG.blueprintPolicy.objectiveDemand[a] - PAPER_CONFIG.blueprintPolicy.objectiveDemand[b]);
+      .sort((a, b) => resolveObjectiveDemand(a, board, grade, subject) - resolveObjectiveDemand(b, board, grade, subject) || a.localeCompare(b));
     const byDemand = [...slots].sort((a, b) =>
       PAPER_CONFIG.blueprintPolicy.questionTypeDemand[a.type] - PAPER_CONFIG.blueprintPolicy.questionTypeDemand[b.type]
       || a.templateIndex - b.templateIndex || a.questionIndex - b.questionIndex

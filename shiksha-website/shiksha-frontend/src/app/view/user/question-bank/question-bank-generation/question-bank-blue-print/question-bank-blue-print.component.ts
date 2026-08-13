@@ -4,6 +4,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { contentItems, questionContentItems, sourceBorderClass } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
+import { QuestionBankObjective } from '../question-bank-generation.model';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -25,6 +26,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   @Input() bluePrintChapterDropdownOptions: any[] = [];
   @Input() bluePrintObjectiveDropdownOptions: any[] = [];
   @Input() bluePrintData: any[] = [];
+  @Input() questionBankObjectives: QuestionBankObjective[] = [];
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
@@ -42,6 +44,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   groupedBlueprintData: any[] = [];
   /** Prevents re-rendering the drop lists while CDK is finishing a drop (leaves blank scroll space). */
   private skipNextRebuild = false;
+  /** Full objective name for each chart slice, indexed the same as objectivesChartData.labels. */
+  private objectiveFullNames: string[] = [];
 
   objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
@@ -55,7 +59,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
             const dataset = tooltipItem.chart.data.datasets[0];
             const total = dataset.data.reduce((sum: number, val: any) => sum + val, 0);
             const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-            return tooltipItem.label + ': ' + percentage + '% (' + value + ')';
+            const shortName = tooltipItem.label as string;
+            const fullName = this.objectiveFullNames[tooltipItem.dataIndex] || shortName;
+            const detail = shortName + ': ' + percentage + '% (' + value + ')';
+            // Only show the full name on its own line when the label is an abbreviation.
+            return fullName === shortName ? detail : [fullName, detail];
           },
         },
       },
@@ -121,6 +129,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
     this.questionsReorder.emit(this.groupedBlueprintData.flatMap(g => g.questions));
   }
 
+  private getObjectiveShortName(fullName: string): string {
+    const match = this.questionBankObjectives.find(o => o.objective === fullName);
+    return match?.shortName || fullName;
+  }
+
   updateChartData() {
     const chartMapper: { [key: string]: number } = {};
     let chartColors: string[] = [];
@@ -132,7 +145,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
 
     this.chartTitle = 'Paper Composition Analysis';
 
-    const labels = Object.keys(chartMapper);
+    this.objectiveFullNames = Object.keys(chartMapper);
+    const labels = this.objectiveFullNames.map(fullName => this.getObjectiveShortName(fullName));
     const palette = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
     labels.forEach((_, i) => chartColors.push(palette[i % palette.length]));
 

@@ -39,7 +39,7 @@
                     {{ (questionTypeLabels[questionBankObjective.type] || questionBankObjective.type) | translate }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    {{ objective.objective }}
+                    <app-objective-label [fullName]="objective.objective" [shortName]="objectiveShortNames[objective.objective]"></app-objective-label>
                   </td>
                   <td class="border px-2 py-2 text-sm">
                     {{ formatMarks(questionBankObjective.marksPerQuestion) }}
