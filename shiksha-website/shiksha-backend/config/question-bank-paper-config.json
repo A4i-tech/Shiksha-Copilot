@@ -64,28 +64,51 @@
   "coreSubjects": ["Science", "Social Science", "Mathematics", "Evs"],
   "objectives": {
     "core": [
-      { "objective": "Knowledge", "percentageDistribution": 25 },
-      { "objective": "Understanding", "percentageDistribution": 45 },
-      { "objective": "Application", "percentageDistribution": 20 },
-      { "objective": "Skill", "percentageDistribution": 10 }
+      { "objective": "Knowledge", "shortName": "Knowledge", "percentageDistribution": 25 },
+      { "objective": "Understanding", "shortName": "Understanding", "percentageDistribution": 45 },
+      { "objective": "Application", "shortName": "Application", "percentageDistribution": 20 },
+      { "objective": "Skill", "shortName": "Skill", "percentageDistribution": 10 }
     ],
     "coreGrade10": [
-      { "objective": "Knowledge", "percentageDistribution": 10 },
-      { "objective": "Understanding", "percentageDistribution": 55 },
-      { "objective": "Application", "percentageDistribution": 20 },
-      { "objective": "Skill", "percentageDistribution": 15 }
+      { "objective": "Knowledge", "shortName": "Knowledge", "percentageDistribution": 10 },
+      { "objective": "Understanding", "shortName": "Understanding", "percentageDistribution": 55 },
+      { "objective": "Application", "shortName": "Application", "percentageDistribution": 20 },
+      { "objective": "Skill", "shortName": "Skill", "percentageDistribution": 15 }
     ],
     "language": [
-      { "objective": "Knowledge", "percentageDistribution": 25 },
-      { "objective": "Comprehension", "percentageDistribution": 40 },
-      { "objective": "Expression", "percentageDistribution": 30 },
-      { "objective": "Appreciation", "percentageDistribution": 5 }
+      { "objective": "Knowledge", "shortName": "Knowledge", "percentageDistribution": 25 },
+      { "objective": "Comprehension", "shortName": "Comprehension", "percentageDistribution": 40 },
+      { "objective": "Expression", "shortName": "Expression", "percentageDistribution": 30 },
+      { "objective": "Appreciation", "shortName": "Appreciation", "percentageDistribution": 5 }
     ],
     "telangana": [
-      { "objective": "Knowledge", "percentageDistribution": 10 },
-      { "objective": "Understanding", "percentageDistribution": 20 },
-      { "objective": "Application", "percentageDistribution": 30 },
-      { "objective": "Higher order thinking", "shortName": "HOT", "percentageDistribution": 40 }
+      { "objective": "Knowledge", "shortName": "Knowledge", "percentageDistribution": 10 },
+      { "objective": "Understanding", "shortName": "Understanding", "percentageDistribution": 20 },
+      { "objective": "Application", "shortName": "Application", "percentageDistribution": 30 },
+      { "objective": "Higher order thinking", "shortName": "Higher order thinking", "percentageDistribution": 40 }
+    ],
+    "telangana-science": [
+      { "objective": "Conceptual Understanding", "shortName": "Understanding", "percentageDistribution": 15 },
+      { "objective": "Asking questions and making hypothesis", "shortName": "Questioning", "percentageDistribution": 14 },
+      { "objective": "Experimentation and field investigation", "shortName": "Experimentation", "percentageDistribution": 14 },
+      { "objective": "Information skills and Projects", "shortName": "Info skills", "percentageDistribution": 14 },
+      { "objective": "Communication through drawing, model making", "shortName": "Communication", "percentageDistribution": 14 },
+      { "objective": "Appreciation and aesthetic sense, values", "shortName": "Appreciation", "percentageDistribution": 14 },
+      { "objective": "Application to daily life, concern to biodiversity", "shortName": "Application", "percentageDistribution": 15 }
+    ],
+    "telangana-social": [
+      { "objective": "Conceptual Understanding", "shortName": "Understanding", "percentageDistribution": 20 },
+      { "objective": "Reading the text, understanding and interpretation", "shortName": "Interpretation", "percentageDistribution": 20 },
+      { "objective": "Information skills", "shortName": "Info skills", "percentageDistribution": 20 },
+      { "objective": "Reflection on contemporary issues and questioning", "shortName": "Reflection", "percentageDistribution": 20 },
+      { "objective": "Appreciation and sensitivity", "shortName": "Appreciation", "percentageDistribution": 20 }
+    ],
+    "telangana-math": [
+      { "objective": "Problem solving", "shortName": "Problem solving", "percentageDistribution": 20 },
+      { "objective": "Reasoning proof", "shortName": "Reasoning", "percentageDistribution": 20 },
+      { "objective": "Communication", "shortName": "Communication", "percentageDistribution": 20 },
+      { "objective": "Connections", "shortName": "Connections", "percentageDistribution": 20 },
+      { "objective": "Visualization and representation", "shortName": "Visualization", "percentageDistribution": 20 }
     ]
   },
   "boardMarks": {
@@ -112,17 +135,27 @@
   },
   "objectivePolicies": {
     "DEFAULT": {
-      "default": "core"
+      "default": "core",
+      "subjectObjectives": {}
     },
     "KSEEB": {
       "coreSubject": "core",
       "coreSubjectGrades": {
         "10": "coreGrade10"
       },
-      "default": "language"
+      "default": "language",
+      "subjectObjectives": {}
     },
     "BSE-TG": {
-      "default": "telangana"
+      "default": "telangana",
+      "subjectObjectives": {
+        "Science": "telangana-science",
+        "Biology": "telangana-science",
+        "Physics": "telangana-science",
+        "Social": "telangana-social",
+        "Math": "telangana-math",
+        "English": "telangana"
+      }
     }
   },
   "blueprintPolicy": {
@@ -136,7 +169,24 @@
       "Skill": 3,
       "Expression": 4,
       "Appreciation": 4,
-      "Higher order thinking": 5
+      "Higher order thinking": 5,
+      "Conceptual Understanding": 1,
+      "Reading the text, understanding and interpretation": 2,
+      "Asking questions and making hypothesis": 2,
+      "Information skills": 3,
+      "Information skills and Projects": 3,
+      "Communication through drawing, model making": 3,
+      "Experimentation and field investigation": 3,
+      "Mapping Skills": 3,
+      "Problem solving": 3,
+      "Reasoning proof": 3,
+      "Communication": 3,
+      "Visualization and representation": 3,
+      "Application to daily life, concern to biodiversity": 4,
+      "Appreciation and aesthetic sense, values": 4,
+      "Appreciation and sensitivity": 4,
+      "Reflection on contemporary issues and questioning": 5,
+      "Connections": 5
     },
     "questionTypeDemand": {
       "MCQ": 1,
