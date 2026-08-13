@@ -146,3 +146,157 @@ blooms-taxonomy:
         - Do you think ... is good or bad?
         - What changes to ... would you recommend?
         - What do you think about ...?
+
+  telangana-science: |
+    ## Objectives & Bloom’s Taxonomy (Telangana State Board — Science)
+
+    Below are the **seven objectives** used for Science in the Telangana State Board Academic Standards, with their definitions, recommended verbs, and sample stems. For each generated question,
+    match the objective's cognitive level and ensure the language prompts multi-step reasoning and application to real-world scenarios.
+    Adapt complexity based on the specified grade.
+
+    1. **Conceptual Understanding**
+      - **Definition**: Assesses recall and understanding of scientific facts, concepts, principles, and terms.
+      - **Verbs**: define, state, explain, describe, identify, classify
+      - **Sample Stems**:
+        - Can you explain why ... happens?
+
+    2. **Asking questions and making hypothesis**
+      - **Definition**: Assesses the ability to raise relevant scientific questions and propose a testable hypothesis.
+      - **Verbs**: ask, question, predict, hypothesize, propose
+      - **Sample Stems**:
+        - What hypothesis would you propose to explain ...?
+
+    3. **Experimentation and field investigation**
+      - **Definition**: Assesses the ability to plan and carry out an experiment or field investigation and to record observations.
+      - **Verbs**: design, conduct, observe, record, measure, investigate
+      - **Sample Stems**:
+        - How would you design an experiment to test ...?
+
+    4. **Information skills and Projects**
+      - **Definition**: Assesses the ability to collect, organise, and interpret information from multiple sources and to complete a project.
+      - **Verbs**: collect, organise, tabulate, interpret, present
+      - **Sample Stems**:
+        - How would you collect and organise data to find out ...?
+
+    5. **Communication through drawing, model making**
+      - **Definition**: Assesses the ability to express scientific understanding through labelled diagrams, models, or charts.
+      - **Verbs**: draw, label, sketch, model, illustrate
+      - **Sample Stems**:
+        - Can you draw a labelled diagram to show ...?
+
+    6. **Appreciation and aesthetic sense, values**
+      - **Definition**: Assesses appreciation of the beauty and wonder of nature and the values and ethics that guide scientific work.
+      - **Verbs**: appreciate, value, admire, reflect
+      - **Sample Stems**:
+        - What do you appreciate about ...?
+
+    7. **Application to daily life, concern to biodiversity**
+      - **Definition**: Assesses the ability to apply scientific knowledge to daily life and to show concern for the environment and biodiversity.
+      - **Verbs**: apply, use, relate, protect, conserve
+      - **Sample Stems**:
+        - How can you use the idea of ... in your daily life?
+
+  telangana-social: |
+    ## Objectives & Bloom’s Taxonomy (Telangana State Board — Social Studies)
+
+    Below are the **five objectives** used for Social Studies in the Telangana State Board Academic Standards, with their definitions, recommended verbs, and sample stems. For each generated question,
+    match the objective's cognitive level and ensure the language prompts multi-step reasoning and application to real-world scenarios.
+    Adapt complexity based on the specified grade.
+
+    1. **Conceptual Understanding**
+      - **Definition**: Assesses recall and understanding of social, economic, political, and historical concepts and terms.
+      - **Verbs**: define, state, explain, describe, identify
+      - **Sample Stems**:
+        - Can you explain what is meant by ...?
+
+    2. **Reading the text, understanding and interpretation**
+      - **Definition**: Assesses the ability to read a passage, source, or map and to interpret its meaning.
+      - **Verbs**: read, interpret, infer, summarise, analyse
+      - **Sample Stems**:
+        - What can you infer from the given passage about ...?
+
+    3. **Information skills**
+      - **Definition**: Assesses the ability to gather, organise, and use information from sources such as newspapers, statistics, or reports.
+      - **Verbs**: collect, organise, classify, compare, use
+      - **Sample Stems**:
+        - How would you organise the given information about ...?
+
+    4. **Reflection on contemporary issues and questioning**
+      - **Definition**: Assesses the ability to critically reflect on contemporary social issues and to raise pertinent questions.
+      - **Verbs**: question, reflect, critique, examine, argue
+      - **Sample Stems**:
+        - What questions would you raise about ...?
+
+    5. **Appreciation and sensitivity**
+      - **Definition**: Assesses appreciation of social and cultural diversity and sensitivity towards constitutional values and the rights of others.
+      - **Verbs**: appreciate, value, respect, empathise
+      - **Sample Stems**:
+        - Why is it important to appreciate ...?
+
+  telangana-math: |
+    ## Objectives & Bloom’s Taxonomy (Telangana State Board — Mathematics)
+
+    Below are the **five objectives** used for Mathematics in the Telangana State Board Academic Standards, with their definitions, recommended verbs, and sample stems. For each generated question,
+    match the objective's cognitive level and ensure the language prompts multi-step reasoning and application to real-world scenarios.
+    Adapt complexity based on the specified grade.
+
+    1. **Problem solving**
+      - **Definition**: Assesses the ability to select and apply an appropriate strategy to solve a mathematical problem.
+      - **Verbs**: solve, calculate, find, determine, apply
+      - **Sample Stems**:
+        - How would you solve the following problem: ...?
+
+    2. **Reasoning proof**
+      - **Definition**: Assesses the ability to reason logically and to justify or prove a mathematical statement.
+      - **Verbs**: justify, prove, reason, verify, deduce
+      - **Sample Stems**:
+        - Can you justify why ... is true?
+
+    3. **Communication**
+      - **Definition**: Assesses the ability to express mathematical ideas clearly using words, symbols, or notation.
+      - **Verbs**: explain, describe, express, state
+      - **Sample Stems**:
+        - Can you explain in your own words how you found ...?
+
+    4. **Connections**
+      - **Definition**: Assesses the ability to connect a mathematical idea to other mathematical ideas, other subjects, or daily life.
+      - **Verbs**: relate, connect, apply, link
+      - **Sample Stems**:
+        - How does ... relate to what you already know about ...?
+
+    5. **Visualization and representation**
+      - **Definition**: Assesses the ability to represent a mathematical idea using a diagram, graph, table, or model.
+      - **Verbs**: draw, represent, plot, sketch, model
+      - **Sample Stems**:
+        - Can you represent ... using a diagram or graph?
+
+  telangana: |
+    ## Objectives & Bloom’s Taxonomy (Telangana State Board — English)
+
+    Below are the **four objectives** used for English in the Telangana State Board Academic Standards, with their definitions, recommended verbs, and sample stems. For each generated question,
+    match the objective's cognitive level and ensure the language prompts multi-step reasoning and application to real-world scenarios.
+    Adapt complexity based on the specified grade.
+
+    1. **Knowledge**
+      - **Definition**: Assesses recall of vocabulary, grammar terms, definitions, and simple facts.
+      - **Verbs**: identify, name, select, choose, define, state, recall
+      - **Sample Stems**:
+        - Identify the synonym of the underlined word …
+
+    2. **Understanding**
+      - **Definition**: Assesses comprehension of passages, explanations, and conceptual differences.
+      - **Verbs**: explain, interpret, describe, summarise, infer
+      - **Sample Stems**:
+        - Summarise the main idea of the passage …
+
+    3. **Application**
+      - **Definition**: Assesses the ability to use grammar rules or vocabulary in context to complete or correct sentences.
+      - **Verbs**: apply, fill, complete, use, correct, transform
+      - **Sample Stems**:
+        - Fill in the blank with the correct form of the verb …
+
+    4. **Higher order thinking**
+      - **Definition**: Assesses the ability to analyse, evaluate, and create original responses that go beyond the given text.
+      - **Verbs**: analyse, evaluate, critique, justify, create, compose
+      - **Sample Stems**:
+        - Evaluate the appropriateness of the writer's choice and justify a better alternative …
