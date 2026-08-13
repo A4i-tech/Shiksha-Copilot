@@ -1,23 +1,13 @@
 const request = require("supertest");
 const { baseURL, loginAsSuperUser, createEphemeralTeacher, cleanupEphemeralTeacher } = require("./superuser.helper");
 
-// Real E2E test against the live staging deployment (see
-// .github/workflows/main.yaml's staging-e2e job). No LLM/SMS externals
-// in this flow at all - everything (auth, overlap check, parallel-
-// schedule aggregation, persistence) is real, driven over real HTTP.
-//
-// An ephemeral teacher account is created in beforeAll via the devtools
-// API and deleted in afterAll - no pre-seeded accounts or secrets needed
-// beyond the superuser credentials.
-//
-// Every schedule this suite creates is deleted again in afterEach via
-// DELETE /schedule/:id/:timeId - unlike lesson-plan fixtures, this one
-// actually has a working delete endpoint, so nothing accumulates.
-
-const MASTER_SUBJECT_NAME = "E2E Schedule Test Subject";
+// Ephemeral teacher created in beforeAll, cleaned up in afterAll.
+// Every schedule created is deleted in afterEach via DELETE /schedule/:id/:timeId.
+// Time slot 02:00–03:00 is outside real school hours, avoiding collisions with
+// other teachers in the same school (getParallelSchedules checks school-wide).
 
 describe("Schedule flow (E2E)", () => {
-  let token, teacherId, rootToken, ephemeralIds;
+  let token, teacherId, rootToken, ephemeralIds, subjectName;
   const createdSchedules = [];
 
   beforeAll(async () => {
@@ -28,14 +18,17 @@ describe("Schedule flow (E2E)", () => {
     teacherId = ephemeral.userId;
     ephemeralIds = { userId: ephemeral.userId, roleId: ephemeral.roleId };
 
-    // getMySchedules' aggregation $lookups into mastersubjects by
-    // subjectName and does a non-preserving $unwind - a schedule whose
-    // subject has no matching MasterSubject silently vanishes from the
-    // results, so this fixture has to exist before any create call.
-    await request(baseURL)
-      .post("/api/master-subject/create")
-      .set("Authorization", rootToken)
-      .send({ subjectName: MASTER_SUBJECT_NAME, boards: ["StateBoard"] });
+    // Use the oldest existing master subject instead of creating a new one
+    // (create is unconditional - no unique index on subjectName - so each run
+    // would insert a duplicate, and getMySchedules' $unwind emits one result
+    // per duplicate, making assertions noisier each run).
+    const subjectRes = await request(baseURL)
+      .get("/api/master-subject/list?limit=1&sortOrder=asc")
+      .set("Authorization", rootToken);
+    expect(subjectRes.status).toBe(200);
+    const subjects = subjectRes.body.data?.results || [];
+    if (!subjects.length) throw new Error("No master subject on staging - schedule test needs at least one.");
+    subjectName = subjects[0].subjectName;
   });
 
   afterAll(async () => {
@@ -58,13 +51,13 @@ describe("Schedule flow (E2E)", () => {
 
   const basePayload = (date) => ({
     teacherId,
-    subject: MASTER_SUBJECT_NAME,
+    subject: subjectName,
     scheduleType: "regular",
     class: 6,
     board: "StateBoard",
     medium: "English",
     lessonId: "000000000000000000000000",
-    scheduleDateTime: [{ date, fromTime: "10:00", toTime: "11:00" }],
+    scheduleDateTime: [{ date, fromTime: "02:00", toTime: "03:00" }],
   });
 
   it("creates a schedule and makes it visible via my-schedules", async () => {
@@ -77,7 +70,7 @@ describe("Schedule flow (E2E)", () => {
 
     expect(createRes.status).toBe(200);
     expect(createRes.body.success).toBe(true);
-    expect(createRes.body.data.subject).toBe(MASTER_SUBJECT_NAME);
+    expect(createRes.body.data.subject).toBe(subjectName);
     createdSchedules.push({
       scheduleId: createRes.body.data._id,
       timeId: createRes.body.data.scheduleDateTime[0]._id,
@@ -107,7 +100,7 @@ describe("Schedule flow (E2E)", () => {
     });
 
     const overlapping = basePayload(date);
-    overlapping.scheduleDateTime = [{ date, fromTime: "10:30", toTime: "11:30" }];
+    overlapping.scheduleDateTime = [{ date, fromTime: "02:30", toTime: "03:30" }];
 
     const res = await request(baseURL)
       .post("/api/schedule/create")
@@ -124,7 +117,7 @@ describe("Schedule flow (E2E)", () => {
     const res = await request(baseURL)
       .post("/api/schedule/create")
       .set("Authorization", token)
-      .send({ subject: MASTER_SUBJECT_NAME });
+      .send({ subject: subjectName });
 
     expect(res.status).toBe(400);
     expect(res.body.success).toBe(false);

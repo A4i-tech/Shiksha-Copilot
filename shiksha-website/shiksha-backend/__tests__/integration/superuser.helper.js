@@ -1,16 +1,3 @@
-// Shared helpers for the staging E2E suite (see
-// .github/workflows/main.yaml's staging-e2e job). Tests run against the
-// real deployed staging backend - no direct DB access, no invented
-// secrets.
-//
-// loginAsSuperUser: static-PIN login for the pre-seeded superuser
-//   (phone 8888899999). Used for auth flow tests and as a rootToken
-//   for creating ephemeral fixtures in other tests.
-//
-// createEphemeralTeacher: creates a disposable teacher user + role via
-//   the API, then exchanges userId for a JWT via /api/devtools/sessions
-//   (no SMS-OTP). Call cleanupEphemeralTeacher() in afterAll.
-
 const request = require("supertest");
 
 const baseURL = process.env.SHIKSHA_BASE_URL;
@@ -34,13 +21,9 @@ let cachedSuperUser = null;
 async function loginAsSuperUser() {
   if (cachedSuperUser) return cachedSuperUser;
 
-  const otpRes = await request(baseURL)
-    .post("/api/auth/get-otp")
-    .send({ phone: superUserPhone });
-  if (!otpRes.body.success) {
-    throw new Error(`get-otp failed for ${superUserPhone}: ${JSON.stringify(otpRes.body)}`);
-  }
-
+  // Static-PIN accounts skip the SMS-OTP step — validate-otp works directly.
+  // Calling get-otp first would trigger the SMS path if otp is missing, and
+  // hitting it within PIN_RESEND_COOLDOWN_SECONDS returns 429 PIN_COOLDOWN.
   const verifyRes = await request(baseURL)
     .post("/api/auth/validate-otp")
     .send({ phone: superUserPhone, otp: superUserPin });
@@ -54,10 +37,8 @@ async function loginAsSuperUser() {
 
 /**
  * Creates a disposable teacher user with a SCHOOL-scoped role carrying the
- * given permissions, then returns a JWT via /api/devtools/sessions.
- *
- * Returns { token, userId, roleId } — pass userId + roleId to
- * cleanupEphemeralTeacher() in afterAll.
+ * given permissions, then returns a JWT via /api/devtools/sessions (no OTP).
+ * Call cleanupEphemeralTeacher() in afterAll.
  */
 async function createEphemeralTeacher(rootToken, permissions) {
   const schoolsRes = await request(baseURL)
@@ -110,11 +91,11 @@ async function createEphemeralTeacher(rootToken, permissions) {
   return { token: sessionRes.body.data.token, userId: user._id, roleId: role._id };
 }
 
-async function cleanupEphemeralTeacher(rootToken, { userId, roleId }) {
+async function cleanupEphemeralTeacher(rootToken, { userId, roleId, content = [], activities = [] }) {
   await request(baseURL)
     .delete("/api/devtools/fixtures")
     .set("Authorization", rootToken)
-    .send({ users: [userId], roles: [roleId], schools: [], classes: [], auditLogs: [], content: [], activities: [], batches: [] });
+    .send({ users: [userId], roles: [roleId], content, activities, schools: [], classes: [], auditLogs: [], batches: [] });
 }
 
 module.exports = {

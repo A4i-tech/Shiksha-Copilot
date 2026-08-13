@@ -1,13 +1,6 @@
 const request = require("supertest");
 const { baseURL, superUserPhone, superUserPin } = require("./superuser.helper");
 
-// Real E2E test against the live staging deployment (see
-// .github/workflows/main.yaml's staging-e2e job). Uses the pre-seeded
-// super-user account rather than creating fresh users - the fresh-OTP-
-// via-SMS path can't be driven from an automated test (no way to read a
-// real SMS), so this only exercises the static-PIN login path. Nothing
-// mocked: real HTTP, real staging secrets, real DB behind it.
-
 describe("Auth flow (E2E)", () => {
   it("logs in with the super-user's known PIN", async () => {
     const otpRes = await request(baseURL)
@@ -36,10 +29,9 @@ describe("Auth flow (E2E)", () => {
     expect(wrongRes.body.success).toBe(false);
     expect(wrongRes.body.message).toBe("Invalid PIN");
 
-    // A wrong attempt increments this real, persistent staging account's
-    // loginAttempts counter. A correct login right after resets it
-    // (completeLogin calls clearLoginAttempts), so pairing it like this
-    // never accumulates failed attempts across CI runs.
+    // A correct login resets loginAttempts (clearLoginAttempts in completeLogin),
+    // so the wrong attempt above does not accumulate across runs. The CI job
+    // carries a concurrency group so overlapping runs cannot race here.
     const verifyRes = await request(baseURL)
       .post("/api/auth/validate-otp")
       .send({ phone: superUserPhone, otp: superUserPin });

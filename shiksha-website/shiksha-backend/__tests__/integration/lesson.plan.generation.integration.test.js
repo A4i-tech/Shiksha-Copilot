@@ -1,43 +1,29 @@
 const request = require("supertest");
 const { baseURL, loginAsSuperUser, createEphemeralTeacher, cleanupEphemeralTeacher } = require("./superuser.helper");
 
-// Real E2E test against the live staging deployment (see
-// .github/workflows/main.yaml's staging-e2e job). Uses an EXISTING
-// MasterLesson already in staging's real curriculum data rather than
-// creating a fresh one - POST /master-lesson/create's Joi schema doesn't
-// even accept a templateId, and there's no update route that sets it
-// either, so a lesson created through the API would always be missing
-// the templateId this flow needs (formatTemplate() throws on a null
-// template). Reading real, already-valid data sidesteps that gap
-// entirely and avoids adding throwaway curriculum rows to staging.
+// Uses the oldest existing MasterLesson (sortOrder=asc) rather than newest —
+// generate creates "Version-N <name>" rows that sort to the top on subsequent
+// runs and lack a templateId, causing formatTemplate() to throw.
 //
-// An ephemeral teacher account is created in beforeAll via the devtools
-// API and deleted in afterAll - no pre-seeded accounts or secrets needed
-// beyond the superuser credentials.
-//
-// The Copilot LLM call runs for real here (per team decision) - we only
-// assert the generate endpoint succeeds, not the generated content.
-//
-// Known limitation: generation is capped at REGENERATION_LIMIT (3) per
-// teacher per day. If this suite runs more than 3 times in one UTC day,
-// this test starts getting a "Daily regeneration limit reached" failure
-// instead of a real pass/fail signal on the flow itself - an accepted
-// tradeoff of hitting the real endpoint with real limits. Using an
-// ephemeral teacher resets this counter each run.
+// The Copilot LLM call runs for real (per team decision). Known limit:
+// REGENERATION_LIMIT (3) per teacher per day — ephemeral teacher resets
+// this counter each run.
 
 describe("Lesson plan generation flow (E2E)", () => {
   let token, masterLessonId, rootToken, ephemeralIds;
+  const generatedContent = [];
 
   beforeAll(async () => {
     ({ token: rootToken } = await loginAsSuperUser());
 
-    const ephemeral = await createEphemeralTeacher(rootToken, ["lesson-plan.generate"]);
+    const ephemeral = await createEphemeralTeacher(rootToken, ["lesson-plan.generate", "lesson-plan.delete"]);
     token = ephemeral.token;
     ephemeralIds = { userId: ephemeral.userId, roleId: ephemeral.roleId };
 
     const listRes = await request(baseURL)
-      .get("/api/master-lesson/list?limit=1")
+      .get("/api/master-lesson/list?limit=1&sortOrder=asc")
       .set("Authorization", token);
+    expect(listRes.status).toBe(200);
     const lessons = listRes.body.data?.results || [];
     if (!lessons.length) {
       throw new Error(
@@ -48,7 +34,15 @@ describe("Lesson plan generation flow (E2E)", () => {
   });
 
   afterAll(async () => {
-    await cleanupEphemeralTeacher(rootToken, ephemeralIds);
+    for (const { lessonPlanId, contentId } of generatedContent) {
+      await request(baseURL)
+        .delete(`/api/teacher-lesson-plan/lesson/${lessonPlanId}`)
+        .set("Authorization", token);
+    }
+    await cleanupEphemeralTeacher(rootToken, {
+      ...ephemeralIds,
+      content: generatedContent.map((g) => g.contentId),
+    });
   });
 
   it("generates lesson content end to end", async () => {
@@ -64,6 +58,16 @@ describe("Lesson plan generation flow (E2E)", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data.data.instance_id).toBeDefined();
+
+    // Collect generated plan + MasterLesson IDs so afterAll can clean them up.
+    const plansRes = await request(baseURL)
+      .get("/api/teacher-lesson-plan/list?filter[type]=generated")
+      .set("Authorization", token);
+    if (plansRes.status === 200 && plansRes.body.data?.results?.length) {
+      for (const plan of plansRes.body.data.results) {
+        generatedContent.push({ lessonPlanId: plan._id, contentId: plan.lessonId });
+      }
+    }
   });
 
   it("rejects requests with no auth token", async () => {

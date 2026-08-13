@@ -245,6 +245,9 @@ jobs:
   staging-e2e-backend:
     name: Backend E2E Tests (staging)
     needs: [cd-backend, health-check]
+    concurrency:
+      group: staging-e2e-backend
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
