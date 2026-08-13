@@ -13,7 +13,12 @@ def service():
     ), patch("app.services.question_paper_service.OpenAIEmbedding"), patch(
         "app.services.question_paper_service.RagAdapterCache"
     ), patch(
-        "app.services.question_paper_service.yaml.safe_load", return_value={}
+        "app.services.question_paper_service.yaml.safe_load",
+        return_value={
+            "question_clarity_guide": "clarity guide",
+            "maths_question_clarity_guide": "maths clarity guide",
+            "grammar_question_types_guide": "grammar guide",
+        },
     ):
         svc = QuestionPaperService()
         yield svc
