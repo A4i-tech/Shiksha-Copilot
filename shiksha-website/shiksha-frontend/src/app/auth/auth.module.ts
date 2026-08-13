@@ -7,6 +7,7 @@ import {  TranslateModule } from '@ngx-translate/core';
 import { TimeformatPipe } from '../shared/pipes/timeformat.pipe';
 import { NgOtpInputModule } from 'ng-otp-input';
 import { A11yModule } from '@angular/cdk/a11y';
+import { NgxSpinnerModule } from 'ngx-spinner';
 
 
 
@@ -22,6 +23,7 @@ import { A11yModule } from '@angular/cdk/a11y';
     FormsModule,
     NgOtpInputModule,
     A11yModule,
+    NgxSpinnerModule,
     TranslateModule
   ]
 })
