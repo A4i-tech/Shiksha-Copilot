@@ -5,12 +5,14 @@ const MasterSubjectController = require("../controllers/master.subject.controlle
 const {
 	validateMasterSubject,
 } = require("../validations/master.subject.validation.js");
-const { isAuthenticated } = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 
 const masterSubjectController = new MasterSubjectController();
 
 router.post(
 	"/master-subject/create",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	validateMasterSubject,
 	asyncMiddleware(masterSubjectController.create.bind(masterSubjectController))
 );
@@ -42,12 +44,16 @@ router.get(
 
 router.put(
 	"/master-subject/update",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	validateMasterSubject,
 	asyncMiddleware(masterSubjectController.update.bind(masterSubjectController))
 );
 
 router.delete(
 	"/master-subject/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(masterSubjectController.delete.bind(masterSubjectController))
 );
 

@@ -25,16 +25,22 @@ router.get(
 
 router.put(
 	"/chapter/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(chapterController.update.bind(chapterController))
 );
 
 router.post(
 	"/chapter/create",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(chapterController.create.bind(chapterController))
 );
 
 router.delete(
 	"/chapter/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(chapterController.delete.bind(chapterController))
 );
 
