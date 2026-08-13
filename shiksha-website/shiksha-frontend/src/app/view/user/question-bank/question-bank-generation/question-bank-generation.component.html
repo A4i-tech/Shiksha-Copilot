@@ -114,8 +114,9 @@
             <div class="overflow-x-auto">
               <table class="table-auto w-full text-content border">
                 <thead class="text-xs bg-[#edf6fe]"><tr>
-                  <th class="px-4 py-3 border" *ngFor="let objective of questionBankObjectives"
-                    [title]="objective.objective | translate">{{ (objective.shortName || objective.objective) | translate }}</th>
+                  <th class="px-4 py-3 border" *ngFor="let objective of questionBankObjectives">
+                    <app-objective-label [fullName]="objective.objective" [shortName]="objective.shortName"></app-objective-label>
+                  </th>
                 </tr></thead>
                 <tbody><tr>
                   <td class="p-2 border" *ngFor="let objective of questionBankObjectives; let i = index">
@@ -220,6 +221,7 @@
           <app-question-bank-blue-print [currentStep]="4" [totalSteps]="4" [fullWidth]="true"
             [finalSelectedQuestions]="finalSelectedQuestions" [examName]="f.examinationName.value"
             [totalMarks]="totalMarks" [selectedQuestionsMarks]="selectedQuestionsMarks"
+            [questionBankObjectives]="questionBankObjectives"
             (questionsReorder)="onPreviewReorder($event)">
           </app-question-bank-blue-print>
         </div>
