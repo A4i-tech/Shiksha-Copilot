@@ -56,7 +56,7 @@ class QuestionBankDao extends BaseDao {
     const results = await QuestionBankConfiguration.aggregate(pipeline);
 
     const totalItems = await QuestionBankConfiguration.countDocuments(
-      { teacherId: new ObjectId(teacherId), ...processedFilters }
+      { ...processedFilters, teacherId: new ObjectId(teacherId) }
     );
 
     return {
