@@ -1,9 +1,7 @@
-from pathlib import Path
 import pytest
-import yaml
 from unittest.mock import MagicMock, patch
-from app.services.question_paper_service import QuestionPaperService, TELANGANA_SUBJECT_BLOOM_VARIANTS
-from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion
+from app.services.question_paper_service import QuestionPaperService
+from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, Objective, QuestionDistribution, QuestionType, TextQuestion
 
 
 # Shared fixture to avoid recreating the service
@@ -113,13 +111,13 @@ class TestFormatSystemPrompt:
             "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
         }
 
-        request = MagicMock(subject="Math", chapters=[])
+        request = MagicMock(subject="Math", chapters=[], bloom_variant="general")
         record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
         template = GeneratedTemplate(
             type=QuestionType.MCQ,
             number_of_questions=1,
             marks_per_question=1,
-            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective="remember")],
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
         )
         slot = [((0, 0), template, template.question_distribution[0])]
 
@@ -128,67 +126,71 @@ class TestFormatSystemPrompt:
         assert "Test Blooms" in result
         assert "Grammar:" in result
 
-    def test_format_system_prompt_unknown_variant_raises_key_error(self, service):
-        """Test that a resolved block missing from blooms-taxonomy raises KeyError."""
+    def test_format_system_prompt_unknown_variant_raises_value_error(self, service):
+        """Test that a bloom_variant missing from blooms-taxonomy raises ValueError."""
         service.prompts = {
             "question_bank_parts_gen": "Blooms: {BLOOM_TAXONOMY_GUIDE}, Grammar: {GRAMMAR_TOPICS}",
             "blooms-taxonomy": {"general": "Test Blooms"},
             "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
         }
 
-        request = MagicMock(board="BSE-TG", subject="Mathematics", chapters=[])
+        request = MagicMock(board="BSE-TG", subject="Mathematics", chapters=[], bloom_variant="telangana-math")
         record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
         template = GeneratedTemplate(
             type=QuestionType.MCQ,
             number_of_questions=1,
             marks_per_question=1,
-            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective="remember")],
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
         )
         slot = [((0, 0), template, template.question_distribution[0])]
 
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError, match="Bloom variant"):
             service._format_system_prompt(request, record, slot)
 
 
-class TestResolveBloomVariant:
-    """Tests for _resolve_bloom_variant method."""
+class TestBloomVariant:
+    """Tests for how _format_system_prompt resolves request.bloom_variant."""
 
-    def test_telangana_science(self, service):
-        """Test BSE-TG board with subject 'Science' resolves to 'telangana-science'."""
-        assert service._resolve_bloom_variant("BSE-TG", "Science") == "telangana-science"
+    def test_known_bloom_variant_is_used(self, service):
+        """A bloom_variant key present in blooms-taxonomy is used to build the prompt."""
+        service.prompts = {
+            "question_bank_parts_gen": "Blooms: {BLOOM_TAXONOMY_GUIDE}, Grammar: {GRAMMAR_TOPICS}",
+            "blooms-taxonomy": {"telangana-math": "Telangana Math Blooms"},
+            "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
+        }
+        request = MagicMock(subject="Math", chapters=[], bloom_variant="telangana-math")
+        record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
+        template = GeneratedTemplate(
+            type=QuestionType.MCQ,
+            number_of_questions=1,
+            marks_per_question=1,
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
+        )
+        slot = [((0, 0), template, template.question_distribution[0])]
 
-    def test_telangana_biology(self, service):
-        """Test BSE-TG board with subject 'Biology' resolves to 'telangana-science'."""
-        assert service._resolve_bloom_variant("BSE-TG", "Biology") == "telangana-science"
+        result = service._format_system_prompt(request, record, slot)
 
-    def test_telangana_physics(self, service):
-        """Test BSE-TG board with subject 'Physics' resolves to 'telangana-science'."""
-        assert service._resolve_bloom_variant("BSE-TG", "Physics") == "telangana-science"
+        assert "Telangana Math Blooms" in result
 
-    def test_telangana_social(self, service):
-        """Test BSE-TG board with subject 'Social' resolves to 'telangana-social'."""
-        assert service._resolve_bloom_variant("BSE-TG", "Social") == "telangana-social"
+    def test_unknown_bloom_variant_raises_value_error_naming_key(self, service):
+        """An unknown bloom_variant raises ValueError naming the missing key and available keys."""
+        service.prompts = {
+            "question_bank_parts_gen": "Blooms: {BLOOM_TAXONOMY_GUIDE}, Grammar: {GRAMMAR_TOPICS}",
+            "blooms-taxonomy": {"general": "Test Blooms"},
+            "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
+        }
+        request = MagicMock(subject="Hindi", chapters=[], bloom_variant="nonexistent-variant")
+        record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
+        template = GeneratedTemplate(
+            type=QuestionType.MCQ,
+            number_of_questions=1,
+            marks_per_question=1,
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
+        )
+        slot = [((0, 0), template, template.question_distribution[0])]
 
-    def test_telangana_math(self, service):
-        """Test BSE-TG board with subject 'Math' resolves to 'telangana-math'."""
-        assert service._resolve_bloom_variant("BSE-TG", "Math") == "telangana-math"
-
-    def test_telangana_english(self, service):
-        """Test BSE-TG board with subject 'English' resolves to 'telangana'."""
-        assert service._resolve_bloom_variant("BSE-TG", "English") == "telangana"
-
-    def test_english(self, service):
-        """Test a non-Telangana board with an English subject resolves to 'english'."""
-        assert service._resolve_bloom_variant("CBSE", "English") == "english"
-
-    def test_general_fallback(self, service):
-        """Test a non-Telangana, non-English subject resolves to 'general'."""
-        assert service._resolve_bloom_variant("CBSE", "Hindi") == "general"
-
-    def test_telangana_unrecognized_subject_raises_key_error(self, service):
-        """Test BSE-TG board with a subject not on the board raises KeyError."""
-        with pytest.raises(KeyError):
-            service._resolve_bloom_variant("BSE-TG", "Hindi")
+        with pytest.raises(ValueError, match="nonexistent-variant"):
+            service._format_system_prompt(request, record, slot)
 
 
 class TestBuildGenerationSlots:
@@ -285,15 +287,3 @@ class TestOrganizeQuestionsIntoResponse:
         assert len(response[0].questions) == 1
 
 
-class TestBloomVariantsMatchYaml:
-    """Locks TELANGANA_SUBJECT_BLOOM_VARIANTS to the real blooms_taxonomy.yaml file."""
-
-    def test_all_telangana_variants_exist_in_yaml(self):
-        """Test every TELANGANA_SUBJECT_BLOOM_VARIANTS value is a key under 'blooms-taxonomy'."""
-        yaml_path = Path(__file__).parents[3] / "prompts" / "blooms_taxonomy.yaml"
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
-
-        blooms_taxonomy = data["blooms-taxonomy"]
-        for subject, variant in TELANGANA_SUBJECT_BLOOM_VARIANTS.items():
-            assert variant in blooms_taxonomy, f"Variant '{variant}' for subject '{subject}' missing from blooms_taxonomy.yaml"
