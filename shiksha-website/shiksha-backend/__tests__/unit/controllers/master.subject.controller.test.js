@@ -75,17 +75,17 @@ describe("MasterSubjectController", () => {
       expect(res.json).toHaveBeenCalledWith({ message: "Subject not found" });
     });
 
-    it("should return 400 on error", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       const error = new Error("Database error");
       mockMasterSubjectManager.getByName.mockRejectedValue(error);
 
       req.body = { subject: "Mathematics" };
       req.user = { school: "school1" };
 
-      await masterSubjectController.getByName(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(error);
+      await expect(
+        masterSubjectController.getByName(req, res)
+      ).rejects.toThrow("Database error");
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 
@@ -126,16 +126,16 @@ describe("MasterSubjectController", () => {
       expect(res.json).toHaveBeenCalledWith({ message: "No subjects found" });
     });
 
-    it("should return 400 on error", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       const error = new Error("Database error");
       mockMasterSubjectManager.getByBoard.mockRejectedValue(error);
 
       req.params = { board: "CBSE" };
 
-      await masterSubjectController.getByBoard(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(error);
+      await expect(
+        masterSubjectController.getByBoard(req, res)
+      ).rejects.toThrow("Database error");
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 
@@ -178,17 +178,17 @@ describe("MasterSubjectController", () => {
       expect(res.json).toHaveBeenCalledWith({ message: "Subject not found" });
     });
 
-    it("should return 400 on error", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       const error = new Error("Database error");
       mockMasterSubjectManager.updateSubject.mockRejectedValue(error);
 
       req.params = { id: "subject1" };
       req.body = { subjectName: "Updated" };
 
-      await masterSubjectController.update(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith(error);
+      await expect(masterSubjectController.update(req, res)).rejects.toThrow(
+        "Database error"
+      );
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 });

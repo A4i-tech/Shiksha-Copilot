@@ -35,6 +35,7 @@ const questionBankRoutes = require("./routes/question.bank.routes.js");
 const lessonPlanTemplateRoutes = require("./routes/lesson.plan.template.routes.js");
 const chatRoutes = require("./routes/chat.routes");
 const auditRoutes = require("./routes/audit.log.route");
+const errorMiddleware = require('./middlewares/error.middleware');
 const conditionalMorganMiddleware = require('./config/morgan');
 const useragent = require('express-useragent');
 const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.routes.js');
@@ -90,6 +91,8 @@ app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
 app.use('/api', supersetRoutes);
 if (process.env.SHIKSHA_DEVTOOLS === "true") app.use("/api/devtools", require("./routes/devtools.routes"));
+
+app.use(errorMiddleware);
 
 process.on('unhandledRejection', (reason, promise) => {
 	console.log(promise, reason);

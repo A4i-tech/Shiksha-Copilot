@@ -116,10 +116,9 @@ describe("MasterSubjectManager", () => {
 
       mockSchoolDao.getById.mockRejectedValue(error);
 
-      const result = await masterSubjectManager.getByName("Mathematics", user);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(
+        masterSubjectManager.getByName("Mathematics", user)
+      ).rejects.toThrow("Database error");
     });
   });
 
@@ -144,15 +143,14 @@ describe("MasterSubjectManager", () => {
       });
     });
 
-    it("should return error on exception", async () => {
+    it("should propagate exceptions instead of swallowing them", async () => {
       const error = new Error("Database error");
 
       mockMasterSubjectDao.filter.mockRejectedValue(error);
 
-      const result = await masterSubjectManager.getByBoard("CBSE");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(masterSubjectManager.getByBoard("CBSE")).rejects.toThrow(
+        "Database error"
+      );
     });
   });
 
@@ -202,19 +200,15 @@ describe("MasterSubjectManager", () => {
       });
     });
 
-    it("should return error on exception", async () => {
+    it("should propagate exceptions instead of swallowing them", async () => {
       const updates = { subject: "Updated" };
       const error = new Error("Database error");
 
       mockMasterSubjectDao.update.mockRejectedValue(error);
 
-      const result = await masterSubjectManager.updateSubject(
-        "subject1",
-        updates
-      );
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(
+        masterSubjectManager.updateSubject("subject1", updates)
+      ).rejects.toThrow("Database error");
     });
   });
 });

@@ -1,5 +1,6 @@
 const BaseManager = require("./base.manager");
 const formatApiReponse = require("../helper/response");
+const AppError = require("../helper/app.error");
 const SchoolDao = require("../dao/school.dao");
 const ClassDao = require("../dao/school.class.dao");
 const UserDao = require("../dao/user.dao");
@@ -23,7 +24,7 @@ class SchoolManager extends BaseManager {
   async create(req, session) {
     try {
       session.startTransaction();
-      if (!isResourceAllowed(req.permissions, "school.create", req.body)) throw new Error("School is outside your scope");
+      if (!isResourceAllowed(req.permissions, "school.create", req.body)) throw new AppError("School is outside your scope", 403);
       let classes = req.body?.classes || [];
       let school = await this.dao.getOne({ schoolId: req.body.schoolId });
 
@@ -79,378 +80,345 @@ class SchoolManager extends BaseManager {
   }
 
   async getById(req) {
-    try {
-      let schoolId = req.params.id;
+    let schoolId = req.params.id;
 
-      let [school] = await schoolAggregation.getSchoolById(schoolId);
+    let [school] = await schoolAggregation.getSchoolById(schoolId);
 
-      if (!school) {
-        return formatApiReponse(false, "school not found", null);
-      }
-      if (!isResourceAllowed(req.permissions, "school.read", school)) throw new Error("School is outside your scope");
-
-      let classes = await this.classDao.getClassesBySchoolId(schoolId);
-
-      return formatApiReponse(true, "", { ...school, classes });
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
+    if (!school) {
+      return formatApiReponse(false, "school not found", null);
     }
+    if (!isResourceAllowed(req.permissions, "school.read", school)) throw new AppError("School is outside your scope", 403);
+
+    let classes = await this.classDao.getClassesBySchoolId(schoolId);
+
+    return formatApiReponse(true, "", { ...school, classes });
   }
 
   async update(id, data, permissions) {
-    try {
-      const { classes: classesData } = data;
+    const { classes: classesData } = data;
 
-      const currentSchool = await this.dao.getById(id);
-      if (!isResourceAllowed(permissions, "school.edit", currentSchool)) throw new Error("School is outside your scope");
-      if (!isResourceAllowed(permissions, "school.edit", { ...currentSchool.toObject(), ...data })) throw new Error("School is outside your scope");
+    const currentSchool = await this.dao.getById(id);
+    if (!isResourceAllowed(permissions, "school.edit", currentSchool)) throw new AppError("School is outside your scope", 403);
+    if (!isResourceAllowed(permissions, "school.edit", { ...currentSchool.toObject(), ...data })) throw new AppError("School is outside your scope", 403);
 
-      const existingSchool = await this.dao.getBySchoolId(data.schoolId);
+    const existingSchool = await this.dao.getBySchoolId(data.schoolId);
 
-      if (
-        existingSchool &&
-        currentSchool.schoolId !== existingSchool.schoolId
-      ) {
-        return formatApiReponse(
-          false,
-          "School with this Dise Code already exists!",
-          null
+    if (
+      existingSchool &&
+      currentSchool.schoolId !== existingSchool.schoolId
+    ) {
+      return formatApiReponse(
+        false,
+        "School with this Dise Code already exists!",
+        null
+      );
+    }
+
+    const updatedSchool = await this.dao.update(id, data);
+
+    if (!updatedSchool) {
+      return formatApiReponse(false, "Failed to update school info", null);
+    }
+
+    for (let classData of classesData) {
+      let classRecord;
+      if (classData._id) {
+        const { classDetails, ...classDataWithoutDetails } = classData;
+        classRecord = await this.classDao.update(
+          classData._id,
+          classDataWithoutDetails
         );
-      }
-
-      const updatedSchool = await this.dao.update(id, data);
-
-      if (!updatedSchool) {
-        return formatApiReponse(false, "Failed to update school info", null);
-      }
-
-      for (let classData of classesData) {
-        let classRecord;
-        if (classData._id) {
-          const { classDetails, ...classDataWithoutDetails } = classData;
-          classRecord = await this.classDao.update(
-            classData._id,
-            classDataWithoutDetails
-          );
-          const existingClassDetailIds = (classRecord.classDetails || []).map(
-            (detail) => detail._id?.toString()
-          );
-          const updatedClassDetails = [];
-          for (let classDetail of classData.classDetails) {
-            if (classDetail._id) {
+        const existingClassDetailIds = (classRecord.classDetails || []).map(
+          (detail) => detail._id?.toString()
+        );
+        const updatedClassDetails = [];
+        for (let classDetail of classData.classDetails) {
+          if (classDetail._id) {
+            updatedClassDetails.push(
+              this.classDao.updateOne(
+                { _id: classRecord._id, "classDetails._id": classDetail._id },
+                {
+                  $set: {
+                    "classDetails.$.girlsStrength": classDetail.girlsStrength,
+                    "classDetails.$.boysStrength": classDetail.boysStrength,
+                    "classDetails.$.totalStrength":
+                      Number(classDetail.boysStrength) +
+                      Number(classDetail.girlsStrength),
+                  },
+                }
+              )
+            );
+          } else {
+            if (
+              !existingClassDetailIds.includes(classDetail._id?.toString())
+            ) {
+              classDetail._id = new mongoose.Types.ObjectId();
               updatedClassDetails.push(
                 this.classDao.updateOne(
-                  { _id: classRecord._id, "classDetails._id": classDetail._id },
-                  {
-                    $set: {
-                      "classDetails.$.girlsStrength": classDetail.girlsStrength,
-                      "classDetails.$.boysStrength": classDetail.boysStrength,
-                      "classDetails.$.totalStrength":
-                        Number(classDetail.boysStrength) +
-                        Number(classDetail.girlsStrength),
-                    },
-                  }
+                  { _id: classRecord._id },
+                  { $push: { classDetails: classDetail } }
                 )
               );
-            } else {
-              if (
-                !existingClassDetailIds.includes(classDetail._id?.toString())
-              ) {
-                classDetail._id = new mongoose.Types.ObjectId();
-                updatedClassDetails.push(
-                  this.classDao.updateOne(
-                    { _id: classRecord._id },
-                    { $push: { classDetails: classDetail } }
-                  )
-                );
-              }
             }
           }
-          await Promise.all(updatedClassDetails);
-        } else {
-          const existingClass = await this.classDao.getOne({
-            board: classData.board,
-            medium: classData.medium,
-            isDeleted: false,
-            schoolId: updatedSchool._id,
-          });
-          if (existingClass) {
-            return formatApiReponse(
-              false,
-              "Class with this board, medium already exists!",
-              null
-            );
-          }
-          classData.schoolId = updatedSchool._id;
-          classRecord = await this.classDao.create(classData);
         }
-      }
-      const updatedClasses = await this.classDao.getClassesBySchoolId(
-        updatedSchool._id
-      );
-
-      if (updatedClasses) {
-        return formatApiReponse(true, "Updated school and class info", {
-          ...updatedSchool.toObject(),
-          classes: updatedClasses,
+        await Promise.all(updatedClassDetails);
+      } else {
+        const existingClass = await this.classDao.getOne({
+          board: classData.board,
+          medium: classData.medium,
+          isDeleted: false,
+          schoolId: updatedSchool._id,
         });
-      }
-      return formatApiReponse(false, "Failed to update classes", null);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
-  }
-
-  async bulkUpload(fileBuffer, userId, userName, permissions) {
-    try {
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(fileBuffer);
-
-      const expectedSchoolHeaders = [
-        "diseCode",
-        "name",
-        "board",
-        "state",
-        "zone",
-        "district",
-        "taluk",
-        "medium",
-        "academicYearStartDate",
-        "academicYearEndDate",
-      ];
-
-      const expectedClassHeaders = [
-        "diseCode",
-        "board",
-        "medium",
-        "standard",
-        "boys",
-        "girls",
-      ];
-
-      const validateHeaders = (sheet, expectedHeaders) => {
-        const actualHeaders = sheet.getRow(1).values.slice(1);
-        if (actualHeaders.length !== expectedHeaders.length) {
-          return `Do not alter the column headers!`;
-        }
-        for (let i = 0; i < expectedHeaders.length; i++) {
-          if (actualHeaders[i] !== expectedHeaders[i]) {
-            return `Do not alter the column headers!`;
-          }
-        }
-        return null;
-      };
-
-      const schoolSheet = workbook.getWorksheet("school");
-      const classSheet = workbook.getWorksheet("class");
-
-      if (schoolSheet) {
-        const schoolHeaderError = validateHeaders(
-          schoolSheet,
-          expectedSchoolHeaders
-        );
-        if (schoolHeaderError) {
+        if (existingClass) {
           return formatApiReponse(
             false,
-            "Invalid school sheet template!",
+            "Class with this board, medium already exists!",
             null
           );
         }
-      } else {
-        return formatApiReponse(false, "School sheet is missing!", null);
+        classData.schoolId = updatedSchool._id;
+        classRecord = await this.classDao.create(classData);
       }
-
-      if (classSheet) {
-        const classHeaderError = validateHeaders(
-          classSheet,
-          expectedClassHeaders
-        );
-        if (classHeaderError) {
-          return formatApiReponse(false, "Invalid class sheet template!", null);
-        }
-      } else {
-        return formatApiReponse(false, "Class sheet is missing!", null);
-      }
-
-      const worker = new Worker(
-        path.resolve(__dirname, "../worker/bulkuploadworker.js")
-      );
-      return await new Promise((resolve, reject) => {
-        worker.once("message", resolve);
-        worker.once("error", reject);
-        worker.postMessage({ fileBuffer, userId, userName, permissions });
-      });
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
     }
+
+    const updatedClasses = await this.classDao.getClassesBySchoolId(
+      updatedSchool._id
+    );
+
+    if (updatedClasses) {
+      return formatApiReponse(true, "Updated school and class info", {
+        ...updatedSchool.toObject(),
+        classes: updatedClasses,
+      });
+    }
+    return formatApiReponse(false, "Failed to update classes", null);
+  }
+
+  async bulkUpload(fileBuffer, userId, userName, permissions) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(fileBuffer);
+
+    const expectedSchoolHeaders = [
+      "diseCode",
+      "name",
+      "board",
+      "state",
+      "zone",
+      "district",
+      "taluk",
+      "medium",
+      "academicYearStartDate",
+      "academicYearEndDate",
+    ];
+
+    const expectedClassHeaders = [
+      "diseCode",
+      "board",
+      "medium",
+      "standard",
+      "boys",
+      "girls",
+    ];
+
+    const validateHeaders = (sheet, expectedHeaders) => {
+      const actualHeaders = sheet.getRow(1).values.slice(1);
+      if (actualHeaders.length !== expectedHeaders.length) {
+        return `Do not alter the column headers!`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (actualHeaders[i] !== expectedHeaders[i]) {
+          return `Do not alter the column headers!`;
+        }
+      }
+      return null;
+    };
+
+    const schoolSheet = workbook.getWorksheet("school");
+    const classSheet = workbook.getWorksheet("class");
+
+    if (schoolSheet) {
+      const schoolHeaderError = validateHeaders(
+        schoolSheet,
+        expectedSchoolHeaders
+      );
+      if (schoolHeaderError) {
+        return formatApiReponse(
+          false,
+          "Invalid school sheet template!",
+          null
+        );
+      }
+    } else {
+      return formatApiReponse(false, "School sheet is missing!", null);
+    }
+
+    if (classSheet) {
+      const classHeaderError = validateHeaders(
+        classSheet,
+        expectedClassHeaders
+      );
+      if (classHeaderError) {
+        return formatApiReponse(false, "Invalid class sheet template!", null);
+      }
+    } else {
+      return formatApiReponse(false, "Class sheet is missing!", null);
+    }
+
+    const worker = new Worker(
+      path.resolve(__dirname, "../worker/bulkuploadworker.js")
+    );
+    return await new Promise((resolve, reject) => {
+      worker.once("message", resolve);
+      worker.once("error", reject);
+      worker.postMessage({ fileBuffer, userId, userName, permissions });
+    });
   }
 
   async delete(req) {
-    try {
-      const school = await this.dao.getById(req.params.id);
-      if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
-      let data = await this.dao.delete(req.params?.id);
-      return formatApiReponse(true, "", data);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const school = await this.dao.getById(req.params.id);
+    if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new AppError("School is outside your scope", 403);
+    let data = await this.dao.delete(req.params?.id);
+    return formatApiReponse(true, "", data);
   }
 
   async updateFacility(id, body, permissions) {
-    try {
-      let data = await this.dao.getById(id);
-      if (!isResourceAllowed(permissions, "school.edit", data)) throw new Error("School is outside your scope");
-      let schoolfacilities = data?.facilities;
-      const updatedFacilities = schoolfacilities.filter((ele) => ele.otherType !== body.otherType);
+    let data = await this.dao.getById(id);
+    if (!isResourceAllowed(permissions, "school.edit", data)) throw new AppError("School is outside your scope", 403);
+    let schoolfacilities = data?.facilities;
+    const updatedFacilities = schoolfacilities.filter((ele) => ele.otherType !== body.otherType);
 
-      const school = await this.dao.update(id, { facilities: updatedFacilities })
+    const school = await this.dao.update(id, { facilities: updatedFacilities })
 
-      const users = await this.userDao.getUsersBySchoolId(id);
+    const users = await this.userDao.getUsersBySchoolId(id);
 
-      const hasFacilityUsers = users.filter((user) => user.profiles.teacher.facilities.some((facility) => facility.type === body.otherType));
+    const hasFacilityUsers = users.filter((user) => user.profiles.teacher.facilities.some((facility) => facility.type === body.otherType));
 
-      for (const user of hasFacilityUsers) {
-        const facilities = user.profiles.teacher.facilities.filter((facility) => facility.type !== body.otherType);
-        await this.userDao.update(user._id, { "profiles.teacher.facilities": facilities });
-      }
-
-      return formatApiReponse(true, "Resource Deleted!", school);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
+    for (const user of hasFacilityUsers) {
+      const facilities = user.profiles.teacher.facilities.filter((facility) => facility.type !== body.otherType);
+      await this.userDao.update(user._id, { "profiles.teacher.facilities": facilities });
     }
+
+    return formatApiReponse(true, "Resource Deleted!", school);
   }
 
   async deactivate(req) {
-    try {
-      const schoolId = req.params.id;
-      const currentSchool = await this.dao.getById(schoolId);
-      if (!isResourceAllowed(req.permissions, "school.delete", currentSchool)) throw new Error("School is outside your scope");
+    const schoolId = req.params.id;
+    const currentSchool = await this.dao.getById(schoolId);
+    if (!isResourceAllowed(req.permissions, "school.delete", currentSchool)) throw new AppError("School is outside your scope", 403);
 
-      const school = await this.dao.update(schoolId, { isDeleted: true });
+    const school = await this.dao.update(schoolId, { isDeleted: true });
 
-      if (!school) {
-        return formatApiReponse(false, "Failed to deactivate school", null);
-      }
-
-      const users = await this.userDao.getUsersBySchoolId(schoolId);
-      const userDeactivations = (users || []).map((user) =>
-        this.userDao.update(user._id, { isDeleted: true })
-      );
-      await Promise.all(userDeactivations);
-
-      return formatApiReponse(
-        true,
-        "School and associated users deactivated successfully",
-        {
-          school,
-          users,
-        }
-      );
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
+    if (!school) {
+      return formatApiReponse(false, "Failed to deactivate school", null);
     }
+
+    const users = await this.userDao.getUsersBySchoolId(schoolId);
+    const userDeactivations = (users || []).map((user) =>
+      this.userDao.update(user._id, { isDeleted: true })
+    );
+    await Promise.all(userDeactivations);
+
+    return formatApiReponse(
+      true,
+      "School and associated users deactivated successfully",
+      {
+        school,
+        users,
+      }
+    );
   }
 
   async activate(req) {
-    try {
-      const school = await this.dao.getById(req.params.id);
-      if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new Error("School is outside your scope");
-      return formatApiReponse(true, "School activated successfully", await this.dao.activate(req.params.id));
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    const school = await this.dao.getById(req.params.id);
+    if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new AppError("School is outside your scope", 403);
+    return formatApiReponse(true, "School activated successfully", await this.dao.activate(req.params.id));
   }
 
   async exportSchool(req) {
-    try {
-      const {
-        page = 1,
-        limit,
-        filter = {},
-        sortBy = "createdAt",
-        sortOrder = "desc",
-        search,
-        includeDeleted,
-      } = req.query;
-      const sortOrderObject =
-        sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
+    const {
+      page = 1,
+      limit,
+      filter = {},
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      search,
+      includeDeleted,
+    } = req.query;
+    const sortOrderObject =
+      sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-      const searchFilter = {};
+    const searchFilter = {};
 
-      if (search) {
-        const searchFields = ["name", "phone"];
+    if (search) {
+      const searchFields = ["name", "phone"];
 
-        const regexExpressions = (searchFields || []).map((field) => ({
-          [field]: { $regex: new RegExp(search, "i") },
-        }));
+      const regexExpressions = (searchFields || []).map((field) => ({
+        [field]: { $regex: new RegExp(search, "i") },
+      }));
 
-        if (!isNaN(parseInt(search))) {
-          regexExpressions.push({ schoolId: parseInt(search) });
-        }
-
-        searchFilter.$or = regexExpressions;
+      if (!isNaN(parseInt(search))) {
+        regexExpressions.push({ schoolId: parseInt(search) });
       }
 
-      const transformedFilter = { ...filter };
-
-      if (transformedFilter._id) {
-        try {
-          transformedFilter._id = new ObjectId(transformedFilter._id);
-        } catch (err) {
-          console.error("Invalid _id format:", transformedFilter._id);
-          return res.status(400).json({ error: "Invalid _id format" });
-        }
-      }
-      let mergedFilter = intersectFilters(transformedFilter, searchFilter);
-      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
-
-      let status = {};
-
-      if (includeDeleted === '2') {
-        status = { isDeleted: true };
-      } else if (includeDeleted === '0') {
-        status = { isDeleted: false };
-      }
-
-
-      const schools = await this.dao.getAll(
-        parseInt(page),
-        parseInt(limit),
-        mergedFilter,
-        sortOrderObject,
-        status,
-        req?.user?._id
-      );
-
-      const userId = req.user._id;
-      const userName = req.user.identity.name;
-
-      const worker = new Worker(
-        path.resolve(__dirname, '../worker/exportschoolworker.js')
-      );
-
-      worker.postMessage({ schools: schools.results, userId: userId.toString(), userName });
-
-      worker.on("message", (result) => {
-        console.log("Worker result:", result);
-      });
-
-      worker.on("error", (err) => {
-        console.error("Worker error:", err);
-      });
-
-      worker.on("exit", (code) => {
-        if (code !== 0) {
-          console.error(`Worker stopped with exit code ${code}`);
-        }
-      });
-
-      return formatApiReponse(true, "School export initiated, please verify for audit logs!", "")
-
+      searchFilter.$or = regexExpressions;
     }
-    catch (err) {
-      return formatApiReponse(false, err.message, err);
+
+    const transformedFilter = { ...filter };
+
+    if (transformedFilter._id) {
+      try {
+        transformedFilter._id = new ObjectId(transformedFilter._id);
+      } catch (err) {
+        console.error("Invalid _id format:", transformedFilter._id);
+        throw new Error("Invalid _id format");
+      }
     }
+    let mergedFilter = intersectFilters(transformedFilter, searchFilter);
+    mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
+
+    let status = {};
+
+    if (includeDeleted === '2') {
+      status = { isDeleted: true };
+    } else if (includeDeleted === '0') {
+      status = { isDeleted: false };
+    }
+
+
+    const schools = await this.dao.getAll(
+      parseInt(page),
+      parseInt(limit),
+      mergedFilter,
+      sortOrderObject,
+      status,
+      req?.user?._id
+    );
+
+    const userId = req.user._id;
+    const userName = req.user.identity.name;
+
+    const worker = new Worker(
+      path.resolve(__dirname, '../worker/exportschoolworker.js')
+    );
+
+    worker.postMessage({ schools: schools.results, userId: userId.toString(), userName });
+
+    worker.on("message", (result) => {
+      console.log("Worker result:", result);
+    });
+
+    worker.on("error", (err) => {
+      console.error("Worker error:", err);
+    });
+
+    worker.on("exit", (code) => {
+      if (code !== 0) {
+        console.error(`Worker stopped with exit code ${code}`);
+      }
+    });
+
+    return formatApiReponse(true, "School export initiated, please verify for audit logs!", "")
   }
 
   async getAll(
@@ -461,24 +429,20 @@ class SchoolManager extends BaseManager {
     status,
     userId
   ) {
-    try {
-      // Only for School: advanced filter normalization for zone/district
-      let processedFilters = { ...filters, ...status };
-      processedFilters = normalizeMultiValueFilter(processedFilters, ["zone", "district"]);
-      processedFilters = buildMongoInQuery(processedFilters, ["zone", "district"]);
-      // Call DAO getAll with processed filters
-      let data = await this.dao.getAll(
-        page,
-        limit,
-        processedFilters,
-        sort,
-        {}, // status already merged
-        userId
-      );
-      return formatApiReponse(true, "", data);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    // Only for School: advanced filter normalization for zone/district
+    let processedFilters = { ...filters, ...status };
+    processedFilters = normalizeMultiValueFilter(processedFilters, ["zone", "district"]);
+    processedFilters = buildMongoInQuery(processedFilters, ["zone", "district"]);
+    // Call DAO getAll with processed filters
+    let data = await this.dao.getAll(
+      page,
+      limit,
+      processedFilters,
+      sort,
+      {}, // status already merged
+      userId
+    );
+    return formatApiReponse(true, "", data);
   }
 }
 

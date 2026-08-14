@@ -23,76 +23,50 @@ class RegeneratedLessonResourceDao extends BaseDao {
 	}
 
 	async getOne(filter) {
-		try {
-			let result = await RegeneratedLessonResource.findOne(filter).sort({ _version: -1 });
-			return result;
-		} catch (err) {
-			console.log("Error --> BaseDao -> getOne()", err);
-			throw err;
-		}
+		let result = await RegeneratedLessonResource.findOne(filter).sort({ _version: -1 });
+		return result;
 	}
 
 	async update(filter, updateData) {
-		try {
-			const result = await RegeneratedLessonResource.findOneAndUpdate(
-				filter,
-				{ $set: updateData },
-				{ new: true }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error --> RegeneratedLessonResourceDao -> update()", err);
-			throw err;
-		}
+		const result = await RegeneratedLessonResource.findOneAndUpdate(
+			filter,
+			{ $set: updateData },
+			{ new: true }
+		);
+		return result;
 	}
 
 	async getContentActivity(page = 1, limit = 10, filters = {}, sort = {}) {
-		try {
-			const results = await regenerateLogAggregation.getContentActivity(
-				page,
-				limit,
-				mapFilters(filters, "schoolId"),
-				sort
-			);
+		const results = await regenerateLogAggregation.getContentActivity(
+			page,
+			limit,
+			mapFilters(filters, "schoolId"),
+			sort
+		);
 
-			const totalItems =
-				results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
+		const totalItems =
+			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
 
-			return {
-				page,
-				totalItems,
-				limit,
-				results: results[0].data,
-			};
-		} catch (err) {
-			console.log(
-				"Error -> RegeneratedLessonResourceDao -> getContentActivity",
-				err
-			);
-			throw err;
-		}
+		return {
+			page,
+			totalItems,
+			limit,
+			results: results[0].data,
+		};
 	}
 
 	async getAllContentActivity(filters = {}) {
-		try {
-			const results = await regenerateLogAggregation.getAllContentActivity(
-				mapFilters(filters, "_id")
-			);
+		const results = await regenerateLogAggregation.getAllContentActivity(
+			mapFilters(filters, "_id")
+		);
 
-			const totalItems =
-				results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
+		const totalItems =
+			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
 
-			return {
-				totalItems,
-				results: results[0].data,
-			};
-		} catch (err) {
-			console.log(
-				"Error -> RegeneratedLessonResourceDao -> getAllContentActivity",
-				err
-			);
-			throw err;
-		}
+		return {
+			totalItems,
+			results: results[0].data,
+		};
 	}
 }
 

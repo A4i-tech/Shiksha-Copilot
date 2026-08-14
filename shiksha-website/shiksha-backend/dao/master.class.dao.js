@@ -7,58 +7,48 @@ class MasterClassDao extends BaseDao {
 	}
 
 	async getAll(page = 1, limit = 10, filters = {}, sort = {}) {
-		try {
-			const pipeline = [
-				{ $match: filters },
-				{
-					$facet: {
-						data: [
-							{ $sort: sort },
-							{ $skip: (page - 1) * limit },
-							{ $limit: limit },
-						],
-						totalCount: [{ $count: "count" }],
-					},
+		const pipeline = [
+			{ $match: filters },
+			{
+				$facet: {
+					data: [
+						{ $sort: sort },
+						{ $skip: (page - 1) * limit },
+						{ $limit: limit },
+					],
+					totalCount: [{ $count: "count" }],
 				},
-			];
+			},
+		];
 
-			const results = await MasterClass.aggregate(pipeline).exec();
+		const results = await MasterClass.aggregate(pipeline).exec();
 
-			const totalItems =
-				results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
+		const totalItems =
+			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
 
-			return {
-				page,
-				totalItems,
-				limit,
-				results: results[0].data,
-			};
-		} catch (err) {
-			console.log("Error --> MasterClassDao -> getAll()", err);
-			throw err;
-		}
+		return {
+			page,
+			totalItems,
+			limit,
+			results: results[0].data,
+		};
 	}
 
 	async update(id, updates, session = null) {
-		try {
-			const result = await MasterClass.findOneAndUpdate(
-				{
-					_id: id,
-					isDeleted: false,
+		const result = await MasterClass.findOneAndUpdate(
+			{
+				_id: id,
+				isDeleted: false,
+			},
+			{
+				$set: {
+					standard: updates.standard,
+					subjects: updates.subjects,
 				},
-				{
-					$set: {
-						standard: updates.standard,
-						subjects: updates.subjects,
-					},
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> MasterClassDao -> update", err);
-			throw err;
-		}
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 }
 

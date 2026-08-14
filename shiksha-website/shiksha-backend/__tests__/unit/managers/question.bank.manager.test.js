@@ -87,15 +87,12 @@ describe("QuestionBankManager", () => {
       expect(result.data).toEqual(mockPapers);
     });
 
-    it("should handle errors", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockQuestionBankDao.getTeacherQuestionPapers.mockRejectedValue(
         new Error("Database error")
       );
 
-      const result = await manager.getTeacherQuestionPapers("teacher-123");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(manager.getTeacherQuestionPapers("teacher-123")).rejects.toThrow("Database error");
     });
   });
 
@@ -164,16 +161,15 @@ describe("QuestionBankManager", () => {
       expect(result.message).toBe("Feedback submitted successfully");
     });
 
-    it("should handle errors", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockQuestionBankDao.getById.mockResolvedValue({ teacherId: "teacher-123" });
       mockQuestionBankDao.update.mockRejectedValue(
         new Error("Update failed")
       );
 
-      const result = await manager.updateFeedback("qb-123", {}, "teacher-123");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Update failed");
+      await expect(
+        manager.updateFeedback("qb-123", {}, "teacher-123")
+      ).rejects.toThrow("Update failed");
     });
   });
 
@@ -199,16 +195,13 @@ describe("QuestionBankManager", () => {
       expect(result.message).toContain("Failed job processing initiated");
     });
 
-    it("should handle errors", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
       QuestionBankCacheSummary.find = jest
         .fn()
         .mockRejectedValue(new Error("Query failed"));
 
-      const result = await manager.retryFailedJobs();
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Query failed");
+      await expect(manager.retryFailedJobs()).rejects.toThrow("Query failed");
     });
   });
 
@@ -250,14 +243,11 @@ describe("QuestionBankManager", () => {
       );
     });
 
-    it("should handle translation errors", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const axios = require("axios");
       jest.spyOn(axios, "post").mockRejectedValue(new Error("API error"));
 
-      const result = await manager.translateQuestionPaper("Kannada", { title: "Test" });
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Translation failed");
+      await expect(manager.translateQuestionPaper("Kannada", { title: "Test" })).rejects.toThrow("API error");
     });
   });
 

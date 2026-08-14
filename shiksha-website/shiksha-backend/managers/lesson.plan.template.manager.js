@@ -8,15 +8,11 @@ class LessonPlanTemplateManager extends BaseManager {
   }
 
   async findAllTemplates(filter) {
-    try {
-      const templates = await this.dao.filter(filter);
-      if (!templates) {
-        return formatApiReponse(false, "Templates not found", null);
-      }
-      return formatApiReponse(true, "", templates);
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
+    const templates = await this.dao.filter(filter);
+    if (!templates) {
+      return formatApiReponse(false, "Templates not found", null);
     }
+    return formatApiReponse(true, "", templates);
   }
 }
 

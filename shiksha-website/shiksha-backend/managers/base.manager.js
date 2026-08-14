@@ -22,56 +22,36 @@ class BaseManager {
 		status,
 		userId
 	) {
-		try {
-			let data = await this.dao.getAll(
-				page,
-				limit,
-				filters,
-				sort,
-				status,
-				userId
-			);
-			return formatApiReponse(true, "", data);
-		} catch (err) {
-			return formatApiReponse(false, err.message, err);
-		}
+		let data = await this.dao.getAll(
+			page,
+			limit,
+			filters,
+			sort,
+			status,
+			userId
+		);
+		return formatApiReponse(true, "", data);
 	}
 
 	async getById(req) {
-		try {
-			let data = await this.dao.getById(req.params.id);
-			if (data) return formatApiReponse(true, "", data);
-			return formatApiReponse(false, "", data);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
-		}
+		let data = await this.dao.getById(req.params.id);
+		if (data) return formatApiReponse(true, "", data);
+		return formatApiReponse(false, "", data);
 	}
 
 	async create(req) {
-		try {
-			let data = await this.dao.create(req.body);
-			return formatApiReponse(true, "success!", data);
-		} catch (err) {
-			return formatApiReponse(false, err.message, err);
-		}
+		let data = await this.dao.create(req.body);
+		return formatApiReponse(true, "success!", data);
 	}
 
 	async delete(req) {
-		try {
-			await this.dao.delete(req.params?.id);
-			return formatApiReponse(true, "Deactivated successfully!", null);
-		} catch (err) {
-			return formatApiReponse(false, err.message, err);
-		}
+		await this.dao.delete(req.params?.id);
+		return formatApiReponse(true, "Deactivated successfully!", null);
 	}
 
 	async activate(req) {
-		try {
-			let data = await this.dao.activate(req.params.id);
-			return formatApiReponse(true, "School is activated!", data);
-		} catch (err) {
-			return formatApiReponse(false, err.message, err);
-		}
+		let data = await this.dao.activate(req.params.id);
+		return formatApiReponse(true, "School is activated!", data);
 	}
 }
 

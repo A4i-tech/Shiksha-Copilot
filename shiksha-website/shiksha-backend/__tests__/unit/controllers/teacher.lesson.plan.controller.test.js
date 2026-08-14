@@ -105,14 +105,12 @@ describe("TeacherLessonPlanController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
       mockManager.getByTeacherAndPagination = jest.fn().mockRejectedValue(error);
 
-      await controller.getByTeacherAndPagination(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(error);
+      await expect(controller.getByTeacherAndPagination(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -138,14 +136,12 @@ describe("TeacherLessonPlanController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions in monthly count", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
       mockManager.getMonthlyCount = jest.fn().mockRejectedValue(error);
 
-      await controller.getMonthlyCount(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Internal server error" });
+      await expect(controller.getMonthlyCount(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -193,15 +189,13 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.json).toHaveBeenCalledWith({ choose: false });
     });
 
-    it("should handle errors", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
       mockManager.checkIfLessonPlanExists = jest.fn().mockRejectedValue(error);
       mockReq.params = { lessonPlanId: "lesson-123" };
 
-      await controller.checkIfLessonPlanExists(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Internal server error" });
+      await expect(controller.checkIfLessonPlanExists(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -228,14 +222,13 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.json).toHaveBeenCalledWith({ message: "Lesson plan not found" });
     });
 
-    it("should handle errors", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
       mockManager.getLessonPlanById = jest.fn().mockRejectedValue(error);
       mockReq.params = { lessonPlanId: "lesson-123" };
 
-      await controller.getLessonPlanById(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
+      await expect(controller.getLessonPlanById(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -285,14 +278,12 @@ describe("TeacherLessonPlanController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Server error");
       mockManager.generateContent = jest.fn().mockRejectedValue(error);
 
-      await controller.generateContent(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ error: "Internal server error" });
+      await expect(controller.generateContent(mockReq, mockRes)).rejects.toThrow("Server error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -322,17 +313,12 @@ describe("TeacherLessonPlanController", () => {
       expect(mockRes.send).toHaveBeenCalledWith({ success: true });
     });
 
-    it("should handle webhook errors", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Webhook error");
       mockManager.processWebhookData = jest.fn().mockRejectedValue(error);
 
-      await controller.handleWebhook(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.send).toHaveBeenCalledWith({
-        success: false,
-        error: "Webhook handling failed"
-      });
+      await expect(controller.handleWebhook(mockReq, mockRes)).rejects.toThrow("Webhook error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 

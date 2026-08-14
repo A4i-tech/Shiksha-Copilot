@@ -8,61 +8,41 @@ class ClassDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		try {
-			const result = await ClassModel.findOneAndUpdate(
+		const result = await ClassModel.findOneAndUpdate(
+			{
+				_id: id,
+				isDeleted: false,
+			},
+			{
+				$set:
 				{
-					_id: id,
-					isDeleted: false,
-				},
-				{
-					$set: 
-					{
-						start : updates.start,
-						end : updates.end
-					}
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> ClassDao -> update", err);
-			throw err;
-		}
+					start : updates.start,
+					end : updates.end
+				}
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 
 	async getClassesBySchoolId(schoolId) {
-		try {
-			const classes = await classAggregation.getClassesBySchoolId(schoolId);
-			return classes;
-		} catch (err) {
-			console.log("Error -> ClassDao -> getClassesBySchoolId", err);
-			throw err;
-		}
+		const classes = await classAggregation.getClassesBySchoolId(schoolId);
+		return classes;
 	}
 
 
 	async updateOne(filter, updates, session = null) {
-		try {
-			const result = await ClassModel.updateOne(
-				filter,
-				updates,
-				{ session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> ClassDao -> updateOne", err);
-			throw err;
-		}
+		const result = await ClassModel.updateOne(
+			filter,
+			updates,
+			{ session: session }
+		);
+		return result;
 	}
 
 	async getGroupClassesByBoard(schoolId) {
-		try {
-			const classes = await classAggregation.getGroupClassesByBoard(schoolId);
-			return classes;
-		} catch (err) {
-			console.log("Error -> ClassDao -> getGroupClassesByBoard", err);
-			throw err;
-		}
+		const classes = await classAggregation.getGroupClassesByBoard(schoolId);
+		return classes;
 	}
 }
 

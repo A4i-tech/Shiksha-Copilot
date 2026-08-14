@@ -9,29 +9,19 @@ class LessonPlanTemplateController extends BaseController {
   }
 
   async findTemplates(req, res) {
-    try {
-      let { filter = {} } = req.query;
+    let { filter = {} } = req.query;
 
-      filter.classes = parseInt(filter.classes);
+    filter.classes = parseInt(filter.classes);
 
-      const result = await this.manager.findAllTemplates(
-        filter
-      );
+    const result = await this.manager.findAllTemplates(
+      filter
+    );
 
-      if (result.success) {
-        return res.status(200).json(result);
-      }
-
-      handleError(result, res);
-
-      return;
-    } catch (err) {
-      console.log(
-        "Error --> LessonPlanTemplateController -> findTemplates()",
-        err
-      );
-      return res.status(400).json(err);
+    if (result.success) {
+      return res.status(200).json(result);
     }
+
+    handleError(result, res);
   }
 }
 

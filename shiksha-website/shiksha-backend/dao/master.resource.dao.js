@@ -8,130 +8,102 @@ class MasterResourceDao extends BaseDao {
 	}
 
 	async getAll(page = 1, limit = 10, filters = {}, sort = {}) {
-		try {
-			const processedFilters = {};
+		const processedFilters = {};
 
-			for (const key in filters) {
-				if (key === "class") {
-					processedFilters[key] = Number(filters[key]);
-				} else if (
-					key === "topics" ||
-					key === "subTopics" ||
-					key === "board" ||
-					key === "medium"
-				) {
-					processedFilters[`chapter.${key}`] = filters[key];
-				} else {
-					processedFilters[key] = filters[key];
-				}
+		for (const key in filters) {
+			if (key === "class") {
+				processedFilters[key] = Number(filters[key]);
+			} else if (
+				key === "topics" ||
+				key === "subTopics" ||
+				key === "board" ||
+				key === "medium"
+			) {
+				processedFilters[`chapter.${key}`] = filters[key];
+			} else {
+				processedFilters[key] = filters[key];
 			}
-
-			const results = await masterResourceAggregation.getMasterResourcesFilter(
-				page,
-				limit,
-				processedFilters,
-				sort
-			);
-
-			const totalItems =
-				results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
-
-			return {
-				page,
-				totalItems,
-				limit,
-				results: results[0].data,
-			};
-		} catch (err) {
-			console.log("Error --> MasterResourceDao -> getAll()", err);
-			throw err;
 		}
+
+		const results = await masterResourceAggregation.getMasterResourcesFilter(
+			page,
+			limit,
+			processedFilters,
+			sort
+		);
+
+		const totalItems =
+			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
+
+		return {
+			page,
+			totalItems,
+			limit,
+			results: results[0].data,
+		};
 	}
 
 	async update(id, updates, session = null) {
-		try {
-			const result = await MasterResource.findOneAndUpdate(
-				{
-					_id: id,
+		const result = await MasterResource.findOneAndUpdate(
+			{
+				_id: id,
+			},
+			{
+				$set: {
+					methodOfTeaching: updates.methodOfTeaching,
+					content: updates.content,
 				},
-				{
-					$set: {
-						methodOfTeaching: updates.methodOfTeaching,
-						content: updates.content,
-					},
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> MasterResourceDao -> update", err);
-			throw err;
-		}
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 
 	async updateByFilter(filter, updateData) {
-		try {
-			const result = await MasterResource.findOneAndUpdate(
-				filter,
-				{ $set: updateData },
-				{ new: true, timestamps:true }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error --> MasterResourceDao -> updateByFilter()", err);
-			throw err;
-		}
+		const result = await MasterResource.findOneAndUpdate(
+			filter,
+			{ $set: updateData },
+			{ new: true, timestamps:true }
+		);
+		return result;
 	}
 
 	async getSubtopicResourceList(chapterId,templateIds) {
-		try {
-			const results =
-				await masterResourceAggregation.getSubtopicResourceListByChapterId(
-					chapterId,
-					templateIds
-				);
-			return results;
-		} catch (err) {
-			console.log(
-				"Error --> MasterResourceDao -> getSubtopicResourceList()",
-				err
+		const results =
+			await masterResourceAggregation.getSubtopicResourceListByChapterId(
+				chapterId,
+				templateIds
 			);
-			throw err;
-		}
+		return results;
 	}
 
 	async generateResourcePlan(resourceId, filters = {}) {
-		try {
-			let processedFilters = {};
+		let processedFilters = {};
 
-			for (const key in filters) {
-				if (key === "includeVideos" && filters[key] === "true") {
-					processedFilters["videos"] = {
-						$exists: true,
-						$not: {
-							$size: 0,
-						},
-					};
-				}
-				if (key === "levels") {
-					processedFilters[key] = JSON.parse(filters[key]);
-				}
+		for (const key in filters) {
+			if (key === "includeVideos" && filters[key] === "true") {
+				processedFilters["videos"] = {
+					$exists: true,
+					$not: {
+						$size: 0,
+					},
+				};
 			}
-
-			const result = await masterResourceAggregation.generateResourcePlan(
-				resourceId,
-				processedFilters
-			);
-
-			if (result.success) {
-				return result.data;
+			if (key === "levels") {
+				processedFilters[key] = JSON.parse(filters[key]);
 			}
-
-			return false;
-		} catch (err) {
-			console.log("Error --> MasterResourceDao -> generateResourcePlan", err);
-			throw err;
 		}
+
+		const result = await masterResourceAggregation.generateResourcePlan(
+			resourceId,
+			processedFilters
+		);
+
+		if (result.success) {
+			return result.data;
+		}
+
+		return false;
 	}
 }
 

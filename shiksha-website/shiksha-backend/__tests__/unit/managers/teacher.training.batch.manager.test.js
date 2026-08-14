@@ -32,6 +32,6 @@ describe("TeacherTrainingBatchManager.getBatches", () => {
   it("returns the database error", async () => {
     TeacherTrainingBatch.find.mockReturnValue({ populate: jest.fn().mockRejectedValue(new Error("Database error")) });
     await expect(manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "GLOBAL", dep: null }]))
-      .resolves.toMatchObject({ success: false, message: "Database error" });
+      .rejects.toThrow("Database error");
   });
 });

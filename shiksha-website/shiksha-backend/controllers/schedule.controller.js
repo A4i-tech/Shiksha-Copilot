@@ -10,91 +10,68 @@ class ScheduleController extends BaseController {
 	}
 
 	async update(req, res) {
-		try {
-			const { _id } = req.body;
+		const { _id } = req.body;
 
-			req.body._id = undefined;
+		req.body._id = undefined;
 
-			const result = await this.manager.update(
-				_id,
-				req.body,
-				req.user,
-			);
+		const result = await this.manager.update(
+			_id,
+			req.body,
+			req.user,
+		);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-		} catch (err) {
-			console.log("Error --> ScheduleController -> update()", err);
-			return formatApiReponse(false, err?.message, err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async getAllSchedulesBasedOnTeacherId(req, res) {
-		try {
-			const { teacherId } = req.params;
+		const { teacherId } = req.params;
 
-			const result = await this.manager.getAllSchedulesBasedOnTeacherId(
-				teacherId
-			);
+		const result = await this.manager.getAllSchedulesBasedOnTeacherId(
+			teacherId
+		);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-		} catch (err) {
-			console.log(
-				"Error --> ScheduleController -> getAllSchedulesBasedOnTeacherId()",
-				err
-			);
-			return formatApiReponse(false, err?.message, err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async getBySchool(req, res) {
-		try {
-			const { fromDate, toDate, teacherClass ,teacherSchedule } = req.query;
+		const { fromDate, toDate, teacherClass ,teacherSchedule } = req.query;
 
-			const result = await this.manager.getBySchool(
-				req.user,
-				fromDate,
-				toDate,
-				teacherClass,
-				teacherSchedule
-			);
+		const result = await this.manager.getBySchool(
+			req.user,
+			fromDate,
+			toDate,
+			teacherClass,
+			teacherSchedule
+		);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-		} catch (err) {
-			console.log("Error --> ScheduleController -> getBySchool()", err);
-			return formatApiReponse(false, err?.message, err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async getMySchedules(req, res) {
-		try {
-			const { date } = req.query;
+		const { date } = req.query;
 
-			const result = await this.manager.getMySchedules(
-				req.user._id,
-				date
-			);
+		const result = await this.manager.getMySchedules(
+			req.user._id,
+			date
+		);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-		} catch (err) {
-			console.log("Error --> ScheduleController -> getMySchedules()", err);
-			return formatApiReponse(false, err?.message, err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 }
 

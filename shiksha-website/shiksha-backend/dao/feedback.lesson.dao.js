@@ -7,30 +7,17 @@ class LessonFeedbackDao extends BaseDao {
 	}
 
 	async getByTeacher(teacherId) {
-		try {
-			let result = await LessonFeedback.find({ teacherId });
-			return result;
-		} catch (err) {
-			console.log("Error --> LessonFeedbackDao -> getByTeacher()", err);
-			throw err;
-		}
+		let result = await LessonFeedback.find({ teacherId });
+		return result;
 	}
 
 	async getByTeacherAndLessonId(teacherId, lessonId) {
-		try {
-			let result = await LessonFeedback.findOne({
-				teacherId,
-				lessonId,
-				isDeleted: { $ne: true },
-			});
-			return result;
-		} catch (err) {
-			console.log(
-				"Error --> LessonFeedbackDao -> getByTeacherAndLessonId()",
-				err
-			);
-			throw err;
-		}
+		let result = await LessonFeedback.findOne({
+			teacherId,
+			lessonId,
+			isDeleted: { $ne: true },
+		});
+		return result;
 	}
 
 	async deleteByTeacherAndLessonId(teacherId, lessonId) {
@@ -51,21 +38,16 @@ class LessonFeedbackDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		try {
-			const result = await LessonFeedback.findOneAndUpdate(
-				{
-					_id: id,
-				},
-				{
-					$set: updates,
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> LessonFeedbackDao -> update", err);
-			throw err;
-		}
+		const result = await LessonFeedback.findOneAndUpdate(
+			{
+				_id: id,
+			},
+			{
+				$set: updates,
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 }
 

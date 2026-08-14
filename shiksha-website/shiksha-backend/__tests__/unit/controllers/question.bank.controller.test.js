@@ -131,13 +131,11 @@ describe("QuestionBankController", () => {
       expect(sortOrder).toEqual({ updatedAt: -1 });
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.getTeacherQuestionPapers = jest.fn().mockRejectedValue(new Error("Database error"));
 
-      await controller.getTeacherQuestionPapers(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      await expect(controller.getTeacherQuestionPapers(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -156,13 +154,11 @@ describe("QuestionBankController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.generateQuestionBank = jest.fn().mockRejectedValue(new Error("Error"));
 
-      await controller.generateQuestionBank(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      await expect(controller.generateQuestionBank(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -183,15 +179,13 @@ describe("QuestionBankController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.updateFeedback = jest.fn().mockRejectedValue(new Error("Error"));
       mockReq.params = { id: "qb-123" };
       mockReq.body = { rating: 5 };
 
-      await controller.updateFeedback(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      await expect(controller.updateFeedback(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -210,16 +204,11 @@ describe("QuestionBankController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should handle exceptions with sanitized error response", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.retryFailedJobs = jest.fn().mockRejectedValue(new Error("DB connection lost"));
 
-      await controller.retryFailedJobs(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: "Failed to retry jobs.",
-      });
+      await expect(controller.retryFailedJobs(mockReq, mockRes)).rejects.toThrow("DB connection lost");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -239,17 +228,12 @@ describe("QuestionBankController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should handle exceptions with sanitized error response", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.retryFailedJob = jest.fn().mockRejectedValue(new Error("DB connection lost"));
       mockReq.params = { id: "job-123" };
 
-      await controller.retryFailedJob(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: "Failed to retry job.",
-      });
+      await expect(controller.retryFailedJob(mockReq, mockRes)).rejects.toThrow("DB connection lost");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -267,17 +251,12 @@ describe("QuestionBankController", () => {
       expect(mockRes.json).toHaveBeenCalledWith(mockResult);
     });
 
-    it("should sanitize errors and return 500 when manager throws", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.getGrammarTopics = jest.fn().mockRejectedValue(new Error("DB unavailable"));
       mockReq.query = { grade: "8" };
 
-      await controller.getGrammarTopics(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({
-        success: false,
-        message: "Failed to retrieve grammar topics.",
-      });
+      await expect(controller.getGrammarTopics(mockReq, mockRes)).rejects.toThrow("DB unavailable");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 });

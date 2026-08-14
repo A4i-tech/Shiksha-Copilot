@@ -9,59 +9,38 @@ class ChapterController extends BaseController {
 	}
 
 	async getBySemester(req, res){
-		try {
-			const {
-				filter = {},
-			} = req.query;
+		const {
+			filter = {},
+		} = req.query;
 
-			const transformedFilter = { ...filter };
-			const result = await this.manager.getBySemester(transformedFilter);
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> getAll()", err);
-			return res.status(400).json(err);
+		const transformedFilter = { ...filter };
+		const result = await this.manager.getBySemester(transformedFilter);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async scriptFromLp(req, res) {
-		try {
-			let result = await this.manager.scriptFromLp(req);
+		let result = await this.manager.scriptFromLp(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> scriptFromLp()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 
 	async updateChapter(req, res) {
-		try {
-			let result = await this.manager.updateChapter(req);
+		let result = await this.manager.updateChapter(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> ChapterController -> updateChapter()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 

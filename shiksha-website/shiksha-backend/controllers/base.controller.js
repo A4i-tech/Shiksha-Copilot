@@ -16,173 +16,127 @@ class BaseController {
 	}
 
 	async getAll(req, res) {
-		try {
-			const {
-				page = 1,
-				limit,
-				filter = {},
-				sortBy = "createdAt",
-				sortOrder = "desc",
-				search,
-				includeDeleted,
-			} = req.query;
-			const sortOrderObject =
-				sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
+		const {
+			page = 1,
+			limit,
+			filter = {},
+			sortBy = "createdAt",
+			sortOrder = "desc",
+			search,
+			includeDeleted,
+		} = req.query;
+		const sortOrderObject =
+			sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-			const searchFilter = {};
+		const searchFilter = {};
 
-			if (search) {
-				const searchFields = ["identity.name", "identity.phone"];
+		if (search) {
+			const searchFields = ["identity.name", "identity.phone"];
 
-				const regexExpressions = searchFields.map((field) => ({
-					[field]: { $regex: new RegExp(search, "i") },
-				}));
-				
-				if (!isNaN(parseInt(search))) {
-					regexExpressions.push({ schoolId: parseInt(search) });
-				}
+			const regexExpressions = searchFields.map((field) => ({
+				[field]: { $regex: new RegExp(search, "i") },
+			}));
 
-				searchFilter.$or = regexExpressions;
+			if (!isNaN(parseInt(search))) {
+				regexExpressions.push({ schoolId: parseInt(search) });
 			}
 
-			const transformedFilter = { ...filter };
-			if (transformedFilter._id) {
-				try {
-					transformedFilter._id = new ObjectId(transformedFilter._id);
-				} catch (err) {
-					console.error("Invalid _id format:", transformedFilter._id);
-					return res.status(400).json({ error: "Invalid _id format" });
-				}
-			}
-			const mergedFilter = intersectFilters(transformedFilter, searchFilter);
-
-			let status = {};
-
-			if (includeDeleted === '2') {
-				status = { isDeleted: true }; 
-			} else if (includeDeleted === '0') {
-				status = { isDeleted: false }; 
-			}
-			const result = await this.manager.getAll(
-				parseInt(page),
-				parseInt(limit),
-				mergedFilter,
-				sortOrderObject,
-				status,
-				req?.user?._id
-			);
-
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> getAll()", err);
-			return res.status(400).json(err);
+			searchFilter.$or = regexExpressions;
 		}
+
+		const transformedFilter = { ...filter };
+		if (transformedFilter._id) {
+			try {
+				transformedFilter._id = new ObjectId(transformedFilter._id);
+			} catch (err) {
+				console.error("Invalid _id format:", transformedFilter._id);
+				return res.status(400).json({ error: "Invalid _id format" });
+			}
+		}
+		const mergedFilter = intersectFilters(transformedFilter, searchFilter);
+
+		let status = {};
+
+		if (includeDeleted === '2') {
+			status = { isDeleted: true };
+		} else if (includeDeleted === '0') {
+			status = { isDeleted: false };
+		}
+		const result = await this.manager.getAll(
+			parseInt(page),
+			parseInt(limit),
+			mergedFilter,
+			sortOrderObject,
+			status,
+			req?.user?._id
+		);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
 	}
 
 	async getById(req, res) {
-		try {
-			let result = await this.manager.getById(req);
+		let result = await this.manager.getById(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> getById()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async create(req, res) {
-		try {
-			let result = await this.manager.create(req);
+		let result = await this.manager.create(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> create()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async update(req, res) {
-		try {
-			let result = await this.manager.update(req);
+		let result = await this.manager.update(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> update()", err);
-			return res.status(400).json({ success: false, message: err.message });
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async delete(req, res) {
-		try {
-			let result = await this.manager.delete(req);
+		let result = await this.manager.delete(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> delete()", err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async activate(req, res) {
-		try {
-			let result = await this.manager.activate(req);
+		let result = await this.manager.activate(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> activate()", err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 
 	async deactivate(req, res) {
-		try {
-			let result = await this.manager.deactivate(req);
+		let result = await this.manager.deactivate(req);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> deactivate()", err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 }
 

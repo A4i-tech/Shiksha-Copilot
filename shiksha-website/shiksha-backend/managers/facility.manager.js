@@ -9,13 +9,9 @@ class FacilityManager extends BaseManager {
 	}
 
 	async update(req) {
-		try {
-			let data = await this.dao.update(req.body);
-			if (data) return formatApiReponse(true, "", data);
-			return formatApiReponse(false, "failed to update facilities", null);
-		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
-		}
+		let data = await this.dao.update(req.body);
+		if (data) return formatApiReponse(true, "", data);
+		return formatApiReponse(false, "failed to update facilities", null);
 	}
 }
 

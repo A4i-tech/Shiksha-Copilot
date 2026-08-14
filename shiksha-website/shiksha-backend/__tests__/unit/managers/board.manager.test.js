@@ -55,15 +55,13 @@ describe("BoardManager", () => {
       });
     });
 
-    it("should return failure on error", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
       mockBoardDao.getByName.mockRejectedValue(error);
 
       const req = { body: { name: "CBSE" } };
-      const result = await boardManager.getByName(req);
 
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(boardManager.getByName(req)).rejects.toThrow("Database error");
     });
   });
 
@@ -110,7 +108,7 @@ describe("BoardManager", () => {
       });
     });
 
-    it("should return failure on error", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Update failed");
       mockBoardDao.update.mockRejectedValue(error);
 
@@ -120,10 +118,8 @@ describe("BoardManager", () => {
           boardName: "Updated",
         },
       };
-      const result = await boardManager.update(req);
 
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Update failed");
+      await expect(boardManager.update(req)).rejects.toThrow("Update failed");
     });
   });
 });

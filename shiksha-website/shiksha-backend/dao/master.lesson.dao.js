@@ -3,6 +3,7 @@ const MasterLesson = require("../models/master.lesson.model");
 const BaseDao = require("./base.dao.js");
 const mongoose = require("mongoose");
 const TeacherLessonPlanDao = require("./teacher.lesson.plan.dao");
+const AppError = require("../helper/app.error");
 
 class MasterLessonDao extends BaseDao {
 	constructor() {
@@ -18,157 +19,128 @@ class MasterLessonDao extends BaseDao {
 		includeDeleted,
 		userId
 	) {
-		try {
-			const processedFilters = {};
+		const processedFilters = {};
 
-			for (const key in filters) {
-				if (key === "class") {
-					processedFilters[key] = Number(filters[key]);
-				} else if (key === "includeVideos" && filters[key] === "true") {
-					processedFilters["videos"] = {
-						$exists: true,
-						$not: {
-							$size: 0,
-						},
-					};
-				} else if (key === "topics" || key === "board" || key === "medium") {
-					processedFilters[`chapter.${key}`] = filters[key];
-				} else if (key === "subTopics") {
-					let targetItems = JSON.parse(filters[key]);
-					processedFilters["$expr"] = {
-						$and: [
-							{ $isArray: "$subTopics" },
-							{ $gt: [{ $size: "$subTopics" }, 0] },
-							{ $eq: [{ $size: "$subTopics" }, targetItems.length] },
-							{ $eq: [{ $type: "$subTopics" }, "array"] },
-							{ $setIsSubset: [targetItems, "$subTopics"] },
-							{ $setIsSubset: ["$subTopics", targetItems] },
-						],
-					};
-				} else if (key === "includeVideos" && filters[key] !== "true") {
-					processedFilters["videos"] = { $size: 0 };
-				} else {
-					processedFilters[key] = filters[key];
-				}
+		for (const key in filters) {
+			if (key === "class") {
+				processedFilters[key] = Number(filters[key]);
+			} else if (key === "includeVideos" && filters[key] === "true") {
+				processedFilters["videos"] = {
+					$exists: true,
+					$not: {
+						$size: 0,
+					},
+				};
+			} else if (key === "topics" || key === "board" || key === "medium") {
+				processedFilters[`chapter.${key}`] = filters[key];
+			} else if (key === "subTopics") {
+				let targetItems = JSON.parse(filters[key]);
+				processedFilters["$expr"] = {
+					$and: [
+						{ $isArray: "$subTopics" },
+						{ $gt: [{ $size: "$subTopics" }, 0] },
+						{ $eq: [{ $size: "$subTopics" }, targetItems.length] },
+						{ $eq: [{ $type: "$subTopics" }, "array"] },
+						{ $setIsSubset: [targetItems, "$subTopics"] },
+						{ $setIsSubset: ["$subTopics", targetItems] },
+					],
+				};
+			} else if (key === "includeVideos" && filters[key] !== "true") {
+				processedFilters["videos"] = { $size: 0 };
+			} else {
+				processedFilters[key] = filters[key];
 			}
-
-			const results = await masterLessonAggregation.getMasterLessonFilter(
-				page,
-				limit,
-				processedFilters,
-				sort
-			);
-			if (results[0].data.length === 1) {
-				const lessonId = results[0].data[0]._id;
-				const existingPlan = await this.teacherLessonPlanDao.getOne({
-					teacherId: userId,
-					lessonId: lessonId,
-				});
-				if (existingPlan) {
-					throw new Error(
-						"There is a single LP available and the lesson plan already exists."
-					);
-				}
-			}
-			const totalItems =
-				results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
-
-			return {
-				page,
-				totalItems,
-				limit,
-				results: results[0].data,
-			};
-		} catch (err) {
-			console.log("Error --> MasterLessonDao -> getAll()", err);
-			throw err;
 		}
+
+		const results = await masterLessonAggregation.getMasterLessonFilter(
+			page,
+			limit,
+			processedFilters,
+			sort
+		);
+		if (results[0].data.length === 1) {
+			const lessonId = results[0].data[0]._id;
+			const existingPlan = await this.teacherLessonPlanDao.getOne({
+				teacherId: userId,
+				lessonId: lessonId,
+			});
+			if (existingPlan) {
+				throw new AppError(
+					"There is a single LP available and the lesson plan already exists.",
+					400
+				);
+			}
+		}
+		const totalItems =
+			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
+
+		return {
+			page,
+			totalItems,
+			limit,
+			results: results[0].data,
+		};
 	}
 
 	async getByType(type) {
-		try {
-			let plan = await MasterLesson.findOne({ type, isDeleted: false });
-			if (plan) return plan;
-			return false;
-		} catch (err) {
-			console.log("Error -> MasterLessonDao -> getByType", err);
-			throw err;
-		}
+		let plan = await MasterLesson.findOne({ type, isDeleted: false });
+		if (plan) return plan;
+		return false;
 	}
 
 	async update(data, session = null) {
-		try {
-			const result = await MasterLesson.findOneAndUpdate(
-				{
-					_id: data?.id,
-					isDeleted: false,
+		const result = await MasterLesson.findOneAndUpdate(
+			{
+				_id: data?.id,
+				isDeleted: false,
+			},
+			{
+				$set: {
+					sections:data?.sections
 				},
-				{
-					$set: {
-						sections:data?.sections
-					},
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> MasterLessonDao -> update", err);
-			throw err;
-		}
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 
 	async updateByFilter(filter, updateData) {
-		try {
-			const result = await MasterLesson.findOneAndUpdate(
-				filter,
-				{ $set: updateData },
-				{ new: true, timestamps:true }
-			);
+		const result = await MasterLesson.findOneAndUpdate(
+			filter,
+			{ $set: updateData },
+			{ new: true, timestamps:true }
+		);
 
-			return result;
-		} catch (err) {
-			console.log("Error --> MasterLessonDao -> updateByFilter()", err);
-			throw err;
-		}
+		return result;
 	}
 
 	async getLessonOutcomes(chapterId,templateIds, filters = {}) {
-		try {
-			const result = await masterLessonAggregation.getLessonOutcomes(
-				chapterId,
-				templateIds,
-				filters
-			);
+		const result = await masterLessonAggregation.getLessonOutcomes(
+			chapterId,
+			templateIds,
+			filters
+		);
 
-			if (result.success) {
-				return result.data;
-			} else {
-				throw new Error("Failed to retrieve lesson outcomes");
-			}
-		} catch (err) {
-			console.log("Error --> MasterLessonDao -> getLessonOutcomes", err);
-			throw err;
+		if (result.success) {
+			return result.data;
+		} else {
+			throw new AppError("Failed to retrieve lesson outcomes", 400);
 		}
 	}
 
 	async generateLessonPlan(lessonId, filters = {}) {
-		try {
-			let processedFilters = { ...filters };
+		let processedFilters = { ...filters };
 
-			const result = await masterLessonAggregation.generateLessonPlan(
-				lessonId,
-				processedFilters
-			);
-			
-			if (result.success) {
-				return result.data;
-			}
+		const result = await masterLessonAggregation.generateLessonPlan(
+			lessonId,
+			processedFilters
+		);
 
-			return false;
-		} catch (err) {
-			console.log("Error --> MasterLessonDao -> generateLessonPlan", err);
-			throw err;
+		if (result.success) {
+			return result.data;
 		}
+
+		throw new AppError("Failed to generate lesson plan", 400);
 	}
 }
 

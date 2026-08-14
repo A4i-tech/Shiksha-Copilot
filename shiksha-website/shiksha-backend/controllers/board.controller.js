@@ -9,36 +9,22 @@ class BoardController extends BaseController {
     }
 
     async getByName(req, res) {
-        try {
-            let result = await this.manager.getByName(req);
-            if (result.success) {
-                return res.status(200).json(result);
-            }
-
-            handleError(result, res);
-
-            return;
-        } catch (err) {
-            console.log("Error --> BoardController -> getByType()", err);
-            return res.status(400).json(err);
+        let result = await this.manager.getByName(req);
+        if (result.success) {
+            return res.status(200).json(result);
         }
+
+        handleError(result, res);
     }
 
     async update(req, res) {
-        try {
-            let result = await this.manager.update(req);
+        let result = await this.manager.update(req);
 
-            if (result.success) {
-                return res.status(200).json(result);
-            }
-
-            handleError(result, res);
-
-            return;
-        } catch (err) {
-            console.log("Error --> BoardController -> update()", err);
-            return res.status(400).json(err);
+        if (result.success) {
+            return res.status(200).json(result);
         }
+
+        handleError(result, res);
     }
 }
 

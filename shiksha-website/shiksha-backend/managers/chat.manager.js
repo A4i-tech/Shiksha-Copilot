@@ -48,129 +48,117 @@ class ChatManager extends BaseManager {
 	}
 
 	async sendMessageStream(userId, message) {
-		try {
-			const today = new Date();
-			today.setUTCHours(0, 0, 0, 0);
-			let chatSession = await this.dao.getActiveSession(userId, today);
+		const today = new Date();
+		today.setUTCHours(0, 0, 0, 0);
+		let chatSession = await this.dao.getActiveSession(userId, today);
 
-			if (!chatSession) {
-				chatSession = await this.dao.create({
-					userId,
-					sessionDate: today,
-					requestCount: 0,
-				});
-				await this.dao.createMessage({
-					chatHistoryId: chatSession._id,
-					messages: [],
-				});
-			}
-
-			const totalMessages = await this.getTotalSessionMessagesCount(userId);
-
-			if (totalMessages >= CHAT_LIMIT) {
-				return { success: false, message: "Session closed due to request limit exceeded" };
-			}
-
-			let [existingMessages, userContext] = await Promise.all([this.dao.getMessagesBySessionId(chatSession._id), this.#buildUserContext(userId)]);
-
-			let formattedMessages = existingMessages.messages
-				.slice()
-				.reverse()
-				.map((m) => [
-					{ role: "user", message: m.question },
-					{ role: "assistant", message: m.answer },
-				])
-				.flat();
-
-			formattedMessages.push({ role: "user", message });
-			formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." })
-
-			const response = await postToChatBotStream({
-				user_id: userId,
-				messages: formattedMessages,
+		if (!chatSession) {
+			chatSession = await this.dao.create({
+				userId,
+				sessionDate: today,
+				requestCount: 0,
 			});
-
-			// Handle DB persistence asynchronously
-			const stream = response.data;
-			let buffer = '';
-			let fullAnswer = '';
-			let references = [];
-
-			stream.on('data', (chunk) => {
-				try {
-					buffer += chunk.toString();
-					const lines = buffer.split('\n');
-					buffer = lines.pop();
-
-					for (const line of lines) {
-						if (line.trim() === '') continue;
-						const data = JSON.parse(line);
-						if (data.type === 'content') {
-							fullAnswer += data.delta;
-						} else if (data.type === 'references') {
-							references = data.data;
-						}
-					}
-				} catch (err) {
-					console.error("Error in stream data handler", err);
-				}
+			await this.dao.createMessage({
+				chatHistoryId: chatSession._id,
+				messages: [],
 			});
-
-			stream.on('end', async () => {
-				try {
-					if (fullAnswer) {
-						await this.dao.addMessage(chatSession._id, {
-							question: message,
-							answer: fullAnswer,
-							references: references
-						});
-						chatSession.requestCount += 1;
-						await chatSession.save();
-					}
-				} catch (dbError) {
-					console.error("Error saving chat to DB after stream", dbError);
-				}
-			});
-
-			return { success: true, stream: response.data };
-
-		} catch (err) {
-			return { success: false, message: err.message, error: err };
 		}
+
+		const totalMessages = await this.getTotalSessionMessagesCount(userId);
+
+		if (totalMessages >= CHAT_LIMIT) {
+			return { success: false, message: "Session closed due to request limit exceeded" };
+		}
+
+		let [existingMessages, userContext] = await Promise.all([this.dao.getMessagesBySessionId(chatSession._id), this.#buildUserContext(userId)]);
+
+		let formattedMessages = existingMessages.messages
+			.slice()
+			.reverse()
+			.map((m) => [
+				{ role: "user", message: m.question },
+				{ role: "assistant", message: m.answer },
+			])
+			.flat();
+
+		formattedMessages.push({ role: "user", message });
+		formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." })
+
+		const response = await postToChatBotStream({
+			user_id: userId,
+			messages: formattedMessages,
+		});
+
+		// Handle DB persistence asynchronously
+		const stream = response.data;
+		let buffer = '';
+		let fullAnswer = '';
+		let references = [];
+
+		stream.on('data', (chunk) => {
+			try {
+				buffer += chunk.toString();
+				const lines = buffer.split('\n');
+				buffer = lines.pop();
+
+				for (const line of lines) {
+					if (line.trim() === '') continue;
+					const data = JSON.parse(line);
+					if (data.type === 'content') {
+						fullAnswer += data.delta;
+					} else if (data.type === 'references') {
+						references = data.data;
+					}
+				}
+			} catch (err) {
+				console.error("Error in stream data handler", err);
+			}
+		});
+
+		stream.on('end', async () => {
+			try {
+				if (fullAnswer) {
+					await this.dao.addMessage(chatSession._id, {
+						question: message,
+						answer: fullAnswer,
+						references: references
+					});
+					chatSession.requestCount += 1;
+					await chatSession.save();
+				}
+			} catch (dbError) {
+				console.error("Error saving chat to DB after stream", dbError);
+			}
+		});
+
+		return { success: true, stream: response.data };
 	}
 
 	async listMessages(userId) {
-		try {
-			const today = new Date();
-			today.setUTCHours(0, 0, 0, 0);
-			let chatSession = await this.dao.getActiveSession(userId, today);
+		const today = new Date();
+		today.setUTCHours(0, 0, 0, 0);
+		let chatSession = await this.dao.getActiveSession(userId, today);
 
-			if (!chatSession) {
-				return formatApiResponse(true, "Chat history fetched!", { messages: [] });
-			}
 
-			let messages = await this.dao.getMessagesBySessionId(chatSession._id);
-
-			return formatApiResponse(true, "Chat history fetched!", messages);
-		} catch (err) {
-			return formatApiResponse(false, err.message, err);
+		if (!chatSession) {
+			return formatApiResponse(true, "Chat history fetched!", { messages: [] });
 		}
+
+		let messages = await this.dao.getMessagesBySessionId(chatSession._id);
+
+		return formatApiResponse(true, "Chat history fetched!", messages);
 	}
 
 	async restartSession(userId) {
-		try {
-			const today = new Date();
-			today.setUTCHours(0, 0, 0, 0);
-			const chatSession = await this.dao.getActiveSession(userId, today);
+		const today = new Date();
+		today.setUTCHours(0, 0, 0, 0);
+		const chatSession = await this.dao.getActiveSession(userId, today);
 
-			if (chatSession) {
-				await this.dao.endSession(chatSession._id);
-			}
-
-			return formatApiResponse(true, "New chat started", null);
-		} catch (err) {
-			return formatApiResponse(false, err.message, err);
+		if (chatSession) {
+			await this.dao.endSession(chatSession._id);
 		}
+
+		return formatApiResponse(true, "New chat started", null);
 	}
 
 	async _getLessonDetails(recordId, chapterId, userId) {
@@ -220,94 +208,83 @@ class ChatManager extends BaseManager {
 	}
 
 	async sendLessonMessage(userId, recordId, chapterId, message) {
-		try {
+		const { lessonDetails, chapterDetails, subjectDetails } = await this._getLessonDetails(
+			recordId, chapterId, userId
+		);
 
-			const { lessonDetails, chapterDetails, subjectDetails } = await this._getLessonDetails(
-				recordId, chapterId, userId
+		const todayStart = new Date();
+		todayStart.setUTCHours(0, 0, 0, 0);
+		const todayEnd = new Date();
+		todayEnd.setUTCHours(23, 59, 59, 999);
+
+		const totalMessages = await this.getTotalSessionMessagesCount(userId);
+
+		if (totalMessages >= CHAT_LIMIT) {
+			return formatApiResponse(
+				false,
+				"Daily limit has been exceeded",
+				null
 			);
-
-			const todayStart = new Date();
-			todayStart.setUTCHours(0, 0, 0, 0);
-			const todayEnd = new Date();
-			todayEnd.setUTCHours(23, 59, 59, 999);
-
-			const totalMessages = await this.getTotalSessionMessagesCount(userId);
-
-			if (totalMessages >= CHAT_LIMIT) {
-				return formatApiResponse(
-					false,
-					"Daily limit has been exceeded",
-					null
-				);
-			}
-
-			let [messageHistory, userContext] = await Promise.all([
-				this.dao.getLessonMessages(lessonDetails._id, userId, todayStart, todayEnd),
-				this.#buildUserContextForLessonPlan(userId, lessonDetails, chapterDetails, subjectDetails)
-			]);
-
-			let formattedMessages = (messageHistory || []).map((chat) => [
-				{ role: "user", message: chat.message.question },
-				{ role: "assistant", message: chat.message.answer },
-			])
-				.flat();
-
-			formattedMessages.reverse();
-
-			formattedMessages.push({ role: "user", message });
-			formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." });
-
-			const payload = this._createChatPayload(chapterDetails, subjectDetails, formattedMessages, userId)
-
-			const response = await postToLessonChatBot(payload);
-
-			if (response.status !== 200) {
-				throw new Error(`Lesson chatbot error. Please try again later.`);
-			}
-
-			if (!response.data || !response.data.response) {
-				throw new Error("Lesson chatbot returned an invalid response.");
-			}
-
-			await this.dao.createLessonChats({
-				teacherId: userId,
-				recordId: lessonDetails._id,
-				message: {
-					question: message,
-					answer: response.data.response,
-					references: response.data.references || [],
-					version: 2,
-				}
-			});
-
-			return formatApiResponse(true, "Lesson chat response", {
-				response: response.data.response,
-				references: response.data.references || [],
-			});
-		} catch (err) {
-			return formatApiResponse(false, err.message, err);
 		}
+
+		let [messageHistory, userContext] = await Promise.all([
+			this.dao.getLessonMessages(lessonDetails._id, userId, todayStart, todayEnd),
+			this.#buildUserContextForLessonPlan(userId, lessonDetails, chapterDetails, subjectDetails)
+		]);
+
+		let formattedMessages = (messageHistory || []).map((chat) => [
+			{ role: "user", message: chat.message.question },
+			{ role: "assistant", message: chat.message.answer },
+		])
+			.flat();
+
+		formattedMessages.reverse();
+
+		formattedMessages.push({ role: "user", message });
+		formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." });
+
+		const payload = this._createChatPayload(chapterDetails, subjectDetails, formattedMessages, userId)
+
+		const response = await postToLessonChatBot(payload);
+
+		if (response.status !== 200) {
+			throw new Error(`Lesson chatbot error. Please try again later.`);
+		}
+
+		if (!response.data || !response.data.response) {
+			throw new Error("Lesson chatbot returned an invalid response.");
+		}
+
+		await this.dao.createLessonChats({
+			teacherId: userId,
+			recordId: lessonDetails._id,
+			message: {
+				question: message,
+				answer: response.data.response,
+				references: response.data.references || [],
+				version: 2,
+			}
+		});
+
+		return formatApiResponse(true, "Lesson chat response", {
+			response: response.data.response,
+			references: response.data.references || [],
+		});
 	}
 
 	async listLessonMessages(recordId, chapterId, userId) {
-		try {
-			const { lessonDetails, chapterDetails, subjectDetails } = await this._getLessonDetails(
-				recordId, chapterId, userId
-			);
+		const { lessonDetails, chapterDetails, subjectDetails } = await this._getLessonDetails(
+			recordId, chapterId, userId
+		);
 
-			let messagesHistory = await this.dao.getLessonMessages(
-				lessonDetails._id,
-				userId
-			);
+		let messagesHistory = await this.dao.getLessonMessages(
+			lessonDetails._id,
+			userId
+		);
 
-			let messages = (messagesHistory || []).map((chat) => chat.message)
+		let messages = (messagesHistory || []).map((chat) => chat.message)
 
-			return formatApiResponse(true, "Lesson messages fetched successfully", { messages, chapterDetails, subject: subjectDetails });
-		} catch (err) {
-			return formatApiResponse(false, err.message, err);
-
-		}
-
+		return formatApiResponse(true, "Lesson messages fetched successfully", { messages, chapterDetails, subject: subjectDetails });
 	}
 
 

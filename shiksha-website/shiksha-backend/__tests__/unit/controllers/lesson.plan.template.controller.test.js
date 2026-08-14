@@ -79,14 +79,12 @@ describe("LessonPlanTemplateController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.findAllTemplates = jest.fn().mockRejectedValue(new Error("Database error"));
       mockReq.query = { filter: { classes: "5" } };
 
-      await controller.findTemplates(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      await expect(controller.findTemplates(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
 
     it("should parse classes filter as integer", async () => {

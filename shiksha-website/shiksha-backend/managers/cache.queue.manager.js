@@ -21,25 +21,20 @@ const createCacheQuestion = (type, marks, question, objective) => ({
 });
 
 const updateCache = async (newCache) => {
-  try {
-    return await Promise.all(newCache.map(async (doc) => {
-      if (doc._id) {
-        const questionsToAdd = doc.questionsToAdd || [];
-        if (!questionsToAdd.length) return doc;
-        return await QuestionBankCache.findByIdAndUpdate(doc._id, {
-          $push: { questions: { $each: questionsToAdd, }, },
-        }, { new: true, runValidators: true, });
-      }
+  return await Promise.all(newCache.map(async (doc) => {
+    if (doc._id) {
+      const questionsToAdd = doc.questionsToAdd || [];
+      if (!questionsToAdd.length) return doc;
+      return await QuestionBankCache.findByIdAndUpdate(doc._id, {
+        $push: { questions: { $each: questionsToAdd, }, },
+      }, { new: true, runValidators: true, });
+    }
 
-      doc.questions = doc.questionsToAdd || doc.questions || [];
-      delete doc.questionsToAdd;
-      const newDoc = new QuestionBankCache(doc);
-      return await newDoc.save();
-    }));
-  } catch (err) {
-    console.log("Error --> cache.queue.manager -> updateCache() ", err);
-    throw new Error("updateCache", err.message);
-  }
+    doc.questions = doc.questionsToAdd || doc.questions || [];
+    delete doc.questionsToAdd;
+    const newDoc = new QuestionBankCache(doc);
+    return await newDoc.save();
+  }));
 };
 
 const createCacheIndex = (processedCache, unitLevel) => {
