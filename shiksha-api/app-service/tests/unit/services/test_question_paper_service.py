@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from app.services.question_paper_service import QuestionPaperService
-from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion
+from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, Objective, QuestionDistribution, QuestionType, TextQuestion
 
 
 # Shared fixture to avoid recreating the service
@@ -111,13 +111,13 @@ class TestFormatSystemPrompt:
             "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
         }
 
-        request = MagicMock(subject="Math", chapters=[])
+        request = MagicMock(subject="Math", chapters=[], bloom_variant="general")
         record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
         template = GeneratedTemplate(
             type=QuestionType.MCQ,
             number_of_questions=1,
             marks_per_question=1,
-            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective="remember")],
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
         )
         slot = [((0, 0), template, template.question_distribution[0])]
 
@@ -125,6 +125,72 @@ class TestFormatSystemPrompt:
 
         assert "Test Blooms" in result
         assert "Grammar:" in result
+
+    def test_format_system_prompt_unknown_variant_raises_value_error(self, service):
+        """Test that a bloom_variant missing from blooms-taxonomy raises ValueError."""
+        service.prompts = {
+            "question_bank_parts_gen": "Blooms: {BLOOM_TAXONOMY_GUIDE}, Grammar: {GRAMMAR_TOPICS}",
+            "blooms-taxonomy": {"general": "Test Blooms"},
+            "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
+        }
+
+        request = MagicMock(board="BSE-TG", subject="Mathematics", chapters=[], bloom_variant="telangana-math")
+        record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
+        template = GeneratedTemplate(
+            type=QuestionType.MCQ,
+            number_of_questions=1,
+            marks_per_question=1,
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
+        )
+        slot = [((0, 0), template, template.question_distribution[0])]
+
+        with pytest.raises(ValueError, match="Bloom variant"):
+            service._format_system_prompt(request, record, slot)
+
+
+class TestBloomVariant:
+    """Tests for how _format_system_prompt resolves request.bloom_variant."""
+
+    def test_known_bloom_variant_is_used(self, service):
+        """A bloom_variant key present in blooms-taxonomy is used to build the prompt."""
+        service.prompts = {
+            "question_bank_parts_gen": "Blooms: {BLOOM_TAXONOMY_GUIDE}, Grammar: {GRAMMAR_TOPICS}",
+            "blooms-taxonomy": {"telangana-math": "Telangana Math Blooms"},
+            "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
+        }
+        request = MagicMock(subject="Math", chapters=[], bloom_variant="telangana-math")
+        record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
+        template = GeneratedTemplate(
+            type=QuestionType.MCQ,
+            number_of_questions=1,
+            marks_per_question=1,
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
+        )
+        slot = [((0, 0), template, template.question_distribution[0])]
+
+        result = service._format_system_prompt(request, record, slot)
+
+        assert "Telangana Math Blooms" in result
+
+    def test_unknown_bloom_variant_raises_value_error_naming_key(self, service):
+        """An unknown bloom_variant raises ValueError naming the missing key and available keys."""
+        service.prompts = {
+            "question_bank_parts_gen": "Blooms: {BLOOM_TAXONOMY_GUIDE}, Grammar: {GRAMMAR_TOPICS}",
+            "blooms-taxonomy": {"general": "Test Blooms"},
+            "grammar_simple_prompt": "Cover following topics: {GRAMMAR_TOPIC}",
+        }
+        request = MagicMock(subject="Hindi", chapters=[], bloom_variant="nonexistent-variant")
+        record = Chapter(title="Chapter 1", index_path="", learning_outcomes=["LO1"], subtopics=[])
+        template = GeneratedTemplate(
+            type=QuestionType.MCQ,
+            number_of_questions=1,
+            marks_per_question=1,
+            question_distribution=[QuestionDistribution(unit_name="Chapter 1", objective=Objective(objective="Knowledge", description="Recall of facts"))],
+        )
+        slot = [((0, 0), template, template.question_distribution[0])]
+
+        with pytest.raises(ValueError, match="nonexistent-variant"):
+            service._format_system_prompt(request, record, slot)
 
 
 class TestBuildGenerationSlots:
@@ -219,3 +285,5 @@ class TestOrganizeQuestionsIntoResponse:
         assert len(response) > 0
         assert response[0].type == QuestionType.MCQ
         assert len(response[0].questions) == 1
+
+

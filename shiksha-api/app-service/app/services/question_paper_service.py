@@ -162,8 +162,14 @@ class QuestionPaperService:
         template = self.prompts["question_bank_parts_gen"]
 
         # Get Bloom's taxonomy guide
-        bloom_lang = "english" if "english" in request.subject.lower() else "general"
-        blooms_guide = self.prompts["blooms-taxonomy"][bloom_lang]
+        blooms_taxonomy = self.prompts["blooms-taxonomy"]
+        if request.bloom_variant not in blooms_taxonomy:
+            raise ValueError(
+                f"Bloom variant '{request.bloom_variant}' not found. "
+                f"Available bloom variants: {sorted(blooms_taxonomy.keys())}. "
+                f"The caller must send a valid bloom_variant key."
+            )
+        blooms_guide = blooms_taxonomy[request.bloom_variant]
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
         grammar_topics_text = self._get_grammar_topics(request, record)
@@ -208,7 +214,7 @@ class QuestionPaperService:
 
         slot_indexed = {local_unique_id(i): v for i, v in enumerate(slot)}
         response_format = create_model("QuestionResponse", **{
-            k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
+            k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json', exclude={'objective'})} with objective: {question.objective.objective} ({question.objective.description})"))
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 

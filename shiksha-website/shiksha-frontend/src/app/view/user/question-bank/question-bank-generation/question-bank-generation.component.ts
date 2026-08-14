@@ -17,6 +17,7 @@ import { concat, distinctUntilChanged, forkJoin, of, Subject } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { map, finalize, toArray, takeUntil } from 'rxjs/operators';
 import { questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { QuestionBankObjective } from './question-bank-generation.model';
 
 const SOURCE_GENERATION_OPTIONS: DropdownOption[] = [
   { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
@@ -59,6 +60,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   paperQuestionTypes: any[] = [];
   hasSubtopics: boolean = false;
   sourceHelpOpen = false;
+  objectiveHelpOpenIndex: number | null = null;
   pickerOpen = false;
 
   boardDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Board', fieldName: 'Board', bindLabel: 'board', bindValue: 'board', required: true, clearableOff: true };
@@ -90,8 +92,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     { value: 'multiChapter', name: 'Multiple Chapters' },
   ];
   questionBankTypeValue = 'singleChapter';
-  questionBankObjectives: any[] = [];
-  initialQuestionBankObjectives: any[] = [];
+  questionBankObjectives: QuestionBankObjective[] = [];
+  initialQuestionBankObjectives: QuestionBankObjective[] = [];
 
   totalMarks = 0;
   totalPercentage = 100;
@@ -775,7 +777,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const formVal = this.questionBankConfigForm.getRawValue();
     const validChapterIds = this.getChapterIds();
     const objectiveDistribution = (this.questionBankObjectives)
-      .map((obj: any) => ({
+      .map((obj: QuestionBankObjective) => ({
         objective: obj?.objective,
         percentageDistribution: Number(obj?.percentageDistribution)
       }))

@@ -1,0 +1,12 @@
+<span class="inline-flex items-center gap-1" data-testid="objective-label">
+  {{ objective.objective | translate }}
+  <span class="relative group cursor-help" tabindex="0" (focus)="helpOpen = true" (blur)="helpOpen = false"
+    (click)="helpOpen = true">
+    <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="Objective information"
+      data-testid="objective-label-info-icon" />
+    <span role="tooltip" [attr.aria-label]="objective.description | translate" [class.opacity-100]="helpOpen"
+      class="grid pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute top-5 left-1/2 -translate-x-1/2 z-50 w-max max-w-xs rounded border bg-white p-2 text-xs font-normal shadow-md">
+      {{ objective.description | translate }}
+    </span>
+  </span>
+</span>

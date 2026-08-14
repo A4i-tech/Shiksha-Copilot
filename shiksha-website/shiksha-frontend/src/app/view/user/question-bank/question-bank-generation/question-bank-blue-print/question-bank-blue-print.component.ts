@@ -4,6 +4,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
 import { formatMarks, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { contentItems, questionContentItems, sourceBorderClass } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
+import { QuestionBankObjective } from '../question-bank-generation.model';
 
 @Component({
   selector: 'app-question-bank-blue-print',
@@ -25,6 +26,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   @Input() bluePrintChapterDropdownOptions: any[] = [];
   @Input() bluePrintObjectiveDropdownOptions: any[] = [];
   @Input() bluePrintData: any[] = [];
+  @Input() questionBankObjectives: QuestionBankObjective[] = [];
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
@@ -42,6 +44,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   groupedBlueprintData: any[] = [];
   /** Prevents re-rendering the drop lists while CDK is finishing a drop (leaves blank scroll space). */
   private skipNextRebuild = false;
+  /** Objective description per chart slice, in slice order. */
+  private objectiveTooltips: string[] = [];
 
   objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
@@ -55,7 +59,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
             const dataset = tooltipItem.chart.data.datasets[0];
             const total = dataset.data.reduce((sum: number, val: any) => sum + val, 0);
             const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-            return tooltipItem.label + ': ' + percentage + '% (' + value + ')';
+            const label = tooltipItem.label as string;
+            const description = this.objectiveTooltips[tooltipItem.dataIndex] || label;
+            const detail = label + ': ' + percentage + '% (' + value + ')';
+            // Only show the description on its own line when it differs from the label.
+            return description === label ? detail : [description, detail];
           },
         },
       },
@@ -122,24 +130,29 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   }
 
   updateChartData() {
-    const chartMapper: { [key: string]: number } = {};
     let chartColors: string[] = [];
+    // One slice per distinct objective, in first-seen order. The objective object carries its own
+    // description, so no name-to-description lookup table is needed.
+    const slices: { label: string; description: string; count: number }[] = [];
 
     this.finalSelectedQuestions.forEach(q => {
-      const label = q.source === QUESTION_SOURCE.AI ? q.objective : 'Pre-generated';
-      chartMapper[label] = (chartMapper[label] || 0) + 1;
+      const objective = q.source === QUESTION_SOURCE.AI ? q.objective : { objective: 'Pre-generated', description: 'Pre-generated' };
+      const slice = slices.find(s => s.label === objective.objective);
+      if (slice) slice.count++;
+      else slices.push({ label: objective.objective, description: objective.description, count: 1 });
     });
 
     this.chartTitle = 'Paper Composition Analysis';
 
-    const labels = Object.keys(chartMapper);
+    const labels = slices.map(s => s.label);
+    this.objectiveTooltips = slices.map(s => s.description);
     const palette = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
     labels.forEach((_, i) => chartColors.push(palette[i % palette.length]));
 
     this.objectivesChartData = {
       labels: labels,
       datasets: [{
-        data: Object.values(chartMapper),
+        data: slices.map(s => s.count),
         backgroundColor: chartColors,
         hoverOffset: 4
       }],

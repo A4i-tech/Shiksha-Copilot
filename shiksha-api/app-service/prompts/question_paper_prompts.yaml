@@ -87,7 +87,7 @@ question_bank_parts_gen: |
       ## Generation Instructions
 
       1. Objective and Type Matching:
-        Each question must correspond to an assigned objective (e.g., Knowledge, Understanding) and question type (e.g., MCQ, Fill-in-the-blanks) as specified in each question slot.
+        Each question must correspond to an assigned objective (as named in the active Bloom's Taxonomy guide) and question type (e.g., MCQ, Fill-in-the-blanks) as specified in each question slot.
         Use the provided verbs and sample stems to craft questions that are cognitively aligned with the objective.
 
       2. Utilize RAG Context:

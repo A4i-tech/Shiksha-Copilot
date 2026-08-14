@@ -127,7 +127,8 @@ def sample_question_bank_request():
         Chapter,
         GeneratedTemplate,
         QuestionType,
-        QuestionDistribution
+        QuestionDistribution,
+        Objective
     )
 
     chapters = [
@@ -145,14 +146,14 @@ def sample_question_bank_request():
             marks_per_question=1,
             number_of_questions=10,
             unit=1,
-            question_distribution=[QuestionDistribution(unit_name="test-unit", objective="Knowledge")]
+            question_distribution=[QuestionDistribution(unit_name="test-unit", objective=Objective(objective="Knowledge", description="Recall of facts"))]
         ),
         GeneratedTemplate(
             type=QuestionType.ANSWER_SHORT,
             marks_per_question=3,
             number_of_questions=5,
             unit=1,
-            question_distribution=[QuestionDistribution(unit_name="test-unit", objective="Knowledge")]
+            question_distribution=[QuestionDistribution(unit_name="test-unit", objective=Objective(objective="Knowledge", description="Recall of facts"))]
         )
     ]
 
@@ -165,7 +166,8 @@ def sample_question_bank_request():
         subject="Science",
         chapters=chapters,
         total_marks=25,
-        template=templates
+        template=templates,
+        bloom_variant="general"
     )
 
 
