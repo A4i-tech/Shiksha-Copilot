@@ -3,13 +3,27 @@ const Schema =  mongoose.Schema;
 const ObjectId = mongoose.Types.ObjectId;
 
 
+const objectiveSchema = new Schema(
+    {
+      objective: {
+        type: String,
+        required: true
+      },
+      description: {
+        type: String,
+        required: true
+      }
+    },
+    { _id: false }
+  )
+
 const questionDistributionSchema = new Schema(
     {
       unitName:{
         type:String
       },
       objective:{
-        type:String
+        type: objectiveSchema
       }
     }
   )

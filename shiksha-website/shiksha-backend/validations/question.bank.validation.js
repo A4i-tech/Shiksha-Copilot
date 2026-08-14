@@ -3,18 +3,12 @@ const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
 const validateRequest = require("./common.validation");
 
 const VALID_QUESTION_TYPES = Object.keys(PAPER_CONFIG.questionTypes);
-
-// Maps every objective name found under PAPER_CONFIG.objectives to its paired
-// shortName. Built at module load time so a future config edit changes the
-// validator with no code change.
-const OBJECTIVE_SHORT_NAMES = Object.values(PAPER_CONFIG.objectives).reduce(
-    (labels, objectiveSet) => {
-        objectiveSet.forEach((entry) => {
-            labels[entry.objective] = entry.shortName;
-        });
-        return labels;
-    },
-    {}
+// Objectives are displayed using their full curriculum label, while shortName
+// preserves the compact legacy identifier used by existing integrations.
+const OBJECTIVE_SHORT_NAMES = Object.fromEntries(
+    Object.values(PAPER_CONFIG.objectives)
+        .flat()
+        .map(({ objective, description }) => [description, objective])
 );
 const VALID_OBJECTIVES = Object.keys(OBJECTIVE_SHORT_NAMES);
 const questionBankTemplateItemSchema = {
@@ -95,9 +89,14 @@ const questionBankBluePrintSchemaCreate = Joi.object({
     }).required(),
     objectiveDistribution: Joi.array().min(1).items({
         objective: Joi.string().valid(...VALID_OBJECTIVES).required(),
-        shortName: Joi.string().optional().valid(
-            Joi.ref("objective", { adjust: (objective) => OBJECTIVE_SHORT_NAMES[objective] })
-        ),
+        shortName: Joi.string().optional().custom((value, helpers) => {
+            const objective = helpers.state.ancestors[0].objective;
+            return value === OBJECTIVE_SHORT_NAMES[objective]
+                ? value
+                : helpers.error("objective.shortNameMismatch");
+        }).messages({
+            "objective.shortNameMismatch": "{{#label}} does not match the objective it belongs to",
+        }),
         percentageDistribution: Joi.number().min(0).max(100).required(),
     }).required(),
 }).unknown(true);
@@ -148,6 +147,7 @@ const BLUEPRINT_FIELD_LABELS = {
     "template.questionDistribution": "the question distribution in a template row",
     "template.questionDistribution.unitName": "a unit name in the question distribution",
     "template.questionDistribution.objective": "an objective in the question distribution",
+    "template.questionDistribution.description": "a description in the question distribution",
     marksDistribution: "the marks distribution table",
     "marksDistribution.unitName": "a unit name in the marks distribution table",
     "marksDistribution.marks": "the marks value in the marks distribution table",
@@ -155,6 +155,7 @@ const BLUEPRINT_FIELD_LABELS = {
     objectiveDistribution: "the objective distribution table",
     "objectiveDistribution.objective": "an objective in the objective distribution table",
     "objectiveDistribution.shortName": "a short name in the objective distribution table",
+    "objectiveDistribution.description": "a description in the objective distribution table",
     "objectiveDistribution.percentageDistribution": "a percentage in the objective distribution table",
 };
 
@@ -197,13 +198,12 @@ const formatBlueprintValidationMessage = (detail) => {
         case "number.max":
             return `${capitalize(label)} is outside the allowed range. Enter a value in the allowed range and submit the blueprint again.`;
         case "any.only":
-            if (fieldKey === "objectiveDistribution.shortName") {
-                return `The short name in this row does not match the objective it belongs to. Reload the page to load the current labels, then submit the blueprint again.`;
-            }
             if (fieldKey === "objectiveDistribution.objective" || fieldKey === "template.questionDistribution.objective") {
                 return `${capitalize(label)} does not match a listed objective. Pick an objective from the list and submit the blueprint again.`;
             }
             return `${capitalize(label)} is not one of the allowed choices. Pick a listed choice and submit the blueprint again.`;
+        case "objective.shortNameMismatch":
+            return `${capitalize(label)} does not match the objective it belongs to. Use the matching short name and submit the blueprint again.`;
         default:
             return `${capitalize(label)} is not valid. Correct the value and submit the blueprint again.`;
     }
@@ -280,5 +280,4 @@ module.exports = {
     BLUEPRINT_FIELD_LABELS,
     questionBankBluePrintSchemaCreate,
     OBJECTIVE_SHORT_NAMES,
-    VALID_OBJECTIVES,
 };

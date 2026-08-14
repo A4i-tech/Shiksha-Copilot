@@ -44,8 +44,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   groupedBlueprintData: any[] = [];
   /** Prevents re-rendering the drop lists while CDK is finishing a drop (leaves blank scroll space). */
   private skipNextRebuild = false;
-  /** Full objective name for each chart slice, indexed the same as objectivesChartData.labels. */
-  private objectiveFullNames: string[] = [];
+  /** Objective description per chart slice, in slice order. */
+  private objectiveTooltips: string[] = [];
 
   objectivesChartOptions: ChartConfiguration<'doughnut'>['options'] = {
     responsive: true,
@@ -59,11 +59,11 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
             const dataset = tooltipItem.chart.data.datasets[0];
             const total = dataset.data.reduce((sum: number, val: any) => sum + val, 0);
             const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-            const shortName = tooltipItem.label as string;
-            const fullName = this.objectiveFullNames[tooltipItem.dataIndex] || shortName;
-            const detail = shortName + ': ' + percentage + '% (' + value + ')';
-            // Only show the full name on its own line when the label is an abbreviation.
-            return fullName === shortName ? detail : [fullName, detail];
+            const label = tooltipItem.label as string;
+            const description = this.objectiveTooltips[tooltipItem.dataIndex] || label;
+            const detail = label + ': ' + percentage + '% (' + value + ')';
+            // Only show the description on its own line when it differs from the label.
+            return description === label ? detail : [description, detail];
           },
         },
       },
@@ -129,31 +129,30 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
     this.questionsReorder.emit(this.groupedBlueprintData.flatMap(g => g.questions));
   }
 
-  private getObjectiveShortName(fullName: string): string {
-    const match = this.questionBankObjectives.find(o => o.objective === fullName);
-    return match?.shortName || fullName;
-  }
-
   updateChartData() {
-    const chartMapper: { [key: string]: number } = {};
     let chartColors: string[] = [];
+    // One slice per distinct objective, in first-seen order. The objective object carries its own
+    // description, so no name-to-description lookup table is needed.
+    const slices: { label: string; description: string; count: number }[] = [];
 
     this.finalSelectedQuestions.forEach(q => {
-      const label = q.source === QUESTION_SOURCE.AI ? q.objective : 'Pre-generated';
-      chartMapper[label] = (chartMapper[label] || 0) + 1;
+      const objective = q.source === QUESTION_SOURCE.AI ? q.objective : { objective: 'Pre-generated', description: 'Pre-generated' };
+      const slice = slices.find(s => s.label === objective.objective);
+      if (slice) slice.count++;
+      else slices.push({ label: objective.objective, description: objective.description, count: 1 });
     });
 
     this.chartTitle = 'Paper Composition Analysis';
 
-    this.objectiveFullNames = Object.keys(chartMapper);
-    const labels = this.objectiveFullNames.map(fullName => this.getObjectiveShortName(fullName));
+    const labels = slices.map(s => s.label);
+    this.objectiveTooltips = slices.map(s => s.description);
     const palette = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
     labels.forEach((_, i) => chartColors.push(palette[i % palette.length]));
 
     this.objectivesChartData = {
       labels: labels,
       datasets: [{
-        data: Object.values(chartMapper),
+        data: slices.map(s => s.count),
         backgroundColor: chartColors,
         hoverOffset: 4
       }],

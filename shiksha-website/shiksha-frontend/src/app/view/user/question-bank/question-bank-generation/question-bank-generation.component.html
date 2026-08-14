@@ -115,7 +115,7 @@
               <table class="table-auto w-full text-content border">
                 <thead class="text-xs bg-[#edf6fe]"><tr>
                   <th class="px-4 py-3 border" *ngFor="let objective of questionBankObjectives">
-                    <app-objective-label [fullName]="objective.objective" [shortName]="objective.shortName"></app-objective-label>
+                    <app-objective-label [objective]="objective"></app-objective-label>
                   </th>
                 </tr></thead>
                 <tbody><tr>

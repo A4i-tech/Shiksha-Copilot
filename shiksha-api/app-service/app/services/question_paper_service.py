@@ -45,22 +45,6 @@ GenerationSlot = tuple[SlotId, GeneratedTemplate, QuestionDistribution]
 GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
 MATHS_SUBJECTS = {"math", "maths", "mathematics"}
 
-# Board name for the Telangana State Board (BSE-TG), as used in
-# shiksha-website/shiksha-backend/config/question-bank-paper-config.json
-# (see the "boardMarks" and "objectivePolicies" keys). Compared by exact match.
-TELANGANA_BOARD = "BSE-TG"
-
-# Exact subject display name -> Bloom's taxonomy variant, for the BSE-TG board.
-# Must match the Node backend's subject-to-variant mapping exactly.
-TELANGANA_SUBJECT_BLOOM_VARIANTS = {
-    "Science": "telangana-science",
-    "Biology": "telangana-science",
-    "Physics": "telangana-science",
-    "Social": "telangana-social",
-    "Math": "telangana-math",
-    "English": "telangana",
-}
-
 
 class QuestionPaperService:
     """Service for handling question paper generation using OpenAI."""
@@ -172,29 +156,20 @@ class QuestionPaperService:
                 yield lr, questions[i : i + self.max_questions_per_slot]
 
 
-    def _resolve_bloom_variant(self, board: str, subject: str) -> str:
-        """Resolve the Bloom's taxonomy block name for the given board and subject.
-
-        When board equals TELANGANA_BOARD exactly, look up subject directly in
-        TELANGANA_SUBJECT_BLOOM_VARIANTS; an unrecognized subject raises KeyError.
-        Otherwise, "English" resolves to "english" and every other subject
-        resolves to "general".
-        """
-        if board == TELANGANA_BOARD:
-            return TELANGANA_SUBJECT_BLOOM_VARIANTS[subject]
-        if subject == "English":
-            return "english"
-        return "general"
-
     def _format_system_prompt(self, request: QuestionBankPartsGenerationRequest, record: _LearningRecord, slot: list[GenerationSlot]) -> str:
         """Format the system prompt using YAML templates for a specific unit slot."""
         # Get the main template
         template = self.prompts["question_bank_parts_gen"]
 
         # Get Bloom's taxonomy guide
-        bloom_variant = self._resolve_bloom_variant(request.board, request.subject)
         blooms_taxonomy = self.prompts["blooms-taxonomy"]
-        blooms_guide = blooms_taxonomy[bloom_variant]
+        if request.bloom_variant not in blooms_taxonomy:
+            raise ValueError(
+                f"Bloom variant '{request.bloom_variant}' not found. "
+                f"Available bloom variants: {sorted(blooms_taxonomy.keys())}. "
+                f"The caller must send a valid bloom_variant key."
+            )
+        blooms_guide = blooms_taxonomy[request.bloom_variant]
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
         grammar_topics_text = self._get_grammar_topics(request, record)
@@ -239,7 +214,7 @@ class QuestionPaperService:
 
         slot_indexed = {local_unique_id(i): v for i, v in enumerate(slot)}
         response_format = create_model("QuestionResponse", **{
-            k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
+            k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json', exclude={'objective'})} with objective: {question.objective.objective} ({question.objective.description})"))
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 

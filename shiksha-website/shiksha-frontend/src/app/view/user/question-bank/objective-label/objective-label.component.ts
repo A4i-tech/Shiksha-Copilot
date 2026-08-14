@@ -1,6 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TranslateModule } from '@ngx-translate/core';
+import { QuestionBankObjective } from '../question-bank-generation/question-bank-generation.model';
 
 @Component({
   selector: 'app-objective-label',
@@ -9,12 +10,7 @@ import { TranslateModule } from '@ngx-translate/core';
   templateUrl: './objective-label.component.html',
 })
 export class ObjectiveLabelComponent {
-  @Input() fullName: string = '';
-  @Input() shortName: string = '';
+  @Input() objective!: QuestionBankObjective;
 
   helpOpen = false;
-
-  get hasAbbreviation(): boolean {
-    return !!this.shortName && this.shortName !== this.fullName;
-  }
 }

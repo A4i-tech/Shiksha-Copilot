@@ -48,6 +48,13 @@ const getObjectiveKey = (board, grade, subjectName) => {
     ? policy.coreSubjectGrades[String(grade)] || policy.coreSubject
     : policy.default;
 };
+// The backend owns board/subject policy, so it resolves the Bloom's taxonomy
+// variant key here and sends it to the AI service instead of letting the AI
+// service re-derive board rules of its own.
+const getBloomVariant = (board, subjectName) => {
+  const policy = PAPER_CONFIG.bloomVariantPolicies[board] || PAPER_CONFIG.bloomVariantPolicies.DEFAULT;
+  return policy.subjectVariants[subjectName] || policy.default;
+};
 const UNKNOWN_OBJECTIVE_DEMAND_WEIGHT = Infinity;
 const loggedUnknownObjectives = new Set();
 const resolveObjectiveDemand = (objectiveName, board, grade, subject) => {
@@ -409,7 +416,7 @@ class QuestionBankManager extends BaseManager {
       questionDistribution.forEach((distribution) => {
         filters.push({
           unitName: distribution.unitName,
-          objective: distribution.objective.toLowerCase(),
+          objective: String(distribution.objective).toLowerCase(),
           type: item.type,
           marks,
         });
@@ -769,6 +776,7 @@ class QuestionBankManager extends BaseManager {
       chapters: formattedChapters, // Now contains all necessary units
       marksDistribution: formattedMarksDist,
       objectiveDistribution: formattedObjectiveDist,
+      bloomVariant: getBloomVariant(board, subject),
       template: this._withQuestionTypeMetadata(template),
     };
     if (questions && questions.length > 0) payload.questions = questions;
@@ -923,7 +931,11 @@ class QuestionBankManager extends BaseManager {
       description: item.description,
       marksPerQuestion: marks[key],
     }));
-    const objectives = PAPER_CONFIG.objectives[getObjectiveKey(board, grade, subjectName)];
+    const objectives = PAPER_CONFIG.objectives[getObjectiveKey(board, grade, subjectName)].map(({
+      objective: shortName,
+      description: objective,
+      percentageDistribution,
+    }) => ({ objective, shortName, percentageDistribution }));
     const questionSources = PAPER_CONFIG.questionSources[board] || PAPER_CONFIG.questionSources.DEFAULT;
 
     return formatApiReponse(true, "Question paper config retrieved successfully", { questionTypes, objectives, questionSources });
