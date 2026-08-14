@@ -319,15 +319,6 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
     });
   }
 
-  isTeacherAssigned(batch: Batch, teacher: Teacher): boolean {
-    return batch.assignedTeachers?.some(t => t._id === teacher._id) || false;
-  }
-
-  isTeacherAbsent(batch: Batch, teacher: Teacher): boolean {
-    return (batch.assignedTeachers?.some(t => t._id === teacher._id) || false) && 
-           !(batch.attendance?.includes(teacher._id!) || false);
-  }
-
   assignSelectedTeachersToBatch(): void {
     if (!this.selectedBatch || this.selectedTeachersForAssignment.length === 0) {
       return;
