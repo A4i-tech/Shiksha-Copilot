@@ -75,22 +75,18 @@ describe("TeacherTrainingBatchController", () => {
 
   describe("getTeacherTrainingStats", () => {
     it("should get training stats successfully", async () => {
-      User.distinct = jest.fn().mockResolvedValue(["teacher-1", "teacher-2"]);
       School.distinct = jest.fn().mockResolvedValue(["school-1"]);
+      TeacherTrainingBatch.distinct.mockResolvedValue(["teacher-1"]);
+      User.countDocuments
+        .mockResolvedValueOnce(2)
+        .mockResolvedValueOnce(1);
       mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
-
-      const mockBatches = [
-        {
-          attendance: ["teacher-1"],
-        },
-      ];
-      TeacherTrainingBatch.find = jest.fn().mockReturnValue({
-        select: jest.fn().mockResolvedValue(mockBatches),
-      });
 
       await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
 
-      expect(User.distinct).toHaveBeenCalledWith("_id", { "profiles.teacher": { $exists: true }, "roles.dep": { $in: ["school-1"] } });
+      const teacherFilter = { "profiles.teacher": { $exists: true }, "roles.dep": { $in: ["school-1"] }, isDeleted: false };
+      expect(User.countDocuments).toHaveBeenNthCalledWith(1, teacherFilter);
+      expect(User.countDocuments).toHaveBeenNthCalledWith(2, { ...teacherFilter, _id: { $in: ["teacher-1"] } });
       expect(mockRes.status).toHaveBeenCalledWith(200);
       expect(mockRes.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -99,6 +95,28 @@ describe("TeacherTrainingBatchController", () => {
           untrainedTeachers: 1,
         })
       );
+    });
+
+    it("returns zero stats when no teachers are in scope", async () => {
+      mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
+      School.distinct.mockResolvedValue([]);
+      TeacherTrainingBatch.distinct.mockResolvedValue([]);
+      User.countDocuments.mockResolvedValue(0);
+
+      await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
+
+      expect(mockRes.json).toHaveBeenCalledWith({ totalTeachers: 0, trainedTeachers: 0, untrainedTeachers: 0 });
+    });
+
+    it("returns one error response", async () => {
+      mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
+      School.distinct.mockRejectedValue(new Error("Database error"));
+
+      await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
+
+      expect(mockRes.status).toHaveBeenCalledTimes(1);
+      expect(mockRes.status).toHaveBeenCalledWith(500);
+      expect(mockRes.json).toHaveBeenCalledWith({ message: "Database error" });
     });
   });
 
