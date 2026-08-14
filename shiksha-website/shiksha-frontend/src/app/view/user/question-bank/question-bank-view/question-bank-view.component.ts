@@ -11,7 +11,6 @@ import { formatMarks } from 'src/app/shared/utility/constant.util';
 import { contentItems, isOrDividerAfter, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 import { UmamiService } from 'src/app/shared/services/umami.service';
-import { QuestionBankObjective } from '../question-bank-generation/question-bank-generation.model';
 
 @Component({
   selector: 'app-question-bank-view',
@@ -54,7 +53,6 @@ export class QuestionBankViewComponent implements OnInit {
 
   showAnswerKeys: boolean = false;
   questionTypeLabels: Record<string, string> = {};
-  objectiveShortNames: Record<string, string> = {};
   generatedTotalMarks = 0;
   readonly formatMarks = formatMarks;
   readonly contentItems = contentItems;
@@ -126,9 +124,6 @@ export class QuestionBankViewComponent implements OnInit {
             subjectName: this.questionBankDetails.subject
           }).subscribe((config: any) => {
             this.questionTypeLabels = Object.fromEntries(config.questionTypes.map((type: any) => [type.key, type.label]));
-            this.objectiveShortNames = Object.fromEntries(
-              config.objectives.map((obj: QuestionBankObjective) => [obj.objective, obj.shortName])
-            );
           });
 
           (this.questionBankDetails.bluePrintTemplate || []).forEach((questionBankObjective: any) => {
