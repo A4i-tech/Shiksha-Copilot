@@ -42,7 +42,7 @@ class QuestionBankDao extends BaseDao {
         },
       },
       { $match: processedFilters },
-      { $sort: sort },
+      ...(Object.keys(sort).length ? [{ $sort: sort }] : []),
     ];
 
     if (fields) {
