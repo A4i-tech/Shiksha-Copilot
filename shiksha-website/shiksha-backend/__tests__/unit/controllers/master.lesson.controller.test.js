@@ -73,13 +73,11 @@ describe("MasterLessonController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.saveToTeacher = jest.fn().mockRejectedValue(new Error("Database error"));
 
-      await controller.saveToTeacher(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      await expect(controller.saveToTeacher(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -110,13 +108,12 @@ describe("MasterLessonController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.getActivityById = jest.fn().mockRejectedValue(new Error("Error"));
       mockReq.params = { id: "activity-123" };
 
-      await controller.getActivityById(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
+      await expect(controller.getActivityById(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -408,12 +405,11 @@ describe("MasterLessonController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.uploadMasterLessonOlderVersion = jest.fn().mockRejectedValue(new Error("Error"));
 
-      await controller.uploadMasterLessonOlderVersion(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
+      await expect(controller.uploadMasterLessonOlderVersion(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 });

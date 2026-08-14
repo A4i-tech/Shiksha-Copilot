@@ -25,3 +25,7 @@ cover/
 tests/tests-env
 **/__pycache__/
 superset/.env
+
+# Accessibility tests
+tests/accessibility/node_modules
+tests/accessibility/results

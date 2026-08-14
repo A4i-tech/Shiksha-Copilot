@@ -13,6 +13,8 @@ const masterLessonController = new MasterLessonController();
 
 router.post(
 	"/master-lesson/create",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	validateMasterLessonCreate,
 	asyncMiddleware(masterLessonController.create.bind(masterLessonController))
 );
@@ -59,6 +61,8 @@ router.post(
 
 router.post(
 	"/lesson-plan/combo",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(
 		masterLessonController.comboScript.bind(masterLessonController)
 	)
@@ -66,6 +70,7 @@ router.post(
 
 router.post(
 	"/master-lesson/learning-outcomes",
+	isAuthenticated,
 	asyncMiddleware(
 		masterLessonController.getLessonOutcomes.bind(masterLessonController)
 	)

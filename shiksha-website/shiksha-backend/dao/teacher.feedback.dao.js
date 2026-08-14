@@ -24,21 +24,16 @@ class TeacherResourceFeedbackDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		try {
-			const result = await TeacherResourceFeedback.findOneAndUpdate(
-				{
-					_id: id,
-				},
-				{
-					$set: updates,
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> TeacherResourceFeedbackDao -> update", err);
-			throw err;
-		}
+		const result = await TeacherResourceFeedback.findOneAndUpdate(
+			{
+				_id: id,
+			},
+			{
+				$set: updates,
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 }
 

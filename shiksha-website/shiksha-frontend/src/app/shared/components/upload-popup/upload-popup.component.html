@@ -48,8 +48,13 @@
         *ngFor="let item of files; let i = index"
         class="flex flex-wrap-reverse justify-between content-center mt-2 py-2 px-4 rounded-sm border-content-80 bg-shade-80"
       >
-        <p class="w-60 truncate">{{ item.relativePath }}</p>
-        <button class="btn-danger" (click)="deleteFile(i)">
+        <p class="w-60 truncate" [id]="'uploaded-file-' + i" [title]="item.relativePath">{{ item.relativePath }}</p>
+        <button
+          class="btn-danger"
+          (click)="deleteFile(i)"
+          [attr.aria-label]="'Delete file' | translate"
+          [attr.aria-describedby]="'uploaded-file-' + i"
+        >
           <img src="assets/icons/delete.svg" alt="" />
         </button>
       </div>

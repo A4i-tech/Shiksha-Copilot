@@ -9,7 +9,6 @@ import {
   HttpClientModule,
 } from '@angular/common/http';
 import { HttpConfigInterceptor } from './core/interceptors/http-config.interceptor';
-import { NgxSpinnerModule } from 'ngx-spinner';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {
   TranslateLoader,
@@ -51,7 +50,6 @@ import { BaselineSurveyDialogService } from './core/services/baseline-survey-dia
     BrowserModule,
     AppRoutingModule,
     BrowserAnimationsModule,
-    NgxSpinnerModule,
     HttpClientModule,
     ReactiveFormsModule,
 // Material

@@ -7,32 +7,22 @@ class FacilityDao extends BaseDao {
 	}
 
 	async getById(id) {
-		try {
-			let result = await this.Model.findOne({ _id: id, isDeleted: false });
-			return result;
-		} catch (err) {
-			console.log("Error --> FacilityDao -> getById()", err);
-			throw err;
-		}
+		let result = await this.Model.findOne({ _id: id, isDeleted: false });
+		return result;
 	}
 
 	async update(data, session = null) {
-		try {
-			const result = await Facility.findOneAndUpdate(
-				{
-					_id: data?._id,
-					isDeleted: false,
-				},
-				{
-					$set: data,
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> FacilityDao -> update", err);
-			throw err;
-		}
+		const result = await Facility.findOneAndUpdate(
+			{
+				_id: data?._id,
+				isDeleted: false,
+			},
+			{
+				$set: data,
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 }
 

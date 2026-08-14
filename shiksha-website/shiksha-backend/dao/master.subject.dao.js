@@ -1,9 +1,10 @@
 const MasterSubject = require("../models/master.subject.model.js");
 const BaseDao = require("./base.dao.js");
 const mongoose = require("mongoose");
+const escapeRegExp = require("lodash/escapeRegExp");
 
 // --- Helpers ---
-const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, "i");
+const regexExact = (val) => new RegExp(`^${escapeRegExp(String(val).trim())}$`, "i");
 const str = (val) => String(val || "").trim();
 
 class MasterSubjectDao extends BaseDao {
@@ -27,9 +28,10 @@ class MasterSubjectDao extends BaseDao {
 		return subjectDoc ? subjectDoc.name : str(identifier);
 	}
 
-	async resolveSubjectContext(identifier) {
+	async resolveSubjectContext(identifier, board) {
 		let subjectCode = str(identifier);
 		let targetSubjectIds = [];
+		const boardFilter = { boards: board };
 
 		if (mongoose.Types.ObjectId.isValid(identifier)) {
 			const subjectDoc = await MasterSubject.findById(identifier)
@@ -37,7 +39,10 @@ class MasterSubjectDao extends BaseDao {
 				.lean();
 			if (subjectDoc) {
 				subjectCode = subjectDoc.name;
-				const relatedSubjects = await MasterSubject.find({ name: subjectCode })
+				const relatedSubjects = await MasterSubject.find({
+					name: subjectCode,
+					...boardFilter,
+				})
 					.select("_id")
 					.lean();
 				targetSubjectIds = relatedSubjects.map((s) => s._id);
@@ -50,6 +55,7 @@ class MasterSubjectDao extends BaseDao {
 					{ name: subjectCode },
 					{ subjectName: regexExact(subjectCode) },
 				],
+				...boardFilter,
 			})
 				.select("_id name")
 				.lean();
@@ -64,41 +70,31 @@ class MasterSubjectDao extends BaseDao {
 	}
 
 	async getByNameAndBoard(subjectName, board) {
-		try {
-			let subject = await MasterSubject.findOne({
-				subjectName: subjectName,
-				boards: board,
-			});
+		let subject = await MasterSubject.findOne({
+			subjectName: subjectName,
+			boards: board,
+		});
 
-			return subject;
-		} catch (err) {
-			console.log("Error -> MasterSubjectDao -> getByNameAndBoard", err);
-			throw err;
-		}
+		return subject;
 	}
 
 	async update(id, updates, session = null) {
-		try {
-			const result = await MasterSubject.findOneAndUpdate(
-				{
-					_id: id,
-					isDeleted: false,
+		const result = await MasterSubject.findOneAndUpdate(
+			{
+				_id: id,
+				isDeleted: false,
+			},
+			{
+				$set: {
+					subject: updates.subject,
+					topics: updates.topics,
+					boards: updates.boards,
+					medium: updates.medium,
 				},
-				{
-					$set: {
-						subject: updates.subject,
-						topics: updates.topics,
-						boards: updates.boards,
-						medium: updates.medium,
-					},
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> MasterSubjectDao -> update", err);
-			throw err;
-		}
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 }
 

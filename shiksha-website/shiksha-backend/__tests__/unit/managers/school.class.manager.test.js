@@ -43,15 +43,12 @@ describe("ClassManager", () => {
       });
     });
 
-    it("should return error on exception", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
 
       mockClassDao.getGroupClassesByBoard.mockRejectedValue(error);
 
-      const result = await classManager.getGroupClassesByBoard("school1");
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(classManager.getGroupClassesByBoard("school1")).rejects.toThrow("Database error");
     });
   });
 
@@ -89,16 +86,13 @@ describe("ClassManager", () => {
       });
     });
 
-    it("should return error on exception", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const updates = { className: "Class 10A" };
       const error = new Error("Database error");
 
       mockClassDao.update.mockRejectedValue(error);
 
-      const result = await classManager.updateClass("class1", updates);
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(classManager.updateClass("class1", updates)).rejects.toThrow("Database error");
     });
   });
 });

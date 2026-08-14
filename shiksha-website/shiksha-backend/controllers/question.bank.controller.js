@@ -3,6 +3,7 @@ const BaseController = require("./base.controller");
 const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const { intersectFilters } = require("../helper/scope.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 const ObjectId = mongoose.Types.ObjectId;
 
 /** @extends {BaseController<QuestionBankManager>} */
@@ -12,87 +13,72 @@ class QuestionBankController extends BaseController {
   }
 
   async getTeacherQuestionPapers(req, res) {
-    try {
-      const {
-        page = 1,
-        limit = 999,
-        filter = {},
-        sortBy = "createdAt",
-        sortOrder = "desc",
-        search,
-        fields,
-      } = req.query;
-      const sortOrderObject =
-        sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
+    const {
+      page = 1,
+      limit = 999,
+      filter = {},
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      search,
+      fields,
+    } = req.query;
+    const sortOrderObject =
+      sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-      const { _id: teacherId } = req.user;
+    const { _id: teacherId } = req.user;
 
-      const searchFilter = {};
+    const searchFilter = {};
 
-      if (search) {
-        const searchFields = ["subject", "examinationName"];
+    if (search) {
+      const searchFields = ["subject", "examinationName"];
 
-        const regexExpressions = searchFields.map((field) => ({
-          [field]: { $regex: new RegExp(search, "i") },
-        }));
+      const regexExpressions = searchFields.map((field) => ({
+        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
+      }));
 
-        if (!isNaN(parseInt(search))) {
-          regexExpressions.push({ schoolId: parseInt(search) });
-        }
-
-        searchFilter.$or = regexExpressions;
+      if (!isNaN(parseInt(search))) {
+        regexExpressions.push({ schoolId: parseInt(search) });
       }
 
-      const transformedFilter = { ...filter };
-      if (transformedFilter._id) {
-        try {
-          transformedFilter._id = new ObjectId(transformedFilter._id);
-        } catch (err) {
-          console.error("Invalid _id format:", transformedFilter._id);
-          return res.status(400).json({ error: "Invalid _id format" });
-        }
-      }
-      const mergedFilter = { ...intersectFilters(transformedFilter, searchFilter), fields };
-
-      const result = await this.manager.getTeacherQuestionPapers(
-        teacherId,
-        parseInt(page),
-        parseInt(limit),
-        mergedFilter,
-        sortOrderObject
-      );
-
-      if (result.success) {
-        return res.status(200).json(result);
-      }
-
-      handleError(result, res);
-
-      return;
-    } catch (err) {
-      console.log("Error --> BaseController -> getAll()", err);
-      return res.status(400).json(err);
+      searchFilter.$or = regexExpressions;
     }
+
+    const transformedFilter = { ...filter };
+    if (transformedFilter._id) {
+      try {
+        transformedFilter._id = new ObjectId(transformedFilter._id);
+      } catch (err) {
+        console.error("Invalid _id format:", transformedFilter._id);
+        return res.status(400).json({ error: "Invalid _id format" });
+      }
+    }
+    const mergedFilter = { ...intersectFilters(transformedFilter, searchFilter), fields };
+
+    const result = await this.manager.getTeacherQuestionPapers(
+      teacherId,
+      parseInt(page),
+      parseInt(limit),
+      mergedFilter,
+      sortOrderObject
+    );
+
+    if (result.success) {
+      return res.status(200).json(result);
+    }
+
+    handleError(result, res);
   }
 
   async generateQuestionBank(req, res) {
-    try {
-      const user = req.user;
-      const result = await this.manager.generateQuestionBank(
-        req,
-        user
-      );
-      if (!result.success) {
-        return handleError(result, res);
-      }
-      return res.status(200).json(result);
-    } catch (err) {
-      console.log(
-        "Error --> QuestionBankController -> generateQuestionBank()",
-        err
-      );
-      return res.status(400).json(err);
+    const user = req.user;
+    const result = await this.manager.generateQuestionBank(
+      req,
+      user
+    );
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async generateQuestionBankBluePrint(req, res) {
@@ -101,160 +87,140 @@ class QuestionBankController extends BaseController {
   }
 
   async updateFeedback(req, res) {
-    try {
-      const questionBankId = req.params.id;
-      const feedback = req.body;
-      const result = await this.manager.updateFeedback(
-        questionBankId,
-        feedback,
-        req.user._id
-      );
-      if (result.success) return res.status(200).json(result);
+    const questionBankId = req.params.id;
+    const feedback = req.body;
+    const result = await this.manager.updateFeedback(
+      questionBankId,
+      feedback,
+      req.user._id
+    );
+    if (!result.success) {
       return handleError(result, res);
-    } catch (err) {
-      console.log("Error --> QuestionBankController -> updateFeedback()", err);
-      return res.status(400).json(err);
     }
+    return res.status(200).json(result);
   }
 
   async retryFailedJobs(req, res) {
-    try {
-      const result = await this.manager.retryFailedJobs();
-      return res.status(200).json(result);
-    } catch (err) {
-      console.error("Error --> QuestionBankController -> retryFailedJobs()", err);
-      return res.status(400).json({ success: false, message: "Failed to retry jobs." });
+    const result = await this.manager.retryFailedJobs();
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async getQuestionTypes(req, res) {
-    try {
-      const { subject } = req.query;
-      const result = await this.manager.getQuestionTypes(subject);
-      return res.status(200).json(result);
-    } catch (err) {
-      console.error("Error --> QuestionBankController -> getQuestionTypes()", err);
-      return res.status(400).json({ message: err.message || "Failed to fetch question types" });
+    const { subject } = req.query;
+    const result = await this.manager.getQuestionTypes(subject);
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async retryFailedJob(req, res) {
-    try {
-      const jobId = req.params.id;
-      const result = await this.manager.retryFailedJob(jobId);
-      return res.status(200).json(result);
-    } catch (err) {
-      console.error("Error --> QuestionBankController -> retryFailedJob()", err);
-      return res.status(400).json({ success: false, message: "Failed to retry job." });
+    const jobId = req.params.id;
+    const result = await this.manager.retryFailedJob(jobId);
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   // --- Unified Meta & Search Controllers ---
 
   async getClasses(req, res) {
-    try {
-      const result = await this.manager.getClasses();
-      return res.status(200).json(result);
-    } catch (err) {
-      return res.status(400).json(err);
+    const result = await this.manager.getClasses();
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async getMedia(req, res) {
-    try {
-      const { class: className } = req.query;
-      const result = await this.manager.getMedia(className);
-      return res.status(200).json(result);
-    } catch (err) {
-      return res.status(400).json(err);
+    const { class: className } = req.query;
+    const result = await this.manager.getMedia(className);
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async getChapters(req, res) {
-    try {
-      const { class: className, medium, subject } = req.query;
-      const result = await this.manager.getChapters(
-        className,
-        medium,
-        subject
-      );
-      return res.status(200).json(result);
-    } catch (err) {
-      return res.status(400).json(err);
+    const { class: className, medium, subject, board } = req.query;
+    const result = await this.manager.getChapters(
+      className,
+      medium,
+      subject,
+      board
+    );
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async getDifficulties(req, res) {
-    try {
-      const result = await this.manager.getDifficulties();
-      return res.status(200).json(result);
-    } catch (err) {
-      return res.status(400).json(err);
+    const result = await this.manager.getDifficulties();
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async getAnswerTypes(req, res) {
-    try {
-      const result = await this.manager.getAnswerTypes();
-      return res.status(200).json(result);
-    } catch (err) {
-      return res.status(400).json(err);
+    const result = await this.manager.getAnswerTypes();
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async getGrammarTopics(req, res) {
-    try {
-      const { grade } = req.query;
-      const result = await this.manager.getGrammarTopics(grade);
-      return res.status(200).json(result);
-    } catch (err) {
-      console.error('[Controller] getGrammarTopics error:', err.message);
-      return res.status(500).json({ success: false, message: 'Failed to retrieve grammar topics.' });
+    const { grade } = req.query;
+    const result = await this.manager.getGrammarTopics(grade);
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
-
   async getPaperConfig(req, res) {
-    try {
-      const { board, grade, subjectName } = req.query;
-      const result = await this.manager.getPaperConfig(board, grade, subjectName);
-      return res.status(200).json(result);
-    } catch (err) {
-      return res.status(400).json(err);
+    const { board, grade, subjectName } = req.query;
+    const result = await this.manager.getPaperConfig(board, grade, subjectName);
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async getQuestions(req, res) {
-    try {
-      const filters = req.query;
-      const result = await this.manager.getQuestions(filters);
-      return res.status(200).json(result);
-    } catch (err) {
-      return res.status(400).json(err);
+    const filters = req.query;
+    const result = await this.manager.getQuestions(filters);
+    if (!result.success) {
+      return handleError(result, res);
     }
+    return res.status(200).json(result);
   }
 
   async uploadBulkQuestions(req, res) {
-    try {
-      if (!req.file) {
-        return res
-          .status(400)
-          .json({ success: false, message: "No file uploaded." });
-      }
-
-      const fileBuffer = req.file.buffer.toString("utf-8");
-      const jsonData = JSON.parse(fileBuffer);
-      const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
-
-      const result = await this.manager.insertChaptersAndQuestions([
-        master,
-      ]);
-
-      return res.status(200).json(result);
-    } catch (err) {
-      console.error("Error in uploadBulkQuestions:", err);
-      return res.status(500).json({ success: false, message: err.message });
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, message: "No file uploaded." });
     }
+
+    const fileBuffer = req.file.buffer.toString("utf-8");
+    const jsonData = JSON.parse(fileBuffer);
+    const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
+
+    const result = await this.manager.insertChaptersAndQuestions([
+      master,
+    ]);
+
+    if (!result.success) {
+      return handleError(result, res);
+    }
+    return res.status(200).json(result);
   }
 }
 

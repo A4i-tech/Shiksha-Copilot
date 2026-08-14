@@ -10,10 +10,10 @@
   }
 
   --blue: #3F91DA;
-  --blue-deep: #2C74B5;
+  --blue-deep: #1a4d7a;
   --blue-pale: #EAF3FB;
   --ink: #1E293B;
-  --ink-soft: #64748B;
+  --ink-soft: #475569;
   --line: #E2E8F0;
   --panel: #F8FAFC;
   --success: #2E9E6F;
@@ -81,13 +81,13 @@
     font-weight: 600;
     padding: 6px 14px;
     border-radius: 20px;
-    background: var(--blue-pale);
-    color: var(--blue-deep);
+    background: #EAF3FB;
+    color: #0F3A5C;
   }
 
   .pill-time {
-    background: var(--blue-pale);
-    color: var(--blue-deep);
+    background: #EAF3FB;
+    color: #0F3A5C;
   }
 
   .pill-warn {
@@ -485,7 +485,6 @@
 
   .remind-count {
     font-size: 0.8em;
-    opacity: 0.75;
   }
 
   /* ---------- ERROR MESSAGE ---------- */

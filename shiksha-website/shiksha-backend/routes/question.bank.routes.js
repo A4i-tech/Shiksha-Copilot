@@ -3,7 +3,7 @@ const router = express.Router();
 const QuestionBankController = require("../controllers/question.bank.controller");
 const asyncMiddleware = require("../middlewares/asyncMiddleware");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth");
-const { validateQuestionBankCreate, validateQuestionBankBluePrintCreate, validateQuestionBankFeedbackCreate, validateGetQuestionTypes, validateGetGrammarTopics } = require("../validations/question.bank.validation");
+const { validateQuestionBankCreate, validateQuestionBankBluePrintCreate, validateQuestionBankFeedbackCreate, validateQuestionBankList, validateGetQuestionTypes, validateGetGrammarTopics } = require("../validations/question.bank.validation");
 const MulterUploadMiddleware = require('../middlewares/multerUploadMiddleware');
 const questionBankController = new QuestionBankController();
 
@@ -39,6 +39,7 @@ router.get(
   "/question-bank/list",
   isAuthenticated,
   requirePermission("question-paper.generate"),
+  validateQuestionBankList,
   asyncMiddleware(
     questionBankController.getTeacherQuestionPapers.bind(questionBankController)
   )

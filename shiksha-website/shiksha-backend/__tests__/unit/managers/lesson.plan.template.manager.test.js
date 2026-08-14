@@ -60,14 +60,11 @@ describe("LessonPlanTemplateManager", () => {
       expect(result.data).toBeNull();
     });
 
-    it("should handle errors gracefully", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       const error = new Error("Database error");
       mockDao.filter = jest.fn().mockRejectedValue(error);
 
-      const result = await manager.findAllTemplates({});
-
-      expect(result.success).toBe(false);
-      expect(result.message).toBe("Database error");
+      await expect(manager.findAllTemplates({})).rejects.toThrow("Database error");
     });
 
     it("should find templates with empty filter", async () => {

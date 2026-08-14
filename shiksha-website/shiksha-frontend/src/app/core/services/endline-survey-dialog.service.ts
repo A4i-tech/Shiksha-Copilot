@@ -8,7 +8,7 @@ export class EndlineSurveyDialogService {
   constructor(private dialog: MatDialog) {}
   open() {
     if (this.ref) return;
-    this.ref = this.dialog.open(EndlineSurveyComponent, { width: '90%', maxWidth: '600px', disableClose: true, autoFocus: false });
+    this.ref = this.dialog.open(EndlineSurveyComponent, { width: '90%', maxWidth: '600px', disableClose: true, autoFocus: false, ariaLabel: 'Endline survey' });
     this.ref.afterClosed().subscribe(() => this.ref = undefined);
   }
 }

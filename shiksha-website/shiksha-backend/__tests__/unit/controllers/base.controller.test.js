@@ -301,15 +301,14 @@ describe("BaseController", () => {
   });
 
   describe("error handling", () => {
-    it("should handle internal server errors", async () => {
+    it("should propagate internal server errors to the caller (handled by asyncMiddleware + terminal error middleware)", async () => {
       const req = createMockRequest({ query: {} });
       const res = createMockResponse();
 
       mockManager.getAll.mockRejectedValue(new Error("Internal error"));
 
-      await controller.getAll(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
+      await expect(controller.getAll(req, res)).rejects.toThrow("Internal error");
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 

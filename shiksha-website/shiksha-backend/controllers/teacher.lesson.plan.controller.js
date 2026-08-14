@@ -3,6 +3,7 @@ const handleError = require("../helper/handleError.js");
 const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manager.js");
 const BaseController = require("./base.controller.js");
 const { intersectFilters } = require("../helper/scope.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 /** @extends {BaseController<TeacherLessonPlanManager>} */
 class TeacherLessonPlanController extends BaseController {
 	constructor() {
@@ -10,155 +11,124 @@ class TeacherLessonPlanController extends BaseController {
 	}
 
 	async getByTeacherAndPagination(req, res) {
-		try {
-			const {
-				page = 1,
-				limit = 999,
-				filter = {},
-				sortBy = "createdAt",
-				sortOrder = "desc",
-				search = "",
-				fields,
-			} = req.query;
+		const {
+			page = 1,
+			limit = 999,
+			filter = {},
+			sortBy = "createdAt",
+			sortOrder = "desc",
+			search = "",
+			fields,
+		} = req.query;
 
-			const { _id: teacherId } = req.user;
+		const { _id: teacherId } = req.user;
 
-			const sortOrderObject =
-				sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
+		const sortOrderObject =
+			sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-			const searchFilter = {};
+		const searchFilter = {};
 
-			if (search) {
-				const searchFields = [
-					"lesson.name",
-					"resource.lessonName",
-					"lesson.chapter.topics",
-					"resource.chapter.topics",
-					"lesson.chapter.subTopics",
-					"resource.chapter.subTopics",
-				];
+		if (search) {
+			const searchFields = [
+				"lesson.name",
+				"resource.lessonName",
+				"lesson.chapter.topics",
+				"resource.chapter.topics",
+				"lesson.chapter.subTopics",
+				"resource.chapter.subTopics",
+			];
 
-				const regexExpressions = searchFields.map((field) => ({
-					[field]: { $regex: new RegExp(search, "i") },
-				}));
+			const regexExpressions = searchFields.map((field) => ({
+				[field]: { $regex: new RegExp(escapeRegExp(search), "i") },
+			}));
 
-				searchFilter.$or = regexExpressions;
-			}
-
-			const result =
-				await this.manager.getByTeacherAndPagination(
-					teacherId,
-					parseInt(page),
-					parseInt(limit),
-					{ ...intersectFilters(filter, searchFilter), fields },
-					sortOrderObject
-				);
-
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> TeacherLessonPlanController -> getAll()", err);
-			return res.status(400).json(err);
+			searchFilter.$or = regexExpressions;
 		}
+
+		const result =
+			await this.manager.getByTeacherAndPagination(
+				teacherId,
+				parseInt(page),
+				parseInt(limit),
+				{ ...intersectFilters(filter, searchFilter), fields },
+				sortOrderObject
+			);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+
+		return;
 	}
 
 	async getMonthlyCount(req, res) {
-		try {
-			const teacherId = req.user._id;
+		const teacherId = req.user._id;
 
-			let filter = req.query.filter;
+		let filter = req.query.filter;
 
-			const monthlyCounts = await this.manager.getMonthlyCount(
-				teacherId,
-				filter
-			);
+		const monthlyCounts = await this.manager.getMonthlyCount(
+			teacherId,
+			filter
+		);
 
-			if (monthlyCounts.success) {
-				return res.status(200).json(monthlyCounts.data);
-			}
-
-			handleError(monthlyCounts, res);
-
-			return;
-		} catch (err) {
-			console.log(
-				"Error --> TeacherLessonPlanController -> getMonthlyCount()",
-				err
-			);
-			return res.status(500).json({ error: "Internal server error" });
+		if (monthlyCounts.success) {
+			return res.status(200).json(monthlyCounts.data);
 		}
+
+		handleError(monthlyCounts, res);
+
+		return;
 	}
 
 
 	async getRegenerationLimit(req, res) {
-		try {
-			const teacherId = req.user._id;
+		const teacherId = req.user._id;
 
-			const regenerationLimit = await this.manager.getRegenerationLimit(
-				teacherId
-			);
+		const regenerationLimit = await this.manager.getRegenerationLimit(
+			teacherId
+		);
 
-			if (regenerationLimit.success) {
-				return res.status(200).json(regenerationLimit);
-			}
-
-			handleError(regenerationLimit, res);
-
-			return;
-		} catch (err) {
-			console.log(
-				"Error --> TeacherLessonPlanController -> getRegenerationLimit()",
-				err
-			);
-			return res.status(500).json({ error: "Internal server error" });
+		if (regenerationLimit.success) {
+			return res.status(200).json(regenerationLimit);
 		}
+
+		handleError(regenerationLimit, res);
+
+		return;
 	}
 
 	async checkIfLessonPlanExists(req, res) {
-		try {
-			const { lessonPlanId } = req.params;
-			const teacherId = req.user._id;
+		const { lessonPlanId } = req.params;
+		const teacherId = req.user._id;
 
-			const doesLessonPlanExists =
-				await this.manager.checkIfLessonPlanExists(
-					teacherId,
-					lessonPlanId
-				);
-
-			if (!doesLessonPlanExists) {
-				return res.status(200).json({ choose: true });
-			} else {
-				return res.status(404).json({ choose: false });
-			}
-		} catch (error) {
-			console.error("Error checking if lesson plan exists:", error);
-			return res.status(500).json({ error: "Internal server error" });
-		}
-	}
-	
-	async getLessonPlanById(req, res) {
-		try {
-			const { lessonPlanId } = req.params;
-			const teacherId = req.user._id;
-
-			const lessonPlan = await this.manager.getLessonPlanById(
+		const doesLessonPlanExists =
+			await this.manager.checkIfLessonPlanExists(
 				teacherId,
 				lessonPlanId
 			);
 
-			if (lessonPlan) {
-				return res.status(200).json(lessonPlan);
-			} else {
-				return res.status(404).json({ message: "Lesson plan not found" });
-			}
-		} catch (error) {
-			console.error("Error getting lesson plan by ID:", error);
-			return res.status(500).json({ error: "Internal server error" });
+		if (!doesLessonPlanExists) {
+			return res.status(200).json({ choose: true });
+		} else {
+			return res.status(404).json({ choose: false });
+		}
+	}
+	
+	async getLessonPlanById(req, res) {
+		const { lessonPlanId } = req.params;
+		const teacherId = req.user._id;
+
+		const lessonPlan = await this.manager.getLessonPlanById(
+			teacherId,
+			lessonPlanId
+		);
+
+		if (lessonPlan) {
+			return res.status(200).json(lessonPlan);
+		} else {
+			return res.status(404).json({ message: "Lesson plan not found" });
 		}
 	}
 
@@ -209,84 +179,59 @@ class TeacherLessonPlanController extends BaseController {
 	}
 
 	async getResourcePlanById(req, res) {
-		try {
-			const { resourcePlanId } = req.params;
-			const teacherId = req.user._id;
+		const { resourcePlanId } = req.params;
+		const teacherId = req.user._id;
 
-			const resourcePlan = await this.manager.getResourcePlanById(
-				teacherId,
-				resourcePlanId
-			);
-			if (resourcePlan) {
-				return res.status(200).json(resourcePlan);
-			} else {
-				return res.status(404).json({ message: "Resource plan not found" });
-			}
-		} catch (error) {
-			console.error("Error getting Resource plan by ID:", error);
-			return res.status(500).json({ error: "Internal server error" });
+		const resourcePlan = await this.manager.getResourcePlanById(
+			teacherId,
+			resourcePlanId
+		);
+		if (resourcePlan) {
+			return res.status(200).json(resourcePlan);
+		} else {
+			return res.status(404).json({ message: "Resource plan not found" });
 		}
 	}
 
 	async deleteLessonPlan(req, res) {
-		try {
-			const { lessonPlanId } = req.params;
-			const teacherId = req.user._id;
-			const result = await this.manager.deleteLessonPlan(teacherId, lessonPlanId);
-			return result.success ? res.status(200).json(result) : res.status(404).json(result);
-		} catch (error) {
-			console.error("Error deleting lesson plan:", error);
-			return res.status(500).json({ error: "Internal server error" });
-		}
+		const { lessonPlanId } = req.params;
+		const teacherId = req.user._id;
+		const result = await this.manager.deleteLessonPlan(teacherId, lessonPlanId);
+		return result.success ? res.status(200).json(result) : res.status(404).json(result);
 	}
 
 	async deleteResourcePlan(req, res) {
-		try {
-			const { resourcePlanId } = req.params;
-			const teacherId = req.user._id;
-			const result = await this.manager.deleteResourcePlan(teacherId, resourcePlanId);
-			return result.success ? res.status(200).json(result) : res.status(404).json(result);
-		} catch (error) {
-			console.error("Error deleting resource plan:", error);
-			return res.status(500).json({ error: "Internal server error" });
-		}
+		const { resourcePlanId } = req.params;
+		const teacherId = req.user._id;
+		const result = await this.manager.deleteResourcePlan(teacherId, resourcePlanId);
+		return result.success ? res.status(200).json(result) : res.status(404).json(result);
 	}
 
 	async generateContent(req, res) {
-        try {
-            const payload = req.body;
-            const teacherId = req.user._id;
+        const payload = req.body;
+        const teacherId = req.user._id;
 
-            const result = await this.manager.generateContent(teacherId, payload);
+        const result = await this.manager.generateContent(teacherId, payload);
 
-            if (result.success) {
-                return res.status(200).json(result);
-            } else {
-                handleError(result, res);
-                return;
-            }
-        } catch (error) {
-            console.error("Error -> TeacherLessonPlanController -> generateContent", error);
-            return res.status(500).json({ error: "Internal server error" });
+        if (result.success) {
+            return res.status(200).json(result);
+        } else {
+            handleError(result, res);
+            return;
         }
     }
 
     async regenerateContent(req, res) {
-        try {
-            const payload = req.body;
-            const teacherId = req.user._id;
+        const payload = req.body;
+        const teacherId = req.user._id;
 
-            const result = await this.manager.regenerateContent(teacherId, payload);
+        const result = await this.manager.regenerateContent(teacherId, payload);
 
-            if (result.success) {
-                return res.status(200).json(result);
-            } else {
-                handleError(result, res);
-                return;
-            }
-        } catch (error) {
-            console.error("Error -> TeacherLessonPlanController -> regenerateContent", error);
-            return res.status(500).json({ error: "Internal server error" });
+        if (result.success) {
+            return res.status(200).json(result);
+        } else {
+            handleError(result, res);
+            return;
         }
     }
 
@@ -329,59 +274,40 @@ class TeacherLessonPlanController extends BaseController {
     }
 
 	async handleWebhook(req, res) {
-        try {
-            const data = req.body;
-            await this.manager.processWebhookData(data);
-            res.status(200).send({ success: true });
-        } catch (error) {
-            console.error("Error handling webhook event:", error);
-            res.status(500).send({ success: false, error: "Webhook handling failed" });
-        }
+        const data = req.body;
+        await this.manager.processWebhookData(data);
+        res.status(200).send({ success: true });
     }
 
 	async lessonMediaUploads(req, res) {
-        try {
-			
-			const { lessonPlanId } = req.params;
-			const teacherId = req.user._id;
-            const data = req.body;
-            const result = await this.manager.lessonUploadMedia(teacherId,lessonPlanId,data);
-            if (result.success) {
-                return res.status(200).json(result);
-            } else {
-                handleError(result, res);
-                return;
-            }
-        } catch (error) {
-            console.error("Error Uploading Media:", error);
-            res.status(500).send({ success: false, error});
+		const { lessonPlanId } = req.params;
+		const teacherId = req.user._id;
+        const data = req.body;
+        const result = await this.manager.lessonUploadMedia(teacherId,lessonPlanId,data);
+        if (result.success) {
+            return res.status(200).json(result);
+        } else {
+            handleError(result, res);
+            return;
         }
     }
 
 	async deleteLessonMediaUploads(req, res) {
-        try {
-			
-			const { lessonPlanId } = req.params;
-			const teacherId = req.user._id;
-            const data = req.body;
-            const result = await this.manager.deleteLessonMedia(teacherId,lessonPlanId,data);
-            if (result.success) {
-                return res.status(200).json(result);
-            } else {
-                handleError(result, res);
-                return;
-            }
-        } catch (error) {
-            console.error("Error Uploading Media:", error);
-            res.status(500).send({ success: false, error});
+		const { lessonPlanId } = req.params;
+		const teacherId = req.user._id;
+        const data = req.body;
+        const result = await this.manager.deleteLessonMedia(teacherId,lessonPlanId,data);
+        if (result.success) {
+            return res.status(200).json(result);
+        } else {
+            handleError(result, res);
+            return;
         }
     }
 
 		async resourceMediaUploads(req, res) {
-        try {
-			
-			const { resourcePlanId } = req.params;
-			const teacherId = req.user._id;
+		const { resourcePlanId } = req.params;
+		const teacherId = req.user._id;
             const data = req.body;
             const result = await this.manager.resourceUploadMedia(teacherId,resourcePlanId,data);
             if (result.success) {
@@ -390,17 +316,11 @@ class TeacherLessonPlanController extends BaseController {
                 handleError(result, res);
                 return;
             }
-        } catch (error) {
-            console.error("Error Uploading Media:", error);
-            res.status(500).send({ success: false, error});
-        }
     }
 
 	async deleteResourceMediaUploads(req, res) {
-        try {
-			
-			const { resourcePlanId } = req.params;
-			const teacherId = req.user._id;
+		const { resourcePlanId } = req.params;
+		const teacherId = req.user._id;
             const data = req.body;
             const result = await this.manager.deleteResourceMedia(teacherId,resourcePlanId,data);
             if (result.success) {
@@ -409,28 +329,19 @@ class TeacherLessonPlanController extends BaseController {
                 handleError(result, res);
                 return;
             }
-        } catch (error) {
-            console.error("Error Uploading Media:", error);
-            res.status(500).send({ success: false, error});
-        }
     }
 
 
 	async retryLessonPlan(req, res) {
-		try {
-			const { regeneratedId, _id } = req.body; 
-	
-			const result = await this.manager.retryLessonPlan(regeneratedId, _id);
-	
-			if (result.success) {
-				return res.status(200).json(result);
-			} else {
-				handleError(result, res);
-				return;
-			}
-		} catch (error) {
-			console.error("Error -> TeacherLessonPlanController -> retryLessonPlan", error);
-			return res.status(500).json({ error: "Internal server error" });
+		const { regeneratedId, _id } = req.body;
+
+		const result = await this.manager.retryLessonPlan(regeneratedId, _id);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		} else {
+			handleError(result, res);
+			return;
 		}
 	}
 

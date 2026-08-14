@@ -13,15 +13,21 @@ import { DEFAULT_LANGUAGE, formatMarks, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE 
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
-import { concat, distinctUntilChanged, forkJoin, of } from 'rxjs';
+import { concat, distinctUntilChanged, forkJoin, of, Subject } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
-import { map, finalize, toArray } from 'rxjs/operators';
+import { map, finalize, toArray, takeUntil } from 'rxjs/operators';
 import { questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 
 const SOURCE_GENERATION_OPTIONS: DropdownOption[] = [
   { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
   { name: QUESTION_SOURCE.LBA, value: 'LBA', info: 'These are LBA Questions as recommended by the educational board.' },
 ];
+
+interface MarksDistributionUnit {
+  unitName: string;
+  marks: number;
+  percentageDistribution: number;
+}
 
 @Component({
   selector: 'app-question-bank-generation',
@@ -91,7 +97,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   totalPercentage = 100;
   totalDistributedMarks = 0;
   totalDistributedPercentage = 0;
-  marksDistribution: any[] = [];
+  marksDistribution: MarksDistributionUnit[] = [];
+  private destroy$ = new Subject<void>();
 
   currentStep: number = 1;
   totalSteps: number = 4;
@@ -147,7 +154,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       examinationName: [null, [Validators.required]],
     });
 
-    this.questionBankConfigForm.get('totalMarks')?.valueChanges.pipe(distinctUntilChanged()).subscribe({
+    this.questionBankConfigForm.get('totalMarks')?.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$)).subscribe({
       next: (val) => {
         this.totalMarks = Number(val);
         this.distributeMarks();
@@ -351,7 +358,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
       forkJoin({
         config: this.questionBankService.getPaperConfig({ board, grade: String(standard), subjectName }),
-        chapters: this.questionBankService.getChapters({ class: String(standard), medium: medium, subject: subjectId })
+        chapters: this.questionBankService.getChapters({ class: String(standard), medium: medium, subject: subjectId, board })
       }).pipe(
         finalize(() => this.isLoadingQuestions = false)
       ).subscribe({
@@ -434,8 +441,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.submittedConfig = true;
     this.totalMarks = Number(this.f.totalMarks.value);
     this.distributeMarks();
-    if (this.questionBankConfigForm.invalid || this.totalPercentage !== 100 || this.totalDistributedMarks !== this.totalMarks) {
-      this.utilityservice.showError('Please complete the configuration and distributions.');
+    if (this.totalMarks === 0) {
+      this.utilityservice.showError(this.translateService.instant('Please enter a total marks value greater than 0.'));
+      return;
+    } else if (this.marksDistribution.some(unit => unit.marks === 0)) {
+      this.utilityservice.showError(this.translateService.instant('Increase the total marks or select fewer chapters.'));
+      return;
+    } else if (this.questionBankConfigForm.invalid || this.totalPercentage !== 100 || this.totalDistributedMarks !== this.totalMarks) {
+      this.utilityservice.showError(this.translateService.instant('Please complete the configuration and distributions.'));
       return;
     }
     if (this.questionBankTypeValue === 'multiChapter' && this.f.chapter.value.length < 2) {
@@ -919,5 +932,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   backNavigation() { this.router.navigate(['/question-papers']); }
   previousStep() { if (this.currentStep > 1) this.currentStep--; }
-  ngOnDestroy(): void { this.idleService.resetIdler(); }
+  ngOnDestroy(): void {
+    this.idleService.resetIdler();
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 }

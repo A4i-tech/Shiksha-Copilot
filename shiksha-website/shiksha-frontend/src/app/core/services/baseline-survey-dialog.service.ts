@@ -34,6 +34,7 @@ export class BaselineSurveyDialogService {
       disableClose: true,
       closeOnNavigation: false,
       autoFocus: true,
+      ariaLabel: 'Baseline survey',
       data: { force, isMandatory: force, remindLaterCount, maxReminders }
     });
 

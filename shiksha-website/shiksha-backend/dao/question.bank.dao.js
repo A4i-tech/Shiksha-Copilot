@@ -16,60 +16,55 @@ class QuestionBankDao extends BaseDao {
     filters = {},
     sort = {}
   ) {
-    try {
-      filters = { ...filters };
-      const { fields } = filters;
-      delete filters.fields;
-      let processedFilters = { ...filters };
+    filters = { ...filters };
+    const { fields } = filters;
+    delete filters.fields;
+    let processedFilters = { ...filters };
 
-      for (const key in filters) {
-        if (key === "grade") {
-          processedFilters[key] = Number(filters[key]);
-        } else if (key === "semester") {
-          processedFilters[key] = JSON.parse(filters[key]);
-        } else {
-          processedFilters[key] = filters[key];
-        }
+    for (const key in filters) {
+      if (key === "grade") {
+        processedFilters[key] = Number(filters[key]);
+      } else if (key === "semester") {
+        processedFilters[key] = JSON.parse(filters[key]);
+      } else {
+        processedFilters[key] = filters[key];
       }
-
-      if (!ObjectId.isValid(teacherId)) {
-        throw new Error("Invalid Teacher ID");
-      }
-
-      const pipeline = [
-        {
-          $match: {
-            teacherId: new ObjectId(teacherId),
-          },
-        },
-        { $match: processedFilters },
-        { $sort: sort },
-      ];
-
-      if (fields) {
-        pipeline.push({ $project: Object.fromEntries(fields.map((field) => [field, 1])) });
-      }
-
-      if (limit > 0) {
-        pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
-      }
-
-      const results = await QuestionBankConfiguration.aggregate(pipeline);
-
-      const totalItems = await QuestionBankConfiguration.countDocuments(
-        processedFilters
-      );
-
-      return {
-        page,
-        totalItems,
-        limit: limit > 0 ? limit : totalItems,
-        results,
-      };
-    } catch (err) {
-      console.log("Error --> questionBankDao -> getAll()", err);
-      throw err;
     }
+
+    if (!ObjectId.isValid(teacherId)) {
+      throw new Error("Invalid Teacher ID");
+    }
+
+    const pipeline = [
+      {
+        $match: {
+          teacherId: new ObjectId(teacherId),
+        },
+      },
+      { $match: processedFilters },
+      ...(Object.keys(sort).length ? [{ $sort: sort }] : []),
+    ];
+
+    if (fields) {
+      pipeline.push({ $project: Object.fromEntries(fields.map((field) => [field, 1])) });
+    }
+
+    if (limit > 0) {
+      pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
+    }
+
+    const results = await QuestionBankConfiguration.aggregate(pipeline);
+
+    const totalItems = await QuestionBankConfiguration.countDocuments(
+      { ...processedFilters, teacherId: new ObjectId(teacherId) }
+    );
+
+    return {
+      page,
+      totalItems,
+      limit: limit > 0 ? limit : totalItems,
+      results,
+    };
   }
 
   async saveQuestionBank(data, session = null) {
@@ -83,41 +78,31 @@ class QuestionBankDao extends BaseDao {
   }
 
   async getById(id) {
-    try {
-      if (!ObjectId.isValid(id)) {
-        throw new Error("Invalid ID provided for getById");
-      }
-      let result = await QuestionBankConfiguration.findOne({
-        _id: id,
-      }).populate("questionBank");
-      return result;
-    } catch (err) {
-      console.log("Error --> QuestionBankDao -> getById()", err);
-      throw err;
+    if (!ObjectId.isValid(id)) {
+      throw new Error("Invalid ID provided for getById");
     }
+    let result = await QuestionBankConfiguration.findOne({
+      _id: id,
+    }).populate("questionBank");
+    return result;
   }
 
   async update(id, data) {
-    try {
-      if (!ObjectId.isValid(id)) {
-        throw new Error("Invalid ID provided for update");
-      }
-      const result = await QuestionBank.findOneAndUpdate(
-        {
-          _id: id,
-        },
-        {
-          $set: {
-            feedback: data,
-          },
-        },
-        { new: true }
-      );
-      return result;
-    } catch (err) {
-      console.log("Error -> QuestionBankDao -> update", err);
-      throw err;
+    if (!ObjectId.isValid(id)) {
+      throw new Error("Invalid ID provided for update");
     }
+    const result = await QuestionBank.findOneAndUpdate(
+      {
+        _id: id,
+      },
+      {
+        $set: {
+          feedback: data,
+        },
+      },
+      { new: true }
+    );
+    return result;
   }
 }
 

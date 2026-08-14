@@ -141,9 +141,10 @@ describe("MasterLessonManager", () => {
     });
 
     it("rejects an activity outside the permission scope", async () => {
-      const result = await manager.getActivityById("lesson-123", "log-1", [{ permission: "content.activity.view", scopeType: "SCHOOL", dep: "school-2" }]);
+      await expect(
+        manager.getActivityById("lesson-123", "log-1", [{ permission: "content.activity.view", scopeType: "SCHOOL", dep: "school-2" }])
+      ).rejects.toThrow("Activity is outside your scope");
 
-      expect(result).toMatchObject({ success: false, message: "Activity is outside your scope" });
       expect(mockMasterLessonDao.generateLessonPlan).not.toHaveBeenCalled();
     });
   });
@@ -351,17 +352,14 @@ describe("MasterLessonManager", () => {
   });
 
   describe("generate5ETables", () => {
-    it("should return error when master lesson not found", async () => {
+    it("should propagate errors instead of swallowing them", async () => {
       mockMasterLessonDao.getById.mockResolvedValue(null);
 
-      const result = await manager.generate5ETables(
+      await expect(manager.generate5ETables(
         "lesson-123",
         "user-123",
         "User Name"
-      );
-
-      expect(result.success).toBe(false);
-      expect(result.message).toContain("Failed to generate the 5E table content");
+      )).rejects.toThrow();
     });
   });
 

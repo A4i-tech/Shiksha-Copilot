@@ -116,7 +116,7 @@
             <p class="font-semibold break-all">{{ schoolData?.schoolId }}</p>
           </div>
           <div class="relative shrink-0">
-            <button class="py-1 px-2 rounded inline-flex items-center" (click)="actionMenu.toggleMobileMenu(i, $event)">
+            <button class="py-1 px-2 rounded inline-flex items-center" [attr.aria-label]="'More options' | translate" (click)="actionMenu.toggleMobileMenu(i, $event)">
               <img class="w-5" src="assets/icons/more_vert.svg" alt="" />
             </button>
             <ul
@@ -209,7 +209,7 @@
                 class="inline-flex px-3 py-0.5 sm:py-1 rounded-full text-sm"
                 [ngClass]="{
                   'text-green bg-success-50': !schoolData.isDeleted,
-                  'text-error bg-error-50': schoolData.isDeleted
+                  'text-error-a11y bg-error-50': schoolData.isDeleted
                 }"
               >
                 {{ !schoolData.isDeleted ? "Active" : "Inactive" }}
@@ -263,7 +263,7 @@
                 class="px-3 py-2 rounded-full"
                 [ngClass]="{
                   'text-green bg-success-50': !schoolData.isDeleted,
-                  'text-error bg-error-50': schoolData.isDeleted
+                  'text-error-a11y bg-error-50': schoolData.isDeleted
                 }"
                 >{{ !schoolData.isDeleted ? "Active" : "Inactive" }}</span
               >
@@ -271,7 +271,7 @@
             <td class="px-4 py-6 text-sm border relative">
               <div class="flex justify-center">
                 <div [class.open]="actionMenu.openStates[i]" (click)="actionMenu.toggleDesktopMenu(i, $event)">
-                  <button class="py-2 px-4 rounded inline-flex items-center">
+                  <button class="py-2 px-4 rounded inline-flex items-center" [attr.aria-label]="'More options' | translate">
                     <img
                       class="w-5"
                       src="assets/icons/more_vert.svg"

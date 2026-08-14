@@ -21,165 +21,152 @@ class ChapterManager extends BaseManager {
   }
 
   async scriptFromLp(req) {
-    try {
-      let lessonPlans = req.body;
-      let chapterCount = 0;
-      let subjectCount = 0;
-      let indexPathCount = 0
+    let lessonPlans = req.body;
+    let chapterCount = 0;
+    let subjectCount = 0;
+    let indexPathCount = 0
 
-      if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
-        lessonPlans = [lessonPlans];
+    if (typeof lessonPlans === 'object' && !Array.isArray(lessonPlans)) {
+      lessonPlans = [lessonPlans];
+    }
+
+    lessonPlans = lessonPlans.filter((lp) => lp.lp_level == "CHAPTER");
+
+    for (let i = 0; i < lessonPlans.length; i++) {
+      let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
+      let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
+      let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
+      let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
+      let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
+      let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
+
+
+      let subject = await this.masterSubejectDao.getByNameAndBoard(
+        subjectName,
+        board
+      );
+
+
+      if (!subject) {
+        let subjectData = await this.masterSubejectDao.getOne({ subjectName })
+        if (subjectData && !subjectData.boards.includes(board)) {
+          subjectData.boards.push(board);
+          subject = await subjectData.save();
+        } else {
+          subject = await this.masterSubjectDao.create({
+            subjectName,
+            boards: [board],
+            sem: getSemester(subjectName),
+            name: formatSubject(subjectName)
+          });
+        }
+        subjectCount += 1;
       }
 
-      lessonPlans = lessonPlans.filter((lp) => lp.lp_level == "CHAPTER");
+      let chapter = await this.dao.getOne({
+        board,
+        medium,
+        topics: title,
+        standard: Number(standard),
+        orderNumber: Number(orderNumber),
+      });
 
-      for (let i = 0; i < lessonPlans.length; i++) {
-        let subjectName = lessonPlans[i].chapter_id.match(subjectRegex)[1];
-        let title = lessonPlans[i].chapter_id.match(titleRegex)[1];
-        let medium = lessonPlans[i].chapter_id.match(mediumRegex)[1];
-        let board = lessonPlans[i].chapter_id.match(boardRegex)[1];
-        let standard = lessonPlans[i].chapter_id.match(standardRegex)[1];
-        let orderNumber = lessonPlans[i].chapter_id.match(orderNumberRegex)[1];
-
-
-        let subject = await this.masterSubejectDao.getByNameAndBoard(
-          subjectName,
-          board
-        );
-
-
-        if (!subject) {
-          let subjectData = await this.masterSubejectDao.getOne({ subjectName })
-          if (subjectData && !subjectData.boards.includes(board)) {
-            subjectData.boards.push(board);
-            subject = await subjectData.save();
-          } else {
-            subject = await this.masterSubjectDao.create({
-              subjectName,
-              boards: [board],
-              sem: getSemester(subjectName),
-              name: formatSubject(subjectName)
-            });
-          }
-          subjectCount += 1;
+      if (chapter) {
+        if (lessonPlans[i]?.index_path) {
+          chapter.indexPath = lessonPlans[i]?.index_path
+          await chapter.save();
+          indexPathCount += 1
         }
+        continue;
+      }
 
-        let chapter = await this.dao.getOne({
+      let chapterObj = {
+        subjectId: subject._id,
+        topics: title,
+        subTopics: lessonPlans[i].subtopics,
+        medium: medium,
+        board: board,
+        standard: Number(standard),
+        orderNumber: Number(orderNumber),
+        indexPath: lessonPlans[i]?.index_path
+      };
+
+      await this.dao.create(chapterObj);
+      chapterCount += 1;
+
+    }
+
+    return {
+      success: true,
+      message: "Data Added!",
+      data: {
+        subjectSuccessCount: subjectCount,
+        chapterSuccessCount: chapterCount,
+        indexPathUpdateCount: indexPathCount
+      },
+    };
+  }
+
+
+  async updateChapter(req) {
+    let chapters = req.body;
+    let updateCounter = 0;
+
+    for (let i = 0; i < chapters.length; i++) {
+      let title = chapters[i]._id.match(titleRegex)[1];
+      let medium = chapters[i]._id.match(mediumRegex)[1];
+      let board = chapters[i]._id.match(boardRegex)[1];
+      let standard = chapters[i]._id.match(standardRegex)[1];
+      let orderNumber = chapters[i]._id.match(orderNumberRegex)[1];
+
+      let topicsLearningOutcomes = (chapters[i].topics || []).map(item => {
+        return {
+          title: item.title.trim(),
+          learningOutcomes: item.learning_outcomes
+        };
+      })
+
+      let subtopics = (chapters[i].topics || []).map(e => e.title.trim());
+
+      let updatedChapter = await Chapter.findOneAndUpdate(
+        {
           board,
           medium,
           topics: title,
           standard: Number(standard),
           orderNumber: Number(orderNumber),
-        });
+        },
+        {
+          $set: {
+            indexPath: chapters[i].index_path,
+            learningOutcomes: chapters[i].learning_outcomes,
+            topicsLearningOutcomes,
+            subTopics: subtopics
+          },
+        },
+        { new: true }
+      );
 
-        if (chapter) {
-          if (lessonPlans[i]?.index_path) {
-            chapter.indexPath = lessonPlans[i]?.index_path
-            await chapter.save();
-            indexPathCount += 1
-          }
-          continue;
-        }
-
-        let chapterObj = {
-          subjectId: subject._id,
-          topics: title,
-          subTopics: lessonPlans[i].subtopics,
-          medium: medium,
-          board: board,
-          standard: Number(standard),
-          orderNumber: Number(orderNumber),
-          indexPath: lessonPlans[i]?.index_path
-        };
-
-        await this.dao.create(chapterObj);
-        chapterCount += 1;
-
+      if (updatedChapter) {
+        updateCounter += 1
       }
 
-      return {
-        success: true,
-        message: "Data Added!",
-        data: {
-          subjectSuccessCount: subjectCount,
-          chapterSuccessCount: chapterCount,
-          indexPathUpdateCount: indexPathCount
-        },
-      };
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
     }
-  }
 
-
-  async updateChapter(req) {
-    try {
-      let chapters = req.body;
-      let updateCounter = 0;
-
-      for (let i = 0; i < chapters.length; i++) {
-        let title = chapters[i]._id.match(titleRegex)[1];
-        let medium = chapters[i]._id.match(mediumRegex)[1];
-        let board = chapters[i]._id.match(boardRegex)[1];
-        let standard = chapters[i]._id.match(standardRegex)[1];
-        let orderNumber = chapters[i]._id.match(orderNumberRegex)[1];
-
-        let topicsLearningOutcomes = (chapters[i].topics || []).map(item => {
-          return {
-            title: item.title.trim(),
-            learningOutcomes: item.learning_outcomes
-          };
-        })
-
-        let subtopics = (chapters[i].topics || []).map(e => e.title.trim());
-
-        let updatedChapter = await Chapter.findOneAndUpdate(
-          {
-            board,
-            medium,
-            topics: title,
-            standard: Number(standard),
-            orderNumber: Number(orderNumber),
-          },
-          {
-            $set: {
-              indexPath: chapters[i].index_path,
-              learningOutcomes: chapters[i].learning_outcomes,
-              topicsLearningOutcomes,
-              subTopics: subtopics
-            },
-          },
-          { new: true }
-        );
-
-        if (updatedChapter) {
-          updateCounter += 1
-        }
-
-      }
-
-      return {
-        success: true,
-        message: "Chapters updated with index path and LO's!",
-        data: {
-          chapterUpdateCount: updateCounter
-        },
-      };
-
-    } catch (err) {
-      return formatApiReponse(false, err?.message, err);
-    }
+    return {
+      success: true,
+      message: "Chapters updated with index path and LO's!",
+      data: {
+        chapterUpdateCount: updateCounter
+      },
+    };
   }
 
   async getBySemester(
     filters = {}
   ) {
-    try {
-      let data = await this.dao.getChapterBySemester(filters);
-      return formatApiReponse(true, "", data);
-    } catch (err) {
-      return formatApiReponse(false, err.message, err);
-    }
+    let data = await this.dao.getChapterBySemester(filters);
+    return formatApiReponse(true, "", data);
   }
 }
 

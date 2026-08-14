@@ -43,17 +43,14 @@ describe('FacilityManager', () => {
             expect(result.message).toBe('failed to update facilities');
         });
 
-        it('should handle exceptions', async () => {
+        it('should propagate errors instead of swallowing them', async () => {
             const mockReq = {
                 body: { id: 'facility123' }
             };
             const error = new Error('Database error');
             mockFacilityDao.update.mockRejectedValue(error);
 
-            const result = await facilityManager.update(mockReq);
-
-            expect(result.success).toBe(false);
-            expect(result.message).toBe('Database error');
+            await expect(facilityManager.update(mockReq)).rejects.toThrow('Database error');
         });
     });
 });

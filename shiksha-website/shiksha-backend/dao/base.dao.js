@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const AppError = require("../helper/app.error");
 
 class BaseDao {
 	constructor(model) {
@@ -12,131 +13,90 @@ class BaseDao {
 		sort = {},
 		status
 	) {
-		try {
-			let processedFilters = { ...filters, ...status }
+		let processedFilters = { ...filters, ...status }
 
-			const pipeline = [
-				{ $match: processedFilters }
-			];
+		const pipeline = [
+			{ $match: processedFilters }
+		];
 
-			// Only add $sort stage if sort object has keys
-			if (sort && Object.keys(sort).length > 0) {
-				pipeline.push({ $sort: sort });
-			}
-
-			if (limit > 0) {
-				pipeline.push(
-					{ $skip: (page - 1) * limit },
-					{ $limit: limit }
-				);
-			}
-
-			const results = await this.Model.aggregate(pipeline);
-
-			const totalItems = await this.Model.countDocuments(processedFilters);
-
-			return {
-				page,
-				totalItems,
-				limit: limit > 0 ? limit : totalItems,
-				results,
-			};
-		} catch (err) {
-			console.log("Error --> BaseDao -> getAll()", err);
-			throw err;
+		// Only add $sort stage if sort object has keys
+		if (sort && Object.keys(sort).length > 0) {
+			pipeline.push({ $sort: sort });
 		}
+
+		if (limit > 0) {
+			pipeline.push(
+				{ $skip: (page - 1) * limit },
+				{ $limit: limit }
+			);
+		}
+
+		const results = await this.Model.aggregate(pipeline);
+
+		const totalItems = await this.Model.countDocuments(processedFilters);
+
+		return {
+			page,
+			totalItems,
+			limit: limit > 0 ? limit : totalItems,
+			results,
+		};
 	}
 
 	async filter(filter) {
-		try {
-			let result = await this.Model.find(filter);
-			return result;
-		} catch (err) {
-			console.log("Error --> BaseDao -> filter()", err);
-			throw err;
-		}
+		return this.Model.find(filter);
 	}
 
 	async getOne(filter) {
-		try {
-			let result = await this.Model.findOne(filter);
-			return result;
-		} catch (err) {
-			console.log("Error --> BaseDao -> getOne()", err);
-			throw err;
-		}
+		return this.Model.findOne(filter);
 	}
 
 	async getById(id) {
-		try {
-			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-				return null;
-			}
-			let result = await this.Model.findOne({ _id: id });
-			return result;
-		} catch (err) {
-			console.log("Error --> BaseDao -> getById()", err);
-			throw err;
+		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+			return null;
 		}
+		return this.Model.findOne({ _id: id });
 	}
 
 	async create(data, session = null) {
-		try {
-			let model = new this.Model(data);
-			let result = await model.save(session ? { session } : {});
-			return result;
-		} catch (err) {
-			console.log("Error -> BaseDao -> create", err);
-			throw err;
-		}
+		let model = new this.Model(data);
+		return model.save(session ? { session } : {});
 	}
 
 	async delete(id, session = null) {
-		try {
-			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-				throw new Error("Invalid ID for delete operation");
-			}
-			const result = await this.Model.findByIdAndUpdate(
-				id,
-				{
-					$set: {
-						isDeleted: true,
-					},
-				},
-				{
-					new: true,
-					runValidators: true,
-					session: session,
-				}
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> BaseDao -> delete", err);
-			throw err;
+		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+			throw new AppError("Invalid ID for delete operation", 400);
 		}
+		return this.Model.findByIdAndUpdate(
+			id,
+			{
+				$set: {
+					isDeleted: true,
+				},
+			},
+			{
+				new: true,
+				runValidators: true,
+				session: session,
+			}
+		);
 	}
 
 	async activate(id) {
-		try {
-			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-				throw new Error("Invalid ID for activate operation");
-			}
-			const result = await this.Model.findByIdAndUpdate(
-				id,
-				{
-					$set: {
-						isDeleted: false,
-					},
-				},
-				{
-					new: true,
-				}
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> BaseDao -> activate", err);
-			throw err;
+		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+			throw new AppError("Invalid ID for activate operation", 400);
 		}
+		return this.Model.findByIdAndUpdate(
+			id,
+			{
+				$set: {
+					isDeleted: false,
+				},
+			},
+			{
+				new: true,
+			}
+		);
 	}
 
 	reserveLoginAttempt(id, attemptedAt, limit) {
@@ -171,13 +131,7 @@ class BaseDao {
 	}
 
 	async bulkUpload(dataArray) {
-		try {
-			const result = await this.Model.insertMany(dataArray);
-			return result;
-		} catch (err) {
-			console.log("Error -> BaseDao -> bulkUpload", err);
-			throw err;
-		}
+		return this.Model.insertMany(dataArray);
 	}
 }
 

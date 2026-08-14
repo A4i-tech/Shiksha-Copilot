@@ -9,6 +9,7 @@ import { LanguageSwitcherComponent } from '../shared/components/language-switche
 import { HeaderComponent } from '../layout/header/header.component';
 import { DeleteDetailComponent } from '../shared/components/delete-detail/delete-detail.component';
 import { ProfileImageComponent } from '../shared/components/profile-image/profile-image.component';
+import { NgxSpinnerModule } from 'ngx-spinner';
 import { UserModule } from './user/user.module';
 import { AdminModule } from './admin/admin.module';
 
@@ -26,6 +27,7 @@ import { AdminModule } from './admin/admin.module';
     LanguageSwitcherComponent,
     DeleteDetailComponent,
     ProfileImageComponent,
+    NgxSpinnerModule,
     UserModule,
     AdminModule
   ]

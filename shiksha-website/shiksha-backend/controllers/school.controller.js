@@ -16,89 +16,60 @@ class SchoolController extends BaseController {
 	}
 
 	async create(req, res) {
-		try {
-			let db = await dbService.getConnection();
-			const session = await db.startSession();
+		let db = await dbService.getConnection();
+		const session = await db.startSession();
 
-			let result = await this.manager.create(req, session);
+		let result = await this.manager.create(req, session);
 
-			await session.endSession();
+		await session.endSession();
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> create()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async update(req, res) {
-		try {
-			const { id } = req.params;
-			let result = await this.manager.update(id, req.body, req.permissions);
+		const { id } = req.params;
+		let result = await this.manager.update(id, req.body, req.permissions);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-			handleError(result, res);
-			return;
-		} catch (err) {
-			console.log("Error --> SchoolController -> update()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+		handleError(result, res);
 	}
 
 	async updateFacility(req, res) {
-		try {
-			const { id } = req.params;
-			let result = await this.manager.updateFacility(id, req.body, req.permissions);
+		const { id } = req.params;
+		let result = await this.manager.updateFacility(id, req.body, req.permissions);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-			handleError(result, res);
-			return;
-		} catch (err) {
-			console.log("Error --> SchoolController -> updateFacility()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+		handleError(result, res);
 	}
 
 	async bulkUpload(req, res) {
-		try {
-			const userId = req.user._id;
-			const userName = req.user.identity.name;
-			if (!req.file) {
-				return res.status(400).json({ error: "File not provided" });
-			}
-			const result = await this.manager.bulkUpload(req.file.buffer, userId.toString(), userName, req.permissions);
-			if (result.success)
-				return res.status(200).json(result);
-
-			handleError(result, res);
-		} catch (err) {
-			console.log("Error --> SchoolController -> bulkUpload()", err);
-			return res.status(400).json(err);
+		const userId = req.user._id;
+		const userName = req.user.identity.name;
+		if (!req.file) {
+			return res.status(400).json({ error: "File not provided" });
 		}
+		const result = await this.manager.bulkUpload(req.file.buffer, userId.toString(), userName, req.permissions);
+		if (result.success)
+			return res.status(200).json(result);
+
+		handleError(result, res);
 	}
 
 	async export(req,res){
-		try {
-      const result = await this.manager.exportSchool(req);
-      if (result.success) {
-        return res.status(200).json(result);
-      }
+		const result = await this.manager.exportSchool(req);
+		if (result.success) {
+			return res.status(200).json(result);
+		}
 
-      handleError(result, res);
-    } catch (err) {
-      console.log("Error --> SchoolController -> exportSchool()", err);
-      return res.status(400).json(err);
-    }
+		handleError(result, res);
 	}
 }
 

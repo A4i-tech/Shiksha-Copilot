@@ -8,79 +8,51 @@ class ScheduleDao extends BaseDao {
 	}
 
 	async getById(id) {
-		try {
-			let result = await scheduleAggregation.getScheduleById(id);
-			if (result.length > 0) {
-				return result[0];
-			}
-			return false;
-		} catch (err) {
-			console.log("Error --> ScheduleDao -> getById()", err);
-			throw err;
+		let result = await scheduleAggregation.getScheduleById(id);
+		if (result.length > 0) {
+			return result[0];
 		}
+		return false;
 	}
 
 	async update(id, updates, session = null) {
-		try {
-			const result = await Schedule.findOneAndUpdate(
-				{
-					_id: id,
-					isDeleted: false,
-				},
-				{
-					$set: updates,
-				},
-				{ new: true, useFindAndModify: false, session: session }
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> SchoolDao -> update", err);
-			throw err;
-		}
+		const result = await Schedule.findOneAndUpdate(
+			{
+				_id: id,
+				isDeleted: false,
+			},
+			{
+				$set: updates,
+			},
+			{ new: true, useFindAndModify: false, session: session }
+		);
+		return result;
 	}
 
 	async getAllSchedulesBasedOnTeacherId(teacherId) {
-		try {
-			const schedules =
-				await scheduleAggregation.getAllSchedulesBasedOnTeacherId(teacherId);
-			return schedules;
-		} catch (err) {
-			console.log(
-				"Error -> ScheduleDao -> getAllSchedulesBasedOnTeacherId",
-				err
-			);
-			throw err;
-		}
+		const schedules =
+			await scheduleAggregation.getAllSchedulesBasedOnTeacherId(teacherId);
+		return schedules;
 	}
 
 	async getBySchool(schoolId, teacherClasses, fromDate, toDate , teacherId, teacherSchedule) {
-		try {
-			const schedules = await scheduleAggregation.getBySchool(
-				schoolId,
-				teacherClasses,
-				fromDate,
-				toDate,
-				teacherId,
-				teacherSchedule
-			);
-			return schedules;
-		} catch (err) {
-			console.log("Error -> ScheduleDao -> getBySchool", err);
-			throw err;
-		}
+		const schedules = await scheduleAggregation.getBySchool(
+			schoolId,
+			teacherClasses,
+			fromDate,
+			toDate,
+			teacherId,
+			teacherSchedule
+		);
+		return schedules;
 	}
 
 	async getMySchedules(teacherId, date) {
-		try {
-			const schedules = await scheduleAggregation.getMySchedules(
-				teacherId,
-				date
-			);
-			return schedules;
-		} catch (err) {
-			console.log("Error -> ScheduleDao -> getMySchedules", err);
-			throw err;
-		}
+		const schedules = await scheduleAggregation.getMySchedules(
+			teacherId,
+			date
+		);
+		return schedules;
 	}
 
 	async getParallelSchedules(
@@ -92,44 +64,35 @@ class ScheduleDao extends BaseDao {
 		scheduleDateTime,
 		scheduleId
 	) {
-		try {
-			const schedules = await scheduleAggregation.getParallelSchedules(
-				schoolId,
-				teacherClass,
-				board,
-				medium,
-				teacherId,
-				scheduleDateTime,
-				scheduleId
-			);
-			return schedules;
-		} catch (err) {
-			console.log("Error -> ScheduleDao -> getParallelSchedules", err);
-			throw err;
-		}
+		const schedules = await scheduleAggregation.getParallelSchedules(
+			schoolId,
+			teacherClass,
+			board,
+			medium,
+			teacherId,
+			scheduleDateTime,
+			scheduleId
+		);
+		return schedules;
 	}
 
 	async deleteDateTime(scheduleId, timeId, session = null) {
-		try {
-			const result = await Schedule.findByIdAndUpdate(
-				scheduleId,
-				{
-					$pull: {
-						scheduleDateTime: {
-							_id: timeId,
-						},
+		const result = await Schedule.findByIdAndUpdate(
+			scheduleId,
+			{
+				$pull: {
+					scheduleDateTime: {
+						_id: timeId,
 					},
 				},
-				{
-					new: true,
-					runValidators: true,
-					session: session,
-				}
-			);
-			return result;
-		} catch (err) {
-			console.log("Error -> BaseDao -> delete", err);
-		}
+			},
+			{
+				new: true,
+				runValidators: true,
+				session: session,
+			}
+		);
+		return result;
 	}
 }
 

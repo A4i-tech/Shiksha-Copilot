@@ -1,15 +1,18 @@
-<div class="fixed bg-shade-50 w-full h-12 faq-header">
-  <div class="flex items-center gap-4 mt-3 ml-3" (click)="goBack()">
-    <img
-      class="cursor-pointer"
-      src="assets/icons/back-arrow.svg"
-      alt=""
-    />
+<header class="fixed bg-shade-50 w-full h-12 faq-header">
+  <div class="flex items-center gap-4 mt-3 ml-3">
+    <button
+      type="button"
+      class="flex items-center bg-transparent border-0 p-0 cursor-pointer"
+      (click)="goBack()"
+      aria-label="Go back"
+    >
+      <img src="assets/icons/back-arrow.svg" alt="" />
+    </button>
     <img class="logo" src="assets/images/logo.svg" alt="" />
   </div>
-</div>
+</header>
 
-<div class="faq-wrapper p-4">
+<main id="main-content" tabindex="-1" class="faq-wrapper p-4">
   <div class="flex justify-center">
     <div class="w-[90%] md:w-1/2">
       <h1 class="mt-16 mb-8 text-4xl text-center text-content">FAQ</h1>
@@ -154,4 +157,4 @@
       </div>
     </div>
   </div>
-</div>
+</main>

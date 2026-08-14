@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 
 export interface Teacher {
@@ -43,40 +43,25 @@ export class BatchService {
     this.baseUrl = environment.apiUrl;
   }
 
-  private getAuthHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
-    return new HttpHeaders({
-      'Authorization': token || '',
-      'Content-Type': 'application/json'
-    });
-  }
-
   addBatch(batchData: FormData | Batch): Observable<any> {
-    const headers = this.getAuthHeaders();
-    if (batchData instanceof FormData) {
-      // For FormData, don't set Content-Type header as it will be set automatically
-      const token = localStorage.getItem('token');
-      const formDataHeaders = new HttpHeaders({
-        'Authorization': token || ''
-      });
-      return this.http.post<any>(`${this.baseUrl}/teacher-training-batches`, batchData, { headers: formDataHeaders });
-    }
-    return this.http.post<any>(`${this.baseUrl}/teacher-training-batches`, batchData, { headers });
+    return this.http.post<any>(`${this.baseUrl}/teacher-training-batches`, batchData);
   }
 
   fetchBatches(): Observable<Batch[]> {
-    const headers = this.getAuthHeaders();
-    return this.http.get<Batch[]>(`${this.baseUrl}/teacher-training-batches`, { headers });
+    return this.http.get<Batch[]>(`${this.baseUrl}/teacher-training-batches`);
+  }
+
+  getAvailableTeachers(page: number, limit: number, search: string): Observable<{ success: boolean; data: { results: Teacher[]; totalItems: number } }> {
+    const params = new HttpParams().set('page', page).set('limit', limit).set('search', search);
+    return this.http.get<{ success: boolean; data: { results: Teacher[]; totalItems: number } }>(`${this.baseUrl}/teacher-training-batches/available-teachers`, { params });
   }
 
   assignTeacherToBatch(batchId: string, teacherId: string): Observable<Batch> {
-    const headers = this.getAuthHeaders();
-    return this.http.post<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/assign-teacher`, { teacherId }, { headers });
+    return this.http.post<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/assign-teacher`, { teacherId });
   }
 
   removeTeacherFromBatch(batchId: string, teacherId: string): Observable<Batch> {
-    const headers = this.getAuthHeaders();
-    return this.http.post<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/remove-teacher`, { teacherId }, { headers });
+    return this.http.post<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/remove-teacher`, { teacherId });
   }
 
   setBatches(batches: Batch[]): void {
@@ -84,31 +69,26 @@ export class BatchService {
   }
 
   deleteBatch(batchId: string): Observable<void> {
-    const headers = this.getAuthHeaders();
-    return this.http.delete<void>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}`, { headers });
+    return this.http.delete<void>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}`);
   }
 
   updateAttendance(batchId: string, attendance: string[]): Observable<Batch> {
-    const headers = this.getAuthHeaders();
-    return this.http.put<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/attendance`, { attendance }, { headers });
+    return this.http.put<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/attendance`, { attendance });
   }
 
   submitBatch(batchId: string): Observable<Batch> {
-    const headers = this.getAuthHeaders();
-    return this.http.put<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/submit`, {}, { headers });
+    return this.http.put<Batch>(`${`${this.baseUrl}/teacher-training-batches`}/${batchId}/submit`, {});
   }
 
   getBatchById(batchId: string): Observable<Batch> {
-    const headers = this.getAuthHeaders();
-    return this.http.get<Batch>(`${this.baseUrl}/teacher-training-batches/${batchId}`, { headers });
+    return this.http.get<Batch>(`${this.baseUrl}/teacher-training-batches/${batchId}`);
   }
 
   // New method to fetch a file as a Blob
   getFile(path: string): Observable<Blob> {
-    const headers = this.getAuthHeaders();
     // Assuming the path starts with 'uploads/' and needs to be relative to the base URL
     const fullUrl = `/${path}`;
-    return this.http.get(fullUrl, { headers, responseType: 'blob' });
+    return this.http.get(fullUrl, { responseType: 'blob' });
   }
 
 extractActualFilename(url:any) {
@@ -140,23 +120,16 @@ extractActualFilename(url:any) {
   }
 
   uploadBatchFiles(batchId: string, formData: FormData): Observable<any> {
-    const token = localStorage.getItem('token');
-    const headers = new HttpHeaders({
-      'Authorization': token || ''
-    });
-    return this.http.post(`${this.baseUrl}/teacher-training-batches/${batchId}/upload-pdf`, formData, { headers });
+    return this.http.post(`${this.baseUrl}/teacher-training-batches/${batchId}/upload-pdf`, formData);
   }
 
   getTeacherTrainingStats(): Observable<TeacherStats> {
-    const headers = this.getAuthHeaders();
-    return this.http.get<TeacherStats>(`${this.baseUrl}/teacher-training-batches/stats`, { headers });
+    return this.http.get<TeacherStats>(`${this.baseUrl}/teacher-training-batches/stats`);
   }
 
   // Download the batch Excel report from the backend
   downloadBatchExcelReport(batchId: string): Observable<Blob> {
-    const headers = this.getAuthHeaders();
     return this.http.get(`${this.baseUrl}/teacher-training-batches/${batchId}/export-report`, {
-      headers,
       responseType: 'blob'
     });
   }

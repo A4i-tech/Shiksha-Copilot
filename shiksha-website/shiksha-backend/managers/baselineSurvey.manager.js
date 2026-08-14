@@ -41,62 +41,52 @@ class BaselineSurveyManager extends BaseManager {
   }
 
   async checkCompleted(userId) {
-    try {
-      if (!userId) return formatApiResponse(false, 'Missing userId', null);
+    if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
-      const academicYear = getAcademicYear();
-      const exists = await this.dao.existsByUser(userId, academicYear);
-      const remindLaterCount = await this.getRemindLaterCount(userId, academicYear);
+    const academicYear = getAcademicYear();
+    const exists = await this.dao.existsByUser(userId, academicYear);
+    const remindLaterCount = await this.getRemindLaterCount(userId, academicYear);
 
-      return formatApiResponse(true, 'OK', {
-        completed: !!exists,
-        academicYear,
-        remindLaterCount,
-        isMandatory: remindLaterCount >= MAX_REMIND_LATER,
-        maxReminders: MAX_REMIND_LATER,
-      });
-    } catch (err) {
-      logger.error('checkCompleted failed', { functionName: 'checkCompleted', userId, message: err.message, stack: err.stack });
-      return formatApiResponse(false, 'Server error', null);
-    }
+    return formatApiResponse(true, 'OK', {
+      completed: !!exists,
+      academicYear,
+      remindLaterCount,
+      isMandatory: remindLaterCount >= MAX_REMIND_LATER,
+      maxReminders: MAX_REMIND_LATER,
+    });
   }
 
   async incrementRemindLater(userId, session = null) {
-    try {
-      if (!userId) return formatApiResponse(false, 'Missing userId', null);
+    if (!userId) return formatApiResponse(false, 'Missing userId', null);
 
-      const academicYear = getAcademicYear();
+    const academicYear = getAcademicYear();
 
-      // Guard: do not mutate reminder records for users who already submitted
-      const alreadyCompleted = await this.dao.existsByUser(userId, academicYear);
-      if (alreadyCompleted) {
-        const remindLaterCount = await this.getRemindLaterCount(userId, academicYear);
-        return formatApiResponse(true, 'Survey already completed', {
-          remindLaterCount,
-          isMandatory: remindLaterCount >= MAX_REMIND_LATER,
-          completed: true,
-        });
-      }
-
-      // Ceiling: do not increment past the maximum
-      const currentCount = await this.getRemindLaterCount(userId, academicYear);
-      if (currentCount >= MAX_REMIND_LATER) {
-        return formatApiResponse(true, 'Maximum reminders reached', {
-          remindLaterCount: currentCount,
-          isMandatory: true,
-        });
-      }
-
-      const rec = await this.reminderDao.increment(userId, academicYear, session);
-
-      return formatApiResponse(true, 'Remind later recorded', {
-        remindLaterCount: rec.remindLaterCount,
-        isMandatory: rec.remindLaterCount >= MAX_REMIND_LATER,
+    // Guard: do not mutate reminder records for users who already submitted
+    const alreadyCompleted = await this.dao.existsByUser(userId, academicYear);
+    if (alreadyCompleted) {
+      const remindLaterCount = await this.getRemindLaterCount(userId, academicYear);
+      return formatApiResponse(true, 'Survey already completed', {
+        remindLaterCount,
+        isMandatory: remindLaterCount >= MAX_REMIND_LATER,
+        completed: true,
       });
-    } catch (err) {
-      logger.error('incrementRemindLater failed', { functionName: 'incrementRemindLater', userId, message: err.message, stack: err.stack });
-      return formatApiResponse(false, 'Server error', null);
     }
+
+    // Ceiling: do not increment past the maximum
+    const currentCount = await this.getRemindLaterCount(userId, academicYear);
+    if (currentCount >= MAX_REMIND_LATER) {
+      return formatApiResponse(true, 'Maximum reminders reached', {
+        remindLaterCount: currentCount,
+        isMandatory: true,
+      });
+    }
+
+    const rec = await this.reminderDao.increment(userId, academicYear, session);
+
+    return formatApiResponse(true, 'Remind later recorded', {
+      remindLaterCount: rec.remindLaterCount,
+      isMandatory: rec.remindLaterCount >= MAX_REMIND_LATER,
+    });
   }
 
   async submitSurvey(userId, body, session = null) {

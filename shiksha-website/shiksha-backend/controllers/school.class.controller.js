@@ -9,36 +9,24 @@ class ClassController extends BaseController {
 	}
 
 	async getGroupClassesByBoard(req, res) {
-		try {
-			let { schoolId } = req.params;
+		let { schoolId } = req.params;
 
-			let result = await this.manager.getGroupClassesByBoard(schoolId);
+		let result = await this.manager.getGroupClassesByBoard(schoolId);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> BaseController -> getGroupClassesByBoard()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async update(req, res) {
-		try {
-			const { id } = req.params;
-			const result = await this.manager.updateClass(id, req.body);
-			if (!result.success) {
-				return res.status(404).json({ message: result.message });
-			}
-			return res.status(200).json(result.data);
-		} catch (err) {
-			console.log("Error --> ClassController -> update()", err);
-			return res.status(400).json(err);
+		const { id } = req.params;
+		const result = await this.manager.updateClass(id, req.body);
+		if (!result.success) {
+			return res.status(404).json({ message: result.message });
 		}
+		return res.status(200).json(result.data);
 	}
 }
 

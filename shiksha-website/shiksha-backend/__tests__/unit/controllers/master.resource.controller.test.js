@@ -71,14 +71,12 @@ describe("MasterResourceController", () => {
       expect(mockRes.json).toHaveBeenCalledWith({ message: "Resource not found" });
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.updateMasterResource = jest.fn().mockRejectedValue(new Error("Database error"));
       mockReq.params = { id: "resource-123" };
 
-      await controller.update(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith(expect.any(Error));
+      await expect(controller.update(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -121,7 +119,7 @@ describe("MasterResourceController", () => {
       expect(mockRes.json).toHaveBeenCalledWith({ message: "Regeneration failed" });
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.regenerateResourcePlan = jest.fn().mockRejectedValue(new Error("Error"));
       mockReq.body = {
         resourceId: "resource-123",
@@ -129,9 +127,8 @@ describe("MasterResourceController", () => {
         userId: "user-123",
       };
 
-      await controller.regenerate(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
+      await expect(controller.regenerate(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -191,13 +188,12 @@ describe("MasterResourceController", () => {
       expect(handleError).toHaveBeenCalled();
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.getSubtopicResourceList = jest.fn().mockRejectedValue(new Error("Error"));
       mockReq.body = { chapterId: "chapter-123", templateIds: [] };
 
-      await controller.getSubtopicResourceList(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
+      await expect(controller.getSubtopicResourceList(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -265,12 +261,11 @@ describe("MasterResourceController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.uploadMasterResources = jest.fn().mockRejectedValue(new Error("Error"));
 
-      await controller.uploadMasterResource(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
+      await expect(controller.uploadMasterResource(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
@@ -295,12 +290,11 @@ describe("MasterResourceController", () => {
       expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
 
-    it("should handle exceptions", async () => {
+    it("should propagate errors instead of responding directly", async () => {
       mockManager.uploadOldMasterResources = jest.fn().mockRejectedValue(new Error("Error"));
 
-      await controller.uploadOldMasterResource(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
+      await expect(controller.uploadOldMasterResource(mockReq, mockRes)).rejects.toThrow("Error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 });

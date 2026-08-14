@@ -12,6 +12,8 @@ const masterResourceController = new MasterResourceController();
 
 router.post(
 	"/resource-plan/create",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	validateMasterResource,
 	asyncMiddleware(
 		masterResourceController.create.bind(masterResourceController)
@@ -20,6 +22,7 @@ router.post(
 
 router.get(
 	"/resource-plan/list",
+	isAuthenticated,
 	asyncMiddleware(
 		masterResourceController.getAll.bind(masterResourceController)
 	)
@@ -27,6 +30,8 @@ router.get(
 
 router.put(
 	"/resource-plan/update/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	validateMasterResource,
 	asyncMiddleware(
 		masterResourceController.update.bind(masterResourceController)
@@ -44,6 +49,8 @@ router.post(
 
 router.post(
 	"/resource-plan/combo",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(
 		masterResourceController.comboScript.bind(masterResourceController)
 	)
