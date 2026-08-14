@@ -1,9 +1,22 @@
 <div class="fixed inset-0 flex overflow-hidden flex-col lg:flex-row">
   <app-sidebar class="sticky top-0 lg:static bg-tertiary-30 z-50"></app-sidebar>
-  <div class="min-h-0 min-w-0 flex-1 overflow-y-auto main-content">
+  <div class="flex min-h-0 min-w-0 flex-1 flex-col">
     <app-header class="block"></app-header>
-    <main id="main-content" tabindex="-1" class="lg:p-9">
-      <router-outlet></router-outlet>
-    </main>
+    <div class="relative min-h-0 flex-1">
+      <div class="absolute inset-0 overflow-y-auto main-content">
+        <main id="main-content" tabindex="-1" class="lg:p-9">
+          <router-outlet></router-outlet>
+        </main>
+      </div>
+      <ngx-spinner
+        [fullScreen]="false"
+        bdColor="rgba(240, 240, 240, 0.3)"
+        size="medium"
+        color="#46A0F1"
+        type="ball-scale-multiple"
+      >
+        <p class="text-black text-sm" role="status" aria-live="polite" aria-atomic="true">{{ (loaderMessage.message$ | async) ?? '' | translate }}</p>
+      </ngx-spinner>
+    </div>
   </div>
 </div>
