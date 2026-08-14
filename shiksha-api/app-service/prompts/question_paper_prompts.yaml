@@ -42,7 +42,6 @@ question_bank_parts_gen_retrieval_query_template: |
   {UNIT_WISE_LEARNING_OUTCOMES}
   ## Learning Outcomes
   {LEARNING_OUTCOMES}
-  ```
 
 question_bank_parts_gen: |
       You are a specialist in educational assessment design with advanced expertise in Bloom's Taxonomy and question generation. Your task is to generate a bank of unique, high-quality questions that are aligned with the provided learning outcomes, textbook content, and cognitive objectives. Use the RAG (Retrieval-Augmented Generation) approach to reference textbook content for the specified chapters (units).
