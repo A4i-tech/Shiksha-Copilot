@@ -1,5 +1,5 @@
 export interface QuestionBankObjective {
   objective: string;
-  shortName: string;
+  description: string;
   percentageDistribution: number;
 }

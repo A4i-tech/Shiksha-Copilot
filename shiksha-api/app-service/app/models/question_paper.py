@@ -179,9 +179,14 @@ class Chapter(_LearningRecord):
     subtopics: List[ChapterSubtopic]
 
 
+class Objective(BaseModel):
+    objective: str = Field(..., description="Short label for the objective")
+    description: str = Field(..., description="Long descriptive text for the objective")
+
+
 class QuestionDistribution(BaseModel):
     unit_name: str
-    objective: str
+    objective: Objective
 
 
 class _Template(BaseModel):
@@ -200,6 +205,7 @@ class QuestionBankPartsGenerationRequest(BaseModel):
     medium: str = Field(..., description="Language medium", examples=["English", "Hindi"])
     grade: int = Field(..., description="Student grade/class level")
     subject: str = Field(..., description="Subject for question generation")
+    bloom_variant: str = Field(..., description="Bloom taxonomy variant key used to look up the blooms taxonomy data", examples=["telangana-science"])
     unit_level: Literal["CHAPTER", "SUBTOPIC"]
     chapters: List[Chapter] = Field(..., description="List of chapters with learning outcomes and subtopics")
     total_marks: Marking = Field(..., description=f"Total marks for the question paper. {_MARKING_DESC}")
@@ -222,6 +228,6 @@ class QuestionBankPartsGenerationRequest(BaseModel):
 class GeneratedQuestionItem(BaseModel):
     unit_name: str
     type: QuestionType
-    objective: str
+    objective: Objective
     marks_per_question: Marking
     item: QuestionModel
