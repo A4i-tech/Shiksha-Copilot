@@ -5,7 +5,7 @@ const LessonFeedbackController = require("../controllers/feedback.lesson.control
 const {
 	validateFeedbackLesson,
 } = require("../validations/feedback.lesson.validation.js");
-const { isAuthenticated } = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 
 const lessonFeedbackController = new LessonFeedbackController();
 
@@ -20,6 +20,8 @@ router.post(
 
 router.get(
 	"/lesson-feedback/list",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(
 		lessonFeedbackController.getAll.bind(lessonFeedbackController)
 	)
@@ -27,6 +29,8 @@ router.get(
 
 router.get(
 	"/lesson-feedback/get-by-teacher/:teacherId",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(
 		lessonFeedbackController.getByTeacher.bind(lessonFeedbackController)
 	)
@@ -34,6 +38,8 @@ router.get(
 
 router.get(
 	"/lesson-feedback/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	validateFeedbackLesson,
 	asyncMiddleware(
 		lessonFeedbackController.getById.bind(lessonFeedbackController)
@@ -42,6 +48,8 @@ router.get(
 
 router.put(
 	"/lesson-feedback/update/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	validateFeedbackLesson,
 	asyncMiddleware(
 		lessonFeedbackController.update.bind(lessonFeedbackController)

@@ -1,6 +1,7 @@
 const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const { intersectFilters } = require("../helper/scope.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 const ObjectId = mongoose.Types.ObjectId;
 
 /**
@@ -34,7 +35,7 @@ class BaseController {
 			const searchFields = ["identity.name", "identity.phone"];
 
 			const regexExpressions = searchFields.map((field) => ({
-				[field]: { $regex: new RegExp(search, "i") },
+				[field]: { $regex: new RegExp(escapeRegExp(search), "i") },
 			}));
 
 			if (!isNaN(parseInt(search))) {

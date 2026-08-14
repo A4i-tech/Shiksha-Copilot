@@ -10,31 +10,40 @@ const chapterController = new ChapterController();
 
 router.get(
 	"/chapter/list",
+	isAuthenticated,
 	asyncMiddleware(chapterController.getAll.bind(chapterController))
 );
 
 router.get(
 	"/chapter/get-by-sem",
+	isAuthenticated,
 	asyncMiddleware(chapterController.getBySemester.bind(chapterController))
 );
 
 router.get(
 	"/chapter/:id",
+	isAuthenticated,
 	asyncMiddleware(chapterController.getById.bind(chapterController))
 );
 
 router.put(
 	"/chapter/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(chapterController.update.bind(chapterController))
 );
 
 router.post(
 	"/chapter/create",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(chapterController.create.bind(chapterController))
 );
 
 router.delete(
 	"/chapter/:id",
+	isAuthenticated,
+	requirePermission("content.manage"),
 	asyncMiddleware(chapterController.delete.bind(chapterController))
 );
 

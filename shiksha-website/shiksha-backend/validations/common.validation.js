@@ -1,6 +1,6 @@
-const validateRequest = (schema) => {
+const validateRequest = (schema, source = "body") => {
     return (req, res, next) => {
-        const data = req.body;
+        const data = req[source];
 
         const isValid = schema.required().validate(data, { abortEarly: false });
 

@@ -6,13 +6,14 @@ const BaseDao = require("./base.dao");
 const mongoose = require("mongoose");
 
 const { capitalizeFirstLetter } = require("../helper/data.helper");
+const escapeRegExp = require("lodash/escapeRegExp");
 
 // --- Helpers ---
 const toTitleCase = (str) => {
 	if (!str) return "";
 	return capitalizeFirstLetter(String(str).toLowerCase());
 };
-const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, "i");
+const regexExact = (val) => new RegExp(`^${escapeRegExp(String(val).trim())}$`, "i");
 class ChapterDao extends BaseDao {
 	constructor() {
 		super(Chapter);

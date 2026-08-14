@@ -14,6 +14,7 @@ const AppError = require("../helper/app.error");
 const ExcelJS = require("exceljs");
 const { sendWelcomeSMS } = require("../services/variform.service");
 const { MESSAGES } = require("../config/constants");
+const escapeRegExp = require("lodash/escapeRegExp");
 const ClassDao = require("../dao/school.class.dao");
 const Role = require("../models/role.model");
 const School = require("../models/school.model");
@@ -415,7 +416,7 @@ class UserManager extends BaseManager {
       const searchFields = ["identity.name", "identity.phone"];
 
       searchFilter.$or = searchFields.map((field) => ({
-        [field]: { $regex: new RegExp(search, "i") },
+        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
       }));
     }
 

@@ -2,10 +2,11 @@ const Question = require("../models/question.model");
 
 const BaseDao = require("./base.dao");
 const mongoose = require("mongoose");
+const escapeRegExp = require("lodash/escapeRegExp");
 const ObjectId = mongoose.Types.ObjectId;
 
 // --- Helpers ---
-const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, "i");
+const regexExact = (val) => new RegExp(`^${escapeRegExp(String(val).trim())}$`, "i");
 const str = (val) => String(val || "").trim();
 
 class QuestionDao extends BaseDao {
@@ -126,10 +127,7 @@ class QuestionDao extends BaseDao {
         if (type && type !== "Any") query.answerType = type;
 
         if (search) {
-            const rx = new RegExp(
-                str(search).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-                "i"
-            );
+            const rx = new RegExp(escapeRegExp(str(search)), "i");
             const searchOr = [{ text: rx }, { "chapter.title": rx }];
             if (query.$or) {
                 // If query already has an $or (e.g. from class/standard), combine them with $and

@@ -42,7 +42,7 @@ class QuestionBankDao extends BaseDao {
         },
       },
       { $match: processedFilters },
-      { $sort: sort },
+      ...(Object.keys(sort).length ? [{ $sort: sort }] : []),
     ];
 
     if (fields) {
@@ -56,7 +56,7 @@ class QuestionBankDao extends BaseDao {
     const results = await QuestionBankConfiguration.aggregate(pipeline);
 
     const totalItems = await QuestionBankConfiguration.countDocuments(
-      processedFilters
+      { ...processedFilters, teacherId: new ObjectId(teacherId) }
     );
 
     return {

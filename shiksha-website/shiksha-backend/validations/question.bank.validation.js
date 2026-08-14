@@ -99,6 +99,27 @@ const getGrammarTopicsQuerySchema = Joi.object({
     grade: Joi.number().integer().min(1).max(12).required(),
 }).unknown(true);
 
+const questionBankListQuerySchema = Joi.object({
+    page: Joi.number().integer().min(1),
+    limit: Joi.number().integer().min(1).max(999),
+    filter: Joi.object({
+        _id: Joi.string().hex().length(24),
+        board: Joi.string(),
+        medium: Joi.string(),
+        grade: Joi.number().integer(),
+        subject: Joi.string(),
+        examinationName: Joi.string(),
+    }).unknown(false),
+    sortBy: Joi.string().valid("createdAt", "updatedAt", "board", "medium", "grade", "subject", "examinationName"),
+    sortOrder: Joi.string().valid("asc", "desc"),
+    search: Joi.string(),
+    fields: Joi.array().items(Joi.string().valid(
+        "_id", "createdAt", "updatedAt", "board", "medium", "grade", "subject",
+        "examinationName", "chapterIds", "topics", "isMultiChapter", "totalMarks",
+        "marksDistribution", "objectiveDistribution", "questionBankTemplate", "bluePrintTemplate", "questionBank"
+    )),
+}).unknown(false);
+
 // Middleware functions
 const validateQuestionBankCreate = (req, res, next) => {
     const data = req.body;
@@ -132,6 +153,8 @@ const validateQuestionBankBluePrintCreate = (req, res, next) => {
 
 const validateQuestionBankFeedbackCreate = validateRequest(questionBankFeedbackSchema);
 
+const validateQuestionBankList = validateRequest(questionBankListQuerySchema, "query");
+
 const validateGetQuestionTypes = (req, res, next) => {
     const isValid = getQuestionTypesQuerySchema.validate(req.query, { abortEarly: false });
     if (isValid.error) {
@@ -162,6 +185,7 @@ module.exports = {
     validateQuestionBankCreate,
     validateQuestionBankBluePrintCreate,
     validateQuestionBankFeedbackCreate,
+    validateQuestionBankList,
     validateGetQuestionTypes,
     validateGetGrammarTopics
 };

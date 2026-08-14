@@ -1,9 +1,10 @@
 const MasterSubject = require("../models/master.subject.model.js");
 const BaseDao = require("./base.dao.js");
 const mongoose = require("mongoose");
+const escapeRegExp = require("lodash/escapeRegExp");
 
 // --- Helpers ---
-const regexExact = (val) => new RegExp(`^${String(val).trim()}$`, "i");
+const regexExact = (val) => new RegExp(`^${escapeRegExp(String(val).trim())}$`, "i");
 const str = (val) => String(val || "").trim();
 
 class MasterSubjectDao extends BaseDao {
