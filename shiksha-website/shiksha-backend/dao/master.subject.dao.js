@@ -30,7 +30,7 @@ class MasterSubjectDao extends BaseDao {
 	async resolveSubjectContext(identifier, board) {
 		let subjectCode = str(identifier);
 		let targetSubjectIds = [];
-		const boardFilter = board ? { boards: board } : {};
+		const boardFilter = { boards: board };
 
 		if (mongoose.Types.ObjectId.isValid(identifier)) {
 			const subjectDoc = await MasterSubject.findById(identifier)

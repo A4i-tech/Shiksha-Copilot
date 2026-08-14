@@ -175,7 +175,7 @@ export class QuestionBankService extends BaseRestService {
    * @param filters
    * @returns Observable<any[]>
    */
-  getChapters(filters: { class: string; medium: string; subject: string; board?: string }): Observable<any[]> {
+  getChapters(filters: { class: string; medium: string; subject: string; board: string }): Observable<any[]> {
     let params = new HttpParams();
     if (filters.class) {
       params = params.set('class', filters.class);
@@ -186,9 +186,7 @@ export class QuestionBankService extends BaseRestService {
     if (filters.subject) {
       params = params.set('subject', filters.subject);
     }
-    if (filters.board) {
-      params = params.set('board', filters.board);
-    }
+    params = params.set('board', filters.board);
     return this.http.get<any>(`${this.baseUrl}/question-bank/meta/chapters`, { params }).pipe(map(resp => resp.data));
   }
 
