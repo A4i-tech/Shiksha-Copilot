@@ -861,45 +861,40 @@ class QuestionBankManager extends BaseManager {
   }
 
   async getChapters(className, medium, subject, board) {
-    try {
-      console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}, board=${board}`);
-      const normalizedClass = String(className).trim();
+    console.log(`[Manager] getChapters: class=${className}, medium=${medium}, subject=${subject}, board=${board}`);
+    const normalizedClass = String(className).trim();
 
-      const { targetSubjectIds } =
-        await this.masterSubjectDao.resolveSubjectContext(subject, board);
+    const { targetSubjectIds } =
+      await this.masterSubjectDao.resolveSubjectContext(subject, board);
 
-      // 1. Fetch Chapters (now without headings)
-      const chapters = await this.chapterDao.getChapters(
-        normalizedClass,
-        medium,
-        targetSubjectIds,
-        board
-      );
+    // 1. Fetch Chapters (now without headings)
+    const chapters = await this.chapterDao.getChapters(
+      normalizedClass,
+      medium,
+      targetSubjectIds,
+      board
+    );
 
-      // 2. Fetch Aggregated Stats from QuestionDao
-      const chapterIds = chapters.map((ch) => ch._id);
-      let statsMap = new Map();
+    // 2. Fetch Aggregated Stats from QuestionDao
+    const chapterIds = chapters.map((ch) => ch._id);
+    let statsMap = new Map();
 
-      if (chapterIds.length > 0) {
-        statsMap = await this.questionDao.getHeadingStatsByChapterIds(chapterIds);
-      }
-
-      // 3. Merge Stats back into content
-      const enrichedChapters = chapters.map((ch) => ({
-        ...ch,
-        headings: statsMap.has(String(ch._id)) ? statsMap.get(String(ch._id)).map((h) => {
-          const meta = QUESTION_TYPE_META[h.answerType];
-          if (h.answerType && !meta) logger.warn(`Unexpected LBA answer type "${h.answerType}" in chapter heading stats`, { answerType: h.answerType, heading: h.name, chapterId: String(ch._id) });
-          return meta ? { ...h, ...meta } : h;
-        }) : [],
-      }));
-
-      console.log(`[Manager] getChapters: found ${chapters.length} chapters`);
-      return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
-    } catch (err) {
-      console.error("[Manager] getChapters error:", err);
-      return formatApiReponse(false, err.message, err);
+    if (chapterIds.length > 0) {
+      statsMap = await this.questionDao.getHeadingStatsByChapterIds(chapterIds);
     }
+
+    // 3. Merge Stats back into content
+    const enrichedChapters = chapters.map((ch) => ({
+      ...ch,
+      headings: statsMap.has(String(ch._id)) ? statsMap.get(String(ch._id)).map((h) => {
+        const meta = QUESTION_TYPE_META[h.answerType];
+        if (h.answerType && !meta) logger.warn(`Unexpected LBA answer type "${h.answerType}" in chapter heading stats`, { answerType: h.answerType, heading: h.name, chapterId: String(ch._id) });
+        return meta ? { ...h, ...meta } : h;
+      }) : [],
+    }));
+
+    console.log(`[Manager] getChapters: found ${chapters.length} chapters`);
+    return formatApiReponse(true, "Chapters retrieved successfully", enrichedChapters);
   }
 
   async getPaperConfig(board, grade, subjectName) {
@@ -936,75 +931,70 @@ class QuestionBankManager extends BaseManager {
   }
 
   async getQuestions(filters) {
-    try {
-      console.log("[Manager] getQuestions filters:", JSON.stringify(filters));
-      const {
-        subject,
-        medium,
-        class: className,
-        board,
-        chapterNumbers,
-        chapterIds,
-        marks,
-        difficulty,
-        type,
-        search,
-        headings,
-      } = filters;
+    console.log("[Manager] getQuestions filters:", JSON.stringify(filters));
+    const {
+      subject,
+      medium,
+      class: className,
+      board,
+      chapterNumbers,
+      chapterIds,
+      marks,
+      difficulty,
+      type,
+      search,
+      headings,
+    } = filters;
 
-      if (!subject || !medium || !className) {
-        throw new Error("Subject, medium, and class are required");
-      }
-
-      const { subjectCode, targetSubjectIds } =
-        await this.masterSubjectDao.resolveSubjectContext(subject, board);
-
-      const cleanFilters = {
-        subject,
-        subjectCode,
-        targetSubjectIds,
-        medium,
-        class: String(className).trim(),
-        chapterNumbers: chapterNumbers
-          ? String(chapterNumbers)
-            .split(",")
-            .map((n) => Number(n))
-            .filter((n) => Number.isFinite(n))
-          : [],
-        chapterIds: chapterIds
-          ? String(chapterIds)
-            .split(",")
-            .map((id) => String(id).trim())
-            .filter(Boolean)
-          : [],
-        marks: marks === "Any" ? undefined : marks,
-        difficulty: difficulty === "Any" ? undefined : difficulty,
-        type: type === "Any" ? undefined : type,
-        search,
-        headings,
-      };
-
-      console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
-      let result = await this.questionDao.getQuestions(cleanFilters);
-
-      // Handle translation if targetLanguage is provided
-      if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
-        try {
-          // result comes back as an array of questions, _handleTranslation takes the same
-          result = await this._handleTranslation(filters.targetLanguage, result, "LBA Questions");
-        } catch (transErr) {
-          console.error("[Manager] LBA Question translation failed:", transErr);
-          // fall back to the untranslated result which is already in `result`
-        }
-      }
-      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
-
-      console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
-      return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));
-    } catch (err) {
-      console.error("[Manager] getQuestions error:", err);
-      return formatApiReponse(false, err.message, err);
+    if (!subject || !medium || !className) {
+      throw new Error("Subject, medium, and class are required");
     }
+
+    const { subjectCode, targetSubjectIds } =
+      await this.masterSubjectDao.resolveSubjectContext(subject, board);
+
+    const cleanFilters = {
+      subject,
+      subjectCode,
+      targetSubjectIds,
+      medium,
+      class: String(className).trim(),
+      chapterNumbers: chapterNumbers
+        ? String(chapterNumbers)
+          .split(",")
+          .map((n) => Number(n))
+          .filter((n) => Number.isFinite(n))
+        : [],
+      chapterIds: chapterIds
+        ? String(chapterIds)
+          .split(",")
+          .map((id) => String(id).trim())
+          .filter(Boolean)
+        : [],
+      marks: marks === "Any" ? undefined : marks,
+      difficulty: difficulty === "Any" ? undefined : difficulty,
+      type: type === "Any" ? undefined : type,
+      search,
+      headings,
+    };
+
+    console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
+    let result = await this.questionDao.getQuestions(cleanFilters);
+
+    // Handle translation if targetLanguage is provided
+    if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
+      try {
+        // result comes back as an array of questions, _handleTranslation takes the same
+        result = await this._handleTranslation(filters.targetLanguage, result, "LBA Questions");
+      } catch (transErr) {
+        console.error("[Manager] LBA Question translation failed:", transErr);
+        // fall back to the untranslated result which is already in `result`
+      }
+    }
+    result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
+
+    console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
+    return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));
   }
 
   async insertChaptersAndQuestions(data) {
