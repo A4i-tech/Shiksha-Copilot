@@ -145,11 +145,12 @@ class QuestionBankController extends BaseController {
   }
 
   async getChapters(req, res) {
-    const { class: className, medium, subject } = req.query;
+    const { class: className, medium, subject, board } = req.query;
     const result = await this.manager.getChapters(
       className,
       medium,
-      subject
+      subject,
+      board
     );
     if (!result.success) {
       return handleError(result, res);
