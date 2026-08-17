@@ -1,0 +1,60 @@
+# Daily backup: pg_dump streamed into restic, repo backed by Azure Blob Storage.
+# RESTIC_REPOSITORY container "analytics-db-backups" must exist in the storage account
+# before first run:
+#   az storage container create --name analytics-db-backups --account-name <acct>
+#
+# Required secret keys in `analytics-db-backup-secret` (store in Azure Key Vault):
+#   POSTGRES_PASSWORD     - analytics user password
+#   AZURE_ACCOUNT_NAME    - Azure storage account name
+#   AZURE_ACCOUNT_KEY     - Azure storage account key
+#   RESTIC_PASSWORD       - restic repo encryption password (generate once, never lose it)
+#   RESTIC_REPOSITORY     - e.g. azure:analytics-db-backups:/
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: analytics-db-backup
+  namespace: superset
+spec:
+  schedule: "0 1 * * *"  # daily at 01:00 UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: analytics-db-backup
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: postgres:18-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - apk add --no-cache restic && sh /scripts/backup.sh
+              env:
+                - name: PGHOST
+                  value: analytics-db
+                - name: PGUSER
+                  value: analytics
+                - name: PGDATABASE
+                  value: analytics
+              envFrom:
+                - secretRef:
+                    name: analytics-db-backup-secret
+              volumeMounts:
+                - name: backup-script
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+          volumes:
+            - name: backup-script
+              configMap:
+                name: analytics-db-backup-script
+                defaultMode: 0755

@@ -1,0 +1,60 @@
+# Daily backup: pg_dump streamed into restic, repo backed by Azure Blob Storage.
+# RESTIC_REPOSITORY container "superset-postgresql-backups" must exist in the storage account
+# before first run:
+#   az storage container create --name superset-postgresql-backups --account-name <acct>
+#
+# Required secret keys in `superset-backup-secret` (store in Azure Key Vault):
+#   POSTGRES_PASSWORD     - superset postgresql password (from superset-env secret, key POSTGRESQL_PASSWORD)
+#   AZURE_ACCOUNT_NAME    - Azure storage account name
+#   AZURE_ACCOUNT_KEY     - Azure storage account key
+#   RESTIC_PASSWORD       - restic repo encryption password (generate once, never lose it)
+#   RESTIC_REPOSITORY     - e.g. azure:superset-postgresql-backups:/
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: superset-postgresql-backup
+  namespace: superset
+spec:
+  schedule: "30 1 * * *"  # daily at 01:30 UTC (30 min after analytics-db backup)
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: superset-postgresql-backup
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: backup
+              image: postgres:18-alpine
+              command: ["/bin/sh", "-c"]
+              args:
+                - apk add --no-cache restic && sh /scripts/backup.sh
+              env:
+                - name: PGHOST
+                  value: superset-postgresql
+                - name: PGUSER
+                  value: superset
+                - name: PGDATABASE
+                  value: superset
+              envFrom:
+                - secretRef:
+                    name: superset-postgresql-backup-secret
+              volumeMounts:
+                - name: backup-script
+                  mountPath: /scripts
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  memory: 512Mi
+          volumes:
+            - name: backup-script
+              configMap:
+                name: superset-postgresql-backup-script
+                defaultMode: 0755
