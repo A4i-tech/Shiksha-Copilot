@@ -819,21 +819,9 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     if (action !== 'ok') return;
 
     if (this.existsLessonId) {
-      this.contentGenService.getLessonPlanById(this.existsLessonId).subscribe({
-        next: (val: any) => {
-          this.contentGenService.selectedLessonPlan = val.data;
-          this.router.navigate([this.getLessonType()?.inspectUrl]);
-        },
-        error: () => this.utilityservice.showError('Could not open the existing plan. Please try from your dashboard.'),
-      });
+      this.router.navigate([`/content-generation/lesson-plan/${this.existsLessonId}`]);
     } else {
-      this.contentGenService.getLessonPlanDetails(this.planId, new HttpParams()).subscribe({
-        next: (val: any) => {
-          this.contentGenService.selectedLessonPlan = val.data[0];
-          this.router.navigate([this.getLessonType()?.inspectUrl]);
-        },
-        error: () => this.utilityservice.showError('Could not open the existing plan. Please try from your dashboard.'),
-      });
+      this.utilityservice.showError('Your lesson plan already exists. Please find it from your dashboard.');
     }
   }
 
