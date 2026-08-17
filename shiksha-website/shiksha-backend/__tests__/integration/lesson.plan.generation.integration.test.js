@@ -63,10 +63,10 @@ describe("Lesson plan generation flow (E2E)", () => {
     const plansRes = await request(baseURL)
       .get("/api/teacher-lesson-plan/list?filter[type]=generated")
       .set("Authorization", token);
-    if (plansRes.status === 200 && plansRes.body.data?.results?.length) {
-      for (const plan of plansRes.body.data.results) {
-        generatedContent.push({ lessonPlanId: plan._id, contentId: plan.lessonId });
-      }
+    // getByTeacherAndPagination returns a bare array, not a { results: [] } envelope.
+    const plans = plansRes.body.data || [];
+    for (const plan of plans) {
+      generatedContent.push({ lessonPlanId: plan._id, contentId: plan.lessonId });
     }
   });
 
