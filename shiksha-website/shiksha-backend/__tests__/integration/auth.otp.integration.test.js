@@ -1,7 +1,25 @@
 const request = require("supertest");
-const { baseURL, superUserPhone, superUserPin } = require("./superuser.helper");
+const { baseURL, superUserPhone, superUserPin, loginAsSuperUser } = require("./superuser.helper");
 
 describe("Auth flow (E2E)", () => {
+  let rootToken, suUserId;
+
+  beforeAll(async () => {
+    const su = await loginAsSuperUser();
+    rootToken = su.token;
+    suUserId = su.user._id;
+  });
+
+  afterAll(async () => {
+    // Safety net: devtools/auth/reset clears loginAttempts unconditionally so a
+    // mid-run abort between the wrong-PIN and correct-PIN calls below cannot leave
+    // a dangling attempt that accumulates toward the account-lock threshold.
+    await request(baseURL)
+      .post("/api/devtools/auth/reset")
+      .set("Authorization", rootToken)
+      .send({ userId: suUserId, pin: superUserPin });
+  });
+
   it("logs in with the super-user's known PIN", async () => {
     const otpRes = await request(baseURL)
       .post("/api/auth/get-otp")
@@ -29,9 +47,8 @@ describe("Auth flow (E2E)", () => {
     expect(wrongRes.body.success).toBe(false);
     expect(wrongRes.body.message).toBe("Invalid PIN");
 
-    // A correct login resets loginAttempts (clearLoginAttempts in completeLogin),
-    // so the wrong attempt above does not accumulate across runs. The CI job
-    // carries a concurrency group so overlapping runs cannot race here.
+    // A correct login resets loginAttempts (clearLoginAttempts in completeLogin).
+    // afterAll also calls devtools/auth/reset as a safety net against mid-run aborts.
     const verifyRes = await request(baseURL)
       .post("/api/auth/validate-otp")
       .send({ phone: superUserPhone, otp: superUserPin });
