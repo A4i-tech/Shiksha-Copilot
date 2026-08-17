@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "shiksha-frontend",
   "version": "0.0.0",
   "license": "MIT",
@@ -54,7 +54,7 @@
     "ngx-toastr": "^15.2.2",
     "pdfmake": "^0.2.20",
     "quill": "^1.3.7",
-    "turndown-plugin-gfm": "^1.0.2",    "rxjs": "~7.8.0",
+    "rxjs": "~7.8.0",
     "temml": "^0.13.2",
     "tslib": "^2.3.0",
     "turndown": "^7.2.4",
@@ -72,7 +72,8 @@
     "@types/marked": "^4.3.2",
     "@types/node": "^18.18.0",
     "@types/pdfmake": "^0.2.11",
-    "@types/quill": "^1",    "@types/turndown": "^5.0.6",
+    "@types/quill": "^1",
+    "@types/turndown": "^5.0.6",
     "jasmine-core": "~4.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
