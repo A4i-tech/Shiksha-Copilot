@@ -1,10 +1,12 @@
 const CryptoJS = require("crypto-js");
 const AuditLog = require("../models/audit.log.model");
+const LessonFeedback = require("../models/feedback.lesson.model");
 const MasterLesson = require("../models/master.lesson.model");
 const RegeneratedLessonResource = require("../models/regenerate.lesson.resource.model");
 const Role = require("../models/role.model");
 const School = require("../models/school.model");
 const SchoolClass = require("../models/school.class.model");
+const TeacherResourceFeedback = require("../models/feedback.resource.model");
 const TeacherTrainingBatch = require("../models/teacher.training.batch.model");
 const User = require("../models/user.model");
 const authHelper = require("../helper/auth.helper");
@@ -78,6 +80,8 @@ exports.cleanup = async function cleanup(req, res) {
   const { roles, users, schools, classes, auditLogs, content, activities, batches } = req.body;
   await Promise.all([
     AuditLog.deleteMany({ $or: [{ userId: { $in: users } }, { _id: { $in: auditLogs } }] }),
+    LessonFeedback.deleteMany({ $or: [{ teacherId: { $in: users } }, { lessonId: { $in: content } }] }),
+    TeacherResourceFeedback.deleteMany({ $or: [{ teacherId: { $in: users } }, { resourceId: { $in: content } }] }),
     TeacherTrainingBatch.deleteMany({ _id: { $in: batches } }),
     RegeneratedLessonResource.deleteMany({ _id: { $in: activities } }),
     MasterLesson.deleteMany({ _id: { $in: content } }),
