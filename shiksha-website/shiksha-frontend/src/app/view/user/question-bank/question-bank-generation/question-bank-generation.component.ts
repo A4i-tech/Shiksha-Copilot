@@ -533,8 +533,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const row = rows.filter(item => Number(item.marksPerQuestion) <= remaining)
         .sort((a, b) => Number(a.numberOfQuestions) * Number(a.marksPerQuestion) - Number(b.numberOfQuestions) * Number(b.marksPerQuestion))[0];
       if (!row) break;
-      row.numberOfQuestions = Number(row.numberOfQuestions) + 1;
-      remaining -= Number(row.marksPerQuestion);
+      row.numberOfQuestions = this.rowQty(row) + 1;
+      remaining -= this.rowMarks(row);
     }
     rows.forEach(row => row.answerCount = row.numberOfQuestions);
     this.templateData = rows.filter(row => row.numberOfQuestions);
@@ -550,7 +550,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   private hasDuplicateRowGroups(): boolean {
     const seen = new Set<string>();
     for (const row of this.templateData) {
-      const key = `${row.type}|${Number(row.marksPerQuestion)}`;
+      const key = `${row.type}|${this.rowMarks(row)}`;
       if (seen.has(key)) return true;
       seen.add(key);
     }
@@ -558,11 +558,11 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   createBluePrint(): void {
-    if (!this.templateData.every(row => row.type && Number(row.numberOfQuestions) && Number(row.marksPerQuestion)) || this.totalTemplateMarks !== this.totalMarks) {
+    if (!this.templateData.every(row => row.type && this.rowQty(row) && this.rowMarks(row)) || this.totalTemplateMarks !== this.totalMarks) {
       this.utilityservice.showWarning('Template marks must equal the question paper marks.');
       return;
     }
-    if (!this.templateData.every(row => Number(row.answerCount) >= 1 && Number(row.answerCount) <= Number(row.numberOfQuestions))) {
+    if (!this.templateData.every(row => this.rowAns(row) >= 1 && this.rowAns(row) <= this.rowQty(row))) {
       this.utilityservice.showWarning('Answer Count must be between 1 and the Number of Questions for each row.');
       return;
     }
@@ -636,22 +636,26 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     for (const row of this.templateData) {
       // Show the full pool (numberOfQuestions) so students can pick alternates,
       // but only answerCount of them actually count toward the paper's marks.
-      let need = Number(row.numberOfQuestions);
+      let need = this.rowQty(row);
       for (const q of shuffled) {
         if (!need || used.has(q._id)) continue;
-        if (q.type === row.type && Number(q.marks) === Number(row.marksPerQuestion)) {
+        if (q.type === row.type && Number(q.marks) === this.rowMarks(row)) {
           picked.push(q); used.add(q._id); need--;
         }
       }
-      const requiredForRow = Number(row.answerCount);
-      marks += requiredForRow * Number(row.marksPerQuestion);
+      // Count only the questions actually found. A row whose pool is short must not
+      // claim its full answerCount, or the fallback fill below stops early and the
+      // paper is delivered under-populated.
+      const actualFound = this.rowQty(row) - need;
+      const requiredForRow = Math.min(this.rowAns(row), actualFound);
+      marks += requiredForRow * this.rowMarks(row);
     }
     // Fallback fill: only from questions that don't belong to any template row's
     // (type, marksPerQuestion) group — those groups are already fully handled above,
     // and topping them up here would silently exceed that row's numberOfQuestions cap.
     for (const q of shuffled.filter(q => !used.has(q._id))) {
       const belongsToRow = this.templateData.some(
-        row => row.type === q.type && Number(row.marksPerQuestion) === Number(q.marks)
+        row => row.type === q.type && this.rowMarks(row) === Number(q.marks)
       );
       if (belongsToRow) continue;
       if (marks + Number(q.marks) > this.totalMarks) continue;
@@ -685,7 +689,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       if (!row) { total += Number(q.marks); continue; }
       const count = (countByRow.get(row) || 0) + 1;
       countByRow.set(row, count);
-      const cap = Number(row.answerCount);
+      const cap = this.rowAns(row);
       if (count <= cap) total += Number(q.marks);
     }
     return total;
@@ -730,15 +734,30 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.recalculateTemplate();
   }
 
+  // Template rows keep numberOfQuestions/marksPerQuestion/answerCount nullable
+  // so a freshly added row renders as an empty input, not "0". These helpers
+  // give every read site a single, named place to coerce that null to a number.
+  rowQty(row: TemplateRow): number {
+    return Number(row.numberOfQuestions) || 0;
+  }
+
+  rowMarks(row: TemplateRow): number {
+    return Number(row.marksPerQuestion) || 0;
+  }
+
+  rowAns(row: TemplateRow): number {
+    return Number(row.answerCount) || 0;
+  }
+
   recalculateTemplate(): void {
     this.totalTemplateMarks = this.templateData.reduce((total, row) => (
-      total + Number(row.answerCount) * Number(row.marksPerQuestion)
+      total + this.rowAns(row) * this.rowMarks(row)
     ), 0);
   }
 
   onNumberOfQuestionsBlur(row: TemplateRow): void {
-    const numberOfQuestions = Number(row.numberOfQuestions) || 0;
-    if (!Number(row.answerCount) || Number(row.answerCount) > numberOfQuestions) {
+    const numberOfQuestions = this.rowQty(row);
+    if (!this.rowAns(row) || this.rowAns(row) > numberOfQuestions) {
       row.answerCount = numberOfQuestions;
     }
     this.recalculateTemplate();
@@ -773,7 +792,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const sectionKey = `${q.type}:${Number(q.marks)}`;
       if (!sectionsMap.has(sectionKey)) {
         const templateRow = this.templateData.find(row =>
-          row.type === q.type && Number(row.marksPerQuestion) === Number(q.marks));
+          row.type === q.type && this.rowMarks(row) === Number(q.marks));
         sectionsMap.set(sectionKey, {
           type: q.type,
           heading: q.heading,
@@ -868,7 +887,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   generateAIQuestionsPool() {
     const slots = this.templateData.flatMap(row => {
       const type = this.paperQuestionTypes.find(t => t.key === row.type);
-      return Array.from({ length: Number(row.numberOfQuestions) || 0 }, () => ({
+      return Array.from({ length: this.rowQty(row) }, () => ({
         key: row.type,
         label: type?.label,
         marksPerQuestion: row.marksPerQuestion,

@@ -578,7 +578,7 @@ class QuestionBankManager extends BaseManager {
     return result.filter(item => item.numberOfQuestions)
       .map(item => ({
         ...item,
-        answerCount: Math.min(Number(item.answerCount), item.numberOfQuestions),
+        answerCount: Math.min(Number(item.answerCount ?? item.numberOfQuestions), item.numberOfQuestions),
       }));
   }
 

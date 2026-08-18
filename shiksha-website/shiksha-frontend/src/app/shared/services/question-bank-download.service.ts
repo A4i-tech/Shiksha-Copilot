@@ -233,7 +233,9 @@ export class QuestionBankDownloadService {
     for (const section of data.questionBank.questions as QuestionBankSection[]) {
       // Only the questions a student must answer count toward the paper total, so a
       // "answer any 5 of 7" section contributes 5 * marksPerQuestion, not 7.
-      totalMarks += Number(section.answerCount) * Number(section.marksPerQuestion);
+      // Legacy papers saved before answerCount became required have no value on the
+      // section, so fall back to numberOfQuestions (answer-all) instead of NaN.
+      totalMarks += Number(section.answerCount ?? section.numberOfQuestions ?? 0) * Number(section.marksPerQuestion || 0);
     }
     return new Document({
       sections: [

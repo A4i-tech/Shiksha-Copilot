@@ -105,6 +105,14 @@ export class QuestionBankViewComponent implements OnInit {
           // Display-only label; the canonical `subject` field is unchanged and still used below.
           this.questionBankDetails.subjectLabel = getLabel(this.questionBankDetails.subject, this.questionBankDetails.subject, { board: this.questionBankDetails.board });
           this.questionBank = this.questionBankDetails.questionBank
+          // Legacy blueprints saved before answerCount became required have no value on the
+          // section. Normalise once here so marks, template bindings and the download service
+          // all read a number instead of NaN.
+          this.questionBank.questions?.forEach((section: any) => {
+            if (section.answerCount === undefined || section.answerCount === null) {
+              section.answerCount = section.numberOfQuestions;
+            }
+          });
           this.generatedTotalMarks = this.questionBank.questions.reduce((sum: number, section: any) => (
             sum + Number(section.answerCount) * Number(section.marksPerQuestion)
           ), 0);
