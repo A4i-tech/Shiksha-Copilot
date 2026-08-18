@@ -1,4 +1,4 @@
-import { CUSTOM_ELEMENTS_SCHEMA, NgModule } from '@angular/core';
+import { CUSTOM_ELEMENTS_SCHEMA, ErrorHandler, NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 
 import { AppRoutingModule } from './app-routing.module';
@@ -43,6 +43,7 @@ import { DropdownComponent } from './shared/components/dropdown/dropdown.compone
 
 // Services
 import { BaselineSurveyDialogService } from './core/services/baseline-survey-dialog.service';
+import { GlobalErrorHandler } from './core/error-handler/global-error-handler';
 
 @NgModule({
   declarations: [AppComponent, BaselineSurveyComponent, EndlineSurveyComponent],
@@ -87,7 +88,8 @@ import { BaselineSurveyDialogService } from './core/services/baseline-survey-dia
       multi:true
     },
     DatePipe,
-    BaselineSurveyDialogService
+    BaselineSurveyDialogService,
+    { provide: ErrorHandler, useClass: GlobalErrorHandler }
 
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],

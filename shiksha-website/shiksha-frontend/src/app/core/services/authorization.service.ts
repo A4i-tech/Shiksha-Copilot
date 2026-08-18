@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { SESSION_VERSION } from 'src/app/shared/utility/constant.util';
+import { AppInsightsService } from './app-insights.service';
 
 @Injectable({
   providedIn: 'root'
@@ -16,7 +17,7 @@ export class AuthorizationService {
    * Class constructor
    * @param router 
    */
-  constructor(private router: Router) {
+  constructor(private router: Router, private appInsightsService: AppInsightsService) {
     this.loggedIn.next(this.isLoggedIn());
   }
 
@@ -79,6 +80,7 @@ export class AuthorizationService {
    * Method to perform logout
    */
   logout(): void {
+    this.appInsightsService.clearAuthenticatedUserContext();
     this.removeLocalStorageItem('token');
     this.loggedIn.next(false);
     this.router.navigate(['/login']);

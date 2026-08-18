@@ -13,6 +13,7 @@ import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
 import { environment } from 'src/environments/environment';
 import { SESSION_VERSION } from 'src/app/shared/utility/constant.util';
+import { AppInsightsService } from 'src/app/core/services/app-insights.service';
 
 @Component({
   selector: 'app-sign-in',
@@ -72,7 +73,8 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     private translateService: TranslateService,
     private secureCookieService:SecureCookieService,
     private renderer: Renderer2,
-    private hostElement: ElementRef
+    private hostElement: ElementRef,
+    private appInsightsService: AppInsightsService
   ) {}
 
   /**
@@ -101,6 +103,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
   }
 
   navigateAfterLogin(userData: any) {
+    this.appInsightsService.setAuthenticatedUserContext(this.phoneNumber);
     if (userData.profiles?.teacher && !userData.profiles.teacher.isProfileCompleted) {
       this.router.navigate(['/profile']);
     } else {

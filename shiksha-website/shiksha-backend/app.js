@@ -6,7 +6,13 @@ if (!globalThis.crypto) {
 const dotenv = require("dotenv");
 dotenv.config();
 
-require("applicationinsights").setup().start();
+require("applicationinsights")
+	.setup()
+	.setAutoCollectPerformance(true, true) // include extended metrics (CPU, memory, I/O rate)
+	.setAutoCollectExceptions(true)
+	.setAutoCollectDependencies(true)
+	.setAutoCollectRequests(true)
+	.start();
 
 const express = require("express");
 const cors = require("cors");

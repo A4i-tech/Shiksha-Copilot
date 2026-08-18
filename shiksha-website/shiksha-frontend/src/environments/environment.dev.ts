@@ -5,6 +5,7 @@ export const environment = {
     EXP_MONTH: 3,
     turnstileSiteKey: '',
     supersetUrl: 'your_superset_url',
+    appInsightsConnectionString: '',
     supersetDashboardUuid: 'your_superset_dashboard_uuid',
     supersetMobileDashboardUuid: 'your_superset_mobile_dashboard_uuid',
 };

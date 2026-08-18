@@ -1,11 +1,13 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
+import { filter } from 'rxjs/operators';
 
 import { SignInService } from './auth/sign-in.service';
 import { UtilityService } from './core/services/utility.service';
 import { AuthorizationService } from './core/services/authorization.service';
 import { IdleService } from './shared/services/idle.service';
 import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD, SESSION_VERSION } from './shared/utility/constant.util';
+import { AppInsightsService } from './core/services/app-insights.service';
 
 @Component({
   selector: 'app-root',
@@ -26,7 +28,8 @@ export class AppComponent implements OnInit, OnDestroy {
     private utilityService: UtilityService,
     private authorizationService: AuthorizationService,
     private idleService: IdleService,
-    private router: Router
+    private router: Router,
+    private appInsightsService: AppInsightsService
   ) {}
 
   ngOnInit(): void {
@@ -64,6 +67,10 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     window.addEventListener('beforeunload', this.handleBeforeUnload);
+
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)).subscribe((event: any) => {
+      this.appInsightsService.trackPageView(event.urlAfterRedirects, event.urlAfterRedirects);
+    });
   }
 
   // ------ Idle modal close ------
