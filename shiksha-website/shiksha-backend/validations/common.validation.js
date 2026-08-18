@@ -1,3 +1,18 @@
+const appInsightsClient = require("applicationinsights").defaultClient;
+
+const logValidationFailure = (req, message) => {
+    if (!appInsightsClient) return;
+    appInsightsClient.trackTrace({
+        message: message,
+        severity: 1, // Information
+        properties: {
+            statusCode: "400",
+            path: req.originalUrl,
+            method: req.method,
+        },
+    });
+};
+
 const validateRequest = (schema, source = "body") => {
     return (req, res, next) => {
         const data = req[source];
@@ -5,10 +20,12 @@ const validateRequest = (schema, source = "body") => {
         const isValid = schema.required().validate(data, { abortEarly: false });
 
         if (isValid.error) {
+            const errorMessages = isValid.error.details.map((i) => i.message);
+            logValidationFailure(req, `Request validation failed: ${errorMessages.join("; ")}`);
             return res.status(400).json({
                 success: false,
                 data: false,
-                error: isValid.error.details.map((i) => i.message),
+                error: errorMessages,
             });
         }
 
@@ -23,6 +40,7 @@ const validateRequestForUpdates = (schema) => {
         const { id } = req.params;
 
         if (!id) {
+            logValidationFailure(req, "Request validation failed: ID parameter is required");
             return res.status(400).json({
                 success: false,
                 data: false,
