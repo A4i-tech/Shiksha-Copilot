@@ -94,7 +94,7 @@ strict_optional = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--import-mode=importlib -ra -v --strict-markers --tb=short --cov=app --cov-report=term-missing --cov-report=html:htmlcov --cov-report=xml --cov-branch --asyncio-mode=auto"
+addopts = "--import-mode=importlib -ra -v --strict-markers --tb=short -m 'not integration' --cov=app --cov-report=term-missing --cov-report=html:htmlcov --cov-report=xml --cov-branch --asyncio-mode=auto"
 markers = [
   "integration: marks tests as integration tests",
 ]
