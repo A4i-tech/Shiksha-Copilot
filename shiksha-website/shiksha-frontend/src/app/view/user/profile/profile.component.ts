@@ -725,8 +725,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
     result.forEach((ele:any)=>{
       delete ele.subjectDetails
-      if (ele.boysStrength === null) delete ele.boysStrength
-      if (ele.girlsStrength === null) delete ele.girlsStrength
+      if (ele.boysStrength == null) delete ele.boysStrength
+      if (ele.girlsStrength == null) delete ele.girlsStrength
     })
     return result;
   }
