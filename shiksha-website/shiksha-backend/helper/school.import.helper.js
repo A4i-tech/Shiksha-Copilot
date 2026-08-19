@@ -82,7 +82,8 @@ async function validateSchools(schools, classes, validationErrors) {
 }
 
 async function importSchools(workbook, userId, userName, createSchool) {
-  const validationErrors = [];
+  const schoolErrors = [];
+  const classErrors = [];
   const schools = parseSheet(workbook.getWorksheet("school"), schoolSchema, (row) => ({
     schoolId: row.getCell(1).value,
     name: row.getCell(2).value?.trim(),
@@ -94,7 +95,7 @@ async function importSchools(workbook, userId, userName, createSchool) {
     mediums: values(row.getCell(8).value, (item) => item.toLowerCase()),
     academicYearStartDate: row.getCell(9).value,
     academicYearEndDate: row.getCell(10).value,
-  }), validationErrors);
+  }), schoolErrors);
   const classes = parseSheet(workbook.getWorksheet("class"), classSchema, (row) => ({
     schoolId: row.getCell(1).value,
     board: row.getCell(2).value,
@@ -102,8 +103,9 @@ async function importSchools(workbook, userId, userName, createSchool) {
     standard: row.getCell(4).value,
     boys: row.getCell(5).value,
     girls: row.getCell(6).value,
-  }), validationErrors);
-  const validSchools = await validateSchools(schools, classes, validationErrors);
+  }), classErrors);
+  const validSchools = await validateSchools(schools, classes, schoolErrors);
+  const validationErrors = [...schoolErrors, ...classErrors];
 
   let errorUrl;
   if (validationErrors.length) {
@@ -134,12 +136,12 @@ async function importSchools(workbook, userId, userName, createSchool) {
     else errors.push({ schoolId: school.schoolId, message: result.message });
   }
 
-  const failureCount = validSchools.length - successCount;
+  const failureCount = schoolErrors.length + validSchools.length - successCount;
   const logUrl = await exportExcel({
     filename: `School-Success-Error-Log-${userId}--${Date.now()}`,
     worksheets: [{
       name: "Summary",
-      rows: [{ totalRecords: validSchools.length, successCount, failureCount }],
+      rows: [{ totalRecords: successCount + failureCount, successCount, failureCount }],
       columns: [
         { header: "Total Records Processed", key: "totalRecords", width: 30 },
         { header: "Success Count", key: "successCount", width: 20 },
@@ -157,7 +159,7 @@ async function importSchools(workbook, userId, userName, createSchool) {
     }] : [])],
   });
   await AuditLog.create({ eventType: "Schools Import", status: "success", logUrl, userId, name: userName });
-  return { success: true, message: `Bulk upload completed: ${successCount} imported, ${failureCount} failed.` };
+  return { success: !validationErrors.length, message: `Bulk upload completed: ${successCount} imported, ${failureCount} failed.`, errorUrl };
 }
 
 module.exports = importSchools;
