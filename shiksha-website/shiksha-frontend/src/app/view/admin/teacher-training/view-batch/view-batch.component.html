@@ -63,7 +63,7 @@
         </div>
 
         <div class="mt-4 flex flex-col gap-2">
-          <button class="btn-primary h-9 w-full" (click)="onViewTeachers(batch)">
+          <button class="btn-primary h-9 w-full" (click)="onViewTeachers(batch)" [attr.aria-label]="('View Teachers' | translate) + ': ' + batch.batchName">
             <div class="flex items-center justify-center gap-2">
               <span>{{ 'View' | translate }}</span>
             </div>
@@ -73,6 +73,7 @@
             class="btn-outline-primary h-9 w-full disabled:opacity-50 disabled:cursor-not-allowed"
             (click)="toggleTeachersPanel(batch)"
             [disabled]="batch.isSubmitted"
+            [attr.aria-label]="('Add Participants' | translate) + ': ' + batch.batchName"
           >
             <div class="flex items-center justify-center gap-2">
               <span>{{ 'Add' | translate }}</span>
@@ -83,6 +84,7 @@
             class="btn-danger h-9 w-full disabled:opacity-50 disabled:cursor-not-allowed"
             (click)="onDeleteBatch(batch._id)"
             [disabled]="batch.isSubmitted"
+            [attr.aria-label]="('Delete Batch' | translate) + ': ' + batch.batchName"
           >
             <div class="flex items-center justify-center gap-2">
               <span>{{ 'Delete' | translate }}</span>
@@ -127,7 +129,7 @@
             </td>
             <td class="w-px whitespace-nowrap text-sm p-4">
               <div class="flex gap-2">
-                <button class="btn-primary h-9" (click)="onViewTeachers(batch)">
+                <button class="btn-primary h-9" (click)="onViewTeachers(batch)" [attr.aria-label]="('View Teachers' | translate) + ': ' + batch.batchName">
                   <div class="flex items-center justify-center gap-2">
                     <span>{{ 'View' | translate }}</span>
                   </div>
@@ -137,6 +139,7 @@
                   class="btn-outline-primary h-9 disabled:opacity-50 disabled:cursor-not-allowed"
                   (click)="toggleTeachersPanel(batch)"
                   [disabled]="batch.isSubmitted"
+                  [attr.aria-label]="('Add Participants' | translate) + ': ' + batch.batchName"
                 >
                   <div class="flex items-center justify-center gap-2">
                     <span>{{ 'Add' | translate }}</span>
@@ -147,6 +150,7 @@
                   class="btn-danger h-9 disabled:opacity-50 disabled:cursor-not-allowed"
                   (click)="onDeleteBatch(batch._id)"
                   [disabled]="batch.isSubmitted"
+                  [attr.aria-label]="('Delete Batch' | translate) + ': ' + batch.batchName"
                 >
                   <div class="flex items-center justify-center gap-2">
                     <span>{{ 'Delete' | translate }}</span>
