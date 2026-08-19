@@ -141,7 +141,7 @@ class QuestionPaperService:
         grammar_topics_text = self._get_grammar_topics(request, record)
         slot_types = {template.type for _, template, _ in slot}
         if slot_types & GRAMMAR_QUESTION_TYPES:
-            grammar_topics_text += "\n\n" + self._prompt_qp_grammar_guide
+            grammar_topics_text = (grammar_topics_text + "\n\n" + self._prompt_qp_grammar_guide).strip()
 
         clarity_guide = self._prompt_qp_clarity_guide
         if set(request.subject.lower().split()) & MATHS_SUBJECTS:
