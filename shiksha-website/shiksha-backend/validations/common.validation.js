@@ -7,8 +7,6 @@ const logValidationFailure = (req, message) => {
         severity: 1, // Information
         properties: {
             statusCode: "400",
-            path: req.originalUrl,
-            method: req.method,
         },
     });
 };

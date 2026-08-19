@@ -8,8 +8,6 @@ const logHandledError = (data, statusCode, res) => {
 		properties: {
 			statusCode: String(statusCode),
 			code: data.code || "",
-			path: res.req ? res.req.originalUrl : "",
-			method: res.req ? res.req.method : "",
 		},
 	});
 };
