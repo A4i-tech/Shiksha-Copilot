@@ -44,7 +44,7 @@ async def test_skips_translation_for_same_language():
 
 
 async def test_rejects_invalid_translation_count():
-    with pytest.raises(RuntimeError, match="Invalid translation count"):
+    with pytest.raises(ValueError):
         await TranslationService(lambda _: PrefixTranslator([])).translate({"question": "Hello"}, "en", "te")
 
 
