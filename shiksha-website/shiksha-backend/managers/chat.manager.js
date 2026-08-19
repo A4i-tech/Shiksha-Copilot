@@ -108,7 +108,14 @@ class ChatManager extends BaseManager {
 			buffer = lines.pop();
 			for (const line of lines) {
 				if (line.trim() === '') continue;
-				const data = JSON.parse(line);
+				let data;
+				try {
+					data = JSON.parse(line);
+				} catch (error) {
+					logger.error("Error parsing chat stream line", { line, message: error.message });
+					stream.destroy(error);
+					return;
+				}
 				if (data.event === 'content') {
 					fullAnswer += data.data;
 				} else if (data.event === 'reference') {
