@@ -263,6 +263,7 @@ jobs:
 
   accessibility-tests:
     name: Accessibility Tests
+    timeout-minutes: 15
     needs: [cd-frontend-render, health-check]
     if: |
       always() &&
