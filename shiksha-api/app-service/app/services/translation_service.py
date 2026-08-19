@@ -41,8 +41,6 @@ class TranslationService:
             await translator.translate_batch_async(texts[i:i+self.batch_size], src, dst)
             for i in range(0, len(texts), self.batch_size)
         ], [])
-        if len(translated) != len(flat):
-            raise RuntimeError("Invalid translation count")
         return self.zip(data, zip((p for p, _ in flat), translated, strict=True))
 
 
