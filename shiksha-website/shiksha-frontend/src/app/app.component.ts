@@ -66,6 +66,13 @@ export class AppComponent implements OnInit, OnDestroy {
     window.addEventListener('beforeunload', this.handleBeforeUnload);
   }
 
+  skipToMainContent(event: Event): void {
+    event.preventDefault();
+    const mainContent = document.getElementById('main-content')!;
+    mainContent.focus();
+    mainContent.scrollIntoView();
+  }
+
   // ------ Idle modal close ------
   closeModal(val: any) {
     if (val !== 'close') {
