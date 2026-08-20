@@ -31,3 +31,13 @@ class TestValidateTex:
     def test_closer_before_opener_raises(self):
         with pytest.raises(ValueError):
             validate_tex(r"\)x = 1\(")
+
+    def test_blank_placeholder_inside_math_span_raises(self):
+        with pytest.raises(ValueError):
+            validate_tex(
+                r"The number \(\alpha\) is a solution of the quadratic equation "
+                r"\(x^2 + 5x + 6 = 0\) if \(x = __\)"
+            )
+
+    def test_blank_placeholder_outside_math_span_is_fine(self):
+        validate_tex(r"Fill in the blank: \(x^2 + 5x + 6 = 0\) if x = __")
