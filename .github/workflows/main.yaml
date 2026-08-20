@@ -205,7 +205,10 @@ jobs:
       - run: |
           python -m pip install --upgrade pip
           pip install -r tests/requirements.txt
-          playwright install chromium
+        name: Install dependencies
+      - name: Install Playwright browsers
+        timeout-minutes: 10
+        run: playwright install chromium
       - name: Run Smoke Tests
         env:
           FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
@@ -229,7 +232,10 @@ jobs:
       - run: |
           python -m pip install --upgrade pip
           pip install -r tests/requirements.txt
-          playwright install chromium
+        name: Install dependencies
+      - name: Install Playwright browsers
+        timeout-minutes: 10
+        run: playwright install chromium
       - name: Run Regression Tests
         env:
           FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
@@ -263,7 +269,6 @@ jobs:
 
   accessibility-tests:
     name: Accessibility Tests
-    timeout-minutes: 15
     needs: [cd-frontend-render, health-check]
     if: |
       always() &&
@@ -287,6 +292,7 @@ jobs:
         run: npm ci --prefix tests/accessibility
 
       - name: Install Playwright browsers
+        timeout-minutes: 10
         run: npx --prefix tests/accessibility playwright install chromium --with-deps
 
       # PR previews hit the pre-existing staging api/backend (cd-api/cd-backend
