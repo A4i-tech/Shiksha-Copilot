@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ContentChange, QuillModule } from 'ngx-quill';
+import { QuillDeltaToHtmlConverter } from 'quill-delta-to-html';
 import { marked } from 'marked';
 import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
@@ -54,7 +55,8 @@ export class RichTextEditorComponent implements OnChanges {
       this.valueChange.emit('');
       return;
     }
-    const markdown = turndown.turndown(event.html);
+    const html = new QuillDeltaToHtmlConverter(event.content.ops).convert();
+    const markdown = turndown.turndown(html);
     this.lastEmittedValue = markdown;
     this.valueChange.emit(markdown);
   }
