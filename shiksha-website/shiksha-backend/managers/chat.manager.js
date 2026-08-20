@@ -11,6 +11,7 @@ const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const UserDao = require('../dao/user.dao');
 const MasterLessonDao = require("../dao/master.lesson.dao");
 const { schoolDependency } = require("../helper/permission.helper");
+const logger = require("../config/loggers");
 
 /** @extends {BaseManager<ChatDao>} */
 class ChatManager extends BaseManager {
@@ -32,8 +33,12 @@ class ChatManager extends BaseManager {
 		const schoolClasses = includeClasses && user.profiles.teacher ? await this.classDao.getGroupClassesByBoard(schoolDependency(user.roles)) : [];
 		const classes = includeClasses && user.profiles.teacher ? [`**Classes**:`, ...user.profiles.teacher.classes.map(b => {
 			const board = schoolClasses.find((item) => item._id === b.board);
-			const medium = board.medium.find((item) => item.medium === b.medium);
-			const standard = medium.classDetails.find((item) => item.standard === b.class);
+			const medium = board?.medium.find((item) => item.medium === b.medium);
+			const standard = medium?.classDetails.find((item) => item.standard === b.class);
+			if (!standard) {
+				logger.error("Invalid teacher class mapping", { userId: String(userId), board: b.board, medium: b.medium, class: b.class });
+				throw new Error(`Invalid teacher class mapping: ${b.board}/${b.medium}/${b.class}`);
+			}
 			return `- ${b.name} (for class ${b.class}, ${b.board} curriculum; boys: ${b.boysStrength ?? standard.boysStrength}, girls: ${b.girlsStrength ?? standard.girlsStrength})`;
 		})] : [];
 		return [
