@@ -36,6 +36,13 @@ llama-index-core = "^0.14.22"
 llama-index-llms-openai = "^0.7.9"
 llama-index-embeddings-openai = "^0.6.0"
 
+# Temporary: omni-ingest xlsx input support is not released to PyPI yet.
+# Depend on the local sibling worktree until the real release ships, then
+# switch to `omni-ingest = "^0.1.2"` (or whatever version adds it).
+[tool.poetry.dependencies.omni-ingest]
+path = "C:/A4I/OmniIngest-pun-it-xlsx-input"
+develop = true
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
 pytest-asyncio = "^0.21.1"

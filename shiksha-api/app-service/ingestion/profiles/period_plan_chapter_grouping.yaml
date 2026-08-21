@@ -1,0 +1,154 @@
+pipeline_id: period_plan_chapter_grouping
+domain_profile: period-plan
+input_modality: document
+description: >-
+  Ingests a Bloom-taxonomy learning-outcome xlsx workbook via omni-ingest's
+  xlsx parser (one sheet per grade), selects the sheet matching the "grade"
+  parameter, and groups its period-level rows into one record per
+  (chapter_number, chapter_title), each carrying the chapter's qdrant
+  index_path and a topic_groups list (one entry per period, with that
+  period's topics and learning outcomes). Merged cells are already
+  forward-filled by the parser, so no pandas-style ffill is needed here.
+parameters:
+  properties:
+    grade:
+      type: string
+      description: Grade whose sheet is selected from the workbook (sheet name).
+    subject:
+      type: string
+      description: Subject name embedded in the qdrant index_path and chapter_id.
+    medium:
+      type: string
+      default: english
+      description: Language medium of instruction, embedded in the qdrant index_path and chapter_id.
+    board:
+      type: string
+      default: BSE-TG
+      description: Education board embedded in the chapter_id and doc _id.
+    workflow_template:
+      type: string
+      description: >-
+        The lesson-plan workflow template (parsed from its source yaml by the
+        caller), passed as a JSON-encoded string: an object with a top-level
+        "_id" and a "sections" array, each section's "description" containing
+        ${READING_CONTENT}, ${DISCOURSE_TYPES_MAJOR}, and ${DISCOURSE_TYPES}
+        placeholders. Passed as a string, not an object, because omni-ingest's
+        ${...} interpolation only round-trips JSON correctly through a
+        string parameter -- see the payload-building step below.
+    discourse_types:
+      type: string
+      description: >-
+        JSON-encoded string of {"major": [...], "minor": [...]}. See
+        workflow_template above for why this is a string, not an object.
+      default: '{"major": ["Lab Report", "Project Work", "Field Trip Report", "Model Making"], "minor": ["Concept Map", "Flow Chart", "Diagram", "Data Table", "Quiz"]}'
+  required: [grade, subject, workflow_template]
+steps:
+  # Normalizes the xlsx bytes to text; parse_document detects the "xl/" zip
+  # layout and writes {"sheets": {sheet_name: [row_dict, ...]}} into the
+  # item's metadata (merged cells forward-filled by the parser).
+  - agent: text
+    description: Read xlsx workbook into per-sheet row dicts
+  # Real workbook headers vary in case/whitespace across grade sheets (e.g.
+  # "Chapter Number", "Period ", "Learning outcomes" vs "Learning Outcomes").
+  # Normalize each row's keys to snake_case before anything reads them, so
+  # the grouping step below can rely on fixed field names. Also forward-fills
+  # chapter_number/chapter_title/period, matching the old pandas .ffill() --
+  # some blank cells in the real workbooks visually continue the value above
+  # WITHOUT a formal Excel merge, which the xlsx parser's merge-based fill
+  # does not carry down (a plain blank cell stays null).
+  - agent: transform
+    description: Normalize row keys to snake_case and forward-fill chapter/period columns
+    config:
+      path: ".metadata.rows"
+      value: >
+        .items[0].metadata.sheets as $sheets
+        | (if ($sheets | has("${.config.grade}")) then $sheets["${.config.grade}"]
+           else error("Sheet not found for grade \"${.config.grade}\". Available sheets: " + ($sheets | keys | join(", ")))
+           end)
+        | map(with_entries(.key |= (gsub("^\\s+|\\s+$"; "") | ascii_downcase | gsub("\\s+"; "_"))))
+        | reduce .[] as $row (
+            {last: {chapter_number: null, chapter_title: null, period: null}, out: []};
+            (if $row.chapter_number != null then $row.chapter_number else .last.chapter_number end) as $cn
+            | (if $row.chapter_title != null then $row.chapter_title else .last.chapter_title end) as $ct
+            | (if $row.period != null then $row.period else .last.period end) as $p
+            | {last: {chapter_number: $cn, chapter_title: $ct, period: $p},
+               out: (.out + [$row + {chapter_number: $cn, chapter_title: $ct, period: $p}])}
+          )
+        | .out
+
+  # Pure jq grouping; replaces the old pandas groupby script. Runs fully
+  # offline (no LLM).
+  - agent: transform
+    description: Group period rows into chapter records with index_path
+    config:
+      path: ".metadata.chapters"
+      value: >
+        .metadata.rows
+        | group_by([.chapter_number, .chapter_title])
+        | map({
+            chapter_number: .[0].chapter_number,
+            chapter_title: .[0].chapter_title,
+            index_path: ("qdrant/SCERT/chapter_id:Medium=${.config.medium},Grade=${.config.grade},Subject=${.config.subject},Number=" + (.[0].chapter_number | tostring)),
+            topic_groups: (
+              group_by(.period)
+              | map({
+                  topic: [.[] | .topic | select(. != null and . != "")],
+                  learning_outcomes: [.[] | .learning_outcomes | select(. != null and . != "")]
+                })
+              | map(select((.topic | length) > 0))
+            )
+          })
+
+  # Pure jq templating; replaces the old curated_to_payloads.py script. Runs
+  # fully offline (no LLM). One payload per (chapter, topic_group) pair.
+  #
+  # workflow_template and discourse_types are JSON-encoded STRING parameters
+  # (see their descriptions above), so ${.config.workflow_template} splices
+  # their raw JSON text directly into this jq source -- itself valid jq
+  # object/array syntax. A non-string (object/array) parameter embedded
+  # mid-expression like this would instead splice a Python repr() of the
+  # value (single-quoted, not valid jq), because omni-ingest's ${...}
+  # interpolation only round-trips JSON typing when the WHOLE yaml value is
+  # one ${...}, which "value:" here (always a jq-expression string) can't be.
+  - agent: transform
+    description: Build one API payload per chapter/topic-group, substituting the workflow template
+    config:
+      path: ".metadata.payloads"
+      value: >
+        ${.config.workflow_template} as $template
+        | ($template._id) as $workflow_id
+        | ${.config.discourse_types} as $discourse
+        | ($discourse.major) as $discourse_major
+        | ($discourse.minor) as $discourse_minor
+        | [
+            .metadata.chapters[] as $chapter
+            | ($chapter.topic_groups | to_entries[]) as $entry
+            | ($entry.value) as $group
+            | ($entry.key + 1) as $topic_counter
+            | ($group.topic | join(" & ")) as $t_title
+            | ($group.learning_outcomes | join(", ")) as $t_los_str
+            | ("CHAPTER: " + $chapter.chapter_title + "\nSUBTOPICS: " + $t_title + "\nLEARNING OUTCOMES: " + $t_los_str + "\n") as $context_str
+            | ("Board=${.config.board},Medium=${.config.medium},Grade=${.config.grade},Subject=${.config.subject},Number=" + ($chapter.chapter_number | tostring) + ",Title=" + $chapter.chapter_title) as $chapter_id
+            | ("Board=${.config.board}/Medium=${.config.medium}/Grade=${.config.grade}/Subject=${.config.subject}/Number=" + ($chapter.chapter_number | tostring) + "/Level=SUBTOPIC/Topics=" + $t_title) as $doc_id
+            | ($template
+               | if $topic_counter > 1 then .sections |= map(select(.id != "lesson_mind_mapping")) else . end
+               | .sections |= map(.description |= (
+                    gsub("\\$\\{READING_CONTENT\\}"; $context_str)
+                    | gsub("\\$\\{DISCOURSE_TYPES_MAJOR\\}"; ($discourse_major | join("; ")))
+                    | gsub("\\$\\{DISCOURSE_TYPES\\}"; ($discourse_minor | join("; ")))
+                 ))
+              ) as $workflow_payload
+            | {
+                _id: $doc_id,
+                user_id: "ADMIN",
+                created_at: (now | floor),
+                workflow_id: $workflow_id,
+                chapter_id: $chapter_id,
+                lp_level: "SUBTOPIC",
+                lp_type_english: "NONE",
+                subtopics: $group.topic,
+                learning_outcomes: $group.learning_outcomes,
+                chapter_info: {id: $chapter_id, chapter_title: $chapter.chapter_title, index_path: $chapter.index_path},
+                workflow: $workflow_payload
+              }
+          ]

@@ -2,3 +2,4 @@
 __pycache__/
 .env
 shiksha-copilot-presentations/
+ingestion/config/period_plan_api.yaml
