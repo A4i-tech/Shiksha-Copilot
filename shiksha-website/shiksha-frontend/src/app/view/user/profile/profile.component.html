@@ -257,13 +257,13 @@
               <label class="lg:hidden mb-1 form-control-label">{{
                 "Boys Strength" | translate
               }}</label>
-              <p>{{ class.get("boysStrength")?.value || "-" }}</p>
+              <input type="number" min="0" step="1" class="form-control" formControlName="boysStrength" />
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
               <label class="lg:hidden mb-1 form-control-label">{{
                 "Girls Strength" | translate
               }}</label>
-              <p>{{ class.get("girlsStrength")?.value || "-" }}</p>
+              <input type="number" min="0" step="1" class="form-control" formControlName="girlsStrength" />
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
               <div class="flex lg:w-24 gap-2 justify-end lg:justify-start">                
