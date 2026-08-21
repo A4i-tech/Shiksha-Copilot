@@ -25,7 +25,7 @@ describe("UserController", () => {
       user: {
         _id: "user-123",
         identity: { name: "Test User", phone: "9876543210" },
-        roles: ["teacher"],
+        roles: [{ role: { isDeleted: false, isSuperUser: false } }],
         profiles: { admin: { zones: ["zone1", "zone2"], districts: ["dist1", "dist2"] } },
       },
       permissions: [],
@@ -238,7 +238,7 @@ describe("UserController", () => {
 
       await controller.activate(mockReq, mockRes);
 
-      expect(mockUserManager.activate).toHaveBeenCalledWith("user-123", mockReq.permissions);
+      expect(mockUserManager.activate).toHaveBeenCalledWith("user-123", mockReq.permissions, false);
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
@@ -251,7 +251,7 @@ describe("UserController", () => {
 
       await controller.deactivate(mockReq, mockRes);
 
-      expect(mockUserManager.deactivate).toHaveBeenCalledWith("user-123", mockReq.permissions);
+      expect(mockUserManager.deactivate).toHaveBeenCalledWith("user-123", mockReq.permissions, false);
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });

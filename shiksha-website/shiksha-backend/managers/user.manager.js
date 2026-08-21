@@ -30,6 +30,7 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
   const currentById = new Map(current.map((assignment) => [String(assignment._id), assignment]));
   const currentIds = new Set(current.map((assignment) => String(assignment._id)));
   const grants = getRolePermissions(actor.roles);
+  const superuser = actor.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser);
   const seen = new Set();
   const assignments = [];
   let school;
@@ -39,7 +40,8 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
     const existing = assignment._id && currentById.get(assignment._id);
     const unchanged = existing && String(existing.role._id) === assignment.roleId
       && (["GLOBAL", "UNBOUND"].includes(role.scopeType) ? assignment.dep == null : dependencyMatches(role.scopeType, existing.dep, assignment.dep));
-    const dep = unchanged ? existing.dep : await assertCanAssign(grants, role, assignment.dep, permission);
+    if (superuser && role.scopeType === "GLOBAL" && assignment.dep) throw new Error("GLOBAL scope does not accept a dependency");
+    const dep = unchanged ? existing.dep : superuser && role.scopeType === "GLOBAL" ? null : await assertCanAssign(grants, role, assignment.dep, permission);
     const key = `${assignment.roleId}:${JSON.stringify(dep)}`;
     if (seen.has(key)) throw new Error("Duplicate role assignment");
     seen.add(key);
@@ -162,7 +164,8 @@ class UserManager extends BaseManager {
     if (payload.roles && String(id) === String(actor._id)) throw new Error("You cannot change your own role assignments");
     const action = "user.edit";
     const grants = getRolePermissions(actor.roles);
-    if (!await canManageUser(grants, action, user)) throw new AppError("User is not below your scope", 403);
+    const superuser = actor.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser);
+    if (!superuser && !await canManageUser(grants, action, user)) throw new AppError("User is not below your scope", 403);
 
     if (payload.identity?.phone) {
       const duplicate = await this.dao.getByPhone(payload.identity.phone);
@@ -331,12 +334,12 @@ class UserManager extends BaseManager {
     return { success: true, message: "Profile Image removed sucessfully!", data };
   }
 
-  async activate(userId, grants) {
+  async activate(userId, grants, superuser) {
     const user = await this.dao.getById(userId);
     if (!user) {
       return formatApiReponse(false, "Teacher not found", null);
     }
-    if (!await canManageUser(grants, "user.delete", user)) throw new AppError("User is not below your scope", 403);
+    if (!superuser && !await canManageUser(grants, "user.delete", user)) throw new AppError("User is not below your scope", 403);
     if (user.profiles.teacher && (await this.schoolDao.getOne({ _id: schoolDependency(user.roles) })).isDeleted) {
       return formatApiReponse(
         false,
@@ -359,13 +362,13 @@ class UserManager extends BaseManager {
       );
   }
 
-  async deactivate(userId, grants) {
+  async deactivate(userId, grants, superuser) {
     const user = await this.dao.getById(userId);
 
     if (!user) {
       return formatApiReponse(false, "Teacher not found", null);
     }
-    if (!await canManageUser(grants, "user.delete", user)) throw new AppError("User is not below your scope", 403);
+    if (!superuser && !await canManageUser(grants, "user.delete", user)) throw new AppError("User is not below your scope", 403);
     if (user.isDeleted) {
       return formatApiReponse(false, "Teacher is already inactive", null);
     }
@@ -512,7 +515,7 @@ class UserManager extends BaseManager {
   async delete(req) {
     const user = await this.dao.getById(req.params.id);
     if (!user) return formatApiReponse(false, "User not found", null);
-    if (!await canManageUser(req.permissions, "user.delete", user)) throw new AppError("User is not below your scope", 403);
+    if (!req.user.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser) && !await canManageUser(req.permissions, "user.delete", user)) throw new AppError("User is not below your scope", 403);
     return formatApiReponse(true, "", await this.dao.delete(req.params.id));
   }
 }

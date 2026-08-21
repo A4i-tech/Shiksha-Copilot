@@ -17,7 +17,7 @@ const RESEND_COOLDOWN_MS = RESEND_COOLDOWN_SECONDS * 1000;
 async function sessionUser(user) {
     const { roles, otp, recovery, loginAttempts, rememberMeToken, ...data } = user.toObject();
     if (data.profiles.teacher) data.school = await School.findById(schoolDependency(user.roles)).select("name state zone district block").lean();
-    return data;
+    return { ...data, isSuperUser: user.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser) };
 }
 
 class AuthManager {

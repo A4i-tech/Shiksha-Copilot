@@ -497,6 +497,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   }
 
   canManage(item: any, permission: string) {
+    if (this.utility.loggedInUserData.isSuperUser) return true;
     const grants = this.utility.getPermission(permission);
     return grants && item.roles.every((assignment: any) =>
       scopeBelow(grants, assignment.role.scopeType, assignment.role.scopeType === 'SCHOOL' ? item.school : assignment.dep));
