@@ -63,29 +63,31 @@
         </div>
 
         <div class="mt-4 flex flex-col gap-2">
-          <button class="btn-primary h-9 w-full" (click)="onViewTeachers(batch)">
+          <button class="btn-primary h-9 w-full" (click)="onViewTeachers(batch)" [attr.aria-label]="('View Teachers' | translate) + ': ' + batch.batchName">
             <div class="flex items-center justify-center gap-2">
-              <span>{{ 'View Teachers' | translate }}</span>
+              <span>{{ 'View' | translate }}</span>
             </div>
           </button>
           <button
             type="button"
-            class="btn-primary h-9 w-full"
+            class="btn-outline-primary h-9 w-full disabled:opacity-50 disabled:cursor-not-allowed"
             (click)="toggleTeachersPanel(batch)"
             [disabled]="batch.isSubmitted"
+            [attr.aria-label]="('Add Participants' | translate) + ': ' + batch.batchName"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>{{ (selectedBatch?._id === batch._id && showTeachersPanel ? 'Close Participants' : 'Add Participants') | translate }}</span>
+              <span>{{ 'Add' | translate }}</span>
             </div>
           </button>
           <button
             type="button"
-            class="btn-outline-primary h-9 w-full"
+            class="btn-danger h-9 w-full disabled:opacity-50 disabled:cursor-not-allowed"
             (click)="onDeleteBatch(batch._id)"
             [disabled]="batch.isSubmitted"
+            [attr.aria-label]="('Delete Batch' | translate) + ': ' + batch.batchName"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>{{ 'Delete Batch' | translate }}</span>
+              <span>{{ 'Delete' | translate }}</span>
             </div>
           </button>
         </div>
@@ -104,9 +106,8 @@
             <th class="text-left p-4 border-r text-sm text-content">{{ 'Schedule Date' | translate }}</th>
             <th class="text-left p-4 border-r text-sm text-content">{{ 'Mode of Training' | translate }}</th>
             <th *ngIf="canViewAllBatches" class="text-left p-4 border-r text-sm text-content">{{ 'Manager' | translate }}</th>
-            <th class="text-left p-4 border-r text-sm text-content">{{ 'View Teacher' | translate }}</th>
             <th class="text-left p-4 border-r text-sm text-content">{{ 'Status' | translate }}</th>
-            <th class="text-left p-4 text-sm text-content">{{ 'Actions' | translate }}</th>
+            <th class="w-px whitespace-nowrap text-left p-4 text-sm text-content">{{ 'Actions' | translate }}</th>
           </tr>
         </thead>
         <tbody class="bg-white">
@@ -115,13 +116,6 @@
             <td class="text-sm p-4 border-r whitespace-nowrap">{{ batch.scheduleDate | date }}</td>
             <td class="text-sm p-4 border-r break-words">{{ (batch.trainingType | titlecase) | translate }}</td>
             <td *ngIf="canViewAllBatches" class="text-sm p-4 border-r break-words">{{ batch.createdBy?.identity?.name || '-' }}</td>
-            <td class="text-sm p-4 border-r">
-              <button class="btn-primary h-9" (click)="onViewTeachers(batch)">
-                <div class="flex items-center justify-center gap-2">
-                  <span>{{ 'View Teachers' | translate }}</span>
-                </div>
-              </button>
-            </td>
             <td class="text-sm p-4 border-r">
               <span
                 class="inline-flex px-3 py-0.5 sm:py-1 rounded-full text-sm"
@@ -133,26 +127,33 @@
                 {{ (batch.isSubmitted ? 'Completed' : 'Ongoing') | translate }}
               </span>
             </td>
-            <td class="text-sm p-4">
-              <div class="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  class="btn-primary h-9"
-                  (click)="toggleTeachersPanel(batch)"
-                  [disabled]="batch.isSubmitted"
-                >
+            <td class="w-px whitespace-nowrap text-sm p-4">
+              <div class="flex gap-2">
+                <button class="btn-primary h-9" (click)="onViewTeachers(batch)" [attr.aria-label]="('View Teachers' | translate) + ': ' + batch.batchName">
                   <div class="flex items-center justify-center gap-2">
-                    <span>{{ (selectedBatch?._id === batch._id && showTeachersPanel ? 'Close Participants' : 'Add Participants') | translate }}</span>
+                    <span>{{ 'View' | translate }}</span>
                   </div>
                 </button>
                 <button
                   type="button"
-                  class="btn-outline-primary h-9"
-                  (click)="onDeleteBatch(batch._id)"
+                  class="btn-outline-primary h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                  (click)="toggleTeachersPanel(batch)"
                   [disabled]="batch.isSubmitted"
+                  [attr.aria-label]="('Add Participants' | translate) + ': ' + batch.batchName"
                 >
                   <div class="flex items-center justify-center gap-2">
-                    <span>{{ 'Delete Batch' | translate }}</span>
+                    <span>{{ 'Add' | translate }}</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  class="btn-danger h-9 disabled:opacity-50 disabled:cursor-not-allowed"
+                  (click)="onDeleteBatch(batch._id)"
+                  [disabled]="batch.isSubmitted"
+                  [attr.aria-label]="('Delete Batch' | translate) + ': ' + batch.batchName"
+                >
+                  <div class="flex items-center justify-center gap-2">
+                    <span>{{ 'Delete' | translate }}</span>
                   </div>
                 </button>
               </div>
