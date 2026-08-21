@@ -17,7 +17,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CommonModule } from '@angular/common';
 import { DropdownComponent } from '../dropdown/dropdown.component';
 import { Observable } from 'rxjs';
-import { DeleteDetailComponent } from '../delete-detail/delete-detail.component';
+import { DeleteDetailComponent, DeleteDetailConfig } from '../delete-detail/delete-detail.component';
 import { HttpParams } from '@angular/common/http';
 import { HasPermissionDirective } from 'src/app/core/directives/has-permission.directive';
 import { IdleService } from '../../services/idle.service';
@@ -153,6 +153,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   data: any[] = [];
 
   showDraftPopup!: boolean;
+  showExistsPopup = false;
+  existsLessonId: string | undefined;
 
   draftDetails = {
     type: '',
@@ -163,6 +165,16 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     heading: this.translateService.instant('Draft Exists'),
     confirmText: this.translateService.instant('A draft already exists for the selected combination. Would you like to proceed with editing it?'),
   };
+
+  get existsPopupConfig(): DeleteDetailConfig {
+    return {
+      heading: 'Lesson plan already exists',
+      confirmationText: 'You already created a lesson plan for this chapter. Would you like to view it?',
+      primaryButtonLabel: 'View',
+      primaryButtonType: 'ok',
+      secondaryButtonLabel: 'Back',
+    };
+  }
 
   lessonTypeConfig: LessonTypeConfig = {
     '/content-generation/lesson-plan': {
@@ -641,6 +653,9 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
               this.showDraftPopup = true;
               this.draftDetails.id = err?.error?.data?.lessonId;
               this.draftDetails.type = 'lesson';
+            } else if (err?.error?.message === 'Lesson Plan with this combination has already been saved!') {
+              this.existsLessonId = err?.error?.data?.lessonId;
+              this.showExistsPopup = true;
             } else {
               this.utilityservice.handleError(err);
             }
@@ -797,6 +812,17 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       }
     }
     this.showDraftPopup = false;
+  }
+
+  onExistsPopupClose(action: string) {
+    this.showExistsPopup = false;
+    if (action !== 'ok') return;
+
+    if (this.existsLessonId) {
+      this.router.navigate([`/content-generation/lesson-plan/${this.existsLessonId}`]);
+    } else {
+      this.utilityservice.showError('Your lesson plan already exists. Please find it from your dashboard.');
+    }
   }
 
   ngOnDestroy(): void {

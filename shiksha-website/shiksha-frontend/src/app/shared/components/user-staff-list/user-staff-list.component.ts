@@ -473,7 +473,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
             this.modalService.showBlukUploadDialog = false;
             this.modalService.showUploadErrorDialog = true;
           } else {
-            this.utility.showError(err.error.message);
+            this.utility.handleError(err);
           }
         },
       });
