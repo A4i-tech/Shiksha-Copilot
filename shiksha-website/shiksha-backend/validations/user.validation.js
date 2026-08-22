@@ -76,6 +76,8 @@ const classSchema = Joi.object({
 	subject: Joi.string().required(),
 	sem: Joi.number().required(),
 	name: Joi.string().required(),
+	boysStrength: Joi.number().integer().min(0),
+	girlsStrength: Joi.number().integer().min(0),
 });
 
 const profileSchema = Joi.object({

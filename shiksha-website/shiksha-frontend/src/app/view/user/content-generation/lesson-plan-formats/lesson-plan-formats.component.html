@@ -124,14 +124,11 @@
 
     <ng-container *ngIf="section.outputFormat === 'plain_text'">
       <markdown [data]="section.content" *ngIf="!editMode[i]" katex></markdown>
-      <textarea
-        class="form-text-area h-[28rem]"
-        [(ngModel)]="section.content"
+      <app-rich-text-editor
         *ngIf="editMode[i]"
-      >
-            {{ section.content }}
-    </textarea
-      >
+        [value]="section.content"
+        (valueChange)="section.content = $event; unsavedChanges.emit(true)"
+      ></app-rich-text-editor>
     </ng-container>
 
     <ng-container *ngIf="section.outputFormat === 'json_1'">

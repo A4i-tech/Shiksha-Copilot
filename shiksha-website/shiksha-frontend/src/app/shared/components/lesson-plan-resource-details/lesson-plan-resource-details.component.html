@@ -207,9 +207,14 @@
 (close)="confirm($event)"></app-delete-detail>
 
 <app-delete-detail *ngIf="showDraftPopup"
-[config]="{	
-	heading: draftPopupConfig.heading,	
+[config]="{
+	heading: draftPopupConfig.heading,
 	confirmationText : draftPopupConfig.confirmText,
 	primaryButtonLabel : 'Continue',
 	primaryButtonType : 'ok'}"
 (close)="confirmDraft($event)"></app-delete-detail>
+
+<app-delete-detail *ngIf="showExistsPopup"
+[config]="existsPopupConfig"
+[showCancelBtn]="true"
+(close)="onExistsPopupClose($event)"></app-delete-detail>

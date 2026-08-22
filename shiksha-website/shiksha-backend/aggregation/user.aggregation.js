@@ -147,6 +147,8 @@ class UserAggregation {
                 sem: "$profiles.teacher.classes.sem",
               },
             },
+            boysStrength: { $first: "$profiles.teacher.classes.boysStrength" },
+            girlsStrength: { $first: "$profiles.teacher.classes.girlsStrength" },
           },
         },
         {
@@ -156,6 +158,8 @@ class UserAggregation {
             class: "$_id.class",
             medium: "$_id.medium",
             subjects: 1,
+            boysStrength: 1,
+            girlsStrength: 1,
             _id: 0,
           },
         },

@@ -37,7 +37,8 @@
               "node_modules/ngx-spinner/animations/ball-scale-multiple.css",
               "node_modules/ngx-toastr/toastr.css",
              "node_modules/angular-calendar/css/angular-calendar.css",
-             "node_modules/katex/dist/katex.min.css"
+             "node_modules/katex/dist/katex.min.css",
+              "node_modules/quill/dist/quill.snow.css"
             ],
             "scripts": [
                "node_modules/katex/dist/katex.min.js",

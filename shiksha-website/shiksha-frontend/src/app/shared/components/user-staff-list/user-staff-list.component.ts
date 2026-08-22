@@ -473,7 +473,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
             this.modalService.showBlukUploadDialog = false;
             this.modalService.showUploadErrorDialog = true;
           } else {
-            this.utility.showError(err.error.message);
+            this.utility.handleError(err);
           }
         },
       });
@@ -497,6 +497,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   }
 
   canManage(item: any, permission: string) {
+    if (this.utility.loggedInUserData.isSuperUser) return true;
     const grants = this.utility.getPermission(permission);
     return grants && item.roles.every((assignment: any) =>
       scopeBelow(grants, assignment.role.scopeType, assignment.role.scopeType === 'SCHOOL' ? item.school : assignment.dep));
