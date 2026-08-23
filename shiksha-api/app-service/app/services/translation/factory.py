@@ -1,52 +1,45 @@
+from collections.abc import Callable
+from functools import cache
 import logging
-from typing import List
+from typing import TypeAlias
 
 from app.config import settings
 from app.services.translation.base import TranslatorBase
 from app.services.translation.azure import AzureTranslator
-from app.services.translation.fallback import FallbackTranslator
 from app.services.translation.noop import NoOpTranslator
+from azure.ai.translation.text.aio import TextTranslationClient
+from azure.core.credentials import AzureKeyCredential
 
 logger = logging.getLogger(__name__)
 
+"""Factory to provide translators for specific target languages."""
+TranslatorFactory: TypeAlias = Callable[[str], TranslatorBase]
+TranslationParser: TypeAlias = Callable[[str], TranslatorBase | None]
 
-class TranslatorFactory:
+def sequential(parsers: tuple[TranslationParser, ...]) -> TranslatorFactory:
+    """Sequentially tries each parser in iteration order, returns first succeeding parser."""
+    return lambda target: next(t for p in parsers if (t := p(target)))
+
+
+def fallback_noop(target: str) -> NoOpTranslator:
+    logger.warning("Translation disabled, returning %s for target_lang=%s.", NoOpTranslator.__qualname__, target)
+    return NoOpTranslator()
+
+
+def azure() -> Callable[[str], AzureTranslator | None]:
+    if not all((settings.translator_key, settings.translator_region, settings.translator_endpoint)):
+        return lambda _: None
+    translator = AzureTranslator(TextTranslationClient(
+        endpoint=settings.translator_endpoint,
+        credential=AzureKeyCredential(settings.translator_key),
+        region=settings.translator_region
+    ))
+    return lambda _: translator
+
+
+def simple(parsers: tuple[TranslationParser] | None = None) -> TranslatorFactory:
     """
-    Factory to provide translators for specific target languages.
     Implements the replication (prototype) and caching of instances.
     When Azure Translator is not configured, returns NoOpTranslator.
     """
-
-    _instances: dict = {}
-
-    @classmethod
-    def _is_azure_configured(cls) -> bool:
-        return bool(
-            (settings.translator_key or "").strip()
-            and (settings.translator_region or "").strip()
-            and (settings.translator_endpoint or "").strip()
-        )
-
-    @classmethod
-    def get_translator(cls, tgt_lang: str) -> TranslatorBase:
-        tgt_lang = tgt_lang.lower().strip()
-
-        if tgt_lang in cls._instances:
-            return cls._instances[tgt_lang]
-
-        if not cls._is_azure_configured():
-            logger.warning(
-                "Translation disabled: Azure Translator not configured "
-                "(translator_key, translator_region, translator_endpoint). "
-                "Returning no-op translator for target_lang=%s.",
-                tgt_lang,
-            )
-            cls._instances[tgt_lang] = NoOpTranslator()
-            return cls._instances[tgt_lang]
-
-        translators: List[TranslatorBase] = [AzureTranslator()]
-        if tgt_lang == "te":
-            translators = [AzureTranslator()] + translators
-        instance = FallbackTranslator(translators=translators)
-        cls._instances[tgt_lang] = instance
-        return instance
+    return cache(sequential(parsers or (azure(), fallback_noop)))

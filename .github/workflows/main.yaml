@@ -47,6 +47,27 @@ jobs:
     secrets:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
+  integration-api:
+    name: API Integration Tests
+    needs: [cicd-frontend, cd-api, health-check]
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        working-directory: shiksha-api/app-service
+        run: |
+          pip install poetry
+          poetry install
+      - name: Run integration tests
+        working-directory: shiksha-api/app-service
+        env:
+          SHIKSHA_BASE_URL: ${{ needs.cd-api.outputs['service-url'] }}
+        run: poetry run pytest tests/integration -m integration --no-cov
+
   cd-backend:
     needs: ci-backend
     if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
@@ -196,7 +217,7 @@ jobs:
 
   smoke-tests:
     name: Smoke Tests
-    needs: [cicd-frontend, health-check]
+    needs: [cicd-frontend, cd-api, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -223,7 +244,7 @@ jobs:
 
   regression-tests:
     name: Regression Tests
-    needs: [cicd-frontend, health-check]
+    needs: [cicd-frontend, cd-api, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -250,7 +271,7 @@ jobs:
 
   performance-tests:
     name: Performance Tests
-    needs: [cicd-frontend, health-check]
+    needs: [cicd-frontend, cd-api, health-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -412,7 +433,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests, accessibility-tests]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, integration-api, smoke-tests, regression-tests, performance-tests, accessibility-tests]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
