@@ -9,6 +9,7 @@ import { MAX_FILE_SIZE } from 'src/app/shared/utility/constant.util';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
+import { IdleService } from 'src/app/shared/services/idle.service';
 
 type PresentationJobStatus =
   | 'init'
@@ -164,7 +165,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     private router: Router,
     private sanitizer: DomSanitizer,
     private utilityService: UtilityService,
-    private contentGenerationService: ContentGenerationService
+    private contentGenerationService: ContentGenerationService,
+    private idleService: IdleService
   ) {}
 
   ngOnInit(): void {
@@ -465,6 +467,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
         next: (blob) => {
           this.isDownloading = false;
           saveAs(blob, this.getDownloadFileName());
+          this.idleService.logActivity({ moduleName: 'ppt_download' });
         },
         error: (error) => {
           this.isDownloading = false;
