@@ -19,10 +19,9 @@ function _authCacheValid() {
   return _authCache && _authCache.expiresAt > Date.now() + 30_000;
 }
 
-// TODO(RLS): AdminUser.role is currently restricted to ["manager","admin"] by the
-// Mongoose enum, so only StateAdmin is reachable here. All dashboard viewers see
-// state-wide data — per-role scoping (HM/CRP/BEO/DEO/DDPI) is intentionally deferred
-// until the role model is extended. Tracked in issue #XXX.
+// AdminUser.role enum is ["manager","admin"] — both map to StateAdmin.
+// CRP/BEO/MEO/DEO/DDPI scoping applies once the adminusers role enum is extended.
+// Tracked in issue #507 (dashboard v2).
 const ROLE_MAP = {
   power: "HM", standard: "HM", hm: "HM",
   crp: "CRP", beo: "BEO", meo: "MEO",
@@ -47,7 +46,7 @@ function buildRlsClause(uid, mappedRole) {
   assertSafeId(uid);
   switch (mappedRole) {
     case "StateAdmin":
-      return null;
+      return "1=1";
     case "HM":
       // school-level: only teachers at same school
       return `user_id IN (SELECT user_id FROM dim_users WHERE school_id = (SELECT school_id FROM dim_users WHERE user_id = '${uid}'))`;
@@ -58,8 +57,8 @@ function buildRlsClause(uid, mappedRole) {
       return `user_id IN (SELECT user_id FROM dim_users WHERE region_id = (SELECT region_id FROM dim_users WHERE user_id = '${uid}'))`;
     case "DEO":
     case "DDPI":
-      // district-level: all blocks under same district parent
-      return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (SELECT r.region_id FROM dim_regions r WHERE r.parent_id = (SELECT dr.parent_id FROM dim_regions dr JOIN dim_users du ON du.region_id = dr.region_id WHERE du.user_id = '${uid}')))`;
+      // district-level: all blocks whose parent = DEO's district region
+      return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (SELECT r.region_id FROM dim_regions r WHERE r.parent_id = (SELECT du.region_id FROM dim_users du WHERE du.user_id = '${uid}')))`;
     default:
       return `user_id = '${uid}'`;
   }
