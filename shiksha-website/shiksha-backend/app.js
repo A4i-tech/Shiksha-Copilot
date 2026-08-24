@@ -26,6 +26,7 @@ const questionBankRoutes = require("./routes/question.bank.routes.js");
 const questionBankCacheRoutes = require("./routes/question.bank.cache.routes.js");
 const chatRoutes = require("./routes/chat.routes");
 const auditRoutes = require("./routes/audit.log.route");
+const supersetRoutes = require("./routes/superset.routes");
 const conditionalMorganMiddleware = require('./config/morgan');
 const useragent = require('express-useragent');
 
@@ -86,6 +87,7 @@ app.use("/api", chatRoutes);
 app.use("/api", auditRoutes);
 app.use("/api",questionBankRoutes)
 app.use("/api",questionBankCacheRoutes)
+app.use("/api", supersetRoutes);
 
 process.on('unhandledRejection',(reason,promise)=>{
 	console.log(promise,reason);

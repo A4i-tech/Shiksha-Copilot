@@ -73,12 +73,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     this.getCookies();
     if(this.authService.isLoggedIn()){
       const userData = this.utility.loggedInUserData;
-      if (
-        userData.role.includes('admin') ||
-        userData.role.includes('manager')
-      ) {
+      if (!this.authService.isTeacherOnly(userData)) {
         this.router.navigate(['/admin']);
-      }  else if (!userData.isProfileCompleted) {
+      } else if (!userData.isProfileCompleted) {
         this.router.navigate(['/user/profile']);
       } else {
         this.router.navigate(['/user']);
@@ -269,7 +266,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
               this.secureCookieService.deleteCookie("userInfo");
             }
 
-            if (res.data.user.role.includes('admin') || res.data.user.role.includes('manager')) {
+            if (!this.authService.isTeacherOnly(res.data.user)) {
               this.router.navigate(['/admin']);
             } else if (!res.data.user.isProfileCompleted) {
               this.router.navigate(['/user/profile']);

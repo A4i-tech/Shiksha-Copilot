@@ -1,0 +1,9 @@
+<div class="leaders-dashboard-wrapper">
+  <div *ngIf="loading" class="dashboard-loading">
+    <div class="spinner"></div>
+  </div>
+  <div *ngIf="error" class="dashboard-error">
+    <p>Unable to load the Leaders Dashboard. Please refresh or contact support.</p>
+  </div>
+  <div #supersetContainer class="superset-container"></div>
+</div>

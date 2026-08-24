@@ -25,6 +25,7 @@
     "@ng-select/ng-select": "^11.2.0",
     "@ngx-translate/core": "^15.0.0",
     "@ngx-translate/http-loader": "^8.0.0",
+    "@superset-ui/embedded-sdk": "^0.4.0",
     "@types/crypto-js": "^4.2.2",
     "angular-calendar": "^0.31.1",
     "chart.js": "^3.6.0",
