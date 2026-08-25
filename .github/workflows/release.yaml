@@ -6,9 +6,23 @@ on:
   pull_request:
     branches: [ "a4i/release" ]
   workflow_dispatch:
+    inputs:
+      api_tag:
+        description: "Skip ci-api and deploy this existing image tag instead (deploy-uat-only re-test)"
+        required: false
+        type: string
+      be_tag:
+        description: "Skip ci-backend and deploy this existing image tag instead"
+        required: false
+        type: string
+      fe_tag:
+        description: "Skip ci-frontend and deploy this existing image tag instead"
+        required: false
+        type: string
 
 jobs:
   ci-api:
+    if: github.event_name != 'workflow_dispatch' || inputs.api_tag == ''
     uses: ./.github/workflows/ci-api.yaml
     secrets: inherit
     with:
@@ -18,6 +32,7 @@ jobs:
       update_cov_badge: false
 
   ci-backend:
+    if: github.event_name != 'workflow_dispatch' || inputs.be_tag == ''
     uses: ./.github/workflows/ci-backend.yaml
     secrets: inherit
     with:
@@ -27,6 +42,7 @@ jobs:
       update_cov_badge: false
 
   ci-frontend:
+    if: github.event_name != 'workflow_dispatch' || inputs.fe_tag == ''
     uses: ./.github/workflows/ci-frontend.yaml
     secrets: inherit
     with:
@@ -39,7 +55,18 @@ jobs:
     needs: [ci-api, ci-backend, ci-frontend]
     # ponytail: feature/uat-docker-deploy allowed here for the test run only —
     # drop it once verified, deploy should stay gated to a4i/release.
-    if: github.event_name == 'push' && (github.ref_name == 'a4i/release' || github.ref_name == 'feature/uat-docker-deploy')
+    # always() + per-job result check: lets this proceed when a ci-* job was
+    # deliberately skipped (workflow_dispatch with an explicit *_tag input),
+    # not just when all three actually ran.
+    if: |
+      always() &&
+      contains(fromJSON('["success","skipped"]'), needs.ci-api.result) &&
+      contains(fromJSON('["success","skipped"]'), needs.ci-backend.result) &&
+      contains(fromJSON('["success","skipped"]'), needs.ci-frontend.result) &&
+      (
+        (github.event_name == 'push' && (github.ref_name == 'a4i/release' || github.ref_name == 'feature/uat-docker-deploy')) ||
+        github.event_name == 'workflow_dispatch'
+      )
     runs-on: [self-hosted, uat]
     environment: shiksha-uat
     permissions:
@@ -59,12 +86,11 @@ jobs:
         # ponytail: existing SP already has vault access, no perms to add a
         # federated credential right now. Revisit OIDC once that's unblocked —
         # swap this step back, no other change needed.
+        # azure/login@v2 has no separate client-secret input — secret-based
+        # auth goes through the single `creds` JSON blob instead.
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}"}'
 
       - name: Fetch service .env files from Key Vault
         run: |
@@ -112,9 +138,9 @@ jobs:
 
       - name: Pull + deploy app stack
         env:
-          API_IMAGE_TAG: ${{ needs.ci-api.outputs.tag_primary }}
-          BE_IMAGE_TAG: ${{ needs.ci-backend.outputs.tag_primary }}
-          FE_IMAGE_TAG: ${{ needs.ci-frontend.outputs.tag_primary }}
+          API_IMAGE_TAG: ${{ inputs.api_tag || needs.ci-api.outputs.tag_primary }}
+          BE_IMAGE_TAG: ${{ inputs.be_tag || needs.ci-backend.outputs.tag_primary }}
+          FE_IMAGE_TAG: ${{ inputs.fe_tag || needs.ci-frontend.outputs.tag_primary }}
         run: |
           docker compose -f docker-compose.yml pull
           docker compose -f docker-compose.yml up -d
