@@ -26,8 +26,8 @@ const QuestionBankConfiguration = require("../models/question.bank.config.model"
  *
  * The `answerCount: { $exists: false }` half alone also matches documents whose
  * array is empty (the dotted path exists nowhere), and `$set` on those still
- * counts as a write - so on prod_dump3 a completed migration kept rewriting
- * ~10k configurations with an empty `questionBankTemplate` on every boot.
+ * counts as a write - so on a real dataset a completed migration kept rewriting
+ * every configuration with an empty `questionBankTemplate` on every boot.
  * Requiring a numeric `numberOfQuestions` somewhere in the array excludes them
  * and makes a finished migration cost zero writes.
  * @param {string} field name of the array field on the document
