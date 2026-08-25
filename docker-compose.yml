@@ -58,6 +58,8 @@ services:
     labels:
       environment: "uat"
       com.shiksha.service: "frontend"
+    env_file:
+      - ./shiksha-website/shiksha-frontend/.env
     ports:
       - "0.0.0.0:8000:8000"
     restart: unless-stopped

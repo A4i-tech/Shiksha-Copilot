@@ -37,25 +37,34 @@ jobs:
   deploy-uat:
     name: Deploy to UAT host
     needs: [ci-api, ci-backend, ci-frontend]
-    if: github.event_name == 'push' && github.ref_name == 'a4i/release'
+    # ponytail: feature/uat-docker-deploy allowed here for the test run only —
+    # drop it once verified, deploy should stay gated to a4i/release.
+    if: github.event_name == 'push' && (github.ref_name == 'a4i/release' || github.ref_name == 'feature/uat-docker-deploy')
     runs-on: [self-hosted, uat]
-    environment: uat
+    environment: shiksha-uat
     permissions:
-      id-token: write   # required for Azure OIDC login, no stored client secret
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        # Self-hosted runner: checkout runs `git clean -ffdx` each job,
-        # wiping any .env left from a prior run. Env files are fetched
-        # fresh from Key Vault below, every deploy — never assumed to persist.
+        with:
+          # Default clean:true runs `git clean -ffdx` — the -x flag also wipes
+          # gitignored files, including the host's persistent .env-data (mongo/
+          # qdrant creds for docker-compose.data.yml). clean:false keeps that.
+          # Service .env files are still fetched fresh from Key Vault every
+          # deploy below (overwritten, not appended) — no stale-secret risk.
+          clean: false
 
-      - name: Azure login (OIDC, no stored client secret)
+      - name: Azure login (SP client secret)
+        # ponytail: existing SP already has vault access, no perms to add a
+        # federated credential right now. Revisit OIDC once that's unblocked —
+        # swap this step back, no other change needed.
         uses: azure/login@v2
         with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Fetch service .env files from Key Vault
         run: |
@@ -69,10 +78,17 @@ jobs:
               --query value -o tsv \
               | jq -r 'to_entries[] | "\(.key)=\(.value)"' > "$out_path"
             chmod 600 "$out_path"
+            # not passed via secrets.* context — GitHub won't auto-mask these,
+            # register each value explicitly so any accidental echo/log later
+            # in the job comes out redacted.
+            while IFS='=' read -r k v; do
+              [ -n "$v" ] && echo "::add-mask::$v"
+            done < "$out_path"
           }
 
-          fetch_env api-env shiksha-api/app-service/.env
-          fetch_env be-env  shiksha-website/shiksha-backend/.env
+          fetch_env "${{ vars.API_ENV_SECRET_NAME }}" shiksha-api/app-service/.env
+          fetch_env "${{ vars.BE_ENV_SECRET_NAME }}"  shiksha-website/shiksha-backend/.env
+          fetch_env "${{ vars.FE_ENV_SECRET_NAME }}"  shiksha-website/shiksha-frontend/.env
 
       - name: Login to GHCR
         uses: docker/login-action@v3
