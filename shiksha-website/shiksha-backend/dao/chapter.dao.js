@@ -14,13 +14,14 @@ const toTitleCase = (str) => {
 	return capitalizeFirstLetter(String(str).toLowerCase());
 };
 const regexExact = (val) => new RegExp(`^${escapeRegExp(String(val).trim())}$`, "i");
+/** @extends {BaseDao<typeof Chapter>} */
 class ChapterDao extends BaseDao {
 	constructor() {
 		super(Chapter);
 	}
 
 	async getClasses() {
-		const classes = await Chapter.distinct("standard");
+		const classes = await this.Model.distinct("standard");
 		return classes
 			.map((c) => parseInt(c))
 			.filter((n) => !isNaN(n))
@@ -29,7 +30,7 @@ class ChapterDao extends BaseDao {
 	}
 
 	async getMedia(className) {
-		const rawMedia = await Chapter.distinct("medium", {
+		const rawMedia = await this.Model.distinct("medium", {
 			standard: parseInt(className),
 		});
 		const uniqueMedia = new Set(rawMedia.map((m) => toTitleCase(m)));
@@ -54,7 +55,7 @@ class ChapterDao extends BaseDao {
 			],
 		};
 
-		const chapters = await Chapter.find(chapterQuery)
+		const chapters = await this.Model.find(chapterQuery)
 			.sort({ orderNumber: 1 })
 			.lean();
 

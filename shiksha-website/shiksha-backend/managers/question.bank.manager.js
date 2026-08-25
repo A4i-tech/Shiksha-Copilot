@@ -152,14 +152,11 @@ class QuestionBankManager extends BaseManager {
         examinationName
       } = context;
 
-      // 1. Get Questions (Manual or AI + Cache)
       const aiResult = await this._handleAIQuestionGeneration(context, user, body);
       let { mergedList, notFoundQuestions, cacheSummary, rawCacheHit, aiQuestionsForCache } = aiResult;
 
-      // 2. Translation
       mergedList = await this._handleTranslation(language, mergedList, examinationName);
 
-      // 3. Return Preview if requested
       if (isPreview === true) {
         if (session && session.inTransaction()) await session.abortTransaction();
         await this._enqueueCacheUpdate(
@@ -178,7 +175,6 @@ class QuestionBankManager extends BaseManager {
         );
       }
 
-      // 4. Save to DB
       const result = await this._saveQuestionBankTransaction(
         session,
         user,
@@ -220,7 +216,7 @@ class QuestionBankManager extends BaseManager {
     const pythonUrl = process.env.LLM_API_BASE_URL;
     const response = await axios.post(
       `${pythonUrl}/question-paper/translate-json`,
-      convertToSnakeCase({ targetLanguage, jsonData })
+      convertToSnakeCase({ targetLanguage, jsonData, jsonDataAllowedKeys: ["content"] })
     );
     return formatApiReponse(true, "Translation processed successfully", convertToCamelCase(response.data));
   }
@@ -269,7 +265,6 @@ class QuestionBankManager extends BaseManager {
       objectiveDistribution,
       processedUnitNames,
       unitLevel,
-      // Pass other fields needed for payload creation
       board: reqBody.board,
       medium: reqBody.medium,
       grade: reqBody.grade,
@@ -313,7 +308,6 @@ class QuestionBankManager extends BaseManager {
 
     const cacheQuestionFilters = this._buildCacheQuestionFilters(template);
 
-    // AI GENERATION FLOW
     const [cacheHit, fullCacheHit] = await Promise.all([
       this.questionBankCacheDao.findInCache(
         chapterIds,
@@ -355,11 +349,9 @@ class QuestionBankManager extends BaseManager {
 
       console.log('[Manager] AI Response received.');
 
-      // Normalize Python response from nested blocks into the flat merge shape.
       const normalizedQuestions = [];
       for(const questionBlock of convertToCamelCase(response.data).questions) normalizedQuestions.push(...questionBlock.questions);
 
-      // Restructure normalized items into blocks for mergeQuestions
       let itemPointer = 0;
       const questionsInBlocks = notFoundRes.map(template => {
         const numNeeded = template.questionDistribution.length;
@@ -654,7 +646,6 @@ class QuestionBankManager extends BaseManager {
 
     chapterData = convertToCamelCase(chapterData);
 
-    // Prepare base chapters
     let formattedChapters = chapterData.length
       ? chapterData.map((chapter) => {
         const ch = {
@@ -679,7 +670,6 @@ class QuestionBankManager extends BaseManager {
     const requiredUnits = new Set();
     marksDistribution.forEach(dist => requiredUnits.add(dist.unitName.trim()));
 
-    // Check inputs as well (Hybrid Flow)
     const allInputTopics = [...subTopicsArr, ...(Array.isArray(reqBody.chapter) ? reqBody.chapter : [reqBody.chapter])];
     allInputTopics.forEach(t => {
       if (typeof t === 'string' && t.trim().length > 0 && !mongoose.Types.ObjectId.isValid(t)) {
@@ -868,7 +858,6 @@ class QuestionBankManager extends BaseManager {
       const { targetSubjectIds } =
         await this.masterSubjectDao.resolveSubjectContext(subject, board);
 
-      // 1. Fetch Chapters (now without headings)
       const chapters = await this.chapterDao.getChapters(
         normalizedClass,
         medium,
@@ -876,7 +865,6 @@ class QuestionBankManager extends BaseManager {
         board
       );
 
-      // 2. Fetch Aggregated Stats from QuestionDao
       const chapterIds = chapters.map((ch) => ch._id);
       let statsMap = new Map();
 
@@ -884,7 +872,6 @@ class QuestionBankManager extends BaseManager {
         statsMap = await this.questionDao.getHeadingStatsByChapterIds(chapterIds);
       }
 
-      // 3. Merge Stats back into content
       const enrichedChapters = chapters.map((ch) => ({
         ...ch,
         headings: statsMap.has(String(ch._id)) ? statsMap.get(String(ch._id)).map((h) => {
@@ -986,19 +973,15 @@ class QuestionBankManager extends BaseManager {
 
       console.log("[Manager] getQuestions cleanFilters:", JSON.stringify(cleanFilters));
       let result = await this.questionDao.getQuestions(cleanFilters);
+      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
 
-      // Handle translation if targetLanguage is provided
       if (filters.targetLanguage && filters.targetLanguage.toLowerCase() !== 'english') {
         try {
-          // result comes back as an array of questions, _handleTranslation takes the same
           result = await this._handleTranslation(filters.targetLanguage, result, "LBA Questions");
         } catch (transErr) {
           console.error("[Manager] LBA Question translation failed:", transErr);
-          // fall back to the untranslated result which is already in `result`
         }
       }
-      result = (await Promise.all(result.map(transformWeakLbaQuestion))).flat();
-
       console.log(`[Manager] getQuestions: found ${result?.length || 0} questions`);
       return formatApiReponse(true, "Questions retrieved successfully", convertToCamelCase(result));
     } catch (err) {

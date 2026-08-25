@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const boardSchema = mongoose.Schema(
+const boardSchema = new mongoose.Schema(
 	{
 		boardName: {
 			type: String,

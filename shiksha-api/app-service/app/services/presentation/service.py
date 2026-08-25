@@ -9,7 +9,7 @@ import pathlib
 from datetime import datetime
 from typing import Any
 
-from langfuse import get_client, observe, propagate_attributes
+from langfuse import get_client, propagate_attributes
 from pptx import presentation
 
 from app.config import settings
@@ -263,14 +263,12 @@ class PresentationService:
                     else:
                         quality_issues.append("No educational videos added")
 
-                # Check 4: Content enrichment
                 if isinstance(design_metadata, dict):
                     retry_count = design_metadata.get("retry_count", 0)
                     if retry_count > 2:
                         quality_score -= 0.05
                         quality_issues.append("Multiple retries required during creation")
 
-                # Ensure score stays in valid range
                 quality_score = max(0.0, min(1.0, quality_score))
 
                 await self.jobs.update(job.id, {

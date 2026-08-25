@@ -7,20 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 
-from fastmcp import FastMCP
-from fastmcp.server.http import StarletteWithLifespan
 from app.config import settings
-from app.routers import chat_router, chat_router_mcp, presentation_router, question_paper_router, lesson_plan_router
+from app.routers import chat_router, presentation_router, question_paper_router, lesson_plan_router
 from langfuse import get_client
 
 logger = logging.getLogger(__name__)
-
-mcp = FastMCP(
-    name=settings.app_name,
-    instructions="AI-powered educational chat API for Shiksha platform",
-)
-
-mcp_app = mcp.http_app(path="/mcp", stateless_http=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -32,9 +23,7 @@ async def lifespan(app: FastAPI):
         if callable(prev): prev(sig, frame)
     prev = signal.signal(signal.SIGINT, sigint_handler)
 
-    assert isinstance(app.state.MCP_APP, StarletteWithLifespan)
-    async with app.state.MCP_APP.lifespan(app):
-        yield
+    yield
 
     get_client().flush()
 
@@ -45,12 +34,7 @@ app = FastAPI(
     debug=settings.debug,
     lifespan=lifespan,
     redirect_slashes=False,
-    routes=[*mcp_app.routes] 
 )
-
-
-app.state.MCP_APP = mcp_app
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,22 +48,6 @@ app.include_router(chat_router)
 app.include_router(presentation_router)
 app.include_router(question_paper_router)
 app.include_router(lesson_plan_router)
-chat_router_mcp(mcp)
-
-@mcp.tool("version")
-async def mcp_version() -> str:
-    """Get the version"""
-    return settings.version
-
-@mcp.tool("app_name")
-async def mcp_app_name() -> str:
-    """Get the app name"""
-    return settings.app_name
-
-@mcp.tool("health")
-async def mcp_health() -> str:
-    """Get the health status"""
-    return "healthy"
 
 
 @app.get("/")

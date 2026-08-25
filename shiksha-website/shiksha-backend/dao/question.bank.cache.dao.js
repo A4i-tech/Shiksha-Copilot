@@ -1,6 +1,7 @@
 const QuestionBankCache = require("../models/question.bank.cache.model");
 const BaseDao = require("./base.dao");
 
+/** @extends {BaseDao<typeof QuestionBankCache>} */
 class QuestionBankCacheDao extends BaseDao {
   constructor() {
     super(QuestionBankCache);
@@ -14,7 +15,7 @@ class QuestionBankCacheDao extends BaseDao {
     };
 
     if (!questionFilters.length) {
-      return await QuestionBankCache.find(query);
+      return await this.Model.find(query);
     }
 
     const elemMatches = questionFilters.map((filter) => ({
@@ -28,7 +29,7 @@ class QuestionBankCacheDao extends BaseDao {
       },
     }));
 
-    const result = await QuestionBankCache.aggregate([
+    const result = await this.Model.aggregate([
       {
         $match: {
           ...query,

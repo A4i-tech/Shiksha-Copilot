@@ -179,15 +179,6 @@ def mock_rag_ops():
 
 
 @pytest.fixture
-def mock_prompt_template():
-    """Mock PromptTemplate for tests."""
-    template = Mock()
-    template.get_prompt = Mock(return_value="You are a helpful educational assistant.")
-    template.get_prompt_with_variables = Mock(return_value="You are teaching {SUBJECT} for {GRADE}.")
-    return template
-
-
-@pytest.fixture
 async def mock_rag_adapter(mock_completion_llm, mock_embedding_llm, mock_rag_ops):
     """Mock RAG adapter for tests."""
     adapter = AsyncMock()

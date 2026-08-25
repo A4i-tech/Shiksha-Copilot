@@ -84,9 +84,7 @@ export class BatchService {
     return this.http.get<Batch>(`${this.baseUrl}/teacher-training-batches/${batchId}`);
   }
 
-  // New method to fetch a file as a Blob
   getFile(path: string): Observable<Blob> {
-    // Assuming the path starts with 'uploads/' and needs to be relative to the base URL
     const fullUrl = `/${path}`;
     return this.http.get(fullUrl, { responseType: 'blob' });
   }

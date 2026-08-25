@@ -239,7 +239,7 @@ describe("QuestionBankManager", () => {
       expect(result.message).toBe("Translation processed successfully");
       expect(axios.post).toHaveBeenCalledWith(
         expect.stringContaining("/question-paper/translate-json"),
-        { target_language: "Kannada", json_data: { title: "Test" } }
+        { target_language: "Kannada", json_data: { title: "Test" }, json_data_allowed_keys: ["content"] }
       );
     });
 
@@ -282,14 +282,17 @@ describe("QuestionBankManager", () => {
 
     it("should get questions and translate if targetLanguage is provided", async () => {
       const rawQuestion = { text: "Q1", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] };
-      const translatedQuestion = { text: "Q1 Translated", answerType: "MCQ", marksPerQuestion: 1, unit_name: "Unit 1", objective: "Knowledge", keyAnswer: "A", options: [], pairs: [] };
       mockQuestionBankDao.getQuestions = jest.fn().mockResolvedValue([rawQuestion]);
       const masterSubjectDao = require("../../../dao/master.subject.dao");
       manager.masterSubjectDao = {
         resolveSubjectContext: jest.fn().mockResolvedValue({ subjectCode: "SC", targetSubjectIds: [] })
       };
       manager.questionDao = mockQuestionBankDao;
-      manager._handleTranslation = jest.fn().mockResolvedValue([translatedQuestion]);
+      manager._handleTranslation = jest.fn().mockImplementation(async (_language, questions) => [{
+        ...questions[0],
+        text: [{ contentType: "text/plain", content: "Q1 Translated" }],
+        question: [{ contentType: "text/plain", content: "Q1 Translated" }],
+      }]);
 
       const filters = {
         subject: "Science",
@@ -300,7 +303,10 @@ describe("QuestionBankManager", () => {
 
       const result = await manager.getQuestions(filters);
 
-      expect(manager._handleTranslation).toHaveBeenCalledWith("Kannada", [rawQuestion], "LBA Questions");
+      expect(manager._handleTranslation).toHaveBeenCalledWith("Kannada", [expect.objectContaining({
+        text: [{ contentType: "text/plain", content: "Q1" }],
+        question: [{ contentType: "text/plain", content: "Q1" }],
+      })], "LBA Questions");
       expect(result.success).toBe(true);
       expect(result.data).toEqual([
         expect.objectContaining({

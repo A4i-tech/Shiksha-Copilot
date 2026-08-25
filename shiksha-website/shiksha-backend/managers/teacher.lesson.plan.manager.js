@@ -292,18 +292,6 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 	}
 
-	async _createRegeneratedLessonResource(teacherLessonPlan, masterLesson) {
-		await this.regeneratedLessonResource.create({
-			isLesson: true,
-			isMasterContent: !masterLesson.isRegenerated,
-			recordId: teacherLessonPlan._id,
-			contentId: masterLesson._id,
-			status:"running",
-			genContentId: teacherLessonPlan.lessonId,
-			generatedBy: teacherLessonPlan.teacherId,
-		});
-	}
-	
 	async sectionAiEdit(teacherId, payload) {
 		try {
 			const { lessonId, sectionId, currentContent, prompt, isLesson } = payload;

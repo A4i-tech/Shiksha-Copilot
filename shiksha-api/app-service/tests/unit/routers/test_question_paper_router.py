@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from app.routers.question_paper import translate_json_content_to_kannada
+from app.routers.question_paper import translate_json
 
 
 class TestTranslateJsonEndpoint:
@@ -11,16 +11,15 @@ class TestTranslateJsonEndpoint:
         """Test translation when source and target languages match."""
         request_data = {
             "target_language": "English",
-            "json_data": {
-                "title": "Science Exam",
-                "instructions": "Answer all questions.",
-            },
+            "json_data": {"content": "Answer all questions."},
+            "json_data_allowed_keys": {"content"},
         }
 
-        with patch("app.routers.question_paper.detect", return_value="en"):
-            response = await translate_json_content_to_kannada(**request_data)
+        with patch("app.routers.question_paper.detect_lang", return_value=("en", "Answer all questions.")) as detect_lang:
+            response = await translate_json(**request_data)
 
         assert response == request_data["json_data"]
+        detect_lang.assert_called_once_with(request_data["json_data"], {"content"})
 
     @pytest.mark.asyncio
     async def test_translate_json_with_language_map(self):
@@ -33,14 +32,15 @@ class TestTranslateJsonEndpoint:
             },
         }
 
-        with patch("app.routers.question_paper.detect", return_value="en"), patch(
+        with patch("app.routers.question_paper.detect_lang", return_value=("en", "What is this?")), patch(
             "app.routers.question_paper.TranslationService.translate_json_async",
             new_callable=AsyncMock,
             return_value=request_data["json_data"],
-        ):
-            response = await translate_json_content_to_kannada(**request_data)
+        ) as translate:
+            response = await translate_json(**request_data)
 
         assert isinstance(response, dict)
+        translate.assert_awaited_once_with(request_data["json_data"], "en", "kn")
 
     @pytest.mark.asyncio
     async def test_translate_json_invalid_language(self):
@@ -49,12 +49,12 @@ class TestTranslateJsonEndpoint:
             "target_language": "Unmapped Language",
             "json_data": {"title": "Test"},
         }
-        with patch(
+        with patch("app.routers.question_paper.detect_lang", return_value=("en", "Test question text")), patch(
             "app.routers.question_paper.TranslationService.translate_json_async",
             new_callable=AsyncMock,
             return_value=request_data["json_data"],
         ):
-            response = await translate_json_content_to_kannada(**request_data)
+            response = await translate_json(**request_data)
 
         assert response == request_data["json_data"]
 
@@ -63,7 +63,8 @@ class TestTranslateJsonEndpoint:
         """Test translation with empty JSON data."""
         request_data = {"target_language": "English", "json_data": {}}
 
-        response = await translate_json_content_to_kannada(**request_data)
+        with patch("app.routers.question_paper.detect_lang", return_value=("unknown", "")):
+            response = await translate_json(**request_data)
 
         assert response == {}
 
@@ -87,12 +88,12 @@ class TestTranslateJsonEndpoint:
             },
         }
         json_data = request_data["json_data"]
-        with patch(
+        with patch("app.routers.question_paper.detect_lang", return_value=("en", "What is photosynthesis?")), patch(
             "app.routers.question_paper.TranslationService.translate_json_async",
             new_callable=AsyncMock,
             return_value=json_data,
         ):
-            response = await translate_json_content_to_kannada(**request_data)
+            response = await translate_json(**request_data)
 
         assert response["parts"][0]["part_name"] == "Part A"
 
@@ -100,45 +101,59 @@ class TestTranslateJsonEndpoint:
 class TestHelperFunctions:
     """Tests for module-level helper functions."""
 
-    def test_get_sample_text_from_dict(self):
-        """Test extracting sample text from nested dict."""
-        from app.routers.question_paper import get_sample_text
+    def test_get_sample_text_from_nested_allowed_key(self):
+        from app.utils.utils import get_sample_texts
 
-        data = {"instructions": "This is a test instruction", "title": "Test"}
+        data = {
+            "parts": [{
+                "questions": [{
+                    "question": [{"content": "What is this test question?"}]
+                }]
+            }]
+        }
 
-        result = get_sample_text(data)
-        assert "test instruction" in result.lower()
+        result = next(get_sample_texts(data, {"content"}))
+        assert "test question" in result.lower()
 
     def test_get_sample_text_from_list(self):
         """Test extracting sample text from list."""
-        from app.routers.question_paper import get_sample_text
+        from app.utils.utils import get_sample_texts
 
         data = [
             {"question_text": "What is this test question?"},
             {"answer": "This is an answer"},
         ]
 
-        result = get_sample_text(data)
+        result = next(get_sample_texts(data))
         assert "test question" in result.lower()
 
     def test_get_sample_text_empty_data(self):
         """Test with empty data structure."""
-        from app.routers.question_paper import get_sample_text
+        from app.utils.utils import get_sample_texts
 
-        assert get_sample_text({}) == ""
-        assert get_sample_text([]) == ""
+        assert next(get_sample_texts({}), None) is None
+        assert next(get_sample_texts([]), None) is None
 
     def test_get_sample_text_prioritizes_instructions(self):
         """Test that instructions field is prioritized."""
-        from app.routers.question_paper import get_sample_text
+        from app.utils.utils import get_sample_texts
 
         data = {
             "title": "Short",
             "instructions": "This is a longer instruction text with multiple words",
         }
 
-        result = get_sample_text(data)
+        result = next(get_sample_texts(data))
         assert "longer instruction" in result.lower()
+
+    def test_detect_lang(self):
+        from app.utils.utils import detect_lang
+
+        with patch("app.utils.utils.detect", return_value="kn") as detect:
+            result = detect_lang({"content": "ಇದು ಕನ್ನಡದ ಮಾದರಿ ಪ್ರಶ್ನೆಯಾಗಿದೆ"}, {"content"})
+
+        assert result == ("kn", "ಇದು ಕನ್ನಡದ ಮಾದರಿ ಪ್ರಶ್ನೆಯಾಗಿದೆ")
+        detect.assert_called_once_with("ಇದು ಕನ್ನಡದ ಮಾದರಿ ಪ್ರಶ್ನೆಯಾಗಿದೆ")
 
 
 class TestLanguageMapping:

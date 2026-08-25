@@ -1,6 +1,7 @@
 const Role = require("../models/role.model");
 const BaseDao = require("./base.dao");
 
+/** @extends {BaseDao<typeof Role>} */
 class RoleDao extends BaseDao {
   constructor() {
     super(Role);

@@ -1,18 +1,19 @@
 const LessonFeedback = require("../models/feedback.lesson.model");
 const BaseDao = require("./base.dao.js");
 
+/** @extends {BaseDao<typeof LessonFeedback>} */
 class LessonFeedbackDao extends BaseDao {
 	constructor() {
 		super(LessonFeedback);
 	}
 
 	async getByTeacher(teacherId) {
-		let result = await LessonFeedback.find({ teacherId });
+		let result = await this.Model.find({ teacherId });
 		return result;
 	}
 
 	async getByTeacherAndLessonId(teacherId, lessonId) {
-		let result = await LessonFeedback.findOne({
+		let result = await this.Model.findOne({
 			teacherId,
 			lessonId,
 			isDeleted: { $ne: true },
@@ -22,7 +23,7 @@ class LessonFeedbackDao extends BaseDao {
 
 	async deleteByTeacherAndLessonId(teacherId, lessonId) {
 		try {
-			const result = await LessonFeedback.findOneAndUpdate(
+			const result = await this.Model.findOneAndUpdate(
 				{ teacherId, lessonId, isDeleted: { $ne: true } },
 				{ $set: { isDeleted: true } },
 				{ new: true, useFindAndModify: false }
@@ -38,7 +39,7 @@ class LessonFeedbackDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		const result = await LessonFeedback.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: id,
 			},

@@ -22,6 +22,7 @@ async function withTeacherSchools(batch) {
   return data;
 }
 
+/** @extends {BaseController<TeacherTrainingBatchManager>} */
 class TeacherTrainingBatchController extends BaseController {
   constructor() {
     super(new TeacherTrainingBatchManager());

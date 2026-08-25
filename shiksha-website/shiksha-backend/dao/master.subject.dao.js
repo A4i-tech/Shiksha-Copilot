@@ -7,25 +7,10 @@ const escapeRegExp = require("lodash/escapeRegExp");
 const regexExact = (val) => new RegExp(`^${escapeRegExp(String(val).trim())}$`, "i");
 const str = (val) => String(val || "").trim();
 
+/** @extends {BaseDao<typeof MasterSubject>} */
 class MasterSubjectDao extends BaseDao {
 	constructor() {
 		super(MasterSubject);
-	}
-
-	async resolveSubjectName(identifier) {
-		if (mongoose.Types.ObjectId.isValid(identifier)) {
-			const subjectDoc = await MasterSubject.findById(identifier)
-				.select("name")
-				.lean();
-			return subjectDoc ? subjectDoc.name : str(identifier);
-		}
-		const subjectDoc = await MasterSubject.findOne({
-			$or: [{ name: identifier }, { subjectName: regexExact(identifier) }],
-		})
-			.select("name")
-			.lean();
-
-		return subjectDoc ? subjectDoc.name : str(identifier);
 	}
 
 	async resolveSubjectContext(identifier, board) {
@@ -34,12 +19,12 @@ class MasterSubjectDao extends BaseDao {
 		const boardFilter = { boards: board };
 
 		if (mongoose.Types.ObjectId.isValid(identifier)) {
-			const subjectDoc = await MasterSubject.findById(identifier)
+			const subjectDoc = await this.Model.findById(identifier)
 				.select("name")
 				.lean();
 			if (subjectDoc) {
 				subjectCode = subjectDoc.name;
-				const relatedSubjects = await MasterSubject.find({
+				const relatedSubjects = await this.Model.find({
 					name: subjectCode,
 					...boardFilter,
 				})
@@ -50,7 +35,7 @@ class MasterSubjectDao extends BaseDao {
 				targetSubjectIds = [new mongoose.Types.ObjectId(identifier)];
 			}
 		} else {
-			const relatedSubjects = await MasterSubject.find({
+			const relatedSubjects = await this.Model.find({
 				$or: [
 					{ name: subjectCode },
 					{ subjectName: regexExact(subjectCode) },
@@ -70,7 +55,7 @@ class MasterSubjectDao extends BaseDao {
 	}
 
 	async getByNameAndBoard(subjectName, board) {
-		let subject = await MasterSubject.findOne({
+		let subject = await this.Model.findOne({
 			subjectName: subjectName,
 			boards: board,
 		});
@@ -79,7 +64,7 @@ class MasterSubjectDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		const result = await MasterSubject.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: id,
 				isDeleted: false,

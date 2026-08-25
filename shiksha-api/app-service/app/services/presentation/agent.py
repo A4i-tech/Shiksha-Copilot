@@ -364,7 +364,6 @@ async def plan(textbook_path: str, textbook_mime: str, data: AsyncBufferedReader
 
 
 async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBufferedReader, figures_dir: str, outline: PresentationOutline, metadata: dict[str, Any], instruction: str | None):
-    # Initialize metadata
     if "slides_completed" not in metadata: metadata["slides_completed"] = []
     if "slides_created" not in metadata: metadata["slides_created"] = 0
     if "slide_ids_created" not in metadata: metadata["slide_ids_created"] = {}
@@ -372,7 +371,6 @@ async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBu
     if "slide_types_used" not in metadata: metadata["slide_types_used"] = []
     if "engagement_slides" not in metadata: metadata["engagement_slides"] = 0
 
-    # Add presentation outline information
     subs = dict(
         outline_title=outline.title,
         outline_total_slides=outline.total_slides,
@@ -387,7 +385,6 @@ async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBu
 
     templates = template.Templates(prs)
     deps = DesignerDeps(storage, prs, templates, figures_dir, outline, None, metadata)
-    # Create welcome slide
     if metadata["slides_created"] == 0:
         yield ShikshaCheckpointEvent(message="Creating engaging welcome slide")
         slide_count = len(prs.slides)
@@ -404,7 +401,6 @@ async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBu
             raise RuntimeError("No slide was created")
         yield ShikshaCheckpointEvent(metadata=metadata, reason="op")
 
-    # Process each section and its slides from the outline
     while len(metadata["slides_completed"]) <= deps.outline.total_slides:
         task = DESIGNER_BODY_SLIDE_PROMPT.safe_substitute(**subs)
         async with designer.run_stream_events(task, usage_limits=UsageLimits(request_limit=64), deps=deps, toolsets=[SlideTrackerToolset(designer_toolset)]) as events:

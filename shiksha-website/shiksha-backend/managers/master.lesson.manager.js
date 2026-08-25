@@ -285,42 +285,13 @@ class MasterLessonManger extends BaseManager {
 		return formatApiReponse(false, "No data available", null);
 	}
 
-	async getFilteredQuestionBank(lessonId, filters) {
-		const evalaute = await this.masterResourceDao.getOne({ lessonId });
-		const questionBank = evalaute.resources.find(
-			(resource) => resource.section === "questionbank"
-		);
-		let filterLevels = filters.levels || [];
-		if (questionBank) {
-			try {
-				filterLevels = JSON.parse(filters.levels);
-			} catch (error) {
-				filterLevels = [];
-			}
-
-			if (!Array.isArray(filterLevels)) {
-				filterLevels = [];
-			}
-
-			const filteredData =
-				filterLevels.length > 0
-					? questionBank.data.filter((item) =>
-						filterLevels.includes(item.difficulty.toLowerCase())
-					)
-					: questionBank.data;
-
-			questionBank.data = filteredData;
-		}
-		return questionBank;
-	}
-
 	async generateLessonPlan(teacherId, lessonId, filters) {
-		const lessonPlan = await this._getLessonPlan(teacherId, lessonId);
+		const lessonPlan = await this.teacherLessonPlanDao.getByTeacherAndLesson(teacherId, lessonId);
 
-		const regeneratedMasterLessonPlan = await this._getRegeneratedMasterLessonPlan(teacherId, lessonId);
+		const regeneratedMasterLessonPlan = await this.regeneratedLessonResourceDao.getOne({ generatedBy: teacherId, contentId: lessonId });
 
 		if (regeneratedMasterLessonPlan) {
-			const regeneratedRecord = await this._getRegeneratedRecord(regeneratedMasterLessonPlan.recordId);
+			const regeneratedRecord = await this.teacherLessonPlanDao.getById(regeneratedMasterLessonPlan.recordId);
 			const regenerationStatusResponse = this._handleRegeneratedRecordStatus(regeneratedRecord);
 			if (regenerationStatusResponse) return regenerationStatusResponse;
 		}
@@ -357,18 +328,6 @@ class MasterLessonManger extends BaseManager {
 			throw new Error(`Unexpected status code from Copilot bot: ${result.status}`);
 		}
 		return formatApiReponse(true, "5E tables fetched succesfully", result.data);
-	}
-
-	async _getLessonPlan(teacherId, lessonId) {
-		return await this.teacherLessonPlanDao.getByTeacherAndLesson(teacherId, lessonId);
-	}
-
-	async _getRegeneratedMasterLessonPlan(teacherId, lessonId) {
-		return await this.regeneratedLessonResourceDao.getOne({ generatedBy: teacherId, contentId: lessonId });
-	}
-
-	async _getRegeneratedRecord(recordId) {
-		return await this.teacherLessonPlanDao.getById(recordId);
 	}
 
 	_handleRegeneratedRecordStatus(regeneratedRecord) {
@@ -419,20 +378,7 @@ class MasterLessonManger extends BaseManager {
 			return formatApiReponse(false, "Video not found!", { hasVideos: false });
 		}
 
-		if (result) {
-			// let filteredQuestionBank = await this.getFilteredQuestionBank(lessonId, filters);
-
-			// let instructionSet = (result[0]?.instructionSet || []).map((is) => {
-			//     if (is.type === "Evaluate") {
-			//         is.info[0].content.main = filteredQuestionBank.data;    // Private methods
-			//     }
-			//     return is;
-			// });
-
-			// result[0].instructionSet = instructionSet;
-
-			return formatApiReponse(true, "", result);
-		}
+		if (result) return formatApiReponse(true, "", result);
 		return null;
 	}
 

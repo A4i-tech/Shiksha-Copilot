@@ -78,6 +78,7 @@ async function canManageUser(grants, permission, user) {
   return access.every(Boolean);
 }
 
+/** @extends {BaseManager<UserDao>} */
 class UserManager extends BaseManager {
   constructor() {
     super(new UserDao());

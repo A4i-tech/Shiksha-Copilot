@@ -1,32 +1,6 @@
 const mongoose = require("mongoose");
 
 /**
- * Function to filter the template with match the following type
- * @param {*} qbConfigList 
- * @returns 
- */
-function filterTemplate(qbConfigList) {
-  const filteredTemplate = [];
-  const matchTheFollowingTemplate = [];
-  const matchTheFollowingIndex = [];
-  for (let i = 0; i < qbConfigList.length; i++) {
-    // Handle both type/Type (case-insensitive check if needed, but usually exact)
-    // Handle snake/camel for properties if they define the "Match the following"
-    if (qbConfigList[i].type === "Match the following") {
-      matchTheFollowingTemplate.push(qbConfigList[i]);
-      matchTheFollowingIndex.push(i);
-    } else {
-      filteredTemplate.push(qbConfigList[i]);
-    }
-  }
-  return {
-    matchTheFollowingTemplate,
-    matchTheFollowingIndex,
-    filteredTemplate,
-  };
-}
-
-/**
  * Function GetQuestion - Function to get question from the cache based on the template provided
  * @param {*} templateList 
  * @param {*} cacheDocs 
@@ -167,16 +141,6 @@ async function _processTemplateQuestions(template, cacheDocs, includedQuestionKe
 }
 
 /**
- * Function to get random index of an array
- * @param {*} array 
- * @returns random index
- */
-function getRandomIndex(array) {
-  const randomIndex = Math.floor(Math.random() * array.length);
-  return randomIndex;
-}
-
-/**
  * Function to merge existing question with new question based on the indices
  * @param {*} existingQuestions 
  * @param {*} newQuestions 
@@ -313,61 +277,6 @@ function processCacheHits(
   return result;
 }
 
-class Question {
-  constructor(question, marks, type) {
-    this.question = question;
-    this.marks = marks;
-    this.type = type;
-  }
-}
-
-class TextQuestion {
-  constructor(question = "") {
-    this.question = question;
-  }
-
-  getQuestion() {
-    return this.question;
-  }
-}
-
-class FourOptionsQuestion {
-  constructor(question = "", options = [], answer = "") {
-    this.question = question;
-    this.options = options;
-    this.answer = answer;
-  }
-
-  getQuestion() {
-    return this.question;
-  }
-}
-
-class MatchingListQuestion {
-  constructor(columnOneValues = [], columnTwoValues = []) {
-    this.columnOneValues = columnOneValues;
-    this.columnTwoValues = columnTwoValues;
-  }
-}
-
-class QuestionBankCacheDoc {
-  constructor(
-    chapterId,
-    unitName,
-    unitLevel,
-    questions,
-    version = "v1",
-    createdAt = new Date().toISOString()
-  ) {
-    this.chapterId = chapterId;
-    this.unitName = unitName;
-    this.unitLevel = unitLevel;
-    this.questions = questions;
-    this.version = version;
-    this.createdAt = createdAt;
-  }
-}
-
 class QuestionTypeResponse {
   constructor(type, marksPerQuestion) {
     this.type = type;
@@ -386,73 +295,8 @@ class QuestionTypeResponse {
   }
 }
 
-class QuestionDistribution {
-  constructor(unitName, objective) {
-    this.unitName = unitName;
-    this.objective = objective;
-  }
-}
-
-class Template {
-  constructor(
-    type,
-    numberOfQuestions,
-    marksPerQuestion,
-    questionDistribution = []
-  ) {
-    this.type = type;
-    this.numberOfQuestions = numberOfQuestions;
-    this.marksPerQuestion = marksPerQuestion;
-    this.questionDistribution = questionDistribution;
-  }
-}
-
-class Chapter {
-  constructor(title, indexPath, learningOutcomes, subtopics = []) {
-    this.title = title;
-    this.indexPath = indexPath;
-    this.learningOutcomes = learningOutcomes;
-    this.subtopics = subtopics;
-  }
-}
-
-class QuestionBankPartsGenerationRequest {
-  constructor(
-    userId,
-    board,
-    medium,
-    grade,
-    subject,
-    chapters,
-    totalMarks,
-    template,
-    existingQuestions = []
-  ) {
-    this.userId = userId;
-    this.board = board;
-    this.medium = medium;
-    this.grade = grade;
-    this.subject = subject;
-    this.chapters = chapters;
-    this.totalMarks = totalMarks;
-    this.template = template;
-    this.existingQuestions = existingQuestions;
-  }
-}
-
 module.exports = {
-  Question,
-  TextQuestion,
-  FourOptionsQuestion,
-  MatchingListQuestion,
-  QuestionBankCacheDoc,
-  QuestionTypeResponse,
-  QuestionDistribution,
-  Template,
-  Chapter,
-  QuestionBankPartsGenerationRequest,
   getQuestions,
-  filterTemplate,
   mergeQuestions,
   fixObjectIdsInArray,
   processCacheHits,

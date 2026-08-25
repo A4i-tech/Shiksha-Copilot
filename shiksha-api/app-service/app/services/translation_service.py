@@ -1,4 +1,4 @@
-from typing import Any, Iterator, List
+from typing import Any, Iterator
 
 from app.services.translation.factory import TranslatorFactory
 import logging
@@ -47,7 +47,7 @@ class TranslationService:
             return data
 
         # Batch translate in chunks to respect API limits
-        translated: List[str] = []
+        translated: list[str] = []
         for i in range(0, len(strings), TRANSLATION_BATCH_SIZE):
             chunk = strings[i : i + TRANSLATION_BATCH_SIZE]
             translated.extend(
@@ -58,14 +58,14 @@ class TranslationService:
         return cls._fill_strings(data, iter(translated), depth=0)
 
     @classmethod
-    def _collect_strings(cls, data: Any, depth: int = 0) -> List[str]:
+    def _collect_strings(cls, data: Any, depth: int = 0) -> list[str]:
         """Collect all string values in DFS order. Raises ValueError if depth exceeded."""
         if depth >= MAX_RECURSION_DEPTH:
             raise ValueError(
                 f"JSON structure exceeds maximum depth ({MAX_RECURSION_DEPTH})"
             )
         if isinstance(data, dict):
-            out: List[str] = []
+            out: list[str] = []
             for key, value in data.items():
                 if _skip(data, key):
                     continue

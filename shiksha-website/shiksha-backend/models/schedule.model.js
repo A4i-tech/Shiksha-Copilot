@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const User = require("./user.model");
 const ObjectId = mongoose.Types.ObjectId;
 
-const scheduleSchema = mongoose.Schema(
+const scheduleSchema = new mongoose.Schema(
 	{
 		teacherId: {
 			type: ObjectId,

@@ -594,7 +594,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
         'name',
         selectedZone
       );
-      // districts is now an array
       if (this.selectedZoneObj && this.selectedZoneObj.districts) {
         this.districtDropdownOptions = Array.isArray(this.selectedZoneObj.districts)
           ? this.selectedZoneObj.districts
@@ -613,7 +612,6 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    */
   setBlockDropdownValues(selectedDistrict: any) {
     if (selectedDistrict) {
-      // districts is now an array, find the matching district
       if (this.selectedZoneObj && this.selectedZoneObj.districts) {
         const districts = Array.isArray(this.selectedZoneObj.districts)
           ? this.selectedZoneObj.districts

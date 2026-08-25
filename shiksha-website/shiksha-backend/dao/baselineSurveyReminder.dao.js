@@ -1,6 +1,7 @@
 const BaseDao = require('./base.dao');
 const BaselineSurveyReminder = require('../models/baselineSurveyReminder.model');
 
+/** @extends {BaseDao<typeof BaselineSurveyReminder>} */
 class BaselineSurveyReminderDao extends BaseDao {
   constructor() {
     super(BaselineSurveyReminder);

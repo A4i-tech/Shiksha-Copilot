@@ -98,38 +98,32 @@ class ChatManager extends BaseManager {
 		formattedMessages.push({ role: "user", message });
 		formattedMessages.unshift({ role: "user", message: userContext }, { role: "assistant", message: "Acknowledged." })
 
-		const response = await postToChatBotStream({
-			user_id: userId,
-			messages: formattedMessages,
-		});
-
-		// Handle DB persistence asynchronously
-		const stream = response.data;
+		const stream = await postToChatBotStream({user_id: userId, messages: formattedMessages});
 		let buffer = '';
 		let fullAnswer = '';
 		let references = [];
-
-		stream.on('data', (chunk) => {
-			try {
-				buffer += chunk.toString();
-				const lines = buffer.split('\n');
-				buffer = lines.pop();
-
-				for (const line of lines) {
-					if (line.trim() === '') continue;
-					const data = JSON.parse(line);
-					if (data.type === 'content') {
-						fullAnswer += data.delta;
-					} else if (data.type === 'references') {
-						references = data.data;
-					}
+		stream.on("data", chunk => {
+			buffer += chunk.toString();
+			const lines = buffer.split('\n');
+			buffer = lines.pop();
+			for (const line of lines) {
+				if (line.trim() === '') continue;
+				let data;
+				try {
+					data = JSON.parse(line);
+				} catch (error) {
+					logger.error("Error parsing chat stream line", { line, message: error.message });
+					stream.destroy(error);
+					return;
 				}
-			} catch (err) {
-				console.error("Error in stream data handler", err);
+				if (data.event === 'content') {
+					fullAnswer += data.data;
+				} else if (data.event === 'reference') {
+					references.push(data.data);
+				}
 			}
 		});
-
-		stream.on('end', async () => {
+		stream.on("end", async () => {
 			try {
 				if (fullAnswer) {
 					await this.dao.addMessage(chatSession._id, {
@@ -141,11 +135,10 @@ class ChatManager extends BaseManager {
 					await chatSession.save();
 				}
 			} catch (dbError) {
-				console.error("Error saving chat to DB after stream", dbError);
+				logger.error("Error saving chat to DB after stream", { message: dbError.message, stack: dbError.stack });
 			}
 		});
-
-		return { success: true, stream: response.data };
+		return { success: true, stream: stream };
 	}
 
 	async listMessages(userId) {

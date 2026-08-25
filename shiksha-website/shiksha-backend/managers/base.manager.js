@@ -1,9 +1,10 @@
 const formatApiReponse = require("../helper/response");
+const BaseDao = require("../dao/base.dao");
 
 require("dotenv").config();
 
 /**
- * @template TDao
+ * @template {BaseDao} TDao
  */
 class BaseManager {
 	/**

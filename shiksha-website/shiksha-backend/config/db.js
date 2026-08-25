@@ -55,35 +55,9 @@ class DBService {
 		}
 	}
 
-	async init() {
-		try {
-			if (!this.connection) await this.connect();
-			await this.onConnect();
-			console.log("DBService initialized successfully.");
-		} catch (err) {
-			console.log("Error -> DBService -> init -> err", err);
-			throw err;
-		}
-	}
-
 	async getConnection() {
-		try {
-			await this.init();
-			return this.connection;
-		} catch (err) {
-			console.log("Error -> DBService -> getConnection -> err", err);
-		}
-	}
-
-	closeConnection() {
-		try {
-			if (this.connection) {
-				this.connection.close();
-				console.log("DB connection closed");
-			}
-		} catch (err) {
-			console.log("Error -> DBService -> closeConnection -> ", err);
-		}
+		if (!this.connection) await this.connect();
+		return this.connection;
 	}
 
 	async connectToMongoForWorker() {

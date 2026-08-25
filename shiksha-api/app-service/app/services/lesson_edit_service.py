@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 import json
 import logging
-from pathlib import Path
 
-from app.utils.utils import get_json_value_type, local_unique_id
+from app.utils.utils import get_json_value_type, load_yaml_prompts, local_unique_id
 from llama_index.core import Response
 from pydantic import Field, JsonValue, create_model
 from langfuse import observe, propagate_attributes
@@ -15,7 +14,6 @@ from app.config import settings
 from app.models.lesson_plan import PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from pydantic_ai import Agent, ModelSettings, RunContext, UsageLimits
-import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -58,20 +56,22 @@ class LessonEditService:
     """Service for AI-assisted revision of lesson plan content, with RAG lookup into the chapter."""
 
     def __init__(self):
-        prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "lesson_edit_prompts.yaml"
-        with prompts_file_path.open("r", encoding="utf-8") as file:
-            _prompts = yaml.safe_load(file)
-
-        self._prompt_section_edit_base = _prompts["section_edit_base"]
-        self._prompt_plan_edit_instruction = _prompts["plan_edit_instruction"]
-        self._prompt_grounding_instruction = _prompts["grounding_instruction"]
+        prompts = load_yaml_prompts("lesson_edit_prompts.yaml")
+        self._prompt_section_edit_base = prompts["section_edit_base"]
+        self._prompt_plan_edit_instruction = prompts["plan_edit_instruction"]
+        self._prompt_grounding_instruction = prompts["grounding_instruction"]
 
         self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model)
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        await self.cleanup()
+
     async def cleanup(self) -> None:
-        """Clear the RAG adapter cache and associated resources."""
         await self._rags.cleanup()
 
     @observe(name="Shiksha-LP")

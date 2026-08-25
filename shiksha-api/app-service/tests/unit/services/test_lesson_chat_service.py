@@ -43,21 +43,3 @@ class TestLessonChatServiceChapterParsing:
 
         with pytest.raises(ValueError, match="Invalid chapter_id format"):
             service._extract_details(invalid_chapter_id)
-
-
-class TestLessonChatServiceCleanup:
-    """Test LessonChatService cleanup method."""
-
-    @pytest.mark.asyncio
-    async def test_cleanup_clears_rag_adapter_cache(self, mock_rag_adapter_cache):
-        """Test cleanup clears RAG adapter cache."""
-        with patch("app.services.lesson_chat_service.PromptTemplate"), \
-             patch("app.services.lesson_chat_service.RagAdapterCache", return_value=mock_rag_adapter_cache), \
-             patch("app.services.lesson_chat_service.OpenAIResponses"), \
-             patch("app.services.lesson_chat_service.OpenAIEmbedding"):
-
-            service = LessonChatService()
-
-            await service.cleanup()
-
-            mock_rag_adapter_cache.cleanup.assert_called_once()

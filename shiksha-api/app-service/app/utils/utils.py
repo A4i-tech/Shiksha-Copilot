@@ -1,6 +1,11 @@
+from collections.abc import Generator
 import hashlib
+from pathlib import Path
 
-from pydantic import JsonValue
+from langdetect import LangDetectException, detect
+from langdetect.detector import Detector
+from pydantic import JsonValue, TypeAdapter
+import yaml
 
 
 def local_unique_id(counter: int) -> str:
@@ -17,3 +22,40 @@ def get_json_value_type(data: JsonValue) -> type[JsonValue]:
     if isinstance(data, dict): return dict[str, JsonValue]
     if data is None: return type(None)  # maps to Optional field - pydantic handles NoneType correctly via `| None`
     return type(data)
+
+
+def load_yaml_kv(path: Path) -> dict[str, str]:
+    with path.open("r", encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+    return TypeAdapter(dict[str, str]).validate_python(data)
+
+
+def load_yaml_prompts(path: str | Path) -> dict[str, str]:
+    return load_yaml_kv(Path(__file__).parent.parent.parent / "prompts" / path)
+
+
+def get_sample_texts(data: JsonValue, allowed_keys: set[str] | None = None) -> Generator[str]:
+    stack = [data]
+    while stack:
+        match data := stack.pop():
+            case dict() if allowed_keys is None:
+                stack.extend(reversed(data.values()))
+            case dict() if allowed_keys is not None:
+                stack.extend(v for k, v in reversed(data.items()) if k in allowed_keys or not isinstance(v, str))
+            case list():
+                stack.extend(reversed(data))
+            case str() if len(data.strip().split()) > 2:
+                yield data
+
+
+def detect_lang(data: JsonValue, allowed_keys: set[str] | None = None) -> tuple[str, str]:
+    lang = Detector.UNKNOWN_LANG
+    sample = ""
+    for sample in get_sample_texts(data, allowed_keys):
+        try:
+            lang = detect(sample)
+        except LangDetectException:
+            continue
+        if lang != Detector.UNKNOWN_LANG:
+            break
+    return lang, sample

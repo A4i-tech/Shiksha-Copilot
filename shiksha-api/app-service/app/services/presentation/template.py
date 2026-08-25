@@ -600,18 +600,15 @@ class Templates:
 
         self._render_content(content_frame, data.content)
 
-        # Image or placeholder
         image_shape = None
         if data.image_path:
             try:
                 image_shape = self._add_picture_fit(slide, data.image_path, Inches(data.image_pos.left), Inches(data.image_pos.top), Inches(data.image_pos.width), Inches(data.image_pos.height), data.image_fit)
 
-                # Add border if requested
                 if data.add_border and data.border_color:
                     image_shape.line.color.rgb = RGBColor.from_string(data.border_color.replace('#', ''))
                     image_shape.line.width = Pt(2)
 
-                # Add shadow if requested
                 if data.shadow:
                     shadow = image_shape.shadow
                     shadow.inherit = False
@@ -1402,7 +1399,6 @@ class Templates:
         blank_slide_layout = self.prs.slide_layouts[6]
         slide = self.prs.slides.add_slide(blank_slide_layout)
 
-        # Add semi-transparent overlay if requested
         if data.add_overlay:
             base = Image.open(data.image_path).convert("RGBA")
             c = ImageColor.getrgb(data.overlay_color)
@@ -1418,7 +1414,6 @@ class Templates:
         try:
             self._add_picture_fit(slide, image, Inches(0), Inches(0), Inches(self._BASE_SLIDE_WIDTH_INCHES), Inches(self._BASE_SLIDE_HEIGHT_INCHES), "cover")
         except Exception:
-            # Fallback to colored background
             background = slide.background
             fill = background.fill
             fill.solid()
@@ -2432,10 +2427,8 @@ class Templates:
             p.left_indent = Inches(0.3)  # Indent number from left
             p.first_line_indent = Inches(-0.25)  # Hanging indent for number
 
-        # Enable word wrap for all text frames
         text_frame.word_wrap = True
 
-        # Set auto-size to fit text
         text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
 
         stack = [entry]
@@ -2449,7 +2442,7 @@ class Templates:
             if isinstance(content, str):
                 p = text_frame.add_paragraph()
                 p.text = clean(content)
-                p.font.size = Pt(16)  # Default readable size
+                p.font.size = Pt(16)
                 p.space_after = Pt(8)
                 continue
 
@@ -2468,7 +2461,7 @@ class Templates:
                     if f.font_size:
                         run.font.size = Pt(f.font_size)
                     else:
-                        run.font.size = Pt(16)  # Default size
+                        run.font.size = Pt(16)
                     if f.alignment:
                         from pptx.enum.text import PP_ALIGN
                         align_map = {
@@ -2505,7 +2498,6 @@ def get_metadata(exclude: set[str] = {
     Templates.thank_you.__name__,
 }) -> str:
     out = []
-    defs = {}
     for name in dir(Templates):
         fn = getattr(Templates, name)
         if not callable(fn) or fn.__name__ not in SLIDE_META or fn.__name__ in exclude:
