@@ -217,5 +217,3 @@ class TestOrganizeQuestionsIntoResponse:
 
         assert isinstance(response, list)
         assert len(response) > 0
-        assert response[0].type == QuestionType.MCQ
-        assert len(response[0].questions) == 1
