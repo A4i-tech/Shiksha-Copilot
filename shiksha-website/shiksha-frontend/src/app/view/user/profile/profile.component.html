@@ -254,16 +254,16 @@
               ></app-dropdown>
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
-              <label class="lg:hidden mb-1 form-control-label">{{
+              <label class="lg:hidden mb-1 form-control-label" for="boysStrength-{{i}}">{{
                 "Boys Strength" | translate
               }}</label>
-              <input type="number" min="0" step="1" class="form-control" formControlName="boysStrength" />
+              <input id="boysStrength-{{i}}" type="number" min="0" step="1" class="form-control" formControlName="boysStrength" [attr.aria-label]="'Boys Strength' | translate" />
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
-              <label class="lg:hidden mb-1 form-control-label">{{
+              <label class="lg:hidden mb-1 form-control-label" for="girlsStrength-{{i}}">{{
                 "Girls Strength" | translate
               }}</label>
-              <input type="number" min="0" step="1" class="form-control" formControlName="girlsStrength" />
+              <input id="girlsStrength-{{i}}" type="number" min="0" step="1" class="form-control" formControlName="girlsStrength" [attr.aria-label]="'Girls Strength' | translate" />
             </td>
             <td class="px-1 py-1 lg:px-4 lg:py-4">
               <div class="flex lg:w-24 gap-2 justify-end lg:justify-start">                
