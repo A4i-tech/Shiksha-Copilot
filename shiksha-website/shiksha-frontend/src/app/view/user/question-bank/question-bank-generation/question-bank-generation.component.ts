@@ -9,7 +9,7 @@ import {
 import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropDownConfig, DropdownOption } from 'src/app/shared/interfaces/dropdown.interface';
-import { DEFAULT_LANGUAGE, formatMarks, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { DEFAULT_LANGUAGE, formatMarks, getLabel, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
@@ -27,6 +27,16 @@ interface MarksDistributionUnit {
   unitName: string;
   marks: number;
   percentageDistribution: number;
+}
+
+interface RawQuestionBankObjective {
+  objective: string;
+  percentageDistribution: number;
+}
+
+interface QuestionBankObjective extends RawQuestionBankObjective {
+  shortLabel: string;
+  fullLabel: string;
 }
 
 @Component({
@@ -72,6 +82,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   questionTypeOptions: { name: string; value: string }[] = [];
   chapterOptions: { name: string }[] = [];
   objectiveOptions: { objective: string; name: string }[] = [];
+  objectiveLabels: Record<string, string> = {};
   questionTypeConfig: DropDownConfig = {
     isBackground: false, placeHolderTxt: 'Select Type',
     bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true,
@@ -90,8 +101,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     { value: 'multiChapter', name: 'Multiple Chapters' },
   ];
   questionBankTypeValue = 'singleChapter';
-  questionBankObjectives: any[] = [];
-  initialQuestionBankObjectives: any[] = [];
+  questionBankObjectives: QuestionBankObjective[] = [];
+  initialQuestionBankObjectives: QuestionBankObjective[] = [];
 
   totalMarks = 0;
   totalPercentage = 100;
@@ -116,7 +127,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     public utilityservice: UtilityService,
-    private translateService: TranslateService,
+    public translateService: TranslateService,
     private questionBankService: QuestionBankService,
     private router: Router,
     private idleService: IdleService,
@@ -313,7 +324,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         }
       });
       this.subjectDropdownOptions = Array.from(subjectMap.entries())
-        .map(([name, value]) => ({ name, value }))
+        .map(([name, value]) => ({ name: getLabel(name, name, { board: this.f.board.value }), value, canonicalName: name }))
         .sort((a, b) => a.name.localeCompare(b.name));
       this.setPreferredLanguage();
     }
@@ -342,6 +353,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
+  // Attaches display-only shortLabel/fullLabel to each objective. The `objective` field
+  // itself stays the canonical backend name and must never be overwritten here.
+  applyObjectiveLabels(objectives: RawQuestionBankObjective[], board: string, subjectName: string): QuestionBankObjective[] {
+    return (objectives || []).map(obj => {
+      const { shortLabel, fullLabel } = getLabel(obj.objective, { shortLabel: obj.objective, fullLabel: '' }, { board, subject: subjectName });
+      return { ...obj, shortLabel, fullLabel };
+    });
+  }
+
   onSubjectChange(val: any) {
     this.resetSubjectChange();
     if (val) {
@@ -351,7 +371,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
       // Extract details from selection
       const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val.value);
-      const subjectName = selectedSubjectObj.name;
+      const subjectName = selectedSubjectObj.canonicalName;
       const subjectId = selectedSubjectObj.value;
 
       this.isLoadingQuestions = true;
@@ -364,8 +384,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       ).subscribe({
         next: ({ config, chapters }: any) => {
           this.paperQuestionTypes = config.questionTypes;
-          this.questionBankObjectives = structuredClone(config.objectives);
-          this.initialQuestionBankObjectives = structuredClone(config.objectives);
+          this.questionBankObjectives = this.applyObjectiveLabels(structuredClone(config.objectives), board, subjectName);
+          this.initialQuestionBankObjectives = this.applyObjectiveLabels(structuredClone(config.objectives), board, subjectName);
           this.updateSourceOptions(config.questionSources);
           this.chapterDropdownOptions = chapters.map((ch: any) => ({
             ...ch,
@@ -486,14 +506,25 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     }
     const payload = this.getTemplatePayload();
     payload.template = this.templateData;
-    payload.objectiveDistribution = this.questionBankObjectives;
     this.isLoadingQuestions = true;
     this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (response: any) => {
         this.questionBankBluePrintData = response.data;
-        this.objectiveOptions = this.questionBankObjectives.map(item => ({ objective: item.objective, name: this.translateService.instant(item.objective) }));
+        // `objective` stays canonical (sent back to the API); `name` is the board-mapped display label.
+        // shortLabel is already-resolved display text (from getLabel), not a translation key, so
+        // it's only re-translated for non-English UI languages (to localize it into e.g. Kannada).
+        this.objectiveOptions = this.questionBankObjectives.map(item => {
+          const label = item.shortLabel || item.objective;
+          const name = this.translateService.currentLang === 'en' ? label : this.translateService.instant(label);
+          return { objective: item.objective, name };
+        });
+        // Maps canonical objective name to its board-mapped shortLabel, for components that only get the canonical name (e.g. the blueprint chart).
+        this.objectiveLabels = this.questionBankObjectives.reduce((acc: Record<string, string>, item) => {
+          acc[item.objective] = item.shortLabel || item.objective;
+          return acc;
+        }, {});
         this.chapterOptions = this.marksDistribution.map(item => ({ name: item.unitName }));
         this.chapterConfig.disabled = this.chapterOptions.length === 1;
         this.currentStep = 3;
@@ -782,7 +813,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       .filter((obj: any) => !!obj.objective);
 
     const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === formVal.subject);
-    const subjectName = selectedSubjectObj ? selectedSubjectObj.name : formVal.subject;
+    const subjectName = selectedSubjectObj ? selectedSubjectObj.canonicalName : formVal.subject;
 
     let subTopicsPayload: string[] = [];
     const rawSubTopics = formVal.subTopic ? (Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic]) : [];

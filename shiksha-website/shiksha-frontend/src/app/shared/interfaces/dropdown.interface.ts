@@ -27,4 +27,7 @@ export interface DropDownConfig {
   selectAllValue?: string;
   required?: boolean;
   openOnSelect?: boolean;
+  // Set when placeHolderTxt/labelTxt/fieldName is already-resolved display text
+  // (e.g. from getLabel) rather than a translation key, so it isn't re-translated.
+  skipTranslate?: boolean;
 }

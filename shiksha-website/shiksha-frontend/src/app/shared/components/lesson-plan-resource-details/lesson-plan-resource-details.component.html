@@ -2,7 +2,7 @@
 	<div class="flex gap-2 items-center">
 		<img src="assets/icons/back-arrow.svg" alt="" class="cursor-pointer" (click)="backNavigation()" />
 		<h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">
-			{{(getLessonType()?.type === 'plan' ? 'Lesson Plan Details':'Lesson Resources') | translate}}
+			{{(getLessonType()?.type === 'plan' ? phrase('Lesson Plan Details'):'Lesson Resources') | translate}}
 		</h1>
 	</div>
 	<p class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">{{'Info' | translate}}: {{(getLessonType()?.type === 'plan' ? 'Lesson':'Resource')}} Plan, {{'Board' | translate}}-{{getBoards()}} </p>
@@ -170,7 +170,7 @@
 					<small class="form-control-error" *ngIf="submitted && f['videos']?.errors?.['required']">{{'Please select if videos to include' | translate}}.</small>
 					<div>
 							<button [hasPermission]="[getLessonType()?.type === 'plan' ? 'lesson-plan.generate' : 'lesson-resource.generate']" [disabled]="isEditable || learningOutcomes?.length === 0 || (submitBtnTxt === 'Regenerate Lesson Plan' && regenerationLimitReached)" type="submit"  class="btn-primary mt-4  text-sm md:text-lg  py-2 px-3 md:py-3 md:px-4">
-								{{submitBtnTxt | translate}}
+								{{phrase(submitBtnTxt) | translate}}
 							</button>  
 					</div>
 
@@ -181,7 +181,7 @@
 <div class="relative z-10 rounded-sm bg-shade-50 p-5" *ngIf="modalService.showGettingLessonPlanLoader">
 	<div class="fixed top-0 right-0 bottom-0 left-[270px] pt-8 ps-[54px] pe-[70px] py-0 bg-[#f8f9fa] rounded-sm z-0">
 			<h1 class="text-xl md:text-3xl font-bold text-content-100 leading-[48px]">
-					{{'Lesson Plan Details' | translate}}
+					{{phrase('Lesson Plan Details') | translate}}
 			</h1>
 			<p class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">{{'Info' | translate}}: Lesson Plan Type-5E , {{'Board' | translate}}-{{board}} </p>
 	

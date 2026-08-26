@@ -15,6 +15,7 @@ import { MasterService } from 'src/app/shared/services/master.service';
 import { SidebarService } from 'src/app/layout/sidebar/sidebar.service';
 import { forkJoin } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
+import { getLabel } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-profile',
@@ -72,7 +73,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     placeHolderTxt: 'Select subject',
     fieldName: 'Subject',
     hideLabel: true,
-    bindLabel: '_id',
+    bindLabel: 'displayName',
     bindValue: '_id',
   };
 
@@ -113,6 +114,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   };
 
   userData: any;
+  get talukLabel(): string {
+    return getLabel('Taluk', 'Taluk', { state: this.userData?.school?.state });
+  }
   userPorfileForm!: FormGroup;
   loggedInUser: any;
   isTeacher!: boolean;
@@ -144,7 +148,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private utilityService: UtilityService,
     private masterService: MasterService,
     public sidebarService: SidebarService,
-    private translateService: TranslateService
+    public translateService: TranslateService
   ) {}
 
   /**
@@ -238,7 +242,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.resetclassInfo('standard', i);
 
     if (val) {
-      this.subjectDropdownOptions[i] = this.filterSubjects(val.standard,this.currentSubjects[i])
+      this.subjectDropdownOptions[i] = this.filterSubjects(val.standard,this.currentSubjects[i]).map((s: any) => ({ ...s, displayName: getLabel(s._id, s._id, { board: this.classes.controls[i].get('board')?.value }) }))
       if (this.subjectDropdownOptions[i].length === 1) {
         const subject = this.subjectDropdownOptions[i][0];
         this.classes.controls[i].get('subject')?.setValue(subject._id);
@@ -410,7 +414,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   setSubjectDropdown(i:any,val:any,standard:any){
     if (val) {
-      this.subjectDropdownOptions[i] = this.filterSubjects(standard,val.subjects);
+      this.subjectDropdownOptions[i] = this.filterSubjects(standard,val.subjects).map((s: any) => ({ ...s, displayName: getLabel(s._id, s._id, { board: this.classes.controls[i].get('board')?.value }) }));
       if (this.subjectDropdownOptions[i].length === 1) {
         const subject = this.subjectDropdownOptions[i][0];
         this.classes.controls[i].get('subject')?.setValue(subject._id);
