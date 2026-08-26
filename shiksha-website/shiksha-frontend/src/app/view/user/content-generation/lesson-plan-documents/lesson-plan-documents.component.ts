@@ -5,7 +5,6 @@ import { CheckListExportService } from 'src/app/shared/services/checklist-export
 import { ChecklistPdfExportService } from '../../../../shared/services/checklist-pdf-export.service';
 import { DocumentExportService } from 'src/app/shared/services/document-export.service';
 import { ContentGenerationService } from '../content-generation.service';
-import { IdleService } from 'src/app/shared/services/idle.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 
 @Component({
@@ -37,8 +36,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     private checkListExportService: CheckListExportService,
     private contentGenerationService: ContentGenerationService,
     private utilityService: UtilityService,
-    private router: Router,
-    private idleService: IdleService
+    private router: Router
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -162,7 +160,6 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     this.contentGenerationService.downloadPresentationFile(presentationId, "pptx").subscribe({
       next: (blob) => {
         saveAs(blob, `lesson-plan-${this.planId}.pptx`);
-        this.idleService.logActivity({ moduleName: 'ppt_download' });
       },
       error: (err) => {
         this.utilityService.handleError(err);
