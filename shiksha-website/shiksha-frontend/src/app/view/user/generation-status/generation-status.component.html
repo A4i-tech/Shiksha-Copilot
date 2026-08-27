@@ -305,7 +305,7 @@
                 {{ item.isLesson ? item.lesson.class : item.resource.class }}
               </p>
               <p class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px] inline-block">
-                {{ (item.isLesson ? "Lesson Plan" : "Lesson Resource") | translate }}
+                {{ (item.isLesson ? phrase('Lesson Plan') : "Lesson Resource") | translate }}
               </p>
             </div>
             <p class="my-2 text-xs font-normal text-content-70">
@@ -348,7 +348,7 @@
           <ng-template #viewLR>
             <p class="text-white text-sm font-semibold">
               {{
-                (item.isLesson ? "View Lesson Plan" : "View Lesson Resource")
+                (item.isLesson ? phrase('View Lesson Plan') : "View Lesson Resource")
                   | translate
               }}
             </p>

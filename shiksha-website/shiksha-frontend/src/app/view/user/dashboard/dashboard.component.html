@@ -20,7 +20,7 @@
         />
         <div>
           <h2 class="mt-1 text-xl text-white font-semibold" data-testid="landing-card-title">
-            {{ "Lesson Plan Generation" | translate }}
+            {{ phrase('Lesson Plan Generation') | translate }}
           </h2>
           <p class="mt-3 text-white text-sm">
             {{
@@ -106,7 +106,7 @@
             (click)="onView(plan)"
           >
             <span class="text-white text-sm">
-              {{ (plan.isLesson ? "View Lesson Plan" : "View Resource Plan") | translate }}
+              {{ (plan.isLesson ? phrase('View Lesson Plan') : "View Resource Plan") | translate }}
             </span>
           </button>
         </div>

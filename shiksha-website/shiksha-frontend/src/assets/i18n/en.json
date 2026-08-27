@@ -19,8 +19,17 @@
   "Enter your zone": "Enter your zone",
   "District": "District",
   "Enter your district": "Enter your district",
-  "Taluk": "Taluk",
+  "Taluk": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Mandal"
+    },
+    "Taluk"
+  ],
   "Enter Taluk": "Enter Taluk",
+  "Mandal": "Mandal",
+  "Enter Mandal": "Enter Mandal",
+  "Select Mandal": "Select Mandal",
   "Class / Grade": "Class / Grade",
   "Section": "Section",
   "Subject": "Subject",
@@ -55,8 +64,27 @@
   "Enter Class(Other)": "Enter Class(Other)",
   "Chapter": "Chapter",
   "Sub Topic": "Sub Topic",
-  "Lesson Plan": "Lesson Plan",
-  "Add Lesson Plan": "Add Lesson Plan",
+  "Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan"
+    },
+    "Lesson Plan"
+  ],
+  "Add Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Add Period Plan"
+    },
+    "Add Lesson Plan"
+  ],
+  "Period Plan": "Period Plan",
+  "Add Period Plan": "Add Period Plan",
+  "Generate Period Plan": "Generate Period Plan",
+  "View Period Plan": "View Period Plan",
+  "Period Plan Details": "Period Plan Details",
+  "Period Plan Generation": "Period Plan Generation",
+  "Regenerate Period Plan": "Regenerate Period Plan",
   "Delete Schedule Slot": "Delete Schedule Slot",
   "Add Schedule Slot": "Add Schedule Slot",
   "Date": "Date",
@@ -75,14 +103,26 @@
   "Class Name": "Class Name",
   "Lesson Content": "Lesson Content",
   "Generate Lesson Resource": "Generate Lesson Resource",
-  "Generate Lesson Plan": "Generate Lesson Plan",
+  "Generate Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Generate Period Plan"
+    },
+    "Generate Lesson Plan"
+  ],
   "Search": "Search",
   "View": "View",
   "Type": "Type",
   "Class": "Class",
   "Sub Topics": "Sub Topics",
   "Action": "Action",
-  "Lesson Plan Details": "Lesson Plan Details",
+  "Lesson Plan Details": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan Details"
+    },
+    "Lesson Plan Details"
+  ],
   "Info": "Info",
   "No items found": "No items found",
   "Board": "Board",
@@ -98,7 +138,7 @@
   "Student Comprehension Level": "Student Comprehension Level",
   "Note": "Note",
   "Level selected may impact in the content generated for Evaluate phase": "Level selected may impact in the content generated for Evaluate phase",
-  "Level selected may impact in the content generated for Question paper and Real world scenario phases":"Level selected may impact in the content generated for Question paper and Real world scenario phases",
+  "Level selected may impact in the content generated for Question paper and Real world scenario phases": "Level selected may impact in the content generated for Question paper and Real world scenario phases",
   "Beginner": "Beginner",
   "Intermediate": "Intermediate",
   "Advanced": "Advanced",
@@ -175,7 +215,13 @@
   "required": "required",
   "Resource type required": "Resource type required",
   "Resource details required": "Resource details required",
-  "Lesson Plan Generation": "Lesson Plan Generation",
+  "Lesson Plan Generation": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan Generation"
+    },
+    "Lesson Plan Generation"
+  ],
   "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom": "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom",
   "Generate": "Generate",
   "Recent Lesson Plans": "Recent Lesson Plans",
@@ -183,7 +229,13 @@
   "Generated on": "Generated on",
   "Topic": "Topic",
   "Lesson Plans": "Lesson Plans",
-  "View Lesson Plan": "View Lesson Plan",
+  "View Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "View Period Plan"
+    },
+    "View Lesson Plan"
+  ],
   "Calender": "Calender",
   "My Schedule": "My Schedule",
   "Lesson Plan/Resources Generated": "Lesson Plan/Resources Generated",
@@ -246,227 +298,233 @@
   "Provides Resources that include Activities, Real-world scenarios, and Questions tailored to meet your classroom needs": "Provides Resources that include Activities, Real-world scenarios, and Questions tailored to meet your classroom needs",
   "Select Chapter": "Select Chapter",
   "Select Subtopic": "Select Subtopic",
-  "Reason required":"Reason required",
-  "DOCUMENTS":"DOCUMENTS",
-  "Delete Schedule" : "Delete Schedule",
-  "Are you sure you want to delete this Schedule?" : "Are you sure you want to delete this Schedule?",
-  "Ok" : "Ok",
-  "Confirm" : "Confirm",
-  "Selected combination does not include videos." : "Selected combination does not include videos.",
-  "Selected combination does not include videos. Do you want to continue ?" : "Selected combination does not include videos. Do you want to continue ?",
-  "Do you want to logout?" : "Do you want to logout?",
-  "School List" : "School List",
-  "Add School" : "Add School",
-  "Search School Name/DISE Code" : "Search School Name/DISE Code",
-  "DISE Code" : "DISE Code",
-  "Status" : "Status",
-  "View School" : "View School",
-  "Edit School" : "Edit School",
-  "Activate School" : "Activate School",
-  "No Data Found"  : "No Data Found",
-  "School Profile" : "School Profile",
-  "Enter name" : "Enter name",
-  "School name is required" : "School name is required",
-  "School name should have atleast 5 characters" : "School name should have atleast 5 characters",
-  "Enter DISE Code" : "Enter DISE Code",
-  "DISE Code is required" : "DISE Code is required",
-  "DISE Code should be of 11 digits" : "DISE Code should be of 11 digits",
-  "Academic year start date" : "Academic year start date",
-  "Select date" : "Select date",
-  "Academic year start date is required" : "Academic year start date is required",
-  "Academic year end date" : "Academic year end date",
-  "Academic year end date is required" : "Academic year end date is required",
-  "Academic year end date must be greater than start date" : "Academic year end date must be greater than start date",
-  "Holiday List" : "Holiday List",
-  "Reason" : "Reason",
-  "Reason is required" : "Reason is required",
-  "Resource details" : "Resource details",
-  "Resource type is required" : "Resource type is required",
-  "Resource details are required" : "Resource details are required",
-  "Add Board/Class Details" : "Add Board/Class Details",
-  "Class min value is required" : "Class min value is required",
-  "Class max value is required" : "Class max value is required",
-  "Boys" : "Boys",
-  "Girls" : "Girls",
-  "class" : "class",
-  "No. of boys" : "No. of boys",
-  "No. of boys is required" : "No. of boys is required",
-  "No. of girls" : "No. of girls",
-  "No. of girls is required" : "No. of girls is required",
-  "Add Board/Class" : "Add Board/Class",
-  "Close" : "Close",
-  "Search Lesson Plan/Resource" : "Search Lesson Plan/Resource",
-  "Sikshana" : "Sikshana",
-  "Are you sure you want to switch the application language":"Are you sure you want to switch the application language",
-  "Switch Language":"Switch Language",
-  "In the table below, please ensure that there is at least one class data and that all fields are filled." : "In the table below, please ensure that there is at least one class data and that all fields are filled.",
-  "Continue":"Continue",
-  "Edu Chatbot":"Edu Chatbot",
-  "Send a message":"Send a message",
-  "Please note that this page includes regenerated content. The regeneration process may take some time, and we will update the status on the cards accordingly. Once the content is fully generated, you can edit and finalize the plan.":"Please note that this page includes regenerated content. The regeneration process may take some time, and we will update the status on the cards accordingly. Once the content is fully generated, you can edit and finalize the plan.",
-  "Generation Status":"Generation Status",
-  "Hello! I am here to assist you. Just type your question to get started!":"Hello! I am here to assist you. Just type your question to get started!",
-  "Remove Profile Image":"Remove Profile Image",
-  "Are you sure you want to remove profile image?":"Are you sure you want to remove profile image?",
-  "Change Image":"Change Image",
-  "Choose Image":"Choose Image",
-  "You have a daily chat limit of 20 messages per day":"You have a daily chat limit of 20 messages per day",
-  "Delete Class Details" : "Delete Class Details",
-  "Are you sure you want to delete this class details?" : "Are you sure you want to delete this class details?",
-  "Delete Resource" : "Delete Resource",
-  "Are you sure you want to delete this resource?" : "Are you sure you want to delete this resource?",
-  "Plan Status" : "Plan Status",
-  "Plan Type" : "Plan Type",
-  "Month" : "Month",
-  "is required" : "is required",
-  "Save Lesson Plan" : "Save Lesson Plan",
-  "Enter Reason" : "Enter Reason",
-  "Save Resource Plan" : "Save Resource Plan",
-  "Leave Page?" : "Leave Page?",
-  "Additional Resources" : "Additional Resources",
-  "You have unsaved changes. Do you want to save edited contents before leaving?" : "You have unsaved changes. Do you want to save edited contents before leaving?",
-  "Save Changes" : "Save Changes",
-  "Save as Draft" : "Save as Draft",
-  "Exit Without Saving" : "Exit Without Saving",
-  "You have unsaved changes. Do you want to save them as a draft before leaving?" : "You have unsaved changes. Do you want to save them as a draft before leaving?",
-  "Activate Teacher" : "Activate Teacher",
-  "Learning Outcomes cannot be empty":"Learning Outcomes cannot be empty",
-  "Reset":"Reset",
-  "Regenerate Lesson Plan":"Regenerate Lesson Plan",
-  "Teacher Panel":"Teacher Panel",
-  "Continue Editing":"Continue Editing",
+  "Reason required": "Reason required",
+  "DOCUMENTS": "DOCUMENTS",
+  "Delete Schedule": "Delete Schedule",
+  "Are you sure you want to delete this Schedule?": "Are you sure you want to delete this Schedule?",
+  "Ok": "Ok",
+  "Confirm": "Confirm",
+  "Selected combination does not include videos.": "Selected combination does not include videos.",
+  "Selected combination does not include videos. Do you want to continue ?": "Selected combination does not include videos. Do you want to continue ?",
+  "Do you want to logout?": "Do you want to logout?",
+  "School List": "School List",
+  "Add School": "Add School",
+  "Search School Name/DISE Code": "Search School Name/DISE Code",
+  "DISE Code": "DISE Code",
+  "Status": "Status",
+  "View School": "View School",
+  "Edit School": "Edit School",
+  "Activate School": "Activate School",
+  "No Data Found": "No Data Found",
+  "School Profile": "School Profile",
+  "Enter name": "Enter name",
+  "School name is required": "School name is required",
+  "School name should have atleast 5 characters": "School name should have atleast 5 characters",
+  "Enter DISE Code": "Enter DISE Code",
+  "DISE Code is required": "DISE Code is required",
+  "DISE Code should be of 11 digits": "DISE Code should be of 11 digits",
+  "Academic year start date": "Academic year start date",
+  "Select date": "Select date",
+  "Academic year start date is required": "Academic year start date is required",
+  "Academic year end date": "Academic year end date",
+  "Academic year end date is required": "Academic year end date is required",
+  "Academic year end date must be greater than start date": "Academic year end date must be greater than start date",
+  "Holiday List": "Holiday List",
+  "Reason": "Reason",
+  "Reason is required": "Reason is required",
+  "Resource details": "Resource details",
+  "Resource type is required": "Resource type is required",
+  "Resource details are required": "Resource details are required",
+  "Add Board/Class Details": "Add Board/Class Details",
+  "Class min value is required": "Class min value is required",
+  "Class max value is required": "Class max value is required",
+  "Boys": "Boys",
+  "Girls": "Girls",
+  "class": "class",
+  "No. of boys": "No. of boys",
+  "No. of boys is required": "No. of boys is required",
+  "No. of girls": "No. of girls",
+  "No. of girls is required": "No. of girls is required",
+  "Add Board/Class": "Add Board/Class",
+  "Close": "Close",
+  "Search Lesson Plan/Resource": "Search Lesson Plan/Resource",
+  "Sikshana": "Sikshana",
+  "Are you sure you want to switch the application language": "Are you sure you want to switch the application language",
+  "Switch Language": "Switch Language",
+  "In the table below, please ensure that there is at least one class data and that all fields are filled.": "In the table below, please ensure that there is at least one class data and that all fields are filled.",
+  "Continue": "Continue",
+  "Edu Chatbot": "Edu Chatbot",
+  "Send a message": "Send a message",
+  "Please note that this page includes regenerated content. The regeneration process may take some time, and we will update the status on the cards accordingly. Once the content is fully generated, you can edit and finalize the plan.": "Please note that this page includes regenerated content. The regeneration process may take some time, and we will update the status on the cards accordingly. Once the content is fully generated, you can edit and finalize the plan.",
+  "Generation Status": "Generation Status",
+  "Hello! I am here to assist you. Just type your question to get started!": "Hello! I am here to assist you. Just type your question to get started!",
+  "Remove Profile Image": "Remove Profile Image",
+  "Are you sure you want to remove profile image?": "Are you sure you want to remove profile image?",
+  "Change Image": "Change Image",
+  "Choose Image": "Choose Image",
+  "You have a daily chat limit of 20 messages per day": "You have a daily chat limit of 20 messages per day",
+  "Delete Class Details": "Delete Class Details",
+  "Are you sure you want to delete this class details?": "Are you sure you want to delete this class details?",
+  "Delete Resource": "Delete Resource",
+  "Are you sure you want to delete this resource?": "Are you sure you want to delete this resource?",
+  "Plan Status": "Plan Status",
+  "Plan Type": "Plan Type",
+  "Month": "Month",
+  "is required": "is required",
+  "Save Lesson Plan": "Save Lesson Plan",
+  "Enter Reason": "Enter Reason",
+  "Save Resource Plan": "Save Resource Plan",
+  "Leave Page?": "Leave Page?",
+  "Additional Resources": "Additional Resources",
+  "You have unsaved changes. Do you want to save edited contents before leaving?": "You have unsaved changes. Do you want to save edited contents before leaving?",
+  "Save Changes": "Save Changes",
+  "Save as Draft": "Save as Draft",
+  "Exit Without Saving": "Exit Without Saving",
+  "You have unsaved changes. Do you want to save them as a draft before leaving?": "You have unsaved changes. Do you want to save them as a draft before leaving?",
+  "Activate Teacher": "Activate Teacher",
+  "Learning Outcomes cannot be empty": "Learning Outcomes cannot be empty",
+  "Reset": "Reset",
+  "Regenerate Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Regenerate Period Plan"
+    },
+    "Regenerate Lesson Plan"
+  ],
+  "Teacher Panel": "Teacher Panel",
+  "Continue Editing": "Continue Editing",
   "Deselect \"None of the above\" to choose another option.": "Deselect \"None of the above\" to choose another option.",
-  "Drafted on":"Drafted on",
-  "Lesson Resource":"Lesson Resource",
-  "Draft":"Draft",
-  "Relevant":"Relevant",
-  "Moderately Relevant":"Moderately Relevant",
-  "Irrelevant":"Irrelevant",
-  "Very good to use in the classroom":"Very good to use in the classroom",
-  "Needs some improvement to use in the classroom":"Needs some improvement to use in the classroom",
-  "Does not meet the requirements to use it in the classroom":"Does not meet the requirements to use it in the classroom",
-  "Generated On":"Generated On",
-  "Regenerated":"Regenerated",
-  "Initiated On":"Initiated On",
-  "Last updated On":"Last updated On",
-  "Failed":"Failed",
-  "Running":"Running",
-  "Retry":"Retry",
-  "Content will be regenerated as the learning outcome has been updated. It will take few minutes to regenerate new content for the updated learning outcome":"Content will be regenerated as the learning outcome has been updated. It will take few minutes to regenerate new content for the updated learning outcome",
-  "Search Plan":"Search Plan",
-  "Others' Schedules":"Others' Schedules",
-  "Calendar":"Calendar",
-  "Lesson Chatbot":"Lesson Chatbot",
-  "Learn More":"Learn More",
-  "Have Questions?":"Have Questions?",
-  "LESSON PLAN DETAILS":"LESSON PLAN DETAILS",
+  "Drafted on": "Drafted on",
+  "Lesson Resource": "Lesson Resource",
+  "Draft": "Draft",
+  "Relevant": "Relevant",
+  "Moderately Relevant": "Moderately Relevant",
+  "Irrelevant": "Irrelevant",
+  "Very good to use in the classroom": "Very good to use in the classroom",
+  "Needs some improvement to use in the classroom": "Needs some improvement to use in the classroom",
+  "Does not meet the requirements to use it in the classroom": "Does not meet the requirements to use it in the classroom",
+  "Generated On": "Generated On",
+  "Regenerated": "Regenerated",
+  "Initiated On": "Initiated On",
+  "Last updated On": "Last updated On",
+  "Failed": "Failed",
+  "Running": "Running",
+  "Retry": "Retry",
+  "Content will be regenerated as the learning outcome has been updated. It will take few minutes to regenerate new content for the updated learning outcome": "Content will be regenerated as the learning outcome has been updated. It will take few minutes to regenerate new content for the updated learning outcome",
+  "Search Plan": "Search Plan",
+  "Others' Schedules": "Others' Schedules",
+  "Calendar": "Calendar",
+  "Lesson Chatbot": "Lesson Chatbot",
+  "Learn More": "Learn More",
+  "Have Questions?": "Have Questions?",
+  "LESSON PLAN DETAILS": "LESSON PLAN DETAILS",
   "ELABORATE": "ELABORATE",
   "ENGAGE": "ENGAGE",
   "EVALUATE": "EVALUATE",
   "EXPLAIN": "EXPLAIN",
   "EXPLORE": "EXPLORE",
-  "LESSON PLAN SUMMARY":"LESSON PLAN SUMMARY",
-  "MCQs":"MCQs",
-  "Assessments":"Assessments",
-  "Activity":"Activity",
-  "Materials":"Materials",
-  "ACTIVITIES":"ACTIVITIES",
-  "QUESTION PAPER":"QUESTION PAPER",
-  "REAL WORLD SCENARIOS":"REAL WORLD SCENARIOS",
-  "No Data Available":"No Data Available",
-  "SubTopic":"SubTopic",
-  "Q":"Q",
-  "Assessment":"Assessment",
-  "BEGINNER":"BEGINNER",
+  "LESSON PLAN SUMMARY": "LESSON PLAN SUMMARY",
+  "MCQs": "MCQs",
+  "Assessments": "Assessments",
+  "Activity": "Activity",
+  "Materials": "Materials",
+  "ACTIVITIES": "ACTIVITIES",
+  "QUESTION PAPER": "QUESTION PAPER",
+  "REAL WORLD SCENARIOS": "REAL WORLD SCENARIOS",
+  "No Data Available": "No Data Available",
+  "SubTopic": "SubTopic",
+  "Q": "Q",
+  "Assessment": "Assessment",
+  "BEGINNER": "BEGINNER",
   "INTERMEDIATE": "INTERMEDIATE",
   "ADVANCED": "ADVANCED",
-  "ASSESSMENT":"ASSESSMENT",
-  "MCQS":"MCQS",
-  "No Videos Available":"No Videos Available",
-  "Question Paper":"Question Paper",
-  "Title":"Title",
-  "Preparation":"Preparation",
-  "Required Materials":"Required Materials",
-  "Obtaining Materials":"Obtaining Materials",
-  "Recap":"Recap",
-  "No Content for this section":"No Content for this section",
-  "A draft already exists for the selected combination. Would you like to proceed with editing it?":"A draft already exists for the selected combination. Would you like to proceed with editing it?",
-  "Draft Exists":"Draft Exists",
-  "LEARNING OUTCOMES":"LEARNING OUTCOMES",
-  "5E Table":"5E Table",
-  "Leave your comments here":"Leave your comments here",
-  "Chatbot":"Chatbot",
-  "The lesson objectives provided are clear, appropriate, measurable, and aligned with the curriculum.":"The lesson objectives provided are clear, appropriate, measurable, and aligned with the curriculum.",
-  "The content elicits students’ prior knowledge based on the learning objectives.":"The content elicits students’ prior knowledge based on the learning objectives.",
-  "The content raises student interest/motivation to learn the topic.":"The content raises student interest/motivation to learn the topic.",
-  "The activities are appropriate to the student levels and the learning objectives.":"The activities are appropriate to the student levels and the learning objectives.",
-  "The activities are doable in classrooms without any resource constraints.":"The activities are doable in classrooms without any resource constraints.",
-  "The content has questions to lead interactive discussions in the classroom.":"The content has questions to lead interactive discussions in the classroom.",
-  "The content includes different approaches such as audio-visual resources, activities, or field visits to explain and illustrate the concept(s) and/or skill(s).":"The content includes different approaches such as audio-visual resources, activities, or field visits to explain and illustrate the concept(s) and/or skill(s).",
-  "The activities provide students with the opportunity to apply the newly acquired concept(s) and/or skill(s) in new areas.":"The activities provide students with the opportunity to apply the newly acquired concept(s) and/or skill(s) in new areas.",
-  "The activities encourage students to find real-life connections with the newly acquired concept(s) and/or skill(s).":"The activities encourage students to find real-life connections with the newly acquired concept(s) and/or skill(s).",
-  "The content helps check how well the student understands the concept taught.":"The content helps check how well the student understands the concept taught.",
-  "Strongly Disagree":"Strongly Disagree",
-  "Disagree":"Disagree",
-  "Neutral":"Neutral",
-  "Agree":"Agree",
-  "Strongly Agree":"Strongly Agree",
-  "Documents will be available for download once the lesson plan has been saved.":"Documents will be available for download once the lesson plan has been saved.",
-  "Documents will be available for download once the resource plan has been saved.":"Documents will be available for download once the resource plan has been saved.",
-  "idle message":"You've been idle for {{minutes}} minutes. Would you like to continue?",
-  "Generate customized question paper that enhances students' learning experiences":"Generate customized question paper that enhances students' learning experiences",
-  "Generate Question Paper":"Generate Question Paper",
-  "Search Question Paper":"Search Question Paper",
-  "Semester":"Semester",
-  "Question Paper Generation":"Question Paper Generation",
-  "View Question Paper":"View Question Paper",
-  "Examination Name":"Examination Name",
-  "Examination name is required":"Examination name is required",
-  "Select Type":"Select Type",
-  "Select Difficulty":"Select Difficulty",
-  "Marks":"Marks",
-  "Difficulty":"Difficulty",
-  "Marks is required":"Marks is required",
-  "Question Configuration":"Question Configuration",
-  "Click here to view question configuration":"Click here to view question configuration",
-  "Question Paper Feedback":"Question Paper Feedback",
-  "Do you feel that the questions in this paper are relevant to your specified configuration and requirements?":"Do you feel that the questions in this paper are relevant to your specified configuration and requirements?",
-  "Submit Feedback":"Submit Feedback",
-  "Download Question Paper":"Download Question Paper",
-  "Total Marks":"Total Marks",
-  "Multiple Choice Questions (MCQs)":"Multiple Choice Questions (MCQs)",
-  "Answer the following questions":"Answer the following questions",
-  "Fill in the blanks":"Fill in the blanks",
-  "Total":"Total",
-  "You can generate up to 40 questions in the question paper.":"You can generate up to 40 questions in the question paper.",
-  "Copy to clipboard":"Copy to clipboard",
-  "Modified On":"Modified On",
-  "Daily chat limit: 20 messages per day":"Daily chat limit: 20 messages per day",
-  "Sample Instructions":"Sample Instructions",
-  "Generate customized question paper that assess students' learning":"Generate customized question paper that assess students' learning",
-  "Chapters":"Chapters",
-  "Help":"Help",
-  "FAQ":"FAQ",
-  "Explore Our Video Guides":"Explore Our Video Guides",
-  "Step-by-step videos to guide you through Shiksha copilot features and functionalities":"Step-by-step videos to guide you through Shiksha copilot features and functionalities",
-  "Lesson Summary":"Lesson Summary",
-  "Chapter Details":"Chapter Details",
-  "Recently Generated/Modified Plans":"Recently Generated/Modified Plans",
-  "Phase":"Phase",
-  "Classroom Process":"Classroom Process",
-  "TLM":"TLM",
-  "CCE Tools and Techniques":"CCE Tools and Techniques",
-  "User Registration":"User Registration",
-  "Dashboard Overview":"Dashboard Overview",
-  "Chatbot Assistance":"Chatbot Assistance",
-  "Lesson Plan Regeneration":"Lesson Plan Regeneration",
-  "Mind-Mapping":"Mind-Mapping",
-  "Prerequisites":"Prerequisites",
-  "Keywords":"Keywords",
-  "Conceptual understanding through pedagogical strategies":"Conceptual understanding through pedagogical strategies",
-  "Recapitulation":"Recapitulation",
-  "Homework":"Homework",
-  "Concepts and pedagogical strategy":"Concepts and pedagogical strategy",
+  "ASSESSMENT": "ASSESSMENT",
+  "MCQS": "MCQS",
+  "No Videos Available": "No Videos Available",
+  "Question Paper": "Question Paper",
+  "Title": "Title",
+  "Preparation": "Preparation",
+  "Required Materials": "Required Materials",
+  "Obtaining Materials": "Obtaining Materials",
+  "Recap": "Recap",
+  "No Content for this section": "No Content for this section",
+  "A draft already exists for the selected combination. Would you like to proceed with editing it?": "A draft already exists for the selected combination. Would you like to proceed with editing it?",
+  "Draft Exists": "Draft Exists",
+  "LEARNING OUTCOMES": "LEARNING OUTCOMES",
+  "5E Table": "5E Table",
+  "Leave your comments here": "Leave your comments here",
+  "Chatbot": "Chatbot",
+  "The lesson objectives provided are clear, appropriate, measurable, and aligned with the curriculum.": "The lesson objectives provided are clear, appropriate, measurable, and aligned with the curriculum.",
+  "The content elicits students’ prior knowledge based on the learning objectives.": "The content elicits students’ prior knowledge based on the learning objectives.",
+  "The content raises student interest/motivation to learn the topic.": "The content raises student interest/motivation to learn the topic.",
+  "The activities are appropriate to the student levels and the learning objectives.": "The activities are appropriate to the student levels and the learning objectives.",
+  "The activities are doable in classrooms without any resource constraints.": "The activities are doable in classrooms without any resource constraints.",
+  "The content has questions to lead interactive discussions in the classroom.": "The content has questions to lead interactive discussions in the classroom.",
+  "The content includes different approaches such as audio-visual resources, activities, or field visits to explain and illustrate the concept(s) and/or skill(s).": "The content includes different approaches such as audio-visual resources, activities, or field visits to explain and illustrate the concept(s) and/or skill(s).",
+  "The activities provide students with the opportunity to apply the newly acquired concept(s) and/or skill(s) in new areas.": "The activities provide students with the opportunity to apply the newly acquired concept(s) and/or skill(s) in new areas.",
+  "The activities encourage students to find real-life connections with the newly acquired concept(s) and/or skill(s).": "The activities encourage students to find real-life connections with the newly acquired concept(s) and/or skill(s).",
+  "The content helps check how well the student understands the concept taught.": "The content helps check how well the student understands the concept taught.",
+  "Strongly Disagree": "Strongly Disagree",
+  "Disagree": "Disagree",
+  "Neutral": "Neutral",
+  "Agree": "Agree",
+  "Strongly Agree": "Strongly Agree",
+  "Documents will be available for download once the lesson plan has been saved.": "Documents will be available for download once the lesson plan has been saved.",
+  "Documents will be available for download once the resource plan has been saved.": "Documents will be available for download once the resource plan has been saved.",
+  "idle message": "You've been idle for {{minutes}} minutes. Would you like to continue?",
+  "Generate customized question paper that enhances students' learning experiences": "Generate customized question paper that enhances students' learning experiences",
+  "Generate Question Paper": "Generate Question Paper",
+  "Search Question Paper": "Search Question Paper",
+  "Semester": "Semester",
+  "Question Paper Generation": "Question Paper Generation",
+  "View Question Paper": "View Question Paper",
+  "Examination Name": "Examination Name",
+  "Examination name is required": "Examination name is required",
+  "Select Type": "Select Type",
+  "Select Difficulty": "Select Difficulty",
+  "Marks": "Marks",
+  "Difficulty": "Difficulty",
+  "Marks is required": "Marks is required",
+  "Question Configuration": "Question Configuration",
+  "Click here to view question configuration": "Click here to view question configuration",
+  "Question Paper Feedback": "Question Paper Feedback",
+  "Do you feel that the questions in this paper are relevant to your specified configuration and requirements?": "Do you feel that the questions in this paper are relevant to your specified configuration and requirements?",
+  "Submit Feedback": "Submit Feedback",
+  "Download Question Paper": "Download Question Paper",
+  "Total Marks": "Total Marks",
+  "Multiple Choice Questions (MCQs)": "Multiple Choice Questions (MCQs)",
+  "Answer the following questions": "Answer the following questions",
+  "Fill in the blanks": "Fill in the blanks",
+  "Total": "Total",
+  "You can generate up to 40 questions in the question paper.": "You can generate up to 40 questions in the question paper.",
+  "Copy to clipboard": "Copy to clipboard",
+  "Modified On": "Modified On",
+  "Daily chat limit: 20 messages per day": "Daily chat limit: 20 messages per day",
+  "Sample Instructions": "Sample Instructions",
+  "Generate customized question paper that assess students' learning": "Generate customized question paper that assess students' learning",
+  "Chapters": "Chapters",
+  "Help": "Help",
+  "FAQ": "FAQ",
+  "Explore Our Video Guides": "Explore Our Video Guides",
+  "Step-by-step videos to guide you through Shiksha copilot features and functionalities": "Step-by-step videos to guide you through Shiksha copilot features and functionalities",
+  "Lesson Summary": "Lesson Summary",
+  "Chapter Details": "Chapter Details",
+  "Recently Generated/Modified Plans": "Recently Generated/Modified Plans",
+  "Phase": "Phase",
+  "Classroom Process": "Classroom Process",
+  "TLM": "TLM",
+  "CCE Tools and Techniques": "CCE Tools and Techniques",
+  "User Registration": "User Registration",
+  "Dashboard Overview": "Dashboard Overview",
+  "Chatbot Assistance": "Chatbot Assistance",
+  "Lesson Plan Regeneration": "Lesson Plan Regeneration",
+  "Mind-Mapping": "Mind-Mapping",
+  "Prerequisites": "Prerequisites",
+  "Keywords": "Keywords",
+  "Conceptual understanding through pedagogical strategies": "Conceptual understanding through pedagogical strategies",
+  "Recapitulation": "Recapitulation",
+  "Homework": "Homework",
+  "Concepts and pedagogical strategy": "Concepts and pedagogical strategy",
   "LBA Based Question Paper": "LBA Based Question Paper",
   "Back to Config": "Back to Config",
   "Build Paper": "Build Paper",
@@ -512,14 +570,214 @@
   "Very Short Answer Questions": "Very Short Answer Questions",
   "Short Answer Questions": "Short Answer Questions",
   "Long Answer Questions": "Long Answer Questions",
-  "Knowledge": "Knowledge",
-  "Understanding": "Understanding",
-  "Application": "Application",
+  "Knowledge": [
+    {
+      "rule": "subject == 'Physics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Understanding",
+        "fullLabel": "Conceptual Understanding"
+      }
+    },
+    {
+      "rule": "subject == 'Biology' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Understanding",
+        "fullLabel": "Conceptual Understanding"
+      }
+    },
+    {
+      "rule": "subject == 'Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Understanding",
+        "fullLabel": "Conceptual Understanding"
+      }
+    },
+    {
+      "rule": "subject == 'Social' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Understanding",
+        "fullLabel": "Conceptual Understanding"
+      }
+    },
+    {
+      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Understanding",
+        "fullLabel": "Conceptual Understanding"
+      }
+    },
+    {
+      "rule": "subject == 'Math' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Problem solving",
+        "fullLabel": "Problem solving"
+      }
+    },
+    {
+      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Problem solving",
+        "fullLabel": "Problem solving"
+      }
+    }
+  ],
+  "Understanding": [
+    {
+      "rule": "subject == 'Physics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Questioning",
+        "fullLabel": "Asking questions and making hypothesis"
+      }
+    },
+    {
+      "rule": "subject == 'Biology' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Questioning",
+        "fullLabel": "Asking questions and making hypothesis"
+      }
+    },
+    {
+      "rule": "subject == 'Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Questioning",
+        "fullLabel": "Asking questions and making hypothesis"
+      }
+    },
+    {
+      "rule": "subject == 'Social' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Interpretation",
+        "fullLabel": "Reading the text, understanding and interpretation"
+      }
+    },
+    {
+      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Interpretation",
+        "fullLabel": "Reading the text, understanding and interpretation"
+      }
+    },
+    {
+      "rule": "subject == 'Math' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Reasoning",
+        "fullLabel": "Reasoning proof"
+      }
+    },
+    {
+      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Reasoning",
+        "fullLabel": "Reasoning proof"
+      }
+    }
+  ],
+  "Application": [
+    {
+      "rule": "subject == 'Physics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Experimentation",
+        "fullLabel": "Experimentation and field investigation"
+      }
+    },
+    {
+      "rule": "subject == 'Biology' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Experimentation",
+        "fullLabel": "Experimentation and field investigation"
+      }
+    },
+    {
+      "rule": "subject == 'Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Experimentation",
+        "fullLabel": "Experimentation and field investigation"
+      }
+    },
+    {
+      "rule": "subject == 'Social' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Info skills",
+        "fullLabel": "Information skills"
+      }
+    },
+    {
+      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Info skills",
+        "fullLabel": "Information skills"
+      }
+    },
+    {
+      "rule": "subject == 'Math' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Communication",
+        "fullLabel": "Communication"
+      }
+    },
+    {
+      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Communication",
+        "fullLabel": "Communication"
+      }
+    }
+  ],
   "Skill": "Skill",
   "Comprehension": "Comprehension",
   "Expression": "Expression",
   "Appreciation": "Appreciation",
-  "Higher order thinking": "Higher order thinking",
+  "Higher order thinking": [
+    {
+      "rule": "subject == 'Physics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Info skills",
+        "fullLabel": "Information skills and Projects"
+      }
+    },
+    {
+      "rule": "subject == 'Biology' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Info skills",
+        "fullLabel": "Information skills and Projects"
+      }
+    },
+    {
+      "rule": "subject == 'Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Info skills",
+        "fullLabel": "Information skills and Projects"
+      }
+    },
+    {
+      "rule": "subject == 'Social' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Reflection",
+        "fullLabel": "Reflection on contemporary issues and questioning"
+      }
+    },
+    {
+      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Reflection",
+        "fullLabel": "Reflection on contemporary issues and questioning"
+      }
+    },
+    {
+      "rule": "subject == 'Math' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Connections",
+        "fullLabel": "Connections"
+      }
+    },
+    {
+      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
+      "value": {
+        "shortLabel": "Connections",
+        "fullLabel": "Connections"
+      }
+    }
+  ],
   "AI Questions": "AI Questions",
   "Pre-generated Questions": "Pre-generated Questions",
   "These are AI-generated questions based on the selected criteria.": "These are AI-generated questions based on the selected criteria.",
@@ -835,5 +1093,33 @@
   "AI enhance": "AI enhance",
   "AI enhance: entire lesson plan": "AI enhance: entire lesson plan",
   "Describe the change you want across the lesson plan": "Describe the change you want across the lesson plan",
-  "Describe the change you want": "Describe the change you want"
+  "Describe the change you want": "Describe the change you want",
+  "Physics": [
+    {
+      "rule": "board == 'BSE-TG'",
+      "value": "Physical Science"
+    },
+    "Physics"
+  ],
+  "Biology": [
+    {
+      "rule": "board == 'BSE-TG'",
+      "value": "Biological Science"
+    },
+    "Biology"
+  ],
+  "Math": [
+    {
+      "rule": "board == 'BSE-TG'",
+      "value": "Mathematics"
+    },
+    "Math"
+  ],
+  "Social": [
+    {
+      "rule": "board == 'BSE-TG'",
+      "value": "Social Studies"
+    },
+    "Social"
+  ]
 }

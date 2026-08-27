@@ -10,6 +10,7 @@ import {
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { getLabel } from 'src/app/shared/utility/constant.util';
 import { ContentGenerationService } from 'src/app/view/user/content-generation/content-generation.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { ModalService } from '../modal/modal.service';
@@ -227,6 +228,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     this.getRegenrationLimit()
   }
 
+  phrase(canonicalPhrase: string): string {
+    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utilityservice.loggedInUserData?.school?.state });
+  }
+
   getRegenrationLimit(){
     this.contentGenService.getRegenerationLimit().
       subscribe({
@@ -308,10 +313,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
             this.f.subject.setValue(
               classList[0].mediums[0].classes[0].data[0].subject
             );
-            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(classList[0].mediums[0].classes[0].data);
+            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(classList[0].mediums[0].classes[0].data, this.f.board.value);
             this.getTemplates()
           } else {
-            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(classList[0].mediums[0].classes[0].data);
+            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(classList[0].mediums[0].classes[0].data, this.f.board.value);
           }
         } else {
           this.classDropdownOptions = classList[0].mediums[0].classes.sort(
@@ -339,10 +344,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
           if (val.mediums[0].classes[0].data.length === 1) {
             this.f.subject.setValue(val.mediums[0].classes[0].data[0].subject);
-            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.mediums[0].classes[0].data);
+            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.mediums[0].classes[0].data, this.f.board.value);
             this.getTemplates();
           } else {
-            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.mediums[0].classes[0].data);
+            this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.mediums[0].classes[0].data, this.f.board.value);
           }
         } else {
           this.classDropdownOptions = val.mediums[0].classes.sort(
@@ -368,10 +373,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
           this.idleService.resetIdler();
           this.idleService.startWatching();
           this.f.subject.setValue(val.classes[0].data[0].subject);
-          this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.classes[0].data);
+          this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.classes[0].data, this.f.board.value);
           this.getTemplates()
         } else {
-          this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.classes[0].data);
+          this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.classes[0].data, this.f.board.value);
         }
       }
     }
@@ -381,10 +386,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     this.resetClassChange();
     if (val) {
       this.idleService.startWatching();
-      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.data);
+      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.data, this.f.board.value);
       if (val.data.length === 1) {
         this.f.subject.setValue(val.data[0].subject);
-        this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.data);
+        this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(val.data, this.f.board.value);
         this.getTemplates()
       }
     }

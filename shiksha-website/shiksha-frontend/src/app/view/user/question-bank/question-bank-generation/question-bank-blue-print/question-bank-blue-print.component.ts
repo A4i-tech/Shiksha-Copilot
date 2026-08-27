@@ -23,8 +23,8 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
   // Data from Parent
   @Input() finalSelectedQuestions: any[] = [];
   @Input() bluePrintChapterDropdownOptions: any[] = [];
-  @Input() bluePrintObjectiveDropdownOptions: any[] = [];
   @Input() bluePrintData: any[] = [];
+  @Input() objectiveLabels: Record<string, string> = {};
 
   @Output() backClick = new EventEmitter<void>();
   @Output() generateClick = new EventEmitter<void>();
@@ -126,7 +126,7 @@ export class QuestionBankBluePrintComponent implements OnInit, OnChanges, AfterV
     let chartColors: string[] = [];
 
     this.finalSelectedQuestions.forEach(q => {
-      const label = q.source === QUESTION_SOURCE.AI ? q.objective : 'Pre-generated';
+      const label = q.source === QUESTION_SOURCE.AI ? (this.objectiveLabels[q.objective] || q.objective) : 'Pre-generated';
       chartMapper[label] = (chartMapper[label] || 0) + 1;
     });
 

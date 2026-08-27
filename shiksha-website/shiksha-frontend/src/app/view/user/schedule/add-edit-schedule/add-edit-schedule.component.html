@@ -57,7 +57,7 @@
 						</div> 
 			
 						<button class="btn-primary  flex items-center justify-center px-4 self-start" type="button" *ngIf="mode === 'add'" routerLink="/content-generation">
-							<span class="ms-1 me-1">{{"Add Lesson Plan" | translate}}</span>
+							<span class="ms-1 me-1">{{phrase('Add Lesson Plan') | translate}}</span>
 							<img src="assets/icons/E add.svg" alt="">
 						</button>
 						<div class="scheduleArray" formArrayName="schedule">

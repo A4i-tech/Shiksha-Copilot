@@ -1,12 +1,13 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TranslateService } from '@ngx-translate/core';
 import { QuestionBankService } from '../question-bank.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { slideInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
-import { formatMarks } from 'src/app/shared/utility/constant.util';
+import { formatMarks, getLabel } from 'src/app/shared/utility/constant.util';
 import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
@@ -78,7 +79,8 @@ export class QuestionBankViewComponent implements OnInit {
     private router: Router,
     private idleService: IdleService,
     private questionBankDownloadService: QuestionBankDownloadService,
-    private bluePrintExportService: BluePrintExportService
+    private bluePrintExportService: BluePrintExportService,
+    public translateService: TranslateService
   ) {
     this.route.params.subscribe((params) => {
       this.questionBankId = params['id'];
@@ -99,6 +101,8 @@ export class QuestionBankViewComponent implements OnInit {
       .subscribe({
         next: (val: any) => {
           this.questionBankDetails = val.data;
+          // Display-only label; the canonical `subject` field is unchanged and still used below.
+          this.questionBankDetails.subjectLabel = getLabel(this.questionBankDetails.subject, this.questionBankDetails.subject, { board: this.questionBankDetails.board });
           this.questionBank = this.questionBankDetails.questionBank
           this.generatedTotalMarks = this.questionBank.questions.reduce((sum: number, section: any) => (
             sum + Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
@@ -109,6 +113,19 @@ export class QuestionBankViewComponent implements OnInit {
             subjectName: this.questionBankDetails.subject
           }).subscribe((config: any) => {
             this.questionTypeLabels = Object.fromEntries(config.questionTypes.map((type: any) => [type.key, type.label]));
+          });
+
+          // Attaches display-only shortLabel/fullLabel to each objective in the blueprint table.
+          // The `objective` field itself stays the canonical backend name and is never overwritten.
+          (this.questionBankDetails.bluePrintTemplate || []).forEach((questionBankObjective: any) => {
+            questionBankObjective.questionDistribution = (questionBankObjective.questionDistribution || []).map((objective: any) => {
+              const { shortLabel, fullLabel } = getLabel(
+                objective.objective,
+                { shortLabel: objective.objective, fullLabel: '' },
+                { board: this.questionBankDetails.board, subject: this.questionBankDetails.subject }
+              );
+              return { ...objective, shortLabel, fullLabel };
+            });
           });
 
           if (this.questionBank.questions.length) {
