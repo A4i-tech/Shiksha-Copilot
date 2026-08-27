@@ -55,23 +55,8 @@ export const QUESTION_SOURCE = {
 
 export const formatMarks = (marks: number) => String(marks).replace(/(?:^0)?\.5$/, '½');
 
-// Board/state label overrides (Taluk->Mandal, Lesson Plan->Period Plan, subject/objective
-// renames) live flat in assets/i18n/en.json, alongside ordinary translation strings, so the
-// mapping stays config-dense. Language-independent by design (board/state driven, not
-// UI-language driven), so there is no equivalent block in kn.json.
-//
-// A rule entry's value is either a plain value (unconditional) or an array. Array entries are
-// tried in order; a `{rule, value}` entry's rule is a CEL expression (github.com/marcbachmann/cel-js)
-// evaluated against whatever context the caller passes in — the rule can reference any context
-// field, so a key isn't tied to any one field (board, state, subject, ...). A bare value in the
-// array (no `rule`) is an unconditional fallback. A context field the rule references but the
-// caller didn't provide is treated as a non-match, not an error.
 type LabelRuleContext = Record<string, string | null | undefined>;
 
-// The single entry point into rule-bearing labels. `key` is the canonical English text (or,
-// for objectives, the canonical objective name); `context` is whatever fields the caller has
-// on hand (board/state/subject/...) for the rule to match against. No per-concept wrapper
-// functions and no derived classification tables — all of that lives in en.json as data.
 export const getLabel = <T>(key: string, fallback: T, context: LabelRuleContext): T => {
     const value = (enLabels as unknown as Record<string, T | ({ rule: string; value: T } | T)[]>)[key];
     if (value === undefined) return fallback;
