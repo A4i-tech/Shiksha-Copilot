@@ -108,7 +108,8 @@
   "questionSources": {
     "DEFAULT": ["AI"],
     "KSEEB": ["AI", "LBA"],
-    "CBSE": ["AI", "LBA"]
+    "CBSE": ["AI", "LBA"],
+    "BSE-TG": ["AI", "LBA"]
   },
   "objectivePolicies": {
     "DEFAULT": {
