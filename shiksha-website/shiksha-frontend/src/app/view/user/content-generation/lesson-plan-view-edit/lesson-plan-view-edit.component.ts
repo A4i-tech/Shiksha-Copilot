@@ -9,6 +9,7 @@ import {
 import { ActivatedRoute, NavigationStart, Router } from '@angular/router';
 import { ContentGenerationService } from '../content-generation.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { getLabel } from 'src/app/shared/utility/constant.util';
 import { forkJoin, Subscription } from 'rxjs';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import {
@@ -143,6 +144,10 @@ export class LessonPlanViewEditComponent implements OnInit {
       'You have unsaved changes. Are you sure you want to leave?';
   };
 
+  phrase(canonicalPhrase: string): string {
+    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utilityService.loggedInUserData?.school?.state });
+  }
+
   constructor(
     private activatedRoute: ActivatedRoute,
     public contentGenService: ContentGenerationService,
@@ -156,8 +161,8 @@ export class LessonPlanViewEditComponent implements OnInit {
       this.activatedRoute.snapshot.paramMap.get('planType') === 'lesson-plan';
 
     if (this.isLesson) {
-      this.activeTab.set('Lesson Plan');
-      this.currentType = 'Lesson Plan';
+      this.activeTab.set(this.phrase('Lesson Plan'));
+      this.currentType = this.phrase('Lesson Plan');
     } else {
       this.activeTab.set('Lesson Resource');
       this.currentType = 'Lesson Resource';

@@ -7,6 +7,7 @@ import { marked } from 'marked';
 import { ClipboardService } from 'ngx-clipboard';
 import { ToastrService } from 'ngx-toastr';
 import { PermissionGrant } from 'src/app/shared/interfaces/permission.interface';
+import { getLabel } from 'src/app/shared/utility/constant.util';
 
 @Injectable({
   providedIn: 'root',
@@ -359,21 +360,22 @@ formatChapterDropdown(data:any){
   return formattedData    
 }
 
-formatSubjectDropdown(data:any){
+formatSubjectDropdown(data:any, board: string){
   let formattedData = data;
   if(formattedData){
     formattedData.forEach((ele:any)=>{
-      ele.displayName = this.getSubjectDisplayName(ele)
+      ele.displayName = this.getSubjectDisplayName(ele, board)
     })
   }
   return formattedData
 }
 
-getSubjectDisplayName(ele:any){
+getSubjectDisplayName(ele:any, board: string = ''){
+  const displayName = getLabel(ele?.name, ele?.name, { board });
   if(ele?.sem){
-  return `${ele.name} Sem${ele.sem}`
+  return `${displayName} Sem${ele.sem}`
   }else{
-  return `${ele.name}`
+  return `${displayName}`
   }
 }
 

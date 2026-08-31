@@ -39,7 +39,7 @@
                     {{ (questionTypeLabels[questionBankObjective.type] || questionBankObjective.type) | translate }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    {{ objective.objective }}
+                    {{ translateService.currentLang === 'en' ? objective.shortLabel : (objective.shortLabel | translate) }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
                     {{ formatMarks(questionBankObjective.marksPerQuestion) }}
@@ -80,7 +80,7 @@
         </h2>
 
         <div class="flex justify-between my-4">
-          <p>{{'Subject' | translate}} : {{ questionBankDetails?.subject }}</p>
+          <p>{{'Subject' | translate}} : {{ questionBankDetails?.subjectLabel }}</p>
           <p>{{'Class' | translate}} : {{ questionBankDetails?.grade }}</p>
           <p>
             {{'Marks' | translate}} : {{ formatMarks(generatedTotalMarks) }}

@@ -21,6 +21,7 @@ import { MasterService } from 'src/app/shared/services/master.service';
 import { DatePipe } from '@angular/common';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { Subscription } from 'rxjs';
+import { getLabel } from 'src/app/shared/utility/constant.util';
 
 interface MinMaxDate{
   currentYearMin:Date,
@@ -571,6 +572,10 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
+    const talukLabel = getLabel('Taluk', 'Taluk', { state: selectedStateValue });
+    this.blockDropdownconfig.placeHolderTxt = talukLabel;
+    this.blockDropdownconfig.fieldName = talukLabel;
+    this.blockDropdownconfig.skipTranslate = true;
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,
