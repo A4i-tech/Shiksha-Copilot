@@ -131,6 +131,9 @@ class BaseDao {
 					session: session,
 				}
 			);
+			if (!result) {
+				throw new Error("Record not found or has been deleted");
+			}
 			return result;
 		} catch (err) {
 			console.log("Error -> BaseDao -> adminUpdate", err);

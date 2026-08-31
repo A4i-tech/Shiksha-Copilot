@@ -8,6 +8,7 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateModule } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import * as ExcelJS from 'exceljs';
 
@@ -25,6 +26,7 @@ describe('ContentListComponent', () => {
         RouterTestingModule,
         ToastrModule.forRoot(),
         HttpClientTestingModule,
+        TranslateModule.forRoot(),
         ContentListComponent,
       ],
       providers: [

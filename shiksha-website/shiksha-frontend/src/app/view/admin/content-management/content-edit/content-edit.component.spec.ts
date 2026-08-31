@@ -8,6 +8,7 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslateModule } from '@ngx-translate/core';
 import { of } from 'rxjs';
 
 import { ContentEditComponent } from './content-edit.component';
@@ -24,6 +25,7 @@ describe('ContentEditComponent', () => {
         RouterTestingModule,
         ToastrModule.forRoot(),
         HttpClientTestingModule,
+        TranslateModule.forRoot(),
         ContentEditComponent,
       ],
       providers: [
