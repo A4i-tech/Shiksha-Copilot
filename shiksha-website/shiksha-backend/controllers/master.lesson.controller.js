@@ -62,8 +62,11 @@ class MasterLessonController extends BaseController {
 
 			return;
 		} catch (err) {
-			console.log("Error --> MasterLessonController -> adminBulkUpload()", err);
-			return res.status(400).json(err);
+			console.error("Error --> MasterLessonController -> adminBulkUpload()", err);
+			return res.status(500).json({
+				success: false,
+				message: err?.message || "Internal server error",
+			});
 		}
 	}
 

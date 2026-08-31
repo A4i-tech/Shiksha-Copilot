@@ -986,7 +986,10 @@ class MasterLessonManger extends BaseManager {
 				),
 			];
 
-			const chapters = await Chapter.find({ _id: { $in: chapterIds } }).lean();
+			const chapters = await Chapter.find({
+				_id: { $in: chapterIds },
+				isDeleted: { $ne: true },
+			}).lean();
 			const chapterById = new Map(
 				chapters.map((chapter) => [String(chapter._id), chapter])
 			);

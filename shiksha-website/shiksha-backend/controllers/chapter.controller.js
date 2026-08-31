@@ -46,8 +46,11 @@ class ChapterController extends BaseController {
 
 			return;
 		} catch (err) {
-			console.log("Error --> ChapterController -> bulkUpload()", err);
-			return res.status(400).json(err);
+			console.error("Error --> ChapterController -> bulkUpload()", err);
+			return res.status(500).json({
+				success: false,
+				message: err?.message || "Internal server error",
+			});
 		}
 	}
 
@@ -67,8 +70,11 @@ class ChapterController extends BaseController {
 
 			return;
 		} catch (err) {
-			console.log("Error --> ChapterController -> adminCreate()", err);
-			return res.status(400).json(err);
+			console.error("Error --> ChapterController -> adminCreate()", err);
+			return res.status(500).json({
+				success: false,
+				message: err?.message || "Internal server error",
+			});
 		}
 	}
 

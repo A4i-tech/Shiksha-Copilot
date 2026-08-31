@@ -121,8 +121,11 @@ class BaseController {
 
 			return;
 		} catch (err) {
-			console.log("Error --> BaseController -> adminUpdate()", err);
-			return res.status(400).json(err);
+			console.error("Error --> BaseController -> adminUpdate()", err);
+			return res.status(500).json({
+				success: false,
+				message: err?.message || "Internal server error",
+			});
 		}
 	}
 

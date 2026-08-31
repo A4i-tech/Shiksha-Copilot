@@ -115,8 +115,8 @@ class BaseDao {
 			if (!updates || Object.keys(updates).length === 0) {
 				throw new Error("No fields to update");
 			}
-			const result = await this.Model.findByIdAndUpdate(
-				id,
+			const result = await this.Model.findOneAndUpdate(
+				{ _id: id, isDeleted: { $ne: true } },
 				{
 					$set: updates,
 				},
@@ -126,6 +126,9 @@ class BaseDao {
 					session: session,
 				}
 			);
+			if (!result) {
+				throw new Error("Record not found or has been deleted");
+			}
 			return result;
 		} catch (err) {
 			console.log("Error -> BaseDao -> adminUpdate", err);
