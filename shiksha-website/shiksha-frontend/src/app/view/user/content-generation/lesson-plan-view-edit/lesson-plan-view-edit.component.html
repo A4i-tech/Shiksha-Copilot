@@ -31,6 +31,17 @@
           "Chatbot" | translate
         }}
       </button>
+      <button
+        data-testid="schedule-this-btn"
+        *ngIf="isLesson"
+        [disabled]="!subjectDetails?._id"
+        class="btn-primary flex gap-2 items-center my-2 md:my-0"
+        (click)="scheduleThis()"
+      >
+        <img class="brightness-0 invert" src="assets/icons/schedule-light.svg" alt="" />{{
+          "Schedule this" | translate
+        }}
+      </button>
     </div>
   </div>
   <div
