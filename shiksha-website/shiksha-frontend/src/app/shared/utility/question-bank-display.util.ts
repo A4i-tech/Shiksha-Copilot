@@ -39,6 +39,15 @@ export function questionText(question: any): string {
   return questionContentItems(question).filter(item => item.contentType === 'text/plain').map(item => item.content) .join(' ');
 }
 
+// True when `questions[index]` and `questions[index + 1]` are paired as an
+// alternate-choice group (e.g. "Q3 OR Q4"), so an "OR" divider should be
+// rendered between them on-screen / in exports.
+export function isOrDividerAfter(questions: any[] | null | undefined, index: number): boolean {
+  const current = questions?.[index];
+  const next = questions?.[index + 1];
+  return !!current?.choiceGroupId && current.choiceGroupId === next?.choiceGroupId;
+}
+
 export function hasQuestionImage(question: any): boolean {
   const content = [
     ...questionContentItems(question),

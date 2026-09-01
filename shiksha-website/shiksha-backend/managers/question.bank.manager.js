@@ -367,6 +367,10 @@ class QuestionBankManager extends BaseManager {
         itemPointer += numNeeded;
         return {
           type: template.type,
+          numberOfQuestions: template.numberOfQuestions,
+          marksPerQuestion: template.marksPerQuestion,
+          answerCount: template.answerCount,
+          choiceGroups: template.choiceGroups,
           questions: blockQuestions
         };
       });
@@ -568,7 +572,14 @@ class QuestionBankManager extends BaseManager {
       item.numberOfQuestions++;
       remaining -= item.marksPerQuestion;
     }
-    return result.filter(item => item.numberOfQuestions);
+    // numberOfQuestions was just re-derived from totalMarks, so the client's answerCount
+    // can no longer be trusted to fit it: a section that shrank below its choice count
+    // becomes answer-all, and answerCount <= numberOfQuestions holds again.
+    return result.filter(item => item.numberOfQuestions)
+      .map(item => ({
+        ...item,
+        answerCount: Math.min(Number(item.answerCount ?? item.numberOfQuestions), item.numberOfQuestions),
+      }));
   }
 
   _distributeBlueprint(template, marksDistribution, objectiveDistribution) {
