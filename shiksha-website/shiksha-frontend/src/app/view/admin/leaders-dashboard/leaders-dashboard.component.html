@@ -1,6 +1,6 @@
 <div class="leaders-dashboard-wrapper">
   <div class="sync-banner" *ngIf="!loading && !error">
-    <span *ngIf="lastSyncAt">Data last synced: {{ lastSyncAt | date:'dd MMM yyyy, HH:mm' }}</span>
+    <span *ngIf="lastSyncAt">Data last synced: {{ syncTimeAgo }}</span>
     <span *ngIf="!lastSyncAt" class="sync-unknown">Sync time unavailable</span>
   </div>
 
