@@ -12,4 +12,10 @@ export class SupersetService {
       this.http.post<{ token: string }>(`${environment.apiUrl}/superset/guest-token`, {})
     ).then((res) => res.token);
   }
+
+  getSyncStatus(): Promise<Date | null> {
+    return firstValueFrom(
+      this.http.get<{ lastSyncAt: string | null }>(`${environment.apiUrl}/analytics/sync-status`)
+    ).then((res) => res.lastSyncAt ? new Date(res.lastSyncAt) : null);
+  }
 }
