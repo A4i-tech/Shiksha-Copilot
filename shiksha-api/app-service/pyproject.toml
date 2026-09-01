@@ -14,7 +14,7 @@ pydantic = "^2.13.4"
 python-dotenv = "^1.0.0"
 aiofiles = "^23.2.1"
 pyyaml = "^6.0.1"
-azure-ai-translation-text = "^1.0.1"
+azure-ai-translation-text = "^2.0.0"
 aiohttp = "^3.13.5"
 vellm-rag-wrapper = { path = "../../components/rag-wrapper", develop = true }
 pydantic-settings = "^2.14.1"
@@ -35,6 +35,7 @@ langfuse = "3.14.6"
 llama-index-core = "^0.14.22"
 llama-index-llms-openai = "^0.7.9"
 llama-index-embeddings-openai = "^0.6.0"
+omni-ingest = "^0.1.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
