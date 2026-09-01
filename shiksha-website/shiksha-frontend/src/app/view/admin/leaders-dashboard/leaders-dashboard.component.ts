@@ -1,5 +1,5 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Subscription } from 'rxjs';
 import { SupersetService } from 'src/app/core/services/superset.service';
@@ -11,7 +11,7 @@ const MOBILE_BREAKPOINT = '(max-width: 768px)';
 @Component({
   selector: 'app-leaders-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DatePipe],
   templateUrl: './leaders-dashboard.component.html',
   styleUrls: ['./leaders-dashboard.component.scss'],
 })
@@ -20,6 +20,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
 
   loading = true;
   error = '';
+  lastSyncAt: Date | null = null;
 
   private embed: EmbeddedDashboard | null = null;
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -46,6 +47,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       this.loading = false;
       return;
     }
+    this.supersetService.getSyncStatus().then(t => this.lastSyncAt = t).catch(() => {});
     await this.doEmbed();
 
     // Only react to WIDTH changes — height changes are from our own iframe height writes
