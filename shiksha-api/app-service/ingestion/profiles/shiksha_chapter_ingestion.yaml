@@ -1,0 +1,326 @@
+pipeline_id: shiksha_chapter_ingestion
+domain_profile: shiksha-copilot
+input_modality: document
+description: >
+  Ingests a single chapter (selected by chapter_number) out of a textbook
+  PDF: locates and extracts the table of contents, splits out the selected
+  chapter, OCRs and cleans its text, extracts chapter- and topic-level
+  learning outcomes, then chunks and embeds the chapter into Qdrant.
+
+parameters:
+  properties:
+    board:
+      type: string
+      default: KSEEB
+      description: Education board. Also used as the Qdrant collection name.
+    medium:
+      type: string
+      default: english
+      description: Language medium of instruction.
+    grade:
+      type: integer
+      minimum: 6
+      maximum: 10
+      default: 6
+      description: Grade level (6-10).
+    subject:
+      type: string
+      default: math
+      description: Subject name, e.g. "math".
+    chapter_number:
+      type: integer
+      default: 1
+      description: Serial number (as it appears in the table of contents) of the chapter to ingest.
+    chapter_title:
+      type: string
+      description: Chapter title used for the chapter_id and prompts.
+    action_verbs:
+      type: array
+      items:
+        type: string
+      description: Allowed Bloom's-taxonomy action verbs learning outcomes must start with.
+    prohibited_action_verbs:
+      type: array
+      items:
+        type: string
+      default: []
+      description: Bloom's-taxonomy action verbs learning outcomes must NOT start with.
+    max_toc_pages_to_check:
+      type: integer
+      default: 30
+      description: Maximum number of leading pages scanned for the table of contents.
+  required:
+    - chapter_title
+    - action_verbs
+
+steps:
+  # ---------------------------------------------------------------------
+  # step_2 (part 1): split the whole PDF into one item per page.
+  # ---------------------------------------------------------------------
+  - agent: page_chunking
+    description: Split the source PDF into one single-page PDF item per page.
+    config:
+      mode: pdf
+
+  # ---------------------------------------------------------------------
+  # step_0: find the table of contents page range.
+  # ---------------------------------------------------------------------
+  # OcrAgent overwrites raw_content in place, so OCR'ing page_chunking's
+  # items directly here would destroy pages the real chapter stitching step
+  # needs later. Clone TOC-candidate pages first (cheap: page_stitching's
+  # lazy content_uri fast path) and run TOC detection on the clones only.
+  - agent: page_stitching
+    description: Clone the first N pages so TOC-detection OCR cannot corrupt the originals.
+    config:
+      foreach: '.items[] | select(.metadata.page <= ${.config.max_toc_pages_to_check}) | {id: .id, page: .metadata.page}'
+      input: '[.id]'
+      metadata: '{page: .page, toc_candidate: true}'
+      replace: false
+
+  - agent: ocr
+    description: OCR the cloned TOC-candidate pages to Markdown.
+    config:
+      engine: llm
+      foreach: '.items[] | select(.metadata.toc_candidate == true)'
+      input: '[.id]'
+
+  - agent: extract
+    description: Classify each candidate page as table-of-contents or not.
+    config:
+      prompt: >-
+        You are an expert document analyzer. Decide whether this page is part
+        of a table of contents (a list of chapter or section titles together
+        with page numbers, dot leaders, or similar). Respond with a single
+        boolean value only.
+      schema:
+        type: boolean
+      path: .metadata.is_toc_page
+      foreach: '.items[] | select(.metadata.toc_candidate == true)'
+      input: .text
+
+  - agent: transform
+    description: Reduce per-page TOC flags into a contiguous start/end page range.
+    config:
+      value: |-
+        (.items | map(select(.metadata.toc_candidate == true and .metadata.is_toc_page == true) | .metadata.page) | sort) as $toc_pages
+        | if ($toc_pages | length) == 0 then
+            {start: null, end: null}
+          else
+            ($toc_pages[0]) as $start
+            | (reduce $toc_pages[] as $p ({prev: $start, last: $start};
+                if $p == (.prev + 1) then {prev: $p, last: $p} else . end
+              )) as $run
+            | {start: $start, end: ($run.last + 1)}
+          end
+      path: .metadata.toc_page_range
+
+  # ---------------------------------------------------------------------
+  # step_1: extract the full table of contents from the identified pages.
+  # ---------------------------------------------------------------------
+  - agent: extract
+    description: Extract the full table of contents (sections and page ranges).
+    config:
+      prompt: >-
+        You are an expert document analyzer. Call the see_next tool
+        repeatedly to read every table-of-contents page in order; each call
+        returns the transcribed Markdown of one page, one at a time, until no
+        items remain. Only after you have called see_next for every page,
+        extract the book's table of contents from everything you read. The
+        table of contents must NOT include
+        non-chapter sections like "Appendix" or "Revision". Give chapter-wise
+        entries ONLY; section names should NOT include the chapter number.
+        For every chapter, give its serial number, name, and page range
+        (start_page, end_page); if an end_page is not explicit, infer it from
+        the next chapter's start_page.
+      mode: buffered
+      schema:
+        type: object
+        properties:
+          sections:
+            type: array
+            items:
+              type: object
+              properties:
+                serial_number:
+                  type: integer
+                name:
+                  type: string
+                page_range:
+                  type: object
+                  properties:
+                    start_page:
+                      type: integer
+                    end_page:
+                      type: integer
+                  required: [start_page, end_page]
+              required: [serial_number, name, page_range]
+        required: [sections]
+      path: .metadata.toc
+      foreach: "."
+      input: '[.items[] | select(.metadata.toc_candidate == true and .metadata.is_toc_page == true) | .id]'
+
+  # ---------------------------------------------------------------------
+  # step_2 (part 2): stitch the pages of the selected chapter into one PDF.
+  # ---------------------------------------------------------------------
+  - agent: page_stitching
+    description: Stitch the pages belonging to the selected chapter_number into a single PDF item.
+    config:
+      foreach: >-
+        [.items[] | select(.metadata.toc_candidate != true)] as $items
+        | ((.metadata.toc_page_range.end // 1) - 1) as $offset
+        | .metadata.toc.sections[]
+        | select(.serial_number == ${.config.chapter_number})
+        | {section: ., items: $items, offset: $offset}
+      input: >-
+        . as $spec
+        | [$spec.items[]
+            | select(.metadata.page >= ($spec.section.page_range.start_page + $spec.offset)
+                      and .metadata.page <= ($spec.section.page_range.end_page + $spec.offset))
+            | .id]
+      metadata: >-
+        {chapter_number: .section.serial_number, chapter_title: .section.name,
+         chapter_id: ("Medium=${.config.medium},Grade=${.config.grade},Subject=${.config.subject},Number="
+                      + (.section.serial_number | tostring))}
+      replace: true
+
+  # ---------------------------------------------------------------------
+  # step_3: OCR the selected chapter to Markdown.
+  # ---------------------------------------------------------------------
+  - agent: ocr
+    description: OCR the selected chapter PDF to Markdown.
+    config:
+      engine: llm
+      foreach: .items[]
+      input: '[.id]'
+
+  # ---------------------------------------------------------------------
+  # step_4: clean the extracted Markdown.
+  # ---------------------------------------------------------------------
+  - agent: prompt
+    description: Clean OCR artefacts from the chapter Markdown.
+    config:
+      prompt: >-
+        You are a precise Markdown cleaner processing a textbook chapter.
+        Fix minor OCR issues only when context makes the correction
+        unambiguous. Correctly identify true headings versus lines with
+        spurious "#" characters. Format math with $...$ for inline and
+        $$...$$ for display equations. Aggressively eliminate all repeated
+        text, paragraphs, and spurious characters. Preserve all page markers
+        (such as "-- Page # ---") exactly as they appear. Respond only with
+        the cleaned Markdown, nothing else.
+      input: .items[0].text
+      path: .metadata.cleaned_markdown
+
+  # ---------------------------------------------------------------------
+  # step_5: chapter-level topics and learning outcomes.
+  # ---------------------------------------------------------------------
+  - agent: extract
+    description: Extract chapter-level topics and Bloom's-taxonomy learning outcomes.
+    config:
+      prompt: >-
+        Below is a chapter from a student textbook, in Markdown. List the
+        core topic headings explicitly discussed in the chapter body (each a
+        standalone concept or section typically marked with a numbered title
+        like "1.2 Structure of Atom"; include such numbering if present).
+        STRICTLY include ONLY topics with at most two levels of numbering
+        (e.g. "X.Y"), and ALWAYS EXCLUDE topics with deeper levels like
+        "X.Y.Z" as well as non-topical content such as "Activities",
+        "Exercises", "Summary", "Questions", "Figure it out", "Problems",
+        "Discussion", "Experiments", "Projects", "Did You Know", or side
+        notes. Also produce a list of specific, measurable chapter-level
+        learning outcomes based on Bloom's Taxonomy, spanning multiple
+        cognitive levels, with each outcome standing on its own.
+      context: >-
+        "Every learning outcome must begin with exactly one of these Bloom
+        action verbs: ${.config.action_verbs | join("; ")}. No learning
+        outcome may begin with any of these prohibited verbs: ${.config.prohibited_action_verbs | join("; ")}."
+      schema:
+        type: object
+        properties:
+          topics:
+            type: array
+            items:
+              type: string
+          learning_outcomes:
+            type: array
+            items:
+              type: string
+        required: [topics, learning_outcomes]
+      path: .metadata.chapter_metadata
+      foreach: "."
+      input: .metadata.cleaned_markdown
+
+  # ---------------------------------------------------------------------
+  # step_6: rule-based cleaning of the topic list (equivalent jq expression).
+  # ---------------------------------------------------------------------
+  - agent: transform
+    description: Drop topics numbered more deeply than "X.Y" (equivalent of the old regex filter).
+    config:
+      value: >-
+        .metadata.chapter_metadata.topics
+        | map(select(test("^\\d+\\.(\\d+)?\\.(\\d+\\.?)+") | not))
+      path: .metadata.chapter_metadata.topics
+
+  # ---------------------------------------------------------------------
+  # step_7: subtopic-wise learning outcomes.
+  # ---------------------------------------------------------------------
+  - agent: extract
+    description: Extract per-topic learning outcomes for every remaining topic.
+    config:
+      prompt: >-
+        Below is a textbook chapter in Markdown, together with one specific
+        topic from that chapter. Produce a list of specific, measurable
+        learning outcomes for that topic ONLY, based on Bloom's Taxonomy,
+        spanning multiple cognitive levels, with each outcome standing on its
+        own and not repeating the topic name as a prefix.
+      context: >-
+        ("Learning outcomes are for the topic \"" + .topic
+         + "\". Every outcome must begin with exactly one of these Bloom action verbs: "
+         + "${.config.action_verbs | join("; ")}"
+         + ". None may begin with any of these prohibited verbs: "
+         + "${.config.prohibited_action_verbs | join("; ")}" + ".")
+      schema: >-
+        {type: "object", properties: {(.topic): {type: "array", items: {type: "string"}}}, required: [.topic]}
+      path: .metadata.subtopic_los
+      foreach: >-
+        .metadata as $meta
+        | .metadata.chapter_metadata.topics[] as $topic
+        | {topic: $topic, markdown: $meta.cleaned_markdown}
+      input: '"Topic: " + .topic + "\n\n" + .markdown'
+
+  # ---------------------------------------------------------------------
+  # step_8: chunk the cleaned chapter text and embed it into Qdrant.
+  # ---------------------------------------------------------------------
+  - agent: chunking
+    description: Split the cleaned chapter Markdown into overlapping chunks.
+    config:
+      chunk_size: 1024
+      overlap: 100
+      # Pinned from step_8_create_indexes.py's SentenceSplitter. Markdown
+      # heading marks added to separators to approximate its MarkdownNodeParser pass.
+      separators:
+        - ". "
+        - "! "
+        - "? "
+        - ".\n"
+        - "!\n"
+        - "?\n"
+        - "\n# "
+        - "\n## "
+        - "\n### "
+        - "\n#### "
+      foreach: >-
+        .metadata.cleaned_markdown as $cleaned
+        | .items[]
+        | {id: .id, source_uri: .source_uri, metadata: .metadata, text: $cleaned}
+      input: .text
+
+  - agent: embedding
+    description: Embed each chunk with the exact embedding model/deployment the old pipeline used.
+    config:
+      # Pinned to match the collection's existing vectors; changing this
+      # changes vector dimensionality and makes the collection unreadable.
+      model: azure:text-embedding-ada-002
+      foreach: .items[]
+      input: .text
+      path: .metadata.embedding
