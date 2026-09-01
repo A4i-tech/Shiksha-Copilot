@@ -33,19 +33,32 @@ steps:
         Beginner, Intermediate and Advanced, and mixes multiple-choice questions
         with open-answer questions. Extract EVERY question, including every
         sub-question. For each question produce one object with these fields:
-        - answerType: exactly one of "MCQ", "FILL_BLANKS", "ANSWER_VERY_SHORT",
-          "ANSWER_SHORT", "ANSWER_MEDIUM", "ANSWER_LONG", "MATCHING". Multiple
-          choice with lettered options is "MCQ". Fill-in-the-blank statements
-          are "FILL_BLANKS". One-word or one-phrase answers are
-          "ANSWER_VERY_SHORT". A few sentences are "ANSWER_SHORT". A paragraph
-          is "ANSWER_MEDIUM". A long essay is "ANSWER_LONG". Match-column
-          questions are "MATCHING".
+        - answerType: exactly one of "mcq", "fill_in_the_blank",
+          "one_sentence_answers", "short_answer", "answer_medium", "long_answer",
+          "match_the_following". These are the lba_questions collection's own
+          type keys, not display labels. Multiple choice with lettered options
+          is "mcq". Fill-in-the-blank statements are "fill_in_the_blank".
+          One-word or one-phrase answers are "one_sentence_answers". A few
+          sentences are "short_answer". A paragraph is "answer_medium". A long
+          essay is "long_answer". Match-column questions are
+          "match_the_following".
         - groupHeading: the band or heading the question appears under, such as
           "Beginner", "Intermediate", "Advanced"; use "" when there is none.
-        - text: the exact question text without the leading number.
-        - options: for answerType "MCQ" only, the option strings exactly as
+        - text: the exact question text without the leading number. For
+          answerType "match_the_following", leave this "" — put the pairs in
+          "pairs" instead.
+        - options: for answerType "mcq" only, the option strings exactly as
           printed, without the leading letters. Omit for every other answerType.
-        - keyAnswer: the correct answer when stated ("Answer:" lines), else "".
+        - pairs: for answerType "match_the_following" only, one object per row
+          with "left" (the left-column phrase) and "right" (the matching
+          right-column phrase as printed). Omit for every other answerType.
+        - keyAnswer: the correct answer when stated, else "". The source
+          states answers two ways: an explicit "Answer:" line, OR — for MCQs
+          especially — the correct option's text simply repeated as its own
+          line directly after the four options, with no "Answer:" label or
+          lettered prefix stripped. Treat both forms as the stated answer.
+          For answerType "match_the_following", always use "" here — the
+          match itself is the "right" side of each row in "pairs".
         - marks: the integer mark value stated for the question, or
           ${.config.marks_default} if none is stated.
         Do not skip any sub-question. Do not invent questions that are not in
@@ -65,13 +78,13 @@ steps:
                 answerType:
                   type: string
                   enum:
-                    - MCQ
-                    - FILL_BLANKS
-                    - ANSWER_VERY_SHORT
-                    - ANSWER_SHORT
-                    - ANSWER_MEDIUM
-                    - ANSWER_LONG
-                    - MATCHING
+                    - mcq
+                    - fill_in_the_blank
+                    - one_sentence_answers
+                    - short_answer
+                    - answer_medium
+                    - long_answer
+                    - match_the_following
                 groupHeading:
                   type: string
                 text:
@@ -80,6 +93,16 @@ steps:
                   type: array
                   items:
                     type: string
+                pairs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      left:
+                        type: string
+                      right:
+                        type: string
+                    required: [left, right]
                 keyAnswer:
                   type: string
                 marks:
