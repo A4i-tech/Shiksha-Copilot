@@ -98,7 +98,9 @@ process.on('unhandledRejection', (reason, promise) => {
 	const client = require("applicationinsights").defaultClient;
 	if (client) {
 		client.trackException({ exception: reason });
+		client.flush({ callback: () => process.exit(1) });
+	} else {
+		process.exit(1);
 	}
-	process.exit(1);
 })
 app.listen(PORT, () => console.log(`App listening on port ${PORT}!`));

@@ -1,9 +1,9 @@
 const formatApiReponse = require("../helper/response");
-const appInsightsClient = require("applicationinsights").defaultClient;
 
 module.exports = (err, req, res, next) => {
 	console.error("Unhandled error --> ", err);
 
+	const appInsightsClient = require("applicationinsights").defaultClient;
 	if (appInsightsClient) {
 		appInsightsClient.trackException({
 			exception: err,
