@@ -1,11 +1,7 @@
 const handleError = (data, res) => {
-	if (data.accessError) {
-		data.accessError = undefined;
-		return res.status(401).json(data);
-	}
-
+	const statusCode = data.accessError ? 401 : 400;
 	data.accessError = undefined;
-	return res.status(400).json(data);
+	return res.status(statusCode).json(data);
 };
 
 module.exports = handleError;
