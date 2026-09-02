@@ -41,3 +41,7 @@ class TestValidateTex:
 
     def test_blank_placeholder_outside_math_span_is_fine(self):
         validate_tex(r"Fill in the blank: \(x^2 + 5x + 6 = 0\) if x = __")
+
+    def test_single_underscore_subscript_is_fine(self):
+        validate_tex(r"A covalent bond holds the atoms together in \(H_2\) molecules.")
+        validate_tex(r"Why does oxygen exist as \(O_2\) molecules instead of single atoms?")

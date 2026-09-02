@@ -22,15 +22,16 @@ def get_json_value_type(data: JsonValue) -> type[JsonValue]:
 
 _TEX_DELIMITER_PATTERN = re.compile(r"\\\(|\\\)|\\\[|\\\]")
 _TEX_DELIMITER_OPENERS = {"\\(": "\\)", "\\[": "\\]"}
-# a bare, unescaped "_" (e.g. the "__" fill-in-the-blank marker) is not valid
-# standalone LaTeX and makes KaTeX fail to render the whole span.
-_TEX_BARE_UNDERSCORE = re.compile(r"(?<!\\)_")
+# a leaked "__" fill-in-the-blank marker is not valid standalone LaTeX and
+# makes KaTeX fail to render the whole span. a single "_" is a legitimate
+# subscript (e.g. "H_2") and must not be flagged.
+_TEX_LEAKED_BLANK = re.compile(r"(?<!\\)__")
 
 
 def validate_tex(text: str) -> None:
     """Raise ValueError if TeX inline/display delimiters in `text` are
     unbalanced, out of order, mismatched, or nested, or if a math span
-    contains a bare "_" (e.g. a leaked "__" blank placeholder) that KaTeX
+    contains a leaked "__" fill-in-the-blank placeholder that KaTeX
     cannot render.
 
     Best-effort signal for observability, not a full TeX parser.
@@ -50,8 +51,8 @@ def validate_tex(text: str) -> None:
             if token != expected_close:
                 raise ValueError(f"Mismatched TeX closer {token!r}, expected {expected_close!r} in: {text[:200]!r}")
             span = text[span_start:match.start()]
-            if _TEX_BARE_UNDERSCORE.search(span):
-                raise ValueError(f"Bare '_' (blank placeholder?) inside TeX span {span!r} in: {text[:200]!r}")
+            if _TEX_LEAKED_BLANK.search(span):
+                raise ValueError(f"Leaked '__' blank placeholder inside TeX span {span!r} in: {text[:200]!r}")
             expected_close = None
     if expected_close is not None:
         raise ValueError(f"Unclosed TeX delimiter {expected_close!r} in: {text[:200]!r}")
