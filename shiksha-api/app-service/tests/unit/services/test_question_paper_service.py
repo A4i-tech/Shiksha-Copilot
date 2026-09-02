@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from app.services.question_paper_service import QuestionPaperService
-from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion
+from app.models.question_paper import Chapter, Content, GeneratedTemplate, MatchingListQuestion, QuestionDistribution, QuestionType, TextQuestion, _LearningRecord
+from app.utils.utils import local_unique_id
 
 
 # Shared fixture to avoid recreating the service
@@ -217,3 +218,34 @@ class TestOrganizeQuestionsIntoResponse:
 
         assert isinstance(response, list)
         assert len(response) > 0
+
+
+class TestGenerateQuestionsBatchSchemaSize:
+    @pytest.mark.asyncio
+    async def test_field_description_has_no_full_question_dump(self, service):
+        service.prompts = {
+            "question_bank_parts_gen_retrieval_query_template": "{CHAPTERS}{CHAPTER}{UNIT_WISE_LEARNING_OUTCOMES}{LEARNING_OUTCOMES}{BOARD}{MEDIUM}{GRADE}{SUBJECT}{TOTAL_MARKS}{RULES}{EXISTING_QUESTIONS_JSON}",
+        }
+        captured = {}
+
+        async def fake_parse(**kwargs):
+            captured.update(kwargs)
+            result = MagicMock()
+            result.output_parsed = None
+            return result
+
+        service.client = MagicMock()
+        service.client.responses.parse = AsyncMock(side_effect=fake_parse)
+
+        distribution = QuestionDistribution(unit_name="Chapter 1", objective="identify photosynthesis inputs")
+        template = GeneratedTemplate(type=QuestionType.MCQ, number_of_questions=1, marks_per_question=1, question_distribution=[distribution])
+        record = _LearningRecord(title="Chapter 1", index_path="", learning_outcomes=["LO1"])
+        request = MagicMock(board="CBSE", medium="English", grade=8, subject="Science", total_marks=10)
+        slot_id = local_unique_id(0)
+        slot = [((0, 0), template, distribution)]
+
+        result = await service._generate_questions_batch("system prompt", request, [], record, slot, None)
+        assert result == []
+
+        field_schema = captured["text_format"].model_json_schema()["properties"][slot_id]
+        assert field_schema["description"] == "MCQ question targeting objective: identify photosynthesis inputs"
