@@ -56,7 +56,12 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 	templateId:{
 		type:ObjectId,
 		ref:"LessonPlanTemplate"
-	  }
+	  },
+	isDeleted: {
+		type: Boolean,
+		default: false,
+		index: true,
+	},
 });
 
 const MasterResource = mongoose.model(

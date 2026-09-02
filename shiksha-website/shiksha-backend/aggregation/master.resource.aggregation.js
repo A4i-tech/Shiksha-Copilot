@@ -16,7 +16,13 @@ class MasterResourceAggregation {
 				{
 					$unwind: "$chapter",
 				},
-				{ $match: filter },
+				// isDeleted defaults to false, but an explicit filter (admin trash /
+				// restore views) overrides it. Uses $ne:true (not `isDeleted: false`,
+				// unlike chapter/lesson aggregations) because MasterResource documents
+				// predate this field: existing rows have no isDeleted key at all, and
+				// $ne:true still matches them. `isDeleted: false` would hide every
+				// pre-existing resource until a backfill migration runs.
+				{ $match: { isDeleted: { $ne: true }, ...filter } },
 				{
 					$facet: {
 						data: [
@@ -49,6 +55,7 @@ class MasterResourceAggregation {
 					$match: {
 						chapterId: new ObjectId(chapterId),
 						templateId: { $in: templateIds.map(id => new ObjectId(id)) },
+						isDeleted: { $ne: true },
 					},
 				},
 				{
@@ -435,7 +442,7 @@ class MasterResourceAggregation {
 
 			let pipeline = [
 				{
-					$match: { _id: new ObjectId(resourceId) },
+					$match: { _id: new ObjectId(resourceId), isDeleted: { $ne: true } },
 				},
 				{
 					$lookup: {

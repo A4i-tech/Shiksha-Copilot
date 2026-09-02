@@ -1,0 +1,137 @@
+<section class="p-4" *ngIf="config">
+  <div class="flex gap-2 items-center mb-4">
+    <img
+      src="assets/icons/back-arrow.svg"
+      alt=""
+      class="cursor-pointer"
+      (click)="cancel()"
+    />
+    <h1 class="text-xl font-semibold">
+      {{ isCreate ? 'Add ' : 'Edit ' }}{{ config.singular.toLowerCase() }}
+    </h1>
+  </div>
+
+  <p *ngIf="isLoading">Loading record...</p>
+
+  <form *ngIf="!isLoading && record" (ngSubmit)="save()" novalidate>
+    <p class="text-sm text-gray-600 mb-4" *ngIf="!isCreate">
+      Record id: {{ recordId }}
+    </p>
+
+    <p class="text-sm text-gray-600 mb-4" *ngIf="isCreate">
+      The new chapter passes the same check that the file upload runs. A chapter
+      that repeats a name or an order number of the same subject, board, medium
+      and class is refused.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div
+        *ngFor="let field of visibleFields"
+        class="flex flex-col"
+        [ngClass]="{
+          'md:col-span-2': field.type === 'json' || field.type === 'textarea'
+        }"
+      >
+        <label class="text-sm mb-1" [attr.for]="'field-' + field.field">
+          {{ field.label }}
+        </label>
+
+        <ng-container [ngSwitch]="field.type">
+          <input
+            *ngSwitchCase="'text'"
+            type="text"
+            class="border border-gray-300 rounded px-3 py-2"
+            [id]="'field-' + field.field"
+            [name]="field.field"
+            [ngModel]="formValues[field.field]"
+            (ngModelChange)="onFieldChange(field, $event)"
+          />
+
+          <input
+            *ngSwitchCase="'number'"
+            type="number"
+            class="border border-gray-300 rounded px-3 py-2"
+            [id]="'field-' + field.field"
+            [name]="field.field"
+            [ngModel]="formValues[field.field]"
+            (ngModelChange)="onFieldChange(field, $event)"
+          />
+
+          <input
+            *ngSwitchCase="'boolean'"
+            type="checkbox"
+            class="w-5 h-5"
+            [id]="'field-' + field.field"
+            [name]="field.field"
+            [ngModel]="formValues[field.field]"
+            (ngModelChange)="onFieldChange(field, $event)"
+          />
+
+          <textarea
+            *ngSwitchCase="'textarea'"
+            rows="4"
+            class="border border-gray-300 rounded px-3 py-2"
+            [id]="'field-' + field.field"
+            [name]="field.field"
+            [ngModel]="formValues[field.field]"
+            (ngModelChange)="onFieldChange(field, $event)"
+          ></textarea>
+
+          <textarea
+            *ngSwitchCase="'list'"
+            rows="4"
+            class="border border-gray-300 rounded px-3 py-2"
+            [id]="'field-' + field.field"
+            [name]="field.field"
+            [ngModel]="formValues[field.field]"
+            (ngModelChange)="onFieldChange(field, $event)"
+          ></textarea>
+
+          <textarea
+            *ngSwitchCase="'json'"
+            rows="8"
+            class="border border-gray-300 rounded px-3 py-2 font-mono text-xs"
+            [id]="'field-' + field.field"
+            [name]="field.field"
+            [attr.aria-describedby]="
+              fieldErrors[field.field] ? 'error-' + field.field : null
+            "
+            [ngModel]="formValues[field.field]"
+            (ngModelChange)="onFieldChange(field, $event)"
+          ></textarea>
+        </ng-container>
+
+        <span class="text-xs text-gray-600 mt-1" *ngIf="field.hint">{{
+          field.hint
+        }}</span>
+
+        <span
+          class="text-xs text-red-600 mt-1"
+          role="alert"
+          [id]="'error-' + field.field"
+          *ngIf="fieldErrors[field.field]"
+          >{{ fieldErrors[field.field] }}</span
+        >
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-6">
+      <button
+        type="submit"
+        class="px-4 py-2 rounded bg-primary text-white"
+        [disabled]="isSaving"
+      >
+        {{
+          isSaving ? 'Saving...' : isCreate ? 'Add ' + config.singular.toLowerCase() : 'Save changes'
+        }}
+      </button>
+      <button
+        type="button"
+        class="px-4 py-2 border border-gray-300 rounded"
+        (click)="cancel()"
+      >
+        Cancel
+      </button>
+    </div>
+  </form>
+</section>

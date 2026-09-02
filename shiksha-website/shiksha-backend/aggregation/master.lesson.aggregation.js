@@ -16,7 +16,9 @@ class MasterLessonAggregation {
 				{
 					$unwind: "$chapter",
 				},
-				{ $match: filter },
+				// isDeleted defaults to false, but an explicit filter (admin trash /
+				// restore views) overrides it.
+				{ $match: { isDeleted: false, ...filter } },
 				{
 					$facet: {
 						data: [

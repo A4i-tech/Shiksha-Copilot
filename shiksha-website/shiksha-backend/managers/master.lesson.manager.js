@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const mongoose = require("mongoose");
 const BaseManager = require("./base.manager");
 const MasterLessonDao = require("../dao/master.lesson.dao");
 const formatApiReponse = require("../helper/response");
@@ -12,6 +13,7 @@ const AppError = require("../helper/app.error");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterResourceDao = require("../dao/master.resource.dao");
 const Chapter = require("../models/chapter.model");
+const MasterSubject = require("../models/master.subject.model");
 const { sortDataBySubTopics, restructureCheckListforLLM, getSemester, formatSubject, formatSections, oldFormatStructuredData } = require("../helper/formatter");
 const logger = require("../config/loggers");
 const { post5ETables } = require("../services/copilot.bot.service");
@@ -35,6 +37,12 @@ const LessonPlanTemplate = require("../models/lesson.plan.template.model");
 const School = require("../models/school.model");
 const { schoolDependency } = require("../helper/permission.helper");
 const { isResourceAllowed } = require("../helper/scope.helper");
+const MasterLesson = require("../models/master.lesson.model");
+const {
+	checkBatch,
+	checkRow,
+	identityKey,
+} = require("../validations/master.lesson.bulk.validation");
 
 
 /** @extends {BaseManager<MasterLessonDao>} */
@@ -948,6 +956,218 @@ class MasterLessonManger extends BaseManager {
 				failedLessonPlan,
 			},
 		};
+	}
+
+	/**
+	 * Validates an uploaded lesson plan file and, unless the caller asks for a
+	 * dry run, writes the lesson plans. The response carries one report line
+	 * per row. A failed row blocks the whole file, so the answer is 400 and
+	 * nothing is saved.
+	 * @param {object[]} lessonPlans - lesson plans to upload
+	 * @param {boolean} [dryRun=false] - validate only, save nothing
+	 */
+	async bulkUpload(lessonPlans, dryRun = false) {
+		try {
+			if (!Array.isArray(lessonPlans) || lessonPlans.length === 0) {
+				return formatApiReponse(
+					false,
+					"lessonPlans must be a non-empty array.",
+					{}
+				);
+			}
+
+			const batchErrors = checkBatch(lessonPlans);
+
+			const chapterIds = [
+				...new Set(
+					lessonPlans
+						.map((lessonPlan) => lessonPlan?.chapterId)
+						.filter((id) => mongoose.Types.ObjectId.isValid(id))
+				),
+			];
+
+			const chapters = await Chapter.find({
+				_id: { $in: chapterIds },
+				isDeleted: { $ne: true },
+			}).lean();
+			const chapterById = new Map(
+				chapters.map((chapter) => [String(chapter._id), chapter])
+			);
+
+			const subjectIds = [
+				...new Set(chapters.map((chapter) => String(chapter.subjectId))),
+			];
+
+			const subjects = await MasterSubject.find({ _id: { $in: subjectIds } })
+				.select("name subjectName")
+				.lean();
+
+			const subjectById = new Map(
+				subjects.map((subject) => [String(subject._id), subject])
+			);
+
+			const existing = await MasterLesson.find({
+				chapterId: { $in: chapterIds },
+			})
+				.select("chapterId isAll subTopics isDeleted")
+				.lean();
+
+			const liveIdentity = new Map();
+			const deletedIdentity = new Map();
+
+			existing.forEach((lessonPlan) => {
+				const key = identityKey({
+					...lessonPlan,
+					chapterId: String(lessonPlan.chapterId),
+				});
+
+				if (lessonPlan.isDeleted === true) {
+					deletedIdentity.set(key, lessonPlan);
+					return;
+				}
+
+				liveIdentity.set(key, lessonPlan);
+			});
+
+			const rows = lessonPlans.map((lessonPlan, index) => {
+				const { errors, warnings } = checkRow(lessonPlan);
+				errors.push(...batchErrors[index]);
+
+				const row = {
+					row: index + 1,
+					identity: lessonPlan?.name ?? "",
+					chapterId: lessonPlan?.chapterId ?? "",
+					errors,
+					warnings,
+				};
+
+				if (errors.length > 0) return row;
+
+				const chapter = chapterById.get(String(lessonPlan.chapterId));
+
+				if (!chapter) {
+					errors.push(
+						`chapterId ${lessonPlan.chapterId} matches no chapter. Pick a chapter from the chapter list.`
+					);
+					return row;
+				}
+
+				if (lessonPlan.class !== chapter.standard) {
+					errors.push(
+						`class is ${lessonPlan.class} but the chapter "${chapter.topics}" is class ${chapter.standard}. The two must match.`
+					);
+				}
+
+				if (lessonPlan.board !== chapter.board) {
+					errors.push(
+						`board is "${lessonPlan.board}" but the chapter "${chapter.topics}" is board "${chapter.board}". The two must match.`
+					);
+				}
+
+				if (
+					String(lessonPlan.medium).toLowerCase() !==
+					String(chapter.medium).toLowerCase()
+				) {
+					errors.push(
+						`medium is "${lessonPlan.medium}" but the chapter "${chapter.topics}" is medium "${chapter.medium}". The two must match.`
+					);
+				}
+
+				const subject = subjectById.get(String(chapter.subjectId));
+
+				if (!subject) {
+					errors.push(
+						`chapterId ${lessonPlan.chapterId} points to a subject that no longer exists. The subject was deleted or is corrupt.`
+					);
+				} else {
+					const names = [subject.subjectName, subject.name]
+						.filter(Boolean)
+						.map((value) => String(value).toLowerCase());
+
+					if (!names.includes(String(lessonPlan.subject).toLowerCase())) {
+						errors.push(
+							`subject is "${lessonPlan.subject}" but the chapter belongs to the subject "${subject.subjectName}". Use that name.`
+						);
+					}
+				}
+
+				const chapterSubTopics = new Set(
+					(chapter.subTopics || []).map((subTopic) =>
+						String(subTopic).trim().toLowerCase()
+					)
+				);
+
+				(lessonPlan.subTopics || []).forEach((subTopic, subTopicIndex) => {
+					if (!chapterSubTopics.has(String(subTopic).trim().toLowerCase())) {
+						errors.push(
+							`subTopics[${subTopicIndex}] "${subTopic}" is not a subtopic of the chapter "${chapter.topics}". The chapter subtopics are ${(
+								chapter.subTopics || []
+							).join(", ")}.`
+						);
+					}
+				});
+
+				if (errors.length > 0) return row;
+
+				const key = identityKey(lessonPlan);
+
+				if (liveIdentity.has(key)) {
+					errors.push(
+						`a lesson plan for this chapter and subtopic set already exists with the id ${liveIdentity.get(key)._id}. Edit that lesson plan instead.`
+					);
+				}
+
+				if (deletedIdentity.has(key)) {
+					warnings.push(
+						`a deleted lesson plan for this chapter and subtopic set exists (${deletedIdentity.get(key)._id}). Restore that lesson plan if you want it back.`
+					);
+				}
+
+				return row;
+			});
+
+			const invalid = rows.filter((row) => row.errors.length > 0);
+
+			const report = {
+				dryRun,
+				total: rows.length,
+				valid: rows.length - invalid.length,
+				invalid: invalid.length,
+				inserted: 0,
+				insertedIds: [],
+				rows,
+			};
+
+			if (invalid.length > 0) {
+				return formatApiReponse(
+					false,
+					`${invalid.length} of ${rows.length} lesson plans failed validation. Nothing was saved.`,
+					report
+				);
+			}
+
+			if (dryRun) {
+				return formatApiReponse(true, "All lesson plans passed validation.", report);
+			}
+
+			const documents = lessonPlans.map((lessonPlan) => ({
+				...lessonPlan,
+				isDeleted: false,
+			}));
+
+			const saved = await MasterLesson.insertMany(documents, { ordered: true });
+
+			report.inserted = saved.length;
+			report.insertedIds = saved.map((lessonPlan) => String(lessonPlan._id));
+
+			return formatApiReponse(
+				true,
+				`${saved.length} lesson plans were added.`,
+				report
+			);
+		} catch (err) {
+			return formatApiReponse(false, err?.message, err);
+		}
 	}
 
 }

@@ -99,6 +99,43 @@ class BaseDao {
 		);
 	}
 
+	/**
+	 * Generic field update for the admin content-management routes.
+	 * Named apart from `update` on purpose: several subclasses already define
+	 * `update` with their own signature and their own narrow `$set` list, and
+	 * those callers must keep the old behaviour.
+	 * The caller must pass an already validated object. The Joi schema on the
+	 * route is the write allow-list.
+	 */
+	async adminUpdate(id, updates, session = null) {
+		try {
+			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+				throw new Error("Invalid ID for update operation");
+			}
+			if (!updates || Object.keys(updates).length === 0) {
+				throw new Error("No fields to update");
+			}
+			const result = await this.Model.findOneAndUpdate(
+				{ _id: id, isDeleted: { $ne: true } },
+				{
+					$set: updates,
+				},
+				{
+					new: true,
+					runValidators: true,
+					session: session,
+				}
+			);
+			if (!result) {
+				throw new Error("Record not found or has been deleted");
+			}
+			return result;
+		} catch (err) {
+			console.log("Error -> BaseDao -> adminUpdate", err);
+			throw err;
+		}
+	}
+
 	reserveLoginAttempt(id, attemptedAt, limit) {
 		return this.Model.findOneAndUpdate(
 			{ _id: id, [`loginAttempts.${limit - 1}`]: { $exists: false } },
