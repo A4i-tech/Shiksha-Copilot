@@ -3,7 +3,6 @@ import { Router } from '@angular/router';
 import { catchError, of } from 'rxjs';
 import { ContentGenerationService } from '../content-generation/content-generation.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { getLabel } from 'src/app/shared/utility/constant.util';
 
 interface ListParams {
   currentPage: number;
@@ -39,10 +38,6 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
     public utilityservice: UtilityService,
     private router: Router
   ) {}
-
-  phrase(canonicalPhrase: string): string {
-    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utilityservice.loggedInUserData?.school?.state });
-  }
 
   ngOnInit(): void {
     this.getAllList(this.getListParams());

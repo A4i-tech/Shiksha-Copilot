@@ -116,7 +116,7 @@
                 <thead class="text-xs bg-[#edf6fe]"><tr>
                   <th class="px-4 py-3 border" *ngFor="let objective of questionBankObjectives">
                     <span class="inline-flex items-center gap-1">
-                      {{ translateService.currentLang === 'en' ? objective.shortLabel : (objective.shortLabel | translate) }}
+                      {{ objective.shortLabel }}
                       <span class="relative group cursor-help" tabindex="0" *ngIf="objective.fullLabel">
                         <img src="assets/icons/info-primary.svg" class="w-4 h-4" [attr.alt]="objective.fullLabel" />
                         <span role="tooltip" [attr.aria-label]="objective.fullLabel"

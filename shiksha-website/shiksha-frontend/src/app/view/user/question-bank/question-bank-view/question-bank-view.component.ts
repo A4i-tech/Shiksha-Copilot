@@ -7,7 +7,7 @@ import { slideInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
-import { formatMarks, getLabel } from 'src/app/shared/utility/constant.util';
+import { formatMarks } from 'src/app/shared/utility/constant.util';
 import { contentItems, isOrDividerAfter, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
@@ -103,7 +103,7 @@ export class QuestionBankViewComponent implements OnInit {
         next: (val: any) => {
           this.questionBankDetails = val.data;
           // Display-only label; the canonical `subject` field is unchanged and still used below.
-          this.questionBankDetails.subjectLabel = getLabel(this.questionBankDetails.subject, this.questionBankDetails.subject, { board: this.questionBankDetails.board });
+          this.questionBankDetails.subjectLabel = this.translateService.instant(this.questionBankDetails.subject, { board: this.questionBankDetails.board });
           this.questionBank = this.questionBankDetails.questionBank
           // Legacy blueprints saved before answerCount became required have no value on the
           // section. Normalise once here so marks, template bindings and the download service
@@ -128,9 +128,8 @@ export class QuestionBankViewComponent implements OnInit {
           // The `objective` field itself stays the canonical backend name and is never overwritten.
           (this.questionBankDetails.bluePrintTemplate || []).forEach((questionBankObjective: any) => {
             questionBankObjective.questionDistribution = (questionBankObjective.questionDistribution || []).map((objective: any) => {
-              const { shortLabel, fullLabel } = getLabel(
+              const { shortLabel, fullLabel } = this.translateService.instant(
                 objective.objective,
-                { shortLabel: objective.objective, fullLabel: '' },
                 { board: this.questionBankDetails.board, subject: this.questionBankDetails.subject }
               );
               return { ...objective, shortLabel, fullLabel };

@@ -9,7 +9,7 @@ import {
 import { TranslateService } from '@ngx-translate/core';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropDownConfig, DropdownOption } from 'src/app/shared/interfaces/dropdown.interface';
-import { DEFAULT_LANGUAGE, formatMarks, getLabel, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
+import { DEFAULT_LANGUAGE, formatMarks, LOC_LANGUAGES, MEDIUMS, QUESTION_SOURCE } from 'src/app/shared/utility/constant.util';
 import { QuestionBankService } from '../question-bank.service';
 import { Router } from '@angular/router';
 import { IdleService } from 'src/app/shared/services/idle.service';
@@ -365,7 +365,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         }
       });
       this.subjectDropdownOptions = Array.from(subjectMap.entries())
-        .map(([name, value]) => ({ name: getLabel(name, name, { board: this.f.board.value }), value, canonicalName: name }))
+        .map(([name, value]) => ({ name: this.translateService.instant(name, { board: this.f.board.value }), value, canonicalName: name }))
         .sort((a, b) => a.name.localeCompare(b.name));
       this.setPreferredLanguage();
     }
@@ -398,7 +398,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   // itself stays the canonical backend name and must never be overwritten here.
   applyObjectiveLabels(objectives: RawQuestionBankObjective[], board: string, subjectName: string): QuestionBankObjective[] {
     return (objectives || []).map(obj => {
-      const { shortLabel, fullLabel } = getLabel(obj.objective, { shortLabel: obj.objective, fullLabel: '' }, { board, subject: subjectName });
+      const { shortLabel, fullLabel } = this.translateService.instant(obj.objective, { board, subject: subjectName });
       return { ...obj, shortLabel, fullLabel };
     });
   }
@@ -578,13 +578,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     ).subscribe({
       next: (response: any) => {
         this.questionBankBluePrintData = response.data;
-        // `objective` stays canonical (sent back to the API); `name` is the board-mapped display label.
-        // shortLabel is already-resolved display text (from getLabel), not a translation key, so
-        // it's only re-translated for non-English UI languages (to localize it into e.g. Kannada).
         this.objectiveOptions = this.questionBankObjectives.map(item => {
-          const label = item.shortLabel || item.objective;
-          const name = this.translateService.currentLang === 'en' ? label : this.translateService.instant(label);
-          return { objective: item.objective, name };
+          return { objective: item.objective, name: item.shortLabel || item.objective };
         });
         // Maps canonical objective name to its board-mapped shortLabel, for components that only get the canonical name (e.g. the blueprint chart).
         this.objectiveLabels = this.questionBankObjectives.reduce((acc: Record<string, string>, item) => {

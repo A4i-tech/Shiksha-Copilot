@@ -26,7 +26,10 @@
     },
     "Taluk"
   ],
-  "Enter Taluk": "Enter Taluk",
+  "Enter Taluk": [
+    { "rule": "state == 'Telangana'", "value": "Enter Mandal" },
+    "Enter Taluk"
+  ],
   "Mandal": "Mandal",
   "Enter Mandal": "Enter Mandal",
   "Select Mandal": "Select Mandal",
@@ -619,7 +622,8 @@
         "shortLabel": "Problem solving",
         "fullLabel": "Problem solving"
       }
-    }
+    },
+    { "shortLabel": "Knowledge", "fullLabel": "" }
   ],
   "Understanding": [
     {
@@ -670,7 +674,8 @@
         "shortLabel": "Reasoning",
         "fullLabel": "Reasoning proof"
       }
-    }
+    },
+    { "shortLabel": "Understanding", "fullLabel": "" }
   ],
   "Application": [
     {
@@ -721,7 +726,8 @@
         "shortLabel": "Communication",
         "fullLabel": "Communication"
       }
-    }
+    },
+    { "shortLabel": "Application", "fullLabel": "" }
   ],
   "Skill": "Skill",
   "Comprehension": "Comprehension",
@@ -776,7 +782,8 @@
         "shortLabel": "Connections",
         "fullLabel": "Connections"
       }
-    }
+    },
+    { "shortLabel": "Higher order thinking", "fullLabel": "" }
   ],
   "AI Questions": "AI Questions",
   "Pre-generated Questions": "Pre-generated Questions",
@@ -1043,7 +1050,10 @@
   "Select State": "Select State",
   "Select Zone": "Select Zone",
   "Select District": "Select District",
-  "Select Taluk": "Select Taluk",
+  "Select Taluk": [
+    { "rule": "state == 'Telangana'", "value": "Select Mandal" },
+    "Select Taluk"
+  ],
   "Select School": "Select School",
   "Audit Log List": "Audit Log List",
   "Refresh": "Refresh",

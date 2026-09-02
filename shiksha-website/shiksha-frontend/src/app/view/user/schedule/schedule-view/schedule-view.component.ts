@@ -13,7 +13,6 @@ import { CustomEventTitleFormatter } from './custom-event-title-formatter.provid
 import { ScheduleService } from '../schedule.service';
 import { DatePipe } from '@angular/common';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { getLabel } from 'src/app/shared/utility/constant.util';
 import { dashboardColors } from 'src/app/shared/utility/scheduleClassColors.util';
 import { Router } from '@angular/router';
 
@@ -63,10 +62,6 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
     private router:Router
 
   ) {}
-
-  phrase(canonicalPhrase: string): string {
-    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utility.loggedInUserData?.school?.state });
-  }
 
   // @ViewChild('modalContent', { static: true }) modalContent!: TemplateRef<any>;
   // @ViewChild('calender_ele') calender_ele!: TemplateRef<any>;

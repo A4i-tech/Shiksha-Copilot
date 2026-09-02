@@ -10,7 +10,6 @@ import {
 } from '@angular/forms';
 import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { getLabel } from 'src/app/shared/utility/constant.util';
 import { ContentGenerationService } from 'src/app/view/user/content-generation/content-generation.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { ModalService } from '../modal/modal.service';
@@ -226,10 +225,6 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     this.getBoardsList(loggedInUser);
     this.submitBtnTxt = this.getLessonType()?.type === 'plan' ? 'Generate Lesson Plan':'Generate Lesson Resources'
     this.getRegenrationLimit()
-  }
-
-  phrase(canonicalPhrase: string): string {
-    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utilityservice.loggedInUserData?.school?.state });
   }
 
   getRegenrationLimit(){

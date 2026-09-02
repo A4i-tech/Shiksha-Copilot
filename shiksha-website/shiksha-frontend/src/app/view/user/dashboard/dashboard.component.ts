@@ -8,7 +8,6 @@ import { DashboardService } from './dashboard.service';
 import { ContentGenerationService } from '../content-generation/content-generation.service';
 import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { getLabel } from 'src/app/shared/utility/constant.util';
 import {
   CalendarDateFormatter,
   CalendarEvent,
@@ -148,10 +147,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     private datePipe: DatePipe,
     private translateService: TranslateService,
   ) {}
-
-  phrase(canonicalPhrase: string): string {
-    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utiltyService.loggedInUserData?.school?.state });
-  }
 
   /**
    * Angular oninit lifecycle hook for initialization
