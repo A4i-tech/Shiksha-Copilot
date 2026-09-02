@@ -6,7 +6,9 @@ if (!globalThis.crypto) {
 const dotenv = require("dotenv");
 dotenv.config();
 
-require("applicationinsights").setup().setRoleName("shiksha-backend").start();
+const appInsights = require("applicationinsights");
+appInsights.setup().start();
+appInsights.defaultClient.context.tags[appInsights.defaultClient.context.keys.cloudRole] = "shiksha-backend";
 
 const express = require("express");
 const cors = require("cors");
