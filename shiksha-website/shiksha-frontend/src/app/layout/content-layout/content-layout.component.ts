@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { LoaderMessageService } from '../../core/services/loader-message.service';
+import { SidebarService } from '../sidebar/sidebar.service';
 
 @Component({
   selector: 'app-content-layout',
@@ -9,7 +10,10 @@ import { LoaderMessageService } from '../../core/services/loader-message.service
 export class ContentLayoutComponent {
   isSidebarOpen: boolean = false;
 
-  constructor(public loaderMessage: LoaderMessageService) {}
+  constructor(
+    public loaderMessage: LoaderMessageService,
+    public sidebarService: SidebarService
+  ) {}
 
   toggleSidebar() {
     this.isSidebarOpen = !this.isSidebarOpen;
