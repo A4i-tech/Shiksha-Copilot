@@ -309,6 +309,7 @@ steps:
         - "\n## "
         - "\n### "
         - "\n#### "
+        - "\n"
       foreach: >-
         .metadata.cleaned_markdown as $cleaned
         | .items[]
