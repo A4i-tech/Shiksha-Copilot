@@ -64,7 +64,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   pptxFileSizeLabel = '';
   latestToolText = '';
 
-  readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt'];
+  readonly acceptedFileTypes = ['.pdf', '.txt', '.md'];
   readonly slideOptions = [6, 8, 10, 12, 15, 18, 20].map(value => ({ name: `${value} slides`, value }));
   readonly slideDropdownConfig: DropDownConfig = { isBackground: false, placeHolderTxt: 'Select slide count', fieldName: 'Target slide count', required: true, clearableOff: true };
   readonly instructionSuggestions = [
