@@ -225,3 +225,25 @@ class GeneratedQuestionItem(BaseModel):
     objective: str
     marks_per_question: Marking
     item: QuestionModel
+
+
+def contents(q: QuestionModel):
+    match q:
+        case MatchingListQuestion(value1=value1, value2=value2):
+            yield from value1
+            yield from value2
+        case FourOptionsQuestion(question=question, options=options, answer=answer, keyAnswer=keyAnswer):
+            yield from question
+            for o in options: yield from o.text
+            yield from answer
+            yield from keyAnswer
+        case TextQuestion(question=question, answer=answer, keyAnswer=keyAnswer):
+            yield from question
+            yield from answer
+            yield from keyAnswer
+
+
+def readable_strings(q: QuestionModel):
+    for c in contents(q):
+        if c.content_type == "text/plain":
+            yield c.content.decode()

@@ -38,6 +38,7 @@ from app.models.question_paper import (
     QuestionTypeResponse,
     GRAMMAR_QUESTION_TYPES,
     TextQuestion,
+    readable_strings,
 )
 from app.config import settings
 
@@ -49,30 +50,13 @@ QuestionPaperPostprocessor = Callable[[list[GeneratedSlotQuestion]], Sequence[st
 MATHS_SUBJECTS = {"math", "maths", "mathematics"}
 
 
-def strings(paper: list[GeneratedSlotQuestion]):
-    for record in paper:
-        question = record[1].item
-        candidates: list[Content] = []
-        match question:
-            case MatchingListQuestion(value1=value1, value2=value2):
-                candidates.extend(value1)
-                candidates.extend(value2)
-            case FourOptionsQuestion(question=question, options=options, answer=answer, keyAnswer=keyAnswer):
-                candidates.extend(question)
-                for o in options: candidates.extend(o.text)
-                candidates.extend(answer)
-                candidates.extend(keyAnswer)
-            case TextQuestion(question=question, answer=answer, keyAnswer=keyAnswer):
-                candidates.extend(question)
-                candidates.extend(answer)
-                candidates.extend(keyAnswer)
-        for c in candidates:
-            if c.content_type == "text/plain":
-                yield c.content.decode()
-
-
-def validate_tex(paper: list[GeneratedSlotQuestion]) -> list[str]:
-    return [error for s in strings(paper) for error in validate_tex_string(s)]
+def validate_tex(paper: list[GeneratedSlotQuestion]) -> Sequence[str]:
+    return [
+        f"TeX error encountered - fix the TeX equation (DO NOT lazily strip out TeX syntax and call it a day):\n{error}"
+        for record in paper
+        for s in readable_strings(record[1].item)
+        if (error := validate_tex_string(s)) is not None
+    ]
 
 
 class QuestionPaperService:
@@ -193,7 +177,7 @@ class QuestionPaperService:
         template = self.prompts["question_bank_parts_gen"]
 
         # Get Bloom's taxonomy guide
-        bloom_lang = "english" if "english" in request.subject.lower() else "general"
+        bloom_lang = "english" if "entests/unit/utils/test_validate_tex.pyglish" in request.subject.lower() else "general"
         blooms_guide = self.prompts["blooms-taxonomy"][bloom_lang]
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
@@ -292,7 +276,7 @@ class QuestionPaperService:
             feedback = [f for p in self.postprocessors for f in p(paper)]
             if not feedback:
                 break
-            with get_client().start_as_current_observation(as_type="span", name="question_postprocess", input=feedback) as span:
+            with get_client().start_as_current_observation(as_type="span", name="question_postprocess", input=feedback, level="WARNING", status_message="Some questions underwent post-processing") as span:
                 response = await self.client.responses.parse(
                     model=settings.question_paper_model,
                     instructions=self.postprocess_prompt,
