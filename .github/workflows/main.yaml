@@ -248,6 +248,25 @@ jobs:
           name: regression-report
           path: regression_report.csv
 
+  staging-e2e-backend:
+    name: Backend E2E Tests (staging)
+    needs: [cd-backend, health-check]
+    concurrency:
+      group: staging-e2e-backend
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run backend E2E tests against staging
+        working-directory: shiksha-website/shiksha-backend
+        env:
+          SHIKSHA_BASE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
+          SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
+          SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
+        run: |
+          npm ci
+          npm run test:integration
+
   performance-tests:
     name: Performance Tests
     needs: [cicd-frontend, health-check]
@@ -412,7 +431,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests, accessibility-tests]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests, accessibility-tests, staging-e2e-backend]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -438,6 +457,7 @@ jobs:
           FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
           API_URL: ${{ needs.cd-api.outputs['service-url'] || needs.cd-api-prod.outputs['service-url'] }}
           BE_URL: ${{ needs.cd-backend.outputs['service-url'] || needs.cd-backend-prod.outputs['service-url'] }}
+          E2E_RES: ${{ needs.staging-e2e-backend.result }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: |
           python3 <<EOF
@@ -476,6 +496,8 @@ jobs:
           fe_status = os.environ.get('FE_RES') == 'success'
           api_status = os.environ.get('API_RES') == 'success'
           be_status = os.environ.get('BE_RES') == 'success'
+          e2e_res = os.environ.get('E2E_RES', 'skipped')
+          e2e_desc = "Pass" if e2e_res == 'success' else ("Skipped" if e2e_res == 'skipped' else f"Status: {e2e_res}")
 
           def get_desc(status, res):
               if status: return "Deployed"
@@ -491,7 +513,7 @@ jobs:
           perf_desc = parse_k6_json('reports/performance/k6_summary.json')
 
           failures = [
-             os.environ.get('FE_RES'), os.environ.get('API_RES'), os.environ.get('BE_RES')
+             os.environ.get('FE_RES'), os.environ.get('API_RES'), os.environ.get('BE_RES'), e2e_res
           ]
           is_fail = 'failure' in failures or 'Fail' in smoke_desc or 'Fail' in regr_desc
           color = "Attention" if is_fail else "Good"
@@ -501,7 +523,8 @@ jobs:
               {"name": "Backend", "description": be_desc, "url": os.environ.get('BE_URL', '')},
               {"name": "Smoke Tests", "description": smoke_desc, "url": os.environ.get('RUN_URL')},
               {"name": "Regression", "description": regr_desc, "url": os.environ.get('RUN_URL')},
-              {"name": "Performance", "description": perf_desc, "url": os.environ.get('RUN_URL')}
+              {"name": "Performance", "description": perf_desc, "url": os.environ.get('RUN_URL')},
+              {"name": "E2E Backend", "description": e2e_desc, "url": os.environ.get('RUN_URL')}
           ]
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
