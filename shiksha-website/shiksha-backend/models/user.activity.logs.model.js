@@ -26,6 +26,9 @@ const UserActivityLogsSchema = new mongoose.Schema({
     },
     isCompleted:{
         type:Boolean
+    },
+    deviceType:{
+        type:String
     }
 },
 {
