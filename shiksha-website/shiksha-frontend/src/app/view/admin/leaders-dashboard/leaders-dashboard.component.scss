@@ -3,13 +3,34 @@
 }
 
 .sync-banner {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   padding: 6px 16px;
-  font-size: 12px;
-  color: #888;
-  text-align: right;
+  background: #fff3cd;
+  border-bottom: 1px solid #ffc107;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #7d5a00;
+
+    &::before {
+      content: '🕐';
+      font-size: 14px;
+    }
+  }
 
   .sync-unknown {
     font-style: italic;
+    color: #999;
+
+    &::before {
+      content: '';
+    }
   }
 }
 
