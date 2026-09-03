@@ -1,7 +1,8 @@
 from collections import defaultdict
+from collections.abc import Callable, Sequence
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
-from app.utils.utils import local_unique_id
+from app.utils.utils import local_unique_id, validate_tex as validate_tex_string
 from pydantic import Field, create_model
 import yaml
 import asyncio
@@ -10,7 +11,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from langfuse import observe, propagate_attributes
+from langfuse import get_client, observe, propagate_attributes
 from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
@@ -23,6 +24,7 @@ from llama_index.llms.openai import OpenAIResponses
 from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
+    Content,
     FourOptionsQuestion,
     GeneratedQuestionItem,
     GeneratedTemplate,
@@ -43,7 +45,34 @@ logger = logging.getLogger(__name__)
 SlotId = tuple[int, int]
 GenerationSlot = tuple[SlotId, GeneratedTemplate, QuestionDistribution]
 GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
+QuestionPaperPostprocessor = Callable[[list[GeneratedSlotQuestion]], Sequence[str]]
 MATHS_SUBJECTS = {"math", "maths", "mathematics"}
+
+
+def strings(paper: list[GeneratedSlotQuestion]):
+    for record in paper:
+        question = record[1].item
+        candidates: list[Content] = []
+        match question:
+            case MatchingListQuestion(value1=value1, value2=value2):
+                candidates.extend(value1)
+                candidates.extend(value2)
+            case FourOptionsQuestion(question=question, options=options, answer=answer, keyAnswer=keyAnswer):
+                candidates.extend(question)
+                for o in options: candidates.extend(o.text)
+                candidates.extend(answer)
+                candidates.extend(keyAnswer)
+            case TextQuestion(question=question, answer=answer, keyAnswer=keyAnswer):
+                candidates.extend(question)
+                candidates.extend(answer)
+                candidates.extend(keyAnswer)
+        for c in candidates:
+            if c.content_type == "text/plain":
+                yield c.content.decode()
+
+
+def validate_tex(paper: list[GeneratedSlotQuestion]) -> list[str]:
+    return [error for s in strings(paper) for error in validate_tex_string(s)]
 
 
 class QuestionPaperService:
@@ -58,6 +87,8 @@ class QuestionPaperService:
         self.prompts = self._load_prompts()
         self.clarity_guide = self.prompts["question_clarity_guide"]
         self.maths_clarity_guide = self.prompts["maths_question_clarity_guide"]
+        self.postprocess_prompt = self.prompts["postprocess"]
+        self.postprocessors: list[QuestionPaperPostprocessor] = [validate_tex]
         self.max_questions_per_slot = 20
         self.concurrency = asyncio.Semaphore(5)
 
@@ -245,10 +276,41 @@ class QuestionPaperService:
             logger.exception(e)
             return []
 
-        return [
+        return await self._postprocess([
             (slot_id, GeneratedQuestionItem(unit_name=record.title, type=template.type, objective=question.objective, marks_per_question=template.marks_per_question, item=getattr(items, k)))
             for k, (slot_id, template, question) in slot_indexed.items()
-        ]
+        ])
+
+
+    async def _postprocess(self, paper: list[GeneratedSlotQuestion], max_iters: int = 3) -> list[GeneratedSlotQuestion]:
+        slot_indexed: dict[str, int] = {local_unique_id(i): i for i, _ in enumerate(paper)}
+        response_format = create_model("QuestionPaper", **{
+            k: (paper[v][1].item.__class__ | None, Field(description=f"Keep none to make no change. Holds the following question:\n{paper[v][1].item.model_dump_json()}", default=None))
+            for k, v in slot_indexed.items()
+        })  # type: ignore[call-overload]
+        for _ in range(max_iters):
+            feedback = [f for p in self.postprocessors for f in p(paper)]
+            if not feedback:
+                break
+            with get_client().start_as_current_observation(as_type="span", name="question_postprocess", input=feedback) as span:
+                response = await self.client.responses.parse(
+                    model=settings.question_paper_model,
+                    instructions=self.postprocess_prompt,
+                    input="## Feedback\n\n" + "\n".join(f"- {f}" for f in feedback),
+                    text_format=response_format,
+                    temperature=0.7,
+                )
+                if response.output_parsed is None:
+                    raise RuntimeError("Did not retrieve a valid response from model")
+                span.update(output={k: v for k, v in response.output_parsed if v is not None})
+            for k, v in response.output_parsed:
+                if v is None:
+                    continue
+                assert isinstance(k, str)
+                assert isinstance(v, QuestionModel)
+                paper[slot_indexed[k]][1].item = v
+        return paper
+
 
     async def _generate_questions_batch_async(self, system_prompt: str, request: QuestionBankPartsGenerationRequest, existing_questions: list[str], record: _LearningRecord, slot: list[GenerationSlot]) -> list[GeneratedSlotQuestion]:
         async with self.concurrency:
