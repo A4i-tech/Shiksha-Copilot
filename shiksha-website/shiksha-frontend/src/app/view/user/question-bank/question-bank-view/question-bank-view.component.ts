@@ -170,7 +170,7 @@ export class QuestionBankViewComponent implements OnInit {
         result.push({
           unitName: entry.unitName,
           type,
-          objective: entry.objective,
+          objective: entry.shortLabel,
           marks: marksPerQuestion
         });
       });
