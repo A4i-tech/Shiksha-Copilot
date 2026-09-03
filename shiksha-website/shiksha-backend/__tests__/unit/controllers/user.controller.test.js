@@ -154,7 +154,7 @@ describe("UserController", () => {
 
       await controller.setProfile(mockReq, mockRes);
 
-      expect(mockUserManager.setProfile).toHaveBeenCalledWith("user-123", mockReq.body);
+      expect(mockUserManager.setProfile).toHaveBeenCalledWith(mockReq.user, mockReq.body);
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
   });
