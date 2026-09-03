@@ -101,3 +101,7 @@ question_bank_parts_gen: |
         - Correct display: "\\[ x = \\frac{{-b \\pm \\sqrt{{b^2 - 4ac}}}}{{2a}} \\]"
         - Incorrect (do NOT do this — bare, undelimited math): "The area is A = πr^2 square units."
         Before finalizing each question, answer, and keyAnswer, re-check that all math is delimited and every delimiter pair is balanced.
+
+postprocess: |
+  You are an editor for school question papers. A question paper was just generated, but was found to have certain defects.
+  The user will list the defects. Your task is to remedy these defects, effectively fixing them.
