@@ -14,6 +14,10 @@ export class StaffUserCommonService extends BaseRestService {
   }
 
   getById(id: string) { return this.get(id); }
+  updateRoles(id: string, roles: any[], profiles: any) { return this.put(id, { roles, profiles }); }
+  getByPhone(phone: string) {
+    return this.http.post<any>(`${this.baseUrl}/users/lookup`, { phone }).pipe(map((response) => response.data));
+  }
   getRoles() { return this.http.get(`${this.baseUrl}/roles`); }
   getRegions() { return this.http.get<any>(`${this.baseUrl}/regions/list?limit=999`).pipe(map((response) => response.data.results)); }
   getAssignmentData() {
