@@ -244,6 +244,4 @@ def contents(q: QuestionModel):
 
 
 def readable_strings(q: QuestionModel):
-    for c in contents(q):
-        if c.content_type == "text/plain":
-            yield c.content.decode()
+    return (c.content.decode() for c in contents(q) if c.content_type == "text/plain")
