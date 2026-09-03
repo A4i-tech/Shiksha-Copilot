@@ -31,6 +31,7 @@ function buildRlsClause(scopes) {
     if (scope.scopeType === "SCHOOL") {
       return `user_id IN (SELECT user_id FROM dim_users WHERE school_id IN (SELECT school_id FROM dim_schools WHERE source_id = ${sql(scope.dep)}))`;
     }
+    if (scope.dep == null) return null;
     const starts = {
       STATE: `SELECT s.region_id FROM dim_regions s WHERE s.type = 'state' AND s.name = ${sql(scope.dep.state)}`,
       ZONE: `SELECT z.region_id FROM dim_regions z JOIN dim_regions s ON z.parent_id = s.region_id WHERE z.type = 'zone' AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
@@ -39,6 +40,7 @@ function buildRlsClause(scopes) {
     };
     return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (WITH RECURSIVE scoped AS (${starts[scope.scopeType]} UNION ALL SELECT child.region_id FROM dim_regions child JOIN scoped parent ON child.parent_id = parent.region_id) SELECT region_id FROM scoped))`;
   });
+  if (clauses.some((c) => c === null)) return null;
   return clauses.length ? `(${clauses.join(" OR ")})` : "FALSE";
 }
 

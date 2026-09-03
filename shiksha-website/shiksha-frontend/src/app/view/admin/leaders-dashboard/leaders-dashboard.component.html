@@ -1,4 +1,9 @@
 <div class="leaders-dashboard-wrapper">
+  <div class="sync-banner" *ngIf="!loading && !error">
+    <span *ngIf="lastSyncAt">Data last synced: {{ syncTimeAgo }}</span>
+    <span *ngIf="!lastSyncAt" class="sync-unknown">Sync time unavailable</span>
+  </div>
+
   <div *ngIf="loading" class="state-message">
     <span class="spinner"></span>
     Loading dashboard...

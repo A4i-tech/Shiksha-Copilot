@@ -20,6 +20,18 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
 
   loading = true;
   error = '';
+  lastSyncAt: Date | null = null;
+
+  get syncTimeAgo(): string {
+    if (!this.lastSyncAt) return '';
+    const mins = Math.floor((Date.now() - this.lastSyncAt.getTime()) / 60_000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
 
   private embed: EmbeddedDashboard | null = null;
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -46,6 +58,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       this.loading = false;
       return;
     }
+    this.supersetService.getSyncStatus().then(t => this.lastSyncAt = t).catch(() => {});
     await this.doEmbed();
 
     // Only react to WIDTH changes — height changes are from our own iframe height writes
