@@ -8,6 +8,7 @@ const SchoolClass = require("../models/school.class.model");
 const TeacherTrainingBatch = require("../models/teacher.training.batch.model");
 const User = require("../models/user.model");
 const authHelper = require("../helper/auth.helper");
+const { deleteFromStorage } = require("../services/azure.blob.service");
 
 exports.session = async function session(req, res) {
   const user = await User.findById(req.body.userId);
@@ -75,7 +76,7 @@ exports.fixtures = async function fixtures(req, res) {
 };
 
 exports.cleanup = async function cleanup(req, res) {
-  const { roles, users, schools, classes, auditLogs, content, activities, batches } = req.body;
+  const { roles, users, schools, classes, auditLogs, content, activities, batches, blobs = [] } = req.body;
   await Promise.all([
     AuditLog.deleteMany({ $or: [{ userId: { $in: users } }, { _id: { $in: auditLogs } }] }),
     TeacherTrainingBatch.deleteMany({ _id: { $in: batches } }),
@@ -85,6 +86,7 @@ exports.cleanup = async function cleanup(req, res) {
     SchoolClass.deleteMany({ $or: [{ schoolId: { $in: schools } }, { _id: { $in: classes } }] }),
     School.deleteMany({ _id: { $in: schools } }),
     Role.deleteMany({ _id: { $in: roles } }),
+    ...blobs.map(deleteFromStorage),
   ]);
   res.json({ success: true });
 };

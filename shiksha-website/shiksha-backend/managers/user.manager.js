@@ -6,9 +6,8 @@ const SchoolDao = require("../dao/school.dao");
 const {
   getClasswithGroupedSubjects,
 } = require("../aggregation/user.aggregation");
-const { Worker } = require("worker_threads");
 const formatApiReponse = require("../helper/response");
-const path = require("path");
+const exportExcel = require("../helper/excel.export.helper");
 const { refreshProfileImageIfExpired } = require("../helper/profile.helper");
 const AppError = require("../helper/app.error");
 const ExcelJS = require("exceljs");
@@ -18,10 +17,15 @@ const escapeRegExp = require("lodash/escapeRegExp");
 const ClassDao = require("../dao/school.class.dao");
 const Role = require("../models/role.model");
 const School = require("../models/school.model");
+const User = require("../models/user.model");
+const { bulkUploadSchema } = require("../validations/user.validation");
 const { getRolePermissions, getPermission, schoolDependency } = require("../helper/permission.helper");
 const { dependencyMatches, assertCanAssign, assignmentDependencyFilter, hasAssignmentScope, isDependencyAllowed, isResourceAllowed, scopeFilter, permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
+const AuditLog = require("../models/audit.log.model");
+const startAuditJob = require("../helper/audit.job.helper");
+const { uploadToStorage } = require("../services/azure.blob.service");
 
 async function prepareAssignments(input, actor, current, teacher, permission) {
   const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });
@@ -207,67 +211,156 @@ class UserManager extends BaseManager {
   }
 
   async bulkUpload(fileBuffer, userId, userName, permissions) {
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer);
-    const worksheet = workbook.getWorksheet(1);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(fileBuffer);
+      const worksheet = workbook.getWorksheet(1);
 
-    if (!worksheet) {
-      return { success: false, message: "No worksheet found in the file." };
-    }
+      if (!worksheet) {
+        return { success: false, message: "No worksheet found in the file." };
+      }
 
-    const expectedSheetName = "teacher";
-    if (worksheet.name !== expectedSheetName) {
-      return {
-        success: false,
-        message: "Invalid template: Sheet name should be 'teacher'.",
-      };
-    }
-
-    const expectedHeaders = ["name", "phone", "diseCode", "role"];
-    const actualHeaders = worksheet
-      .getRow(1)
-      .values.slice(1)
-      .map((header) => header?.toString().toLowerCase());
-
-    expectedHeaders.forEach((header, index) => {
-      if (header.toLowerCase() !== actualHeaders[index]) {
+      const expectedSheetName = "teacher";
+      if (worksheet.name !== expectedSheetName) {
         return {
           success: false,
-          message:
-            "Invalid template: Column headers do not match expected headers.",
+          message: "Invalid template: Sheet name should be 'teacher'.",
         };
       }
-    });
 
-    const worksheetData = [];
+      const expectedHeaders = ["name", "phone", "diseCode", "role"];
+      const actualHeaders = worksheet
+        .getRow(1)
+        .values.slice(1)
+        .map((header) => header?.toString().toLowerCase());
 
-    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber === 1) return;
+      if (expectedHeaders.some((header, index) => header.toLowerCase() !== actualHeaders[index])) {
+        return { success: false, message: "Invalid template: Column headers do not match expected headers." };
+      }
 
-      const isEmptyRow = row.values.every(
-        (cell) => cell === null || cell === undefined || cell === ""
-      );
-      if (isEmptyRow) return;
+      const worksheetData = [];
 
-      const rowData = {
-        name: row.getCell(1).value?.toString(),
-        phone: row.getCell(2).value?.toString(),
-        school: row.getCell(3).value?.toString(),
-        role: row
-          .getCell(4)
-          .value?.toString()
-          ?.split("|")
-          .map((role) => role.trim()),
-      };
+      worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        if (rowNumber === 1) return;
 
-      worksheetData.push(rowData);
-    });
+        const isEmptyRow = row.values.every(
+          (cell) => cell === null || cell === undefined || cell === ""
+        );
+        if (isEmptyRow) return;
 
-    const worker = new Worker(path.resolve(__dirname, "../worker/userworker.js"), { workerData: { worksheetData, userId, userName, permissions } });
-    return await new Promise((resolve, reject) => {
-      worker.once("message", resolve);
-      worker.once("error", reject);
-    });
+        const rowData = {
+          rowNumber,
+          name: row.getCell(1).value?.toString(),
+          phone: row.getCell(2).value?.toString(),
+          school: row.getCell(3).value?.toString(),
+          role: row
+            .getCell(4)
+            .value?.toString()
+            ?.split("|")
+            .map((role) => role.trim()),
+        };
+
+        worksheetData.push(rowData);
+      });
+
+      if (!worksheetData.length) return { success: false, message: "No data to process." };
+
+      const roleByName = new Map((await Role.find({ isDeleted: false, scopeType: "SCHOOL" }).select("_id name scopeType")).map((role) => [role.name.toLowerCase(), role]));
+      const existingPhones = new Set((await User.find({ "identity.phone": { $in: worksheetData.map((row) => String(row.phone)) } }).select("identity.phone").lean()).map((user) => user.identity.phone));
+      const schoolById = new Map((await School.find({ schoolId: { $in: worksheetData.map((row) => Number(row.school)) } }).lean()).map((school) => [school.schoolId, school]));
+      const phoneNumbers = new Set();
+      const validationErrors = [];
+      const users = [];
+
+      for (const row of worksheetData) {
+        const roles = row.role.map((role) => roleByName.get(String(role).toLowerCase()));
+        if (roles.some((role) => !role)) {
+          validationErrors.push({ row: row.rowNumber, message: `Unknown role in: ${row.role.join("|")}` });
+          continue;
+        }
+
+        const phone = String(row.phone);
+        if (phoneNumbers.has(phone)) {
+          validationErrors.push({ row: row.rowNumber, message: `Duplicate phone number ${phone} found within the file` });
+          continue;
+        }
+        phoneNumbers.add(phone);
+
+        if (existingPhones.has(phone)) {
+          validationErrors.push({ row: row.rowNumber, message: `Phone number ${phone} already exists` });
+          continue;
+        }
+
+        const school = schoolById.get(Number(row.school));
+        if (!school) {
+          validationErrors.push({ row: row.rowNumber, message: `School with diseCode ${row.school} does not exist` });
+          continue;
+        }
+        if (roles.some((role) => !hasAssignmentScope(permissions, "user.import", role, school))) {
+          validationErrors.push({ row: row.rowNumber, message: `School with diseCode ${row.school} is outside your scope` });
+          continue;
+        }
+
+        const user = {
+          identity: { name: row.name, phone },
+          roles: roles.map((role) => ({ roleId: String(role._id), dep: String(school._id) })),
+          profiles: { teacher: { facilities: [], classes: [], isProfileCompleted: false } },
+        };
+        const { error } = bulkUploadSchema.validate(user);
+        if (error) {
+          validationErrors.push({ row: row.rowNumber, message: error.message });
+          continue;
+        }
+        user.roles = user.roles.map((assignment) => ({ role: assignment.roleId, dep: school._id }));
+        users.push(user);
+      }
+
+      let errorUrl;
+      if (validationErrors.length) {
+        errorUrl = await exportExcel({
+          filename: `Teacher-Error-Log-${userId}-${Date.now()}`,
+          worksheets: [{
+            name: "Validation Errors",
+            rows: validationErrors,
+            columns: [
+              { header: "Row Number", key: "row", width: 15 },
+              { header: "Error Message", key: "message", width: 50 },
+            ],
+            toRow: (error) => error,
+          }],
+        });
+        await AuditLog.create({ eventType: "Teachers Import", status: "failure", logUrl: errorUrl, userId, name: userName });
+      }
+
+      if (!users.length) return { success: false, message: "Bulk upload failed validation.", errorUrl };
+
+      const insertedUsers = await User.insertMany(users);
+      await Promise.all(insertedUsers.map((user) => sendWelcomeSMS(user.identity.phone, user.identity.name).catch((error) => {
+        logger.warn("Welcome SMS failed", { userId: String(user._id), error: error.message });
+      })));
+
+      const successCount = insertedUsers.length;
+      const failureCount = users.length - successCount;
+      const uploadUrl = await exportExcel({
+        filename: `Bulk-Upload-Summary-${userId}-${Date.now()}`,
+        worksheets: [{
+          name: "Upload Summary",
+          rows: [{ totalRecords: users.length, successCount, failureCount }],
+          columns: [
+            { header: "Total Records", key: "totalRecords", width: 20 },
+            { header: "Success Count", key: "successCount", width: 20 },
+            { header: "Failure Count", key: "failureCount", width: 20 },
+          ],
+          toRow: (summary) => summary,
+        }],
+      });
+      await AuditLog.create({ eventType: "Teachers Import", status: "success", logUrl: uploadUrl, userId, name: userName });
+
+      return { success: true, message: `Bulk upload completed: ${successCount} imported, ${failureCount} failed.` };
+    } catch (err) {
+      console.log("Error --> UserManager -> BulkUpload()", err);
+      return { success: false, message: err.message, error: err };
+    }
   }
 
   async getById(userId, grants, actorId) {
@@ -289,30 +382,36 @@ class UserManager extends BaseManager {
     return formatApiReponse(true, "Saved Teacher Info!", data);
   }
 
-  async uploadProfileImage(userId, filePath) {
-    let user = await this.dao.getById(userId);
-    if (!user) {
-      return { success: false, message: "Teacher not found" };
+  async uploadProfileImage(userId, file) {
+    try {
+      let user = await this.dao.getById(userId);
+      if (!user) {
+        return { success: false, message: "Teacher not found" };
+      }
+
+      let expireLimit = 5 * 24 * 60 * 60;
+      const filePath = await uploadToStorage(file.buffer, `${userId}_photo`, file.mimetype);
+
+      user = await this.dao.update(userId, {
+        profileImage: filePath,
+        profileImageExpiresIn:
+          parseInt(Date.now() / 1000) + Number(expireLimit),
+      });
+
+      if (!user) {
+        return {
+          success: false,
+          message: "Failed to update image!",
+          data: null,
+        };
+      }
+
+      const { roles, ...data } = user.toObject();
+      return { success: true, message: "Image uploaded successfully!", data };
+    } catch (err) {
+      console.log("Error --> UserManager -> uploadProfileImage()", err);
+      return { success: false, message: "Error uploading image", data: err };
     }
-
-    let expireLimit = 5 * 24 * 60 * 60;
-
-    user = await this.dao.update(userId, {
-      profileImage: filePath,
-      profileImageExpiresIn:
-        parseInt(Date.now() / 1000) + Number(expireLimit),
-    });
-
-    if (!user) {
-      return {
-        success: false,
-        message: "Failed to update image!",
-        data: null,
-      };
-    }
-
-    const { roles, ...data } = user.toObject();
-    return { success: true, message: "Image uploaded successfully!", data };
   }
 
   async removeProfileImage(userId) {
@@ -394,78 +493,69 @@ class UserManager extends BaseManager {
   }
 
   async export(req) {
-    const {
-      page = 1,
-      limit,
-      filter = {},
-      sortBy = "createdAt",
-      sortOrder = "desc",
-      search,
-      includeDeleted,
-    } = req.query;
-    const sortOrderObject =
-      sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
-
-    const searchFilter = {};
-
-    if (search) {
-      const searchFields = ["identity.name", "identity.phone"];
-
-      searchFilter.$or = searchFields.map((field) => ({
-        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
-      }));
-    }
-
-    let mergedFilter = intersectFilters(filter, searchFilter);
-    mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "user.export", "school"));
-
-    let status = {};
-
-    if (includeDeleted === "2") {
-      status = { isDeleted: true };
-    } else if (includeDeleted === "0") {
-      status = { isDeleted: false };
-    }
-    const users = await this.dao.getAll(
-      parseInt(page),
-      parseInt(limit),
-      mergedFilter,
-      sortOrderObject,
-      status
-    );
-
-    const userId = req.user._id;
+    const userId = String(req.user._id);
     const userName = req.user.identity.name;
 
-    const worker = new Worker(
-      path.resolve(__dirname, "../worker/exportuserworker.js")
-    );
+    try {
+      const {
+        filter = {},
+        sortBy = "createdAt",
+        sortOrder = "desc",
+        search,
+        includeDeleted,
+      } = req.query;
+      const sortOrderObject =
+        sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-    worker.postMessage({
-      users: users.results,
-      userId: userId.toString(),
-      userName,
-    });
+      const searchFilter = {};
 
-    worker.on("message", (result) => {
-      console.log("Worker result:", result);
-    });
+      if (search) {
+        const searchFields = ["identity.name", "identity.phone"];
 
-    worker.on("error", (err) => {
-      console.error("Worker error:", err);
-    });
-
-    worker.on("exit", (code) => {
-      if (code !== 0) {
-        console.error(`Worker stopped with exit code ${code}`);
+        searchFilter.$or = searchFields.map((field) => ({
+          [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
+        }));
       }
-    });
 
-    return formatApiReponse(
-      true,
-      "Teacher export initiated, please verify for audit logs!",
-      ""
-    );
+      let mergedFilter = intersectFilters(filter, searchFilter);
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "user.export", "school"));
+
+      let status = {};
+
+      if (includeDeleted === "2") {
+        status = { isDeleted: true };
+      } else if (includeDeleted === "0") {
+        status = { isDeleted: false };
+      }
+      const auditLog = await startAuditJob("Teachers Export", userId, userName, async (onProgress) => exportExcel({
+        filename: `Teacher-Export-${userId}--${Date.now()}`,
+        onProgress,
+        worksheets: [{
+          name: "Users",
+          rows: await this.dao.getCursor(mergedFilter, sortOrderObject, status),
+          columns: [
+            { header: "Teacher Name", key: "teacherName", width: 30 },
+            { header: "School Name", key: "schoolName", width: 30 },
+            { header: "Phone Number", key: "phoneNumber", width: 15 },
+            { header: "Roles", key: "roles", width: 30 },
+            { header: "Status of Teacher", key: "teacherStatus", width: 15 },
+            { header: "Training Status", key: "trainingStatus", width: 15 },
+          ],
+          toRow: (user) => ({
+            teacherName: user.identity.name,
+            schoolName: user.school.name,
+            phoneNumber: user.identity.phone,
+            roles: user.roles.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => assignment.role.name).join(", "),
+            teacherStatus: user.isDeleted ? "Inactive" : "Active",
+            trainingStatus: user.trainingStatus === "trained" ? "Trained" : "Untrained",
+          }),
+        }],
+      }));
+
+      return formatApiReponse(true, "Teacher export started.", { auditLogId: auditLog._id });
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
   }
 
   async getAll({ page, limit, filters, sort, status, permissions, permission }) {

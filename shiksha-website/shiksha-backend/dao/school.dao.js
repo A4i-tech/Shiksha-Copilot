@@ -6,6 +6,10 @@ class SchoolDao extends BaseDao {
 		super(School);
 	}
 
+	getCursor(filters, sort) {
+		return School.find(filters).sort(sort).lean().cursor({ batchSize: 100 });
+	}
+
 	async getBySchoolId(data) {
 		let result = await School.findOne({
 			schoolId: data,

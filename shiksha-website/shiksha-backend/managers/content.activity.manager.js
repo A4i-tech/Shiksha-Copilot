@@ -1,7 +1,7 @@
 const formatApiReponse = require("../helper/response");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
-const { Worker } = require("worker_threads");
-const path = require("path");
+const exportExcel = require("../helper/excel.export.helper");
+const startAuditJob = require("../helper/audit.job.helper");
 const { permissionScopeFilter, intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
 
@@ -27,20 +27,29 @@ class ContentActivityManager {
   }
 
   async exportContentActivity(req) {
+    const userId = String(req.user._id);
+    const userName = req.user.identity.name;
+
     try {
       const scopeFilter = permissionScopeFilter(req.permissions, "content.activity.export", "user.school");
-      const activities = await this.regeneratedLogDao.getAllContentActivity(intersectFilters(activityFilters(req.query), scopeFilter));
-      const worker = new Worker(path.resolve(__dirname, "../worker/exportcontentactivityworker.js"));
-      worker.on("error", (err) => console.error("Content activity export worker error", { userId: String(req.user._id), error: err.message }));
-      worker.on("exit", (code) => {
-        if (code !== 0) console.error("Content activity export worker exited", { userId: String(req.user._id), code });
-      });
-      worker.postMessage({
-        contentActivities: activities.results,
-        userId: String(req.user._id),
-        userName: req.user.identity.name,
-      });
-      return formatApiReponse(true, "Content activity export initiated, please verify the audit log.", "");
+      const filters = intersectFilters(activityFilters(req.query), scopeFilter);
+      const auditLog = await startAuditJob("Content Activity Export", userId, userName, (onProgress) => exportExcel({
+        filename: `Content-Activity-Export-${userId}--${Date.now()}`,
+        onProgress,
+        worksheets: [{
+          name: "ContentActivity",
+          rows: this.regeneratedLogDao.getContentActivityCursor(filters),
+          columns: [
+            { header: "Teacher Name", key: "userName", width: 30 },
+            { header: "Content generated", key: "genContent", width: 50 },
+            { header: "Generated Date", key: "createdAt", width: 30 },
+            { header: "Status", key: "teacherLessonPlanStatus", width: 15 },
+          ],
+          toRow: (activity) => activity,
+        }],
+      }));
+
+      return formatApiReponse(true, "Content activity export started.", { auditLogId: auditLog._id });
     } catch (err) {
       return formatApiReponse(false, err.message, err);
     }

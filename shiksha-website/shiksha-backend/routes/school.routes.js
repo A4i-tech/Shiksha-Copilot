@@ -3,7 +3,7 @@ const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const SchoolController = require("../controllers/school.controller.js");
 const { validateSchool } = require("../validations/school.validation.js");
-const uploadMiddleware = require("../middlewares/uploadMiddleware.js");
+const { excelUpload } = require("../middlewares/uploadMiddleware.js");
 const schoolController = new SchoolController();
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 
@@ -76,7 +76,7 @@ router.post(
   "/school/bulk-upload",
   isAuthenticated,
   requirePermission("school.create"),
-  uploadMiddleware,
+  excelUpload,
   asyncMiddleware(schoolController.bulkUpload.bind(schoolController))
 );
 

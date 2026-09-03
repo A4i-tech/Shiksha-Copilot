@@ -4,10 +4,12 @@ const AppError = require("../helper/app.error");
 const SchoolDao = require("../dao/school.dao");
 const ClassDao = require("../dao/school.class.dao");
 const UserDao = require("../dao/user.dao");
-const path = require("path");
 const ExcelJS = require("exceljs");
+const exportExcel = require("../helper/excel.export.helper");
+const importSchools = require("../helper/school.import.helper");
+const AuditLog = require("../models/audit.log.model");
+const startAuditJob = require("../helper/audit.job.helper");
 const schoolAggregation = require("../aggregation/school.aggregation");
-const { Worker } = require("worker_threads");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 const { normalizeMultiValueFilter, buildMongoInQuery } = require("../helper/filter.helper.js");
@@ -197,83 +199,85 @@ class SchoolManager extends BaseManager {
   }
 
   async bulkUpload(fileBuffer, userId, userName, permissions) {
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(fileBuffer);
 
-    const expectedSchoolHeaders = [
-      "diseCode",
-      "name",
-      "board",
-      "state",
-      "zone",
-      "district",
-      "taluk",
-      "medium",
-      "academicYearStartDate",
-      "academicYearEndDate",
-    ];
+      const expectedSchoolHeaders = [
+        "diseCode",
+        "name",
+        "board",
+        "state",
+        "zone",
+        "district",
+        "taluk",
+        "medium",
+        "academicYearStartDate",
+        "academicYearEndDate",
+      ];
 
-    const expectedClassHeaders = [
-      "diseCode",
-      "board",
-      "medium",
-      "standard",
-      "boys",
-      "girls",
-    ];
+      const expectedClassHeaders = [
+        "diseCode",
+        "board",
+        "medium",
+        "standard",
+        "boys",
+        "girls",
+      ];
 
-    const validateHeaders = (sheet, expectedHeaders) => {
-      const actualHeaders = sheet.getRow(1).values.slice(1);
-      if (actualHeaders.length !== expectedHeaders.length) {
-        return `Do not alter the column headers!`;
-      }
-      for (let i = 0; i < expectedHeaders.length; i++) {
-        if (actualHeaders[i] !== expectedHeaders[i]) {
+      const validateHeaders = (sheet, expectedHeaders) => {
+        const actualHeaders = sheet.getRow(1).values.slice(1);
+        if (actualHeaders.length !== expectedHeaders.length) {
           return `Do not alter the column headers!`;
         }
-      }
-      return null;
-    };
+        for (let i = 0; i < expectedHeaders.length; i++) {
+          if (actualHeaders[i] !== expectedHeaders[i]) {
+            return `Do not alter the column headers!`;
+          }
+        }
+        return null;
+      };
 
-    const schoolSheet = workbook.getWorksheet("school");
-    const classSheet = workbook.getWorksheet("class");
+      const schoolSheet = workbook.getWorksheet("school");
+      const classSheet = workbook.getWorksheet("class");
 
-    if (schoolSheet) {
-      const schoolHeaderError = validateHeaders(
-        schoolSheet,
-        expectedSchoolHeaders
-      );
-      if (schoolHeaderError) {
-        return formatApiReponse(
-          false,
-          "Invalid school sheet template!",
-          null
+      if (schoolSheet) {
+        const schoolHeaderError = validateHeaders(
+          schoolSheet,
+          expectedSchoolHeaders
         );
+        if (schoolHeaderError) {
+          return formatApiReponse(
+            false,
+            "Invalid school sheet template!",
+            null
+          );
+        }
+      } else {
+        return formatApiReponse(false, "School sheet is missing!", null);
       }
-    } else {
-      return formatApiReponse(false, "School sheet is missing!", null);
-    }
 
-    if (classSheet) {
-      const classHeaderError = validateHeaders(
-        classSheet,
-        expectedClassHeaders
-      );
-      if (classHeaderError) {
-        return formatApiReponse(false, "Invalid class sheet template!", null);
+      if (classSheet) {
+        const classHeaderError = validateHeaders(
+          classSheet,
+          expectedClassHeaders
+        );
+        if (classHeaderError) {
+          return formatApiReponse(false, "Invalid class sheet template!", null);
+        }
+      } else {
+        return formatApiReponse(false, "Class sheet is missing!", null);
       }
-    } else {
-      return formatApiReponse(false, "Class sheet is missing!", null);
-    }
 
-    const worker = new Worker(
-      path.resolve(__dirname, "../worker/bulkuploadworker.js")
-    );
-    return await new Promise((resolve, reject) => {
-      worker.once("message", resolve);
-      worker.once("error", reject);
-      worker.postMessage({ fileBuffer, userId, userName, permissions });
-    });
+      const session = await mongoose.startSession();
+      try {
+        return await importSchools(workbook, userId, userName, (school) => this.create({ permissions, body: school }, session));
+      } finally {
+        await session.endSession();
+      }
+    } catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
   }
 
   async delete(req) {
@@ -337,89 +341,83 @@ class SchoolManager extends BaseManager {
   }
 
   async exportSchool(req) {
-    const {
-      page = 1,
-      limit,
-      filter = {},
-      sortBy = "createdAt",
-      sortOrder = "desc",
-      search,
-      includeDeleted,
-    } = req.query;
-    const sortOrderObject =
-      sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
-
-    const searchFilter = {};
-
-    if (search) {
-      const searchFields = ["name", "phone"];
-
-      const regexExpressions = (searchFields || []).map((field) => ({
-        [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
-      }));
-
-      if (!isNaN(parseInt(search))) {
-        regexExpressions.push({ schoolId: parseInt(search) });
-      }
-
-      searchFilter.$or = regexExpressions;
-    }
-
-    const transformedFilter = { ...filter };
-
-    if (transformedFilter._id) {
-      try {
-        transformedFilter._id = new ObjectId(transformedFilter._id);
-      } catch (err) {
-        console.error("Invalid _id format:", transformedFilter._id);
-        throw new Error("Invalid _id format");
-      }
-    }
-    let mergedFilter = intersectFilters(transformedFilter, searchFilter);
-    mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
-
-    let status = {};
-
-    if (includeDeleted === '2') {
-      status = { isDeleted: true };
-    } else if (includeDeleted === '0') {
-      status = { isDeleted: false };
-    }
-
-
-    const schools = await this.dao.getAll(
-      parseInt(page),
-      parseInt(limit),
-      mergedFilter,
-      sortOrderObject,
-      status,
-      req?.user?._id
-    );
-
-    const userId = req.user._id;
+    const userId = String(req.user._id);
     const userName = req.user.identity.name;
 
-    const worker = new Worker(
-      path.resolve(__dirname, '../worker/exportschoolworker.js')
-    );
+    try {
+      const {
+        filter = {},
+        sortBy = "createdAt",
+        sortOrder = "desc",
+        search,
+        includeDeleted,
+      } = req.query;
+      const sortOrderObject =
+        sortOrder === "desc" ? { [sortBy]: -1 } : { [sortBy]: 1 };
 
-    worker.postMessage({ schools: schools.results, userId: userId.toString(), userName });
+      const searchFilter = {};
 
-    worker.on("message", (result) => {
-      console.log("Worker result:", result);
-    });
+      if (search) {
+        const searchFields = ["name", "phone"];
 
-    worker.on("error", (err) => {
-      console.error("Worker error:", err);
-    });
+        const regexExpressions = (searchFields || []).map((field) => ({
+          [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
+        }));
 
-    worker.on("exit", (code) => {
-      if (code !== 0) {
-        console.error(`Worker stopped with exit code ${code}`);
+        if (!isNaN(parseInt(search))) {
+          regexExpressions.push({ schoolId: parseInt(search) });
+        }
+
+        searchFilter.$or = regexExpressions;
       }
-    });
 
-    return formatApiReponse(true, "School export initiated, please verify for audit logs!", "")
+      const transformedFilter = { ...filter };
+
+      if (transformedFilter._id) {
+        try {
+          transformedFilter._id = new ObjectId(transformedFilter._id);
+        } catch (err) {
+          console.error("Invalid _id format:", transformedFilter._id);
+          throw new Error("Invalid _id format");
+        }
+      }
+      let mergedFilter = intersectFilters(transformedFilter, searchFilter);
+      mergedFilter = intersectFilters(mergedFilter, permissionScopeFilter(req.permissions, "school.export"));
+
+      let status = {};
+
+      if (includeDeleted === '2') {
+        status = { isDeleted: true };
+      } else if (includeDeleted === '0') {
+        status = { isDeleted: false };
+      }
+
+
+      const filters = { ...mergedFilter, ...status };
+      const auditLog = await startAuditJob("Schools Export", userId, userName, (onProgress) => exportExcel({
+        filename: `School-Export-${userId}--${Date.now()}`,
+        onProgress,
+        worksheets: [{
+          name: "Schools",
+          rows: this.dao.getCursor(filters, sortOrderObject),
+          columns: [
+            { header: "DISE Code", key: "schoolId", width: 15 },
+            { header: "School Name", key: "name", width: 45 },
+            { header: "State", key: "state", width: 20 },
+            { header: "Zone", key: "zone", width: 20 },
+            { header: "District", key: "district", width: 20 },
+            { header: "Taluk", key: "block", width: 20 },
+            { header: "Status", key: "status", width: 20 },
+          ],
+          toRow: (school) => ({ ...school, status: school.isDeleted ? "Inactive" : "Active" }),
+        }],
+      }));
+
+      return formatApiReponse(true, "School export started.", { auditLogId: auditLog._id });
+    }
+    catch (err) {
+      return formatApiReponse(false, err.message, err);
+    }
   }
 
   async getAll(
