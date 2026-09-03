@@ -85,6 +85,25 @@ class UserManager extends BaseManager {
     this.classDao = new ClassDao();
   }
 
+  async validateTeacherClassAssignments(classes, school) {
+    if (!classes?.length) return;
+    const curriculum = await this.classDao.getGroupClassesByBoard(school);
+
+    for (const assignment of classes) {
+      const board = curriculum.find((item) => item._id === assignment.board);
+      const medium = board?.medium.find((item) => !item.isDeleted && item.medium === assignment.medium);
+      const standard = medium?.classDetails.find((item) => item.standard === assignment.class);
+      const subject = board?.subjects.find((item) => item._id === assignment.name)?.subjects.find((item) =>
+        !item.isDeleted && item.subjectName === assignment.subject && item.sem === assignment.sem
+        && (!item.applicableClasses.length || item.applicableClasses.includes(assignment.class))
+      );
+
+      if (!standard || !subject) {
+        throw new AppError(`Class ${assignment.class}, subject ${assignment.subject}, board ${assignment.board}, and medium ${assignment.medium} are not a valid curriculum assignment for this school`, 400);
+      }
+    }
+  }
+
   async create(req) {
     const { identity, roles, profiles } = req.body;
     const existingUser = await this.dao.getByPhone(identity.phone);
@@ -96,6 +115,7 @@ class UserManager extends BaseManager {
 
     if (profiles.teacher) {
       if (!prepared.school) throw new Error("A teacher must have one school dependency");
+      await this.validateTeacherClassAssignments(profiles.teacher.classes, prepared.school);
     }
 
     const result = await this.dao.create({ identity, roles: prepared.assignments, profiles });
@@ -178,6 +198,9 @@ class UserManager extends BaseManager {
     const schoolRemoved = Boolean(user.profiles.teacher && prepared && !prepared.school);
     const schoolChanged = Boolean(user.profiles.teacher && prepared && prepared.school && String(prepared.school) !== schoolDependency(user.roles));
     if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new AppError("User is outside your scope", 403);
+    if (payload.profiles?.teacher?.classes && !schoolRemoved && !schoolChanged) {
+      await this.validateTeacherClassAssignments(payload.profiles.teacher.classes, schoolDependency(user.roles));
+    }
 
     let forceRelogin = false;
     if (payload.identity) {
@@ -280,8 +303,9 @@ class UserManager extends BaseManager {
     return { success: true, data: user };
   }
 
-  async setProfile(userId, profileData) {
-    const updatedUser = await this.dao.setProfile(userId, profileData);
+  async setProfile(user, profileData) {
+    await this.validateTeacherClassAssignments(profileData.classes, schoolDependency(user.roles));
+    const updatedUser = await this.dao.setProfile(user._id, profileData);
     if (!updatedUser) {
       return formatApiReponse(false, "Teaching profile not found", null);
     }

@@ -22,9 +22,21 @@ const identitySchema = Joi.object({
 	address: Joi.string().allow("", null),
 });
 
+const classSchema = Joi.object({
+	class: Joi.number().required(),
+	board: Joi.string().required(),
+	medium: Joi.string().required(),
+	section: Joi.string().optional(),
+	subject: Joi.string().required(),
+	sem: Joi.number().required(),
+	name: Joi.string().required(),
+	boysStrength: Joi.number().integer().min(0),
+	girlsStrength: Joi.number().integer().min(0),
+});
+
 const teacherProfileSchema = Joi.object({
 	facilities: Joi.array(),
-	classes: Joi.array(),
+	classes: Joi.array().items(classSchema),
 	isProfileCompleted: Joi.boolean(),
 });
 
@@ -67,18 +79,6 @@ const validateUserUpdate = validateRequest(Joi.object({
 	roles: Joi.array().items(roleAssignment).min(1),
 	profiles: profilesSchema,
 }).min(1));
-
-const classSchema = Joi.object({
-	class: Joi.number().required(),
-	board: Joi.string().required(),
-	medium: Joi.string().required(),
-	section: Joi.string().optional(),
-	subject: Joi.string().required(),
-	sem: Joi.number().required(),
-	name: Joi.string().required(),
-	boysStrength: Joi.number().integer().min(0),
-	girlsStrength: Joi.number().integer().min(0),
-});
 
 const profileSchema = Joi.object({
 	classes: Joi.array().items(classSchema),
