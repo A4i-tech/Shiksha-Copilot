@@ -10,7 +10,7 @@ const GEOJSON_DIR = path.join(__dirname, "../data");
 // GET /api/analytics/geojson/:name — serve GeoJSON district boundary files.
 // Public: district boundaries are not sensitive data.
 router.get("/analytics/geojson/:name", (req, res) => {
-  const name = req.params.name.replace(/[^a-z0-9-]/gi, "");
+  const name = path.basename(req.params.name);
   const filePath = path.join(GEOJSON_DIR, `${name}.geojson`);
 
   if (!fs.existsSync(filePath)) {

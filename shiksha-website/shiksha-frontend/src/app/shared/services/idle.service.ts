@@ -200,17 +200,9 @@ export class IdleService {
     this.idle.stop();
   }
 
-  private getDeviceType(): string {
-    const ua = navigator.userAgent;
-    if (/IFP|interactive.flat.panel|smartboard/i.test(ua)) return 'ifp';
-    if (/tablet|ipad/i.test(ua)) return 'tablet';
-    if (/mobile|android|iphone/i.test(ua)) return 'mobile';
-    return 'desktop';
-  }
-
   logActivity(trackObj: any) {
     this.httpClient
-      .post(`${environment.apiUrl}/activity-log`, { ...trackObj, deviceType: this.getDeviceType() })
+      .post(`${environment.apiUrl}/activity-log`, trackObj)
       .subscribe({
         next: (val) => {
           this.draftId = null;
