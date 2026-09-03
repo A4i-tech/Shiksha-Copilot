@@ -27,31 +27,26 @@ _TEX_DELIMITER_OPENERS = {"\\(": "\\)", "\\[": "\\]"}
 _TEX_BARE_UNDERSCORE = re.compile(r"(?<!\\)_")
 
 
-def validate_tex(text: str) -> None:
-    """Raise ValueError if TeX inline/display delimiters in `text` are
-    unbalanced, out of order, mismatched, or nested, or if a math span
-    contains a bare "_" (e.g. a leaked "__" blank placeholder) that KaTeX
-    cannot render.
-
-    Best-effort signal for observability, not a full TeX parser.
-    """
+def validate_tex(text: str):
     expected_close = None
     span_start = None
+    errors = []
     for match in _TEX_DELIMITER_PATTERN.finditer(text):
         token = match.group()
         if expected_close is None:
             if token not in _TEX_DELIMITER_OPENERS:
-                raise ValueError(f"TeX closer {token!r} has no matching opener in: {text[:200]!r}")
+                errors.append(f"TeX closer {token!r} has no matching opener in: {text[:200]!r}")
             expected_close = _TEX_DELIMITER_OPENERS[token]
             span_start = match.end()
         else:
             if token in _TEX_DELIMITER_OPENERS:
-                raise ValueError(f"Nested TeX opener {token!r} before previous delimiter closed in: {text[:200]!r}")
+                errors.append(f"Nested TeX opener {token!r} before previous delimiter closed in: {text[:200]!r}")
             if token != expected_close:
-                raise ValueError(f"Mismatched TeX closer {token!r}, expected {expected_close!r} in: {text[:200]!r}")
+                errors.append(f"Mismatched TeX closer {token!r}, expected {expected_close!r} in: {text[:200]!r}")
             span = text[span_start:match.start()]
             if _TEX_BARE_UNDERSCORE.search(span):
-                raise ValueError(f"Bare '_' (blank placeholder?) inside TeX span {span!r} in: {text[:200]!r}")
+                errors.append(f"Bare '_' (blank placeholder?) inside TeX span {span!r} in: {text[:200]!r}")
             expected_close = None
     if expected_close is not None:
-        raise ValueError(f"Unclosed TeX delimiter {expected_close!r} in: {text[:200]!r}")
+        errors.append(f"Unclosed TeX delimiter {expected_close!r} in: {text[:200]!r}")
+    return errors
