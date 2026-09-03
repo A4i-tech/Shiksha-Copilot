@@ -177,7 +177,7 @@ class QuestionPaperService:
         template = self.prompts["question_bank_parts_gen"]
 
         # Get Bloom's taxonomy guide
-        bloom_lang = "english" if "entests/unit/utils/test_validate_tex.pyglish" in request.subject.lower() else "general"
+        bloom_lang = "english" if "english" in request.subject.lower() else "general"
         blooms_guide = self.prompts["blooms-taxonomy"][bloom_lang]
 
         # Build grammar topics text, appending grammar guide if slot has grammar types
