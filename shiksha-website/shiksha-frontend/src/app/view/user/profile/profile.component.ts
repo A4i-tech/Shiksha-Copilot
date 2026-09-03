@@ -25,7 +25,7 @@ import { getLabel } from 'src/app/shared/utility/constant.util';
 export class ProfileComponent implements OnInit, OnDestroy {
   showDeleteClassDetailsConfirm!: boolean;
   showDeleteResourceConfirm!: boolean;
-  selectedClassIndex!:any;
+  selectedClassIndex!:number;
   selectedResIndex!:any;
   languageConfig = languege;
 
@@ -402,13 +402,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   filterSubjects(standard:any,subjects:any[]){
-    return subjects.filter((e)=> {
-      if(e?.subjects[0]?.applicableClasses?.length){
-        return e.subjects[0].applicableClasses.includes(standard)
-      }else{
-        return e
-      }
-    })
+    return subjects.map((subject) => ({
+      ...subject,
+      subjects: subject.subjects.filter((detail:any) => !detail.applicableClasses.length || detail.applicableClasses.includes(standard))
+    })).filter((subject) => subject.subjects.length)
   }
 
 
@@ -624,7 +621,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
   /**
    * Function to delete class
    */
-  deleteclass(i: any) {
+  deleteclass(i: number) {
+    [this.mediumDropdownOptions, this.classDropdownOptions, this.subjectDropdownOptions, this.currentSubjects].forEach(options => options.splice(i, 1));
     this.classes.removeAt(i);
   }
 
@@ -774,7 +772,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
   }
 
-  openConfirmPopupforDeleteClass(i:any){
+  openConfirmPopupforDeleteClass(i:number){
     this.selectedClassIndex = i;
     this.showDeleteClassDetailsConfirm = true;
   }
