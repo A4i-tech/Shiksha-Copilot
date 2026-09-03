@@ -92,7 +92,7 @@
           <div class="mt-5">
             <h4 class="text-base font-medium">
               {{ "Subject" | translate }}:
-              <span>{{ plan.isLesson ? utiltyService.getSubjectDisplayName(plan.lesson.subjects) : utiltyService.getSubjectDisplayName(plan.resource.subjects)}}</span>
+              <span>{{ plan.isLesson ? utiltyService.getSubjectDisplayName(plan.lesson.subjects, plan.lesson.board) : utiltyService.getSubjectDisplayName(plan.resource.subjects, plan.resource.board)}}</span>
             </h4>
             <p class="mt-2 text-xs font-normal text-content-70">
               {{ "Topic" | translate }}: {{plan.isLesson ?  plan.lesson.chapter?.orderNumber+'. '+plan.lesson.chapter.topics:plan.resource.chapter?.orderNumber +'. '+plan.resource.chapter.topics }}

@@ -371,7 +371,7 @@ formatSubjectDropdown(data:any, board: string){
   return formattedData
 }
 
-getSubjectDisplayName(ele:any, board: string = ''){
+getSubjectDisplayName(ele:any, board: string){
   const displayName = this.translateService.instant(ele?.name, { board });
   if(ele?.sem){
   return `${displayName} Sem${ele.sem}`

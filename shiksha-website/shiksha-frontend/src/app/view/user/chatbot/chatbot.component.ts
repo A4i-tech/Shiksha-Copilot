@@ -195,7 +195,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.messages = res.data.messages;
         this.chapterDetails = res?.data?.chapterDetails;
-        this.chapterDetails.subject = this.utilityService.getSubjectDisplayName(res?.data?.subject);
+        this.chapterDetails.subject = this.utilityService.getSubjectDisplayName(res?.data?.subject, this.chapterDetails.board);
         this.isLoading = false;
       },
       error: (err) => {

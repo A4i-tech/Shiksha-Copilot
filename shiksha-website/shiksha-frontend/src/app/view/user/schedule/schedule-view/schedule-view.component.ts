@@ -221,7 +221,7 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
         index: index,
         class: eventVal.class,
         section: eventVal.section,
-        subject: this.utility.getSubjectDisplayName(eventVal.lesson.subjects),
+        subject: this.utility.getSubjectDisplayName(eventVal.lesson.subjects, eventVal.board),
         date: date_time.date,
         lessonId: this.title,
         schdule_id: date_time._id,

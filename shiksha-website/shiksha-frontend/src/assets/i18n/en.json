@@ -574,216 +574,58 @@
   "Short Answer Questions": "Short Answer Questions",
   "Long Answer Questions": "Long Answer Questions",
   "Knowledge": [
-    {
-      "rule": "subject == 'Physics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Understanding",
-        "fullLabel": "Conceptual Understanding"
-      }
-    },
-    {
-      "rule": "subject == 'Biology' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Understanding",
-        "fullLabel": "Conceptual Understanding"
-      }
-    },
-    {
-      "rule": "subject == 'Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Understanding",
-        "fullLabel": "Conceptual Understanding"
-      }
-    },
-    {
-      "rule": "subject == 'Social' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Understanding",
-        "fullLabel": "Conceptual Understanding"
-      }
-    },
-    {
-      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Understanding",
-        "fullLabel": "Conceptual Understanding"
-      }
-    },
-    {
-      "rule": "subject == 'Math' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Problem solving",
-        "fullLabel": "Problem solving"
-      }
-    },
-    {
-      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Problem solving",
-        "fullLabel": "Problem solving"
-      }
-    },
-    { "shortLabel": "Knowledge", "fullLabel": "" }
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science', 'Social', 'Social Science']", "value": "Understanding" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Problem solving" },
+    "Knowledge"
+  ],
+  "Knowledge description": [
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science', 'Social', 'Social Science']", "value": "Conceptual Understanding" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Problem solving" },
+    "Knowledge"
   ],
   "Understanding": [
-    {
-      "rule": "subject == 'Physics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Questioning",
-        "fullLabel": "Asking questions and making hypothesis"
-      }
-    },
-    {
-      "rule": "subject == 'Biology' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Questioning",
-        "fullLabel": "Asking questions and making hypothesis"
-      }
-    },
-    {
-      "rule": "subject == 'Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Questioning",
-        "fullLabel": "Asking questions and making hypothesis"
-      }
-    },
-    {
-      "rule": "subject == 'Social' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Interpretation",
-        "fullLabel": "Reading the text, understanding and interpretation"
-      }
-    },
-    {
-      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Interpretation",
-        "fullLabel": "Reading the text, understanding and interpretation"
-      }
-    },
-    {
-      "rule": "subject == 'Math' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Reasoning",
-        "fullLabel": "Reasoning proof"
-      }
-    },
-    {
-      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Reasoning",
-        "fullLabel": "Reasoning proof"
-      }
-    },
-    { "shortLabel": "Understanding", "fullLabel": "" }
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Questioning" },
+    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Interpretation" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Reasoning" },
+    "Understanding"
+  ],
+  "Understanding description": [
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Asking questions and making hypothesis" },
+    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Reading the text, understanding and interpretation" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Reasoning proof" },
+    "Understanding"
   ],
   "Application": [
-    {
-      "rule": "subject == 'Physics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Experimentation",
-        "fullLabel": "Experimentation and field investigation"
-      }
-    },
-    {
-      "rule": "subject == 'Biology' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Experimentation",
-        "fullLabel": "Experimentation and field investigation"
-      }
-    },
-    {
-      "rule": "subject == 'Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Experimentation",
-        "fullLabel": "Experimentation and field investigation"
-      }
-    },
-    {
-      "rule": "subject == 'Social' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Info skills",
-        "fullLabel": "Information skills"
-      }
-    },
-    {
-      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Info skills",
-        "fullLabel": "Information skills"
-      }
-    },
-    {
-      "rule": "subject == 'Math' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Communication",
-        "fullLabel": "Communication"
-      }
-    },
-    {
-      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Communication",
-        "fullLabel": "Communication"
-      }
-    },
-    { "shortLabel": "Application", "fullLabel": "" }
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Experimentation" },
+    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Info skills" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Communication" },
+    "Application"
+  ],
+  "Application description": [
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Experimentation and field investigation" },
+    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Information skills" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Communication" },
+    "Application"
   ],
   "Skill": "Skill",
+  "Skill description": "Skill",
   "Comprehension": "Comprehension",
+  "Comprehension description": "Comprehension",
   "Expression": "Expression",
+  "Expression description": "Expression",
   "Appreciation": "Appreciation",
+  "Appreciation description": "Appreciation",
   "Higher order thinking": [
-    {
-      "rule": "subject == 'Physics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Info skills",
-        "fullLabel": "Information skills and Projects"
-      }
-    },
-    {
-      "rule": "subject == 'Biology' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Info skills",
-        "fullLabel": "Information skills and Projects"
-      }
-    },
-    {
-      "rule": "subject == 'Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Info skills",
-        "fullLabel": "Information skills and Projects"
-      }
-    },
-    {
-      "rule": "subject == 'Social' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Reflection",
-        "fullLabel": "Reflection on contemporary issues and questioning"
-      }
-    },
-    {
-      "rule": "subject == 'Social Science' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Reflection",
-        "fullLabel": "Reflection on contemporary issues and questioning"
-      }
-    },
-    {
-      "rule": "subject == 'Math' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Connections",
-        "fullLabel": "Connections"
-      }
-    },
-    {
-      "rule": "subject == 'Mathematics' && board == 'BSE-TG'",
-      "value": {
-        "shortLabel": "Connections",
-        "fullLabel": "Connections"
-      }
-    },
-    { "shortLabel": "Higher order thinking", "fullLabel": "" }
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Info skills" },
+    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Reflection" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Connections" },
+    "Higher order thinking"
+  ],
+  "Higher order thinking description": [
+    { "rule": "board == 'BSE-TG' && subject in ['Physics', 'Biology', 'Science']", "value": "Information skills and Projects" },
+    { "rule": "board == 'BSE-TG' && subject in ['Social', 'Social Science']", "value": "Reflection on contemporary issues and questioning" },
+    { "rule": "board == 'BSE-TG' && subject in ['Math', 'Mathematics']", "value": "Connections" },
+    "Higher order thinking"
   ],
   "AI Questions": "AI Questions",
   "Pre-generated Questions": "Pre-generated Questions",

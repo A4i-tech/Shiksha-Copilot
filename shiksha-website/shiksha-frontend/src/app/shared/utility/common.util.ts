@@ -16,18 +16,15 @@ export class RuleTranslateCompiler extends TranslateCompiler {
     compileTranslations(translations: Record<string, unknown>): Record<string, unknown> {
         const user = JSON.parse(localStorage.getItem('userData') ?? 'null');
         const state = user?.school?.state || user?.profiles?.admin?.state || null;
-        const translateValue = (value: unknown): unknown => {
-            if (typeof value === 'string') return typeof translations[value] === 'string' ? translations[value] : value;
-            if (value === null || typeof value !== 'object') return value;
-            return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, translateValue(entry)]));
-        };
+        const sourceTranslations = { ...translations };
+        const translateValue = (value: string): string => typeof sourceTranslations[value] === 'string' ? sourceTranslations[value] as string : value;
         for (const [key, rules] of Object.entries(enLabels)) {
             if (!Array.isArray(rules)) continue;
-            const fallback = Array.isArray(translations[key]) ? key : translations[key] ?? key;
+            const fallback = typeof sourceTranslations[key] === 'string' ? sourceTranslations[key] as string : key;
             translations[key] = (params: Record<string, unknown> = {}) => {
                 for (const entry of rules) {
-                    if (entry === null || typeof entry !== 'object' || !('rule' in entry)) return translateValue(entry);
-                    const rule = entry as { rule: string; value: unknown };
+                    if (typeof entry === 'string') return translateValue(entry);
+                    const rule = entry as { rule: string; value: string };
                     if (evaluate(rule.rule, { state, board: null, subject: null, ...params })) {
                         return translateValue(rule.value);
                     }

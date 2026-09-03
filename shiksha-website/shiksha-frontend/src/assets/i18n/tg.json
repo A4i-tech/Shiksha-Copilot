@@ -523,9 +523,13 @@
   "Understanding": "అవగాహన",
   "Application": "అన్వయం",
   "Skill": "నైపుణ్యం",
+  "Skill description": "నైపుణ్యం",
   "Comprehension": "గ్రహణశక్తి",
+  "Comprehension description": "గ్రహణశక్తి",
   "Expression": "వ్యక్తీకరణ",
+  "Expression description": "వ్యక్తీకరణ",
   "Appreciation": "ప్రశంస",
+  "Appreciation description": "ప్రశంస",
   "Higher order thinking": "ఉన్నత స్థాయి ఆలోచన",
   "AI Questions": "AI ప్రశ్నలు",
   "Pre-generated Questions": "ముందుగా రూపొందించిన ప్రశ్నలు",
@@ -855,5 +859,13 @@
   "Problem solving": "సమస్యా పరిష్కారం",
   "Reasoning": "తార్కికం",
   "Communication": "సంభాషణ",
-  "Connections": "అనుసంధానాలు"
+  "Connections": "అనుసంధానాలు",
+  "Conceptual Understanding": "భావనాత్మక అవగాహన",
+  "Asking questions and making hypothesis": "ప్రశ్నలు అడగడం మరియు పరికల్పనలు రూపొందించడం",
+  "Experimentation and field investigation": "ప్రయోగం మరియు క్షేత్ర పరిశోధన",
+  "Information skills and Projects": "సమాచార నైపుణ్యాలు మరియు ప్రాజెక్టులు",
+  "Reading the text, understanding and interpretation": "పాఠ్యాన్ని చదవడం, అర్థం చేసుకోవడం మరియు వ్యాఖ్యానించడం",
+  "Information skills": "సమాచార నైపుణ్యాలు",
+  "Reflection on contemporary issues and questioning": "సమకాలీన అంశాలపై ఆలోచన మరియు ప్రశ్నించడం",
+  "Reasoning proof": "తార్కిక నిరూపణ"
 }

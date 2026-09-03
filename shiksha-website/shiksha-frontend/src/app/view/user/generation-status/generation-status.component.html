@@ -296,7 +296,7 @@
             <p class="text-sm font-medium">
               {{ "Subject" | translate }}:
               <span>{{
-                item.isLesson ? utilityservice.getSubjectDisplayName(item.lesson.subjects) : utilityservice.getSubjectDisplayName(item.resource.subjects)
+                item.isLesson ? utilityservice.getSubjectDisplayName(item.lesson.subjects, item.lesson.board) : utilityservice.getSubjectDisplayName(item.resource.subjects, item.resource.board)
               }}</span>
             </p>
             <div class="flex items-center justify-start my-2">

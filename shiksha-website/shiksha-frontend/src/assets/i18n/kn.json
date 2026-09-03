@@ -520,9 +520,13 @@
   "Understanding": "ತಿಳುವಳಿಕೆ",
   "Application": "ಅನ್ವಯ",
   "Skill": "ಕೌಶಲ್ಯ",
+  "Skill description": "ಕೌಶಲ್ಯ",
   "Comprehension": "ಗ್ರಹಿಕೆ",
+  "Comprehension description": "ಗ್ರಹಿಕೆ",
   "Expression": "ಅಭಿವ್ಯಕ್ತಿ",
+  "Expression description": "ಅಭಿವ್ಯಕ್ತಿ",
   "Appreciation": "ಮೆಚ್ಚುಗೆ",
+  "Appreciation description": "ಮೆಚ್ಚುಗೆ",
   "Higher order thinking": "ಉನ್ನತ ಮಟ್ಟದ ಚಿಂತನೆ",
   "AI Questions": "ಎಐ ಪ್ರಶ್ನೆಗಳು",
   "Pre-generated Questions": "ಪೂರ್ವ-ರಚಿತ ಪ್ರಶ್ನೆಗಳು",
@@ -851,5 +855,13 @@
   "Problem solving": "ಸಮಸ್ಯೆ ಪರಿಹಾರ",
   "Reasoning": "ತರ್ಕ",
   "Communication": "ಸಂವಹನ",
-  "Connections": "ಸಂಪರ್ಕಗಳು"
+  "Connections": "ಸಂಪರ್ಕಗಳು",
+  "Conceptual Understanding": "ಪರಿಕಲ್ಪನಾ ತಿಳುವಳಿಕೆ",
+  "Asking questions and making hypothesis": "ಪ್ರಶ್ನೆಗಳನ್ನು ಕೇಳುವುದು ಮತ್ತು ಊಹೆಗಳನ್ನು ರೂಪಿಸುವುದು",
+  "Experimentation and field investigation": "ಪ್ರಯೋಗ ಮತ್ತು ಕ್ಷೇತ್ರ ತನಿಖೆ",
+  "Information skills and Projects": "ಮಾಹಿತಿ ಕೌಶಲ್ಯಗಳು ಮತ್ತು ಯೋಜನೆಗಳು",
+  "Reading the text, understanding and interpretation": "ಪಠ್ಯವನ್ನು ಓದುವುದು, ಅರ್ಥಮಾಡಿಕೊಳ್ಳುವುದು ಮತ್ತು ವ್ಯಾಖ್ಯಾನಿಸುವುದು",
+  "Information skills": "ಮಾಹಿತಿ ಕೌಶಲ್ಯಗಳು",
+  "Reflection on contemporary issues and questioning": "ಸಮಕಾಲೀನ ಸಮಸ್ಯೆಗಳ ಕುರಿತು ಚಿಂತನೆ ಮತ್ತು ಪ್ರಶ್ನಿಸುವಿಕೆ",
+  "Reasoning proof": "ತಾರ್ಕಿಕ ಪುರಾವೆ"
 }

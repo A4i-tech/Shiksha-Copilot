@@ -35,8 +35,8 @@ interface RawQuestionBankObjective {
 }
 
 interface QuestionBankObjective extends RawQuestionBankObjective {
-  shortLabel: string;
-  fullLabel: string;
+  name: string;
+  description: string;
 }
 
 interface QuestionDistributionEntry {
@@ -122,7 +122,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   questionTypeOptions: { name: string; value: string }[] = [];
   chapterOptions: { name: string }[] = [];
-  objectiveOptions: { objective: string; name: string }[] = [];
+  objectiveOptions: { objective: string; name: string; description: string }[] = [];
   objectiveLabels: Record<string, string> = {};
   questionTypeConfig: DropDownConfig = {
     isBackground: false, placeHolderTxt: 'Select Type',
@@ -134,7 +134,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   };
   objectiveConfig: DropDownConfig = {
     isBackground: false, placeHolderTxt: 'Objective',
-    bindLabel: 'name', bindValue: 'objective', required: true, clearableOff: true,
+    bindLabel: 'name', bindValue: 'objective', showDescription: true, required: true, clearableOff: true,
   };
 
   questionBankTypes: any = [
@@ -394,12 +394,13 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
-  // Attaches display-only shortLabel/fullLabel to each objective. The `objective` field
-  // itself stays the canonical backend name and must never be overwritten here.
   applyObjectiveLabels(objectives: RawQuestionBankObjective[], board: string, subjectName: string): QuestionBankObjective[] {
     return (objectives || []).map(obj => {
-      const { shortLabel, fullLabel } = this.translateService.instant(obj.objective, { board, subject: subjectName });
-      return { ...obj, shortLabel, fullLabel };
+      return {
+        ...obj,
+        name: this.translateService.instant(obj.objective, { board, subject: subjectName }),
+        description: this.translateService.instant(`${obj.objective} description`, { board, subject: subjectName }),
+      };
     });
   }
 
@@ -579,11 +580,10 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       next: (response: any) => {
         this.questionBankBluePrintData = response.data;
         this.objectiveOptions = this.questionBankObjectives.map(item => {
-          return { objective: item.objective, name: item.shortLabel || item.objective };
+          return { objective: item.objective, name: item.name, description: item.description };
         });
-        // Maps canonical objective name to its board-mapped shortLabel, for components that only get the canonical name (e.g. the blueprint chart).
         this.objectiveLabels = this.questionBankObjectives.reduce((acc: Record<string, string>, item) => {
-          acc[item.objective] = item.shortLabel || item.objective;
+          acc[item.objective] = item.name;
           return acc;
         }, {});
         this.chapterOptions = this.marksDistribution.map(item => ({ name: item.unitName }));

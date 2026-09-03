@@ -124,15 +124,15 @@ export class QuestionBankViewComponent implements OnInit {
             this.questionTypeLabels = Object.fromEntries(config.questionTypes.map((type: any) => [type.key, type.label]));
           });
 
-          // Attaches display-only shortLabel/fullLabel to each objective in the blueprint table.
-          // The `objective` field itself stays the canonical backend name and is never overwritten.
           (this.questionBankDetails.bluePrintTemplate || []).forEach((questionBankObjective: any) => {
             questionBankObjective.questionDistribution = (questionBankObjective.questionDistribution || []).map((objective: any) => {
-              const { shortLabel, fullLabel } = this.translateService.instant(
-                objective.objective,
-                { board: this.questionBankDetails.board, subject: this.questionBankDetails.subject }
-              );
-              return { ...objective, shortLabel, fullLabel };
+              return {
+                ...objective,
+                name: this.translateService.instant(objective.objective, {
+                  board: this.questionBankDetails.board,
+                  subject: this.questionBankDetails.subject,
+                }),
+              };
             });
           });
 
@@ -170,7 +170,7 @@ export class QuestionBankViewComponent implements OnInit {
         result.push({
           unitName: entry.unitName,
           type,
-          objective: entry.shortLabel,
+          name: entry.name,
           marks: marksPerQuestion
         });
       });
@@ -198,12 +198,12 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   downloadQp() {
-    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
+    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Question paper downloaded successfully!');
   }
 
   downloadAnswerKey() {
-    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
+    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Answer key downloaded successfully!');
   }
 
@@ -217,7 +217,7 @@ export class QuestionBankViewComponent implements OnInit {
       schoolName: this.questionBankDetails?.questionBank?.metadata?.schoolName,
       medium: this.questionBankDetails?.medium,
       class: this.questionBankDetails?.grade,
-      subject: this.questionBankDetails?.subject,
+      subject: this.questionBankDetails?.subjectLabel,
       examinationName: this.questionBankDetails?.examinationName,
       totalMarks: this.questionBankDetails?.totalMarks
     }
