@@ -152,13 +152,13 @@
       </div>
       <div>
         <label for="profile-taluk" class="block mb-1 form-control-label">{{
-          translateService.currentLang === 'en' ? talukLabel : (talukLabel | translate)
+          'Taluk' | translate
         }}</label>
         <input
           type="text"
           id="profile-taluk"
           class="form-control"
-          placeholder="{{ ('Enter ' + talukLabel) | translate }}"
+          placeholder="{{ 'Enter Taluk' | translate }}"
           readonly
           [value]="userData?.school?.block"
         />

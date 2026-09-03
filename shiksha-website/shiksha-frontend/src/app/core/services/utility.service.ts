@@ -7,7 +7,7 @@ import { marked } from 'marked';
 import { ClipboardService } from 'ngx-clipboard';
 import { ToastrService } from 'ngx-toastr';
 import { PermissionGrant } from 'src/app/shared/interfaces/permission.interface';
-import { getLabel } from 'src/app/shared/utility/constant.util';
+import { TranslateService } from '@ngx-translate/core';
 
 @Injectable({
   providedIn: 'root',
@@ -22,7 +22,8 @@ export class UtilityService {
     private datePipe: DatePipe,
     private router: Router,
     private domSanitizer:DomSanitizer,
-    private clipboardService:ClipboardService
+    private clipboardService:ClipboardService,
+    private translateService: TranslateService
   ) {
     // constructor
   }
@@ -370,8 +371,8 @@ formatSubjectDropdown(data:any, board: string){
   return formattedData
 }
 
-getSubjectDisplayName(ele:any, board: string = ''){
-  const displayName = getLabel(ele?.name, ele?.name, { board });
+getSubjectDisplayName(ele:any, board: string){
+  const displayName = this.translateService.instant(ele?.name, { board });
   if(ele?.sem){
   return `${displayName} Sem${ele.sem}`
   }else{

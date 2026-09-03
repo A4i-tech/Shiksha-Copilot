@@ -3,7 +3,7 @@ import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
 import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { getLabel } from 'src/app/shared/utility/constant.util';
+import { TranslateService } from '@ngx-translate/core';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, of } from 'rxjs';
 interface ListParams {
   currentPage: number;
@@ -142,12 +142,8 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     };
   }
 
-  constructor(private contentGenService: ContentGenerationService, private router: Router, public utilityservice: UtilityService) {
-    this.typeDropdownOptions = [{ name: this.phrase('Lesson Plan'), value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }];
-  }
-
-  phrase(canonicalPhrase: string): string {
-    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utilityservice.loggedInUserData?.school?.state });
+  constructor(private contentGenService: ContentGenerationService, private router: Router, public utilityservice: UtilityService, translateService: TranslateService) {
+    this.typeDropdownOptions = [{ name: translateService.instant('Lesson Plan'), value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }];
   }
 
   ngOnInit(): void {

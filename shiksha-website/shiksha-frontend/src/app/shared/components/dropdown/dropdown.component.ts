@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, EventEmitter, forwardRef, Input, Output, ViewChild } from '@angular/core';
 import { ControlValueAccessor, FormControl, NG_VALUE_ACCESSOR, ReactiveFormsModule } from '@angular/forms';
 import { NgSelectComponent, NgSelectModule } from '@ng-select/ng-select';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { DropDownConfig, DropdownValue } from '../../interfaces/dropdown.interface';
 
 @Component({
@@ -17,12 +17,6 @@ export class DropdownComponent implements AfterViewInit, ControlValueAccessor {
   private static nextId = 0;
   readonly inputId = `dropdown-${DropdownComponent.nextId++}`;
   private readonly internalControl = new FormControl<DropdownValue | DropdownValue[] | null>(null);
-
-  constructor(private translateService: TranslateService) {}
-
-  get isEnglishActive(): boolean {
-    return (this.translateService.currentLang || this.translateService.defaultLang) === 'en';
-  }
 
   @Input() dropDownValues: Record<string, unknown>[] = [];
   @Input() dropDownCtrl?: FormControl;
