@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, NavigationStart, Router } from '@angular/router';
 import { ContentGenerationService } from '../content-generation.service';
+import { ScheduleService } from '../../schedule/schedule.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { getLabel } from 'src/app/shared/utility/constant.util';
 import { forkJoin, Subscription } from 'rxjs';
@@ -154,7 +155,8 @@ export class LessonPlanViewEditComponent implements OnInit {
     public utilityService: UtilityService,
     private router: Router,
     private idleService: IdleService,
-    public modalService: ModalService
+    public modalService: ModalService,
+    private scheduleService: ScheduleService
   ) {
     this.planId = this.activatedRoute.snapshot.paramMap.get('id');
     this.isLesson =
@@ -269,6 +271,39 @@ export class LessonPlanViewEditComponent implements OnInit {
 
     if (this.isMobile()) {
       this.isOpen = false;
+    }
+  }
+
+  /**
+   * carries this lesson plan over to the My Schedules "Add Details" modal, pre-selected,
+   * so the teacher doesn't have to search for what they're already looking at
+   */
+  scheduleThis(): void {
+    const goToSchedule = () => {
+      const subTopics = this.subjectDetails?.subTopics;
+      this.scheduleService.pendingLessonPlan = {
+        name: this.subjectDetails?.name,
+        lessonId: this.subjectDetails?._id,
+        class: this.subjectDetails?.class,
+        subject: this.subjectDetails?.subject,
+        board: this.subjectDetails?.chapter?.board,
+        medium: this.subjectDetails?.chapter?.medium,
+        topic: this.subjectDetails?.chapter?.topics,
+        subTopic: Array.isArray(subTopics) ? subTopics.join(' | ') : subTopics,
+        isAll: this.subjectDetails?.isAll,
+      };
+      this.router.navigate(['/schedule'], { queryParams: { openAdd: '1' } });
+    };
+
+    if (this.mode === 'view' || this.isSaved || this.planDetails?.feedback?.feedback) {
+      goToSchedule();
+    } else if (!this.feedback) {
+      this.utilityService.showError(
+        'Add feedback for this lesson plan before scheduling it.'
+      );
+      this.onAiAccepted();
+    } else {
+      this.save(true, goToSchedule);
     }
   }
 
@@ -556,7 +591,7 @@ export class LessonPlanViewEditComponent implements OnInit {
     this.save(true);
   }
 
-  save(isCompleted: boolean) {
+  save(isCompleted: boolean, onSaved?: () => void) {
     if (this.isLesson) {
       const lessonId =
         this.mode === 'draft' ? this.planId : this.planDetails._id;
@@ -602,7 +637,9 @@ export class LessonPlanViewEditComponent implements OnInit {
           this.utilityService.showSuccess(lessonPlanMessage);
           this.utilityService.showSuccess(feedbackMessage);
           this.hasUnsavedChanges = false;
-          if (this.planDetails.isGenerated && !isCompleted) {
+          if (onSaved) {
+            onSaved();
+          } else if (this.planDetails.isGenerated && !isCompleted) {
             this.router.navigate(['/generation-status']);
           } else {
             this.router.navigate(['/content-generation']);
@@ -660,7 +697,11 @@ export class LessonPlanViewEditComponent implements OnInit {
           this.utilityService.showSuccess(ResPlanMessage);
           this.utilityService.showSuccess(feedbackMessage);
           this.hasUnsavedChanges = false;
-          this.router.navigate(['/content-generation']);
+          if (onSaved) {
+            onSaved();
+          } else {
+            this.router.navigate(['/content-generation']);
+          }
         },
         error: (err) => {
           this.utilityService.handleError(err);
