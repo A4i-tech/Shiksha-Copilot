@@ -27,6 +27,8 @@ import { getLabel } from 'src/app/shared/utility/constant.util';
 import { DatePipe } from '@angular/common';
 import { forkJoin, Subject, Subscription, takeUntil } from 'rxjs';
 
+const ALL_SUB_TOPICS = 'All Sub-Topics';
+
 @Component({
   selector: 'app-add-edit-schedule',
   templateUrl: './add-edit-schedule.component.html',
@@ -39,6 +41,8 @@ export class AddEditScheduleComponent
   private readonly destroy$ = new Subject<void>();
   /** cancels the previous in-flight lesson-plans request so a slower stale response can't overwrite a newer one */
   private lessonPlansRequest?: Subscription;
+  /** suppresses the per-step lesson-plan refresh while the initial cascade auto-selects single-option filters */
+  private initializing = false;
 
   @HostListener('document:keydown.escape')
   handleEscape() {
@@ -319,16 +323,18 @@ export class AddEditScheduleComponent
       this.service.getSchoolInfoByID().pipe(takeUntil(this.destroy$)).subscribe({
         next: (val: any) => {
           this.teacherId = val.data.user._id;
-          // do this first: if the teacher only has one board, this auto-selects it and
-          // resets 'lessonPlan' downstream — the pre-selected plan below must win, not this
+          // the cascade auto-selects single-option filters and resets 'lessonPlan' as it goes;
+          // its refreshes are suppressed so they can't race the selection made right after
+          this.initializing = true;
           this.setBoardDropdownValue(val.data.user.profiles.teacher.classes);
+          this.initializing = false;
 
           if (this.prefillLessonPlan) {
             this.lessonPlanDropDownValue = [this.prefillLessonPlan];
             this.scheduleForm.get('lessonPlan')?.setValue(this.prefillLessonPlan.name);
             this.onLessonPlanSelected(this.prefillLessonPlan);
           } else {
-            this.loadRecentLessonPlans();
+            this.refreshLessonPlansForFilters(true);
           }
         },
         error: (err: any) => {
@@ -336,28 +342,6 @@ export class AddEditScheduleComponent
         },
       });
     }
-  }
-
-  /**
-   * teacher's recent lesson plans, most-recently-updated first, used to pre-select a plan
-   * so the teacher doesn't have to re-specify what they generated minutes ago
-   */
-  loadRecentLessonPlans() {
-    this.service.getRecentLessonPlans().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (val: any) => {
-        this.lessonPlanDropDownValue = (val.data || []).map((item: any) =>
-          this.mapLessonListItem(item)
-        );
-        if (!this.scheduleForm.get('lessonPlan')?.value && this.lessonPlanDropDownValue.length) {
-          const mostRecent = this.lessonPlanDropDownValue[0];
-          this.scheduleForm.get('lessonPlan')?.setValue(mostRecent.name);
-          this.onLessonPlanSelected(mostRecent);
-        }
-      },
-      error: (err: any) => {
-        this.utility.handleError(err);
-      },
-    });
   }
 
   mapLessonListItem(item: any) {
@@ -371,6 +355,7 @@ export class AddEditScheduleComponent
       medium: lesson.chapter?.medium,
       topic: lesson.chapter?.topics,
       subTopic: Array.isArray(lesson.subTopics) ? lesson.subTopics.join(' | ') : lesson.subTopics,
+      isAll: lesson.isAll,
       updatedAt: item.updatedAt,
     };
   }
@@ -456,7 +441,10 @@ export class AddEditScheduleComponent
    * filters are currently selected, so the Lesson Plan picker stays in sync as the
    * filter panel narrows — with none selected this returns the unfiltered recent list
    */
-  private refreshLessonPlansForFilters() {
+  private refreshLessonPlansForFilters(autoSelectMostRecent = false) {
+    if (this.initializing) {
+      return;
+    }
     this.lessonPlansRequest?.unsubscribe();
     const filters = {
       board: this.scheduleForm.get('board')?.value,
@@ -470,8 +458,15 @@ export class AddEditScheduleComponent
           this.mapLessonListItem(item)
         );
         const currentName = this.scheduleForm.get('lessonPlan')?.value;
-        const stillPresent = this.lessonPlanDropDownValue.some(p => p.name === currentName);
-        if (!stillPresent) {
+        if (!currentName) {
+          if (autoSelectMostRecent && this.lessonPlanDropDownValue.length) {
+            const mostRecent = this.lessonPlanDropDownValue[0];
+            this.scheduleForm.get('lessonPlan')?.setValue(mostRecent.name);
+            this.onLessonPlanSelected(mostRecent);
+          }
+          return;
+        }
+        if (!this.lessonPlanDropDownValue.some(p => p.name === currentName)) {
           this.scheduleForm.get('lessonPlan')?.reset();
           this.lessonPlanID = '';
         }
@@ -515,25 +510,34 @@ export class AddEditScheduleComponent
   setSubTopicValue(value:any) {
     this.resetChapterChanges();
     if(value){
-      const body = {
-        board: this.scheduleForm.get('board')?.value,
-        medium: this.scheduleForm.get('medium')?.value,
-        standard: this.scheduleForm.get('className')?.value,
-        subject: this.scheduleForm.get('subject')?.value,
-        topic: this.scheduleForm.get('chapter')?.value,
-      };
-      this.service.getAllSubTopic(body).subscribe({
-        next: (val: any) => {
-          this.setSubTopicData(val.data);
-        },
-      });
+      this.loadSubTopicDropdown();
     }
+  }
+
+  private loadSubTopicDropdown() {
+    const body = {
+      board: this.scheduleForm.get('board')?.value,
+      medium: this.scheduleForm.get('medium')?.value,
+      standard: this.scheduleForm.get('className')?.value,
+      subject: this.scheduleForm.get('subject')?.value,
+      topic: this.scheduleForm.get('chapter')?.value,
+    };
+    if (!body.topic) {
+      return;
+    }
+    this.service.getAllSubTopic(body).subscribe({
+      next: (val: any) => {
+        this.setSubTopicData(val.data);
+      },
+      error: (err: any) => {
+        this.utility.handleError(err);
+      },
+    });
   }
 
 
   setSubTopicData(val: any) {
-    const formatttedData = this.formatSubTopics(val);
-    this.subTopicDropDownValue = formatttedData;
+    this.subTopicDropDownValue = val?.[0]?.subtopics ? this.formatSubTopics(val) : [];
   }
 
   formatSubTopics(val:any){
@@ -545,7 +549,7 @@ export class AddEditScheduleComponent
       let obj;
       if(ele.isAll){
         obj={
-          label: 'All Sub-Topics',
+          label: ALL_SUB_TOPICS,
           lessonList:ele.lessons
         }
       }else{
@@ -593,7 +597,8 @@ export class AddEditScheduleComponent
     if (lessonValue.class != null) patch.className = lessonValue.class;
     if (lessonValue.subject != null) patch.subject = lessonValue.subject;
     if (lessonValue.topic != null) patch.chapter = lessonValue.topic;
-    if (lessonValue.subTopic != null) patch.subTopic = lessonValue.subTopic;
+    // the sub-topic options label an all-sub-topics plan 'All Sub-Topics', not its joined sub-topics
+    if (lessonValue.subTopic != null) patch.subTopic = lessonValue.isAll ? ALL_SUB_TOPICS : lessonValue.subTopic;
     if (Object.keys(patch).length) {
       this.scheduleForm.patchValue(patch);
     }
@@ -630,6 +635,7 @@ export class AddEditScheduleComponent
     );
     if (subjectEntry && lessonValue.topic !== undefined) {
       this.loadChapterDropdown(subjectEntry);
+      this.loadSubTopicDropdown();
     }
   }
 

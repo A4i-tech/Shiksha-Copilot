@@ -290,6 +290,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         medium: this.subjectDetails?.chapter?.medium,
         topic: this.subjectDetails?.chapter?.topics,
         subTopic: Array.isArray(subTopics) ? subTopics.join(' | ') : subTopics,
+        isAll: this.subjectDetails?.isAll,
       };
       this.router.navigate(['/schedule'], { queryParams: { openAdd: '1' } });
     };
