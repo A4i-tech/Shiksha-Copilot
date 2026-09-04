@@ -24,23 +24,20 @@ export class ScheduleService extends BaseRestService{
 
   /**
    * teacher's own lesson plans, most recently updated first, optionally narrowed by filters
-   * and/or a free-text name search — backs the Lesson Plan picker in the Add Details modal
    * @param filters optional board/medium/class/subject/topics to narrow the list
-   * @param search optional free-text search over the lesson name
    */
-  getRecentLessonPlans(filters: any = {}, search?: string) {
+  getRecentLessonPlans(filters: any = {}) {
     let params = new HttpParams()
       .set('filter[type]', 'lesson')
       .set('filter[isCompleted]', 'true')
       .set('sortBy', 'updatedAt')
       .set('sortOrder', 'desc')
-      .set('limit', '20');
+      .set('limit', '25');
     if (filters.board) params = params.set('filter[board]', filters.board);
     if (filters.medium) params = params.set('filter[medium]', filters.medium);
     if (filters.class) params = params.set('filter[class]', filters.class);
     if (filters.subject) params = params.set('filter[subject]', filters.subject);
     if (filters.topic) params = params.set('filter[topics]', filters.topic);
-    if (search) params = params.set('search', search);
     return this.http.get(`${this.baseUrl}/teacher-lesson-plan/list`, { params });
   }
 
