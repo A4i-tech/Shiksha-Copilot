@@ -152,7 +152,7 @@ class UserManager extends BaseManager {
 
   async getByPhone(req) {
     let data = await this.dao.getByPhone(req.body.phone);
-    if (!data) return formatApiReponse(false, "", null);
+    if (!data) return formatApiReponse(true, "", null);
     const permission = String(data._id) === String(req.user._id) ? "profile.view" : "user.view";
     if (!await canAccessUser(req.permissions, permission, data)) throw new AppError("User is outside your scope", 403);
     return formatApiReponse(true, "", data);
@@ -174,7 +174,7 @@ class UserManager extends BaseManager {
       }
     }
 
-    const prepared = payload.roles && await prepareAssignments(payload.roles, actor, user.roles, Boolean(user.profiles.teacher), "role.assign");
+    const prepared = payload.roles && await prepareAssignments(payload.roles, actor, user.roles, Boolean(user.profiles.teacher || payload.profiles?.teacher), "role.assign");
     const schoolRemoved = Boolean(user.profiles.teacher && prepared && !prepared.school);
     const schoolChanged = Boolean(user.profiles.teacher && prepared && prepared.school && String(prepared.school) !== schoolDependency(user.roles));
     if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new AppError("User is outside your scope", 403);
@@ -190,16 +190,13 @@ class UserManager extends BaseManager {
       forceRelogin ||= current.length !== next.length || current.some((assignment) => !next.includes(assignment));
       user.roles = prepared.assignments;
     }
-    if (payload.profiles?.teacher) {
-      Object.assign(user.profiles.teacher, payload.profiles.teacher);
-    }
+    for (const [type, profile] of Object.entries(payload.profiles || {})) Object.assign(user.profiles[type] ||= {}, profile);
     if (schoolRemoved) {
       user.profiles.teacher = undefined;
     } else if (schoolChanged) {
       user.profiles.teacher.isProfileCompleted = false;
       user.profiles.teacher.classes = [];
     }
-    if (payload.profiles?.admin) Object.assign(user.profiles.admin, payload.profiles.admin);
     if (forceRelogin) user.isLoginAllowed = false;
 
     await user.save();
