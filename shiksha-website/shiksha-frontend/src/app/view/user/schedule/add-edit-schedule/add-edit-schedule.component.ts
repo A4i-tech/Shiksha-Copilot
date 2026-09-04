@@ -326,8 +326,11 @@ export class AddEditScheduleComponent
           // the cascade auto-selects single-option filters and resets 'lessonPlan' as it goes;
           // its refreshes are suppressed so they can't race the selection made right after
           this.initializing = true;
-          this.setBoardDropdownValue(val.data.user.profiles.teacher.classes);
-          this.initializing = false;
+          try {
+            this.setBoardDropdownValue(val.data.user.profiles.teacher.classes);
+          } finally {
+            this.initializing = false;
+          }
 
           if (this.prefillLessonPlan) {
             this.lessonPlanDropDownValue = [this.prefillLessonPlan];
@@ -489,7 +492,7 @@ export class AddEditScheduleComponent
         standard: this.scheduleForm.get('className')?.value,
         subject: this.scheduleForm.get('subject')?.value,
       };
-      this.service.getAllChapter(body).subscribe({
+      this.service.getAllChapter(body).pipe(takeUntil(this.destroy$)).subscribe({
         next: (val: any) => {
           this.chapterDropdownValue = this.utility.formatChapterDropdown(
             val.data.results
@@ -525,7 +528,7 @@ export class AddEditScheduleComponent
     if (!body.topic) {
       return;
     }
-    this.service.getAllSubTopic(body).subscribe({
+    this.service.getAllSubTopic(body).pipe(takeUntil(this.destroy$)).subscribe({
       next: (val: any) => {
         this.setSubTopicData(val.data);
       },
