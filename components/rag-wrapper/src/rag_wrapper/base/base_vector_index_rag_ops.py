@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import logging
 from typing import Any, List, Dict, Optional, TypeVar, overload
 
 from pydantic import BaseModel
@@ -19,8 +20,10 @@ from llama_index.core import (
 from llama_index.core.base.response.schema import RESPONSE_TYPE
 from llama_index.core.chat_engine.types import AgentChatResponse
 from llama_index.core.llms import ChatMessage, LLM, MessageRole
+from llama_index.core.node_parser import TokenTextSplitter
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.schema import TransformComponent
+from llama_index.core.schema import NodeWithScore, TransformComponent
 import traceback
 from llama_index.core.response_synthesizers import ResponseMode
 from llama_index.core.chat_engine import ContextChatEngine
@@ -28,6 +31,29 @@ from rag_wrapper.base.base_rag_ops import BaseRagOps
 
 
 T = TypeVar("T", bound=BaseModel)
+
+logger = logging.getLogger(__name__)
+
+
+class TruncateOversizedNodes(BaseNodePostprocessor):
+    """Cap each retrieved node's text at ``max_tokens``.
+
+    An indexed chunk can be far larger than the chunk size it was meant to be
+    built with. A single such chunk can exceed the whole context window, which
+    makes llama-index fail with "Calculated available context size ... was not
+    non-negative" before the model is ever called.
+    """
+
+    max_tokens: int
+
+    def _postprocess_nodes(self, nodes: List[NodeWithScore], query_bundle: Optional[QueryBundle] = None) -> List[NodeWithScore]:
+        splitter = TokenTextSplitter(chunk_size=self.max_tokens, chunk_overlap=0)
+        for node in nodes:
+            chunks = splitter.split_text(node.node.get_content())
+            if len(chunks) > 1:
+                logger.warning("Retrieved node %s exceeds %d tokens; dropping %d trailing chunk(s) of it", node.node.node_id, self.max_tokens, len(chunks) - 1)
+                node.node.set_content(chunks[0])
+        return nodes
 
 
 class BaseVectorIndexRagOps(BaseRagOps):
@@ -54,6 +80,14 @@ class BaseVectorIndexRagOps(BaseRagOps):
     ):
         super().__init__(completion_llm, emb_llm, similarity_top_k, response_mode)
 
+    def _create_retriever(self, metadata_filter: Optional[Dict[str, str]] = None):
+        return self.rag_index.as_retriever(similarity_top_k=self.similarity_top_k, filters=self._create_metadata_filters(metadata_filter) if metadata_filter else None)
+
+    def _create_node_postprocessors(self) -> List[BaseNodePostprocessor]:
+        # +1 leaves one node's worth of room for the prompt and chat history
+        budget = (self._prompt_helper.context_window - self._prompt_helper.num_output) // (self.similarity_top_k + 1)
+        return [TruncateOversizedNodes(max_tokens=max(1, budget))]
+
     async def _query_with_retries(
         self,
         text_str: str,
@@ -71,9 +105,9 @@ class BaseVectorIndexRagOps(BaseRagOps):
         async def _aquery_with_retries():
             """Internal retry wrapper."""
             try:
-                retriever = self.rag_index.as_retriever(similarity_top_k=self.similarity_top_k, filters=self._create_metadata_filters(metadata_filter) if metadata_filter else None)
+                retriever = self._create_retriever(metadata_filter)
                 response_synthesizer = get_response_synthesizer(llm=self.completion_llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
-                query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
+                query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager, node_postprocessors=self._create_node_postprocessors())
                 qb = QueryBundle(query_str=text_str, custom_embedding_strs=[retrieval_query or text_str])  # fallback if empty
                 return await query_engine.aquery(qb)
             except Exception as e:
@@ -146,7 +180,8 @@ class BaseVectorIndexRagOps(BaseRagOps):
                 raise ValueError("No index exists. Create an index first using create_index().")
 
         try:
-            retriever = self.rag_index.as_retriever(similarity_top_k=self.similarity_top_k, filters=self._create_metadata_filters(metadata_filter) if metadata_filter else None)
+            retriever = self._create_retriever(metadata_filter)
+            node_postprocessors = self._create_node_postprocessors()
             if output_cls is not None:
                 if chat_history:
                     if len(chat_history) != 1 or chat_history[0].role != MessageRole.SYSTEM:
@@ -155,10 +190,10 @@ class BaseVectorIndexRagOps(BaseRagOps):
                 else:
                     llm = self.completion_llm.as_structured_llm(output_cls=output_cls)
                 response_synthesizer = get_response_synthesizer(llm=llm, response_mode=self.response_mode, callback_manager=self._callback_manager, prompt_helper=self._prompt_helper)
-                query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager)
+                query_engine = RetrieverQueryEngine(retriever=retriever, response_synthesizer=response_synthesizer, callback_manager=self._callback_manager, node_postprocessors=node_postprocessors)
                 response = await query_engine.aquery(curr_message)
             else:
-                chat_engine = ContextChatEngine.from_defaults(retriever=retriever, llm=self.completion_llm, chat_history=chat_history, callback_manager=self._callback_manager)
+                chat_engine = ContextChatEngine.from_defaults(retriever=retriever, llm=self.completion_llm, chat_history=chat_history, callback_manager=self._callback_manager, node_postprocessors=node_postprocessors)
                 response = await chat_engine.achat(curr_message)
             self.logger.debug(f"Chat response generated for message: {curr_message[:50]}...")
             return response
