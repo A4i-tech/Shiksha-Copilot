@@ -5,6 +5,14 @@ const { isAuthenticated } = require("../middlewares/auth.js");
 const { createProxyMiddleware } = require("http-proxy-middleware");
 const { hasPermission } = require("../helper/permission.helper.js");
 
+// SSE only: unbuffered delivery costs throughput, and no-cache would defeat the download's own immutable ETag
+const applyStreamingHeaders = proxyRes => {
+	if (String(proxyRes.headers["content-type"] || "").includes("text/event-stream")) {
+		proxyRes.headers["x-accel-buffering"] = "no";
+		proxyRes.headers["cache-control"] = "no-cache";
+	}
+};
+
 const createPresentationProxy = target => createProxyMiddleware({
 	target,
 	changeOrigin: true,
@@ -25,10 +33,7 @@ const createPresentationProxy = target => createProxyMiddleware({
 				proxyReq.removeHeader("X-User-ID");
 			}
 		},
-		proxyRes: (proxyRes) => {
-			proxyRes.headers["x-accel-buffering"] = "no";
-			proxyRes.headers["cache-control"] = "no-cache";
-		}
+		proxyRes: applyStreamingHeaders
 	}
 });
 
@@ -72,3 +77,4 @@ router.use(
 );
 
 module.exports = router;
+module.exports.applyStreamingHeaders = applyStreamingHeaders;
