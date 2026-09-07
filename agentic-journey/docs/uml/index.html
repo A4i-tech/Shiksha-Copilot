@@ -1,0 +1,407 @@
+<title>Agentic Journey Runtime</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+  :root {
+    --paper: #EDF0F3;
+    --card: #F7F9FA;
+    --ink: #101820;
+    --ink-soft: #4A5A66;
+    --rule: #CBD5DC;
+    --trusted: #16697A;
+    --untrusted: #A8501F;
+    --slate: #0F1922;
+    --slate-line: #35505E;
+    --slate-ink: #DCE8EE;
+    --serif: "IBM Plex Serif", Georgia, serif;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0B1014;
+      --card: #121A20;
+      --ink: #E2EAEF;
+      --ink-soft: #93A6B1;
+      --rule: #24333C;
+      --trusted: #58B6BE;
+      --untrusted: #E0925C;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0B1014;
+    --card: #121A20;
+    --ink: #E2EAEF;
+    --ink-soft: #93A6B1;
+    --rule: #24333C;
+    --trusted: #58B6BE;
+    --untrusted: #E0925C;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans); line-height: 1.6; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 56px 24px 96px; display: flex; flex-direction: column; gap: 56px; }
+  .prose { max-width: 68ch; display: flex; flex-direction: column; gap: 16px; }
+
+  header { display: flex; flex-direction: column; gap: 18px; border-bottom: 1px solid var(--rule); padding-bottom: 32px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(34px, 5vw, 52px); line-height: 1.08; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  .standfirst { font-size: 19px; color: var(--ink-soft); max-width: 62ch; margin: 0; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: 27px; margin: 0; text-wrap: balance; }
+  p { margin: 0; }
+  a { color: var(--trusted); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-family: var(--mono); font-size: 12px; padding: 5px 10px; border: 1px solid var(--rule); border-radius: 2px; color: var(--ink-soft); background: var(--card); }
+  .chip strong { color: var(--ink); font-weight: 500; }
+
+  section { display: flex; flex-direction: column; gap: 20px; }
+  .fig { margin: 0; display: flex; flex-direction: column; }
+  .panel { background: var(--slate); border: 1px solid var(--slate-line); border-radius: 3px; padding: 28px 24px; overflow-x: auto; }
+  .panel svg { display: block; margin: 0 auto; max-width: 100%; height: auto; color: var(--slate-ink); }
+  .panel pre.mermaid { background: transparent; margin: 0; text-align: center; }
+  figcaption { font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); padding-top: 10px; line-height: 1.55; }
+  figcaption b { color: var(--ink); font-weight: 500; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 14px 10px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); font-weight: 500; }
+  td code, .prose code, li code, figcaption code, footer code { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+  .scroll { overflow-x: auto; }
+
+  ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .lede { border-left: 2px solid var(--trusted); padding-left: 16px; font-size: 16.5px; color: var(--ink); max-width: 60ch; }
+  .note { border-left: 2px solid var(--untrusted); padding-left: 16px; font-size: 15px; color: var(--ink-soft); max-width: 60ch; }
+  footer { border-top: 1px solid var(--rule); padding-top: 24px; font-family: var(--mono); font-size: 12.5px; color: var(--ink-soft); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Local reference implementation &middot; UML</div>
+    <h1>Agentic Journey Runtime</h1>
+    <p class="standfirst">The primitives from the journey design doc, built small and run on Docker: one model call path, scope-bound memory, a warm pool of credential-free sandboxes, and a human gate on the one write that matters.</p>
+    <div class="chips">
+      <span class="chip"><strong>app</strong> FastAPI + pydantic-ai 2.40</span>
+      <span class="chip"><strong>memory</strong> MongoDB</span>
+      <span class="chip"><strong>workspaces</strong> MinIO</span>
+      <span class="chip"><strong>traces</strong> Jaeger / OTLP</span>
+      <span class="chip"><strong>execution</strong> Docker, network=none</span>
+      <span class="chip"><strong>checks</strong> 11 passing</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="prose">
+      <h2>The split everything else hangs from</h2>
+      <p class="lede">The reasoning plane holds credentials and the actor's resolved scope. The execution plane holds neither. A code string crosses out, stdout comes back, and every authenticated write happens on the trusted side.</p>
+      <p>Azure forces this shape &mdash; the managed code interpreter cannot make outbound calls &mdash; and it is worth keeping locally, because it is what bounds the blast radius of model-authored code to one disposable container.</p>
+    </div>
+    <figure class="fig">
+      <div class="panel">
+        <svg viewBox="0 0 960 580" role="img" aria-label="Component diagram: a trusted reasoning and tool plane holding the API, turn orchestration, agent and tool registry, separated by a trust boundary from an untrusted execution plane of sandbox containers. Only a code string crosses out and only stdout crosses back, while Mongo, MinIO and Jaeger sit underneath as durable substrate.">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+            </marker>
+            <marker id="ar-t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#58B6BE"></path>
+            </marker>
+            <marker id="ar-u" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#E0925C"></path>
+            </marker>
+          </defs>
+          <g font-family="IBM Plex Mono, monospace" font-size="12.5" fill="#DCE8EE">
+            <line x1="565" y1="46" x2="565" y2="452" stroke="#8FA9B5" stroke-width="1.5" stroke-dasharray="7 6"></line>
+            <text x="565" y="34" text-anchor="middle" fill="#8FA9B5" font-size="12">trust boundary</text>
+
+            <rect x="40" y="60" width="470" height="340" rx="3" fill="none" stroke="#58B6BE" stroke-width="1.5"></rect>
+            <text x="56" y="84" fill="#58B6BE" font-size="12">reasoning + tool plane &#183; trusted</text>
+
+            <rect x="70" y="100" width="190" height="42" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="165" y="126" text-anchor="middle">FastAPI /chat</text>
+            <rect x="290" y="100" width="190" height="42" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="385" y="126" text-anchor="middle">identity &#8594; scope</text>
+
+            <rect x="70" y="164" width="410" height="42" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="275" y="190" text-anchor="middle">journey.run_turn &#183; rate &#183; budget &#183; episode</text>
+
+            <rect x="70" y="228" width="410" height="42" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="275" y="254" text-anchor="middle">Agent &#8212; the one model call path + hooks</text>
+
+            <rect x="70" y="292" width="410" height="42" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="275" y="318" text-anchor="middle">tool registry &#183; curated subset per agent</text>
+
+            <line x1="275" y1="142" x2="275" y2="162" stroke="currentColor" marker-end="url(#ar)"></line>
+            <line x1="275" y1="206" x2="275" y2="226" stroke="currentColor" marker-end="url(#ar)"></line>
+            <line x1="275" y1="270" x2="275" y2="290" stroke="currentColor" marker-end="url(#ar)"></line>
+            <text x="275" y="364" text-anchor="middle" fill="#8FA9B5" font-size="11.5">approval gate holds publish_note here</text>
+
+            <rect x="620" y="60" width="300" height="340" rx="3" fill="none" stroke="#E0925C" stroke-width="1.5"></rect>
+            <text x="636" y="84" fill="#E0925C" font-size="12">execution plane &#183; untrusted</text>
+
+            <rect x="650" y="100" width="240" height="40" rx="2" fill="#26201B" stroke="#6B4C33"></rect>
+            <text x="770" y="125" text-anchor="middle">sandbox &#183; actor A</text>
+            <rect x="650" y="152" width="240" height="40" rx="2" fill="#26201B" stroke="#6B4C33"></rect>
+            <text x="770" y="177" text-anchor="middle">sandbox &#183; actor B</text>
+            <rect x="650" y="204" width="240" height="40" rx="2" fill="none" stroke="#6B4C33" stroke-dasharray="5 5"></rect>
+            <text x="770" y="229" text-anchor="middle" fill="#C79A78">warm pool &#215; N</text>
+
+            <text x="770" y="272" text-anchor="middle" fill="#C79A78" font-size="11.5">network=none &#183; rootfs read-only</text>
+            <text x="770" y="290" text-anchor="middle" fill="#C79A78" font-size="11.5">tmpfs /workspace &#183; env={}</text>
+            <text x="770" y="308" text-anchor="middle" fill="#C79A78" font-size="11.5">one sandbox, one actor</text>
+
+            <line x1="770" y1="326" x2="770" y2="356" stroke="#E0925C" stroke-width="1.4"></line>
+            <line x1="759" y1="345" x2="781" y2="367" stroke="#E0925C" stroke-width="2"></line>
+            <line x1="781" y1="345" x2="759" y2="367" stroke="#E0925C" stroke-width="2"></line>
+            <text x="770" y="390" text-anchor="middle" fill="#E0925C" font-size="11.5">no egress to the platform API</text>
+
+            <line x1="484" y1="300" x2="646" y2="124" stroke="#58B6BE" stroke-width="1.4" marker-end="url(#ar-t)"></line>
+            <text x="556" y="192" text-anchor="middle" fill="#58B6BE" font-size="11.5" transform="rotate(-47 556 192)">code string</text>
+            <line x1="646" y1="164" x2="484" y2="322" stroke="#E0925C" stroke-width="1.4" marker-end="url(#ar-u)"></line>
+            <text x="584" y="262" text-anchor="middle" fill="#E0925C" font-size="11.5" transform="rotate(-44 584 262)">stdout only</text>
+
+            <rect x="70" y="470" width="220" height="58" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="180" y="494" text-anchor="middle">MongoDB</text>
+            <text x="180" y="513" text-anchor="middle" fill="#8FA9B5" font-size="11.5">facts &#183; episodes (TTL)</text>
+            <rect x="320" y="470" width="220" height="58" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="430" y="494" text-anchor="middle">MinIO</text>
+            <text x="430" y="513" text-anchor="middle" fill="#8FA9B5" font-size="11.5">workspace tarballs</text>
+            <rect x="570" y="470" width="220" height="58" rx="2" fill="#16242D" stroke="#35505E"></rect>
+            <text x="680" y="494" text-anchor="middle">Jaeger</text>
+            <text x="680" y="513" text-anchor="middle" fill="#8FA9B5" font-size="11.5">OTLP spans per turn</text>
+
+            <line x1="180" y1="402" x2="180" y2="468" stroke="currentColor" marker-end="url(#ar)"></line>
+            <text x="192" y="440" fill="#8FA9B5" font-size="11.5">scoped reads + writes</text>
+            <line x1="430" y1="402" x2="430" y2="468" stroke="currentColor" marker-end="url(#ar)"></line>
+            <line x1="500" y1="402" x2="668" y2="468" stroke="currentColor" marker-end="url(#ar)"></line>
+            <polyline points="540,499 588,499 588,548 862,548 862,404" fill="none" stroke="#E0925C" stroke-width="1.3" stroke-dasharray="4 4" marker-end="url(#ar-u)"></polyline>
+            <text x="725" y="566" text-anchor="middle" fill="#E0925C" font-size="11.5">rehydrate workspace on the next turn</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption><b>Figure 1.</b> Only two things cross the boundary: a code string outward, stdout inward. The sandbox never reaches Mongo, and the workspace it holds is a cache &mdash; MinIO owns the copy that survives.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>Primitives, as classes</h2>
+      <p>Each primitive is one module. The relations that matter are the ones that cannot be reversed: scope is derived from identity and never accepted from a caller, the tool registry reaches the sandbox pool while the sandbox reaches nothing, and both memory kinds sit behind one store boundary so either can be swapped for its Cosmos DB equivalent alone.</p>
+    </div>
+    <figure class="fig">
+      <div class="panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'background':'#0F1922','primaryColor':'#16242D','primaryTextColor':'#DCE8EE','primaryBorderColor':'#35505E','lineColor':'#8FA9B5','secondaryColor':'#1B2A33','tertiaryColor':'#1B2A33','textColor':'#DCE8EE','fontFamily':'IBM Plex Mono, ui-monospace, monospace','fontSize':'13px','classText':'#DCE8EE','nodeBorder':'#35505E'}}}%%
+classDiagram
+    direction LR
+    class Identity {
+      +str actor_id
+      +list scope_path
+    }
+    class Deps {
+      +Identity identity
+      +str session_id
+    }
+    class Agent {
+      +UsageLimits budget
+      +int retries
+      +run(prompt, deps, history)
+    }
+    class Hooks {
+      +instructions_for(profile)
+      +prepare_tools(ctx, defs)
+      +TimedToolset_call_tool()
+      +output_validator()
+    }
+    class ToolRegistry {
+      +REGISTRY
+      +PROFILES
+      +APPROVAL_REQUIRED
+      +toolset_for(profile)
+    }
+    class MemoryStore {
+      +Mongo db
+    }
+    class Hierarchical {
+      +write_fact(ident, key, value)
+      +retrieve(ident)
+      +score_fact(id, delta)
+    }
+    class Episodic {
+      +load_episode(session_id)
+      +save_episode(session_id, msgs)
+      +ttl_index
+    }
+    class SandboxPool {
+      +int pool_size
+      +int cooldown_seconds
+      +prefill()
+      +claim(session_id)
+      +reaper()
+    }
+    class Sandbox {
+      +str container_id
+      +network_none
+      +readonly_rootfs
+      +tmpfs_workspace
+      +exec(code)
+    }
+    class Guardrails {
+      +check_rate(actor_id)
+      +save_pending(session, msgs)
+      +load_pending(session)
+    }
+    class SubAgent {
+      +cheap_model
+      +Verdict output_type
+      +verify(question, answer)
+    }
+    class Scheduler {
+      +int interval_minutes
+      +scheduled_session()
+    }
+    class Journey {
+      +run_turn(ident, msg, session)
+      +resume_with_approval(session, ok)
+    }
+
+    Deps --> Identity : resolved server-side
+    Journey --> Deps : builds
+    Journey --> Agent : one call path
+    Journey --> Guardrails : rate, approvals
+    Journey --> Episodic : load and save window
+    Journey --> SubAgent : verifies output
+    Agent --> Hooks : binds every boundary
+    Agent --> ToolRegistry : curated subset
+    Hooks --> Hierarchical : injects scoped facts
+    ToolRegistry --> SandboxPool : run_python
+    SandboxPool *-- Sandbox : owns, disposable
+    MemoryStore &lt;|-- Hierarchical
+    MemoryStore &lt;|-- Episodic
+    Scheduler --> Journey : same path, other trigger
+        </pre>
+      </div>
+      <figcaption><b>Figure 2.</b> Class model. <code>Journey</code> is the single entry point for both the interactive and the scheduled trigger.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>One turn, from token to answer</h2>
+      <p>Every hook binds to a point the agent framework already exposes, so the interception layer is a set of functions rather than a subsystem. The approval gate is the clearest case: the tool body never runs, the run ends with a deferred request, and the resumed run continues from the same message history.</p>
+      <p class="note">A verifier subagent &mdash; cheap model, own budget, typed verdict &mdash; runs inside the output validator. When it rejects an answer past the retry budget, the turn returns <code>status: degraded</code> rather than a plausible answer dressed as a success.</p>
+    </div>
+    <figure class="fig">
+      <div class="panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'background':'#0F1922','primaryColor':'#16242D','primaryTextColor':'#DCE8EE','primaryBorderColor':'#35505E','lineColor':'#8FA9B5','textColor':'#DCE8EE','fontFamily':'IBM Plex Mono, ui-monospace, monospace','fontSize':'13px','actorBkg':'#16242D','actorBorder':'#58B6BE','actorTextColor':'#DCE8EE','actorLineColor':'#35505E','signalColor':'#8FA9B5','signalTextColor':'#DCE8EE','labelBoxBkg':'#1B2A33','labelBoxBorderColor':'#35505E','labelTextColor':'#DCE8EE','noteBkgColor':'#26201B','noteTextColor':'#E8D6C6','noteBorderColor':'#6B4C33','sequenceNumberColor':'#0F1922'}}}%%
+sequenceDiagram
+    autonumber
+    actor A as Actor
+    participant API as FastAPI /chat
+    participant J as journey.run_turn
+    participant G as guardrails
+    participant M as memory (Mongo)
+    participant AG as Agent (one call path)
+    participant T as TimedToolset
+    participant S as sandbox (untrusted)
+    participant V as verifier subagent
+
+    A->>API: POST /chat + Bearer token
+    API->>API: identity.resolve to actor_id, scope_path
+    API->>J: run_turn(identity, message)
+    J->>G: check_rate(actor_id)
+    J->>M: load_episode(session_id)
+    M-->>J: message history
+    J->>AG: run(message, deps, history, UsageLimits)
+    AG->>M: retrieve(identity) via instructions hook
+    M-->>AG: facts visible to this scope only
+    AG->>T: call run_python(code)
+    T->>S: exec code string
+    Note over S: network=none, read-only rootfs,<br/>no credentials cross this line
+    S-->>T: stdout only
+    T-->>AG: tool result plus span and duration
+    AG->>T: call publish_note(title, body)
+    T-->>AG: ApprovalRequired, body never ran
+    AG-->>J: DeferredToolRequests
+    J->>G: save_pending(session, history)
+    J-->>A: 200 status=approval_required
+    A->>API: POST /approvals/{session} approve=true
+    API->>J: resume_with_approval
+    J->>AG: run(history, DeferredToolResults)
+    AG->>T: publish_note executes
+    T->>M: write_fact under the resolved scope
+    AG-->>J: answer
+    J->>V: verify(question, answer)
+    V-->>J: Verdict ok
+    J->>M: save_episode(messages)
+    J-->>A: 200 status=ok
+        </pre>
+      </div>
+      <figcaption><b>Figure 3.</b> The interactive path, including the approval pause and resume. Steps 11&ndash;13 are the only ones outside the trust boundary.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>A sandbox is a cache, not a record</h2>
+      <p>No Azure primitive migrates a running sandbox between hosts, so this design refuses to need one. After every step the workspace is tarred to blob storage; a killed container, an expired cooldown and a host fault then all cost the same thing &mdash; one rehydration on the next turn.</p>
+    </div>
+    <figure class="fig">
+      <div class="panel">
+        <pre class="mermaid">
+%%{init: {'theme':'base','themeVariables':{'background':'#0F1922','primaryColor':'#16242D','primaryTextColor':'#DCE8EE','primaryBorderColor':'#35505E','lineColor':'#8FA9B5','textColor':'#DCE8EE','fontFamily':'IBM Plex Mono, ui-monospace, monospace','fontSize':'13px','noteBkgColor':'#26201B','noteTextColor':'#E8D6C6','noteBorderColor':'#6B4C33'}}}%%
+stateDiagram-v2
+    [*] --> Warm : prefill() at boot
+    Warm --> Claimed : claim(session_id)
+    Claimed --> Restoring : blob tar exists
+    Restoring --> Active : untar into /workspace
+    Claimed --> Active : first turn, nothing to restore
+    Active --> Snapshotting : step finished
+    Snapshotting --> Idle : tar to MinIO
+    Idle --> Active : next turn, same session_id
+    Idle --> Expired : idle past cooldown
+    Active --> Lost : host fault or container removed
+    Lost --> Claimed : next turn rehydrates
+    Expired --> [*] : container removed, pool refilled
+        </pre>
+      </div>
+      <figcaption><b>Figure 4.</b> Session lifecycle. Verified by removing the bound container mid-session: the next turn restored <code>/workspace</code> into a fresh container under the same session id.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>What stands in for what</h2>
+      <p>Each swap keeps the property the design depends on, not the vendor. That is what makes the local stack an argument about the primitives rather than a toy.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Primitive</th><th>Azure</th><th>Local</th><th>Property kept</th></tr></thead>
+        <tbody>
+          <tr><td>Hierarchical memory</td><td>Cosmos DB hierarchical partition keys</td><td>Mongo <code>scope_key</code> prefix index</td><td>Scope-first retrieval</td></tr>
+          <tr><td>Early scope binding</td><td>AI Search <code>search.in()</code> trimming</td><td>Server-derived <code>$in</code> filter</td><td>A caller cannot widen its own scope</td></tr>
+          <tr><td>Episodic memory</td><td>LangGraph Cosmos checkpointer</td><td>Mongo collection + TTL index</td><td>Retention set at creation</td></tr>
+          <tr><td>Sandbox</td><td>Container Apps dynamic sessions</td><td>Docker pool, <code>network=none</code></td><td>Warm start, hard isolation, cooldown</td></tr>
+          <tr><td>Artifacts</td><td>Blob Storage</td><td>MinIO</td><td>Workspace outlives the sandbox</td></tr>
+          <tr><td>Traces</td><td>App Insights via OpenTelemetry</td><td>Jaeger via OTLP</td><td>One framework-level instrumentation</td></tr>
+          <tr><td>Scheduling</td><td>Durable Functions, timer trigger</td><td>APScheduler</td><td>A scheduled session joins the same path</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="prose">
+      <h2>Not built</h2>
+      <ul>
+        <li>Vector retrieval and embeddings &mdash; nothing here retrieves by similarity yet.</li>
+        <li>Real authentication. A token dictionary stands in for the identity provider.</li>
+        <li>Multi-pool placement. One pool, one host; the 600-session ceiling is an Azure question.</li>
+        <li>Prompt-injection defenses and cost accounting.</li>
+        <li>System methods &mdash; still undefined in the source design.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>agentic-journey-local &middot; <code>docker compose up -d</code> &middot; API :8000 &middot; traces :16686 &middot; <code>DECISIONS.md</code> records each choice, <code>FLOW.md</code> the execution path</footer>
+</div>

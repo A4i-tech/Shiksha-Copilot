@@ -1,0 +1,41 @@
+sequenceDiagram
+    autonumber
+    actor A as Actor
+    participant API as FastAPI /chat
+    participant J as journey.run_turn
+    participant G as guardrails
+    participant M as memory (Mongo)
+    participant AG as Agent (one call path)
+    participant T as TimedToolset
+    participant S as sandbox (untrusted)
+    participant V as verifier subagent
+
+    A->>API: POST /chat + Bearer token
+    API->>API: identity.resolve -> actor_id, scope_path
+    API->>J: run_turn(identity, message)
+    J->>G: check_rate(actor_id)
+    J->>M: load_episode(session_id)
+    M-->>J: message history
+    J->>AG: run(message, deps, history, UsageLimits)
+    AG->>M: retrieve(identity) via instructions hook
+    M-->>AG: facts visible to this scope only
+    AG->>T: call run_python(code)
+    T->>S: exec code string
+    Note over S: network=none, read-only rootfs,<br/>no credentials cross this line
+    S-->>T: stdout only
+    T-->>AG: tool result (+ span, duration)
+    AG->>T: call publish_note(title, body)
+    T-->>AG: ApprovalRequired (body never ran)
+    AG-->>J: DeferredToolRequests
+    J->>G: save_pending(session, history)
+    J-->>A: 200 status=approval_required
+    A->>API: POST /approvals/{session} {approve:true}
+    API->>J: resume_with_approval
+    J->>AG: run(history, DeferredToolResults)
+    AG->>T: publish_note executes
+    T->>M: write_fact under resolved scope
+    AG-->>J: answer
+    J->>V: verify(question, answer)
+    V-->>J: Verdict(ok)
+    J->>M: save_episode(messages)
+    J-->>A: 200 status=ok

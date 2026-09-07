@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journey Console</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #0B1014;
+    --canvas: #0F1922;
+    --panel: #121C24;
+    --card: #16242D;
+    --line: #273B47;
+    --ink: #DCE8EE;
+    --soft: #8FA9B5;
+    --trusted: #58B6BE;
+    --untrusted: #E0925C;
+    --ok: #6FBF8B;
+    --warn: #E0C15C;
+    --bad: #E06C6C;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body, #root { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); overflow: hidden; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  .app { display: grid; grid-template-rows: 56px 1fr; height: 100%; }
+  .topbar { display: flex; align-items: center; gap: 16px; padding: 0 18px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .brand { font-weight: 600; letter-spacing: -0.01em; }
+  .brand span { color: var(--soft); font-family: var(--mono); font-size: 12px; font-weight: 400; margin-left: 10px; }
+  .spacer { flex: 1; }
+  .field { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--soft); }
+  .field input { background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 3px; padding: 6px 8px; font-family: var(--mono); font-size: 12px; width: 110px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--soft); }
+  .dot.live { background: var(--ok); }
+  .dot.down { background: var(--bad); }
+
+  .body { display: grid; grid-template-columns: 1fr 400px; min-height: 0; }
+  .stage { position: relative; display: grid; grid-template-rows: 1fr auto; min-width: 0; }
+  .canvas {
+    position: relative; overflow: auto; background:
+      radial-gradient(circle at 1px 1px, #1D2C36 1px, transparent 0) 0 0 / 22px 22px, var(--canvas);
+  }
+  .flow { position: relative; width: 1180px; height: 560px; }
+  .flow svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  .node {
+    position: absolute; width: 190px; background: var(--card); border: 1px solid var(--line);
+    border-left: 3px solid var(--soft); border-radius: 4px; padding: 10px 12px; transition: border-color .2s, box-shadow .2s;
+  }
+  .node.trusted { border-left-color: var(--trusted); }
+  .node.untrusted { border-left-color: var(--untrusted); }
+  .node.active { box-shadow: 0 0 0 1px var(--trusted), 0 0 22px rgba(88,182,190,.28); border-color: var(--trusted); }
+  .node.blocked { box-shadow: 0 0 0 1px var(--warn), 0 0 22px rgba(224,193,92,.25); border-color: var(--warn); }
+  .node.error { box-shadow: 0 0 0 1px var(--bad); border-color: var(--bad); }
+  .node.done { border-color: #37525F; }
+  .node h4 { margin: 0 0 3px; font-size: 13px; font-weight: 600; }
+  .node p { margin: 0; font-family: var(--mono); font-size: 10.5px; color: var(--soft); line-height: 1.45; }
+  .node .tick { position: absolute; top: 9px; right: 10px; font-family: var(--mono); font-size: 10px; color: var(--soft); }
+  .node .tick.done { color: var(--ok); }
+  .node .tick.blocked { color: var(--warn); }
+  .node .tick.error { color: var(--bad); }
+
+  .composer { border-top: 1px solid var(--line); background: var(--panel); padding: 12px 16px; display: flex; gap: 10px; align-items: center; }
+  .composer input { flex: 1; background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 3px; padding: 10px 12px; font-size: 14px; }
+  .btn { background: var(--trusted); color: #06181B; border: none; border-radius: 3px; padding: 10px 16px; font-weight: 600; font-size: 13px; }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); font-weight: 500; padding: 5px 10px; font-size: 11.5px; }
+  .btn.deny { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .side { border-left: 1px solid var(--line); background: var(--panel); display: grid; grid-template-rows: 42px 1fr; min-height: 0; }
+  .tabs { display: flex; border-bottom: 1px solid var(--line); }
+  .tabs button { flex: 1; background: none; border: none; border-bottom: 2px solid transparent; padding: 0 6px; font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--trusted); }
+  .tabs .count { color: var(--warn); }
+  .pane { overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+
+  .run { border: 1px solid var(--line); border-radius: 3px; background: var(--card); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+  .run.on { border-color: var(--trusted); }
+  .row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .msg { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta { font-family: var(--mono); font-size: 10.5px; color: var(--soft); }
+  .pill { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 2px; border: 1px solid var(--line); color: var(--soft); white-space: nowrap; }
+  .pill.ok { color: var(--ok); border-color: #2C5540; }
+  .pill.running { color: var(--trusted); border-color: #2A5560; }
+  .pill.approval_required { color: var(--warn); border-color: #5A4E24; }
+  .pill.degraded { color: var(--bad); border-color: #5C2E2E; }
+
+  .events { display: flex; flex-direction: column; gap: 0; border-left: 1px solid var(--line); margin-left: 6px; padding-left: 12px; }
+  .ev { position: relative; padding: 5px 0; font-size: 12px; }
+  .ev::before { content: ""; position: absolute; left: -17px; top: 11px; width: 7px; height: 7px; border-radius: 50%; background: var(--soft); }
+  .ev.active::before { background: var(--trusted); }
+  .ev.blocked::before { background: var(--warn); }
+  .ev.error::before { background: var(--bad); }
+  .ev .node-name { font-family: var(--mono); font-size: 10px; color: var(--soft); text-transform: uppercase; letter-spacing: .07em; }
+  .ev .detail { font-family: var(--mono); font-size: 10.5px; color: var(--soft); word-break: break-word; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); font-weight: 500; }
+  td.k { font-family: var(--mono); color: var(--soft); white-space: nowrap; }
+  .empty { color: var(--soft); font-size: 13px; padding: 8px 0; }
+  .answer { border: 1px solid var(--line); border-left: 2px solid var(--ok); border-radius: 3px; padding: 10px 12px; font-size: 13px; background: var(--card); white-space: pre-wrap; word-break: break-word; }
+  .pill.unverified { color: var(--warn); border-color: #5A4E24; }
+  .err { border-left-color: var(--bad); }
+
+  .login { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; padding: 24px; z-index: 10; overflow: auto; }
+  .login-card { width: min(920px, 100%); display: flex; flex-direction: column; gap: 20px; }
+  .login h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  .login p.sub { margin: 0; color: var(--soft); font-size: 13.5px; max-width: 62ch; }
+  .tenant { border: 1px solid var(--line); border-radius: 4px; padding: 14px; display: flex; flex-direction: column; gap: 12px; background: var(--panel); }
+  .tenant > h2 { margin: 0; font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--trusted); }
+  .region { display: flex; flex-direction: column; gap: 8px; border-left: 2px solid var(--line); padding-left: 12px; }
+  .region > h3 { margin: 0; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--soft); }
+  .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+  .person { text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 3px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+  .person:hover { border-color: var(--trusted); }
+  .person b { font-size: 13.5px; font-weight: 600; }
+  .person span { font-family: var(--mono); font-size: 10.5px; color: var(--soft); }
+  .who { display: flex; flex-direction: column; gap: 1px; align-items: flex-end; }
+  .who b { font-size: 13px; }
+  .who span { font-family: var(--mono); font-size: 10px; color: var(--soft); }
+  .lvl { font-family: var(--mono); font-size: 9.5px; padding: 1px 6px; border-radius: 2px; border: 1px solid var(--line); color: var(--soft); text-transform: uppercase; letter-spacing: .06em; }
+  .lvl.actor { color: var(--trusted); border-color: #2A5560; }
+  .lvl.school { color: var(--ok); border-color: #2C5540; }
+  .lvl.region { color: var(--warn); border-color: #5A4E24; }
+  .lvl.tenant { color: var(--untrusted); border-color: #5E4028; }
+  .fleet { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .fleet label { font-family: var(--mono); font-size: 11px; color: var(--soft); display: flex; align-items: center; gap: 5px; }
+  .fleet input { width: 58px; background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 3px; padding: 5px 6px; font-family: var(--mono); font-size: 12px; }
+  .gauge { display: flex; gap: 10px; flex-wrap: wrap; }
+  .poolbox { border: 1px solid var(--line); border-radius: 3px; padding: 7px 9px; min-width: 104px; background: var(--card); }
+  .poolbox.retiring { border-color: var(--warn); opacity: .65; }
+  .poolbox b { font-family: var(--mono); font-size: 11px; }
+  .cells { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+  .cell { width: 9px; height: 9px; border-radius: 1px; background: #24333C; }
+  .cell.bound { background: var(--untrusted); }
+  .cell.warm { background: var(--trusted); opacity: .55; }
+  .model select { background: var(--card); border: 1px solid var(--line); color: var(--ink); border-radius: 3px; padding: 5px 6px; font-family: var(--mono); font-size: 11.5px; }
+  .spend { font-family: var(--mono); font-size: 11.5px; color: var(--soft); text-align: right; line-height: 1.35; }
+  .spend b { color: var(--ink); font-weight: 500; }
+  .spend.hot b { color: var(--warn); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// Layout mirrors docs/uml Figure 1: trusted plane on top, execution plane below.
+const NODES = [
+  { id: "identity",   x:  30, y:  40, plane: "trusted",   title: "Identity",        sub: "bearer token → scope_path" },
+  { id: "guardrails", x: 265, y:  40, plane: "trusted",   title: "Guardrails",      sub: "rate · budget · timeout" },
+  { id: "episode",    x: 500, y:  40, plane: "trusted",   title: "Episodic memory", sub: "session window · TTL" },
+  { id: "agent",      x: 735, y:  40, plane: "trusted",   title: "Agent",           sub: "the one model call path" },
+  { id: "verifier",   x: 960, y: 210, plane: "trusted",   title: "Verifier subagent", sub: "cheap model · typed verdict" },
+  { id: "memory",     x: 500, y: 210, plane: "trusted",   title: "Scoped facts",    sub: "derived filter, never caller input" },
+  { id: "tools",      x: 735, y: 210, plane: "trusted",   title: "Tool registry",   sub: "curated subset per agent" },
+  { id: "approval",   x: 960, y:  40, plane: "trusted",   title: "Approval gate",   sub: "publish_note waits for a person" },
+  { id: "sandbox",    x: 735, y: 390, plane: "untrusted", title: "Sandbox",         sub: "network=none · read-only · tmpfs" },
+];
+const EDGES = [
+  ["identity", "guardrails", ""],
+  ["guardrails", "episode", ""],
+  ["episode", "agent", "history"],
+  ["agent", "approval", "gated call"],
+  ["agent", "tools", "tool call"],
+  ["memory", "agent", "scoped read"],
+  ["tools", "sandbox", "code string", -12],
+  ["sandbox", "tools", "stdout only", 20],
+  ["tools", "verifier", ""],
+];
+const W = 190, H = 62;
+const byId = Object.fromEntries(NODES.map(n => [n.id, n]));
+const port = (id, side) => {
+  const n = byId[id];
+  return { x: side === "out" ? n.x + W : n.x, y: n.y + H / 2 };
+};
+
+function Edge({ from, to, label, live, dy = -7 }) {
+  const a = port(from, "out"), b = port(to, "in");
+  const dx = Math.max(40, Math.abs(b.x - a.x) / 2);
+  const d = `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+  const stroke = live ? "#58B6BE" : "#2B404C";
+  return (
+    <g>
+      <path d={d} fill="none" stroke={stroke} strokeWidth={live ? 2 : 1.4} markerEnd="url(#arrow)" />
+      {label ? (
+        <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 + dy} textAnchor="middle"
+              fontFamily="IBM Plex Mono, monospace" fontSize="10" fill={live ? "#58B6BE" : "#6F8996"}>{label}</text>
+      ) : null}
+    </g>
+  );
+}
+
+function Flow({ states }) {
+  return (
+    <div className="flow">
+      <svg>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="#3E5A68" />
+          </marker>
+        </defs>
+        {EDGES.map(([f, t, l, dy]) => (
+          <Edge key={f + t} from={f} to={t} label={l} dy={dy} live={!!states[f] && !!states[t]} />
+        ))}
+      </svg>
+      {NODES.map(n => {
+        const st = states[n.id];
+        return (
+          <div key={n.id} className={`node ${n.plane} ${st || ""}`} style={{ left: n.x, top: n.y }}>
+            <h4>{n.title}</h4>
+            <p>{n.sub}</p>
+            <span className={`tick ${st || ""}`}>
+              {st === "done" ? "✓" : st === "active" ? "▶" : st === "blocked" ? "⏸" : st === "error" ? "✕" : "·"}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function statesFromRun(run) {
+  if (!run) return {};
+  const out = {};
+  (run.events || []).forEach(e => { out[e.node] = e.state; });
+  if (run.status === "running") out.agent = out.agent || "active";
+  else if (run.status === "ok") out.agent = "done";
+  else if (run.status === "degraded") out.agent = "error";
+  else if (run.status === "approval_required") out.agent = "blocked";
+  return out;
+}
+
+function App() {
+  const urlToken = new URLSearchParams(window.location.search).get("token");
+  const [token, setToken] = useState(() => urlToken || localStorage.getItem("journey.token") || "demo");
+  const [runs, setRuns] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [approvals, setApprovals] = useState([]);
+  const [facts, setFacts] = useState({});
+  const [pool, setPool] = useState(null);
+  const [tab, setTab] = useState("runs");
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [banner, setBanner] = useState(null);
+  const [online, setOnline] = useState(null);
+  const [cfg, setCfg] = useState(null);
+  const [actors, setActors] = useState([]);
+  const [detail, setDetail] = useState(null);
+  const [spend, setSpend] = useState(null);
+  const [fleet, setFleet] = useState(null);
+  const [loadBusy, setLoadBusy] = useState("");
+  const [sessions, setSessions] = useState(10);
+  const [ceiling, setCeiling] = useState(4);
+  // always land on the sign-in page: the demo starts by choosing who you are, and the model
+  // and fleet panels there are the first thing worth showing. A ?token= in the URL skips it,
+  // for watching a specific actor without a click.
+  const [showLogin, setShowLogin] = useState(!urlToken);
+  const [checking, setChecking] = useState(false);
+  const box = useRef(null);
+
+  const call = useCallback(async (path, opts = {}) => {
+    const res = await fetch(path, {
+      ...opts,
+      headers: { "content-type": "application/json", Authorization: `Bearer ${token}`, ...(opts.headers || {}) },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw Object.assign(new Error(data.detail || data.error || `HTTP ${res.status}`), { data });
+    return data;
+  }, [token]);
+
+  useEffect(() => { localStorage.setItem("journey.token", token); }, [token]);
+  useEffect(() => {
+    fetch("/actors").then(r => r.json()).then(setActors).catch(() => setActors([]));
+  }, []);
+
+  // the pool is infrastructure, not per-actor: watch it before anyone signs in
+  useEffect(() => {
+    if (!showLogin) return;
+    let stop = false;
+    const peek = () => {
+      call("/admin/pool").then(p => { if (!stop) setFleet(p); }).catch(() => {});
+      call("/config").then(c => { if (!stop) setCfg(c); }).catch(() => {});
+      call("/usage").then(u => { if (!stop) setSpend(u); }).catch(() => {});
+    };
+    peek();
+    const t = setInterval(peek, 1500);
+    return () => { stop = true; clearInterval(t); };
+  }, [showLogin, call]);
+
+  const runPoolTest = async (drain) => {
+    setLoadBusy(drain ? "draining" : "ramping");
+    try {
+      const path = drain ? "/admin/drain-load" : "/admin/simulate-load";
+      const body = drain ? {} : { sessions: Number(sessions), ceiling: Number(ceiling) };
+      const out = await call(path, { method: "POST", body: JSON.stringify(body) });
+      if (out.pool) setFleet(out.pool);
+    } catch (e) {
+      setBanner({ kind: "bad", text: e.message });
+    } finally { setLoadBusy(""); }
+  };
+
+  useEffect(() => {
+    let stop = false;
+    const poll = async () => {
+      try {
+        const [r, a, m, p, c, d, u] = await Promise.all([
+          call("/runs"), call("/approvals"), call("/memory"), call("/admin/pool"), call("/config"),
+          call("/memory/detail"), call("/usage"),
+        ]);
+        if (stop) return;
+        setRuns(r); setApprovals(a); setFacts(m); setPool(p); setCfg(c); setDetail(d);
+        setSpend(u); setOnline(true);
+      } catch (e) { if (!stop) setOnline(false); }
+    };
+    poll();
+    const t = setInterval(poll, 1500);
+    return () => { stop = true; clearInterval(t); };
+  }, [call]);
+
+  const current = runs.find(r => r.run_id === selected) || runs[0] || null;
+  const states = statesFromRun(current);
+
+  const send = async () => {
+    if (!message.trim()) return;
+    setSending(true); setBanner(null);
+    try {
+      const out = await call("/chat", { method: "POST", body: JSON.stringify({ message }) });
+      setSelected(out.run_id || null);
+      setMessage("");
+      setBanner(out.status === "ok"
+        ? { kind: "ok", text: out.answer }
+        : { kind: "warn", text: `status: ${out.status}${out.detail ? " — " + out.detail : ""}` });
+      if (out.status === "approval_required") setTab("approvals");
+    } catch (e) {
+      setBanner({ kind: "bad", text: e.message + (e.data && e.data.next ? " → " + e.data.next : "") });
+    } finally { setSending(false); }
+  };
+
+  const pickModel = async (model) => {
+    setBanner(null);
+    try {
+      await call("/admin/model", { method: "POST", body: JSON.stringify({ model }) });
+      setCfg(c => ({ ...c, model }));
+      setBanner({ kind: "ok", text: `Next turn runs on ${model}. Endpoint and key unchanged.` });
+    } catch (e) { setBanner({ kind: "bad", text: e.message }); }
+  };
+
+  const checkModel = async () => {
+    setChecking(true); setBanner(null);
+    try {
+      const out = await call("/admin/model-check", { method: "POST" });
+      setBanner({ kind: "ok", text: out.note || `${out.provider} · ${out.model} replied: ${out.reply}` });
+    } catch (e) {
+      const d = e.data || {};
+      setBanner({ kind: "bad", text: [d.error || e.message, d.next ? "→ " + d.next : ""].join("\n").trim() });
+    } finally { setChecking(false); }
+  };
+
+  const decide = async (sessionId, approve) => {
+    try {
+      const out = await call(`/approvals/${encodeURIComponent(sessionId)}`, {
+        method: "POST", body: JSON.stringify({ approve, reason: approve ? "" : "denied in console" }),
+      });
+      setBanner({ kind: approve ? "ok" : "warn", text: out.answer || `status: ${out.status}` });
+      setTab("runs");
+    } catch (e) { setBanner({ kind: "bad", text: e.message }); }
+  };
+
+  const me = actors.find(a => a.token === token);
+
+  if (showLogin) {
+    const tenants = {};
+    actors.filter(a => a.scope_path.length === 4).forEach(a => {
+      const [tenant, region = "-", school = "-"] = a.scope_path;
+      tenants[tenant] = tenants[tenant] || {};
+      tenants[tenant][region] = tenants[tenant][region] || {};
+      (tenants[tenant][region][school] = tenants[tenant][region][school] || []).push(a);
+    });
+    return (
+      <div className="login">
+        <div className="login-card">
+          <h1>Sign in as</h1>
+          <p className="sub">
+            Memory follows the chain below. A fact stored for a school reaches everyone in that
+            school; one stored for a region reaches every school in it; nothing crosses a tenant.
+            Sign in as two teachers in turn to watch what one of them inherits.
+          </p>
+          {Object.entries(tenants).map(([tenant, regions]) => (
+            <div className="tenant" key={tenant}>
+              <h2>tenant &middot; {tenant}</h2>
+              {Object.entries(regions).map(([region, schools]) => (
+                <div className="region" key={region}>
+                  <h3>region &middot; {region}</h3>
+                  {Object.entries(schools).map(([school, people]) => (
+                    <div key={school}>
+                      <div className="meta" style={{ marginBottom: 6 }}>school &middot; {school}</div>
+                      <div className="people">
+                        {people.map(a => (
+                          <button className="person" key={a.token}
+                                  onClick={() => { setToken(a.token); setShowLogin(false); }}>
+                            <b>{a.actor_id}</b>
+                            <span>{a.scope_path.join(" / ")}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+
+          {cfg ? (
+            <div className="tenant">
+              <h2>model &middot; {cfg.fake_model ? "fake" : cfg.provider}</h2>
+              <p className="sub">
+                Every actor above answers through this model. It is read from the running
+                service, not written into this page. Switch it here and the next turn uses it.
+              </p>
+              <div className="fleet">
+                <label>journey
+                  <select value={cfg.model} onChange={e => pickModel(e.target.value)}>
+                    {[...new Set([cfg.model, ...(cfg.model_choices || [])])].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </label>
+                <span className={`pill ${cfg.api_key_set ? "ok" : "degraded"}`}>
+                  {cfg.fake_model ? "no provider" : cfg.api_key_set ? `key …${cfg.api_key_tail}` : "no key set"}
+                </span>
+                <button className="btn ghost" onClick={checkModel} disabled={checking}>
+                  {checking ? "checking…" : "Check key"}
+                </button>
+                {spend ? (
+                  <span className="meta">
+                    {(spend.total.total_tokens / 1000).toFixed(1)}k tokens today &middot;{" "}
+                    {spend.total.requests} requests
+                  </span>
+                ) : null}
+              </div>
+              <div className="meta">endpoint {cfg.endpoint}</div>
+              <div className="meta">
+                verifier {cfg.verifier_model}{cfg.verifier_enabled ? "" : " (disabled)"}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="tenant">
+            <h2>fleet &middot; sandbox pools</h2>
+            <p className="sub">
+              Every actor above runs its code in a disposable container. Containers are held in
+              pools with a ceiling. When a pool fills, the controller starts another one. When
+              demand drains, it retires the empty ones. Nothing moves a running session.
+            </p>
+            <div className="fleet">
+              <label>agents <input type="number" min="1" max="40" value={sessions}
+                                   onChange={e => setSessions(e.target.value)} /></label>
+              <label>per pool <input type="number" min="1" max="20" value={ceiling}
+                                     onChange={e => setCeiling(e.target.value)} /></label>
+              <button className="btn" disabled={!!loadBusy} onClick={() => runPoolTest(false)}>
+                {loadBusy === "ramping" ? "ramping…" : "Run pool test"}
+              </button>
+              <button className="btn ghost" disabled={!!loadBusy} onClick={() => runPoolTest(true)}>
+                {loadBusy === "draining" ? "draining…" : "Drain"}
+              </button>
+              {fleet ? (
+                <span className="meta">
+                  {fleet.pool_count} pool{fleet.pool_count === 1 ? "" : "s"} &middot;{" "}
+                  {fleet.warm} warm &middot; {fleet.bound.length} bound &middot;{" "}
+                  {Math.round((fleet.utilisation || 0) * 100)}% used
+                </span>
+              ) : null}
+            </div>
+            {fleet ? (
+              <div className="gauge">
+                {fleet.pools.map(pl => (
+                  <div key={pl.index} className={`poolbox ${pl.accepting ? "" : "retiring"}`}>
+                    <b>pool {pl.index}{pl.accepting ? "" : " · retiring"}</b>
+                    <div className="meta">
+                      {pl.bound.length}/{fleet.max_concurrent_per_pool} bound
+                      {pl.bound.length > fleet.max_concurrent_per_pool ? (
+                        <span title="sessions bound before the ceiling was lowered; the ceiling applies to new placement only">
+                          {" · over ceiling"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="cells">
+                      {pl.bound.map(sid => <span key={sid} className="cell bound" title={sid} />)}
+                      {Array.from({ length: pl.warm }).map((_, i) =>
+                        <span key={`w${i}`} className="cell warm" title="warm, idle" />)}
+                      {Array.from({
+                        // the row grows to fit whatever is actually here, so a lowered ceiling
+                        // never clips a live session out of the picture
+                        length: Math.max(0, fleet.max_concurrent_per_pool - pl.bound.length - pl.warm)
+                      }).map((_, i) => <span key={`e${i}`} className="cell" />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {fleet && fleet.scale_events.length ? (
+              <div className="events">
+                {fleet.scale_events.slice(-5).map((ev, i) => (
+                  <div key={i} className="ev"><div className="detail">{ev}</div></div>
+                ))}
+              </div>
+            ) : null}
+            {banner ? <div className={`answer ${banner.kind === "bad" ? "err" : ""}`}>{banner.text}</div> : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app">
+      <div className="topbar">
+        <div className="brand">Journey Console <span>agentic-journey-local</span></div>
+        <div className="spacer"></div>
+        {pool ? <div className="field">pool <b>{pool.warm}</b> warm · <b>{pool.bound.length}</b> bound</div> : null}
+        <div className="field">
+          <div className="who">
+            <b>{me ? me.actor_id : token}</b>
+            <span>{me ? me.scope_path.join(" / ") : "unknown actor"}</span>
+          </div>
+          <button className="btn ghost" onClick={() => setShowLogin(true)}>Switch</button>
+        </div>
+        <div className="field">
+          <span className={`dot ${online === true ? "live" : online === false ? "down" : ""}`}></span>
+          {online === false ? "api unreachable" : "live"}
+        </div>
+      </div>
+
+      <div className="body">
+        <div className="stage">
+          <div className="canvas" ref={box}><Flow states={states} /></div>
+          <div className="composer">
+            <input
+              value={message}
+              placeholder="Ask the journey agent — e.g. remember my term is T3, then compute 17*23 in the sandbox"
+              onChange={e => setMessage(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !sending) send(); }}
+            />
+            <button className="btn" onClick={send} disabled={sending}>{sending ? "running…" : "Run turn"}</button>
+          </div>
+        </div>
+
+        <div className="side">
+          <div className="tabs">
+            {[["runs", `Runs ${runs.length ? `(${runs.length})` : ""}`],
+              ["approvals", `Approvals ${approvals.length ? `(${approvals.length})` : ""}`],
+              ["memory", "Memory"],
+              ["pool", "Pool"]].map(([id, label]) => (
+              <button key={id} className={tab === id ? "on" : ""} onClick={() => setTab(id)}>
+                {id === "approvals" && approvals.length ? <span className="count">{label}</span> : label}
+              </button>
+            ))}
+          </div>
+
+          <div className="pane">
+            {banner ? (
+              <div className={`answer ${banner.kind === "bad" ? "err" : ""}`}>{banner.text}</div>
+            ) : null}
+
+            {tab === "runs" ? (
+              runs.length === 0 ? <div className="empty">No runs yet. Send a turn below.</div> :
+              runs.map(r => (
+                <div key={r.run_id} className={`run ${current && current.run_id === r.run_id ? "on" : ""}`}
+                     onClick={() => setSelected(r.run_id)}>
+                  <div className="row">
+                    <div className="msg">{r.message || "(resumed run)"}</div>
+                    <span className={`pill ${r.status}`}>{r.status}</span>
+                  </div>
+                  <div className="meta">{r.run_id} · {r.actor_id} · {new Date(r.started_at).toLocaleTimeString()}</div>
+                  {current && current.run_id === r.run_id ? (
+                    <div className="events">
+                      {(r.events || []).map((e, i) => (
+                        <div key={i} className={`ev ${e.state}`}>
+                          <div className="node-name">{e.node}</div>
+                          <div>{e.label}</div>
+                          {e.detail ? <div className="detail">{e.detail}</div> : null}
+                        </div>
+                      ))}
+                      {r.answer ? <div className="ev"><div className="node-name">answer</div><div>{r.answer}</div></div> : null}
+                    </div>
+                  ) : null}
+                </div>
+              ))
+            ) : null}
+
+            {tab === "approvals" ? (
+              approvals.length === 0 ? <div className="empty">Nothing waiting on a person.</div> :
+              approvals.map(a => (
+                <div key={a.session_id} className="run">
+                  <div className="meta">{a.session_id}</div>
+                  {a.calls.map(c => (
+                    <div key={c.tool_call_id}>
+                      <div className="msg">{c.tool_name}</div>
+                      <div className="detail meta">{c.args}</div>
+                    </div>
+                  ))}
+                  <div className="row">
+                    <button className="btn" onClick={() => decide(a.session_id, true)}>Approve</button>
+                    <button className="btn deny" onClick={() => decide(a.session_id, false)}>Deny</button>
+                  </div>
+                </div>
+              ))
+            ) : null}
+
+            {tab === "memory" ? (
+              !detail || detail.facts.length === 0
+                ? <div className="empty">No facts visible to this actor.</div>
+                : (() => {
+                    const order = { actor: 0, school: 1, region: 2, tenant: 3 };
+                    const rows = [...detail.facts].sort(
+                      (a, b) => (order[a.level] ?? 9) - (order[b.level] ?? 9));
+                    return (
+                      <React.Fragment>
+                        <div className="meta">visible to {detail.scope.join(" / ")}</div>
+                        <table>
+                          <thead><tr><th>From</th><th>Key</th><th>Value</th></tr></thead>
+                          <tbody>{rows.map(f => (
+                            <tr key={f.key}>
+                              <td><span className={`lvl ${f.level}`}>{f.level}</span></td>
+                              <td className="k">{f.key}</td>
+                              <td>{String(f.value)}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </React.Fragment>
+                    );
+                  })()
+            ) : null}
+
+            {tab === "pool" ? (
+              !pool ? <div className="empty">No pool data.</div> :
+              <React.Fragment>
+                {!pool.vm_boundary ? (
+                  <div className="answer err">
+                    No VM boundary: runtime is {pool.runtime}. Model-authored code shares the host
+                    kernel. Set SANDBOX_RUNTIME=runsc (gVisor) or kata for a real boundary.
+                  </div>
+                ) : null}
+                <table>
+                  <tbody>
+                    <tr><td className="k">runtime</td><td>{pool.runtime}</td></tr>
+                    <tr><td className="k">setup phase</td><td>{pool.setup_phase ? "on, egress revoked after" : "off, never any egress"}</td></tr>
+                    <tr><td className="k">pools</td><td>{pool.pool_count}</td></tr>
+                    <tr><td className="k">warm / target</td><td>{pool.warm} / {pool.warm_target}{pool.autosize ? " (autosized)" : ""}</td></tr>
+                    <tr><td className="k">ceiling per pool</td><td>{pool.max_concurrent_per_pool} sessions</td></tr>
+                    <tr><td className="k">start latency</td><td>{pool.start_latency_ms} ms</td></tr>
+                    <tr><td className="k">arrival rate</td><td>{pool.arrival_rate_per_min} claims/min</td></tr>
+                    <tr><td className="k">Little&rsquo;s Law depth</td><td>{pool.littles_law_depth}</td></tr>
+                    <tr><td className="k">cooldown</td><td>{pool.cooldown_seconds}s idle</td></tr>
+                    <tr><td className="k">max lifetime</td><td>{pool.max_lifetime_seconds}s</td></tr>
+                  </tbody>
+                </table>
+                {pool.pools.map(p => (
+                  <div key={p.index} className="run">
+                    <div className="row">
+                      <div className="msg">pool {p.index}</div>
+                      <span className="pill">{p.warm} warm &middot; {p.bound.length}/{pool.max_concurrent_per_pool} bound</span>
+                    </div>
+                    {p.bound.map(sid => (
+                      <div key={sid} className="meta">{sid} &middot; {p.ages_seconds[sid]}s old</div>
+                    ))}
+                  </div>
+                ))}
+              </React.Fragment>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

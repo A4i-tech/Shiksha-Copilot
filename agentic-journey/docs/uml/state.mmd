@@ -1,0 +1,18 @@
+stateDiagram-v2
+    [*] --> Warm : prefill() at boot
+    Warm --> Claimed : claim(session_id)
+    Claimed --> Restoring : blob tar exists
+    Restoring --> Active : untar into /workspace
+    Claimed --> Active : first turn, nothing to restore
+    Active --> Snapshotting : step finished
+    Snapshotting --> Idle : tar -> MinIO
+    Idle --> Active : next turn, same session_id
+    Idle --> Expired : idle > cooldown
+    Active --> Lost : host fault / container removed
+    Lost --> Claimed : next turn rehydrates
+    Expired --> [*] : container removed, pool refilled
+    note right of Snapshotting
+      The sandbox is a cache.
+      Mongo + MinIO hold the record,
+      so every exit costs one rehydration.
+    end note

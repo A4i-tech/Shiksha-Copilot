@@ -1,0 +1,88 @@
+classDiagram
+    direction LR
+    class Identity {
+      +str actor_id
+      +list~str~ scope_path
+    }
+    class Deps {
+      +Identity identity
+      +str session_id
+    }
+    class Agent {
+      <<pydantic-ai>>
+      +UsageLimits budget
+      +int retries
+      +run(prompt, deps, history)
+    }
+    class Hooks {
+      +instructions_for(profile)
+      +prepare_tools(ctx, defs)
+      +TimedToolset.call_tool()
+      +output_validator()
+    }
+    class ToolRegistry {
+      +REGISTRY
+      +PROFILES
+      +APPROVAL_REQUIRED
+      +toolset_for(profile)
+    }
+    class MemoryStore {
+      <<abstract>>
+    }
+    class Hierarchical {
+      +write_fact(ident, key, value)
+      +retrieve(ident) dict
+      +score_fact(id, delta)
+    }
+    class Episodic {
+      +load_episode(session_id)
+      +save_episode(session_id, msgs)
+      +ttl_index
+    }
+    class SandboxPool {
+      +int pool_size
+      +int cooldown_seconds
+      +prefill()
+      +claim(session_id)
+      +reaper()
+    }
+    class Sandbox {
+      +str container_id
+      +network none
+      +rootfs read-only
+      +tmpfs /workspace
+      +exec(code) str
+    }
+    class Guardrails {
+      +check_rate(actor_id)
+      +save_pending(session, msgs)
+      +load_pending(session)
+    }
+    class SubAgent {
+      +cheap model
+      +Verdict output_type
+      +verify(q, a) Verdict
+    }
+    class Scheduler {
+      +interval minutes
+      +scheduled_session()
+    }
+    class Journey {
+      +run_turn(ident, msg, session)
+      +resume_with_approval(...)
+    }
+
+    Deps --> Identity : resolved server-side
+    Journey --> Deps : builds
+    Journey --> Agent : one call path
+    Journey --> Guardrails : rate, approvals
+    Journey --> Episodic : load / save window
+    Journey --> SubAgent : verifies output
+    Agent --> Hooks : binds every boundary
+    Agent --> ToolRegistry : curated subset
+    Hooks --> Hierarchical : injects scoped facts
+    ToolRegistry --> SandboxPool : run_python
+    SandboxPool *-- Sandbox : owns, disposable
+    MemoryStore <|-- Hierarchical
+    MemoryStore <|-- Episodic
+    Scheduler --> Journey : same path, other trigger

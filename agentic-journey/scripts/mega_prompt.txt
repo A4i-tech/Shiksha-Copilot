@@ -1,0 +1,37 @@
+I'm Priya, I teach grade 7 science, section A, at school-12, and I'm planning term T3.
+Our school has a science lab with 12 working microscopes and it's free on Tuesday afternoons —
+that's a school thing, everyone here should know it, not just me. I personally always run
+practicals in the first period.
+
+Here's what I need, and please actually do each step rather than describing it:
+
+1. Pull my syllabus topics for grade 7 science, and the term dates for T3, from the timetable
+   service. Tell me how many teaching weeks I have.
+
+2. Pull my class roster for grade 7 section A.
+
+3. Write a reusable script at /workspace/practical_planner.py containing two functions:
+     - at_risk(students, min_attendance) -> names below the attendance threshold
+     - lab_groups(students, per_group) -> students split into groups of that size, strongest
+       score first, so each group has a mix
+   Give it an `if __name__ == "__main__"` block that runs a quick self-check with asserts.
+
+4. Run that self-check and show me the output. If it fails, fix the file and run it again.
+
+5. Using the script — don't rewrite the logic inline — tell me:
+     - who is at risk below 0.8 attendance
+     - the lab groups of 3, given the lab has 12 microscopes and I need one per student
+
+6. Work out how many practical sessions I can fit: I get one Tuesday afternoon per week for
+   the T3 teaching weeks, minus 2 weeks for exams. Compute it in the sandbox, not in your head.
+
+7. Save a plan to /workspace/t3_plan.csv with columns week,date,topic,group — one row per
+   practical session, cycling through my syllabus topics and the lab groups. Then show me the
+   first 5 lines of the file with a shell command.
+
+8. Tell me what files are now in my workspace and how big they are.
+
+9. Publish a note titled "T3 practical plan" summarising the schedule for my school.
+
+10. Finally, list back everything you now know about me and about my school, and say which of
+    those facts a colleague at my school would also see.

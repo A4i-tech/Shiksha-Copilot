@@ -1,0 +1,53 @@
+services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    env_file: [.env]
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:4317
+      OTEL_SERVICE_NAME: agentic-journey
+      MCP_URL: http://mcp:9100/mcp
+    volumes:
+      # the app is the pool controller: it starts execution-plane containers on the host daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+      # dev loop: edit on the host, no rebuild
+      - ./app:/srv/app
+      - ./prompts:/srv/prompts
+      - ./tests:/srv/tests
+      - ./mcp_server:/srv/mcp_server
+    depends_on: [mongo, minio, jaeger, mcp]
+
+  mcp:
+    build: .
+    command: python -m mcp_server.server
+    ports: ["9100:9100"]
+    volumes:
+      - ./mcp_server:/srv/mcp_server
+
+  mongo:
+    image: mongo:7
+    ports: ["27017:27017"]
+    volumes: [mongo-data:/data/db]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports: ["9000:9000", "9001:9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes: [minio-data:/data]
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    ports: ["16686:16686", "4317:4317"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+
+volumes:
+  mongo-data:
+  minio-data:
