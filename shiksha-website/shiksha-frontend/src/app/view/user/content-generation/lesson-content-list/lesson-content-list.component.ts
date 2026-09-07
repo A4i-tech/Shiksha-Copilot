@@ -43,7 +43,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   totalItems = 0;
   tableHeaders = ['Date', 'Class', 'Subject', 'Type', 'Chapter', 'Sub Topics', 'Action'];
 
-  typeDropdownOptions: { name: string; value: string }[];
+  typeDropdownOptions: { name: string; value: string }[] = [];
   boardDropdownOptions: any[] = [];
   mediumDropdownOptions: any[] = [];
   classDropdownOptions: any[] = [];
@@ -143,7 +143,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   }
 
   constructor(private contentGenService: ContentGenerationService, private router: Router, public utilityservice: UtilityService, translateService: TranslateService) {
-    this.typeDropdownOptions = [{ name: translateService.instant('Lesson Plan'), value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }];
+    translateService.get('Lesson Plan').subscribe(name => this.typeDropdownOptions = [{ name, value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }]);
   }
 
   ngOnInit(): void {
