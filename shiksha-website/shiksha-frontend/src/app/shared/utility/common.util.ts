@@ -14,14 +14,14 @@ export class RuleTranslateCompiler extends TranslateCompiler {
     }
 
     compileTranslations(translations: Record<string, unknown>): Record<string, unknown> {
-        const user = JSON.parse(localStorage.getItem('userData') ?? 'null');
-        const state = user?.school?.state || user?.profiles?.admin?.state || null;
         const sourceTranslations = { ...translations };
         const translateValue = (value: string): string => typeof sourceTranslations[value] === 'string' ? sourceTranslations[value] as string : value;
         for (const [key, rules] of Object.entries(enLabels)) {
             if (!Array.isArray(rules)) continue;
             const fallback = typeof sourceTranslations[key] === 'string' ? sourceTranslations[key] as string : key;
             translations[key] = (params: Record<string, unknown> = {}) => {
+                const user = JSON.parse(localStorage.getItem('userData') ?? 'null');
+                const state = user?.school?.state || user?.profiles?.admin?.state || null;
                 for (const entry of rules) {
                     if (typeof entry === 'string') return translateValue(entry);
                     const rule = entry as { rule: string; value: string };
