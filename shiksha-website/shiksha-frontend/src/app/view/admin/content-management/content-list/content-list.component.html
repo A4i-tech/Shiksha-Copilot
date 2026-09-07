@@ -69,6 +69,15 @@
         <span class="text-nowrap">Bulk Upload</span>
       </div>
     </button>
+
+    <button
+      type="button"
+      class="btn-outline-primary h-9"
+      [disabled]="!selectedIds.size"
+      (click)="exportSelected()"
+    >
+      Export selected ({{ selectedIds.size }})
+    </button>
   </div>
 
   <p *ngIf="isUploading" class="py-2 text-sm">
@@ -84,6 +93,14 @@
       </caption>
       <thead class="bg-gray-100">
         <tr>
+          <th scope="col" class="px-3 py-2">
+            <input
+              type="checkbox"
+              [attr.aria-label]="'Select every ' + config.label.toLowerCase() + ' on this page'"
+              [checked]="allSelected"
+              (change)="toggleSelectAll($any($event.target).checked)"
+            />
+          </th>
           <th scope="col" class="px-3 py-2" *ngFor="let column of config.columns">
             {{ column.label }}
           </th>
@@ -92,6 +109,14 @@
       </thead>
       <tbody>
         <tr *ngFor="let record of listData" class="border-t border-gray-200">
+          <td class="px-3 py-2 align-top">
+            <input
+              type="checkbox"
+              [attr.aria-label]="'Select this ' + config.singular.toLowerCase()"
+              [checked]="selectedIds.has(record._id)"
+              (change)="toggleSelect(record._id, $any($event.target).checked)"
+            />
+          </td>
           <td class="px-3 py-2 align-top" *ngFor="let column of config.columns">
             {{ getColumnValue(record, column.field) }}
           </td>
@@ -106,6 +131,13 @@
               ]"
               >Edit</a
             >
+            <button
+              type="button"
+              class="text-primary underline mr-3"
+              (click)="exportRecord(record)"
+            >
+              Export
+            </button>
             <button
               *ngIf="recordState === '0'"
               type="button"
@@ -125,7 +157,7 @@
           </td>
         </tr>
         <tr *ngIf="!listData.length">
-          <td class="px-3 py-4" [attr.colspan]="config.columns.length + 1">
+          <td class="px-3 py-4" [attr.colspan]="config.columns.length + 2">
             No records found.
           </td>
         </tr>
@@ -177,6 +209,10 @@
       [instructions]="uploadInstructions"
       [fileHint]="'File supported .json file, up to 5MB in size'"
       [showDownloadTemplate]="false"
+      [showSchemaDownload]="true"
+      [showSampleDownload]="true"
+      (downloadSchema)="downloadUploadSchema()"
+      (downloadSample)="downloadUploadSample()"
       (fileUploaded)="uploadedFile($event)"
       (upload)="upload()"
     ></app-upload-popup>
@@ -250,6 +286,14 @@
         (click)="closeUpload()"
       >
         Cancel
+      </button>
+      <button
+        *ngIf="uploadSummary && uploadSummary.invalid"
+        type="button"
+        class="px-4 py-2 border border-gray-300 rounded"
+        (click)="backToUpload()"
+      >
+        Back
       </button>
       <button
         type="button"

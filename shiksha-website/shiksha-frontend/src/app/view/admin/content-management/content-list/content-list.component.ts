@@ -3,6 +3,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
+import { saveAs } from 'file-saver';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ModalComponent } from 'src/app/shared/components/modal/modal.component';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
@@ -43,6 +44,9 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   confirmAction: 'delete' | 'restore' | null = null;
   confirmRecord: any = null;
+
+  /** ids of the rows the admin checked, on the current page */
+  selectedIds = new Set<string>();
 
   /** file types that the bulk upload popup accepts */
   uploadFileTypes: string[] = ['.json'];
@@ -110,6 +114,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
         .subscribe((term) => {
           this.searchText = term;
           this.currentPage = 1;
+          this.selectedIds.clear();
           this.loadRecords();
         })
     );
@@ -162,6 +167,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   onRecordStateChange(state: string): void {
     this.recordState = state;
     this.currentPage = 1;
+    this.selectedIds.clear();
     this.loadRecords();
   }
 
@@ -171,7 +177,81 @@ export class ContentListComponent implements OnInit, OnDestroy {
    */
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.selectedIds.clear();
     this.loadRecords();
+  }
+
+  toggleSelect(id: string, checked: boolean): void {
+    if (checked) {
+      this.selectedIds.add(id);
+    } else {
+      this.selectedIds.delete(id);
+    }
+  }
+
+  toggleSelectAll(checked: boolean): void {
+    if (checked) {
+      this.listData.forEach((record) => this.selectedIds.add(record._id));
+    } else {
+      this.selectedIds.clear();
+    }
+  }
+
+  get allSelected(): boolean {
+    return (
+      this.listData.length > 0 &&
+      this.listData.every((record) => this.selectedIds.has(record._id))
+    );
+  }
+
+  exportRecord(record: any): void {
+    this.downloadJson(record, `${this.config.segment}-${record._id}.json`);
+  }
+
+  exportSelected(): void {
+    const records = this.listData.filter((record) =>
+      this.selectedIds.has(record._id)
+    );
+    this.downloadJson(records, `${this.config.segment}-export.json`);
+  }
+
+  downloadUploadSchema(): void {
+    const schema = this.config.fields.map((field) => ({
+      field: field.field,
+      label: field.label,
+      type: field.type,
+      requiredOnCreate: !!field.requiredOnCreate,
+    }));
+    this.downloadJson(schema, `${this.config.segment}-schema.json`);
+  }
+
+  downloadUploadSample(): void {
+    const sample: any = {};
+    this.config.fields.forEach((field) => {
+      sample[field.field] = this.sampleValueFor(field.type);
+    });
+    this.downloadJson([sample], `${this.config.segment}-sample.json`);
+  }
+
+  private sampleValueFor(type: string): any {
+    switch (type) {
+      case 'number':
+        return 0;
+      case 'boolean':
+        return false;
+      case 'list':
+      case 'json':
+        return [];
+      default:
+        return '';
+    }
+  }
+
+  private downloadJson(data: any, fileName: string): void {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
+    saveAs(blob, fileName);
   }
 
   /**
@@ -382,6 +462,11 @@ export class ContentListComponent implements OnInit, OnDestroy {
       !!this.uploadReport.length && data.invalid === 0 && data.dryRun === true;
   }
 
+  backToUpload(): void {
+    this.showUploadReport = false;
+    this.modalService.showBlukUploadDialog = true;
+  }
+
   /**
    * Method to close the report and to drop the rows
    */
@@ -411,6 +496,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.currentPage = 1;
     this.searchText = '';
     this.recordState = '0';
+    this.selectedIds.clear();
     this.closeConfirm();
   }
 }

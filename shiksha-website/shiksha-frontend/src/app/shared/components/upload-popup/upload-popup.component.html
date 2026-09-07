@@ -37,7 +37,9 @@
           <p class="text-content-100 text-sm">
             {{ fileHint | translate }}.
           </p>
-          <button *ngIf="showDownloadTemplate" class="text-nowrap text-base" (click)="downloadTemplate()">{{'Download Template' | translate}}</button>
+          <button *ngIf="showDownloadTemplate" type="button" class="text-nowrap text-base" (click)="downloadTemplate()">{{'Download Template' | translate}}</button>
+          <button *ngIf="showSchemaDownload" type="button" class="text-nowrap text-base" (click)="onDownloadSchema()">{{'Download JSON Schema' | translate}}</button>
+          <button *ngIf="showSampleDownload" type="button" class="text-nowrap text-base" (click)="onDownloadSample()">{{'Download Sample JSON' | translate}}</button>
         </div>
       </ng-template>
     </ngx-file-drop>

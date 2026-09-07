@@ -10,10 +10,13 @@ const ObjectId = mongoose.Types.ObjectId;
 class BaseController {
 	/**
 	 * @param {TManager} manager
+	 * @param {string[]} [searchFields] fields the `search` query matches, defaults to the user identity fields
 	 */
-	constructor(manager) {
+	constructor(manager, searchFields) {
 		/** @protected @type {TManager} */
 		this.manager = manager;
+		/** @protected @type {string[]} */
+		this.searchFields = searchFields || ["identity.name", "identity.phone"];
 	}
 
 	async getAll(req, res) {
@@ -32,9 +35,7 @@ class BaseController {
 		const searchFilter = {};
 
 		if (search) {
-			const searchFields = ["identity.name", "identity.phone"];
-
-			const regexExpressions = searchFields.map((field) => ({
+			const regexExpressions = this.searchFields.map((field) => ({
 				[field]: { $regex: new RegExp(escapeRegExp(search), "i") },
 			}));
 
@@ -61,7 +62,7 @@ class BaseController {
 		if (includeDeleted === '2') {
 			status = { isDeleted: true };
 		} else if (includeDeleted === '0') {
-			status = { isDeleted: false };
+			status = { isDeleted: { $ne: true } };
 		}
 		const result = await this.manager.getAll(
 			parseInt(page),
