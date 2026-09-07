@@ -44,6 +44,8 @@ describe('ContentEditComponent', () => {
     httpMock = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
     fixture.detectChanges();
+    // the chapters entity loads the subject dropdown options on init
+    httpMock.match(() => true).forEach((req) => req.flush({ data: { results: [] } }));
   });
 
   afterEach(() => {

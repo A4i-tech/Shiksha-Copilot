@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { saveAs } from 'file-saver';
+import * as ExcelJS from 'exceljs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ModalComponent } from 'src/app/shared/components/modal/modal.component';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
@@ -49,7 +50,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   selectedIds = new Set<string>();
 
   /** file types that the bulk upload popup accepts */
-  uploadFileTypes: string[] = ['.json'];
+  uploadFileTypes: string[] = ['.json', '.xlsx'];
   /** file that the popup holds before the check runs */
   selectedFile: File | null = null;
   /** rows of the file that the admin picked */
@@ -328,7 +329,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   get uploadInstructions(): string[] {
     const label = this.config?.label?.toLowerCase() || 'records';
     return [
-      `The file must hold a JSON array of ${label}, or an object with a rows array.`,
+      `The file is a JSON array of ${label} (or an object with a rows array), or an Excel (.xlsx) file with one header row.`,
       'The upload runs a check first. Nothing is saved until you press Save.',
       'Every column that the check reports as missing must carry a value.',
     ];
@@ -372,6 +373,14 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.uploadReport = [];
     this.uploadMessage = '';
     this.uploadCanSave = false;
+
+    if (/\.xlsx$/i.test(file.name)) {
+      this.parseExcelFile(file)
+        .then((rows) => this.acceptUploadRows(rows))
+        .catch(() => this.rejectUploadFile());
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       try {
@@ -382,17 +391,113 @@ export class ContentListComponent implements OnInit, OnDestroy {
         if (!Array.isArray(rows) || !rows.length) {
           throw new Error('empty');
         }
-        this.uploadRows = rows;
-        this.modalService.showBlukUploadDialog = false;
-        this.checkUpload();
+        this.acceptUploadRows(rows);
       } catch (err) {
-        this.uploadRows = [];
-        this.utilityService.showError(
-          `The file must hold a JSON array of ${this.config.label.toLowerCase()}, or an object with a rows array.`
-        );
+        this.rejectUploadFile();
       }
     };
     reader.readAsText(file);
+  }
+
+  private acceptUploadRows(rows: any[]): void {
+    if (!Array.isArray(rows) || !rows.length) {
+      this.rejectUploadFile();
+      return;
+    }
+    this.uploadRows = rows;
+    this.modalService.showBlukUploadDialog = false;
+    this.checkUpload();
+  }
+
+  private rejectUploadFile(): void {
+    this.uploadRows = [];
+    this.utilityService.showError(
+      `The file must hold a JSON array of ${this.config.label.toLowerCase()}, an object with a rows array, or an Excel file with one header row.`
+    );
+  }
+
+  // Row 1 is the header (field names). A list field's cell is comma separated, a json field's cell is a JSON string.
+  private async parseExcelFile(file: File): Promise<any[]> {
+    const buffer = await file.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const sheet = workbook.worksheets[0];
+    if (!sheet) return [];
+
+    const headers: string[] = [];
+    sheet.getRow(1).eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      headers[colNumber] = `${cell.value ?? ''}`.trim();
+    });
+
+    const rows: any[] = [];
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      const record: { [key: string]: any } = {};
+      let hasValue = false;
+
+      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const header = headers[colNumber];
+        if (!header || cell.value === null || cell.value === undefined) return;
+        const field = this.config.fields.find((f) => f.field === header);
+        record[header] = this.excelCellToValue(field?.type, cell.value);
+        hasValue = true;
+      });
+
+      if (hasValue) rows.push(record);
+    });
+
+    return rows;
+  }
+
+  private excelCellToValue(type: string | undefined, raw: any): any {
+    const text = `${raw}`.trim();
+
+    switch (type) {
+      case 'number':
+        return Number(text);
+      case 'boolean':
+        return /^(true|yes|1)$/i.test(text);
+      case 'list':
+        return text
+          .split(',')
+          .map((part) => part.trim())
+          .filter((part) => part !== '');
+      case 'json':
+        return text === '' ? null : JSON.parse(text);
+      default:
+        return text;
+    }
+  }
+
+  async downloadExcelTemplate(): Promise<void> {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(this.config.label);
+    sheet.addRow(this.config.fields.map((field) => field.field));
+    sheet.addRow(
+      this.config.fields.map((field) => this.excelSampleFor(field.type))
+    );
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    saveAs(blob, `${this.config.segment}-template.xlsx`);
+  }
+
+  private excelSampleFor(type: string): string {
+    switch (type) {
+      case 'number':
+        return '0';
+      case 'boolean':
+        return 'false';
+      case 'list':
+        return 'value one, value two';
+      case 'json':
+        return '[]';
+      default:
+        return '';
+    }
   }
 
   /**

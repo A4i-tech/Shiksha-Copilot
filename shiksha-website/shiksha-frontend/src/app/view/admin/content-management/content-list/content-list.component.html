@@ -211,8 +211,10 @@
       [showDownloadTemplate]="false"
       [showSchemaDownload]="true"
       [showSampleDownload]="true"
+      [showExcelTemplateDownload]="true"
       (downloadSchema)="downloadUploadSchema()"
       (downloadSample)="downloadUploadSample()"
+      (downloadExcelTemplate)="downloadExcelTemplate()"
       (fileUploaded)="uploadedFile($event)"
       (upload)="upload()"
     ></app-upload-popup>

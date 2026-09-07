@@ -40,6 +40,7 @@
           <button *ngIf="showDownloadTemplate" type="button" class="text-nowrap text-base" (click)="downloadTemplate()">{{'Download Template' | translate}}</button>
           <button *ngIf="showSchemaDownload" type="button" class="text-nowrap text-base" (click)="onDownloadSchema()">{{'Download JSON Schema' | translate}}</button>
           <button *ngIf="showSampleDownload" type="button" class="text-nowrap text-base" (click)="onDownloadSample()">{{'Download Sample JSON' | translate}}</button>
+          <button *ngIf="showExcelTemplateDownload" type="button" class="text-nowrap text-base" (click)="onDownloadExcelTemplate()">{{'Download Excel Template' | translate}}</button>
         </div>
       </ng-template>
     </ngx-file-drop>

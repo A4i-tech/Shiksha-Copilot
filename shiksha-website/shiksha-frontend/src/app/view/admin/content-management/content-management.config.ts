@@ -24,7 +24,8 @@ export type ContentFieldType =
   | 'number'
   | 'boolean'
   | 'list'
-  | 'json';
+  | 'json'
+  | 'subject-select';
 
 export interface ContentColumn {
   /** property of the record, a dot path is allowed */
@@ -78,11 +79,11 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
     fields: [
       {
         field: 'subjectId',
-        label: 'Subject id',
-        type: 'text',
+        label: 'Subject',
+        type: 'subject-select',
         createOnly: true,
         requiredOnCreate: true,
-        hint: 'Id of the master subject. The subject holds the board and the class list, so the values below must match it.',
+        hint: 'The subject holds the board and the class list, so the values below must match it.',
       },
       { field: 'topics', label: 'Chapter name', type: 'text', requiredOnCreate: true },
       { field: 'standard', label: 'Class', type: 'number', requiredOnCreate: true },

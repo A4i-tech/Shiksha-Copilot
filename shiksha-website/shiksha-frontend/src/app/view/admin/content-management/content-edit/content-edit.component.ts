@@ -32,6 +32,9 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   isLoading = false;
   isSaving = false;
 
+  /** {value, label} of every board a master subject applies to, for the chapter subject dropdown */
+  subjectOptions: { value: string; label: string }[] = [];
+
   private original: { [field: string]: any } = {};
   private subscriptions: Subscription[] = [];
 
@@ -64,6 +67,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.recordId = id;
         this.isCreate = id === 'new';
 
+        if (entity.fields.some((field) => field.type === 'subject-select')) {
+          this.loadSubjectOptions();
+        }
+
         if (this.isCreate) {
           if (!entity.canCreate) {
             this.router.navigate(['/content-management', entity.key]);
@@ -82,6 +89,22 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+  }
+
+  // One option per board a subject applies to, so "Science" under two boards shows twice.
+  loadSubjectOptions(): void {
+    this.contentService.listSubjects().subscribe({
+      next: (res: any) => {
+        const subjects = res?.data?.results ?? res?.results ?? [];
+        this.subjectOptions = subjects.flatMap((subject: any) =>
+          (subject.boards || []).map((board: string) => ({
+            value: subject._id,
+            label: `${board} - ${subject.subjectName}`,
+          }))
+        );
+      },
+      error: (err: any) => this.utilityService.handleError(err),
+    });
   }
 
   /**
