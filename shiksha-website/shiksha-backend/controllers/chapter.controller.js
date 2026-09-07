@@ -5,7 +5,7 @@ const handleError = require("../helper/handleError")
 /** @extends {BaseController<ChapterManager>} */
 class ChapterController extends BaseController {
 	constructor() {
-		super(new ChapterManager());
+		super(new ChapterManager(), ["topics"]);
 	}
 
 	async getBySemester(req, res){

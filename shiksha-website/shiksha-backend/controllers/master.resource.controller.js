@@ -5,7 +5,7 @@ const BaseController = require("./base.controller.js");
 /** @extends {BaseController<MasterResourceManager>} */
 class MasterResourceController extends BaseController {
 	constructor() {
-		super(new MasterResourceManager());
+		super(new MasterResourceManager(), ["lessonName"]);
 	}
 
 	async update(req, res) {

@@ -59,6 +59,16 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
   /** false hides the template link for uploads that have no template */
   @Input() showDownloadTemplate: boolean = true;
 
+  /** true shows a link that downloads the field list of the upload */
+  @Input() showSchemaDownload: boolean = false;
+
+  /** true shows a link that downloads one example row of the upload */
+  @Input() showSampleDownload: boolean = false;
+
+  @Output() downloadSchema: EventEmitter<void> = new EventEmitter();
+
+  @Output() downloadSample: EventEmitter<void> = new EventEmitter();
+
   /**
    * Class constructor
    * @param utilityService UtilityService
@@ -137,6 +147,14 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
    */
   uploadFile() {
     this.upload.emit(true);
+  }
+
+  onDownloadSchema() {
+    this.downloadSchema.emit();
+  }
+
+  onDownloadSample() {
+    this.downloadSample.emit();
   }
 
   // Function to handle user template download
