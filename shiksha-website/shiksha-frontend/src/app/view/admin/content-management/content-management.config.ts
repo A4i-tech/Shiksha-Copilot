@@ -25,7 +25,8 @@ export type ContentFieldType =
   | 'boolean'
   | 'list'
   | 'json'
-  | 'subject-select';
+  | 'subject-select'
+  | 'chapter-select';
 
 export interface ContentColumn {
   /** property of the record, a dot path is allowed */
@@ -122,6 +123,7 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
     segment: 'lesson-plans',
     label: 'Lesson plans',
     singular: 'Lesson plan',
+    canCreate: true,
     canBulkUpload: true,
     columns: [
       { field: 'name', label: 'Name' },
@@ -131,12 +133,19 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'subject', label: 'Subject' },
     ],
     fields: [
-      { field: 'name', label: 'Name', type: 'text' },
-      { field: 'class', label: 'Class', type: 'number' },
-      { field: 'board', label: 'Board', type: 'text' },
-      { field: 'medium', label: 'Medium', type: 'text' },
-      { field: 'semester', label: 'Semester', type: 'text' },
-      { field: 'subject', label: 'Subject', type: 'text' },
+      {
+        field: 'chapterId',
+        label: 'Chapter',
+        type: 'chapter-select',
+        createOnly: true,
+        requiredOnCreate: true,
+      },
+      { field: 'name', label: 'Name', type: 'text', requiredOnCreate: true },
+      { field: 'class', label: 'Class', type: 'number', requiredOnCreate: true },
+      { field: 'board', label: 'Board', type: 'text', requiredOnCreate: true },
+      { field: 'medium', label: 'Medium', type: 'text', requiredOnCreate: true },
+      { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true },
+      { field: 'subject', label: 'Subject', type: 'text', requiredOnCreate: true },
       { field: 'teachingModel', label: 'Teaching model', type: 'list' },
       { field: 'subTopics', label: 'Subtopics', type: 'list' },
       { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json' },
@@ -159,6 +168,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
     segment: 'resources',
     label: 'Lesson resources',
     singular: 'Resource plan',
+    canCreate: true,
+    canBulkUpload: true,
     columns: [
       { field: 'lessonName', label: 'Name' },
       { field: 'class', label: 'Class' },
@@ -167,12 +178,19 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'subject', label: 'Subject' },
     ],
     fields: [
-      { field: 'lessonName', label: 'Name', type: 'text' },
+      {
+        field: 'chapterId',
+        label: 'Chapter',
+        type: 'chapter-select',
+        createOnly: true,
+        requiredOnCreate: true,
+      },
+      { field: 'lessonName', label: 'Name', type: 'text', requiredOnCreate: true },
       { field: 'class', label: 'Class', type: 'number' },
       { field: 'board', label: 'Board', type: 'text' },
-      { field: 'medium', label: 'Medium', type: 'text' },
+      { field: 'medium', label: 'Medium', type: 'text', requiredOnCreate: true },
       { field: 'levels', label: 'Level', type: 'text' },
-      { field: 'semester', label: 'Semester', type: 'text' },
+      { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true },
       { field: 'subject', label: 'Subject', type: 'text' },
       { field: 'subTopics', label: 'Subtopics', type: 'list' },
       { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json' },
@@ -190,6 +208,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
     segment: 'questions',
     label: 'Questions',
     singular: 'Question',
+    canCreate: true,
+    canBulkUpload: true,
     columns: [
       { field: 'text', label: 'Question' },
       { field: 'subject', label: 'Subject' },
@@ -199,7 +219,7 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'difficulty', label: 'Difficulty' },
     ],
     fields: [
-      { field: 'text', label: 'Question text', type: 'textarea' },
+      { field: 'text', label: 'Question text', type: 'textarea', requiredOnCreate: true },
       { field: 'subject', label: 'Subject', type: 'text' },
       { field: 'medium', label: 'Medium', type: 'text' },
       { field: 'class', label: 'Class', type: 'text' },

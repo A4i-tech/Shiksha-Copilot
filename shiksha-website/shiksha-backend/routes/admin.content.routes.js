@@ -46,6 +46,14 @@ const {
 const {
 	validateQuestionContentUpdate,
 } = require("../validations/question.content.validation.js");
+const {
+	bulkUploadSchema: resourceBulkUploadSchema,
+} = require("../validations/master.resource.bulk.validation.js");
+const validateResourceBulkUpload = validateRequest(resourceBulkUploadSchema);
+const {
+	bulkUploadSchema: questionBulkUploadSchema,
+} = require("../validations/question.bulk.validation.js");
+const validateQuestionBulkUpload = validateRequest(questionBulkUploadSchema);
 
 const chapterController = new ChapterController();
 const masterLessonController = new MasterLessonController();
@@ -127,8 +135,45 @@ router.post(
 	asyncMiddleware(masterLessonController.adminBulkUpload.bind(masterLessonController))
 );
 
+router.post(
+	"/admin/content/lesson-plans",
+	chapterUploadBody,
+	asyncMiddleware(masterLessonController.adminCreate.bind(masterLessonController))
+);
+
 registerEntity("lesson-plans", masterLessonController, validateMasterLessonUpdate);
+
+// Lesson resource upload. Same shape as the chapter/lesson-plan uploads
+// above: a JSON file of resource plans, or one plan from the admin form.
+router.post(
+	"/admin/content/resources/bulk-upload",
+	chapterUploadBody,
+	validateResourceBulkUpload,
+	asyncMiddleware(masterResourceController.bulkUpload.bind(masterResourceController))
+);
+
+router.post(
+	"/admin/content/resources",
+	chapterUploadBody,
+	asyncMiddleware(masterResourceController.adminCreate.bind(masterResourceController))
+);
+
 registerEntity("resources", masterResourceController, validateMasterResourceUpdate);
+
+// Question upload. Same shape as the uploads above.
+router.post(
+	"/admin/content/questions/bulk-upload",
+	chapterUploadBody,
+	validateQuestionBulkUpload,
+	asyncMiddleware(questionController.bulkUpload.bind(questionController))
+);
+
+router.post(
+	"/admin/content/questions",
+	chapterUploadBody,
+	asyncMiddleware(questionController.adminCreate.bind(questionController))
+);
+
 registerEntity("questions", questionController, validateQuestionContentUpdate);
 
 module.exports = router;

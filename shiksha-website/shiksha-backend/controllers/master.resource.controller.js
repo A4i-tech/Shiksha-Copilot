@@ -8,6 +8,49 @@ class MasterResourceController extends BaseController {
 		super(new MasterResourceManager(), ["lessonName"]);
 	}
 
+	async bulkUpload(req, res) {
+		try {
+			const dryRun =
+				req.query.dryRun === "true" || req.body.dryRun === true;
+
+			const result = await this.manager.bulkUpload(req.body.rows, dryRun);
+
+			if (result.success) {
+				return res.status(200).json(result);
+			}
+
+			handleError(result, res);
+
+			return;
+		} catch (err) {
+			console.error("Error --> MasterResourceController -> bulkUpload()", err);
+			return res.status(500).json({
+				success: false,
+				message: err?.message || "Internal server error",
+			});
+		}
+	}
+
+	async adminCreate(req, res) {
+		try {
+			const result = await this.manager.bulkUpload([req.body], false);
+
+			if (result.success) {
+				return res.status(200).json(result);
+			}
+
+			handleError(result, res);
+
+			return;
+		} catch (err) {
+			console.error("Error --> MasterResourceController -> adminCreate()", err);
+			return res.status(500).json({
+				success: false,
+				message: err?.message || "Internal server error",
+			});
+		}
+	}
+
 	async update(req, res) {
 		const { id } = req.params;
 		const result = await this.manager.updateMasterResource(

@@ -87,6 +87,12 @@
             (ngModelChange)="onFieldChange(field, $event)"
           ></textarea>
 
+          <app-chapter-picker
+            *ngSwitchCase="'chapter-select'"
+            [value]="formValues[field.field]"
+            (valueChange)="onFieldChange(field, $event)"
+          ></app-chapter-picker>
+
           <select
             *ngSwitchCase="'subject-select'"
             class="border border-gray-300 rounded px-3 py-2"
