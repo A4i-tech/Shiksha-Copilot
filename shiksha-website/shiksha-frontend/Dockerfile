@@ -11,7 +11,7 @@ ARG BACKEND_URL=your_backend_url
 ARG TURNSTILE_SITE_KEY=your_turnstile_site_key
 
 COPY package*.json ./
-RUN npm ci --silent
+RUN npm ci
 
 COPY . .
 
