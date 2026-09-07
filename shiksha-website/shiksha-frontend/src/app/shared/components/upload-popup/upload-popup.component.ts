@@ -65,9 +65,14 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
   /** true shows a link that downloads one example row of the upload */
   @Input() showSampleDownload: boolean = false;
 
+  /** true shows a link that downloads an Excel (.xlsx) upload template */
+  @Input() showExcelTemplateDownload: boolean = false;
+
   @Output() downloadSchema: EventEmitter<void> = new EventEmitter();
 
   @Output() downloadSample: EventEmitter<void> = new EventEmitter();
+
+  @Output() downloadExcelTemplate: EventEmitter<void> = new EventEmitter();
 
   /**
    * Class constructor
@@ -155,6 +160,10 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
 
   onDownloadSample() {
     this.downloadSample.emit();
+  }
+
+  onDownloadExcelTemplate() {
+    this.downloadExcelTemplate.emit();
   }
 
   // Function to handle user template download

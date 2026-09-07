@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
+import { environment } from 'src/environments/environment';
 
 export interface ContentListQuery {
   page: number;
@@ -58,6 +59,12 @@ export class ContentManagementService extends BaseRestService {
     }
 
     return this.get(segment, params);
+  }
+
+  listSubjects(): Observable<any> {
+    return this.http.get(`${environment.apiUrl}/master-subject/list`, {
+      params: new HttpParams().set('includeDeleted', '0'),
+    });
   }
 
   /**

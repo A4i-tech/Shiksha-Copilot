@@ -9,6 +9,7 @@ import {
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import * as ExcelJS from 'exceljs';
 
 import { ContentListComponent } from './content-list.component';
 
@@ -88,5 +89,27 @@ describe('ContentListComponent', () => {
     httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
 
     expect(component.uploadCanSave).toBeFalse();
+  });
+
+  it('parseExcelFile should turn a header row and a data row into a row shaped like the entity fields', async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('chapters');
+    sheet.addRow(['subjectId', 'topics', 'standard', 'subTopics', 'isGrammar']);
+    sheet.addRow(['Mathematics', 'Algebra', 10, 'Linear equations, Quadratics', 'true']);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const file = new File([buffer], 'chapters.xlsx');
+
+    const rows = await (component as any).parseExcelFile(file);
+
+    expect(rows).toEqual([
+      {
+        subjectId: 'Mathematics',
+        topics: 'Algebra',
+        standard: 10,
+        subTopics: ['Linear equations', 'Quadratics'],
+        isGrammar: true,
+      },
+    ]);
   });
 });

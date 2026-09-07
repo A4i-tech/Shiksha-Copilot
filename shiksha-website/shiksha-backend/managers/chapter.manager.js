@@ -201,23 +201,50 @@ class ChapterManager extends BaseManager {
         );
       }
 
-      const batchErrors = checkBatch(chapters);
-
-      const subjectIds = [
-        ...new Set(
-          chapters
-            .map((chapter) => chapter?.subjectId)
-            .filter((id) => mongoose.Types.ObjectId.isValid(id))
-        ),
-      ];
-
-      const subjects = await MasterSubject.find({
-        _id: { $in: subjectIds },
+      // subjectId can be a master subject _id or its subjectName, resolved by board.
+      const allSubjects = await MasterSubject.find({
+        isDeleted: { $ne: true },
       }).lean();
 
       const subjectById = new Map(
-        subjects.map((subject) => [String(subject._id), subject])
+        allSubjects.map((subject) => [String(subject._id), subject])
       );
+
+      const subjectByBoardName = new Map();
+      allSubjects.forEach((subject) => {
+        (subject.boards || []).forEach((board) => {
+          subjectByBoardName.set(
+            `${String(board).toLowerCase()}|${String(subject.subjectName).toLowerCase()}`,
+            subject
+          );
+        });
+      });
+
+      const resolveSubject = (chapter) => {
+        if (mongoose.Types.ObjectId.isValid(chapter?.subjectId)) {
+          return subjectById.get(String(chapter.subjectId));
+        }
+        if (typeof chapter?.subjectId === "string" && chapter.subjectId.trim()) {
+          return subjectByBoardName.get(
+            `${String(chapter?.board).toLowerCase()}|${chapter.subjectId.trim().toLowerCase()}`
+          );
+        }
+        return undefined;
+      };
+
+      const resolvedSubjects = chapters.map((chapter) => resolveSubject(chapter));
+
+      const normalizedChapters = chapters.map((chapter, index) =>
+        resolvedSubjects[index]
+          ? { ...chapter, subjectId: String(resolvedSubjects[index]._id) }
+          : chapter
+      );
+
+      const batchErrors = checkBatch(normalizedChapters);
+
+      const subjectIds = [
+        ...new Set(resolvedSubjects.filter(Boolean).map((subject) => String(subject._id))),
+      ];
 
       const existing = await Chapter.find({ subjectId: { $in: subjectIds } })
         .select("topics medium standard board orderNumber subjectId isDeleted indexPath")
@@ -240,7 +267,22 @@ class ChapterManager extends BaseManager {
         if (!liveOrder.has(order)) liveOrder.set(order, chapter);
       });
 
-      const rows = chapters.map((chapter, index) => {
+      const rows = normalizedChapters.map((chapter, index) => {
+        const subject = resolvedSubjects[index];
+
+        if (!subject) {
+          return {
+            row: index + 1,
+            topics: chapter?.topics ?? "",
+            orderNumber: chapter?.orderNumber ?? null,
+            errors: [
+              `subjectId "${chapters[index]?.subjectId}" matches no master subject for board "${chapter?.board}". Give the subject's id, or its exact name from the subject list.`,
+            ],
+            warnings: [],
+            indexPath: chapter?.indexPath || "",
+          };
+        }
+
         const { errors, warnings } = checkRow(chapter);
         errors.push(...batchErrors[index]);
 
@@ -254,15 +296,6 @@ class ChapterManager extends BaseManager {
         };
 
         if (errors.length > 0) return row;
-
-        const subject = subjectById.get(String(chapter.subjectId));
-
-        if (!subject) {
-          errors.push(
-            `subjectId ${chapter.subjectId} matches no master subject. Pick a subject from the subject list.`
-          );
-          return row;
-        }
 
         if (
           Array.isArray(subject.boards) &&
@@ -353,7 +386,7 @@ class ChapterManager extends BaseManager {
       // The upload does not carry learning outcomes per subtopic. The server
       // writes one entry per subtopic and the content generation pipeline
       // fills the outcomes later.
-      const documents = chapters.map((chapter, index) => ({
+      const documents = normalizedChapters.map((chapter, index) => ({
         ...chapter,
         medium: String(chapter.medium).toLowerCase(),
         indexPath: rows[index].indexPath,
