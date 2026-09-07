@@ -7,6 +7,7 @@ WORKDIR /app
 # these via --build-arg to bake in real values for staging/prod images.
 ARG BUILD_CONFIGURATION=development
 ARG BACKEND_URL=your_backend_url
+# check=skip=SecretsUsedInArgOrEnv
 ARG TURNSTILE_SITE_KEY=your_turnstile_site_key
 
 COPY package*.json ./
