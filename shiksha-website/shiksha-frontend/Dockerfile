@@ -8,6 +8,9 @@ WORKDIR /app
 ARG BUILD_CONFIGURATION=development
 ARG BACKEND_URL=your_backend_url
 ARG TURNSTILE_SITE_KEY=your_turnstile_site_key
+ARG SUPERSET_URL=your_superset_url
+ARG SUPERSET_DASHBOARD_UUID=your_superset_dashboard_uuid
+ARG SUPERSET_MOBILE_DASHBOARD_UUID=your_superset_mobile_dashboard_uuid
 
 COPY package*.json ./
 RUN npm ci --silent
@@ -16,7 +19,10 @@ COPY . .
 
 RUN find src/environments -name "environment*.ts" \
       -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \; \
-      -exec sed -i "s|your_turnstile_site_key|${TURNSTILE_SITE_KEY}|g" {} \;
+      -exec sed -i "s|your_turnstile_site_key|${TURNSTILE_SITE_KEY}|g" {} \; \
+      -exec sed -i "s|your_superset_url|${SUPERSET_URL}|g" {} \; \
+      -exec sed -i "s|your_superset_dashboard_uuid|${SUPERSET_DASHBOARD_UUID}|g" {} \; \
+      -exec sed -i "s|your_superset_mobile_dashboard_uuid|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" {} \;
 
 RUN npm run build -- --configuration ${BUILD_CONFIGURATION} --base-href /
 

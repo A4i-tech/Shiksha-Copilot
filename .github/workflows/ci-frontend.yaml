@@ -13,6 +13,24 @@ on:
         required: true
         type: boolean
 
+      superset_url:
+        description: "Superset base URL (e.g. https://superset.example.com)"
+        required: false
+        type: string
+        default: ""
+
+      superset_dashboard_uuid:
+        description: "Superset desktop dashboard UUID"
+        required: false
+        type: string
+        default: ""
+
+      superset_mobile_dashboard_uuid:
+        description: "Superset mobile dashboard UUID"
+        required: false
+        type: string
+        default: ""
+
     outputs:
       digest:
         description: "Pushed frontend image digest"
@@ -107,6 +125,10 @@ jobs:
           file: shiksha-website/shiksha-frontend/Dockerfile
           push: true
           tags: ${{ needs.build.outputs.image_tags }}
-          build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
+          build-args: |
+            SHIKSHA_COPILOT_BUILD=${{ github.sha }}
+            SUPERSET_URL=${{ inputs.superset_url }}
+            SUPERSET_DASHBOARD_UUID=${{ inputs.superset_dashboard_uuid }}
+            SUPERSET_MOBILE_DASHBOARD_UUID=${{ inputs.superset_mobile_dashboard_uuid }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

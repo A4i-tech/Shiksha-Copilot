@@ -30,6 +30,9 @@ jobs:
     with:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+      superset_url: ${{ vars.SUPERSET_URL }}
+      superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
+      superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
 
   shiksha-coverage-summary:
     needs: [ci-api, ci-backend]
