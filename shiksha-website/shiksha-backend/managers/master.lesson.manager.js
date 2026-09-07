@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const BaseManager = require("./base.manager");
 const MasterLessonDao = require("../dao/master.lesson.dao");
 const formatApiReponse = require("../helper/response");
+const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const regenerateLessonPlan = require("../services/copilot.bot.service");
@@ -976,26 +977,40 @@ class MasterLessonManger extends BaseManager {
 				);
 			}
 
-			const batchErrors = checkBatch(lessonPlans);
-
-			const chapterIds = [
-				...new Set(
-					lessonPlans
-						.map((lessonPlan) => lessonPlan?.chapterId)
-						.filter((id) => mongoose.Types.ObjectId.isValid(id))
-				),
-			];
-
-			const chapters = await Chapter.find({
-				_id: { $in: chapterIds },
+			// chapterId can be a chapter _id or its topics (name), resolved against
+			// the lesson plan's own board, medium and class.
+			const allChapters = await Chapter.find({
 				isDeleted: { $ne: true },
 			}).lean();
-			const chapterById = new Map(
-				chapters.map((chapter) => [String(chapter._id), chapter])
+
+			const chapterResolver = buildIdOrNameResolver(allChapters, (chapter) => [
+				`${String(chapter.board).toLowerCase()}|${String(chapter.medium).toLowerCase()}|${chapter.standard}|${String(chapter.topics).trim().toLowerCase()}`,
+			]);
+
+			const resolveChapter = (lessonPlan) =>
+				chapterResolver.resolve(
+					lessonPlan?.chapterId,
+					typeof lessonPlan?.chapterId === "string"
+						? `${String(lessonPlan?.board).toLowerCase()}|${String(lessonPlan?.medium).toLowerCase()}|${lessonPlan?.class}|${lessonPlan.chapterId.trim().toLowerCase()}`
+						: null
+				);
+
+			const resolvedChapters = lessonPlans.map((lessonPlan) => resolveChapter(lessonPlan));
+
+			const normalizedLessonPlans = lessonPlans.map((lessonPlan, index) =>
+				resolvedChapters[index]
+					? { ...lessonPlan, chapterId: String(resolvedChapters[index]._id) }
+					: lessonPlan
 			);
 
+			const batchErrors = checkBatch(normalizedLessonPlans);
+
+			const chapterIds = [
+				...new Set(resolvedChapters.filter(Boolean).map((chapter) => String(chapter._id))),
+			];
+
 			const subjectIds = [
-				...new Set(chapters.map((chapter) => String(chapter.subjectId))),
+				...new Set(resolvedChapters.filter(Boolean).map((chapter) => String(chapter.subjectId))),
 			];
 
 			const subjects = await MasterSubject.find({ _id: { $in: subjectIds } })
@@ -1029,7 +1044,21 @@ class MasterLessonManger extends BaseManager {
 				liveIdentity.set(key, lessonPlan);
 			});
 
-			const rows = lessonPlans.map((lessonPlan, index) => {
+			const rows = normalizedLessonPlans.map((lessonPlan, index) => {
+				const chapter = resolvedChapters[index];
+
+				if (!chapter) {
+					return {
+						row: index + 1,
+						identity: lessonPlan?.name ?? "",
+						chapterId: lessonPlans[index]?.chapterId ?? "",
+						errors: [
+							`chapterId "${lessonPlans[index]?.chapterId}" matches no chapter for board "${lessonPlan?.board}", medium "${lessonPlan?.medium}" and class ${lessonPlan?.class}. Give the chapter's id, or its exact name.`,
+						],
+						warnings: [],
+					};
+				}
+
 				const { errors, warnings } = checkRow(lessonPlan);
 				errors.push(...batchErrors[index]);
 
@@ -1042,15 +1071,6 @@ class MasterLessonManger extends BaseManager {
 				};
 
 				if (errors.length > 0) return row;
-
-				const chapter = chapterById.get(String(lessonPlan.chapterId));
-
-				if (!chapter) {
-					errors.push(
-						`chapterId ${lessonPlan.chapterId} matches no chapter. Pick a chapter from the chapter list.`
-					);
-					return row;
-				}
 
 				if (lessonPlan.class !== chapter.standard) {
 					errors.push(
@@ -1150,7 +1170,7 @@ class MasterLessonManger extends BaseManager {
 				return formatApiReponse(true, "All lesson plans passed validation.", report);
 			}
 
-			const documents = lessonPlans.map((lessonPlan) => ({
+			const documents = normalizedLessonPlans.map((lessonPlan) => ({
 				...lessonPlan,
 				isDeleted: false,
 			}));

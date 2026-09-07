@@ -10,12 +10,13 @@ import {
   getContentEntityConfig,
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
+import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 
 @Component({
   selector: 'app-content-edit',
   templateUrl: './content-edit.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent],
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;

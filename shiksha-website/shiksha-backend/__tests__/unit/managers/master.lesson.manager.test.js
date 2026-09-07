@@ -495,6 +495,19 @@ describe("MasterLessonManager", () => {
       );
     });
 
+    it("should resolve a chapterId given as the chapter name, using the row's board/medium/class", async () => {
+      const result = await manager.bulkUpload(
+        [{ ...validLessonPlan, chapterId: "algebra" }],
+        false
+      );
+
+      expect(result.success).toBe(true);
+      expect(MasterLesson.insertMany).toHaveBeenCalledWith(
+        [expect.objectContaining({ chapterId: "507f1f77bcf86cd799439011" })],
+        { ordered: true }
+      );
+    });
+
     it("should flag a lesson plan that already exists for the same chapter and subtopic set", async () => {
       MasterLesson.find = jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({

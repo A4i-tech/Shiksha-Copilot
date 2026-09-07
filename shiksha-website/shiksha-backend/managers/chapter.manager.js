@@ -11,6 +11,7 @@ const {
   titleRegex,
 } = require("../helper/data.helper");
 const formatApiReponse = require("../helper/response");
+const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { formatSubject, getSemester } = require('../helper/formatter');
 const Chapter = require("../models/chapter.model");
 const MasterSubject = require("../models/master.subject.model");
@@ -206,31 +207,19 @@ class ChapterManager extends BaseManager {
         isDeleted: { $ne: true },
       }).lean();
 
-      const subjectById = new Map(
-        allSubjects.map((subject) => [String(subject._id), subject])
+      const subjectResolver = buildIdOrNameResolver(allSubjects, (subject) =>
+        (subject.boards || []).map(
+          (board) => `${String(board).toLowerCase()}|${String(subject.subjectName).toLowerCase()}`
+        )
       );
 
-      const subjectByBoardName = new Map();
-      allSubjects.forEach((subject) => {
-        (subject.boards || []).forEach((board) => {
-          subjectByBoardName.set(
-            `${String(board).toLowerCase()}|${String(subject.subjectName).toLowerCase()}`,
-            subject
-          );
-        });
-      });
-
-      const resolveSubject = (chapter) => {
-        if (mongoose.Types.ObjectId.isValid(chapter?.subjectId)) {
-          return subjectById.get(String(chapter.subjectId));
-        }
-        if (typeof chapter?.subjectId === "string" && chapter.subjectId.trim()) {
-          return subjectByBoardName.get(
-            `${String(chapter?.board).toLowerCase()}|${chapter.subjectId.trim().toLowerCase()}`
-          );
-        }
-        return undefined;
-      };
+      const resolveSubject = (chapter) =>
+        subjectResolver.resolve(
+          chapter?.subjectId,
+          typeof chapter?.subjectId === "string"
+            ? `${String(chapter?.board).toLowerCase()}|${chapter.subjectId.trim().toLowerCase()}`
+            : null
+        );
 
       const resolvedSubjects = chapters.map((chapter) => resolveSubject(chapter));
 

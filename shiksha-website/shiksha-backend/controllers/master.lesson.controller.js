@@ -70,6 +70,30 @@ class MasterLessonController extends BaseController {
 		}
 	}
 
+	/**
+	 * Adds one lesson plan from the admin form. Runs the same check that the
+	 * bulk upload runs, so a form entry and a file entry cannot differ.
+	 */
+	async adminCreate(req, res) {
+		try {
+			const result = await this.manager.bulkUpload([req.body], false);
+
+			if (result.success) {
+				return res.status(200).json(result);
+			}
+
+			handleError(result, res);
+
+			return;
+		} catch (err) {
+			console.error("Error --> MasterLessonController -> adminCreate()", err);
+			return res.status(500).json({
+				success: false,
+				message: err?.message || "Internal server error",
+			});
+		}
+	}
+
 	async getByTeacher(req, res) {
 		let { _id: teacherId } = req.user;
 		let reqBody = req.body;

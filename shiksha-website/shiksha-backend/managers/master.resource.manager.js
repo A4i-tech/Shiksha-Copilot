@@ -1,10 +1,14 @@
+const mongoose = require("mongoose");
 const BaseManager = require("./base.manager");
 const MasterResourceDao = require("../dao/master.resource.dao");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const formatApiResponse = require("../helper/response");
 const regenerateLessonPlan = require("../services/copilot.bot.service");
 const Chapter = require("../models/chapter.model");
+const MasterResource = require("../models/master.resource.model");
 const MasterSubjectDao = require("../dao/master.subject.dao");
+const { checkRow } = require("../validations/master.resource.bulk.validation");
+const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { createData, subjectRegex, titleRegex, mediumRegex, boardRegex, standardRegex, orderNumberRegex } = require("../helper/data.helper");
 const { uniqueSubsets } = require("../helper/filter.helper");
 const formatApiReponse = require("../helper/response");
@@ -22,6 +26,118 @@ class MasterResourceManager extends BaseManager {
 		this.regenerateResourceLog = new RegeneratedLessonResourceDao();
 		this.masterSubjectDao = new MasterSubjectDao();
 		this.chapterDao = new ChapterDao();
+	}
+
+	/**
+	 * Validates an uploaded resource-plan file and, unless the caller asks for
+	 * a dry run, writes the resource plans. The response carries one report
+	 * line per row. A failed row blocks the whole file, so the answer is 400
+	 * and nothing is saved.
+	 */
+	async bulkUpload(resources, dryRun = false) {
+		try {
+			if (!Array.isArray(resources) || resources.length === 0) {
+				return formatApiReponse(
+					false,
+					"resources must be a non-empty array.",
+					{}
+				);
+			}
+
+			// chapterId can be a chapter _id or its topics (name), resolved against
+			// the resource's own board, medium and class.
+			const allChapters = await Chapter.find({
+				isDeleted: { $ne: true },
+			})
+				.select("board medium standard topics")
+				.lean();
+
+			const chapterResolver = buildIdOrNameResolver(allChapters, (chapter) => [
+				`${String(chapter.board).toLowerCase()}|${String(chapter.medium).toLowerCase()}|${chapter.standard}|${String(chapter.topics).trim().toLowerCase()}`,
+			]);
+
+			const resolveChapter = (resource) =>
+				chapterResolver.resolve(
+					resource?.chapterId,
+					typeof resource?.chapterId === "string"
+						? `${String(resource?.board).toLowerCase()}|${String(resource?.medium).toLowerCase()}|${resource?.class}|${resource.chapterId.trim().toLowerCase()}`
+						: null
+				);
+
+			const resolvedChapters = resources.map((resource) => resolveChapter(resource));
+
+			const normalizedResources = resources.map((resource, index) =>
+				resolvedChapters[index]
+					? { ...resource, chapterId: String(resolvedChapters[index]._id) }
+					: resource
+			);
+
+			const rows = normalizedResources.map((resource, index) => {
+				const chapter = resolvedChapters[index];
+
+				if (!chapter) {
+					return {
+						row: index + 1,
+						identity: resources[index]?.lessonName ?? "",
+						errors: [
+							`chapterId "${resources[index]?.chapterId}" matches no active chapter for board "${resource?.board}", medium "${resource?.medium}" and class ${resource?.class}. Give the chapter's id, or its exact name.`,
+						],
+						warnings: [],
+					};
+				}
+
+				const { errors, warnings } = checkRow(resource);
+
+				return {
+					row: index + 1,
+					identity: resource?.lessonName ?? "",
+					errors,
+					warnings,
+				};
+			});
+
+			const invalid = rows.filter((row) => row.errors.length > 0);
+
+			const report = {
+				dryRun,
+				total: rows.length,
+				valid: rows.length - invalid.length,
+				invalid: invalid.length,
+				inserted: 0,
+				insertedIds: [],
+				rows,
+			};
+
+			if (invalid.length > 0) {
+				return formatApiReponse(
+					false,
+					`${invalid.length} of ${rows.length} resources failed validation. Nothing was saved.`,
+					report
+				);
+			}
+
+			if (dryRun) {
+				return formatApiReponse(true, "All resources passed validation.", report);
+			}
+
+			const documents = normalizedResources.map((resource) => ({
+				...resource,
+				isDeleted: false,
+			}));
+
+			const saved = await MasterResource.insertMany(documents, { ordered: true });
+
+			report.inserted = saved.length;
+			report.insertedIds = saved.map((resource) => String(resource._id));
+
+			return formatApiReponse(
+				true,
+				`${saved.length} resources were added.`,
+				report
+			);
+		} catch (err) {
+			return formatApiReponse(false, err?.message, err);
+		}
 	}
 
 	async updateMasterResource(id, updates) {
