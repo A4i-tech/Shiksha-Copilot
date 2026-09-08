@@ -360,7 +360,7 @@ class SchoolManager extends BaseManager {
       if (search) {
         const searchFields = ["name", "phone"];
 
-        const regexExpressions = (searchFields || []).map((field) => ({
+        const regexExpressions = searchFields.map((field) => ({
           [field]: { $regex: new RegExp(escapeRegExp(search), "i") },
         }));
 
