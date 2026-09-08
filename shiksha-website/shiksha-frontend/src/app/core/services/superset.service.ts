@@ -9,6 +9,16 @@ interface GuestTokenResponse {
   mobileDashboardUuid: string | null;
 }
 
+export interface BlockDrillRow {
+  name: string;
+  lpCount: number;
+}
+
+export interface DistrictDrillResponse {
+  district: string;
+  blocks: BlockDrillRow[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class SupersetService {
   dashboardUuid = '';
@@ -30,5 +40,12 @@ export class SupersetService {
     return firstValueFrom(
       this.http.get<{ lastSyncAt: string | null }>(`${environment.apiUrl}/analytics/sync-status`)
     ).then((res) => res.lastSyncAt ? new Date(res.lastSyncAt) : null);
+  }
+
+  getDistrictDrillData(district: string): Promise<DistrictDrillResponse> {
+    const params = new URLSearchParams({ district });
+    return firstValueFrom(
+      this.http.get<DistrictDrillResponse>(`${environment.apiUrl}/superset/district-drill?${params}`)
+    );
   }
 }

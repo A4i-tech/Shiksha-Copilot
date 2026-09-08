@@ -160,4 +160,75 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
   }
 });
 
+// GET /api/superset/district-drill?district=<name>
+// Returns block-level lesson plan counts for the given district.
+router.get("/superset/district-drill", isAuthenticated, requirePermission("analytics.view"), async (req, res) => {
+  const district = String(req.query.district || "").trim();
+  if (!district) return res.status(400).json({ error: "district required" });
+  if (!/^[\w\s\-()',./]+$/.test(district)) return res.status(400).json({ error: "invalid district name" });
+
+  try {
+    const { accessToken: adminToken, csrfToken, cookieHeader } = await getSupersetAuth();
+
+    // Look up Analytics DB id in Superset
+    const dbsResp = await axios.get(`${SUPERSET_URL}/api/v1/database/?q=(page_size:50)`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+      timeout: AXIOS_TIMEOUT_MS,
+    });
+    const dbId = dbsResp.data.result?.find(d => d.database_name === "Analytics DB")?.id;
+    if (!dbId) throw new Error("Analytics DB not found in Superset");
+
+    // Apply scope restriction: for STATE scope, verify the district is in the user's state
+    const analyticsScopes = getPermission(req.permissions, "analytics.view");
+    const isGlobal = analyticsScopes?.some(s => s.scopeType === "GLOBAL");
+    const stateScope = analyticsScopes?.find(s => s.scopeType === "STATE");
+    const stateName = stateScope?.dep?.state ?? null;
+
+    const stateClause = (!isGlobal && stateName)
+      ? `AND s.name = ${sql(stateName)}`
+      : "";
+
+    const sqlQuery = `
+      SELECT b.name AS block_name, COALESCE(COUNT(DISTINCT flp.lp_id), 0) AS lp_count
+      FROM dim_regions b
+      JOIN dim_regions d ON b.parent_id = d.region_id AND d.type = 'district'
+      JOIN dim_regions s ON d.parent_id = s.region_id AND s.type = 'state'
+      JOIN dim_users du ON du.region_id = b.region_id
+      LEFT JOIN fact_lesson_plans flp ON flp.user_id = du.user_id
+      WHERE b.type = 'block' AND d.name = ${sql(district)} ${stateClause}
+      GROUP BY b.name
+      ORDER BY lp_count DESC
+      LIMIT 50
+    `;
+
+    let sqlResp;
+    try {
+      sqlResp = await axios.post(
+        `${SUPERSET_URL}/api/v1/sqllab/execute/`,
+        { database_id: dbId, sql: sqlQuery, runAsync: false },
+        { headers: { Authorization: `Bearer ${adminToken}`, "X-CSRFToken": csrfToken, Cookie: cookieHeader, Referer: SUPERSET_URL }, timeout: 30_000 },
+      );
+    } catch (e) {
+      if (e?.response?.status === 401) {
+        _authCache = null;
+        const fresh = await getSupersetAuth();
+        sqlResp = await axios.post(
+          `${SUPERSET_URL}/api/v1/sqllab/execute/`,
+          { database_id: dbId, sql: sqlQuery, runAsync: false },
+          { headers: { Authorization: `Bearer ${fresh.accessToken}`, "X-CSRFToken": fresh.csrfToken, Cookie: fresh.cookieHeader, Referer: SUPERSET_URL }, timeout: 30_000 },
+        );
+      } else throw e;
+    }
+
+    const rows = sqlResp.data?.data ?? [];
+    res.json({
+      district,
+      blocks: rows.map(r => ({ name: r.block_name, lpCount: Number(r.lp_count) })),
+    });
+  } catch (err) {
+    console.error("[superset] district-drill failed:", { message: err.message, status: err?.response?.status, body: JSON.stringify(err?.response?.data)?.slice(0, 300) });
+    res.status(500).json({ error: "Failed to fetch block data" });
+  }
+});
+
 module.exports = router;

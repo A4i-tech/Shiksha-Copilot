@@ -2,7 +2,7 @@ import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/co
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Subscription } from 'rxjs';
-import { SupersetService } from 'src/app/core/services/superset.service';
+import { SupersetService, BlockDrillRow } from 'src/app/core/services/superset.service';
 import { environment } from 'src/environments/environment';
 import type { EmbeddedDashboard } from '@superset-ui/embedded-sdk';
 
@@ -21,6 +21,11 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   loading = true;
   error = '';
   lastSyncAt: Date | null = null;
+
+  selectedDistrict: string | null = null;
+  drillBlocks: BlockDrillRow[] = [];
+  drillLoading = false;
+  drillError = '';
 
   get syncTimeAgo(): string {
     if (!this.lastSyncAt) return '';
@@ -122,7 +127,12 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
           hideTitle: true,
           hideChartControls: false,
           filters: { visible: true, expanded: false },
+          // Required for cross-filter events to be emitted to the SDK
+          emitDataMasks: true,
         },
+      });
+      this.embed.observeDataMask((dataMask) => {
+        this.handleDataMask(dataMask);
       });
       this.loading = false;
       // Initial poll — charts render progressively
@@ -151,6 +161,52 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
         iframe.style.height = `${size.height}px`;
       }
     } catch {}
+  }
+
+  get drillMaxLpCount(): number {
+    return this.drillBlocks.reduce((m, b) => Math.max(m, b.lpCount), 1);
+  }
+
+  closeDrillDown() {
+    this.selectedDistrict = null;
+    this.drillBlocks = [];
+    this.drillError = '';
+  }
+
+  private handleDataMask(dataMask: Record<string, any>) {
+    // dataMask shape: { [chartId]: { filterState: { value: [...] } } }
+    // Cross-filter for district choropleth sends selected district_name values
+    let districtName: string | null = null;
+    if (dataMask && typeof dataMask === 'object') {
+      for (const chartId of Object.keys(dataMask)) {
+        const mask = dataMask[chartId];
+        const values: unknown[] = mask?.filterState?.value ?? [];
+        if (values.length > 0) {
+          const candidate = String(values[0]);
+          if (candidate) { districtName = candidate; break; }
+        }
+      }
+    }
+    if (!districtName) {
+      // Deselect — close panel
+      this.selectedDistrict = null;
+      this.drillBlocks = [];
+      return;
+    }
+    if (districtName === this.selectedDistrict) return;
+    this.selectedDistrict = districtName;
+    this.drillBlocks = [];
+    this.drillLoading = true;
+    this.drillError = '';
+    this.supersetService.getDistrictDrillData(districtName)
+      .then(res => {
+        this.drillBlocks = res.blocks;
+        this.drillLoading = false;
+      })
+      .catch(() => {
+        this.drillError = 'Failed to load block data.';
+        this.drillLoading = false;
+      });
   }
 
   private clearTimers() {
