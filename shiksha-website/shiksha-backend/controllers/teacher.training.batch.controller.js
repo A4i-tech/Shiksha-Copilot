@@ -6,6 +6,7 @@ const BaseController = require('./base.controller');
 const TeacherTrainingBatchManager = require('../managers/teacher.training.batch.manager');
 const handleError = require('../helper/handleError');
 const {
+  deleteFromStorage,
   getPreSignedFileUrl,
   uploadToStorage,
 } = require("../services/azure.blob.service");
@@ -74,8 +75,13 @@ class TeacherTrainingBatchController extends BaseController {
     await newBatch.validate();
     newBatch.permissionLetterPdfPath = await uploadFile(pdfFile[0]);
 
-    const savedBatch = await newBatch.save();
-    res.status(201).json(savedBatch);
+    try {
+      const savedBatch = await newBatch.save();
+      return res.status(201).json(savedBatch);
+    } catch (error) {
+      await deleteFromStorage(newBatch.permissionLetterPdfPath);
+      throw error;
+    }
   } catch (err) {
     logger.error(`Teacher training batch creation failed: ${err.message}`);
     res.status(err.name === 'ValidationError' ? 400 : 500).json({ message: err.message });
