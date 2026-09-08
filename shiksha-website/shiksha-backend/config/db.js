@@ -5,6 +5,7 @@ const MONGO_URL = process.env.MONGO_URL;
 const runMigrations = require("../migrations/migration");
 const QuestionBankCache = require("../models/question.bank.cache.model");
 const QuestionBankConfiguration = require("../models/question.bank.config.model");
+const AuditLog = require("../models/audit.log.model");
 
 class DBService {
 	constructor() {
@@ -17,6 +18,7 @@ class DBService {
 			mongoose.Promise = global.Promise;
 			await mongoose.connect(MONGO_URL);
 			this.connection = mongoose.connection;
+			await AuditLog.updateMany({ status: "in_progress" }, { $set: { status: "failure", logUrl: null } });
 			await this.onConnect();
 			return { connected: true, message: "Connected To Database" };
 		} catch (err) {
