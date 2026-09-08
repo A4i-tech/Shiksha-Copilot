@@ -512,7 +512,8 @@ class UserManager extends BaseManager {
     let deviceType = 'desktop';
     if (agent.isTablet) deviceType = 'tablet';
     else if (agent.isMobile) deviceType = 'mobile';
-    const userActivity = await this.dao.activityLog(_id, { ...req.body, deviceType });
+    const userAgent = agent.source || null;
+    const userActivity = await this.dao.activityLog(_id, { ...req.body, deviceType, userAgent });
     return formatApiReponse(true, "Logs saved successfully!", userActivity);
   }
 

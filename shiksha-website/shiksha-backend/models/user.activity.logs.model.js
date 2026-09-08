@@ -29,6 +29,9 @@ const UserActivityLogsSchema = new mongoose.Schema({
     },
     deviceType:{
         type:String
+    },
+    userAgent:{
+        type:String
     }
 },
 {
