@@ -1,10 +1,12 @@
+import { runtimeEnv } from './runtime-env';
+
 export const environment = {
     production: false,
-    apiUrl: 'your_backend_url',
+    apiUrl: runtimeEnv.apiUrl,
     CRYPTO_SECRET: 'your_crypto_secret',
     EXP_MONTH: 3,
-    turnstileSiteKey: 'your_turnstile_site_key',
-    supersetUrl: 'your_superset_url',
-    supersetDashboardUuid: 'your_superset_dashboard_uuid',
-    supersetMobileDashboardUuid: 'your_superset_mobile_dashboard_uuid',
+    turnstileSiteKey: runtimeEnv.turnstileSiteKey,
+    supersetUrl: runtimeEnv.supersetUrl,
+    supersetDashboardUuid: runtimeEnv.supersetDashboardUuid,
+    supersetMobileDashboardUuid: runtimeEnv.supersetMobileDashboardUuid,
 };

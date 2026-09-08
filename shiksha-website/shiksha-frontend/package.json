@@ -4,6 +4,8 @@
   "license": "MIT",
   "scripts": {
     "ng": "ng",
+    "ensure-env": "node -e \"const fs=require('fs');if(!fs.existsSync('src/assets/env.js'))fs.copyFileSync('env.example.js','src/assets/env.js')\"",
+    "prestart": "npm run ensure-env",
     "start": "ng serve",
     "build": "ng build",
     "build-dev": "ng build --configuration=development",
