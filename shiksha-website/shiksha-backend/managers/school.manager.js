@@ -36,7 +36,7 @@ class SchoolManager extends BaseManager {
         return formatApiReponse(false, "Disecode already exists", null);
       }
 
-      school = await this.dao.create(req.body);
+      school = await this.dao.create(req.body, session);
 
       if (!school) {
         await session.abortTransaction();
@@ -54,7 +54,7 @@ class SchoolManager extends BaseManager {
               schoolId: school._id,
             };
 
-            classCreates.push(this.classDao.create(classPayload));
+            classCreates.push(await this.classDao.create(classPayload, session));
           }
         }
       }
