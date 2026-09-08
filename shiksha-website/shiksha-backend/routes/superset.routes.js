@@ -143,7 +143,11 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
       name: mongoUser.identity.name || "Unknown",
     }).catch((e) => console.error("[superset] audit log failed:", e.message));
 
-    res.json({ token });
+    res.json({
+      token,
+      dashboardUuid: SUPERSET_DASHBOARD_UUID,
+      mobileDashboardUuid: SUPERSET_MOBILE_DASHBOARD_UUID || null,
+    });
   } catch (err) {
     const isTimeout = err.code === "ECONNABORTED";
     const statusCode = err?.response?.status;
