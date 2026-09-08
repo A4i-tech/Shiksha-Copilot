@@ -383,35 +383,17 @@ class UserManager extends BaseManager {
   }
 
   async uploadProfileImage(userId, file) {
-    try {
-      let user = await this.dao.getById(userId);
-      if (!user) {
-        return { success: false, message: "Teacher not found" };
-      }
+    let user = await this.dao.getById(userId);
+    if (!user) return { success: false, message: "Teacher not found" };
 
-      let expireLimit = 5 * 24 * 60 * 60;
-      const filePath = await uploadToStorage(file.buffer, `${userId}_photo`, file.mimetype);
+    const expireLimit = 5 * 24 * 60 * 60;
+    const filePath = await uploadToStorage(file.buffer, `${userId}_photo`, file.mimetype);
 
-      user = await this.dao.update(userId, {
-        profileImage: filePath,
-        profileImageExpiresIn:
-          parseInt(Date.now() / 1000) + Number(expireLimit),
-      });
+    user = await this.dao.update(userId, { profileImage: filePath, profileImageExpiresIn: parseInt(Date.now() / 1000) + expireLimit });
+    if (!user) return { success: false, message: "Failed to update image!", data: null };
 
-      if (!user) {
-        return {
-          success: false,
-          message: "Failed to update image!",
-          data: null,
-        };
-      }
-
-      const { roles, ...data } = user.toObject();
-      return { success: true, message: "Image uploaded successfully!", data };
-    } catch (err) {
-      console.log("Error --> UserManager -> uploadProfileImage()", err);
-      return { success: false, message: "Error uploading image", data: err };
-    }
+    const { roles, ...data } = user.toObject();
+    return { success: true, message: "Image uploaded successfully!", data };
   }
 
   async removeProfileImage(userId) {

@@ -4,7 +4,6 @@ const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
-const logger = require("../config/loggers");
 const ObjectId = mongoose.Types.ObjectId;
 
 /** @extends {BaseController<QuestionBankManager>} */
@@ -204,18 +203,11 @@ class QuestionBankController extends BaseController {
   }
 
   async uploadBulkQuestions(req, res) {
-    try {
-      const master = req.body?.chapters ? req.body : { chapters: req.body };
+    const master = req.body?.chapters ? req.body : { chapters: req.body };
 
-      const result = await this.manager.insertChaptersAndQuestions([
-        master,
-      ]);
+    const result = await this.manager.insertChaptersAndQuestions([master]);
 
-      return res.status(200).json(result);
-    } catch (err) {
-      logger.error(`Question upload failed: ${err.message}`);
-      return res.status(500).json({ success: false, message: err.message });
-    }
+    return res.status(200).json(result);
   }
 }
 
