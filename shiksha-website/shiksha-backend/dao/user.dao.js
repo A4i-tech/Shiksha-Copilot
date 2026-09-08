@@ -103,7 +103,7 @@ class UserDao extends BaseDao {
 	}
 
 	async activityLog(userId,data){
-		const { planId, draftId, idleTime, interactionTime, moduleName, isCompleted, deviceType } = data;
+		const { planId, draftId, idleTime, interactionTime, moduleName, isCompleted, deviceType, userAgent } = data;
 
 		if (draftId) {
 			let activityLog = await UserActivityLogs.findOne({ draftId , userId});
@@ -128,7 +128,8 @@ class UserDao extends BaseDao {
 					moduleName,
 					userId,
 					isCompleted,
-					deviceType
+					deviceType,
+					userAgent
 				});
 
 				await activityLog.save();
@@ -142,7 +143,8 @@ class UserDao extends BaseDao {
 					interactionTime,
 					moduleName,
 					userId,
-					deviceType
+					deviceType,
+					userAgent
 				});
 
 				await activityLog.save();
@@ -154,7 +156,8 @@ class UserDao extends BaseDao {
 				interactionTime,
 				moduleName,
 				userId,
-				deviceType
+				deviceType,
+				userAgent
 			});
 
 			await activityLog.save();
