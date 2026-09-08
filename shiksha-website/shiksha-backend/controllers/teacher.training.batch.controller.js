@@ -83,8 +83,9 @@ class TeacherTrainingBatchController extends BaseController {
       throw error;
     }
   } catch (err) {
-    logger.error(`Teacher training batch creation failed: ${err.message}`);
-    res.status(err.name === 'ValidationError' ? 400 : 500).json({ message: err.message });
+    if (err.name === 'ValidationError') return res.status(400).json({ message: err.message });
+    logger.error('Teacher training batch creation failed', { stack: err.stack });
+    return res.status(500).json({ message: 'Internal server error' });
   }
   }
 
@@ -342,8 +343,8 @@ class TeacherTrainingBatchController extends BaseController {
 
     return res.status(200).json(updatedBatch);
   } catch (err) {
-    logger.error(`Teacher training file upload failed: ${err.message}`);
-    res.status(500).json({ message: err.message });
+    logger.error('Teacher training file upload failed', { stack: err.stack });
+    return res.status(500).json({ message: 'Internal server error' });
   }
   }
 
