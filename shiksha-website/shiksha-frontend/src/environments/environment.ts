@@ -1,10 +1,12 @@
+import { runtimeEnv } from './runtime-env';
+
 export const environment = {
     production: false,
-    apiUrl: 'http://localhost:8080/api',
+    apiUrl: runtimeEnv.apiUrl,
     CRYPTO_SECRET: 'your_crypto_secret',
     EXP_MONTH: 3,
-    turnstileSiteKey: '',
-    supersetUrl: 'http://localhost:8088',
-    supersetDashboardUuid: 'a28bffa3-9b9c-447b-be30-f8eb91500711',
-    supersetMobileDashboardUuid: '35d238f0-3150-4c56-93f8-fc9e4f024585',
+    turnstileSiteKey: runtimeEnv.turnstileSiteKey,
+    supersetUrl: runtimeEnv.supersetUrl,
+    supersetDashboardUuid: runtimeEnv.supersetDashboardUuid,
+    supersetMobileDashboardUuid: runtimeEnv.supersetMobileDashboardUuid,
 };

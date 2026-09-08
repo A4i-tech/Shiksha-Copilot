@@ -17,7 +17,7 @@ on:
         required: true
         type: string
       turnstile_site_key:
-        description: "Cloudflare Turnstile site key; leave blank to disable CAPTCHA"
+        description: "Cloudflare Turnstile site key; required, build fails if blank"
         required: false
         type: string
         default: ""
@@ -95,19 +95,11 @@ jobs:
       - name: Build Angular app
         working-directory: shiksha-website/shiksha-frontend
         run: |
-          if [ "${{ inputs.deploy_target }}" != "" ]; then
-            find src/environments -name "environment*.ts" -print \
-              -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \;
-          fi
-          find src/environments -name "environment*.ts" \
-            -exec sed -i "s|your_turnstile_site_key|${TURNSTILE_SITE_KEY}|g" {} \; \
-            -exec sed -i "s|your_superset_url|${SUPERSET_URL}|g" {} \; \
-            -exec sed -i "s|your_superset_dashboard_uuid|${SUPERSET_DASHBOARD_UUID}|g" {} \; \
-            -exec sed -i "s|your_superset_mobile_dashboard_uuid|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" {} \;
-
           npm ci
           npm run build -- --configuration ${{ inputs.environment }} \
             ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
+          . ./render-env.sh
+          render_env dist/shiksha-frontend/assets/env.template.js dist/shiksha-frontend/assets/env.js
 
       - name: Setup Pages
         if: inputs.deploy_target == 'github-pages'

@@ -69,8 +69,49 @@ jobs:
           push: false
           tags: shiksha-frontend-local
           load: true
+          build-args: BUILD_CONFIGURATION=production
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Verify runtime env substitution
+        run: |
+          set -euo pipefail
+          CID=$(docker run -d \
+            -e BACKEND_URL=/api \
+            -e TURNSTILE_SITE_KEY=test-turnstile-key \
+            -e SUPERSET_URL=https://superset.example.com \
+            -e SUPERSET_DASHBOARD_UUID=uuid-desktop \
+            -e SUPERSET_MOBILE_DASHBOARD_UUID=uuid-mobile \
+            -p 18080:8000 shiksha-frontend-local)
+          for i in $(seq 1 10); do
+            if curl -fsS http://localhost:18080/assets/env.js -o /tmp/env.js; then break; fi
+            [ "$i" -eq 10 ] && { echo "::error::container never came up"; docker logs "$CID"; exit 1; }
+            sleep 1
+          done
+          OUT=$(cat /tmp/env.js)
+          echo "$OUT"
+          docker logs "$CID"
+          docker rm -f "$CID" >/dev/null
+          node --check /tmp/env.js
+          echo "$OUT" | grep -q '"/api"'
+          echo "$OUT" | grep -q '"test-turnstile-key"'
+          echo "$OUT" | grep -q '"https://superset.example.com"'
+          echo "$OUT" | grep -q '"uuid-desktop"'
+          echo "$OUT" | grep -q '"uuid-mobile"'
+          if echo "$OUT" | grep -q '\${'; then
+            echo "::error::leftover \${...} placeholder in env.js"
+            exit 1
+          fi
+
+      - name: Verify container refuses to start without BACKEND_URL
+        run: |
+          set -euo pipefail
+          if docker run --rm shiksha-frontend-local 2>/tmp/no-backend-url.log; then
+            echo "::error::container should have exited non-zero with no BACKEND_URL set"
+            cat /tmp/no-backend-url.log
+            exit 1
+          fi
+          grep -q "BACKEND_URL is required" /tmp/no-backend-url.log
 
   push:
     runs-on: ubuntu-latest
@@ -107,6 +148,8 @@ jobs:
           file: shiksha-website/shiksha-frontend/Dockerfile
           push: true
           tags: ${{ needs.build.outputs.image_tags }}
-          build-args: SHIKSHA_COPILOT_BUILD=${{ github.sha }}
+          build-args: |
+            SHIKSHA_COPILOT_BUILD=${{ github.sha }}
+            BUILD_CONFIGURATION=production
           cache-from: type=gha
           cache-to: type=gha,mode=max
