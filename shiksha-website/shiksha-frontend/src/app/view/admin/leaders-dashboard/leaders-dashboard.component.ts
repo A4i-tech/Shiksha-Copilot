@@ -48,12 +48,12 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
 
   private get dashboardUuid(): string {
     const isMobile = this.breakpointObserver.isMatched(MOBILE_BREAKPOINT);
-    const mobileUuid = environment.supersetMobileDashboardUuid;
-    return (isMobile && mobileUuid) ? mobileUuid : environment.supersetDashboardUuid;
+    const mobileUuid = this.supersetService.mobileDashboardUuid;
+    return (isMobile && mobileUuid) ? mobileUuid : this.supersetService.dashboardUuid;
   }
 
   async ngOnInit() {
-    if (!environment.supersetUrl || !environment.supersetDashboardUuid || environment.supersetUrl.startsWith('your_') || environment.supersetDashboardUuid.startsWith('your_')) {
+    if (!environment.supersetUrl || environment.supersetUrl.startsWith('your_')) {
       this.error = 'Dashboard not configured.';
       this.loading = false;
       return;
@@ -96,8 +96,6 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   private async doEmbed() {
-    const uuid = this.dashboardUuid;
-    this.activeUuid = uuid;
     this.loading = true;
     this.error = '';
     this.clearTimers();
@@ -105,6 +103,15 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       this.mountPoint.nativeElement.innerHTML = '';
     }
     try {
+      // Fetch first token — also populates UUIDs in service as a side effect
+      await this.supersetService.getGuestToken();
+      const uuid = this.dashboardUuid;
+      if (!uuid) {
+        this.error = 'Dashboard not configured.';
+        this.loading = false;
+        return;
+      }
+      this.activeUuid = uuid;
       const { embedDashboard } = await import('@superset-ui/embedded-sdk');
       this.embed = await embedDashboard({
         id: uuid,

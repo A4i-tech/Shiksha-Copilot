@@ -3,14 +3,27 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
+interface GuestTokenResponse {
+  token: string;
+  dashboardUuid: string;
+  mobileDashboardUuid: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SupersetService {
+  dashboardUuid = '';
+  mobileDashboardUuid: string | null = null;
+
   constructor(private http: HttpClient) {}
 
   getGuestToken(): Promise<string> {
     return firstValueFrom(
-      this.http.post<{ token: string }>(`${environment.apiUrl}/superset/guest-token`, {})
-    ).then((res) => res.token);
+      this.http.post<GuestTokenResponse>(`${environment.apiUrl}/superset/guest-token`, {})
+    ).then((res) => {
+      this.dashboardUuid = res.dashboardUuid;
+      this.mobileDashboardUuid = res.mobileDashboardUuid;
+      return res.token;
+    });
   }
 
   getSyncStatus(): Promise<Date | null> {
