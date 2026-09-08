@@ -321,15 +321,26 @@ class TeacherTrainingBatchController extends BaseController {
     if (!await canAccessBatch(req.permissions, req.user._id, batch, "training.edit")) return res.status(403).json({ message: 'Batch is outside your scope.' });
 
     if (!Object.keys(req.files || {}).length) return res.status(400).json({ message: 'At least one file is required.' });
-    if (req.files.permissionLetterFile) batch.permissionLetterPdfPath = await uploadFile(req.files.permissionLetterFile[0]);
-    if (req.files.attendanceSheetFile) batch.attendancePdfPath = await uploadFile(req.files.attendanceSheetFile[0]);
-    if (req.files.photos) batch.photoPaths.push(...await Promise.all(req.files.photos.map(async (file) => ({
-      path: await uploadFile(file),
-      mimetype: file.mimetype,
-    }))));
 
-    const updatedBatch = await batch.save();
-    res.status(200).json(updatedBatch);
+    const uploadedPaths = [];
+    const upload = async (file) => {
+      const path = await uploadFile(file);
+      uploadedPaths.push(path);
+      return path;
+    };
+
+    let updatedBatch;
+    try {
+      if (req.files.permissionLetterFile) batch.permissionLetterPdfPath = await upload(req.files.permissionLetterFile[0]);
+      if (req.files.attendanceSheetFile) batch.attendancePdfPath = await upload(req.files.attendanceSheetFile[0]);
+      for (const file of req.files.photos || []) batch.photoPaths.push({ path: await upload(file), mimetype: file.mimetype });
+      updatedBatch = await batch.save();
+    } catch (error) {
+      await Promise.all(uploadedPaths.map(deleteFromStorage)).catch((cleanupError) => logger.error(`Teacher training file cleanup failed: ${cleanupError.message}`));
+      throw error;
+    }
+
+    return res.status(200).json(updatedBatch);
   } catch (err) {
     logger.error(`Teacher training file upload failed: ${err.message}`);
     res.status(500).json({ message: err.message });
