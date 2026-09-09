@@ -73,26 +73,6 @@ jobs:
       superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
       superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
 
-  cd-frontend-render:
-    name: Deploy frontend preview (Render)
-    if: |
-      github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    # One shared preview service, and deploying repoints its branch. Serialise
-    # across PRs so two runs can't repoint it while the other is still
-    # deploying (last writer would otherwise win and the reported branch would
-    # not match what is actually live).
-    concurrency:
-      group: render-frontend-preview
-      cancel-in-progress: false
-    uses: ./.github/workflows/deploy-render.yaml
-    with:
-      deploy-name: shiksha-frontend-preview
-      service-id: ${{ vars.RENDER_FRONTEND_SERVICE_ID }}
-      branch: ${{ github.head_ref }}
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-
   cd-api-prod:
     name: Deploy api
     needs: ci-api
