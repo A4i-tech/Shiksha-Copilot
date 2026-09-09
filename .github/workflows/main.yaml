@@ -249,12 +249,9 @@ jobs:
 
   accessibility-tests:
     name: Accessibility Tests
-    needs: ci-frontend
     if: |
-      always() &&
       github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      needs.ci-frontend.result == 'success'
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
