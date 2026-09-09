@@ -208,7 +208,7 @@ class QuestionPaperService:
 
         slot_indexed = {local_unique_id(i): v for i, v in enumerate(slot)}
         response_format = create_model("QuestionResponse", **{
-            k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
+            k: (template.type.model, Field(description=f"{template.type.value} question targeting objective: {question.objective}"))
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 
