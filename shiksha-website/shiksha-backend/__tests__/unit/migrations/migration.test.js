@@ -1,4 +1,5 @@
 jest.mock("../../../migrations/unify-users", () => jest.fn().mockResolvedValue());
+jest.mock("../../../migrations/answer-count-backfill", () => jest.fn().mockResolvedValue());
 
 const Chapter = require("../../../models/chapter.model");
 const MasterLesson = require("../../../models/master.lesson.model");

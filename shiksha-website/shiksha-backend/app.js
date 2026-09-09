@@ -6,7 +6,9 @@ if (!globalThis.crypto) {
 const dotenv = require("dotenv");
 dotenv.config();
 
-require("applicationinsights").setup().start();
+const appInsights = require("applicationinsights");
+appInsights.setup().start();
+appInsights.defaultClient.context.tags[appInsights.defaultClient.context.keys.cloudRole] = "shiksha-backend";
 
 const express = require("express");
 const cors = require("cors");
@@ -97,7 +99,12 @@ if (process.env.SHIKSHA_DEVTOOLS === "true") app.use("/api/devtools", require(".
 app.use(errorMiddleware);
 
 process.on('unhandledRejection', (reason, promise) => {
-	console.log(promise, reason);
-	process.exit(1);
+	const client = require("applicationinsights").defaultClient;
+	if (client) {
+		client.trackException({ exception: reason });
+		client.flush({ callback: () => process.exit(1) });
+	} else {
+		process.exit(1);
+	}
 })
 app.listen(PORT, () => console.log(`App listening on port ${PORT}!`));

@@ -170,8 +170,22 @@
         <div class="md:overflow-x-auto">
           <table data-testid="template-question-table" class="block w-full text-content md:table md:table-auto md:border">
             <thead class="hidden text-xs bg-[#edf6fe] md:table-header-group"><tr>
-              <th class="px-4 py-3 border">{{ 'Question Type' | translate }}</th><th class="px-4 py-3 border">{{ 'Number of Questions' | translate }}</th>
-              <th class="px-4 py-3 border">{{ 'Marks per Question' | translate }}</th><th class="px-4 py-3 border">{{ 'Action' | translate }}</th>
+              <th class="px-4 py-3 border">{{ 'Question Type' | translate }}</th><th class="px-4 py-3 border">{{ 'Total Questions' | translate }}</th>
+              <th class="px-4 py-3 border">{{ 'Marks per Question' | translate }}</th>
+              <th class="px-4 py-3 border">
+                <span class="inline-flex items-center gap-1">
+                  {{ 'Required Questions' | translate }}
+                  <span class="relative group cursor-help" tabindex="0" (focus)="requiredQuestionsHelpOpen = true"
+                    (blur)="requiredQuestionsHelpOpen = false" (click)="requiredQuestionsHelpOpen = true">
+                    <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="Required questions information" />
+                    <span role="tooltip" [attr.aria-label]="'Required questions information' | translate" [class.opacity-100]="requiredQuestionsHelpOpen"
+                      class="grid pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute top-5 left-0 z-50 w-64 gap-1 rounded border bg-white p-3 text-xs font-normal shadow-md normal-case">
+                      {{ 'Number of questions the student must actually answer out of the total questions in this row (choose alternates within this group).' | translate }}
+                    </span>
+                  </span>
+                </span>
+              </th>
+              <th class="px-4 py-3 border">{{ 'Action' | translate }}</th>
             </tr></thead>
             <tbody class="block md:table-row-group"><tr *ngFor="let row of templateData; let i = index"
               data-testid="template-row" class="mb-3 grid grid-cols-2 gap-3 rounded border p-3 md:table-row md:p-0">
@@ -180,13 +194,17 @@
                 <app-dropdown data-testid="common-dropdown" [dropDownValues]="questionTypeOptions" [config]="questionTypeConfig"
                 [(ngModel)]="row.type" [ngModelOptions]="{ standalone: true }"></app-dropdown></td>
               <td class="md:table-cell md:border md:p-2">
-                <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Number of Questions' | translate }}</label>
+                <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Total Questions' | translate }}</label>
                 <input data-testid="template-row-count-input" class="form-control" [(ngModel)]="row.numberOfQuestions"
-                [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" /></td>
+                [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" (blur)="onNumberOfQuestionsBlur(row)" /></td>
               <td class="md:table-cell md:border md:p-2">
                 <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Marks per Question' | translate }}</label>
                 <input data-testid="template-row-marks-input" class="form-control" [(ngModel)]="row.marksPerQuestion"
                 [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" /></td>
+              <td class="md:table-cell md:border md:p-2">
+                <label class="mb-1 block text-xs font-semibold md:hidden">{{ 'Required Questions' | translate }}</label>
+                <input data-testid="template-row-answercount-input" type="number" min="1" [max]="row.numberOfQuestions" class="form-control"
+                [(ngModel)]="row.answerCount" [ngModelOptions]="{ standalone: true }" (ngModelChange)="recalculateTemplate()" [title]="'Number of questions the student must actually answer out of the total questions in this row (choose alternates within this group)' | translate" /></td>
               <td class="col-span-2 md:table-cell md:border md:p-2"><div class="flex justify-end gap-2 md:justify-start">
                 <button data-testid="template-row-delete-btn" class="btn-danger" *ngIf="templateData.length > 1" (click)="removeTemplateRow(i)"><img src="assets/icons/delete-icon.svg" alt="Delete" /></button>
                 <button class="btn-primary" *ngIf="i === templateData.length - 1" (click)="addTemplateRow()"><img src="assets/icons/add-icon.svg" alt="Add" /></button>
@@ -205,8 +223,11 @@
           <ng-container *ngFor="let block of questionBankBluePrintData; let i = index">
             <div class="flex justify-between mt-5 font-bold">
               <span>{{ i + 1 }}. {{ questionTypeLabel(block.type) | translate }}</span>
-              <span>{{ block.numberOfQuestions }} X {{ formatMarks(block.marksPerQuestion) }} = {{ formatMarks(block.numberOfQuestions * block.marksPerQuestion) }}</span>
+              <span>{{ block.answerCount }} X {{ formatMarks(block.marksPerQuestion) }} = {{ formatMarks(block.answerCount * block.marksPerQuestion) }}</span>
             </div>
+            <p *ngIf="block.answerCount < block.numberOfQuestions" class="italic text-sm text-content">
+              {{ 'Answer any' | translate }} {{ block.answerCount }} {{ 'of' | translate }} {{ block.numberOfQuestions }}
+            </p>
             <div *ngFor="let distribution of block.questionDistribution; let j = index" class="flex gap-3 mt-3 items-center">
               <span class="w-6 shrink-0">{{ j + 1 }}.</span>
               <div class="flex-1 min-w-0"><app-dropdown data-testid="common-dropdown" [dropDownValues]="chapterOptions" [config]="chapterConfig"
@@ -222,6 +243,7 @@
         <div *ngIf="pickerOpen">
           <app-question-bank-template [currentStep]="4" [totalSteps]="4" [totalMarks]="totalMarks"
             [availableQuestions]="allAvailableQuestions" [preSelectedQuestions]="selectedQuestions"
+            [templateData]="templateData"
             [subject]="f.subject.value" (selectionChange)="onPickerSelectionChange($event)"
             (backClick)="pickerOpen = false">
           </app-question-bank-template>
