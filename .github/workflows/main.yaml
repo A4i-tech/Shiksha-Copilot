@@ -335,27 +335,27 @@ jobs:
             '{"/api": {target: $target, secure: true, changeOrigin: true}}' \
             > /tmp/accessibility-proxy.json
 
-          npm start --prefix "$FRONTEND_DIR" -- \
+          FORCE_COLOR=1 npm start --prefix "$FRONTEND_DIR" -- \
             --configuration=uat \
             --host=localhost \
             --proxy-config=/tmp/accessibility-proxy.json \
-            > /tmp/accessibility-frontend.log 2>&1 &
+            > >(tee /tmp/accessibility-frontend.log) 2>&1 &
           FRONTEND_PID=$!
           trap 'kill "$FRONTEND_PID" 2>/dev/null || true; wait "$FRONTEND_PID" 2>/dev/null || true' EXIT
 
+          echo "Waiting for $FRONTEND_URL..."
           for ((i=1; i<=40; i++)); do
-            if curl -fsS --max-time 10 "$FRONTEND_URL" >/dev/null; then
+            if curl -fs --max-time 10 "$FRONTEND_URL" >/dev/null; then
               node tests/accessibility/run-accessibility.js
               exit $?
             fi
             if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
-              cat /tmp/accessibility-frontend.log
+              echo "Frontend exited before it became reachable"
               exit 1
             fi
             sleep 3
           done
 
-          cat /tmp/accessibility-frontend.log
           echo "Frontend did not become reachable at $FRONTEND_URL"
           exit 1
 
