@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { AuditLogService } from './audit-log.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { HasPermissionDirective } from 'src/app/core/directives/has-permission.directive';
@@ -18,8 +18,10 @@ import { AuditLogList } from 'src/app/shared/interfaces/auditlog.interface';
   templateUrl: './audit-log.component.html',
   styleUrls: ['./audit-log.component.scss'],
 })
-export class AuditLogComponent implements OnInit {
+export class AuditLogComponent implements OnInit, OnDestroy {
   auditLogListData!: [AuditLogList];
+
+  private refreshTimeout?: number;
 
   auditLogHeaders = [
     'Event Type',
@@ -48,10 +50,15 @@ export class AuditLogComponent implements OnInit {
     this.getAuditLogs();
   }
 
+  ngOnDestroy(): void {
+    window.clearTimeout(this.refreshTimeout);
+  }
+
   /**
    * Function to get auditlog list data
    */
   getAuditLogs(): void {
+    window.clearTimeout(this.refreshTimeout);
     this.auditLogService
       .getAuditLogs(this.currentPage, this.pageSize)
       .subscribe({
@@ -60,6 +67,9 @@ export class AuditLogComponent implements OnInit {
           this.totalItems = res.data.totalItems;
           if (this.totalItems <= 10) {
             this.currentPage = 1;
+          }
+          if (this.auditLogListData.some(({ status }) => status === 'in_progress')) {
+            this.refreshTimeout = window.setTimeout(() => this.getAuditLogs(), 3000);
           }
         },
         error: (err) => {
