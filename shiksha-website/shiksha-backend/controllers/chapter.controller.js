@@ -5,7 +5,7 @@ const handleError = require("../helper/handleError")
 /** @extends {BaseController<ChapterManager>} */
 class ChapterController extends BaseController {
 	constructor() {
-		super(new ChapterManager(), ["topics"]);
+		super(new ChapterManager(), ["topics"], true);
 	}
 
 	async getBySemester(req, res){
@@ -29,26 +29,20 @@ class ChapterController extends BaseController {
 	 * saved.
 	 */
 	async bulkUpload(req, res) {
-		try {
-			const dryRun =
-				req.query.dryRun === "true" || req.body.dryRun === true;
+		const dryRun =
+			req.query.dryRun === "true" || req.body.dryRun === true;
 
-			const result = await this.manager.bulkUpload(
-				req.body.chapters || req.body.rows,
-				dryRun
-			);
+		const result = await this.manager.bulkUpload(
+			req.body.chapters || req.body.rows,
+			dryRun,
+			req.user?._id
+		);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> ChapterController -> bulkUpload()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	/**
@@ -56,20 +50,13 @@ class ChapterController extends BaseController {
 	 * upload runs, so a form entry and a file entry cannot differ.
 	 */
 	async adminCreate(req, res) {
-		try {
-			const result = await this.manager.bulkUpload([req.body], false);
+		const result = await this.manager.bulkUpload([req.body], false, req.user?._id);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.log("Error --> ChapterController -> adminCreate()", err);
-			return res.status(400).json(err);
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async scriptFromLp(req, res) {

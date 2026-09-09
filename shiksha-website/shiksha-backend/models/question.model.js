@@ -96,6 +96,8 @@ const QuestionSchema = new mongoose.Schema(
     // Soft delete. The admin question routes set this flag instead of removing
     // the document, because generated papers still point to the question.
     isDeleted: { type: Boolean, default: false, index: true },
+    status: { type: String, enum: ["draft", "under_review", "approved"], default: "approved" },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true, strict: true }
 );
@@ -108,6 +110,7 @@ QuestionSchema.index({
 QuestionSchema.index({ marksPerQuestion: 1, difficulty: 1, answerType: 1 });
 // Full text search - added groupHeading
 QuestionSchema.index({ text: 'text', 'chapter.title': 'text', groupHeading: 'text' });
+QuestionSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
 // Sanitize before save
 QuestionSchema.pre('validate', function (next) {

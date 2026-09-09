@@ -76,6 +76,7 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'medium', label: 'Medium' },
       { field: 'board', label: 'Board' },
       { field: 'orderNumber', label: 'Order' },
+      { field: 'status', label: 'Status' },
     ],
     fields: [
       {
@@ -131,6 +132,7 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'medium', label: 'Medium' },
       { field: 'board', label: 'Board' },
       { field: 'subject', label: 'Subject' },
+      { field: 'status', label: 'Status' },
     ],
     fields: [
       {
@@ -176,6 +178,7 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'medium', label: 'Medium' },
       { field: 'board', label: 'Board' },
       { field: 'subject', label: 'Subject' },
+      { field: 'status', label: 'Status' },
     ],
     fields: [
       {
@@ -217,6 +220,7 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'medium', label: 'Medium' },
       { field: 'answerType', label: 'Answer type' },
       { field: 'difficulty', label: 'Difficulty' },
+      { field: 'status', label: 'Status' },
     ],
     fields: [
       { field: 'text', label: 'Question text', type: 'textarea', requiredOnCreate: true },

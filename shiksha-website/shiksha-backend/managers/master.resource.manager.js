@@ -34,7 +34,7 @@ class MasterResourceManager extends BaseManager {
 	 * line per row. A failed row blocks the whole file, so the answer is 400
 	 * and nothing is saved.
 	 */
-	async bulkUpload(resources, dryRun = false) {
+	async bulkUpload(resources, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(resources) || resources.length === 0) {
 				return formatApiReponse(
@@ -122,7 +122,9 @@ class MasterResourceManager extends BaseManager {
 
 			const documents = normalizedResources.map((resource) => ({
 				...resource,
-				isDeleted: false,
+				status: "draft",
+				isDeleted: true,
+				createdBy: userId,
 			}));
 
 			const saved = await MasterResource.insertMany(documents, { ordered: true });

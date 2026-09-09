@@ -20,6 +20,7 @@ const chapterFields = {
 	isGrammar: Joi.boolean(),
 	grammarTopics: Joi.array().items(Joi.string().allow("")),
 	grammarSourceChapters: Joi.array().items(Joi.string().allow("")),
+	status: Joi.string().valid("draft", "under_review", "approved"),
 };
 
 const chapterCreateSchema = Joi.object({

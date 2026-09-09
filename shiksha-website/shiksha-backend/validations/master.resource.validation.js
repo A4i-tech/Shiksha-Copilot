@@ -36,6 +36,7 @@ const updateSchema = Joi.object({
 	additionalResources: Joi.array(),
 	learningOutcomes: Joi.array(),
 	isAll: Joi.boolean(),
+	status: Joi.string().valid("draft", "under_review", "approved"),
 }).min(1);
 
 const validateMasterResourceUpdate = validateRequestForUpdates(updateSchema);

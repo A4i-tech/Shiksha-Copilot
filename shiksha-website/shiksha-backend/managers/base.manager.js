@@ -44,9 +44,14 @@ class BaseManager {
 		return formatApiReponse(true, "success!", data);
 	}
 
-	async adminUpdate(req) {
+	async adminUpdate(req, allowDeletedStatusUpdate = false) {
 		try {
-			let data = await this.dao.adminUpdate(req.params?.id, req.body);
+			let data = await this.dao.adminUpdate(
+				req.params?.id,
+				req.body,
+				null,
+				allowDeletedStatusUpdate
+			);
 			if (!data) return formatApiReponse(false, "Record not found", null);
 			return formatApiReponse(true, "Updated successfully!", data);
 		} catch (err) {

@@ -91,6 +91,72 @@ describe('ContentListComponent', () => {
     expect(component.uploadCanSave).toBeFalse();
   });
 
+  it('approve should restore before it sets status, because adminUpdate refuses an isDeleted record', () => {
+    component.confirmRecord = { _id: 'row-1', status: 'draft' };
+    component.confirmAction = 'approve';
+
+    component.runConfirmedAction();
+
+    const restoreReq = httpMock.expectOne((r) => r.url.endsWith('/row-1/restore'));
+    expect(restoreReq.request.method).toBe('PATCH');
+    restoreReq.flush({ success: true });
+
+    const updateReq = httpMock.expectOne((r) => r.url.endsWith('/row-1'));
+    expect(updateReq.request.method).toBe('PUT');
+    expect(updateReq.request.body).toEqual({ status: 'approved' });
+    updateReq.flush({ success: true });
+
+    // runConfirmedAction reloads the list on success, drain that request too
+    httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
+  });
+
+  it('unapprove should set status before it soft-deletes, so the update runs while the record is still active', () => {
+    component.confirmRecord = { _id: 'row-2', status: 'approved' };
+    component.confirmAction = 'unapprove';
+
+    component.runConfirmedAction();
+
+    const updateReq = httpMock.expectOne((r) => r.url.endsWith('/row-2') && r.method === 'PUT');
+    expect(updateReq.request.body).toEqual({ status: 'draft' });
+    updateReq.flush({ success: true });
+
+    const deleteReq = httpMock.expectOne((r) => r.url.endsWith('/row-2') && r.method === 'DELETE');
+    deleteReq.flush({ success: true });
+
+    httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
+  });
+
+  it('sendForReview should be a single update call, since draft and under_review are both already soft-deleted', () => {
+    component.confirmRecord = { _id: 'row-3', status: 'draft' };
+    component.confirmAction = 'sendForReview';
+
+    component.runConfirmedAction();
+
+    const updateReq = httpMock.expectOne((r) => r.url.endsWith('/row-3'));
+    expect(updateReq.request.method).toBe('PUT');
+    expect(updateReq.request.body).toEqual({ status: 'under_review' });
+    updateReq.flush({ success: true });
+
+    // no restore or delete call should follow
+    httpMock.expectNone((r) => r.url.endsWith('/row-3/restore'));
+    httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
+  });
+
+  it('sendToDraft should be a single update call, since draft and under_review are both already soft-deleted', () => {
+    component.confirmRecord = { _id: 'row-4', status: 'under_review' };
+    component.confirmAction = 'sendToDraft';
+
+    component.runConfirmedAction();
+
+    const updateReq = httpMock.expectOne((r) => r.url.endsWith('/row-4'));
+    expect(updateReq.request.method).toBe('PUT');
+    expect(updateReq.request.body).toEqual({ status: 'draft' });
+    updateReq.flush({ success: true });
+
+    httpMock.expectNone((r) => r.url.endsWith('/row-4') && r.method === 'DELETE');
+    httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
+  });
+
   it('parseExcelFile should turn a header row and a data row into a row shaped like the entity fields', async () => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('chapters');

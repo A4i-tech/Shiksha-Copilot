@@ -5,50 +5,30 @@ const BaseController = require("./base.controller.js");
 /** @extends {BaseController<QuestionManager>} */
 class QuestionController extends BaseController {
 	constructor() {
-		super(new QuestionManager(), ["text"]);
+		super(new QuestionManager(), ["text"], true);
 	}
 
 	async bulkUpload(req, res) {
-		try {
-			const dryRun =
-				req.query.dryRun === "true" || req.body.dryRun === true;
+		const dryRun =
+			req.query.dryRun === "true" || req.body.dryRun === true;
 
-			const result = await this.manager.bulkUpload(req.body.rows, dryRun);
+		const result = await this.manager.bulkUpload(req.body.rows, dryRun, req.user?._id);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.error("Error --> QuestionController -> bulkUpload()", err);
-			return res.status(500).json({
-				success: false,
-				message: err?.message || "Internal server error",
-			});
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async adminCreate(req, res) {
-		try {
-			const result = await this.manager.bulkUpload([req.body], false);
+		const result = await this.manager.bulkUpload([req.body], false, req.user?._id);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.error("Error --> QuestionController -> adminCreate()", err);
-			return res.status(500).json({
-				success: false,
-				message: err?.message || "Internal server error",
-			});
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 }
 
