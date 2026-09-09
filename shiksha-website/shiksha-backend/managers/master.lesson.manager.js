@@ -967,7 +967,7 @@ class MasterLessonManger extends BaseManager {
 	 * @param {object[]} lessonPlans - lesson plans to upload
 	 * @param {boolean} [dryRun=false] - validate only, save nothing
 	 */
-	async bulkUpload(lessonPlans, dryRun = false) {
+	async bulkUpload(lessonPlans, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(lessonPlans) || lessonPlans.length === 0) {
 				return formatApiReponse(
@@ -1172,7 +1172,9 @@ class MasterLessonManger extends BaseManager {
 
 			const documents = normalizedLessonPlans.map((lessonPlan) => ({
 				...lessonPlan,
-				isDeleted: false,
+				status: "draft",
+				isDeleted: true,
+				createdBy: userId,
 			}));
 
 			const saved = await MasterLesson.insertMany(documents, { ordered: true });

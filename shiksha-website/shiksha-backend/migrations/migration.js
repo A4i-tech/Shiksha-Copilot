@@ -12,6 +12,7 @@ const QuestionBankConfiguration = require("../models/question.bank.config.model"
 const Classes = require("../models/school.class.model")
 const Chapters = require("../models/chapter.model")
 const Schools = require("../models/school.model")
+const Question = require("../models/question.model")
 const unifyUsers = require("./unify-users");
 
 async function runMigrations() {
@@ -29,6 +30,22 @@ async function runMigrations() {
             Chapter.updateMany(
                 { orderNumber: { $type: "string" } },
                 [ { $set: { orderNumber: { $toInt: "$orderNumber" } } } ]
+            ),
+            Chapter.updateMany(
+                { status: { $exists: false } },
+                { $set: { status: "approved" } }
+            ),
+            MasterLesson.updateMany(
+                { status: { $exists: false } },
+                { $set: { status: "approved" } }
+            ),
+            MasterResource.updateMany(
+                { status: { $exists: false } },
+                { $set: { status: "approved" } }
+            ),
+            Question.updateMany(
+                { status: { $exists: false } },
+                { $set: { status: "approved" } }
             ),
         ]);
 

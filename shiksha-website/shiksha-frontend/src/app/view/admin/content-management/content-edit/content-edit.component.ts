@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import {
   ContentEntityConfig,
@@ -142,7 +142,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
    * Method to save the form. The add form sends every field, the edit form
    * sends the changed fields only.
    */
-  save(): void {
+  save(targetStatus: 'draft' | 'under_review' = 'draft'): void {
     const body = this.isCreate
       ? this.buildCreateBody()
       : this.buildChangedBody();
@@ -164,7 +164,18 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     this.isSaving = true;
 
     const request = this.isCreate
-      ? this.contentService.create(this.config.segment, body)
+      ? this.contentService.create(this.config.segment, body).pipe(
+          switchMap((res: any) => {
+            if (targetStatus === 'draft') return of(res);
+
+            const id = res?.data?.insertedIds?.[0];
+            if (!id) throw new Error('The record was created but its ID was not returned.');
+
+            return this.contentService.update(this.config.segment, id, {
+              status: targetStatus,
+            });
+          })
+        )
       : this.contentService.update(this.config.segment, this.recordId, body);
 
     request.subscribe({
@@ -180,6 +191,14 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         this.isSaving = false;
+        // The create route runs the row the same way the bulk upload does, so a
+        // structural rejection carries its detail in data.rows[0].errors, not
+        // in the generic top-level message.
+        const rowErrors = err.error?.data?.rows?.[0]?.errors;
+        if (Array.isArray(rowErrors) && rowErrors.length) {
+          this.utilityService.showError(rowErrors.join(' '));
+          return;
+        }
         this.utilityService.handleError(err);
       },
     });

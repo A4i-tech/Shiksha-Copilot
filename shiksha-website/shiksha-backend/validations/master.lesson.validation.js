@@ -48,6 +48,7 @@ const updateSchema = Joi.object({
 	checkList: Joi.array(),
 	sections: Joi.array().items(Joi.object()),
 	isAll: Joi.boolean(),
+	status: Joi.string().valid("draft", "under_review", "approved"),
 }).min(1);
 
 const validateMasterLessonUpdate = validateRequestForUpdates(updateSchema);

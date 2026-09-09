@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
 import { saveAs } from 'file-saver';
 import * as ExcelJS from 'exceljs';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -16,6 +16,49 @@ import {
   getContentEntityConfig,
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
+
+/** friendly label for the status column; anything not listed here shows as-is */
+const STATUS_LABELS: { [key: string]: string } = {
+  draft: 'Draft',
+  under_review: 'Ready for review',
+  approved: 'Approved',
+};
+
+type ConfirmAction =
+  | 'delete'
+  | 'restore'
+  | 'approve'
+  | 'unapprove'
+  | 'sendForReview'
+  | 'sendToDraft';
+
+/** title and body of the confirm dialog, one entry per action */
+const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: string } } = {
+  delete: {
+    title: 'Delete',
+    body: 'The record moves to the deleted list. Teachers can no longer see it.',
+  },
+  restore: {
+    title: 'Restore',
+    body: 'The record returns to the active list.',
+  },
+  approve: {
+    title: 'Approve',
+    body: 'The record is marked approved and becomes visible to teachers and students.',
+  },
+  unapprove: {
+    title: 'Set to draft',
+    body: 'The record goes back to draft, visible only to the admin who created it.',
+  },
+  sendForReview: {
+    title: 'Send for review',
+    body: 'The record moves to Ready for review, visible to every admin who can approve it.',
+  },
+  sendToDraft: {
+    title: 'Send back to draft',
+    body: 'The record goes back to draft, visible only to the admin who created it.',
+  },
+};
 
 @Component({
   selector: 'app-content-list',
@@ -39,12 +82,17 @@ export class ContentListComponent implements OnInit, OnDestroy {
   pageSize = 10;
   totalItems = 0;
   searchText = '';
-  /** '0' shows the active records, '2' shows the deleted records */
+  /**
+   * '0' active, '2' deleted, '3' draft (only the creator's own rows),
+   * '4' ready for review (every admin's rows)
+   */
   recordState = '0';
   isLoading = false;
 
-  confirmAction: 'delete' | 'restore' | null = null;
+  confirmAction: ConfirmAction | null = null;
   confirmRecord: any = null;
+  /** title/body of the confirm dialog, keyed by action, read from the template */
+  confirmModalCopy = CONFIRM_MODAL_COPY;
 
   /** ids of the rows the admin checked, on the current page */
   selectedIds = new Set<string>();
@@ -268,6 +316,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
       .reduce((current: any, key: string) => current?.[key], record);
 
     if (value === null || value === undefined) return '-';
+    if (field === 'status') return STATUS_LABELS[value] || `${value}`;
     if (Array.isArray(value)) return value.join(', ');
     if (typeof value === 'object') return JSON.stringify(value);
 
@@ -276,10 +325,10 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   /**
    * Method to open the confirmation dialog
-   * @param action delete or restore
+   * @param action delete, restore, approve, unapprove, sendForReview or sendToDraft
    * @param record
    */
-  openConfirm(action: 'delete' | 'restore', record: any): void {
+  openConfirm(action: ConfirmAction, record: any): void {
     this.confirmAction = action;
     this.confirmRecord = record;
   }
@@ -300,19 +349,53 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
     const action = this.confirmAction;
     const id = this.confirmRecord._id;
-    const request =
-      action === 'delete'
-        ? this.contentService.softDelete(this.config.segment, id)
-        : this.contentService.restore(this.config.segment, id);
+    const segment = this.config.segment;
+    let request: Observable<any>;
+    let successMessage: string;
+
+    switch (action) {
+      case 'delete':
+        request = this.contentService.softDelete(segment, id);
+        successMessage = `${this.config.singular} deleted successfully`;
+        break;
+      case 'restore':
+        request = this.contentService.restore(segment, id);
+        successMessage = `${this.config.singular} restored successfully`;
+        break;
+      case 'approve':
+        // Draft rows are soft-deleted, so restore first to clear that flag,
+        // then flip status (adminUpdate rejects an already-deleted record).
+        request = this.contentService
+          .restore(segment, id)
+          .pipe(
+            switchMap(() =>
+              this.contentService.update(segment, id, { status: 'approved' })
+            )
+          );
+        successMessage = `${this.config.singular} approved successfully`;
+        break;
+      case 'unapprove':
+        // Flip status while the record is still active, then soft-delete it.
+        request = this.contentService
+          .update(segment, id, { status: 'draft' })
+          .pipe(switchMap(() => this.contentService.softDelete(segment, id)));
+        successMessage = `${this.config.singular} set to draft`;
+        break;
+      case 'sendForReview':
+        // draft -> under_review: both stay soft-deleted, only status moves.
+        request = this.contentService.update(segment, id, { status: 'under_review' });
+        successMessage = `${this.config.singular} sent for review`;
+        break;
+      case 'sendToDraft':
+        // under_review -> draft: both stay soft-deleted, only status moves.
+        request = this.contentService.update(segment, id, { status: 'draft' });
+        successMessage = `${this.config.singular} sent back to draft`;
+        break;
+    }
 
     request.subscribe({
       next: (res: any) => {
-        this.utilityService.showSuccess(
-          res?.message ||
-            (action === 'delete'
-              ? `${this.config.singular} deleted successfully`
-              : `${this.config.singular} restored successfully`)
-        );
+        this.utilityService.showSuccess(res?.message || successMessage);
         this.closeConfirm();
         this.loadRecords();
       },

@@ -107,7 +107,12 @@ class BaseDao {
 	 * The caller must pass an already validated object. The Joi schema on the
 	 * route is the write allow-list.
 	 */
-	async adminUpdate(id, updates, session = null) {
+	async adminUpdate(
+		id,
+		updates,
+		session = null,
+		allowDeletedStatusUpdate = false
+	) {
 		try {
 			if (!id || !mongoose.Types.ObjectId.isValid(id)) {
 				throw new Error("Invalid ID for update operation");
@@ -115,8 +120,15 @@ class BaseDao {
 			if (!updates || Object.keys(updates).length === 0) {
 				throw new Error("No fields to update");
 			}
+			const statusOnlyTransition =
+				allowDeletedStatusUpdate &&
+				Object.keys(updates).length === 1 &&
+				Object.prototype.hasOwnProperty.call(updates, "status") &&
+				["draft", "under_review"].includes(updates.status);
 			const result = await this.Model.findOneAndUpdate(
-				{ _id: id, isDeleted: { $ne: true } },
+				statusOnlyTransition
+					? { _id: id, status: { $in: ["draft", "under_review"] } }
+					: { _id: id, isDeleted: { $ne: true } },
 				{
 					$set: updates,
 				},

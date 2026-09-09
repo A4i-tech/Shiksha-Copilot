@@ -80,6 +80,15 @@ const masterLessonSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    status: {
+      type: String,
+      enum: ['draft', 'under_review', 'approved'],
+      default: 'approved',
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
 	checkList: [
 		{
 			type: Object,
@@ -98,6 +107,8 @@ const masterLessonSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+masterLessonSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
 const MasterLesson = mongoose.model("MasterLesson", masterLessonSchema);
 

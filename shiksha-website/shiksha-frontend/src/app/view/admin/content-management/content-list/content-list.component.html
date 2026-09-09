@@ -1,168 +1,302 @@
-<section class="p-4" *ngIf="config">
-  <div class="flex gap-2 items-center mb-4">
+<section class="content-list-wrapper px-4 pt-4 md:px-0 md:pt-0" *ngIf="config">
+  <div class="flex gap-2 items-center content-center">
     <img
       src="assets/icons/back-arrow.svg"
       alt=""
       class="cursor-pointer"
       (click)="backNavigation()"
     />
-    <h1 class="text-xl font-semibold">Content management</h1>
+    <h1 class="text-2xl md:text-[30px] md:leading-[48px] font-bold text-content">
+      Content management
+    </h1>
   </div>
 
-  <nav class="flex flex-wrap gap-2 mb-4" aria-label="Content type">
+  <nav class="flex flex-wrap gap-2 mt-4" aria-label="Content type">
     <a
       *ngFor="let entity of entities"
       [routerLink]="['/content-management', entity.key]"
       routerLinkActive="bg-primary text-white"
-      class="px-3 py-2 rounded border border-gray-300 text-sm"
+      class="px-3 py-2 rounded border border-content-50 text-sm text-content"
       [attr.aria-current]="entity.key === config.key ? 'page' : null"
     >
       {{ entity.label }}
     </a>
   </nav>
 
-  <div class="flex flex-wrap items-end gap-4 mb-4">
-    <div class="flex flex-col">
-      <label class="text-sm mb-1" [attr.for]="'content-search'">Search</label>
-      <input
-        id="content-search"
-        type="text"
-        class="border border-gray-300 rounded px-3 py-2"
-        [placeholder]="'Search ' + config.label.toLowerCase()"
-        [ngModel]="searchText"
-        (ngModelChange)="onSearch($event)"
-        name="search"
-      />
-    </div>
+  <div class="content-list-container px-4 py-6 md:px-6 md:py-8 bg-white mt-6 border rounded">
+    <div class="flex flex-col gap-4 sm:gap-5 sm:flex-row sm:justify-between sm:items-start">
+      <p class="text-content text-2xl md:text-[30px] md:leading-[48px] font-bold">{{ config.label }}</p>
 
-    <div class="flex flex-col">
-      <label class="text-sm mb-1" for="content-state">Records</label>
-      <select
-        id="content-state"
-        class="border border-gray-300 rounded px-3 py-2"
-        [ngModel]="recordState"
-        (ngModelChange)="onRecordStateChange($event)"
-        name="recordState"
-      >
-        <option value="0">Active</option>
-        <option value="2">Deleted</option>
-      </select>
-    </div>
-
-    <a
-      *ngIf="config.canCreate"
-      [routerLink]="['/content-management', config.key, 'new']"
-      class="px-4 py-2 rounded bg-primary text-white text-sm"
-    >
-      Add {{ config.singular.toLowerCase() }}
-    </a>
-
-    <button
-      *ngIf="config.canBulkUpload"
-      type="button"
-      class="btn-outline-primary h-9"
-      [disabled]="isUploading"
-      (click)="openBulkUpload()"
-    >
-      <div class="flex items-center justify-center gap-2">
-        <img src="assets/icons/upload.svg" alt="" />
-        <span class="text-nowrap">Bulk Upload</span>
-      </div>
-    </button>
-
-    <button
-      type="button"
-      class="btn-outline-primary h-9"
-      [disabled]="!selectedIds.size"
-      (click)="exportSelected()"
-    >
-      Export selected ({{ selectedIds.size }})
-    </button>
-  </div>
-
-  <p *ngIf="isUploading" class="py-2 text-sm">
-    The check of {{ uploadFileName }} runs...
-  </p>
-
-  <p *ngIf="isLoading" class="py-4">Loading records...</p>
-
-  <div class="overflow-x-auto" *ngIf="!isLoading">
-    <table class="min-w-full text-left text-sm border border-gray-200">
-      <caption class="sr-only">
-        {{ config.label }} available to the admin
-      </caption>
-      <thead class="bg-gray-100">
-        <tr>
-          <th scope="col" class="px-3 py-2">
+      <div class="buttons w-full sm:w-auto flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div class="w-full sm:w-auto">
+          <div class="search-icon min-w-0 flex items-center h-9 w-full sm:w-[300px]">
+            <img src="assets/icons/search.svg" alt="" class="mr-2"/>
             <input
-              type="checkbox"
-              [attr.aria-label]="'Select every ' + config.label.toLowerCase() + ' on this page'"
-              [checked]="allSelected"
-              (change)="toggleSelectAll($any($event.target).checked)"
+              id="content-search"
+              type="text"
+              class="appearance-none border border-content-50 rounded py-2 px-3 text-content leading-tight focus:outline-none bg-surface-muted h-full w-full"
+              [placeholder]="'Search ' + config.label.toLowerCase()"
+              [ngModel]="searchText"
+              (ngModelChange)="onSearch($event)"
+              name="search"
             />
-          </th>
-          <th scope="col" class="px-3 py-2" *ngFor="let column of config.columns">
-            {{ column.label }}
-          </th>
-          <th scope="col" class="px-3 py-2">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let record of listData" class="border-t border-gray-200">
-          <td class="px-3 py-2 align-top">
+          </div>
+        </div>
+
+        <div class="action-btn flex flex-col sm:flex-row sm:flex-wrap gap-2">
+          <button
+            *ngIf="config.canBulkUpload"
+            type="button"
+            class="btn-outline-primary h-9 w-full sm:w-auto"
+            [disabled]="isUploading"
+            (click)="openBulkUpload()"
+          >
+            <div class="flex items-center justify-center gap-2">
+              <img src="assets/icons/upload.svg" alt="" />
+              <span class="text-nowrap">Bulk Upload</span>
+            </div>
+          </button>
+
+          <a
+            *ngIf="config.canCreate"
+            [routerLink]="['/content-management', config.key, 'new']"
+            class="btn-primary h-9 w-full sm:w-auto"
+          >
+            <div class="flex items-center justify-center gap-2">
+              <img src="assets/icons/add.svg" alt="" />
+              <span class="text-nowrap">Add {{ config.singular.toLowerCase() }}</span>
+            </div>
+          </a>
+
+          <button
+            type="button"
+            class="btn-primary h-9 w-full sm:w-auto"
+            [disabled]="!selectedIds.size"
+            (click)="exportSelected()"
+          >
+            <div class="flex items-center justify-center gap-2">
+              <img src="assets/icons/upload_light.svg" alt="" />
+              <span class="text-nowrap">Export selected ({{ selectedIds.size }})</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-7 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 mb-2 md:mb-4">
+      <div class="w-full min-w-0">
+        <label class="form-control-label" for="content-state">Records</label>
+        <select
+          id="content-state"
+          class="form-control"
+          [ngModel]="recordState"
+          (ngModelChange)="onRecordStateChange($event)"
+          name="recordState"
+        >
+          <option value="0">Active</option>
+          <option value="3">Draft</option>
+          <option value="4">Ready for review</option>
+          <option value="2">Deleted</option>
+        </select>
+      </div>
+    </div>
+
+    <p *ngIf="isUploading" class="py-2 text-sm text-content">
+      The check of {{ uploadFileName }} runs...
+    </p>
+
+    <p *ngIf="isLoading" class="py-4 text-content-60">Loading records...</p>
+
+    <ng-container *ngIf="!isLoading">
+      <div class="space-y-4 md:hidden">
+        <div *ngIf="!listData.length" class="text-center text-content-60 py-4 border rounded-xl">
+          No records found.
+        </div>
+        <div *ngFor="let record of listData" class="rounded-xl border p-4 bg-white shadow-sm">
+          <label class="flex items-center gap-2 text-sm text-content-60">
             <input
               type="checkbox"
               [attr.aria-label]="'Select this ' + config.singular.toLowerCase()"
               [checked]="selectedIds.has(record._id)"
               (change)="toggleSelect(record._id, $any($event.target).checked)"
             />
-          </td>
-          <td class="px-3 py-2 align-top" *ngFor="let column of config.columns">
-            {{ getColumnValue(record, column.field) }}
-          </td>
-          <td class="px-3 py-2 align-top whitespace-nowrap">
+            <span>Select</span>
+          </label>
+
+          <div class="mt-3 space-y-3 text-sm">
+            <div *ngFor="let column of config.columns">
+              <p class="text-xs text-content-60">{{ column.label }}</p>
+              <p class="break-words">{{ getColumnValue(record, column.field) }}</p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2 mt-4">
             <a
-              class="text-primary underline mr-3"
-              [routerLink]="[
-                '/content-management',
-                config.key,
-                record._id,
-                'edit'
-              ]"
-              >Edit</a
+              [routerLink]="['/content-management', config.key, record._id, 'edit']"
+              class="btn-outline-primary h-9"
             >
-            <button
-              type="button"
-              class="text-primary underline mr-3"
-              (click)="exportRecord(record)"
-            >
+              Edit
+            </a>
+            <button type="button" class="btn-outline-primary h-9" (click)="exportRecord(record)">
               Export
             </button>
             <button
               *ngIf="recordState === '0'"
               type="button"
-              class="text-red-600 underline"
+              class="btn-outline-primary h-9"
+              (click)="openConfirm('unapprove', record)"
+            >
+              Set to draft
+            </button>
+            <button
+              *ngIf="recordState === '0'"
+              type="button"
+              class="btn-danger h-9"
               (click)="openConfirm('delete', record)"
             >
               Delete
             </button>
             <button
+              *ngIf="recordState === '3'"
+              type="button"
+              class="btn-primary h-9"
+              (click)="openConfirm('sendForReview', record)"
+            >
+              Send for review
+            </button>
+            <button
+              *ngIf="recordState === '4'"
+              type="button"
+              class="btn-primary h-9"
+              (click)="openConfirm('approve', record)"
+            >
+              Approve
+            </button>
+            <button
+              *ngIf="recordState === '4'"
+              type="button"
+              class="btn-outline-primary h-9"
+              (click)="openConfirm('sendToDraft', record)"
+            >
+              Send back to draft
+            </button>
+            <button
               *ngIf="recordState === '2'"
               type="button"
-              class="text-green-700 underline"
+              class="btn-primary h-9"
               (click)="openConfirm('restore', record)"
             >
               Restore
             </button>
-          </td>
-        </tr>
-        <tr *ngIf="!listData.length">
-          <td class="px-3 py-4" [attr.colspan]="config.columns.length + 2">
-            No records found.
-          </td>
-        </tr>
-      </tbody>
-    </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="hidden md:block w-full overflow-x-auto">
+        <table class="table-auto min-w-[900px] w-full border mt-3 rounded-lg text-content" aria-label="content-list">
+          <caption class="sr-only">
+            {{ config.label }} available to the admin
+          </caption>
+          <thead>
+            <tr class="bg-primary-60 rounded-lg border-b">
+              <th scope="col" class="text-left p-4 rounded border-r text-sm text-content">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="'Select every ' + config.label.toLowerCase() + ' on this page'"
+                  [checked]="allSelected"
+                  (change)="toggleSelectAll($any($event.target).checked)"
+                />
+              </th>
+              <th scope="col" class="text-left p-4 border-r text-sm text-content" *ngFor="let column of config.columns">
+                {{ column.label }}
+              </th>
+              <th scope="col" class="text-left p-4 text-sm text-content">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let record of listData" class="border-b">
+              <td class="p-4 border-r align-top">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="'Select this ' + config.singular.toLowerCase()"
+                  [checked]="selectedIds.has(record._id)"
+                  (change)="toggleSelect(record._id, $any($event.target).checked)"
+                />
+              </td>
+              <td class="text-sm p-4 border-r align-top break-words" *ngFor="let column of config.columns">
+                {{ getColumnValue(record, column.field) }}
+              </td>
+              <td class="text-sm p-4 align-top whitespace-nowrap">
+                <div class="flex flex-wrap gap-2">
+                  <a
+                    [routerLink]="['/content-management', config.key, record._id, 'edit']"
+                    class="btn-outline-primary h-9"
+                  >
+                    Edit
+                  </a>
+                  <button type="button" class="btn-outline-primary h-9" (click)="exportRecord(record)">
+                    Export
+                  </button>
+                  <button
+                    *ngIf="recordState === '0'"
+                    type="button"
+                    class="btn-outline-primary h-9"
+                    (click)="openConfirm('unapprove', record)"
+                  >
+                    Set to draft
+                  </button>
+                  <button
+                    *ngIf="recordState === '0'"
+                    type="button"
+                    class="btn-danger h-9"
+                    (click)="openConfirm('delete', record)"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    *ngIf="recordState === '3'"
+                    type="button"
+                    class="btn-primary h-9"
+                    (click)="openConfirm('sendForReview', record)"
+                  >
+                    Send for review
+                  </button>
+                  <button
+                    *ngIf="recordState === '4'"
+                    type="button"
+                    class="btn-primary h-9"
+                    (click)="openConfirm('approve', record)"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    *ngIf="recordState === '4'"
+                    type="button"
+                    class="btn-outline-primary h-9"
+                    (click)="openConfirm('sendToDraft', record)"
+                  >
+                    Send back to draft
+                  </button>
+                  <button
+                    *ngIf="recordState === '2'"
+                    type="button"
+                    class="btn-primary h-9"
+                    (click)="openConfirm('restore', record)"
+                  >
+                    Restore
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!listData.length">
+              <td class="text-center text-content-60 py-2" [attr.colspan]="config.columns.length + 2">
+                No records found.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
   </div>
 
   <app-pagination
@@ -174,30 +308,18 @@
   ></app-pagination>
 
   <app-modal *ngIf="confirmAction">
-    <h2 class="text-lg font-semibold mb-2" id="modal-title">
-      {{ confirmAction === 'delete' ? 'Delete' : 'Restore' }}
+    <h2 class="text-lg font-semibold mb-2 text-content" id="modal-title">
+      {{ confirmModalCopy[confirmAction].title }}
       {{ config.singular.toLowerCase() }}
     </h2>
-    <p class="mb-4">
-      {{
-        confirmAction === 'delete'
-          ? 'The record moves to the deleted list. Teachers can no longer see it.'
-          : 'The record returns to the active list.'
-      }}
+    <p class="mb-4 text-content">
+      {{ confirmModalCopy[confirmAction].body }}
     </p>
     <div class="flex justify-end gap-3">
-      <button
-        type="button"
-        class="px-4 py-2 border border-gray-300 rounded"
-        (click)="closeConfirm()"
-      >
+      <button type="button" class="btn-outline-primary h-9" (click)="closeConfirm()">
         Cancel
       </button>
-      <button
-        type="button"
-        class="px-4 py-2 rounded bg-primary text-white"
-        (click)="runConfirmedAction()"
-      >
+      <button type="button" class="btn-primary h-9" (click)="runConfirmedAction()">
         Confirm
       </button>
     </div>
@@ -221,13 +343,13 @@
   </app-modal>
 
   <app-modal *ngIf="showUploadReport">
-    <h2 class="text-lg font-semibold mb-2" id="modal-title">
+    <h2 class="text-lg font-semibold mb-2 text-content" id="modal-title">
       Upload report of {{ uploadFileName }}
     </h2>
 
-    <p class="mb-2">{{ uploadMessage }}</p>
+    <p class="mb-2 text-content">{{ uploadMessage }}</p>
 
-    <p class="mb-3 text-sm text-gray-700" *ngIf="uploadSummary">
+    <p class="mb-3 text-sm text-content-60" *ngIf="uploadSummary">
       Rows: {{ uploadSummary.total }}. Passed: {{ uploadSummary.valid }}.
       Failed: {{ uploadSummary.invalid }}. Saved: {{ uploadSummary.inserted }}.
     </p>
@@ -238,39 +360,39 @@
           One row for each {{ config.singular.toLowerCase() }} of the file
         </caption>
         <thead>
-          <tr>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1">Row</th>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1">
+          <tr class="bg-primary-60">
+            <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">Row</th>
+            <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">
               {{ config.singular }}
             </th>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1">
+            <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">
               Result
             </th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let row of uploadReport">
-            <td class="border-b border-gray-200 px-2 py-1 align-top">
+            <td class="border-b border-content-30 px-2 py-1 align-top">
               {{ row.row }}
             </td>
-            <td class="border-b border-gray-200 px-2 py-1 align-top">
+            <td class="border-b border-content-30 px-2 py-1 align-top">
               {{ row.identity || '-' }}
             </td>
-            <td class="border-b border-gray-200 px-2 py-1 align-top">
+            <td class="border-b border-content-30 px-2 py-1 align-top">
               <p
-                class="text-red-700"
+                class="text-error"
                 *ngFor="let error of row.errors"
               >
                 {{ error }}
               </p>
               <p
-                class="text-yellow-800"
+                class="text-warn"
                 *ngFor="let warning of row.warnings"
               >
                 {{ warning }}
               </p>
               <p
-                class="text-green-700"
+                class="text-success"
                 *ngIf="!row.errors?.length && !row.warnings?.length"
               >
                 Ready to save.
@@ -282,24 +404,20 @@
     </div>
 
     <div class="flex justify-end gap-3">
-      <button
-        type="button"
-        class="px-4 py-2 border border-gray-300 rounded"
-        (click)="closeUpload()"
-      >
+      <button type="button" class="btn-outline-primary h-9" (click)="closeUpload()">
         Cancel
       </button>
       <button
         *ngIf="uploadSummary && uploadSummary.invalid"
         type="button"
-        class="px-4 py-2 border border-gray-300 rounded"
+        class="btn-outline-primary h-9"
         (click)="backToUpload()"
       >
         Back
       </button>
       <button
         type="button"
-        class="px-4 py-2 rounded bg-primary text-white disabled:opacity-50"
+        class="btn-primary h-9"
         [disabled]="!uploadCanSave || isUploading"
         (click)="saveUpload()"
       >

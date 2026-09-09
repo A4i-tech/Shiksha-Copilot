@@ -192,7 +192,7 @@ class ChapterManager extends BaseManager {
    * @param {boolean} dryRun - true to validate only, false to also insert
    * @returns {Promise<object>} the API response with the report
    */
-  async bulkUpload(chapters, dryRun = false) {
+  async bulkUpload(chapters, dryRun = false, userId) {
     try {
       if (!Array.isArray(chapters) || chapters.length === 0) {
         return formatApiReponse(
@@ -383,7 +383,9 @@ class ChapterManager extends BaseManager {
           title: subTopic,
           learningOutcomes: [],
         })),
-        isDeleted: false,
+        status: "draft",
+        isDeleted: true,
+        createdBy: userId,
       }));
 
       const saved = await Chapter.insertMany(documents, { ordered: true });

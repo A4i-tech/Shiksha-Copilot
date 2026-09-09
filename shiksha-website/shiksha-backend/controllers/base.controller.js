@@ -11,12 +11,15 @@ class BaseController {
 	/**
 	 * @param {TManager} manager
 	 * @param {string[]} [searchFields] fields the `search` query matches, defaults to the user identity fields
+	 * @param {boolean} [hasContentStatus] true for the admin content-management entities (chapter, lesson plan, resource, question), which carry a draft/under_review/approved `status` field alongside `isDeleted`
 	 */
-	constructor(manager, searchFields) {
+	constructor(manager, searchFields, hasContentStatus) {
 		/** @protected @type {TManager} */
 		this.manager = manager;
 		/** @protected @type {string[]} */
 		this.searchFields = searchFields || ["identity.name", "identity.phone"];
+		/** @protected @type {boolean} */
+		this.hasContentStatus = !!hasContentStatus;
 	}
 
 	async getAll(req, res) {
@@ -59,8 +62,17 @@ class BaseController {
 
 		let status = {};
 
-		if (includeDeleted === '2') {
-			status = { isDeleted: true };
+		if (this.hasContentStatus && includeDeleted === '3') {
+			// Draft tab: content only its own author can see, awaiting a send for review.
+			status = { isDeleted: true, status: "draft", createdBy: req?.user?._id };
+		} else if (this.hasContentStatus && includeDeleted === '4') {
+			// Ready for review tab: every admin sees this, awaiting approval.
+			status = { isDeleted: true, status: "under_review" };
+		} else if (includeDeleted === '2') {
+			status = this.hasContentStatus
+				// Deleted tab: soft-deleted content that was live, not a draft or a review awaiting approval.
+				? { isDeleted: true, status: { $nin: ["draft", "under_review"] } }
+				: { isDeleted: true };
 		} else if (includeDeleted === '0') {
 			status = { isDeleted: { $ne: true } };
 		}
@@ -111,23 +123,13 @@ class BaseController {
 	}
 
 	async adminUpdate(req, res) {
-		try {
-			let result = await this.manager.adminUpdate(req);
+		let result = await this.manager.adminUpdate(req, this.hasContentStatus);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.error("Error --> BaseController -> adminUpdate()", err);
-			return res.status(500).json({
-				success: false,
-				message: err?.message || "Internal server error",
-			});
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async delete(req, res) {

@@ -48,6 +48,7 @@ const questionContentUpdateSchema = Joi.object({
 	items: Joi.array().items(item),
 	correctOrderById: Joi.array().items(Joi.number()),
 	correctOrderIndices: Joi.array().items(Joi.number()),
+	status: Joi.string().valid("draft", "under_review", "approved"),
 }).min(1);
 
 const validateQuestionContentUpdate = validateRequestForUpdates(

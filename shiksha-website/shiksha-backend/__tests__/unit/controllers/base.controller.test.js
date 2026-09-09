@@ -312,6 +312,122 @@ describe("BaseController", () => {
     });
   });
 
+  describe("getAll with hasContentStatus (draft/approved content entities)", () => {
+    it("includeDeleted=2 excludes drafts and under-review rows when the entity has a status field", async () => {
+      const contentController = new BaseController(mockManager, undefined, true);
+      const req = createMockRequest({ query: { includeDeleted: "2" } });
+      const res = createMockResponse();
+
+      mockManager.getAll.mockResolvedValue({ success: true, data: [] });
+
+      await contentController.getAll(req, res);
+
+      expect(mockManager.getAll).toHaveBeenCalledWith(
+        1,
+        NaN,
+        {},
+        { createdAt: -1 },
+        { isDeleted: true, status: { $nin: ["draft", "under_review"] } },
+        undefined
+      );
+    });
+
+    it("includeDeleted=3 returns only the caller's own drafts when the entity has a status field", async () => {
+      const contentController = new BaseController(mockManager, undefined, true);
+      const req = createMockRequest({
+        query: { includeDeleted: "3" },
+        user: { _id: "admin-1" },
+      });
+      const res = createMockResponse();
+
+      mockManager.getAll.mockResolvedValue({ success: true, data: [] });
+
+      await contentController.getAll(req, res);
+
+      expect(mockManager.getAll).toHaveBeenCalledWith(
+        1,
+        NaN,
+        {},
+        { createdAt: -1 },
+        { isDeleted: true, status: "draft", createdBy: "admin-1" },
+        "admin-1"
+      );
+    });
+
+    it("includeDeleted=4 returns every under-review row when the entity has a status field", async () => {
+      const contentController = new BaseController(mockManager, undefined, true);
+      const req = createMockRequest({ query: { includeDeleted: "4" } });
+      const res = createMockResponse();
+
+      mockManager.getAll.mockResolvedValue({ success: true, data: [] });
+
+      await contentController.getAll(req, res);
+
+      expect(mockManager.getAll).toHaveBeenCalledWith(
+        1,
+        NaN,
+        {},
+        { createdAt: -1 },
+        { isDeleted: true, status: "under_review" },
+        undefined
+      );
+    });
+
+    it("includeDeleted=2 stays plain isDeleted:true for an entity without a status field", async () => {
+      const req = createMockRequest({ query: { includeDeleted: "2" } });
+      const res = createMockResponse();
+
+      mockManager.getAll.mockResolvedValue({ success: true, data: [] });
+
+      await controller.getAll(req, res);
+
+      expect(mockManager.getAll).toHaveBeenCalledWith(
+        1,
+        NaN,
+        {},
+        { createdAt: -1 },
+        { isDeleted: true },
+        undefined
+      );
+    });
+
+    it("includeDeleted=3 is ignored for an entity without a status field", async () => {
+      const req = createMockRequest({ query: { includeDeleted: "3" } });
+      const res = createMockResponse();
+
+      mockManager.getAll.mockResolvedValue({ success: true, data: [] });
+
+      await controller.getAll(req, res);
+
+      expect(mockManager.getAll).toHaveBeenCalledWith(
+        1,
+        NaN,
+        {},
+        { createdAt: -1 },
+        {},
+        undefined
+      );
+    });
+
+    it("includeDeleted=4 is ignored for an entity without a status field", async () => {
+      const req = createMockRequest({ query: { includeDeleted: "4" } });
+      const res = createMockResponse();
+
+      mockManager.getAll.mockResolvedValue({ success: true, data: [] });
+
+      await controller.getAll(req, res);
+
+      expect(mockManager.getAll).toHaveBeenCalledWith(
+        1,
+        NaN,
+        {},
+        { createdAt: -1 },
+        {},
+        undefined
+      );
+    });
+  });
+
   describe("status code determination", () => {
     it("should use 404 for not found", async () => {
       const req = createMockRequest({ params: { id: "123" } });

@@ -6,7 +6,7 @@ const { hasPermission } = require("../helper/permission.helper.js");
 /** @extends {BaseController<MasterLessonManger>} */
 class MasterLessonController extends BaseController {
 	constructor() {
-		super(new MasterLessonManger(), ["name"]);
+		super(new MasterLessonManger(), ["name"], true);
 	}
 
 	async saveToTeacher(req, res) {
@@ -45,29 +45,20 @@ class MasterLessonController extends BaseController {
 	 * nothing is saved.
 	 */
 	async adminBulkUpload(req, res) {
-		try {
-			const dryRun =
-				req.query.dryRun === "true" || req.body.dryRun === true;
+		const dryRun =
+			req.query.dryRun === "true" || req.body.dryRun === true;
 
-			const result = await this.manager.bulkUpload(
-				req.body.lessonPlans || req.body.rows,
-				dryRun
-			);
+		const result = await this.manager.bulkUpload(
+			req.body.lessonPlans || req.body.rows,
+			dryRun,
+			req.user?._id
+		);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.error("Error --> MasterLessonController -> adminBulkUpload()", err);
-			return res.status(500).json({
-				success: false,
-				message: err?.message || "Internal server error",
-			});
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	/**
@@ -75,23 +66,13 @@ class MasterLessonController extends BaseController {
 	 * bulk upload runs, so a form entry and a file entry cannot differ.
 	 */
 	async adminCreate(req, res) {
-		try {
-			const result = await this.manager.bulkUpload([req.body], false);
+		const result = await this.manager.bulkUpload([req.body], false, req.user?._id);
 
-			if (result.success) {
-				return res.status(200).json(result);
-			}
-
-			handleError(result, res);
-
-			return;
-		} catch (err) {
-			console.error("Error --> MasterLessonController -> adminCreate()", err);
-			return res.status(500).json({
-				success: false,
-				message: err?.message || "Internal server error",
-			});
+		if (result.success) {
+			return res.status(200).json(result);
 		}
+
+		handleError(result, res);
 	}
 
 	async getByTeacher(req, res) {

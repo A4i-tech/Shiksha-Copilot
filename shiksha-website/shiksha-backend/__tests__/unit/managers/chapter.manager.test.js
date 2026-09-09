@@ -92,5 +92,27 @@ describe("ChapterManager", () => {
       expect(result.data.rows[0].errors.join(" ")).toMatch(/matches no master subject/);
       expect(Chapter.insertMany).not.toHaveBeenCalled();
     });
+
+    it("inserts new chapters as draft and soft-deleted, awaiting admin approval", async () => {
+      const chapter = { ...baseChapter, subjectId: "507f1f77bcf86cd799439055" };
+
+      await manager.bulkUpload([chapter], false);
+
+      expect(Chapter.insertMany).toHaveBeenCalledWith(
+        [expect.objectContaining({ status: "draft", isDeleted: true })],
+        { ordered: true }
+      );
+    });
+
+    it("stamps createdBy from the userId argument, so only its author sees the draft", async () => {
+      const chapter = { ...baseChapter, subjectId: "507f1f77bcf86cd799439055" };
+
+      await manager.bulkUpload([chapter], false, "admin-1");
+
+      expect(Chapter.insertMany).toHaveBeenCalledWith(
+        [expect.objectContaining({ createdBy: "admin-1" })],
+        { ordered: true }
+      );
+    });
   });
 });

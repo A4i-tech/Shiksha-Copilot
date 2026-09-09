@@ -25,7 +25,7 @@ class QuestionManager extends BaseManager {
 	 * per row. A failed row blocks the whole file, so the answer is 400 and
 	 * nothing is saved.
 	 */
-	async bulkUpload(questions, dryRun = false) {
+	async bulkUpload(questions, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(questions) || questions.length === 0) {
 				return formatApiReponse(
@@ -101,7 +101,9 @@ class QuestionManager extends BaseManager {
 
 			const documents = questions.map((question) => ({
 				...question,
-				isDeleted: false,
+				status: "draft",
+				isDeleted: true,
+				createdBy: userId,
 			}));
 
 			const saved = await Question.insertMany(documents, { ordered: true });

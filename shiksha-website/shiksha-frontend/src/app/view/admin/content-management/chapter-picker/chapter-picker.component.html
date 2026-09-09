@@ -2,7 +2,7 @@
   <div class="flex gap-2 items-center">
     <input
       type="text"
-      class="border border-gray-300 rounded px-3 py-2 flex-1"
+      class="form-control flex-1"
       [value]="selectedLabel"
       readonly
       placeholder="No chapter picked"
@@ -17,7 +17,7 @@
     <button
       *ngIf="selectedLabel"
       type="button"
-      class="text-red-600 underline text-nowrap"
+      class="btn-danger h-9 text-nowrap"
       (click)="clear()"
     >
       Clear
@@ -25,43 +25,46 @@
   </div>
 
   <app-modal *ngIf="isOpen">
-    <h2 class="text-lg font-semibold mb-2" id="modal-title">Pick a chapter</h2>
+    <h2 class="text-lg font-semibold mb-2 text-content" id="modal-title">Pick a chapter</h2>
 
-    <input
-      type="text"
-      class="border border-gray-300 rounded px-3 py-2 w-full mb-3"
-      placeholder="Search chapters"
-      [ngModel]="searchText"
-      (ngModelChange)="onSearch($event)"
-    />
+    <div class="search-icon flex items-center h-9 w-full mb-3">
+      <img src="assets/icons/search.svg" alt="" class="mr-2"/>
+      <input
+        type="text"
+        class="appearance-none border border-content-50 rounded py-2 px-3 text-content leading-tight focus:outline-none bg-surface-muted h-full w-full"
+        placeholder="Search chapters"
+        [ngModel]="searchText"
+        (ngModelChange)="onSearch($event)"
+      />
+    </div>
 
-    <p *ngIf="isLoading" class="py-2 text-sm">Loading chapters...</p>
+    <p *ngIf="isLoading" class="py-2 text-sm text-content">Loading chapters...</p>
 
     <div class="max-h-72 overflow-y-auto mb-3" *ngIf="!isLoading">
-      <table class="min-w-full text-left text-sm">
+      <table class="w-full min-w-[560px]" aria-label="chapter-picker-list">
         <thead>
-          <tr>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1">Chapter</th>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1">Class</th>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1">Board</th>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1">Medium</th>
-            <th scope="col" class="border-b border-gray-300 px-2 py-1"></th>
+          <tr class="header font-semibold text-left text-content table-header border-b border-shade">
+            <th class="px-3 py-2 border text-sm">Chapter</th>
+            <th class="px-3 py-2 border text-sm">Class</th>
+            <th class="px-3 py-2 border text-sm">Board</th>
+            <th class="px-3 py-2 border text-sm">Medium</th>
+            <th class="px-3 py-2 border text-sm"></th>
           </tr>
         </thead>
-        <tbody>
-          <tr *ngFor="let chapter of listData" class="border-b border-gray-200">
-            <td class="px-2 py-1">{{ chapter.topics }}</td>
-            <td class="px-2 py-1">{{ chapter.standard }}</td>
-            <td class="px-2 py-1">{{ chapter.board }}</td>
-            <td class="px-2 py-1">{{ chapter.medium }}</td>
-            <td class="px-2 py-1">
-              <button type="button" class="text-primary underline" (click)="pick(chapter)">
+        <tbody class="bg-white">
+          <tr class="text-gray-700" *ngFor="let chapter of listData">
+            <td class="px-3 py-2 text-sm border">{{ chapter.topics }}</td>
+            <td class="px-3 py-2 text-sm border">{{ chapter.standard }}</td>
+            <td class="px-3 py-2 text-sm border">{{ chapter.board }}</td>
+            <td class="px-3 py-2 text-sm border">{{ chapter.medium }}</td>
+            <td class="px-3 py-2 text-sm border">
+              <button type="button" class="btn-outline-primary h-9" (click)="pick(chapter)">
                 Pick
               </button>
             </td>
           </tr>
           <tr *ngIf="!listData.length">
-            <td class="px-2 py-2" colspan="5">No chapters found.</td>
+            <td class="text-center text-content-60 py-2" colspan="5">No chapters found.</td>
           </tr>
         </tbody>
       </table>
@@ -78,7 +81,7 @@
     <div class="flex justify-end mt-3">
       <button
         type="button"
-        class="px-4 py-2 border border-gray-300 rounded"
+        class="btn-outline-primary h-9"
         (click)="close()"
       >
         Cancel
