@@ -37,9 +37,13 @@ on:
         type: string
         default: ""
       deploy_target:
-        description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
+        description: "Provider to deploy the frontend to"
         required: false
-        type: string
+        type: choice
+        options:
+          - ""  # to skip deployment
+          - "github-pages"
+          - "azure-swa"
         default: ""
     secrets:
       AZURE_STATIC_WEB_APPS_API_TOKEN:
