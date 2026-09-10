@@ -27,11 +27,8 @@ render_env() {
     -e "s|\${SUPERSET_MOBILE_DASHBOARD_UUID}|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" \
     "$template_path" > "$output_path"
 
-  # If the template sits in the same dir as the rendered output (the
-  # GH Pages / SWA build path writes both into dist/.../assets/), drop it
-  # so it isn't shipped and served with its ${...} placeholders exposed.
-  # The Docker path keeps its template at /etc/shiksha (different dir), so
-  # this leaves it alone there — restart-safe.
+  # Drop the template when it renders alongside the output (GH Pages / SWA
+  # build dir) so it isn't shipped; the Docker path keeps its copy elsewhere.
   if [ "$(dirname "$template_path")" = "$(dirname "$output_path")" ]; then
     rm -f "$template_path"
   fi

@@ -18,22 +18,16 @@ FROM nginx:1.27-alpine
 
 RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
 
-# Built Angular output + runtime-config tooling
 COPY --from=builder /app/dist/shiksha-frontend /srv
 COPY docker-entrypoint.sh render-env.sh /
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Move the env template out of the served web root so it's never publicly
-# fetchable with its ${...} placeholders visible. The entrypoint renders it
-# from here into /srv/assets/env.js on start; keeping it here (not in /srv)
-# means a container restart still has a template to render from.
+# Template lives outside /srv so it's never served; entrypoint renders it
+# into /srv/assets/env.js on start (restart re-renders from here).
 RUN mkdir -p /etc/shiksha \
     && mv /srv/assets/env.template.js /etc/shiksha/env.template.js
 
-# nginx runs fully non-root on :8000 — master and workers are both appuser,
-# so every path nginx writes (pid, temp dirs) has to live under a dir
-# appuser owns. /srv/assets/env.js is (re)written by the entrypoint on
-# every container start.
+# nginx runs non-root on :8000, so pid/temp dirs must be appuser-owned.
 RUN mkdir -p /tmp/nginx \
     && chown -R appuser:appuser /srv /tmp/nginx \
     && chmod +x /docker-entrypoint.sh /render-env.sh
