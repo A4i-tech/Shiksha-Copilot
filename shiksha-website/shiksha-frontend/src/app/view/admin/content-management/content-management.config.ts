@@ -10,6 +10,8 @@
  *  - text / textarea / number / boolean map to a single scalar value.
  *  - list maps to an array of strings, one value per line in the form.
  *  - json maps to an array or an object that the form shows as raw JSON.
+ *  - question-content maps to a plain string, or (per PR #93) a
+ *    [{ contentType, content }] array when it carries an image.
  */
 
 export type ContentEntityKey =
@@ -27,7 +29,8 @@ export type ContentFieldType =
   | 'json'
   | 'select'
   | 'subject-select'
-  | 'chapter-select';
+  | 'chapter-select'
+  | 'question-content';
 
 export interface ContentSelectOption {
   value: string;
@@ -278,7 +281,13 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'status', label: 'Status' },
     ],
     fields: [
-      { field: 'text', label: 'Question text', type: 'textarea', requiredOnCreate: true },
+      {
+        field: 'text',
+        label: 'Question data',
+        type: 'question-content',
+        requiredOnCreate: true,
+        hint: 'Type the question, or add an image (paste one in, or pick a file).',
+      },
       { field: 'subject', label: 'Subject', type: 'text' },
       { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS },
       { field: 'class', label: 'Class', type: 'text' },
@@ -288,8 +297,9 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'marksPerQuestion', label: 'Marks per question', type: 'number' },
       {
         field: 'keyAnswer',
-        label: 'Key answer',
-        type: 'textarea',
+        label: 'Answer data',
+        type: 'question-content',
+        hint: 'Type the answer, or add an image (paste one in, or pick a file).',
         visibleWhen: { field: 'answerType', values: ANSWER_TYPES_WITH_KEY_ANSWER },
       },
       {
