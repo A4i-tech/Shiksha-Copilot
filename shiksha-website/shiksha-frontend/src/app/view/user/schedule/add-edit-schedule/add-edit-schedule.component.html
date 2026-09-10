@@ -11,55 +11,63 @@
 		<div >
 			<form class="body-container " [formGroup]="scheduleForm" (ngSubmit)="onSave()" >
 				<div  class="p-4">
-					<div class="form-wrapper max-h-[530px] overflow-y-auto flex flex-col gap-2">						
-						<div class="grid gap-2  md:grid-cols-2">
-							<div class="min-w-[250px] ">
-								<app-dropdown [config]="boardDropDownConfig" [dropDownValues]="boardDropdownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['board'])" (valueChange)="setMediumDropdownArray($event)" [submitted]="submitted" ></app-dropdown>
+					<div class="form-wrapper max-h-[530px] overflow-y-auto flex flex-col gap-2">
+						<div class="flex gap-2 items-end">
+							<div class="flex-1 min-w-0">
+								 <app-dropdown [config]="lessonDropDownConfig" [dropDownValues]="lessonPlanDropDownValue" [mode]="mode"
+									[dropDownCtrl]="convertToFormControl(f['lessonPlan'])" [submitted]="submitted" (valueChange)="onLessonPlanSelected($event)"></app-dropdown>
 							</div>
-								<div class="min-w-[250px] capitalize">
-								<app-dropdown [config]="mediumDropDownConfig" [dropDownValues]="mediumDropdownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['medium'])"(valueChange)="setClassDropdownValue($event)" [submitted]="submitted" ></app-dropdown>
-							</div>
+							<button type="button" data-testid="schedule-filters-toggle"
+								[title]="(filtersOpen ? 'Remove Filters' : 'Add Filters') | translate"
+								[attr.aria-label]="(filtersOpen ? 'Remove Filters' : 'Add Filters') | translate"
+								class="btn-primary flex items-center justify-center h-9 w-9 shrink-0 p-0"
+								(click)="filtersOpen = !filtersOpen" [attr.aria-expanded]="filtersOpen" aria-controls="schedule-filters-panel">
+								<img *ngIf="!filtersOpen" src="assets/icons/filter-plus.svg" alt="">
+								<img *ngIf="filtersOpen" src="assets/icons/filter-minus.svg" alt="">
+							</button>
 						</div>
 
-						<div class="grid gap-2 md:grid-cols-2">
-							<div class="min-w-[250px] ">
-								<app-dropdown [config]="classNameDropDownConfig" [dropDownValues]="classDropDownValues" [submitted]="submitted" [mode]="mode"
+						<p class="text-sm text-content-60" *ngIf="mode === 'add'">
+							{{"Not seeing your lesson plan? You can" | translate}}
+							<a data-testid="add-lesson-plan-link" class="text-primary font-bold cursor-pointer" routerLink="/content-generation/lesson-plan">{{"create a new one" | translate}}</a>.
+						</p>
+
+						<div id="schedule-filters-panel" class="border border-content-30 rounded" *ngIf="filtersOpen">
+							<div class="p-3 flex flex-col gap-2">
+								<div class="grid gap-2  md:grid-cols-2">
+									<div class="min-w-[250px] ">
+										<app-dropdown [config]="boardDropDownConfig" [dropDownValues]="boardDropdownValue" [mode]="mode"
+										[dropDownCtrl]="convertToFormControl(f['board'])" (valueChange)="setMediumDropdownArray($event)" [submitted]="submitted" ></app-dropdown>
+									</div>
+										<div class="min-w-[250px] capitalize">
+										<app-dropdown [config]="mediumDropDownConfig" [dropDownValues]="mediumDropdownValue" [mode]="mode"
+										[dropDownCtrl]="convertToFormControl(f['medium'])"(valueChange)="setClassDropdownValue($event)" [submitted]="submitted" ></app-dropdown>
+									</div>
+								</div>
+
+								<div class="grid gap-2 md:grid-cols-2">
+									<div class="min-w-[250px] ">
+										<app-dropdown [config]="classNameDropDownConfig" [dropDownValues]="classDropDownValues" [submitted]="submitted" [mode]="mode"
  [dropDownCtrl]="convertToFormControl(f['className'])" (valueChange)="setSubjectValue($event)"></app-dropdown>
-							</div>
-							<div class="min-w-[250px] ">
-								<app-dropdown [config]="subjectDropDownConfig" [dropDownValues]="subjectDropdownValue" [submitted]="submitted" [mode]="mode"
+									</div>
+									<div class="min-w-[250px] ">
+										<app-dropdown [config]="subjectDropDownConfig" [dropDownValues]="subjectDropdownValue" [submitted]="submitted" [mode]="mode"
  [dropDownCtrl]="convertToFormControl(f['subject'])" (valueChange)="setChapterValues($event)"></app-dropdown>
+									</div>
+								</div>
+
+								<div class="grid gap-2 md:grid-cols-2">
+									<div class="min-w-[250px]">
+										<app-dropdown [config]="chapterDropDownConfig" [dropDownValues]="chapterDropdownValue" [mode]="mode"
+											[dropDownCtrl]="convertToFormControl(f['chapter'])" (valueChange)="setSubTopicValue($event)" [submitted]="submitted"></app-dropdown>
+									</div>
+									<div class="min-w-[250px]">
+										<app-dropdown [config]="subTopicDropDownConfig" [dropDownValues]="subTopicDropDownValue" [mode]="mode"
+										[dropDownCtrl]="convertToFormControl(f['subTopic'])" (valueChange)="setLessonPlan($event)" [submitted]="submitted"></app-dropdown>
+									</div>
+								</div>
 							</div>
 						</div>
-
-						<div class="grid gap-2 md:grid-cols-2">
-							<div class="min-w-[250px]">
-								<app-dropdown [config]="chapterDropDownConfig" [dropDownValues]="chapterDropdownValue" [mode]="mode"
-									[dropDownCtrl]="convertToFormControl(f['chapter'])" (valueChange)="setSubTopicValue($event)" [submitted]="submitted"></app-dropdown>
-							</div>
-							<div class="min-w-[250px]">
-								<app-dropdown [config]="subTopicDropDownConfig" [dropDownValues]="subTopicDropDownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['subTopic'])" (valueChange)="setLessonPlan($event)" [submitted]="submitted"></app-dropdown>
-							</div>
-						</div>
-						<!-- <div>
-							<label for="lesson-name" class="block mb-1  font-bold text-gray-900 form-control-label ">{{"Lesson Plan" | translate}}</label>
-							<input type="text" id="lesson-name" class="appearance-none border border-content-50 bg-surface-muted text-content text-sm rounded-lg block w-full p-2.5 leading-tight focus:outline-none"
-								placeholder="Lesson Name" required formControlName="lessonPlan" readonly/>
-						</div> -->
-
-				
-						<div>
-							 <app-dropdown [config]="lessonDropDownConfig" [dropDownValues]="lessonPlanDropDownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['lessonPlan'])" [submitted]="submitted" (valueChange)="getLessonId($event)"></app-dropdown>
-						</div> 
-			
-						<button class="btn-primary  flex items-center justify-center px-4 self-start" type="button" *ngIf="mode === 'add'" routerLink="/content-generation">
-							<span class="ms-1 me-1">{{phrase('Add Lesson Plan') | translate}}</span>
-							<img src="assets/icons/E add.svg" alt="">
-						</button>
 						<div class="scheduleArray" formArrayName="schedule">
 							<div class="grid md:gap-2 mb-2 md:grid-cols-12 items-start"
 								*ngFor="let controls of getScheduleControls().controls; let i=index" [formGroupName]="i">
@@ -70,7 +78,7 @@
 										[attr.aria-required]="mode!='view' ? 'true' : null"
 										formControlName="date" [readOnly]="mode === 'view'" [min]='currentDate | date:"yyyy-MM-dd"'/>
 									<p class="form-control-error">
-										{{(getDateError(controls)) | translate}}  
+										{{(getDateError(controls)) | translate}}
 									</p>
 								</div>
 								<div class=" md:col-span-3">
@@ -82,7 +90,7 @@
 										<p class="form-control-error min-h-[20px]" >
 											{{(getStartTimeError(controls)) | translate}}
 										</p>
-								</div>	
+								</div>
 								<div class=" md:col-span-3">
 									<label for="timepicker2" class="block mb-2 form-control-label">{{"End Time" | translate}}<span *ngIf="mode!='view'" class="text-[16px] text-error">*</span></label>
 									<input type="time" id="timepicker2" placeholder="Select End Time"
@@ -92,7 +100,7 @@
 										<p class="form-control-error">
 											{{(getEndTimeError(controls)) | translate}}
 										</p>
-										
+
 								</div>
 								<div class="btn-container flex md:col-span-2 gap-2 self-end " *ngIf="mode !== 'view'">
 									<button class="btn-danger flex items-center justify-center   h-[42px]" (click)="deleteScheduleInfo(i)"
@@ -105,10 +113,10 @@
 										*ngIf="i===getScheduleControls().length-1">
 										<img src="assets/icons/E add.svg" alt="">
 									</button>
-			
+
 								</div>
 							</div>
-			
+
 						</div>
 					</div>
 				</div>

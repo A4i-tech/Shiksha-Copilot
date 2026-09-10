@@ -10,12 +10,38 @@ import { environment } from 'src/environments/environment';
 })
 export class ScheduleService extends BaseRestService{
   baseUrl = environment.apiUrl;
+
+  /**
+   * lesson plan selected on the Lesson Plan page's "Schedule this" button, read once and
+   * cleared by ScheduleViewComponent to prefill the Add Details modal
+   */
+  pendingLessonPlan: any = null;
+
   constructor(http: HttpClient) {
     super(http);
     this.setUri('schedule');
    }
 
-  
+  /**
+   * teacher's own lesson plans, most recently updated first, optionally narrowed by filters
+   * @param filters optional board/medium/class/subject/topics to narrow the list
+   */
+  getRecentLessonPlans(filters: any = {}) {
+    let params = new HttpParams()
+      .set('filter[type]', 'lesson')
+      .set('filter[isCompleted]', 'true')
+      .set('sortBy', 'updatedAt')
+      .set('sortOrder', 'desc')
+      .set('limit', '25');
+    if (filters.board) params = params.set('filter[board]', filters.board);
+    if (filters.medium) params = params.set('filter[medium]', filters.medium);
+    if (filters.class) params = params.set('filter[class]', filters.class);
+    if (filters.subject) params = params.set('filter[subject]', filters.subject);
+    if (filters.topic) params = params.set('filter[topics]', filters.topic);
+    return this.http.get(`${this.baseUrl}/teacher-lesson-plan/list`, { params });
+  }
+
+
   getAllSchedule(fromDate: any, toDate: any,teacherScheduleVal:boolean) {
     const params = new HttpParams()
       .set('fromDate', fromDate)
