@@ -14,27 +14,33 @@ COPY . .
 RUN npm run build -- --configuration ${BUILD_CONFIGURATION} --base-href /
 
 # -------- Stage 2: Runtime --------
-FROM caddy:2-alpine
+FROM nginx:1.27-alpine
 
 RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
 
-# Copy only built output
+# Built Angular output + runtime-config tooling
 COPY --from=builder /app/dist/shiksha-frontend /srv
 COPY docker-entrypoint.sh render-env.sh /
-COPY Caddyfile /etc/caddy/Caddyfile
+COPY nginx.conf /etc/nginx/nginx.conf
 
-RUN mkdir -p /config/caddy /data/caddy \
-    && chown -R appuser:appuser /srv /config /data \
+# Move the env template out of the served web root so it's never publicly
+# fetchable with its ${...} placeholders visible. The entrypoint renders it
+# from here into /srv/assets/env.js on start; keeping it here (not in /srv)
+# means a container restart still has a template to render from.
+RUN mkdir -p /etc/shiksha \
+    && mv /srv/assets/env.template.js /etc/shiksha/env.template.js
+
+# nginx runs fully non-root on :8000 — master and workers are both appuser,
+# so every path nginx writes (pid, temp dirs) has to live under a dir
+# appuser owns. /srv/assets/env.js is (re)written by the entrypoint on
+# every container start.
+RUN mkdir -p /tmp/nginx \
+    && chown -R appuser:appuser /srv /tmp/nginx \
     && chmod +x /docker-entrypoint.sh /render-env.sh
-
-# caddy ships cap_net_bind_service for binding :80/:443 as root; we listen on
-# :8000 and drop all capabilities at the container level, so exec fails
-# unless the file capability is stripped too.
-RUN apk add --no-cache libcap && setcap -r /usr/bin/caddy && apk del libcap
 
 USER appuser
 
 EXPOSE 8000
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+CMD ["nginx", "-g", "daemon off;"]
