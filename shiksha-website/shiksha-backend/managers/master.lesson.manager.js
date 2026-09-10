@@ -959,14 +959,6 @@ class MasterLessonManger extends BaseManager {
 		};
 	}
 
-	/**
-	 * Validates an uploaded lesson plan file and, unless the caller asks for a
-	 * dry run, writes the lesson plans. The response carries one report line
-	 * per row. A failed row blocks the whole file, so the answer is 400 and
-	 * nothing is saved.
-	 * @param {object[]} lessonPlans - lesson plans to upload
-	 * @param {boolean} [dryRun=false] - validate only, save nothing
-	 */
 	async bulkUpload(lessonPlans, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(lessonPlans) || lessonPlans.length === 0) {
@@ -977,8 +969,7 @@ class MasterLessonManger extends BaseManager {
 				);
 			}
 
-			// chapterId can be a chapter _id or its topics (name), resolved against
-			// the lesson plan's own board, medium and class.
+			// chapterId can be a chapter _id or its topics, resolved by board, medium and class.
 			const allChapters = await Chapter.find({
 				isDeleted: { $ne: true },
 			}).lean();

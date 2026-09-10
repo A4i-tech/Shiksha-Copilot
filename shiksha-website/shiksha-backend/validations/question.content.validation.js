@@ -3,8 +3,7 @@ const { validateRequestForUpdates } = require("./common.validation");
 
 const objectId = Joi.string().regex(/^[0-9a-fA-F]{24}$/);
 
-// The model normalizes options, pairs and items in its `findOneAndUpdate` hook,
-// so accept both the shorthand (a plain string) and the full object form here.
+// model normalizes options/pairs/items in its findOneAndUpdate hook, so accept both shorthand string and full object form
 const optionItem = Joi.alternatives().try(
 	Joi.string().allow(""),
 	Joi.object({

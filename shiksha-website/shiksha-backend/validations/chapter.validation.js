@@ -13,8 +13,7 @@ const chapterFields = {
 	board: Joi.string(),
 	orderNumber: Joi.number(),
 	learningOutcomes: Joi.array().items(Joi.string().allow("")),
-	// The content generation pipeline owns the outcomes per subtopic, so the
-	// admin routes accept the field but never require it to match `subTopics`.
+	// content pipeline owns per-subtopic outcomes, so admin routes accept but never require this
 	topicsLearningOutcomes: Joi.any().strip(),
 	indexPath: Joi.string().allow(""),
 	isGrammar: Joi.boolean(),

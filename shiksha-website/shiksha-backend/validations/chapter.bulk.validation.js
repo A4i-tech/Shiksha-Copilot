@@ -1,25 +1,9 @@
-/**
- * Validation rules for the admin chapter bulk upload.
- *
- * The admin team used to add chapters with one-off scripts that wrote straight
- * into MongoDB. Those scripts skipped every application-level check, so the
- * database collected chapters with a missing subject, empty or duplicate
- * shells, titles that still carried Markdown asterisks, and colliding order
- * numbers.
- *
- * This module holds the gate that stops the same records from arriving again.
- * Every rule here is a hard failure. The only soft rule is the index path: a
- * missing or non-standard index path is a warning, because the ingestion
- * pipeline writes that field after it indexes the textbook PDF.
- */
-
+// index path is a warning not a hard error, because the ingestion pipeline writes it after indexing the PDF
 const Joi = require("joi");
 const { objectId, textProblem, duplicates } = require("./bulk.validation.helpers");
 
-/** Maximum number of chapters in one upload. */
 const MAX_ROWS = 500;
 
-/** Index path template that the ingestion pipeline writes. */
 const INDEX_PATH_TEMPLATE =
 	"shiksha/data_new_book/<board>/<medium>/<standard>/<subjectName>/pdf/<orderNumber>/index/pdf_idx";
 
@@ -31,8 +15,7 @@ const uploadRowSchema = Joi.object({
 	board: Joi.string().required(),
 	orderNumber: Joi.number().integer().min(1).required(),
 	subTopics: Joi.array().items(Joi.string()).min(1).required(),
-	// The server builds `topicsLearningOutcomes` from `subTopics`, so the upload
-	// ignores this field. Old files that still carry it stay valid.
+	// server derives topicsLearningOutcomes from subTopics, so upload strips it; old files with it stay valid
 	topicsLearningOutcomes: Joi.any().strip(),
 	learningOutcomes: Joi.array().items(Joi.string()).min(1).required(),
 	indexPath: Joi.string().allow(""),
@@ -41,11 +24,7 @@ const uploadRowSchema = Joi.object({
 	grammarSourceChapters: Joi.array().items(Joi.string()),
 });
 
-// The envelope check only looks at the container. `checkRow` checks each
-// chapter, so that the answer can name the row that failed instead of stopping
-// at the first Joi error. The rows array can arrive under `chapters` (the
-// original name) or under `rows` (the generic name the lesson plan bulk
-// upload also uses), but not both.
+// rows can arrive as `chapters` (original name) or `rows` (shared with lesson bulk upload), not both
 const rowsSchema = Joi.array().items(Joi.object()).min(1).max(MAX_ROWS);
 
 const bulkUploadSchema = Joi.object({
@@ -54,12 +33,6 @@ const bulkUploadSchema = Joi.object({
 	dryRun: Joi.boolean(),
 }).xor("chapters", "rows");
 
-/**
- * Builds the index path that the ingestion pipeline uses for a chapter.
- * @param {object} chapter - board, medium, standard and orderNumber
- * @param {string} subjectName - `subjectName` of the master subject
- * @returns {string} the index path
- */
 function buildIndexPath(chapter, subjectName) {
 	return [
 		"shiksha/data_new_book",
@@ -73,12 +46,6 @@ function buildIndexPath(chapter, subjectName) {
 	].join("/");
 }
 
-/**
- * Builds the identity key of a chapter. Two chapters with the same key are the
- * same chapter.
- * @param {object} chapter - chapter to key
- * @returns {string} the key
- */
 function identityKey(chapter) {
 	return [
 		chapter.subjectId,
@@ -89,12 +56,6 @@ function identityKey(chapter) {
 	].join("|");
 }
 
-/**
- * Builds the order key of a chapter. Two chapters with the same key claim the
- * same position in the same book.
- * @param {object} chapter - chapter to key
- * @returns {string} the key
- */
 function orderKey(chapter) {
 	return [
 		chapter.subjectId,
@@ -105,12 +66,6 @@ function orderKey(chapter) {
 	].join("|");
 }
 
-/**
- * Checks the shape and the content of one chapter. The check does not read the
- * database.
- * @param {object} chapter - chapter to check
- * @returns {{errors: string[], warnings: string[]}} the result
- */
 function checkRow(chapter) {
 	const errors = [];
 	const warnings = [];
@@ -166,12 +121,6 @@ function checkRow(chapter) {
 	return { errors, warnings };
 }
 
-/**
- * Checks a batch of chapters against each other. Two rows in one upload must
- * not describe the same chapter or claim the same order number.
- * @param {object[]} chapters - chapters to check
- * @returns {string[][]} one error list per row, by row index
- */
 function checkBatch(chapters) {
 	const perRow = chapters.map(() => []);
 	const identitySeen = new Map();

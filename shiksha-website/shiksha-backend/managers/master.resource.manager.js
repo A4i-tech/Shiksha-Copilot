@@ -28,12 +28,6 @@ class MasterResourceManager extends BaseManager {
 		this.chapterDao = new ChapterDao();
 	}
 
-	/**
-	 * Validates an uploaded resource-plan file and, unless the caller asks for
-	 * a dry run, writes the resource plans. The response carries one report
-	 * line per row. A failed row blocks the whole file, so the answer is 400
-	 * and nothing is saved.
-	 */
 	async bulkUpload(resources, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(resources) || resources.length === 0) {
@@ -44,8 +38,7 @@ class MasterResourceManager extends BaseManager {
 				);
 			}
 
-			// chapterId can be a chapter _id or its topics (name), resolved against
-			// the resource's own board, medium and class.
+			// chapterId can be a chapter _id or its topics, resolved by board, medium and class.
 			const allChapters = await Chapter.find({
 				isDeleted: { $ne: true },
 			})

@@ -22,10 +22,7 @@ describe("BaseDao", () => {
   let TestModel;
 
   beforeAll(async () => {
-    // Own connection, not mongoose.model()/mongoose.connect() on the shared
-    // default connection — every other test file's model calls implicitly
-    // use that default connection, and closing it in afterAll would leave
-    // them buffering against a dead connection for the rest of the Jest run.
+    // Own connection, not the shared default, so afterAll's close does not break other test files' model calls.
     const connection = await setupTestDB();
     TestModel = connection.model("TestDao", TestSchema);
     testDao = new BaseDao(TestModel);

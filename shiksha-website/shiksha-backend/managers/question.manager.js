@@ -6,25 +6,12 @@ const Chapter = require("../models/chapter.model");
 const formatApiReponse = require("../helper/response");
 const { checkRow } = require("../validations/question.bulk.validation");
 
-/**
- * Manager for single questions in the question pool.
- * The question-bank manager works on generated papers and on the blueprint.
- * This manager gives the admin content-management screens a route to one
- * question document.
- *
- * @extends {BaseManager<QuestionDao>}
- */
+/** @extends {BaseManager<QuestionDao>} */
 class QuestionManager extends BaseManager {
 	constructor() {
 		super(new QuestionDao());
 	}
 
-	/**
-	 * Validates an uploaded question file and, unless the caller asks for a
-	 * dry run, writes the questions. The response carries one report line
-	 * per row. A failed row blocks the whole file, so the answer is 400 and
-	 * nothing is saved.
-	 */
 	async bulkUpload(questions, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(questions) || questions.length === 0) {
@@ -63,7 +50,7 @@ class QuestionManager extends BaseManager {
 					!validChapterIds.has(String(question.chapterId))
 				) {
 					errors.push(
-						`chapterId "${question.chapterId}" matches no active chapter.`
+						`chapterId "${question.chapterId}" matches no active chapter. Give the id of an existing, non-deleted chapter.`
 					);
 				}
 

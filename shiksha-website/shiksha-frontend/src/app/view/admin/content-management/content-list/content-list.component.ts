@@ -82,10 +82,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   pageSize = 10;
   totalItems = 0;
   searchText = '';
-  /**
-   * '0' active, '2' deleted, '3' draft (only the creator's own rows),
-   * '4' ready for review (every admin's rows)
-   */
+  // '0' active, '2' deleted, '3' own drafts, '4' ready for review — values match the backend's includeDeleted param.
   recordState = '0';
   isLoading = false;
 
@@ -126,13 +123,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
   private searchTerms = new Subject<string>();
   private subscriptions: Subscription[] = [];
 
-  /**
-   * class constructor
-   * @param route
-   * @param router
-   * @param contentService
-   * @param utilityService
-   */
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -173,9 +163,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
   }
 
-  /**
-   * Method to read the current page of records
-   */
   loadRecords(): void {
     this.isLoading = true;
 
@@ -201,18 +188,10 @@ export class ContentListComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Method to receive each key press of the search box
-   * @param term
-   */
   onSearch(term: string): void {
     this.searchTerms.next(term);
   }
 
-  /**
-   * Method to switch between the active records and the deleted records
-   * @param state '0' or '2'
-   */
   onRecordStateChange(state: string): void {
     this.recordState = state;
     this.currentPage = 1;
@@ -220,10 +199,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.loadRecords();
   }
 
-  /**
-   * Method to move to another page
-   * @param page
-   */
   onPageChange(page: number): void {
     this.currentPage = page;
     this.selectedIds.clear();
@@ -303,13 +278,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
     saveAs(blob, fileName);
   }
 
-  /**
-   * Method to read a column value of a record. The column field can be a dot
-   * path, for example `subject.0.subjectName`.
-   * @param record
-   * @param field
-   * @returns
-   */
+  // field can be a dot path, for example subject.0.subjectName.
   getColumnValue(record: any, field: string): string {
     const value = field
       .split('.')
@@ -323,27 +292,16 @@ export class ContentListComponent implements OnInit, OnDestroy {
     return `${value}`;
   }
 
-  /**
-   * Method to open the confirmation dialog
-   * @param action delete, restore, approve, unapprove, sendForReview or sendToDraft
-   * @param record
-   */
   openConfirm(action: ConfirmAction, record: any): void {
     this.confirmAction = action;
     this.confirmRecord = record;
   }
 
-  /**
-   * Method to close the confirmation dialog
-   */
   closeConfirm(): void {
     this.confirmAction = null;
     this.confirmRecord = null;
   }
 
-  /**
-   * Method to run the confirmed action
-   */
   runConfirmedAction(): void {
     if (!this.confirmAction || !this.confirmRecord) return;
 
@@ -363,8 +321,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
         successMessage = `${this.config.singular} restored successfully`;
         break;
       case 'approve':
-        // Draft rows are soft-deleted, so restore first to clear that flag,
-        // then flip status (adminUpdate rejects an already-deleted record).
+        // Draft rows are soft-deleted; restore first to clear the flag, then flip status (adminUpdate rejects deleted records).
         request = this.contentService
           .restore(segment, id)
           .pipe(
@@ -406,9 +363,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Getter for the note lines of the bulk upload popup
-   */
   get uploadInstructions(): string[] {
     const label = this.config?.label?.toLowerCase() || 'records';
     return [
@@ -418,9 +372,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
     ];
   }
 
-  /**
-   * Method to open the bulk upload popup
-   */
   openBulkUpload(): void {
     this.selectedFile = null;
     this.uploadFileName = '';
@@ -430,10 +381,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.modalService.showBlukUploadDialog = true;
   }
 
-  /**
-   * Method to keep the file that the popup gives
-   * @param details file details, or an array when the admin drops the file
-   */
+  // details can be an array when the admin drops the file instead of picking it.
   uploadedFile(details: any): void {
     if (!details || Array.isArray(details) || !details.file) {
       this.selectedFile = null;
@@ -444,9 +392,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.uploadFileName = details.file.name;
   }
 
-  /**
-   * Method to read the file that the admin picked and to check the rows
-   */
   upload(): void {
     const file = this.selectedFile;
     if (!file) {
@@ -583,9 +528,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Method to send the rows for a check that saves nothing
-   */
   checkUpload(): void {
     this.isUploading = true;
     this.contentService
@@ -604,9 +546,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Method to save the rows after a check that found no error
-   */
   saveUpload(): void {
     this.isUploading = true;
     this.contentService
@@ -630,10 +569,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Method to keep the report of a check or of a save
-   * @param res response body of the bulk upload route
-   */
   private applyUploadResult(res: any): void {
     const data = res?.data || {};
     this.uploadReport = data.rows || [];
@@ -655,9 +590,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.modalService.showBlukUploadDialog = true;
   }
 
-  /**
-   * Method to close the report and to drop the rows
-   */
   closeUpload(): void {
     this.showUploadReport = false;
     this.uploadRows = [];
@@ -668,16 +600,10 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.uploadSummary = null;
   }
 
-  /**
-   * Method to send the admin back to the dashboard
-   */
   backNavigation(): void {
     this.router.navigate(['/dashboard']);
   }
 
-  /**
-   * Method to reset search, page and dialog state on an entity change
-   */
   private resetView(): void {
     this.listData = [];
     this.totalItems = 0;

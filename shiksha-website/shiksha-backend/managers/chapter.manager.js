@@ -179,19 +179,7 @@ class ChapterManager extends BaseManager {
     return formatApiReponse(true, "", data);
   }
 
-  /**
-   * Validates a batch of chapters and writes them when every row passes.
-   *
-   * The method replaces the one-off scripts that inserted chapters straight
-   * into MongoDB. It answers with one report line per row. A row that fails
-   * blocks the whole upload, so the admin fixes the JSON file and uploads it
-   * again. A missing or non-standard index path is a warning, not a failure,
-   * because the ingestion pipeline writes that field later.
-   *
-   * @param {object[]} chapters - chapters from the uploaded JSON file
-   * @param {boolean} dryRun - true to validate only, false to also insert
-   * @returns {Promise<object>} the API response with the report
-   */
+  // A missing or non-standard index path is a warning, not a failure, because the ingestion pipeline writes that field later.
   async bulkUpload(chapters, dryRun = false, userId) {
     try {
       if (!Array.isArray(chapters) || chapters.length === 0) {
@@ -322,7 +310,7 @@ class ChapterManager extends BaseManager {
         const orderTwin = liveOrder.get(order);
         if (orderTwin) {
           errors.push(
-            `order number ${chapter.orderNumber} already belongs to the chapter "${orderTwin.topics}" (${orderTwin._id}) in the same subject, board, medium and class.`
+            `order number ${chapter.orderNumber} already belongs to the chapter "${orderTwin.topics}" (${orderTwin._id}) in the same subject, board, medium and class. Change the order number, or remove the duplicate.`
           );
         }
 
@@ -372,9 +360,7 @@ class ChapterManager extends BaseManager {
         return formatApiReponse(true, "All chapters passed validation.", report);
       }
 
-      // The upload does not carry learning outcomes per subtopic. The server
-      // writes one entry per subtopic and the content generation pipeline
-      // fills the outcomes later.
+      // Upload carries no learning outcomes; the content generation pipeline fills them in later.
       const documents = normalizedChapters.map((chapter, index) => ({
         ...chapter,
         medium: String(chapter.medium).toLowerCase(),

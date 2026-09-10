@@ -7,7 +7,7 @@ export const menuItem = [
   getMenuItems('Teacher Management', '/teachers', 'user-management.svg', 'user-management-light.svg', 'teachers', ['user.view']),
   getMenuItems('Staff Management', '/staff', 'staff-management.svg', 'staff-management-light.svg', 'staff', ['user.view']),
   getMenuItems('Role Management', '/roles', 'role-management.svg', 'role-management-light.svg', 'roles', ['role.view']),
-  getMenuItems('Content Management', '/content-management', 'edit.svg', 'edit_light.svg', 'content-management', ['content.manage']),
+  getMenuItems('Content Management', '/content-management', 'edit.svg', 'edit_light.svg', 'content-management', ['admin.ingest']),
   getMenuItems('Content Generation', '/content-generation', 'content-generation.svg', 'content-generation-light.svg', 'content-generation', ['content.view']),
   getMenuItems('Question Paper Generation', '/question-papers', 'question-bank.svg', 'question-bank-light.svg', 'question-papers', ['question-paper.generate']),
   getMenuItems('Chatbot', '/chat', 'chatbot.svg', 'chatbot-light.svg', 'chat', ['chat.use']),

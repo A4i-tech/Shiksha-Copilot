@@ -1,15 +1,7 @@
-/**
- * Validation rules for the admin question bulk upload.
- *
- * The Question model (`models/question.model.js`) declares no required
- * field. `text` is required here anyway: a question with no text is not a
- * usable row. Every other field stays optional, matching the model.
- */
-
+// Question model itself requires nothing; text is required here anyway since a question with no text is unusable
 const Joi = require("joi");
 const { objectId } = require("./bulk.validation.helpers");
 
-/** Maximum number of questions in one upload. */
 const MAX_ROWS = 500;
 
 const uploadRowSchema = Joi.object({
@@ -41,11 +33,6 @@ const bulkUploadSchema = Joi.object({
 	dryRun: Joi.boolean(),
 });
 
-/**
- * Checks the shape of one question row.
- * @param {object} question - question row to check
- * @returns {{errors: string[], warnings: string[]}} the result
- */
 function checkRow(question) {
 	const errors = [];
 

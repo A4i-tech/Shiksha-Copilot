@@ -112,19 +112,19 @@ const routes: Routes = [
       {
         path: 'content-management/:entity/new',
         loadComponent: () => import('./admin/content-management/content-edit/content-edit.component').then((c) => c.ContentEditComponent),
-        data: { permissions: ['content.manage'] },
+        data: { permissions: ['admin.ingest'] },
         canActivate: [PermissionGuard],
       },
       {
         path: 'content-management/:entity/:id/edit',
         loadComponent: () => import('./admin/content-management/content-edit/content-edit.component').then((c) => c.ContentEditComponent),
-        data: { permissions: ['content.manage'] },
+        data: { permissions: ['admin.ingest'] },
         canActivate: [PermissionGuard],
       },
       {
         path: 'content-management/:entity',
         loadComponent: () => import('./admin/content-management/content-list/content-list.component').then((c) => c.ContentListComponent),
-        data: { permissions: ['content.manage'] },
+        data: { permissions: ['admin.ingest'] },
         canActivate: [PermissionGuard],
       },
       {

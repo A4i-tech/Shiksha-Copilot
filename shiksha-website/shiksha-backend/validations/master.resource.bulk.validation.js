@@ -1,16 +1,7 @@
-/**
- * Validation rules for the admin lesson-resource bulk upload.
- *
- * The write allow-list mirrors the required fields of the MasterResource
- * model (`models/master.resource.model.js`): lessonName, medium, semester
- * and chapterId. Every other field is optional there, so it stays optional
- * here too.
- */
-
+// required fields here mirror the MasterResource model's required fields; everything else stays optional to match
 const Joi = require("joi");
 const { objectId } = require("./bulk.validation.helpers");
 
-/** Maximum number of resources in one upload. */
 const MAX_ROWS = 500;
 
 const uploadRowSchema = Joi.object({
@@ -36,11 +27,6 @@ const bulkUploadSchema = Joi.object({
 	dryRun: Joi.boolean(),
 });
 
-/**
- * Checks the shape of one resource row.
- * @param {object} resource - resource row to check
- * @returns {{errors: string[], warnings: string[]}} the result
- */
 function checkRow(resource) {
 	const errors = [];
 

@@ -1,24 +1,6 @@
-/**
- * Validation rules for the admin master lesson plan bulk upload.
- *
- * The admin team used to add lesson plans with one-off scripts
- * (`uploadMasterLessonOlderVersion`) that wrote straight into MongoDB against
- * a `chapter_id` string the script parsed with regular expressions. Those
- * scripts skipped every application-level check and wrote fields the model
- * does not even declare (for example `preferredMot`), which Mongoose silently
- * drops. The database also collected lesson plans with no `chapterId`, no
- * content, and duplicate rows for the same chapter and subtopic set.
- *
- * This module holds the gate that stops the same mistakes from arriving
- * again. Every rule here is a hard failure. The soft rules are the fields
- * that content generation and outcome lookup need later but that do not stop
- * the row from being saved: `sections`, `learningOutcomes` and `templateId`.
- */
-
 const Joi = require("joi");
 const { objectId, textProblem, duplicates } = require("./bulk.validation.helpers");
 
-/** Maximum number of lesson plans in one upload. */
 const MAX_ROWS = 500;
 
 const videoSchema = Joi.object({
@@ -27,11 +9,7 @@ const videoSchema = Joi.object({
 	selected: Joi.boolean(),
 });
 
-// The write allow-list. Every key here is a real field of the MasterLesson
-// model (`models/master.lesson.model.js`). `preferredMot` and every other key
-// the old scripts wrote but the model never declared is left out on purpose:
-// Mongoose silently drops it, so accepting it here would only hide the
-// mistake instead of rejecting it.
+// fields the old scripts wrote but the model never declared (e.g. preferredMot) are left out on purpose, since Mongoose silently drops them
 const uploadRowSchema = Joi.object({
 	name: Joi.string().required(),
 	class: Joi.number().integer().min(1).max(12).required(),
@@ -58,11 +36,7 @@ const uploadRowSchema = Joi.object({
 	templateId: objectId,
 });
 
-// The envelope check only looks at the container. `checkRow` checks each
-// lesson plan, so that the answer can name the row that failed instead of
-// stopping at the first Joi error. The rows array can arrive under `rows` or
-// under `lessonPlans` (the name the older scripts and the admin UI already
-// use for this payload) but not both.
+// rows can arrive as `rows` or `lessonPlans` (name the older scripts and admin UI use), not both
 const rowsSchema = Joi.array().items(Joi.object()).min(1).max(MAX_ROWS);
 
 const bulkUploadSchema = Joi.object({
@@ -71,13 +45,6 @@ const bulkUploadSchema = Joi.object({
 	dryRun: Joi.boolean(),
 }).xor("rows", "lessonPlans");
 
-/**
- * Builds the identity key of a lesson plan. Two lesson plans with the same
- * key describe the same content: the same chapter, either the whole chapter
- * (`isAll: true`) or the same set of subtopics.
- * @param {object} lessonPlan - lesson plan to key
- * @returns {string} the key
- */
 function identityKey(lessonPlan) {
 	const subTopicKey =
 		lessonPlan.isAll === true
@@ -90,12 +57,6 @@ function identityKey(lessonPlan) {
 	return [String(lessonPlan.chapterId), subTopicKey].join("|");
 }
 
-/**
- * Checks the shape and the content of one lesson plan. The check does not
- * read the database.
- * @param {object} lessonPlan - lesson plan to check
- * @returns {{errors: string[], warnings: string[]}} the result
- */
 function checkRow(lessonPlan) {
 	const errors = [];
 	const warnings = [];
@@ -174,12 +135,6 @@ function checkRow(lessonPlan) {
 	return { errors, warnings };
 }
 
-/**
- * Checks a batch of lesson plans against each other. Two rows in one upload
- * must not describe the same chapter and subtopic set.
- * @param {object[]} lessonPlans - lesson plans to check
- * @returns {string[][]} one error list per row, by row index
- */
 function checkBatch(lessonPlans) {
 	const perRow = lessonPlans.map(() => []);
 	const identitySeen = new Map();
