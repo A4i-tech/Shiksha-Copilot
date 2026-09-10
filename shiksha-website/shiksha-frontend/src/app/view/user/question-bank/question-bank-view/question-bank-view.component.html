@@ -39,7 +39,7 @@
                     {{ (questionTypeLabels[questionBankObjective.type] || questionBankObjective.type) | translate }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    {{ translateService.currentLang === 'en' ? objective.shortLabel : (objective.shortLabel | translate) }}
+                    {{ objective.name }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
                     {{ formatMarks(questionBankObjective.marksPerQuestion) }}

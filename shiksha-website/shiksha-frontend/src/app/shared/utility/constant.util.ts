@@ -1,6 +1,3 @@
-import { evaluate } from '@marcbachmann/cel-js';
-import enLabels from '../../../assets/i18n/en.json';
-
 export const LOGIN_ROUTE = '/auth'
 export const SESSION_VERSION = 1;
 
@@ -54,25 +51,6 @@ export const QUESTION_SOURCE = {
 } as const;
 
 export const formatMarks = (marks: number) => String(marks).replace(/(?:^0)?\.5$/, '½');
-
-type LabelRuleContext = Record<string, string | null | undefined>;
-
-export const getLabel = <T>(key: string, fallback: T, context: LabelRuleContext): T => {
-    const value = (enLabels as unknown as Record<string, T | ({ rule: string; value: T } | T)[]>)[key];
-    if (value === undefined) return fallback;
-    if (!Array.isArray(value)) return value;
-    for (const entry of value) {
-        const isRule = entry !== null && typeof entry === 'object' && 'rule' in entry;
-        if (!isRule) return entry as T;
-        const { rule, value: ruleValue } = entry as { rule: string; value: T };
-        try {
-            if (evaluate(rule, context) === true) return ruleValue;
-        } catch {
-            // Unknown/undefined variable in the rule, or a malformed expression: treat as no match.
-        }
-    }
-    return fallback;
-};
 
 export const CCE_TYPE_MAPPER: any = {
     'Science': 'cce_tools_math_science',

@@ -116,12 +116,12 @@
                 <thead class="text-xs bg-[#edf6fe]"><tr>
                   <th class="px-4 py-3 border" *ngFor="let objective of questionBankObjectives">
                     <span class="inline-flex items-center gap-1">
-                      {{ translateService.currentLang === 'en' ? objective.shortLabel : (objective.shortLabel | translate) }}
-                      <span class="relative group cursor-help" tabindex="0" *ngIf="objective.fullLabel">
-                        <img src="assets/icons/info-primary.svg" class="w-4 h-4" [attr.alt]="objective.fullLabel" />
-                        <span role="tooltip" [attr.aria-label]="objective.fullLabel"
+                      {{ objective.name }}
+                      <span class="relative group cursor-help" tabindex="0" *ngIf="objective.description">
+                        <img src="assets/icons/info-primary.svg" class="w-4 h-4" [attr.alt]="objective.description" />
+                        <span role="tooltip" [attr.aria-label]="objective.description"
                           class="pointer-events-none opacity-0 group-hover:opacity-100 group-focus:opacity-100 absolute top-5 left-0 z-50 w-56 rounded border bg-white p-2 text-xs font-normal text-left shadow-md">
-                          {{ objective.fullLabel }}
+                          {{ objective.description }}
                         </span>
                       </span>
                     </span>

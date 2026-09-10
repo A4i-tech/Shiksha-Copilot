@@ -1,6 +1,6 @@
 <div class="select-wrapper">
   <label class="form-control-label inline-flex items-center gap-1" [for]="inputId" [class.sr-only]="config.hideLabel || (!config.fieldName && !config.labelTxt)">
-    {{ (config.skipTranslate && isEnglishActive) ? labelText : (labelText | translate) }}
+    {{ labelText | translate:config.translateParams }}
     <span *ngIf="config.required && mode !== 'view'" class="text-[16px] text-error">*</span>
     <span *ngIf="config.info" class="relative group cursor-help" tabindex="0">
       <img src="assets/icons/info-primary.svg" class="w-4 h-4" alt="" />
@@ -14,7 +14,7 @@
     [class.wrap-value]="config.wrapValue"
     [ngClass]="config.isBackground && (control.disabled || config.disabled) ? 'with-background' : ''"
     [readonly]="!!config.disabled"
-    [placeholder]="(config.skipTranslate && isEnglishActive) ? config.placeHolderTxt : (config.placeHolderTxt | translate)" [notFoundText]="'No items found' | translate"
+    [placeholder]="config.placeHolderTxt | translate:config.translateParams" [notFoundText]="'No items found' | translate"
     [bindLabel]="config.addTag ? 'label' : config.bindLabel || 'name'"
     [bindValue]="config.addTag ? '' : config.bindValue || 'value'" [dropdownPosition]="'auto'"
     [searchable]="config.searchable || false" [clearable]="config.clearableOff ? false : true"
