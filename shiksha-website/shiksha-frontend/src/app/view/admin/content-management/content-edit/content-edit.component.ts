@@ -280,7 +280,28 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       return JSON.stringify(value, null, 2);
     }
 
+    if (field.type === 'question-content') {
+      return this.parseQuestionContent(value);
+    }
+
     return `${value}`;
+  }
+
+  // A question's text/answer is a plain string, or (per PR #93) a list of
+  // { contentType, content } parts when it carries an image alongside the text.
+  private parseQuestionContent(value: any): { text: string; image: { contentType: string; content: string } | null } {
+    if (typeof value === 'string' || value == null) {
+      return { text: value ?? '', image: null };
+    }
+
+    const parts = Array.isArray(value) ? value : [value];
+    const text = parts
+      .filter((part) => !part?.contentType || part.contentType === 'text/plain')
+      .map((part) => (typeof part === 'string' ? part : part?.content ?? ''))
+      .join('\n');
+    const image = parts.find((part) => part?.contentType?.startsWith('image/')) ?? null;
+
+    return { text, image: image ? { contentType: image.contentType, content: image.content } : null };
   }
 
   private toRecordValue(field: ContentField): any {
@@ -298,9 +319,20 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           .filter((line: string) => line !== '');
       case 'json':
         return `${raw}`.trim() === '' ? null : JSON.parse(raw);
+      case 'question-content':
+        return this.buildQuestionContent(raw);
       default:
         return `${raw}`;
     }
+  }
+
+  private buildQuestionContent(raw: { text: string; image: { contentType: string; content: string } | null }): any {
+    const text = (raw?.text ?? '').trim();
+    const image = raw?.image ?? null;
+
+    if (image && text) return [{ contentType: 'text/plain', content: text }, image];
+    if (image) return [image];
+    return text;
   }
 
   // The backend rejects an empty body and any field it does not own, so this sends only the changed fields.
@@ -343,5 +375,46 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       default:
         return '';
     }
+  }
+
+  onQuestionTextChange(field: ContentField, text: string): void {
+    const current = this.formValues[field.field] ?? { text: '', image: null };
+    this.formValues[field.field] = { ...current, text };
+  }
+
+  onQuestionImageRemoved(field: ContentField): void {
+    const current = this.formValues[field.field] ?? { text: '', image: null };
+    this.formValues[field.field] = { ...current, image: null };
+  }
+
+  async onQuestionImageSelected(field: ContentField, event: Event): Promise<void> {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    (event.target as HTMLInputElement).value = '';
+    if (file) await this.setQuestionImage(field, file);
+  }
+
+  async onQuestionContentPaste(field: ContentField, event: ClipboardEvent): Promise<void> {
+    const file = Array.from(event.clipboardData?.items ?? [])
+      .find((item) => item.type.startsWith('image/'))
+      ?.getAsFile();
+    if (!file) return;
+
+    event.preventDefault();
+    await this.setQuestionImage(field, file);
+  }
+
+  private async setQuestionImage(field: ContentField, file: File): Promise<void> {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
+    const [, contentType, content] = dataUrl.match(/^data:(.+);base64,(.*)$/) ?? [];
+    if (!contentType || !content) return;
+
+    const current = this.formValues[field.field] ?? { text: '', image: null };
+    this.formValues[field.field] = { ...current, image: { contentType, content } };
   }
 }

@@ -29,7 +29,7 @@
         <div
           *ngFor="let field of visibleFields"
           [ngClass]="{
-            'md:col-span-2': field.type === 'json' || field.type === 'textarea'
+            'md:col-span-2': field.type === 'json' || field.type === 'textarea' || field.type === 'question-content'
           }"
         >
           <label class="form-control-label" [attr.for]="'field-' + field.field">
@@ -86,6 +86,41 @@
               [ngModel]="formValues[field.field]"
               (ngModelChange)="onFieldChange(field, $event)"
             ></textarea>
+
+            <div *ngSwitchCase="'question-content'" class="space-y-2">
+              <textarea
+                rows="4"
+                class="form-control"
+                placeholder="Type the text here, or paste an image"
+                [id]="'field-' + field.field"
+                [name]="field.field"
+                [ngModel]="formValues[field.field]?.text"
+                (ngModelChange)="onQuestionTextChange(field, $event)"
+                (paste)="onQuestionContentPaste(field, $event)"
+              ></textarea>
+
+              <div *ngIf="formValues[field.field]?.image as img" class="flex items-center gap-3">
+                <img
+                  [src]="'data:' + img.contentType + ';base64,' + img.content"
+                  alt=""
+                  class="max-h-32 rounded border border-content-30"
+                />
+                <button
+                  type="button"
+                  class="btn-outline-primary h-8 text-xs"
+                  (click)="onQuestionImageRemoved(field)"
+                >
+                  Remove image
+                </button>
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                class="text-xs"
+                (change)="onQuestionImageSelected(field, $event)"
+              />
+            </div>
 
             <app-chapter-picker
               *ngSwitchCase="'chapter-select'"
