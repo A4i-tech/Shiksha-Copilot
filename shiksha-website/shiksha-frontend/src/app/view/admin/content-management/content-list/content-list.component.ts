@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
@@ -10,6 +10,7 @@ import { ModalComponent } from 'src/app/shared/components/modal/modal.component'
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { UploadPopupComponent } from 'src/app/shared/components/upload-popup/upload-popup.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
+import { ActionMenuController } from 'src/app/shared/utility/action-menu-controller.util';
 import {
   CONTENT_ENTITIES,
   ContentEntityConfig,
@@ -94,6 +95,8 @@ export class ContentListComponent implements OnInit, OnDestroy {
   /** ids of the rows the admin checked, on the current page */
   selectedIds = new Set<string>();
 
+  readonly actionMenu = new ActionMenuController();
+
   /** file types that the bulk upload popup accepts */
   uploadFileTypes: string[] = ['.json', '.xlsx'];
   /** file that the popup holds before the check runs */
@@ -161,6 +164,11 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+  }
+
+  @HostListener('click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    this.actionMenu.closeAllIfTriggeredInside(event, '.content-list-wrapper');
   }
 
   loadRecords(): void {

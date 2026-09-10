@@ -94,6 +94,20 @@
             ></app-chapter-picker>
 
             <select
+              *ngSwitchCase="'select'"
+              class="form-control"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            >
+              <option value="">Pick {{ field.label.toLowerCase() }}</option>
+              <option *ngFor="let option of field.options" [value]="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+
+            <select
               *ngSwitchCase="'subject-select'"
               class="form-control"
               [id]="'field-' + field.field"

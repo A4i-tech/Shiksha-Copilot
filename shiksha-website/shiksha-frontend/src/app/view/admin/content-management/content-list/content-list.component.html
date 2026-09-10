@@ -112,7 +112,7 @@
         <div *ngIf="!listData.length" class="text-center text-content-60 py-4 border rounded-xl">
           No records found.
         </div>
-        <div *ngFor="let record of listData" class="rounded-xl border p-4 bg-white shadow-sm">
+        <div *ngFor="let record of listData; let i = index" class="rounded-xl border p-4 bg-white shadow-sm">
           <label class="flex items-center gap-2 text-sm text-content-60">
             <input
               type="checkbox"
@@ -130,64 +130,24 @@
             </div>
           </div>
 
-          <div class="flex flex-wrap gap-2 mt-4">
-            <a
-              [routerLink]="['/content-management', config.key, record._id, 'edit']"
-              class="btn-outline-primary h-9"
-            >
-              Edit
-            </a>
-            <button type="button" class="btn-outline-primary h-9" (click)="exportRecord(record)">
-              Export
-            </button>
+          <div class="flex justify-end mt-4 relative">
             <button
-              *ngIf="recordState === '0'"
               type="button"
-              class="btn-outline-primary h-9"
-              (click)="openConfirm('unapprove', record)"
+              class="py-1 px-2 rounded inline-flex items-center"
+              [attr.aria-label]="'Actions for this ' + config.singular.toLowerCase()"
+              (click)="actionMenu.toggleMobileMenu(i, $event)"
             >
-              Set to draft
+              <img class="w-5" src="assets/icons/more_vert.svg" alt="" />
             </button>
-            <button
-              *ngIf="recordState === '0'"
-              type="button"
-              class="btn-danger h-9"
-              (click)="openConfirm('delete', record)"
+
+            <ul
+              *ngIf="actionMenu.openStates[i]"
+              class="absolute right-0 top-full w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+              role="menu"
+              aria-orientation="vertical"
             >
-              Delete
-            </button>
-            <button
-              *ngIf="recordState === '3'"
-              type="button"
-              class="btn-primary h-9"
-              (click)="openConfirm('sendForReview', record)"
-            >
-              Send for review
-            </button>
-            <button
-              *ngIf="recordState === '4'"
-              type="button"
-              class="btn-primary h-9"
-              (click)="openConfirm('approve', record)"
-            >
-              Approve
-            </button>
-            <button
-              *ngIf="recordState === '4'"
-              type="button"
-              class="btn-outline-primary h-9"
-              (click)="openConfirm('sendToDraft', record)"
-            >
-              Send back to draft
-            </button>
-            <button
-              *ngIf="recordState === '2'"
-              type="button"
-              class="btn-primary h-9"
-              (click)="openConfirm('restore', record)"
-            >
-              Restore
-            </button>
+              <ng-container *ngTemplateOutlet="rowActions; context: { record: record }"></ng-container>
+            </ul>
           </div>
         </div>
       </div>
@@ -214,7 +174,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let record of listData" class="border-b">
+            <tr *ngFor="let record of listData; let i = index" class="border-b">
               <td class="p-4 border-r align-top">
                 <input
                   type="checkbox"
@@ -226,65 +186,27 @@
               <td class="text-sm p-4 border-r align-top break-words" *ngFor="let column of config.columns">
                 {{ getColumnValue(record, column.field) }}
               </td>
-              <td class="text-sm p-4 align-top whitespace-nowrap">
-                <div class="flex flex-wrap gap-2">
-                  <a
-                    [routerLink]="['/content-management', config.key, record._id, 'edit']"
-                    class="btn-outline-primary h-9"
-                  >
-                    Edit
-                  </a>
-                  <button type="button" class="btn-outline-primary h-9" (click)="exportRecord(record)">
-                    Export
-                  </button>
-                  <button
-                    *ngIf="recordState === '0'"
-                    type="button"
-                    class="btn-outline-primary h-9"
-                    (click)="openConfirm('unapprove', record)"
-                  >
-                    Set to draft
-                  </button>
-                  <button
-                    *ngIf="recordState === '0'"
-                    type="button"
-                    class="btn-danger h-9"
-                    (click)="openConfirm('delete', record)"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    *ngIf="recordState === '3'"
-                    type="button"
-                    class="btn-primary h-9"
-                    (click)="openConfirm('sendForReview', record)"
-                  >
-                    Send for review
-                  </button>
-                  <button
-                    *ngIf="recordState === '4'"
-                    type="button"
-                    class="btn-primary h-9"
-                    (click)="openConfirm('approve', record)"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    *ngIf="recordState === '4'"
-                    type="button"
-                    class="btn-outline-primary h-9"
-                    (click)="openConfirm('sendToDraft', record)"
-                  >
-                    Send back to draft
-                  </button>
-                  <button
-                    *ngIf="recordState === '2'"
-                    type="button"
-                    class="btn-primary h-9"
-                    (click)="openConfirm('restore', record)"
-                  >
-                    Restore
-                  </button>
+              <td class="text-sm p-4 align-top">
+                <div class="flex justify-center">
+                  <div [class.open]="actionMenu.openStates[i]" (click)="actionMenu.toggleDesktopMenu(i, $event)">
+                    <button
+                      type="button"
+                      class="py-2 px-4 rounded inline-flex items-center"
+                      [attr.aria-label]="'Actions for this ' + config.singular.toLowerCase()"
+                    >
+                      <img class="w-5" src="assets/icons/more_vert.svg" alt="" />
+                    </button>
+
+                    <ul
+                      *ngIf="actionMenu.openStates[i]"
+                      class="fixed w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-50"
+                      [ngStyle]="actionMenu.desktopPositions[i]"
+                      role="menu"
+                      aria-orientation="vertical"
+                    >
+                      <ng-container *ngTemplateOutlet="rowActions; context: { record: record }"></ng-container>
+                    </ul>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -298,6 +220,77 @@
       </div>
     </ng-container>
   </div>
+
+  <ng-template #rowActions let-record="record">
+    <li class="h-10 mt-2 hover:bg-shade-80 cursor-pointer">
+      <a
+        [routerLink]="['/content-management', config.key, record._id, 'edit']"
+        class="block px-4 py-2 text-sm text-content"
+        role="menuitem"
+      >
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/edit.svg" alt="" />
+          <span>Edit</span>
+        </div>
+      </a>
+    </li>
+    <li class="h-10 hover:bg-shade-80 cursor-pointer" (click)="exportRecord(record)">
+      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/download.svg" alt="" />
+          <span>Export</span>
+        </div>
+      </a>
+    </li>
+    <li *ngIf="recordState === '0'" class="h-10 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('unapprove', record)">
+      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/back-arrow.svg" alt="" />
+          <span>Set to draft</span>
+        </div>
+      </a>
+    </li>
+    <li *ngIf="recordState === '0'" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('delete', record)">
+      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/delete.svg" alt="" />
+          <span class="text-error">Delete</span>
+        </div>
+      </a>
+    </li>
+    <li *ngIf="recordState === '3'" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('sendForReview', record)">
+      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/check.svg" alt="" />
+          <span>Send for review</span>
+        </div>
+      </a>
+    </li>
+    <li *ngIf="recordState === '4'" class="h-10 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('approve', record)">
+      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/check.svg" alt="" />
+          <span>Approve</span>
+        </div>
+      </a>
+    </li>
+    <li *ngIf="recordState === '4'" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('sendToDraft', record)">
+      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/back-arrow.svg" alt="" />
+          <span>Send back to draft</span>
+        </div>
+      </a>
+    </li>
+    <li *ngIf="recordState === '2'" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('restore', record)">
+      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
+        <div class="flex items-center">
+          <img class="ms-2 me-3 w-5" src="assets/icons/switch-on.svg" alt="" />
+          <span class="text-success">Restore</span>
+        </div>
+      </a>
+    </li>
+  </ng-template>
 
   <app-pagination
     *ngIf="totalItems > pageSize"
