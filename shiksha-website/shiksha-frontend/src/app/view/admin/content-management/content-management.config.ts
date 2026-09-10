@@ -25,8 +25,59 @@ export type ContentFieldType =
   | 'boolean'
   | 'list'
   | 'json'
+  | 'select'
   | 'subject-select'
   | 'chapter-select';
+
+export interface ContentSelectOption {
+  value: string;
+  label: string;
+}
+
+export const BOARD_OPTIONS: ContentSelectOption[] = [
+  { value: 'CBSE', label: 'CBSE' },
+  { value: 'ICSE', label: 'ICSE' },
+  { value: 'KSEEB', label: 'KSEEB' },
+  { value: 'BSE-TG', label: 'BSE-TG' },
+];
+
+export const MEDIUM_OPTIONS: ContentSelectOption[] = [
+  { value: 'english', label: 'English' },
+  { value: 'kannada', label: 'Kannada' },
+  { value: 'telugu', label: 'Telugu' },
+];
+
+export const DIFFICULTY_OPTIONS: ContentSelectOption[] = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'average', label: 'Average' },
+  { value: 'difficult', label: 'Difficult' },
+];
+
+/** every answerType except MATCHING; matching's answer is the pairs mapping itself, not a separate key answer */
+export const ANSWER_TYPES_WITH_KEY_ANSWER = [
+  'MCQ',
+  'FILL_BLANKS',
+  'ANSWER_VERY_SHORT',
+  'ANSWER_SHORT',
+  'ANSWER_MEDIUM',
+  'ANSWER_LONG',
+  'GRAMMAR_MCQ',
+  'GRAMMAR_FILL_BLANKS',
+  'GRAMMAR_EDITING',
+];
+
+export const ANSWER_TYPE_OPTIONS: ContentSelectOption[] = [
+  { value: 'MCQ', label: 'Multiple Choice Questions' },
+  { value: 'FILL_BLANKS', label: 'Fill in the blanks' },
+  { value: 'ANSWER_VERY_SHORT', label: 'Very Short Answer Questions' },
+  { value: 'ANSWER_SHORT', label: 'Short Answer Questions' },
+  { value: 'ANSWER_MEDIUM', label: 'Answer the following questions' },
+  { value: 'ANSWER_LONG', label: 'Long Answer Questions' },
+  { value: 'MATCHING', label: 'Match the Following' },
+  { value: 'GRAMMAR_MCQ', label: 'Grammar: Multiple Choice Questions' },
+  { value: 'GRAMMAR_FILL_BLANKS', label: 'Grammar: Fill in the blanks' },
+  { value: 'GRAMMAR_EDITING', label: 'Grammar: Identify and correct the error' },
+];
 
 export interface ContentColumn {
   /** property of the record, a dot path is allowed */
@@ -44,6 +95,10 @@ export interface ContentField {
   createOnly?: boolean;
   /** the add form needs a value in this field */
   requiredOnCreate?: boolean;
+  /** options for type 'select' */
+  options?: ContentSelectOption[];
+  /** the field only shows while another field holds one of these values */
+  visibleWhen?: { field: string; values: string[] };
 }
 
 export interface ContentEntityConfig {
@@ -89,8 +144,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       },
       { field: 'topics', label: 'Chapter name', type: 'text', requiredOnCreate: true },
       { field: 'standard', label: 'Class', type: 'number', requiredOnCreate: true },
-      { field: 'medium', label: 'Medium', type: 'text', requiredOnCreate: true },
-      { field: 'board', label: 'Board', type: 'text', requiredOnCreate: true },
+      { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS, requiredOnCreate: true },
+      { field: 'board', label: 'Board', type: 'select', options: BOARD_OPTIONS, requiredOnCreate: true },
       {
         field: 'orderNumber',
         label: 'Chapter order number',
@@ -144,8 +199,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       },
       { field: 'name', label: 'Name', type: 'text', requiredOnCreate: true },
       { field: 'class', label: 'Class', type: 'number', requiredOnCreate: true },
-      { field: 'board', label: 'Board', type: 'text', requiredOnCreate: true },
-      { field: 'medium', label: 'Medium', type: 'text', requiredOnCreate: true },
+      { field: 'board', label: 'Board', type: 'select', options: BOARD_OPTIONS, requiredOnCreate: true },
+      { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS, requiredOnCreate: true },
       { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true },
       { field: 'subject', label: 'Subject', type: 'text', requiredOnCreate: true },
       { field: 'teachingModel', label: 'Teaching model', type: 'list' },
@@ -190,8 +245,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       },
       { field: 'lessonName', label: 'Name', type: 'text', requiredOnCreate: true },
       { field: 'class', label: 'Class', type: 'number' },
-      { field: 'board', label: 'Board', type: 'text' },
-      { field: 'medium', label: 'Medium', type: 'text', requiredOnCreate: true },
+      { field: 'board', label: 'Board', type: 'select', options: BOARD_OPTIONS },
+      { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS, requiredOnCreate: true },
       { field: 'levels', label: 'Level', type: 'text' },
       { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true },
       { field: 'subject', label: 'Subject', type: 'text' },
@@ -225,21 +280,36 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
     fields: [
       { field: 'text', label: 'Question text', type: 'textarea', requiredOnCreate: true },
       { field: 'subject', label: 'Subject', type: 'text' },
-      { field: 'medium', label: 'Medium', type: 'text' },
+      { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS },
       { field: 'class', label: 'Class', type: 'text' },
       { field: 'groupHeading', label: 'Group heading', type: 'text' },
-      { field: 'answerType', label: 'Answer type', type: 'text' },
-      { field: 'difficulty', label: 'Difficulty', type: 'text' },
+      { field: 'answerType', label: 'Answer type', type: 'select', options: ANSWER_TYPE_OPTIONS },
+      { field: 'difficulty', label: 'Difficulty', type: 'select', options: DIFFICULTY_OPTIONS },
       { field: 'marksPerQuestion', label: 'Marks per question', type: 'number' },
-      { field: 'keyAnswer', label: 'Key answer', type: 'textarea' },
+      {
+        field: 'keyAnswer',
+        label: 'Key answer',
+        type: 'textarea',
+        visibleWhen: { field: 'answerType', values: ANSWER_TYPES_WITH_KEY_ANSWER },
+      },
       {
         field: 'chapter',
         label: 'Chapter reference',
         type: 'json',
         hint: 'Shape: { "chapterNumber": <number>, "title": "<chapter>" }',
       },
-      { field: 'options', label: 'Options', type: 'json' },
-      { field: 'pairs', label: 'Pairs', type: 'json' },
+      {
+        field: 'options',
+        label: 'Options',
+        type: 'json',
+        visibleWhen: { field: 'answerType', values: ['MCQ', 'GRAMMAR_MCQ'] },
+      },
+      {
+        field: 'pairs',
+        label: 'Pairs',
+        type: 'json',
+        visibleWhen: { field: 'answerType', values: ['MATCHING'] },
+      },
       { field: 'items', label: 'Items', type: 'json' },
       { field: 'correctOrderById', label: 'Correct order by id', type: 'json' },
       {

@@ -118,9 +118,13 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   get visibleFields(): ContentField[] {
-    return this.config.fields.filter((field) =>
-      this.isCreate ? true : !field.createOnly
-    );
+    return this.config.fields.filter((field) => {
+      if (!this.isCreate && field.createOnly) return false;
+      if (field.visibleWhen && !field.visibleWhen.values.includes(this.formValues[field.visibleWhen.field])) {
+        return false;
+      }
+      return true;
+    });
   }
 
   save(targetStatus: 'draft' | 'under_review' = 'draft'): void {
@@ -253,7 +257,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     this.original = {};
     this.fieldErrors = {};
 
-    this.visibleFields.forEach((field) => {
+    // Load every field's value, not just the currently-visible ones: a value like `answerType`
+    // must already be in formValues before the visibleFields getter can decide which of its
+    // sibling fields (options, pairs, keyAnswer) to show.
+    this.config.fields.forEach((field) => {
       const value = record?.[field.field];
       this.original[field.field] = value;
       this.formValues[field.field] = this.toControlValue(field, value);
