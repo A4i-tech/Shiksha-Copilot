@@ -14,8 +14,7 @@ class ChapterAggregation {
             as: "subject",
           },
         },
-        // isDeleted defaults to false, but an explicit filter (admin trash /
-        // restore views) overrides it.
+        // explicit filter (admin trash/restore views) can override isDeleted default
         { $match: { isDeleted: false, ...filter } },
         {
           $facet: {

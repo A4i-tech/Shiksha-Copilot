@@ -5,15 +5,7 @@ let mongoServer;
 /** @type {import("mongoose").Connection} */
 let connection;
 
-/**
- * Setup test database connection
- * Uses MongoDB Memory Server for fast, isolated testing.
- * Opens its own connection (not the default `mongoose.connect`), so it never
- * touches the shared default connection every other model file registers on
- * — closing it here would otherwise leave every other test file's model
- * calls buffering against a dead connection for the rest of the Jest run.
- * @returns {Promise<import("mongoose").Connection>} the isolated connection
- */
+// Opens its own connection instead of the shared default, so closing it here does not break other test files' model calls.
 const setupTestDB = async () => {
   try {
     // Create in-memory MongoDB instance

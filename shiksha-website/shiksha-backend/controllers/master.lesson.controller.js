@@ -38,12 +38,6 @@ class MasterLessonController extends BaseController {
 		handleError(result, res);
 	}
 
-	/**
-	 * Validates an uploaded lesson plan file and, unless the caller asks for a
-	 * dry run, writes the lesson plans. The response carries one report line
-	 * per row. A failed row blocks the whole file, so the answer is 400 and
-	 * nothing is saved.
-	 */
 	async adminBulkUpload(req, res) {
 		const dryRun =
 			req.query.dryRun === "true" || req.body.dryRun === true;
@@ -61,10 +55,7 @@ class MasterLessonController extends BaseController {
 		handleError(result, res);
 	}
 
-	/**
-	 * Adds one lesson plan from the admin form. Runs the same check that the
-	 * bulk upload runs, so a form entry and a file entry cannot differ.
-	 */
+	// Reuses the bulk-upload check, so a form entry and a file entry cannot differ.
 	async adminCreate(req, res) {
 		const result = await this.manager.bulkUpload([req.body], false, req.user?._id);
 

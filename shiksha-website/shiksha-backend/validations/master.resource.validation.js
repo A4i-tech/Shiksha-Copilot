@@ -20,9 +20,7 @@ const schema = Joi.object({
 
 const validateMasterResource = validateRequest(schema);
 
-// Admin edit of an ingested resource plan. Every field is optional, but the
-// body must carry at least one. `chapterId` stays out: a resource plan cannot
-// move to a different chapter through this route.
+// chapterId stays out: a resource plan cannot move to a different chapter through this route
 const updateSchema = Joi.object({
 	lessonName: Joi.string(),
 	medium: Joi.string(),

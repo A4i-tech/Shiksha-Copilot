@@ -39,13 +39,6 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   private original: { [field: string]: any } = {};
   private subscriptions: Subscription[] = [];
 
-  /**
-   * class constructor
-   * @param route
-   * @param router
-   * @param contentService
-   * @param utilityService
-   */
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -108,9 +101,6 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Method to read the record and fill the form
-   */
   loadRecord(): void {
     this.isLoading = true;
 
@@ -127,21 +117,12 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Method to give the fields of the current mode. The add form shows the
-   * fields that the record needs at birth, the edit form hides them.
-   * @returns
-   */
   get visibleFields(): ContentField[] {
     return this.config.fields.filter((field) =>
       this.isCreate ? true : !field.createOnly
     );
   }
 
-  /**
-   * Method to save the form. The add form sends every field, the edit form
-   * sends the changed fields only.
-   */
   save(targetStatus: 'draft' | 'under_review' = 'draft'): void {
     const body = this.isCreate
       ? this.buildCreateBody()
@@ -191,9 +172,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       },
       error: (err: any) => {
         this.isSaving = false;
-        // The create route runs the row the same way the bulk upload does, so a
-        // structural rejection carries its detail in data.rows[0].errors, not
-        // in the generic top-level message.
+        // The create route validates like bulk upload, so a rejection's detail is in data.rows[0].errors, not the top-level message.
         const rowErrors = err.error?.data?.rows?.[0]?.errors;
         if (Array.isArray(rowErrors) && rowErrors.length) {
           this.utilityService.showError(rowErrors.join(' '));
@@ -204,11 +183,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Method to collect every filled field of the add form. The backend runs the
-   * same check that the file upload runs, so this sends the values as they are.
-   * @returns the body, or null when a required field is empty
-   */
+  // The backend runs the same check as the bulk upload, so this sends the values as they are.
   private buildCreateBody(): { [key: string]: any } | null {
     const body: { [key: string]: any } = {};
     const missing: string[] = [];
@@ -248,18 +223,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     return body;
   }
 
-  /**
-   * Method to leave the form without a save
-   */
   cancel(): void {
     this.router.navigate(['/content-management', this.config.key]);
   }
 
-  /**
-   * Method to validate a JSON field on each change
-   * @param field
-   * @param value
-   */
   onFieldChange(field: ContentField, value: any): void {
     this.formValues[field.field] = value;
 
@@ -281,10 +248,6 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Method to fill the form from the record
-   * @param record
-   */
   private fillForm(record: any): void {
     this.formValues = {};
     this.original = {};
@@ -297,12 +260,6 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  /**
-   * Method to convert a record value into the value of the control
-   * @param field
-   * @param value
-   * @returns
-   */
   private toControlValue(field: ContentField, value: any): any {
     if (field.type === 'boolean') return value === true;
 
@@ -319,11 +276,6 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     return `${value}`;
   }
 
-  /**
-   * Method to convert the value of a control back into a record value
-   * @param field
-   * @returns
-   */
   private toRecordValue(field: ContentField): any {
     const raw = this.formValues[field.field];
 
@@ -344,12 +296,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Method to collect the fields that the admin changed. The backend rejects a
-   * body with no field, and it also rejects a field that it does not own, so
-   * this sends the changed fields only.
-   * @returns
-   */
+  // The backend rejects an empty body and any field it does not own, so this sends only the changed fields.
   private buildChangedBody(): { [key: string]: any } {
     const body: { [key: string]: any } = {};
 
@@ -377,12 +324,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     return body;
   }
 
-  /**
-   * Method to give the empty value of a field type. A record that never had the
-   * field must not count as a change when the control stays empty.
-   * @param field
-   * @returns
-   */
+  // A record that never had this field must not count as changed when the control is empty.
   private emptyOf(field: ContentField): any {
     switch (field.type) {
       case 'boolean':

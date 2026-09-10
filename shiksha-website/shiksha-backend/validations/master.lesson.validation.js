@@ -24,9 +24,7 @@ const schema = Joi.object({
 
 const validateMasterLessonCreate = validateRequest(schema);
 
-// Admin edit of an ingested lesson plan. Every field is optional, but the body
-// must carry at least one. `chapterId` stays out: a lesson plan cannot move to
-// a different chapter through this route.
+// chapterId stays out: a lesson plan cannot move to a different chapter through this route
 const updateSchema = Joi.object({
 	name: Joi.string().min(3),
 	class: Joi.number(),

@@ -99,14 +99,7 @@ class BaseDao {
 		);
 	}
 
-	/**
-	 * Generic field update for the admin content-management routes.
-	 * Named apart from `update` on purpose: several subclasses already define
-	 * `update` with their own signature and their own narrow `$set` list, and
-	 * those callers must keep the old behaviour.
-	 * The caller must pass an already validated object. The Joi schema on the
-	 * route is the write allow-list.
-	 */
+	// caller must pass an already-validated object; the route's Joi schema is the write allow-list
 	async adminUpdate(
 		id,
 		updates,

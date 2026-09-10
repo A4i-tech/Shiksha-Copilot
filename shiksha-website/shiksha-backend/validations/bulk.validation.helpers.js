@@ -2,13 +2,7 @@ const Joi = require("joi");
 
 const objectId = Joi.string().regex(/^[0-9a-fA-F]{24}$/);
 
-/**
- * Reports the formatting problem in a text value, or null when the value is
- * clean. The upload rejects the text that the old ingestion scripts produced:
- * Markdown bullets, stray asterisks, embedded newlines and outer spaces.
- * @param {string} value - text to check
- * @returns {string|null} the problem, or null
- */
+// rejects the text shapes the old ingestion scripts produced (bullets, stray asterisks, embedded newlines)
 function textProblem(value) {
 	if (typeof value !== "string") return "is not text";
 	if (value.trim() === "") return "is empty";
@@ -22,11 +16,6 @@ function textProblem(value) {
 	return null;
 }
 
-/**
- * Returns the values that appear more than once, after a case fold.
- * @param {string[]} values - values to check
- * @returns {string[]} the repeated values
- */
 function duplicates(values) {
 	const seen = new Set();
 	const repeated = new Set();

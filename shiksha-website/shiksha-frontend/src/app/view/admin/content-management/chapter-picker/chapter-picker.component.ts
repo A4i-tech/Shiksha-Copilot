@@ -14,11 +14,7 @@ import { ModalComponent } from 'src/app/shared/components/modal/modal.component'
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 import { ContentManagementService } from '../content-management.service';
 
-/**
- * Searchable, paginated chapter picker. Loads one page of chapters at a
- * time from the same route the chapter list page uses, so a large chapter
- * table never has to render as one flat dropdown.
- */
+// Loads one page at a time from the chapter list's route, so a large table never renders as one flat dropdown.
 @Component({
   selector: 'app-chapter-picker',
   templateUrl: './chapter-picker.component.html',

@@ -16,12 +16,7 @@ class MasterResourceAggregation {
 				{
 					$unwind: "$chapter",
 				},
-				// isDeleted defaults to false, but an explicit filter (admin trash /
-				// restore views) overrides it. Uses $ne:true (not `isDeleted: false`,
-				// unlike chapter/lesson aggregations) because MasterResource documents
-				// predate this field: existing rows have no isDeleted key at all, and
-				// $ne:true still matches them. `isDeleted: false` would hide every
-				// pre-existing resource until a backfill migration runs.
+				// $ne:true (not isDeleted:false) because old resources predate this field and lack it entirely
 				{ $match: { isDeleted: { $ne: true }, ...filter } },
 				{
 					$facet: {

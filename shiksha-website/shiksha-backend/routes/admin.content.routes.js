@@ -1,15 +1,4 @@
-/**
- * Admin content-management routes.
- *
- * These routes replace the scripts under `reports/fixes/` and the direct
- * database edits that the admin team does today. Every route needs an
- * authenticated admin user. Every write route validates the body with a Joi
- * schema, and the schema is the write allow-list.
- *
- * Delete is a soft delete (`isDeleted: true`). Restore clears the flag.
- * A list route accepts `includeDeleted=0` for live records only,
- * `includeDeleted=2` for deleted records only, and no value for both.
- */
+// List routes take includeDeleted: 0 for live records only, 2 for deleted only, omitted for both.
 
 const express = require("express");
 const router = express.Router();
@@ -60,21 +49,13 @@ const masterLessonController = new MasterLessonController();
 const masterResourceController = new MasterResourceController();
 const questionController = new QuestionController();
 
-// Every route below this line needs the `content.manage` permission. The list
-// routes also expose soft-deleted records, so they use the same permission as
-// the write routes and not the weaker `content.view`.
+// Every route below this line needs the `admin.ingest` permission.
 router.use(
 	"/admin/content",
 	isAuthenticated,
-	requirePermission("content.manage")
+	requirePermission("admin.ingest")
 );
 
-/**
- * Registers the five routes that each content entity gets.
- * @param {string} segment - path segment, for example "chapters"
- * @param {object} controller - controller instance
- * @param {Function} updateValidator - Joi middleware for the update body
- */
 function registerEntity(segment, controller, updateValidator) {
 	router.get(
 		`/admin/content/${segment}`,
@@ -103,11 +84,7 @@ function registerEntity(segment, controller, updateValidator) {
 	);
 }
 
-// Chapter upload. The admin team added chapters with scripts that wrote into
-// MongoDB, so these two routes carry the whole gate: a JSON file of chapters,
-// or one chapter from the admin form. `dryRun` validates and saves nothing.
-// The file can hold up to 500 chapters, which is larger than the default body
-// limit, so these routes parse the body with their own limit.
+// Custom 10mb body limit: a chapter file can hold up to 500 chapters, more than the default limit.
 const chapterUploadBody = express.json({ limit: "10mb" });
 
 router.post(
@@ -125,9 +102,7 @@ router.post(
 
 registerEntity("chapters", chapterController, validateChapterUpdate);
 
-// Lesson plan upload. Same shape as the chapter upload above: a JSON file of
-// lesson plans, up to the same 10mb body limit, registered before the
-// `:id` routes below so `bulk-upload` is never read as an `:id`.
+// Registered before the :id routes below so "bulk-upload" is never matched as an :id.
 router.post(
 	"/admin/content/lesson-plans/bulk-upload",
 	chapterUploadBody,
@@ -143,8 +118,6 @@ router.post(
 
 registerEntity("lesson-plans", masterLessonController, validateMasterLessonUpdate);
 
-// Lesson resource upload. Same shape as the chapter/lesson-plan uploads
-// above: a JSON file of resource plans, or one plan from the admin form.
 router.post(
 	"/admin/content/resources/bulk-upload",
 	chapterUploadBody,
@@ -160,7 +133,6 @@ router.post(
 
 registerEntity("resources", masterResourceController, validateMasterResourceUpdate);
 
-// Question upload. Same shape as the uploads above.
 router.post(
 	"/admin/content/questions/bulk-upload",
 	chapterUploadBody,
