@@ -63,9 +63,7 @@ class UserController extends BaseController {
   }
 
   async setProfile(req, res) {
-    const { _id } = req.user;
-
-    let result = await this.manager.setProfile(_id, req.body);
+    let result = await this.manager.setProfile(req.user, req.body);
 
     if (result.success) {
       return res.status(200).json(result);
