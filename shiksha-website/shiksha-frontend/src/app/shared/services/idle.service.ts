@@ -8,6 +8,15 @@ import {
   IDLE_WARNING_THRESHOLD,
   INTERACTION_LOG_THRESHOLD,
 } from '../utility/constant.util';
+export interface ActivityLogPayload {
+  moduleName: string | null;
+  idleTime: number;
+  interactionTime: number;
+  planId?: string;
+  draftId?: string;
+  isCompleted?: boolean;
+}
+
 declare global {
   interface Window {
     umami?: {
@@ -64,7 +73,7 @@ export class IdleService {
           );
 
           if (this.timerService.getCurrentTime('interaction') && !this.isSkip) {
-            let trackObj: any = {
+            let trackObj: ActivityLogPayload = {
               moduleName: this.previousModuleTag,
               idleTime: this.timerService.getCurrentTime('idle'),
               interactionTime: this.timerService.getCurrentTime('interaction'),
@@ -168,7 +177,7 @@ export class IdleService {
   }
 
   stopWatching(moduleName?: any) {
-    let trackObj: any = {
+    let trackObj: ActivityLogPayload = {
       moduleName: moduleName ? moduleName : this.getCurrentModuleName(),
       idleTime: this.timerService.getCurrentTime('idle'),
       interactionTime: this.timerService.getCurrentTime('interaction'),
@@ -205,7 +214,7 @@ export class IdleService {
     this.idle.stop();
   }
 
-  logActivity(trackObj: any) {
+  logActivity(trackObj: ActivityLogPayload) {
     window.umami?.track('activity-log', trackObj);
     this.draftId = null;
     this.planId = null;
