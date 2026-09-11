@@ -27,6 +27,12 @@ render_env() {
     -e "s|\${SUPERSET_MOBILE_DASHBOARD_UUID}|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" \
     "$template_path" > "$output_path"
 
+  # Drop the template when it renders alongside the output (GH Pages / SWA
+  # build dir) so it isn't shipped; the Docker path keeps its copy elsewhere.
+  if [ "$(dirname "$template_path")" = "$(dirname "$output_path")" ]; then
+    rm -f "$template_path"
+  fi
+
   # GitHub Pages serves everything with a fixed max-age=600 and allows no
   # header overrides, so the URL itself has to change when the config does.
   index_path="$(dirname "$(dirname "$output_path")")/index.html"
