@@ -7,4 +7,6 @@ export const environment = {
     supersetUrl: 'your_superset_url',
     supersetDashboardUuid: 'your_superset_dashboard_uuid',
     supersetMobileDashboardUuid: 'your_superset_mobile_dashboard_uuid',
+    umamiUrl: 'your_umami_url',
+    umamiWebsiteId: 'your_umami_website_id',
 };
