@@ -1,8 +1,8 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+﻿import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Subscription } from 'rxjs';
-import { SupersetService } from 'src/app/core/services/superset.service';
+import { SupersetService, BlockDrillRow } from 'src/app/core/services/superset.service';
 import { environment } from 'src/environments/environment';
 import type { EmbeddedDashboard } from '@superset-ui/embedded-sdk';
 
@@ -20,6 +20,23 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
 
   loading = true;
   error = '';
+  lastSyncAt: Date | null = null;
+
+  selectedDistrict: string | null = null;
+  drillBlocks: BlockDrillRow[] = [];
+  drillLoading = false;
+  drillError = '';
+
+  get syncTimeAgo(): string {
+    if (!this.lastSyncAt) return '';
+    const mins = Math.floor((Date.now() - this.lastSyncAt.getTime()) / 60_000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} minute${mins === 1 ? '' : 's'} ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs === 1 ? '' : 's'} ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  }
 
   private embed: EmbeddedDashboard | null = null;
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -36,16 +53,17 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
 
   private get dashboardUuid(): string {
     const isMobile = this.breakpointObserver.isMatched(MOBILE_BREAKPOINT);
-    const mobileUuid = environment.supersetMobileDashboardUuid;
-    return (isMobile && mobileUuid) ? mobileUuid : environment.supersetDashboardUuid;
+    const mobileUuid = this.supersetService.mobileDashboardUuid;
+    return (isMobile && mobileUuid) ? mobileUuid : this.supersetService.dashboardUuid;
   }
 
   async ngOnInit() {
-    if (!environment.supersetUrl || !environment.supersetDashboardUuid || environment.supersetUrl.startsWith('your_') || environment.supersetDashboardUuid.startsWith('your_')) {
+    if (!environment.supersetUrl || environment.supersetUrl.startsWith('your_')) {
       this.error = 'Dashboard not configured.';
       this.loading = false;
       return;
     }
+    this.supersetService.getSyncStatus().then(t => this.lastSyncAt = t).catch((err) => console.warn('[SyncStatus]', err));
     await this.doEmbed();
 
     // Only react to WIDTH changes — height changes are from our own iframe height writes
@@ -83,8 +101,6 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   private async doEmbed() {
-    const uuid = this.dashboardUuid;
-    this.activeUuid = uuid;
     this.loading = true;
     this.error = '';
     this.clearTimers();
@@ -92,6 +108,15 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       this.mountPoint.nativeElement.innerHTML = '';
     }
     try {
+      // Fetch first token — also populates UUIDs in service as a side effect
+      await this.supersetService.getGuestToken();
+      const uuid = this.dashboardUuid;
+      if (!uuid) {
+        this.error = 'Dashboard not configured.';
+        this.loading = false;
+        return;
+      }
+      this.activeUuid = uuid;
       const { embedDashboard } = await import('@superset-ui/embedded-sdk');
       this.embed = await embedDashboard({
         id: uuid,
@@ -102,7 +127,12 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
           hideTitle: true,
           hideChartControls: false,
           filters: { visible: true, expanded: false },
+          // Required for cross-filter events to be emitted to the SDK
+          emitDataMasks: true,
         },
+      });
+      this.embed.observeDataMask((dataMask) => {
+        this.handleDataMask(dataMask);
       });
       this.loading = false;
       // Initial poll — charts render progressively
@@ -131,6 +161,52 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
         iframe.style.height = `${size.height}px`;
       }
     } catch {}
+  }
+
+  get drillMaxLpCount(): number {
+    return this.drillBlocks.reduce((m, b) => Math.max(m, b.lpCount), 1);
+  }
+
+  closeDrillDown() {
+    this.selectedDistrict = null;
+    this.drillBlocks = [];
+    this.drillError = '';
+  }
+
+  private handleDataMask(dataMask: Record<string, any>) {
+    // dataMask shape: { [chartId]: { filterState: { value: [...] } } }
+    // Cross-filter for district choropleth sends selected district_name values
+    let districtName: string | null = null;
+    if (dataMask && typeof dataMask === 'object') {
+      for (const chartId of Object.keys(dataMask)) {
+        const mask = dataMask[chartId];
+        const values: unknown[] = mask?.filterState?.value ?? [];
+        if (values.length > 0) {
+          const candidate = String(values[0]);
+          if (candidate) { districtName = candidate; break; }
+        }
+      }
+    }
+    if (!districtName) {
+      // Deselect — close panel
+      this.selectedDistrict = null;
+      this.drillBlocks = [];
+      return;
+    }
+    if (districtName === this.selectedDistrict) return;
+    this.selectedDistrict = districtName;
+    this.drillBlocks = [];
+    this.drillLoading = true;
+    this.drillError = '';
+    this.supersetService.getDistrictDrillData(districtName)
+      .then(res => {
+        this.drillBlocks = res.blocks;
+        this.drillLoading = false;
+      })
+      .catch(() => {
+        this.drillError = 'Failed to load block data.';
+        this.drillLoading = false;
+      });
   }
 
   private clearTimers() {

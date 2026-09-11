@@ -1,4 +1,4 @@
-const User = require("../models/user.model.js");
+﻿const User = require("../models/user.model.js");
 const BaseDao = require("./base.dao.js");
 const userAggregation = require("../aggregation/user.aggregation.js");
 const mongoose = require("mongoose");
@@ -103,7 +103,7 @@ class UserDao extends BaseDao {
 	}
 
 	async activityLog(userId,data){
-		const { planId, draftId, idleTime, interactionTime, moduleName, isCompleted } = data;
+		const { planId, draftId, idleTime, interactionTime, moduleName, isCompleted, deviceType, userAgent } = data;
 
 		if (draftId) {
 			let activityLog = await UserActivityLogs.findOne({ draftId , userId});
@@ -112,6 +112,7 @@ class UserDao extends BaseDao {
 				activityLog.idleTime = (activityLog.idleTime || 0) + idleTime;
 				activityLog.interactionTime = (activityLog.interactionTime || 0) + interactionTime;
 				activityLog.isCompleted = isCompleted;
+				activityLog.deviceType = deviceType;
 
 				if (isCompleted) {
 					activityLog.draftId = undefined;
@@ -127,7 +128,9 @@ class UserDao extends BaseDao {
 					interactionTime,
 					moduleName,
 					userId,
-					isCompleted
+					isCompleted,
+					deviceType,
+					userAgent
 				});
 
 				await activityLog.save();
@@ -140,7 +143,9 @@ class UserDao extends BaseDao {
 					idleTime,
 					interactionTime,
 					moduleName,
-					userId
+					userId,
+					deviceType,
+					userAgent
 				});
 
 				await activityLog.save();
@@ -151,7 +156,9 @@ class UserDao extends BaseDao {
 				idleTime,
 				interactionTime,
 				moduleName,
-				userId
+				userId,
+				deviceType,
+				userAgent
 			});
 
 			await activityLog.save();

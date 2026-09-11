@@ -1,4 +1,9 @@
 <div class="leaders-dashboard-wrapper">
+  <div class="sync-banner" *ngIf="!loading && !error">
+    <span *ngIf="lastSyncAt">Data last synced: {{ syncTimeAgo }}</span>
+    <span *ngIf="!lastSyncAt" class="sync-unknown">Sync time unavailable</span>
+  </div>
+
   <div *ngIf="loading" class="state-message">
     <span class="spinner"></span>
     Loading dashboard...
@@ -9,4 +14,40 @@
   </div>
 
   <div #mountPoint class="superset-mount" [class.hidden]="loading || error"></div>
+
+  <!-- District drill-down panel -->
+  <div class="drill-panel" [class.open]="selectedDistrict">
+    <div class="drill-panel-inner">
+      <div class="drill-header">
+        <div class="drill-title">
+          <span class="drill-breadcrumb">Districts</span>
+          <span class="drill-breadcrumb-sep">›</span>
+          <span class="drill-district-name">{{ selectedDistrict }}</span>
+        </div>
+        <button class="drill-close" (click)="closeDrillDown()" aria-label="Close drill-down">✕</button>
+      </div>
+
+      <div class="drill-subtitle">Blocks — Lesson Plan Coverage</div>
+
+      <div *ngIf="drillLoading" class="drill-loading">
+        <span class="spinner"></span> Loading blocks...
+      </div>
+
+      <div *ngIf="drillError && !drillLoading" class="drill-error">{{ drillError }}</div>
+
+      <div *ngIf="!drillLoading && !drillError && drillBlocks.length === 0 && selectedDistrict" class="drill-empty">
+        No block data available for this district.
+      </div>
+
+      <div *ngIf="!drillLoading && drillBlocks.length > 0" class="drill-bars">
+        <div *ngFor="let block of drillBlocks" class="drill-bar-row">
+          <div class="drill-bar-label" [title]="block.name">{{ block.name }}</div>
+          <div class="drill-bar-track">
+            <div class="drill-bar-fill" [style.width.%]="(block.lpCount / drillMaxLpCount) * 100"></div>
+          </div>
+          <div class="drill-bar-value">{{ block.lpCount }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
