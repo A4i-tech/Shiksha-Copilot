@@ -1,4 +1,4 @@
-# -------- Stage 1: Build --------
+﻿# -------- Stage 1: Build --------
 FROM node:24-alpine AS builder
 
 WORKDIR /app
@@ -7,6 +7,7 @@ WORKDIR /app
 # these via --build-arg to bake in real values for staging/prod images.
 ARG BUILD_CONFIGURATION=development
 ARG BACKEND_URL=your_backend_url
+# False positive: default is a placeholder; real value injected via --build-arg at CI/CD time.
 # check=skip=SecretsUsedInArgOrEnv
 ARG TURNSTILE_SITE_KEY=your_turnstile_site_key
 

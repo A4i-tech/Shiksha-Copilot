@@ -1,4 +1,4 @@
-const User = require("../models/user.model.js");
+﻿const User = require("../models/user.model.js");
 const BaseDao = require("./base.dao.js");
 const userAggregation = require("../aggregation/user.aggregation.js");
 const mongoose = require("mongoose");
@@ -108,6 +108,7 @@ class UserDao extends BaseDao {
 				activityLog.idleTime = (activityLog.idleTime || 0) + idleTime;
 				activityLog.interactionTime = (activityLog.interactionTime || 0) + interactionTime;
 				activityLog.isCompleted = isCompleted;
+				activityLog.deviceType = deviceType;
 
 				if (isCompleted) {
 					activityLog.draftId = undefined;

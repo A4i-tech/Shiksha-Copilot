@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const axios = require("axios");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
@@ -13,7 +13,7 @@ const SUPERSET_MOBILE_DASHBOARD_UUID = process.env.SUPERSET_MOBILE_DASHBOARD_UUI
 
 const AXIOS_TIMEOUT_MS = 10_000;
 
-// In-memory cache for Superset admin session — avoids a full login per request.
+// In-memory cache for Superset admin session â€” avoids a full login per request.
 let _authCache = null; // { accessToken, csrfToken, cookieHeader, expiresAt }
 
 function _authCacheValid() {
@@ -31,7 +31,7 @@ function buildRlsClause(scopes) {
     if (scope.scopeType === "SCHOOL") {
       return `user_id IN (SELECT user_id FROM dim_users WHERE school_id IN (SELECT school_id FROM dim_schools WHERE source_id = ${sql(scope.dep)}))`;
     }
-    if (scope.dep == null) return null;
+    if (scope.dep == null) return "FALSE";
     const starts = {
       STATE: `SELECT s.region_id FROM dim_regions s WHERE s.type = 'state' AND s.name = ${sql(scope.dep.state)}`,
       ZONE: `SELECT z.region_id FROM dim_regions z JOIN dim_regions s ON z.parent_id = s.region_id WHERE z.type = 'zone' AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
@@ -40,8 +40,8 @@ function buildRlsClause(scopes) {
     };
     return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (WITH RECURSIVE scoped AS (${starts[scope.scopeType]} UNION ALL SELECT child.region_id FROM dim_regions child JOIN scoped parent ON child.parent_id = parent.region_id) SELECT region_id FROM scoped))`;
   });
-  if (clauses.some((c) => c === null)) return null;
-  return clauses.length ? `(${clauses.join(" OR ")})` : "FALSE";
+    const validClauses = clauses.filter(Boolean);
+  return validClauses.length ? `(${validClauses.join(" OR ")})` : "FALSE";
 }
 
 async function getSupersetAuth() {
@@ -54,7 +54,7 @@ async function getSupersetAuth() {
     refresh: false,
   }, { timeout: AXIOS_TIMEOUT_MS });
   const accessToken = loginResp.data?.access_token;
-  if (!accessToken) throw new Error("Superset admin login failed — no token returned");
+  if (!accessToken) throw new Error("Superset admin login failed â€” no token returned");
 
   // Carry session cookie so Superset CSRF validation can find the session token
   const loginCookies = loginResp.headers["set-cookie"] || [];
@@ -118,7 +118,7 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
         { headers: { Authorization: `Bearer ${adminToken}`, "X-CSRFToken": csrfToken, Cookie: cookieHeader, Referer: SUPERSET_URL }, timeout: AXIOS_TIMEOUT_MS }
       );
     } catch (guestErr) {
-      // Admin token expired — clear cache and retry once
+      // Admin token expired â€” clear cache and retry once
       if (guestErr?.response?.status === 401) {
         _authCache = null;
         const fresh = await getSupersetAuth();
@@ -135,7 +135,7 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
     const token = guestResp.data?.token;
     if (!token) throw new Error("No token in Superset guest_token response");
 
-    // Fire-and-forget audit log — don't fail the request if this errors
+    // Fire-and-forget audit log â€” don't fail the request if this errors
     AuditLog.create({
       eventType: "Dashboard Token",
       status: "success",

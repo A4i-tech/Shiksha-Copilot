@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+﻿import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { Subscription } from 'rxjs';
@@ -63,7 +63,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       this.loading = false;
       return;
     }
-    this.supersetService.getSyncStatus().then(t => this.lastSyncAt = t).catch(() => {});
+    this.supersetService.getSyncStatus().then(t => this.lastSyncAt = t).catch((err) => console.warn('[SyncStatus]', err));
     await this.doEmbed();
 
     // Only react to WIDTH changes — height changes are from our own iframe height writes
