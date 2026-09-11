@@ -73,26 +73,6 @@ jobs:
       superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
       superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
 
-  cd-frontend-render:
-    name: Deploy frontend preview (Render)
-    if: |
-      github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    # One shared preview service, and deploying repoints its branch. Serialise
-    # across PRs so two runs can't repoint it while the other is still
-    # deploying (last writer would otherwise win and the reported branch would
-    # not match what is actually live).
-    concurrency:
-      group: render-frontend-preview
-      cancel-in-progress: false
-    uses: ./.github/workflows/deploy-render.yaml
-    with:
-      deploy-name: shiksha-frontend-preview
-      service-id: ${{ vars.RENDER_FRONTEND_SERVICE_ID }}
-      branch: ${{ github.head_ref }}
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-
   cd-api-prod:
     name: Deploy api
     needs: ci-api
@@ -269,13 +249,9 @@ jobs:
 
   accessibility-tests:
     name: Accessibility Tests
-    needs: [cd-frontend-render, health-check]
     if: |
-      always() &&
       github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      needs.cd-frontend-render.result == 'success' &&
-      (needs.health-check.result == 'success' || needs.health-check.result == 'skipped')
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -286,18 +262,21 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            shiksha-website/shiksha-frontend/package-lock.json
+            tests/accessibility/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --prefix tests/accessibility
+        run: |
+          npm ci --prefix shiksha-website/shiksha-frontend
+          npm ci --prefix tests/accessibility
 
       - name: Install Playwright browsers
         timeout-minutes: 10
         run: npx --prefix tests/accessibility playwright install chromium --with-deps
 
-      # PR previews hit the pre-existing staging api/backend (cd-api/cd-backend
-      # don't run for PRs); a Render cold-start can outlast the scanner's login
-      # timeouts, so resolve their URLs and ping them awake before the scan.
       - name: Warm up backend + api
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -309,6 +288,7 @@ jobs:
           }
           BACKEND_URL=$(get_service_url "${{ vars.RENDER_BACKEND_SERVICE_ID }}")
           API_URL=$(get_service_url "${{ vars.RENDER_API_SERVICE_ID }}")
+          echo "STAGING_BACKEND_URL=$BACKEND_URL" >> "$GITHUB_ENV"
           echo "Backend: $BACKEND_URL"
           echo "API: $API_URL"
 
@@ -325,37 +305,56 @@ jobs:
             exit 1
           fi
 
-      # deploy-render.yaml already waits for the Render deploy to hit "live",
-      # but the static site can lag behind that briefly; poll for HTTP 200
-      # before running tests as a safety net.
-      - name: Wait for frontend deployment
-        env:
-          FRONTEND_URL: ${{ needs.cd-frontend-render.outputs['service-url'] }}
-        run: |
-          echo "Waiting for $FRONTEND_URL to become reachable..."
-          for ((i=1; i<=40; i++)); do
-            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$FRONTEND_URL") || true
-            echo "  Attempt $i/40: HTTP $status"
-            if [ "$status" = "200" ]; then
-              echo "Frontend is live!"
-              exit 0
-            fi
-            sleep 15 & wait $!
-          done
-          echo "Frontend at $FRONTEND_URL did not become reachable (last status: $status)"
-          exit 1
-
       # Fails the job (and so the PR check) on any critical violation, any page
       # below the score threshold, or any page that could not be scanned.
       - name: Run Accessibility Tests
         id: a11y
         env:
-          FRONTEND_URL: ${{ needs.cd-frontend-render.outputs['service-url'] }}
+          FRONTEND_URL: http://localhost:4200
+          BACKEND_URL: /api
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          SUPERSET_URL: ${{ vars.SUPERSET_URL }}
+          SUPERSET_DASHBOARD_UUID: ${{ vars.SUPERSET_DASHBOARD_UUID }}
+          SUPERSET_MOBILE_DASHBOARD_UUID: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
           TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
           TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
-        run: node tests/accessibility/run-accessibility.js
+        run: | # TODO: in future, we should prob unify env injection - because this is getting absurd...
+          FRONTEND_DIR=shiksha-website/shiksha-frontend
+          find "$FRONTEND_DIR/src/environments" -name "environment*.ts" -print \
+            -exec sed -i "s|your_backend_url|${BACKEND_URL}|g" {} \; \
+            -exec sed -i "s|your_turnstile_site_key|${TURNSTILE_SITE_KEY}|g" {} \; \
+            -exec sed -i "s|your_superset_url|${SUPERSET_URL}|g" {} \; \
+            -exec sed -i "s|your_superset_dashboard_uuid|${SUPERSET_DASHBOARD_UUID}|g" {} \; \
+            -exec sed -i "s|your_superset_mobile_dashboard_uuid|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" {} \;
+          jq -n --arg target "$STAGING_BACKEND_URL" \
+            '{"/api": {target: $target, secure: true, changeOrigin: true}}' \
+            > /tmp/accessibility-proxy.json
+
+          FORCE_COLOR=1 npm start --prefix "$FRONTEND_DIR" -- \
+            --configuration=uat \
+            --host=localhost \
+            --proxy-config=/tmp/accessibility-proxy.json \
+            > >(tee /tmp/accessibility-frontend.log) 2>&1 &
+          FRONTEND_PID=$!
+          trap 'kill "$FRONTEND_PID" 2>/dev/null || true; wait "$FRONTEND_PID" 2>/dev/null || true' EXIT
+
+          echo "Waiting for $FRONTEND_URL..."
+          for ((i=1; i<=40; i++)); do
+            if curl -fs --max-time 10 "$FRONTEND_URL" >/dev/null; then
+              node tests/accessibility/run-accessibility.js
+              exit $?
+            fi
+            if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+              echo "Frontend exited before it became reachable"
+              exit 1
+            fi
+            sleep 3
+          done
+
+          echo "Frontend did not become reachable at $FRONTEND_URL"
+          exit 1
 
       - name: Upload accessibility report
         id: report
