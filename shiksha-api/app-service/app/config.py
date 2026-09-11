@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     embed_model: str = "text-embedding-ada-002"
     general_chat_model: str = "gpt-5.6-luna"
     lesson_chat_model: str = "gpt-5.6-luna"
-    question_paper_model: str = "deepseek-v4-flash"
+    question_paper_model: str = "gpt-5.6-luna"
 
     # Blob Store Configuration
     blob_store_connection_string: Optional[str] = None

@@ -9,7 +9,7 @@ from pydantic import Field, JsonValue, create_model
 from langfuse import observe, propagate_attributes
 
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAIResponses
+from llama_index.llms.openai_like import OpenAILikeResponses
 
 from app.config import settings
 from app.models.lesson_plan import PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AgentDeps:
-    rag_llm: OpenAIResponses
+    rag_llm: OpenAILikeResponses
     rag_embed: OpenAIEmbedding
     rags: RagAdapterCache
     index_path: str | None
@@ -66,7 +66,7 @@ class LessonEditService:
         self._prompt_plan_edit_instruction = _prompts["plan_edit_instruction"]
         self._prompt_grounding_instruction = _prompts["grounding_instruction"]
 
-        self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model)
+        self._rag_llm = OpenAILikeResponses(model=settings.lesson_chat_model) # pyright: ignore[reportCallIssue]
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
