@@ -49,6 +49,7 @@ describe("Question Bank Validation", () => {
         {
           type: "MCQ",
           numberOfQuestions: 10,
+          answerCount: 10,
           marksPerQuestion: 1,
           questionDistribution: [],
         },
@@ -104,6 +105,7 @@ describe("Question Bank Validation", () => {
       template: [{
         type: "MCQ",
         numberOfQuestions: 10,
+        answerCount: 10,
         marksPerQuestion: 1,
         questionDistribution: [],
       }],
@@ -127,6 +129,92 @@ describe("Question Bank Validation", () => {
       ["invalid objective percentage", { ...validBluePrintData, objectiveDistribution: [{ objective: "Understanding", percentageDistribution: 101 }] }],
     ])("should reject %s", (_description, body) => {
       mockReq.body = body;
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should accept an answerCount lower than numberOfQuestions", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: 5 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockReq.body.template[0].answerCount).toBe(5);
+    });
+
+    it("should accept choiceGroups as optional valid field", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], choiceGroups: [{ groupId: "cg-1", answerCount: 1 }] }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
+      expect(mockRes.status).not.toHaveBeenCalled();
+      expect(mockReq.body.template[0].choiceGroups).toEqual([{ groupId: "cg-1", answerCount: 1 }]);
+    });
+
+    it("should reject choiceGroups missing groupId", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], choiceGroups: [{ answerCount: 1 }] }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject answerCount if zero", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: 0 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject answerCount if negative", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: -1 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject answerCount if not an integer", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], answerCount: 5.5 }],
+      };
+
+      validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
+
+      expect(mockRes.status).toHaveBeenCalledWith(400);
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it("should reject answerCount if greater than numberOfQuestions", () => {
+      mockReq.body = {
+        ...validBluePrintData,
+        template: [{ ...validBluePrintData.template[0], numberOfQuestions: 10, answerCount: 11 }],
+      };
 
       validateQuestionBankBluePrintCreate(mockReq, mockRes, mockNext);
 

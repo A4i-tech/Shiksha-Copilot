@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { isOrDividerAfter } from 'src/app/shared/utility/question-bank-display.util';
 import {
   Document,
   Packer,
@@ -44,6 +45,9 @@ export interface QuestionBankSection {
   numberOfQuestions: number;
   marksPerQuestion: number;
   questions: QuestionBankQuestion[];
+  // Equal to numberOfQuestions = no choice (answer all). Always present:
+  // the backend backfills it on legacy papers and validation requires it.
+  answerCount: number;
 }
 
 export interface QuestionBankData {
@@ -92,7 +96,7 @@ export class QuestionBankDownloadService {
           children: [
             new TextRun({ text: `${roman}. ${this.translateService.instant(questionTypeLabels[section.type] || section.type)}`, bold: true }),
             new TextRun({
-              text: `\t${section.numberOfQuestions} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks(section.numberOfQuestions * section.marksPerQuestion)}`,
+              text: `\t${section.answerCount} X ${formatMarks(section.marksPerQuestion)} = ${formatMarks(section.answerCount * section.marksPerQuestion)}`,
               bold: true,
             }),
           ],
@@ -100,6 +104,21 @@ export class QuestionBankDownloadService {
           spacing: DOCX_CONFIG.spacing.sectionHeader,
         })
       );
+
+      if (section.answerCount < section.numberOfQuestions) {
+        content.push(
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `\t${this.translateService.instant('Answer any')} ${section.answerCount} ${this.translateService.instant('of')} ${section.numberOfQuestions}`,
+                bold: true,
+                italics: true,
+              }),
+            ],
+            spacing: DOCX_CONFIG.spacing.sectionHeader,
+          })
+        );
+      }
 
       if (section.type === 'MATCHING') {
         content.push(this.buildMatchTable(section.questions, !showAnswers));
@@ -182,6 +201,16 @@ export class QuestionBankDownloadService {
           );
         }
       }
+
+      if (isOrDividerAfter(questions, index)) {
+        paragraphs.push(
+          new Paragraph({
+            children: [new TextRun({ text: this.translateService.instant('OR'), italics: true })],
+            alignment: AlignmentType.CENTER,
+            spacing: DOCX_CONFIG.spacing.optionItem,
+          })
+        );
+      }
     });
 
     return paragraphs;
@@ -202,7 +231,11 @@ export class QuestionBankDownloadService {
   private createDocument(data: QuestionBankData, children: (Paragraph | Table)[], subtitleSuffix: string): Document {
     let totalMarks = 0;
     for (const section of data.questionBank.questions as QuestionBankSection[]) {
-      totalMarks += Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0);
+      // Only the questions a student must answer count toward the paper total, so a
+      // "answer any 5 of 7" section contributes 5 * marksPerQuestion, not 7.
+      // Legacy papers saved before answerCount became required have no value on the
+      // section, so fall back to numberOfQuestions (answer-all) instead of NaN.
+      totalMarks += Number(section.answerCount ?? section.numberOfQuestions ?? 0) * Number(section.marksPerQuestion || 0);
     }
     return new Document({
       sections: [

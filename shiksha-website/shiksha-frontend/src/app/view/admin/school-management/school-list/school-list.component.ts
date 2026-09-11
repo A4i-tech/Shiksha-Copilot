@@ -11,8 +11,7 @@ import { Router } from '@angular/router';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { BULK_UPLOAD_FILE_TYPES, getLabel } from 'src/app/shared/utility/constant.util';
-import { TranslateService } from '@ngx-translate/core';
+import { BULK_UPLOAD_FILE_TYPES } from 'src/app/shared/utility/constant.util';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin } from 'rxjs';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UserManagementService } from '../../user-management/user-management.service';
@@ -29,21 +28,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   schoolListData!: [SchoolList];
   users_of_school!: number;
 
-  get talukLabel(): string {
-    return getLabel('Taluk', 'Taluk', { state: this.filterObj?.state });
-  }
-
-  get schoolListTableHeaders(): string[] {
-    return [
-      'DISE Code',
-      'School Name',
-      'District',
-      this.talukLabel,
-      'Zone',
-      'Status',
-      'Action',
-    ];
-  }
+  schoolListTableHeaders = ['DISE Code', 'School Name', 'District', 'Taluk', 'Zone', 'Status', 'Action'];
 
   districtDropdownOptions: any[] = [];
 
@@ -160,8 +145,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
     public modalService: ModalService,
     private utilityService: UtilityService,
     private masterService: MasterService,
-    private userManagementService:UserManagementService,
-    public translateService: TranslateService
+    private userManagementService:UserManagementService
   ) {}
 
   /**
@@ -212,10 +196,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
-    const talukLabel = getLabel('Taluk', 'Taluk', { state: selectedStateValue });
-    this.blockDropdownconfig.placeHolderTxt = talukLabel;
-    this.blockDropdownconfig.labelTxt = talukLabel;
-    this.blockDropdownconfig.skipTranslate = true;
+    this.blockDropdownconfig.translateParams = { state: selectedStateValue };
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,

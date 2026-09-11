@@ -178,7 +178,7 @@ def ppt_add_story_slide(ctx: RunContext[DesignerDeps], data: template.StorySlide
     ctx.deps.templates.story(data)
     return "Slide created successfully."
 
-@designer_toolset.tool(metadata={"action": "Browsing images"})
+@designer_toolset.tool(retries=6, metadata={"action": "Browsing images"})
 async def browse_images(
     ctx: RunContext[DesignerDeps],
     queries: Annotated[list[str], Field(description="List of queries for image search. These are inserted directly into `gsrsearch`, so keep it short and search-engine-like.", min_length=1, max_length=5, examples=[
@@ -266,6 +266,7 @@ class SlideTrackerToolset(WrapperToolset[DesignerDeps]):
             ctx.deps.metadata["slides_completed"].append(t)
             ctx.deps.metadata["slides_created"] = len(ctx.deps.prs.slides)
             ctx.deps.metadata["slide_types_used"].append(spec.slide_type if spec else "welcome")
+            ctx.retries.clear()  # per-slide retry budget: pydantic-ai keys retries per tool name and only resets them when that same tool succeeds, so mistakes on unrelated slides would otherwise accumulate until the run aborts
         return result
 
 

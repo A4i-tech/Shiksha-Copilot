@@ -17,7 +17,7 @@ from langfuse.openai import AsyncOpenAI
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import PydanticResponse
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAIResponses
+from llama_index.llms.openai_like import OpenAILikeResponses
 
 # 3. Import only the Factory and Base Adapter
 from app.services.rag_adapters import BaseRagAdapter
@@ -51,7 +51,7 @@ class QuestionPaperService:
 
     def __init__(self):
         self.client = AsyncOpenAI()
-        self._rag_llm = OpenAIResponses(model=settings.question_paper_model)
+        self._rag_llm = OpenAILikeResponses(model=settings.question_paper_model) # pyright: ignore[reportCallIssue]
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
@@ -208,7 +208,7 @@ class QuestionPaperService:
 
         slot_indexed = {local_unique_id(i): v for i, v in enumerate(slot)}
         response_format = create_model("QuestionResponse", **{
-            k: (template.type.model, Field(description=f"{template.type.value} model for {question.model_dump(mode='json')}"))
+            k: (template.type.model, Field(description=f"{template.type.value} question targeting objective: {question.objective}"))
             for k, (_, template, question) in slot_indexed.items()
         })  # type: ignore[call-overload]
 

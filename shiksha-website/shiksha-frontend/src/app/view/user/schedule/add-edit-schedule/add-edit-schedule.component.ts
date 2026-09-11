@@ -23,7 +23,6 @@ import {
 } from '@angular/forms';
 import { ScheduleService } from '../schedule.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { getLabel } from 'src/app/shared/utility/constant.util';
 import { DatePipe } from '@angular/common';
 import { forkJoin } from 'rxjs';
 
@@ -172,10 +171,6 @@ export class AddEditScheduleComponent
       lessonPlan: [null, Validators.required],
       schedule: this.fb.array([]),
     });
-  }
-
-  phrase(canonicalPhrase: string): string {
-    return getLabel(canonicalPhrase, canonicalPhrase, { state: this.utility.loggedInUserData?.school?.state });
   }
 
   /**

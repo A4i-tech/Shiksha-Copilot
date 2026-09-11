@@ -4,7 +4,7 @@ const QuestionBankController = require("../controllers/question.bank.controller"
 const asyncMiddleware = require("../middlewares/asyncMiddleware");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth");
 const { validateQuestionBankCreate, validateQuestionBankBluePrintCreate, validateQuestionBankFeedbackCreate, validateQuestionBankList, validateGetQuestionTypes, validateGetGrammarTopics } = require("../validations/question.bank.validation");
-const MulterUploadMiddleware = require('../middlewares/multerUploadMiddleware');
+const jsonUploadMiddleware = require('../middlewares/jsonUploadMiddleware');
 const questionBankController = new QuestionBankController();
 
 router.post(
@@ -108,7 +108,7 @@ router.post(
   "/question-bank/upload-json",
   isAuthenticated,
   requirePermission("question-paper.manage"),
-  MulterUploadMiddleware,
+  jsonUploadMiddleware,
   asyncMiddleware(questionBankController.uploadBulkQuestions.bind(questionBankController))
 );
 

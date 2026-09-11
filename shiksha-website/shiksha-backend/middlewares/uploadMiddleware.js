@@ -1,145 +1,31 @@
-const busboy = require("busboy");
-const path = require("path");
-const User = require("../models/user.model.js");
-const { uploadToStorage } = require("../services/azure.blob.service.js");
+const multer = require("multer");
 
-const handleImageUpload = (req, res, file, bb, filename) => {
-  let fileSize = 0;
-  let fileBuffer = [];
-  const maxFileSize = 5 * 1024 * 1024;
+const imageTypes = new Set(["image/jpeg", "image/jpg", "image/png"]);
 
-  const allowedMimeTypes = ["image/png", "image/jpeg", "image/jpg"];
-
-  if (!allowedMimeTypes.includes(filename.mimeType)) {
-    file.unpipe(bb);
-    return res.status(400).json({ success:false,
-      message: "Invalid file type. Only PNG, JPG, and JPEG images are allowed.",
-    });
-  }
-
-  req.file.sizeExceeded = false;
-  file.on("data", (data) => {
-    fileSize += data.length;
-    if (fileSize > maxFileSize) {
-      file.unpipe(bb);
-      req.file.sizeExceeded = true;
-      return res
-        .status(400)
-        .json({ error: "File size exceeds the limit of 5 MB" });
-    }
-    fileBuffer.push(data);
-  });
-
-  file.on("end", () => {
-    if (fileSize <= maxFileSize) {
-      req.file.buffer = Buffer.concat(fileBuffer);
-      console.log("Finished processing file.");
-    }
-  });
-
-  file.on("error", (err) => {
-    console.error("Error processing file:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  });
-};
-
-const handleFile = (req, res, file, bb,filename) => {
-  let fileSize = 0;
-  const maxFileSize = 5 * 1024 * 1024;
-  const fileBuffer = [];
-
-  const allowedMimeTypes = [
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-  ];
-  if (!allowedMimeTypes.includes(filename.mimeType)) {
-    file.unpipe(bb);
-    return res.status(400).json({ success:false,
-      message: "Invalid file type. Only Excel files are allowed.",
-    });
-  }
-
-  file.on("data", (data) => {
-    fileSize += data.length;
-    if (fileSize > maxFileSize) {
-      file.unpipe(bb);
-      return res
-        .status(400)
-        .json({ error: "File size exceeds the limit of 5 MB" });
-    }
-    fileBuffer.push(data);
-  });
-
-  file.on("end", () => {
-    if (fileSize <= maxFileSize) {
-      req.file.buffer = Buffer.concat(fileBuffer);
-      console.log("Finished processing file.");
-    }
-  });
-
-  file.on("error", (err) => {
-    console.error("Error processing file:", err);
-    return res.status(500).json({ error: "Internal server error" });
-  });
-};
-
-const uploadMiddleware = (req, res, next) => {
-  if (req.headers?.["content-type"]?.includes("multipart/form-data")) {
-    const bb = busboy({ headers: req.headers });
-    const userId = req.user._id;
-    let fileProvided = false;
-    let fileName = "";
-
-    req.file = null;
-
-    bb.on("file", (fieldname, file, filename, encoding, mimetype) => {
-      fileProvided = true;
-      fileName = filename;
-      req.file = { fieldname, filename, encoding, mimetype, buffer: [] };
-      try {
-        if (req.route.path === "/profile/image") {
-          handleImageUpload(req, res, file, bb,filename);
-        } else {
-          handleFile(req, res, file, bb,filename);
-        }
-      } catch (error) {
-        console.error("Error uploading file:", error);
-        return res.status(500).json({
-          success: false,
-          message: "Error uploading file",
-          error: error,
-        });
-      }
-    });
-
-    bb.on("finish", async () => {
-      if (!fileProvided || req.file?.sizeExceeded) {
-        return;
-      }
-
-      try {
-        const uniqueFilename = `${userId}_photo`;
-
-        req.file.path = await uploadToStorage(
-          req.file.buffer,
-          uniqueFilename,
-          req.file.mimeType
-        );
-
-        next();
-      } catch (e) {
-        res.status(500).json({ message: "Internal server error",e });
-      }
-    });
-
-    bb.on("error", (err) => {
-      console.error("Error parsing form data:", err);
-      return res.status(500).json({ error: "Internal server error" });
-    });
-
-    req.pipe(bb);
-  } else {
+function handle(upload, validSignature) {
+  return (req, res, next) => upload(req, res, (error) => {
+    if (error) return res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ success: false, message: error.message });
+    if (req.file && !validSignature(req.file)) return res.status(400).json({ success: false, message: "File content does not match its type." });
     next();
-  }
-};
+  });
+}
 
-module.exports = uploadMiddleware;
+const options = { storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 0 } };
+const excelUpload = handle(multer({
+  ...options,
+  fileFilter: (req, file, callback) => {
+    const allowed = file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    callback(allowed ? null : new Error("Only XLSX files are allowed."), allowed);
+  },
+}).single("file"), (file) => file.buffer.subarray(0, 4).equals(Buffer.from("504b0304", "hex")));
+const profileImageUpload = handle(multer({
+  ...options,
+  fileFilter: (req, file, callback) => {
+    const allowed = imageTypes.has(file.mimetype);
+    callback(allowed ? null : new Error("Only PNG, JPG, and JPEG images are allowed."), allowed);
+  },
+}).single("file"), (file) => file.mimetype === "image/png"
+  ? file.buffer.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"))
+  : file.buffer.subarray(0, 3).equals(Buffer.from("ffd8ff", "hex")));
+
+module.exports = { excelUpload, profileImageUpload };

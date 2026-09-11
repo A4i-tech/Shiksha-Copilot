@@ -3,6 +3,18 @@ const formatApiReponse = require("../helper/response");
 module.exports = (err, req, res, next) => {
 	console.error("Unhandled error --> ", err);
 
+	const appInsightsClient = require("applicationinsights").defaultClient;
+	if (appInsightsClient) {
+		appInsightsClient.trackException({
+			exception: err,
+			properties: {
+				url: req.originalUrl,
+				method: req.method,
+				userId: req.user?._id?.toString() ?? "unauthenticated",
+			},
+		});
+	}
+
 	if (err.code === 11000) {
 		return res.status(409).json(formatApiReponse(false, "Duplicate entry", null));
 	}
