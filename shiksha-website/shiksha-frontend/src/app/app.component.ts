@@ -91,7 +91,9 @@ export class AppComponent implements OnInit, OnDestroy {
           if (user?._id) {
             window.umami?.identify(user._id);
           }
-        } catch {}
+        } catch (err) {
+          console.warn('loadUmamiTracker: failed to parse stored userData', err);
+        }
       }
     };
     document.head.appendChild(script);
