@@ -6,7 +6,7 @@ const { hasPermission } = require("../helper/permission.helper.js");
 /** @extends {BaseController<MasterLessonManger>} */
 class MasterLessonController extends BaseController {
 	constructor() {
-		super(new MasterLessonManger());
+		super(new MasterLessonManger(), ["name"], true);
 	}
 
 	async saveToTeacher(req, res) {
@@ -30,6 +30,34 @@ class MasterLessonController extends BaseController {
 		const { id } = req.params;
 
 		const result = await this.manager.getActivityById(id, req.query.activityId, req.permissions);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
+	async adminBulkUpload(req, res) {
+		const dryRun =
+			req.query.dryRun === "true" || req.body.dryRun === true;
+
+		const result = await this.manager.bulkUpload(
+			req.body.lessonPlans || req.body.rows,
+			dryRun,
+			req.user?._id
+		);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
+	// Reuses the bulk-upload check, so a form entry and a file entry cannot differ.
+	async adminCreate(req, res) {
+		const result = await this.manager.bulkUpload([req.body], false, req.user?._id);
 
 		if (result.success) {
 			return res.status(200).json(result);

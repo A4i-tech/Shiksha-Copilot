@@ -7,40 +7,52 @@ class MasterResourceDao extends BaseDao {
 		super(MasterResource);
 	}
 
-	async getAll(page = 1, limit = 10, filters = {}, sort = {}) {
-		const processedFilters = {};
+	async getAll(page = 1, limit = 10, filters = {}, sort = {}, status = {}) {
+		try {
+			const processedFilters = {};
 
-		for (const key in filters) {
-			if (key === "class") {
-				processedFilters[key] = Number(filters[key]);
-			} else if (
-				key === "topics" ||
-				key === "subTopics" ||
-				key === "board" ||
-				key === "medium"
-			) {
-				processedFilters[`chapter.${key}`] = filters[key];
-			} else {
-				processedFilters[key] = filters[key];
+			for (const key in filters) {
+				if (key === "class") {
+					processedFilters[key] = Number(filters[key]);
+				} else if (
+					key === "topics" ||
+					key === "subTopics" ||
+					key === "board" ||
+					key === "medium"
+				) {
+					processedFilters[`chapter.${key}`] = filters[key];
+				} else if (key === "isDeleted") {
+					// query strings arrive as text; the aggregation needs a boolean
+					processedFilters[key] = filters[key] === "true";
+				} else {
+					processedFilters[key] = filters[key];
+				}
 			}
+
+			// `status` carries the isDeleted choice of the caller (includeDeleted
+			// query parameter). It wins over the plain filters.
+			Object.assign(processedFilters, status);
+
+			const results = await masterResourceAggregation.getMasterResourcesFilter(
+				page,
+				limit,
+				processedFilters,
+				sort
+			);
+
+			const totalItems =
+				results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
+
+			return {
+				page,
+				totalItems,
+				limit,
+				results: results[0].data,
+			};
+		} catch (err) {
+			console.log("Error --> MasterResourceDao -> getAll()", err);
+			throw err;
 		}
-
-		const results = await masterResourceAggregation.getMasterResourcesFilter(
-			page,
-			limit,
-			processedFilters,
-			sort
-		);
-
-		const totalItems =
-			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
-
-		return {
-			page,
-			totalItems,
-			limit,
-			results: results[0].data,
-		};
 	}
 
 	async update(id, updates, session = null) {

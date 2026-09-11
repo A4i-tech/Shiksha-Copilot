@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const validateRequest = require("./common.validation");
+const { validateRequestForUpdates } = require("./common.validation");
 
 const schema = Joi.object({
 	lessonName: Joi.string().required(),
@@ -19,7 +20,27 @@ const schema = Joi.object({
 
 const validateMasterResource = validateRequest(schema);
 
+// chapterId stays out: a resource plan cannot move to a different chapter through this route
+const updateSchema = Joi.object({
+	lessonName: Joi.string(),
+	medium: Joi.string(),
+	class: Joi.number(),
+	board: Joi.string(),
+	levels: Joi.string(),
+	subject: Joi.string(),
+	semester: Joi.string(),
+	subTopics: Joi.array().items(Joi.string()),
+	resources: Joi.array(),
+	additionalResources: Joi.array(),
+	learningOutcomes: Joi.array(),
+	isAll: Joi.boolean(),
+	status: Joi.string().valid("draft", "under_review", "approved"),
+}).min(1);
+
+const validateMasterResourceUpdate = validateRequestForUpdates(updateSchema);
+
 module.exports = {
 	validateMasterResource,
+	validateMasterResourceUpdate,
 	schema,
 };

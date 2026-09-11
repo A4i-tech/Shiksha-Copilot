@@ -1,0 +1,234 @@
+<section class="content-edit-wrapper px-4 pt-4 md:px-0 md:pt-0" *ngIf="config">
+  <div class="flex content-center">
+    <img
+      src="assets/icons/back-arrow.svg"
+      alt=""
+      class="cursor-pointer"
+      (click)="cancel()"
+    />
+    <h1 class="ml-3 text-2xl md:text-[32px] md:leading-[48px] font-bold text-content">
+      {{ isCreate ? 'Add ' : 'Edit ' }}{{ config.singular.toLowerCase() }}
+    </h1>
+  </div>
+
+  <div class="content-edit-container px-4 py-6 md:p-8 bg-white mt-6 rounded border-content-30">
+    <p *ngIf="isLoading" class="text-content-60">Loading record...</p>
+
+    <form class="content-edit-form mt-3" *ngIf="!isLoading && record" (ngSubmit)="save()" novalidate>
+      <p class="text-sm text-content-60 mb-4" *ngIf="!isCreate">
+        Record id: {{ recordId }}
+      </p>
+
+      <p class="text-sm text-content-60 mb-4" *ngIf="isCreate">
+        The new chapter passes the same check that the file upload runs. A chapter
+        that repeats a name or an order number of the same subject, board, medium
+        and class is refused.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div
+          *ngFor="let field of visibleFields"
+          [ngClass]="{
+            'md:col-span-2': field.type === 'json' || field.type === 'textarea' || field.type === 'question-content'
+          }"
+        >
+          <label class="form-control-label" [attr.for]="'field-' + field.field">
+            {{ field.label }}
+          </label>
+
+          <ng-container [ngSwitch]="field.type">
+            <input
+              *ngSwitchCase="'text'"
+              type="text"
+              class="form-control"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            />
+
+            <input
+              *ngSwitchCase="'number'"
+              type="number"
+              class="form-control"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            />
+
+            <input
+              *ngSwitchCase="'boolean'"
+              type="checkbox"
+              class="w-5 h-5"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            />
+
+            <textarea
+              *ngSwitchCase="'textarea'"
+              rows="4"
+              class="form-control"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            ></textarea>
+
+            <textarea
+              *ngSwitchCase="'list'"
+              rows="4"
+              class="form-control"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            ></textarea>
+
+            <div *ngSwitchCase="'question-content'" class="space-y-2">
+              <textarea
+                rows="4"
+                class="form-control"
+                placeholder="Type the text here, or paste an image"
+                [id]="'field-' + field.field"
+                [name]="field.field"
+                [ngModel]="formValues[field.field]?.text"
+                (ngModelChange)="onQuestionTextChange(field, $event)"
+                (paste)="onQuestionContentPaste(field, $event)"
+              ></textarea>
+
+              <div *ngIf="formValues[field.field]?.image as img" class="flex items-center gap-3">
+                <img
+                  [src]="'data:' + img.contentType + ';base64,' + img.content"
+                  alt=""
+                  class="max-h-32 rounded border border-content-30"
+                />
+                <button
+                  type="button"
+                  class="btn-outline-primary h-8 text-xs"
+                  (click)="onQuestionImageRemoved(field)"
+                >
+                  Remove image
+                </button>
+              </div>
+
+              <input
+                type="file"
+                accept="image/*"
+                class="text-xs"
+                (change)="onQuestionImageSelected(field, $event)"
+              />
+            </div>
+
+            <app-chapter-picker
+              *ngSwitchCase="'chapter-select'"
+              [value]="formValues[field.field]"
+              (valueChange)="onFieldChange(field, $event)"
+            ></app-chapter-picker>
+
+            <select
+              *ngSwitchCase="'select'"
+              class="form-control"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            >
+              <option value="">Pick {{ field.label.toLowerCase() }}</option>
+              <option *ngFor="let option of field.options" [value]="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+
+            <select
+              *ngSwitchCase="'subject-select'"
+              class="form-control"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            >
+              <option value="">Pick a subject</option>
+              <option *ngFor="let option of subjectOptions" [value]="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+
+            <textarea
+              *ngSwitchCase="'json'"
+              rows="8"
+              class="form-control font-mono text-xs"
+              [id]="'field-' + field.field"
+              [name]="field.field"
+              [attr.aria-describedby]="
+                fieldErrors[field.field] ? 'error-' + field.field : null
+              "
+              [ngModel]="formValues[field.field]"
+              (ngModelChange)="onFieldChange(field, $event)"
+            ></textarea>
+          </ng-container>
+
+          <small class="text-content-60 text-xs mt-1 block" *ngIf="field.hint">{{
+            field.hint
+          }}</small>
+
+          <small
+            class="form-control-error mt-1 block"
+            role="alert"
+            [id]="'error-' + field.field"
+            *ngIf="fieldErrors[field.field]"
+            >{{ fieldErrors[field.field] }}</small
+          >
+        </div>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-end mt-9 gap-2">
+        <button
+          type="button"
+          class="btn-outline-primary h-9 w-full sm:w-[74px]"
+          (click)="cancel()"
+        >
+          Cancel
+        </button>
+
+        <ng-container *ngIf="isCreate; else editAction">
+          <button
+            type="button"
+            class="btn-outline-primary h-9 w-full sm:w-auto"
+            [disabled]="isSaving"
+            (click)="save('draft')"
+          >
+            Save as draft
+          </button>
+
+          <button
+            type="button"
+            class="btn-primary h-9 w-full sm:w-auto"
+            [disabled]="isSaving"
+            (click)="save('under_review')"
+          >
+            <div class="flex items-center justify-center gap-2">
+              <span>{{ isSaving ? 'Saving...' : 'Ready for review' }}</span>
+              <img src="assets/icons/check.svg" alt="" />
+            </div>
+          </button>
+        </ng-container>
+
+        <ng-template #editAction>
+          <button
+            type="submit"
+            class="btn-primary h-9 w-full sm:w-auto"
+            [disabled]="isSaving"
+          >
+            <div class="flex items-center justify-center gap-2">
+              <span>{{ isSaving ? 'Saving...' : 'Save changes' }}</span>
+              <img src="assets/icons/check.svg" alt="" />
+            </div>
+          </button>
+        </ng-template>
+      </div>
+    </form>
+  </div>
+</section>

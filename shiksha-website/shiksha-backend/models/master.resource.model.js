@@ -56,8 +56,24 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 	templateId:{
 		type:ObjectId,
 		ref:"LessonPlanTemplate"
-	  }
+	  },
+	isDeleted: {
+		type: Boolean,
+		default: false,
+		index: true,
+	},
+	status: {
+		type: String,
+		enum: ["draft", "under_review", "approved"],
+		default: "approved",
+	},
+	createdBy: {
+		type: ObjectId,
+		ref: "User",
+	},
 });
+
+lessonResourceMasterSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
 const MasterResource = mongoose.model(
 	"MasterResource",

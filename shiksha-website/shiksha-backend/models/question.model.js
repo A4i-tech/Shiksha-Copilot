@@ -92,6 +92,11 @@ const QuestionSchema = new mongoose.Schema(
 
     correctOrderById: { type: [Number], default: [] },
     correctOrderIndices: { type: [Number], default: [] },
+
+    // Soft delete: admin routes set this instead of removing the doc because generated papers still reference it.
+    isDeleted: { type: Boolean, default: false, index: true },
+    status: { type: String, enum: ["draft", "under_review", "approved"], default: "approved" },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true, strict: true }
 );
@@ -104,6 +109,7 @@ QuestionSchema.index({
 QuestionSchema.index({ marksPerQuestion: 1, difficulty: 1, answerType: 1 });
 // Full text search - added groupHeading
 QuestionSchema.index({ text: 'text', 'chapter.title': 'text', groupHeading: 'text' });
+QuestionSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
 // Sanitize before save
 QuestionSchema.pre('validate', function (next) {

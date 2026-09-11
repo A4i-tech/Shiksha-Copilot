@@ -46,6 +46,34 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
 
   @Input() context!:string | undefined;
 
+  /** lines of the note above the drop zone */
+  @Input() instructions: string[] = [
+    'Make sure that every column in your file is completely filled.',
+    'Do not modify the names of the columns in your file.',
+    'The DISE Code in your file must be an 11-digit number.',
+  ];
+
+  /** hint under the browse button */
+  @Input() fileHint: string = 'File supported .xlsx file, up to 5MB in size';
+
+  /** false hides the template link for uploads that have no template */
+  @Input() showDownloadTemplate: boolean = true;
+
+  /** true shows a link that downloads the field list of the upload */
+  @Input() showSchemaDownload: boolean = false;
+
+  /** true shows a link that downloads one example row of the upload */
+  @Input() showSampleDownload: boolean = false;
+
+  /** true shows a link that downloads an Excel (.xlsx) upload template */
+  @Input() showExcelTemplateDownload: boolean = false;
+
+  @Output() downloadSchema: EventEmitter<void> = new EventEmitter();
+
+  @Output() downloadSample: EventEmitter<void> = new EventEmitter();
+
+  @Output() downloadExcelTemplate: EventEmitter<void> = new EventEmitter();
+
   /**
    * Class constructor
    * @param utilityService UtilityService
@@ -124,6 +152,18 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
    */
   uploadFile() {
     this.upload.emit(true);
+  }
+
+  onDownloadSchema() {
+    this.downloadSchema.emit();
+  }
+
+  onDownloadSample() {
+    this.downloadSample.emit();
+  }
+
+  onDownloadExcelTemplate() {
+    this.downloadExcelTemplate.emit();
   }
 
   // Function to handle user template download

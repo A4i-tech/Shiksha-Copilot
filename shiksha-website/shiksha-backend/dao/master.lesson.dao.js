@@ -16,70 +16,82 @@ class MasterLessonDao extends BaseDao {
 		limit = 10,
 		filters = {},
 		sort = {},
-		includeDeleted,
+		status = {},
 		userId
 	) {
 		const processedFilters = {};
 
-		for (const key in filters) {
-			if (key === "class") {
-				processedFilters[key] = Number(filters[key]);
-			} else if (key === "includeVideos" && filters[key] === "true") {
-				processedFilters["videos"] = {
-					$exists: true,
-					$not: {
-						$size: 0,
-					},
-				};
-			} else if (key === "topics" || key === "board" || key === "medium") {
-				processedFilters[`chapter.${key}`] = filters[key];
-			} else if (key === "subTopics") {
-				let targetItems = JSON.parse(filters[key]);
-				processedFilters["$expr"] = {
-					$and: [
-						{ $isArray: "$subTopics" },
-						{ $gt: [{ $size: "$subTopics" }, 0] },
-						{ $eq: [{ $size: "$subTopics" }, targetItems.length] },
-						{ $eq: [{ $type: "$subTopics" }, "array"] },
-						{ $setIsSubset: [targetItems, "$subTopics"] },
-						{ $setIsSubset: ["$subTopics", targetItems] },
-					],
-				};
-			} else if (key === "includeVideos" && filters[key] !== "true") {
-				processedFilters["videos"] = { $size: 0 };
-			} else {
-				processedFilters[key] = filters[key];
+		try {
+			for (const key in filters) {
+				if (key === "class") {
+					processedFilters[key] = Number(filters[key]);
+				} else if (key === "includeVideos" && filters[key] === "true") {
+					processedFilters["videos"] = {
+						$exists: true,
+						$not: {
+							$size: 0,
+						},
+					};
+				} else if (key === "topics" || key === "board" || key === "medium") {
+					processedFilters[`chapter.${key}`] = filters[key];
+				} else if (key === "subTopics") {
+					let targetItems = JSON.parse(filters[key]);
+					processedFilters["$expr"] = {
+						$and: [
+							{ $isArray: "$subTopics" },
+							{ $gt: [{ $size: "$subTopics" }, 0] },
+							{ $eq: [{ $size: "$subTopics" }, targetItems.length] },
+							{ $eq: [{ $type: "$subTopics" }, "array"] },
+							{ $setIsSubset: [targetItems, "$subTopics"] },
+							{ $setIsSubset: ["$subTopics", targetItems] },
+						],
+					};
+				} else if (key === "includeVideos" && filters[key] !== "true") {
+					processedFilters["videos"] = { $size: 0 };
+				} else if (key === "isDeleted") {
+					// query strings arrive as text; the aggregation needs a boolean
+					processedFilters[key] = filters[key] === "true";
+				} else {
+					processedFilters[key] = filters[key];
+				}
 			}
-		}
 
-		const results = await masterLessonAggregation.getMasterLessonFilter(
-			page,
-			limit,
-			processedFilters,
-			sort
-		);
-		if (results[0].data.length === 1) {
-			const lessonId = results[0].data[0]._id;
-			const existingPlan = await this.teacherLessonPlanDao.getOne({
-				teacherId: userId,
-				lessonId: lessonId,
-			});
-			if (existingPlan) {
-				throw new AppError(
-					"There is a single LP available and the lesson plan already exists.",
-					400
-				);
+			// `status` carries the isDeleted choice of the caller (includeDeleted
+			// query parameter). It wins over the plain filters.
+			Object.assign(processedFilters, status);
+
+			const results = await masterLessonAggregation.getMasterLessonFilter(
+				page,
+				limit,
+				processedFilters,
+				sort
+			);
+			if (results[0].data.length === 1) {
+				const lessonId = results[0].data[0]._id;
+				const existingPlan = await this.teacherLessonPlanDao.getOne({
+					teacherId: userId,
+					lessonId: lessonId,
+				});
+				if (existingPlan) {
+					throw new AppError(
+						"There is a single LP available and the lesson plan already exists.",
+						400
+					);
+				}
 			}
-		}
-		const totalItems =
-			results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
+			const totalItems =
+				results[0].totalCount.length > 0 ? results[0].totalCount[0].count : 0;
 
-		return {
-			page,
-			totalItems,
-			limit,
-			results: results[0].data,
-		};
+			return {
+				page,
+				totalItems,
+				limit,
+				results: results[0].data,
+			};
+		} catch (err) {
+			console.log("Error --> MasterLessonDao -> getAll()", err);
+			throw err;
+		}
 	}
 
 	async getByType(type) {
