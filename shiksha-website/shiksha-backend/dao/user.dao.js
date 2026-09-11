@@ -3,7 +3,6 @@ const BaseDao = require("./base.dao.js");
 const userAggregation = require("../aggregation/user.aggregation.js");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
-const UserActivityLogs = require("../models/user.activity.logs.model.js")
 
 function mapFilters(filters) {
 	const mapped = {};
@@ -98,62 +97,6 @@ class UserDao extends BaseDao {
 		return updatedUser;
 	}
 
-	async activityLog(userId,data){
-		const { planId, draftId, idleTime, interactionTime, moduleName, isCompleted } = data;
-
-		if (draftId) {
-			let activityLog = await UserActivityLogs.findOne({ draftId , userId});
-
-			if (activityLog) {
-				activityLog.idleTime = (activityLog.idleTime || 0) + idleTime;
-				activityLog.interactionTime = (activityLog.interactionTime || 0) + interactionTime;
-				activityLog.isCompleted = isCompleted;
-
-				if (isCompleted) {
-					activityLog.draftId = undefined;
-				}
-
-				await activityLog.save();
-				return activityLog
-			} else {
-				activityLog = new UserActivityLogs({
-					planId,
-					draftId,
-					idleTime,
-					interactionTime,
-					moduleName,
-					userId,
-					isCompleted
-				});
-
-				await activityLog.save();
-				return activityLog
-			}
-		} else if(planId)
-			{
-				const activityLog = new UserActivityLogs({
-					planId,
-					idleTime,
-					interactionTime,
-					moduleName,
-					userId
-				});
-
-				await activityLog.save();
-				return activityLog
-			}
-		else {
-			const activityLog = new UserActivityLogs({
-				idleTime,
-				interactionTime,
-				moduleName,
-				userId
-			});
-
-			await activityLog.save();
-			return activityLog
-		}
-	}
 }
 
 module.exports = UserDao;

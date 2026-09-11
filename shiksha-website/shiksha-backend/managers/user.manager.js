@@ -510,12 +510,6 @@ class UserManager extends BaseManager {
   }
 
 
-  async activityLog(req) {
-    const { _id } = req.user;
-    const userActivity = await this.dao.activityLog(_id, req.body);
-    return formatApiReponse(true, "Logs saved successfully!", userActivity);
-  }
-
   async delete(req) {
     const user = await this.dao.getById(req.params.id);
     if (!user) return formatApiReponse(false, "User not found", null);

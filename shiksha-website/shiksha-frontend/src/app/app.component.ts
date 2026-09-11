@@ -6,6 +6,7 @@ import { UtilityService } from './core/services/utility.service';
 import { AuthorizationService } from './core/services/authorization.service';
 import { IdleService } from './shared/services/idle.service';
 import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD, SESSION_VERSION } from './shared/utility/constant.util';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -54,6 +55,9 @@ export class AppComponent implements OnInit, OnDestroy {
         next: (res: any) => {
           const user = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(user));
+          if (user._id) {
+            window.umami?.identify(user._id);
+          }
           if (this.router.url === '/error/503') this.router.navigateByUrl('/');
         },
         error: (err: any) => {
@@ -64,6 +68,39 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     window.addEventListener('beforeunload', this.handleBeforeUnload);
+
+    this.loadUmamiTracker();
+  }
+
+  // Loads Umami's client-side tracker and recorder scripts. The website id and host are
+  // environment-specific, so the tags are injected here rather than hardcoded
+  // in index.html (which is not run through Angular's environment replacement).
+  private loadUmamiTracker(): void {
+    const { umamiUrl, umamiWebsiteId } = environment;
+    if (!umamiUrl || !umamiWebsiteId) return;
+
+    const script = document.createElement('script');
+    script.defer = true;
+    script.src = `${umamiUrl}/script.js`;
+    script.setAttribute('data-website-id', umamiWebsiteId);
+    script.onload = () => {
+      const rawUser = localStorage.getItem('userData');
+      if (rawUser) {
+        try {
+          const user = JSON.parse(rawUser);
+          if (user?._id) {
+            window.umami?.identify(user._id);
+          }
+        } catch {}
+      }
+    };
+    document.head.appendChild(script);
+
+    const recorder = document.createElement('script');
+    recorder.defer = true;
+    recorder.src = `${umamiUrl}/recorder.js`;
+    recorder.setAttribute('data-website-id', umamiWebsiteId);
+    document.head.appendChild(recorder);
   }
 
   // ------ Idle modal close ------
