@@ -4,4 +4,6 @@ window.env = {
   supersetUrl: "${SUPERSET_URL}",
   supersetDashboardUuid: "${SUPERSET_DASHBOARD_UUID}",
   supersetMobileDashboardUuid: "${SUPERSET_MOBILE_DASHBOARD_UUID}",
+  umamiUrl: "${UMAMI_URL}",
+  umamiWebsiteId: "${UMAMI_WEBSITE_ID}",
 };

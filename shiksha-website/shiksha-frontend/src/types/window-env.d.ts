@@ -5,5 +5,7 @@ interface Window {
     supersetUrl?: string;
     supersetDashboardUuid?: string;
     supersetMobileDashboardUuid?: string;
+    umamiUrl?: string;
+    umamiWebsiteId?: string;
   };
 }
