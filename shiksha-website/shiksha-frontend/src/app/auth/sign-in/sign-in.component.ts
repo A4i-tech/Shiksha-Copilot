@@ -283,6 +283,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           localStorage.setItem('token', res.data.token);
           const session = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(session));
+          if (session._id) {
+            window.umami?.identify(session._id);
+          }
           this.sidebarService.profileImg.set(res?.data?.user?.profileImage || '');
 
           this.translateService.use(res.data.user.preferredLanguage);

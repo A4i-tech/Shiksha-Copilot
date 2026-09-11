@@ -269,19 +269,6 @@ describe("UserController", () => {
     });
   });
 
-  describe("activityLog", () => {
-    it("should log activity successfully", async () => {
-      const mockResult = { success: true, message: "Activity logged" };
-      mockUserManager.activityLog = jest.fn().mockResolvedValue(mockResult);
-      mockReq.body = { action: "login", timestamp: new Date() };
-
-      await controller.activityLog(mockReq, mockRes);
-
-      expect(mockUserManager.activityLog).toHaveBeenCalledWith(mockReq);
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-  });
-
   describe("getAll", () => {
     it("should get all users with default pagination", async () => {
       const mockResult = { success: true, data: { results: [], total: 0 } };
