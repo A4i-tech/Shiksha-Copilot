@@ -3,6 +3,6 @@
 set -eu
 
 . "$(dirname "$0")/render-env.sh"
-render_env /srv/assets/env.template.js /srv/assets/env.js
+render_env /etc/shiksha/env.template.js /srv/assets/env.js
 
 exec "$@"
