@@ -129,7 +129,7 @@ steps:
                   type: [integer, "null"]
                   minimum: 1
                   description: Page at which the chapter ends. Use null only when uncertain and it is the last TOC record.
-              required: ["no", name, page_begin, page_end]
+              required: ["no", "name", "page_begin", "page_end"]
         required: [page_no, records]
   - agent: extract
     description: Find Chapter 1 offset
