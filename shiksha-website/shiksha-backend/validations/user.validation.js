@@ -86,14 +86,6 @@ const profileSchema = Joi.object({
 });
 
 const validateSetProfile = validateRequest(profileSchema);
-const validateUserActivityLog = validateRequest(Joi.object({
-	moduleName: Joi.string().required(),
-	idleTime: Joi.number().required(),
-	interactionTime: Joi.number().required(),
-	draftId: Joi.string().allow("", null),
-	planId: Joi.string().allow("", null),
-	isCompleted: Joi.boolean(),
-}));
 
 module.exports = {
 	userSchema,
@@ -104,5 +96,4 @@ module.exports = {
 	validateUserUpdate,
 	validateSetProfile,
 	validatePreferredLanguageUpdate,
-	validateUserActivityLog
 };

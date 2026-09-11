@@ -11,7 +11,6 @@ const {
 	validateUserList,
 	validateSetProfile,
 	validatePreferredLanguageUpdate,
-	validateUserActivityLog,
 } = require("../validations/user.validation.js");
 
 const userController = new UserController();
@@ -128,13 +127,6 @@ router.put(
 	isAuthenticated,
 	requirePermission("user.delete"),
 	asyncMiddleware(userController.deactivate.bind(userController))
-);
-
-router.post(
-	"/activity-log",
-	isAuthenticated,
-	validateUserActivityLog,
-	asyncMiddleware(userController.activityLog.bind(userController))
 );
 
 module.exports = router;

@@ -10,4 +10,6 @@ export const runtimeEnv = {
   supersetUrl: requireEnv('supersetUrl'),
   supersetDashboardUuid: requireEnv('supersetDashboardUuid'),
   supersetMobileDashboardUuid: requireEnv('supersetMobileDashboardUuid'),
+  umamiUrl: requireEnv('umamiUrl'),
+  umamiWebsiteId: requireEnv('umamiWebsiteId'),
 };

@@ -72,6 +72,8 @@ jobs:
       superset_url: ${{ vars.SUPERSET_URL }}
       superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
       superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
+      umami_url: ${{ vars.UMAMI_URL }}
+      umami_website_id: ${{ vars.UMAMI_WEBSITE_ID }}
 
   cd-frontend-render:
     name: Deploy frontend preview (Render)
@@ -130,6 +132,8 @@ jobs:
       superset_url: ${{ vars.SUPERSET_URL }}
       superset_dashboard_uuid: ${{ vars.SUPERSET_DASHBOARD_UUID }}
       superset_mobile_dashboard_uuid: ${{ vars.SUPERSET_MOBILE_DASHBOARD_UUID }}
+      umami_url: ${{ vars.UMAMI_URL }}
+      umami_website_id: ${{ vars.UMAMI_WEBSITE_ID }}
 
   health-check:
     name: Health Check
