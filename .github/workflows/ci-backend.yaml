@@ -50,9 +50,6 @@ jobs:
         run: |
           npm ci
           npm run test:unit:coverage
-          # Save unit test coverage to a separate directory
-          mkdir -p ../coverage-unit
-          cp -r coverage/* ../coverage-unit/ || true
 
       - name: Extract backend metadata
         id: backend_meta
@@ -84,17 +81,12 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Merge coverage reports
+      - name: Extract coverage summary
         working-directory: shiksha-website/shiksha-backend
         run: |
-          npm ci
-          # Merge unit and integration coverage using nyc
-          npx nyc merge ../coverage-unit coverage-unit.json || echo '{}' > coverage-unit.json
-          npx nyc merge coverage-integration coverage-integration.json || echo '{}' > coverage-integration.json
-          mkdir -p coverage
-          # Run all tests to generate combined coverage
-          npm run test:coverage -- --passWithNoTests || true
-          # Use the combined coverage for reporting
+          # Unit tests are the only coverage source now - the __tests__/integration
+          # suite runs against a live staging deployment post-deploy (see main.yaml's
+          # staging-e2e job), not in-process, so it produces no code coverage.
           cp coverage/coverage-summary.json coverage-summary.json 2>/dev/null || echo '{"total":{"statements":{"pct":0}}}' > coverage-summary.json
 
       - name: Upload backend coverage
