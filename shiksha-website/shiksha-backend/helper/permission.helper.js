@@ -1,14 +1,17 @@
 const permissions = require("../config/permissions.json");
+const { ROLE_SCOPE_TYPES } = require("../config/role.scope");
 if (process.env.SHIKSHA_DEVTOOLS === "true") permissions.push(...require("../config/devtools.permissions.json"));
+permissions.forEach((permission) => permission.scopes = permission.scopes.includes("*") ? ROLE_SCOPE_TYPES : permission.scopes);
 
 const ALL_PERMISSIONS = Object.freeze(permissions.map((permission) => permission.name));
+const isPermissionAllowed = (name, scopeType) => permissions.find((permission) => permission.name === name).scopes.includes(scopeType);
 
 function getRolePermissions(assignments) {
   const active = assignments.filter((assignment) => !assignment.role.isDeleted);
   if (active.some((assignment) => assignment.role.isSuperUser)) {
-    return ALL_PERMISSIONS.map((permission) => ({ permission, scopeType: "GLOBAL", dep: null }));
+    return ALL_PERMISSIONS.filter((permission) => isPermissionAllowed(permission, "GLOBAL")).map((permission) => ({ permission, scopeType: "GLOBAL", dep: null }));
   }
-  const grants = active.flatMap((assignment) => assignment.role.permissions.map((permission) => ({
+  const grants = active.flatMap((assignment) => assignment.role.permissions.filter((permission) => isPermissionAllowed(permission, assignment.role.scopeType)).map((permission) => ({
     permission,
     scopeType: assignment.role.scopeType,
     dep: assignment.dep == null ? null : assignment.role.scopeType === "SCHOOL" ? String(assignment.dep) : assignment.dep,
@@ -35,4 +38,4 @@ function schoolDependency(assignments) {
   return schools[0];
 }
 
-module.exports = { ALL_PERMISSIONS, permissions, getRolePermissions, getPermission, hasPermission, hasGlobalPermission, schoolDependency };
+module.exports = { ALL_PERMISSIONS, permissions, isPermissionAllowed, getRolePermissions, getPermission, hasPermission, hasGlobalPermission, schoolDependency };

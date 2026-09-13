@@ -1,11 +1,13 @@
 const RoleDao = require("../dao/role.dao");
 const BaseManager = require("./base.manager");
 const formatApiReponse = require("../helper/response");
-const { ALL_PERMISSIONS, permissions, getPermission } = require("../helper/permission.helper");
+const { ALL_PERMISSIONS, permissions, isPermissionAllowed, getPermission } = require("../helper/permission.helper");
 const { ROLE_SCOPE_TYPES, REGION_SCOPE_FIELDS } = require("../config/role.scope");
 const User = require("../models/user.model");
 const School = require("../models/school.model");
 const { assertCanGrant, assignmentDependencyFilter, scopeFilter } = require("../helper/scope.helper");
+
+const unsupportedPermission = (names, scopeType) => names.find((name) => !isPermissionAllowed(name, scopeType));
 
 class RoleManager extends BaseManager {
   constructor() {
@@ -18,6 +20,8 @@ class RoleManager extends BaseManager {
     if (!getPermission(req.permissions, "role.delegate") && req.body.permissions.some((permission) => !req.permissions.some((grant) => grant.permission === permission))) {
       return formatApiReponse(false, "Cannot grant permissions you do not hold", null);
     }
+    const unsupported = unsupportedPermission(req.body.permissions, req.body.scopeType);
+    if (unsupported) return formatApiReponse(false, `${unsupported} is not available for ${req.body.scopeType} scope`, null);
     return formatApiReponse(true, "Role created", await this.dao.create(req.body));
   }
 
@@ -35,6 +39,8 @@ class RoleManager extends BaseManager {
     if (!delegate && update.permissions?.some((permission) => !req.permissions.some((grant) => grant.permission === permission))) {
       return formatApiReponse(false, "Cannot grant permissions you do not hold", null);
     }
+    const unsupported = unsupportedPermission(update.permissions || role.permissions, update.scopeType || role.scopeType);
+    if (unsupported) return formatApiReponse(false, `${unsupported} is not available for ${update.scopeType || role.scopeType} scope`, null);
     const accessChanged = update.permissions !== undefined || update.scopeType && update.scopeType !== role.scopeType;
     const assignedUsers = accessChanged ? await User.find({ "roles.role": role._id }).select("roles").lean() : [];
     if (update.scopeType && update.scopeType !== role.scopeType && assignedUsers.length) {

@@ -1,6 +1,6 @@
 [
-  { "name": "devtools.session", "description": "Issue sessions for integration-test users." },
-  { "name": "devtools.auth", "description": "Reset integration-test authentication and read captured SMS messages." },
-  { "name": "devtools.fixture", "description": "Create integration-test fixtures." },
-  { "name": "devtools.cleanup", "description": "Delete integration-test fixtures." }
+  { "name": "devtools.session", "description": "Issue sessions for integration-test users.", "scopes": ["GLOBAL"] },
+  { "name": "devtools.auth", "description": "Reset integration-test authentication and read captured SMS messages.", "scopes": ["GLOBAL"] },
+  { "name": "devtools.fixture", "description": "Create integration-test fixtures.", "scopes": ["GLOBAL"] },
+  { "name": "devtools.cleanup", "description": "Delete integration-test fixtures.", "scopes": ["GLOBAL"] }
 ]
