@@ -25,7 +25,12 @@ export class RuleTranslateCompiler extends TranslateCompiler {
                 for (const entry of rules) {
                     if (typeof entry === 'string') return translateValue(entry);
                     const rule = entry as { rule: string; value: string };
-                    if (evaluate(rule.rule, { state, board: null, subject: null, ...params })) {
+                    if (evaluate(rule.rule, {
+                        ...params,
+                        state: params['state'] ?? state,
+                        board: params['board'] ?? null,
+                        subject: params['subject'] ?? null,
+                    })) {
                         return translateValue(rule.value);
                     }
                 }
