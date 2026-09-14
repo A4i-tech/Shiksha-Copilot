@@ -17,7 +17,7 @@ from langfuse.openai import AsyncOpenAI
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import PydanticResponse
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai_like import OpenAILikeResponses
+from llama_index.llms.openai import OpenAIResponses
 
 # 3. Import only the Factory and Base Adapter
 from app.services.rag_adapters import BaseRagAdapter
@@ -51,7 +51,7 @@ class QuestionPaperService:
 
     def __init__(self):
         self.client = AsyncOpenAI()
-        self._rag_llm = OpenAILikeResponses(model=settings.question_paper_model) # pyright: ignore[reportCallIssue]
+        self._rag_llm = OpenAIResponses(model=settings.question_paper_model) # pyright: ignore[reportCallIssue]
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
@@ -221,7 +221,6 @@ class QuestionPaperService:
                     instructions=system_prompt,
                     input=user_message,
                     text_format=response_format,
-                    temperature=0.7,
                 )
                 if response.output_parsed is None:
                     raise RuntimeError("Did not retrieve a valid response from model")
