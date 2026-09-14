@@ -221,7 +221,6 @@ class QuestionPaperService:
                     instructions=system_prompt,
                     input=user_message,
                     text_format=response_format,
-                    temperature=0.7,
                 )
                 if response.output_parsed is None:
                     raise RuntimeError("Did not retrieve a valid response from model")
