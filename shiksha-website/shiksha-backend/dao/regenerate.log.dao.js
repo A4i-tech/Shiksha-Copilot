@@ -68,6 +68,10 @@ class RegeneratedLessonResourceDao extends BaseDao {
 			results: results[0].data,
 		};
 	}
+
+	getContentActivityCursor(filters = {}) {
+		return regenerateLogAggregation.getContentActivityCursor(mapFilters(filters, "_id"));
+	}
 }
 
 module.exports = RegeneratedLessonResourceDao;

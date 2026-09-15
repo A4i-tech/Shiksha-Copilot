@@ -6,7 +6,7 @@ const MasterLessonController = require("../controllers/master.lesson.controller.
 const {
 	validateMasterLessonCreate,
 } = require("../validations/master.lesson.validation.js");
-const MulterUploadMiddleware = require("../middlewares/multerUploadMiddleware.js");
+const jsonUploadMiddleware = require("../middlewares/jsonUploadMiddleware.js");
 
 
 const masterLessonController = new MasterLessonController();
@@ -106,7 +106,7 @@ router.post(
 	"/master-lesson/upload",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	MulterUploadMiddleware,
+	jsonUploadMiddleware,
 	asyncMiddleware(
 		masterLessonController.uploadMasterLesson.bind(masterLessonController)
 	)
@@ -116,7 +116,7 @@ router.post(
 	"/master-lesson/old-version-upload",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	MulterUploadMiddleware,
+	jsonUploadMiddleware,
 	asyncMiddleware(
 		masterLessonController.uploadMasterLessonOlderVersion.bind(masterLessonController)
 	)

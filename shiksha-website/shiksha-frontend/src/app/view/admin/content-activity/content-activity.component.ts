@@ -8,7 +8,6 @@ import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, 
 import { ContentActivityService } from './content-activity.service';
 import { RegionDependency } from 'src/app/shared/interfaces/permission.interface';
 import { pathAllowed, regionScopePaths } from 'src/app/shared/utility/scope.util';
-import { getLabel } from 'src/app/shared/utility/constant.util';
 
 @Component({
   selector: 'app-content-activity',
@@ -184,10 +183,7 @@ export class ContentActivityComponent implements OnInit {
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
-    const talukLabel = getLabel('Taluk', 'Taluk', { state: selectedStateValue });
-    this.blockDropdownconfig.placeHolderTxt = `Select ${talukLabel}`;
-    this.blockDropdownconfig.labelTxt = talukLabel;
-    this.blockDropdownconfig.skipTranslate = true;
+    this.blockDropdownconfig.translateParams = { state: selectedStateValue };
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,

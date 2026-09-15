@@ -13,11 +13,13 @@ const Classes = require("../models/school.class.model")
 const Chapters = require("../models/chapter.model")
 const Schools = require("../models/school.model")
 const unifyUsers = require("./unify-users");
+const backfillAnswerCount = require("./answer-count-backfill");
 
 async function runMigrations() {
     try {
         await unifyUsers();
         await Promise.all([
+            backfillAnswerCount(),
             MasterLesson.updateMany(
                 { isRegenerated: { $exists: false } },
                 { $set: { isRegenerated: false } }

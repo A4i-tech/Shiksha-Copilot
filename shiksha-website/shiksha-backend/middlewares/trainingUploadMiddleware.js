@@ -1,87 +1,39 @@
-const busboy = require("busboy");
-const { uploadToStorage } = require("../services/azure.blob.service.js");
+const multer = require("multer");
 
-const trainingUploadMiddleware = (req, res, next) => {
-  if (!req.headers["content-type"]?.includes("multipart/form-data")) {
-    return next();
-  }
+const megabyte = 1024 * 1024;
+const pdfFields = new Set(["pdfFile", "permissionLetterFile", "attendanceSheetFile"]);
+const imageTypes = new Set(["image/jpeg", "image/jpg", "image/png"]);
 
-  const bb = busboy({ headers: req.headers });
-  req.body = {};
-  req.files = {};
-  const uploadTasks = []; 
+function fileFilter(req, file, callback) {
+  const allowed = pdfFields.has(file.fieldname) ? file.mimetype === "application/pdf" : imageTypes.has(file.mimetype);
+  callback(allowed ? null : new Error(`Invalid file type for ${file.fieldname}`), allowed);
+}
 
-  bb.on("field", (fieldname, value) => {
-    req.body[fieldname] = value;
+function validSignature(file) {
+  if (file.mimetype === "application/pdf") return file.buffer.subarray(0, 5).equals(Buffer.from("%PDF-"));
+  if (file.mimetype === "image/png") return file.buffer.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"));
+  return file.buffer.subarray(0, 3).equals(Buffer.from("ffd8ff", "hex"));
+}
+
+function handle(upload) {
+  return (req, res, next) => upload(req, res, (error) => {
+    if (error) return res.status(error.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ success: false, message: error.message });
+
+    const files = Object.values(req.files || {}).flat();
+    if (files.some((file) => !validSignature(file))) return res.status(400).json({ success: false, message: "File content does not match its type." });
+    if ((req.files?.photos || []).some((file) => file.size > 5 * megabyte)) return res.status(413).json({ success: false, message: "Photos must not exceed 5MB." });
+    next();
   });
+}
 
-  bb.on("file", (fieldname, file, info) => {
-    const { filename, encoding, mimeType } = info;
+const options = { storage: multer.memoryStorage(), fileFilter };
+const createBatchUpload = handle(multer({ ...options, limits: { fileSize: 10 * megabyte, files: 1, fields: 4 } }).fields([
+  { name: "pdfFile", maxCount: 1 },
+]));
+const batchProofUpload = handle(multer({ ...options, limits: { fileSize: 10 * megabyte, files: 4, fields: 0 } }).fields([
+  { name: "permissionLetterFile", maxCount: 1 },
+  { name: "attendanceSheetFile", maxCount: 1 },
+  { name: "photos", maxCount: 2 },
+]));
 
-    const fileBuffer = [];
-    let fileSize = 0;
-    const maxFileSize = 10 * 1024 * 1024; // 10MB max
-
-    const uploadPromise = new Promise((resolve, reject) => {
-      file.on("data", (data) => {
-        fileSize += data.length;
-        if (fileSize > maxFileSize) {
-          file.unpipe(bb);
-          return reject(`${fieldname} file exceeds 10MB limit`);
-        }
-        fileBuffer.push(data);
-      });
-
-      file.on("end", async () => {
-        try {
-          const buffer = Buffer.concat(fileBuffer);
-          const uniqueFilename = `${Date.now()}_${filename}`;
-
-          const path = await uploadToStorage(buffer, uniqueFilename, mimeType);
-
-          const fileData = {
-            originalName: filename,
-            mimeType,
-            encoding,
-            path,
-          };
-
-          if (req.files[fieldname]) {
-            req.files[fieldname].push(fileData);
-          } else {
-            req.files[fieldname] = [fileData];
-          }
-
-          resolve();
-        } catch (err) {
-          reject(err);
-        }
-      });
-
-      file.on("error", (err) => {
-        reject(err);
-      });
-    });
-
-    uploadTasks.push(uploadPromise);
-  });
-
-  bb.on("finish", async () => {
-    try {
-      await Promise.all(uploadTasks);
-      next();
-    } catch (err) {
-      console.error("File upload failed:", err);
-      res.status(500).json({ success: false, message: "File upload failed", error: err.toString() });
-    }
-  });
-
-  bb.on("error", (err) => {
-    console.error("Busboy error:", err);
-    res.status(500).json({ success: false, message: "Busboy parsing error", error: err.toString() });
-  });
-
-  req.pipe(bb);
-};
-
-module.exports = trainingUploadMiddleware;
+module.exports = { createBatchUpload, batchProofUpload };

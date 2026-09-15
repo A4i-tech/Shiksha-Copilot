@@ -3,7 +3,7 @@ import { QuestionBankService } from '../question-bank.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { Router } from '@angular/router';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
-import { getLabel } from 'src/app/shared/utility/constant.util';
+import { TranslateService } from '@ngx-translate/core';
 import {
   debounceTime,
   distinctUntilChanged,
@@ -85,7 +85,8 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   constructor(
     private questionBankService: QuestionBankService,
     private utilityService: UtilityService,
-    private router: Router
+    private router: Router,
+    private translateService: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -149,7 +150,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
       this.subjectDropdownOptions =
         this.utilityService.formatSubjecter(subjectDropdownValue).map((opt: any) => ({
           ...opt,
-          name: getLabel(opt.name, opt.name, { board: this.selectedBoard }),
+          name: this.translateService.instant(opt.name, { board: this.selectedBoard }),
         }));
     }
 
@@ -241,7 +242,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
 
       this.subjectDropdownOptions = this.utilityService.formatSubjecter(subjectFilter[0].data).map((opt: any) => ({
         ...opt,
-        name: getLabel(opt.name, opt.name, { board: this.selectedBoard }),
+        name: this.translateService.instant(opt.name, { board: this.selectedBoard }),
       }));
     }
     const params = this.getListParams();
@@ -259,7 +260,7 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
       next: (res: any) => {
         this.list = res.data.results.map((item: any) => ({
           ...item,
-          subjectLabel: getLabel(item.subject, item.subject, { board: item.board }),
+          subjectLabel: this.translateService.instant(item.subject, { board: item.board }),
         }));
       },
       error: (err) => {

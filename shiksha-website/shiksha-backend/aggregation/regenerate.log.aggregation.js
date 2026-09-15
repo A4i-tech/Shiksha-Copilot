@@ -110,29 +110,8 @@ class RegenerateLogAggregation {
 		}
 	}
 
-	async getAllContentActivity(filter) {
-		try {
-			let pipeline = [
-				...this._commonPipeLine(filter),
-				{
-					$facet: {
-						data: [
-							{ $sort: { createdAt: -1 } }
-						],
-						totalCount: [{ $count: "count" }],
-					},
-				},
-			];
-
-			let allregenerateLogs = await RegenerateLogModel.aggregate(pipeline);
-
-			if (allregenerateLogs) return allregenerateLogs;
-
-			return [];
-		} catch (err) {
-			console.log("Error --> RegenerateLogAggregation --> getAllContentActivity");
-			throw err;
-		}
+	getContentActivityCursor(filter) {
+		return RegenerateLogModel.aggregate([...this._commonPipeLine(filter), { $sort: { createdAt: -1 } }]).cursor({ batchSize: 100 });
 	}
 }
 

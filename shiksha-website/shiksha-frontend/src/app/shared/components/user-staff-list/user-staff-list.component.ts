@@ -5,11 +5,11 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 import { UserManagementService } from 'src/app/view/admin/user-management/user-management.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { StaffUserCommonService } from '../../services/staff-user-common.service';
-import { BULK_UPLOAD_FILE_TYPES, getLabel } from '../../utility/constant.util';
+import { BULK_UPLOAD_FILE_TYPES } from '../../utility/constant.util';
 import { ModalService } from '../modal/modal.service';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import {TranslateModule } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { DropdownComponent } from '../dropdown/dropdown.component';
 import { ModalComponent } from '../modal/modal.component';
 import { DisablePopupComponent } from '../disable-popup/disable-popup.component';
@@ -688,10 +688,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
    * @param selectedStateValue
    */
     setZoneDropdownValues(selectedStateValue: any) {
-      const talukLabel = getLabel('Taluk', 'Taluk', { state: selectedStateValue });
-      this.blockDropdownconfig.placeHolderTxt = talukLabel;
-      this.blockDropdownconfig.labelTxt = talukLabel;
-      this.blockDropdownconfig.skipTranslate = true;
+      this.blockDropdownconfig.translateParams = { state: selectedStateValue };
       if (selectedStateValue) {
         this.selectedStateObj = this.utility.filterDropdownValues(
           this.regionsData,

@@ -23,6 +23,7 @@ class TeacherResourceFeedbackManager extends BaseManager {
 				...req.body,
 				teacherId,
 				resourceId,
+				isDeleted: false,
 			});
 
 			return formatApiReponse(

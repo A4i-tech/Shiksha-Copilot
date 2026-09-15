@@ -5,10 +5,11 @@ const validateRequest = (schema, source = "body") => {
         const isValid = schema.required().validate(data, { abortEarly: false });
 
         if (isValid.error) {
+            const errorMessages = isValid.error.details.map((i) => i.message);
             return res.status(400).json({
                 success: false,
                 data: false,
-                error: isValid.error.details.map((i) => i.message),
+                error: errorMessages,
             });
         }
 

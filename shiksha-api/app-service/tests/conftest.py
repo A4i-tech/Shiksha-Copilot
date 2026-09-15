@@ -2,7 +2,10 @@ import pytest
 import os
 import sys
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock, AsyncMock, MagicMock
+
+# Mock rag_wrapper module before any imports that depend on it
+sys.modules['rag_wrapper'] = MagicMock()
 
 # Add app directory to Python path
 app_dir = Path(__file__).parent.parent / "app"

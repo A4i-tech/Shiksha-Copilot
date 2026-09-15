@@ -11,11 +11,12 @@ import {
 import { HttpConfigInterceptor } from './core/interceptors/http-config.interceptor';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import {
+  TranslateCompiler,
   TranslateLoader,
   TranslateModule,
   TranslateService,
 } from '@ngx-translate/core';
-import { HttpLoaderFactory } from './shared/utility/common.util';
+import { HttpLoaderFactory, RuleTranslateCompiler } from './shared/utility/common.util';
 import { LanguageSwitcherComponent } from './shared/components/language-switcher/language-switcher.component';
 import { ToastrModule } from 'ngx-toastr';
 import { DatePipe } from '@angular/common';
@@ -65,6 +66,10 @@ import { BaselineSurveyDialogService } from './core/services/baseline-survey-dia
     MatIconModule,
 
     TranslateModule.forRoot({
+      compiler: {
+        provide: TranslateCompiler,
+        useClass: RuleTranslateCompiler,
+      },
       loader: {
         provide: TranslateLoader,
         useFactory: HttpLoaderFactory,

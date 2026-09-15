@@ -6,7 +6,7 @@ const MasterResourceController = require("../controllers/master.resource.control
 const {
 	validateMasterResource,
 } = require("../validations/master.resource.validation.js");
-const MulterUploadMiddleware = require("../middlewares/multerUploadMiddleware.js");
+const jsonUploadMiddleware = require("../middlewares/jsonUploadMiddleware.js");
 
 const masterResourceController = new MasterResourceController();
 
@@ -80,7 +80,7 @@ router.post(
 	"/master-resource/upload",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	MulterUploadMiddleware,
+	jsonUploadMiddleware,
 	asyncMiddleware(
 		masterResourceController.uploadMasterResource.bind(masterResourceController)
 	)
@@ -90,7 +90,7 @@ router.post(
 	"/master-resource/old-version-upload",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	MulterUploadMiddleware,
+	jsonUploadMiddleware,
 	asyncMiddleware(
 		masterResourceController.uploadOldMasterResource.bind(masterResourceController)
 	)
