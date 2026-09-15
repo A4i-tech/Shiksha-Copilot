@@ -1,19 +1,8 @@
 const formatApiReponse = require("../helper/response");
+const { trace } = require("@opentelemetry/api");
 
 module.exports = (err, req, res, next) => {
 	console.error("Unhandled error --> ", err);
-
-	const appInsightsClient = require("applicationinsights").defaultClient;
-	if (appInsightsClient) {
-		appInsightsClient.trackException({
-			exception: err,
-			properties: {
-				url: req.originalUrl,
-				method: req.method,
-				userId: req.user?._id?.toString() ?? "unauthenticated",
-			},
-		});
-	}
 
 	if (err.code === 11000) {
 		return res.status(409).json(formatApiReponse(false, "Duplicate entry", null));
@@ -24,6 +13,7 @@ module.exports = (err, req, res, next) => {
 	}
 
 	const statusCode = err.statusCode || 500;
+	if (statusCode >= 500) trace.getActiveSpan()?.recordException(err);
 	const message = err.name === "AppError" ? err.message : "Internal server error";
 	res.status(statusCode).json(formatApiReponse(false, message, null));
 };
