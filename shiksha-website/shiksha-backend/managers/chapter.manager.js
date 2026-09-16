@@ -1,4 +1,3 @@
-const mongoose = require("mongoose");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const BaseManager = require("./base.manager");
@@ -385,7 +384,7 @@ class ChapterManager extends BaseManager {
         report
       );
     } catch (err) {
-      return formatApiReponse(false, err?.message, err);
+      return formatApiReponse(false, err?.message, null);
     }
   }
 }

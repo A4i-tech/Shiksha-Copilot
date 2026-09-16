@@ -1,4 +1,3 @@
-const mongoose = require("mongoose");
 const BaseManager = require("./base.manager");
 const MasterResourceDao = require("../dao/master.resource.dao");
 const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
@@ -131,7 +130,7 @@ class MasterResourceManager extends BaseManager {
 				report
 			);
 		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
+			return formatApiReponse(false, err?.message, null);
 		}
 	}
 

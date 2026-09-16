@@ -29,11 +29,12 @@
         <div
           *ngFor="let field of visibleFields"
           [ngClass]="{
-            'md:col-span-2': field.type === 'json' || field.type === 'textarea' || field.type === 'question-content'
+            'md:col-span-2': field.type === 'json' || field.type === 'textarea' || field.type === 'question-content' || field.type === 'mcq-options'
           }"
         >
-          <label class="form-control-label" [attr.for]="'field-' + field.field">
+          <label class="form-control-label" [attr.for]="'field-' + field.field" *ngIf="!isDropdownField(field)">
             {{ field.label }}
+            <span *ngIf="field.requiredOnCreate && isCreate" class="text-[16px] text-error">*</span>
           </label>
 
           <ng-container [ngSwitch]="field.type">
@@ -43,6 +44,7 @@
               class="form-control"
               [id]="'field-' + field.field"
               [name]="field.field"
+              [placeholder]="field.placeholder || ''"
               [ngModel]="formValues[field.field]"
               (ngModelChange)="onFieldChange(field, $event)"
             />
@@ -53,6 +55,7 @@
               class="form-control"
               [id]="'field-' + field.field"
               [name]="field.field"
+              [placeholder]="field.placeholder || ''"
               [ngModel]="formValues[field.field]"
               (ngModelChange)="onFieldChange(field, $event)"
             />
@@ -73,6 +76,7 @@
               class="form-control"
               [id]="'field-' + field.field"
               [name]="field.field"
+              [placeholder]="field.placeholder || ''"
               [ngModel]="formValues[field.field]"
               (ngModelChange)="onFieldChange(field, $event)"
             ></textarea>
@@ -83,6 +87,7 @@
               class="form-control"
               [id]="'field-' + field.field"
               [name]="field.field"
+              [placeholder]="field.placeholder || ''"
               [ngModel]="formValues[field.field]"
               (ngModelChange)="onFieldChange(field, $event)"
             ></textarea>
@@ -128,33 +133,69 @@
               (valueChange)="onFieldChange(field, $event)"
             ></app-chapter-picker>
 
-            <select
+            <app-dropdown
               *ngSwitchCase="'select'"
-              class="form-control"
-              [id]="'field-' + field.field"
               [name]="field.field"
+              [dropDownValues]="field.options || []"
+              [config]="dropdownConfig(field)"
               [ngModel]="formValues[field.field]"
               (ngModelChange)="onFieldChange(field, $event)"
-            >
-              <option value="">Pick {{ field.label.toLowerCase() }}</option>
-              <option *ngFor="let option of field.options" [value]="option.value">
-                {{ option.label }}
-              </option>
-            </select>
+            ></app-dropdown>
 
-            <select
+            <app-dropdown
               *ngSwitchCase="'subject-select'"
-              class="form-control"
-              [id]="'field-' + field.field"
               [name]="field.field"
+              [dropDownValues]="subjectOptions"
+              [config]="dropdownConfig(field)"
               [ngModel]="formValues[field.field]"
               (ngModelChange)="onFieldChange(field, $event)"
-            >
-              <option value="">Pick a subject</option>
-              <option *ngFor="let option of subjectOptions" [value]="option.value">
-                {{ option.label }}
-              </option>
-            </select>
+            ></app-dropdown>
+
+            <div *ngSwitchCase="'mcq-options'" class="space-y-2">
+              <div
+                *ngFor="let option of formValues[field.field]; let i = index"
+                class="flex items-center gap-3 border border-content-30 rounded p-2"
+                [ngClass]="{ 'border-success bg-success-50': isMcqOptionCorrect(field, i) }"
+              >
+                <span class="w-6 h-6 rounded-full bg-shade-50 text-xs font-semibold flex items-center justify-center flex-shrink-0">
+                  {{ option.label }}
+                </span>
+                <input
+                  type="text"
+                  class="form-control flex-1"
+                  [placeholder]="'Enter option ' + option.label"
+                  [ngModel]="option.text"
+                  [name]="field.field + '-' + i"
+                  (ngModelChange)="onMcqOptionTextChange(field, i, $event)"
+                />
+                <label class="flex items-center gap-1 text-xs text-content-60 flex-shrink-0">
+                  <input
+                    type="radio"
+                    [name]="field.field + '-correct'"
+                    [checked]="isMcqOptionCorrect(field, i)"
+                    (change)="onMcqOptionCorrectChange(field, i)"
+                  />
+                  Correct
+                </label>
+              </div>
+            </div>
+
+            <div *ngSwitchCase="'chapter-reference'" class="flex gap-3">
+              <input
+                type="number"
+                class="form-control w-32"
+                placeholder="Chapter no."
+                [ngModel]="formValues[field.field]?.chapterNumber"
+                (ngModelChange)="onChapterReferenceChange(field, 'chapterNumber', $event)"
+              />
+              <input
+                type="text"
+                class="form-control flex-1"
+                placeholder="Chapter title"
+                [ngModel]="formValues[field.field]?.title"
+                (ngModelChange)="onChapterReferenceChange(field, 'title', $event)"
+              />
+            </div>
 
             <textarea
               *ngSwitchCase="'json'"

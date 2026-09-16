@@ -104,7 +104,7 @@ class QuestionManager extends BaseManager {
 				report
 			);
 		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
+			return formatApiReponse(false, err?.message, null);
 		}
 	}
 }

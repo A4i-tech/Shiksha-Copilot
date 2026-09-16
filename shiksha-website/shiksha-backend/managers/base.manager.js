@@ -55,7 +55,7 @@ class BaseManager {
 			if (!data) return formatApiReponse(false, "Record not found", null);
 			return formatApiReponse(true, "Updated successfully!", data);
 		} catch (err) {
-			return formatApiReponse(false, err.message, err);
+			return formatApiReponse(false, err.message, null);
 		}
 	}
 

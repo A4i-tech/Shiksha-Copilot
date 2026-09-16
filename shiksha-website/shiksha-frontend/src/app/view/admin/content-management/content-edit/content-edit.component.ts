@@ -4,19 +4,25 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
+import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import {
   ContentEntityConfig,
   ContentField,
+  ContentSelectOption,
   getContentEntityConfig,
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 
+/** the fixed A-D option row set an MCQ answer type needs, matching McqOption in question_paper.py */
+const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
+
 @Component({
   selector: 'app-content-edit',
   templateUrl: './content-edit.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent],
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
@@ -34,7 +40,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   isSaving = false;
 
   /** {value, label} of every board a master subject applies to, for the chapter subject dropdown */
-  subjectOptions: { value: string; label: string }[] = [];
+  subjectOptions: ContentSelectOption[] = [];
 
   private original: { [field: string]: any } = {};
   private subscriptions: Subscription[] = [];
@@ -115,6 +121,21 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.utilityService.handleError(err);
       },
     });
+  }
+
+  isDropdownField(field: ContentField): boolean {
+    return field.type === 'select' || field.type === 'subject-select';
+  }
+
+  dropdownConfig(field: ContentField): DropDownConfig {
+    return {
+      isBackground: false,
+      placeHolderTxt: field.placeholder || `Pick ${field.label.toLowerCase()}`,
+      labelTxt: field.label,
+      bindLabel: 'label',
+      bindValue: 'value',
+      required: !!(field.requiredOnCreate && this.isCreate),
+    };
   }
 
   get visibleFields(): ContentField[] {
@@ -257,9 +278,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     this.original = {};
     this.fieldErrors = {};
 
-    // Load every field's value, not just the currently-visible ones: a value like `answerType`
-    // must already be in formValues before the visibleFields getter can decide which of its
-    // sibling fields (options, pairs, keyAnswer) to show.
+    // Loads every field, not just visibleFields, since answerType must be set before that getter runs.
     this.config.fields.forEach((field) => {
       const value = record?.[field.field];
       this.original[field.field] = value;
@@ -284,11 +303,28 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       return this.parseQuestionContent(value);
     }
 
+    if (field.type === 'mcq-options') {
+      return this.parseMcqOptions(value);
+    }
+
+    if (field.type === 'chapter-reference') {
+      return { chapterNumber: value?.chapterNumber ?? '', title: value?.title ?? '' };
+    }
+
     return `${value}`;
   }
 
-  // A question's text/answer is a plain string, or (per PR #93) a list of
-  // { contentType, content } parts when it carries an image alongside the text.
+  // Always shows the fixed A-D rows an MCQ needs, whatever came back from the server.
+  private parseMcqOptions(value: any): { label: string; text: string }[] {
+    const existing = Array.isArray(value) ? value : [];
+    return MCQ_OPTION_LABELS.map((label, index) => {
+      const item = existing[index];
+      const text = typeof item === 'string' ? item : item?.text ?? '';
+      return { label, text };
+    });
+  }
+
+  // A question's text/answer is a plain string, or (per PR #93) a [{contentType, content}] list with an image.
   private parseQuestionContent(value: any): { text: string; image: { contentType: string; content: string } | null } {
     if (typeof value === 'string' || value == null) {
       return { text: value ?? '', image: null };
@@ -321,6 +357,14 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         return `${raw}`.trim() === '' ? null : JSON.parse(raw);
       case 'question-content':
         return this.buildQuestionContent(raw);
+      case 'mcq-options':
+        return raw;
+      case 'chapter-reference': {
+        const chapterNumber = `${raw?.chapterNumber ?? ''}`.trim();
+        const title = `${raw?.title ?? ''}`.trim();
+        if (!chapterNumber && !title) return null;
+        return { chapterNumber: chapterNumber ? Number(chapterNumber) : undefined, title: title || undefined };
+      }
       default:
         return `${raw}`;
     }
@@ -372,6 +416,10 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         return [];
       case 'number':
         return null;
+      case 'mcq-options':
+        return this.parseMcqOptions([]);
+      case 'chapter-reference':
+        return null;
       default:
         return '';
     }
@@ -416,5 +464,27 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
     const current = this.formValues[field.field] ?? { text: '', image: null };
     this.formValues[field.field] = { ...current, image: { contentType, content } };
+  }
+
+  onMcqOptionTextChange(field: ContentField, index: number, text: string): void {
+    const rows = (this.formValues[field.field] ?? this.parseMcqOptions([])).slice();
+    rows[index] = { ...rows[index], text };
+    this.formValues[field.field] = rows;
+  }
+
+  // The chosen row's label becomes keyAnswer, e.g. "A" - McqOption.text is picked, not retyped.
+  onMcqOptionCorrectChange(field: ContentField, index: number): void {
+    const rows = this.formValues[field.field] ?? this.parseMcqOptions([]);
+    this.formValues['keyAnswer'] = { text: rows[index]?.label ?? '', image: null };
+  }
+
+  isMcqOptionCorrect(field: ContentField, index: number): boolean {
+    const rows = this.formValues[field.field] ?? this.parseMcqOptions([]);
+    return this.formValues['keyAnswer']?.text === rows[index]?.label;
+  }
+
+  onChapterReferenceChange(field: ContentField, key: 'chapterNumber' | 'title', value: string): void {
+    const current = this.formValues[field.field] ?? { chapterNumber: '', title: '' };
+    this.formValues[field.field] = { ...current, [key]: value };
   }
 }

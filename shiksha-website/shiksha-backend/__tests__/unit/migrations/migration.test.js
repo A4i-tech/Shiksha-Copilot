@@ -5,6 +5,8 @@ const MasterLesson = require("../../../models/master.lesson.model");
 const MasterResource = require("../../../models/master.resource.model");
 const Question = require("../../../models/question.model");
 const TeacherLessonPlan = require("../../../models/teacher.lesson.plan.model");
+const QuestionBank = require("../../../models/question.bank.model");
+const QuestionBankConfiguration = require("../../../models/question.bank.config.model");
 
 describe("runMigrations status backfill", () => {
   beforeEach(() => {
@@ -13,6 +15,8 @@ describe("runMigrations status backfill", () => {
     jest.spyOn(MasterResource, "updateMany").mockResolvedValue({ modifiedCount: 0 });
     jest.spyOn(Question, "updateMany").mockResolvedValue({ modifiedCount: 0 });
     jest.spyOn(TeacherLessonPlan, "updateMany").mockResolvedValue({ modifiedCount: 0 });
+    jest.spyOn(QuestionBank, "updateMany").mockResolvedValue({ modifiedCount: 0 });
+    jest.spyOn(QuestionBankConfiguration, "updateMany").mockResolvedValue({ modifiedCount: 0 });
   });
 
   afterEach(() => {

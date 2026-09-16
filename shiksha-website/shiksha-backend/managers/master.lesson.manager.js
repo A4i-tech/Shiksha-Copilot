@@ -1,6 +1,5 @@
 require("dotenv").config();
 
-const mongoose = require("mongoose");
 const BaseManager = require("./base.manager");
 const MasterLessonDao = require("../dao/master.lesson.dao");
 const formatApiReponse = require("../helper/response");
@@ -1179,7 +1178,7 @@ class MasterLessonManger extends BaseManager {
 				report
 			);
 		} catch (err) {
-			return formatApiReponse(false, err?.message, err);
+			return formatApiReponse(false, err?.message, null);
 		}
 	}
 

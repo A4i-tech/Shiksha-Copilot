@@ -3,7 +3,7 @@ const { validateRequestForUpdates } = require("./common.validation");
 
 const objectId = Joi.string().regex(/^[0-9a-fA-F]{24}$/);
 
-// model normalizes options/pairs/items in its findOneAndUpdate hook, so accept both shorthand string and full object form
+// model normalizes options/pairs in its findOneAndUpdate hook, so accept both shorthand string and full object form
 const optionItem = Joi.alternatives().try(
 	Joi.string().allow(""),
 	Joi.object({
@@ -14,18 +14,9 @@ const optionItem = Joi.alternatives().try(
 );
 
 const pairItem = Joi.object({
-	left: Joi.string().allow(""),
-	right: Joi.string().allow(""),
-	keyAnswer: Joi.string().allow(""),
-}).or("left", "right");
-
-const item = Joi.alternatives().try(
-	Joi.string().allow(""),
-	Joi.object({
-		question: Joi.string().allow(""),
-		text: Joi.string().allow(""),
-	}).or("question", "text")
-);
+	value1: Joi.string().allow(""),
+	value2: Joi.string().allow(""),
+}).or("value1", "value2");
 
 const questionContentUpdateSchema = Joi.object({
 	subject: Joi.string(),
@@ -44,9 +35,6 @@ const questionContentUpdateSchema = Joi.object({
 	keyAnswer: Joi.string().allow(""),
 	options: Joi.array().items(optionItem),
 	pairs: Joi.array().items(pairItem),
-	items: Joi.array().items(item),
-	correctOrderById: Joi.array().items(Joi.number()),
-	correctOrderIndices: Joi.array().items(Joi.number()),
 	status: Joi.string().valid("draft", "under_review", "approved"),
 }).min(1);
 

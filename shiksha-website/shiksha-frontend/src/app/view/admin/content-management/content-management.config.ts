@@ -12,6 +12,9 @@
  *  - json maps to an array or an object that the form shows as raw JSON.
  *  - question-content maps to a plain string, or (per PR #93) a
  *    [{ contentType, content }] array when it carries an image.
+ *  - mcq-options maps to the fixed 4-row [{ label, text }] shape an MCQ
+ *    answer type needs, matching McqOption in question_paper.py.
+ *  - chapter-reference maps to { chapterNumber, title }.
  */
 
 export type ContentEntityKey =
@@ -30,11 +33,15 @@ export type ContentFieldType =
   | 'select'
   | 'subject-select'
   | 'chapter-select'
-  | 'question-content';
+  | 'question-content'
+  | 'mcq-options'
+  | 'chapter-reference';
 
 export interface ContentSelectOption {
   value: string;
   label: string;
+  /** app-dropdown (ng-select) needs an index signature on its dropDownValues items */
+  [key: string]: unknown;
 }
 
 export const BOARD_OPTIONS: ContentSelectOption[] = [
@@ -56,15 +63,13 @@ export const DIFFICULTY_OPTIONS: ContentSelectOption[] = [
   { value: 'difficult', label: 'Difficult' },
 ];
 
-/** every answerType except MATCHING; matching's answer is the pairs mapping itself, not a separate key answer */
+/** every answerType except MATCHING and the MCQ types; MATCHING's answer is the pairs mapping itself, and an MCQ's answer is picked as the correct option in the options editor, not typed separately */
 export const ANSWER_TYPES_WITH_KEY_ANSWER = [
-  'MCQ',
   'FILL_BLANKS',
   'ANSWER_VERY_SHORT',
   'ANSWER_SHORT',
   'ANSWER_MEDIUM',
   'ANSWER_LONG',
-  'GRAMMAR_MCQ',
   'GRAMMAR_FILL_BLANKS',
   'GRAMMAR_EDITING',
 ];
@@ -94,6 +99,8 @@ export interface ContentField {
   type: ContentFieldType;
   /** short help text under the control */
   hint?: string;
+  /** placeholder text shown inside an empty control */
+  placeholder?: string;
   /** the add form shows this field, the edit form hides it */
   createOnly?: boolean;
   /** the add form needs a value in this field */
@@ -145,8 +152,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
         requiredOnCreate: true,
         hint: 'The subject holds the board and the class list, so the values below must match it.',
       },
-      { field: 'topics', label: 'Chapter name', type: 'text', requiredOnCreate: true },
-      { field: 'standard', label: 'Class', type: 'number', requiredOnCreate: true },
+      { field: 'topics', label: 'Chapter name', type: 'text', requiredOnCreate: true, placeholder: 'Enter chapter name' },
+      { field: 'standard', label: 'Class', type: 'number', requiredOnCreate: true, placeholder: 'Enter class, e.g. 8' },
       { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS, requiredOnCreate: true },
       { field: 'board', label: 'Board', type: 'select', options: BOARD_OPTIONS, requiredOnCreate: true },
       {
@@ -154,6 +161,7 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
         label: 'Chapter order number',
         type: 'number',
         requiredOnCreate: true,
+        placeholder: 'Enter order number, e.g. 1',
       },
       {
         field: 'indexPath',
@@ -166,14 +174,16 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
         label: 'Subtopics',
         type: 'list',
         hint: 'One subtopic per line.',
+        placeholder: 'One subtopic per line',
       },
-      { field: 'learningOutcomes', label: 'Learning outcomes', type: 'list' },
+      { field: 'learningOutcomes', label: 'Learning outcomes', type: 'list', placeholder: 'One outcome per line' },
       { field: 'isGrammar', label: 'Grammar chapter', type: 'boolean' },
-      { field: 'grammarTopics', label: 'Grammar topics', type: 'list' },
+      { field: 'grammarTopics', label: 'Grammar topics', type: 'list', placeholder: 'One topic per line' },
       {
         field: 'grammarSourceChapters',
         label: 'Grammar source chapters',
         type: 'list',
+        placeholder: 'One chapter per line',
       },
     ],
   },
@@ -200,14 +210,14 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
         createOnly: true,
         requiredOnCreate: true,
       },
-      { field: 'name', label: 'Name', type: 'text', requiredOnCreate: true },
-      { field: 'class', label: 'Class', type: 'number', requiredOnCreate: true },
+      { field: 'name', label: 'Name', type: 'text', requiredOnCreate: true, placeholder: 'Enter name' },
+      { field: 'class', label: 'Class', type: 'number', requiredOnCreate: true, placeholder: 'Enter class, e.g. 8' },
       { field: 'board', label: 'Board', type: 'select', options: BOARD_OPTIONS, requiredOnCreate: true },
       { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS, requiredOnCreate: true },
-      { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true },
-      { field: 'subject', label: 'Subject', type: 'text', requiredOnCreate: true },
-      { field: 'teachingModel', label: 'Teaching model', type: 'list' },
-      { field: 'subTopics', label: 'Subtopics', type: 'list' },
+      { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true, placeholder: 'Enter semester' },
+      { field: 'subject', label: 'Subject', type: 'text', requiredOnCreate: true, placeholder: 'Enter subject, e.g. Science' },
+      { field: 'teachingModel', label: 'Teaching model', type: 'list', placeholder: 'One teaching model per line' },
+      { field: 'subTopics', label: 'Subtopics', type: 'list', placeholder: 'One subtopic per line' },
       { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json' },
       { field: 'instructionSet', label: 'Instruction set', type: 'json' },
       { field: 'sections', label: 'Sections', type: 'json' },
@@ -246,14 +256,14 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
         createOnly: true,
         requiredOnCreate: true,
       },
-      { field: 'lessonName', label: 'Name', type: 'text', requiredOnCreate: true },
-      { field: 'class', label: 'Class', type: 'number' },
+      { field: 'lessonName', label: 'Name', type: 'text', requiredOnCreate: true, placeholder: 'Enter name' },
+      { field: 'class', label: 'Class', type: 'number', placeholder: 'Enter class, e.g. 8' },
       { field: 'board', label: 'Board', type: 'select', options: BOARD_OPTIONS },
       { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS, requiredOnCreate: true },
-      { field: 'levels', label: 'Level', type: 'text' },
-      { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true },
-      { field: 'subject', label: 'Subject', type: 'text' },
-      { field: 'subTopics', label: 'Subtopics', type: 'list' },
+      { field: 'levels', label: 'Level', type: 'text', placeholder: 'Enter level' },
+      { field: 'semester', label: 'Semester', type: 'text', requiredOnCreate: true, placeholder: 'Enter semester' },
+      { field: 'subject', label: 'Subject', type: 'text', placeholder: 'Enter subject, e.g. Science' },
+      { field: 'subTopics', label: 'Subtopics', type: 'list', placeholder: 'One subtopic per line' },
       { field: 'learningOutcomes', label: 'Learning outcomes', type: 'json' },
       { field: 'resources', label: 'Resources', type: 'json' },
       {
@@ -288,13 +298,13 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
         requiredOnCreate: true,
         hint: 'Type the question, or add an image (paste one in, or pick a file).',
       },
-      { field: 'subject', label: 'Subject', type: 'text' },
-      { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS },
-      { field: 'class', label: 'Class', type: 'text' },
-      { field: 'groupHeading', label: 'Group heading', type: 'text' },
-      { field: 'answerType', label: 'Answer type', type: 'select', options: ANSWER_TYPE_OPTIONS },
-      { field: 'difficulty', label: 'Difficulty', type: 'select', options: DIFFICULTY_OPTIONS },
-      { field: 'marksPerQuestion', label: 'Marks per question', type: 'number' },
+      { field: 'subject', label: 'Subject', type: 'text', placeholder: 'Enter subject, e.g. Science' },
+      { field: 'medium', label: 'Medium', type: 'select', options: MEDIUM_OPTIONS, placeholder: 'Pick a medium' },
+      { field: 'class', label: 'Class', type: 'text', placeholder: 'Enter class, e.g. 8' },
+      { field: 'groupHeading', label: 'Group heading', type: 'text', placeholder: 'Enter group heading' },
+      { field: 'answerType', label: 'Answer type', type: 'select', options: ANSWER_TYPE_OPTIONS, placeholder: 'Pick an answer type' },
+      { field: 'difficulty', label: 'Difficulty', type: 'select', options: DIFFICULTY_OPTIONS, placeholder: 'Pick a difficulty' },
+      { field: 'marksPerQuestion', label: 'Marks per question', type: 'number', placeholder: 'Enter marks, e.g. 2' },
       {
         field: 'keyAnswer',
         label: 'Answer data',
@@ -305,27 +315,20 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       {
         field: 'chapter',
         label: 'Chapter reference',
-        type: 'json',
-        hint: 'Shape: { "chapterNumber": <number>, "title": "<chapter>" }',
+        type: 'chapter-reference',
       },
       {
         field: 'options',
         label: 'Options',
-        type: 'json',
+        type: 'mcq-options',
         visibleWhen: { field: 'answerType', values: ['MCQ', 'GRAMMAR_MCQ'] },
       },
       {
         field: 'pairs',
         label: 'Pairs',
         type: 'json',
+        hint: 'Shape: [{ "value1": "<term>", "value2": "<match>" }], matching MatchingListQuestion in question_paper.py',
         visibleWhen: { field: 'answerType', values: ['MATCHING'] },
-      },
-      { field: 'items', label: 'Items', type: 'json' },
-      { field: 'correctOrderById', label: 'Correct order by id', type: 'json' },
-      {
-        field: 'correctOrderIndices',
-        label: 'Correct order indices',
-        type: 'json',
       },
     ],
   },

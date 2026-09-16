@@ -500,6 +500,8 @@ export class ContentListComponent implements OnInit, OnDestroy {
           .map((part) => part.trim())
           .filter((part) => part !== '');
       case 'json':
+      case 'mcq-options':
+      case 'chapter-reference':
         return text === '' ? null : JSON.parse(text);
       default:
         return text;
@@ -530,7 +532,10 @@ export class ContentListComponent implements OnInit, OnDestroy {
       case 'list':
         return 'value one, value two';
       case 'json':
+      case 'mcq-options':
         return '[]';
+      case 'chapter-reference':
+        return '{}';
       default:
         return '';
     }

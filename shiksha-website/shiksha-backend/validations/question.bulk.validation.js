@@ -21,9 +21,6 @@ const uploadRowSchema = Joi.object({
 	keyAnswer: Joi.string().allow(""),
 	options: Joi.array(),
 	pairs: Joi.array(),
-	items: Joi.array(),
-	correctOrderById: Joi.array().items(Joi.number()),
-	correctOrderIndices: Joi.array().items(Joi.number()),
 });
 
 const rowsSchema = Joi.array().items(Joi.object()).min(1).max(MAX_ROWS);
