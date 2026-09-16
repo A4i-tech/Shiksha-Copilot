@@ -36,3 +36,18 @@ if render_env src/assets/env.template.js "$tmp_out2" 2>/tmp/render_env_err; then
 fi
 rm -f "$tmp_out2"
 echo "OK: render_env fails loud when BACKEND_URL is unset"
+
+echo "--- checking unsafe characters are rejected ---"
+export BACKEND_URL="/api"
+for unsafe_val in 'https://example.com/$OTHER_VAR' 'https://example.com/`whoami`'; do
+  export TURNSTILE_SITE_KEY="$unsafe_val"
+  tmp_out3=$(mktemp)
+  if render_env src/assets/env.template.js "$tmp_out3" 2>/tmp/render_env_err; then
+    echo "FAIL: render_env should reject value: $unsafe_val"
+    rm -f "$tmp_out3"
+    exit 1
+  fi
+  rm -f "$tmp_out3"
+done
+export TURNSTILE_SITE_KEY="test-turnstile-key"
+echo "OK: render_env rejects \$ and backtick in values"
