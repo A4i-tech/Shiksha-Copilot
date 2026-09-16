@@ -3,6 +3,7 @@ import { DEFAULT_INTERRUPTSOURCES, Idle } from '@ng-idle/core';
 import { filter, Subject } from 'rxjs';
 import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { TimerService } from './timer.service';
+import { UmamiService } from './umami.service';
 import {
   IDLE_START_THRESHOLD,
   IDLE_WARNING_THRESHOLD,
@@ -15,15 +16,6 @@ export interface ActivityLogPayload {
   planId?: string;
   draftId?: string;
   isCompleted?: boolean;
-}
-
-declare global {
-  interface Window {
-    umami?: {
-      track: (name: string, data?: Record<string, any>) => void;
-      identify: (userId: string | Record<string, any>, data?: Record<string, any>) => void;
-    };
-  }
 }
 
 @Injectable({
@@ -55,7 +47,8 @@ export class IdleService {
   constructor(
     private idle: Idle,
     private router: Router,
-    private timerService: TimerService
+    private timerService: TimerService,
+    private umamiService: UmamiService
   ) {
     this.initializeIdleTracking();
 
@@ -215,7 +208,7 @@ export class IdleService {
   }
 
   logActivity(trackObj: ActivityLogPayload) {
-    window.umami?.track('activity-log', trackObj);
+    this.umamiService.track('activity-log', trackObj);
     this.draftId = null;
     this.planId = null;
     this.isCompleted = false;

@@ -3,20 +3,18 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { TestBed } from '@angular/core/testing';
 
 import { IdleService } from './idle.service';
+import { UmamiService } from './umami.service';
 
 describe('IdleService', () => {
   let service: IdleService;
+  let umamiService: UmamiService;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [NgIdleModule.forRoot(), RouterTestingModule],
     });
     service = TestBed.inject(IdleService);
-    (window as any).umami = { track: jasmine.createSpy('track') };
-  });
-
-  afterEach(() => {
-    delete (window as any).umami;
+    umamiService = TestBed.inject(UmamiService);
   });
 
   it('should be created', () => {
@@ -25,6 +23,7 @@ describe('IdleService', () => {
 
   describe('logActivity', () => {
     it('should send the activity data to Umami and reset draft/plan state', () => {
+      spyOn(umamiService, 'track');
       service.draftId = 'draft-1';
       service.planId = 'plan-1';
       service.isCompleted = true;
@@ -40,22 +39,25 @@ describe('IdleService', () => {
 
       service.logActivity(trackObj);
 
-      expect(window.umami?.track).toHaveBeenCalledWith('activity-log', trackObj);
+      expect(umamiService.track).toHaveBeenCalledWith('activity-log', trackObj);
       expect(service.draftId).toBeNull();
       expect(service.planId).toBeNull();
       expect(service.isCompleted).toBe(false);
     });
 
-    it('should not throw when window.umami is unavailable', () => {
-      delete (window as any).umami;
+    it('should queue the event instead of dropping it when the tracker has not loaded yet', () => {
+      (window as any).umami = { track: jasmine.createSpy('track') };
 
-      expect(() =>
-        service.logActivity({
-          moduleName: 'lesson-plan',
-          idleTime: 5,
-          interactionTime: 42,
-        })
-      ).not.toThrow();
+      service.logActivity({
+        moduleName: 'lesson-plan',
+        idleTime: 5,
+        interactionTime: 42,
+      });
+
+      // Umami script not loaded (loadTracker() never ran) — event must be queued, not dropped.
+      expect(window.umami?.track).not.toHaveBeenCalled();
+
+      delete (window as any).umami;
     });
   });
 });
