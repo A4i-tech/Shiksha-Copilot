@@ -5,6 +5,5 @@ export const environment = {
     CRYPTO_SECRET: "your_crypto_secret",
     EXP_MONTH: 3,
     turnstileSiteKey: "",
-    supersetUrl: "http://localhost:8088",
     ...runtimeEnv,
 };
