@@ -14,7 +14,7 @@ import { ScheduleService } from '../schedule.service';
 import { DatePipe } from '@angular/common';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { dashboardColors } from 'src/app/shared/utility/scheduleClassColors.util';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-schedule-view',
@@ -54,12 +54,15 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
   viewOnly = false;
   cellData:any;
   teacherSchedule = true;
+  /** lesson plan carried over from the Lesson Plan page's "Schedule this" button */
+  prefillLessonPlan: any;
 
   constructor(
     private service: ScheduleService,
     private utility: UtilityService,
     private datePipe: DatePipe,
-    private router:Router
+    private router:Router,
+    private activatedRoute: ActivatedRoute
 
   ) {}
 
@@ -113,6 +116,16 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
     if (userData) {
       const parsedUserData = JSON.parse(userData);
       this.teacherId = parsedUserData._id;
+    }
+
+    if (this.activatedRoute.snapshot.queryParamMap.get('openAdd') && this.service.pendingLessonPlan) {
+      this.prefillLessonPlan = this.service.pendingLessonPlan;
+      this.service.pendingLessonPlan = null;
+      this.formateCellDate(new Date());
+      this.selectedEvent = null;
+      this.cordinate = { rect: { left: window.innerWidth / 2, right: window.innerWidth / 2, top: window.innerHeight / 2, bottom: window.innerHeight / 2 } as DOMRect };
+      this.mode = 'add';
+      this.showPopUp = true;
     }
   }
 
@@ -473,6 +486,7 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
 
   setScheduleData(eventName:string,ele:any){
     this.selectedEvent = null;
+    this.prefillLessonPlan = null;
     this.sendCordinate(ele);
     //we don't send the date and time when opening create pop up while clicking create button
     // if(eventName === 'create'){
