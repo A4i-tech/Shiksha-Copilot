@@ -12,8 +12,8 @@ render_env() {
     fi
     # Value lands inside a JS string literal and a sed s|..| expression.
     case "$val" in
-      *'"'*|*'|'*|*'\'*|*'<'*)
-        echo "::error::$var contains a character that cannot be templated safely (\" | \\ <)" >&2
+      *'"'*|*'|'*|*'\'*|*'<'*|*'&'*)
+        echo "::error::$var contains a character that cannot be templated safely (\" | \\ < &)" >&2
         return 1
         ;;
     esac
