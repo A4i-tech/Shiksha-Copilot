@@ -147,6 +147,7 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
       token,
       dashboardUuid: SUPERSET_DASHBOARD_UUID,
       mobileDashboardUuid: SUPERSET_MOBILE_DASHBOARD_UUID || null,
+      supersetUrl: SUPERSET_URL,
     });
   } catch (err) {
     const isTimeout = err.code === "ECONNABORTED";

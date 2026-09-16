@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
@@ -7,6 +7,7 @@ interface GuestTokenResponse {
   token: string;
   dashboardUuid: string;
   mobileDashboardUuid: string | null;
+  supersetUrl: string;
 }
 
 export interface BlockDrillRow {
@@ -23,6 +24,7 @@ export interface DistrictDrillResponse {
 export class SupersetService {
   dashboardUuid = '';
   mobileDashboardUuid: string | null = null;
+  supersetUrl = '';
 
   constructor(private http: HttpClient) {}
 
@@ -32,6 +34,7 @@ export class SupersetService {
     ).then((res) => {
       this.dashboardUuid = res.dashboardUuid;
       this.mobileDashboardUuid = res.mobileDashboardUuid;
+      this.supersetUrl = res.supersetUrl;
       return res.token;
     });
   }

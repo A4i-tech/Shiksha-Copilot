@@ -58,7 +58,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    if (!environment.supersetUrl || environment.supersetUrl.startsWith('your_')) {
+    if (!environment.apiUrl || environment.apiUrl.startsWith('your_')) {
       this.error = 'Dashboard not configured.';
       this.loading = false;
       return;
@@ -120,7 +120,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       const { embedDashboard } = await import('@superset-ui/embedded-sdk');
       this.embed = await embedDashboard({
         id: uuid,
-        supersetDomain: environment.supersetUrl,
+        supersetDomain: this.supersetService.supersetUrl,
         mountPoint: this.mountPoint.nativeElement,
         fetchGuestToken: () => this.supersetService.getGuestToken(),
         dashboardUiConfig: {
