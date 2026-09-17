@@ -1,4 +1,5 @@
 const formatApiReponse = require("../helper/response");
+const { CONTENT_STATUS } = require("../constants/content-status");
 
 require("dotenv").config();
 
@@ -55,7 +56,53 @@ class BaseManager {
 			if (!data) return formatApiReponse(false, "Record not found", null);
 			return formatApiReponse(true, "Updated successfully!", data);
 		} catch (err) {
+			console.error("adminUpdate failed:", err);
 			return formatApiReponse(false, err.message, null);
+		}
+	}
+
+	withDraftMetadata(doc, userId) {
+		return {
+			...doc,
+			status: CONTENT_STATUS.DRAFT,
+			isDeleted: true,
+			createdBy: userId,
+		};
+	}
+
+	async finalizeBulkUpload({ Model, rows, documents, dryRun, entityLabel }) {
+		const invalid = rows.filter((row) => row.errors.length > 0);
+
+		const report = {
+			dryRun,
+			total: rows.length,
+			valid: rows.length - invalid.length,
+			invalid: invalid.length,
+			inserted: 0,
+			insertedIds: [],
+			rows,
+		};
+
+		if (invalid.length > 0) {
+			return formatApiReponse(
+				false,
+				`${invalid.length} of ${rows.length} ${entityLabel} failed validation. Nothing was saved.`,
+				report
+			);
+		}
+
+		if (dryRun) {
+			return formatApiReponse(true, `All ${entityLabel} passed validation.`, report);
+		}
+
+		try {
+			const saved = await Model.insertMany(documents, { ordered: true });
+			report.inserted = saved.length;
+			report.insertedIds = saved.map((doc) => String(doc._id));
+			return formatApiReponse(true, `${saved.length} ${entityLabel} were added.`, report);
+		} catch (err) {
+			console.error(`bulkUpload insert failed for ${entityLabel}:`, err);
+			return formatApiReponse(false, err?.message, null);
 		}
 	}
 
