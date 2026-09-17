@@ -7,6 +7,10 @@ class BaseDao {
 		this.Model = model;
 	}
 
+	static parseIsDeletedFilter(value) {
+		return value === "true";
+	}
+
 	async getAll(
 		page = 1,
 		limit,

@@ -48,8 +48,7 @@ class MasterLessonDao extends BaseDao {
 			} else if (key === "includeVideos" && filters[key] !== "true") {
 				processedFilters["videos"] = { $size: 0 };
 			} else if (key === "isDeleted") {
-				// query strings arrive as text; the aggregation needs a boolean
-				processedFilters[key] = filters[key] === "true";
+				processedFilters[key] = BaseDao.parseIsDeletedFilter(filters[key]);
 			} else {
 				processedFilters[key] = filters[key];
 			}

@@ -21,8 +21,7 @@ class MasterResourceDao extends BaseDao {
 			) {
 				processedFilters[`chapter.${key}`] = filters[key];
 			} else if (key === "isDeleted") {
-				// query strings arrive as text; the aggregation needs a boolean
-				processedFilters[key] = filters[key] === "true";
+				processedFilters[key] = BaseDao.parseIsDeletedFilter(filters[key]);
 			} else {
 				processedFilters[key] = filters[key];
 			}
