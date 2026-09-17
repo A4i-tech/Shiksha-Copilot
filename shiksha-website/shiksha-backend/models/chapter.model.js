@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { CONTENT_STATUS, CONTENT_STATUSES } = require('../constants/content-status');
 
 const ChapterSchema = new mongoose.Schema(
   {
@@ -16,7 +17,7 @@ const ChapterSchema = new mongoose.Schema(
     board: { type: String, index: true },
     orderNumber: { type: Number, index: true },
     isDeleted: { type: Boolean, default: false },
-    status: { type: String, enum: ['draft', 'under_review', 'approved'], default: 'approved' },
+    status: { type: String, enum: CONTENT_STATUSES, default: CONTENT_STATUS.APPROVED },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 
     learningOutcomes: { type: [String], default: [] },

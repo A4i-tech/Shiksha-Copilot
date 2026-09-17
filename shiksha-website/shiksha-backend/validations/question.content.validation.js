@@ -1,5 +1,6 @@
 const Joi = require("joi");
 const { validateRequestForUpdates } = require("./common.validation");
+const { CONTENT_STATUSES } = require("../constants/content-status");
 
 const objectId = Joi.string().regex(/^[0-9a-fA-F]{24}$/);
 
@@ -35,7 +36,7 @@ const questionContentUpdateSchema = Joi.object({
 	keyAnswer: Joi.string().allow(""),
 	options: Joi.array().items(optionItem),
 	pairs: Joi.array().items(pairItem),
-	status: Joi.string().valid("draft", "under_review", "approved"),
+	status: Joi.string().valid(...CONTENT_STATUSES),
 }).min(1);
 
 const validateQuestionContentUpdate = validateRequestForUpdates(

@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const { CONTENT_STATUS, CONTENT_STATUSES } = require("../constants/content-status");
 
 const lessonResourceMasterSchema = new mongoose.Schema({
 	lessonName: {
@@ -64,8 +65,8 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 	},
 	status: {
 		type: String,
-		enum: ["draft", "under_review", "approved"],
-		default: "approved",
+		enum: CONTENT_STATUSES,
+		default: CONTENT_STATUS.APPROVED,
 	},
 	createdBy: {
 		type: ObjectId,

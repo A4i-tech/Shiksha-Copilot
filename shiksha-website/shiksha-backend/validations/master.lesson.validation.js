@@ -1,6 +1,7 @@
 const Joi = require("joi");
 const validateRequest = require("./common.validation");
 const { validateRequestForUpdates } = require("./common.validation");
+const { CONTENT_STATUSES } = require("../constants/content-status");
 
 const schema = Joi.object({
 	name: Joi.string().min(3).required(),
@@ -46,7 +47,7 @@ const updateSchema = Joi.object({
 	checkList: Joi.array(),
 	sections: Joi.array().items(Joi.object()),
 	isAll: Joi.boolean(),
-	status: Joi.string().valid("draft", "under_review", "approved"),
+	status: Joi.string().valid(...CONTENT_STATUSES),
 }).min(1);
 
 const validateMasterLessonUpdate = validateRequestForUpdates(updateSchema);

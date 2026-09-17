@@ -2,6 +2,7 @@ const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
+const { CONTENT_STATUS } = require("../constants/content-status");
 const ObjectId = mongoose.Types.ObjectId;
 
 /**
@@ -64,14 +65,14 @@ class BaseController {
 
 		if (this.hasContentStatus && includeDeleted === '3') {
 			// Draft tab: content only its own author can see, awaiting a send for review.
-			status = { isDeleted: true, status: "draft", createdBy: req?.user?._id };
+			status = { isDeleted: true, status: CONTENT_STATUS.DRAFT, createdBy: req?.user?._id };
 		} else if (this.hasContentStatus && includeDeleted === '4') {
 			// Ready for review tab: every admin sees this, awaiting approval.
-			status = { isDeleted: true, status: "under_review" };
+			status = { isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW };
 		} else if (includeDeleted === '2') {
 			status = this.hasContentStatus
 				// Deleted tab: soft-deleted content that was live, not a draft or a review awaiting approval.
-				? { isDeleted: true, status: { $nin: ["draft", "under_review"] } }
+				? { isDeleted: true, status: { $nin: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } }
 				: { isDeleted: true };
 		} else if (includeDeleted === '0') {
 			status = { isDeleted: { $ne: true } };

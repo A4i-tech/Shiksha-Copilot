@@ -1,6 +1,7 @@
 const Joi = require("joi");
 const validateRequest = require("./common.validation");
 const { validateRequestForUpdates } = require("./common.validation");
+const { CONTENT_STATUSES } = require("../constants/content-status");
 
 const objectId = Joi.string().regex(/^[0-9a-fA-F]{24}$/);
 
@@ -19,7 +20,7 @@ const chapterFields = {
 	isGrammar: Joi.boolean(),
 	grammarTopics: Joi.array().items(Joi.string().allow("")),
 	grammarSourceChapters: Joi.array().items(Joi.string().allow("")),
-	status: Joi.string().valid("draft", "under_review", "approved"),
+	status: Joi.string().valid(...CONTENT_STATUSES),
 };
 
 const chapterCreateSchema = Joi.object({

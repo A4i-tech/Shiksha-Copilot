@@ -1,6 +1,7 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const { CONTENT_STATUS, CONTENT_STATUSES } = require("../constants/content-status");
 const masterLessonSchema = new mongoose.Schema(
   {
     name: {
@@ -82,8 +83,8 @@ const masterLessonSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['draft', 'under_review', 'approved'],
-      default: 'approved',
+      enum: CONTENT_STATUSES,
+      default: CONTENT_STATUS.APPROVED,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

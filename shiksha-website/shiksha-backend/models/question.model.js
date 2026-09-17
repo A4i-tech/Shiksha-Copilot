@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { CONTENT_STATUS, CONTENT_STATUSES } = require('../constants/content-status');
 
 // ---- sub-schemas ----
 const OptionSchema = new mongoose.Schema(
@@ -79,7 +80,7 @@ const QuestionSchema = new mongoose.Schema(
 
     // Soft delete: admin routes set this instead of removing the doc because generated papers still reference it.
     isDeleted: { type: Boolean, default: false, index: true },
-    status: { type: String, enum: ["draft", "under_review", "approved"], default: "approved" },
+    status: { type: String, enum: CONTENT_STATUSES, default: CONTENT_STATUS.APPROVED },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true, strict: true }
