@@ -1,0 +1,122 @@
+name: Browser & Device Compatibility Matrix
+
+on:
+  push:
+    branches: [staging, main]
+    paths:
+      - 'shiksha-website/shiksha-frontend/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - '.github/workflows/browser_matrix.yml'
+  pull_request:
+    branches: [staging, main]
+    paths:
+      - 'shiksha-website/shiksha-frontend/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - '.github/workflows/browser_matrix.yml'
+  workflow_dispatch:
+
+jobs:
+  smoke-matrix:
+    name: Smoke Test (${{ matrix.browser }} - ${{ matrix.device }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            device: Desktop
+            channel: chrome
+          - browser: chromium
+            device: Desktop Edge
+            channel: msedge
+          - browser: firefox
+            device: Desktop Firefox
+            channel: ""
+          - browser: webkit
+            device: Desktop Safari
+            channel: ""
+          - browser: chromium
+            device: Mobile Android (Pixel 7)
+            channel: chrome
+          - browser: webkit
+            device: Mobile iOS (iPhone 13)
+            channel: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "npm"
+          cache-dependency-path: shiksha-website/shiksha-frontend/package-lock.json
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest playwright pytest-playwright python-dotenv
+
+      - name: Install Playwright Browsers
+        run: |
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Install Frontend Dependencies & Build
+        working-directory: shiksha-website/shiksha-frontend
+        run: |
+          npm ci --legacy-peer-deps
+          npm run build
+
+      - name: Start Mock/Staging Services or Local Preview
+        run: |
+          npx serve -s shiksha-website/shiksha-frontend/dist/shiksha-frontend -l 4200 &
+          sleep 5
+
+      - name: Run Smoke Test Matrix
+        env:
+          FRONTEND_URL: "http://localhost:4200"
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
+          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
+          pytest tests/smoke/test_teacher_panel.py tests/smoke/test_admin_panel.py --browser-type=${{ matrix.browser }}
+
+  accessibility-scan:
+    name: Accessibility (WCAG 2.1 AA via axe-core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: |
+          npm install playwright @axe-core/playwright
+
+      - name: Run Accessibility Suite
+        env:
+          FRONTEND_URL: "http://localhost:4200"
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
+          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
+        run: |
+          node tests/accessibility/run-accessibility.js
+
+      - name: Upload Accessibility Report Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-reports
+          path: tests/accessibility/results/
