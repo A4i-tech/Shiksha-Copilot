@@ -17,12 +17,13 @@ import {
   getContentEntityConfig,
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
+import { CONTENT_STATUS } from '../content-status.constants';
 
 /** friendly label for the status column; anything not listed here shows as-is */
 const STATUS_LABELS: { [key: string]: string } = {
-  draft: 'Draft',
-  under_review: 'Ready for review',
-  approved: 'Approved',
+  [CONTENT_STATUS.DRAFT]: 'Draft',
+  [CONTENT_STATUS.UNDER_REVIEW]: 'Ready for review',
+  [CONTENT_STATUS.APPROVED]: 'Approved',
 };
 
 type ConfirmAction =
@@ -334,7 +335,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
           .restore(segment, id)
           .pipe(
             switchMap(() =>
-              this.contentService.update(segment, id, { status: 'approved' })
+              this.contentService.update(segment, id, { status: CONTENT_STATUS.APPROVED })
             )
           );
         successMessage = `${this.config.singular} approved successfully`;
@@ -342,18 +343,18 @@ export class ContentListComponent implements OnInit, OnDestroy {
       case 'unapprove':
         // Flip status while the record is still active, then soft-delete it.
         request = this.contentService
-          .update(segment, id, { status: 'draft' })
+          .update(segment, id, { status: CONTENT_STATUS.DRAFT })
           .pipe(switchMap(() => this.contentService.softDelete(segment, id)));
         successMessage = `${this.config.singular} set to draft`;
         break;
       case 'sendForReview':
         // draft -> under_review: both stay soft-deleted, only status moves.
-        request = this.contentService.update(segment, id, { status: 'under_review' });
+        request = this.contentService.update(segment, id, { status: CONTENT_STATUS.UNDER_REVIEW });
         successMessage = `${this.config.singular} sent for review`;
         break;
       case 'sendToDraft':
         // under_review -> draft: both stay soft-deleted, only status moves.
-        request = this.contentService.update(segment, id, { status: 'draft' });
+        request = this.contentService.update(segment, id, { status: CONTENT_STATUS.DRAFT });
         successMessage = `${this.config.singular} sent back to draft`;
         break;
     }

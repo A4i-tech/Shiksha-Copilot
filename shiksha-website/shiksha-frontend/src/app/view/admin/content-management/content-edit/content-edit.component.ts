@@ -14,6 +14,7 @@ import {
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
+import { CONTENT_STATUS } from '../content-status.constants';
 
 /** the fixed A-D option row set an MCQ answer type needs, matching McqOption in question_paper.py */
 const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
@@ -148,7 +149,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  save(targetStatus: 'draft' | 'under_review' = 'draft'): void {
+  save(targetStatus: typeof CONTENT_STATUS.DRAFT | typeof CONTENT_STATUS.UNDER_REVIEW = CONTENT_STATUS.DRAFT): void {
     const body = this.isCreate
       ? this.buildCreateBody()
       : this.buildChangedBody();
@@ -172,7 +173,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     const request = this.isCreate
       ? this.contentService.create(this.config.segment, body).pipe(
           switchMap((res: any) => {
-            if (targetStatus === 'draft') return of(res);
+            if (targetStatus === CONTENT_STATUS.DRAFT) return of(res);
 
             const id = res?.data?.insertedIds?.[0];
             if (!id) throw new Error('The record was created but its ID was not returned.');
