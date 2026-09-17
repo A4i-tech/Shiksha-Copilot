@@ -7,6 +7,7 @@ const User = require("../models/user.model");
 const School = require("../models/school.model");
 const { assertCanGrant, assignmentDependencyFilter, scopeFilter } = require("../helper/scope.helper");
 
+/** @extends {BaseManager<RoleDao>} */
 class RoleManager extends BaseManager {
   constructor() {
     super(new RoleDao());

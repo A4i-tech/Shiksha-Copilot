@@ -1,5 +1,3 @@
-from typing import List
-
 from app.services.translation.base import TranslatorBase
 
 
@@ -15,6 +13,6 @@ class NoOpTranslator(TranslatorBase):
         return text
 
     async def translate_batch_async(
-        self, texts: List[str], src_lang: str = "en", tgt_lang: str = "te"
-    ) -> List[str]:
+        self, texts: list[str], src_lang: str = "en", tgt_lang: str = "te"
+    ) -> list[str]:
         return list(texts) if texts else []

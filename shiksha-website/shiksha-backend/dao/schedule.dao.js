@@ -2,6 +2,7 @@ const scheduleAggregation = require("../aggregation/schedule.aggreagtion");
 const Schedule = require("../models/schedule.model");
 const BaseDao = require("./base.dao");
 
+/** @extends {BaseDao<typeof Schedule>} */
 class ScheduleDao extends BaseDao {
 	constructor() {
 		super(Schedule);
@@ -16,7 +17,7 @@ class ScheduleDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		const result = await Schedule.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: id,
 				isDeleted: false,
@@ -77,7 +78,7 @@ class ScheduleDao extends BaseDao {
 	}
 
 	async deleteDateTime(scheduleId, timeId, session = null) {
-		const result = await Schedule.findByIdAndUpdate(
+		const result = await this.Model.findByIdAndUpdate(
 			scheduleId,
 			{
 				$pull: {

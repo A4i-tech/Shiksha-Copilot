@@ -17,18 +17,19 @@ function mapFilters(filters, schoolKey) {
 	return mapped;
 }
 
+/** @extends {BaseDao<typeof RegeneratedLessonResource>} */
 class RegeneratedLessonResourceDao extends BaseDao {
 	constructor() {
 		super(RegeneratedLessonResource);
 	}
 
 	async getOne(filter) {
-		let result = await RegeneratedLessonResource.findOne(filter).sort({ _version: -1 });
+		let result = await this.Model.findOne(filter).sort({ _version: -1 });
 		return result;
 	}
 
 	async update(filter, updateData) {
-		const result = await RegeneratedLessonResource.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			filter,
 			{ $set: updateData },
 			{ new: true }

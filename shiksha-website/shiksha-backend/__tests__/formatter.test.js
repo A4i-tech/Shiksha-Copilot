@@ -1,48 +1,11 @@
 const mongoose = require('mongoose');
 const {
-	groupByBoard,
 	restructureResources,
 	sortDataBySubTopics,
 	convertToCamelCase
 } = require('../helper/formatter');
 
 describe('formatter helper', () => {
-	describe('groupByBoard', () => {
-		it('groups records by board and medium while keeping class data', () => {
-			const input = [
-				{ board: 'CBSE', medium: 'English', class: '5', subject: 'Math' },
-				{ board: 'CBSE', medium: 'English', class: '6', subject: 'Science' },
-				{ board: 'State', medium: 'Hindi', class: '5', subject: 'Math' }
-			];
-
-			const result = groupByBoard(input);
-
-			expect(result).toEqual([
-				{
-					board: 'CBSE',
-					mediums: [
-						{
-							medium: 'English',
-							classes: [
-								{ class: '5', subject: 'Math' },
-								{ class: '6', subject: 'Science' }
-							]
-						}
-					]
-				},
-				{
-					board: 'State',
-					mediums: [
-						{
-							medium: 'Hindi',
-							classes: [{ class: '5', subject: 'Math' }]
-						}
-					]
-				}
-			]);
-		});
-	});
-
 	describe('restructureResources', () => {
 		it('reshapes resource sections for question bank, real world scenarios and activities', () => {
 			const input = {

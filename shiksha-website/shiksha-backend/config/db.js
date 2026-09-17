@@ -57,34 +57,27 @@ class DBService {
 		}
 	}
 
-	async init() {
-		try {
-			if (!this.connection) await this.connect();
-			await this.onConnect();
-			console.log("DBService initialized successfully.");
-		} catch (err) {
-			console.log("Error -> DBService -> init -> err", err);
-			throw err;
-		}
-	}
-
 	async getConnection() {
-		try {
-			await this.init();
-			return this.connection;
-		} catch (err) {
-			console.log("Error -> DBService -> getConnection -> err", err);
-		}
+		if (!this.connection) await this.connect();
+		return this.connection;
 	}
 
-	closeConnection() {
+	async connectToMongoForWorker() {
 		try {
-			if (this.connection) {
-				this.connection.close();
-				console.log("DB connection closed");
+			console.log("connectToMongoForWorker");
+			console.log("readyState:", mongoose.connection.readyState);
+
+			if (mongoose.connection.readyState === 1) {
+				console.log("Mongoose already connected (worker).");
+				return { client: mongoose.connection, openedHere: false };
 			}
+
+			await mongoose.connect(MONGO_URL);
+			console.log("Mongoose connected in worker thread.");
+			return { client: mongoose.connection, openedHere: true };
 		} catch (err) {
-			console.log("Error -> DBService -> closeConnection -> ", err);
+			console.error("Failed to connect to MongoDB in worker thread:", err);
+			throw err;
 		}
 	}
 

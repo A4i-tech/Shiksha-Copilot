@@ -1,6 +1,7 @@
 const RoleManager = require("../managers/role.manager");
 const BaseController = require("./base.controller");
 
+/** @extends {BaseController<RoleManager>} */
 class RoleController extends BaseController {
   constructor() {
     super(new RoleManager());

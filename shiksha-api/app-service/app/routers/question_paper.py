@@ -1,9 +1,8 @@
 from contextlib import asynccontextmanager
-from typing import List, Dict, Any
+from app.utils.utils import detect_lang
 from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Request, status
-from langdetect import LangDetectException, detect
 from langdetect.detector import Detector
-from pydantic import BaseModel
+from pydantic import BaseModel, JsonValue
 
 from app.models.question_paper import (
     QuestionBankPartsGenerationRequest,
@@ -17,8 +16,7 @@ import logging
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.qp_svc = QuestionPaperService()
-    async with app.state.qp_svc:
+    async with QuestionPaperService() as app.state.qp_svc:
         yield
 
 
@@ -46,32 +44,13 @@ LANGUAGE_MAP = {
     "urdu": "ur"
 }
 
-def get_sample_text(data: Any) -> str:
-    """Recursively finds the first substantial string to use for language detection."""
-    if isinstance(data, dict):
-        for key, value in data.items():
-            # Prioritize fields likely to contain full sentences or specific language content
-            if key in ['instructions', 'question_text', 'title', 'question', 'text', 'part_name', 'content']:
-                if isinstance(value, str) and len(value.strip().split()) > 2:
-                    return value
-            res = get_sample_text(value)
-            if res:
-                return res
-    elif isinstance(data, list):
-        for item in data:
-            res = get_sample_text(item)
-            if res:
-                return res
-    elif isinstance(data, str) and len(data.strip().split()) > 2:
-        return data
-    return ""
-
 
 @router.post("/translate-json", summary="Translate JSON Content (Auto-Detect Source)")
-async def translate_json_content_to_kannada(
+async def translate_json(
     target_language: str = Body(..., description="The target language to translate to.", examples=["Kannada", "Hindi"]),
-    json_data: Dict[str, Any] = Body(..., description="The JSON object to be translated.")
-) -> Dict[str, Any]:
+    json_data: dict[str, JsonValue] = Body(..., description="The JSON object to be translated."),
+    json_data_allowed_keys: set[str] | None = Body(default=None, description="If set, only sample strings under these keys when auto-detecting language.")
+) -> dict[str, JsonValue]:
     """
     Accepts a JSON object and a target language.
 
@@ -79,44 +58,23 @@ async def translate_json_content_to_kannada(
     2. Compares detected language with `target_language`.
     3. Translates only if they are different.
     """
-    logger.info(f"Processing JSON translation request. Target: {target_language}")
+    source_lang, source_lang_sample = detect_lang(json_data, json_data_allowed_keys)
+    if source_lang == Detector.UNKNOWN_LANG:
+        logger.warning("Language detection failed on sample text: %s", source_lang_sample)
+        source_lang = "en"
 
-    # Detect Source Language
-    sample_text = get_sample_text(json_data)
-    source_lang_code = Detector.UNKNOWN_LANG
-
-    if sample_text:
-        try:
-            source_lang_code = detect(sample_text)
-        except LangDetectException:
-            source_lang_code = Detector.UNKNOWN_LANG
-
-    if source_lang_code == Detector.UNKNOWN_LANG:
-        logger.warning("Language detection failed on sample text: %s", sample_text)
-        source_lang_code = "en"  # Default fallback
-
-    # Normalize Target Language
     target_lang_input = target_language.lower().strip()
-    target_iso = LANGUAGE_MAP.get(target_lang_input, target_lang_input)
+    target_lang = LANGUAGE_MAP.get(target_lang_input, target_lang_input)
 
-    logger.info(f"Detected Source ISO: '{source_lang_code}', Target ISO: '{target_iso}'")
-
-    # Compare and Decide
-    if source_lang_code == target_iso:
-        logger.info("Source and Target languages match. Skipping translation.")
+    logger.info(f"Detected source language: {source_lang}, target language: {target_lang}")
+    if source_lang == target_lang:
         return json_data
 
-    # Perform Translation
-    logger.info("Using TranslationService to translate from %s to %s", source_lang_code, target_iso)
-
     try:
-        translated_data = await TranslationService.translate_json_async(json_data, source_lang_code, target_iso)
+        return await TranslationService.translate_json_async(json_data, source_lang, target_lang)
     except ValueError as e:
         logger.warning("Translation request validation error: %s", e)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
-
-    logger.info("Successfully processed translation request.")
-    return translated_data
 
 
 class QuestionTypeItem(BaseModel):
@@ -126,7 +84,7 @@ class QuestionTypeItem(BaseModel):
 
 
 @router.get("/question-types")
-async def get_question_types(subject: str) -> List[QuestionTypeItem]:
+async def get_question_types(subject: str) -> list[QuestionTypeItem]:
     """Return question types available for the given subject."""
     types = get_question_types_for_subject(subject)
     return [
