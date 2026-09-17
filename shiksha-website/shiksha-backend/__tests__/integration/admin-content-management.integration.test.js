@@ -1,6 +1,7 @@
-// E2E, live staging (see PR #145 / superuser.helper.js): SHIKSHA_BASE_URL + a pre-seeded
+// E2E, live staging (see superuser.helper.js): requires SHIKSHA_BASE_URL + a pre-seeded
 // super-user account. Excluded from the default jest run (jest.config.js
-// testPathIgnorePatterns) until #145 lands the CI job that runs this directory.
+// testPathIgnorePatterns) until CI provisions a staging environment and
+// wires a dedicated job to run this directory.
 const request = require("supertest");
 
 const baseURL = process.env.SHIKSHA_BASE_URL;
