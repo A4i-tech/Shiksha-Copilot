@@ -1,8 +1,6 @@
 from contextlib import asynccontextmanager
 from typing import List, Dict, Any
 from fastapi import APIRouter, Body, Depends, FastAPI, HTTPException, Request, status
-from langdetect import LangDetectException, detect
-from langdetect.detector import Detector
 from pydantic import BaseModel
 
 from app.models.question_paper import (
@@ -11,6 +9,7 @@ from app.models.question_paper import (
     get_question_types_for_subject,
 )
 from app.services.question_paper_service import QuestionPaperService
+from app.services.translation.language import detect_language, language_code
 from app.services.translation_service import TranslationService
 import logging
 
@@ -27,44 +26,9 @@ def svc(request: Request) -> QuestionPaperService:
 
 
 logger = logging.getLogger(__name__)
+translation_svc = TranslationService()
 
 router = APIRouter(prefix="/question-paper", tags=["Question Paper Generation"], lifespan=lifespan)
-
-# ISO 639-1 Language Code Mapping
-LANGUAGE_MAP = {
-    "english": "en",
-    "kannada": "kn",
-    "hindi": "hi",
-    "telugu": "te",
-    "tg": "te",
-    "tamil": "ta",
-    "malayalam": "ml",
-    "marathi": "mr",
-    "bengali": "bn",
-    "gujarati": "gu",
-    "punjabi": "pa",
-    "urdu": "ur"
-}
-
-def get_sample_text(data: Any) -> str:
-    """Recursively finds the first substantial string to use for language detection."""
-    if isinstance(data, dict):
-        for key, value in data.items():
-            # Prioritize fields likely to contain full sentences or specific language content
-            if key in ['instructions', 'question_text', 'title', 'question', 'text', 'part_name', 'content']:
-                if isinstance(value, str) and len(value.strip().split()) > 2:
-                    return value
-            res = get_sample_text(value)
-            if res:
-                return res
-    elif isinstance(data, list):
-        for item in data:
-            res = get_sample_text(item)
-            if res:
-                return res
-    elif isinstance(data, str) and len(data.strip().split()) > 2:
-        return data
-    return ""
 
 
 @router.post("/translate-json", summary="Translate JSON Content (Auto-Detect Source)")
@@ -81,23 +45,8 @@ async def translate_json_content_to_kannada(
     """
     logger.info(f"Processing JSON translation request. Target: {target_language}")
 
-    # Detect Source Language
-    sample_text = get_sample_text(json_data)
-    source_lang_code = Detector.UNKNOWN_LANG
-
-    if sample_text:
-        try:
-            source_lang_code = detect(sample_text)
-        except LangDetectException:
-            source_lang_code = Detector.UNKNOWN_LANG
-
-    if source_lang_code == Detector.UNKNOWN_LANG:
-        logger.warning("Language detection failed on sample text: %s", sample_text)
-        source_lang_code = "en"  # Default fallback
-
-    # Normalize Target Language
-    target_lang_input = target_language.lower().strip()
-    target_iso = LANGUAGE_MAP.get(target_lang_input, target_lang_input)
+    source_lang_code = detect_language(json_data)
+    target_iso = language_code(target_language)
 
     logger.info(f"Detected Source ISO: '{source_lang_code}', Target ISO: '{target_iso}'")
 
@@ -110,7 +59,7 @@ async def translate_json_content_to_kannada(
     logger.info("Using TranslationService to translate from %s to %s", source_lang_code, target_iso)
 
     try:
-        translated_data = await TranslationService.translate_json_async(json_data, source_lang_code, target_iso)
+        translated_data = await translation_svc.translate(json_data, source_lang_code, target_iso)
     except ValueError as e:
         logger.warning("Translation request validation error: %s", e)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
