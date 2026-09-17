@@ -154,13 +154,6 @@ class UserController extends BaseController {
     handleError(result, res);
   }
 
-  async activityLog(req, res) {
-    const result = await this.manager.activityLog(req);
-    if (result.success) return res.status(200).json(result);
-
-    handleError(result, res);
-  }
-
   async getAll(req, res) {
     const {
       page = 1,

@@ -5,6 +5,7 @@ import { SignInService } from './auth/sign-in.service';
 import { UtilityService } from './core/services/utility.service';
 import { AuthorizationService } from './core/services/authorization.service';
 import { IdleService } from './shared/services/idle.service';
+import { UmamiService } from './shared/services/umami.service';
 import { IDLE_START_THRESHOLD, IDLE_WARNING_THRESHOLD, SESSION_VERSION } from './shared/utility/constant.util';
 
 @Component({
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private utilityService: UtilityService,
     private authorizationService: AuthorizationService,
     private idleService: IdleService,
+    private umamiService: UmamiService,
     private router: Router
   ) {}
 
@@ -54,6 +56,9 @@ export class AppComponent implements OnInit, OnDestroy {
         next: (res: any) => {
           const user = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(user));
+          if (user._id) {
+            this.umamiService.identify(user._id);
+          }
           if (this.router.url === '/error/503') this.router.navigateByUrl('/');
         },
         error: (err: any) => {
@@ -64,6 +69,8 @@ export class AppComponent implements OnInit, OnDestroy {
     }
 
     window.addEventListener('beforeunload', this.handleBeforeUnload);
+
+    this.umamiService.loadTracker();
   }
 
   skipToMainContent(event: Event): void {

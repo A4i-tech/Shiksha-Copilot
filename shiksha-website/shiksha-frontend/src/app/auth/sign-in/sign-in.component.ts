@@ -10,6 +10,7 @@ import { SidebarService } from 'src/app/layout/sidebar/sidebar.service';
 import { NgOtpInputComponent, NgOtpInputConfig } from 'ng-otp-input';
 import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
 import { environment } from 'src/environments/environment';
 import { SESSION_VERSION } from 'src/app/shared/utility/constant.util';
@@ -71,6 +72,7 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
     private sidebarService:SidebarService,
     private translateService: TranslateService,
     private secureCookieService:SecureCookieService,
+    private umamiService: UmamiService,
     private renderer: Renderer2,
     private hostElement: ElementRef
   ) {}
@@ -283,6 +285,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           localStorage.setItem('token', res.data.token);
           const session = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(session));
+          if (session._id) {
+            this.umamiService.identify(session._id);
+          }
           this.sidebarService.profileImg.set(res?.data?.user?.profileImage || '');
 
           this.translateService.use(res.data.user.preferredLanguage);
