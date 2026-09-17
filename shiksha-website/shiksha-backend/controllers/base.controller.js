@@ -133,6 +133,30 @@ class BaseController {
 		handleError(result, res);
 	}
 
+	async bulkUpload(req, res, rowsField = "rows") {
+		const dryRun = req.query.dryRun === "true" || req.body.dryRun === true;
+		const rows = req.body[rowsField] || req.body.rows;
+
+		const result = await this.manager.bulkUpload(rows, dryRun, req.user?._id);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
+	// Reuses the bulk-upload check, so a form entry and a file entry cannot differ.
+	async adminCreate(req, res) {
+		const result = await this.manager.bulkUpload([req.body], false, req.user?._id);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
 	async delete(req, res) {
 		let result = await this.manager.delete(req);
 

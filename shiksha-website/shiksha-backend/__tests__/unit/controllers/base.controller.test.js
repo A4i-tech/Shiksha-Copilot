@@ -457,4 +457,58 @@ describe("BaseController", () => {
       expect(res.status).toHaveBeenCalledWith(400);
     });
   });
+
+  describe("bulkUpload", () => {
+    it("passes the rowsField array, dryRun, and user id to manager.bulkUpload and returns 200 on success", async () => {
+      const manager = { bulkUpload: jest.fn().mockResolvedValue({ success: true, data: {} }) };
+      const controller = new BaseController(manager);
+      const req = {
+        query: { dryRun: "true" },
+        body: { widgets: [{ a: 1 }] },
+        user: { _id: "u1" },
+      };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await controller.bulkUpload(req, res, "widgets");
+
+      expect(manager.bulkUpload).toHaveBeenCalledWith([{ a: 1 }], true, "u1");
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("falls back to req.body.rows when the named field is absent", async () => {
+      const manager = { bulkUpload: jest.fn().mockResolvedValue({ success: true, data: {} }) };
+      const controller = new BaseController(manager);
+      const req = { query: {}, body: { rows: [{ a: 1 }] }, user: { _id: "u1" } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await controller.bulkUpload(req, res, "widgets");
+
+      expect(manager.bulkUpload).toHaveBeenCalledWith([{ a: 1 }], false, "u1");
+    });
+
+    it("calls handleError on manager failure instead of returning 200", async () => {
+      const manager = { bulkUpload: jest.fn().mockResolvedValue({ success: false, message: "bad" }) };
+      const controller = new BaseController(manager);
+      const req = { query: {}, body: { rows: [] }, user: { _id: "u1" } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await controller.bulkUpload(req, res, "widgets");
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+  });
+
+  describe("adminCreate", () => {
+    it("wraps the single request body as a one-row bulk upload with dryRun false", async () => {
+      const manager = { bulkUpload: jest.fn().mockResolvedValue({ success: true, data: {} }) };
+      const controller = new BaseController(manager);
+      const req = { body: { name: "solo" }, user: { _id: "u1" } };
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await controller.adminCreate(req, res);
+
+      expect(manager.bulkUpload).toHaveBeenCalledWith([{ name: "solo" }], false, "u1");
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
 });
