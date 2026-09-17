@@ -2,6 +2,7 @@ const handleError = require("../helper/handleError");
 const mongoose = require("mongoose");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
+const { CONTENT_STATUS } = require("../constants/content-status");
 const ObjectId = mongoose.Types.ObjectId;
 
 /**
@@ -10,10 +11,16 @@ const ObjectId = mongoose.Types.ObjectId;
 class BaseController {
 	/**
 	 * @param {TManager} manager
+	 * @param {string[]} [searchFields] fields the `search` query matches, defaults to the user identity fields
+	 * @param {boolean} [hasContentStatus] true for the admin content-management entities (chapter, lesson plan, resource, question), which carry a draft/under_review/approved `status` field alongside `isDeleted`
 	 */
-	constructor(manager) {
+	constructor(manager, searchFields, hasContentStatus) {
 		/** @protected @type {TManager} */
 		this.manager = manager;
+		/** @protected @type {string[]} */
+		this.searchFields = searchFields || ["identity.name", "identity.phone"];
+		/** @protected @type {boolean} */
+		this.hasContentStatus = !!hasContentStatus;
 	}
 
 	async getAll(req, res) {
@@ -32,9 +39,7 @@ class BaseController {
 		const searchFilter = {};
 
 		if (search) {
-			const searchFields = ["identity.name", "identity.phone"];
-
-			const regexExpressions = searchFields.map((field) => ({
+			const regexExpressions = this.searchFields.map((field) => ({
 				[field]: { $regex: new RegExp(escapeRegExp(search), "i") },
 			}));
 
@@ -58,10 +63,19 @@ class BaseController {
 
 		let status = {};
 
-		if (includeDeleted === '2') {
-			status = { isDeleted: true };
+		if (this.hasContentStatus && includeDeleted === '3') {
+			// Draft tab: content only its own author can see, awaiting a send for review.
+			status = { isDeleted: true, status: CONTENT_STATUS.DRAFT, createdBy: req?.user?._id };
+		} else if (this.hasContentStatus && includeDeleted === '4') {
+			// Ready for review tab: every admin sees this, awaiting approval.
+			status = { isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW };
+		} else if (includeDeleted === '2') {
+			status = this.hasContentStatus
+				// Deleted tab: soft-deleted content that was live, not a draft or a review awaiting approval.
+				? { isDeleted: true, status: { $nin: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } }
+				: { isDeleted: true };
 		} else if (includeDeleted === '0') {
-			status = { isDeleted: false };
+			status = { isDeleted: { $ne: true } };
 		}
 		const result = await this.manager.getAll(
 			parseInt(page),
@@ -101,6 +115,40 @@ class BaseController {
 
 	async update(req, res) {
 		let result = await this.manager.update(req);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
+	async adminUpdate(req, res) {
+		let result = await this.manager.adminUpdate(req, this.hasContentStatus);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
+	async bulkUpload(req, res, rowsField = "rows") {
+		const dryRun = req.query.dryRun === "true" || req.body.dryRun === true;
+		const rows = req.body[rowsField] || req.body.rows;
+
+		const result = await this.manager.bulkUpload(rows, dryRun, req.user?._id);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
+	// Reuses the bulk-upload check, so a form entry and a file entry cannot differ.
+	async adminCreate(req, res) {
+		const result = await this.manager.bulkUpload([req.body], false, req.user?._id);
 
 		if (result.success) {
 			return res.status(200).json(result);

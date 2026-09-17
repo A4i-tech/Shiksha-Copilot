@@ -5,7 +5,7 @@ const handleError = require("../helper/handleError")
 /** @extends {BaseController<ChapterManager>} */
 class ChapterController extends BaseController {
 	constructor() {
-		super(new ChapterManager());
+		super(new ChapterManager(), ["topics"], true);
 	}
 
 	async getBySemester(req, res){
@@ -20,6 +20,10 @@ class ChapterController extends BaseController {
 		}
 
 		handleError(result, res);
+	}
+
+	async bulkUpload(req, res) {
+		return super.bulkUpload(req, res, "chapters");
 	}
 
 	async scriptFromLp(req, res) {

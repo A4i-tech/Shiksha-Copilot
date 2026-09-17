@@ -6,7 +6,7 @@ const { hasPermission } = require("../helper/permission.helper.js");
 /** @extends {BaseController<MasterLessonManger>} */
 class MasterLessonController extends BaseController {
 	constructor() {
-		super(new MasterLessonManger());
+		super(new MasterLessonManger(), ["name"], true);
 	}
 
 	async saveToTeacher(req, res) {
@@ -36,6 +36,10 @@ class MasterLessonController extends BaseController {
 		}
 
 		handleError(result, res);
+	}
+
+	async adminBulkUpload(req, res) {
+		return this.bulkUpload(req, res, "lessonPlans");
 	}
 
 	async getByTeacher(req, res) {

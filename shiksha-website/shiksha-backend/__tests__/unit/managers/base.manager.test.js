@@ -332,3 +332,106 @@ describe("BaseManager", () => {
     });
   });
 });
+
+describe("finalizeBulkUpload", () => {
+  const manager = new BaseManager({});
+  const rows = [
+    { row: 1, errors: [], warnings: [] },
+    { row: 2, errors: [], warnings: [] },
+  ];
+
+  it("returns a validation-failure report without inserting when any row has errors", async () => {
+    const invalidRows = [
+      { row: 1, errors: ["bad"], warnings: [] },
+      { row: 2, errors: [], warnings: [] },
+    ];
+    const Model = { insertMany: jest.fn() };
+
+    const result = await manager.finalizeBulkUpload({
+      Model,
+      rows: invalidRows,
+      documents: [],
+      dryRun: false,
+      entityLabel: "widgets",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe("1 of 2 widgets failed validation. Nothing was saved.");
+    expect(result.data.invalid).toBe(1);
+    expect(result.data.valid).toBe(1);
+    expect(Model.insertMany).not.toHaveBeenCalled();
+  });
+
+  it("returns a dry-run report without inserting when all rows are valid and dryRun is true", async () => {
+    const Model = { insertMany: jest.fn() };
+
+    const result = await manager.finalizeBulkUpload({
+      Model,
+      rows,
+      documents: [{ a: 1 }, { a: 2 }],
+      dryRun: true,
+      entityLabel: "widgets",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.message).toBe("All widgets passed validation.");
+    expect(Model.insertMany).not.toHaveBeenCalled();
+  });
+
+  it("inserts documents and reports the inserted ids when all rows are valid and dryRun is false", async () => {
+    const Model = {
+      insertMany: jest.fn().mockResolvedValue([{ _id: "a1" }, { _id: "a2" }]),
+    };
+
+    const result = await manager.finalizeBulkUpload({
+      Model,
+      rows,
+      documents: [{ a: 1 }, { a: 2 }],
+      dryRun: false,
+      entityLabel: "widgets",
+    });
+
+    expect(Model.insertMany).toHaveBeenCalledWith([{ a: 1 }, { a: 2 }], { ordered: true });
+    expect(result.success).toBe(true);
+    expect(result.message).toBe("2 widgets were added.");
+    expect(result.data.inserted).toBe(2);
+    expect(result.data.insertedIds).toEqual(["a1", "a2"]);
+  });
+
+  it("logs and returns a failure response when insertMany rejects", async () => {
+    const err = new Error("duplicate key");
+    const Model = { insertMany: jest.fn().mockRejectedValue(err) };
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await manager.finalizeBulkUpload({
+      Model,
+      rows,
+      documents: [{ a: 1 }, { a: 2 }],
+      dryRun: false,
+      entityLabel: "widgets",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toBe("duplicate key");
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("widgets"),
+      err
+    );
+    consoleSpy.mockRestore();
+  });
+});
+
+describe("withDraftMetadata", () => {
+  it("stamps a document with draft status, isDeleted true, and the creator id", () => {
+    const manager = new BaseManager({});
+
+    const result = manager.withDraftMetadata({ name: "x" }, "user-1");
+
+    expect(result).toEqual({
+      name: "x",
+      status: "draft",
+      isDeleted: true,
+      createdBy: "user-1",
+    });
+  });
+});

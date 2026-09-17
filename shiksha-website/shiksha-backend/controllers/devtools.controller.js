@@ -1,6 +1,10 @@
 const CryptoJS = require("crypto-js");
 const AuditLog = require("../models/audit.log.model");
+const Chapter = require("../models/chapter.model");
 const MasterLesson = require("../models/master.lesson.model");
+const MasterResource = require("../models/master.resource.model");
+const MasterSubject = require("../models/master.subject.model");
+const Question = require("../models/question.model");
 const RegeneratedLessonResource = require("../models/regenerate.lesson.resource.model");
 const Role = require("../models/role.model");
 const School = require("../models/school.model");
@@ -76,16 +80,23 @@ exports.fixtures = async function fixtures(req, res) {
 };
 
 exports.cleanup = async function cleanup(req, res) {
-  const { roles, users, schools, classes, auditLogs, content, activities, batches, blobs = [] } = req.body;
+  const {
+    roles, users, schools, classes, auditLogs, content, activities, batches, blobs = [],
+    subjects = [], chapters = [], lessonPlans = [], resources = [], questions = [],
+  } = req.body;
   await Promise.all([
     AuditLog.deleteMany({ $or: [{ userId: { $in: users } }, { _id: { $in: auditLogs } }] }),
     TeacherTrainingBatch.deleteMany({ _id: { $in: batches } }),
     RegeneratedLessonResource.deleteMany({ _id: { $in: activities } }),
-    MasterLesson.deleteMany({ _id: { $in: content } }),
+    MasterLesson.deleteMany({ _id: { $in: [...content, ...lessonPlans] } }),
     User.deleteMany({ _id: { $in: users } }),
     SchoolClass.deleteMany({ $or: [{ schoolId: { $in: schools } }, { _id: { $in: classes } }] }),
     School.deleteMany({ _id: { $in: schools } }),
     Role.deleteMany({ _id: { $in: roles } }),
+    MasterSubject.deleteMany({ _id: { $in: subjects } }),
+    Chapter.deleteMany({ _id: { $in: chapters } }),
+    MasterResource.deleteMany({ _id: { $in: resources } }),
+    Question.deleteMany({ _id: { $in: questions } }),
     ...blobs.map(deleteFromStorage),
   ]);
   res.json({ success: true });

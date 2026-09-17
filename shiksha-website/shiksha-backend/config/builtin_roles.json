@@ -12,7 +12,7 @@
     "_id": "7368696b7368615f61646d6e",
     "name": "Admin",
     "description": "Runs statewide operations across schools, staff, teachers, training, content, audits, and role assignments.",
-    "permissions": ["analytics.view", "school.read", "school.list", "school.export", "school.create", "school.edit", "school.delete", "user.view", "user.create", "user.edit", "user.delete", "user.import", "user.export", "role.assign", "role.delegate", "role.view", "role.manage", "profile.view", "profile.edit", "content.activity.view", "content.activity.export", "content.manage", "training.view", "training.edit", "audit.view", "help.view", "help.manage", "question-paper.manage"],
+    "permissions": ["analytics.view", "school.read", "school.list", "school.export", "school.create", "school.edit", "school.delete", "user.view", "user.create", "user.edit", "user.delete", "user.import", "user.export", "role.assign", "role.delegate", "role.view", "role.manage", "profile.view", "profile.edit", "content.activity.view", "content.activity.export", "content.manage", "admin.ingest", "training.view", "training.edit", "audit.view", "help.view", "help.manage", "question-paper.manage"],
     "scopeType": "GLOBAL",
     "isSystem": true,
     "isDeleted": false

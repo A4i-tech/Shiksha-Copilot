@@ -7,7 +7,7 @@ class MasterResourceDao extends BaseDao {
 		super(MasterResource);
 	}
 
-	async getAll(page = 1, limit = 10, filters = {}, sort = {}) {
+	async getAll(page = 1, limit = 10, filters = {}, sort = {}, status = {}) {
 		const processedFilters = {};
 
 		for (const key in filters) {
@@ -20,10 +20,15 @@ class MasterResourceDao extends BaseDao {
 				key === "medium"
 			) {
 				processedFilters[`chapter.${key}`] = filters[key];
+			} else if (key === "isDeleted") {
+				processedFilters[key] = BaseDao.parseIsDeletedFilter(filters[key]);
 			} else {
 				processedFilters[key] = filters[key];
 			}
 		}
+
+		// `status` (from the caller's includeDeleted param) wins over the plain filters.
+		Object.assign(processedFilters, status);
 
 		const results = await masterResourceAggregation.getMasterResourcesFilter(
 			page,

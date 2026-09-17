@@ -2,27 +2,23 @@ const mongoose = require("mongoose");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 
 let mongoServer;
+/** @type {import("mongoose").Connection} */
+let connection;
 
-/**
- * Setup test database connection
- * Uses MongoDB Memory Server for fast, isolated testing
- */
+// Opens its own connection instead of the shared default, so closing it here does not break other test files' model calls.
 const setupTestDB = async () => {
   try {
     // Create in-memory MongoDB instance
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
 
-    // Disconnect any existing connections
-    await mongoose.disconnect();
-
-    // Connect to in-memory database
-    await mongoose.connect(mongoUri, {
+    connection = await mongoose.createConnection(mongoUri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    });
+    }).asPromise();
 
     console.log("Test database connected successfully");
+    return connection;
   } catch (error) {
     console.error("Test database connection error:", error);
     throw error;
@@ -34,7 +30,7 @@ const setupTestDB = async () => {
  */
 const clearTestDB = async () => {
   try {
-    const collections = mongoose.connection.collections;
+    const collections = connection.collections;
 
     for (const key in collections) {
       const collection = collections[key];
@@ -54,13 +50,13 @@ const clearTestDB = async () => {
 const closeTestDB = async () => {
   try {
     // Remove all event listeners to prevent memory leaks
-    mongoose.connection.removeAllListeners();
+    connection.removeAllListeners();
 
     // Drop database
-    await mongoose.connection.dropDatabase();
+    await connection.dropDatabase();
 
     // Close connection
-    await mongoose.connection.close();
+    await connection.close();
 
     // Stop MongoDB Memory Server
     if (mongoServer) {
@@ -84,7 +80,7 @@ const seedTestDB = async (data) => {
     const models = Object.keys(data);
 
     for (const modelName of models) {
-      const Model = mongoose.model(modelName);
+      const Model = connection.model(modelName);
       const documents = data[modelName];
 
       if (Array.isArray(documents) && documents.length > 0) {

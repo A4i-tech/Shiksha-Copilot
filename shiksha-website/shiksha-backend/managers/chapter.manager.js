@@ -10,8 +10,17 @@ const {
   titleRegex,
 } = require("../helper/data.helper");
 const formatApiReponse = require("../helper/response");
+const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { formatSubject, getSemester } = require('../helper/formatter');
 const Chapter = require("../models/chapter.model");
+const MasterSubject = require("../models/master.subject.model");
+const {
+  buildIndexPath,
+  checkBatch,
+  checkRow,
+  identityKey,
+  orderKey,
+} = require("../validations/chapter.bulk.validation");
 
 /** @extends {BaseManager<ChapterDao>} */
 class ChapterManager extends BaseManager {
@@ -167,6 +176,192 @@ class ChapterManager extends BaseManager {
   ) {
     let data = await this.dao.getChapterBySemester(filters);
     return formatApiReponse(true, "", data);
+  }
+
+  // A missing or non-standard index path is a warning, not a failure, because the ingestion pipeline writes that field later.
+  async bulkUpload(chapters, dryRun = false, userId) {
+    try {
+      if (!Array.isArray(chapters) || chapters.length === 0) {
+        return formatApiReponse(
+          false,
+          "chapters must be a non-empty array.",
+          {}
+        );
+      }
+
+      // subjectId can be a master subject _id or its subjectName, resolved by board.
+      const allSubjects = await MasterSubject.find({
+        isDeleted: { $ne: true },
+      }).lean();
+
+      const subjectResolver = buildIdOrNameResolver(allSubjects, (subject) =>
+        (subject.boards || []).map(
+          (board) => `${String(board).toLowerCase()}|${String(subject.subjectName).toLowerCase()}`
+        )
+      );
+
+      const resolveSubject = (chapter) =>
+        subjectResolver.resolve(
+          chapter?.subjectId,
+          typeof chapter?.subjectId === "string"
+            ? `${String(chapter?.board).toLowerCase()}|${chapter.subjectId.trim().toLowerCase()}`
+            : null
+        );
+
+      const resolvedSubjects = chapters.map((chapter) => resolveSubject(chapter));
+
+      const normalizedChapters = chapters.map((chapter, index) =>
+        resolvedSubjects[index]
+          ? { ...chapter, subjectId: String(resolvedSubjects[index]._id) }
+          : chapter
+      );
+
+      const batchErrors = checkBatch(normalizedChapters);
+
+      const subjectIds = [
+        ...new Set(resolvedSubjects.filter(Boolean).map((subject) => String(subject._id))),
+      ];
+
+      const existing = await Chapter.find({ subjectId: { $in: subjectIds } })
+        .select("topics medium standard board orderNumber subjectId isDeleted indexPath")
+        .lean();
+
+      const liveIdentity = new Map();
+      const liveOrder = new Map();
+      const deletedIdentity = new Map();
+
+      existing.forEach((chapter) => {
+        const key = identityKey({ ...chapter, subjectId: String(chapter.subjectId) });
+        const order = orderKey({ ...chapter, subjectId: String(chapter.subjectId) });
+
+        if (chapter.isDeleted === true) {
+          deletedIdentity.set(key, chapter);
+          return;
+        }
+
+        liveIdentity.set(key, chapter);
+        if (!liveOrder.has(order)) liveOrder.set(order, chapter);
+      });
+
+      const rows = normalizedChapters.map((chapter, index) => {
+        const subject = resolvedSubjects[index];
+
+        if (!subject) {
+          return {
+            row: index + 1,
+            topics: chapter?.topics ?? "",
+            orderNumber: chapter?.orderNumber ?? null,
+            errors: [
+              `subjectId "${chapters[index]?.subjectId}" matches no master subject for board "${chapter?.board}". Give the subject's id, or its exact name from the subject list.`,
+            ],
+            warnings: [],
+            indexPath: chapter?.indexPath || "",
+          };
+        }
+
+        const { errors, warnings } = checkRow(chapter);
+        errors.push(...batchErrors[index]);
+
+        const row = {
+          row: index + 1,
+          topics: chapter?.topics ?? "",
+          orderNumber: chapter?.orderNumber ?? null,
+          errors,
+          warnings,
+          indexPath: chapter?.indexPath || "",
+        };
+
+        if (errors.length > 0) return row;
+
+        if (
+          Array.isArray(subject.boards) &&
+          subject.boards.length > 0 &&
+          !subject.boards.includes(chapter.board)
+        ) {
+          errors.push(
+            `board "${chapter.board}" is not a board of the subject "${subject.name}". The subject boards are ${subject.boards.join(", ")}.`
+          );
+        }
+
+        const applicable = (subject.applicableClasses || []).find(
+          (entry) => entry.board === chapter.board
+        );
+
+        if (
+          applicable &&
+          Array.isArray(applicable.classes) &&
+          !applicable.classes.includes(chapter.standard)
+        ) {
+          errors.push(
+            `class ${chapter.standard} is not a class of the subject "${subject.name}" for the board ${chapter.board}. The subject classes are ${applicable.classes.join(", ")}.`
+          );
+        }
+
+        const key = identityKey(chapter);
+        const order = orderKey(chapter);
+
+        if (liveIdentity.has(key)) {
+          errors.push(
+            `the chapter "${chapter.topics}" already exists with the id ${liveIdentity.get(key)._id}. Edit that chapter instead.`
+          );
+        }
+
+        const orderTwin = liveOrder.get(order);
+        if (orderTwin) {
+          errors.push(
+            `order number ${chapter.orderNumber} already belongs to the chapter "${orderTwin.topics}" (${orderTwin._id}) in the same subject, board, medium and class. Change the order number, or remove the duplicate.`
+          );
+        }
+
+        if (deletedIdentity.has(key)) {
+          warnings.push(
+            `a deleted chapter with the same name exists (${deletedIdentity.get(key)._id}). Restore that chapter if you want its lesson plans back.`
+          );
+        }
+
+        const expectedPath = buildIndexPath(chapter, subject.subjectName);
+
+        if (!chapter.indexPath) {
+          row.indexPath = expectedPath;
+          warnings.push(
+            `indexPath was empty, so the upload set it to "${expectedPath}". Content generation fails for this chapter until the ingestion pipeline indexes the textbook.`
+          );
+        } else if (chapter.indexPath !== expectedPath) {
+          warnings.push(
+            `indexPath is "${chapter.indexPath}" but the ingestion pipeline uses "${expectedPath}". Check the path before you generate content.`
+          );
+        }
+
+        return row;
+      });
+
+      // Upload carries no learning outcomes; the content generation pipeline fills them in later.
+      const documents = normalizedChapters.map((chapter, index) =>
+        this.withDraftMetadata(
+          {
+            ...chapter,
+            medium: String(chapter.medium).toLowerCase(),
+            indexPath: rows[index].indexPath,
+            topicsLearningOutcomes: (chapter.subTopics || []).map((subTopic) => ({
+              title: subTopic,
+              learningOutcomes: [],
+            })),
+          },
+          userId
+        )
+      );
+
+      return this.finalizeBulkUpload({
+        Model: Chapter,
+        rows,
+        documents,
+        dryRun,
+        entityLabel: "chapters",
+      });
+    } catch (err) {
+      console.error("bulkUpload failed:", err);
+      return formatApiReponse(false, err?.message, null);
+    }
   }
 }
 

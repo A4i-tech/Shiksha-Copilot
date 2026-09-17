@@ -1,5 +1,6 @@
 [
   { "name": "analytics.view", "description": "View analytics dashboards and reports for the assigned organisational scope." },
+  { "name": "admin.ingest", "description": "Bulk-upload and directly create chapters, lesson plans, resources, and questions from the admin content management page." },
   { "name": "audit.view", "description": "Review audit logs for administrative actions and platform changes." },
   { "name": "chat.use", "description": "Use the AI chat workspace for teacher support and content help." },
   { "name": "content.activity.export", "description": "Download content activity reports for offline review." },

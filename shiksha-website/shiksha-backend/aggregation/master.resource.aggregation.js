@@ -16,7 +16,8 @@ class MasterResourceAggregation {
 				{
 					$unwind: "$chapter",
 				},
-				{ $match: filter },
+				// $ne:true (not isDeleted:false) because old resources predate this field and lack it entirely
+				{ $match: { isDeleted: { $ne: true }, ...filter } },
 				{
 					$facet: {
 						data: [
@@ -49,6 +50,7 @@ class MasterResourceAggregation {
 					$match: {
 						chapterId: new ObjectId(chapterId),
 						templateId: { $in: templateIds.map(id => new ObjectId(id)) },
+						isDeleted: { $ne: true },
 					},
 				},
 				{
@@ -435,7 +437,7 @@ class MasterResourceAggregation {
 
 			let pipeline = [
 				{
-					$match: { _id: new ObjectId(resourceId) },
+					$match: { _id: new ObjectId(resourceId), isDeleted: { $ne: true } },
 				},
 				{
 					$lookup: {
