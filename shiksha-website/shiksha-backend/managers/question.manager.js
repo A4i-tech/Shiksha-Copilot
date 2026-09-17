@@ -62,48 +62,19 @@ class QuestionManager extends BaseManager {
 				};
 			});
 
-			const invalid = rows.filter((row) => row.errors.length > 0);
-
-			const report = {
-				dryRun,
-				total: rows.length,
-				valid: rows.length - invalid.length,
-				invalid: invalid.length,
-				inserted: 0,
-				insertedIds: [],
-				rows,
-			};
-
-			if (invalid.length > 0) {
-				return formatApiReponse(
-					false,
-					`${invalid.length} of ${rows.length} questions failed validation. Nothing was saved.`,
-					report
-				);
-			}
-
-			if (dryRun) {
-				return formatApiReponse(true, "All questions passed validation.", report);
-			}
-
-			const documents = questions.map((question) => ({
-				...question,
-				status: "draft",
-				isDeleted: true,
-				createdBy: userId,
-			}));
-
-			const saved = await Question.insertMany(documents, { ordered: true });
-
-			report.inserted = saved.length;
-			report.insertedIds = saved.map((question) => String(question._id));
-
-			return formatApiReponse(
-				true,
-				`${saved.length} questions were added.`,
-				report
+			const documents = questions.map((question) =>
+				this.withDraftMetadata({ ...question }, userId)
 			);
+
+			return this.finalizeBulkUpload({
+				Model: Question,
+				rows,
+				documents,
+				dryRun,
+				entityLabel: "questions",
+			});
 		} catch (err) {
+			console.error("bulkUpload failed:", err);
 			return formatApiReponse(false, err?.message, null);
 		}
 	}

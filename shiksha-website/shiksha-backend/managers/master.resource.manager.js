@@ -88,48 +88,19 @@ class MasterResourceManager extends BaseManager {
 				};
 			});
 
-			const invalid = rows.filter((row) => row.errors.length > 0);
-
-			const report = {
-				dryRun,
-				total: rows.length,
-				valid: rows.length - invalid.length,
-				invalid: invalid.length,
-				inserted: 0,
-				insertedIds: [],
-				rows,
-			};
-
-			if (invalid.length > 0) {
-				return formatApiReponse(
-					false,
-					`${invalid.length} of ${rows.length} resources failed validation. Nothing was saved.`,
-					report
-				);
-			}
-
-			if (dryRun) {
-				return formatApiReponse(true, "All resources passed validation.", report);
-			}
-
-			const documents = normalizedResources.map((resource) => ({
-				...resource,
-				status: "draft",
-				isDeleted: true,
-				createdBy: userId,
-			}));
-
-			const saved = await MasterResource.insertMany(documents, { ordered: true });
-
-			report.inserted = saved.length;
-			report.insertedIds = saved.map((resource) => String(resource._id));
-
-			return formatApiReponse(
-				true,
-				`${saved.length} resources were added.`,
-				report
+			const documents = normalizedResources.map((resource) =>
+				this.withDraftMetadata({ ...resource }, userId)
 			);
+
+			return this.finalizeBulkUpload({
+				Model: MasterResource,
+				rows,
+				documents,
+				dryRun,
+				entityLabel: "resources",
+			});
 		} catch (err) {
+			console.error("bulkUpload failed:", err);
 			return formatApiReponse(false, err?.message, null);
 		}
 	}

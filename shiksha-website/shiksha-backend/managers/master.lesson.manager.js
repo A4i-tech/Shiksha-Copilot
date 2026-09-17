@@ -1136,48 +1136,19 @@ class MasterLessonManger extends BaseManager {
 				return row;
 			});
 
-			const invalid = rows.filter((row) => row.errors.length > 0);
-
-			const report = {
-				dryRun,
-				total: rows.length,
-				valid: rows.length - invalid.length,
-				invalid: invalid.length,
-				inserted: 0,
-				insertedIds: [],
-				rows,
-			};
-
-			if (invalid.length > 0) {
-				return formatApiReponse(
-					false,
-					`${invalid.length} of ${rows.length} lesson plans failed validation. Nothing was saved.`,
-					report
-				);
-			}
-
-			if (dryRun) {
-				return formatApiReponse(true, "All lesson plans passed validation.", report);
-			}
-
-			const documents = normalizedLessonPlans.map((lessonPlan) => ({
-				...lessonPlan,
-				status: "draft",
-				isDeleted: true,
-				createdBy: userId,
-			}));
-
-			const saved = await MasterLesson.insertMany(documents, { ordered: true });
-
-			report.inserted = saved.length;
-			report.insertedIds = saved.map((lessonPlan) => String(lessonPlan._id));
-
-			return formatApiReponse(
-				true,
-				`${saved.length} lesson plans were added.`,
-				report
+			const documents = normalizedLessonPlans.map((lessonPlan) =>
+				this.withDraftMetadata({ ...lessonPlan }, userId)
 			);
+
+			return this.finalizeBulkUpload({
+				Model: MasterLesson,
+				rows,
+				documents,
+				dryRun,
+				entityLabel: "lesson plans",
+			});
 		} catch (err) {
+			console.error("bulkUpload failed:", err);
 			return formatApiReponse(false, err?.message, null);
 		}
 	}

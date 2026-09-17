@@ -335,55 +335,31 @@ class ChapterManager extends BaseManager {
         return row;
       });
 
-      const invalid = rows.filter((row) => row.errors.length > 0);
-
-      const report = {
-        dryRun,
-        total: rows.length,
-        valid: rows.length - invalid.length,
-        invalid: invalid.length,
-        inserted: 0,
-        insertedIds: [],
-        rows,
-      };
-
-      if (invalid.length > 0) {
-        return formatApiReponse(
-          false,
-          `${invalid.length} of ${rows.length} chapters failed validation. Nothing was saved.`,
-          report
-        );
-      }
-
-      if (dryRun) {
-        return formatApiReponse(true, "All chapters passed validation.", report);
-      }
-
       // Upload carries no learning outcomes; the content generation pipeline fills them in later.
-      const documents = normalizedChapters.map((chapter, index) => ({
-        ...chapter,
-        medium: String(chapter.medium).toLowerCase(),
-        indexPath: rows[index].indexPath,
-        topicsLearningOutcomes: (chapter.subTopics || []).map((subTopic) => ({
-          title: subTopic,
-          learningOutcomes: [],
-        })),
-        status: "draft",
-        isDeleted: true,
-        createdBy: userId,
-      }));
-
-      const saved = await Chapter.insertMany(documents, { ordered: true });
-
-      report.inserted = saved.length;
-      report.insertedIds = saved.map((chapter) => String(chapter._id));
-
-      return formatApiReponse(
-        true,
-        `${saved.length} chapters were added.`,
-        report
+      const documents = normalizedChapters.map((chapter, index) =>
+        this.withDraftMetadata(
+          {
+            ...chapter,
+            medium: String(chapter.medium).toLowerCase(),
+            indexPath: rows[index].indexPath,
+            topicsLearningOutcomes: (chapter.subTopics || []).map((subTopic) => ({
+              title: subTopic,
+              learningOutcomes: [],
+            })),
+          },
+          userId
+        )
       );
+
+      return this.finalizeBulkUpload({
+        Model: Chapter,
+        rows,
+        documents,
+        dryRun,
+        entityLabel: "chapters",
+      });
     } catch (err) {
+      console.error("bulkUpload failed:", err);
       return formatApiReponse(false, err?.message, null);
     }
   }
