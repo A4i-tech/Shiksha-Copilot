@@ -1,0 +1,182 @@
+pipeline_id: bse_tg_lba_questions
+domain_profile: lba_question_extraction
+input_modality: text
+description: >
+  Reads exported BSE-TG lesson JSON files (one per lesson, produced by
+  export_bse_tg_lessons.py) and extracts every practice question in the
+  lesson's Homework section into structured records for the LBA question
+  bank. Output is consumed by load_lba_questions.py, which maps records into
+  the shiksha lba_questions schema and writes them to the dump database.
+
+parameters:
+  properties:
+    marks_default:
+      type: integer
+      minimum: 1
+      description: Marks assigned to a question when the source text does not state one.
+      default: 1
+
+steps:
+  - agent: text
+
+  - agent: extract
+    config:
+      foreach: ".items[]"
+      input: .text
+      path: .metadata.questions
+      concurrency: 4
+      prompt: >
+        You are extracting practice questions from the Homework section of a
+        Telangana (BSE-TG) school lesson. The input is the lesson's export
+        JSON: read its "class", "subject", "medium" and "chapterTitle" fields
+        and treat them as the lesson context.
+        The Homework section groups questions under difficulty bands such as
+        Beginner, Intermediate and Advanced, and mixes multiple-choice questions
+        with open-answer questions. Extract EVERY question, including every
+        sub-question. Do not skip any sub-question. Do not invent questions
+        that are not in the text.
+
+        Every question record has these common fields:
+        - answerType: exactly one of "mcq", "fill_in_the_blank",
+          "one_sentence_answers", "short_answer", "answer_medium", "long_answer",
+          "match_the_following". These are the lba_questions collection's own
+          type keys, not display labels. Multiple choice with lettered options
+          is "mcq". Fill-in-the-blank statements are "fill_in_the_blank".
+          One-word or one-phrase answers are "one_sentence_answers". A few
+          sentences are "short_answer". A paragraph is "answer_medium". A long
+          essay is "long_answer". Match-column questions are
+          "match_the_following".
+        - groupHeading: the band or heading the question appears under, such as
+          "Beginner", "Intermediate", "Advanced"; use "" when there is none.
+        - marks: the integer mark value stated for the question, or
+          ${.config.marks_default} if none is stated.
+
+        Every piece of question text is wrapped as {"content_type": "text/plain",
+        "content": "..."}. This source has no images, so content_type is always
+        "text/plain".
+
+        For every answerType except "match_the_following", also produce:
+        - text: the exact question text without the leading number.
+        - keyAnswer: the correct answer when stated, else null. The source
+          states answers two ways: an explicit "Answer:" line, OR — for MCQs
+          especially — the correct option's text simply repeated as its own
+          line directly after the four options, with no "Answer:" label or
+          lettered prefix stripped. Treat both forms as the stated answer.
+
+        For answerType "mcq" only, also produce:
+        - options: the option strings exactly as printed, without the leading
+          letters, one entry per option in printed order.
+
+        For answerType "match_the_following" only, do not produce text,
+        keyAnswer or options. Instead produce:
+        - pairs: one object per row with "left" (the left-column phrase) and
+          "right" (the matching right-column phrase as printed).
+
+        Write all math in plain text, never LaTeX: use "a/b" for fractions,
+        "x" for multiplication, "^2" only if unavoidable but prefer "square",
+        and write "cm" for units. Do not emit \\frac, \\times, \\text, \\sqrt,
+        \\cdot, $ signs, or any backslash commands.
+      schema:
+        type: object
+        additionalProperties: false
+        $defs:
+          Content:
+            title: Content
+            type: object
+            additionalProperties: false
+            properties:
+              content_type:
+                type: string
+                const: text/plain
+              content:
+                type: string
+                minLength: 1
+            required: [content_type, content]
+          Pair:
+            title: Pair
+            type: object
+            additionalProperties: false
+            properties:
+              left:
+                $ref: "#/properties/output/$defs/Content"
+              right:
+                $ref: "#/properties/output/$defs/Content"
+            required: [left, right]
+          TextRecord:
+            title: TextRecord
+            type: object
+            additionalProperties: false
+            properties:
+              answerType:
+                type: string
+                enum:
+                  - fill_in_the_blank
+                  - one_sentence_answers
+                  - short_answer
+                  - answer_medium
+                  - long_answer
+              groupHeading:
+                type: string
+              marks:
+                type: integer
+                minimum: 1
+              text:
+                $ref: "#/properties/output/$defs/Content"
+              keyAnswer:
+                anyOf:
+                  - type: "null"
+                  - $ref: "#/properties/output/$defs/Content"
+            required: [answerType, groupHeading, marks, text, keyAnswer]
+          McqRecord:
+            title: McqRecord
+            type: object
+            additionalProperties: false
+            properties:
+              answerType:
+                type: string
+                const: mcq
+              groupHeading:
+                type: string
+              marks:
+                type: integer
+                minimum: 1
+              text:
+                $ref: "#/properties/output/$defs/Content"
+              options:
+                type: array
+                minItems: 2
+                items:
+                  $ref: "#/properties/output/$defs/Content"
+              keyAnswer:
+                anyOf:
+                  - type: "null"
+                  - $ref: "#/properties/output/$defs/Content"
+            required: [answerType, groupHeading, marks, text, options, keyAnswer]
+          MatchRecord:
+            title: MatchRecord
+            type: object
+            additionalProperties: false
+            properties:
+              answerType:
+                type: string
+                const: match_the_following
+              groupHeading:
+                type: string
+              marks:
+                type: integer
+                minimum: 1
+              pairs:
+                type: array
+                minItems: 1
+                items:
+                  $ref: "#/properties/output/$defs/Pair"
+            required: [answerType, groupHeading, marks, pairs]
+        properties:
+          questions:
+            type: array
+            items:
+              anyOf:
+                - $ref: "#/properties/output/$defs/TextRecord"
+                - $ref: "#/properties/output/$defs/McqRecord"
+                - $ref: "#/properties/output/$defs/MatchRecord"
+        required: [questions]
