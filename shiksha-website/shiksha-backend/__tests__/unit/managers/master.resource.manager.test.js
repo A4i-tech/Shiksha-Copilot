@@ -96,4 +96,95 @@ describe("MasterResourceManager", () => {
       expect(MasterResource.insertMany).not.toHaveBeenCalled();
     });
   });
+
+  describe("comboScript chapter-creation loop", () => {
+    let Chapter;
+    const chapter = {
+      _id: "chapter-1",
+      board: "CBSE",
+      medium: "English",
+      standard: 10,
+      topics: "Algebra",
+      subTopics: ["Linear Equations"],
+      subjectId: "subject-1",
+    };
+
+    beforeEach(() => {
+      Chapter = require("../../../models/chapter.model");
+      jest.spyOn(Chapter, "find").mockResolvedValue([chapter]);
+      manager.masterSubjectDao.getById = jest.fn().mockResolvedValue({ subjectName: "Maths" });
+      manager.dao.create = jest.fn().mockResolvedValue({});
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("skips creating a resource when an identical one already exists", async () => {
+      manager.dao.getOne = jest.fn().mockResolvedValue({ _id: "existing-1" });
+
+      await manager.comboScript("CBSE", "English");
+
+      expect(manager.dao.create).not.toHaveBeenCalled();
+    });
+
+    it("creates a resource when none exists for that identity", async () => {
+      manager.dao.getOne = jest.fn().mockResolvedValue(null);
+
+      await manager.comboScript("CBSE", "English");
+
+      expect(manager.dao.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("uploadMasterResources", () => {
+    let LessonPlanTemplate;
+
+    const request = () => ({
+      body: {
+        chapter_id: "Subject=science_1,Board=CBSE,Grade=10,Medium=English,Number=1,Title=Algebra",
+        learning_outcomes: ["Outcome A"],
+        workflow_id: "wf-1",
+        sections: [],
+        lp_level: "CHAPTER",
+      },
+    });
+
+    beforeEach(() => {
+      LessonPlanTemplate = require("../../../models/lesson.plan.template.model");
+      jest.spyOn(LessonPlanTemplate, "find").mockResolvedValue([
+        { _id: "template-1", sections: [] },
+      ]);
+
+      manager.chapterDao.getOne = jest.fn().mockResolvedValue({ _id: "chapter-1" });
+      manager.masterSubjectDao.getByNameAndBoard = jest.fn().mockResolvedValue({
+        applicableClasses: [{ board: "CBSE", classes: ["10"] }],
+        boards: ["CBSE"],
+      });
+      manager.dao.updateByFilter = jest.fn().mockResolvedValue({});
+      manager.dao.create = jest.fn().mockResolvedValue({});
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("updates the existing lesson resource when the identity already exists", async () => {
+      manager.dao.getOne = jest.fn().mockResolvedValue({ _id: "existing-1" });
+
+      await manager.uploadMasterResources(request());
+
+      expect(manager.dao.updateByFilter).toHaveBeenCalled();
+      expect(manager.dao.create).not.toHaveBeenCalled();
+    });
+
+    it("creates a new lesson resource when no identity match exists", async () => {
+      manager.dao.getOne = jest.fn().mockResolvedValue(null);
+
+      await manager.uploadMasterResources(request());
+
+      expect(manager.dao.create).toHaveBeenCalled();
+      expect(manager.dao.updateByFilter).not.toHaveBeenCalled();
+    });
+  });
 });

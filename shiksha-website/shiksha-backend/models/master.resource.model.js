@@ -76,6 +76,18 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 
 lessonResourceMasterSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
+// Blocks the duplicate lessonName rows from issue #382 (A2-A4, A6).
+// autoIndex is off (see below): mongoose would otherwise try to build this
+// on every app connect and fail against pre-existing duplicates. The dedup
+// script (scripts/dedup-masterresources-382.js) removes duplicates then
+// calls syncIndexes() itself, so the index only ever builds after the data
+// is clean.
+lessonResourceMasterSchema.index(
+	{ board: 1, class: 1, subject: 1, medium: 1, lessonName: 1, isAll: 1 },
+	{ unique: true }
+);
+lessonResourceMasterSchema.set("autoIndex", false);
+
 const MasterResource = mongoose.model(
 	"MasterResource",
 	lessonResourceMasterSchema
