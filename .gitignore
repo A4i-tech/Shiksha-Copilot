@@ -29,5 +29,3 @@ superset/.env
 # Accessibility tests
 tests/accessibility/node_modules
 tests/accessibility/results
-
-ingestion/config/period_plan_api.yaml
