@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+const { MongoMemoryReplSet } = require("mongodb-memory-server");
 const { groupKey, pickCanonical } = require("../../../scripts/dedup-masterresources");
 
 describe("dedup-masterresources", () => {
@@ -31,6 +34,88 @@ describe("dedup-masterresources", () => {
 			const withContent = { _id: "b", resources: [1] };
 			const withoutContent = { _id: "a" };
 			expect(pickCanonical([withoutContent, withContent])._id).toBe("b");
+		});
+	});
+
+	// Real transaction against a real replica set: run()'s highest-risk behavior
+	// (bulkWrite repoint + delete + subTopics fix, all inside one transaction)
+	// only proves out against real writes, mocking Mongo here would just
+	// assert the mock was called and miss a wrong filter/update shape.
+	describe("run", () => {
+		let replSet;
+		let run;
+		let freshMongoose;
+		let MasterResource;
+		let TeacherLessonPlan;
+		let TeacherResourceFeedback;
+		let consoleLogSpy;
+		let consoleErrorSpy;
+
+		beforeAll(async () => {
+			replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+			await replSet.waitUntilRunning();
+			process.env.MONGO_URL = replSet.getUri();
+			process.argv.push("--apply");
+			jest.resetModules();
+			// resetModules gives every subsequent require() a fresh module registry,
+			// including a fresh mongoose singleton - re-require it here too so the
+			// connection this test opens is the SAME singleton the models/script use.
+			freshMongoose = require("mongoose");
+			({ run } = require("../../../scripts/dedup-masterresources"));
+			MasterResource = require("../../../models/master.resource.model");
+			TeacherLessonPlan = require("../../../models/teacher.lesson.plan.model");
+			TeacherResourceFeedback = require("../../../models/feedback.resource.model");
+			await freshMongoose.connect(process.env.MONGO_URL);
+		});
+
+		afterAll(async () => {
+			if (freshMongoose.connection.readyState !== 0) await freshMongoose.disconnect();
+			await replSet.stop();
+			process.argv = process.argv.filter((arg) => arg !== "--apply");
+			delete process.env.MONGO_URL;
+		});
+
+		beforeEach(() => {
+			consoleLogSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+			consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+		});
+
+		afterEach(async () => {
+			// run() disconnects mongoose itself on completion; only one test in
+			// this block, so no cross-test DB cleanup is needed here.
+			const logFiles = fs
+				.readdirSync(path.join(__dirname, "../../../scripts"))
+				.filter((f) => f.startsWith("dedup-log-"));
+			for (const f of logFiles) fs.unlinkSync(path.join(__dirname, "../../../scripts", f));
+			jest.restoreAllMocks();
+		});
+
+		it("keeps the richer duplicate, repoints references, deletes the loser, and normalizes malformed subTopics", async () => {
+			const identity = { board: "KSEEB", class: 8, subject: "Science", medium: "english", lessonName: "Nutrition", isAll: true };
+			const thin = await MasterResource.create({ ...identity, semester: "1", chapterId: new freshMongoose.Types.ObjectId(), resources: [] });
+			const rich = await MasterResource.create({ ...identity, semester: "1", chapterId: new freshMongoose.Types.ObjectId(), resources: [{ a: 1 }] });
+			const malformed = await MasterResource.create({
+				board: "CBSE", class: 9, subject: "Math", medium: "english", lessonName: "Algebra", isAll: false,
+				semester: "1", chapterId: new freshMongoose.Types.ObjectId(), subTopics: ["Valid", "  ", "", "Another"],
+			});
+
+			const planRef = await TeacherLessonPlan.create({ teacherId: new freshMongoose.Types.ObjectId(), resourceId: thin._id });
+			const feedbackRef = await TeacherResourceFeedback.create({ teacherId: new freshMongoose.Types.ObjectId(), resourceId: thin._id });
+
+			await run();
+			await freshMongoose.connect(process.env.MONGO_URL); // run() disconnects on completion; reconnect to assert
+
+			expect(await MasterResource.findById(thin._id)).toBeNull();
+			expect(await MasterResource.findById(rich._id)).toBeTruthy();
+
+			const updatedPlan = await TeacherLessonPlan.findById(planRef._id);
+			expect(updatedPlan.resourceId.toString()).toBe(rich._id.toString());
+
+			const updatedFeedback = await TeacherResourceFeedback.findById(feedbackRef._id);
+			expect(updatedFeedback.resourceId.toString()).toBe(rich._id.toString());
+
+			const fixed = await MasterResource.findById(malformed._id);
+			expect(fixed.subTopics).toEqual(["Valid", "Another"]);
 		});
 	});
 });

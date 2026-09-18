@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Run --apply against a restored dump first, never straight against prod (scan-then-write, no live-traffic lock).
+// Run --apply against a restored dump first, never prod directly.
 'use strict';
 
 require('dotenv').config();
@@ -10,7 +10,7 @@ const MasterResource = require('../models/master.resource.model');
 const TeacherLessonPlan = require('../models/teacher.lesson.plan.model');
 const TeacherResourceFeedback = require('../models/feedback.resource.model');
 
-// resourceId FKs on these two collections get repointed before delete, else they orphan.
+// Repointed before delete to avoid orphaning FKs.
 const MONGO_URL = process.env.MONGO_URL;
 if (!MONGO_URL && require.main === module) {
   console.error('MONGO_URL env var is required');
@@ -19,7 +19,7 @@ if (!MONGO_URL && require.main === module) {
 
 const APPLY = process.argv.includes('--apply');
 
-// Matches the unique index key exactly; chapterId excluded on purpose, see model.
+// Matches the unique index key; see model.
 function groupKey(doc) {
   return [doc.board, doc.class, doc.subject, doc.medium, doc.lessonName, doc.isAll].join('|');
 }
@@ -98,7 +98,7 @@ async function run() {
     return;
   }
 
-  // One transaction: a partial failure must not leave FKs repointed without the delete, or vice versa.
+  // Single transaction keeps repoint and delete atomic.
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {
@@ -149,10 +149,9 @@ async function run() {
   await mongoose.disconnect();
 }
 
-module.exports = { groupKey, pickCanonical };
+module.exports = { groupKey, pickCanonical, run };
 
-// Only run against a live DB when invoked directly (`node dedup-masterresources.js`),
-// not when required by tests for groupKey/pickCanonical.
+// Only runs when invoked directly, not when required by tests.
 if (require.main === module) {
   run().catch((err) => {
     console.error('dedup-masterresources failed:', err);

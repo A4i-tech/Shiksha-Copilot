@@ -160,7 +160,7 @@ class MasterResourceManager extends BaseManager {
 			let subTopicSubSets = uniqueSubsets(chapter.subTopics);
 			for (const subTopic of subTopicSubSets) {
 				const newResourcePlan = createData(false, chapter, subTopic, subject);
-				// Matches the unique index key; different subtopic subsets can share a lessonName.
+				// Matches the unique index key.
 				const existing = await this.dao.getOne({
 					board: newResourcePlan.board,
 					class: newResourcePlan.class,
@@ -336,7 +336,7 @@ class MasterResourceManager extends BaseManager {
 			}
 
 
-			// Matches the unique index key, excluding chapterId/subTopics.
+			// Matches the unique index key.
 			let identityQuery = {
 				lessonName: `${subjectName}-${board} Class${standard} ${title}`,
 				class: Number(standard),
@@ -510,7 +510,7 @@ class MasterResourceManager extends BaseManager {
 			}
 
 
-			// See the identical comment in uploadMasterResources above.
+			// Matches the unique index key.
 			let identityQuery = {
 				lessonName: `${subjectName}-${board} Class${standard} ${title}`,
 				class: Number(standard),

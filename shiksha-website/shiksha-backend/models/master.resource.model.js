@@ -76,8 +76,7 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 
 lessonResourceMasterSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
-// Blocks duplicate lessonName rows. autoIndex off below - scripts/dedup-masterresources.js
-// clears pre-existing duplicates and syncIndexes() itself, so this only ever builds against clean data.
+// Unique index; autoIndex off, see scripts/dedup-masterresources.js.
 lessonResourceMasterSchema.index(
 	{ board: 1, class: 1, subject: 1, medium: 1, lessonName: 1, isAll: 1 },
 	{ unique: true }
