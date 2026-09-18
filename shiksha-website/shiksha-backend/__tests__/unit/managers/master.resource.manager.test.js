@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+const { MongoMemoryServer } = require("mongodb-memory-server");
 const MasterResourceManager = require("../../../managers/master.resource.manager");
 const MasterResourceDao = require("../../../dao/master.resource.dao");
 const RegeneratedLessonResourceDao = require("../../../dao/regenerate.log.dao");
@@ -94,6 +96,130 @@ describe("MasterResourceManager", () => {
       expect(result.data.invalid).toBe(1);
       expect(result.data.rows[0].errors.join(" ")).toMatch(/matches no active chapter/);
       expect(MasterResource.insertMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("comboScript chapter-creation loop", () => {
+    let Chapter;
+    const chapter = {
+      _id: "chapter-1",
+      board: "CBSE",
+      medium: "English",
+      standard: 10,
+      topics: "Algebra",
+      subTopics: ["Linear Equations"],
+      subjectId: "subject-1",
+    };
+
+    beforeEach(() => {
+      Chapter = require("../../../models/chapter.model");
+      jest.spyOn(Chapter, "find").mockResolvedValue([chapter]);
+      manager.masterSubjectDao.getById = jest.fn().mockResolvedValue({ subjectName: "Maths" });
+      manager.dao.create = jest.fn().mockResolvedValue({});
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("skips creating a resource when an identical one already exists", async () => {
+      manager.dao.getOne = jest.fn().mockResolvedValue({ _id: "existing-1" });
+
+      await manager.comboScript("CBSE", "English");
+
+      expect(manager.dao.create).not.toHaveBeenCalled();
+    });
+
+    it("creates a resource when none exists for that identity", async () => {
+      manager.dao.getOne = jest.fn().mockResolvedValue(null);
+
+      await manager.comboScript("CBSE", "English");
+
+      expect(manager.dao.create).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("uploadMasterResources", () => {
+    let LessonPlanTemplate;
+    let MasterResource;
+    let mongoServer;
+    let RealMasterResourceDao;
+
+    const request = () => ({
+      body: {
+        chapter_id: "Subject=science_1,Board=CBSE,Grade=10,Medium=English,Number=1,Title=Algebra",
+        learning_outcomes: ["Outcome A"],
+        workflow_id: "wf-1",
+        sections: [],
+        lp_level: "CHAPTER",
+      },
+    });
+
+    // Uses a real in-memory MongoDB instead of mocking manager.dao: the risk
+    // this PR introduces is in the identity query itself (chapterId/subTopics
+    // dropped from the match filter on purpose, see the manager's comment) -
+    // asserting a mock was called with the right args can't catch a wrong
+    // query, only a real findOne/findOneAndUpdate against real documents can.
+    beforeAll(async () => {
+      mongoServer = await MongoMemoryServer.create();
+      await mongoose.connect(mongoServer.getUri());
+      RealMasterResourceDao = jest.requireActual("../../../dao/master.resource.dao");
+      MasterResource = require("../../../models/master.resource.model");
+    });
+
+    afterAll(async () => {
+      await mongoose.disconnect();
+      await mongoServer.stop();
+    });
+
+    const CHAPTER_ID = "222222222222222222222222";
+    const TEMPLATE_ID = "333333333333333333333333";
+
+    beforeEach(() => {
+      LessonPlanTemplate = require("../../../models/lesson.plan.template.model");
+      jest.spyOn(LessonPlanTemplate, "find").mockResolvedValue([
+        { _id: TEMPLATE_ID, sections: [] },
+      ]);
+
+      manager.chapterDao.getOne = jest.fn().mockResolvedValue({ _id: CHAPTER_ID });
+      manager.masterSubjectDao.getByNameAndBoard = jest.fn().mockResolvedValue({
+        applicableClasses: [{ board: "CBSE", classes: ["10"] }],
+        boards: ["CBSE"],
+      });
+      manager.dao = new RealMasterResourceDao();
+    });
+
+    afterEach(async () => {
+      await MasterResource.deleteMany({});
+      jest.restoreAllMocks();
+    });
+
+    it("updates the existing lesson resource by identity, even though chapterId/subTopics differ from the incoming row", async () => {
+      const existing = await MasterResource.create({
+        lessonName: "science_1-CBSE Class10 Algebra",
+        class: 10,
+        board: "CBSE",
+        medium: "English",
+        subject: "science_1",
+        isAll: true,
+        semester: "1",
+        chapterId: "111111111111111111111111",
+        subTopics: ["old-topic"],
+      });
+
+      await manager.uploadMasterResources(request());
+
+      const updated = await MasterResource.findById(existing._id);
+      expect(updated.chapterId.toString()).toBe(CHAPTER_ID);
+      expect(await MasterResource.countDocuments({})).toBe(1);
+    });
+
+    it("creates a new lesson resource when no identity match exists", async () => {
+      await manager.uploadMasterResources(request());
+
+      const created = await MasterResource.findOne({ lessonName: "science_1-CBSE Class10 Algebra" });
+      expect(created).toBeTruthy();
+      expect(created.chapterId.toString()).toBe(CHAPTER_ID);
     });
   });
 });

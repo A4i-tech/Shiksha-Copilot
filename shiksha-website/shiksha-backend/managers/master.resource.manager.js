@@ -15,7 +15,6 @@ const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const { sortDataBySubTopics, transformSections, transformOldResources, getSemester, formatSubject } = require("../helper/formatter");
 const ChapterDao = require("../dao/chapter.dao");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model");
-const compareChapter = require("../helper/chapter.helper");
 
 /** @extends {BaseManager<MasterResourceDao>} */
 class MasterResourceManager extends BaseManager {
@@ -161,6 +160,16 @@ class MasterResourceManager extends BaseManager {
 			let subTopicSubSets = uniqueSubsets(chapter.subTopics);
 			for (const subTopic of subTopicSubSets) {
 				const newResourcePlan = createData(false, chapter, subTopic, subject);
+				// Matches the unique index key.
+				const existing = await this.dao.getOne({
+					board: newResourcePlan.board,
+					class: newResourcePlan.class,
+					subject: newResourcePlan.subject,
+					medium: newResourcePlan.medium,
+					lessonName: newResourcePlan.lessonName,
+					isAll: newResourcePlan.isAll,
+				});
+				if (existing) continue;
 				await this.dao.create(newResourcePlan);
 			}
 		}
@@ -327,46 +336,41 @@ class MasterResourceManager extends BaseManager {
 			}
 
 
-			let queryingObj = {
+			// Matches the unique index key.
+			let identityQuery = {
 				lessonName: `${subjectName}-${board} Class${standard} ${title}`,
 				class: Number(standard),
 				board,
 				medium,
 				subject: subjectName,
-				chapterId: chapter._id,
-				subTopics: lessonPlans[i].subtopics,
 				isAll: lessonPlans[i].lp_level === 'CHAPTER',
-				templateId
 			}
 
-			const existingLr = await this.dao.getOne(queryingObj);
+			const existingLr = await this.dao.getOne(identityQuery);
 
 			let resource;
 
 			const transformedResource = transformSections(lessonPlans[i]?.sections, templateDetails[0]?.sections);
 
-			if (existingLr && compareChapter(lessonPlans[i]._id, chapter, existingLr)) {
+			if (existingLr) {
 				const lrQuery = {
 					_id: existingLr._id,
 				}
 
-
 				const lrData = {
 					resources: transformedResource,
 					learningOutcomes: lessonPlans[i]?.learning_outcomes,
+					chapterId: chapter._id,
+					subTopics: lessonPlans[i].subtopics,
+					templateId,
 				}
 
 				resource = await this.dao.updateByFilter(lrQuery, lrData)
 				updateCount += 1
 			} else {
 				let resourcePlanObj = {
-					lessonName: `${subjectName}-${board} Class${standard} ${title}`,
-					class: Number(standard),
-					isAll: lessonPlans[i].lp_level === "CHAPTER",
-					board,
-					medium,
+					...identityQuery,
 					semester: "1",
-					subject: subjectName,
 					chapterId: chapter._id, //fetch id
 					subTopics: lessonPlans[i].subtopics,
 					resources: transformedResource,
@@ -506,47 +510,42 @@ class MasterResourceManager extends BaseManager {
 			}
 
 
-			let queryingObj = {
+			// Matches the unique index key.
+			let identityQuery = {
 				lessonName: `${subjectName}-${board} Class${standard} ${title}`,
 				class: Number(standard),
 				board,
 				medium,
 				subject: subjectName,
-				chapterId: chapter._id,
 				isAll: lessonPlans[i].lp_level === 'CHAPTER',
-				templateId
 			}
 
-			const existingLr = await this.dao.getOne(queryingObj);
+			const existingLr = await this.dao.getOne(identityQuery);
 
 			let resource;
 
 			const { extracted, additional } = transformOldResources(lessonPlans[i]?.extracted_resources, lessonPlans[i]?.additional_resources);
 
-			if (existingLr && compareChapter(lessonPlans[i]._id, chapter, existingLr)) {
+			if (existingLr) {
 				const lrQuery = {
 					_id: existingLr._id,
 				}
-
 
 				const lrData = {
 					resources: extracted,
 					additionalResources: additional,
 					learningOutcomes: lessonPlans[i]?.learning_outcomes,
 					subTopics: lessonPlans[i]?.subtopics,
+					chapterId: chapter._id,
+					templateId,
 				}
 
 				resource = await this.dao.updateByFilter(lrQuery, lrData)
 				updateCount += 1
 			} else {
 				let resourcePlanObj = {
-					lessonName: `${subjectName}-${board} Class${standard} ${title}`,
-					class: Number(standard),
-					isAll: lessonPlans[i].lp_level === "CHAPTER",
-					board,
-					medium,
+					...identityQuery,
 					semester: "1",
-					subject: subjectName,
 					chapterId: chapter._id,
 					subTopics: lessonPlans[i].subtopics,
 					resources: extracted,
