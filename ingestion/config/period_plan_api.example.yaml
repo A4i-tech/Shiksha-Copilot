@@ -1,0 +1,8 @@
+# Example config for period_plan_api_runner.py. Copy to period_plan_api.yaml
+# (gitignored) and fill in the real endpoint before running against production.
+url: http://localhost:7071/api/v2/lesson-plans
+post_timeout_secs: 30
+poll_timeout_secs: 30
+poll_interval_secs: 10
+max_poll_retries: 60
+concurrency: 4
