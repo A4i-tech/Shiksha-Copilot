@@ -30,3 +30,4 @@ See [Available pipelines](#available-pipelines) for what each pipeline config do
 | Pipeline | Description |
 |----------|--------------|
 | `chapter.yaml` | Processes a raw government textbook PDF into structured chapter metadata: table of contents, learning outcomes, and topic groups. |
+| `lesson_resource.yaml` | Builds chapter-level lesson resources from a raw government textbook PDF: hands-on activity, real-world scenario, and question bank sections. |
