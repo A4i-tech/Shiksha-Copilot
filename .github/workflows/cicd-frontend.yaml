@@ -65,6 +65,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     environment:
       name: ${{ inputs.deploy_target != '' && inputs.deploy_name || '' }}

@@ -36,6 +36,7 @@ env:
 jobs:
   build-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     outputs:
       coverage_percentage: ${{ steps.extract_backend_coverage.outputs.percentage }}
       image_tag_primary: ${{ steps.set_tag_primary.outputs.image_tag_primary }}
@@ -126,6 +127,7 @@ jobs:
 
   push:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: build-test
     if: github.ref == 'refs/heads/a4i/main' || github.ref == 'refs/heads/a4i/staging'
     outputs:
