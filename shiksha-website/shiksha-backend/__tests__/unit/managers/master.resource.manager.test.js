@@ -174,6 +174,10 @@ describe("MasterResourceManager", () => {
 
       await manager.uploadMasterResources(request());
 
+      expect(manager.dao.getOne).toHaveBeenCalledWith(
+        expect.objectContaining({ board: "CBSE", medium: "English", class: 10 })
+      );
+      expect(manager.dao.getOne.mock.calls[0][0]).not.toHaveProperty("chapterId");
       expect(manager.dao.updateByFilter).toHaveBeenCalled();
       expect(manager.dao.create).not.toHaveBeenCalled();
     });

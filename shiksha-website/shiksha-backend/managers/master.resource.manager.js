@@ -160,10 +160,7 @@ class MasterResourceManager extends BaseManager {
 			let subTopicSubSets = uniqueSubsets(chapter.subTopics);
 			for (const subTopic of subTopicSubSets) {
 				const newResourcePlan = createData(false, chapter, subTopic, subject);
-				// Matches the unique index on MasterResource {board, class, subject,
-				// medium, lessonName, isAll} - different subtopic subsets for the same
-				// chapter can produce the same lessonName (that mismatch was the source
-				// of issue #382's duplicates), so skip instead of creating a second doc.
+				// Matches the unique index key; different subtopic subsets can share a lessonName.
 				const existing = await this.dao.getOne({
 					board: newResourcePlan.board,
 					class: newResourcePlan.class,
@@ -339,12 +336,7 @@ class MasterResourceManager extends BaseManager {
 			}
 
 
-			// Matches the unique index on MasterResource {board, class, subject, medium,
-			// lessonName, isAll} - two uploads for the same identity must resolve to
-			// the same doc even if chapterId/subTopics differ (that mismatch was the
-			// source of issue #382's A4/A6 duplicates); the index now rejects a second
-			// doc for the same identity, so this always updates in place instead of
-			// falling through to create.
+			// Matches the unique index key, excluding chapterId/subTopics.
 			let identityQuery = {
 				lessonName: `${subjectName}-${board} Class${standard} ${title}`,
 				class: Number(standard),

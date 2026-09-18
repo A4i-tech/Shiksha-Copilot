@@ -1,6 +1,6 @@
-const { groupKey, pickCanonical } = require("../../../scripts/dedup-masterresources-382");
+const { groupKey, pickCanonical } = require("../../../scripts/dedup-masterresources");
 
-describe("dedup-masterresources-382", () => {
+describe("dedup-masterresources", () => {
 	describe("groupKey", () => {
 		it("joins the identity fields in a fixed order", () => {
 			const doc = { board: "KSEEB", class: 8, subject: "Science", medium: "english", lessonName: "Nutrition", isAll: true };
