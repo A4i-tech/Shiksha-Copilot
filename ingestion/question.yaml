@@ -1,19 +1,32 @@
-pipeline_id: kseeb_lba_questions
+pipeline_id: question
 domain_profile: lba_question_extraction
 input_modality: text
 description: >
-  Reads exported KSEEB Kannada-medium lesson JSON files (one per lesson,
-  produced by export_kseeb_lessons.py) and extracts every practice question
-  in the lesson's question set into structured records for the LBA question
-  bank. Output is consumed by load_lba_questions.py, which maps records into
-  the shiksha lba_questions schema and writes them to the dump database.
+  Reads exported lesson JSON files (one per lesson) and extracts every practice
+  question in the lesson's question set into structured records for the LBA
+  question bank. Output is consumed by load_lba_questions.py, which maps
+  records into the shiksha lba_questions schema and writes them to the dump
+  database. One pipeline serves every board and language.
 
 parameters:
   properties:
+    board:
+      type: string
+      description: Education board named in the extraction prompt (for example BSE-TG, KSEEB).
+      default: BSE-TG
+    language:
+      type: string
+      description: Language of the lesson's question set and its chapter markers (for example English, Kannada).
+      default: English
     marks_default:
       type: integer
       minimum: 1
       description: Marks assigned to a question when the source text does not state one.
+      default: 1
+    marks_min:
+      type: integer
+      minimum: 1
+      description: Minimum mark value accepted for a question.
       default: 1
 
 steps:
@@ -26,18 +39,17 @@ steps:
       path: .metadata.questions
       concurrency: 4
       prompt: >
-        You are extracting practice questions from a Karnataka (KSEEB)
-        Kannada-medium school lesson. The input is the lesson's export JSON:
-        read its "class", "subject", "medium" and "chapterTitle" fields and
-        treat them as the lesson context.
-        The lesson's question set is organized under chapter markers written
-        in Kannada, such as "ಘಟಕ", "ಪಾಠ" or "ಅಧ್ಯಾಯ" (unit, lesson, or chapter),
-        and may group questions under difficulty bands. Question text and
-        answer choices may be written in Kannada script. The set mixes
-        multiple-choice questions, match-column questions, and open-answer
-        questions. Extract EVERY question, including every sub-question. Do
-        not skip any sub-question. Do not invent questions that are not in
-        the text.
+        You are extracting practice questions from a ${.config.board} school
+        lesson written in ${.config.language}. The input is the lesson's export
+        JSON: read its "class", "subject", "medium" and "chapterTitle" fields
+        and treat them as the lesson context.
+        The lesson's question set may group questions under difficulty bands
+        such as Beginner, Intermediate and Advanced, or under ${.config.language}
+        chapter markers such as unit, lesson, or chapter headings. Question text
+        and answer choices may be written in ${.config.language} script. The set
+        mixes multiple-choice questions, match-column questions, and open-answer
+        questions. Extract EVERY question, including every sub-question. Do not
+        skip any sub-question. Do not invent questions that are not in the text.
 
         Every question record has these common fields:
         - answerType: exactly one of "mcq", "fill_in_the_blank",
@@ -49,19 +61,21 @@ steps:
           "one_sentence_answers". A few sentences are "short_answer". A
           paragraph is "answer_medium". A long essay is "long_answer".
           Match-column questions are "match_the_following".
-        - groupHeading: the chapter marker or difficulty band the question
-          appears under, such as "ಘಟಕ 1", "ಪಾಠ 3"; use "" when there is none.
         - marks: the integer mark value stated for the question, or
           ${.config.marks_default} if none is stated.
 
         Every piece of question text is wrapped as {"content_type": "text/plain",
         "content": "..."}. This source has no images, so content_type is always
-        "text/plain". Kannada script text is valid "text/plain" content.
+        "text/plain". ${.config.language} script text is valid "text/plain"
+        content.
 
         For every answerType except "match_the_following", also produce:
-        - text: the exact question text without the leading number, kept in
-          its original Kannada or English script as printed.
-        - keyAnswer: the correct answer when stated, else null.
+        - text: the exact question text without the leading number, kept in its
+          original script as printed.
+        - keyAnswer: the correct answer when stated, else null. The source may
+          state answers as an explicit "Answer:" line, or — for MCQs especially —
+          as the correct option's text repeated as its own line directly after
+          the options. Treat both forms as the stated answer.
 
         For answerType "mcq" only, also produce:
         - options: the option strings exactly as printed, without the leading
@@ -70,8 +84,8 @@ steps:
         For answerType "match_the_following" only, do not produce text,
         keyAnswer or options. Instead produce:
         - pairs: one object per row with "left" (the left-column phrase) and
-          "right" (the matching right-column phrase as printed). Either side
-          may be in Kannada script, English script, or a mix of both, exactly
+          "right" (the matching right-column phrase as printed). Either side may
+          be in ${.config.language} or English script, or a mix of both, exactly
           as printed.
 
         Write all math in plain text, never LaTeX: use "a/b" for fractions,
@@ -117,18 +131,16 @@ steps:
                   - short_answer
                   - answer_medium
                   - long_answer
-              groupHeading:
-                type: string
               marks:
                 type: integer
-                minimum: 1
+                minimum: ${.config.marks_min}
               text:
                 $ref: "#/properties/output/$defs/Content"
               keyAnswer:
                 anyOf:
                   - type: "null"
                   - $ref: "#/properties/output/$defs/Content"
-            required: [answerType, groupHeading, marks, text, keyAnswer]
+            required: [answerType, marks, text, keyAnswer]
           McqRecord:
             title: McqRecord
             type: object
@@ -137,11 +149,9 @@ steps:
               answerType:
                 type: string
                 const: mcq
-              groupHeading:
-                type: string
               marks:
                 type: integer
-                minimum: 1
+                minimum: ${.config.marks_min}
               text:
                 $ref: "#/properties/output/$defs/Content"
               options:
@@ -153,7 +163,7 @@ steps:
                 anyOf:
                   - type: "null"
                   - $ref: "#/properties/output/$defs/Content"
-            required: [answerType, groupHeading, marks, text, options, keyAnswer]
+            required: [answerType, marks, text, options, keyAnswer]
           MatchRecord:
             title: MatchRecord
             type: object
@@ -162,17 +172,15 @@ steps:
               answerType:
                 type: string
                 const: match_the_following
-              groupHeading:
-                type: string
               marks:
                 type: integer
-                minimum: 1
+                minimum: ${.config.marks_min}
               pairs:
                 type: array
                 minItems: 1
                 items:
                   $ref: "#/properties/output/$defs/Pair"
-            required: [answerType, groupHeading, marks, pairs]
+            required: [answerType, marks, pairs]
         properties:
           questions:
             type: array
