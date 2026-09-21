@@ -93,38 +93,17 @@ describe('ContentListComponent', () => {
     expect(component.uploadCanSave).toBeFalse();
   });
 
-  it('approve should restore before it sets status, because adminUpdate refuses an isDeleted record', () => {
-    component.confirmRecord = { _id: 'row-1', status: 'draft' };
+  it('approve should be a single atomic call, since restore-then-update fails for a ready-for-review record', () => {
+    component.confirmRecord = { _id: 'row-1', status: 'under_review' };
     component.confirmAction = 'approve';
 
     component.runConfirmedAction();
 
-    const restoreReq = httpMock.expectOne((r) => r.url.endsWith('/row-1/restore'));
-    expect(restoreReq.request.method).toBe('PATCH');
-    restoreReq.flush({ success: true });
-
-    const updateReq = httpMock.expectOne((r) => r.url.endsWith('/row-1'));
-    expect(updateReq.request.method).toBe('PUT');
-    expect(updateReq.request.body).toEqual({ status: 'approved' });
-    updateReq.flush({ success: true });
+    const approveReq = httpMock.expectOne((r) => r.url.endsWith('/row-1/approve'));
+    expect(approveReq.request.method).toBe('POST');
+    approveReq.flush({ success: true });
 
     // runConfirmedAction reloads the list on success, drain that request too
-    httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
-  });
-
-  it('unapprove should set status before it soft-deletes, so the update runs while the record is still active', () => {
-    component.confirmRecord = { _id: 'row-2', status: 'approved' };
-    component.confirmAction = 'unapprove';
-
-    component.runConfirmedAction();
-
-    const updateReq = httpMock.expectOne((r) => r.url.endsWith('/row-2') && r.method === 'PUT');
-    expect(updateReq.request.body).toEqual({ status: 'draft' });
-    updateReq.flush({ success: true });
-
-    const deleteReq = httpMock.expectOne((r) => r.url.endsWith('/row-2') && r.method === 'DELETE');
-    deleteReq.flush({ success: true });
-
     httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
   });
 

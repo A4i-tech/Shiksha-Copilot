@@ -435,3 +435,92 @@ describe("withDraftMetadata", () => {
     });
   });
 });
+
+describe("isGenuinelyDeleted", () => {
+  const manager = new BaseManager({});
+
+  it("is true only for a deleted, approved record", () => {
+    expect(
+      manager.isGenuinelyDeleted({ isDeleted: true, status: "approved" })
+    ).toBe(true);
+  });
+
+  it("is false for a deleted draft, since a draft is not gone, just hidden", () => {
+    expect(
+      manager.isGenuinelyDeleted({ isDeleted: true, status: "draft" })
+    ).toBe(false);
+  });
+
+  it("is false for a deleted under-review record", () => {
+    expect(
+      manager.isGenuinelyDeleted({ isDeleted: true, status: "under_review" })
+    ).toBe(false);
+  });
+
+  it("is false for a live approved record", () => {
+    expect(
+      manager.isGenuinelyDeleted({ isDeleted: false, status: "approved" })
+    ).toBe(false);
+  });
+});
+
+describe("findLiveConflict", () => {
+  const manager = new BaseManager({});
+  const byName = (r) => r.name;
+  const byOrder = (r) => String(r.order);
+
+  it("finds another live record matching on the first key", () => {
+    const record = { name: "Algebra", order: 1 };
+    const existing = [
+      { name: "Algebra", order: 2, isDeleted: false, status: "approved" },
+    ];
+
+    expect(manager.findLiveConflict(record, existing, [byName, byOrder])).toBe(
+      existing[0]
+    );
+  });
+
+  it("finds another live record matching on the second key", () => {
+    const record = { name: "Algebra", order: 1 };
+    const existing = [
+      { name: "Geometry", order: 1, isDeleted: false, status: "approved" },
+    ];
+
+    expect(manager.findLiveConflict(record, existing, [byName, byOrder])).toBe(
+      existing[0]
+    );
+  });
+
+  it("ignores a genuinely deleted record with the same keys", () => {
+    const record = { name: "Algebra", order: 1 };
+    const existing = [
+      { name: "Algebra", order: 1, isDeleted: true, status: "approved" },
+    ];
+
+    expect(
+      manager.findLiveConflict(record, existing, [byName, byOrder])
+    ).toBeUndefined();
+  });
+
+  it("still counts a draft with the same keys as a conflict", () => {
+    const record = { name: "Algebra", order: 1 };
+    const existing = [
+      { name: "Algebra", order: 1, isDeleted: true, status: "draft" },
+    ];
+
+    expect(manager.findLiveConflict(record, existing, [byName, byOrder])).toBe(
+      existing[0]
+    );
+  });
+
+  it("returns undefined when nothing matches", () => {
+    const record = { name: "Algebra", order: 1 };
+    const existing = [
+      { name: "Geometry", order: 2, isDeleted: false, status: "approved" },
+    ];
+
+    expect(
+      manager.findLiveConflict(record, existing, [byName, byOrder])
+    ).toBeUndefined();
+  });
+});

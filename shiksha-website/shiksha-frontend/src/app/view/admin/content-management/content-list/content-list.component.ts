@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { saveAs } from 'file-saver';
 import * as ExcelJS from 'exceljs';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -27,19 +27,13 @@ const STATUS_LABELS: { [key: string]: string } = {
 };
 
 type ConfirmAction =
-  | 'delete'
   | 'restore'
   | 'approve'
-  | 'unapprove'
   | 'sendForReview'
   | 'sendToDraft';
 
 /** title and body of the confirm dialog, one entry per action */
 const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: string } } = {
-  delete: {
-    title: 'Delete',
-    body: 'The record moves to the deleted list. Teachers can no longer see it.',
-  },
   restore: {
     title: 'Restore',
     body: 'The record returns to the active list.',
@@ -47,10 +41,6 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
   approve: {
     title: 'Approve',
     body: 'The record is marked approved and becomes visible to teachers and students.',
-  },
-  unapprove: {
-    title: 'Set to draft',
-    body: 'The record goes back to draft, visible only to the admin who created it.',
   },
   sendForReview: {
     title: 'Send for review',
@@ -321,31 +311,13 @@ export class ContentListComponent implements OnInit, OnDestroy {
     let successMessage: string;
 
     switch (action) {
-      case 'delete':
-        request = this.contentService.softDelete(segment, id);
-        successMessage = `${this.config.singular} deleted successfully`;
-        break;
       case 'restore':
         request = this.contentService.restore(segment, id);
         successMessage = `${this.config.singular} restored successfully`;
         break;
       case 'approve':
-        // Draft rows are soft-deleted; restore first to clear the flag, then flip status (adminUpdate rejects deleted records).
-        request = this.contentService
-          .restore(segment, id)
-          .pipe(
-            switchMap(() =>
-              this.contentService.update(segment, id, { status: CONTENT_STATUS.APPROVED })
-            )
-          );
+        request = this.contentService.approve(segment, id);
         successMessage = `${this.config.singular} approved successfully`;
-        break;
-      case 'unapprove':
-        // Flip status while the record is still active, then soft-delete it.
-        request = this.contentService
-          .update(segment, id, { status: CONTENT_STATUS.DRAFT })
-          .pipe(switchMap(() => this.contentService.softDelete(segment, id)));
-        successMessage = `${this.config.singular} set to draft`;
         break;
       case 'sendForReview':
         // draft -> under_review: both stay soft-deleted, only status moves.

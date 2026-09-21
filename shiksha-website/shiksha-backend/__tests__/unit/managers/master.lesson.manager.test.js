@@ -539,6 +539,7 @@ describe("MasterLessonManager", () => {
               isAll: true,
               subTopics: [],
               isDeleted: true,
+              status: "approved",
             },
           ]),
         }),
@@ -592,6 +593,148 @@ describe("MasterLessonManager", () => {
         result.data.rows[0].errors.some((e) => e.includes("is not a subtopic of the chapter"))
       ).toBe(true);
       expect(MasterLesson.insertMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("activate (restore)", () => {
+    let MasterLesson;
+    const deletedLessonPlan = {
+      _id: "lesson-1",
+      chapterId: "507f1f77bcf86cd799439011",
+      isAll: false,
+      subTopics: ["Linear equations"],
+      isDeleted: true,
+      status: "approved",
+    };
+
+    beforeEach(() => {
+      MasterLesson = require("../../../models/master.lesson.model");
+
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue(deletedLessonPlan),
+      });
+
+      manager.dao.activate = jest.fn().mockResolvedValue({ ...deletedLessonPlan, isDeleted: false });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("refuses to restore a lesson plan that is not itself deleted-and-approved, such as a draft", async () => {
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ ...deletedLessonPlan, status: "draft" }),
+      });
+
+      const result = await manager.activate({ params: { id: "lesson-1" } });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/cannot be restored/);
+      expect(manager.dao.activate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("approve", () => {
+    let MasterLesson;
+    const reviewLessonPlan = {
+      _id: "lesson-1",
+      chapterId: "507f1f77bcf86cd799439011",
+      isAll: false,
+      subTopics: ["Linear equations"],
+      isDeleted: true,
+      status: "under_review",
+    };
+
+    beforeEach(() => {
+      MasterLesson = require("../../../models/master.lesson.model");
+
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue(reviewLessonPlan),
+      });
+
+      jest.spyOn(MasterLesson, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
+      });
+
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue({
+        ...reviewLessonPlan,
+        status: "approved",
+        isDeleted: false,
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    // The conflict-scan and the successful-update path both depend on a real Mongo
+    // query/write, so they belong in the integration suite rather than here.
+    it("refuses to approve a lesson plan that is not ready for review, such as a draft", async () => {
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ ...reviewLessonPlan, status: "draft" }),
+      });
+
+      const result = await manager.approve({ params: { id: "lesson-1" } });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/cannot be approved/);
+      expect(MasterLesson.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("reports a clear failure when the lesson plan's status changed before the update landed", async () => {
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue(null);
+
+      const result = await manager.approve({ params: { id: "lesson-1" } });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/changed before the approval finished/);
+    });
+  });
+
+  describe("adminUpdate", () => {
+    let MasterLesson;
+    const draftLessonPlan = {
+      _id: "lesson-1",
+      chapterId: "507f1f77bcf86cd799439011",
+      isAll: false,
+      subTopics: ["Linear equations"],
+      isDeleted: true,
+      status: "draft",
+    };
+
+    beforeEach(() => {
+      MasterLesson = require("../../../models/master.lesson.model");
+
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue(draftLessonPlan),
+      });
+
+      jest.spyOn(MasterLesson, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
+      });
+
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue({
+        ...draftLessonPlan,
+        subTopics: ["Linear equations", "Quadratic equations"],
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    // The conflict-scan and the successful-save path both depend on a real Mongo
+    // query/write, so they belong in the integration suite rather than here.
+    it("refuses to edit a lesson plan that is not a draft or under review, such as an approved one", async () => {
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue(null);
+
+      const result = await manager.adminUpdate({
+        params: { id: "lesson-1" },
+        body: { subTopics: ["Linear equations", "Quadratic equations"] },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not found or has been deleted/);
     });
   });
 

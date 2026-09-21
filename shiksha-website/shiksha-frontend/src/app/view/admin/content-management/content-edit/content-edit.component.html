@@ -7,7 +7,7 @@
       (click)="cancel()"
     />
     <h1 class="ml-3 text-2xl md:text-[32px] md:leading-[48px] font-bold text-content">
-      {{ isCreate ? 'Add ' : 'Edit ' }}{{ config.singular.toLowerCase() }}
+      {{ isCreate ? 'Add ' : (isReadonly ? 'View ' : 'Edit ') }}{{ config.singular.toLowerCase() }}
     </h1>
   </div>
 
@@ -25,6 +25,7 @@
         and class is refused.
       </p>
 
+      <fieldset [disabled]="isReadonly" class="contents border-0 p-0 m-0">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div
           *ngFor="let field of visibleFields"
@@ -111,6 +112,7 @@
                   class="max-h-32 rounded border border-content-30"
                 />
                 <button
+                  *ngIf="!isReadonly"
                   type="button"
                   class="btn-outline-primary h-8 text-xs"
                   (click)="onQuestionImageRemoved(field)"
@@ -120,6 +122,7 @@
               </div>
 
               <input
+                *ngIf="!isReadonly"
                 type="file"
                 accept="image/*"
                 class="text-xs"
@@ -130,6 +133,7 @@
             <app-chapter-picker
               *ngSwitchCase="'chapter-select'"
               [value]="formValues[field.field]"
+              [disabled]="isReadonly"
               (valueChange)="onFieldChange(field, $event)"
             ></app-chapter-picker>
 
@@ -139,6 +143,7 @@
               [dropDownValues]="field.options || []"
               [config]="dropdownConfig(field)"
               [ngModel]="formValues[field.field]"
+              [disabled]="isReadonly"
               (ngModelChange)="onFieldChange(field, $event)"
             ></app-dropdown>
 
@@ -148,6 +153,7 @@
               [dropDownValues]="subjectOptions"
               [config]="dropdownConfig(field)"
               [ngModel]="formValues[field.field]"
+              [disabled]="isReadonly"
               (ngModelChange)="onFieldChange(field, $event)"
             ></app-dropdown>
 
@@ -224,6 +230,7 @@
           >
         </div>
       </div>
+      </fieldset>
 
       <div class="flex flex-col sm:flex-row justify-end mt-9 gap-2">
         <button
@@ -259,6 +266,7 @@
 
         <ng-template #editAction>
           <button
+            *ngIf="!isReadonly"
             type="submit"
             class="btn-primary h-9 w-full sm:w-auto"
             [disabled]="isSaving"

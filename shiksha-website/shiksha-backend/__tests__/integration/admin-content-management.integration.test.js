@@ -187,6 +187,284 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
     }, 30000);
   });
 
+  // Restore only ever reaches its conflict check for a chapter/lesson plan that is itself
+  // deleted-and-approved. Nothing in this API moves a record to "approved" today (bulk-upload
+  // always inserts as draft, and no approval endpoint exists), so the conflict-detection branch
+  // of activate() is unreachable through real HTTP calls and stays unit-tested only. This covers
+  // the one restore path a real draft record can reach.
+  describe("activate (restore)", () => {
+    it("refuses to restore a chapter that is still a draft, because it is not deleted-and-approved", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/chapters/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              subjectId: subject._id,
+              topics: `Restore Draft Chapter ${suffix}`,
+              medium: "english",
+              standard: 9,
+              board: "KSEEB",
+              orderNumber: 50,
+              subTopics: ["Echo"],
+              learningOutcomes: ["Explain echo"],
+            },
+          ],
+        });
+      expect(uploadRes.body.success).toBe(true);
+      const [draftChapterId] = uploadRes.body.data.insertedIds;
+      ids.chapters.push(draftChapterId);
+
+      const restoreRes = await request(baseURL)
+        .patch(`/api/admin/content/chapters/${draftChapterId}/restore`)
+        .set("Authorization", token);
+
+      expect(restoreRes.body.success).toBe(false);
+      expect(restoreRes.body.message).toMatch(/cannot be restored/);
+    }, 30000);
+
+    it("refuses to restore a lesson plan that is still a draft, because it is not deleted-and-approved", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/lesson-plans/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              name: `Restore Draft LP ${suffix}`,
+              class: 9,
+              board: "KSEEB",
+              medium: "english",
+              semester: "1",
+              subject: subject.subjectName,
+              chapterId: chapter._id,
+              subTopics: ["Reflection", "Refraction"],
+            },
+          ],
+        });
+      expect(uploadRes.body.success).toBe(true);
+      const [draftLessonPlanId] = uploadRes.body.data.insertedIds;
+      ids.lessonPlans.push(draftLessonPlanId);
+
+      const restoreRes = await request(baseURL)
+        .patch(`/api/admin/content/lesson-plans/${draftLessonPlanId}/restore`)
+        .set("Authorization", token);
+
+      expect(restoreRes.body.success).toBe(false);
+      expect(restoreRes.body.message).toMatch(/cannot be restored/);
+    }, 30000);
+  });
+
+  describe("approve", () => {
+    it("moves a chapter from ready-for-review to approved and live, in one call", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/chapters/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              subjectId: subject._id,
+              topics: `Approve Chapter ${suffix}`,
+              medium: "english",
+              standard: 9,
+              board: "KSEEB",
+              orderNumber: 51,
+              subTopics: ["Waves"],
+              learningOutcomes: ["Describe wave motion"],
+            },
+          ],
+        });
+      const [id] = uploadRes.body.data.insertedIds;
+      ids.chapters.push(id);
+
+      const reviewRes = await request(baseURL)
+        .put(`/api/admin/content/chapters/${id}`)
+        .set("Authorization", token)
+        .send({ status: "under_review" });
+      expect(reviewRes.body.success).toBe(true);
+
+      const approveRes = await request(baseURL)
+        .post(`/api/admin/content/chapters/${id}/approve`)
+        .set("Authorization", token);
+
+      expect(approveRes.body.success).toBe(true);
+      expect(approveRes.body.data).toMatchObject({ status: "approved", isDeleted: false });
+    }, 30000);
+
+    it("refuses to approve a chapter that is still a draft", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/chapters/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              subjectId: subject._id,
+              topics: `Approve Draft Chapter ${suffix}`,
+              medium: "english",
+              standard: 9,
+              board: "KSEEB",
+              orderNumber: 52,
+              subTopics: ["Sound"],
+              learningOutcomes: ["Describe sound"],
+            },
+          ],
+        });
+      const [id] = uploadRes.body.data.insertedIds;
+      ids.chapters.push(id);
+
+      const approveRes = await request(baseURL)
+        .post(`/api/admin/content/chapters/${id}/approve`)
+        .set("Authorization", token);
+
+      expect(approveRes.body.success).toBe(false);
+      expect(approveRes.body.message).toMatch(/cannot be approved/);
+    }, 30000);
+
+    it("moves a lesson plan from ready-for-review to approved and live, in one call", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/lesson-plans/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              name: `Approve LP ${suffix}`,
+              class: 9,
+              board: "KSEEB",
+              medium: "english",
+              semester: "1",
+              subject: subject.subjectName,
+              chapterId: chapter._id,
+              subTopics: ["Propagation of sound"],
+            },
+          ],
+        });
+      const [id] = uploadRes.body.data.insertedIds;
+      ids.lessonPlans.push(id);
+
+      const reviewRes = await request(baseURL)
+        .put(`/api/admin/content/lesson-plans/${id}`)
+        .set("Authorization", token)
+        .send({ status: "under_review" });
+      expect(reviewRes.body.success).toBe(true);
+
+      const approveRes = await request(baseURL)
+        .post(`/api/admin/content/lesson-plans/${id}/approve`)
+        .set("Authorization", token);
+
+      expect(approveRes.body.success).toBe(true);
+      expect(approveRes.body.data).toMatchObject({ status: "approved", isDeleted: false });
+    }, 30000);
+  });
+
+  describe("adminUpdate (edit)", () => {
+    it("saves a draft chapter's changed name", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/chapters/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              subjectId: subject._id,
+              topics: `Edit Draft Chapter ${suffix}`,
+              medium: "english",
+              standard: 9,
+              board: "KSEEB",
+              orderNumber: 53,
+              subTopics: ["Electricity"],
+              learningOutcomes: ["Explain current"],
+            },
+          ],
+        });
+      const [id] = uploadRes.body.data.insertedIds;
+      ids.chapters.push(id);
+
+      const editRes = await request(baseURL)
+        .put(`/api/admin/content/chapters/${id}`)
+        .set("Authorization", token)
+        .send({ topics: `Edit Draft Chapter Renamed ${suffix}` });
+
+      expect(editRes.body.success).toBe(true);
+      expect(editRes.body.data.topics).toBe(`Edit Draft Chapter Renamed ${suffix}`);
+    }, 30000);
+
+    it("refuses a rename that would duplicate another draft chapter of the same subject/board/medium/class", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/chapters/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              subjectId: subject._id,
+              topics: `Edit Collision Taken ${suffix}`,
+              medium: "english",
+              standard: 9,
+              board: "KSEEB",
+              orderNumber: 54,
+              subTopics: ["Magnetism"],
+              learningOutcomes: ["Explain magnetism"],
+            },
+            {
+              subjectId: subject._id,
+              topics: `Edit Collision Other ${suffix}`,
+              medium: "english",
+              standard: 9,
+              board: "KSEEB",
+              orderNumber: 55,
+              subTopics: ["Chemical reactions"],
+              learningOutcomes: ["Explain reactions"],
+            },
+          ],
+        });
+      expect(uploadRes.body.success).toBe(true);
+      const [takenId, otherId] = uploadRes.body.data.insertedIds;
+      ids.chapters.push(takenId, otherId);
+
+      const editRes = await request(baseURL)
+        .put(`/api/admin/content/chapters/${otherId}`)
+        .set("Authorization", token)
+        .send({ topics: `Edit Collision Taken ${suffix}` });
+
+      expect(editRes.body.success).toBe(false);
+      expect(editRes.body.message).toMatch(/would duplicate/);
+    }, 30000);
+
+    it("refuses to edit a chapter once it is approved", async () => {
+      const uploadRes = await request(baseURL)
+        .post("/api/admin/content/chapters/bulk-upload")
+        .set("Authorization", token)
+        .send({
+          rows: [
+            {
+              subjectId: subject._id,
+              topics: `Edit Approved Chapter ${suffix}`,
+              medium: "english",
+              standard: 9,
+              board: "KSEEB",
+              orderNumber: 56,
+              subTopics: ["Optics"],
+              learningOutcomes: ["Explain optics"],
+            },
+          ],
+        });
+      const [id] = uploadRes.body.data.insertedIds;
+      ids.chapters.push(id);
+
+      await request(baseURL)
+        .put(`/api/admin/content/chapters/${id}`)
+        .set("Authorization", token)
+        .send({ status: "under_review" });
+      await request(baseURL)
+        .post(`/api/admin/content/chapters/${id}/approve`)
+        .set("Authorization", token);
+
+      const editRes = await request(baseURL)
+        .put(`/api/admin/content/chapters/${id}`)
+        .set("Authorization", token)
+        .send({ topics: `Edit Approved Chapter Renamed ${suffix}` });
+
+      expect(editRes.body.success).toBe(false);
+    }, 30000);
+  });
+
   describe("resources", () => {
     it("saves a resource plan given by chapterId and one given by chapter name", async () => {
       const res = await request(baseURL)

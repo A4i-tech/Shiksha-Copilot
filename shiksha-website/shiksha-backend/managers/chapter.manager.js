@@ -14,6 +14,7 @@ const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { formatSubject, getSemester } = require('../helper/formatter');
 const Chapter = require("../models/chapter.model");
 const MasterSubject = require("../models/master.subject.model");
+const { CONTENT_STATUS } = require("../constants/content-status");
 const {
   buildIndexPath,
   checkBatch,
@@ -223,7 +224,7 @@ class ChapterManager extends BaseManager {
       ];
 
       const existing = await Chapter.find({ subjectId: { $in: subjectIds } })
-        .select("topics medium standard board orderNumber subjectId isDeleted indexPath")
+        .select("topics medium standard board orderNumber subjectId isDeleted status indexPath")
         .lean();
 
       const liveIdentity = new Map();
@@ -234,7 +235,7 @@ class ChapterManager extends BaseManager {
         const key = identityKey({ ...chapter, subjectId: String(chapter.subjectId) });
         const order = orderKey({ ...chapter, subjectId: String(chapter.subjectId) });
 
-        if (chapter.isDeleted === true) {
+        if (this.isGenuinelyDeleted(chapter)) {
           deletedIdentity.set(key, chapter);
           return;
         }
@@ -360,6 +361,145 @@ class ChapterManager extends BaseManager {
       });
     } catch (err) {
       console.error("bulkUpload failed:", err);
+      return formatApiReponse(false, err?.message, null);
+    }
+  }
+
+  // Editing runs the same identity/order check as an upload, and only ever touches a
+  // draft or under-review chapter: an approved chapter is not directly editable (it
+  // would let a change skip review), and a genuinely deleted one is not editable either.
+  async adminUpdate(req) {
+    try {
+      const current = await Chapter.findById(req.params.id).lean();
+      if (!current) return formatApiReponse(false, "Record not found", null);
+
+      const updates = req.body;
+      const merged = { ...current, ...updates };
+
+      const existing = await this._liveSiblings(merged);
+      const conflict = this.findLiveConflict(merged, existing, this._conflictKeyFns());
+
+      if (conflict) {
+        return formatApiReponse(
+          false,
+          `Saving "${merged.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change the name or order number.`,
+          null
+        );
+      }
+
+      const data = await Chapter.findOneAndUpdate(
+        { _id: current._id, status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } },
+        { $set: updates },
+        { new: true, runValidators: true }
+      );
+
+      if (!data) {
+        return formatApiReponse(false, "Record not found or has been deleted", null);
+      }
+
+      return formatApiReponse(true, "Updated successfully!", data);
+    } catch (err) {
+      console.error("adminUpdate failed:", err);
+      return formatApiReponse(false, err?.message, null);
+    }
+  }
+
+  // Existing chapters that could conflict with `chapter` on name or order number,
+  // scoped to the same subject.
+  async _liveSiblings(chapter) {
+    return Chapter.find({
+      _id: { $ne: chapter._id },
+      subjectId: chapter.subjectId,
+    })
+      .select("topics medium standard board orderNumber subjectId isDeleted status")
+      .lean();
+  }
+
+  _conflictKeyFns() {
+    return [
+      (r) => identityKey({ ...r, subjectId: String(r.subjectId) }),
+      (r) => orderKey({ ...r, subjectId: String(r.subjectId) }),
+    ];
+  }
+
+  // Restore runs the same identity/order check as an upload, because another chapter
+  // can take this one's name or order number while it sits deleted.
+  async activate(req) {
+    try {
+      const chapter = await Chapter.findById(req.params.id).lean();
+      if (!chapter) return formatApiReponse(false, "Record not found", null);
+
+      if (!this.isGenuinelyDeleted(chapter)) {
+        return formatApiReponse(
+          false,
+          `"${chapter.topics}" is not a deleted, approved chapter, so it cannot be restored.`,
+          null
+        );
+      }
+
+      const existing = await this._liveSiblings(chapter);
+      const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
+
+      if (conflict) {
+        return formatApiReponse(
+          false,
+          `Restoring "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
+          null
+        );
+      }
+
+      const data = await this.dao.activate(req.params.id);
+      return formatApiReponse(true, "Chapter restored successfully!", data);
+    } catch (err) {
+      console.error("activate failed:", err);
+      return formatApiReponse(false, err?.message, null);
+    }
+  }
+
+  // Approving a chapter that is ready for review is a single atomic transition, because
+  // going through restore + a separate status update fails: restore only accepts an
+  // already-approved chapter, which a ready-for-review chapter is not yet.
+  async approve(req) {
+    try {
+      const chapter = await Chapter.findById(req.params.id).lean();
+      if (!chapter) return formatApiReponse(false, "Record not found", null);
+
+      if (!(chapter.isDeleted === true && chapter.status === CONTENT_STATUS.UNDER_REVIEW)) {
+        return formatApiReponse(
+          false,
+          `"${chapter.topics}" is not ready for review, so it cannot be approved.`,
+          null
+        );
+      }
+
+      const existing = await this._liveSiblings(chapter);
+      const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
+
+      if (conflict) {
+        return formatApiReponse(
+          false,
+          `Approving "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
+          null
+        );
+      }
+
+      const data = await Chapter.findOneAndUpdate(
+        { _id: chapter._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
+        { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
+        { new: true }
+      );
+
+      if (!data) {
+        return formatApiReponse(
+          false,
+          `"${chapter.topics}" changed before the approval finished. Reload and try again.`,
+          null
+        );
+      }
+
+      return formatApiReponse(true, "Chapter approved successfully!", data);
+    } catch (err) {
+      console.error("approve failed:", err);
       return formatApiReponse(false, err?.message, null);
     }
   }
