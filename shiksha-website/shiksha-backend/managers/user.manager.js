@@ -397,7 +397,7 @@ class UserManager extends BaseManager {
   }
 
   async setProfile(user, profileData) {
-    await this.validateTeacherClassAssignments(profileData.classes, schoolDependency(user.roles));
+    if (profileData.classes?.length) await this.validateTeacherClassAssignments(profileData.classes, schoolDependency(user.roles));
     const updatedUser = await this.dao.setProfile(user._id, profileData);
     if (!updatedUser) {
       return formatApiReponse(false, "Teaching profile not found", null);
