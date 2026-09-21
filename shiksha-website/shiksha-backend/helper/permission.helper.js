@@ -4,7 +4,7 @@ if (process.env.SHIKSHA_DEVTOOLS === "true") permissions.push(...require("../con
 permissions.forEach((permission) => permission.scopes = permission.scopes.includes("*") ? ROLE_SCOPE_TYPES : permission.scopes);
 
 const ALL_PERMISSIONS = Object.freeze(permissions.map((permission) => permission.name));
-const isPermissionAllowed = (name, scopeType) => permissions.find((permission) => permission.name === name).scopes.includes(scopeType);
+const isPermissionAllowed = (name, scopeType) => permissions.find((permission) => permission.name === name)?.scopes.includes(scopeType) ?? false;
 
 function getRolePermissions(assignments) {
   const active = assignments.filter((assignment) => !assignment.role.isDeleted);
