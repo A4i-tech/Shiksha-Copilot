@@ -203,7 +203,7 @@ class UserManager extends BaseManager {
     const schoolChanged = Boolean(user.profiles.teacher && prepared && prepared.school && String(prepared.school) !== schoolDependency(user.roles));
     if (schoolChanged && !isResourceAllowed(grants, action, await this.schoolDao.getById(prepared.school))) throw new AppError("User is outside your scope", 403);
     if (payload.profiles?.teacher?.classes && !schoolRemoved && !schoolChanged) {
-      await this.validateTeacherClassAssignments(payload.profiles.teacher.classes, schoolDependency(user.roles));
+      await this.validateTeacherClassAssignments(payload.profiles.teacher.classes, prepared?.school ?? schoolDependency(user.roles));
     }
 
     let forceRelogin = false;
