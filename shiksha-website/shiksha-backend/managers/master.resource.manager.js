@@ -168,6 +168,7 @@ class MasterResourceManager extends BaseManager {
 					medium: newResourcePlan.medium,
 					lessonName: newResourcePlan.lessonName,
 					isAll: newResourcePlan.isAll,
+					semester: newResourcePlan.semester,
 				});
 				if (existing) continue;
 				await this.dao.create(newResourcePlan);
@@ -344,6 +345,7 @@ class MasterResourceManager extends BaseManager {
 				medium,
 				subject: subjectName,
 				isAll: lessonPlans[i].lp_level === 'CHAPTER',
+				semester: String(getSemester(subjectName) || 1),
 			}
 
 			const existingLr = await this.dao.getOne(identityQuery);
@@ -370,7 +372,6 @@ class MasterResourceManager extends BaseManager {
 			} else {
 				let resourcePlanObj = {
 					...identityQuery,
-					semester: "1",
 					chapterId: chapter._id, //fetch id
 					subTopics: lessonPlans[i].subtopics,
 					resources: transformedResource,
@@ -518,6 +519,7 @@ class MasterResourceManager extends BaseManager {
 				medium,
 				subject: subjectName,
 				isAll: lessonPlans[i].lp_level === 'CHAPTER',
+				semester: String(getSemester(subjectName) || 1),
 			}
 
 			const existingLr = await this.dao.getOne(identityQuery);
@@ -545,7 +547,6 @@ class MasterResourceManager extends BaseManager {
 			} else {
 				let resourcePlanObj = {
 					...identityQuery,
-					semester: "1",
 					chapterId: chapter._id,
 					subTopics: lessonPlans[i].subtopics,
 					resources: extracted,

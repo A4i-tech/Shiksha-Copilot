@@ -101,8 +101,12 @@ describe("MasterResourceManager", () => {
 
   describe("comboScript chapter-creation loop", () => {
     let Chapter;
+    let MasterResource;
+    let mongoServer;
+    let RealMasterResourceDao;
+    const CHAPTER_ID = "444444444444444444444444";
     const chapter = {
-      _id: "chapter-1",
+      _id: CHAPTER_ID,
       board: "CBSE",
       medium: "English",
       standard: 10,
@@ -111,31 +115,55 @@ describe("MasterResourceManager", () => {
       subjectId: "subject-1",
     };
 
+    // Real DB, like uploadMasterResources below: the risk is the identity
+    // query used to decide skip-vs-create, a mocked dao.getOne can't catch
+    // a wrong filter, only a real lookup against a real document can.
+    beforeAll(async () => {
+      mongoServer = await MongoMemoryServer.create();
+      await mongoose.connect(mongoServer.getUri());
+      RealMasterResourceDao = jest.requireActual("../../../dao/master.resource.dao");
+      MasterResource = require("../../../models/master.resource.model");
+    });
+
+    afterAll(async () => {
+      await mongoose.disconnect();
+      await mongoServer.stop();
+    });
+
     beforeEach(() => {
       Chapter = require("../../../models/chapter.model");
       jest.spyOn(Chapter, "find").mockResolvedValue([chapter]);
       manager.masterSubjectDao.getById = jest.fn().mockResolvedValue({ subjectName: "Maths" });
-      manager.dao.create = jest.fn().mockResolvedValue({});
+      manager.dao = new RealMasterResourceDao();
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+      await MasterResource.deleteMany({});
       jest.restoreAllMocks();
     });
 
     it("skips creating a resource when an identical one already exists", async () => {
-      manager.dao.getOne = jest.fn().mockResolvedValue({ _id: "existing-1" });
+      await MasterResource.create({
+        lessonName: "Maths-CBSE Class10 Algebra",
+        class: 10,
+        board: "CBSE",
+        medium: "English",
+        subject: "Maths",
+        semester: "1",
+        chapterId: CHAPTER_ID,
+      });
 
       await manager.comboScript("CBSE", "English");
 
-      expect(manager.dao.create).not.toHaveBeenCalled();
+      expect(await MasterResource.countDocuments({})).toBe(1);
     });
 
     it("creates a resource when none exists for that identity", async () => {
-      manager.dao.getOne = jest.fn().mockResolvedValue(null);
-
       await manager.comboScript("CBSE", "English");
 
-      expect(manager.dao.create).toHaveBeenCalledTimes(1);
+      const created = await MasterResource.findOne({ lessonName: "Maths-CBSE Class10 Algebra" });
+      expect(created).toBeTruthy();
+      expect(created.chapterId.toString()).toBe(CHAPTER_ID);
     });
   });
 
