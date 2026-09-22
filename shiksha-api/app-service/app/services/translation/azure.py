@@ -1,8 +1,6 @@
 from typing import List
 
 from azure.ai.translation.text.aio import TextTranslationClient
-from azure.core.credentials import AzureKeyCredential
-from app.config import settings
 from app.services.translation.base import TranslatorBase
 import logging
 
@@ -10,21 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class AzureTranslator(TranslatorBase):
-    def __init__(self):
-        key = settings.translator_key or ""
-        region = settings.translator_region or ""
-        endpoint = (settings.translator_endpoint or "").rstrip("/")
 
-        if not key or not region or not endpoint:
-            raise ValueError("Azure Translator is not fully configured.")
-
-        self._client = TextTranslationClient(
-            endpoint=endpoint,
-            credential=AzureKeyCredential(key),
-            region=region,
-            connection_timeout=10,
-            read_timeout=60,
-        )
+    def __init__(self, client: TextTranslationClient):
+        self._client = client
 
     async def translate_async(
         self, text: str, src_lang: str = "en", tgt_lang: str = "te"
