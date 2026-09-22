@@ -2,11 +2,10 @@ const express = require('express');
 const router = express.Router();
 const teacherTrainingBatchController = require('../controllers/teacher.training.batch.controller.js');
 const { isAuthenticated, requirePermission } = require('../middlewares/auth.js');
-const trainingUploadMiddleware = require('../middlewares/trainingUploadMiddleware.js');
+const { createBatchUpload, batchProofUpload } = require('../middlewares/trainingUploadMiddleware.js');
 
 
-// Create a new teacher training batch (accept any file field name)
-router.post('/teacher-training-batches/', isAuthenticated, requirePermission('training.edit'), trainingUploadMiddleware, teacherTrainingBatchController.createBatch);
+router.post('/teacher-training-batches/', isAuthenticated, requirePermission('training.edit'), createBatchUpload, teacherTrainingBatchController.createBatch);
 
 // Get all teacher training batches
 router.get('/teacher-training-batches/', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getBatches);
@@ -36,12 +35,11 @@ router.put('/teacher-training-batches/:batchId/attendance', isAuthenticated, req
 // Submit a teacher training batch
 router.put('/teacher-training-batches/:batchId/submit', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.submitBatch);
 
-// New route to upload PDF and photos for a specific batch
 router.post(
   '/teacher-training-batches/:batchId/upload-pdf',
   isAuthenticated,
   requirePermission('training.edit'),
-  trainingUploadMiddleware,
+  batchProofUpload,
   teacherTrainingBatchController.uploadPdf
 );
 

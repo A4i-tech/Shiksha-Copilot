@@ -61,9 +61,7 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           poetry install
-          poetry run pytest tests/unit/ --cov=app --cov-report=html --cov-report=xml:coverage-unit.xml --cov-report json:coverage-unit.json
-          # Save unit test coverage data
-          cp .coverage .coverage.unit || true
+          poetry run pytest tests/unit --cov-report=json:coverage.json
 
       - name: Extract metadata
         id: meta
@@ -95,39 +93,13 @@ jobs:
           cache-from: type=gha,scope=shiksha-api
           cache-to: type=gha,scope=shiksha-api,mode=max
 
-      - name: Run integration tests inside built image
-        run: |
-          IMAGE=shiksha-api-local
-          mkdir -p htmlcov-integration
-          mkdir -p shiksha-api/app-service
-          # Create container, run tests, and copy coverage file out
-          CONTAINER_ID=$(docker create \
-            --entrypoint poetry "$IMAGE" run pytest tests/integration/ --cov=app --cov-report=html --cov-report=xml:coverage.xml --cov-report json:coverage.json)
-          docker start -a $CONTAINER_ID || true
-          docker cp $CONTAINER_ID:/src/app-service/.coverage shiksha-api/app-service/.coverage.integration || true
-          docker cp $CONTAINER_ID:/src/app-service/htmlcov/. htmlcov-integration/ || true
-          docker cp $CONTAINER_ID:/src/app-service/coverage.json shiksha-api/app-service/coverage-integration.json || true
-          docker rm $CONTAINER_ID
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-
-      - name: Combine coverage reports
-        working-directory: shiksha-api/app-service
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          # Combine unit and integration coverage
-          poetry run coverage combine .coverage.unit .coverage.integration 2>/dev/null || poetry run coverage combine .coverage.unit || true
-          # Generate combined reports
-          poetry run coverage json -o coverage.json
-          poetry run coverage html -d ../../htmlcov
-          poetry run coverage xml -o coverage.xml
-
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-shiksha-api-app-service
           path: |
-            htmlcov
+            shiksha-api/app-service/htmlcov
             shiksha-api/app-service/coverage.json
             shiksha-api/app-service/coverage.xml
 

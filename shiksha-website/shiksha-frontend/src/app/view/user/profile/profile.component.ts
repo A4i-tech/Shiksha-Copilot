@@ -12,7 +12,6 @@ import { ProfileService } from './profile.service';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { MasterService } from 'src/app/shared/services/master.service';
-import { Router } from '@angular/router';
 import { SidebarService } from 'src/app/layout/sidebar/sidebar.service';
 import { forkJoin } from 'rxjs';
 import { TranslateService } from '@ngx-translate/core';
@@ -73,7 +72,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     placeHolderTxt: 'Select subject',
     fieldName: 'Subject',
     hideLabel: true,
-    bindLabel: '_id',
+    bindLabel: 'displayName',
     bindValue: '_id',
   };
 
@@ -144,9 +143,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private service: ProfileService,
     private utilityService: UtilityService,
     private masterService: MasterService,
-    private router: Router,
     public sidebarService: SidebarService,
-    private translateService: TranslateService
+    public translateService: TranslateService
   ) {}
 
   /**
@@ -240,7 +238,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.resetclassInfo('standard', i);
 
     if (val) {
-      this.subjectDropdownOptions[i] = this.filterSubjects(val.standard,this.currentSubjects[i])
+      this.subjectDropdownOptions[i] = this.filterSubjects(val.standard,this.currentSubjects[i]).map((s: any) => ({ ...s, displayName: this.translateService.instant(s._id, { board: this.classes.controls[i].get('board')?.value }) }))
       if (this.subjectDropdownOptions[i].length === 1) {
         const subject = this.subjectDropdownOptions[i][0];
         this.classes.controls[i].get('subject')?.setValue(subject._id);
@@ -306,6 +304,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     );
     this.patchObj = newObj;
     this.dependentPatchData = removedObj;
+    this.dependentPatchData.classes.sort((a:any, b:any) => a.board.localeCompare(b.board) || a.class - b.class || a.subject.localeCompare(b.subject) || a.medium.localeCompare(b.medium));
 
     if (
       this.dependentPatchData.classes &&
@@ -411,7 +410,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   setSubjectDropdown(i:any,val:any,standard:any){
     if (val) {
-      this.subjectDropdownOptions[i] = this.filterSubjects(standard,val.subjects);
+      this.subjectDropdownOptions[i] = this.filterSubjects(standard,val.subjects).map((s: any) => ({ ...s, displayName: this.translateService.instant(s._id, { board: this.classes.controls[i].get('board')?.value }) }));
       if (this.subjectDropdownOptions[i].length === 1) {
         const subject = this.subjectDropdownOptions[i][0];
         this.classes.controls[i].get('subject')?.setValue(subject._id);
@@ -726,8 +725,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     });
     result.forEach((ele:any)=>{
       delete ele.subjectDetails
-      delete ele.boysStrength
-      delete ele.girlsStrength
+      if (ele.boysStrength == null) delete ele.boysStrength
+      if (ele.girlsStrength == null) delete ele.girlsStrength
     })
     return result;
   }
@@ -764,7 +763,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.utilityService.handleResponse(res);
         this.loggedInUser.profiles.teacher = res.data.profiles.teacher;
         localStorage.setItem('userData', JSON.stringify(this.loggedInUser));
-        this.router.navigate(['/']);
       },
       error: (err) => {
         this.utilityService.handleError(err);

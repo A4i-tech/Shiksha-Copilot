@@ -1,0 +1,12 @@
+:host {
+  display: block;
+}
+
+.rte-editor {
+  display: block;
+  padding-bottom: 1rem;
+
+  ::ng-deep .ql-container {
+    font-size: 0.9375rem;
+  }
+}

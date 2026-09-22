@@ -183,6 +183,7 @@ export class ContentActivityComponent implements OnInit {
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
+    this.blockDropdownconfig.translateParams = { state: selectedStateValue };
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,

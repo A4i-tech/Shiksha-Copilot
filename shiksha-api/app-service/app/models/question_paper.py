@@ -2,8 +2,10 @@
 # Extracted from the original standalone FastAPI application
 
 from enum import Enum
-from typing import Annotated, List, Literal, Optional, TypeAlias
-from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, WithJsonSchema
+from typing import Annotated, List, Literal, Optional, Self, TypeAlias
+from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, WithJsonSchema, model_validator
+
+from app.utils.utils import validate_tex
 
 
 # ==============================
@@ -48,6 +50,17 @@ class Content(BaseModel):
 
     @staticmethod
     def text(content: str): return Content(content=content.encode(encoding="utf-8"))
+
+    @model_validator(mode="after")
+    def validate_tex_is_proper(self) -> Self:
+        if self.content_type == "text/plain":
+            try:
+                text = self.content.decode("utf-8")
+            except UnicodeDecodeError:
+                return self  # not decodable as text - nothing to TeX-check
+            # this seamlessly becomes a feedback loop for the llm
+            validate_tex(text)
+        return self
 
 
 class TextQuestion(BaseModel):

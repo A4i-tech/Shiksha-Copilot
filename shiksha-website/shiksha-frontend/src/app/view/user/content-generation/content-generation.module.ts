@@ -15,6 +15,8 @@ import { PaginationComponent } from 'src/app/shared/components/pagination/pagina
 import { DeleteDetailComponent } from 'src/app/shared/components/delete-detail/delete-detail.component';
 import { LessonPlanViewEditComponent } from './lesson-plan-view-edit/lesson-plan-view-edit.component';
 import { MarkdownModule, MarkedOptions } from 'ngx-markdown';
+import { QuillModule } from 'ngx-quill';
+import { RichTextEditorComponent } from 'src/app/shared/components/rich-text-editor/rich-text-editor.component';
 import { LessonPlanFormatsComponent } from './lesson-plan-formats/lesson-plan-formats.component';
 import { LessonPlanVideosComponent } from './lesson-plan-videos/lesson-plan-videos.component';
 import { LessonPlanDocumentsComponent } from './lesson-plan-documents/lesson-plan-documents.component';
@@ -53,6 +55,8 @@ import { PresentationGenerationComponent } from './presentation-generation/prese
         },
       },
     }),
+    QuillModule.forRoot(),
+    RichTextEditorComponent,
   ],
   exports: [
     FormatContentPipe,

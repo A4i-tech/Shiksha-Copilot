@@ -122,7 +122,7 @@ export class UserManageComponent implements OnInit {
   }
 
   private canAssignScope(scopeType: string) {
-    return scopeBelow(this.assignmentGrants, scopeType, {});
+    return this.utility.loggedInUserData.isSuperUser || scopeBelow(this.assignmentGrants, scopeType, {});
   }
 
   private pathAllowed(index: number, path: RegionDependency) {

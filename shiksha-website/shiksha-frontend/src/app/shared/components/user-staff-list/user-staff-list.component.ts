@@ -9,7 +9,7 @@ import { BULK_UPLOAD_FILE_TYPES } from '../../utility/constant.util';
 import { ModalService } from '../modal/modal.service';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import {TranslateModule } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { DropdownComponent } from '../dropdown/dropdown.component';
 import { ModalComponent } from '../modal/modal.component';
 import { DisablePopupComponent } from '../disable-popup/disable-popup.component';
@@ -473,7 +473,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
             this.modalService.showBlukUploadDialog = false;
             this.modalService.showUploadErrorDialog = true;
           } else {
-            this.utility.showError(err.error.message);
+            this.utility.handleError(err);
           }
         },
       });
@@ -497,6 +497,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   }
 
   canManage(item: any, permission: string) {
+    if (this.utility.loggedInUserData.isSuperUser) return true;
     const grants = this.utility.getPermission(permission);
     return grants && item.roles.every((assignment: any) =>
       scopeBelow(grants, assignment.role.scopeType, assignment.role.scopeType === 'SCHOOL' ? item.school : assignment.dep));
@@ -687,6 +688,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
    * @param selectedStateValue
    */
     setZoneDropdownValues(selectedStateValue: any) {
+      this.blockDropdownconfig.translateParams = { state: selectedStateValue };
       if (selectedStateValue) {
         this.selectedStateObj = this.utility.filterDropdownValues(
           this.regionsData,

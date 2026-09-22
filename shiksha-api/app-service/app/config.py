@@ -25,9 +25,9 @@ class Settings(BaseSettings):
     # LLM Configuration
     openai_api_key: str = Field(min_length=1)
     embed_model: str = "text-embedding-ada-002"
-    general_chat_model: str = "gpt-4.1"
-    lesson_chat_model: str = "gpt-4.1"
-    question_paper_model: str = "gpt-4.1"
+    general_chat_model: str = "gpt-5.6-luna"
+    lesson_chat_model: str = "gpt-5.6-luna"
+    question_paper_model: str = "gpt-5.6-luna"
 
     # Blob Store Configuration
     blob_store_connection_string: Optional[str] = None

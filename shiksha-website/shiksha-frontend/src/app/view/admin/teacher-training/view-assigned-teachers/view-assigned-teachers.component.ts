@@ -7,6 +7,7 @@ import { TeacherAbsentService } from 'src/app/view/admin/teacher-training/teache
 import * as ExcelJS from 'exceljs';
 import confetti from 'canvas-confetti';
 import { TranslateService } from '@ngx-translate/core';
+import { UtilityService } from 'src/app/core/services/utility.service';
 
 interface FileWithObjectURL extends File {
   objectURL: string;
@@ -44,6 +45,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private teacherAbsentService = inject(TeacherAbsentService);
   private translate = inject(TranslateService);
+  private utilityService = inject(UtilityService);
 
   ngOnInit(): void {
     this.batchSubscription = this.route.paramMap.subscribe(params => {
@@ -122,13 +124,13 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         console.error('Error fetching batch details:', error);
         
         if (error.status === 403) {
-          alert(error.error.message);
+          this.utilityService.handleError(error);
         } else if (error.status === 404) {
-          alert(this.translate.instant('Batch not found.'));
+          this.utilityService.showError(this.translate.instant('Batch not found.'));
         } else if (error.status === 401) {
-          alert(this.translate.instant('Authentication required. Please log in again.'));
+          this.utilityService.showError(this.translate.instant('Authentication required. Please log in again.'));
         } else {
-          alert(this.translate.instant('Error fetching batch details. Please try again.'));
+          this.utilityService.showError(this.translate.instant('Error fetching batch details. Please try again.'));
         }
         
         this.router.navigate(['/training/view-batch']);
@@ -200,11 +202,11 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         }
         
         if (error.status === 403) {
-          alert(error.error.message);
+          this.utilityService.handleError(error);
         } else if (error.status === 404) {
-          alert(this.translate.instant('Batch not found.'));
+          this.utilityService.showError(this.translate.instant('Batch not found.'));
         } else {
-          alert(this.translate.instant('Error updating attendance. Please try again.'));
+          this.utilityService.showError(this.translate.instant('Error updating attendance. Please try again.'));
         }
       }
     });
@@ -237,11 +239,11 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           console.error('Error removing teacher from batch:', error);
           
           if (error.status === 403) {
-            alert(error.error.message);
+            this.utilityService.handleError(error);
           } else if (error.status === 404) {
-            alert(this.translate.instant('Batch or teacher not found.'));
+            this.utilityService.showError(this.translate.instant('Batch or teacher not found.'));
           } else {
-            alert(this.translate.instant('Error removing teacher from batch. Please try again.'));
+            this.utilityService.showError(this.translate.instant('Error removing teacher from batch. Please try again.'));
           }
         }
       });
@@ -366,11 +368,11 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
         console.error('Error submitting batch:', error);
         
         if (error.status === 403) {
-          alert(error.error.message);
+          this.utilityService.handleError(error);
         } else if (error.status === 404) {
-          alert(this.translate.instant('Batch not found.'));
+          this.utilityService.showError(this.translate.instant('Batch not found.'));
         } else {
-          alert(this.translate.instant('Error submitting batch. Please try again.'));
+          this.utilityService.showError(this.translate.instant('Error submitting batch. Please try again.'));
         }
       }
     });
@@ -474,7 +476,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
           }, 100);
         },
         error: () => {
-          alert(this.translate.instant('Failed to download report'));
+          this.utilityService.showError(this.translate.instant('Failed to download report'));
         }
       });
     } else {
@@ -484,7 +486,7 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
 
   async generateAttendanceSheet() {
     if (!this.selectedBatch || !this.selectedBatch.assignedTeachers || this.selectedBatch.assignedTeachers.length === 0) {
-      alert(this.translate.instant('No teachers assigned to this batch.'));
+      this.utilityService.showError(this.translate.instant('No teachers assigned to this batch.'));
       return;
     }
 

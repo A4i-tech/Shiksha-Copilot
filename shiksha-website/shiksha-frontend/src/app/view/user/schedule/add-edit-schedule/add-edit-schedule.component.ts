@@ -368,7 +368,7 @@ export class AddEditScheduleComponent
   setSubjectValue(value: any) {
     this.resetClassChanges();
     if (value) {
-      this.subjectDropdownValue = this.utility.formatSubjectDropdown(value.data);
+      this.subjectDropdownValue = this.utility.formatSubjectDropdown(value.data, this.scheduleForm.get('board')?.value);
       if (this.subjectDropdownValue.length === 1) {
         this.scheduleForm
           .get('subject')
@@ -517,7 +517,7 @@ export class AddEditScheduleComponent
     const subjectValues = dropdownValueArray.filter((item: any) => {
       return value === item.class;
     });
-    this.subjectDropdownValue = this.utility.formatSubjectDropdown(subjectValues[0].data);
+    this.subjectDropdownValue = this.utility.formatSubjectDropdown(subjectValues[0].data, this.scheduleForm.get('board')?.value);
   }
 
 
@@ -604,7 +604,7 @@ export class AddEditScheduleComponent
       }
     ]
     if(subjects.length){
-      this.subjectDropdownValue = this.utility.formatSubjectDropdown(subjects)
+      this.subjectDropdownValue = this.utility.formatSubjectDropdown(subjects, this.editableItem?.data?.board)
     }
     this.setFormValues();
   }

@@ -170,7 +170,7 @@
 					<small class="form-control-error" *ngIf="submitted && f['videos']?.errors?.['required']">{{'Please select if videos to include' | translate}}.</small>
 					<div>
 							<button [hasPermission]="[getLessonType()?.type === 'plan' ? 'lesson-plan.generate' : 'lesson-resource.generate']" [disabled]="isEditable || learningOutcomes?.length === 0 || (submitBtnTxt === 'Regenerate Lesson Plan' && regenerationLimitReached)" type="submit"  class="btn-primary mt-4  text-sm md:text-lg  py-2 px-3 md:py-3 md:px-4">
-								{{submitBtnTxt | translate}}
+									{{submitBtnTxt | translate}}
 							</button>  
 					</div>
 
@@ -207,9 +207,14 @@
 (close)="confirm($event)"></app-delete-detail>
 
 <app-delete-detail *ngIf="showDraftPopup"
-[config]="{	
-	heading: draftPopupConfig.heading,	
+[config]="{
+	heading: draftPopupConfig.heading,
 	confirmationText : draftPopupConfig.confirmText,
 	primaryButtonLabel : 'Continue',
 	primaryButtonType : 'ok'}"
 (close)="confirmDraft($event)"></app-delete-detail>
+
+<app-delete-detail *ngIf="showExistsPopup"
+[config]="existsPopupConfig"
+[showCancelBtn]="true"
+(close)="onExistsPopupClose($event)"></app-delete-detail>

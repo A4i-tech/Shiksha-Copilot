@@ -12,6 +12,7 @@ const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME;
 
 // Dual auth: connection string (local dev) or DefaultAzureCredential (production)
+/** @type {BlobServiceClient} */
 let blobServiceClient;
 let sharedKeyCredential;
 
@@ -54,6 +55,19 @@ async function uploadToStorage(file, fileName, mimeType) {
         console.error("Error -> uploadToStorage", error);
         throw error;
     }
+}
+
+async function uploadStreamToStorage(stream, fileName, mimeType, onProgress) {
+    const containerClient = blobServiceClient.getContainerClient(containerName);
+    if (!await containerClient.exists()) await containerClient.create();
+
+    const blockBlobClient = containerClient.getBlockBlobClient(fileName);
+    await blockBlobClient.uploadStream(stream, 4 * 1024 * 1024, 2, {
+        blobHTTPHeaders: { blobContentType: mimeType },
+        onProgress,
+    });
+
+    return getPreSignedUrl(fileName, 7 * 24 * 60 * 60);
 }
 
 async function getPreSignedUrl(blobName, expiryInSeconds) {
@@ -112,6 +126,10 @@ async function getBlobContent(blobRef, contentType) {
     return {contentType: contentType || properties.contentType, content: buffer.toString("base64")};
 }
 
+async function deleteFromStorage(blobRef) {
+    return blobServiceClient.getContainerClient(containerName).deleteBlob(getBlobName(blobRef));
+}
+
 async function getPreSignedProfileImageUrl(userId) {
     const linkExpiryInSeconds = 7 * 24 * 60 * 60;
     const destinationObject = `${userId}_photo`;
@@ -130,4 +148,4 @@ async function getPreSignedFileUrl(filePath) {
     return fileUrl;
 }
 
-module.exports = { uploadToStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl, getBlobContent };
+module.exports = { uploadToStorage, uploadStreamToStorage, deleteFromStorage, getPreSignedProfileImageUrl, getPreSignedFileUrl, getBlobContent };

@@ -25,7 +25,7 @@ import { TranslateModule } from '@ngx-translate/core';
       <div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 class="text-lg font-semibold text-content">{{ 'Role List' | translate }}</h2>
-          <button type="button" class="btn-primary h-9 w-full sm:w-auto px-4" (click)="startCreate()">
+          <button type="button" class="btn-primary h-9 w-full sm:w-auto px-4" [disabled]="!canManage" (click)="startCreate()">
             <div class="flex items-center justify-center gap-2">
               <img src="assets/icons/E add.svg" alt="" class="w-4 h-4">
               <span>{{ 'Add Role' | translate }}</span>
@@ -63,7 +63,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
           <div class="md:col-span-3 flex flex-col sm:flex-row justify-end gap-2">
             <button type="button" class="btn-outline-primary h-9 w-full sm:w-20" (click)="reset()">{{ 'Cancel' | translate }}</button>
-            <button type="submit" class="btn-primary h-9 w-full sm:w-20" [disabled]="form.invalid">
+            <button type="submit" class="btn-primary h-9 w-full sm:w-20" [disabled]="form.invalid || !canManage">
               <div class="flex items-center justify-center gap-2">
                 <img src="assets/icons/check.svg" alt="" class="w-4 h-4">
                 <span>{{ 'Save' | translate }}</span>
@@ -89,13 +89,13 @@ import { TranslateModule } from '@ngx-translate/core';
               <span class="text-sm text-content-60">{{ role.scopeType }}</span>
               <button type="button" class="text-sm text-primary underline" (click)="viewUsers(role)">{{ role.userCount ?? '...' }} {{ 'assigned users' | translate }}</button>
               <div class="flex gap-2">
-                <button class="btn-outline-primary h-9 px-3" type="button" (click)="edit(role)">
+                <button class="btn-outline-primary h-9 px-3" type="button" [disabled]="!canManage" (click)="edit(role)">
                   <div class="flex items-center justify-center gap-2">
                     <img src="assets/icons/edit_primary.svg" alt="" class="w-4 h-4">
                     <span>{{ 'Edit' | translate }}</span>
                   </div>
                 </button>
-                <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSystem" (click)="openDelete(role)">
+                <button class="btn-danger h-9 px-3" type="button" [disabled]="!canManage || role.isSystem || role.userCount !== 0" (click)="openDelete(role)">
                   <div class="flex items-center justify-center gap-2">
                     <img src="assets/icons/delete.svg" alt="" class="w-4 h-4">
                     <span>{{ 'Delete' | translate }}</span>
@@ -135,13 +135,13 @@ import { TranslateModule } from '@ngx-translate/core';
                 </td>
                 <td class="px-4 py-6 text-sm border">
                   <div class="flex items-center justify-center gap-1">
-                    <button class="btn-outline-primary h-9 px-3" type="button" (click)="edit(role)">
+                    <button class="btn-outline-primary h-9 px-3" type="button" [disabled]="!canManage" (click)="edit(role)">
                       <div class="flex items-center justify-center gap-2">
                         <img src="assets/icons/edit_primary.svg" alt="" class="w-4 h-4">
                         <span>{{ 'Edit' | translate }}</span>
                       </div>
                     </button>
-                    <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSystem" (click)="openDelete(role)">
+                    <button class="btn-danger h-9 px-3" type="button" [disabled]="!canManage || role.isSystem || role.userCount !== 0" (click)="openDelete(role)">
                       <div class="flex items-center justify-center gap-2">
                         <img src="assets/icons/delete.svg" alt="" class="w-4 h-4">
                         <span>{{ 'Delete' | translate }}</span>
@@ -159,8 +159,8 @@ import { TranslateModule } from '@ngx-translate/core';
       </div>
     </div>
 
-    <div *ngIf="selectedRole" class="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-500 bg-opacity-75 p-4" role="dialog" aria-modal="true" aria-labelledby="assigned-users-title">
-      <div class="bg-white rounded shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div *ngIf="selectedRole" class="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-500 bg-opacity-75 p-4" role="dialog" aria-modal="true" aria-labelledby="assigned-users-title" (click)="closeUsers()">
+      <div class="bg-white rounded shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
         <div class="flex items-center justify-between gap-4 p-5 border-b">
           <div>
             <h2 id="assigned-users-title" class="text-xl font-semibold text-content">{{ selectedRole.name }}</h2>
@@ -226,6 +226,7 @@ export class RoleManagementComponent implements OnInit {
   assignedUserPage = 1;
   assignedUserPageSize = 10;
   form = this.fb.group({ name: ['', Validators.required], description: [''], scopeType: ['', Validators.required] });
+  canManage = this.utility.getPermission('role.manage')?.some((grant) => ['GLOBAL', 'UNBOUND'].includes(grant.scopeType)) === true;
   private baseUrl = environment.apiUrl;
 
   constructor(private http: HttpClient, private fb: FormBuilder, private utility: UtilityService) {}

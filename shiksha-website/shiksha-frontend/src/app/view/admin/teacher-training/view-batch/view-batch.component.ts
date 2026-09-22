@@ -193,13 +193,13 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error deleting batch:', error);
-          
+
           if (error.status === 403) {
-            alert(error.error.message);
+            this.utilityService.handleError(error);
           } else if (error.status === 404) {
-            alert(this.translate.instant('Batch not found.'));
+            this.utilityService.showError(this.translate.instant('Batch not found.'));
           } else {
-            alert(this.translate.instant('Error deleting batch. Please try again.'));
+            this.utilityService.showError(this.translate.instant('Error deleting batch. Please try again.'));
           }
         }
       });
@@ -216,13 +216,13 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error accessing batch:', error);
-          
+
           if (error.status === 403) {
-            alert(error.error.message);
+            this.utilityService.handleError(error);
           } else if (error.status === 404) {
-            alert(this.translate.instant('Batch not found.'));
+            this.utilityService.showError(this.translate.instant('Batch not found.'));
           } else {
-            alert(this.translate.instant('Error accessing batch details. Please try again.'));
+            this.utilityService.showError(this.translate.instant('Error accessing batch details. Please try again.'));
           }
         }
       });
@@ -260,13 +260,13 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error removing teacher from batch:', error);
-          
+
           if (error.status === 403) {
-            alert(error.error.message);
+            this.utilityService.handleError(error);
           } else if (error.status === 404) {
-            alert(this.translate.instant('Batch or teacher not found.'));
+            this.utilityService.showError(this.translate.instant('Batch or teacher not found.'));
           } else {
-            alert(this.translate.instant('Error removing teacher from batch. Please try again.'));
+            this.utilityService.showError(this.translate.instant('Error removing teacher from batch. Please try again.'));
           }
         }
       });
@@ -357,13 +357,13 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error assigning teachers to batch:', error);
-        
+
         if (error.status === 403) {
-          alert(error.error.message);
+          this.utilityService.handleError(error);
         } else if (error.status === 404) {
-          alert(this.translate.instant('Batch or teacher not found.'));
+          this.utilityService.showError(this.translate.instant('Batch or teacher not found.'));
         } else {
-          alert(this.translate.instant('Error assigning teachers to batch. Please try again.'));
+          this.utilityService.showError(this.translate.instant('Error assigning teachers to batch. Please try again.'));
         }
       }
     });
@@ -393,13 +393,13 @@ export class ViewBatchComponent implements OnInit, OnDestroy {
         },
         error: (error: HttpErrorResponse) => {
           console.error('Error submitting batch:', error);
-          
+
           if (error.status === 403) {
-            alert(error.error.message);
+            this.utilityService.handleError(error);
           } else if (error.status === 404) {
-            alert(this.translate.instant('Batch not found.'));
+            this.utilityService.showError(this.translate.instant('Batch not found.'));
           } else {
-            alert(this.translate.instant('Error submitting batch. Please try again.'));
+            this.utilityService.showError(this.translate.instant('Error submitting batch. Please try again.'));
           }
         }
       });

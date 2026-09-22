@@ -1,5 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TranslateService } from '@ngx-translate/core';
 import { QuestionBankService } from '../question-bank.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { slideInOutAnimation } from 'src/app/shared/utility/animations.util';
@@ -7,7 +8,7 @@ import { IdleService } from 'src/app/shared/services/idle.service';
 import { QuestionBankDownloadService } from 'src/app/shared/services/question-bank-download.service';
 import { BluePrintExportService } from 'src/app/shared/services/blue-print.export.service';
 import { formatMarks } from 'src/app/shared/utility/constant.util';
-import { contentItems, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { contentItems, isOrDividerAfter, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
 
 @Component({
@@ -55,6 +56,7 @@ export class QuestionBankViewComponent implements OnInit {
   readonly formatMarks = formatMarks;
   readonly contentItems = contentItems;
   readonly questionContentItems = questionContentItems;
+  readonly isOrDividerAfter = isOrDividerAfter;
 
   docTypes = [
     {
@@ -78,7 +80,8 @@ export class QuestionBankViewComponent implements OnInit {
     private router: Router,
     private idleService: IdleService,
     private questionBankDownloadService: QuestionBankDownloadService,
-    private bluePrintExportService: BluePrintExportService
+    private bluePrintExportService: BluePrintExportService,
+    public translateService: TranslateService
   ) {
     this.route.params.subscribe((params) => {
       this.questionBankId = params['id'];
@@ -99,9 +102,19 @@ export class QuestionBankViewComponent implements OnInit {
       .subscribe({
         next: (val: any) => {
           this.questionBankDetails = val.data;
+          // Display-only label; the canonical `subject` field is unchanged and still used below.
+          this.questionBankDetails.subjectLabel = this.translateService.instant(this.questionBankDetails.subject, { board: this.questionBankDetails.board });
           this.questionBank = this.questionBankDetails.questionBank
+          // Legacy blueprints saved before answerCount became required have no value on the
+          // section. Normalise once here so marks, template bindings and the download service
+          // all read a number instead of NaN.
+          this.questionBank.questions?.forEach((section: any) => {
+            if (section.answerCount === undefined || section.answerCount === null) {
+              section.answerCount = section.numberOfQuestions;
+            }
+          });
           this.generatedTotalMarks = this.questionBank.questions.reduce((sum: number, section: any) => (
-            sum + Number(section.numberOfQuestions || 0) * Number(section.marksPerQuestion || 0)
+            sum + Number(section.answerCount) * Number(section.marksPerQuestion)
           ), 0);
           this.questionBankService.getPaperConfig({
             board: this.questionBankDetails.board,
@@ -109,6 +122,18 @@ export class QuestionBankViewComponent implements OnInit {
             subjectName: this.questionBankDetails.subject
           }).subscribe((config: any) => {
             this.questionTypeLabels = Object.fromEntries(config.questionTypes.map((type: any) => [type.key, type.label]));
+          });
+
+          (this.questionBankDetails.bluePrintTemplate || []).forEach((questionBankObjective: any) => {
+            questionBankObjective.questionDistribution = (questionBankObjective.questionDistribution || []).map((objective: any) => {
+              return {
+                ...objective,
+                name: this.translateService.instant(objective.objective, {
+                  board: this.questionBankDetails.board,
+                  subject: this.questionBankDetails.subject,
+                }),
+              };
+            });
           });
 
           if (this.questionBank.questions.length) {
@@ -145,7 +170,7 @@ export class QuestionBankViewComponent implements OnInit {
         result.push({
           unitName: entry.unitName,
           type,
-          objective: entry.objective,
+          name: entry.name,
           marks: marksPerQuestion
         });
       });
@@ -173,12 +198,12 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   downloadQp() {
-    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
+    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Question paper downloaded successfully!');
   }
 
   downloadAnswerKey() {
-    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, questionTypeLabels: this.questionTypeLabels });
+    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Answer key downloaded successfully!');
   }
 
@@ -192,7 +217,7 @@ export class QuestionBankViewComponent implements OnInit {
       schoolName: this.questionBankDetails?.questionBank?.metadata?.schoolName,
       medium: this.questionBankDetails?.medium,
       class: this.questionBankDetails?.grade,
-      subject: this.questionBankDetails?.subject,
+      subject: this.questionBankDetails?.subjectLabel,
       examinationName: this.questionBankDetails?.examinationName,
       totalMarks: this.questionBankDetails?.totalMarks
     }

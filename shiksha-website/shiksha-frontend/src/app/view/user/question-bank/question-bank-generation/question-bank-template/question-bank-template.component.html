@@ -160,7 +160,7 @@
         [ngClass]="sourceBorderClass(q.source)"
         [attr.title]="wouldExceedTotal(q) ? ('Exceeds total marks — remove from Selected first' | translate) : null">
         <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start mb-1">
-          <p class="text-sm text-gray-800 line-clamp-3 flex-1 sm:mr-2 pool-item__text">{{ questionText(q) }}</p>
+          <p class="text-sm text-gray-800 flex-1 sm:mr-2 pool-item__text">{{ questionText(q) }}</p>
           <app-question-tags [question]="q"></app-question-tags>
         </div>
       </div>

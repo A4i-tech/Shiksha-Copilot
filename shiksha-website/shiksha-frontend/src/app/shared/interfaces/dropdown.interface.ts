@@ -27,4 +27,5 @@ export interface DropDownConfig {
   selectAllValue?: string;
   required?: boolean;
   openOnSelect?: boolean;
+  translateParams?: Record<string, unknown>;
 }

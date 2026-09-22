@@ -98,7 +98,7 @@ class UserController extends BaseController {
   }
 
   async uploadProfileImage(req, res) {
-    if (!req.file.path) {
+    if (!req.file) {
       return res
         .status(400)
         .json({ success: false, message: "No file uploaded" });
@@ -106,7 +106,7 @@ class UserController extends BaseController {
 
     const result = await this.manager.uploadProfileImage(
       req.user._id,
-      req.file.path
+      req.file
     );
 
     if (result.success) {
@@ -127,7 +127,7 @@ class UserController extends BaseController {
   }
   async activate(req, res) {
     const { id } = req.params;
-    let result = await this.manager.activate(id, req.permissions);
+    let result = await this.manager.activate(id, req.permissions, req.user.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser));
 
     if (result.success) {
       return res.status(200).json(result);
@@ -138,7 +138,7 @@ class UserController extends BaseController {
 
   async deactivate(req, res) {
     const { id } = req.params;
-    let result = await this.manager.deactivate(id, req.permissions);
+    let result = await this.manager.deactivate(id, req.permissions, req.user.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser));
 
     if (result.success) {
       return res.status(200).json(result);

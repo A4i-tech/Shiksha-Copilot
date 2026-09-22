@@ -36,7 +36,6 @@ shiksha-backend/
 ├── services/              # Integration with external services
 ├── uploads/               # File upload directory
 ├── validations/           # Payload validators
-├── worker/                # Background workers
 ├── .env.example           # Example environment variable configuration
 ├── .gitignore             # Files and directories to ignore in Git
 ├── README.md              # Project documentation

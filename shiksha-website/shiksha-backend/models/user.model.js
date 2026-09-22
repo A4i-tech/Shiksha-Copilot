@@ -34,6 +34,8 @@ const classSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  boysStrength: { type: Number, min: 0 },
+  girlsStrength: { type: Number, min: 0 },
 });
 
 const identitySchema = new mongoose.Schema({

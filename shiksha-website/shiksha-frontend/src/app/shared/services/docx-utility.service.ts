@@ -327,7 +327,7 @@ export class DocxUtilityService {
     const medium = formData?.medium ? formData.medium.charAt(0).toUpperCase() + formData.medium.slice(1) : '';
     const chapter = [formData?.orderNumber, formData?.topics].filter(Boolean).join('. ');
     const subTopics = Array.isArray(formData?.subTopics) ? formData.subTopics.join(', ') : formData?.subTopics || '';
-    const subject = formData?.subjects ? this.utilityService.getSubjectDisplayName(formData.subjects) : '';
+    const subject = formData?.subjects ? this.utilityService.getSubjectDisplayName(formData.subjects, formData.board) : '';
     return {
       default: new Header({
         children: [
