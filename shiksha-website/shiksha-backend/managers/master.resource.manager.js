@@ -8,8 +8,7 @@ const MasterResource = require("../models/master.resource.model");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const { checkRow } = require("../validations/master.resource.bulk.validation");
 const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
-const { createData, subjectRegex, titleRegex, mediumRegex, boardRegex, standardRegex, orderNumberRegex } = require("../helper/data.helper");
-const { uniqueSubsets } = require("../helper/filter.helper");
+const { subjectRegex, titleRegex, mediumRegex, boardRegex, standardRegex, orderNumberRegex } = require("../helper/data.helper");
 const formatApiReponse = require("../helper/response");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const { sortDataBySubTopics, transformSections, transformOldResources, getSemester, formatSubject } = require("../helper/formatter");
@@ -151,30 +150,6 @@ class MasterResourceManager extends BaseManager {
 			"Resource plan generated successfully",
 			savedResourcePlan
 		);
-	}
-
-	async comboScript(board, medium) {
-		const chapters = await Chapter.find({ board, medium });
-		for (const chapter of chapters) {
-			const subject = await this.masterSubjectDao.getById(chapter.subjectId);
-			let subTopicSubSets = uniqueSubsets(chapter.subTopics);
-			for (const subTopic of subTopicSubSets) {
-				const newResourcePlan = createData(false, chapter, subTopic, subject);
-				// Matches the unique index key.
-				const existing = await this.dao.getOne({
-					board: newResourcePlan.board,
-					class: newResourcePlan.class,
-					subject: newResourcePlan.subject,
-					medium: newResourcePlan.medium,
-					lessonName: newResourcePlan.lessonName,
-					isAll: newResourcePlan.isAll,
-					semester: newResourcePlan.semester,
-				});
-				if (existing) continue;
-				await this.dao.create(newResourcePlan);
-			}
-		}
-		return formatApiResponse(true, "", "Data inserted!");
 	}
 
 	async getSubtopicResourceList(chapterId, templateIds) {

@@ -48,15 +48,6 @@ router.post(
 );
 
 router.post(
-	"/resource-plan/combo",
-	isAuthenticated,
-	requirePermission("content.manage"),
-	asyncMiddleware(
-		masterResourceController.comboScript.bind(masterResourceController)
-	)
-);
-
-router.post(
 	"/resource-plan/learning-outcomes",
 	isAuthenticated,
 	requirePermission("lesson-resource.generate"),
