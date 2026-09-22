@@ -17,7 +17,7 @@ class TestTranslateJsonEndpoint:
             },
         }
 
-        with patch("app.routers.question_paper.detect", return_value="en"):
+        with patch("app.services.translation.language.detect", return_value="en"):
             response = await translate_json_content_to_kannada(**request_data)
 
         assert response == request_data["json_data"]
@@ -33,8 +33,8 @@ class TestTranslateJsonEndpoint:
             },
         }
 
-        with patch("app.routers.question_paper.detect", return_value="en"), patch(
-            "app.routers.question_paper.TranslationService.translate_json_async",
+        with patch("app.services.translation.language.detect", return_value="en"), patch(
+            "app.routers.question_paper.translation_svc.translate",
             new_callable=AsyncMock,
             return_value=request_data["json_data"],
         ):
@@ -50,7 +50,7 @@ class TestTranslateJsonEndpoint:
             "json_data": {"title": "Test"},
         }
         with patch(
-            "app.routers.question_paper.TranslationService.translate_json_async",
+            "app.routers.question_paper.translation_svc.translate",
             new_callable=AsyncMock,
             return_value=request_data["json_data"],
         ):
@@ -88,7 +88,7 @@ class TestTranslateJsonEndpoint:
         }
         json_data = request_data["json_data"]
         with patch(
-            "app.routers.question_paper.TranslationService.translate_json_async",
+            "app.routers.question_paper.translation_svc.translate",
             new_callable=AsyncMock,
             return_value=json_data,
         ):
@@ -102,7 +102,7 @@ class TestHelperFunctions:
 
     def test_get_sample_text_from_dict(self):
         """Test extracting sample text from nested dict."""
-        from app.routers.question_paper import get_sample_text
+        from app.services.translation.language import get_sample_text
 
         data = {"instructions": "This is a test instruction", "title": "Test"}
 
@@ -111,7 +111,7 @@ class TestHelperFunctions:
 
     def test_get_sample_text_from_list(self):
         """Test extracting sample text from list."""
-        from app.routers.question_paper import get_sample_text
+        from app.services.translation.language import get_sample_text
 
         data = [
             {"question_text": "What is this test question?"},
@@ -123,14 +123,14 @@ class TestHelperFunctions:
 
     def test_get_sample_text_empty_data(self):
         """Test with empty data structure."""
-        from app.routers.question_paper import get_sample_text
+        from app.services.translation.language import get_sample_text
 
         assert get_sample_text({}) == ""
         assert get_sample_text([]) == ""
 
     def test_get_sample_text_prioritizes_instructions(self):
         """Test that instructions field is prioritized."""
-        from app.routers.question_paper import get_sample_text
+        from app.services.translation.language import get_sample_text
 
         data = {
             "title": "Short",
@@ -146,7 +146,7 @@ class TestLanguageMapping:
 
     def test_language_map_complete(self):
         """Test that language map contains expected languages."""
-        from app.routers.question_paper import LANGUAGE_MAP
+        from app.services.translation.language import LANGUAGE_MAP
 
         expected_languages = ["english", "kannada", "hindi", "telugu", "tamil"]
         for lang in expected_languages:
@@ -155,7 +155,7 @@ class TestLanguageMapping:
 
     def test_language_map_iso_codes(self):
         """Test that language map values are valid ISO 639-1 codes."""
-        from app.routers.question_paper import LANGUAGE_MAP
+        from app.services.translation.language import LANGUAGE_MAP
 
         iso_codes = {"en", "kn", "hi", "te", "ta", "ml", "mr", "bn", "gu", "pa", "ur"}
         for code in LANGUAGE_MAP.values():
