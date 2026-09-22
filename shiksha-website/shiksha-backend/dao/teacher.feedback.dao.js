@@ -1,6 +1,7 @@
 const TeacherResourceFeedback = require("../models/feedback.resource.model");
 const BaseDao = require("./base.dao.js");
 
+/** @extends {BaseDao<typeof TeacherResourceFeedback>} */
 class TeacherResourceFeedbackDao extends BaseDao {
 	constructor() {
 		super(TeacherResourceFeedback);
@@ -8,7 +9,7 @@ class TeacherResourceFeedbackDao extends BaseDao {
 
 	async deleteByTeacherAndResourceId(teacherId, resourceId) {
 		try {
-			const result = await TeacherResourceFeedback.findOneAndUpdate(
+			const result = await this.Model.findOneAndUpdate(
 				{ teacherId, resourceId, isDeleted: { $ne: true } },
 				{ $set: { isDeleted: true } },
 				{ new: true, useFindAndModify: false }
@@ -24,7 +25,7 @@ class TeacherResourceFeedbackDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		const result = await TeacherResourceFeedback.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: id,
 			},

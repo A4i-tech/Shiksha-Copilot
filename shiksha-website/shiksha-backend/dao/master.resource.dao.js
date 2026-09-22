@@ -2,6 +2,7 @@ const masterResourceAggregation = require("../aggregation/master.resource.aggreg
 const MasterResource = require("../models/master.resource.model.js");
 const BaseDao = require("./base.dao.js");
 
+/** @extends {BaseDao<typeof MasterResource>} */
 class MasterResourceDao extends BaseDao {
 	constructor() {
 		super(MasterResource);
@@ -49,7 +50,7 @@ class MasterResourceDao extends BaseDao {
 	}
 
 	async update(id, updates, session = null) {
-		const result = await MasterResource.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			{
 				_id: id,
 			},
@@ -65,7 +66,7 @@ class MasterResourceDao extends BaseDao {
 	}
 
 	async updateByFilter(filter, updateData) {
-		const result = await MasterResource.findOneAndUpdate(
+		const result = await this.Model.findOneAndUpdate(
 			filter,
 			{ $set: updateData },
 			{ new: true, timestamps:true }

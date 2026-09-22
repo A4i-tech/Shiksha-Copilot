@@ -188,7 +188,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.languageDropdownOptions = [...DEFAULT_LANGUAGE, ...LOC_LANGUAGES.flatMap(item => item.value)];
     this.setPreferredLanguage();
 
-    // Ensure initial validation state is correct
     this.updateFormValidators();
   }
 
@@ -411,7 +410,6 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       const medium = this.f.medium.value;
       const board = this.f.board.value;
 
-      // Extract details from selection
       const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val.value);
       const subjectName = selectedSubjectObj.canonicalName;
       const subjectId = selectedSubjectObj.value;
@@ -595,7 +593,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   previewQuestions(): void {
-    const blueprint = JSON.stringify(this.questionBankBluePrintData);
+    const blueprint = JSON.stringify([this.questionBankBluePrintData, this.f.language.value]);
     if (this.selectedQuestions.length && blueprint === this.previewBlueprint) {
       this.updatePreview();
       this.currentStep = 4;
@@ -952,7 +950,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const rawSubTopics = formVal.subTopic ? (Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic]) : [];
 
     if (rawSubTopics.length > 0) {
-      subTopicsPayload = rawSubTopics; // Use user selection (whether text or ID)
+      subTopicsPayload = rawSubTopics;
     } else {
       subTopicsPayload = Array.isArray(formVal.chapter) ? formVal.chapter : [formVal.chapter];
     }

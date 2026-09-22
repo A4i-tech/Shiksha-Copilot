@@ -10,7 +10,7 @@ import shutil
 import logging
 import tempfile
 from abc import ABC, abstractmethod
-from typing import List, Optional, TypeVar, Union, overload
+from typing import Optional, TypeVar, overload
 from app.config import settings
 from app.utils.blob_store import BlobStore
 from pydantic import BaseModel
@@ -46,15 +46,15 @@ class BaseRagAdapter(ABC):
         self.completion_llm = completion_llm
         self.embedding_llm = embedding_llm
         self.metadata_filter = metadata_filter
-        self._rag_ops: Optional[Union[InMemRagOps, QdrantRagOps]] = None
+        self._rag_ops: Optional[InMemRagOps | QdrantRagOps] = None
 
     @abstractmethod
-    async def initialize(self) -> Union[InMemRagOps, QdrantRagOps]:
+    async def initialize(self) -> InMemRagOps | QdrantRagOps:
         """
         Initialize and return the RAG operations instance.
 
         Returns:
-            Union[InMemRagOps, QdrantRagOps]: The initialized RAG operations instance
+            InMemRagOps | QdrantRagOps: The initialized RAG operations instance
         """
         pass
 
@@ -72,21 +72,21 @@ class BaseRagAdapter(ABC):
         pass
 
     @property
-    def rag_ops(self) -> Union[InMemRagOps, QdrantRagOps]:
+    def rag_ops(self) -> InMemRagOps | QdrantRagOps:
         """Get the RAG operations instance."""
         if self._rag_ops is None:
             raise RuntimeError("RAG adapter not initialized. Call initialize() first.")
         return self._rag_ops
 
     @overload
-    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: None = None) -> AgentChatResponse:
+    async def chat_with_index(self, curr_message: str, chat_history: list[ChatMessage], output_cls: None = None) -> AgentChatResponse:
         ...
 
     @overload
-    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] = ...) -> RESPONSE_TYPE:
+    async def chat_with_index(self, curr_message: str, chat_history: list[ChatMessage], output_cls: type[T] = ...) -> RESPONSE_TYPE:
         ...
 
-    async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] | None = None) -> AgentChatResponse | RESPONSE_TYPE:
+    async def chat_with_index(self, curr_message: str, chat_history: list[ChatMessage], output_cls: type[T] | None = None) -> AgentChatResponse | RESPONSE_TYPE:
         return await self.rag_ops.chat_with_index(curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls)
 
     async def index_exists(self) -> bool:

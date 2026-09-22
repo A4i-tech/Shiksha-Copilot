@@ -4,6 +4,7 @@ const BaseDao = require("./base.dao");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 
+/** @extends {BaseDao<typeof QuestionBankConfiguration>} */
 class QuestionBankDao extends BaseDao {
   constructor() {
     super(QuestionBankConfiguration);
@@ -53,9 +54,9 @@ class QuestionBankDao extends BaseDao {
       pipeline.push({ $skip: (page - 1) * limit }, { $limit: limit });
     }
 
-    const results = await QuestionBankConfiguration.aggregate(pipeline);
+    const results = await this.Model.aggregate(pipeline);
 
-    const totalItems = await QuestionBankConfiguration.countDocuments(
+    const totalItems = await this.Model.countDocuments(
       { ...processedFilters, teacherId: new ObjectId(teacherId) }
     );
 
@@ -81,7 +82,7 @@ class QuestionBankDao extends BaseDao {
     if (!ObjectId.isValid(id)) {
       throw new Error("Invalid ID provided for getById");
     }
-    let result = await QuestionBankConfiguration.findOne({
+    let result = await this.Model.findOne({
       _id: id,
     }).populate("questionBank");
     return result;
