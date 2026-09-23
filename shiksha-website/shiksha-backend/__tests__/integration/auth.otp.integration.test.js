@@ -35,7 +35,7 @@ describe("Auth flow (E2E)", () => {
     expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.success).toBe(true);
     expect(verifyRes.body.data.token).toBeDefined();
-    expect(verifyRes.body.data.user.phone).toBe(superUserPhone);
+    expect(verifyRes.body.data.user.identity.phone).toBe(superUserPhone);
   });
 
   it("rejects the wrong PIN, then still allows a correct login right after", async () => {

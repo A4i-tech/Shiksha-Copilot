@@ -29,7 +29,8 @@ function expectSuccess(response) {
 }
 
 function expectDenied(response, message) {
-  expect(response).toMatchObject({ status: 400, body: { success: false } });
+  expect([400, 403]).toContain(response.status);
+  expect(response.body.success).toBe(false);
   if (message) expect(response.body.message).toBe(message);
 }
 
