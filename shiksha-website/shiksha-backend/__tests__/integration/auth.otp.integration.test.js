@@ -1,6 +1,7 @@
 const request = require("supertest");
 const { baseURL, superUserPhone, superUserPin, loginAsSuperUser } = require("./superuser.helper");
 
+
 describe("Auth flow", () => {
   let rootToken, suUserId;
 
