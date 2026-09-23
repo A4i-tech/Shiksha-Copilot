@@ -30,4 +30,4 @@ See [Available pipelines](#available-pipelines) for what each pipeline config do
 | Pipeline | Description |
 |----------|--------------|
 | `chapter.yaml` | Processes a raw government textbook PDF into structured chapter metadata: table of contents, learning outcomes, and topic groups. |
-| `period_plan_chapter_grouping.yaml` | Reads a Bloom-taxonomy learning-outcome xlsx workbook and builds one period-plan API payload per chapter/topic-group. |
+| `period_plan.yaml` | Processes a raw government textbook PDF and builds one period-plan API payload per chapter/topic-group. |
