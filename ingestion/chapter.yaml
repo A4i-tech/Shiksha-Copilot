@@ -214,6 +214,8 @@ steps:
       assertions:
         - expr: '([ .topic_groups[].topics[] ] - [ .topics[].title ]) | unique | length == 0'
           feedback: "Unknown topics in topic_groups"
+        - expr: '([ .topics[].title ] - [ .topic_groups[].topics[] ]) | unique | length == 0'
+          feedback: "Topics missing from topic_groups: ${([ .topics[].title ] - [ .topic_groups[].topics[] ]) | unique}"
       schema:
         type: object
         properties:
