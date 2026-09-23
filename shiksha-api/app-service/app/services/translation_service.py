@@ -1,4 +1,4 @@
-from copy import copy
+from copy import deepcopy
 from typing import Any, Iterable
 
 from app.services.translation.factory import TranslatorFactory, simple
@@ -74,12 +74,10 @@ class TranslationService:
 
 
     def zip(self, data: dict[str, Any], values: Iterable[tuple[tuple, str]]):
-        data = copy(data)
+        data = deepcopy(data)
         for path, value in values:
             node = data
             for key in path[:-1]:
-                child = copy(node[key])
-                node[key] = child
-                node = child
+                node = node[key]
             node[path[-1]] = value
         return data

@@ -17,6 +17,7 @@ import logging
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.qp_svc = QuestionPaperService()
+    app.state.translation_svc = TranslationService()
     async with app.state.qp_svc:
         yield
 
@@ -25,8 +26,11 @@ def svc(request: Request) -> QuestionPaperService:
     return request.app.state.qp_svc
 
 
+def translation_dep(request: Request) -> TranslationService:
+    return request.app.state.translation_svc
+
+
 logger = logging.getLogger(__name__)
-translation_svc = TranslationService()
 
 router = APIRouter(prefix="/question-paper", tags=["Question Paper Generation"], lifespan=lifespan)
 
@@ -34,7 +38,8 @@ router = APIRouter(prefix="/question-paper", tags=["Question Paper Generation"],
 @router.post("/translate-json", summary="Translate JSON Content (Auto-Detect Source)")
 async def translate_json_content_to_kannada(
     target_language: str = Body(..., description="The target language to translate to.", examples=["Kannada", "Hindi"]),
-    json_data: Dict[str, Any] = Body(..., description="The JSON object to be translated.")
+    json_data: Dict[str, Any] = Body(..., description="The JSON object to be translated."),
+    translation: TranslationService = Depends(translation_dep),
 ) -> Dict[str, Any]:
     """
     Accepts a JSON object and a target language.
@@ -59,7 +64,7 @@ async def translate_json_content_to_kannada(
     logger.info("Using TranslationService to translate from %s to %s", source_lang_code, target_iso)
 
     try:
-        translated_data = await translation_svc.translate(json_data, source_lang_code, target_iso)
+        translated_data = await translation.translate(json_data, source_lang_code, target_iso)
     except TranslationProviderError as e:
         logger.error("Translator returned an invalid response: %s", e)
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Translation service returned an invalid response") from e

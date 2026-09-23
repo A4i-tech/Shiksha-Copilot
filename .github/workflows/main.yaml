@@ -63,6 +63,8 @@ jobs:
           pip install poetry
           poetry install
       - name: Run integration tests
+        # --no-cov: tests run against a live deployed service; instrumentation is
+        # unavailable. The coverage badge therefore reflects unit tests only.
         working-directory: shiksha-api/app-service
         env:
           SHIKSHA_BASE_URL: ${{ needs.cd-api.outputs['service-url'] }}
@@ -246,6 +248,9 @@ jobs:
           path: regression_report.csv
 
   integration-backend:
+    # Required GitHub secrets: SHIKSHA_SU_PHONE (pre-seeded superuser phone number),
+    # SHIKSHA_SU_PIN (superuser PIN). SHIKSHA_BASE_URL is derived automatically from
+    # needs.cd-backend.outputs['service-url'] — not a manually configured secret.
     name: Backend Integration Tests
     needs: [cd-backend, health-check]
     concurrency:

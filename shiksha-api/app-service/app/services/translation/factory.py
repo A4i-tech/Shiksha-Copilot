@@ -18,7 +18,12 @@ TranslationParser: TypeAlias = Callable[[str], TranslatorBase | None]
 
 def sequential(parsers: tuple[TranslationParser, ...]) -> TranslatorFactory:
     """Sequentially tries each parser in iteration order, returns first succeeding parser."""
-    return lambda target: next(t for p in parsers if (t := p(target)))
+    def _factory(target: str) -> TranslatorBase:
+        for p in parsers:
+            if t := p(target):
+                return t
+        raise ValueError(f"no translator matched target {target!r}")
+    return _factory
 
 
 def fallback_noop(target: str) -> NoOpTranslator:
