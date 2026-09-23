@@ -14,7 +14,19 @@ ADMIN_ROUTES = [
 
 def test_admin_panel_actionability(logged_in_admin_page):
     failures = []
+    # Dismiss any active toast notifications so they do not intercept clicks
+    logged_in_admin_page.evaluate('() => document.querySelectorAll(".overlay-container, .ngx-toastr").forEach(el => el.remove())')
+
+    hamburger = logged_in_admin_page.locator("button[aria-label='Open navigation menu']")
+    is_mobile = hamburger.is_visible()
+
     for name, href in ADMIN_ROUTES:
+        if is_mobile:
+            sidebar = logged_in_admin_page.locator("nav.sidebar")
+            if not sidebar.is_visible() or "hide" in (sidebar.get_attribute("class") or ""):
+                hamburger.click()
+                logged_in_admin_page.wait_for_timeout(300)
+
         link = logged_in_admin_page.locator(f'a.menu-item[href="{href}"]').first
         try:
             link.wait_for(state="visible", timeout=5000)

@@ -29,3 +29,9 @@ superset/.env
 # Accessibility tests
 tests/accessibility/node_modules
 tests/accessibility/results
+
+# Network benchmark large artifacts
+tests/network_benchmarks/har/
+tests/network_benchmarks/*.zip
+*.har
+docmost_current_page.md

@@ -16,6 +16,8 @@ VERSION_MATRIX = [
     {"name": "Playwright WebKit / Safari Engine", "type": "webkit", "version": "latest", "download": False},
     {"name": "Google Chrome (Installed)", "type": "chromium", "version": "system", "channel": "chrome", "download": False},
     {"name": "Microsoft Edge (Installed)", "type": "chromium", "version": "system", "channel": "msedge", "download": False},
+    {"name": "Chrome Mobile (Pixel 7 Android)", "type": "chromium", "device": "Pixel 7", "version": "latest", "download": False},
+    {"name": "Mobile Safari (iPhone 13 iOS)", "type": "webkit", "device": "iPhone 13", "version": "latest", "download": False},
     {"name": "Chrome v134", "type": "chromium", "browser": "chrome", "version": "134.0.6998.35", "download": True},
     {"name": "Chrome v133", "type": "chromium", "browser": "chrome", "version": "133.0.6943.98", "download": True},
     {"name": "Chrome v132", "type": "chromium", "browser": "chrome", "version": "132.0.6834.110", "download": True},
@@ -64,6 +66,7 @@ def run_smoke_on_version(config):
     name = config["name"]
     b_type = config.get("type", "chromium")
     channel = config.get("channel")
+    device = config.get("device")
     version = config["version"]
     exec_path = None
 
@@ -73,6 +76,7 @@ def run_smoke_on_version(config):
             return {
                 "Category": "Smoke Test",
                 "Browser / Target": name,
+                "Device": device if device else "Desktop",
                 "Engine": b_type,
                 "Version": version,
                 "Status": "SKIPPED (DOWNLOAD FAILED)",
@@ -80,22 +84,25 @@ def run_smoke_on_version(config):
                 "Issues / Details": "Failed to download browser binary"
             }
 
-    cmd = ["pytest", "tests/smoke/test_teacher_panel.py", f"--browser-type={b_type}"]
+    cmd = ["pytest", "tests/smoke/test_teacher_panel.py", "tests/smoke/test_admin_panel.py", f"--browser-type={b_type}"]
     if channel:
         cmd.append(f"--channel={channel}")
     if exec_path:
         cmd.append(f"--browser-path={exec_path}")
+    if device:
+        cmd.append(f"--device={device}")
 
     start = time.time()
     res = subprocess.run(cmd, capture_output=True, text=True)
     dur = round(time.time() - start, 2)
 
     status = "PASSED" if res.returncode == 0 else "FAILED"
-    details = "All sidebar navigation items actionable" if status == "PASSED" else res.stdout[-250:].strip()
+    details = "Teacher and Admin navigation items actionable" if status == "PASSED" else res.stdout[-250:].strip()
 
     return {
         "Category": "Smoke Test",
         "Browser / Target": name,
+        "Device": device if device else "Desktop",
         "Engine": b_type,
         "Version": version,
         "Status": status,
@@ -134,6 +141,7 @@ def run_accessibility_scan():
             a11y_rows.append({
                 "Category": "Accessibility (WCAG 2.1)",
                 "Browser / Target": run.get("url"),
+                "Device": "Desktop",
                 "Engine": "Chromium + axe-core",
                 "Version": data.get("axeCoreVersion", "4.10.x"),
                 "Status": status,
@@ -145,6 +153,7 @@ def run_accessibility_scan():
         a11y_rows.append({
             "Category": "Accessibility (WCAG 2.1)",
             "Browser / Target": "All Pages",
+            "Device": "Desktop",
             "Engine": "axe-core",
             "Version": "4.10",
             "Status": "PASSED" if res.returncode == 0 else "FAILED",
@@ -169,7 +178,7 @@ def main():
         futures = {executor.submit(run_smoke_on_version, cfg): cfg for cfg in VERSION_MATRIX}
         for f in as_completed(futures):
             r = f.result()
-            print(f"  --> {r['Browser / Target']:35} | {r['Version']:12} | {r['Status']:8} ({r['Duration (s)']}s)")
+            print(f"  --> {r['Browser / Target']:35} | {r.get('Device', 'Desktop'):10} | {r['Version']:12} | {r['Status']:8} ({r['Duration (s)']}s)")
             smoke_results.append(r)
 
     matrix_order = {cfg["name"]: i for i, cfg in enumerate(VERSION_MATRIX)}
@@ -183,7 +192,7 @@ def main():
 
     with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=[
-            "Category", "Browser / Target", "Engine", "Version", "Status", "Duration (s)", "Issues / Details"
+            "Category", "Browser / Target", "Device", "Engine", "Version", "Status", "Duration (s)", "Issues / Details"
         ])
         writer.writeheader()
         writer.writerows(all_rows)

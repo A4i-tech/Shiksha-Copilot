@@ -211,4 +211,17 @@ def run_suite():
     print("=" * 70, flush=True)
 
 if __name__ == "__main__":
-    run_suite()
+    import argparse
+    parser = argparse.ArgumentParser(description="Network speed test suite")
+    parser.add_argument("--aggregate", action="store_true", help="Run aggregate page benchmark as well")
+    parser.add_argument("--only-aggregate", action="store_true", help="Run only aggregate page benchmark")
+    args = parser.parse_args()
+
+    if args.only_aggregate:
+        from run_aggregate_page_tests import run_aggregate_page_benchmark
+        run_aggregate_page_benchmark()
+    else:
+        run_suite()
+        if args.aggregate:
+            from run_aggregate_page_tests import run_aggregate_page_benchmark
+            run_aggregate_page_benchmark()

@@ -1,0 +1,43 @@
+Category,Browser / Target,Device,Engine,Version,Status,Duration (s),Issues / Details
+Smoke Test,Playwright Chromium (Headless),Desktop,chromium,latest,PASSED,15.99,All sidebar navigation items actionable
+Smoke Test,Playwright Firefox (Headless),Desktop,firefox,latest,PASSED,19.1,All sidebar navigation items actionable
+Smoke Test,Playwright WebKit / Safari Engine,Desktop,webkit,latest,PASSED,19.58,All sidebar navigation items actionable
+Smoke Test,Google Chrome (Installed),Desktop,chromium,system,PASSED,16.22,All sidebar navigation items actionable
+Smoke Test,Microsoft Edge (Installed),Desktop,chromium,system,PASSED,16.46,All sidebar navigation items actionable
+Smoke Test,Chrome Mobile (Pixel 7 Android),Pixel 7,chromium,latest,PASSED,9.82,Teacher and Admin mobile drawer navigation actionable
+Smoke Test,Mobile Safari (iPhone 13 iOS),iPhone 13,webkit,latest,PASSED,10.65,Teacher and Admin mobile drawer navigation actionable
+Smoke Test,Chrome v134,Desktop,chromium,134.0.6998.35,PASSED,16.32,All sidebar navigation items actionable
+Smoke Test,Chrome v133,Desktop,chromium,133.0.6943.98,PASSED,40.93,All sidebar navigation items actionable
+Smoke Test,Chrome v132,Desktop,chromium,132.0.6834.110,PASSED,33.35,All sidebar navigation items actionable
+Smoke Test,Chrome v131,Desktop,chromium,131.0.6778.85,PASSED,28.87,All sidebar navigation items actionable
+Smoke Test,Chrome v130,Desktop,chromium,130.0.6723.69,PASSED,17.79,All sidebar navigation items actionable
+Smoke Test,Chrome v129,Desktop,chromium,129.0.6668.70,PASSED,27.38,All sidebar navigation items actionable
+Smoke Test,Chrome v128,Desktop,chromium,128.0.6613.84,PASSED,28.54,All sidebar navigation items actionable
+Smoke Test,Chrome v127,Desktop,chromium,127.0.6533.72,PASSED,18.85,All sidebar navigation items actionable
+Smoke Test,Chrome v126,Desktop,chromium,126.0.6478.61,PASSED,269.52,All sidebar navigation items actionable
+Smoke Test,Chrome v125,Desktop,chromium,125.0.6422.141,PASSED,13.51,All sidebar navigation items actionable
+Smoke Test,Chrome v124,Desktop,chromium,124.0.6367.91,PASSED,269.0,All sidebar navigation items actionable
+Smoke Test,Chrome v123,Desktop,chromium,123.0.6312.86,PASSED,300.44,All sidebar navigation items actionable
+Smoke Test,Chrome v122,Desktop,chromium,122.0.6261.94,PASSED,299.13,All sidebar navigation items actionable
+Smoke Test,Chrome v121,Desktop,chromium,121.0.6167.85,PASSED,302.48,All sidebar navigation items actionable
+Smoke Test,Chrome v120,Desktop,chromium,120.0.6099.109,PASSED,12.96,All sidebar navigation items actionable
+Smoke Test,Chrome v119,Desktop,chromium,119.0.6045.105,PASSED,269.99,All sidebar navigation items actionable
+Smoke Test,Chrome v118,Desktop,chromium,118.0.5993.70,PASSED,250.79,All sidebar navigation items actionable
+Smoke Test,Chrome v117,Desktop,chromium,117.0.5938.88,PASSED,249.6,All sidebar navigation items actionable
+Smoke Test,Chrome v116,Desktop,chromium,116.0.5845.96,PASSED,250.2,All sidebar navigation items actionable
+Smoke Test,Chrome v115,Desktop,chromium,115.0.5790.170,PASSED,119.34,All sidebar navigation items actionable
+Accessibility (WCAG 2.1),http://localhost:4200/#/home,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/profile,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/chatbot,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/help,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 95%, Critical: 0, Serious: 2, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/generation-status,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/content-generation,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/content-generation/lesson-resources,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/content-generation/lesson-plan,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/content-generation/presentation,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 97%, Critical: 0, Serious: 11, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/content-generation/lesson-chat,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/content-generation/inspect/lesson-plan,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/content-generation/inspect/resource,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/question-paper,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/question-paper/generate,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"
+Accessibility (WCAG 2.1),http://localhost:4200/#/schedule,Desktop,Chromium + axe-core,4.10.x,PASSED,58.4,"Score: 100%, Critical: 0, Serious: 0, Moderate: 0, Minor: 0"

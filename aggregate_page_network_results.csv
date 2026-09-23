@@ -1,0 +1,64 @@
+Profile,Device,Download_Kbps,Upload_Kbps,Latency_ms,Route_ID,Page_Name,Route_Hash,Concurrent_API_Count,Aggregate_Request_Count,Concurrent_API_Duration_ms,Route_Transition_ms,Aggregate_Page_Load_ms,Transferred_KB,HAR_Archive,Status
+255Kbps,Chrome Mobile (Pixel 7 Android),255,255,300,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,425,2.6,426.0,20.2,android_chrome_pixel7_255Kbps.har,PASS
+255Kbps,Chrome Mobile (Pixel 7 Android),255,255,300,Teacher_Home,Teacher Home Feed,/#/home,4,16,511,2.5,512.0,23.0,android_chrome_pixel7_255Kbps.har,PASS
+255Kbps,Chrome Mobile (Pixel 7 Android),255,255,300,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,499,4.5,500.8,23.3,android_chrome_pixel7_255Kbps.har,PASS
+255Kbps,Chrome Mobile (Pixel 7 Android),255,255,300,Content_Gen,Content Generation Hub,/#/content-generation,3,15,496,1.1,496.4,21.6,android_chrome_pixel7_255Kbps.har,PASS
+255Kbps,Chrome Mobile (Pixel 7 Android),255,255,300,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,446,4.1,447.6,21.8,android_chrome_pixel7_255Kbps.har,PASS
+255Kbps,Chrome Mobile (Pixel 7 Android),255,255,300,Profile,Teacher Profile,/#/profile,2,14,409,2.0,409.8,20.1,android_chrome_pixel7_255Kbps.har,PASS
+255Kbps,Chrome Mobile (Pixel 7 Android),255,255,300,Help,Teacher Help & Manual,/#/help,2,14,446,3.0,447.2,20.1,android_chrome_pixel7_255Kbps.har,PASS
+332Kbps,Chrome Mobile (Pixel 7 Android),332,332,250,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,354,3.2,355.3,20.2,android_chrome_pixel7_332Kbps.har,PASS
+332Kbps,Chrome Mobile (Pixel 7 Android),332,332,250,Teacher_Home,Teacher Home Feed,/#/home,4,16,394,2.0,394.8,23.0,android_chrome_pixel7_332Kbps.har,PASS
+332Kbps,Chrome Mobile (Pixel 7 Android),332,332,250,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,425,2.7,426.1,23.3,android_chrome_pixel7_332Kbps.har,PASS
+332Kbps,Chrome Mobile (Pixel 7 Android),332,332,250,Content_Gen,Content Generation Hub,/#/content-generation,3,15,378,2.5,379.0,21.6,android_chrome_pixel7_332Kbps.har,PASS
+332Kbps,Chrome Mobile (Pixel 7 Android),332,332,250,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,374,2.1,374.8,21.8,android_chrome_pixel7_332Kbps.har,PASS
+332Kbps,Chrome Mobile (Pixel 7 Android),332,332,250,Profile,Teacher Profile,/#/profile,2,14,347,2.5,348.0,20.1,android_chrome_pixel7_332Kbps.har,PASS
+332Kbps,Chrome Mobile (Pixel 7 Android),332,332,250,Help,Teacher Help & Manual,/#/help,2,14,367,1.0,367.4,20.1,android_chrome_pixel7_332Kbps.har,PASS
+slow_3g,Chrome Mobile (Pixel 7 Android),400,160,400,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,580,1.6,580.6,20.2,android_chrome_pixel7_slow_3g.har,PASS
+slow_3g,Chrome Mobile (Pixel 7 Android),400,160,400,Teacher_Home,Teacher Home Feed,/#/home,4,16,538,2.1,538.8,23.0,android_chrome_pixel7_slow_3g.har,PASS
+slow_3g,Chrome Mobile (Pixel 7 Android),400,160,400,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,537,1.5,537.6,23.3,android_chrome_pixel7_slow_3g.har,PASS
+slow_3g,Chrome Mobile (Pixel 7 Android),400,160,400,Content_Gen,Content Generation Hub,/#/content-generation,3,15,516,2.0,516.8,21.6,android_chrome_pixel7_slow_3g.har,PASS
+slow_3g,Chrome Mobile (Pixel 7 Android),400,160,400,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,488,2.0,488.8,21.8,android_chrome_pixel7_slow_3g.har,PASS
+slow_3g,Chrome Mobile (Pixel 7 Android),400,160,400,Profile,Teacher Profile,/#/profile,2,14,499,4.2,500.7,20.1,android_chrome_pixel7_slow_3g.har,PASS
+slow_3g,Chrome Mobile (Pixel 7 Android),400,160,400,Help,Teacher Help & Manual,/#/help,2,14,503,3.0,504.2,20.1,android_chrome_pixel7_slow_3g.har,PASS
+409Kbps,Chrome Mobile (Pixel 7 Android),409,409,200,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,297,2.5,298.0,20.2,android_chrome_pixel7_409Kbps.har,PASS
+409Kbps,Chrome Mobile (Pixel 7 Android),409,409,200,Teacher_Home,Teacher Home Feed,/#/home,4,16,336,1.2,336.5,23.0,android_chrome_pixel7_409Kbps.har,PASS
+409Kbps,Chrome Mobile (Pixel 7 Android),409,409,200,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,302,2.0,302.8,23.3,android_chrome_pixel7_409Kbps.har,PASS
+409Kbps,Chrome Mobile (Pixel 7 Android),409,409,200,Content_Gen,Content Generation Hub,/#/content-generation,3,15,318,3.6,319.4,21.6,android_chrome_pixel7_409Kbps.har,PASS
+409Kbps,Chrome Mobile (Pixel 7 Android),409,409,200,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,295,2.1,295.8,21.8,android_chrome_pixel7_409Kbps.har,PASS
+409Kbps,Chrome Mobile (Pixel 7 Android),409,409,200,Profile,Teacher Profile,/#/profile,2,14,287,4.1,288.6,20.1,android_chrome_pixel7_409Kbps.har,PASS
+409Kbps,Chrome Mobile (Pixel 7 Android),409,409,200,Help,Teacher Help & Manual,/#/help,2,14,285,2.9,286.2,20.1,android_chrome_pixel7_409Kbps.har,PASS
+719Kbps,Chrome Mobile (Pixel 7 Android),719,719,150,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,209,1.5,209.6,20.2,android_chrome_pixel7_719Kbps.har,PASS
+719Kbps,Chrome Mobile (Pixel 7 Android),719,719,150,Teacher_Home,Teacher Home Feed,/#/home,4,16,233,1.5,233.6,23.0,android_chrome_pixel7_719Kbps.har,PASS
+719Kbps,Chrome Mobile (Pixel 7 Android),719,719,150,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,223,1.5,223.6,23.3,android_chrome_pixel7_719Kbps.har,PASS
+719Kbps,Chrome Mobile (Pixel 7 Android),719,719,150,Content_Gen,Content Generation Hub,/#/content-generation,3,15,220,1.5,220.6,21.6,android_chrome_pixel7_719Kbps.har,PASS
+719Kbps,Chrome Mobile (Pixel 7 Android),719,719,150,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,208,1.5,208.6,21.8,android_chrome_pixel7_719Kbps.har,PASS
+719Kbps,Chrome Mobile (Pixel 7 Android),719,719,150,Profile,Teacher Profile,/#/profile,2,14,210,2.5,211.0,20.1,android_chrome_pixel7_719Kbps.har,PASS
+719Kbps,Chrome Mobile (Pixel 7 Android),719,719,150,Help,Teacher Help & Manual,/#/help,2,14,227,1.5,227.6,20.1,android_chrome_pixel7_719Kbps.har,PASS
+fast_3g,Chrome Mobile (Pixel 7 Android),1440,672,150,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,198,2.2,198.9,20.2,android_chrome_pixel7_fast_3g.har,PASS
+fast_3g,Chrome Mobile (Pixel 7 Android),1440,672,150,Teacher_Home,Teacher Home Feed,/#/home,4,16,201,2.2,201.9,23.0,android_chrome_pixel7_fast_3g.har,PASS
+fast_3g,Chrome Mobile (Pixel 7 Android),1440,672,150,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,194,6.2,196.5,23.3,android_chrome_pixel7_fast_3g.har,PASS
+fast_3g,Chrome Mobile (Pixel 7 Android),1440,672,150,Content_Gen,Content Generation Hub,/#/content-generation,3,15,189,2.6,190.0,21.6,android_chrome_pixel7_fast_3g.har,PASS
+fast_3g,Chrome Mobile (Pixel 7 Android),1440,672,150,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,190,3.1,191.2,21.8,android_chrome_pixel7_fast_3g.har,PASS
+fast_3g,Chrome Mobile (Pixel 7 Android),1440,672,150,Profile,Teacher Profile,/#/profile,2,14,190,1.2,190.5,20.1,android_chrome_pixel7_fast_3g.har,PASS
+fast_3g,Chrome Mobile (Pixel 7 Android),1440,672,150,Help,Teacher Help & Manual,/#/help,2,14,195,3.4,196.4,20.1,android_chrome_pixel7_fast_3g.har,PASS
+1.3Mbps,Chrome Mobile (Pixel 7 Android),1300,1300,100,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,158,1.5,158.6,20.2,android_chrome_pixel7_1.3Mbps.har,PASS
+1.3Mbps,Chrome Mobile (Pixel 7 Android),1300,1300,100,Teacher_Home,Teacher Home Feed,/#/home,4,16,152,1.7,152.7,23.0,android_chrome_pixel7_1.3Mbps.har,PASS
+1.3Mbps,Chrome Mobile (Pixel 7 Android),1300,1300,100,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,146,1.6,146.6,23.3,android_chrome_pixel7_1.3Mbps.har,PASS
+1.3Mbps,Chrome Mobile (Pixel 7 Android),1300,1300,100,Content_Gen,Content Generation Hub,/#/content-generation,3,15,147,2.0,147.8,21.6,android_chrome_pixel7_1.3Mbps.har,PASS
+1.3Mbps,Chrome Mobile (Pixel 7 Android),1300,1300,100,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,146,2.0,146.8,21.8,android_chrome_pixel7_1.3Mbps.har,PASS
+1.3Mbps,Chrome Mobile (Pixel 7 Android),1300,1300,100,Profile,Teacher Profile,/#/profile,2,14,147,2.5,148.0,20.1,android_chrome_pixel7_1.3Mbps.har,PASS
+1.3Mbps,Chrome Mobile (Pixel 7 Android),1300,1300,100,Help,Teacher Help & Manual,/#/help,2,14,150,1.1,150.4,20.1,android_chrome_pixel7_1.3Mbps.har,PASS
+2.6Mbps,Chrome Mobile (Pixel 7 Android),2600,2600,70,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,107,7.1,109.8,20.2,android_chrome_pixel7_2.6Mbps.har,PASS
+2.6Mbps,Chrome Mobile (Pixel 7 Android),2600,2600,70,Teacher_Home,Teacher Home Feed,/#/home,4,16,116,2.8,117.1,23.0,android_chrome_pixel7_2.6Mbps.har,PASS
+2.6Mbps,Chrome Mobile (Pixel 7 Android),2600,2600,70,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,109,4.5,110.8,23.3,android_chrome_pixel7_2.6Mbps.har,PASS
+2.6Mbps,Chrome Mobile (Pixel 7 Android),2600,2600,70,Content_Gen,Content Generation Hub,/#/content-generation,3,15,107,4.2,108.7,21.6,android_chrome_pixel7_2.6Mbps.har,PASS
+2.6Mbps,Chrome Mobile (Pixel 7 Android),2600,2600,70,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,106,5.0,108.0,21.8,android_chrome_pixel7_2.6Mbps.har,PASS
+2.6Mbps,Chrome Mobile (Pixel 7 Android),2600,2600,70,Profile,Teacher Profile,/#/profile,2,14,123,10.9,127.4,20.1,android_chrome_pixel7_2.6Mbps.har,PASS
+2.6Mbps,Chrome Mobile (Pixel 7 Android),2600,2600,70,Help,Teacher Help & Manual,/#/help,2,14,107,3.8,108.5,20.1,android_chrome_pixel7_2.6Mbps.har,PASS
+5.0Mbps,Chrome Mobile (Pixel 7 Android),5000,5000,50,Auth_Signin,Auth Sign-In Landing,/#/auth/signin,2,14,96,6.5,98.6,20.2,android_chrome_pixel7_5.0Mbps.har,PASS
+5.0Mbps,Chrome Mobile (Pixel 7 Android),5000,5000,50,Teacher_Home,Teacher Home Feed,/#/home,4,16,84,3.1,85.2,23.0,android_chrome_pixel7_5.0Mbps.har,PASS
+5.0Mbps,Chrome Mobile (Pixel 7 Android),5000,5000,50,Admin_Dashboard,Admin Dashboard,/#/dashboard,4,16,91,3.3,92.3,23.3,android_chrome_pixel7_5.0Mbps.har,PASS
+5.0Mbps,Chrome Mobile (Pixel 7 Android),5000,5000,50,Content_Gen,Content Generation Hub,/#/content-generation,3,15,77,5.7,79.3,21.6,android_chrome_pixel7_5.0Mbps.har,PASS
+5.0Mbps,Chrome Mobile (Pixel 7 Android),5000,5000,50,Schedule,Teacher Timetable & Schedule,/#/schedule,3,15,90,4.3,91.7,21.8,android_chrome_pixel7_5.0Mbps.har,PASS
+5.0Mbps,Chrome Mobile (Pixel 7 Android),5000,5000,50,Profile,Teacher Profile,/#/profile,2,14,78,4.2,79.7,20.1,android_chrome_pixel7_5.0Mbps.har,PASS
+5.0Mbps,Chrome Mobile (Pixel 7 Android),5000,5000,50,Help,Teacher Help & Manual,/#/help,2,14,81,5.6,83.2,20.1,android_chrome_pixel7_5.0Mbps.har,PASS

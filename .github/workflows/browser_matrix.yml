@@ -27,21 +27,27 @@ jobs:
         include:
           - browser: chromium
             device: Desktop
+            device_name: ""
             channel: chrome
           - browser: chromium
             device: Desktop Edge
+            device_name: ""
             channel: msedge
           - browser: firefox
             device: Desktop Firefox
+            device_name: ""
             channel: ""
           - browser: webkit
             device: Desktop Safari
+            device_name: ""
             channel: ""
           - browser: chromium
             device: Mobile Android (Pixel 7)
+            device_name: "Pixel 7"
             channel: chrome
           - browser: webkit
             device: Mobile iOS (iPhone 13)
+            device_name: "iPhone 13"
             channel: ""
 
     steps:
@@ -87,7 +93,15 @@ jobs:
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
           TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
           TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
-          pytest tests/smoke/test_teacher_panel.py tests/smoke/test_admin_panel.py --browser-type=${{ matrix.browser }}
+          DEVICE_ARG=""
+          if [ -n "${{ matrix.device_name }}" ]; then
+            DEVICE_ARG="--device=${{ matrix.device_name }}"
+          fi
+          CHANNEL_ARG=""
+          if [ -n "${{ matrix.channel }}" ]; then
+            CHANNEL_ARG="--channel=${{ matrix.channel }}"
+          fi
+          pytest tests/smoke/test_teacher_panel.py tests/smoke/test_admin_panel.py --browser-type=${{ matrix.browser }} $CHANNEL_ARG $DEVICE_ARG
 
   accessibility-scan:
     name: Accessibility (WCAG 2.1 AA via axe-core)

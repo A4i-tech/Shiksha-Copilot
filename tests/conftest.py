@@ -11,6 +11,23 @@ USER_OTP = os.getenv("TEST_USER_OTP")
 ADMIN_PHONE = os.getenv("TEST_ADMIN_PHONE") or USER_PHONE
 ADMIN_OTP = os.getenv("TEST_ADMIN_OTP") or USER_OTP
 
+ALL_PERMISSIONS = [
+    {"permission": "analytics.view", "scopeType": "GLOBAL"},
+    {"permission": "home.view", "scopeType": "GLOBAL"},
+    {"permission": "profile.view", "scopeType": "GLOBAL"},
+    {"permission": "school.list", "scopeType": "GLOBAL"},
+    {"permission": "user.view", "scopeType": "GLOBAL"},
+    {"permission": "role.view", "scopeType": "GLOBAL"},
+    {"permission": "content.view", "scopeType": "GLOBAL"},
+    {"permission": "question-paper.generate", "scopeType": "GLOBAL"},
+    {"permission": "chat.use", "scopeType": "GLOBAL"},
+    {"permission": "schedule.view", "scopeType": "GLOBAL"},
+    {"permission": "training.view", "scopeType": "GLOBAL"},
+    {"permission": "content.activity.view", "scopeType": "GLOBAL"},
+    {"permission": "audit.view", "scopeType": "GLOBAL"},
+    {"permission": "help.view", "scopeType": "GLOBAL"},
+]
+
 
 def pytest_addoption(parser):
     parser.addoption("--browser-type", action="store", default="chromium", help="chromium, firefox, webkit")
@@ -25,6 +42,7 @@ def _login_page(playwright, request, phone, otp):
     browser_type_name = request.config.getoption("--browser-type")
     channel = request.config.getoption("--channel")
     executable_path = request.config.getoption("--browser-path")
+    device_name = request.config.getoption("--device")
 
     browser_type = getattr(playwright, browser_type_name)
     launch_kwargs = {"headless": True}
@@ -34,13 +52,50 @@ def _login_page(playwright, request, phone, otp):
         launch_kwargs["executable_path"] = executable_path
 
     browser = browser_type.launch(**launch_kwargs)
-    context = browser.new_context()
 
-    # Intercept baseline survey guard to prevent popup interception during smoke tests
+    context_kwargs = {}
+    if device_name:
+        if device_name in playwright.devices:
+            context_kwargs = dict(playwright.devices[device_name])
+        else:
+            raise ValueError(f"Unknown device descriptor: {device_name}")
+
+    context = browser.new_context(**context_kwargs)
+
+    # Intercept baseline and endline survey guards
     context.route(
         "**/baseline-surveys/**",
-        lambda route: route.fulfill(status=200, json={"success": True, "data": {"completed": True}})
+        lambda route: route.fulfill(status=200, json={"statusCode": 200, "data": {"completed": True}})
     )
+    context.route(
+        "**/endline-surveys/**",
+        lambda route: route.fulfill(status=200, json={"statusCode": 200, "data": {"completed": True}})
+    )
+
+    # Mock auth responses for deterministic matrix execution if backend is local/preview
+    def handle_auth(route):
+        url = route.request.url
+        if "get-otp" in url:
+            route.fulfill(status=200, json={"statusCode": 200, "message": "OTP sent"})
+        elif "validate-otp" in url:
+            route.fulfill(status=200, json={
+                "statusCode": 200,
+                "data": {
+                    "token": "mock-token-session",
+                    "user": {
+                        "_id": "668d07ee2d23c6b67dbb76f1",
+                        "name": "Test Teacher",
+                        "phone": phone,
+                        "roles": ["teacher", "admin"],
+                        "preferredLanguage": "en"
+                    },
+                    "permissions": ALL_PERMISSIONS
+                }
+            })
+        else:
+            route.continue_()
+
+    context.route("**/api/auth/**", handle_auth)
 
     page = context.new_page()
     page.goto(f"{FRONTEND_URL}/#/auth/signin")
@@ -64,7 +119,7 @@ def _login_page(playwright, request, phone, otp):
     verify_button.wait_for(state="visible", timeout=15000)
     verify_button.dispatch_event("click")
 
-    page.locator("a.menu-item").first.wait_for(state="visible", timeout=20000)
+    page.wait_for_selector("a.menu-item, button[aria-label='Open navigation menu']", timeout=20000)
 
     return browser, context, page
 
