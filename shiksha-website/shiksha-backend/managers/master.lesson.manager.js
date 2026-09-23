@@ -1245,48 +1245,43 @@ class MasterLessonManger extends BaseManager {
 	// going through restore + a separate status update fails: restore only accepts an
 	// already-approved lesson plan, which a ready-for-review one is not yet.
 	async approve(req) {
-		try {
-			const lessonPlan = await MasterLesson.findById(req.params.id).lean();
-			if (!lessonPlan) return formatApiReponse(false, "Record not found", null);
+		const lessonPlan = await MasterLesson.findById(req.params.id).lean();
+		if (!lessonPlan) return formatApiReponse(false, "Record not found", null);
 
-			if (!(lessonPlan.isDeleted === true && lessonPlan.status === CONTENT_STATUS.UNDER_REVIEW)) {
-				return formatApiReponse(
-					false,
-					"This lesson plan is not ready for review, so it cannot be approved.",
-					null
-				);
-			}
-
-			const existing = await this._liveSiblings(lessonPlan);
-			const conflict = this.findLiveConflict(lessonPlan, existing, this._conflictKeyFns());
-
-			if (conflict) {
-				return formatApiReponse(
-					false,
-					`Approving this lesson plan would duplicate the lesson plan ${conflict._id} for the same chapter and subtopics. Change or remove that lesson plan first.`,
-					null
-				);
-			}
-
-			const data = await MasterLesson.findOneAndUpdate(
-				{ _id: lessonPlan._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
-				{ $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
-				{ new: true }
+		if (!(lessonPlan.isDeleted === true && lessonPlan.status === CONTENT_STATUS.UNDER_REVIEW)) {
+			return formatApiReponse(
+				false,
+				"This lesson plan is not ready for review, so it cannot be approved.",
+				null
 			);
-
-			if (!data) {
-				return formatApiReponse(
-					false,
-					"This lesson plan changed before the approval finished. Reload and try again.",
-					null
-				);
-			}
-
-			return formatApiReponse(true, "Lesson plan approved successfully!", data);
-		} catch (err) {
-			console.error("approve failed:", err);
-			return formatApiReponse(false, err?.message, null);
 		}
+
+		const existing = await this._liveSiblings(lessonPlan);
+		const conflict = this.findLiveConflict(lessonPlan, existing, this._conflictKeyFns());
+
+		if (conflict) {
+			return formatApiReponse(
+				false,
+				`Approving this lesson plan would duplicate the lesson plan ${conflict._id} for the same chapter and subtopics. Change or remove that lesson plan first.`,
+				null
+			);
+		}
+
+		const data = await MasterLesson.findOneAndUpdate(
+			{ _id: lessonPlan._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
+			{ $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
+			{ new: true }
+		);
+
+		if (!data) {
+			return formatApiReponse(
+				false,
+				"This lesson plan changed before the approval finished. Reload and try again.",
+				null
+			);
+		}
+
+		return formatApiReponse(true, "Lesson plan approved successfully!", data);
 	}
 
 }

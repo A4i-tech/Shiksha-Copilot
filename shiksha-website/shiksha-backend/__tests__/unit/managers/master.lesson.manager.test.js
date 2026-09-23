@@ -667,8 +667,6 @@ describe("MasterLessonManager", () => {
       jest.restoreAllMocks();
     });
 
-    // The conflict-scan and the successful-update path both depend on a real Mongo
-    // query/write, so they belong in the integration suite rather than here.
     it("refuses to approve a lesson plan that is not ready for review, such as a draft", async () => {
       jest.spyOn(MasterLesson, "findById").mockReturnValue({
         lean: jest.fn().mockResolvedValue({ ...reviewLessonPlan, status: "draft" }),
@@ -723,8 +721,6 @@ describe("MasterLessonManager", () => {
       jest.restoreAllMocks();
     });
 
-    // The conflict-scan and the successful-save path both depend on a real Mongo
-    // query/write, so they belong in the integration suite rather than here.
     it("refuses to edit a lesson plan that is not a draft or under review, such as an approved one", async () => {
       jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue(null);
 

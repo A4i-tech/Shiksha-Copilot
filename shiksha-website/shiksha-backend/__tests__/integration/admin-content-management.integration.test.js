@@ -187,11 +187,6 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
     }, 30000);
   });
 
-  // Restore only ever reaches its conflict check for a chapter/lesson plan that is itself
-  // deleted-and-approved. Nothing in this API moves a record to "approved" today (bulk-upload
-  // always inserts as draft, and no approval endpoint exists), so the conflict-detection branch
-  // of activate() is unreachable through real HTTP calls and stays unit-tested only. This covers
-  // the one restore path a real draft record can reach.
   describe("activate (restore)", () => {
     it("refuses to restore a chapter that is still a draft, because it is not deleted-and-approved", async () => {
       const uploadRes = await request(baseURL)

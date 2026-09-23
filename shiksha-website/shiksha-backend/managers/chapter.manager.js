@@ -460,48 +460,43 @@ class ChapterManager extends BaseManager {
   // going through restore + a separate status update fails: restore only accepts an
   // already-approved chapter, which a ready-for-review chapter is not yet.
   async approve(req) {
-    try {
-      const chapter = await Chapter.findById(req.params.id).lean();
-      if (!chapter) return formatApiReponse(false, "Record not found", null);
+    const chapter = await Chapter.findById(req.params.id).lean();
+    if (!chapter) return formatApiReponse(false, "Record not found", null);
 
-      if (!(chapter.isDeleted === true && chapter.status === CONTENT_STATUS.UNDER_REVIEW)) {
-        return formatApiReponse(
-          false,
-          `"${chapter.topics}" is not ready for review, so it cannot be approved.`,
-          null
-        );
-      }
-
-      const existing = await this._liveSiblings(chapter);
-      const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
-
-      if (conflict) {
-        return formatApiReponse(
-          false,
-          `Approving "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
-          null
-        );
-      }
-
-      const data = await Chapter.findOneAndUpdate(
-        { _id: chapter._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
-        { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
-        { new: true }
+    if (!(chapter.isDeleted === true && chapter.status === CONTENT_STATUS.UNDER_REVIEW)) {
+      return formatApiReponse(
+        false,
+        `"${chapter.topics}" is not ready for review, so it cannot be approved.`,
+        null
       );
-
-      if (!data) {
-        return formatApiReponse(
-          false,
-          `"${chapter.topics}" changed before the approval finished. Reload and try again.`,
-          null
-        );
-      }
-
-      return formatApiReponse(true, "Chapter approved successfully!", data);
-    } catch (err) {
-      console.error("approve failed:", err);
-      return formatApiReponse(false, err?.message, null);
     }
+
+    const existing = await this._liveSiblings(chapter);
+    const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
+
+    if (conflict) {
+      return formatApiReponse(
+        false,
+        `Approving "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
+        null
+      );
+    }
+
+    const data = await Chapter.findOneAndUpdate(
+      { _id: chapter._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
+      { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
+      { new: true }
+    );
+
+    if (!data) {
+      return formatApiReponse(
+        false,
+        `"${chapter.topics}" changed before the approval finished. Reload and try again.`,
+        null
+      );
+    }
+
+    return formatApiReponse(true, "Chapter approved successfully!", data);
   }
 }
 

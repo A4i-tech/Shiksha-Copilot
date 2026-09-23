@@ -248,9 +248,6 @@ describe("ChapterManager", () => {
       jest.restoreAllMocks();
     });
 
-    // The conflict-scan and the successful-update path both depend on a real Mongo
-    // query/write, so they belong in the integration suite (see muqsit's review on
-    // the restore tests above) rather than here as a mocked assertion of "was called".
     it("refuses to approve a chapter that is not ready for review, such as a draft", async () => {
       jest.spyOn(Chapter, "findById").mockReturnValue({
         lean: jest.fn().mockResolvedValue({ ...reviewChapter, status: "draft" }),
@@ -308,8 +305,6 @@ describe("ChapterManager", () => {
       jest.restoreAllMocks();
     });
 
-    // The conflict-scan and the successful-save path both depend on a real Mongo
-    // query/write, so they belong in the integration suite rather than here.
     it("refuses to edit a chapter that is not a draft or under review, such as an approved one", async () => {
       jest.spyOn(Chapter, "findOneAndUpdate").mockResolvedValue(null);
 
