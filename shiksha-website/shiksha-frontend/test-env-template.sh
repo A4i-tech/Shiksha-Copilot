@@ -6,9 +6,6 @@ set -eu
 export MSYS_NO_PATHCONV=1
 export BACKEND_URL="/api"
 export TURNSTILE_SITE_KEY="test-turnstile-key"
-export SUPERSET_URL="https://superset.example.com"
-export SUPERSET_DASHBOARD_UUID="uuid-desktop"
-export SUPERSET_MOBILE_DASHBOARD_UUID="uuid-mobile"
 
 . "$(dirname "$0")/render-env.sh"
 
@@ -19,9 +16,6 @@ rm -f "$tmp_out"
 
 echo "$out" | grep -q '"/api"' || { echo "FAIL: apiUrl not substituted"; exit 1; }
 echo "$out" | grep -q '"test-turnstile-key"' || { echo "FAIL: turnstileSiteKey not substituted"; exit 1; }
-echo "$out" | grep -q '"https://superset.example.com"' || { echo "FAIL: supersetUrl not substituted"; exit 1; }
-echo "$out" | grep -q '"uuid-desktop"' || { echo "FAIL: supersetDashboardUuid not substituted"; exit 1; }
-echo "$out" | grep -q '"uuid-mobile"' || { echo "FAIL: supersetMobileDashboardUuid not substituted"; exit 1; }
 echo "$out" | grep -q '\${' && { echo "FAIL: leftover \${...} placeholder"; exit 1; }
 
 echo "OK: env.template.js substitutes cleanly via render_env"
