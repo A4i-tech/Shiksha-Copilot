@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const router = express.Router();
 const axios = require("axios");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
@@ -13,7 +13,7 @@ const SUPERSET_MOBILE_DASHBOARD_UUID = process.env.SUPERSET_MOBILE_DASHBOARD_UUI
 
 const AXIOS_TIMEOUT_MS = 10_000;
 
-// In-memory cache for Superset admin session â€” avoids a full login per request.
+// In-memory cache for Superset admin session — avoids a full login per request.
 let _authCache = null; // { accessToken, csrfToken, cookieHeader, expiresAt }
 
 function _authCacheValid() {
@@ -35,8 +35,8 @@ function buildRlsClause(scopes) {
     const starts = {
       STATE: `SELECT s.region_id FROM dim_regions s WHERE s.type = 'state' AND s.name = ${sql(scope.dep.state)}`,
       ZONE: `SELECT z.region_id FROM dim_regions z JOIN dim_regions s ON z.parent_id = s.region_id WHERE z.type = 'zone' AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
-      DISTRICT: `SELECT d.region_id FROM dim_regions d JOIN dim_regions z ON d.parent_id = z.region_id JOIN dim_regions s ON z.parent_id = s.region_id WHERE d.type = 'district' AND d.name = ${sql(scope.dep.district)} AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
-      BLOCK: `SELECT b.region_id FROM dim_regions b JOIN dim_regions d ON b.parent_id = d.region_id JOIN dim_regions z ON d.parent_id = z.region_id JOIN dim_regions s ON z.parent_id = s.region_id WHERE b.type = 'block' AND b.name = ${sql(scope.dep.block)} AND d.name = ${sql(scope.dep.district)} AND z.name = ${sql(scope.dep.zone)} AND s.name = ${sql(scope.dep.state)}`,
+      DISTRICT: `SELECT d.region_id FROM dim_regions d WHERE d.type = 'district' AND d.name = ${sql(scope.dep.district)}`,
+      BLOCK: `SELECT b.region_id FROM dim_regions b JOIN dim_regions d ON b.parent_id = d.region_id WHERE b.type = 'block' AND b.name = ${sql(scope.dep.block)} AND d.type = 'district' AND d.name = ${sql(scope.dep.district)}`,
     };
     return `user_id IN (SELECT user_id FROM dim_users WHERE region_id IN (WITH RECURSIVE scoped AS (${starts[scope.scopeType]} UNION ALL SELECT child.region_id FROM dim_regions child JOIN scoped parent ON child.parent_id = parent.region_id) SELECT region_id FROM scoped))`;
   });
@@ -54,7 +54,7 @@ async function getSupersetAuth() {
     refresh: false,
   }, { timeout: AXIOS_TIMEOUT_MS });
   const accessToken = loginResp.data?.access_token;
-  if (!accessToken) throw new Error("Superset admin login failed â€” no token returned");
+  if (!accessToken) throw new Error(“Superset admin login failed — no token returned”);
 
   // Carry session cookie so Superset CSRF validation can find the session token
   const loginCookies = loginResp.headers["set-cookie"] || [];
@@ -118,7 +118,7 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
         { headers: { Authorization: `Bearer ${adminToken}`, "X-CSRFToken": csrfToken, Cookie: cookieHeader, Referer: SUPERSET_URL }, timeout: AXIOS_TIMEOUT_MS }
       );
     } catch (guestErr) {
-      // Admin token expired â€” clear cache and retry once
+      // Admin token expired — clear cache and retry once
       if (guestErr?.response?.status === 401) {
         _authCache = null;
         const fresh = await getSupersetAuth();
@@ -135,7 +135,7 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
     const token = guestResp.data?.token;
     if (!token) throw new Error("No token in Superset guest_token response");
 
-    // Fire-and-forget audit log â€” don't fail the request if this errors
+    // Fire-and-forget audit log — don't fail the request if this errors
     AuditLog.create({
       eventType: "Dashboard Token",
       status: "success",
@@ -179,24 +179,20 @@ router.get("/superset/district-drill", isAuthenticated, requirePermission("analy
     const dbId = dbsResp.data.result?.find(d => d.database_name === "Analytics DB")?.id;
     if (!dbId) throw new Error("Analytics DB not found in Superset");
 
-    // Apply scope restriction: for STATE scope, verify the district is in the user's state
     const analyticsScopes = getPermission(req.permissions, "analytics.view");
-    const isGlobal = analyticsScopes?.some(s => s.scopeType === "GLOBAL");
-    const stateScope = analyticsScopes?.find(s => s.scopeType === "STATE");
-    const stateName = stateScope?.dep?.state ?? null;
-
-    const stateClause = (!isGlobal && stateName)
-      ? `AND s.name = ${sql(stateName)}`
+    const rlsClause = buildRlsClause(analyticsScopes);
+    if (rlsClause === "FALSE") return res.json({ district, blocks: [] });
+    const userFilter = rlsClause
+      ? `AND ${rlsClause.replaceAll("user_id IN (SELECT", "du.user_id IN (SELECT")}`
       : "";
 
     const sqlQuery = `
       SELECT b.name AS block_name, COALESCE(COUNT(DISTINCT flp.lp_id), 0) AS lp_count
       FROM dim_regions b
       JOIN dim_regions d ON b.parent_id = d.region_id AND d.type = 'district'
-      JOIN dim_regions s ON d.parent_id = s.region_id AND s.type = 'state'
       JOIN dim_users du ON du.region_id = b.region_id
       LEFT JOIN fact_lesson_plans flp ON flp.user_id = du.user_id
-      WHERE b.type = 'block' AND d.name = ${sql(district)} ${stateClause}
+      WHERE b.type = 'block' AND d.name = ${sql(district)} ${userFilter}
       GROUP BY b.name
       ORDER BY lp_count DESC
       LIMIT 50

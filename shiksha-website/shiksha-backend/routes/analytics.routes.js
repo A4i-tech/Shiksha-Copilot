@@ -1,4 +1,4 @@
-﻿const express = require("express");
+const express = require("express");
 const router = express.Router();
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const metadataDao = require("../dao/metadata.dao.js");
