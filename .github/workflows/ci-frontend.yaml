@@ -79,9 +79,6 @@ jobs:
           CID=$(docker run -d \
             -e BACKEND_URL=/api \
             -e TURNSTILE_SITE_KEY=test-turnstile-key \
-            -e SUPERSET_URL=https://superset.example.com \
-            -e SUPERSET_DASHBOARD_UUID=uuid-desktop \
-            -e SUPERSET_MOBILE_DASHBOARD_UUID=uuid-mobile \
             -p 18080:8000 shiksha-frontend-local)
           for i in $(seq 1 10); do
             if curl -fsS http://localhost:18080/assets/env.js -o /tmp/env.js; then break; fi
@@ -95,9 +92,6 @@ jobs:
           node --check /tmp/env.js
           echo "$OUT" | grep -q '"/api"'
           echo "$OUT" | grep -q '"test-turnstile-key"'
-          echo "$OUT" | grep -q '"https://superset.example.com"'
-          echo "$OUT" | grep -q '"uuid-desktop"'
-          echo "$OUT" | grep -q '"uuid-mobile"'
           if echo "$OUT" | grep -q '\${'; then
             echo "::error::leftover \${...} placeholder in env.js"
             exit 1
