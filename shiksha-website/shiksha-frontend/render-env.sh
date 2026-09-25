@@ -4,7 +4,7 @@ render_env() {
   template_path="$1"
   output_path="$2"
 
-  for var in BACKEND_URL TURNSTILE_SITE_KEY SUPERSET_URL SUPERSET_DASHBOARD_UUID SUPERSET_MOBILE_DASHBOARD_UUID; do
+  for var in BACKEND_URL TURNSTILE_SITE_KEY SUPERSET_URL SUPERSET_DASHBOARD_UUID SUPERSET_MOBILE_DASHBOARD_UUID UMAMI_URL UMAMI_WEBSITE_ID; do
     eval "val=\${$var:-}"
     if [ -z "$val" ]; then
       echo "::error::$var is required and was not set" >&2
@@ -25,6 +25,8 @@ render_env() {
     -e "s|\${SUPERSET_URL}|${SUPERSET_URL}|g" \
     -e "s|\${SUPERSET_DASHBOARD_UUID}|${SUPERSET_DASHBOARD_UUID}|g" \
     -e "s|\${SUPERSET_MOBILE_DASHBOARD_UUID}|${SUPERSET_MOBILE_DASHBOARD_UUID}|g" \
+    -e "s|\${UMAMI_URL}|${UMAMI_URL}|g" \
+    -e "s|\${UMAMI_WEBSITE_ID}|${UMAMI_WEBSITE_ID}|g" \
     "$template_path" > "$output_path"
 
   # Drop the template when it renders alongside the output (GH Pages / SWA

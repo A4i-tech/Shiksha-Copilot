@@ -9,6 +9,8 @@ export TURNSTILE_SITE_KEY="test-turnstile-key"
 export SUPERSET_URL="https://superset.example.com"
 export SUPERSET_DASHBOARD_UUID="uuid-desktop"
 export SUPERSET_MOBILE_DASHBOARD_UUID="uuid-mobile"
+export UMAMI_URL="https://umami.example.com"
+export UMAMI_WEBSITE_ID="test-umami-website-id"
 
 . "$(dirname "$0")/render-env.sh"
 
@@ -22,6 +24,8 @@ echo "$out" | grep -q '"test-turnstile-key"' || { echo "FAIL: turnstileSiteKey n
 echo "$out" | grep -q '"https://superset.example.com"' || { echo "FAIL: supersetUrl not substituted"; exit 1; }
 echo "$out" | grep -q '"uuid-desktop"' || { echo "FAIL: supersetDashboardUuid not substituted"; exit 1; }
 echo "$out" | grep -q '"uuid-mobile"' || { echo "FAIL: supersetMobileDashboardUuid not substituted"; exit 1; }
+echo "$out" | grep -q '"https://umami.example.com"' || { echo "FAIL: umamiUrl not substituted"; exit 1; }
+echo "$out" | grep -q '"test-umami-website-id"' || { echo "FAIL: umamiWebsiteId not substituted"; exit 1; }
 echo "$out" | grep -q '\${' && { echo "FAIL: leftover \${...} placeholder"; exit 1; }
 
 echo "OK: env.template.js substitutes cleanly via render_env"

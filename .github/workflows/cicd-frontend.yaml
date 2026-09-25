@@ -36,6 +36,16 @@ on:
         required: false
         type: string
         default: ""
+      umami_url:
+        description: "Umami analytics server base URL; required, build fails if blank"
+        required: false
+        type: string
+        default: ""
+      umami_website_id:
+        description: "Umami website ID; required, build fails if blank"
+        required: false
+        type: string
+        default: ""
       deploy_target:
         description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
         required: false
@@ -80,6 +90,8 @@ jobs:
       SUPERSET_URL: ${{ inputs.superset_url }}
       SUPERSET_DASHBOARD_UUID: ${{ inputs.superset_dashboard_uuid }}
       SUPERSET_MOBILE_DASHBOARD_UUID: ${{ inputs.superset_mobile_dashboard_uuid }}
+      UMAMI_URL: ${{ inputs.umami_url }}
+      UMAMI_WEBSITE_ID: ${{ inputs.umami_website_id }}
       SHIKSHA_COPILOT_BUILD: ${{ github.sha }}
 
     steps:
