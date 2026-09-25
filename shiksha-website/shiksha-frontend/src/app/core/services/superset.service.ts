@@ -26,15 +26,24 @@ export class SupersetService {
   mobileDashboardUuid: string | null = null;
   supersetUrl = '';
 
+  // doEmbed's first call resolves this, cached once so embedDashboard's own fetchGuestToken doesn't double-fetch.
+  private primedToken: string | null = null;
+
   constructor(private http: HttpClient) {}
 
   getGuestToken(): Promise<string> {
+    if (this.primedToken) {
+      const token = this.primedToken;
+      this.primedToken = null;
+      return Promise.resolve(token);
+    }
     return firstValueFrom(
       this.http.post<GuestTokenResponse>(`${environment.apiUrl}/superset/guest-token`, {})
     ).then((res) => {
       this.dashboardUuid = res.dashboardUuid;
       this.mobileDashboardUuid = res.mobileDashboardUuid;
       this.supersetUrl = res.supersetUrl;
+      this.primedToken = res.token;
       return res.token;
     });
   }
