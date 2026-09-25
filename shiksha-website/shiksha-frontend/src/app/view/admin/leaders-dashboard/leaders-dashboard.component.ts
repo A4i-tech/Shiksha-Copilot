@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Subscription } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import { SupersetService, BlockDrillRow } from 'src/app/core/services/superset.service';
 import { environment } from 'src/environments/environment';
 import type { EmbeddedDashboard } from '@superset-ui/embedded-sdk';
@@ -45,6 +45,9 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private activeUuid = '';
   private lastObservedWidth = 0;
+  private destroyed = false;
+  private destroy$ = new Subject<void>();
+  private embedGen = 0;
 
   constructor(
     private supersetService: SupersetService,
@@ -65,6 +68,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
     }
     this.supersetService.getSyncStatus().then(t => this.lastSyncAt = t).catch((err) => console.warn('[SyncStatus]', err));
     await this.doEmbed();
+    if (this.destroyed) return;
 
     // Only react to WIDTH changes — height changes are from our own iframe height writes
     // and must not re-trigger applyScrollSize (would cause infinite loop)
@@ -101,28 +105,47 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   private async doEmbed() {
+    // Bumped so a slower, superseded call (e.g. two breakpoint crossings in a row) can tell
+    // it's stale after an await and unmount its own embed instead of racing this.embed.
+    const gen = ++this.embedGen;
     this.loading = true;
     this.error = '';
     this.clearTimers();
+    if (this.embed) {
+      this.embed.unmount();
+      this.embed = null;
+    }
     if (this.mountPoint?.nativeElement) {
       this.mountPoint.nativeElement.innerHTML = '';
     }
     try {
-      // Fetch first token — also populates UUIDs in service as a side effect
-      await this.supersetService.getGuestToken();
+      // Fetch first token — also populates UUIDs in service as a side effect. Kept in a
+      // call-local closure (not a service field) so overlapping doEmbed() calls can't steal
+      // or clobber each other's token.
+      let primedToken: string | null = await this.supersetService.getGuestToken(this.destroy$);
+      if (this.destroyed || gen !== this.embedGen) return;
       const uuid = this.dashboardUuid;
       if (!uuid) {
-        this.error = 'Dashboard not configured.';
-        this.loading = false;
+        if (gen === this.embedGen) {
+          this.error = 'Dashboard not configured.';
+          this.loading = false;
+        }
         return;
       }
       this.activeUuid = uuid;
       const { embedDashboard } = await import('@superset-ui/embedded-sdk');
-      this.embed = await embedDashboard({
+      const embed = await embedDashboard({
         id: uuid,
         supersetDomain: this.supersetService.supersetUrl,
         mountPoint: this.mountPoint.nativeElement,
-        fetchGuestToken: () => this.supersetService.getGuestToken(),
+        fetchGuestToken: () => {
+          if (primedToken) {
+            const token = primedToken;
+            primedToken = null;
+            return Promise.resolve(token);
+          }
+          return this.supersetService.getGuestToken();
+        },
         dashboardUiConfig: {
           hideTitle: true,
           hideChartControls: false,
@@ -131,6 +154,11 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
           emitDataMasks: true,
         },
       });
+      if (this.destroyed || gen !== this.embedGen) {
+        embed.unmount();
+        return;
+      }
+      this.embed = embed;
       this.embed.observeDataMask((dataMask) => {
         this.handleDataMask(dataMask);
       });
@@ -139,7 +167,8 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       [1000, 2000, 4000].forEach(delay =>
         this.timers.push(setTimeout(() => this.applyScrollSize(), delay))
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
+      if (this.destroyed || gen !== this.embedGen) return;
       console.error('[superset] embed error:', err);
       this.error = 'Failed to load dashboard. Please try again.';
       this.loading = false;
@@ -215,10 +244,19 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
+    this.destroy$.next();
+    this.destroy$.complete();
     this.clearTimers();
     if (this.resizeDebounce) clearTimeout(this.resizeDebounce);
     this.breakpointSub?.unsubscribe();
     this.resizeObserver?.disconnect();
+    // Without this the SDK's internal refreshGuestToken loop runs forever, firing
+    // fetchGuestToken (a real backend call) for the rest of the SPA session.
+    if (this.embed) {
+      this.embed.unmount();
+      this.embed = null;
+    }
     if (this.mountPoint?.nativeElement) {
       this.mountPoint.nativeElement.innerHTML = '';
     }

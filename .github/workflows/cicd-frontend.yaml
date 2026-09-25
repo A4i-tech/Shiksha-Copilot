@@ -78,11 +78,23 @@ jobs:
       - name: Build Angular app
         working-directory: shiksha-website/shiksha-frontend
         run: |
+          set -euo pipefail
           npm ci
           npm run build -- --configuration ${{ inputs.environment }} \
             ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
-          . ./render-env.sh
-          render_env dist/shiksha-frontend/assets/env.template.js dist/shiksha-frontend/assets/env.js
+          : "${BACKEND_URL:?BACKEND_URL is empty}"
+          : "${TURNSTILE_SITE_KEY:?TURNSTILE_SITE_KEY is empty}"
+          case "$BACKEND_URL$TURNSTILE_SITE_KEY" in *'"'*|*'\'*) echo "::error::value breaks JS string literal" >&2; exit 1;; esac
+          # No template, no sed, CI already knows the values.
+          cat > dist/shiksha-frontend/assets/env.js <<EOF
+          window.env = {
+            apiUrl: "${BACKEND_URL}",
+            turnstileSiteKey: "${TURNSTILE_SITE_KEY}",
+          };
+          EOF
+          node --check dist/shiksha-frontend/assets/env.js
+          grep -q "assets/env.js" dist/shiksha-frontend/index.html
+          grep -qF "\"${BACKEND_URL}\"" dist/shiksha-frontend/assets/env.js
 
       - name: Setup Pages
         if: inputs.deploy_target == 'github-pages'
