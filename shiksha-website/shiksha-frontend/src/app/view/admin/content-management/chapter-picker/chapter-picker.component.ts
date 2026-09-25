@@ -23,6 +23,7 @@ import { ContentManagementService } from '../content-management.service';
 })
 export class ChapterPickerComponent implements OnChanges, OnDestroy {
   @Input() value: string | null = null;
+  @Input() disabled = false;
   @Output() valueChange = new EventEmitter<string>();
 
   isOpen = false;
@@ -59,6 +60,8 @@ export class ChapterPickerComponent implements OnChanges, OnDestroy {
   }
 
   open(): void {
+    if (this.disabled) return;
+
     this.isOpen = true;
     this.searchText = '';
     this.currentPage = 1;
@@ -85,6 +88,8 @@ export class ChapterPickerComponent implements OnChanges, OnDestroy {
   }
 
   clear(): void {
+    if (this.disabled) return;
+
     this.selectedLabel = '';
     this.valueChange.emit('');
   }

@@ -31,6 +31,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   record: any = null;
   /** true when the route id is `new`, so the form adds a record */
   isCreate = false;
+  isReadonly = false;
 
   /** form value of each field, as the control shows it */
   formValues: { [field: string]: any } = {};
@@ -115,6 +116,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
       next: (res: any) => {
         this.isLoading = false;
         this.record = res?.data ?? res;
+        this.isReadonly = this.record?.status !== CONTENT_STATUS.DRAFT;
         this.fillForm(this.record);
       },
       error: (err: any) => {
@@ -150,6 +152,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   save(targetStatus: typeof CONTENT_STATUS.DRAFT | typeof CONTENT_STATUS.UNDER_REVIEW = CONTENT_STATUS.DRAFT): void {
+    if (this.isReadonly) return;
+
     const body = this.isCreate
       ? this.buildCreateBody()
       : this.buildChangedBody();

@@ -7,7 +7,4 @@ function requireEnv(key: keyof NonNullable<Window['env']>): string {
 export const runtimeEnv = {
   apiUrl: requireEnv('apiUrl'),
   turnstileSiteKey: requireEnv('turnstileSiteKey'),
-  supersetUrl: requireEnv('supersetUrl'),
-  supersetDashboardUuid: requireEnv('supersetDashboardUuid'),
-  supersetMobileDashboardUuid: requireEnv('supersetMobileDashboardUuid'),
 };

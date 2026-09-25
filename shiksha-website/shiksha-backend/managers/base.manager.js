@@ -70,6 +70,24 @@ class BaseManager {
 		};
 	}
 
+	// isDeleted also marks a draft/under-review record that never went live, so only an
+	// approved record that then got soft-deleted is genuinely gone.
+	isGenuinelyDeleted(record) {
+		return record.isDeleted === true && record.status === CONTENT_STATUS.APPROVED;
+	}
+
+	// Finds an existing record that duplicates `record` on any of `keyFns` (each a
+	// (record) => string), skipping records that are genuinely deleted — a draft or
+	// under-review record still blocks the duplicate, since it hasn't gone anywhere.
+	findLiveConflict(record, existingRecords, keyFns) {
+		const targetKeys = keyFns.map((keyFn) => keyFn(record));
+
+		return existingRecords.find((other) => {
+			if (this.isGenuinelyDeleted(other)) return false;
+			return keyFns.some((keyFn, index) => keyFn(other) === targetKeys[index]);
+		});
+	}
+
 	async finalizeBulkUpload({ Model, rows, documents, dryRun, entityLabel }) {
 		const invalid = rows.filter((row) => row.errors.length > 0);
 

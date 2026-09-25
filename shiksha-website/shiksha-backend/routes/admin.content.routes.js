@@ -102,6 +102,13 @@ router.post(
 
 registerEntity("chapters", chapterController, validateChapterUpdate);
 
+// A record under review approves in one atomic step; going through restore + update
+// would fail, since restore only accepts an approved-then-deleted record.
+router.post(
+	"/admin/content/chapters/:id/approve",
+	asyncMiddleware(chapterController.approve.bind(chapterController))
+);
+
 // Registered before the :id routes below so "bulk-upload" is never matched as an :id.
 router.post(
 	"/admin/content/lesson-plans/bulk-upload",
@@ -117,6 +124,11 @@ router.post(
 );
 
 registerEntity("lesson-plans", masterLessonController, validateMasterLessonUpdate);
+
+router.post(
+	"/admin/content/lesson-plans/:id/approve",
+	asyncMiddleware(masterLessonController.approve.bind(masterLessonController))
+);
 
 router.post(
 	"/admin/content/resources/bulk-upload",

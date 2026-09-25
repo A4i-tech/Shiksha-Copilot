@@ -110,16 +110,6 @@ export class ContentManagementService extends BaseRestService {
   }
 
   /**
-   * Method to soft-delete one record
-   * @param segment route segment of the entity
-   * @param id record id
-   * @returns
-   */
-  softDelete(segment: string, id: string): Observable<any> {
-    return this.delete(`${segment}/${id}`);
-  }
-
-  /**
    * Method to restore one soft-deleted record
    * @param segment route segment of the entity
    * @param id record id
@@ -127,5 +117,15 @@ export class ContentManagementService extends BaseRestService {
    */
   restore(segment: string, id: string): Observable<any> {
     return this.patch(`${segment}/${id}/restore`, {});
+  }
+
+  /**
+   * Method to approve one ready-for-review record, in a single atomic step
+   * @param segment route segment of the entity
+   * @param id record id
+   * @returns
+   */
+  approve(segment: string, id: string): Observable<any> {
+    return this.post(`${segment}/${id}/approve`, {});
   }
 }
