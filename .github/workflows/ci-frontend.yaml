@@ -74,39 +74,19 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Verify runtime env substitution
+      - name: Verify image serves the app
         run: |
           set -euo pipefail
-          CID=$(docker run -d \
-            -e BACKEND_URL=/api \
-            -e TURNSTILE_SITE_KEY=test-turnstile-key \
-            -p 18080:8000 shiksha-frontend-local)
+          # No entrypoint substitution now, just check the container serves the SPA.
+          CID=$(docker run -d -p 18080:8000 shiksha-frontend-local)
           for i in $(seq 1 10); do
-            if curl -fsS http://localhost:18080/assets/env.js -o /tmp/env.js; then break; fi
+            if curl -fsS http://localhost:18080/ -o /tmp/index.html; then break; fi
             [ "$i" -eq 10 ] && { echo "::error::container never came up"; docker logs "$CID"; exit 1; }
             sleep 1
           done
-          OUT=$(cat /tmp/env.js)
-          echo "$OUT"
           docker logs "$CID"
           docker rm -f "$CID" >/dev/null
-          node --check /tmp/env.js
-          echo "$OUT" | grep -q '"/api"'
-          echo "$OUT" | grep -q '"test-turnstile-key"'
-          if echo "$OUT" | grep -q '\${'; then
-            echo "::error::leftover \${...} placeholder in env.js"
-            exit 1
-          fi
-
-      - name: Verify container refuses to start without BACKEND_URL
-        run: |
-          set -euo pipefail
-          if docker run --rm shiksha-frontend-local 2>/tmp/no-backend-url.log; then
-            echo "::error::container should have exited non-zero with no BACKEND_URL set"
-            cat /tmp/no-backend-url.log
-            exit 1
-          fi
-          grep -q "BACKEND_URL is required" /tmp/no-backend-url.log
+          grep -q '<html' /tmp/index.html
 
   push:
     runs-on: ubuntu-latest
