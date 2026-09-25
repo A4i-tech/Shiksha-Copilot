@@ -77,7 +77,7 @@ jobs:
       - name: Verify image serves the app
         run: |
           set -euo pipefail
-          # No entrypoint substitution now, just check the container serves the SPA.
+          # Image ships with no env.js, nothing to assert here; deploy-time CI writes and checks it.
           CID=$(docker run -d -p 18080:8000 shiksha-frontend-local)
           for i in $(seq 1 10); do
             if curl -fsS http://localhost:18080/ -o /tmp/index.html; then break; fi
