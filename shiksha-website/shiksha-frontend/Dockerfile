@@ -3,7 +3,7 @@ FROM node:24-alpine AS builder
 
 WORKDIR /app
 
-# Runtime config (BACKEND_URL etc.) is injected by docker-entrypoint.sh, not a build-arg.
+# Runtime config (BACKEND_URL etc.) is injected by the deployment target, not a build-arg.
 ARG BUILD_CONFIGURATION=development
 
 COPY package*.json ./
@@ -19,22 +19,15 @@ FROM nginx:1.27-alpine
 RUN addgroup -g 1000 appuser && adduser -D -u 1000 -G appuser appuser
 
 COPY --from=builder /app/dist/shiksha-frontend /srv
-COPY docker-entrypoint.sh render-env.sh /
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Template lives outside /srv so it's never served; entrypoint renders it
-# into /srv/assets/env.js on start (restart re-renders from here).
-RUN mkdir -p /etc/shiksha \
-    && mv /srv/assets/env.template.js /etc/shiksha/env.template.js
-
+# No assets/env.js baked in, the deployment target supplies it.
 # nginx runs non-root on :8000, so pid/temp dirs must be appuser-owned.
 RUN mkdir -p /tmp/nginx \
-    && chown -R appuser:appuser /srv /tmp/nginx \
-    && chmod +x /docker-entrypoint.sh /render-env.sh
+    && chown -R appuser:appuser /srv /tmp/nginx
 
 USER appuser
 
 EXPOSE 8000
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
