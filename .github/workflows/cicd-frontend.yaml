@@ -78,11 +78,17 @@ jobs:
       - name: Build Angular app
         working-directory: shiksha-website/shiksha-frontend
         run: |
+          set -euo pipefail
           npm ci
           npm run build -- --configuration ${{ inputs.environment }} \
             ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
-          . ./render-env.sh
-          render_env dist/shiksha-frontend/assets/env.template.js dist/shiksha-frontend/assets/env.js
+          # No template, no sed, CI already knows the values.
+          cat > dist/shiksha-frontend/assets/env.js <<EOF
+          window.env = {
+            apiUrl: "${BACKEND_URL}",
+            turnstileSiteKey: "${TURNSTILE_SITE_KEY}",
+          };
+          EOF
 
       - name: Setup Pages
         if: inputs.deploy_target == 'github-pages'
