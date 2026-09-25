@@ -92,6 +92,9 @@ jobs:
             turnstileSiteKey: "${TURNSTILE_SITE_KEY}",
           };
           EOF
+          node --check dist/shiksha-frontend/assets/env.js
+          grep -q "assets/env.js" dist/shiksha-frontend/index.html
+          grep -qF "\"${BACKEND_URL}\"" dist/shiksha-frontend/assets/env.js
 
       - name: Setup Pages
         if: inputs.deploy_target == 'github-pages'
