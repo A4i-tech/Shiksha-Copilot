@@ -63,7 +63,6 @@ export class ScheduleViewComponent implements OnInit,AfterViewInit {
     private datePipe: DatePipe,
     private router:Router,
     private activatedRoute: ActivatedRoute
-
   ) {}
 
   // @ViewChild('modalContent', { static: true }) modalContent!: TemplateRef<any>;

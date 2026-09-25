@@ -8,7 +8,6 @@ let connection;
 // Opens its own connection instead of the shared default, so closing it here does not break other test files' model calls.
 const setupTestDB = async () => {
   try {
-    // Create in-memory MongoDB instance
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
 
@@ -52,7 +51,6 @@ const closeTestDB = async () => {
     // Remove all event listeners to prevent memory leaks
     connection.removeAllListeners();
 
-    // Drop database
     await connection.dropDatabase();
 
     // Close connection

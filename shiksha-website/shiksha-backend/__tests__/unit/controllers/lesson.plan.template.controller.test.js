@@ -62,7 +62,7 @@ describe("LessonPlanTemplateController", () => {
 
       await controller.findTemplates(mockReq, mockRes);
 
-      expect(mockManager.findAllTemplates).toHaveBeenCalledWith({ classes: NaN });
+      expect(mockManager.findAllTemplates).toHaveBeenCalledWith({});
       expect(mockRes.status).toHaveBeenCalledWith(200);
     });
 

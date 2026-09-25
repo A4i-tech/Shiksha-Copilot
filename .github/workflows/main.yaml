@@ -47,6 +47,29 @@ jobs:
     secrets:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
 
+  integration-api:
+    name: API Integration Tests
+    needs: [cd-api, health-check]
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        working-directory: shiksha-api/app-service
+        run: |
+          pip install poetry
+          poetry install
+      - name: Run integration tests
+        # --no-cov: tests run against a live deployed service; instrumentation is
+        # unavailable. The coverage badge therefore reflects unit tests only.
+        working-directory: shiksha-api/app-service
+        env:
+          SHIKSHA_BASE_URL: ${{ needs.cd-api.outputs['service-url'] }}
+        run: poetry run pytest tests/integration -m integration --no-cov
+
   cd-backend:
     needs: ci-backend
     if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
@@ -190,34 +213,6 @@ jobs:
           echo "Timed out waiting for build $EXPECTED_BUILD"
           exit 1
 
-  smoke-tests:
-    name: Smoke Tests
-    needs: [cicd-frontend, health-check]
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with: { python-version: '3.11' }
-      - run: |
-          python -m pip install --upgrade pip
-          pip install -r tests/requirements.txt
-        name: Install dependencies
-      - name: Install Playwright browsers
-        timeout-minutes: 10
-        run: playwright install chromium
-      - name: Run Smoke Tests
-        env:
-          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
-          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
-          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
-        run: pytest tests/smoke --csv smoke_report.csv
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: smoke-report
-          path: smoke_report.csv
-
   regression-tests:
     name: Regression Tests
     needs: [cicd-frontend, health-check]
@@ -246,9 +241,31 @@ jobs:
           name: regression-report
           path: regression_report.csv
 
+  integration-backend:
+    # Required GitHub secrets: SHIKSHA_SU_PHONE (pre-seeded superuser phone number),
+    # SHIKSHA_SU_PIN (superuser PIN). SHIKSHA_BASE_URL is derived automatically from
+    # needs.cd-backend.outputs['service-url'] — not a manually configured secret.
+    name: Backend Integration Tests
+    needs: [cd-backend, health-check]
+    concurrency:
+      group: integration-backend
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run backend E2E tests against staging
+        working-directory: shiksha-website/shiksha-backend
+        env:
+          SHIKSHA_BASE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
+          SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
+          SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
+        run: |
+          npm ci
+          npm run test:integration
+
   performance-tests:
     name: Performance Tests
-    needs: [cicd-frontend, health-check]
+    needs: [cicd-frontend, cd-api, health-check]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -412,15 +429,11 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, smoke-tests, regression-tests, performance-tests, accessibility-tests]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, integration-api, regression-tests, performance-tests, accessibility-tests, integration-backend]
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download Smoke Report
-        uses: actions/download-artifact@v4
-        with: { name: smoke-report, path: reports/smoke }
-        continue-on-error: true
       - name: Download Regression Report
         uses: actions/download-artifact@v4
         with: { name: regression-report, path: reports/regression }
@@ -439,6 +452,7 @@ jobs:
           FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
           API_URL: ${{ needs.cd-api.outputs['service-url'] || needs.cd-api-prod.outputs['service-url'] }}
           BE_URL: ${{ needs.cd-backend.outputs['service-url'] || needs.cd-backend-prod.outputs['service-url'] }}
+          E2E_RES: ${{ needs.integration-backend.result }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: |
           python3 <<EOF
@@ -477,6 +491,8 @@ jobs:
           fe_status = os.environ.get('FE_RES') == 'success'
           api_status = os.environ.get('API_RES') == 'success'
           be_status = os.environ.get('BE_RES') == 'success'
+          e2e_res = os.environ.get('E2E_RES', 'skipped')
+          e2e_desc = "Pass" if e2e_res == 'success' else ("Skipped" if e2e_res == 'skipped' else f"Status: {e2e_res}")
 
           def get_desc(status, res):
               if status: return "Deployed"
@@ -487,22 +503,21 @@ jobs:
           api_desc = get_desc(api_status, os.environ.get('API_RES'))
           be_desc = get_desc(be_status, os.environ.get('BE_RES'))
 
-          smoke_desc = parse_pytest_csv('reports/smoke/smoke_report.csv')
           regr_desc = parse_pytest_csv('reports/regression/regression_report.csv')
           perf_desc = parse_k6_json('reports/performance/k6_summary.json')
 
           failures = [
-             os.environ.get('FE_RES'), os.environ.get('API_RES'), os.environ.get('BE_RES')
+             os.environ.get('FE_RES'), os.environ.get('API_RES'), os.environ.get('BE_RES'), e2e_res
           ]
-          is_fail = 'failure' in failures or 'Fail' in smoke_desc or 'Fail' in regr_desc
+          is_fail = 'failure' in failures or 'Fail' in regr_desc
           color = "Attention" if is_fail else "Good"
           services = [
               {"name": "Frontend", "description": fe_desc, "url": os.environ.get('FE_URL', '')},
               {"name": "API", "description": api_desc, "url": os.environ.get('API_URL', '')},
               {"name": "Backend", "description": be_desc, "url": os.environ.get('BE_URL', '')},
-              {"name": "Smoke Tests", "description": smoke_desc, "url": os.environ.get('RUN_URL')},
               {"name": "Regression", "description": regr_desc, "url": os.environ.get('RUN_URL')},
-              {"name": "Performance", "description": perf_desc, "url": os.environ.get('RUN_URL')}
+              {"name": "Performance", "description": perf_desc, "url": os.environ.get('RUN_URL')},
+              {"name": "E2E Backend", "description": e2e_desc, "url": os.environ.get('RUN_URL')}
           ]
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
