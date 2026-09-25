@@ -2,10 +2,8 @@
 # Extracted from the original standalone FastAPI application
 
 from enum import Enum
-from typing import Annotated, List, Literal, Optional, Self, TypeAlias
-from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, WithJsonSchema, model_validator
-
-from app.utils.utils import validate_tex
+from typing import Annotated, List, Literal, Optional, TypeAlias
+from pydantic import AfterValidator, BaseModel, BeforeValidator, Field, WithJsonSchema
 
 
 # ==============================
@@ -50,17 +48,6 @@ class Content(BaseModel):
 
     @staticmethod
     def text(content: str): return Content(content=content.encode(encoding="utf-8"))
-
-    @model_validator(mode="after")
-    def validate_tex_is_proper(self) -> Self:
-        if self.content_type == "text/plain":
-            try:
-                text = self.content.decode("utf-8")
-            except UnicodeDecodeError:
-                return self  # not decodable as text - nothing to TeX-check
-            # this seamlessly becomes a feedback loop for the llm
-            validate_tex(text)
-        return self
 
 
 class TextQuestion(BaseModel):
@@ -238,3 +225,23 @@ class GeneratedQuestionItem(BaseModel):
     objective: str
     marks_per_question: Marking
     item: QuestionModel
+
+
+def contents(q: QuestionModel):
+    match q:
+        case MatchingListQuestion(value1=value1, value2=value2):
+            yield from value1
+            yield from value2
+        case FourOptionsQuestion(question=question, options=options, answer=answer, keyAnswer=keyAnswer):
+            yield from question
+            for o in options: yield from o.text
+            yield from answer
+            yield from keyAnswer
+        case TextQuestion(question=question, answer=answer, keyAnswer=keyAnswer):
+            yield from question
+            yield from answer
+            yield from keyAnswer
+
+
+def readable_strings(q: QuestionModel):
+    return (c.content.decode() for c in contents(q) if c.content_type == "text/plain")
