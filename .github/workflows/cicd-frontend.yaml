@@ -82,6 +82,9 @@ jobs:
           npm ci
           npm run build -- --configuration ${{ inputs.environment }} \
             ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
+          : "${BACKEND_URL:?BACKEND_URL is empty}"
+          : "${TURNSTILE_SITE_KEY:?TURNSTILE_SITE_KEY is empty}"
+          case "$BACKEND_URL$TURNSTILE_SITE_KEY" in *'"'*|*'\'*) echo "::error::value breaks JS string literal" >&2; exit 1;; esac
           # No template, no sed, CI already knows the values.
           cat > dist/shiksha-frontend/assets/env.js <<EOF
           window.env = {
