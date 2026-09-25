@@ -54,7 +54,7 @@ async function getSupersetAuth() {
     refresh: false,
   }, { timeout: AXIOS_TIMEOUT_MS });
   const accessToken = loginResp.data?.access_token;
-  if (!accessToken) throw new Error(“Superset admin login failed — no token returned”);
+  if (!accessToken) throw new Error("Superset admin login failed — no token returned");
 
   // Carry session cookie so Superset CSRF validation can find the session token
   const loginCookies = loginResp.headers["set-cookie"] || [];
