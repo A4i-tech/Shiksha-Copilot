@@ -45,6 +45,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   private resizeObserver: ResizeObserver | null = null;
   private activeUuid = '';
   private lastObservedWidth = 0;
+  private destroyed = false;
 
   constructor(
     private supersetService: SupersetService,
@@ -65,6 +66,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
     }
     this.supersetService.getSyncStatus().then(t => this.lastSyncAt = t).catch((err) => console.warn('[SyncStatus]', err));
     await this.doEmbed();
+    if (this.destroyed) return;
 
     // Only react to WIDTH changes — height changes are from our own iframe height writes
     // and must not re-trigger applyScrollSize (would cause infinite loop)
@@ -110,6 +112,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
     try {
       // Fetch first token — also populates UUIDs in service as a side effect
       await this.supersetService.getGuestToken();
+      if (this.destroyed) return;
       const uuid = this.dashboardUuid;
       if (!uuid) {
         this.error = 'Dashboard not configured.';
@@ -131,6 +134,10 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
           emitDataMasks: true,
         },
       });
+      if (this.destroyed) {
+        this.embed.unmount();
+        return;
+      }
       this.embed.observeDataMask((dataMask) => {
         this.handleDataMask(dataMask);
       });
@@ -215,6 +222,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.destroyed = true;
     this.clearTimers();
     if (this.resizeDebounce) clearTimeout(this.resizeDebounce);
     this.breakpointSub?.unsubscribe();
