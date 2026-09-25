@@ -47,6 +47,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   private lastObservedWidth = 0;
   private destroyed = false;
   private destroy$ = new Subject<void>();
+  private embedGen = 0;
 
   constructor(
     private supersetService: SupersetService,
@@ -104,27 +105,36 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   }
 
   private async doEmbed() {
+    // Bumped so a slower, superseded call (e.g. two breakpoint crossings in a row) can tell
+    // it's stale after an await and unmount its own embed instead of racing this.embed.
+    const gen = ++this.embedGen;
     this.loading = true;
     this.error = '';
     this.clearTimers();
+    if (this.embed) {
+      this.embed.unmount();
+      this.embed = null;
+    }
     if (this.mountPoint?.nativeElement) {
       this.mountPoint.nativeElement.innerHTML = '';
     }
     try {
       // Fetch first token — also populates UUIDs in service as a side effect. Kept in a
-      // call-local closure (not a service field) so overlapping doEmbed() calls, e.g. from
-      // rapid breakpoint crossings, can't steal or clobber each other's token.
+      // call-local closure (not a service field) so overlapping doEmbed() calls can't steal
+      // or clobber each other's token.
       let primedToken: string | null = await this.supersetService.getGuestToken(this.destroy$);
-      if (this.destroyed) return;
+      if (this.destroyed || gen !== this.embedGen) return;
       const uuid = this.dashboardUuid;
       if (!uuid) {
-        this.error = 'Dashboard not configured.';
-        this.loading = false;
+        if (gen === this.embedGen) {
+          this.error = 'Dashboard not configured.';
+          this.loading = false;
+        }
         return;
       }
       this.activeUuid = uuid;
       const { embedDashboard } = await import('@superset-ui/embedded-sdk');
-      this.embed = await embedDashboard({
+      const embed = await embedDashboard({
         id: uuid,
         supersetDomain: this.supersetService.supersetUrl,
         mountPoint: this.mountPoint.nativeElement,
@@ -144,10 +154,11 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
           emitDataMasks: true,
         },
       });
-      if (this.destroyed) {
-        this.embed.unmount();
+      if (this.destroyed || gen !== this.embedGen) {
+        embed.unmount();
         return;
       }
+      this.embed = embed;
       this.embed.observeDataMask((dataMask) => {
         this.handleDataMask(dataMask);
       });
@@ -157,7 +168,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
         this.timers.push(setTimeout(() => this.applyScrollSize(), delay))
       );
     } catch (err: unknown) {
-      if (this.destroyed) return;
+      if (this.destroyed || gen !== this.embedGen) return;
       console.error('[superset] embed error:', err);
       this.error = 'Failed to load dashboard. Please try again.';
       this.loading = false;
@@ -240,6 +251,12 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
     if (this.resizeDebounce) clearTimeout(this.resizeDebounce);
     this.breakpointSub?.unsubscribe();
     this.resizeObserver?.disconnect();
+    // Without this the SDK's internal refreshGuestToken loop runs forever, firing
+    // fetchGuestToken (a real backend call) for the rest of the SPA session.
+    if (this.embed) {
+      this.embed.unmount();
+      this.embed = null;
+    }
     if (this.mountPoint?.nativeElement) {
       this.mountPoint.nativeElement.innerHTML = '';
     }
