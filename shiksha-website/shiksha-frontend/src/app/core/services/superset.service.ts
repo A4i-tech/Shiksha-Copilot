@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 interface GuestTokenResponse {
@@ -27,25 +28,30 @@ export class SupersetService {
   supersetUrl = '';
 
   // doEmbed's first call resolves this, cached once so embedDashboard's own fetchGuestToken doesn't double-fetch.
-  private primedToken: string | null = null;
+  private primed: GuestTokenResponse | null = null;
 
   constructor(private http: HttpClient) {}
 
-  getGuestToken(): Promise<string> {
-    if (this.primedToken) {
-      const token = this.primedToken;
-      this.primedToken = null;
-      return Promise.resolve(token);
+  // cancel$ lets a caller abort the underlying HTTP request on teardown (e.g. component destroy).
+  getGuestToken(cancel$?: Observable<void>): Promise<string> {
+    if (this.primed) {
+      const res = this.primed;
+      this.primed = null;
+      return Promise.resolve(this.applyResponse(res));
     }
-    return firstValueFrom(
-      this.http.post<GuestTokenResponse>(`${environment.apiUrl}/superset/guest-token`, {})
-    ).then((res) => {
-      this.dashboardUuid = res.dashboardUuid;
-      this.mobileDashboardUuid = res.mobileDashboardUuid;
-      this.supersetUrl = res.supersetUrl;
-      this.primedToken = res.token;
-      return res.token;
+    let req$ = this.http.post<GuestTokenResponse>(`${environment.apiUrl}/superset/guest-token`, {});
+    if (cancel$) req$ = req$.pipe(takeUntil(cancel$));
+    return firstValueFrom(req$).then((res) => {
+      this.primed = res;
+      return this.applyResponse(res);
     });
+  }
+
+  private applyResponse(res: GuestTokenResponse): string {
+    this.dashboardUuid = res.dashboardUuid;
+    this.mobileDashboardUuid = res.mobileDashboardUuid;
+    this.supersetUrl = res.supersetUrl;
+    return res.token;
   }
 
   getSyncStatus(): Promise<Date | null> {
