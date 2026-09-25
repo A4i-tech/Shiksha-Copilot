@@ -1,7 +1,7 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { Subscription } from 'rxjs';
+import { Subject, Subscription } from 'rxjs';
 import { SupersetService, BlockDrillRow } from 'src/app/core/services/superset.service';
 import { environment } from 'src/environments/environment';
 import type { EmbeddedDashboard } from '@superset-ui/embedded-sdk';
@@ -46,6 +46,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
   private activeUuid = '';
   private lastObservedWidth = 0;
   private destroyed = false;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private supersetService: SupersetService,
@@ -111,7 +112,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
     }
     try {
       // Fetch first token — also populates UUIDs in service as a side effect
-      await this.supersetService.getGuestToken();
+      await this.supersetService.getGuestToken(this.destroy$);
       if (this.destroyed) return;
       const uuid = this.dashboardUuid;
       if (!uuid) {
@@ -147,6 +148,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
         this.timers.push(setTimeout(() => this.applyScrollSize(), delay))
       );
     } catch (err: any) {
+      if (this.destroyed) return;
       console.error('[superset] embed error:', err);
       this.error = 'Failed to load dashboard. Please try again.';
       this.loading = false;
@@ -223,6 +225,8 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.destroyed = true;
+    this.destroy$.next();
+    this.destroy$.complete();
     this.clearTimers();
     if (this.resizeDebounce) clearTimeout(this.resizeDebounce);
     this.breakpointSub?.unsubscribe();
