@@ -27,31 +27,20 @@ export class SupersetService {
   mobileDashboardUuid: string | null = null;
   supersetUrl = '';
 
-  // doEmbed's first call resolves this, cached once so embedDashboard's own fetchGuestToken doesn't double-fetch.
-  private primed: GuestTokenResponse | null = null;
-
   constructor(private http: HttpClient) {}
 
   // cancel$ lets a caller abort the underlying HTTP request on teardown (e.g. component destroy).
+  // Always does a real fetch, no shared cache: two overlapping callers (e.g. rapid re-embeds)
+  // must not be able to steal or clobber each other's token.
   getGuestToken(cancel$?: Observable<void>): Promise<string> {
-    if (this.primed) {
-      const res = this.primed;
-      this.primed = null;
-      return Promise.resolve(this.applyResponse(res));
-    }
     let req$ = this.http.post<GuestTokenResponse>(`${environment.apiUrl}/superset/guest-token`, {});
     if (cancel$) req$ = req$.pipe(takeUntil(cancel$));
     return firstValueFrom(req$).then((res) => {
-      this.primed = res;
-      return this.applyResponse(res);
+      this.dashboardUuid = res.dashboardUuid;
+      this.mobileDashboardUuid = res.mobileDashboardUuid;
+      this.supersetUrl = res.supersetUrl;
+      return res.token;
     });
-  }
-
-  private applyResponse(res: GuestTokenResponse): string {
-    this.dashboardUuid = res.dashboardUuid;
-    this.mobileDashboardUuid = res.mobileDashboardUuid;
-    this.supersetUrl = res.supersetUrl;
-    return res.token;
   }
 
   getSyncStatus(): Promise<Date | null> {
