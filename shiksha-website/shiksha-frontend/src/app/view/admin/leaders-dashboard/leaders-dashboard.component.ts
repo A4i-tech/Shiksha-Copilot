@@ -111,8 +111,10 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       this.mountPoint.nativeElement.innerHTML = '';
     }
     try {
-      // Fetch first token — also populates UUIDs in service as a side effect
-      await this.supersetService.getGuestToken(this.destroy$);
+      // Fetch first token — also populates UUIDs in service as a side effect. Kept in a
+      // call-local closure (not a service field) so overlapping doEmbed() calls, e.g. from
+      // rapid breakpoint crossings, can't steal or clobber each other's token.
+      let primedToken: string | null = await this.supersetService.getGuestToken(this.destroy$);
       if (this.destroyed) return;
       const uuid = this.dashboardUuid;
       if (!uuid) {
@@ -126,7 +128,14 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
         id: uuid,
         supersetDomain: this.supersetService.supersetUrl,
         mountPoint: this.mountPoint.nativeElement,
-        fetchGuestToken: () => this.supersetService.getGuestToken(),
+        fetchGuestToken: () => {
+          if (primedToken) {
+            const token = primedToken;
+            primedToken = null;
+            return Promise.resolve(token);
+          }
+          return this.supersetService.getGuestToken();
+        },
         dashboardUiConfig: {
           hideTitle: true,
           hideChartControls: false,
@@ -147,7 +156,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
       [1000, 2000, 4000].forEach(delay =>
         this.timers.push(setTimeout(() => this.applyScrollSize(), delay))
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (this.destroyed) return;
       console.error('[superset] embed error:', err);
       this.error = 'Failed to load dashboard. Please try again.';
