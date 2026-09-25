@@ -1,5 +1,5 @@
-# -------- Stage 1: Build --------
-FROM node:22-alpine AS builder
+﻿# -------- Stage 1: Build --------
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -7,7 +7,7 @@ WORKDIR /app
 ARG BUILD_CONFIGURATION=development
 
 COPY package*.json ./
-RUN npm ci --silent
+RUN npm ci
 
 COPY . .
 

@@ -47,6 +47,7 @@ const endlineSurveyRoutes = require('./routes/endlineSurvey.routes');
 const systemRoutes = require('./routes/system.routes.js');
 const supersetRoutes = require('./routes/superset.routes.js');
 const adminContentRoutes = require('./routes/admin.content.routes.js');
+const analyticsRoutes = require('./routes/analytics.routes.js');
 
 const app = express();
 app.disable("x-powered-by");
@@ -94,6 +95,7 @@ app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
 app.use('/api', supersetRoutes);
 app.use('/api', adminContentRoutes);
+app.use('/api', analyticsRoutes);
 if (process.env.SHIKSHA_DEVTOOLS === "true") app.use("/api/devtools", require("./routes/devtools.routes"));
 
 app.use(errorMiddleware);
