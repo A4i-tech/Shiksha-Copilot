@@ -230,7 +230,7 @@
       >
         <div class="flex items-center">
           <img class="ms-2 me-3 w-5" src="assets/icons/edit.svg" alt="" />
-          <span>Edit</span>
+          <span>{{ recordState === '3' ? 'Edit' : 'View' }}</span>
         </div>
       </a>
     </li>
@@ -242,26 +242,10 @@
         </div>
       </a>
     </li>
-    <li *ngIf="recordState === '0'" class="h-10 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('unapprove', record)">
-      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
-        <div class="flex items-center">
-          <img class="ms-2 me-3 w-5" src="assets/icons/back-arrow.svg" alt="" />
-          <span>Set to draft</span>
-        </div>
-      </a>
-    </li>
-    <li *ngIf="recordState === '0'" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('delete', record)">
-      <a class="block px-4 py-2 text-sm text-content" role="menuitem">
-        <div class="flex items-center">
-          <img class="ms-2 me-3 w-5" src="assets/icons/delete.svg" alt="" />
-          <span class="text-error">Delete</span>
-        </div>
-      </a>
-    </li>
     <li *ngIf="recordState === '3'" class="h-10 mb-2 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('sendForReview', record)">
       <a class="block px-4 py-2 text-sm text-content" role="menuitem">
         <div class="flex items-center">
-          <img class="ms-2 me-3 w-5" src="assets/icons/check.svg" alt="" />
+          <img class="ms-2 me-3 w-5 invert" src="assets/icons/check.svg" alt="" />
           <span>Send for review</span>
         </div>
       </a>
@@ -269,7 +253,7 @@
     <li *ngIf="recordState === '4'" class="h-10 hover:bg-shade-80 cursor-pointer" (click)="openConfirm('approve', record)">
       <a class="block px-4 py-2 text-sm text-content" role="menuitem">
         <div class="flex items-center">
-          <img class="ms-2 me-3 w-5" src="assets/icons/check.svg" alt="" />
+          <img class="ms-2 me-3 w-5 invert" src="assets/icons/check.svg" alt="" />
           <span>Approve</span>
         </div>
       </a>

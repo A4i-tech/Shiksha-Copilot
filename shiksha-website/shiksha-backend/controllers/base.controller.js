@@ -177,6 +177,16 @@ class BaseController {
 		handleError(result, res);
 	}
 
+	async approve(req, res) {
+		let result = await this.manager.approve(req);
+
+		if (result.success) {
+			return res.status(200).json(result);
+		}
+
+		handleError(result, res);
+	}
+
 
 	async deactivate(req, res) {
 		let result = await this.manager.deactivate(req);
