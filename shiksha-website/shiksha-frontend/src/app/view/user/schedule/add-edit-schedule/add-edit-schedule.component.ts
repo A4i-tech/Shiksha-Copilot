@@ -24,7 +24,9 @@ import {
 import { ScheduleService } from '../schedule.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DatePipe } from '@angular/common';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subject, Subscription, takeUntil } from 'rxjs';
+
+const ALL_SUB_TOPICS = 'All Sub-Topics';
 
 @Component({
   selector: 'app-add-edit-schedule',
@@ -35,6 +37,11 @@ import { forkJoin } from 'rxjs';
 export class AddEditScheduleComponent
   implements AfterViewInit, OnInit, OnChanges, OnDestroy {
   private previousActiveElement: HTMLElement | null = null;
+  private readonly destroy$ = new Subject<void>();
+  /** cancels the previous in-flight lesson-plans request so a slower stale response can't overwrite a newer one */
+  private lessonPlansRequest?: Subscription;
+  /** suppresses the per-step lesson-plan refresh while the initial cascade auto-selects single-option filters */
+  private initializing = false;
 
   @HostListener('document:keydown.escape')
   handleEscape() {
@@ -45,6 +52,11 @@ export class AddEditScheduleComponent
   @Input() formData: any;
   @Input() cellData: any;
   @Input() mode!: string;
+  /** lesson plan pre-selected via the "Schedule this" button on the Lesson Plan page */
+  @Input() prefillLessonPlan: any;
+
+  /** collapsed by default — Board/Medium/Class/Subject/Chapter/Sub Topic are optional filters, not required fields */
+  filtersOpen = false;
   @Output() close = new EventEmitter<string>();
   @ViewChild('pop_ele', { static: true }) pop_ele!: ElementRef<any>;
   scheduleForm!: FormGroup;
@@ -65,7 +77,7 @@ export class AddEditScheduleComponent
     hideLabel: false,
     bindLabel: 'board',
     bindValue: 'board',
-    required: true
+    required: false
   };
 
   mediumDropDownConfig = {
@@ -75,7 +87,7 @@ export class AddEditScheduleComponent
     hideLabel: false,
     bindLabel: 'medium',
     bindValue: 'medium',
-    required: true
+    required: false
   };
 
   classNameDropDownConfig = {
@@ -85,7 +97,7 @@ export class AddEditScheduleComponent
     hideLabel: false,
     bindLabel: 'class',
     bindValue: 'class',
-    required: true
+    required: false
   };
 
   subjectDropDownConfig = {
@@ -95,7 +107,7 @@ export class AddEditScheduleComponent
     hideLabel: false,
     bindLabel: 'displayName',
     bindValue: 'subject',
-    required: true
+    required: false
   };
 
   chapterDropDownConfig = {
@@ -105,7 +117,7 @@ export class AddEditScheduleComponent
     hideLabel: false,
     bindLabel: 'displayValue',
     bindValue: 'topics',
-    required: true
+    required: false
   };
 
   subTopicDropDownConfig = {
@@ -115,7 +127,7 @@ export class AddEditScheduleComponent
     hideLabel: false,
     bindLabel: 'label',
     bindValue: 'label',
-    required: true
+    required: false
   };
 
   lessonDropDownConfig = {
@@ -124,6 +136,7 @@ export class AddEditScheduleComponent
     fieldName: 'Lesson Plan',
     bindLabel: 'name',
     bindValue: 'name',
+    searchable: true,
     required: true
   };
 
@@ -161,13 +174,13 @@ export class AddEditScheduleComponent
     private utility: UtilityService
   ) {
     this.scheduleForm = this.fb.group({
-      board: [null, Validators.required],
-      medium: [null, Validators.required],
-      className: [null, Validators.required],
+      board: [null],
+      medium: [null],
+      className: [null],
       otherClass: [''],
-      subject: [null, Validators.required],
-      chapter: [null, Validators.required],
-      subTopic: [null, Validators.required],
+      subject: [null],
+      chapter: [null],
+      subTopic: [null],
       lessonPlan: [null, Validators.required],
       schedule: this.fb.array([]),
     });
@@ -302,16 +315,47 @@ export class AddEditScheduleComponent
 
 
 
-      this.service.getSchoolInfoByID().subscribe({
+      this.service.getSchoolInfoByID().pipe(takeUntil(this.destroy$)).subscribe({
         next: (val: any) => {
           this.teacherId = val.data.user._id;
-          this.setBoardDropdownValue(val.data.user.profiles.teacher.classes);
+          // the cascade auto-selects single-option filters and resets 'lessonPlan' as it goes;
+          // its refreshes are suppressed so they can't race the selection made right after
+          this.initializing = true;
+          try {
+            this.setBoardDropdownValue(val.data.user.profiles.teacher.classes);
+          } finally {
+            this.initializing = false;
+          }
+
+          if (this.prefillLessonPlan) {
+            this.lessonPlanDropDownValue = [this.prefillLessonPlan];
+            this.scheduleForm.get('lessonPlan')?.setValue(this.prefillLessonPlan.name);
+            this.onLessonPlanSelected(this.prefillLessonPlan);
+          } else {
+            this.refreshLessonPlansForFilters(true);
+          }
         },
         error: (err: any) => {
           this.utility.handleError(err);
         },
       });
     }
+  }
+
+  mapLessonListItem(item: any) {
+    const lesson = item.lesson || {};
+    return {
+      name: lesson.name,
+      lessonId: lesson._id,
+      class: lesson.class,
+      subject: lesson.subject,
+      board: lesson.chapter?.board,
+      medium: lesson.chapter?.medium,
+      topic: lesson.chapter?.topics,
+      subTopic: Array.isArray(lesson.subTopics) ? lesson.subTopics.join(' | ') : lesson.subTopics,
+      isAll: lesson.isAll,
+      updatedAt: item.updatedAt,
+    };
   }
 
 
@@ -340,6 +384,7 @@ export class AddEditScheduleComponent
         this.setClassDropdownValue(this.mediumDropdownValue[0]);
       }
     }
+    this.refreshLessonPlansForFilters();
   }
 
 
@@ -358,6 +403,7 @@ export class AddEditScheduleComponent
         this.setSubjectValue(this.classDropDownValues[0]);
       }
     }
+    this.refreshLessonPlansForFilters();
   }
 
 
@@ -376,6 +422,7 @@ export class AddEditScheduleComponent
         this.setChapterValues(this.subjectDropdownValue[0]);
       }
     }
+    this.refreshLessonPlansForFilters();
   }
 
   /**
@@ -383,6 +430,56 @@ export class AddEditScheduleComponent
    */
   setChapterValues(value: any) {
     this.resetSubjectChanges();
+    this.loadChapterDropdown(value);
+    this.refreshLessonPlansForFilters();
+  }
+
+  /**
+   * re-fetches the recent-plans list narrowed to whichever board/medium/class/subject
+   * filters are currently selected, so the Lesson Plan picker stays in sync as the
+   * filter panel narrows — with none selected this returns the unfiltered recent list
+   */
+  private refreshLessonPlansForFilters(autoSelectMostRecent = false) {
+    if (this.initializing) {
+      return;
+    }
+    this.lessonPlansRequest?.unsubscribe();
+    const filters = {
+      board: this.scheduleForm.get('board')?.value,
+      medium: this.scheduleForm.get('medium')?.value,
+      class: this.scheduleForm.get('className')?.value,
+      subject: this.scheduleForm.get('subject')?.value,
+    };
+    this.lessonPlansRequest = this.service.getRecentLessonPlans(filters).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (val: any) => {
+        this.lessonPlanDropDownValue = (val.data || []).map((item: any) =>
+          this.mapLessonListItem(item)
+        );
+        const currentName = this.scheduleForm.get('lessonPlan')?.value;
+        if (!currentName) {
+          if (autoSelectMostRecent && this.lessonPlanDropDownValue.length) {
+            const mostRecent = this.lessonPlanDropDownValue[0];
+            this.scheduleForm.get('lessonPlan')?.setValue(mostRecent.name);
+            this.onLessonPlanSelected(mostRecent);
+          }
+          return;
+        }
+        if (!this.lessonPlanDropDownValue.some(p => p.name === currentName)) {
+          this.scheduleForm.get('lessonPlan')?.reset();
+          this.lessonPlanID = '';
+        }
+      },
+      error: (err: any) => {
+        this.utility.handleError(err);
+      },
+    });
+  }
+
+  /**
+   * fetches the chapter dropdown, without resetting downstream fields — used by the prefill
+   * path, which has already set 'lessonPlan' and must not wipe it out
+   */
+  private loadChapterDropdown(value: any) {
     if (value) {
       const body = {
         board: this.scheduleForm.get('board')?.value,
@@ -390,7 +487,7 @@ export class AddEditScheduleComponent
         standard: this.scheduleForm.get('className')?.value,
         subject: this.scheduleForm.get('subject')?.value,
       };
-      this.service.getAllChapter(body).subscribe({
+      this.service.getAllChapter(body).pipe(takeUntil(this.destroy$)).subscribe({
         next: (val: any) => {
           this.chapterDropdownValue = this.utility.formatChapterDropdown(
             val.data.results
@@ -411,25 +508,34 @@ export class AddEditScheduleComponent
   setSubTopicValue(value:any) {
     this.resetChapterChanges();
     if(value){
-      const body = {
-        board: this.scheduleForm.get('board')?.value,
-        medium: this.scheduleForm.get('medium')?.value,
-        standard: this.scheduleForm.get('className')?.value,
-        subject: this.scheduleForm.get('subject')?.value,
-        topic: this.scheduleForm.get('chapter')?.value,
-      };
-      this.service.getAllSubTopic(body).subscribe({
-        next: (val: any) => {
-          this.setSubTopicData(val.data);
-        },
-      });
+      this.loadSubTopicDropdown();
     }
+  }
+
+  private loadSubTopicDropdown() {
+    const body = {
+      board: this.scheduleForm.get('board')?.value,
+      medium: this.scheduleForm.get('medium')?.value,
+      standard: this.scheduleForm.get('className')?.value,
+      subject: this.scheduleForm.get('subject')?.value,
+      topic: this.scheduleForm.get('chapter')?.value,
+    };
+    if (!body.topic) {
+      return;
+    }
+    this.service.getAllSubTopic(body).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (val: any) => {
+        this.setSubTopicData(val.data);
+      },
+      error: (err: any) => {
+        this.utility.handleError(err);
+      },
+    });
   }
 
 
   setSubTopicData(val: any) {
-    const formatttedData = this.formatSubTopics(val);
-    this.subTopicDropDownValue = formatttedData;
+    this.subTopicDropDownValue = val?.[0]?.subtopics ? this.formatSubTopics(val) : [];
   }
 
   formatSubTopics(val:any){
@@ -441,7 +547,7 @@ export class AddEditScheduleComponent
       let obj;
       if(ele.isAll){
         obj={
-          label: 'All Sub-Topics',
+          label: ALL_SUB_TOPICS,
           lessonList:ele.lessons
         }
       }else{
@@ -462,6 +568,7 @@ export class AddEditScheduleComponent
   setLessonPlan(val: any) {
     this.lessonPlanDropDownValue = [];
     this.scheduleForm.get('lessonPlan')?.reset();
+    this.lessonPlanID = '';
     this.lessonPlanDropDownValue = val.lessonList;
     if(this.lessonPlanDropDownValue.length === 1){
       this.scheduleForm.get('lessonPlan')?.setValue(this.lessonPlanDropDownValue[0].name);
@@ -470,11 +577,64 @@ export class AddEditScheduleComponent
   }
 
   /**
-   * on lesson changes get the lesson plan ID to send in the body of the api
+   * called whenever a lesson plan is picked, whether from the recent-plans picker (which
+   * carries board/medium/class/subject/topic/subTopic) or from the optional filters' own
+   * chapter/sub-topic cascade (which only carries name/lessonId — those fields are already
+   * on the form in that case, so only patch fields the picked item actually provided)
    * @param lessonValue
    */
-  getLessonId(lessonValue: any) {
+  onLessonPlanSelected(lessonValue: any) {
+    if (!lessonValue) {
+      this.lessonPlanID = '';
+      return;
+    }
     this.lessonPlanID = lessonValue.lessonId;
+    const patch: any = {};
+    if (lessonValue.board != null) patch.board = lessonValue.board;
+    if (lessonValue.medium != null) patch.medium = lessonValue.medium;
+    if (lessonValue.class != null) patch.className = lessonValue.class;
+    if (lessonValue.subject != null) patch.subject = lessonValue.subject;
+    if (lessonValue.topic != null) patch.chapter = lessonValue.topic;
+    // the sub-topic options label an all-sub-topics plan 'All Sub-Topics', not its joined sub-topics
+    if (lessonValue.subTopic != null) patch.subTopic = lessonValue.isAll ? ALL_SUB_TOPICS : lessonValue.subTopic;
+    if (Object.keys(patch).length) {
+      this.scheduleForm.patchValue(patch);
+    }
+
+    this.populateDropdownsForPrefill(lessonValue);
+  }
+
+  private populateDropdownsForPrefill(lessonValue: any) {
+    const boardEntry = this.boardDropdownValue?.find((b: any) => b.board === lessonValue.board);
+    if (!boardEntry) {
+      console.warn('[schedule] prefill: board not found in dropdown', lessonValue.board);
+      this.filtersOpen = true;
+      return;
+    }
+    this.mediumDropdownValue = boardEntry.mediums;
+    const mediumEntry = boardEntry.mediums.find((m: any) => m.medium === lessonValue.medium);
+    if (!mediumEntry) {
+      console.warn('[schedule] prefill: medium not found', lessonValue.medium);
+      this.filtersOpen = true;
+      return;
+    }
+    this.classDropDownValues = mediumEntry.classes.sort((a: any, b: any) => a.class - b.class);
+    const classEntry = this.classDropDownValues.find(
+      (c: any) => String(c.class) === String(lessonValue.class)
+    );
+    if (!classEntry) {
+      console.warn('[schedule] prefill: class not found', lessonValue.class);
+      this.filtersOpen = true;
+      return;
+    }
+    this.subjectDropdownValue = this.utility.formatSubjectDropdown(classEntry.data, lessonValue.board);
+    const subjectEntry = this.subjectDropdownValue.find(
+      (s: any) => String(s.subject) === String(lessonValue.subject)
+    );
+    if (subjectEntry && lessonValue.topic !== undefined) {
+      this.loadChapterDropdown(subjectEntry);
+      this.loadSubTopicDropdown();
+    }
   }
 
   // ======== ADD FLOW END HERE ===========
@@ -820,6 +980,8 @@ export class AddEditScheduleComponent
     if (this.previousActiveElement?.isConnected) {
       this.previousActiveElement.focus();
     }
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
 

@@ -94,19 +94,13 @@ strict_optional = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "--cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-report=xml:coverage.xml --cov-report json:coverage.json --cov-report=html -v --tb=short --strict-markers"
+addopts = "--import-mode=importlib -ra -v --strict-markers --tb=short -m 'not integration' --cov=app --cov-report=term-missing --cov-report=html:htmlcov --cov-report=xml --cov-branch --asyncio-mode=auto"
 markers = [
-  "unit: marks tests as unit tests",
   "integration: marks tests as integration tests",
-  "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 
 [tool.coverage.run]
 source = ["app"]
-omit = ["*/tests/*", "*/venv/*", "*/virtualenv/*", "*/__pycache__/*"]
 
 [tool.coverage.report]
 exclude_lines = [

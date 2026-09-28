@@ -50,11 +50,12 @@ import { TranslateModule } from '@ngx-translate/core';
             <label class="form-control-label">{{ 'Permissions' | translate }}</label>
             <input type="search" class="form-control mb-3" [placeholder]="'Search' | translate" [attr.aria-label]="'Search' | translate" [value]="permissionSearch" (input)="permissionSearch = $any($event.target).value">
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-80 overflow-auto border rounded p-3">
-              <label *ngFor="let permission of filteredPermissions" class="flex gap-3 items-start text-sm border rounded p-3 bg-surface-muted">
-                <input class="mt-1" type="checkbox" [checked]="selectedPermissions.has(permission.name)" [disabled]="editing && editing.isSuperUser" (change)="togglePermission(permission.name, $event)">
+              <label *ngFor="let permission of filteredPermissions" class="flex gap-3 items-start text-sm border rounded p-3 bg-surface-muted" [class.opacity-50]="!permissionAllowed(permission)">
+                <input class="mt-1" type="checkbox" [checked]="selectedPermissions.has(permission.name)" [disabled]="editing && editing.isSuperUser || !permissionAllowed(permission)" (change)="togglePermission(permission.name, $event)">
                 <span>
                   <span class="block font-medium text-content break-all">{{ permission.name }}</span>
                   <span class="block text-xs text-content-60 mt-1">{{ permission.description }}</span>
+                  <span *ngIf="!permissionAllowed(permission)" class="inline-block mt-2 px-2 py-1 rounded bg-primary-30 text-primary text-xs font-medium">Requires {{ permission.scopes.join(', ') }} scope</span>
                 </span>
               </label>
               <p *ngIf="!filteredPermissions.length" class="md:col-span-2 xl:col-span-3 py-4 text-center text-content-60">{{ 'No items found' | translate }}</p>
@@ -231,11 +232,15 @@ export class RoleManagementComponent implements OnInit {
 
   constructor(private http: HttpClient, private fb: FormBuilder, private utility: UtilityService) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    this.form.controls.scopeType.valueChanges.subscribe(() => this.selectedPermissions.clear());
+  }
   get filteredPermissions() {
     const query = this.permissionSearch.trim().toLowerCase();
     return query ? this.permissions.filter((permission) => `${permission.name} ${permission.description}`.toLowerCase().includes(query)) : this.permissions;
   }
+  permissionAllowed(permission: any) { return permission.scopes.includes(this.form.controls.scopeType.value); }
   load() {
     this.http.get<any>(`${this.baseUrl}/roles`).subscribe((res) => {
       this.roles = res.data.results;

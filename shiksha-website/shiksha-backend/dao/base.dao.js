@@ -1,9 +1,14 @@
 const mongoose = require("mongoose");
 const AppError = require("../helper/app.error");
+const { CONTENT_STATUS } = require("../constants/content-status");
 
 class BaseDao {
 	constructor(model) {
 		this.Model = model;
+	}
+
+	static parseIsDeletedFilter(value) {
+		return value === "true";
 	}
 
 	async getAll(
@@ -97,6 +102,43 @@ class BaseDao {
 				new: true,
 			}
 		);
+	}
+
+	// caller must pass an already-validated object; the route's Joi schema is the write allow-list
+	async adminUpdate(
+		id,
+		updates,
+		session = null,
+		allowDeletedStatusUpdate = false
+	) {
+		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+			throw new Error("Invalid ID for update operation");
+		}
+		if (!updates || Object.keys(updates).length === 0) {
+			throw new Error("No fields to update");
+		}
+		const statusOnlyTransition =
+			allowDeletedStatusUpdate &&
+			Object.keys(updates).length === 1 &&
+			Object.prototype.hasOwnProperty.call(updates, "status") &&
+			[CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW].includes(updates.status);
+		const result = await this.Model.findOneAndUpdate(
+			statusOnlyTransition
+				? { _id: id, status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } }
+				: { _id: id, isDeleted: { $ne: true } },
+			{
+				$set: updates,
+			},
+			{
+				new: true,
+				runValidators: true,
+				session: session,
+			}
+		);
+		if (!result) {
+			throw new Error("Record not found or has been deleted");
+		}
+		return result;
 	}
 
 	reserveLoginAttempt(id, attemptedAt, limit) {

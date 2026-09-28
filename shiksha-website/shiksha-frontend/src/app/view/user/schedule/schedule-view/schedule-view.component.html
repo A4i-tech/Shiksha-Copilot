@@ -13,7 +13,7 @@
 
 	<div class=" border p-4 md:p-8 mt-2 relative">
 		<div *ngIf="showPopUp">
-			<app-add-edit-schedule data-testid="add-edit-schedule-popup" [cordinate]="cordinate" (close)="onClosePopUp($event)" [formData]="selectedEvent" [cellData]="cellData" [mode]="mode"></app-add-edit-schedule>
+			<app-add-edit-schedule data-testid="add-edit-schedule-popup" [cordinate]="cordinate" (close)="onClosePopUp($event)" [formData]="selectedEvent" [cellData]="cellData" [mode]="mode" [prefillLessonPlan]="prefillLessonPlan"></app-add-edit-schedule>
 		</div>
 		
 		<div class="flex justify-between items-center flex-wrap gap-4">

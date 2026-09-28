@@ -11,7 +11,12 @@ class LessonPlanTemplateController extends BaseController {
   async findTemplates(req, res) {
     let { filter = {} } = req.query;
 
-    filter.classes = parseInt(filter.classes);
+      const parsedClasses = parseInt(filter.classes);
+      if (Number.isNaN(parsedClasses)) {
+        delete filter.classes;
+      } else {
+        filter.classes = parsedClasses;
+      }
 
     const result = await this.manager.findAllTemplates(
       filter

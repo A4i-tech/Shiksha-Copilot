@@ -1,6 +1,7 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const { CONTENT_STATUS, CONTENT_STATUSES } = require("../constants/content-status");
 const masterLessonSchema = new mongoose.Schema(
   {
     name: {
@@ -80,6 +81,15 @@ const masterLessonSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    status: {
+      type: String,
+      enum: CONTENT_STATUSES,
+      default: CONTENT_STATUS.APPROVED,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
 	checkList: [
 		{
 			type: Object,
@@ -98,6 +108,8 @@ const masterLessonSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+masterLessonSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
 const MasterLesson = mongoose.model("MasterLesson", masterLessonSchema);
 

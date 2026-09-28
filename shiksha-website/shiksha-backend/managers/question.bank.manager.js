@@ -78,8 +78,8 @@ const transformWeakLbaQuestion = async (q) => {
   };
   delete q.keyanswer;
   return q.pairs?.length ? Promise.all(q.pairs.map(async (pair, index) => {
-    const value1 = await toQuestionContent(pair.left);
-    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, question: value1, value1, value2: await toQuestionContent(pair.right) };
+    const value1 = await toQuestionContent(pair.value1);
+    return { ...base, _id: `${q._id}_pair_${index}`, text: value1, question: value1, value1, value2: await toQuestionContent(pair.value2) };
   })) : base;
 };
 /** @extends {BaseManager<QuestionBankDao>} */
@@ -1077,13 +1077,6 @@ class QuestionBankManager extends BaseManager {
           keyAnswer: q.keyAnswer,
           options: Array.isArray(q.options) ? q.options : [],
           pairs: Array.isArray(q.pairs) ? q.pairs : [],
-          items: Array.isArray(q.items) ? q.items : [],
-          correctOrderById: Array.isArray(q.correctOrderById)
-            ? q.correctOrderById
-            : [],
-          correctOrderIndices: Array.isArray(q.correctOrderIndices)
-            ? q.correctOrderIndices
-            : [],
         });
         insertedQuestions.push(question);
       }

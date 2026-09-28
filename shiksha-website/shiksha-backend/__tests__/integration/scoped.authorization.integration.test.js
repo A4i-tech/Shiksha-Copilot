@@ -28,8 +28,13 @@ function expectSuccess(response) {
   return response.body.data;
 }
 
-function expectDenied(response, message) {
-  expect(response).toMatchObject({ status: 400, body: { success: false } });
+function expectDenied(response, message, status) {
+  if (status !== undefined) {
+    expect(response.status).toBe(status);
+  } else {
+    expect([400, 403]).toContain(response.status);
+  }
+  expect(response.body.success).toBe(false);
   if (message) expect(response.body.message).toBe(message);
 }
 

@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { TranslateModule } from '@ngx-translate/core';
+import { switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { PermissionGrant, RegionDependency } from '../../interfaces/permission.interface';
@@ -78,7 +79,7 @@ export class UserManageComponent implements OnInit {
     }
     if (this.canAssign) {
       this.users.getAssignmentData().subscribe(({ roles, regions }) => {
-        this.roles = roles.filter((role: any) => this.teacherForm ? role.scopeType === 'SCHOOL' : role.scopeType !== 'SCHOOL');
+        this.roles = this.userId ? roles : roles.filter((role: any) => this.teacherForm ? role.scopeType === 'SCHOOL' : role.scopeType !== 'SCHOOL');
         this.regions = regions;
         this.setProfileRegions();
         if (!this.userId) this.setRoleOptions(0);
@@ -192,9 +193,15 @@ export class UserManageComponent implements OnInit {
     if (this.form.invalid) return;
     const raw = this.form.getRawValue();
     const value = this.canAssign ? { ...raw, roles: [...raw.roles, ...this.otherAssignments] } : raw;
-    const request = this.teacherForm
-      ? this.mode === 'edit' ? this.users.updateTeacher(this.userId, value) : this.users.createTeacher(value)
-      : this.mode === 'edit' ? this.users.updateStaff(this.userId, value) : this.users.createStaff(value);
+    const update = (id: string, form: any) => this.teacherForm ? this.users.updateTeacher(id, form) : this.users.updateStaff(id, form);
+    const request = this.mode === 'edit' ? update(this.userId, value) : this.users.getByPhone(value.phone).pipe(switchMap((user) => {
+      if (!user) return this.teacherForm ? this.users.createTeacher(value) : this.users.createStaff(value);
+      const roles = user.roles.map((assignment: any) => ({ _id: assignment._id, roleId: assignment.role._id, dep: assignment.dep }));
+      const profiles = this.teacherForm
+        ? user.profiles.teacher ? undefined : { teacher: { facilities: [], classes: [], isProfileCompleted: false } }
+        : user.profiles.admin ? undefined : { admin: { state: value.state } };
+      return this.users.updateRoles(user._id, [...roles, ...value.roles], profiles);
+    }));
     request.subscribe({
       next: (response: any) => {
         this.router.navigate([this.listRoute]);
@@ -345,8 +352,8 @@ export class UserManageComponent implements OnInit {
         const user = response.data;
         this.assignments.clear();
         this.scopes = [];
-        const assignments = user.roles.filter((assignment: any) => (assignment.role.scopeType === 'SCHOOL') === this.teacherForm);
-        this.otherAssignments = user.roles.filter((assignment: any) => (assignment.role.scopeType === 'SCHOOL') !== this.teacherForm)
+        const assignments = this.mode === 'edit' ? user.roles : user.roles.filter((assignment: any) => (assignment.role.scopeType === 'SCHOOL') === this.teacherForm);
+        this.otherAssignments = this.mode === 'edit' ? [] : user.roles.filter((assignment: any) => (assignment.role.scopeType === 'SCHOOL') !== this.teacherForm)
           .map((assignment: any) => ({ _id: assignment._id, roleId: assignment.role._id, dep: assignment.dep }));
         if (!this.canAssign) this.roles = assignments.map((assignment: any) => assignment.role);
         assignments.forEach((assignment: any, index: number) => {

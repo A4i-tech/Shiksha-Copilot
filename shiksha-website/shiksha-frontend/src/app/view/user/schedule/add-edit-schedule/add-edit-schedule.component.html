@@ -53,7 +53,7 @@
 				
 						<div>
 							 <app-dropdown [config]="lessonDropDownConfig" [dropDownValues]="lessonPlanDropDownValue" [mode]="mode"
-								[dropDownCtrl]="convertToFormControl(f['lessonPlan'])" [submitted]="submitted" (valueChange)="getLessonId($event)"></app-dropdown>
+								[dropDownCtrl]="convertToFormControl(f['lessonPlan'])" [submitted]="submitted" (valueChange)="onLessonPlanSelected($event)"></app-dropdown>
 						</div> 
 			
 						<button class="btn-primary  flex items-center justify-center px-4 self-start" type="button" *ngIf="mode === 'add'" routerLink="/content-generation">
