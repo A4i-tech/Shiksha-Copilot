@@ -144,7 +144,7 @@ export class LeadersDashboardComponent implements OnInit, OnDestroy {
             primedToken = null;
             return Promise.resolve(token);
           }
-          return this.supersetService.getGuestToken();
+          return this.supersetService.getGuestToken(this.destroy$);
         },
         dashboardUiConfig: {
           hideTitle: true,
