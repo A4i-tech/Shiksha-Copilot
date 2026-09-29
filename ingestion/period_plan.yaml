@@ -35,6 +35,11 @@ parameters:
       minimum: 1
       default: 18
       description: Last page to scan while finding Chapter 1 offset
+    created_at:
+      type: integer
+      minimum: 0
+      default: 0
+      description: Unix timestamp to write into generated payloads. Use 0 to use the pipeline run time.
     workflow_template:
       type: string
       description: >-
@@ -280,6 +285,7 @@ steps:
       value: |
         ${.config.workflow_template} as $template
         | ($template._id) as $workflow_id
+        | (if ${.config.created_at} > 0 then ${.config.created_at} else (now | floor) end) as $created_at
         | ${.config.discourse_types} as $discourse
         | ($discourse.major) as $discourse_major
         | ($discourse.minor) as $discourse_minor
@@ -312,7 +318,7 @@ steps:
             | {
                 _id: $doc_id,
                 user_id: "ADMIN",
-                created_at: (now | floor),
+                created_at: $created_at,
                 workflow_id: $workflow_id,
                 chapter_id: $chapter_id,
                 lp_level: "SUBTOPIC",
@@ -323,3 +329,7 @@ steps:
                 workflow: $workflow_payload
               }
           ]
+    validation:
+      - mode: after
+        expr: '[.metadata.payloads[] | select((.subtopics | length) == 0 or (.learning_outcomes | length) == 0)] | length == 0'
+        message: "Payloads with empty subtopics or learning outcomes were generated"
