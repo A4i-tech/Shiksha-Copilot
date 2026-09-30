@@ -11,7 +11,11 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build -- --configuration ${BUILD_CONFIGURATION} --base-href /
+# prebuild's ensure-env (package.json) would otherwise bake env.example.js's
+# dummy defaults into dist/assets/env.js; strip it so the deployment target's
+# real value is the only one that can ever be served.
+RUN npm run build -- --configuration ${BUILD_CONFIGURATION} --base-href / \
+    && rm -f dist/shiksha-frontend/assets/env.js
 
 # -------- Stage 2: Runtime --------
 FROM nginx:1.27-alpine
