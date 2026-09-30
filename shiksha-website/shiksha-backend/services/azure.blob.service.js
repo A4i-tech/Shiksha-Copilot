@@ -3,38 +3,55 @@ if (!globalThis.crypto) {
     globalThis.crypto = webcrypto;
 }
 
-const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = require("@azure/storage-blob");
-const { DefaultAzureCredential } = require("@azure/identity");
 require("dotenv").config();
 
 const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
 const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
 const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME;
 
-// Dual auth: connection string (local dev) or DefaultAzureCredential (production)
-/** @type {BlobServiceClient} */
-let blobServiceClient;
-let sharedKeyCredential;
+let azure;
 
-if (connectionString) {
-    // Extract account name and key from connection string for SAS generation
-    const parsedAccountName = connectionString.match(/AccountName=([^;]+)/)?.[1];
-    const parsedAccountKey = connectionString.match(/AccountKey=([^;]+)/)?.[1];
+// The Azure SDK is optional, so load it on first use and not at import.
+function getAzure() {
+    if (azure) return azure;
+    let sdk;
+    try {
+        sdk = require("@azure/storage-blob");
+    } catch (error) {
+        if (error.code !== "MODULE_NOT_FOUND") throw error;
+        throw new Error("STORAGE_BACKEND=azure needs the @azure/storage-blob package, and it is not installed. Run npm install @azure/storage-blob or use STORAGE_BACKEND=s3.");
+    }
+    const { BlobServiceClient, generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = sdk;
 
-    if (parsedAccountName && parsedAccountKey) {
-        sharedKeyCredential = new StorageSharedKeyCredential(parsedAccountName, parsedAccountKey);
+    // Dual auth: connection string (local dev) or DefaultAzureCredential (production)
+    let blobServiceClient;
+    let sharedKeyCredential;
+
+    if (connectionString) {
+        // Extract account name and key from connection string for SAS generation
+        const parsedAccountName = connectionString.match(/AccountName=([^;]+)/)?.[1];
+        const parsedAccountKey = connectionString.match(/AccountKey=([^;]+)/)?.[1];
+
+        if (parsedAccountName && parsedAccountKey) {
+            sharedKeyCredential = new StorageSharedKeyCredential(parsedAccountName, parsedAccountKey);
+        }
+
+        blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
+        console.log("[Azure Blob] Using connection string auth");
+    } else {
+        const { DefaultAzureCredential } = require("@azure/identity");
+        const credential = new DefaultAzureCredential();
+        blobServiceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
+        console.log("[Azure Blob] Using DefaultAzureCredential auth");
     }
 
-    blobServiceClient = BlobServiceClient.fromConnectionString(connectionString);
-    console.log("[Azure Blob] Using connection string auth");
-} else {
-    const credential = new DefaultAzureCredential();
-    blobServiceClient = new BlobServiceClient(`https://${accountName}.blob.core.windows.net`, credential);
-    console.log("[Azure Blob] Using DefaultAzureCredential auth");
+    azure = { blobServiceClient, sharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions };
+    return azure;
 }
 
 async function uploadToStorage(file, fileName, mimeType) {
     try {
+        const { blobServiceClient } = getAzure();
         const containerClient = blobServiceClient.getContainerClient(containerName);
         const containerExists = await containerClient.exists();
         if (!containerExists) {
@@ -58,6 +75,7 @@ async function uploadToStorage(file, fileName, mimeType) {
 }
 
 async function uploadStreamToStorage(stream, fileName, mimeType, onProgress) {
+    const { blobServiceClient } = getAzure();
     const containerClient = blobServiceClient.getContainerClient(containerName);
     if (!await containerClient.exists()) await containerClient.create();
 
@@ -71,6 +89,7 @@ async function uploadStreamToStorage(stream, fileName, mimeType, onProgress) {
 }
 
 async function getPreSignedUrl(blobName, expiryInSeconds) {
+    const { blobServiceClient, sharedKeyCredential, generateBlobSASQueryParameters, BlobSASPermissions } = getAzure();
     const now = new Date();
     const expiryTime = new Date(now);
     expiryTime.setSeconds(now.getSeconds() + expiryInSeconds);
@@ -120,6 +139,7 @@ function getBlobName(blobRef) {
 }
 
 async function getBlobContent(blobRef, contentType) {
+    const { blobServiceClient } = getAzure();
     const containerClient = blobServiceClient.getContainerClient(containerName);
     const blobClient = containerClient.getBlockBlobClient(getBlobName(blobRef));
     const [buffer, properties] = await Promise.all([blobClient.downloadToBuffer(), blobClient.getProperties()]);
@@ -127,7 +147,7 @@ async function getBlobContent(blobRef, contentType) {
 }
 
 async function deleteFromStorage(blobRef) {
-    return blobServiceClient.getContainerClient(containerName).deleteBlob(getBlobName(blobRef));
+    return getAzure().blobServiceClient.getContainerClient(containerName).deleteBlob(getBlobName(blobRef));
 }
 
 async function getPreSignedProfileImageUrl(userId) {

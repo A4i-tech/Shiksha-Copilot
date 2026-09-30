@@ -25,7 +25,7 @@ const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
 const logger = require("../config/loggers");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
-const { getBlobContent } = require("../services/azure.blob.service");
+const { getBlobContent } = require("../services/storage.service");
 const School = require("../models/school.model");
 
 // really we should look at dropping the 'aliases' field here. ideally db.lba_questions should use lower-case key

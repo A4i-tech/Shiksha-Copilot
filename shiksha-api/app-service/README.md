@@ -23,7 +23,7 @@ app-service/
 │   │   ├── rag_adapters.py       # RAG adapter implementations
 │   │   └── rag_adapter_cache.py  # LRU cache for RAG adapters
 │   └── utils/           # Utility functions
-│       ├── blob_store.py    # Azure Blob Storage utilities
+│       ├── blob_store.py    # Blob storage (S3-compatible or Azure)
 │       ├── logger.py        # Logging utilities
 │       └── prompt_template.py   # Prompt template handling
 ├── prompts/             # Prompt templates
@@ -57,6 +57,8 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
+To use Azure Blob Storage (`STORAGE_BACKEND=azure`), install the `azure` extra: `poetry install --extras azure`.
+
 3. Activate the virtual environment:
 
 ```bash
@@ -87,7 +89,16 @@ AZURE_OPENAI_EMBED_MODEL=your_embedding_model_deployment
 AZURE_PROJECT_ENDPOINT=https://your-project.eastus2.ai.azure.com
 AZURE_BING_GROUNDING_CONNECTION_ID=your_bing_connection_id
 
-# Azure Blob Storage Configuration (Required for RAG)
+# Blob Storage Configuration (Required for RAG). STORAGE_BACKEND is s3 (default) or azure.
+STORAGE_BACKEND=s3
+
+# S3-compatible provider (STORAGE_BACKEND=s3). Leave S3_ENDPOINT_URL empty to use AWS.
+S3_ENDPOINT_URL=http://localhost:9000
+S3_ACCESS_KEY_ID=your_s3_access_key_id
+S3_SECRET_ACCESS_KEY=your_s3_secret_access_key
+S3_REGION=us-east-1
+
+# Azure provider (STORAGE_BACKEND=azure only)
 BLOB_STORE_CONNECTION_STRING=your_azure_storage_connection_string
 BLOB_STORE_URL=https://yourstorageaccount.blob.core.windows.net/
 
@@ -103,7 +114,9 @@ QDRANT_API_KEY=your_qdrant_api_key
 - `AZURE_OPENAI_DEPLOYMENT_NAME`: Completion model deployment name
 - `AZURE_OPENAI_EMBED_MODEL`: Embedding model deployment name
 - `AZURE_PROJECT_ENDPOINT`: Azure AI Foundry project endpoint URL
-- `BLOB_STORE_CONNECTION_STRING`: Azure Storage connection string (for RAG index files)
+- `STORAGE_BACKEND`: Storage provider for RAG index files, `s3` (default) or `azure`
+- `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`: S3-compatible settings (`STORAGE_BACKEND=s3`). Empty `S3_ENDPOINT_URL` uses AWS.
+- `BLOB_STORE_CONNECTION_STRING`: Azure Storage connection string (`STORAGE_BACKEND=azure` only)
 
 **Optional Environment Variables:**
 
@@ -289,7 +302,7 @@ curl -X POST "http://localhost:8000/chat/lesson" \
 
 - Uses `InMemRagOps` for RAG operations with local persistence
 - Implements LRU cache for RAG instances to optimize performance
-- Downloads index files from Azure Blob Storage when needed
+- Downloads index files from blob storage when needed
 - Extracts chapter metadata to customize system prompts
 - Supports conversational context with message history
 
@@ -528,7 +541,7 @@ class BaseRagAdapter(ABC):
 1. **InMemRagOpsAdapter**
 
    - Uses local in-memory vector storage
-   - Downloads index files from Azure Blob Storage
+   - Downloads index files from blob storage
    - Suitable for development and testing
    - Automatic cleanup of temporary files
 
@@ -568,7 +581,7 @@ class RagAdapterCache:
 1. **Request Processing**: User sends lesson chat request with chapter information
 2. **Cache Lookup**: System checks if RAG adapter exists in cache for the chapter
 3. **Adapter Creation**: If not cached, creates new adapter with chapter-specific configuration
-4. **Index Download**: Downloads index files from Azure Blob Storage if needed
+4. **Index Download**: Downloads index files from blob storage if needed
 5. **RAG Operations**: Initializes RAG operations with downloaded index
 6. **Context Retrieval**: Retrieves relevant context based on user query
 7. **Response Generation**: Generates contextual response using Azure OpenAI
@@ -576,7 +589,7 @@ class RagAdapterCache:
 
 ### Blob Storage Integration
 
-The system integrates with Azure Blob Storage for index file management:
+The system integrates with an S3-compatible store (default) or Azure Blob Storage (`STORAGE_BACKEND=azure`) for index file management:
 
 ```python
 class BlobStore:

@@ -61,7 +61,7 @@ jobs:
         working-directory: shiksha-api/app-service
         run: |
           pip install poetry
-          poetry install
+          poetry install --extras azure
       - name: Run integration tests
         # --no-cov: tests run against a live deployed service; instrumentation is
         # unavailable. The coverage badge therefore reflects unit tests only.

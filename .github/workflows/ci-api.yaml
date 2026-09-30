@@ -61,7 +61,7 @@ jobs:
           QDRANT_API_KEY: dummy-qdrant-key
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          poetry install
+          poetry install --extras azure
           poetry run pytest tests/unit --cov-report=json:coverage.json
 
       - name: Extract metadata

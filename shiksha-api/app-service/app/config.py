@@ -30,8 +30,13 @@ class Settings(BaseSettings):
     question_paper_model: str = "gpt-5.6-luna"
 
     # Blob Store Configuration
+    storage_backend: Literal["azure", "s3"] = "s3"
     blob_store_connection_string: Optional[str] = None
     blob_store_url: Optional[str] = None
+    s3_endpoint_url: Optional[str] = None
+    s3_access_key_id: Optional[str] = None
+    s3_secret_access_key: Optional[str] = None
+    s3_region: str = "us-east-1"
 
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None

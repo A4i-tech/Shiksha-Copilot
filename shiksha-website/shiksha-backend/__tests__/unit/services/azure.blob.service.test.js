@@ -42,7 +42,7 @@ jest.mock("@azure/storage-blob", () => {
     BlobSASPermissions,
     StorageSharedKeyCredential,
   };
-});
+}, { virtual: true });
 
 jest.mock("@azure/identity", () => ({ DefaultAzureCredential: jest.fn() }));
 
