@@ -77,7 +77,7 @@ jobs:
       - name: Verify image serves the app
         run: |
           set -euo pipefail
-          # Image ships with no env.js, nothing to assert here; deploy-time CI writes and checks it.
+          # Image must NOT ship assets/env.js; the deployment target mounts/writes it.
           CID=$(docker run -d -p 18080:8000 shiksha-frontend-local)
           for i in $(seq 1 10); do
             if curl -fsS http://localhost:18080/ -o /tmp/index.html; then break; fi
@@ -85,6 +85,9 @@ jobs:
             sleep 1
           done
           docker logs "$CID"
+          if curl -fsS http://localhost:18080/assets/env.js >/dev/null; then
+            echo "::error::image must not ship assets/env.js"; docker rm -f "$CID" >/dev/null; exit 1
+          fi
           docker rm -f "$CID" >/dev/null
           grep -q '<html' /tmp/index.html
 
