@@ -76,12 +76,15 @@ HOST="0.0.0.0"
 PORT=8000
 LOG_LEVEL="INFO"
 
-# Azure OpenAI Configuration (Required)
-AZURE_OPENAI_API_KEY=your_azure_openai_api_key
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_VERSION=2025-03-01-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=your_completion_model_deployment
-AZURE_OPENAI_EMBED_MODEL=your_embedding_model_deployment
+# OpenAI Configuration (Required)
+OPENAI_API_KEY=your_openai_api_key
+# Optional: base URL of an OpenAI-compatible server. Empty means public OpenAI.
+OPENAI_BASE_URL=
+# Optional: one base URL for each kind. Each falls back to OPENAI_BASE_URL.
+CHAT_BASE_URL=
+EMBEDDING_BASE_URL=
+# Optional: responses or chat_completions. See "Chat API" below.
+CHAT_API=
 
 # Azure AI Project Configuration (Required for Chat)
 AZURE_PROJECT_ENDPOINT=https://your-project.eastus2.ai.azure.com
@@ -98,12 +101,18 @@ QDRANT_API_KEY=your_qdrant_api_key
 
 **Required Environment Variables:**
 
-- `AZURE_OPENAI_API_KEY`: Azure OpenAI service API key
-- `AZURE_OPENAI_ENDPOINT`: Azure OpenAI service endpoint URL
-- `AZURE_OPENAI_DEPLOYMENT_NAME`: Completion model deployment name
-- `AZURE_OPENAI_EMBED_MODEL`: Embedding model deployment name
+- `OPENAI_API_KEY`: API key for public OpenAI. A self-hosted server can accept any value.
 - `AZURE_PROJECT_ENDPOINT`: Azure AI Foundry project endpoint URL
 - `BLOB_STORE_CONNECTION_STRING`: Azure Storage connection string (for RAG index files)
+
+**Chat API:**
+
+- `CHAT_API=responses` uses the OpenAI Responses API. This is the default when no base URL is set (public OpenAI).
+- `CHAT_API=chat_completions` uses the chat completions API. This is the default when `CHAT_BASE_URL` or `OPENAI_BASE_URL` is set and `CHAT_API` is empty.
+- `LLM_CONTEXT_WINDOW` sets the context window of a self-hosted chat model that llama-index does not know. The default is 32768.
+- The hosted web search of the general chat exists only on `responses` with public OpenAI. The `chat_completions` backend sends no tools and returns no references.
+- `OPENAI_API_BASE` is accepted as an alias of `OPENAI_BASE_URL`.
+- app-service supports public OpenAI and OpenAI-compatible servers only. It has no Azure OpenAI provider.
 
 **Optional Environment Variables:**
 

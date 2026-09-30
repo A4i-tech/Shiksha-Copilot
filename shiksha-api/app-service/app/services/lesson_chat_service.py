@@ -7,8 +7,7 @@ from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
 from llama_index.core.llms import ChatMessage, MessageRole
 from langfuse import observe, propagate_attributes
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAIResponses
+from app.services.llm_factory import make_embedding, make_llm
 from llama_index.core.utils import truncate_text
 
 logger = logging.getLogger(__name__)
@@ -23,8 +22,8 @@ class LessonChatService:
         prompts_file_path = Path(__file__).parent.parent.parent / "prompts" / "chat_prompts.yaml"
         self._prompt_template = PromptTemplate(str(prompts_file_path))
 
-        self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model) # pyright: ignore[reportCallIssue]
-        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
+        self._rag_llm = make_llm(settings.lesson_chat_model)
+        self._rag_embed = make_embedding()
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
     async def __aenter__(self):

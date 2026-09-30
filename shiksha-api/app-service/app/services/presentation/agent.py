@@ -18,6 +18,7 @@ from pydantic_ai.capabilities import Thinking
 from pydantic_ai.usage import UsageLimits
 
 from app.services.presentation import docparser, template, utils
+from app.services.llm_factory import make_pydantic_model
 from app.config import DESIGNER_BODY_SLIDE_PROMPT, DESIGNER_FIRST_SLIDE_PROMPT, FINALIZER_ADD_SLIDE_PROMPT, FINALIZER_REVIEW_PROMPT, FINALIZER_BROWSE_PROMPT, PLANNER_USER_PROMPT, settings, CAPTIONER_SYSTEM_PROMPT, PLANNER_SYSTEM_PROMPT, DESIGNER_SYSTEM_PROMPT, FINALIZER_SYSTEM_PROMPT
 
 
@@ -270,10 +271,10 @@ class SlideTrackerToolset(WrapperToolset[DesignerDeps]):
         return result
 
 
-captioner = Agent(model=settings.pres_captioner, name="captioner", output_type=CaptionerResponse, retries=3, system_prompt=CAPTIONER_SYSTEM_PROMPT.safe_substitute())
-planner = Agent(model=settings.pres_planner, name="planner", retries=3, output_type=PresentationOutline, system_prompt=PLANNER_SYSTEM_PROMPT.safe_substitute(template_metadata=template.get_metadata()), capabilities=[Thinking()])
-designer = Agent(model=settings.pres_designer, name="designer", deps_type=DesignerDeps, retries=3, system_prompt=DESIGNER_SYSTEM_PROMPT.safe_substitute())
-finalizer = Agent(model=settings.pres_finalizer, name="finalizer", deps_type=FinalizerDeps, retries=3, system_prompt=FINALIZER_SYSTEM_PROMPT.safe_substitute())
+captioner = Agent(model=make_pydantic_model(settings.pres_captioner), name="captioner", output_type=CaptionerResponse, retries=3, system_prompt=CAPTIONER_SYSTEM_PROMPT.safe_substitute())
+planner = Agent(model=make_pydantic_model(settings.pres_planner), name="planner", retries=3, output_type=PresentationOutline, system_prompt=PLANNER_SYSTEM_PROMPT.safe_substitute(template_metadata=template.get_metadata()), capabilities=[Thinking()])
+designer = Agent(model=make_pydantic_model(settings.pres_designer), name="designer", deps_type=DesignerDeps, retries=3, system_prompt=DESIGNER_SYSTEM_PROMPT.safe_substitute())
+finalizer = Agent(model=make_pydantic_model(settings.pres_finalizer), name="finalizer", deps_type=FinalizerDeps, retries=3, system_prompt=FINALIZER_SYSTEM_PROMPT.safe_substitute())
 
 
 @finalizer.tool(metadata={"action": "Browsing videos"})
