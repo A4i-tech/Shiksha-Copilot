@@ -9,9 +9,10 @@ from pydantic import Field, JsonValue, create_model
 from langfuse import observe, propagate_attributes
 
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAIResponses
+from llama_index.llms.openai import OpenAI, OpenAIResponses
 
 from app.config import settings
+from app.services.llm_factory import make_embedding, make_llm, make_pydantic_model
 from app.models.lesson_plan import PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
 from app.services.rag_adapter_cache import RagAdapterCache
 from pydantic_ai import Agent, ModelSettings, RunContext, UsageLimits
@@ -22,15 +23,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AgentDeps:
-    rag_llm: OpenAIResponses
+    rag_llm: OpenAIResponses | OpenAI
     rag_embed: OpenAIEmbedding
     rags: RagAdapterCache
     index_path: str | None
 
 
-# TODO: remove this model prefix hack once we migrate lesson chat to use pydantic-ai exclusively
-model_prefix = "openai:" if ":" not in settings.lesson_chat_model else ""
-_agent = Agent(model=f"{model_prefix}{settings.lesson_chat_model}", name="lesson-plan-editor", deps_type=AgentDeps, retries=3, model_settings=ModelSettings(temperature=0.3, timeout=60.0))
+_agent = Agent(model=make_pydantic_model(settings.lesson_chat_model), name="lesson-plan-editor", deps_type=AgentDeps, retries=3, model_settings=ModelSettings(temperature=0.3, timeout=60.0))
 
 @_agent.tool(prepare=lambda ctx, tool: tool if ctx.deps.index_path is not None else None)
 async def read_chapter(ctx: RunContext[AgentDeps], query: str) -> str:
@@ -66,8 +65,8 @@ class LessonEditService:
         self._prompt_plan_edit_instruction = _prompts["plan_edit_instruction"]
         self._prompt_grounding_instruction = _prompts["grounding_instruction"]
 
-        self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model) # pyright: ignore[reportCallIssue]
-        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
+        self._rag_llm = make_llm(settings.lesson_chat_model)
+        self._rag_embed = make_embedding()
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 
     async def cleanup(self) -> None:
