@@ -2,7 +2,7 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt, field_validator
+from pydantic import AliasChoices, Field, PositiveInt, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     general_chat_model: str = "gpt-5.6-luna"
     lesson_chat_model: str = "gpt-5.6-luna"
     question_paper_model: str = "gpt-5.6-luna"
+    # Empty base URL means public OpenAI. OPENAI_API_BASE is the llama-index name for the same value.
+    openai_base_url: Optional[str] = Field(default=None, validation_alias=AliasChoices("OPENAI_BASE_URL", "OPENAI_API_BASE"))
+    chat_base_url: Optional[str] = None
+    embedding_base_url: Optional[str] = None
+    chat_api: Optional[Literal["responses", "chat_completions"]] = None
+    llm_context_window: Optional[PositiveInt] = None
 
     # Blob Store Configuration
     blob_store_connection_string: Optional[str] = None
@@ -65,6 +71,11 @@ class Settings(BaseSettings):
 
     # Commons
     youtube_api_key: str | None = None
+
+    @field_validator("openai_base_url", "chat_base_url", "embedding_base_url", "chat_api", "llm_context_window", mode="before")
+    @classmethod
+    def _empty_to_none(cls, v: Any) -> Any:
+        return None if isinstance(v, str) and not v.strip() else v
 
 
 load_dotenv()
