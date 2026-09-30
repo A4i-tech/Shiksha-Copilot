@@ -267,14 +267,14 @@ class QuestionPaperService:
 
     async def _postprocess(self, paper: list[GeneratedSlotQuestion], max_iters: int = 3) -> list[GeneratedSlotQuestion]:
         slot_indexed: dict[str, int] = {local_unique_id(i): i for i, _ in enumerate(paper)}
-        response_format = create_model("QuestionPaper", **{
-            k: (paper[v][1].item.__class__ | None, Field(description=f"Keep none to make no change. Holds the following question:\n{paper[v][1].item.model_dump_json()}", default=None))
-            for k, v in slot_indexed.items()
-        })  # type: ignore[call-overload]
         for _ in range(max_iters):
             feedback = [f for p in self.postprocessors for f in p(paper)]
             if not feedback:
                 break
+            response_format = create_model("QuestionPaper", **{
+                k: (paper[v][1].item.__class__ | None, Field(description=f"Keep none to make no change. Holds the following question:\n{paper[v][1].item.model_dump_json()}", default=None))
+                for k, v in slot_indexed.items()
+            })  # type: ignore[call-overload]
             with get_client().start_as_current_observation(as_type="span", name="question_postprocess", input=feedback, level="WARNING", status_message="Some questions underwent post-processing") as span:
                 response = await self.client.responses.parse(
                     model=settings.question_paper_model,
