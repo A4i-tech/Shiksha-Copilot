@@ -186,26 +186,28 @@ jobs:
           FRONTEND_URL: ${{ steps.urls.outputs.frontend }}
           BACKEND_URL: ${{ steps.urls.outputs.backend }}
           API_URL: ${{ steps.urls.outputs.api }}
+          SKIP_BACKEND_BUILD_CHECK: ${{ github.ref_name == 'a4i/staging' && (vars.SKIP_RENDER_BUILD_CHECK != 'false') || 'false' }}
         run: |
           trap 'echo "Cancelled"; exit 1' TERM INT
 
+          # skip=true still requires the endpoint to answer, just skips Render's unreliable build-SHA field; flip vars.SKIP_RENDER_BUILD_CHECK to "false" once Render reports it reliably or is retired
           check_build() {
-            local name=$1 url=$2
-            local build=$(curl -sf --max-time 30 "$url" | jq -r '.build // empty')
-            if [ "$build" = "$EXPECTED_BUILD" ]; then
-              echo "PASS $name on correct build"
+            local name=$1 url=$2 skip=${3:-false}
+            local resp; resp=$(curl -sf --max-time 30 "$url") || { echo "FAIL $name unreachable"; return 1; }
+            local build=$(echo "$resp" | jq -r '.build // empty')
+            if [ "$skip" = "true" ] || [ "$build" = "$EXPECTED_BUILD" ]; then
+              echo "PASS $name"
               return 0
-            else
-              echo "FAIL $name build mismatch (got: '${build:-no response}', expected: '$EXPECTED_BUILD')"
-              return 1
             fi
+            echo "FAIL $name build mismatch (got: '${build:-empty}', expected: '$EXPECTED_BUILD')"
+            return 1
           }
 
           for ((i=1; i<=30; i++)); do
             echo "--- Attempt $i/30 ---"
             check_build "Frontend" "$FRONTEND_URL/health.json" && \
-            check_build "Backend"  "$BACKEND_URL/health"      && \
-            check_build "API"      "$BACKEND_URL/health-api"  && \
+            check_build "Backend"  "$BACKEND_URL/health"     "$SKIP_BACKEND_BUILD_CHECK" && \
+            check_build "API"      "$API_URL/health-api"     "$SKIP_BACKEND_BUILD_CHECK" && \
             { echo "All services on build $EXPECTED_BUILD"; exit 0; }
             sleep 15 & wait $!
           done
