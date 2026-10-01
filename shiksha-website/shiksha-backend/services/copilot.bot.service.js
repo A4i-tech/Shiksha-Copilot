@@ -27,6 +27,7 @@ catch (configError) {
   }
 
 async function postToCopilotBot(payload) {
+  if (!workflowUrl) throw new Error("LLM_WORKFLOW_URL is not set");
   const apiUrl = `${workflowUrl}/api/v2/lesson-plans`;
 
   try {

@@ -604,7 +604,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
         this.idleService.planId = this.selectedSubtopic.value;
         this.isGenerate = true;
         this.idleService.stopWatching('lo-regeneration');
-        this.router.navigate(['/generation-status']);
+        this.router.navigate(['/content-generation/lesson-plan', res.data.lessonId]);
         this.utilityservice.handleResponse(res);
       },
       error: (err) => {

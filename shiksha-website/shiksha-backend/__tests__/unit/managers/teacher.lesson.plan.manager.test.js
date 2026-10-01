@@ -7,6 +7,7 @@ const LessonPlanTemplateDao = require("../../../dao/lesson.plan.template.dao");
 const RegeneratedLessonResourceDao = require("../../../dao/regenerate.log.dao");
 const LessonFeedbackDao = require("../../../dao/feedback.lesson.dao");
 const { postToCopilotBot } = require("../../../services/copilot.bot.service");
+const LessonPlanTemplate = require("../../../models/lesson.plan.template.model");
 
 jest.mock("../../../dao/teacher.lesson.plan.dao");
 jest.mock("../../../dao/chapter.dao");
@@ -241,6 +242,54 @@ describe("TeacherLessonPlanManager", () => {
     });
   });
 
+  describe("processWebhookData", () => {
+    it("ignores a status posted before the lesson plan is saved", async () => {
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue(null);
+
+      const result = await manager.processWebhookData({ instance_id: "i-1", status: "pending" });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("not found");
+    });
+
+    it("autosaves a regenerated plan when the run completes", async () => {
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1", templateId: "tpl-1" });
+      jest.spyOn(LessonPlanTemplate, "findById").mockResolvedValue({ sections: [{ id: "s1", outputFormat: "plain_text" }] });
+      mockRegeneratedDao.getOne.mockResolvedValue({ _id: "log-1" });
+
+      await manager.processWebhookData({
+        instance_id: "i-1",
+        status: "COMPLETED",
+        output: { sections: [{ section_id: "s1", section_title: "Engage", content: "text" }] },
+      });
+
+      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
+        "plan-1",
+        expect.objectContaining({ status: "completed", isCompleted: true })
+      );
+    });
+
+    it("does not mark a failed run as saved", async () => {
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
+      mockRegeneratedDao.getOne.mockResolvedValue({ _id: "log-1" });
+
+      await manager.processWebhookData({ instance_id: "i-1", status: "FAILED" });
+
+      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
+        "plan-1",
+        expect.not.objectContaining({ isCompleted: true })
+      );
+    });
+
+    it("rejects a payload without instance_id without querying", async () => {
+      const result = await manager.processWebhookData({});
+
+      expect(result.success).toBe(false);
+      expect(mockTeacherLessonPlanDao.getOne).not.toHaveBeenCalled();
+    });
+  });
+
   describe("getResourcePlanById", () => {
     it("should get resource plan successfully", async () => {
       const mockResourcePlan = { _id: "resource-123", name: "Test Resource" };
@@ -325,6 +374,26 @@ describe("TeacherLessonPlanManager", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain("Daily regeneration limit");
+    });
+
+    it("should throw a 404 AppError when the master lesson is missing", async () => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockMasterLessonDao.getById.mockResolvedValue(null);
+
+      await expect(
+        manager.generateContent("teacher-123", { lessonId: "lesson-123" })
+      ).rejects.toMatchObject({ name: "AppError", statusCode: 404 });
+    });
+
+    it("should throw an AppError when the lesson template is missing", async () => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-123", templateId: "tpl-1" });
+      mockTemplateDao.getById.mockResolvedValue(null);
+
+      await expect(
+        manager.generateContent("teacher-123", { lessonId: "lesson-123" })
+      ).rejects.toMatchObject({ name: "AppError", message: expect.stringContaining("tpl-1") });
+      expect(postToCopilotBot).not.toHaveBeenCalled();
     });
 
     // Removed: generateContent success test - requires complex payload creation mocking

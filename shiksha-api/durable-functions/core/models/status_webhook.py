@@ -58,6 +58,5 @@ class WebhookPoster:
                     self.logger.error(f"Error: {e}")
                     self.log_gen_status(gen_status)
 
-    @staticmethod
-    def log_gen_status(gen_status: GenStatus):
-        WebhookPoster.logger.info(f"GenStatus log: {gen_status.dict()}")
+    def log_gen_status(self, gen_status: GenStatus):
+        self.logger.info(f"GenStatus log: {gen_status.dict()}")
