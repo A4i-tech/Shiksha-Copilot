@@ -21,6 +21,7 @@ const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
+const AppError = require("../helper/app.error");
 
 /** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
@@ -153,10 +154,13 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 		const masterLesson = await this.masterLessonDao.getById(payload.lessonId);
 		if (!masterLesson) {
-			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
+			throw new AppError("This lesson could not be found. Reload the page, select the lesson again, and retry.", 404);
 		  }
 
 		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
+		if (!template) {
+			throw new AppError(`Lesson plan template ${masterLesson.templateId} not found for master lesson ${masterLesson._id}`);
+		}
 
 		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
 		if (!chapter) {
@@ -485,18 +489,23 @@ class TeacherLessonPlanManager extends BaseManager {
 
 		const { instance_id , status, output } = webhookData;
 
+		// undefined filter values are dropped by mongoose and would match any plan
+		if (!instance_id) {
+			return formatApiReponse(false, "instance_id is required", null);
+		}
+
 		const existingLessonPlan = await this.dao.getOne({
 			instanceId: instance_id,
-		});
-
-		const regeneratedLog = await this.regeneratedLessonResource.getOne({
-			genContentId: existingLessonPlan.lessonId,
-			recordId: existingLessonPlan._id
 		});
 
 		if (!existingLessonPlan) {
 			return formatApiReponse(false, "Lesson plan not found", null);
 		}
+
+		const regeneratedLog = await this.regeneratedLessonResource.getOne({
+			genContentId: existingLessonPlan.lessonId,
+			recordId: existingLessonPlan._id
+		});
 		if (status.toLowerCase() === "completed") {
 			const masterLessonPlan = await this.masterLessonDao.getById(
 				existingLessonPlan.lessonId
