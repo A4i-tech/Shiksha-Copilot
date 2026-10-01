@@ -241,6 +241,24 @@ describe("TeacherLessonPlanManager", () => {
     });
   });
 
+  describe("processWebhookData", () => {
+    it("ignores a status posted before the lesson plan is saved", async () => {
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue(null);
+
+      const result = await manager.processWebhookData({ instance_id: "i-1", status: "pending" });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toContain("not found");
+    });
+
+    it("rejects a payload without instance_id without querying", async () => {
+      const result = await manager.processWebhookData({});
+
+      expect(result.success).toBe(false);
+      expect(mockTeacherLessonPlanDao.getOne).not.toHaveBeenCalled();
+    });
+  });
+
   describe("getResourcePlanById", () => {
     it("should get resource plan successfully", async () => {
       const mockResourcePlan = { _id: "resource-123", name: "Test Resource" };
@@ -325,6 +343,26 @@ describe("TeacherLessonPlanManager", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain("Daily regeneration limit");
+    });
+
+    it("should throw a 404 AppError when the master lesson is missing", async () => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockMasterLessonDao.getById.mockResolvedValue(null);
+
+      await expect(
+        manager.generateContent("teacher-123", { lessonId: "lesson-123" })
+      ).rejects.toMatchObject({ name: "AppError", statusCode: 404 });
+    });
+
+    it("should throw an AppError when the lesson template is missing", async () => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-123", templateId: "tpl-1" });
+      mockTemplateDao.getById.mockResolvedValue(null);
+
+      await expect(
+        manager.generateContent("teacher-123", { lessonId: "lesson-123" })
+      ).rejects.toMatchObject({ name: "AppError", message: expect.stringContaining("tpl-1") });
+      expect(postToCopilotBot).not.toHaveBeenCalled();
     });
 
     // Removed: generateContent success test - requires complex payload creation mocking
