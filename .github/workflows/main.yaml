@@ -215,7 +215,7 @@ jobs:
             echo "--- Attempt $i/30 ---"
             check_build "Frontend" "$FRONTEND_URL/health.json" && \
             check_build "Backend"  "$BACKEND_URL/health"     "$SKIP_BACKEND_BUILD_CHECK" && \
-            check_build "API"      "$API_URL/health-api"     "$SKIP_BACKEND_BUILD_CHECK" && \
+            check_build "API"      "$BACKEND_URL/health-api" "$SKIP_BACKEND_BUILD_CHECK" && \
             { echo "All services on build $EXPECTED_BUILD"; exit 0; }
             sleep 15 & wait $!
           done
