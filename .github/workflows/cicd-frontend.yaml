@@ -21,6 +21,16 @@ on:
         required: false
         type: string
         default: ""
+      umami_url:
+        description: "Umami analytics server base URL; required, build fails if blank"
+        required: false
+        type: string
+        default: ""
+      umami_website_id:
+        description: "Umami website ID; required, build fails if blank"
+        required: false
+        type: string
+        default: ""
       deploy_target:
         description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
         required: false
@@ -61,6 +71,8 @@ jobs:
     env:
       BACKEND_URL: ${{ inputs.api_url }}
       TURNSTILE_SITE_KEY: ${{ inputs.turnstile_site_key }}
+      UMAMI_URL: ${{ inputs.umami_url }}
+      UMAMI_WEBSITE_ID: ${{ inputs.umami_website_id }}
       SHIKSHA_COPILOT_BUILD: ${{ github.sha }}
 
     steps:

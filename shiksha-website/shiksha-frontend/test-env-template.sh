@@ -6,6 +6,8 @@ set -eu
 export MSYS_NO_PATHCONV=1
 export BACKEND_URL="/api"
 export TURNSTILE_SITE_KEY="test-turnstile-key"
+export UMAMI_URL="https://umami.example.com"
+export UMAMI_WEBSITE_ID="test-umami-website-id"
 
 . "$(dirname "$0")/render-env.sh"
 
@@ -16,6 +18,8 @@ rm -f "$tmp_out"
 
 echo "$out" | grep -q '"/api"' || { echo "FAIL: apiUrl not substituted"; exit 1; }
 echo "$out" | grep -q '"test-turnstile-key"' || { echo "FAIL: turnstileSiteKey not substituted"; exit 1; }
+echo "$out" | grep -q '"https://umami.example.com"' || { echo "FAIL: umamiUrl not substituted"; exit 1; }
+echo "$out" | grep -q '"test-umami-website-id"' || { echo "FAIL: umamiWebsiteId not substituted"; exit 1; }
 echo "$out" | grep -q '\${' && { echo "FAIL: leftover \${...} placeholder"; exit 1; }
 
 echo "OK: env.template.js substitutes cleanly via render_env"

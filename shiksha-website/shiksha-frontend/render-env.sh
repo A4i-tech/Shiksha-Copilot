@@ -4,7 +4,7 @@ render_env() {
   template_path="$1"
   output_path="$2"
 
-  for var in BACKEND_URL TURNSTILE_SITE_KEY; do
+  for var in BACKEND_URL TURNSTILE_SITE_KEY UMAMI_URL UMAMI_WEBSITE_ID; do
     eval "val=\${$var:-}"
     if [ -z "$val" ]; then
       echo "::error::$var is required and was not set" >&2
@@ -22,6 +22,8 @@ render_env() {
   sed \
     -e "s|\${BACKEND_URL}|${BACKEND_URL}|g" \
     -e "s|\${TURNSTILE_SITE_KEY}|${TURNSTILE_SITE_KEY}|g" \
+    -e "s|\${UMAMI_URL}|${UMAMI_URL}|g" \
+    -e "s|\${UMAMI_WEBSITE_ID}|${UMAMI_WEBSITE_ID}|g" \
     "$template_path" > "$output_path"
 
   # Drop the template when it renders alongside the output (GH Pages / SWA
