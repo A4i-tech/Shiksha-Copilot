@@ -9,7 +9,8 @@ const marksDistributionSchema = new Schema({
 });
 
 const objectiveDistributionSchema = new Schema({
-  objective: { type: String },
+  objective: { type: String, required: true },
+  description: { type: String, required: true },
   percentageDistribution: { type: Number }
 });
 
@@ -23,7 +24,7 @@ const questionBankTemplateSchema = new Schema({
 
 const questionDistributionSchema = new Schema({
   unitName: { type: String },
-  objective: { type: String }
+  objective: { type: Schema.Types.Mixed }
 });
 
 const bluePrintTemplateSchema = new Schema({
