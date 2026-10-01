@@ -76,6 +76,13 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 
 lessonResourceMasterSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
+// Unique index; autoIndex off, run syncIndexes() during deploy after existing duplicates are cleaned up.
+lessonResourceMasterSchema.index(
+	{ board: 1, class: 1, subject: 1, medium: 1, lessonName: 1, isAll: 1, semester: 1 },
+	{ unique: true }
+);
+lessonResourceMasterSchema.set("autoIndex", false);
+
 const MasterResource = mongoose.model(
 	"MasterResource",
 	lessonResourceMasterSchema
