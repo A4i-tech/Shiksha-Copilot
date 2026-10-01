@@ -106,7 +106,6 @@
 							<span class="font-semibold text-lg text-shade">{{'Note' | translate}}:</span>
 							<ul class="marker:text-primary list-disc pl-5 space-y-3 text-content">
 									<li >{{'Identifying the right learning outcomes is crucial for creating a good learning experience' | translate}}.</li>
-									<li >{{'The below Learning Outcomes are automatically generated using AI. Please read and edit them appropriately' | translate}}.</li>
 									<li >{{'You cannot change the Learning Outcomes after a Lesson Plan is created' | translate}}.</li>
 							</ul>
 					</div>
@@ -121,34 +120,8 @@
 									</div>
 									<textarea *ngIf="isEditable" class="form-text-area w-full h-60" [(ngModel)]="combinedLearningOutcomes" [ngModelOptions]="{ standalone: true }"></textarea>
 									<small class="form-control-error" *ngIf="learningOutcomes?.length === 0 && !isEditable">{{ 'Learning Outcomes cannot be empty' | translate }}</small>
-									<div class="mt-3 flex items-center gap-2" *ngIf="selectedMedium === 'english'">
-										<button type="button" [hasPermission]="['lesson-plan.generate']" *ngIf="!isEditable && getLessonType()?.type === 'plan'" (click)="isEditable=true" class="btn-primary" [disabled]="regenerationLimitReached">
-											<div class="flex items-center gap-2">
-												<img src="assets/icons/edit_light.svg" alt="" />
-											<span class="ms-1">{{'Edit' | translate}}</span>
-											</div>
-										</button>
-										<button type="button" [hasPermission]="['lesson-plan.generate']" *ngIf="isEditable"  (click)="splitLearningOutcomes()" class="btn-primary">
-											<span class="ms-1">{{'Update' | translate}}</span>
-										</button>
-	
-										<button type="button" [hasPermission]="['lesson-plan.generate']" *ngIf="isEditable"  (click)="resetLearningOutcomes()" class="btn-outline-primary">
-											<span class="ms-1">{{'Reset' | translate}}</span>
-										</button>
-									</div>
 								</div>
 
-								<div class="flex items-center gap-2 bg-warn-50 p-2 mt-4"  *ngIf="regenerationLimitReached && getLessonType()?.type === 'plan'">
-									<img src="assets/icons/Info 2.svg" alt="">
-								<small>{{ 'You have reached the daily limit of 3 attempts to regenerating the lesson plan. Please try tomorrow' | translate }}</small>
-								</div>
-
-								<div *ngIf="generateNew && !isEditable && learningOutcomes?.length !== 0">
-									<div class="flex items-center gap-2 bg-warn-50 p-2 mt-4">
-										<img src="assets/icons/Info 2.svg" alt="">
-									<small>{{ 'Content will be regenerated as the learning outcome has been updated. It will take few minutes to regenerate new content for the updated learning outcome' | translate }}</small>
-									</div>								
-								</div>
 					</div>
 					<hr class="border-b-[3px] mt-7 border-shade-80">
 					<div *ngIf="getLessonType()?.type === 'plan'">
