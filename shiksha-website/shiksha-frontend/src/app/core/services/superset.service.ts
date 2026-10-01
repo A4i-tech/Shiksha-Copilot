@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable, takeUntil } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 interface GuestTokenResponse {
@@ -28,10 +28,13 @@ export class SupersetService {
 
   constructor(private http: HttpClient) {}
 
-  getGuestToken(): Promise<string> {
-    return firstValueFrom(
-      this.http.post<GuestTokenResponse>(`${environment.apiUrl}/superset/guest-token`, {})
-    ).then((res) => {
+  // cancel$ lets a caller abort the underlying HTTP request on teardown (e.g. component destroy).
+  // Always does a real fetch, no shared cache: two overlapping callers (e.g. rapid re-embeds)
+  // must not be able to steal or clobber each other's token.
+  getGuestToken(cancel$?: Observable<void>): Promise<string> {
+    let req$ = this.http.post<GuestTokenResponse>(`${environment.apiUrl}/superset/guest-token`, {});
+    if (cancel$) req$ = req$.pipe(takeUntil(cancel$));
+    return firstValueFrom(req$).then((res) => {
       this.dashboardUuid = res.dashboardUuid;
       this.mobileDashboardUuid = res.mobileDashboardUuid;
       this.supersetUrl = res.supersetUrl;
