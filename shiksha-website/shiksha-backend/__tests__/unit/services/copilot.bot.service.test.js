@@ -23,6 +23,14 @@ describe("copilot.bot.service", () => {
     expect(res.data).toEqual({ ok: true });
   });
 
+  it("throws a clear error when LLM_WORKFLOW_URL is not set", async () => {
+    process.env.LLM_WORKFLOW_URL = ""; // empty, not deleted: dotenv would reload a local .env value
+    const service = require("../../../services/copilot.bot.service");
+
+    await expect(service.postToCopilotBot({ lesson: 1 })).rejects.toThrow("LLM_WORKFLOW_URL is not set");
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
   it("posts to 5E tables endpoint", async () => {
     axios.post.mockResolvedValue({ status: 200, data: { ok: true } });
     const service = require("../../../services/copilot.bot.service");
