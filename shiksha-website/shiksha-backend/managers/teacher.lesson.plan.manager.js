@@ -233,7 +233,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			_version: version,
 		});
 
-		return formatApiReponse(true, "Generation is in progress!",{data: result.data,requestData});
+		return formatApiReponse(true, "Generation is in progress!",{data: result.data,requestData,lessonId: lesson._id});
 	}
 
 	async getResourcePlanById(teacherId, resourcePlanId) {
@@ -523,7 +523,8 @@ class TeacherLessonPlanManager extends BaseManager {
 			await this.masterLessonDao.update(masterLessonUpdate);
 			const updateTeacherLessonPlanData = {
 				status: status.toLowerCase(),
-				sections
+				sections,
+				isCompleted: true // autosave: a regenerated plan is saved when it completes
 			};
 
 			await this.dao.updatePlan(
