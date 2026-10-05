@@ -244,4 +244,10 @@ def contents(q: QuestionModel):
 
 
 def readable_strings(q: QuestionModel):
-    return (c.content.decode() for c in contents(q) if c.content_type == "text/plain")
+    for c in contents(q):
+        if c.content_type != "text/plain":
+            continue
+        try:
+            yield c.content.decode("utf-8")
+        except UnicodeDecodeError:
+            continue  # not decodable as text - nothing to TeX-check

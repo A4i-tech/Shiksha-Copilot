@@ -46,14 +46,15 @@ logger = logging.getLogger(__name__)
 SlotId = tuple[int, int]
 GenerationSlot = tuple[SlotId, GeneratedTemplate, QuestionDistribution]
 GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
-QuestionPaperPostprocessor = Callable[[list[GeneratedSlotQuestion]], Sequence[str]]
+PostprocessFeedback = tuple[int, str]  # (index into the paper, defect description)
+QuestionPaperPostprocessor = Callable[[list[GeneratedSlotQuestion]], Sequence[PostprocessFeedback]]
 MATHS_SUBJECTS = {"math", "maths", "mathematics"}
 
 
-def validate_tex(paper: list[GeneratedSlotQuestion]) -> Sequence[str]:
+def validate_tex(paper: list[GeneratedSlotQuestion]) -> Sequence[PostprocessFeedback]:
     return [
-        f"TeX error encountered - fix the TeX equation (DO NOT lazily strip out TeX syntax and call it a day):\n{error}"
-        for record in paper
+        (i, f"TeX error encountered - fix the TeX equation (DO NOT lazily strip out TeX syntax and call it a day):\n{error}")
+        for i, record in enumerate(paper)
         for s in readable_strings(record[1].item)
         if (error := validate_tex_string(s)) is not None
     ]
@@ -267,31 +268,47 @@ class QuestionPaperService:
 
     async def _postprocess(self, paper: list[GeneratedSlotQuestion], max_iters: int = 3) -> list[GeneratedSlotQuestion]:
         slot_indexed: dict[str, int] = {local_unique_id(i): i for i, _ in enumerate(paper)}
+        slot_keys = {i: k for k, i in slot_indexed.items()}
         for _ in range(max_iters):
-            feedback = [f for p in self.postprocessors for f in p(paper)]
-            if not feedback:
+            defects = [d for p in self.postprocessors for d in p(paper)]
+            if not defects:
                 break
+            feedback = [f"Question `{slot_keys[i]}`: {message}" for i, message in defects]
+            failing = {i for i, _ in defects}  # only ask the model about questions that still have defects
             response_format = create_model("QuestionPaper", **{
                 k: (paper[v][1].item.__class__ | None, Field(description=f"Keep none to make no change. Holds the following question:\n{paper[v][1].item.model_dump_json()}", default=None))
-                for k, v in slot_indexed.items()
+                for k, v in slot_indexed.items() if v in failing
             })  # type: ignore[call-overload]
-            with get_client().start_as_current_observation(as_type="span", name="question_postprocess", input=feedback, level="WARNING", status_message="Some questions underwent post-processing") as span:
-                response = await self.client.responses.parse(
-                    model=settings.question_paper_model,
-                    instructions=self.postprocess_prompt,
-                    input="## Feedback\n\n" + "\n".join(f"- {f}" for f in feedback),
-                    text_format=response_format,
-                    temperature=0.7,
+            try:
+                with get_client().start_as_current_observation(as_type="span", name="question_postprocess", input=feedback, level="WARNING", status_message="Some questions underwent post-processing") as span:
+                    response = await self.client.responses.parse(
+                        model=settings.question_paper_model,
+                        instructions=self.postprocess_prompt,
+                        input="## Feedback\n\n" + "\n".join(f"- {f}" for f in feedback),
+                        text_format=response_format,
+                    )
+                    if response.output_parsed is None:
+                        raise RuntimeError("Did not retrieve a valid response from model")
+                    span.update(output={k: v for k, v in response.output_parsed if v is not None})
+                for k, v in response.output_parsed:
+                    if v is None:
+                        continue
+                    assert isinstance(k, str)
+                    assert isinstance(v, QuestionModel)
+                    paper[slot_indexed[k]][1].item = v
+            except Exception:
+                # best-effort: a failed repair attempt must not fail the request; it still counts as an iteration
+                logger.exception("Question postprocessing attempt failed; keeping questions as generated")
+        else:
+            # max_iters exhausted without a clean pass: the last repair was never validated
+            unresolved = [d for p in self.postprocessors for d in p(paper)]
+            if unresolved:
+                bad = {i for i, _ in unresolved}
+                logger.warning(
+                    "Question postprocessing left %d unresolved defect(s) after %d attempt(s); dropping %d question(s): %s",
+                    len(unresolved), max_iters, len(bad), [paper[i][0] for i in sorted(bad)],
                 )
-                if response.output_parsed is None:
-                    raise RuntimeError("Did not retrieve a valid response from model")
-                span.update(output={k: v for k, v in response.output_parsed if v is not None})
-            for k, v in response.output_parsed:
-                if v is None:
-                    continue
-                assert isinstance(k, str)
-                assert isinstance(v, QuestionModel)
-                paper[slot_indexed[k]][1].item = v
+                paper = [q for i, q in enumerate(paper) if i not in bad]
         return paper
 
 

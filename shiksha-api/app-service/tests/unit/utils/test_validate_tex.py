@@ -26,9 +26,13 @@ def test_closer_before_opener_errors():
 
 def test_blank_placeholder_inside_math_span_errors():
     assert validate_tex(
-        r"The number \(\alpha\ is a solution of the quadratic equation "
+        r"The number \(\alpha\) is a solution of the quadratic equation "
         r"\(x^2 + 5x + 6 = 0\) if \(x = __\)"
     ) is not None
+    assert validate_tex(r"\(x = __\)") is not None
+
+def test_error_includes_context():
+    assert "Context" in validate_tex(r"Area is \(A = \pi r^2 square units.")
 
 def test_blank_placeholder_outside_math_span_is_fine():
     assert validate_tex(r"Fill in the blank: \(x^2 + 5x + 6 = 0\) if x = __") is None
