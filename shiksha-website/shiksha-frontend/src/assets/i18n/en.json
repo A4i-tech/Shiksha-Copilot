@@ -49,7 +49,13 @@
   "Select details": "Select details",
   "No Classes Mapped": "No Classes Mapped",
   "Delete": "Delete",
-  "Delete Lesson Plan": "Delete Lesson Plan",
+  "Delete Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Delete Period Plan"
+    },
+    "Delete Lesson Plan"
+  ],
   "Delete Lesson Resource": "Delete Lesson Resource",
   "Are you sure you want to delete this? This action cannot be undone.": "Are you sure you want to delete this? This action cannot be undone.",
   "Add": "Add",
@@ -88,7 +94,13 @@
   "Period Plan Details": "Period Plan Details",
   "Period Plan Generation": "Period Plan Generation",
   "Regenerate Period Plan": "Regenerate Period Plan",
-  "Not seeing your lesson plan? You can": "Not seeing your lesson plan? You can",
+  "Not seeing your lesson plan? You can": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Not seeing your period plan? You can"
+    },
+    "Not seeing your lesson plan? You can"
+  ],
   "create a new one": "create a new one",
   "Narrow by Board, Medium, Class, Subject, Chapter, Sub Topic (optional)": "Narrow by Board, Medium, Class, Subject, Chapter, Sub Topic (optional)",
   "Schedule this": "Schedule this",
@@ -153,23 +165,59 @@
   "Learning Outcomes": "Learning Outcomes",
   "Identifying the right learning outcomes is crucial for creating a good learning experience": "Identifying the right learning outcomes is crucial for creating a good learning experience.",
   "The below Learning Outcomes are automatically generated using AI. Please read and edit them appropriately": "The below Learning Outcomes are automatically generated using AI. Please read and edit them appropriately.",
-  "You cannot change the Learning Outcomes after a Lesson Plan is created": "You cannot change the Learning Outcomes after a Lesson Plan is created",
+  "You cannot change the Learning Outcomes after a Lesson Plan is created": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "You cannot change the Learning Outcomes after a Period Plan is created"
+    },
+    "You cannot change the Learning Outcomes after a Lesson Plan is created"
+  ],
   "Edit": "Edit",
   "Include Videos": "Include Videos",
   "Yes": "Yes",
   "No": "No",
   "Please select if videos to include": "Please select if videos to include",
-  "Getting Lesson Plan": "Getting Lesson Plan",
-  "Getting Lesson Plan. Please Wait": "Getting Lesson Plan. Please Wait",
+  "Getting Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Getting Period Plan"
+    },
+    "Getting Lesson Plan"
+  ],
+  "Getting Lesson Plan. Please Wait": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Getting Period Plan. Please Wait"
+    },
+    "Getting Lesson Plan. Please Wait"
+  ],
   "Disable School": "Disable School",
   "Disable Teacher": "Disable Teacher",
   "Disclaimer": "Disclaimer",
   "The content generated in Shiksha copilot is using an AI system and there can be certain instances that the content generated may not be accurate. Please always verify the content before usage": "The content generated in Shiksha copilot is using an AI system and there can be certain instances that the content generated may not be accurate. Please always verify the content before usage",
   "Medium": "Medium",
   "Sub-Topic": "Sub-Topic",
-  "Select any 1 lesson Plan to Proceed": "Select any 1 lesson Plan to Proceed",
-  "Choose Lesson Plan": "Choose Lesson Plan",
-  "Lesson Plan Feedback": "Lesson Plan Feedback",
+  "Select any 1 lesson Plan to Proceed": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Select any 1 period Plan to Proceed"
+    },
+    "Select any 1 lesson Plan to Proceed"
+  ],
+  "Choose Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Choose Period Plan"
+    },
+    "Choose Lesson Plan"
+  ],
+  "Lesson Plan Feedback": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan Feedback"
+    },
+    "Lesson Plan Feedback"
+  ],
   "Regenerate": "Regenerate",
   "Feedback": "Feedback",
   "Lesson Resources": "Lesson Resources",
@@ -229,13 +277,31 @@
     },
     "Lesson Plan Generation"
   ],
-  "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom": "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom",
+  "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Generating Comprehensive Period Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom"
+    },
+    "Generating Comprehensive Lesson Plans: Strategies for Creating Engaging and Effective Learning Experiences in the Classroom"
+  ],
   "Generate": "Generate",
-  "Recent Lesson Plans": "Recent Lesson Plans",
+  "Recent Lesson Plans": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Recent Period Plans"
+    },
+    "Recent Lesson Plans"
+  ],
   "View All": "View All",
   "Generated on": "Generated on",
   "Topic": "Topic",
-  "Lesson Plans": "Lesson Plans",
+  "Lesson Plans": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plans"
+    },
+    "Lesson Plans"
+  ],
   "View Lesson Plan": [
     {
       "rule": "state == 'Telangana'",
@@ -245,13 +311,25 @@
   ],
   "Calender": "Calender",
   "My Schedule": "My Schedule",
-  "Lesson Plan/Resources Generated": "Lesson Plan/Resources Generated",
+  "Lesson Plan/Resources Generated": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan/Resources Generated"
+    },
+    "Lesson Plan/Resources Generated"
+  ],
   "Lesson Name": "Lesson Name",
   "Dashboard": "Dashboard",
   "Home": "Home",
   "Hi": "Hi",
   "Your Teacher Toolkit at a Glance": "Your Teacher Toolkit at a Glance",
-  "No lesson plans found": "No lesson plans found",
+  "No lesson plans found": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "No period plans found"
+    },
+    "No lesson plans found"
+  ],
   "Enter Teacher Name": "Enter Teacher Name",
   "Enter Mobile Number": "Enter Mobile Number",
   "Email": "Email",
@@ -273,7 +351,13 @@
   "Explore": "Explore",
   "Videos": "Videos",
   "Real World Scenarios": "Real World Scenarios",
-  "5E Lesson Plan Documents": "5E Lesson Plan Documents",
+  "5E Lesson Plan Documents": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "5E Period Plan Documents"
+    },
+    "5E Lesson Plan Documents"
+  ],
   "Subtitle for learning outcomes": "Subtitle for learning outcomes",
   "Subtitle for documents": "Subtitle for documents",
   "Subtitle for Elaborate": "Subtitle for Elaborate",
@@ -282,7 +366,13 @@
   "Subtitle for Explain": "Subtitle for Explain",
   "Subtitle for Explore": "Subtitle for Explore",
   "Recently Generated Plans": "Recently Generated Plans",
-  "Total Lesson Plans": "Total Lesson Plans",
+  "Total Lesson Plans": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Total Period Plans"
+    },
+    "Total Lesson Plans"
+  ],
   "Total Resource Plans": "Total Resource Plans",
   "View Resource Plan": "View Resource Plan",
   "No plans found": "No plans found",
@@ -292,7 +382,13 @@
   "Select Class": "Select Class",
   "Select Subject": "Select Subject",
   "Select the Chapter": "Select the Chapter",
-  "Select the Lesson Plan": "Select the Lesson Plan",
+  "Select the Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Select the Period Plan"
+    },
+    "Select the Lesson Plan"
+  ],
   "Date is required": "Date is required",
   "Date Greater than today": "Date Greater than today",
   "Start Time Required": "Start Time Required",
@@ -301,7 +397,13 @@
   "End Time between 7AM to 6PM": "End Time between 7AM to 6PM",
   "End Time greater than start": "End Time greater than start",
   "Create Engaging Lesson Content to boost classroom engagement and improve student learning experiences": "Create Engaging Lesson Content to boost classroom engagement and improve student learning experiences",
-  "Provides Lesson Plan for effective lesson delivery": "Provides Lesson Plan for effective lesson delivery",
+  "Provides Lesson Plan for effective lesson delivery": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Provides Period Plan for effective lesson delivery"
+    },
+    "Provides Lesson Plan for effective lesson delivery"
+  ],
   "Provides Resources that include Activities, Real-world scenarios, and Questions tailored to meet your classroom needs": "Provides Resources that include Activities, Real-world scenarios, and Questions tailored to meet your classroom needs",
   "Select Chapter": "Select Chapter",
   "Select Subtopic": "Select Subtopic",
@@ -354,7 +456,13 @@
   "No. of girls is required": "No. of girls is required",
   "Add Board/Class": "Add Board/Class",
   "Close": "Close",
-  "Search Lesson Plan/Resource": "Search Lesson Plan/Resource",
+  "Search Lesson Plan/Resource": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Search Period Plan/Resource"
+    },
+    "Search Lesson Plan/Resource"
+  ],
   "Sikshana": "Sikshana",
   "Are you sure you want to switch the application language": "Are you sure you want to switch the application language",
   "Switch Language": "Switch Language",
@@ -378,7 +486,13 @@
   "Plan Type": "Plan Type",
   "Month": "Month",
   "is required": "is required",
-  "Save Lesson Plan": "Save Lesson Plan",
+  "Save Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Save Period Plan"
+    },
+    "Save Lesson Plan"
+  ],
   "Enter Reason": "Enter Reason",
   "Save Resource Plan": "Save Resource Plan",
   "Leave Page?": "Leave Page?",
@@ -424,13 +538,25 @@
   "Lesson Chatbot": "Lesson Chatbot",
   "Learn More": "Learn More",
   "Have Questions?": "Have Questions?",
-  "LESSON PLAN DETAILS": "LESSON PLAN DETAILS",
+  "LESSON PLAN DETAILS": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "PERIOD PLAN DETAILS"
+    },
+    "LESSON PLAN DETAILS"
+  ],
   "ELABORATE": "ELABORATE",
   "ENGAGE": "ENGAGE",
   "EVALUATE": "EVALUATE",
   "EXPLAIN": "EXPLAIN",
   "EXPLORE": "EXPLORE",
-  "LESSON PLAN SUMMARY": "LESSON PLAN SUMMARY",
+  "LESSON PLAN SUMMARY": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "PERIOD PLAN SUMMARY"
+    },
+    "LESSON PLAN SUMMARY"
+  ],
   "MCQs": "MCQs",
   "Assessments": "Assessments",
   "Activity": "Activity",
@@ -476,7 +602,13 @@
   "Neutral": "Neutral",
   "Agree": "Agree",
   "Strongly Agree": "Strongly Agree",
-  "Documents will be available for download once the lesson plan has been saved.": "Documents will be available for download once the lesson plan has been saved.",
+  "Documents will be available for download once the lesson plan has been saved.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Documents will be available for download once the period plan has been saved."
+    },
+    "Documents will be available for download once the lesson plan has been saved."
+  ],
   "Documents will be available for download once the resource plan has been saved.": "Documents will be available for download once the resource plan has been saved.",
   "idle message": "You've been idle for {{minutes}} minutes. Would you like to continue?",
   "Generate customized question paper that enhances students' learning experiences": "Generate customized question paper that enhances students' learning experiences",
@@ -524,7 +656,13 @@
   "User Registration": "User Registration",
   "Dashboard Overview": "Dashboard Overview",
   "Chatbot Assistance": "Chatbot Assistance",
-  "Lesson Plan Regeneration": "Lesson Plan Regeneration",
+  "Lesson Plan Regeneration": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan Regeneration"
+    },
+    "Lesson Plan Regeneration"
+  ],
   "Mind-Mapping": "Mind-Mapping",
   "Prerequisites": "Prerequisites",
   "Keywords": "Keywords",
@@ -949,9 +1087,56 @@
   "This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.": "This will discard all unsaved changes (including AI-enhanced edits) and restore the last saved content. This cannot be undone.",
   "Revert": "Revert",
   "AI enhance": "AI enhance",
-  "AI enhance: entire lesson plan": "AI enhance: entire lesson plan",
-  "Describe the change you want across the lesson plan": "Describe the change you want across the lesson plan",
+  "AI enhance: entire lesson plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "AI enhance: entire period plan"
+    },
+    "AI enhance: entire lesson plan"
+  ],
+  "Describe the change you want across the lesson plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Describe the change you want across the period plan"
+    },
+    "Describe the change you want across the lesson plan"
+  ],
   "Describe the change you want": "Describe the change you want",
+  "Lesson Plan Docx": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan Docx"
+    },
+    "Lesson Plan Docx"
+  ],
+  "Lesson Plan Presentation": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan Presentation"
+    },
+    "Lesson Plan Presentation"
+  ],
+  "Lesson plan already exists": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period plan already exists"
+    },
+    "Lesson plan already exists"
+  ],
+  "You already created a lesson plan for this chapter. Would you like to view it?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "You already created a period plan for this chapter. Would you like to view it?"
+    },
+    "You already created a lesson plan for this chapter. Would you like to view it?"
+  ],
+  "Lesson Plan Type-5E": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period Plan Type-5E"
+    },
+    "Lesson Plan Type-5E"
+  ],
   "Physics": [
     {
       "rule": "board == 'BSE-TG'",
@@ -979,5 +1164,12 @@
       "value": "Social Studies"
     },
     "Social"
+  ],
+  "Science": [
+    {
+      "rule": "board == 'BSE-TG'",
+      "value": "General Science"
+    },
+    "Science"
   ]
 }
