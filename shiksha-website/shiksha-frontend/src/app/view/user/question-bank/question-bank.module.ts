@@ -13,6 +13,7 @@ import { NgChartsModule } from 'ng2-charts';
 import { QuestionBankTemplateComponent } from './question-bank-generation/question-bank-template/question-bank-template.component';
 import { QuestionBankBluePrintComponent } from './question-bank-generation/question-bank-blue-print/question-bank-blue-print.component';
 import { QuestionTagsComponent } from './question-bank-generation/question-tags/question-tags.component';
+import { ObjectiveLabelComponent } from './objective-label/objective-label.component';
 
 @NgModule({
   declarations: [
@@ -33,6 +34,7 @@ import { QuestionTagsComponent } from './question-bank-generation/question-tags/
     DropdownComponent,
     DeleteDetailComponent,
     NgChartsModule,
+    ObjectiveLabelComponent,
   ],
 })
 export class QuestionBankModule {}

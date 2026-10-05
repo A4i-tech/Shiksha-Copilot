@@ -39,7 +39,7 @@
                     {{ (questionTypeLabels[questionBankObjective.type] || questionBankObjective.type) | translate }}
                   </td>
                   <td class="border px-2 py-2 text-sm">
-                    {{ objective.name }}
+                    <app-objective-label [objective]="objective"></app-objective-label>
                   </td>
                   <td class="border px-2 py-2 text-sm">
                     {{ formatMarks(questionBankObjective.marksPerQuestion) }}
@@ -80,7 +80,7 @@
         </h2>
 
         <div class="flex justify-between my-4">
-          <p>{{'Subject' | translate}} : {{ questionBankDetails?.subjectLabel }}</p>
+          <p>{{'Subject' | translate}} : {{ questionBankDetails?.subject }}</p>
           <p>{{'Class' | translate}} : {{ questionBankDetails?.grade }}</p>
           <p>
             {{'Marks' | translate}} : {{ formatMarks(generatedTotalMarks) }}
@@ -94,14 +94,10 @@
               {{utilityService.intToRoman(q+1)}}. {{ (questionTypeLabels[questionBankData.type] || questionBankData.type) | translate }}
             </h2>
             <b class="text-content flex items-center justify-end gap-1 min-w-[15vw] md:min-w-[7vw]">{{
-              questionBankData.answerCount }} X {{ formatMarks(questionBankData.marksPerQuestion) }} =
-              {{ formatMarks(questionBankData.answerCount * questionBankData.marksPerQuestion) }}
+              questionBankData.numberOfQuestions }} X {{ formatMarks(questionBankData.marksPerQuestion) }} =
+              {{ formatMarks(questionBankData.numberOfQuestions * questionBankData.marksPerQuestion) }}
             </b>
           </div>
-          <p *ngIf="questionBankData.answerCount < questionBankData.numberOfQuestions"
-            class="font-bold text-content" data-testid="question-answer-count-note">
-            <span class="invisible" aria-hidden="true">{{utilityService.intToRoman(q+1)}}. </span><span class="italic">{{ 'Answer any' | translate }} {{ questionBankData.answerCount }} {{ 'of' | translate }} {{ questionBankData.numberOfQuestions }}</span>
-          </p>
           <div *ngIf="questionBankData.type !== 'MATCHING'">
             <div *ngFor="let questionData of questionBankData.questions;
             let i = index
@@ -116,10 +112,6 @@
                 </p>
               </div>
 
-              <p *ngIf="isOrDividerAfter(questionBankData.questions, i)" class="italic text-content text-center my-1"
-                data-testid="question-or-divider">
-                {{ 'OR' | translate }}
-              </p>
 
               <ul
                 *ngIf="questionBankData.type === 'MCQ'"
