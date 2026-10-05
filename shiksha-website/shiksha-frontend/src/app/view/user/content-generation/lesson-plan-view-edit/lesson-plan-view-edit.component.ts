@@ -337,6 +337,10 @@ export class LessonPlanViewEditComponent implements OnInit {
     }
   }
 
+  isGenerating = false;
+  generationFailed = false;
+  private generationPoll?: ReturnType<typeof setTimeout>;
+
   populateViewAndDraft() {
     const subscription = this.isLesson
       ? this.contentGenService.getLessonPlanById(this.planId)
@@ -365,6 +369,14 @@ export class LessonPlanViewEditComponent implements OnInit {
 
         if(this.mode === 'view'){
           this.idleService.planId = this.isLesson ? this.planDetails?.lessonId : this.planDetails?.resourceId
+        }
+        const unsaved = this.isLesson && this.planDetails?.isGenerated && !this.planDetails?.isCompleted;
+        this.isGenerating = unsaved && this.planDetails?.status === 'running';
+        this.generationFailed = unsaved && this.planDetails?.status === 'failed';
+        clearTimeout(this.generationPoll);
+        if (this.isGenerating) {
+          this.generationPoll = setTimeout(() => this.populateViewAndDraft(), 5000);
+          return;
         }
         this.setContent();
       },
@@ -850,6 +862,7 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   ngOnDestroy(): void {
+    clearTimeout(this.generationPoll);
     this.routerEventsSubscription.unsubscribe();
     this.modeSubscription.unsubscribe();
     this.planAiSub?.unsubscribe();
