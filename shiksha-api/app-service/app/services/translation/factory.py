@@ -5,10 +5,8 @@ from typing import TypeAlias
 
 from app.config import settings
 from app.services.translation.base import TranslatorBase
-from app.services.translation.azure import AzureTranslator
 from app.services.translation.noop import NoOpTranslator
-from azure.ai.translation.text.aio import TextTranslationClient
-from azure.core.credentials import AzureKeyCredential
+from app.services.translation.openai import OpenAITranslator
 
 logger = logging.getLogger(__name__)
 
@@ -31,12 +29,16 @@ def fallback_noop(target: str) -> NoOpTranslator:
     return NoOpTranslator()
 
 
-def azure() -> Callable[[str], AzureTranslator | None]:
+def azure() -> TranslationParser:
     key = (settings.translator_key or "").strip()
     region = (settings.translator_region or "").strip()
     endpoint = (settings.translator_endpoint or "").strip()
     if not all((key, region, endpoint)):
         return lambda _: None
+    from azure.ai.translation.text.aio import TextTranslationClient
+    from azure.core.credentials import AzureKeyCredential
+    from app.services.translation.azure import AzureTranslator
+
     translator = AzureTranslator(TextTranslationClient(
         endpoint=endpoint.rstrip("/"),
         credential=AzureKeyCredential(key),
@@ -47,9 +49,19 @@ def azure() -> Callable[[str], AzureTranslator | None]:
     return lambda _: translator
 
 
+def openai() -> TranslationParser:
+    translator = OpenAITranslator(
+        model=(settings.translation_model or "").strip(),
+        base_url=(settings.translation_base_url or settings.openai_base_url or "").strip() or None,
+        api_key=(settings.translation_api_key or settings.openai_api_key).strip(),
+    )
+    return lambda _: translator
+
+
 def simple(parsers: tuple[TranslationParser] | None = None) -> TranslatorFactory:
     """
     Implements the replication (prototype) and caching of instances.
-    When Azure Translator is not configured, returns NoOpTranslator.
+    The setting translation_provider picks the translator. NoOpTranslator is the last resort.
     """
-    return cache(sequential(parsers or (azure(), fallback_noop)))
+    provider = openai if settings.translation_provider == "openai" else azure
+    return cache(sequential(parsers or (provider(), fallback_noop)))

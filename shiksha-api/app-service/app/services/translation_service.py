@@ -1,14 +1,11 @@
 from copy import deepcopy
 from typing import Any, Iterable
 
+from app.services.translation.base import TranslationProviderError
 from app.services.translation.factory import TranslatorFactory, simple
 import logging
 
 logger = logging.getLogger(__name__)
-
-
-class TranslationProviderError(RuntimeError):
-    pass
 
 
 class TranslationService:

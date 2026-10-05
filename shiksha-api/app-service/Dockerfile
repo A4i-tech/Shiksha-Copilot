@@ -28,7 +28,7 @@ COPY shiksha-api/app-service ./shiksha-api/app-service
 
 WORKDIR /src/shiksha-api/app-service
 
-RUN poetry install --no-root --no-interaction --no-ansi
+RUN poetry install --no-root --no-interaction --no-ansi --extras azure
 
 ARG SHIKSHA_COPILOT_BUILD
 ENV SHIKSHA_COPILOT_BUILD=$SHIKSHA_COPILOT_BUILD
