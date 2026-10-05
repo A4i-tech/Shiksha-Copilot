@@ -9,17 +9,14 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import logging
 
-# 1. Official OpenAI SDK (For Direct Generation & Chat)
 from langfuse import observe, propagate_attributes
-from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
 from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import PydanticResponse
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAIResponses
 
 # 3. Import only the Factory and Base Adapter
+from app.services.llm_factory import make_embedding, make_llm, make_openai_client, parse_structured
 from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
@@ -50,9 +47,9 @@ class QuestionPaperService:
     """Service for handling question paper generation using OpenAI."""
 
     def __init__(self):
-        self.client = AsyncOpenAI()
-        self._rag_llm = OpenAIResponses(model=settings.question_paper_model) # pyright: ignore[reportCallIssue]
-        self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
+        self.client = make_openai_client()
+        self._rag_llm = make_llm(settings.question_paper_model)
+        self._rag_embed = make_embedding()
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
         self.prompt_dir = Path(__file__).parent.parent.parent / "prompts"
         self.prompts = self._load_prompts()
@@ -216,15 +213,7 @@ class QuestionPaperService:
             if not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
-                response = await self.client.responses.parse(
-                    model=settings.question_paper_model,
-                    instructions=system_prompt,
-                    input=user_message,
-                    text_format=response_format,
-                )
-                if response.output_parsed is None:
-                    raise RuntimeError("Did not retrieve a valid response from model")
-                items = response.output_parsed
+                items = await parse_structured(self.client, settings.question_paper_model, system_prompt, user_message, response_format)
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")

@@ -13,6 +13,10 @@ A Python library for Retrieval-Augmented Generation (RAG) operations using Llama
 - **Flexible Retrieval**: Configurable sub-retrievers for custom retrieval strategies
 - **Graph Traversal**: Follow entity relationships with configurable path depth for richer context
 
+The wrapper builds no model client. The caller passes llama-index LLM and embedding objects to each `*RagOps` class.
+Use `OpenAI`, `OpenAIResponses`, and `OpenAIEmbedding` with `api_base` set for an OpenAI-compatible server, or any other llama-index class.
+The wrapper needs no Azure OpenAI package. The Azure AI Search backend needs the Azure AI Search packages that are already dependencies.
+
 ## Installation
 
 ```bash

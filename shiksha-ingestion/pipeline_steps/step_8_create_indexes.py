@@ -4,8 +4,9 @@ import re
 from typing import Dict
 from dotenv import load_dotenv
 from rag_wrapper.rag_ops.qdrant_rag_ops import QdrantRagOps
-from llama_index.llms.azure_openai import AzureOpenAI
-from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+from llama_index.core.llms import LLMMetadata
+from llama_index.llms.openai import OpenAI
+from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from ingestion_pipeline.base.pipeline import BasePipelineStep, StepResult, StepStatus
 from qdrant_client import AsyncQdrantClient
@@ -20,6 +21,37 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+def _provider(name: str) -> str:
+    provider = os.getenv(name, "openai").strip().lower()
+    if provider not in ("openai", "azure"):
+        raise ValueError(f"{name}={provider} is not a known provider. Set {name} to openai or azure.")
+    return provider
+
+
+class _SelfHostedOpenAI(OpenAI):
+    @property
+    def metadata(self) -> LLMMetadata:
+        try:
+            return super().metadata
+        except ValueError:
+            # llama-index knows only OpenAI model names, a self-hosted model name raises here
+            return LLMMetadata(
+                context_window=int(os.getenv("LLM_CONTEXT_WINDOW") or 32768),
+                num_output=-1,
+                is_chat_model=True,
+                is_function_calling_model=True,
+                model_name=self.model,
+            )
+
+
+def _azure_package_missing(name: str) -> ImportError:
+    return ImportError(
+        f"{name}=azure needs the llama-index Azure OpenAI package. "
+        f"Run poetry install --extras azure or set {name}=openai."
+    )
+
 
 class CreateIndexStep(BasePipelineStep):
     """Extract subtopic-wise learning outcomes from a chapter markdown file."""
@@ -41,7 +73,18 @@ class CreateIndexStep(BasePipelineStep):
         return [page.strip() for page in pages if page.strip()]
 
     def _embedding_llm(self):
-        """Initialize Azure OpenAI embedding model"""
+        """Initialize the embedding model for EMBEDDING_PROVIDER (openai or azure)"""
+        if _provider("EMBEDDING_PROVIDER") == "openai":
+            # model_name lets a self-hosted model name through, `model` accepts OpenAI names only
+            return OpenAIEmbedding(
+                model_name=os.getenv("EMBED_MODEL", "text-embedding-ada-002"),
+                api_key=os.getenv("OPENAI_API_KEY"),
+                api_base=os.getenv("EMBEDDING_BASE_URL") or os.getenv("OPENAI_BASE_URL") or None,
+            )
+        try:
+            from llama_index.embeddings.azure_openai import AzureOpenAIEmbedding
+        except ImportError as e:
+            raise _azure_package_missing("EMBEDDING_PROVIDER") from e
         return AzureOpenAIEmbedding(
             model=os.getenv("AZURE_OPENAI_EMBEDDING_MODEL", "text-embedding-ada-002"),
             deployment_name=os.getenv(
@@ -54,7 +97,17 @@ class CreateIndexStep(BasePipelineStep):
 
 
     def _completion_llm(self):
-        """Initialize Azure OpenAI completion model"""
+        """Initialize the completion model for CHAT_PROVIDER (openai or azure)"""
+        if _provider("CHAT_PROVIDER") == "openai":
+            return _SelfHostedOpenAI(
+                model=os.getenv("CHAT_MODEL", "gpt-5.6-luna"),
+                api_key=os.getenv("OPENAI_API_KEY"),
+                api_base=os.getenv("CHAT_BASE_URL") or os.getenv("OPENAI_BASE_URL") or None,
+            )
+        try:
+            from llama_index.llms.azure_openai import AzureOpenAI
+        except ImportError as e:
+            raise _azure_package_missing("CHAT_PROVIDER") from e
         return AzureOpenAI(
             model=os.getenv("AZURE_OPENAI_MODEL", "gpt-35-turbo"),
             deployment_name=os.getenv("AZURE_OPENAI_MODEL", "gpt-35-turbo"),

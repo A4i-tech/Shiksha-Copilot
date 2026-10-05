@@ -71,6 +71,10 @@ shiksha-ingestion/
    ```bash
    poetry install
    ```
+   To use Azure OpenAI for the index step, install the `azure` extra:
+   ```bash
+   poetry install --extras azure
+   ```
 
 3. **Set up environment variables:**
    Create a `.env` file in the root directory with the following variables:
@@ -80,6 +84,23 @@ shiksha-ingestion/
    AZURE_OPENAI_API_VERSION=your_api_version
    AZURE_OPENAI_MODEL=your_deployment_name
    ```
+
+   The index step (`step_8_create_indexes.py`) picks its chat and embedding provider with these variables.
+   The default is `openai`, which needs no Azure package.
+   ```env
+   CHAT_PROVIDER=openai          # openai or azure
+   EMBEDDING_PROVIDER=openai     # openai or azure
+   OPENAI_API_KEY=your_openai_api_key
+   OPENAI_BASE_URL=              # empty means public OpenAI, set it for a self-hosted OpenAI-compatible server
+   CHAT_BASE_URL=                # falls back to OPENAI_BASE_URL
+   EMBEDDING_BASE_URL=           # falls back to OPENAI_BASE_URL
+   CHAT_MODEL=gpt-5.6-luna       # model name for CHAT_PROVIDER=openai
+   EMBED_MODEL=text-embedding-ada-002   # model name for EMBEDDING_PROVIDER=openai
+   LLM_CONTEXT_WINDOW=           # context window of a self-hosted chat model, empty uses 32768
+   ```
+   With `CHAT_PROVIDER=azure` or `EMBEDDING_PROVIDER=azure`, the `AZURE_OPENAI_*` variables above apply
+   and the `azure` extra must be installed. The other steps still read the `AZURE_OPENAI_*` variables directly.
+   The index step uses the same embedding model as app-service (`EMBED_MODEL`). Use the same model in both.
 
 4. **Activate the Poetry environment:**
    ```bash

@@ -24,6 +24,9 @@ plotly = "^5.17.0"
 dash = "^2.14.0"
 pydantic = "^2.5.0"
 py2neo = "^2021.2.4"
+# Azure OpenAI provider (CHAT_PROVIDER=azure or EMBEDDING_PROVIDER=azure), installed with the azure extra
+llama-index-llms-azure-openai = { version = "*", optional = true }
+llama-index-embeddings-azure-openai = { version = "*", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"
@@ -61,6 +64,8 @@ path = "/home/kchourasia/ShikshaOSSNew/Shiksha-Copilot/components/rag-wrapper"
 develop = true
 
 [tool.poetry.extras]
+# Azure OpenAI chat and embeddings
+azure = ["llama-index-llms-azure-openai", "llama-index-embeddings-azure-openai"]
 # Core graph functionality (included by default)
 graph = ["networkx", "matplotlib", "plotly", "pydantic"]
 # Interactive visualizations

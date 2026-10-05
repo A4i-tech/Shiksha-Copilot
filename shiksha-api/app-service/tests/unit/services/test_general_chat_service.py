@@ -21,7 +21,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
+            "app.services.general_chat_service.make_openai_client",
             return_value=mock_openai_client,
         ):
 
@@ -85,7 +85,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
+            "app.services.general_chat_service.make_openai_client",
             return_value=mock_openai_client,
         ):
 
@@ -177,7 +177,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
+            "app.services.general_chat_service.make_openai_client",
             return_value=mock_openai_client,
         ):
 
@@ -227,7 +227,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
+            "app.services.general_chat_service.make_openai_client",
             return_value=mock_openai_client,
         ):
 
@@ -242,7 +242,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
+            "app.services.general_chat_service.make_openai_client",
             return_value=mock_openai_client,
         ):
 
@@ -257,7 +257,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
+            "app.services.general_chat_service.make_openai_client",
             return_value=mock_openai_client,
         ):
 
@@ -283,7 +283,7 @@ class TestGeneralChatServiceCall:
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
         ) as MockPromptTemplate, patch(
-            "app.services.general_chat_service.AsyncOpenAI",
+            "app.services.general_chat_service.make_openai_client",
             return_value=mock_openai_client,
         ):
 
@@ -320,7 +320,7 @@ class TestGeneralChatServiceCleanup:
         """Test cleanup method can be called."""
         with patch("app.services.general_chat_service.settings", mock_settings), patch(
             "app.services.general_chat_service.PromptTemplate"
-        ), patch("app.services.general_chat_service.AsyncOpenAI"):
+        ), patch("app.services.general_chat_service.make_openai_client"):
 
             service = GeneralChatService()
 
