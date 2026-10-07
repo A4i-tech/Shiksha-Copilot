@@ -39,8 +39,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Scoped per deploy-name so cd-api and cd-backend don't cancel each other.
     concurrency:
-      group: render-deploy
+      group: render-deploy-${{ inputs.deploy-name }}
       cancel-in-progress: false
     outputs:
       deploy-id: ${{ steps.create.outputs['deploy-id'] }}

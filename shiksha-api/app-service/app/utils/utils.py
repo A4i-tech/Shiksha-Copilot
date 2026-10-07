@@ -1,6 +1,6 @@
 import hashlib
-import re
 
+from lark import Lark, UnexpectedInput
 from pydantic import JsonValue
 
 
@@ -20,38 +20,27 @@ def get_json_value_type(data: JsonValue) -> type[JsonValue]:
     return type(data)
 
 
-_TEX_DELIMITER_PATTERN = re.compile(r"\\\(|\\\)|\\\[|\\\]")
-_TEX_DELIMITER_OPENERS = {"\\(": "\\)", "\\[": "\\]"}
-# a bare, unescaped "_" (e.g. the "__" fill-in-the-blank marker) is not valid
-# standalone LaTeX and makes KaTeX fail to render the whole span.
-_TEX_BARE_UNDERSCORE = re.compile(r"(?<!\\)_")
+_TEX = Lark(r"""
+    start: (inline | display | CHAR | ESCAPED | BLANK)*
 
+    inline:  INLINE_OPEN math* INLINE_CLOSE
+    display: DISPLAY_OPEN math* DISPLAY_CLOSE
 
-def validate_tex(text: str) -> None:
-    """Raise ValueError if TeX inline/display delimiters in `text` are
-    unbalanced, out of order, mismatched, or nested, or if a math span
-    contains a bare "_" (e.g. a leaked "__" blank placeholder) that KaTeX
-    cannot render.
+    ?math: CHAR | ESCAPED
 
-    Best-effort signal for observability, not a full TeX parser.
-    """
-    expected_close = None
-    span_start = None
-    for match in _TEX_DELIMITER_PATTERN.finditer(text):
-        token = match.group()
-        if expected_close is None:
-            if token not in _TEX_DELIMITER_OPENERS:
-                raise ValueError(f"TeX closer {token!r} has no matching opener in: {text[:200]!r}")
-            expected_close = _TEX_DELIMITER_OPENERS[token]
-            span_start = match.end()
-        else:
-            if token in _TEX_DELIMITER_OPENERS:
-                raise ValueError(f"Nested TeX opener {token!r} before previous delimiter closed in: {text[:200]!r}")
-            if token != expected_close:
-                raise ValueError(f"Mismatched TeX closer {token!r}, expected {expected_close!r} in: {text[:200]!r}")
-            span = text[span_start:match.start()]
-            if _TEX_BARE_UNDERSCORE.search(span):
-                raise ValueError(f"Bare '_' (blank placeholder?) inside TeX span {span!r} in: {text[:200]!r}")
-            expected_close = None
-    if expected_close is not None:
-        raise ValueError(f"Unclosed TeX delimiter {expected_close!r} in: {text[:200]!r}")
+    INLINE_OPEN.3:  "\\("
+    INLINE_CLOSE.3: "\\)"
+    DISPLAY_OPEN.3: "\\["
+    DISPLAY_CLOSE.3: "\\]"
+
+    BLANK.2: /_{2,}/
+    ESCAPED.1: "\\" /./s
+    CHAR: /./s
+""", parser="lalr", lexer="basic")
+
+def validate_tex(text: str) -> str | None:
+    try:
+        _TEX.parse(text)
+    except UnexpectedInput as e:
+        return f"{e}\nContext:\n{e.get_context(text, span=80)}"
+    return None
