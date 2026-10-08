@@ -1,0 +1,130 @@
+# Build context is the repo root (ci-api.yaml: context: .), so every pattern
+# here must be anchored with **/ to match under shiksha-api/app-service/ and
+# components/rag-wrapper/ -- an unprefixed pattern only matches at the context
+# root and silently does nothing.
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/*.so
+**/.Python
+**/build/
+**/develop-eggs/
+**/dist/
+**/downloads/
+**/eggs/
+**/.eggs/
+**/lib/
+**/lib64/
+**/parts/
+**/sdist/
+**/var/
+**/wheels/
+**/*.egg-info/
+**/.installed.cfg
+**/*.egg
+**/MANIFEST
+
+# Virtual environments
+**/.env
+**/.venv
+**/env/
+**/venv/
+**/ENV/
+**/env.bak/
+**/venv.bak/
+
+# IDEs
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# OS
+**/.DS_Store
+**/.DS_Store?
+**/._*
+**/.Spotlight-V100
+**/.Trashes
+**/ehthumbs.db
+**/Thumbs.db
+
+# Testing
+**/.coverage
+**/.pytest_cache/
+**/.tox/
+**/.nox/
+**/htmlcov/
+**/.coverage.*
+**/coverage.xml
+**/*.cover
+**/.hypothesis/
+
+# Documentation
+**/docs/_build/
+
+# Jupyter Notebook
+**/.ipynb_checkpoints
+
+# pyenv
+**/.python-version
+
+# pipenv
+**/Pipfile.lock
+
+# PEP 582
+**/__pypackages__/
+
+# Celery
+**/celerybeat-schedule
+**/celerybeat.pid
+
+# SageMath parsed files
+**/*.sage.py
+
+# Spyder project settings
+**/.spyderproject
+**/.spyproject
+
+# Rope project settings
+**/.ropeproject
+
+# mkdocs documentation
+**/site
+
+# mypy
+**/.mypy_cache/
+**/.dmypy.json
+**/dmypy.json
+
+# Pyre type checker
+**/.pyre/
+
+# Docker
+**/Dockerfile
+**/Dockerfile.dockerignore
+**/docker-compose*.yml
+
+# Git
+**/.git
+**/.gitignore
+
+# Development files
+# README.md is scoped to just this app, not **/ -- components/rag-wrapper's
+# own README.md is required by its pyproject.toml's `readme =` field at
+# `poetry install` time (PEP 517 build metadata), excluding it breaks the build.
+shiksha-api/app-service/README.md
+**/tests/
+**/.pre-commit-config.yaml
+**/docker_commands.txt
+
+# Logs
+**/logs/
+**/*.log
+
+# Temporary files
+**/tmp/
+**/temp/
+**/.tmp/
