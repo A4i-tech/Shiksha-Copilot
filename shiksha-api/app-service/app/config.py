@@ -55,7 +55,9 @@ class Settings(BaseSettings):
     pres_max_tasks_planner: PositiveInt = 2
     pres_max_tasks_finalizer: PositiveInt = 2
     pres_mongodb_url: str = "mongodb://localhost:27017/shiksha_viz"
-    pres_sse_buffer_limit: PositiveInt = 512
+    pres_sse_poll_seconds: PositiveInt = 1
+    pres_lease_seconds: PositiveInt = 30
+    pres_worker_poll_seconds: PositiveInt = 5
     pres_storage_filesystem: str = "file"
     pres_storage_root: str = "shiksha-copilot-presentations"
     pres_storage_options: dict[str, Any] = Field(default_factory=dict)

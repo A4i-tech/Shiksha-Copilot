@@ -145,6 +145,19 @@ The API will be available at:
 - Swagger Documentation: http://localhost:8000/docs
 - ReDoc Documentation: http://localhost:8000/redoc
 
+### Presentation worker
+
+The API does not generate presentations. It only saves the job in MongoDB. A separate worker process runs the job.
+Start one or more workers with the same image and environment as the API:
+
+```bash
+poetry run python -m app.services.presentation.worker
+```
+
+- Each worker takes one job at a time with a lease in MongoDB. If a worker stops, another worker takes the job when the lease expires (`PRES_LEASE_SECONDS`, default 30).
+- Set `PRES_MONGODB_URL`, `PRES_STORAGE_FILESYSTEM` and `PRES_STORAGE_OPTIONS` to the same values for the API and the worker. In a deployment, use blob storage. A local disk is not shared between pods.
+- Give the worker its own memory limit. A worker out-of-memory kill does not stop the API.
+
 ## API Endpoints
 
 ### Chat Endpoints
