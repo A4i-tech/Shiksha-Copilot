@@ -56,9 +56,7 @@ export class AppComponent implements OnInit, OnDestroy {
         next: (res: any) => {
           const user = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(user));
-          if (user._id) {
-            this.umamiService.identify(user._id);
-          }
+          this.umamiService.identifyUser(user);
           if (this.router.url === '/error/503') this.router.navigateByUrl('/');
         },
         error: (err: any) => {

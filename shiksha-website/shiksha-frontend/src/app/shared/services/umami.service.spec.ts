@@ -44,7 +44,7 @@ describe('UmamiService', () => {
 
     fireScriptOnload();
 
-    expect(window.umami?.identify).toHaveBeenCalledWith('user-1');
+    expect(window.umami?.identify).toHaveBeenCalledWith('user-1', undefined);
     expect(window.umami?.track).toHaveBeenCalledWith('activity-log', { moduleName: 'lesson-plan' });
   });
 
@@ -55,7 +55,7 @@ describe('UmamiService', () => {
     service.identify('user-2');
     service.track('activity-log', { moduleName: 'lesson-plan' });
 
-    expect(window.umami?.identify).toHaveBeenCalledWith('user-2');
+    expect(window.umami?.identify).toHaveBeenCalledWith('user-2', undefined);
     expect(window.umami?.track).toHaveBeenCalledWith('activity-log', { moduleName: 'lesson-plan' });
   });
 
@@ -67,7 +67,39 @@ describe('UmamiService', () => {
     fireScriptOnload();
 
     expect(window.umami?.identify).toHaveBeenCalledTimes(1);
-    expect(window.umami?.identify).toHaveBeenCalledWith('current-user');
+    expect(window.umami?.identify).toHaveBeenCalledWith('current-user', undefined);
+  });
+
+  it('identifyUser() sends segment properties only, never name, phone or email', () => {
+    service.loadTracker();
+    fireScriptOnload();
+
+    service.identifyUser({
+      _id: 'u1',
+      identity: { name: 'N', phone: '1', email: 'e' },
+      preferredLanguage: 'kn',
+      school: { state: 'Karnataka', zone: 'Z', district: 'D', block: 'B' },
+      profiles: { teacher: { classes: [
+        { board: 'KSEEB', medium: 'Kannada', class: 8, subject: 'Maths' },
+        { board: 'KSEEB', medium: 'English', class: 9, subject: 'Maths' },
+      ] } },
+    });
+
+    expect(window.umami?.identify).toHaveBeenCalledWith('u1', {
+      language: 'kn', state: 'Karnataka', zone: 'Z', district: 'D', block: 'B',
+      board: 'KSEEB', medium: 'English,Kannada', class: '8,9', subject: 'Maths',
+    });
+  });
+
+  it('identifyUser() falls back to the admin state and skips users without an id', () => {
+    service.loadTracker();
+    fireScriptOnload();
+
+    service.identifyUser({ _id: 'a1', profiles: { admin: { state: 'Telangana' } } });
+    service.identifyUser({});
+
+    expect(window.umami?.identify).toHaveBeenCalledTimes(1);
+    expect(window.umami?.identify).toHaveBeenCalledWith('a1', { state: 'Telangana' });
   });
 
   it('does not inject a second script tag on a repeat loadTracker() call', () => {

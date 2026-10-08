@@ -20,7 +20,7 @@ declare global {
 export class UmamiService {
   private scriptLoaded = false;
   private trackerLoadStarted = false;
-  private pendingUserId: string | null = null;
+  private pendingIdentity: { userId: string; data?: Record<string, any> } | null = null;
   private pendingEvents: Array<[string, Record<string, any>?]> = [];
 
   loadTracker(): void {
@@ -36,7 +36,7 @@ export class UmamiService {
     script.setAttribute('data-website-id', umamiWebsiteId);
     script.onload = () => {
       this.scriptLoaded = true;
-      if (this.pendingUserId) window.umami?.identify(this.pendingUserId);
+      if (this.pendingIdentity) window.umami?.identify(this.pendingIdentity.userId, this.pendingIdentity.data);
       while (this.pendingEvents.length) {
         const [name, data] = this.pendingEvents.shift()!;
         window.umami?.track(name, data);
@@ -53,12 +53,31 @@ export class UmamiService {
 
   // Only one user is ever "current" — a later identify() before load overwrites
   // the pending one on purpose, so a stale/logged-out id can't win the race.
-  identify(userId: string): void {
+  identify(userId: string, data?: Record<string, any>): void {
     if (this.scriptLoaded) {
-      window.umami?.identify(userId);
+      window.umami?.identify(userId, data);
     } else {
-      this.pendingUserId = userId;
+      this.pendingIdentity = { userId, data };
     }
+  }
+
+  // Session properties for Umami segments; no name, phone or email.
+  identifyUser(user: any): void {
+    if (!user?._id) return;
+    const classes: any[] = user.profiles?.teacher?.classes ?? [];
+    const uniq = (key: string) => [...new Set(classes.map((c) => c[key]).filter((v) => v != null))].sort().join(',');
+    const data = {
+      language: user.preferredLanguage,
+      state: user.school?.state ?? user.profiles?.admin?.state,
+      zone: user.school?.zone,
+      district: user.school?.district,
+      block: user.school?.block,
+      board: uniq('board'),
+      medium: uniq('medium'),
+      class: uniq('class'),
+      subject: uniq('subject'),
+    };
+    this.identify(user._id, Object.fromEntries(Object.entries(data).filter(([, v]) => v)));
   }
 
   track(name: string, data?: Record<string, any>): void {
