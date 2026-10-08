@@ -99,6 +99,8 @@ class JobDetail(BaseModel):
     message: str = "Pending"
     metadata: dict[str, Any] = Field(default_factory=dict)
     tags: set[str] = Field(default_factory=set)
+    lease_expires_at: datetime | None = Field(default=None, exclude=True)  # worker lease, read from Mongo only
+    crashes: int = Field(default=0, exclude=True)  # times a worker died holding this job
 
 
 class PresentationOutline(BaseModel):
