@@ -17,6 +17,8 @@ openai = "1.81.0"
 azure-storage-blob = "^12.25.1"
 aiofiles = "^24.1.0"
 azure-identity = "^1.23.0"
+llama-index-llms-azure-openai = "^0.4.0"
+llama-index-embeddings-azure-openai = "^0.4.0"
 vellm-rag-wrapper = { path = "../../components/rag-wrapper", develop = true }
 langfuse = "3.14.6"
 

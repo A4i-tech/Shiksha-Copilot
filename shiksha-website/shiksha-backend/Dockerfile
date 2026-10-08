@@ -1,16 +1,14 @@
-FROM node:18-alpine
+FROM node:24-alpine
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
-COPY . .
+COPY --chown=node:node . .
 
 ARG SHIKSHA_COPILOT_BUILD
 ENV SHIKSHA_COPILOT_BUILD=$SHIKSHA_COPILOT_BUILD
-
-RUN chown -R node:node /usr/src/app
 
 USER node
 
