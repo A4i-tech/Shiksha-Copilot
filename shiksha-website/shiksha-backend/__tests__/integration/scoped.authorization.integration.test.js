@@ -551,7 +551,8 @@ describe("scoped authorisation", () => {
           { roleId: teacherRole._id, dep: localSchool._id },
           { roleId: teacherRole._id, dep: localSchool._id },
         ]),
-        message: "Duplicate role assignment",
+        message: "This user already has that role at that scope. Remove the duplicate and save again.",
+        status: 409,
       },
       {
         body: teacherBody("Invalid Dependency Teacher", `6${String(suffix + 4).slice(-9)}`, localSchool, [
@@ -581,7 +582,7 @@ describe("scoped authorisation", () => {
       },
     ];
     for (const test of rejected) {
-      expectDenied(await request("/api/users", "POST", actorToken, test.body), test.message);
+      expectDenied(await request("/api/users", "POST", actorToken, test.body), test.message, test.status);
     }
     expectDenied(await request("/api/users", "POST", schoolActorToken, teacherBody(
       "Equal School Scope Integration Teacher",
@@ -646,7 +647,7 @@ describe("scoped authorisation", () => {
   it("prevents privilege escalation through role management", async () => {
     expectDenied(await request(`/api/users/${actor._id}`, "PUT", actorToken, {
       roles: [{ roleId: operatorRole._id, dep: districtDep(localSchool) }],
-    }), "You cannot change your own role assignments");
+    }), "You cannot change your own role assignments. Ask another admin to change them.");
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "DELETE", actorToken), "Assigned roles cannot be deleted");
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "PUT", actorToken, {
       scopeType: "STATE",

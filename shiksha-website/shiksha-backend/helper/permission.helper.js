@@ -1,3 +1,4 @@
+const AppError = require("./app.error");
 const permissions = require("../config/permissions.json");
 const { ROLE_SCOPE_TYPES } = require("../config/role.scope");
 if (process.env.SHIKSHA_DEVTOOLS === "true") permissions.push(...require("../config/devtools.permissions.json"));
@@ -34,7 +35,7 @@ function hasGlobalPermission(grants, permission) {
 
 function schoolDependency(assignments) {
   const schools = [...new Set(assignments.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => String(assignment.dep)))];
-  if (schools.length !== 1) throw new Error("A teacher must have exactly one school dependency");
+  if (schools.length !== 1) throw new AppError("This account is not linked to exactly one school. Ask an admin to fix the school role assignment.", 403);
   return schools[0];
 }
 

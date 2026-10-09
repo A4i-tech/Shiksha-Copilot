@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const asyncMiddleware = require('../middlewares/asyncMiddleware.js');
 const teacherTrainingBatchController = require('../controllers/teacher.training.batch.controller.js');
 const { isAuthenticated, requirePermission } = require('../middlewares/auth.js');
 const { createBatchUpload, batchProofUpload } = require('../middlewares/trainingUploadMiddleware.js');
@@ -13,7 +14,7 @@ router.get('/teacher-training-batches/', isAuthenticated, requirePermission('tra
 // Get teacher training stats
 router.get('/teacher-training-batches/stats', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getTeacherTrainingStats);
 
-router.get('/teacher-training-batches/available-teachers', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.getAvailableTeachers);
+router.get('/teacher-training-batches/available-teachers', isAuthenticated, requirePermission('training.edit'), asyncMiddleware(teacherTrainingBatchController.getAvailableTeachers));
 
 // Get a single teacher training batch by ID
 router.get('/teacher-training-batches/:batchId', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getBatchById);

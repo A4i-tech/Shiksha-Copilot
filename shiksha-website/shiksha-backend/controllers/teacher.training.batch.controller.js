@@ -18,6 +18,13 @@ const School = require("../models/school.model");
 const User = require("../models/user.model");
 const teacherPopulate = { path: "assignedTeachers", select: "identity profiles.teacher roles", populate: { path: "roles.role", select: "scopeType" } };
 const fileExtensions = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png" };
+const sendError = (res, err, fallbackMessage) => {
+  const isCast = err.name === "CastError";
+  const isApp = err.name === "AppError";
+  const status = isApp ? err.statusCode : isCast ? 400 : 500;
+  const message = isApp ? err.message : isCast ? "Invalid ID format" : err.message || fallbackMessage;
+  res.status(status).json({ message });
+};
 
 function uploadFile(file) {
   return uploadToStorage(file.buffer, `${randomUUID()}.${fileExtensions[file.mimetype]}`, file.mimetype);
@@ -134,7 +141,7 @@ class TeacherTrainingBatchController extends BaseController {
     
     res.status(200).json(await withTeacherSchools(batch));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
   }
 
@@ -170,7 +177,7 @@ class TeacherTrainingBatchController extends BaseController {
     res.status(200).json(await withTeacherSchools(updatedBatch));
   } catch (err) {
     console.error('assignTeacherToBatch - error:', err);
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
   }
 
@@ -194,7 +201,7 @@ class TeacherTrainingBatchController extends BaseController {
     const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
     res.status(200).json(await withTeacherSchools(updatedBatch));
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
   }
 
@@ -218,7 +225,7 @@ class TeacherTrainingBatchController extends BaseController {
     const deletedBatch = await TeacherTrainingBatch.findByIdAndDelete(batchId);
     res.status(200).json({ message: 'Batch deleted successfully', deletedBatch });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
   }
 
@@ -236,7 +243,7 @@ class TeacherTrainingBatchController extends BaseController {
     res.status(200).json({ totalTeachers, trainedTeachers, untrainedTeachers: totalTeachers - trainedTeachers });
   } catch (err) {
     console.error('Error in getTeacherTrainingStats:', err);
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
   }
 
@@ -262,7 +269,7 @@ class TeacherTrainingBatchController extends BaseController {
     res.status(200).json(updatedBatch);
   } catch (err) {
     console.error('updateAttendance - error:', err);
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
   }
 
@@ -306,7 +313,7 @@ class TeacherTrainingBatchController extends BaseController {
 
     res.status(200).json(updatedBatch);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    sendError(res, err);
   }
   }
 
@@ -431,7 +438,7 @@ class TeacherTrainingBatchController extends BaseController {
     res.end();
   } catch (err) {
     console.error('Error in exportBatchReport:', err);
-    res.status(500).json({ message: err.message || 'An unknown error occurred during Excel export.' });
+    sendError(res, err, "An unknown error occurred during Excel export.");
   }
   }
 }

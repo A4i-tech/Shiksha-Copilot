@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const AppError = require("./app.error");
 const Region = require("../models/region.model");
 const School = require("../models/school.model");
 const { getPermission } = require("./permission.helper");
@@ -45,20 +46,20 @@ function hasAssignmentScope(grants, permission, role, dep) {
 
 async function assertCanAssign(grants, role, dep, permission) {
   if (role.scopeType === "GLOBAL" || role.scopeType === "UNBOUND") {
-    if (dep) throw new Error(`${role.scopeType} scope does not accept a dependency`);
-    if (!hasAssignmentScope(grants, permission, role, dep)) throw new Error("Role assignment must be below your scope");
+    if (dep) throw new AppError(`${role.scopeType} scope does not accept a dependency`, 400);
+    if (!hasAssignmentScope(grants, permission, role, dep)) throw new AppError("Role assignment must be below your scope", 403);
     return dep;
   }
-  if (!dep) throw new Error(`${role.scopeType} scope requires a dependency`);
+  if (!dep) throw new AppError(`${role.scopeType} scope requires a dependency`, 400);
   if (role.scopeType === "SCHOOL") {
     const school = await School.findById(dep).lean();
-    if (!school) throw new Error("SCHOOL scope dependency does not exist");
-    if (!hasAssignmentScope(grants, permission, role, school)) throw new Error("Role assignment must be below your scope");
+    if (!school) throw new AppError("SCHOOL scope dependency does not exist", 400);
+    if (!hasAssignmentScope(grants, permission, role, school)) throw new AppError("Role assignment must be below your scope", 403);
     return school._id;
   }
   const fields = REGION_SCOPE_FIELDS[role.scopeType];
   if (fields && (typeof dep !== "object" || Object.keys(dep).length !== fields.length || fields.some((field) => !dep[field]))) {
-    throw new Error(`${role.scopeType} scope dependency is invalid`);
+    throw new AppError(`${role.scopeType} scope dependency is invalid`, 400);
   }
   const regionQuery = {
     STATE: { state: dep.state },
@@ -66,8 +67,8 @@ async function assertCanAssign(grants, role, dep, permission) {
     DISTRICT: { state: dep.state, zones: { $elemMatch: { name: dep.zone, districts: { $elemMatch: { name: dep.district } } } } },
     BLOCK: { state: dep.state, zones: { $elemMatch: { name: dep.zone, districts: { $elemMatch: { name: dep.district, blocks: { $elemMatch: { name: dep.block } } } } } } },
   };
-  if (regionQuery[role.scopeType] && !await Region.exists(regionQuery[role.scopeType])) throw new Error(`${role.scopeType} scope dependency does not exist`);
-  if (!hasAssignmentScope(grants, permission, role, dep)) throw new Error("Role assignment must be below your scope");
+  if (regionQuery[role.scopeType] && !await Region.exists(regionQuery[role.scopeType])) throw new AppError(`${role.scopeType} scope dependency does not exist`, 400);
+  if (!hasAssignmentScope(grants, permission, role, dep)) throw new AppError("Role assignment must be below your scope", 403);
   return dep;
 }
 
@@ -75,9 +76,9 @@ async function assertCanGrant(grants, role, dep) {
   const resolved = await assertCanAssign(grants, role, dep, "role.assign");
   if (role.scopeType === "SCHOOL") {
     const school = await School.findById(resolved).lean();
-    if (role.permissions.some((permission) => !isResourceAllowed(grants, permission, school))) throw new Error("Cannot grant permissions you do not hold at this scope");
+    if (role.permissions.some((permission) => !isResourceAllowed(grants, permission, school))) throw new AppError("Cannot grant permissions you do not hold at this scope", 403);
   } else if (role.permissions.some((permission) => !isDependencyAllowed(grants, permission, role.scopeType, resolved))) {
-    throw new Error("Cannot grant permissions you do not hold at this scope");
+    throw new AppError("Cannot grant permissions you do not hold at this scope", 403);
   }
   return resolved;
 }

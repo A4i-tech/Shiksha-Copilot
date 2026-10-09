@@ -4,7 +4,7 @@ module.exports = (err, req, res, next) => {
 	console.error("Unhandled error --> ", err);
 
 	const appInsightsClient = require("applicationinsights").defaultClient;
-	if (appInsightsClient) {
+	if (appInsightsClient && !(err.statusCode < 500)) {
 		appInsightsClient.trackException({
 			exception: err,
 			properties: {
@@ -23,7 +23,13 @@ module.exports = (err, req, res, next) => {
 		return res.status(400).json(formatApiReponse(false, "Invalid ID format", null));
 	}
 
+	if (err.name === "ValidationError" && err.errors) {
+		const message = Object.values(err.errors).map((e) => e.message).join(", ");
+		return res.status(400).json(formatApiReponse(false, message, null));
+	}
+
 	const statusCode = err.statusCode || 500;
-	const message = err.name === "AppError" ? err.message : "Internal server error";
+	// body-parser 4xx errors set expose=true and carry a user-readable message
+	const message = err.name === "AppError" || (err.expose === true && statusCode < 500) ? err.message : "Internal server error";
 	res.status(statusCode).json(formatApiReponse(false, message, null));
 };

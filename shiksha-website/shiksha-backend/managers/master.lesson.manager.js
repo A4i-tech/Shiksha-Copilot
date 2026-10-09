@@ -61,10 +61,10 @@ class MasterLessonManger extends BaseManager {
 
 	async getActivityById(lessonId, activityId, permissions) {
 		const activity = await this.regeneratedLessonResourceDao.getOne({ _id: activityId });
-		if (!activity) throw new Error("Activity not found");
-		if (![activity.contentId, activity.genContentId].some((id) => String(id) === lessonId)) throw new Error("Lesson does not belong to this activity");
+		if (!activity) throw new AppError("Activity not found. Check the activity ID and try again.", 404);
+		if (![activity.contentId, activity.genContentId].some((id) => String(id) === lessonId)) throw new AppError("This activity does not belong to the lesson. Use the lesson that owns the activity.", 400);
 		const user = await this.userDao.getById(activity.generatedBy);
-		if (!user || !user.profiles.teacher) throw new Error("Activity has no teacher");
+		if (!user || !user.profiles.teacher) throw new AppError("Activity has no teacher linked to it. Contact support if the problem continues.", 404);
 		const school = await School.findById(schoolDependency(user.roles)).lean();
 		if (!isResourceAllowed(permissions, "content.activity.view", school)) throw new AppError("Activity is outside your scope", 403);
 		const lessonPlan = await this.dao.generateLessonPlan(lessonId);
@@ -346,15 +346,15 @@ class MasterLessonManger extends BaseManager {
 	async generate5ETables(lessonId, userId, userName) {
 		const masterLesson = await this.dao.getById(lessonId);
 		if (!masterLesson) {
-			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
+			throw new AppError(`Master lesson with ID ${lessonId} not found. Check the lesson ID and try again.`, 404);
 		}
 		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
 		if (!chapter) {
-			throw new Error(`Chapter with ID ${masterLesson.chapterId} not found`);
+			throw new AppError(`Chapter with ID ${masterLesson.chapterId} not found. Check the lesson data and try again.`, 404);
 		}
 		const subject = await this.masterSubjectDao.getById(chapter.subjectId);
 		if (!subject) {
-			throw new Error(`Subject with ID ${chapter.subjectId} not found`);
+			throw new AppError(`Subject with ID ${chapter.subjectId} not found. Check the chapter data and try again.`, 404);
 		}
 
 		const requestData = this._create5ETablePayload(chapter, subject, userId, userName, masterLesson);
