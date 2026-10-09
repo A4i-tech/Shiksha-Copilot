@@ -104,7 +104,7 @@ flowchart LR
 - **Curriculum-Aligned Content Creation:** Automatically generates lesson content strictly grounded in the curated knowledge base, enhancing relevance and coherence with educational standards and learning objectives.
 - **Interactive Pedagogical Tools:** Supports the generation of multiple forms of educational content including interactive activities, analogies, real-world examples, and hands-on exercises to cater to diverse learner needs and teaching contexts.
 - **Low-Resource Classroom Support:** Designed to empower educators in resource-constrained environments by providing comprehensive lesson planning tools, reducing preparation time, and ensuring access to quality educational materials regardless of infrastructure limitations.
-- **Dual API Architecture:** Features both synchronous [FastAPI services](shiksha-api/app-service/) for real-time interactions and asynchronous [durable functions](shiksha-api/durable-functions/) for complex lesson plan orchestration.
+- **Dual API Architecture:** Features both synchronous [FastAPI services](shiksha-api/app-service/) for real-time interactions and asynchronous durable functions (hosted separately) for complex lesson plan orchestration.
 - **Interactive Conversational Features:** 
   - **Lesson Chat:** Context-aware discussions about specific curriculum topics
   - **Question Paper Generator:** Structured assessment creation aligned with educational blueprints
@@ -143,7 +143,7 @@ Shiksha Copilot follows a modular architecture with clear separation between off
 - **[Shiksha Website Frontend](shiksha-website/shiksha-frontend/)** - React-based user interface
 - **[Shiksha Website Backend](shiksha-website/shiksha-backend/)** - Server-side application logic
 - **[Shiksha API Services](shiksha-api/app-service/)** - FastAPI endpoints for real-time interactions
-- **[Durable Functions](shiksha-api/durable-functions/)** - Orchestrated lesson plan generation workflows
+- **Durable Functions** - Orchestrated lesson plan generation workflows. Hosted separately, outside this repo.
 
 ### Supporting Components
 - **[RAG Wrapper](components/rag-wrapper/README.md)** - Retrieval-augmented generation interface

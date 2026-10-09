@@ -43,7 +43,7 @@ parameters:
     workflow_template:
       type: string
       description: >-
-        The lesson-plan workflow template (parsed from its source yaml by the
+        The lesson-plan workflow template (read from a JSON file by the
         caller), passed as a JSON-encoded string: an object with a top-level
         "_id" and a "sections" array, each section's "description" containing
         ${READING_CONTENT}, ${DISCOURSE_TYPES_MAJOR}, and ${DISCOURSE_TYPES}
@@ -55,6 +55,37 @@ parameters:
         JSON-encoded string of {"major": [...], "minor": [...]}. See
         workflow_template above for why this is a string, not an object.
       default: '{"major": ["Lab Report", "Project Work", "Field Trip Report", "Model Making"], "minor": ["Concept Map", "Flow Chart", "Diagram", "Data Table", "Quiz"]}'
+    model:
+      type: string
+      default: GPT-4.1
+      description: Azure OpenAI chat deployment used for lesson-plan generation
+    embed_model:
+      type: string
+      default: text-embedding-ada-002
+      description: Azure OpenAI embedding deployment used for retrieval
+    collection:
+      type: string
+      default: ""
+      description: Qdrant collection. Leave empty to read it from each plan's chapter_info.index_path.
+    top_k:
+      type: integer
+      minimum: 1
+      default: 10
+      description: Number of Qdrant passages retrieved per RAG section
+    force_mode:
+      type: string
+      enum: ["", rag, gpt]
+      default: ""
+      description: Generate every section in this mode. Leave empty to use each section's own mode.
+    webhook:
+      type: boolean
+      default: true
+      description: Post PENDING, RUNNING, COMPLETED and FAILED status to WEBHOOK_URL
+    concurrency:
+      type: integer
+      minimum: 1
+      default: 1
+      description: Number of lesson plans generated at the same time
   required: [workflow_template]
 steps:
   - agent: page_chunking
@@ -235,6 +266,8 @@ steps:
       assertions:
         - expr: '([ .topic_groups[].topics[] ] - [ .topics[].title ]) | unique | length == 0'
           feedback: "Unknown topics in topic_groups"
+        - expr: '([ .topics[].title ] - [ .topic_groups[].topics[] ]) | unique | length == 0'
+          feedback: "Topics missing from topic_groups"
       schema:
         type: object
         properties:
@@ -333,3 +366,220 @@ steps:
       - mode: after
         expr: '[.metadata.payloads[] | select((.subtopics | length) == 0 or (.learning_outcomes | length) == 0)] | length == 0'
         message: "Payloads with empty subtopics or learning outcomes were generated"
+  - agent: section_graph
+    description: Generate one lesson plan per payload from the section dependency graph
+    config:
+      model: "${.config.model}"
+      webhook: "${.config.webhook}"
+      force_mode: "${.config.force_mode}"
+      concurrency: "${.config.concurrency}"
+      retrieve:
+        embed_model: "${.config.embed_model}"
+        collection: "${.config.collection}"
+        top_k: "${.config.top_k}"
+        vector_name: text-dense
+      prompts:
+        system: |-
+          You are LessonPlanGPT, an AI tutor specialized in generating lesson-plan segments for real classroom use. When processing any segment-specific prompt, follow these guidelines:
+
+          1. **Purpose & Audience**
+          • Create student-appropriate content that teachers can deliver directly in K–12 classrooms.
+          • Focus on enhancing students’ understanding and comprehension of the topics specified in the segment prompt.
+
+          2. **Tone & Style**
+          • Use simple, clear language that engages school-age learners.
+          • Maintain an encouraging, respectful, and motivating voice—avoid jargon and overly technical phrasing.
+
+          3. **Accuracy & Placeholders**
+          • Do not invent or hallucinate details—if the prompt refers to figures, diagrams, vocabulary, or data, use placeholders exactly as provided.
+          • Ensure all content is factually consistent and directly relevant to the topic in the prompt.
+
+          4. **Clarity & Conciseness**
+          • Keep each sentence focused and actionable.
+          • Respect any sentence or paragraph length requirements specified in the prompt.
+          • Ensure coherence, avoid repetition, and prioritize clear comprehension for students.
+        summarize: |-
+          You are an expert educational content analyzer. Please create a concise summary of the following lesson plan content that focuses on the most important information for avoiding content duplication in future lesson plans.
+
+          Your summary should include:
+          1. **Key Topics Covered**: Main subjects and concepts addressed
+          2. **Learning Outcomes**: Primary learning objectives achieved
+          3. **Pedagogical Strategies**: Teaching methods and approaches used
+          4. **Activities**: Specific classroom activities or exercises mentioned
+          5. **Keywords/Concepts**: Important terminology and concepts introduced
+
+          Please format your response as a structured summary with clear sections. Keep it concise but comprehensive, focusing on information that would help avoid duplication in related lesson plans.
+
+          Target length: Maximum {max} characters.
+
+          Lesson Plan Content to Summarize:
+          ---
+          {text}
+          ---
+
+          Provide a structured summary:
+        retrieval_query: |-
+          You are an expert educational content retrieval specialist. Your task is to create an optimized search query to find the most relevant textbook content from a vector store containing school textbook chapters.
+
+          **OBJECTIVE**: Generate a precise and effective retrieval query that will help find textbook content most relevant to the given section description, topics, and learning outcomes.
+
+          **SECTION INFORMATION**:
+          Section Description: {description}{extra}
+
+          **QUERY GENERATION GUIDELINES**:
+          1. **Focus on Key Concepts**: Identify the core educational concepts, topics, and subtopics that need to be retrieved
+          2. **Use Educational Terminology**: Include relevant academic terms, subject-specific vocabulary, and pedagogical concepts
+          3. **Consider Learning Objectives**: Align the query with what students need to learn and understand
+          4. **Include Context Clues**: Add relevant grade-appropriate terms and conceptual frameworks
+          5. **Optimize for Semantic Search**: Use natural language that captures the meaning and intent, not just keywords
+          6. **Be Specific but Comprehensive**: Balance specificity with breadth to capture relevant content
+
+          **QUERY STRUCTURE**:
+          Create a retrieval query that includes:
+          - Primary concepts and topics to search for
+          - Related educational terms and vocabulary
+          - Learning context and objectives
+          - Subject-specific terminology where applicable
+
+          **OUTPUT REQUIREMENTS**:
+          - Maximum length: {max} characters
+          - Format: Natural language query optimized for semantic search
+          - Focus: Educational content retrieval from textbook chapters
+          - Style: Clear, concise, and educationally relevant
+
+          Generate the retrieval query:
+        rag_answer: |-
+          Context information from multiple sources is below.
+          ---------------------
+          {context}
+          ---------------------
+          Given the information from multiple sources and not prior knowledge, answer the query.
+          Query: {query}
+          Answer:
+        journey: |-
+          === LESSON PLAN STRUCTURE & LEARNING JOURNEY ===
+          All sections in this lesson plan: {sections}
+
+          IMPORTANT: This lesson plan should take students on a structured learning journey from the UNKNOWN to the KNOWN with respect to the topic. Each section should build upon previous sections and contribute to this progression:
+
+          - Early sections should introduce foundational concepts and engage student curiosity
+          - Middle sections should explore, explain, and elaborate on key concepts
+          - Later sections should help students apply, evaluate, and consolidate their learning
+
+          The current section '{current}' should fit logically into this learning progression, considering:
+          1. What students should already know from previous sections
+          2. What new knowledge/skills this section should develop
+          3. How this section prepares students for subsequent sections
+          4. The overall journey from unfamiliarity to mastery of the topic
+
+          ===
+        additional: |-
+          === ADDITIONAL CONTEXT ===
+          {text}
+          ===
+        fresh:
+          subtopic: |-
+            You are creating the '{title}' section of a lesson plan.
+            Focus on the given subtopic(s) and their learning outcomes.
+          chapter: |-
+            You are creating the '{title}' section of a lesson plan.
+            Focus on the given learning outcomes.
+          outcomes: |-
+            === CURRENT SECTION'S LEARNING OUTCOMES ===
+            {query}
+            ===
+          deps: |-
+            === PREVIOUSLY GENERATED SECTIONS ===
+
+            The content of this section depends on the following previously generated sections:
+            {deps}
+            ===
+          rag: "**Use the attached context passages (from the system) when relevant.**"
+          json: |-
+            Return a single JSON object ONLY matching this schema (no prose, no fences):
+            {schema}
+            If a field is empty, use "" or [] appropriately.
+          md: |-
+            Return Markdown ONLY (no code fences). Do NOT repeat the section description; generate the requested content.
+          template: |-
+            {intro}
+
+            {journey}
+
+            {outcomes}
+
+            {additional}
+
+            {deps}
+
+            === CURRENT SECTION DESCRIPTION ===
+            {description}
+            **IMPORTANT: Follow the above section description EXACTLY. Adhere to the **CURRENT SECTION'S LEARNING OUTCOMES** to generate content for this section. All references of learning outcomes in the above description belong to **CURRENT SECTION'S LEARNING OUTCOMES** ONLY. Do NOT include the section title unless the output format asks for it.**
+            ===
+            {rag}
+
+            {format}
+        regen:
+          subtopic: |-
+            You are regenerating the '{title}' section of a lesson plan. Following are the subtopic(s) and their learning outcomes:
+
+            {query}
+          chapter: |-
+            You are regenerating the '{title}' section of a lesson plan. Following is the chapter title and associated learning outcomes:
+
+            {query}
+          deps_current: |-
+            The content of this section depends on the following previously generated sections:
+            ```
+            {deps}
+            ```
+          deps_previous: |-
+            Below is the previously generated content for this section, along with any USER feedback provided for its regeneration (if available):
+            ```
+            {previous}
+            ```
+            **IMPORTANT: Carefully review and incorporate the USER feedback (if any) when regenerating this section. Ensure all feedback points are addressed.**
+          rag: &retrieved_rag "**Refer to the retrieved content for context.**"
+          json: &json_format |-
+            The output should be in the following JSON format:
+            {schema}
+          md: &md_format "The output should be in plain string **Markdown** format for ease of readability. DO NOT annotate the output with any special characters. Do NOT repeat or regurgitate descriptions of sections provided above. Only generate relevant material as indicated in the section description."
+          template: |-
+            {intro}
+
+            {journey}
+
+            {additional}
+
+            {deps}
+
+            # Section Description: {description}
+
+            **Note: Adhere to the mentioned learning outcomes and ensure the content is relevant to the chapter. DO NOT include section title in the output unless specifically mentioned in output format.** {rag}
+
+            {format}
+        resource:
+          intro: "You are creating the '{title}' section of a resource plan for english subject."
+          deps: |-
+            The content of this section depends on the following previously generated sections:
+            ```
+            {deps}
+            ```
+          rag: *retrieved_rag
+          json: *json_format
+          md: *md_format
+          template: |-
+            {intro}
+
+            {journey}
+
+            {additional}
+
+            {deps}
+
+            # Current Section Description: {description}
+
+            **Note: Adhere to the mentioned learning outcomes and ensure the content is relevant to the chapter. Do NOT include section title in the output unless specifically mentioned in output format.**
+            {rag}
+
+            {format}
