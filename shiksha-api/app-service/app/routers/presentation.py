@@ -206,7 +206,7 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
     Subscribe to job events.
     """
 
-    after = await service.jobs.last_log_id(id)  # read before the job, so no event falls between them
+    after = await service.jobs.last_log_seq(id)  # read before the job, so no event falls between them
     job = await service.jobs.get(id)
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -217,7 +217,7 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
         yield f"data: {json.dumps(snapshot)}\n\n"
         async for _ in _until_disconnected(request):
             for doc in await service.jobs.logs_after(id, after):
-                after = doc["_id"]
+                after = doc["seq"]
                 e = {"id": doc["job_id"], "type": doc["type"], "data": doc["data"], "timestamp": iso_z(doc["timestamp"])}
                 yield f"data: {json.dumps(e)}\n\n"
 

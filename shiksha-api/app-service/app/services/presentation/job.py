@@ -5,15 +5,18 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from collections.abc import Sequence
+from contextvars import ContextVar
 from typing import Any, AsyncGenerator
 
-from bson import ObjectId
 from app.models.presentation import JobDetail, JobStatus, UserId
 from pymongo import ASCENDING, DESCENDING, AsyncMongoClient, ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 
 # retries exhausted: never claimed, not counted toward the user cap
 _PERMANENT_ERROR = {"status": "error", "metadata.error.attempting_recovery": False}
+
+lease_owner: ContextVar[str | None] = ContextVar("lease_owner", default=None)
 
 
 def iso_z(dt: datetime) -> str:
@@ -45,7 +48,7 @@ class JobManager:
             self.collection.create_index([("tags", ASCENDING)]),
             self.collection.create_index([("status", ASCENDING), ("creation_time", ASCENDING)]),
             self.log_collection.create_index([("job_id", ASCENDING), ("timestamp", ASCENDING)]),
-            self.log_collection.create_index([("job_id", ASCENDING), ("_id", ASCENDING)]),
+            self.log_collection.create_index([("job_id", ASCENDING), ("seq", ASCENDING)], unique=True, partialFilterExpression={"seq": {"$exists": True}}),  # legacy rows have no seq
         )
         return self
 
@@ -97,7 +100,12 @@ class JobManager:
         updates = {}
         if fields_set: updates["$set"] = fields_set
         if fields_unset: updates["$unset"] = dict.fromkeys(fields_unset, 1)
-        doc = await self.collection.find_one_and_update({"id": str(job_id)}, updates, return_document=ReturnDocument.AFTER)
+        query = {"id": str(job_id)}
+        # fencing covers Mongo writes only, blob writes are bounded by the heartbeat cancel
+        if (owner := lease_owner.get()) is not None: query["lease_owner"] = owner
+        doc = await self.collection.find_one_and_update(query, updates, return_document=ReturnDocument.AFTER)
+        if doc is None and owner is not None:
+            self.logger.warning("Dropped write to job %s: lease is held by another worker.", job_id)
         if doc:
             data = json.loads(JobDetail(**doc).model_dump_json())
             await self.log(job_id, "update", data)
@@ -132,23 +140,30 @@ class JobManager:
         result = await self.collection.delete_one({"id": str(job.id), "status": {"$ne": "complete"}})
         if result.deleted_count == 0:
             return False
-        await self.log_collection.delete_many({"job_id": str(job.id)})
         await self.log(job.id, "terminate", json.loads(job.model_copy(update={"status": "error"}).model_dump_json()))
+        await self.log_collection.delete_many({"job_id": str(job.id), "type": {"$ne": "terminate"}})  # keeps terminate so seq never restarts
         return True
 
-    async def log(self, job_id: uuid.UUID, type: str, data: dict):
-        await self.log_collection.insert_one({"job_id": str(job_id), "type": type, "data": data, "timestamp": datetime.now(timezone.utc)})
+    async def log(self, job_id: uuid.UUID, type: str, data: dict) -> int:
+        # unique (job_id, seq): a late writer hits a duplicate and retries higher, so readers never skip a seq
+        while True:
+            seq = (await self.last_log_seq(job_id) or 0) + 1
+            try:
+                await self.log_collection.insert_one({"job_id": str(job_id), "seq": seq, "type": type, "data": data, "timestamp": datetime.now(timezone.utc)})
+                return seq
+            except DuplicateKeyError:
+                continue
 
-    async def last_log_id(self, job_id: uuid.UUID) -> ObjectId | None:
-        doc = await self.log_collection.find_one({"job_id": str(job_id)}, sort=[("_id", DESCENDING)], projection=["_id"])
+    async def last_log_seq(self, job_id: uuid.UUID) -> int | None:
+        doc = await self.log_collection.find_one({"job_id": str(job_id)}, sort=[("seq", DESCENDING)], projection=["seq"])
         if not doc:
             return None
-        return doc["_id"]
+        return doc.get("seq", 0)
 
-    async def logs_after(self, job_id: uuid.UUID, after: ObjectId | None) -> Sequence[dict]:
+    async def logs_after(self, job_id: uuid.UUID, after: int | None) -> Sequence[dict]:
         query: dict[str, Any] = {"job_id": str(job_id)}
-        if after is not None: query["_id"] = {"$gt": after}
-        return [doc async for doc in self.log_collection.find(query, sort=[("_id", ASCENDING)])]
+        if after is not None: query["seq"] = {"$gt": after}
+        return [doc async for doc in self.log_collection.find(query, sort=[("seq", ASCENDING)])]
 
     async def get_logs(self, job_id: uuid.UUID) -> AsyncGenerator[dict, None]:
         async for doc in await self.log_collection.aggregate([
