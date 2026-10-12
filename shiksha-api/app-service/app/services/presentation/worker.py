@@ -1,25 +1,32 @@
 import asyncio
 import logging
 import socket
+import time
 import uuid
 
 from langfuse import get_client
 
 from app.config import settings
-from app.services.presentation.job import JobManager
+from app.services.presentation.job import JobManager, lease_owner
 from app.services.presentation.service import new_default
 
 logger = logging.getLogger(__name__)
 
 
 async def _keep_lease(jobs: JobManager, job_id: uuid.UUID, owner: str, run: asyncio.Task[None]):
+    last_ok = time.monotonic()
     while True:
         await asyncio.sleep(settings.pres_lease_seconds / 3)
         try:
             renewed = await jobs.renew_lease(job_id, owner)
         except Exception:
             logger.exception("Could not renew lease on job %s. Retrying.", job_id)  # transient Mongo error must not end the heartbeat
+            if time.monotonic() - last_ok > settings.pres_lease_seconds:
+                logger.warning("Lease on job %s may have expired. Stopping it.", job_id)
+                run.cancel()
+                return
             continue
+        last_ok = time.monotonic()
         if not renewed:
             logger.warning("Lost lease on job %s (deleted or taken over). Stopping it.", job_id)
             run.cancel()
@@ -44,8 +51,10 @@ async def main():
                     await asyncio.sleep(settings.pres_worker_poll_seconds)
                     continue
 
+                token = lease_owner.set(owner)
                 run = asyncio.create_task(service.run_job(job.id))
                 beat = asyncio.create_task(_keep_lease(service.jobs, job.id, owner, run))
+                lease_owner.reset(token)
                 try:
                     result, = await asyncio.gather(run, return_exceptions=True)
                     if isinstance(result, BaseException) and not isinstance(result, asyncio.CancelledError):
@@ -53,10 +62,15 @@ async def main():
                 finally:
                     beat.cancel()
                     run.cancel()
-                    try:
-                        await service.jobs.release_lease(job.id, owner)
-                    except Exception:
-                        logger.exception("Could not release lease on job %s. It expires in %ss.", job.id, settings.pres_lease_seconds)
+                    for attempt in range(3):
+                        try:
+                            await service.jobs.release_lease(job.id, owner)
+                            break
+                        except Exception:
+                            if attempt == 2:
+                                logger.exception("Could not release lease on job %s. It expires in %ss.", job.id, settings.pres_lease_seconds)
+                            else:
+                                await asyncio.sleep(1)
         finally:
             get_client().flush()
 

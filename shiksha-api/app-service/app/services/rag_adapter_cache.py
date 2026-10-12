@@ -3,6 +3,7 @@ from collections import OrderedDict
 import logging
 from typing import Awaitable, Callable, Generic, TypeVar
 
+from app.config import settings
 from app.services.rag_adapters import BaseRagAdapter, RagAdapterFactory
 from llama_index.llms.openai import OpenAIResponses
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -25,7 +26,7 @@ class RagAdapterCache(Generic[T]):
         return adapter
 
 
-    def __init__(self, builder: Callable[[str, OpenAIResponses, OpenAIEmbedding], Awaitable[T]], size: int = 32):
+    def __init__(self, builder: Callable[[str, OpenAIResponses, OpenAIEmbedding], Awaitable[T]], size: int = settings.rag_adapter_cache_size):
         self._builder = builder
         self._size = size
         self._instances: OrderedDict[str, T] = OrderedDict()

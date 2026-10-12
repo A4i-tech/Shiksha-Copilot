@@ -1,7 +1,7 @@
 import asyncio
 
 from app.services.rag_adapter_cache import RagAdapterCache
-from app.services.rag_adapters import BaseRagAdapter
+from app.services.rag_adapters import BaseRagAdapter, QdrantRagOpsAdapter
 
 
 class Adapter(BaseRagAdapter):
@@ -57,3 +57,23 @@ async def test_cleanup_cleans_each_adapter_once():
     await cache.cleanup()
     assert first.cleanups == 1
     assert second.cleanups == 1
+
+
+class FakeRagOps:
+    def __init__(self):
+        self.closes = 0
+
+    async def close(self):
+        self.closes += 1
+
+
+async def test_eviction_closes_qdrant_rag_ops():
+    async def build(path, *_):
+        adapter = QdrantRagOpsAdapter(None, None, path)
+        adapter._rag_ops = FakeRagOps()
+        return adapter
+
+    cache = RagAdapterCache(build, 1)
+    first = await cache.get("qdrant/c1/k:v", None, None)
+    await cache.get("qdrant/c2/k:v", None, None)
+    assert first.rag_ops.closes == 1

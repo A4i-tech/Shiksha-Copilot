@@ -5,7 +5,7 @@ import uuid
 
 import pytest
 
-from app.services.presentation.job import JobManager
+from app.services.presentation.job import JobManager, lease_owner
 
 pytestmark = pytest.mark.integration
 
@@ -75,12 +75,30 @@ async def test_permanent_error_does_not_count_toward_user_cap(jobs):
 
 async def test_logs_after_returns_only_newer_events_in_order(jobs):
     job = await create(jobs)
-    marker = await jobs.last_log_id(job.id)
+    marker = await jobs.last_log_seq(job.id)
     await jobs.update(job.id, {"message": "one"})
     await jobs.update(job.id, {"status": "complete"})
     events = await jobs.logs_after(job.id, marker)
     assert [e["type"] for e in events] == ["update", "update", "complete"]
-    assert await jobs.logs_after(job.id, events[-1]["_id"]) == []
+    assert await jobs.logs_after(job.id, events[-1]["seq"]) == []
+
+
+async def test_concurrent_logs_get_distinct_increasing_seq(jobs):
+    job = await create(jobs)
+    await asyncio.gather(jobs.log(job.id, "x", {}), jobs.log(job.id, "x", {}))
+    seqs = [e["seq"] for e in await jobs.logs_after(job.id, None)]
+    assert seqs == sorted(set(seqs)) and len(seqs) == 3
+
+
+async def test_update_from_a_stale_lease_owner_is_fenced_out(jobs):
+    job = await create(jobs)
+    await jobs.claim_next("a")
+    token = lease_owner.set("b")
+    try:
+        await jobs.update(job.id, {"message": "x"})
+    finally:
+        lease_owner.reset(token)
+    assert (await jobs.get(job.id)).message == "Pending"
 
 
 async def test_takeover_of_an_expired_lease_counts_a_crash_but_a_release_does_not(jobs):
