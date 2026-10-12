@@ -37,6 +37,10 @@ RUN groupadd --gid 1000 appuser \
     && useradd --uid 1000 --gid appuser --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /home/site/wwwroot /home/components
 
+# 10) Move off port 80, uid 1000 can't bind it under k8s's default unprivileged-port sysctl
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
 USER appuser
 
-# 10) The Functions base image already sets ENTRYPOINT/CMD to launch the host
+# 11) The Functions base image already sets ENTRYPOINT/CMD to launch the host
