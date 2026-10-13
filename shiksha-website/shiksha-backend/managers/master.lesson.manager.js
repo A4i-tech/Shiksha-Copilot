@@ -64,7 +64,7 @@ class MasterLessonManger extends BaseManager {
 		if (!activity) throw new AppError("Activity not found. Check the activity ID and try again.", 404);
 		if (![activity.contentId, activity.genContentId].some((id) => String(id) === lessonId)) throw new AppError("This activity does not belong to the lesson. Use the lesson that owns the activity.", 400);
 		const user = await this.userDao.getById(activity.generatedBy);
-		if (!user || !user.profiles.teacher) throw new AppError("Activity has no teacher linked to it. Contact support if the problem continues.", 404);
+		if (!user || !user.profiles.teacher) throw new AppError("Activity has no teacher linked to it. Contact support if the problem continues.", 409);
 		const school = await School.findById(schoolDependency(user.roles)).lean();
 		if (!isResourceAllowed(permissions, "content.activity.view", school)) throw new AppError("Activity is outside your scope", 403);
 		const lessonPlan = await this.dao.generateLessonPlan(lessonId);

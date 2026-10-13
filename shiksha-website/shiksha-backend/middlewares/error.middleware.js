@@ -1,11 +1,15 @@
 const formatApiReponse = require("../helper/response");
 
+const BODY_PARSER_TYPE = /^(entity|encoding|charset|request)\./;
+
 module.exports = (err, req, res, next) => {
 	console.error("Unhandled error --> ", err);
+	if (res.headersSent) return next(err);
 
-	const appInsightsClient = require("applicationinsights").defaultClient;
-	if (appInsightsClient && !(err.statusCode < 500)) {
-		appInsightsClient.trackException({
+	const reply = (status, message) => res.status(status).json(formatApiReponse(false, message, null));
+	const track = () => {
+		const appInsightsClient = require("applicationinsights").defaultClient;
+		appInsightsClient?.trackException({
 			exception: err,
 			properties: {
 				url: req.originalUrl,
@@ -13,23 +17,19 @@ module.exports = (err, req, res, next) => {
 				userId: req.user?._id?.toString() ?? "unauthenticated",
 			},
 		});
-	}
+	};
 
-	if (err.code === 11000) {
-		return res.status(409).json(formatApiReponse(false, "Duplicate entry", null));
+	if (err.code === 11000) return reply(409, "Duplicate entry");
+	if (err.name === "CastError") {
+		return reply(400, err.kind === "ObjectId" ? "Invalid ID format" : `Invalid value for "${err.path}". Check it and try again.`);
 	}
-
-	if (err.name === "CastError" && err.kind === "ObjectId") {
-		return res.status(400).json(formatApiReponse(false, "Invalid ID format", null));
-	}
-
 	if (err.name === "ValidationError" && err.errors) {
-		const message = Object.values(err.errors).map((e) => e.message).join(", ");
-		return res.status(400).json(formatApiReponse(false, message, null));
+		return reply(400, Object.values(err.errors).map((e) => e.message).join(", "));
 	}
 
-	const statusCode = err.statusCode || 500;
-	// body-parser 4xx errors set expose=true and carry a user-readable message
-	const message = err.name === "AppError" || (err.expose === true && statusCode < 500) ? err.message : "Internal server error";
-	res.status(statusCode).json(formatApiReponse(false, message, null));
+	const statusCode = Number(err.statusCode) || 500;
+	if (statusCode >= 500 || statusCode === 401 || statusCode === 403) track();
+
+	const readable = err.name === "AppError" || (statusCode < 500 && BODY_PARSER_TYPE.test(err.type ?? ""));
+	reply(statusCode, readable ? err.message : "Internal server error");
 };

@@ -190,7 +190,7 @@ class ChatManager extends BaseManager {
 
 		const masterLessonDetails = await this.masterLessonDao.getById(lessonId);
 		if (!masterLessonDetails) {
-			throw new AppError("Lesson not found for this lesson plan. Contact support if the problem continues.", 404);
+			throw new AppError("Lesson not found for this lesson plan. Contact support if the problem continues.", 409);
 		}
 		if (masterLessonDetails.chapterId.toString() !== chapterId) {
 			throw new AppError("Chapter does not match this lesson. Select the correct chapter and try again.", 400);
@@ -203,7 +203,7 @@ class ChatManager extends BaseManager {
 
 		let subjectDetails = await this.subjectDao.getById(chapterDetails.subjectId);
 		if (!subjectDetails) {
-			throw new AppError("Subject not found for this chapter. Contact support if the problem continues.", 404);
+			throw new AppError("Subject not found for this chapter. Contact support if the problem continues.", 409);
 		}
 
 		return {

@@ -35,7 +35,7 @@ function hasGlobalPermission(grants, permission) {
 
 function schoolDependency(assignments) {
   const schools = [...new Set(assignments.filter((assignment) => assignment.role.scopeType === "SCHOOL").map((assignment) => String(assignment.dep)))];
-  if (schools.length !== 1) throw new AppError("This account is not linked to exactly one school. Ask an admin to fix the school role assignment.", 403);
+  if (schools.length !== 1) throw new AppError("This account is not linked to exactly one school. Ask an admin to fix the school role assignment.", 409);
   return schools[0];
 }
 

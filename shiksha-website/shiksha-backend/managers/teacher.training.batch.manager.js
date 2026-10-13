@@ -1,3 +1,4 @@
+const escapeRegExp = require('lodash/escapeRegExp');
 const BaseManager = require('./base.manager');
 const TeacherTrainingBatchDao = require('../dao/teacher.training.batch.dao');
 const TeacherTrainingBatch = require('../models/teacher.training.batch.model');
@@ -41,7 +42,7 @@ class TeacherTrainingBatchManager extends BaseManager {
       TeacherTrainingBatch.distinct('attendance', { isSubmitted: true }),
     ]);
     const searchFilter = search ? { $or: ['identity.name', 'identity.phone', 'school.zone', 'school.district'].map((field) => ({
-      [field]: { $regex: new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') },
+      [field]: { $regex: new RegExp(escapeRegExp(String(search)), 'i') },
     })) } : {};
     const unavailable = new Map([...assigned, ...attended].map((id) => [String(id), id]));
     const filters = intersectFilters({ profileType: 'teacher', _id: { $nin: [...unavailable.values()] } }, searchFilter);

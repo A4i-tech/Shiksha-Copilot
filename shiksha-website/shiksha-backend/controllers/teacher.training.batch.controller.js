@@ -18,13 +18,6 @@ const School = require("../models/school.model");
 const User = require("../models/user.model");
 const teacherPopulate = { path: "assignedTeachers", select: "identity profiles.teacher roles", populate: { path: "roles.role", select: "scopeType" } };
 const fileExtensions = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/jpg": "jpg", "image/png": "png" };
-const sendError = (res, err, fallbackMessage) => {
-  const isCast = err.name === "CastError";
-  const isApp = err.name === "AppError";
-  const status = isApp ? err.statusCode : isCast ? 400 : 500;
-  const message = isApp ? err.message : isCast ? "Invalid ID format" : err.message || fallbackMessage;
-  res.status(status).json({ message });
-};
 
 function uploadFile(file) {
   return uploadToStorage(file.buffer, `${randomUUID()}.${fileExtensions[file.mimetype]}`, file.mimetype);
@@ -97,7 +90,6 @@ class TeacherTrainingBatchController extends BaseController {
   }
 
   async getBatchById(req, res) {
-  try {
     const { batchId } = req.params;
     const batch = await TeacherTrainingBatch.findById(batchId)
       .populate(teacherPopulate)
@@ -140,16 +132,12 @@ class TeacherTrainingBatchController extends BaseController {
     }
     
     res.status(200).json(await withTeacherSchools(batch));
-  } catch (err) {
-    sendError(res, err);
-  }
   }
 
   async assignTeacherToBatch(req, res) {
   const { batchId } = req.params;
   const { teacherId } = req.body;
 
-  try {
     const batch = await TeacherTrainingBatch.findById(batchId);
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -175,17 +163,12 @@ class TeacherTrainingBatchController extends BaseController {
     
     const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
     res.status(200).json(await withTeacherSchools(updatedBatch));
-  } catch (err) {
-    console.error('assignTeacherToBatch - error:', err);
-    sendError(res, err);
-  }
   }
 
   async removeTeacherFromBatch(req, res) {
   const { batchId } = req.params;
   const { teacherId } = req.body;
 
-  try {
     const batch = await TeacherTrainingBatch.findById(batchId);
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -200,14 +183,10 @@ class TeacherTrainingBatchController extends BaseController {
     
     const updatedBatch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
     res.status(200).json(await withTeacherSchools(updatedBatch));
-  } catch (err) {
-    sendError(res, err);
-  }
   }
 
   async deleteBatch(req, res) {
   const { batchId } = req.params;
-  try {
     const batch = await TeacherTrainingBatch.findById(batchId);
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -224,13 +203,9 @@ class TeacherTrainingBatchController extends BaseController {
 
     const deletedBatch = await TeacherTrainingBatch.findByIdAndDelete(batchId);
     res.status(200).json({ message: 'Batch deleted successfully', deletedBatch });
-  } catch (err) {
-    sendError(res, err);
-  }
   }
 
   async getTeacherTrainingStats(req, res) {
-  try {
     const [schoolIds, attendedTeacherIds] = await Promise.all([
       School.distinct('_id', permissionScopeFilter(req.permissions, 'training.view')),
       TeacherTrainingBatch.distinct('attendance', { isSubmitted: true }),
@@ -241,17 +216,12 @@ class TeacherTrainingBatchController extends BaseController {
       User.countDocuments({ ...teacherFilter, _id: { $in: attendedTeacherIds } }),
     ]);
     res.status(200).json({ totalTeachers, trainedTeachers, untrainedTeachers: totalTeachers - trainedTeachers });
-  } catch (err) {
-    console.error('Error in getTeacherTrainingStats:', err);
-    sendError(res, err);
-  }
   }
 
   async updateAttendance(req, res) {
   const { batchId } = req.params;
   const { attendance } = req.body; // Expecting an array of teacher IDs for attendance
 
-  try {
     const batch = await TeacherTrainingBatch.findById(batchId);
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
@@ -267,14 +237,9 @@ class TeacherTrainingBatchController extends BaseController {
     );
 
     res.status(200).json(updatedBatch);
-  } catch (err) {
-    console.error('updateAttendance - error:', err);
-    sendError(res, err);
-  }
   }
 
   async submitBatch(req, res) {
-  try {
     const { batchId } = req.params;
     const batch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
 
@@ -312,9 +277,6 @@ class TeacherTrainingBatchController extends BaseController {
     const updatedBatch = await batch.save();
 
     res.status(200).json(updatedBatch);
-  } catch (err) {
-    sendError(res, err);
-  }
   }
 
   async uploadPdf(req, res) {
@@ -356,7 +318,6 @@ class TeacherTrainingBatchController extends BaseController {
   }
 
   async exportBatchReport(req, res) {
-  try {
     const { batchId } = req.params;
     const batch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
 
@@ -434,12 +395,14 @@ class TeacherTrainingBatchController extends BaseController {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=teacher-report-${batchId}.xlsx`);
 
-    await workbook.xlsx.write(res);
-    res.end();
-  } catch (err) {
-    console.error('Error in exportBatchReport:', err);
-    sendError(res, err, "An unknown error occurred during Excel export.");
-  }
+    try {
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (err) {
+      if (!res.headersSent) throw err;
+      logger.error('Excel export failed after response started', { stack: err.stack });
+      res.destroy(err);
+    }
   }
 }
 

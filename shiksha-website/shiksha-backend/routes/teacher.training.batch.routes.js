@@ -12,29 +12,29 @@ router.post('/teacher-training-batches/', isAuthenticated, requirePermission('tr
 router.get('/teacher-training-batches/', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getBatches);
 
 // Get teacher training stats
-router.get('/teacher-training-batches/stats', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getTeacherTrainingStats);
+router.get('/teacher-training-batches/stats', isAuthenticated, requirePermission('training.view'), asyncMiddleware(teacherTrainingBatchController.getTeacherTrainingStats));
 
 router.get('/teacher-training-batches/available-teachers', isAuthenticated, requirePermission('training.edit'), asyncMiddleware(teacherTrainingBatchController.getAvailableTeachers));
 
 // Get a single teacher training batch by ID
-router.get('/teacher-training-batches/:batchId', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.getBatchById);
+router.get('/teacher-training-batches/:batchId', isAuthenticated, requirePermission('training.view'), asyncMiddleware(teacherTrainingBatchController.getBatchById));
 
 // Delete a teacher training batch
-router.delete('/teacher-training-batches/:batchId', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.deleteBatch);
+router.delete('/teacher-training-batches/:batchId', isAuthenticated, requirePermission('training.edit'), asyncMiddleware(teacherTrainingBatchController.deleteBatch));
 
 // Assign teacher to batch
 router.post('/teacher-training-batches/:batchId/assign-teacher', isAuthenticated, requirePermission('training.edit'), (req, res, next) => {
   next();
-}, teacherTrainingBatchController.assignTeacherToBatch);
+}, asyncMiddleware(teacherTrainingBatchController.assignTeacherToBatch));
 
 // Remove teacher from batch
-router.post('/teacher-training-batches/:batchId/remove-teacher', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.removeTeacherFromBatch);
+router.post('/teacher-training-batches/:batchId/remove-teacher', isAuthenticated, requirePermission('training.edit'), asyncMiddleware(teacherTrainingBatchController.removeTeacherFromBatch));
 
 // Update batch attendance
-router.put('/teacher-training-batches/:batchId/attendance', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.updateAttendance);
+router.put('/teacher-training-batches/:batchId/attendance', isAuthenticated, requirePermission('training.edit'), asyncMiddleware(teacherTrainingBatchController.updateAttendance));
 
 // Submit a teacher training batch
-router.put('/teacher-training-batches/:batchId/submit', isAuthenticated, requirePermission('training.edit'), teacherTrainingBatchController.submitBatch);
+router.put('/teacher-training-batches/:batchId/submit', isAuthenticated, requirePermission('training.edit'), asyncMiddleware(teacherTrainingBatchController.submitBatch));
 
 router.post(
   '/teacher-training-batches/:batchId/upload-pdf',
@@ -45,6 +45,6 @@ router.post(
 );
 
 // Export batch report as Excel
-router.get('/teacher-training-batches/:batchId/export-report', isAuthenticated, requirePermission('training.view'), teacherTrainingBatchController.exportBatchReport);
+router.get('/teacher-training-batches/:batchId/export-report', isAuthenticated, requirePermission('training.view'), asyncMiddleware(teacherTrainingBatchController.exportBatchReport));
 
 module.exports = router;

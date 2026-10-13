@@ -33,13 +33,13 @@ describe("ChatManager._getLessonDetails", () => {
     expect(foreign.message).toBe(missing.message);
   });
 
-  it("throws 404 when the subject is missing", async () => {
+  it("throws 409 when the subject is missing", async () => {
     manager.teacherLessonPlanDao.getById.mockResolvedValue({ lessonId: "lesson-1", teacherId: "user-1" });
     manager.subjectDao.getById.mockResolvedValue(null);
 
     const error = await manager._getLessonDetails("plan-1", "chapter-1", "user-1").catch((e) => e);
 
     expect(error).toBeInstanceOf(AppError);
-    expect(error.statusCode ?? error.status).toBe(404);
+    expect(error.statusCode ?? error.status).toBe(409);
   });
 });

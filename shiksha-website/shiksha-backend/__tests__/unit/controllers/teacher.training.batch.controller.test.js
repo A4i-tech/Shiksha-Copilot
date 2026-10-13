@@ -108,38 +108,12 @@ describe("TeacherTrainingBatchController", () => {
       expect(mockRes.json).toHaveBeenCalledWith({ totalTeachers: 0, trainedTeachers: 0, untrainedTeachers: 0 });
     });
 
-    it("returns one error response", async () => {
+    it("rejects so the error middleware handles it", async () => {
       mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
       School.distinct.mockRejectedValue(new Error("Database error"));
 
-      await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledTimes(1);
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ message: "Database error" });
-    });
-
-    it("returns AppError status code and message", async () => {
-      const AppError = require("../../../helper/app.error");
-      mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
-      School.distinct.mockRejectedValue(new AppError("Forbidden", 403));
-
-      await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(403);
-      expect(mockRes.json).toHaveBeenCalledWith({ message: "Forbidden" });
-    });
-
-    it("returns 400 and a clean message for a CastError", async () => {
-      mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
-      const castErr = new Error("Cast to ObjectId failed for value \"x\"");
-      castErr.name = "CastError";
-      School.distinct.mockRejectedValue(castErr);
-
-      await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledWith(400);
-      expect(mockRes.json).toHaveBeenCalledWith({ message: "Invalid ID format" });
+      await expect(teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
