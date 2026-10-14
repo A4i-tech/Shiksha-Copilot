@@ -207,16 +207,12 @@ class ScheduleManager extends BaseManager {
 	}
 
 	async getById(req) {
-		try {
-			const schedule = await this.dao.getById(req.params.id);
-			if (!schedule) return formatApiReponse(false, "Schedule not found", null);
-			const school = await School.findById(schedule.schoolId).lean();
-			if (!school) return formatApiReponse(false, "The school for this schedule does not exist. Choose another school or delete the schedule.", null);
-			if (!isResourceAllowed(req.permissions, "schedule.view", school)) return formatApiReponse(false, "Schedule not found", null);
-			return formatApiReponse(true, "", schedule);
-		} catch (err) {
-			return formatApiReponse(false, err.message, err);
-		}
+		const schedule = await this.dao.getById(req.params.id);
+		if (!schedule) return formatApiReponse(false, "Schedule not found", null);
+		const school = await School.findById(schedule.schoolId).lean();
+		if (!school) return formatApiReponse(false, "The school for this schedule does not exist. Choose another school or delete the schedule.", null);
+		if (!isResourceAllowed(req.permissions, "schedule.view", school)) return formatApiReponse(false, "Schedule not found", null);
+		return formatApiReponse(true, "", schedule);
 	}
 
 	async delete(req) {

@@ -48,10 +48,10 @@ describe("error.middleware", () => {
     expect(trackException).toHaveBeenCalledTimes(3);
   });
 
-  it("maps an ObjectId CastError to 400 and names the bad field for other casts", () => {
+  it("maps an ObjectId CastError to 400 and hides the field name for other casts", () => {
     const cast = (kind) => Object.assign(new Error("x"), { name: "CastError", kind, path: "page" });
     expect(run(cast("ObjectId"))).toMatchObject({ status: 400, body: { message: "Invalid ID format" } });
-    expect(run(cast("Number")).body.message).toBe('Invalid value for "page". Check it and try again.');
+    expect(run(cast("Number")).body.message).toBe("Invalid value in the request. Check the input and try again.");
   });
 
   it("passes the error on when the response has started", () => {

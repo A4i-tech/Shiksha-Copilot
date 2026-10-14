@@ -21,7 +21,7 @@ module.exports = (err, req, res, next) => {
 
 	if (err.code === 11000) return reply(409, "Duplicate entry");
 	if (err.name === "CastError") {
-		return reply(400, err.kind === "ObjectId" ? "Invalid ID format" : `Invalid value for "${err.path}". Check it and try again.`);
+		return reply(400, err.kind === "ObjectId" ? "Invalid ID format" : "Invalid value in the request. Check the input and try again.");
 	}
 	if (err.name === "ValidationError" && err.errors) {
 		return reply(400, Object.values(err.errors).map((e) => e.message).join(", "));
