@@ -40,10 +40,12 @@ async def test_concurrent_get_builds_once():
 
 async def test_evicts_least_recently_used_adapter():
     cache, _ = make_cache(2)
+    cache.retire_grace = 0.01
     first = await cache.get("a", None, None)
     evicted = await cache.get("b", None, None)
     assert await cache.get("a", None, None) is first
     current = await cache.get("c", None, None)
+    await asyncio.sleep(0.05)
     assert evicted.cleanups == 1
     assert first.cleanups == 0
     assert current.cleanups == 0
@@ -74,6 +76,24 @@ async def test_eviction_closes_qdrant_rag_ops():
         return adapter
 
     cache = RagAdapterCache(build, 1)
+    cache.retire_grace = 0.05
     first = await cache.get("qdrant/c1/k:v", None, None)
     await cache.get("qdrant/c2/k:v", None, None)
+    assert first.rag_ops.closes == 0  # still usable by in-flight callers
+    await asyncio.sleep(0.1)
+    assert first.rag_ops.closes == 1
+
+
+async def test_cleanup_closes_retired_adapter_once():
+    async def build(path, *_):
+        adapter = QdrantRagOpsAdapter(None, None, path)
+        adapter._rag_ops = FakeRagOps()
+        return adapter
+
+    cache = RagAdapterCache(build, 1)
+    cache.retire_grace = 0.05
+    first = await cache.get("qdrant/c1/k:v", None, None)
+    await cache.get("qdrant/c2/k:v", None, None)
+    await cache.cleanup()
+    await asyncio.sleep(0.1)
     assert first.rag_ops.closes == 1

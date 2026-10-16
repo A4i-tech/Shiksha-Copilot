@@ -101,6 +101,18 @@ async def test_update_from_a_stale_lease_owner_is_fenced_out(jobs):
     assert (await jobs.get(job.id)).message == "Pending"
 
 
+async def test_event_log_from_a_stale_lease_owner_is_fenced_out(jobs):
+    job = await create(jobs)
+    await jobs.claim_next("a")
+    before = await jobs.last_log_seq(job.id)
+    token = lease_owner.set("b")
+    try:
+        await jobs.log(job.id, "event", {})
+    finally:
+        lease_owner.reset(token)
+    assert await jobs.last_log_seq(job.id) == before
+
+
 async def test_takeover_of_an_expired_lease_counts_a_crash_but_a_release_does_not(jobs):
     job = await create(jobs)
     assert (await jobs.claim_next("a")).crashes == 0
@@ -110,3 +122,12 @@ async def test_takeover_of_an_expired_lease_counts_a_crash_but_a_release_does_no
     assert (await jobs.claim_next("c")).crashes == 1
     await asyncio.sleep(1.5)
     assert (await jobs.claim_next("d")).crashes == 2
+
+
+async def test_last_snapshot_skips_event_rows_and_gives_the_cursor(jobs):
+    job = await create(jobs)
+    await jobs.update(job.id, {"message": "x"})
+    await jobs.log(job.id, "event", {})
+    snap = await jobs.last_snapshot(job.id)
+    assert snap["type"] == "update" and snap["data"]["message"] == "x"
+    assert [d["type"] for d in await jobs.logs_after(job.id, snap["seq"])] == ["event"]

@@ -146,6 +146,10 @@ class JobManager:
 
     async def log(self, job_id: uuid.UUID, type: str, data: dict) -> int:
         # unique (job_id, seq): a late writer hits a duplicate and retries higher, so readers never skip a seq
+        # check-then-act: shrinks the stale-writer window, the heartbeat cancel bounds the rest
+        if (owner := lease_owner.get()) is not None and not await self.collection.count_documents({"id": str(job_id), "lease_owner": owner}, limit=1):
+            self.logger.warning("Dropped %s log for job %s: lease is held by another worker.", type, job_id)
+            return 0
         while True:
             seq = (await self.last_log_seq(job_id) or 0) + 1
             try:
@@ -155,10 +159,13 @@ class JobManager:
                 continue
 
     async def last_log_seq(self, job_id: uuid.UUID) -> int | None:
-        doc = await self.log_collection.find_one({"job_id": str(job_id)}, sort=[("seq", DESCENDING)], projection=["seq"])
+        doc = await self.log_collection.find_one({"job_id": str(job_id), "seq": {"$exists": True}}, sort=[("seq", DESCENDING)], projection=["seq"])
         if not doc:
             return None
         return doc.get("seq", 0)
+
+    async def last_snapshot(self, job_id: uuid.UUID) -> dict | None:
+        return await self.log_collection.find_one({"job_id": str(job_id), "seq": {"$exists": True}, "type": {"$in": ["create", "update", "complete", "terminate"]}}, sort=[("seq", DESCENDING)])
 
     async def logs_after(self, job_id: uuid.UUID, after: int | None) -> Sequence[dict]:
         query: dict[str, Any] = {"job_id": str(job_id)}
