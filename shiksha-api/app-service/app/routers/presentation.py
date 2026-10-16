@@ -211,9 +211,15 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
 
+    # the snapshot is a log row, so its seq is the exact cursor: no replay of older rows, no gap
+    last = await service.jobs.last_snapshot(id)
+    if last:
+        after = last["seq"]
+
     async def stream():
         nonlocal after
-        snapshot = {"id": str(id), "type": "update", "data": json.loads(job.model_dump_json()), "timestamp": iso_z(datetime.now(timezone.utc))}
+        data = last["data"] if last else json.loads(job.model_dump_json())
+        snapshot = {"id": str(id), "type": "update", "data": data, "timestamp": iso_z(datetime.now(timezone.utc))}
         yield f"data: {json.dumps(snapshot)}\n\n"
         async for _ in _until_disconnected(request):
             for doc in await service.jobs.logs_after(id, after):
