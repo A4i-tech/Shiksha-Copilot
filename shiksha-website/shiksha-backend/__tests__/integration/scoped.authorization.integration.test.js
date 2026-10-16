@@ -544,61 +544,62 @@ describe("scoped authorisation", () => {
     const rejected = [
       {
         body: teacherBody("Blocked Remote Integration Teacher", `6${String(suffix + 2).slice(-9)}`, remoteSchool),
-        message: "Role assignment must be below your scope",
+        message: "You can only assign roles inside your own scope",
       },
       {
         body: teacherBody("Duplicate Assignment Teacher", `6${String(suffix + 3).slice(-9)}`, localSchool, [
           { roleId: teacherRole._id, dep: localSchool._id },
           { roleId: teacherRole._id, dep: localSchool._id },
         ]),
-        message: "Duplicate role assignment",
+        message: "This user already has that role at that scope. Remove the duplicate and save again.",
+        status: 409,
       },
       {
         body: teacherBody("Invalid Dependency Teacher", `6${String(suffix + 4).slice(-9)}`, localSchool, [
           { roleId: teacherRole._id, dep: crypto.randomBytes(12).toString("hex") },
         ]),
-        message: "SCHOOL scope dependency does not exist",
+        message: "The selected school does not exist",
       },
       {
         body: adminBody("Escalated Integration Admin", `6${String(suffix + 5).slice(-9)}`, [{ roleId: globalRole._id }]),
-        message: "Role assignment must be below your scope",
+        message: "You can only assign roles inside your own scope",
       },
       {
         body: adminBody("Missing Dependency Admin", `6${String(suffix + 6).slice(-9)}`, [{ roleId: operatorRole._id }]),
-        message: "DISTRICT scope requires a dependency",
+        message: "This role needs a school or region",
       },
       {
         body: adminBody("Invalid Dependency Admin", `6${String(suffix + 7).slice(-9)}`, [
           { roleId: operatorRole._id, dep: { state: localSchool.state, zone: localSchool.zone, district: `Missing District ${suffix}` } },
         ]),
-        message: "DISTRICT scope dependency does not exist",
+        message: "The selected region does not exist",
       },
       {
         body: adminBody("Equal Scope Integration Staff", `6${String(suffix + 9).slice(-9)}`, [
           { roleId: elevatedRole._id, dep: districtDep(localSchool) },
         ]),
-        message: "Role assignment must be below your scope",
+        message: "You can only assign roles inside your own scope",
       },
     ];
     for (const test of rejected) {
-      expectDenied(await request("/api/users", "POST", actorToken, test.body), test.message);
+      expectDenied(await request("/api/users", "POST", actorToken, test.body), test.message, test.status);
     }
     expectDenied(await request("/api/users", "POST", schoolActorToken, teacherBody(
       "Equal School Scope Integration Teacher",
       `6${String(suffix + 13).slice(-9)}`,
       localSchool
-    )), "Role assignment must be below your scope");
+    )), "You can only assign roles inside your own scope");
     expectDenied(await request("/api/users", "POST", rootToken, adminBody(
       "Equal Global Scope Integration Staff",
       `6${String(suffix + 14).slice(-9)}`,
       [{ roleId: globalRole._id }]
-    )), "Role assignment must be below your scope");
+    )), "You can only assign roles inside your own scope");
     expectDenied(await request(`/api/users/${local._id}`, "PUT", actorToken, {
       roles: [
         { _id: local.roles[0]._id, roleId: teacherRole._id, dep: localSchool._id },
         { roleId: elevatedRole._id, dep: districtDep(localSchool) },
       ],
-    }), "Role assignment must be below your scope");
+    }), "You can only assign roles inside your own scope");
   });
 
   it("edits mixed-scope teachers and invalidates their session when assignments change", async () => {
@@ -646,7 +647,7 @@ describe("scoped authorisation", () => {
   it("prevents privilege escalation through role management", async () => {
     expectDenied(await request(`/api/users/${actor._id}`, "PUT", actorToken, {
       roles: [{ roleId: operatorRole._id, dep: districtDep(localSchool) }],
-    }), "You cannot change your own role assignments");
+    }), "You cannot change your own role assignments. Ask another admin to change them.");
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "DELETE", actorToken), "Assigned roles cannot be deleted");
     expectDenied(await request(`/api/roles/${operatorRole._id}`, "PUT", actorToken, {
       scopeType: "STATE",
@@ -656,7 +657,7 @@ describe("scoped authorisation", () => {
       description: "",
       permissions: ["generation.status.view"],
       scopeType: "UNBOUND",
-    }), "Cannot grant permissions you do not hold");
+    }), "You cannot grant permissions you do not hold");
   });
 
   it("allows explicit permission delegation regardless of delegate scope", async () => {
