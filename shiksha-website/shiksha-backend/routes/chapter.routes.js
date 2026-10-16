@@ -26,13 +26,6 @@ router.get(
 	asyncMiddleware(chapterController.getById.bind(chapterController))
 );
 
-router.put(
-	"/chapter/:id",
-	isAuthenticated,
-	requirePermission("content.manage"),
-	asyncMiddleware(chapterController.update.bind(chapterController))
-);
-
 router.post(
 	"/chapter/create",
 	isAuthenticated,

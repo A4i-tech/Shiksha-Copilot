@@ -12,6 +12,7 @@ const UserDao = require('../dao/user.dao');
 const MasterLessonDao = require("../dao/master.lesson.dao");
 const { schoolDependency } = require("../helper/permission.helper");
 const logger = require("../config/loggers");
+const AppError = require("../helper/app.error");
 
 /** @extends {BaseManager<ChatDao>} */
 class ChatManager extends BaseManager {
@@ -37,7 +38,7 @@ class ChatManager extends BaseManager {
 			const standard = medium?.classDetails.find((item) => item.standard === b.class);
 			if (!standard) {
 				logger.error("Invalid teacher class mapping", { userId: String(userId), board: b.board, medium: b.medium, class: b.class });
-				throw new Error(`Invalid teacher class mapping: ${b.board}/${b.medium}/${b.class}`);
+				throw new AppError(`Class ${b.class} (${b.board}/${b.medium}) in your profile is not available for your school. Update your class list in your profile and try again.`, 400);
 			}
 			return `- ${b.name} (for class ${b.class}, ${b.board} curriculum; boys: ${b.boysStrength ?? standard.boysStrength}, girls: ${b.girlsStrength ?? standard.girlsStrength})`;
 		})] : [];
@@ -178,31 +179,31 @@ class ChatManager extends BaseManager {
 	async _getLessonDetails(recordId, chapterId, userId) {
 		const lessonDetails = await this.teacherLessonPlanDao.getById(recordId);
 		if (!lessonDetails) {
-			throw new Error("Lesson plan not found");
+			throw new AppError("Lesson plan not found. Check the lesson plan ID and try again.", 404);
 		}
 
 		const { lessonId } = lessonDetails;
 
 		if (lessonDetails.teacherId.toString() !== userId.toString()) {
-			throw new Error("RecordId dosen't belong to specific user!");
+			throw new AppError("Lesson plan not found. Check the lesson plan ID and try again.", 404);
 		}
 
 		const masterLessonDetails = await this.masterLessonDao.getById(lessonId);
 		if (!masterLessonDetails) {
-			throw new Error("Master lesson not found");
+			throw new AppError("Lesson not found for this lesson plan. Contact support if the problem continues.", 409);
 		}
 		if (masterLessonDetails.chapterId.toString() !== chapterId) {
-			throw new Error("Chapter does not match the lesson");
+			throw new AppError("Chapter does not match this lesson. Select the correct chapter and try again.", 400);
 		}
 
 		const chapterDetails = await this.chapterDao.getById(chapterId);
 		if (!chapterDetails) {
-			throw new Error("Chapter not found");
+			throw new AppError("Chapter not found. Check the chapter ID and try again.", 404);
 		}
 
 		let subjectDetails = await this.subjectDao.getById(chapterDetails.subjectId);
 		if (!subjectDetails) {
-			return formatApiResponse(false, "Subject not found", null);
+			throw new AppError("Subject not found for this chapter. Contact support if the problem continues.", 409);
 		}
 
 		return {

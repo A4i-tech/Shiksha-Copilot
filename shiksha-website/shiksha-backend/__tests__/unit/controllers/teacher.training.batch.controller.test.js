@@ -108,15 +108,12 @@ describe("TeacherTrainingBatchController", () => {
       expect(mockRes.json).toHaveBeenCalledWith({ totalTeachers: 0, trainedTeachers: 0, untrainedTeachers: 0 });
     });
 
-    it("returns one error response", async () => {
+    it("rejects so the error middleware handles it", async () => {
       mockReq.permissions = [{ permission: "training.view", scopeType: "GLOBAL", dep: null }];
       School.distinct.mockRejectedValue(new Error("Database error"));
 
-      await teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes);
-
-      expect(mockRes.status).toHaveBeenCalledTimes(1);
-      expect(mockRes.status).toHaveBeenCalledWith(500);
-      expect(mockRes.json).toHaveBeenCalledWith({ message: "Database error" });
+      await expect(teacherTrainingBatchController.getTeacherTrainingStats(mockReq, mockRes)).rejects.toThrow("Database error");
+      expect(mockRes.status).not.toHaveBeenCalled();
     });
   });
 
