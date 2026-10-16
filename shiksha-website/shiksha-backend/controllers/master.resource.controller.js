@@ -33,18 +33,6 @@ class MasterResourceController extends BaseController {
 		return res.status(200).json(result.data);
 	}
 
-	async comboScript(req, res) {
-		const { board = "CBSE", medium = "English" } = req.body;
-		const result = await this.manager.comboScript(
-			board,
-			medium
-		);
-		if (result.success) {
-			return res.status(200).json(result.data);
-		}
-		handleError(result, res);
-	}
-
 	async getSubtopicResourceList(req, res) {
 		const { chapterId, templateIds } = req.body;
 		const result = await this.manager.getSubtopicResourceList(
