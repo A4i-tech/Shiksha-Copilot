@@ -3,13 +3,20 @@ import { DEFAULT_INTERRUPTSOURCES, Idle } from '@ng-idle/core';
 import { filter, Subject } from 'rxjs';
 import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { TimerService } from './timer.service';
+import { UmamiService } from './umami.service';
 import {
   IDLE_START_THRESHOLD,
   IDLE_WARNING_THRESHOLD,
   INTERACTION_LOG_THRESHOLD,
 } from '../utility/constant.util';
-import { HttpClient } from '@angular/common/http';
-import { environment } from 'src/environments/environment';
+export interface ActivityLogPayload {
+  moduleName: string | null;
+  idleTime: number;
+  interactionTime: number;
+  planId?: string;
+  draftId?: string;
+  isCompleted?: boolean;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -41,7 +48,7 @@ export class IdleService {
     private idle: Idle,
     private router: Router,
     private timerService: TimerService,
-    private httpClient: HttpClient
+    private umamiService: UmamiService
   ) {
     this.initializeIdleTracking();
 
@@ -59,7 +66,7 @@ export class IdleService {
           );
 
           if (this.timerService.getCurrentTime('interaction') && !this.isSkip) {
-            let trackObj: any = {
+            let trackObj: ActivityLogPayload = {
               moduleName: this.previousModuleTag,
               idleTime: this.timerService.getCurrentTime('idle'),
               interactionTime: this.timerService.getCurrentTime('interaction'),
@@ -163,7 +170,7 @@ export class IdleService {
   }
 
   stopWatching(moduleName?: any) {
-    let trackObj: any = {
+    let trackObj: ActivityLogPayload = {
       moduleName: moduleName ? moduleName : this.getCurrentModuleName(),
       idleTime: this.timerService.getCurrentTime('idle'),
       interactionTime: this.timerService.getCurrentTime('interaction'),
@@ -200,18 +207,10 @@ export class IdleService {
     this.idle.stop();
   }
 
-  logActivity(trackObj: any) {
-    this.httpClient
-      .post(`${environment.apiUrl}/activity-log`, trackObj)
-      .subscribe({
-        next: (val) => {
-          this.draftId = null;
-          this.planId = null;
-          this.isCompleted = false;
-        },
-        error: (err) => {
-          console.log(err);
-        },
-      });
+  logActivity(trackObj: ActivityLogPayload) {
+    this.umamiService.track('activity-log', trackObj);
+    this.draftId = null;
+    this.planId = null;
+    this.isCompleted = false;
   }
 }

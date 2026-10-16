@@ -5,7 +5,6 @@ const AuthManager = require("../../../managers/auth.manager");
 const UserDao = require("../../../dao/user.dao");
 const authHelper = require("../../../helper/auth.helper");
 const { refreshProfileImageIfExpired } = require("../../../helper/profile.helper");
-const UserAction = require("../../../models/user.action.logs.model");
 const School = require("../../../models/school.model");
 
 jest.mock("../../../dao/user.dao");
@@ -17,9 +16,6 @@ jest.mock("../../../helper/auth.helper", () => ({
 }));
 jest.mock("../../../helper/profile.helper", () => ({
   refreshProfileImageIfExpired: jest.fn().mockResolvedValue(undefined),
-}));
-jest.mock("../../../models/user.action.logs.model", () => ({
-  create: jest.fn().mockResolvedValue({}),
 }));
 jest.mock("../../../models/school.model", () => ({ findById: jest.fn() }));
 
@@ -88,7 +84,6 @@ describe("AuthManager", () => {
     expect(result.data.token).toBe("jwt-token");
     expect(result.data.user.school).toEqual({ _id: "school-1", name: "School" });
     expect(result.data.permissions).toContainEqual({ permission: "home.view", scopeType: "SCHOOL", dep: "school-1" });
-    expect(UserAction.create).toHaveBeenCalled();
     expect(refreshProfileImageIfExpired).toHaveBeenCalled();
   });
 

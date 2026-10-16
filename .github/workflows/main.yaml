@@ -100,6 +100,8 @@ jobs:
       environment: uat
       api_url: ${{ format('{0}/api', needs.cd-backend.outputs['service-url']) }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
+      umami_url: ${{ vars.UMAMI_URL }}
+      umami_website_id: ${{ vars.UMAMI_WEBSITE_ID }}
 
   cd-frontend-render:
     name: Deploy frontend preview (Render)
@@ -155,6 +157,8 @@ jobs:
       environment: production
       api_url: ${{ needs.cd-backend-prod.result == 'success' && format('{0}/api', needs.cd-backend-prod.outputs['service-url']) || '' }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
+      umami_url: ${{ vars.UMAMI_URL }}
+      umami_website_id: ${{ vars.UMAMI_WEBSITE_ID }}
 
   health-check:
     name: Health Check
