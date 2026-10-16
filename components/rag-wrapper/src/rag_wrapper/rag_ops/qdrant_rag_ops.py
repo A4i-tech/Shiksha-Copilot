@@ -77,6 +77,10 @@ class QdrantRagOps(BaseVectorIndexRagOps):
         self.rag_index = rag_index
 
 
+    async def close(self) -> None:
+        await self.qdrant_utils.close()
+
+
     async def persist_index(self):
         """No-op as Qdrant automatically persists the index."""
         pass
