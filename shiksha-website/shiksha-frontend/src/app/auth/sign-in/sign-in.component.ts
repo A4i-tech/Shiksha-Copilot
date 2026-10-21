@@ -11,6 +11,7 @@ import { NgOtpInputComponent, NgOtpInputConfig } from 'ng-otp-input';
 import { TranslateService } from '@ngx-translate/core';
 import { SecureCookieService } from 'src/app/shared/services/cookie.service';
 import { UmamiService } from 'src/app/shared/services/umami.service';
+import { UmamiUserSchema } from 'src/app/shared/interfaces/umami.interface';
 import { applicationUsers } from 'src/app/shared/utility/enum.util';
 import { environment } from 'src/environments/environment';
 import { SESSION_VERSION } from 'src/app/shared/utility/constant.util';
@@ -285,8 +286,9 @@ export class SignInComponent implements OnInit,AfterViewInit, OnDestroy {
           localStorage.setItem('token', res.data.token);
           const session = { ...res.data.user, permissions: res.data.permissions, _sessionVersion: SESSION_VERSION };
           localStorage.setItem('userData', JSON.stringify(session));
-          this.umamiService.identifyUser(session);
-          this.umamiService.track('login');
+          const umamiUser = UmamiUserSchema.safeParse(session);
+          if (umamiUser.success) this.umamiService.trackLogin(umamiUser.data);
+          else console.error('Umami: user data has an unexpected shape. Analytics skipped.', umamiUser.error);
           this.sidebarService.profileImg.set(res?.data?.user?.profileImage || '');
 
           this.translateService.use(res.data.user.preferredLanguage);

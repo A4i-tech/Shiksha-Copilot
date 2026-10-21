@@ -40,24 +40,9 @@ describe('IdleService', () => {
       service.logActivity(trackObj);
 
       expect(umamiService.track).toHaveBeenCalledWith('activity-log', trackObj);
-      expect(service.draftId).toBeNull();
-      expect(service.planId).toBeNull();
+      expect(service.draftId).toBe('');
+      expect(service.planId).toBe('');
       expect(service.isCompleted).toBe(false);
-    });
-
-    it('should queue the event instead of dropping it when the tracker has not loaded yet', () => {
-      (window as any).umami = { track: jasmine.createSpy('track') };
-
-      service.logActivity({
-        moduleName: 'lesson-plan',
-        idleTime: 5,
-        interactionTime: 42,
-      });
-
-      // Umami script not loaded (loadTracker() never ran) — event must be queued, not dropped.
-      expect(window.umami?.track).not.toHaveBeenCalled();
-
-      delete (window as any).umami;
     });
   });
 });

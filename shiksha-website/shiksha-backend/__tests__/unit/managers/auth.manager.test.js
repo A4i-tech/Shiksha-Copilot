@@ -77,7 +77,6 @@ describe("AuthManager", () => {
 
     const result = await manager.validateOtp({
       body: { phone: "9876543210", otp: "1234" },
-      useragent: {},
     });
 
     expect(result.success).toBe(true);
@@ -124,7 +123,6 @@ describe("AuthManager", () => {
 
     const result = await manager.validateOtp({
       body: { phone: "9876543210", otp: "9999", recovery: true },
-      useragent: {},
     });
 
     expect(result.success).toBe(true);

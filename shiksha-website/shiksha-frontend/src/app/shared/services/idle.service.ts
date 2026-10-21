@@ -4,19 +4,12 @@ import { filter, Subject } from 'rxjs';
 import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { TimerService } from './timer.service';
 import { UmamiService } from './umami.service';
+import { ActivityLogPayload } from '../interfaces/activity-log.interface';
 import {
   IDLE_START_THRESHOLD,
   IDLE_WARNING_THRESHOLD,
   INTERACTION_LOG_THRESHOLD,
 } from '../utility/constant.util';
-export interface ActivityLogPayload {
-  moduleName: string | null;
-  idleTime: number;
-  interactionTime: number;
-  planId?: string;
-  draftId?: string;
-  isCompleted?: boolean;
-}
 
 @Injectable({
   providedIn: 'root',
@@ -38,9 +31,9 @@ export class IdleService {
 
   isSkip = false;
 
-  draftId: any;
+  draftId = '';
 
-  planId: any;
+  planId = '';
 
   isCompleted = false;
 
@@ -66,20 +59,7 @@ export class IdleService {
           );
 
           if (this.timerService.getCurrentTime('interaction') && !this.isSkip) {
-            let trackObj: ActivityLogPayload = {
-              moduleName: this.previousModuleTag,
-              idleTime: this.timerService.getCurrentTime('idle'),
-              interactionTime: this.timerService.getCurrentTime('interaction'),
-            };
-
-            if (this.planId) {
-              trackObj.planId = this.planId;
-            }
-
-            if (this.draftId) {
-              trackObj.draftId = this.draftId;
-              trackObj.isCompleted = this.isCompleted;
-            }
+            const trackObj = this.buildPayload(this.previousModuleTag ?? '');
 
             if (
               trackObj.interactionTime >= INTERACTION_LOG_THRESHOLD &&
@@ -169,20 +149,8 @@ export class IdleService {
     this.timerService.startTimer('interaction');
   }
 
-  stopWatching(moduleName?: any) {
-    let trackObj: ActivityLogPayload = {
-      moduleName: moduleName ? moduleName : this.getCurrentModuleName(),
-      idleTime: this.timerService.getCurrentTime('idle'),
-      interactionTime: this.timerService.getCurrentTime('interaction'),
-    };
-    if (this.planId) {
-      trackObj.planId = this.planId;
-    }
-
-    if (this.draftId) {
-      trackObj.draftId = this.draftId;
-      trackObj.isCompleted = this.isCompleted;
-    }
+  stopWatching(moduleName = '') {
+    const trackObj = this.buildPayload(moduleName || this.getCurrentModuleName() || '');
     if (
       trackObj.interactionTime >= INTERACTION_LOG_THRESHOLD &&
       trackObj.moduleName
@@ -207,10 +175,21 @@ export class IdleService {
     this.idle.stop();
   }
 
+  private buildPayload(moduleName: string): ActivityLogPayload {
+    return {
+      moduleName,
+      idleTime: this.timerService.getCurrentTime('idle'),
+      interactionTime: this.timerService.getCurrentTime('interaction'),
+      planId: this.planId,
+      draftId: this.draftId,
+      isCompleted: this.isCompleted,
+    };
+  }
+
   logActivity(trackObj: ActivityLogPayload) {
-    this.umamiService.track('activity-log', trackObj);
-    this.draftId = null;
-    this.planId = null;
+    this.umamiService.track('activity-log', { ...trackObj });
+    this.draftId = '';
+    this.planId = '';
     this.isCompleted = false;
   }
 }

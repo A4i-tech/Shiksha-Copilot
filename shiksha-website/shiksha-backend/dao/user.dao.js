@@ -100,7 +100,6 @@ class UserDao extends BaseDao {
 
 		return updatedUser;
 	}
-
 }
 
 module.exports = UserDao;
