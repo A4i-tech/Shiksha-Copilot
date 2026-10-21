@@ -1,11 +1,10 @@
 import mimetypes
 import time
-import traceback
 import asyncio
-from contextlib import asynccontextmanager
 import json
 import logging
 import pathlib
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -29,56 +28,25 @@ class PresentationService:
         self.designer_sem = asyncio.Semaphore(max_designer_tasks)
         self.finalizer_sem = asyncio.Semaphore(max_finalizer_tasks)
         self.logger = logging.getLogger(__name__)
-        self.processing: dict[bytes, asyncio.Task] = {}
 
 
-    @asynccontextmanager
-    async def run(self):
-        async with self.jobs:
-            t1 = asyncio.create_task(self._run_jobs())
-            t2 = asyncio.create_task(self._propagate_jobs())
-            try:
-                yield
-            finally:
-                t1.cancel()
-                t2.cancel()
-                await asyncio.gather(t1, t2, return_exceptions=True)
-
-
-    async def _run_jobs(self):
-        async for job_id in self.jobs.sub():
-            if job_id is None:
-                break
-
-            job = await self.jobs.get(job_id)
-            if job is None:
-                if job_id.bytes in self.processing:
-                    self.processing[job_id.bytes].cancel()
-                    self.logger.info("Terminated job - %s", job_id)
-                continue
-
-            if job.id.bytes in self.processing or job.status == "complete":
-                continue
-
+    async def run_job(self, job_id: uuid.UUID):
+        first = True
+        while job := await self.jobs.get(job_id):
+            if job.status == "complete" or (job.status == "error" and not first):
+                return
+            if job.crashes > self.max_auto_retries:
+                message = f"Stopped after the worker crashed {job.crashes} times on this job"
+                await self.jobs.update(job.id, {**self._error_metadata(job, message, message), "metadata.error.attempting_recovery": False})
+                return
+            first = False
             self.logger.info("Processing job %s - %s", job.id, job.status)
-            task = asyncio.create_task(self._run_job(job))
-            self.processing[job.id.bytes] = task
-            task.add_done_callback(lambda t, job=job: asyncio.create_task(self._on_job_complete(job, t)))
-
-
-    async def _propagate_jobs(self):
-        q = asyncio.Queue()
-        self.jobs.listeners.add(q)
-        try:
-            while True:
-                id = await q.get()
-                if id is None:
-                    break
-                job = await self.jobs.get(id)
-                if job is not None:
-                    await self.jobs.log(job.id, "update", json.loads(job.model_dump_json()))
-        finally:
-            self.jobs.listeners.discard(q)
+            try:
+                await self._run_job(job)
+            except Exception as e:
+                self.logger.exception("Job raised exception - %s", job.id)
+                await self.jobs.update(job.id, self._error_metadata(job, f"Unexpected error: {str(e)}", str(e)))
+                return
 
 
     async def _process_checkpoint(self, job: JobDetail, event: agent.ShikshaCheckpointEvent, metadata_dir: str, prs: presentation.Presentation | None, out_path: str):
@@ -95,18 +63,6 @@ class PresentationService:
 
         if prs:
             await docparser.save_pptx(self.storage, prs, out_path)
-
-
-    async def _on_job_complete(self, job: JobDetail, task: asyncio.Task):
-        del self.processing[job.id.bytes]
-        e = task.exception()
-        if e:
-            self.logger.info("Job raised exception - %s - %s", job.id, str(e))
-            traceback.print_exception(e)
-            await self.jobs.update(job.id, self._error_metadata(job, f"Unexpected error: {str(e)}", str(e)))
-        elif task.cancelled():
-            self.logger.info("Job cancelled - %s", job.id)
-            await self.jobs.update(job.id, self._error_metadata(job, "Task was cancelled", "Task was cancelled"))
 
 
     def _error_metadata(self, job: JobDetail, message: str, error_message: str):
@@ -291,20 +247,12 @@ class PresentationService:
                         await self.jobs.update(job.id, {"metadata.error.attempting_recovery": False})
                     return
 
-                if not job.metadata["error"]["attempting_recovery"]:
-                    await self.jobs.update(job.id, {"metadata.error.attempting_recovery": True})
-
-                next_attempt = job.metadata["error"]["next_attempt"]
-                delay = max(1, next_attempt - time.time())
-                self.logger.info(f"Attempting recovery for job {job.id} after {delay} seconds")
-                await asyncio.sleep(delay)
-
             await self.jobs.update(job.id, {"status": "init", "message": "Retrying after error - attempting recovery"})
 
 
 def new_default():
     storage = Storage(settings.pres_storage_filesystem, settings.pres_storage_root, settings.pres_storage_options)
-    jobs = JobManager(settings.pres_mongodb_url)
+    jobs = JobManager(settings.pres_mongodb_url, settings.pres_lease_seconds)
     return PresentationService(
         storage,
         jobs,

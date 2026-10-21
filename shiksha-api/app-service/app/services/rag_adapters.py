@@ -228,10 +228,9 @@ class QdrantRagOpsAdapter(BaseRagAdapter):
         pass
 
     async def cleanup(self) -> None:
-        """Clean up Qdrant resources if needed."""
-        # QdrantRagOps typically doesn't require local file cleanup
-        # as it works with remote Qdrant instances
-        pass
+        """Close the Qdrant clients."""
+        if self._rag_ops is not None:
+            await self._rag_ops.close()
 
 
 class RagAdapterFactory:

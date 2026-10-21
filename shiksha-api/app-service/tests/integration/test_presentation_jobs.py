@@ -1,0 +1,140 @@
+import asyncio
+import os
+import time
+import uuid
+
+import pytest
+
+from app.services.presentation.job import JobManager, lease_owner
+
+pytestmark = pytest.mark.integration
+
+
+@pytest.fixture
+async def jobs():
+    if "PRES_TEST_MONGODB_URL" not in os.environ:
+        pytest.skip("PRES_TEST_MONGODB_URL is not set")
+    db = f"pres_test_{uuid.uuid4().hex[:8]}"
+    manager = JobManager(os.environ["PRES_TEST_MONGODB_URL"].rstrip("/") + "/" + db, lease_seconds=1)
+    async with manager:
+        yield manager
+        await manager.client.drop_database(db)
+
+
+async def create(jobs, user_id="0" * 24):
+    return await jobs.create(user_id, "a.pdf", "application/pdf", None, None, [])
+
+
+async def test_one_of_two_concurrent_claimers_wins(jobs):
+    await create(jobs)
+    won = await asyncio.gather(jobs.claim_next("a"), jobs.claim_next("b"))
+    assert sum(job is not None for job in won) == 1
+
+
+async def test_claim_is_oldest_first_and_skips_complete(jobs):
+    first, second = await create(jobs), await create(jobs)
+    await jobs.update(first.id, {"status": "complete"})
+    assert (await jobs.claim_next("a")).id == second.id
+    assert await jobs.claim_next("a") is None
+
+
+async def test_expired_lease_is_reclaimed_live_lease_is_not(jobs):
+    job = await create(jobs)
+    assert await jobs.claim_next("dead-worker")
+    assert await jobs.claim_next("b") is None
+    await asyncio.sleep(1.5)
+    assert (await jobs.claim_next("b")).id == job.id
+
+
+async def test_renew_and_release_lease_belong_to_owner(jobs):
+    job = await create(jobs)
+    await jobs.claim_next("a")
+    assert not await jobs.renew_lease(job.id, "other")
+    assert await jobs.renew_lease(job.id, "a")
+    await jobs.release_lease(job.id, "a")
+    assert await jobs.claim_next("b")
+
+
+async def test_error_job_waits_for_backoff_and_permanent_error_is_never_claimed(jobs):
+    waiting, dead = await create(jobs), await create(jobs)
+    await jobs.update(waiting.id, {"status": "error", "metadata.error": {"attempting_recovery": True, "next_attempt": time.time() + 60}})
+    await jobs.update(dead.id, {"status": "error", "metadata.error": {"attempting_recovery": False, "next_attempt": 0}})
+    assert await jobs.claim_next("a") is None
+    await jobs.update(waiting.id, {"metadata.error.next_attempt": time.time() - 1})
+    assert (await jobs.claim_next("a")).id == waiting.id
+
+
+async def test_permanent_error_does_not_count_toward_user_cap(jobs):
+    user = "1" * 24
+    live, dead = await create(jobs, user), await create(jobs, user)
+    await jobs.update(dead.id, {"status": "error", "metadata.error": {"attempting_recovery": False}})
+    assert await jobs.get_pending_count(user) == 1
+    await jobs.update(live.id, {"status": "complete"})
+    assert await jobs.get_pending_count(user) == 0
+
+
+async def test_logs_after_returns_only_newer_events_in_order(jobs):
+    job = await create(jobs)
+    marker = await jobs.last_log_seq(job.id)
+    await jobs.update(job.id, {"message": "one"})
+    await jobs.update(job.id, {"status": "complete"})
+    events = await jobs.logs_after(job.id, marker)
+    assert [e["type"] for e in events] == ["update", "update", "complete"]
+    assert await jobs.logs_after(job.id, events[-1]["seq"]) == []
+
+
+async def test_logs_after_skips_legacy_rows_without_seq(jobs):
+    job_id = uuid.uuid4()
+    await jobs.log_collection.insert_one({"job_id": str(job_id), "type": "update", "timestamp": time.time()})
+    assert await jobs.last_log_seq(job_id) is None
+    assert await jobs.logs_after(job_id, None) == []
+
+
+async def test_concurrent_logs_get_distinct_increasing_seq(jobs):
+    job = await create(jobs)
+    await asyncio.gather(jobs.log(job.id, "x", {}), jobs.log(job.id, "x", {}))
+    seqs = [e["seq"] for e in await jobs.logs_after(job.id, None)]
+    assert seqs == sorted(set(seqs)) and len(seqs) == 3
+
+
+async def test_update_from_a_stale_lease_owner_is_fenced_out(jobs):
+    job = await create(jobs)
+    await jobs.claim_next("a")
+    token = lease_owner.set("b")
+    try:
+        await jobs.update(job.id, {"message": "x"})
+    finally:
+        lease_owner.reset(token)
+    assert (await jobs.get(job.id)).message == "Pending"
+
+
+async def test_event_log_from_a_stale_lease_owner_is_fenced_out(jobs):
+    job = await create(jobs)
+    await jobs.claim_next("a")
+    before = await jobs.last_log_seq(job.id)
+    token = lease_owner.set("b")
+    try:
+        await jobs.log(job.id, "event", {})
+    finally:
+        lease_owner.reset(token)
+    assert await jobs.last_log_seq(job.id) == before
+
+
+async def test_takeover_of_an_expired_lease_counts_a_crash_but_a_release_does_not(jobs):
+    job = await create(jobs)
+    assert (await jobs.claim_next("a")).crashes == 0
+    await jobs.release_lease(job.id, "a")
+    assert (await jobs.claim_next("b")).crashes == 0
+    await asyncio.sleep(1.5)
+    assert (await jobs.claim_next("c")).crashes == 1
+    await asyncio.sleep(1.5)
+    assert (await jobs.claim_next("d")).crashes == 2
+
+
+async def test_last_snapshot_skips_event_rows_and_gives_the_cursor(jobs):
+    job = await create(jobs)
+    await jobs.update(job.id, {"message": "x"})
+    await jobs.log(job.id, "event", {})
+    snap = await jobs.last_snapshot(job.id)
+    assert snap["type"] == "update" and snap["data"]["message"] == "x"
+    assert [d["type"] for d in await jobs.logs_after(job.id, snap["seq"])] == ["event"]
