@@ -83,6 +83,13 @@ async def test_logs_after_returns_only_newer_events_in_order(jobs):
     assert await jobs.logs_after(job.id, events[-1]["seq"]) == []
 
 
+async def test_logs_after_skips_legacy_rows_without_seq(jobs):
+    job_id = uuid.uuid4()
+    await jobs.log_collection.insert_one({"job_id": str(job_id), "type": "update", "timestamp": time.time()})
+    assert await jobs.last_log_seq(job_id) is None
+    assert await jobs.logs_after(job_id, None) == []
+
+
 async def test_concurrent_logs_get_distinct_increasing_seq(jobs):
     job = await create(jobs)
     await asyncio.gather(jobs.log(job.id, "x", {}), jobs.log(job.id, "x", {}))
