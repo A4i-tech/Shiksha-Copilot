@@ -293,9 +293,9 @@ def test_run_reports_plans_and_requires_payloads(conn):
 
 
 def test_yaml_config_builds_the_registered_steps():
-    from omni_ingest.core.pipeline import create_pipeline_from_config, register_step
+    from omni_ingest.core.pipeline import create_pipeline_from_config
 
-    register_step("section_graph", steps.SectionGraph, override=True)
+    steps.register()
     runner = create_pipeline_from_config(ROOT / "period_plan.yaml", config_args={"workflow_template": "{}", "model": "gpt-x", "top_k": 4, "force_mode": "gpt"})
     step = runner.steps[-1]
     assert isinstance(step, steps.SectionGraph)
