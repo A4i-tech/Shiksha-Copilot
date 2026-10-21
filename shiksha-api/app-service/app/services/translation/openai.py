@@ -18,9 +18,9 @@ def _describe(code: str) -> str:
 
 class OpenAITranslator(TranslatorBase):
 
-    def __init__(self, model: str, base_url: str | None = None, api_key: str = "unused", client: AsyncOpenAI | None = None):
+    def __init__(self, model: str, base_url: str | None, api_key: str):
         self._model = model
-        self._client = client or AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=60)
+        self._client = AsyncOpenAI(base_url=base_url, api_key=api_key, timeout=60)
 
     async def translate_async(
         self, text: str, src_lang: str = "en", tgt_lang: str = "te"

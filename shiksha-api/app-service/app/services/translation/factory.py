@@ -25,7 +25,11 @@ def sequential(parsers: tuple[TranslationParser, ...]) -> TranslatorFactory:
 
 
 def fallback_noop(target: str) -> NoOpTranslator:
-    logger.warning("Translation disabled, returning %s for target_lang=%s.", NoOpTranslator.__qualname__, target)
+    logger.warning(
+        "Translation is off: TRANSLATION_PROVIDER=%s is not fully set. Set TRANSLATION_MODEL for openai, "
+        "or TRANSLATOR_KEY, TRANSLATOR_REGION and TRANSLATOR_ENDPOINT for azure. Returning %s for target_lang=%s.",
+        settings.translation_provider, NoOpTranslator.__qualname__, target,
+    )
     return NoOpTranslator()
 
 
@@ -50,10 +54,12 @@ def azure() -> TranslationParser:
 
 
 def openai() -> TranslationParser:
+    if not (settings.translation_model or "").strip():
+        return lambda _: None
     translator = OpenAITranslator(
-        model=(settings.translation_model or "").strip(),
-        base_url=(settings.translation_base_url or settings.openai_base_url or "").strip() or None,
-        api_key=(settings.translation_api_key or settings.openai_api_key).strip(),
+        model=settings.translation_model,
+        base_url=settings.translation_base_url or settings.openai_base_url,
+        api_key=settings.translation_api_key or settings.openai_api_key,
     )
     return lambda _: translator
 
