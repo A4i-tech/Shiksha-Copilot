@@ -1,4 +1,5 @@
 const formatApiReponse = require("../helper/response");
+const logger = require("../config/loggers");
 
 const BODY_PARSER_TYPE = /^(entity|encoding|charset|request)\./;
 
@@ -18,7 +19,7 @@ module.exports = (err, req, res, next) => {
 				},
 			});
 		} catch (trackError) {
-			console.error("App Insights tracking failed --> ", trackError.message);
+			logger.warn(`error.middleware track(): App Insights tracking failed for ${req.method} ${req.originalUrl}: ${trackError.message}`);
 		}
 	};
 
