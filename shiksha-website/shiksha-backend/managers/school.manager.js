@@ -191,7 +191,7 @@ class SchoolManager extends BaseManager {
     );
 
     if (updatedClasses) {
-      return formatApiReponse(true, "Updated school and class info", {
+      return formatApiReponse(true, classesData ? "Updated school and class info" : "Updated school info. No classes were sent, so the classes are unchanged.", {
         ...updatedSchool.toObject(),
         classes: updatedClasses,
       });

@@ -1,4 +1,5 @@
 const formatApiReponse = require("../helper/response");
+const logger = require("../config/loggers");
 
 const BODY_PARSER_TYPE = /^(entity|encoding|charset|request)\./;
 
@@ -8,15 +9,18 @@ module.exports = (err, req, res, next) => {
 
 	const reply = (status, message) => res.status(status).json(formatApiReponse(false, message, null));
 	const track = () => {
-		const appInsightsClient = require("applicationinsights").defaultClient;
-		appInsightsClient?.trackException({
-			exception: err,
-			properties: {
-				url: req.originalUrl,
-				method: req.method,
-				userId: req.user?._id?.toString() ?? "unauthenticated",
-			},
-		});
+		try {
+			require("applicationinsights").defaultClient?.trackException({
+				exception: err,
+				properties: {
+					url: req.originalUrl,
+					method: req.method,
+					userId: req.user?._id?.toString() ?? "unauthenticated",
+				},
+			});
+		} catch (trackError) {
+			logger.warn(`error.middleware track(): App Insights tracking failed for ${req.method} ${req.originalUrl}: ${trackError.message}`);
+		}
 	};
 
 	if (err.code === 11000) return reply(409, "Duplicate entry");

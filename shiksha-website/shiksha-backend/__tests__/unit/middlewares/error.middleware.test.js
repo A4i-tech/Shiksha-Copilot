@@ -2,6 +2,7 @@ jest.mock("applicationinsights", () => ({ defaultClient: { trackException: jest.
 const { defaultClient } = require("applicationinsights");
 const errorMiddleware = require("../../../middlewares/error.middleware");
 const AppError = require("../../../helper/app.error");
+const logger = require("../../../config/loggers");
 
 const run = (err) => {
   const res = { status: jest.fn().mockReturnThis(), json: jest.fn().mockReturnThis() };
@@ -69,6 +70,15 @@ describe("error.middleware", () => {
     trackException.mockClear();
     run(Object.assign(new Error("x"), { name: "CastError", kind: "Number" }));
     expect(trackException).not.toHaveBeenCalled();
+  });
+
+  it("still replies with the AppError message when tracking throws", () => {
+    defaultClient.trackException.mockImplementationOnce(() => { throw new TypeError("not configured"); });
+    const warn = jest.spyOn(logger, "warn").mockImplementation(() => {});
+    const { status, body } = run(new AppError("User is not below your scope", 403));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("App Insights tracking failed for POST /x"));
+    expect(status).toBe(403);
+    expect(body.message).toBe("User is not below your scope");
   });
 
   it("hides the text of an unknown error", () => {
