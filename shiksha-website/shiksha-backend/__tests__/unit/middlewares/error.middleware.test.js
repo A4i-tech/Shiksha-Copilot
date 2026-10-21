@@ -71,6 +71,13 @@ describe("error.middleware", () => {
     expect(trackException).not.toHaveBeenCalled();
   });
 
+  it("still replies with the AppError message when tracking throws", () => {
+    defaultClient.trackException.mockImplementationOnce(() => { throw new TypeError("not configured"); });
+    const { status, body } = run(new AppError("User is not below your scope", 403));
+    expect(status).toBe(403);
+    expect(body.message).toBe("User is not below your scope");
+  });
+
   it("hides the text of an unknown error", () => {
     const { status, body } = run(new TypeError("Cannot read properties of null"));
     expect(status).toBe(500);

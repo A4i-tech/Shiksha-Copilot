@@ -53,10 +53,10 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1); // trust Azure ingress/LB for HTTPS detection
 
-app.use(express.json());
-
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
 app.use(cors({ origin: allowedOrigins, optionsSuccessStatus: 200 }));
+// after cors, so body-parser errors such as 413 keep their CORS headers
+app.use(express.json());
 
 app.use(logger("dev"));
 app.use(conditionalMorganMiddleware);
