@@ -1,4 +1,5 @@
 import asyncio
+import io
 import json
 import logging
 import re
@@ -10,8 +11,13 @@ from textwrap import dedent
 from typing import Any, Awaitable, Callable, Literal
 
 from omni_ingest.core.model import Step, StepResult, StepStatus
+from omni_ingest.core.pipeline import register_step
+from openpyxl import load_workbook
 from pydantic import AliasChoices, BaseModel, Field
 from qdrant_client.http.models import FieldCondition, Filter, MatchValue
+
+import period_plan_legacy_rag as legacy
+import period_plan_tracing as tracing
 
 log = logging.getLogger(__name__)
 PREVIOUS = "Previously Generated Section: "
@@ -319,6 +325,8 @@ class SectionGraph(BaseModel, Step):
 
     async def _rag(self, inp: LessonPlanGenerationInput, sec: SectionDef, prompt: str, query: str) -> Any:
         path = inp.chapter_info.index_path
+        if legacy.is_legacy(path):
+            return legacy.parse(await legacy.answer(path, prompt))
         await self.retrieve.check(path)
         options = {"response_format": {"type": "json_object"}} if sec.output_format else {}
         for attempt in range(3):
@@ -340,14 +348,29 @@ class SectionGraph(BaseModel, Step):
         mode = self.force_mode or sec.mode
         prompt = self._synthesis(inp, sec, deps, variant, mode)
         if mode == "rag":
-            return await self._rag(inp, sec, prompt, await self._retrieval_query(inp, sec, regen))
+            query = "" if legacy.is_legacy(inp.chapter_info.index_path) else await self._retrieval_query(inp, sec, regen)
+            return await self._rag(inp, sec, prompt, query)
         text = await self._chat(prompt, temperature=0)
         if not text:
             raise ValueError(f"The model returned an empty answer for section '{sec.id}'.")
         return parse_json(text, sec)
 
-    async def _plan(self, raw: dict) -> dict:
-        plan_id = plan_id_of(raw)
+    async def _section(self, inp: LessonPlanGenerationInput, sec: SectionDef, deps: dict[str, Any]) -> Any:
+        with tracing.trace(f"section:{sec.id}", input={"mode": self.force_mode or sec.mode}) as update:
+            content = await self._generate(inp, sec, deps)
+            update(output=content)
+            return content
+
+    async def _plan(self, raw: dict, plan_id: str = "") -> dict:
+        async with legacy.session((raw.get("chapter_info") or {}).get("index_path", "")):
+            with tracing.trace("Shiksha-LP", input=raw, user_id=raw.get("user_id"), tags=["flow:lesson-plan"]) as update:
+                result = await self._run_plan(raw, plan_id)
+                update(output={"status": result["status"], "error": result.get("error")})
+        tracing.flush()
+        return result
+
+    async def _run_plan(self, raw: dict, plan_id: str = "") -> dict:
+        plan_id = plan_id or plan_id_of(raw)
         if CONN.is_done(plan_id):
             return {"status": "skipped"}
         await self._notify(plan_id, "PENDING", raw)
@@ -358,7 +381,7 @@ class SectionGraph(BaseModel, Step):
                 inp.additional_context = await self._summarize(inp.additional_context)
             nodes = build_nodes(inp, self.force_mode)
             sections = {s.id: s for s in inp.workflow.sections}
-            await run_graph(nodes, lambda k, deps: self._generate(inp, sections[k], deps))
+            await run_graph(nodes, lambda k, deps: self._section(inp, sections[k], deps))
             plan = {
                 "_id": inp.lp_id,
                 "created_at": inp.created_at or int(time.time()),
@@ -371,6 +394,9 @@ class SectionGraph(BaseModel, Step):
                 "sections": [{"section_id": s.id, "section_title": s.title, "content": nodes[s.id].out} for s in inp.workflow.sections if nodes[s.id].out is not None],
             }
             CONN.save(plan_id, plan)
+        except asyncio.CancelledError:
+            await self._notify(plan_id, "FAILED", raw, "The run was terminated.")
+            raise
         except Exception as e:
             log.exception("Plan %s failed", plan_id)
             await self._notify(plan_id, "FAILED", raw, str(e))
@@ -391,3 +417,76 @@ class SectionGraph(BaseModel, Step):
         results = await asyncio.gather(*(one(raw) for raw in payloads))
         ctx.metadata["lesson_plans"] = {plan_id_of(raw): r for raw, r in zip(payloads, results)}
         return StepResult(status=StepStatus.SUCCESS, metadata={"plans": len(results)})
+
+
+XLSX_HEADERS = ("chapter_number", "chapter_title", "period", "topic", "learning_outcomes")
+
+
+def cell_text(value: Any) -> str:
+    return "" if value is None else str(value).strip()
+
+
+def whole_number(value: Any) -> Any:
+    return int(value) if isinstance(value, float) and value.is_integer() else value
+
+
+class XlsxChapters(BaseModel, Step):
+    grade: str
+    subject: str
+    medium: str = "english"
+    board: str = "BSE-TG"
+
+    def _rows(self, content: bytes) -> list[dict[str, Any]]:
+        book = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+        wanted = {str(self.grade).strip().casefold(), f"grade {str(self.grade).strip()}".casefold()}
+        sheet = next((n for n in book.sheetnames if n.strip().casefold() in wanted), None)
+        if sheet is None:
+            raise ValueError(f"No sheet for grade '{self.grade}'. Sheets in the workbook: {', '.join(book.sheetnames)}.")
+        rows = book[sheet].iter_rows(values_only=True)
+        header = ["_".join(cell_text(h).lower().split()) for h in next(rows, ())]
+        if missing := [h for h in XLSX_HEADERS if h not in header]:
+            raise ValueError(f"Sheet '{sheet}' has no column for {', '.join(missing)}. Columns found: {', '.join(h for h in header if h)}.")
+        return [dict(zip(header, row)) for row in rows]
+
+    def _chapters(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # Blank chapter and period cells continue the value above, as in the source workbooks.
+        last: dict[str, Any] = {}
+        periods: dict[tuple, dict[Any, dict[str, list[str]]]] = {}
+        for row in rows:
+            for key in ("chapter_number", "chapter_title", "period"):
+                if row[key] is None or cell_text(row[key]) == "":
+                    row[key] = last.get(key)
+                last[key] = row[key]
+            if row["chapter_number"] is None:
+                continue
+            group = periods.setdefault((whole_number(row["chapter_number"]), cell_text(row["chapter_title"])), {}).setdefault(whole_number(row["period"]), {"topics": [], "learning_outcomes": []})
+            for field, key in (("topics", "topic"), ("learning_outcomes", "learning_outcomes")):
+                if text := cell_text(row[key]):
+                    group[field].append(text)
+        return [
+            {
+                "board": self.board,
+                "medium": self.medium.lower(),
+                "grade": str(self.grade).removeprefix("Grade ").strip(),
+                "subject": self.subject,
+                "no": no,
+                "name": name,
+                "topic_groups": [g for _, g in sorted(groups.items(), key=lambda kv: (kv[0] is None, kv[0])) if g["topics"]],
+            }
+            for (no, name), groups in sorted(periods.items(), key=lambda kv: kv[0][0])
+        ]
+
+    async def run(self, ctx: Any) -> StepResult:
+        if not self.grade or not self.subject:
+            return StepResult(status=StepStatus.FAILURE, error="An xlsx input needs the grade and subject parameters. Add --param grade=6 --param subject=social.")
+        try:
+            chapters = self._chapters(self._rows(ctx.items[0].raw_content))
+        except ValueError as e:
+            return StepResult(status=StepStatus.FAILURE, error=str(e))
+        ctx.metadata["period_chapters"] = chapters
+        return StepResult(status=StepStatus.SUCCESS, metadata={"chapters": len(chapters)})
+
+
+def register() -> None:
+    register_step("xlsx_chapters", XlsxChapters, override=True)
+    register_step("section_graph", SectionGraph, override=True)

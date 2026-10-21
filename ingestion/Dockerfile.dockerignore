@@ -1,0 +1,6 @@
+*
+!components/rag-wrapper
+!ingestion/*.py
+!ingestion/*.yaml
+**/__pycache__
+**/tests
