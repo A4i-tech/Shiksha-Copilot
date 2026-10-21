@@ -148,7 +148,7 @@ The API will be available at:
 ### Presentation worker
 
 The API does not generate presentations. It only saves the job in MongoDB. A separate worker process runs the job.
-Start one or more workers with the same image and environment as the API:
+Start one or more workers with the same image and environment as the API. In a container, set `SHIKSHA_ROLE=presentation-worker` to run the worker instead of the API. Outside a container, run:
 
 ```bash
 poetry run python -m app.services.presentation.worker

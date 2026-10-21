@@ -168,8 +168,7 @@ class JobManager:
         return await self.log_collection.find_one({"job_id": str(job_id), "seq": {"$exists": True}, "type": {"$in": ["create", "update", "complete", "terminate"]}}, sort=[("seq", DESCENDING)])
 
     async def logs_after(self, job_id: uuid.UUID, after: int | None) -> Sequence[dict]:
-        query: dict[str, Any] = {"job_id": str(job_id)}
-        if after is not None: query["seq"] = {"$gt": after}
+        query: dict[str, Any] = {"job_id": str(job_id), "seq": {"$gt": after or 0}}  # $gt skips legacy rows that have no seq
         return [doc async for doc in self.log_collection.find(query, sort=[("seq", ASCENDING)])]
 
     async def get_logs(self, job_id: uuid.UUID) -> AsyncGenerator[dict, None]:
