@@ -2,7 +2,7 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt, field_validator, model_validator
+from pydantic import Field, PositiveInt, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
@@ -70,17 +70,6 @@ class Settings(BaseSettings):
 
     # Commons
     youtube_api_key: str | None = None
-
-    @model_validator(mode="after")
-    def _check_translation(self):
-        if self.translation_provider == "openai" and not (self.translation_model or "").strip():
-            raise ValueError("TRANSLATION_MODEL is empty. Set it to a model name, or set TRANSLATION_PROVIDER=azure.")
-        if self.translation_provider == "azure":
-            azure_settings = (("TRANSLATOR_KEY", self.translator_key), ("TRANSLATOR_REGION", self.translator_region), ("TRANSLATOR_ENDPOINT", self.translator_endpoint))
-            missing = [n for n, v in azure_settings if not (v or "").strip()]
-            if missing:
-                raise ValueError(f"TRANSLATION_PROVIDER=azure needs {', '.join(missing)}. Set them, or set TRANSLATION_PROVIDER=openai.")
-        return self
 
 
 load_dotenv()

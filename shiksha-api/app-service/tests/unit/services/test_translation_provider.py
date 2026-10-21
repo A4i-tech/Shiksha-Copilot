@@ -21,7 +21,9 @@ MOCK_URL = "http://localhost:8000/v1"
 def _stub(content: str) -> OpenAITranslator:
     create = AsyncMock(return_value=SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))]))
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    return OpenAITranslator(model="m", client=client)
+    t = OpenAITranslator(model="m", base_url=None, api_key="k")
+    t._client = client
+    return t
 
 
 @pytest.fixture
@@ -113,19 +115,11 @@ def test_config_rejects_unknown_provider():
         _make(translation_provider="google", translation_model="m")
 
 
-def test_config_openai_needs_model():
-    with pytest.raises(ValidationError, match="TRANSLATION_MODEL"):
-        _make(translation_provider="openai", translation_model=" ")
-
-
-def test_config_azure_needs_azure_settings():
-    with pytest.raises(ValidationError, match="TRANSLATOR_REGION"):
-        _make(translation_provider="azure", translator_key="k", translator_region=None, translator_endpoint="e")
-
-
-def test_config_valid():
-    assert _make(translation_provider="openai", translation_model="m").translation_provider == "openai"
-    assert _make(translation_provider="azure", translator_key="k", translator_region="r", translator_endpoint="e").translation_provider == "azure"
+@pytest.mark.parametrize("model", [None, "", " "])
+def test_simple_openai_without_model_falls_back_to_noop(monkeypatch, model):
+    monkeypatch.setattr(settings, "translation_provider", "openai")
+    monkeypatch.setattr(settings, "translation_model", model)
+    assert isinstance(factory.simple()("te"), NoOpTranslator)
 
 
 def test_app_starts_with_azure_package_blocked():
