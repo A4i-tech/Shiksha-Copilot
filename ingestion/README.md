@@ -125,7 +125,7 @@ A batch run posts no webhook status. Add `"webhook": true` to `params` to turn i
 curl -H "x-api-key: $PIPELINE_API_KEY" -X POST http://localhost:8080/api/v2/pipelines/period_plan   -F "file=@Social LOs.xlsx" -F 'params={"grade": "6", "subject": "social", "workflow_template": {...}}'
 ```
 
-Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size. `LOG_LEVEL` (default `INFO`) sets the log level.
+Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size. `MAX_RETAINED_RUNS` (default 200) is how many finished runs the status route keeps. The oldest finished run is dropped first. `LOG_LEVEL` (default `INFO`) sets the log level.
 A run may set `concurrency` up to 16 and `top_k` up to 50.
 The service keeps run results in memory. Run one replica that does not scale to zero, and read the result before a restart.
 
