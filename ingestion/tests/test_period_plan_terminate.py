@@ -35,7 +35,6 @@ def hang_on_the_model(conn):
 
 
 def terminate_flow(conn, start, headers=None):
-    """Start a run, wait until it is inside the model call, terminate it, return what the API said."""
     started = hang_on_the_model(conn)
 
     async def go():
@@ -47,7 +46,7 @@ def terminate_flow(conn, start, headers=None):
             denied = await client.post(f"{status_path}/terminate", headers={"x-api-key": "nope"})
             done = await client.post(f"{status_path}/terminate", headers=headers or {"x-api-key": KEY})
             again = await client.post(f"{status_path}/terminate", headers={"x-api-key": KEY})
-            final = await (await client.get(status_path)).json()
+            final = await (await client.get(status_path, headers={"x-api-key": KEY})).json()
             unknown = await client.post("/api/v2/lesson-plans/nope/terminate", headers={"x-api-key": KEY})
             return denied.status, (done.status, await done.json()), again.status, final, unknown.status
 
