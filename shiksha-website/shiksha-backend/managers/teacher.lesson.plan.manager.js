@@ -370,6 +370,9 @@ class TeacherLessonPlanManager extends BaseManager {
 			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
 		  }
 		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
+		if (!template) {
+			throw new AppError(`Lesson plan template ${masterLesson.templateId} not found for master lesson ${masterLesson._id}`);
+		}
 
 		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
 		if (!chapter) {
