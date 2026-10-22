@@ -37,7 +37,7 @@ def call(method, path, params=PARAMS, filename="social.xlsx", content=None, head
             data = await response.json()
             if wait:
                 await asyncio.gather(*client.server.app[server.TASKS].values())
-                data["run"] = await (await client.get(URL(data["status_query_get_uri"]).path)).json()
+                data["run"] = await (await client.get(URL(data["status_query_get_uri"]).path, headers={"x-api-key": KEY})).json()
             return response.status, data
 
     return asyncio.run(go())

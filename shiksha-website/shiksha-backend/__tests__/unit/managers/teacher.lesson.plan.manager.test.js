@@ -399,6 +399,19 @@ describe("TeacherLessonPlanManager", () => {
     // Removed: generateContent success test - requires complex payload creation mocking
   });
 
+  describe("regenerateContent", () => {
+    it("should throw an AppError when the lesson template is missing", async () => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-123", templateId: "tpl-1" });
+      mockTemplateDao.getById.mockResolvedValue(null);
+
+      await expect(
+        manager.regenerateContent("teacher-123", { lessonId: "lesson-123" })
+      ).rejects.toMatchObject({ name: "AppError", message: expect.stringContaining("tpl-1") });
+      expect(postToCopilotBot).not.toHaveBeenCalled();
+    });
+  });
+
   // Removed: lessonUploadMedia test - requires complex error handling mocking
 
 

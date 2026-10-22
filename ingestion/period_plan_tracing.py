@@ -1,6 +1,9 @@
+import logging
 import os
 from contextlib import contextmanager
 from typing import Any, Callable, Iterator
+
+from openai import AsyncAzureOpenAI
 
 get_client = None
 if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
@@ -8,9 +11,7 @@ if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY
         from langfuse import get_client
         from langfuse.openai import AsyncAzureOpenAI
     except ImportError:  # Langfuse is optional. Without the package or the keys every helper here does nothing.
-        pass
-if get_client is None:
-    from openai import AsyncAzureOpenAI
+        logging.getLogger(__name__).warning("LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY are set but the langfuse package is not installed. Tracing is off.")
 
 
 def enabled() -> bool:
