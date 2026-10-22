@@ -8,6 +8,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import period_plan_runner as runner  # noqa: E402
+import period_plan_server as server_module  # noqa: E402
+from aiohttp.test_utils import TestClient, TestServer  # noqa: E402
 import period_plan_steps as steps  # noqa: E402
 from test_period_plan import FakeLLM, conn, graph, payload, section  # noqa: E402,F401
 from test_period_plan_pipelines import KEY, PARAMS, api_key, call  # noqa: E402,F401
@@ -107,3 +109,36 @@ def test_retrieval_filter_returns_only_the_passages_of_the_requested_chapter(mon
         return found
 
     assert sorted(asyncio.run(go())) == ["passage 1 of A", "passage 3 of A"]
+
+
+def test_params_may_arrive_as_a_file_part(conn):
+    import json
+
+    from aiohttp import FormData
+    from aiohttp.test_utils import TestClient, TestServer
+    from test_period_plan_xlsx import TEMPLATE
+
+    async def go():
+        async with TestClient(TestServer(server_module.make_app(graph()))) as client:
+            form = FormData()
+            form.add_field("file", workbook(), filename="social.xlsx")
+            form.add_field("params", json.dumps(PARAMS | {"workflow_template": TEMPLATE}), filename="params.json", content_type="application/json")
+            response = await client.post("/api/v2/pipelines/period_plan", data=form, headers={"x-api-key": KEY})
+            return response.status
+
+    assert asyncio.run(go()) == 202
+
+
+def test_finished_runs_are_dropped_oldest_first(conn, monkeypatch):
+    monkeypatch.setenv("MAX_RETAINED_RUNS", "2")
+
+    async def go():
+        async with TestClient(TestServer(server_module.make_app(graph()))) as client:
+            ids = []
+            for _ in range(4):
+                response = await client.post("/api/v2/lesson-plans", json=payload([section("a")]))
+                ids.append((await response.json())["instance_id"])
+                await asyncio.gather(*client.server.app[server_module.TASKS].values())
+            return [(await client.get(f"/api/v2/lesson-plans/{i}")).status for i in ids]
+
+    assert asyncio.run(go()) == [404, 404, 200, 200]

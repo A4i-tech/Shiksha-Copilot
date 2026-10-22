@@ -44,6 +44,9 @@ async def read_input(request: web.Request) -> tuple[dict, steps.LessonPlanGenera
 def launch(app: web.Application, instance_id: str, job: Awaitable[tuple[bool, Any]]) -> None:
     runs = app[RUNS]
     runs[instance_id] = {"instance_id": instance_id, "runtimeStatus": "Running", "output": None}
+    finished = [k for k, r in runs.items() if r["runtimeStatus"] != "Running"]
+    for old in finished[: max(0, len(runs) - int(os.environ.get("MAX_RETAINED_RUNS", "200")))]:
+        del runs[old]  # a long-lived replica must not keep every result
     log.info("Run %s started", instance_id)
 
     async def work() -> None:
@@ -148,8 +151,11 @@ async def run_pipeline(request: web.Request) -> web.Response:
     upload = form.get("file")
     if not hasattr(upload, "file"):
         raise bad_request("Send the input file in the multipart field 'file'.")
+    text = form.get("params") or "{}"
+    if hasattr(text, "file"):  # curl -F params=@params.json sends a file part
+        text = text.file.read().decode("utf-8", "replace")
     try:
-        params = json.loads(form.get("params") or "{}")
+        params = json.loads(text)
     except ValueError as e:
         raise bad_request(f"The multipart field 'params' is not valid JSON: {e}") from e
     if not isinstance(params, dict):
