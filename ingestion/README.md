@@ -39,7 +39,7 @@ Install the dependencies. Use Python 3.11 or later.
 
 ```bash
 uv venv .venv
-uv pip install --python .venv/bin/python omni-ingest qdrant-client openai httpx aiohttp openpyxl pytest pyyaml langfuse
+uv pip install --python .venv/bin/python omni-ingest==0.1.2 qdrant-client openai httpx aiohttp openpyxl pytest pyyaml langfuse==3.14.6
 ```
 
 Set the environment variables.
@@ -99,13 +99,13 @@ Run the tests.
 ## Run as an HTTP service
 
 `period_plan_server.py` replaces the old `shiksha-api/durable-functions` service.
-It serves the same routes, so the Shiksha backend needs no code change.
+The POST routes keep the paths of the old service, so the Shiksha backend needs no code change. The status, terminate and pipeline routes are new.
 
 | Route | Behavior |
 |-------|----------|
 | `POST /api/v2/lesson-plans` | Validates the body and returns `202` with `instance_id` and `status_query_get_uri`. The run continues in the background and posts its statuses to `WEBHOOK_URL` under that `instance_id`. A bad body returns `400`. |
 | `POST /api/v2/lesson-plans/checklist` | Needs `start_from_section_id`. Waits up to 300 seconds and returns the plan in the response. It posts no webhook status. A timeout returns `504`. |
-| `GET /api/v2/lesson-plans/{instance_id}` | Returns `runtimeStatus` (`Running`, `Completed` or `Failed`) and the output. The server keeps this state in memory only, so a restart clears it. |
+| `GET /api/v2/lesson-plans/{instance_id}` | Returns `runtimeStatus` (`Running`, `Completed`, `Failed` or `Terminated`) and the output. The server keeps this state in memory only, so a restart clears it. |
 
 ### Run a flow on an uploaded file
 
@@ -115,7 +115,7 @@ Send a workbook (or a PDF) and name the flow in the URL. The service runs that y
 |-------|----------|
 | `GET /api/v2/pipelines` | Lists the flows (the `*.yaml` files in the image) and the parameters of each. |
 | `POST /api/v2/pipelines/{flow}` | Multipart form. The field `file` is the input. The field `params` is a JSON object with the flow parameters, including `workflow_template` as an object. Returns `202` with `instance_id` and `status_query_get_uri`. |
-| `GET /api/v2/pipelines/runs/{instance_id}` | Returns `runtimeStatus` and `output`. `output.outputs` holds the pipeline metadata. For `period_plan` it has `payloads` and `lesson_plans`, and each finished plan is under `lesson_plans.<id>.plan`. `output.errors` lists every failure. |
+| `GET /api/v2/pipelines/runs/{instance_id}` | Needs the `x-api-key` header. Returns `runtimeStatus` and `output`. `output.outputs` holds the pipeline metadata. For `period_plan` it has `payloads` and `lesson_plans`, and each finished plan is under `lesson_plans.<id>.plan`. `output.errors` lists every failure. |
 
 The pipeline route is off until you set `PIPELINE_API_KEY`. Send the key in the `x-api-key` header.
 An unknown flow returns `404`. An unknown parameter returns `400` and lists the valid ones.
@@ -125,7 +125,8 @@ A batch run posts no webhook status. Add `"webhook": true` to `params` to turn i
 curl -H "x-api-key: $PIPELINE_API_KEY" -X POST http://localhost:8080/api/v2/pipelines/period_plan   -F "file=@Social LOs.xlsx" -F 'params={"grade": "6", "subject": "social", "workflow_template": {...}}'
 ```
 
-Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size.
+Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size. `LOG_LEVEL` (default `INFO`) sets the log level.
+A run may set `concurrency` up to 16 and `top_k` up to 50.
 The service keeps run results in memory. Run one replica that does not scale to zero, and read the result before a restart.
 
 Build and run the image. It reads the same environment variables as the runner.
@@ -142,7 +143,7 @@ Set `LLM_WORKFLOW_URL` and `LLM_CHECKLIST_URL` on the backend to this service.
 ### Terminate a run
 
 `POST /api/v2/lesson-plans/{instance_id}/terminate` and `POST /api/v2/pipelines/runs/{instance_id}/terminate` stop a running job.
-Both need the `x-api-key` header. A terminated lesson plan posts a FAILED status with the text "The run was terminated.".
+Both need the `x-api-key` header, and both return `503` until `PIPELINE_API_KEY` is set. A terminated lesson plan posts a FAILED status with the text "The run was terminated.".
 A run that already ended returns `409`.
 
 ### Chapter indexes
@@ -151,7 +152,9 @@ An `index_path` that contains `qdrant` is read from Qdrant. It must look like `q
 Any other `index_path` is a legacy llama-index index in Azure Blob Storage, in the form `<container>/<path>`.
 A path that contains `graph-index` loads as a property graph. Any other path loads as a vector index.
 Set `BLOB_STORE_CONNECTION_STRING`, or `BLOB_STORE_URL` with Azure credentials, for these chapters.
-Set `AZURE_OPENAI_BASE_MODEL` (for example `gpt-4.1`) when the chat deployment name is not a standard model name. The default is the lowercase deployment name.
+The caller sets `index_path`, so the service reads only the containers that you list in `LEGACY_INDEX_CONTAINERS` (comma separated). Blob chapters fail with a clear error until you set it.
+These chapters need more packages than the Qdrant path: `llama-index-core`, `llama-index-llms-azure-openai`, `llama-index-embeddings-azure-openai`, `azure-storage-blob`, `azure-identity`, `aiofiles` and `components/rag-wrapper`. The Dockerfile installs them.
+Set `AZURE_OPENAI_BASE_MODEL` to the base model name, for example `gpt-4.1`. If you do not set it, the service uses the lowercase deployment name.
 The service downloads the index on the first section and deletes it when the last plan that uses it ends.
 
 ### Tracing

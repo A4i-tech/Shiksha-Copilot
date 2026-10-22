@@ -13,7 +13,7 @@ from typing import Any, Awaitable, Callable, Literal
 from omni_ingest.core.model import Step, StepResult, StepStatus
 from omni_ingest.core.pipeline import register_step
 from openpyxl import load_workbook
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, ValidationError
 from qdrant_client.http.models import FieldCondition, Filter, MatchValue
 
 import period_plan_legacy_rag as legacy
@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 PREVIOUS = "Previously Generated Section: "
 CYCLE_ERROR = "Detected a cycle in the workflow dependencies"
 FENCE = re.compile(r"^\s*```[A-Za-z]*\s*|\s*```\s*$")
+GATEWAY_TIMEOUT = "504.0 GatewayTimeout"
 
 
 @dataclass
@@ -109,12 +110,24 @@ class Node:
     done: bool = False
 
 
+def reason(e: Exception) -> str:
+    # str(ValidationError) echoes the request values, so say only which field failed and why.
+    if isinstance(e, ValidationError):
+        return "; ".join(f"{'.'.join(map(str, x['loc']))}: {x['msg']}" for x in e.errors())
+    return str(e)
+
+
+async def _no_notify(*_args: Any) -> None:
+    return None
+
+
 def parse_json(text: str, sec: SectionDef | None = None) -> Any:
     try:
         return json.loads(FENCE.sub("", text.strip()))
     except ValueError:
         if sec and sec.output_format:
             raise ValueError(f"The model reply for section '{sec.id}' is not valid JSON, but the section has an output_format.") from None
+        log.warning("The model reply for section '%s' is not JSON. Keeping it as text. It starts with: %.80s", sec.id if sec else "?", text)
         return text
 
 
@@ -135,6 +148,8 @@ def build_nodes(inp: LessonPlanGenerationInput, force_mode: Literal["", "rag", "
         if sid not in nodes:
             raise ValueError(f"Section ID '{sid}' not found in workflow")
         content = {s.section_id: s.content for s in sections}
+        if empty := [k for k, v in content.items() if v is None]:
+            raise ValueError(f"The lesson plan has no content for sections {empty}. Send the saved content of each section, or leave the section out.")
         if missing := [d for d in nodes[sid].deps if d not in content]:
             raise ValueError(f"Missing dependency content for section '{sid}'. Required dependencies not provided: {missing}")
         for k, v in content.items():
@@ -326,18 +341,22 @@ class SectionGraph(BaseModel, Step):
     async def _rag(self, inp: LessonPlanGenerationInput, sec: SectionDef, prompt: str, query: str) -> Any:
         path = inp.chapter_info.index_path
         if legacy.is_legacy(path):
-            return legacy.parse(await legacy.answer(path, prompt))
+            text = await legacy.answer(path, prompt)
+            if not text or text == GATEWAY_TIMEOUT:
+                raise ValueError(f"The model returned an empty answer for section '{sec.id}'.")
+            return parse_json(text, sec)
         await self.retrieve.check(path)
         options = {"response_format": {"type": "json_object"}} if sec.output_format else {}
         for attempt in range(3):
             try:
                 context = "\n\n".join(await self.retrieve.search(path, query))
                 text = await self._chat(self.prompts["rag_answer"].format(context=context, query=prompt), system=False, temperature=0.1, **options)
-                if text and text != "504.0 GatewayTimeout":
+                if text and text != GATEWAY_TIMEOUT:
                     return parse_json(text, sec)
-                error = ValueError(f"The model returned an empty answer for section '{sec.id}'.")
+                error = ValueError(f"The model gateway timed out for section '{sec.id}'." if text else f"The model returned an empty answer for section '{sec.id}'.")
             except Exception as e:
                 error = e
+            log.warning("Attempt %d of 3 failed for section '%s': %s", attempt + 1, sec.id, error)
             if attempt < 2:
                 await asyncio.sleep(2**attempt)
         raise error
@@ -358,23 +377,28 @@ class SectionGraph(BaseModel, Step):
     async def _section(self, inp: LessonPlanGenerationInput, sec: SectionDef, deps: dict[str, Any]) -> Any:
         with tracing.trace(f"section:{sec.id}", input={"mode": self.force_mode or sec.mode}) as update:
             content = await self._generate(inp, sec, deps)
+            if content is None:
+                raise ValueError(f"The model returned no content (JSON null) for section '{sec.id}'.")
             update(output=content)
             return content
 
-    async def _plan(self, raw: dict, plan_id: str = "") -> dict:
-        async with legacy.session((raw.get("chapter_info") or {}).get("index_path", "")):
-            with tracing.trace("Shiksha-LP", input=raw, user_id=raw.get("user_id"), tags=["flow:lesson-plan"]) as update:
-                result = await self._run_plan(raw, plan_id)
-                update(output={"status": result["status"], "error": result.get("error")})
-        tracing.flush()
-        return result
+    async def _plan(self, raw: dict, plan_id: str = "", webhook: bool = True) -> dict:
+        try:
+            async with legacy.session((raw.get("chapter_info") or {}).get("index_path", "")):
+                with tracing.trace("Shiksha-LP", input=raw, user_id=raw.get("user_id"), tags=["flow:lesson-plan"]) as update:
+                    result = await self._run_plan(raw, plan_id, webhook)
+                    update(output={"status": result["status"], "error": result.get("error")})
+            return result
+        finally:
+            tracing.flush()
 
-    async def _run_plan(self, raw: dict, plan_id: str = "") -> dict:
+    async def _run_plan(self, raw: dict, plan_id: str = "", webhook: bool = True) -> dict:
         plan_id = plan_id or plan_id_of(raw)
+        send = self._notify if webhook else _no_notify
         if CONN.is_done(plan_id):
             return {"status": "skipped"}
-        await self._notify(plan_id, "PENDING", raw)
-        await self._notify(plan_id, "RUNNING", raw)
+        await send(plan_id, "PENDING", raw)
+        await send(plan_id, "RUNNING", raw)
         try:
             inp = LessonPlanGenerationInput.model_validate(raw)
             if inp.additional_context:
@@ -395,17 +419,17 @@ class SectionGraph(BaseModel, Step):
             }
             CONN.save(plan_id, plan)
         except asyncio.CancelledError:
-            await self._notify(plan_id, "FAILED", raw, "The run was terminated.")
+            await send(plan_id, "FAILED", raw, "The run was terminated.")
             raise
         except Exception as e:
             log.exception("Plan %s failed", plan_id)
-            await self._notify(plan_id, "FAILED", raw, str(e))
-            return {"status": "failed", "error": str(e)}
-        await self._notify(plan_id, "COMPLETED", raw, plan)
+            await send(plan_id, "FAILED", raw, reason(e))
+            return {"status": "failed", "error": reason(e)}
+        await send(plan_id, "COMPLETED", raw, plan)
         return {"status": "completed", "plan": plan}
 
     async def run(self, ctx: Any) -> StepResult:
-        payloads = ctx.metadata.get("payloads") or []
+        payloads = ctx.metadata.get("payloads")
         if not payloads:
             return StepResult(status=StepStatus.FAILURE, error="No payloads found in metadata. Check that the transform step before section_graph produced payloads.")
         gate = asyncio.Semaphore(self.concurrency)
@@ -452,17 +476,25 @@ class XlsxChapters(BaseModel, Step):
         # Blank chapter and period cells continue the value above, as in the source workbooks.
         last: dict[str, Any] = {}
         periods: dict[tuple, dict[Any, dict[str, list[str]]]] = {}
+        stray = 0
         for row in rows:
             for key in ("chapter_number", "chapter_title", "period"):
-                if row[key] is None or cell_text(row[key]) == "":
+                if cell_text(row[key]) == "":
                     row[key] = last.get(key)
                 last[key] = row[key]
             if row["chapter_number"] is None:
+                stray += bool(cell_text(row["topic"]) or cell_text(row["learning_outcomes"]))
                 continue
             group = periods.setdefault((whole_number(row["chapter_number"]), cell_text(row["chapter_title"])), {}).setdefault(whole_number(row["period"]), {"topics": [], "learning_outcomes": []})
             for field, key in (("topics", "topic"), ("learning_outcomes", "learning_outcomes")):
                 if text := cell_text(row[key]):
                     group[field].append(text)
+        if stray:
+            log.warning("Skipped %d rows that have a topic or learning outcome but come before the first chapter number.", stray)
+        for (no, _), groups in periods.items():
+            for period, g in groups.items():
+                if g["learning_outcomes"] and not g["topics"]:
+                    raise ValueError(f"Chapter {no}, period {period} has learning outcomes but no topic. Add the topic to the workbook.")
         return [
             {
                 "board": self.board,

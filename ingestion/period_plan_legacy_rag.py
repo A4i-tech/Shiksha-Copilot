@@ -4,7 +4,6 @@ The libraries are imported inside the functions, so a service without them still
 """
 
 import asyncio
-import json
 import os
 import shutil
 import tempfile
@@ -18,7 +17,7 @@ _USERS: Counter = Counter()
 
 
 def kind(index_path: str) -> str:
-    # Same order as the durable AgentPool: graph first, then Qdrant, then the vector index.
+    # Check graph first, then qdrant, then fall back to the vector index.
     if "graph-index" in index_path:
         return "graph"
     return "qdrant" if "qdrant" in index_path else "vector"
@@ -32,7 +31,21 @@ def local_dir(index_path: str) -> str:
     return os.path.join(tempfile.gettempdir(), index_path.replace("/", "_"))
 
 
+def split_index_path(index_path: str) -> tuple[str, str]:
+    """Return (container, prefix). The caller sets index_path, so only containers named in LEGACY_INDEX_CONTAINERS may be read."""
+    allowed = {c.strip() for c in os.environ.get("LEGACY_INDEX_CONTAINERS", "").split(",") if c.strip()}
+    if not allowed:
+        raise ValueError(f"Chapter index '{index_path}' is stored in Azure Blob Storage. Set LEGACY_INDEX_CONTAINERS to the container names that hold chapter indexes.")
+    container, sep, prefix = index_path.partition("/")
+    if not sep:
+        raise ValueError(f"Chapter index '{index_path}' must look like <container>/<path>.")
+    if container not in allowed:
+        raise ValueError(f"Chapter index '{index_path}' is in container '{container}', which is not in LEGACY_INDEX_CONTAINERS.")
+    return container, prefix
+
+
 async def download(index_path: str, target: str) -> list[str]:
+    container, prefix = split_index_path(index_path)
     import aiofiles
     from azure.identity.aio import DefaultAzureCredential
     from azure.storage.blob.aio import BlobServiceClient
@@ -44,9 +57,6 @@ async def download(index_path: str, target: str) -> list[str]:
         service = BlobServiceClient(account_url=account_url, credential=DefaultAzureCredential())
     else:
         raise ValueError(f"Chapter index '{index_path}' is stored in Azure Blob Storage. Set BLOB_STORE_CONNECTION_STRING or BLOB_STORE_URL.")
-    if "/" not in index_path:
-        raise ValueError(f"Chapter index '{index_path}' must look like <container>/<path>.")
-    container, prefix = index_path.split("/", 1)
     written: list[str] = []
     async with service:
         client = service.get_container_client(container)
@@ -86,13 +96,6 @@ async def answer(index_path: str, query: str) -> str:
         if index_path not in _OPS:
             _OPS[index_path] = await load(index_path)
     return str(await _OPS[index_path].query_index(text_str=query))
-
-
-def parse(text: str) -> Any:
-    try:
-        return json.loads(text.strip("```json").strip("```"))
-    except json.JSONDecodeError:
-        return text
 
 
 @asynccontextmanager
