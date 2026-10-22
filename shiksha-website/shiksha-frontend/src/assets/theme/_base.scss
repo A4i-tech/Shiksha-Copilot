@@ -49,6 +49,9 @@
 .btn-outline-primary:hover {
   @apply bg-primary-50;
 }
+.btn-outline-primary:disabled {
+  @apply pointer-events-none cursor-not-allowed opacity-50;
+}
 
 .form-control{
   @apply appearance-none border border-content-50 rounded h-9 w-full py-2 px-3 text-content leading-tight focus:outline-none;
@@ -93,13 +96,13 @@ input[type='date']::-webkit-calendar-picker-indicator {
 
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: none;
+  -webkit-appearance: auto;
   margin: 0;
 }
 
 input[type='number'] {
-  -moz-appearance: textfield;
-  appearance: textfield;
+  -moz-appearance: auto;
+  appearance: auto;
 }
 
 .form-control-disabled{
@@ -138,6 +141,9 @@ input[type='number'] {
 
 .btn-danger:hover {
   @apply bg-error-100;
+}
+.btn-danger:disabled {
+  @apply pointer-events-none cursor-not-allowed opacity-50;
 }
 
 .error-chip{

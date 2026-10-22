@@ -33,6 +33,7 @@ jobs:
       name: 'production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       image: ${{ steps.validate.outputs.image }}
       service-url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}

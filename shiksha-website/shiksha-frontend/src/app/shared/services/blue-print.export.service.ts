@@ -26,7 +26,7 @@ export class BluePrintExportService {
     flatData: Array<{
       unitName: string;
       type: string;
-      objective: string;
+      name: string;
       marks: number;
     }>,
     metadata: {
@@ -105,7 +105,7 @@ export class BluePrintExportService {
           children: [
             this.createPaddedCell(item.unitName),
             this.createPaddedCell(this.translate(item.type)),
-            this.createPaddedCell(this.translate(item.objective)),
+            this.createPaddedCell(item.name),
             this.createPaddedCell(formatMarks(item.marks)),
           ],
         })

@@ -2,7 +2,15 @@ const User = require("../models/user.model");
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
 class UserAggregation {
-  async getUserList(page, limit, processedFilters, sort) {
+  getUserList(page, limit, processedFilters, sort) {
+    return this._getUsers(page, limit, processedFilters, sort, false);
+  }
+
+  getUserCursor(processedFilters, sort) {
+    return this._getUsers(undefined, undefined, processedFilters, sort, true);
+  }
+
+  async _getUsers(page, limit, processedFilters, sort, cursor) {
     try {
       // Extract trainingStatus filter and remove it from processedFilters
       const { trainingStatus, ...otherFilters } = processedFilters;
@@ -111,8 +119,9 @@ class UserAggregation {
         });
       }
 
-      let users = await User.aggregate(pipeline);
+      if (cursor) return User.aggregate(pipeline).cursor({ batchSize: 100 });
 
+      const users = await User.aggregate(pipeline);
       return limit ? users : [{ data: users, totalCount: [{ count: users.length }] }];
     } catch (err) {
       console.log("Error --> UserAggregation, getUserList", err);
@@ -147,6 +156,8 @@ class UserAggregation {
                 sem: "$profiles.teacher.classes.sem",
               },
             },
+            boysStrength: { $first: "$profiles.teacher.classes.boysStrength" },
+            girlsStrength: { $first: "$profiles.teacher.classes.girlsStrength" },
           },
         },
         {
@@ -156,6 +167,8 @@ class UserAggregation {
             class: "$_id.class",
             medium: "$_id.medium",
             subjects: 1,
+            boysStrength: 1,
+            girlsStrength: 1,
             _id: 0,
           },
         },

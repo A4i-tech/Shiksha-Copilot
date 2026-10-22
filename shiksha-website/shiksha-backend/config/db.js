@@ -5,6 +5,7 @@ const MONGO_URL = process.env.MONGO_URL;
 const runMigrations = require("../migrations/migration");
 const QuestionBankCache = require("../models/question.bank.cache.model");
 const QuestionBankConfiguration = require("../models/question.bank.config.model");
+const AuditLog = require("../models/audit.log.model");
 
 class DBService {
 	constructor() {
@@ -17,6 +18,7 @@ class DBService {
 			mongoose.Promise = global.Promise;
 			await mongoose.connect(MONGO_URL);
 			this.connection = mongoose.connection;
+			await AuditLog.updateMany({ status: "in_progress" }, { $set: { status: "failure", logUrl: null } });
 			await this.onConnect();
 			return { connected: true, message: "Connected To Database" };
 		} catch (err) {
@@ -86,24 +88,6 @@ class DBService {
 		}
 	}
 
-	async connectToMongoForWorker() {
-		try {
-		  console.log("connectToMongoForWorker");
-		  console.log("readyState:", mongoose.connection.readyState);
-	  
-		  if (mongoose.connection.readyState === 1) {
-			console.log("Mongoose already connected (worker).");
-			return { client: mongoose.connection, openedHere: false };
-		  }
-		
-		  await mongoose.connect(MONGO_URL);
-		  console.log("Mongoose connected in worker thread.");
-		  return { client: mongoose.connection, openedHere: true };
-		} catch (err) {
-		  console.error("Failed to connect to MongoDB in worker thread:", err);
-		  throw err;
-		}
-	  }
 }
 
 const dbService = new DBService();

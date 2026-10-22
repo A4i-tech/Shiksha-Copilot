@@ -16,7 +16,7 @@ class MasterLessonDao extends BaseDao {
 		limit = 10,
 		filters = {},
 		sort = {},
-		includeDeleted,
+		status = {},
 		userId
 	) {
 		const processedFilters = {};
@@ -47,10 +47,15 @@ class MasterLessonDao extends BaseDao {
 				};
 			} else if (key === "includeVideos" && filters[key] !== "true") {
 				processedFilters["videos"] = { $size: 0 };
+			} else if (key === "isDeleted") {
+				processedFilters[key] = BaseDao.parseIsDeletedFilter(filters[key]);
 			} else {
 				processedFilters[key] = filters[key];
 			}
 		}
+
+		// `status` (from the caller's includeDeleted param) wins over the plain filters.
+		Object.assign(processedFilters, status);
 
 		const results = await masterLessonAggregation.getMasterLessonFilter(
 			page,

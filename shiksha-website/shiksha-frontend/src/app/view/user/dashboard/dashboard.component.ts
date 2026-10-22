@@ -335,7 +335,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       title: `<span>${this.translateService.instant('Class')} : ${
         eventVal.class
       } | ${this.translateService.instant('Subject')} : ${
-        this.utiltyService.getSubjectDisplayName(eventVal.subjects)
+        this.utiltyService.getSubjectDisplayName(eventVal.subjects, eventVal.board)
       }</span> <p class="cal-event-line2 overflow-hidden whitespace-nowrap text-ellipsis">${this.translateService.instant(
         'Lesson Name'
       )} : ${eventVal.topic}</p>`,

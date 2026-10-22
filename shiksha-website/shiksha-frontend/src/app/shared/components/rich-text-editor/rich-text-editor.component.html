@@ -1,0 +1,7 @@
+<quill-editor
+  class="rte-editor"
+  [modules]="modules"
+  [(ngModel)]="htmlContent"
+  (onContentChanged)="onContentChanged($event)"
+  [sanitize]="true"
+></quill-editor>

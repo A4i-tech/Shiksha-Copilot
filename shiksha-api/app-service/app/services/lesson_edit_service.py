@@ -66,7 +66,7 @@ class LessonEditService:
         self._prompt_plan_edit_instruction = _prompts["plan_edit_instruction"]
         self._prompt_grounding_instruction = _prompts["grounding_instruction"]
 
-        self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model)
+        self._rag_llm = OpenAIResponses(model=settings.lesson_chat_model) # pyright: ignore[reportCallIssue]
         self._rag_embed = OpenAIEmbedding(model=settings.embed_model)
         self._rags = RagAdapterCache(RagAdapterCache.from_factory)
 

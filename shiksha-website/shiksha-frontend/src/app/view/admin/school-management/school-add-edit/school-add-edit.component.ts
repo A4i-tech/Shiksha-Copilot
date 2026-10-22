@@ -571,6 +571,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
+    this.blockDropdownconfig.translateParams = { state: selectedStateValue };
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,

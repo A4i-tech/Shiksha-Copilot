@@ -1,4 +1,5 @@
 const formatApiReponse = require("../helper/response");
+const { CONTENT_STATUS } = require("../constants/content-status");
 
 require("dotenv").config();
 
@@ -42,6 +43,85 @@ class BaseManager {
 	async create(req) {
 		let data = await this.dao.create(req.body);
 		return formatApiReponse(true, "success!", data);
+	}
+
+	async adminUpdate(req, allowDeletedStatusUpdate = false) {
+		try {
+			let data = await this.dao.adminUpdate(
+				req.params?.id,
+				req.body,
+				null,
+				allowDeletedStatusUpdate
+			);
+			if (!data) return formatApiReponse(false, "Record not found", null);
+			return formatApiReponse(true, "Updated successfully!", data);
+		} catch (err) {
+			console.error("adminUpdate failed:", err);
+			return formatApiReponse(false, err.message, null);
+		}
+	}
+
+	withDraftMetadata(doc, userId) {
+		return {
+			...doc,
+			status: CONTENT_STATUS.DRAFT,
+			isDeleted: true,
+			createdBy: userId,
+		};
+	}
+
+	// isDeleted also marks a draft/under-review record that never went live, so only an
+	// approved record that then got soft-deleted is genuinely gone.
+	isGenuinelyDeleted(record) {
+		return record.isDeleted === true && record.status === CONTENT_STATUS.APPROVED;
+	}
+
+	// Finds an existing record that duplicates `record` on any of `keyFns` (each a
+	// (record) => string), skipping records that are genuinely deleted — a draft or
+	// under-review record still blocks the duplicate, since it hasn't gone anywhere.
+	findLiveConflict(record, existingRecords, keyFns) {
+		const targetKeys = keyFns.map((keyFn) => keyFn(record));
+
+		return existingRecords.find((other) => {
+			if (this.isGenuinelyDeleted(other)) return false;
+			return keyFns.some((keyFn, index) => keyFn(other) === targetKeys[index]);
+		});
+	}
+
+	async finalizeBulkUpload({ Model, rows, documents, dryRun, entityLabel }) {
+		const invalid = rows.filter((row) => row.errors.length > 0);
+
+		const report = {
+			dryRun,
+			total: rows.length,
+			valid: rows.length - invalid.length,
+			invalid: invalid.length,
+			inserted: 0,
+			insertedIds: [],
+			rows,
+		};
+
+		if (invalid.length > 0) {
+			return formatApiReponse(
+				false,
+				`${invalid.length} of ${rows.length} ${entityLabel} failed validation. Nothing was saved.`,
+				report
+			);
+		}
+
+		if (dryRun) {
+			return formatApiReponse(true, `All ${entityLabel} passed validation.`, report);
+		}
+
+		try {
+			const saved = await Model.insertMany(documents, { ordered: true });
+			report.inserted = saved.length;
+			report.insertedIds = saved.map((doc) => String(doc._id));
+			return formatApiReponse(true, `${saved.length} ${entityLabel} were added.`, report);
+		} catch (err) {
+			console.error(`bulkUpload insert failed for ${entityLabel}:`, err);
+			return formatApiReponse(false, err?.message, null);
+		}
 	}
 
 	async delete(req) {

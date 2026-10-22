@@ -173,11 +173,8 @@ class QuestionDao extends BaseDao {
             marksPerQuestion: q.marksPerQuestion || q.marks || 1,
             options: sanitizeOptions(q.options),
             pairs: q.pairs || [],
-            items: q.items || [],
             keyAnswer: q.keyAnswer || q.keyanswer || q.answer || "",
             answer: q.answer || q.keyAnswer || q.keyanswer || "",
-            correctOrderById: q.correctOrderById || [],
-            correctOrderIndices: q.correctOrderIndices || [],
             chapter: q.chapter
                 ? {
                     chapterNumber: q.chapter.chapterNumber,

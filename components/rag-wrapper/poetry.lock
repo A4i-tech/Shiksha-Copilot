@@ -1300,23 +1300,6 @@ typing-inspect = ">=0.8.0"
 wrapt = "*"
 
 [[package]]
-name = "llama-index-embeddings-azure-openai"
-version = "0.3.9"
-description = "llama-index embeddings azure openai integration"
-optional = false
-python-versions = "<4.0,>=3.9"
-groups = ["main"]
-files = [
-    {file = "llama_index_embeddings_azure_openai-0.3.9-py3-none-any.whl", hash = "sha256:264702281d871471dd4e5e644536257f144cbdd1bcf85aa32618454911896113"},
-    {file = "llama_index_embeddings_azure_openai-0.3.9.tar.gz", hash = "sha256:f5e0d143b6ff9c0a5e4f3b62dfaa5c9382934a3ef13fdd71a42ebbf5639de195"},
-]
-
-[package.dependencies]
-llama-index-core = ">=0.12.0,<0.13"
-llama-index-embeddings-openai = ">=0.3.0,<0.4"
-llama-index-llms-azure-openai = ">=0.3.0,<0.4"
-
-[[package]]
 name = "llama-index-embeddings-openai"
 version = "0.3.1"
 description = "llama-index embeddings openai integration"
@@ -1363,24 +1346,6 @@ files = [
 [package.dependencies]
 deprecated = ">=1.2.18"
 pydantic = ">=2.11.5"
-
-[[package]]
-name = "llama-index-llms-azure-openai"
-version = "0.3.4"
-description = "llama-index llms azure openai integration"
-optional = false
-python-versions = "<4.0,>=3.9"
-groups = ["main"]
-files = [
-    {file = "llama_index_llms_azure_openai-0.3.4-py3-none-any.whl", hash = "sha256:296a9dfd2d7ee2af9151e18f0df9801db376d4a7bfd5d260eda5ddf36adcbac2"},
-    {file = "llama_index_llms_azure_openai-0.3.4.tar.gz", hash = "sha256:ca6019c7a1721be19ccbdb993bf36fa0d24c0a0eaa3378601c5d6f8e47ebf1d9"},
-]
-
-[package.dependencies]
-azure-identity = ">=1.15.0,<2"
-httpx = "*"
-llama-index-core = ">=0.12.0,<0.13"
-llama-index-llms-openai = ">=0.4.0,<0.5"
 
 [[package]]
 name = "llama-index-llms-openai"
@@ -3238,4 +3203,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "82e92338226ed0f472acbdc9aac7150870678e42ab46c3973498d4aa5b4cbf0a"
+content-hash = "5646c1fb5d692ef4e84eb6783f6edd47a4f993208029e2668b53f2c41b6fbf41"

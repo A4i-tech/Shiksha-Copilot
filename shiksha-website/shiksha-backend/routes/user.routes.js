@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const { isAuthenticated, requireAnyPermission, requirePermission } = require("../middlewares/auth.js");
-const uploadMiddleware = require("../middlewares/uploadMiddleware.js");
+const { excelUpload, profileImageUpload } = require("../middlewares/uploadMiddleware.js");
 const UserController = require("../controllers/user.controller.js");
 const {
 	validateUserCreate,
@@ -97,7 +97,7 @@ router.post(
 "/users/import",
 	isAuthenticated,
 	requirePermission("user.import"),
-	uploadMiddleware,
+	excelUpload,
 	asyncMiddleware(userController.bulkUpload.bind(userController))
 );
 
@@ -105,7 +105,7 @@ router.post(
 	"/profile/image",
 	isAuthenticated,
 	requirePermission("profile.edit"),
-	uploadMiddleware,
+	profileImageUpload,
 	asyncMiddleware(userController.uploadProfileImage.bind(userController))
 );
 

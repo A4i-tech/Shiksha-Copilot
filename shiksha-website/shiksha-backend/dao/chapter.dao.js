@@ -75,7 +75,7 @@ class ChapterDao extends BaseDao {
 		}));
 	}
 
-	async getAll(page = 1, limit = 10, filters = {}, sort = {}) {
+	async getAll(page = 1, limit = 10, filters = {}, sort = {}, status = {}) {
 		let processedFilters = {};
 
 		// for kannada medium english subject negating medium filter to refect english lp from english medium
@@ -88,10 +88,15 @@ class ChapterDao extends BaseDao {
 				processedFilters[key] = Number(filters[key]);
 			} else if (key == "subject") {
 				processedFilters["subject.subjectName"] = filters[key];
+			} else if (key === "isDeleted") {
+				processedFilters[key] = BaseDao.parseIsDeletedFilter(filters[key]);
 			} else {
 				processedFilters[key] = filters[key];
 			}
 		}
+
+		// `status` (from the caller's includeDeleted param) wins over the plain filters.
+		Object.assign(processedFilters, status);
 
 		const results = await chapterAggregation.getChapterFilter(
 			page,

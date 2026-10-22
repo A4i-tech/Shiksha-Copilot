@@ -4,7 +4,10 @@ const RegeneratedLessonResourceDao = require("../dao/regenerate.log.dao");
 const formatApiResponse = require("../helper/response");
 const regenerateLessonPlan = require("../services/copilot.bot.service");
 const Chapter = require("../models/chapter.model");
+const MasterResource = require("../models/master.resource.model");
 const MasterSubjectDao = require("../dao/master.subject.dao");
+const { checkRow } = require("../validations/master.resource.bulk.validation");
+const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { createData, subjectRegex, titleRegex, mediumRegex, boardRegex, standardRegex, orderNumberRegex } = require("../helper/data.helper");
 const { uniqueSubsets } = require("../helper/filter.helper");
 const formatApiReponse = require("../helper/response");
@@ -22,6 +25,84 @@ class MasterResourceManager extends BaseManager {
 		this.regenerateResourceLog = new RegeneratedLessonResourceDao();
 		this.masterSubjectDao = new MasterSubjectDao();
 		this.chapterDao = new ChapterDao();
+	}
+
+	async bulkUpload(resources, dryRun = false, userId) {
+		try {
+			if (!Array.isArray(resources) || resources.length === 0) {
+				return formatApiReponse(
+					false,
+					"resources must be a non-empty array.",
+					{}
+				);
+			}
+
+			// chapterId can be a chapter _id or its topics, resolved by board, medium and class.
+			const allChapters = await Chapter.find({
+				isDeleted: { $ne: true },
+			})
+				.select("board medium standard topics")
+				.lean();
+
+			const chapterResolver = buildIdOrNameResolver(allChapters, (chapter) => [
+				`${String(chapter.board).toLowerCase()}|${String(chapter.medium).toLowerCase()}|${chapter.standard}|${String(chapter.topics).trim().toLowerCase()}`,
+			]);
+
+			const resolveChapter = (resource) =>
+				chapterResolver.resolve(
+					resource?.chapterId,
+					typeof resource?.chapterId === "string"
+						? `${String(resource?.board).toLowerCase()}|${String(resource?.medium).toLowerCase()}|${resource?.class}|${resource.chapterId.trim().toLowerCase()}`
+						: null
+				);
+
+			const resolvedChapters = resources.map((resource) => resolveChapter(resource));
+
+			const normalizedResources = resources.map((resource, index) =>
+				resolvedChapters[index]
+					? { ...resource, chapterId: String(resolvedChapters[index]._id) }
+					: resource
+			);
+
+			const rows = normalizedResources.map((resource, index) => {
+				const chapter = resolvedChapters[index];
+
+				if (!chapter) {
+					return {
+						row: index + 1,
+						identity: resources[index]?.lessonName ?? "",
+						errors: [
+							`chapterId "${resources[index]?.chapterId}" matches no active chapter for board "${resource?.board}", medium "${resource?.medium}" and class ${resource?.class}. Give the chapter's id, or its exact name.`,
+						],
+						warnings: [],
+					};
+				}
+
+				const { errors, warnings } = checkRow(resource);
+
+				return {
+					row: index + 1,
+					identity: resource?.lessonName ?? "",
+					errors,
+					warnings,
+				};
+			});
+
+			const documents = normalizedResources.map((resource) =>
+				this.withDraftMetadata({ ...resource }, userId)
+			);
+
+			return this.finalizeBulkUpload({
+				Model: MasterResource,
+				rows,
+				documents,
+				dryRun,
+				entityLabel: "resources",
+			});
+		} catch (err) {
+			console.error("bulkUpload failed:", err);
+			return formatApiReponse(false, err?.message, null);
+		}
 	}
 
 	async updateMasterResource(id, updates) {

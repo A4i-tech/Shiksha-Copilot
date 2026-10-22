@@ -203,23 +203,10 @@ class QuestionBankController extends BaseController {
   }
 
   async uploadBulkQuestions(req, res) {
-    if (!req.file) {
-      return res
-        .status(400)
-        .json({ success: false, message: "No file uploaded." });
-    }
+    const master = req.body?.chapters ? req.body : { chapters: req.body };
 
-    const fileBuffer = req.file.buffer.toString("utf-8");
-    const jsonData = JSON.parse(fileBuffer);
-    const master = jsonData?.chapters ? jsonData : { chapters: jsonData };
+    const result = await this.manager.insertChaptersAndQuestions([master]);
 
-    const result = await this.manager.insertChaptersAndQuestions([
-      master,
-    ]);
-
-    if (!result.success) {
-      return handleError(result, res);
-    }
     return res.status(200).json(result);
   }
 }

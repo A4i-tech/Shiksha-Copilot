@@ -25,9 +25,12 @@ const createPresentationProxy = target => createProxyMiddleware({
 				proxyReq.removeHeader("X-User-ID");
 			}
 		},
-		proxyRes: (proxyRes) => {
-			proxyRes.headers["x-accel-buffering"] = "no";
-			proxyRes.headers["cache-control"] = "no-cache";
+		// SSE only: unbuffered delivery costs throughput, and no-cache would defeat the download's own immutable ETag
+		proxyRes: proxyRes => {
+			if (proxyRes.headers["content-type"] === "text/event-stream") {
+				proxyRes.headers["x-accel-buffering"] = "no";
+				proxyRes.headers["cache-control"] = "no-cache";
+			}
 		}
 	}
 });

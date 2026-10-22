@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const ObjectId = mongoose.Types.ObjectId;
+const { CONTENT_STATUS, CONTENT_STATUSES } = require("../constants/content-status");
 
 const lessonResourceMasterSchema = new mongoose.Schema({
 	lessonName: {
@@ -56,8 +57,24 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 	templateId:{
 		type:ObjectId,
 		ref:"LessonPlanTemplate"
-	  }
+	  },
+	isDeleted: {
+		type: Boolean,
+		default: false,
+		index: true,
+	},
+	status: {
+		type: String,
+		enum: CONTENT_STATUSES,
+		default: CONTENT_STATUS.APPROVED,
+	},
+	createdBy: {
+		type: ObjectId,
+		ref: "User",
+	},
 });
+
+lessonResourceMasterSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
 const MasterResource = mongoose.model(
 	"MasterResource",

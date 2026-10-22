@@ -23,7 +23,7 @@ class TeacherResourceFeedbackManager extends BaseManager {
 				...req.body,
 				teacherId,
 				resourceId,
-				isDeleted: { $ne: true },
+				isDeleted: false,
 			});
 
 			return formatApiReponse(

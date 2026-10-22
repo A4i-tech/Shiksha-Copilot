@@ -3,6 +3,7 @@ import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
 import { Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { TranslateService } from '@ngx-translate/core';
 import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, of } from 'rxjs';
 interface ListParams {
   currentPage: number;
@@ -42,7 +43,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
   totalItems = 0;
   tableHeaders = ['Date', 'Class', 'Subject', 'Type', 'Chapter', 'Sub Topics', 'Action'];
 
-  typeDropdownOptions: any[] = [{ name: 'Lesson Plan', value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }];
+  typeDropdownOptions: { name: string; value: string }[] = [];
   boardDropdownOptions: any[] = [];
   mediumDropdownOptions: any[] = [];
   classDropdownOptions: any[] = [];
@@ -141,7 +142,9 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     };
   }
 
-  constructor(private contentGenService: ContentGenerationService, private router: Router, public utilityservice: UtilityService) {}
+  constructor(private contentGenService: ContentGenerationService, private router: Router, public utilityservice: UtilityService, translateService: TranslateService) {
+    translateService.get('Lesson Plan').subscribe(name => this.typeDropdownOptions = [{ name, value: 'lesson' }, { name: 'Resource Plan', value: 'resource' }, { name: 'Presentation', value: 'presentation' }, { name: 'All', value: 'all' }]);
+  }
 
   ngOnInit(): void {
     const data: string = localStorage.getItem('userData') ?? '';
@@ -161,7 +164,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     if (this.classDropdownOptions.length === 1) {
       this.selectedClass = this.classDropdownOptions[0].class;
       const subjectDropdownValue = this.filterSubjectByClass(this.classDropdownOptions, this.selectedClass)[0].data;
-      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectDropdownValue);
+      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectDropdownValue, this.selectedBoard);
     }
 
     if (this.subjectDropdownOptions.length === 1) {
@@ -279,7 +282,7 @@ export class LessonContentListComponent implements OnInit, AfterViewInit, OnDest
     this.resetClassChange();
     if (val) {
       const subjectFilter = this.classDropdownOptions.filter(item => item.class === this.selectedClass);
-      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectFilter[0].data);     
+      this.subjectDropdownOptions = this.utilityservice.formatSubjectDropdown(subjectFilter[0].data, this.selectedBoard);
     }
     const params = this.getListParams();
     this.getAllList(params);

@@ -25,7 +25,7 @@ import { TranslateModule } from '@ngx-translate/core';
       <div class="border text-content rounded my-5 px-4 py-6 md:px-6 md:py-8 bg-white">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h2 class="text-lg font-semibold text-content">{{ 'Role List' | translate }}</h2>
-          <button type="button" class="btn-primary h-9 w-full sm:w-auto px-4" (click)="startCreate()">
+          <button type="button" class="btn-primary h-9 w-full sm:w-auto px-4" [disabled]="!canManage" (click)="startCreate()">
             <div class="flex items-center justify-center gap-2">
               <img src="assets/icons/E add.svg" alt="" class="w-4 h-4">
               <span>{{ 'Add Role' | translate }}</span>
@@ -50,11 +50,12 @@ import { TranslateModule } from '@ngx-translate/core';
             <label class="form-control-label">{{ 'Permissions' | translate }}</label>
             <input type="search" class="form-control mb-3" [placeholder]="'Search' | translate" [attr.aria-label]="'Search' | translate" [value]="permissionSearch" (input)="permissionSearch = $any($event.target).value">
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-80 overflow-auto border rounded p-3">
-              <label *ngFor="let permission of filteredPermissions" class="flex gap-3 items-start text-sm border rounded p-3 bg-surface-muted">
-                <input class="mt-1" type="checkbox" [checked]="selectedPermissions.has(permission.name)" [disabled]="editing && editing.isSuperUser" (change)="togglePermission(permission.name, $event)">
+              <label *ngFor="let permission of filteredPermissions" class="flex gap-3 items-start text-sm border rounded p-3 bg-surface-muted" [class.opacity-50]="!permissionAllowed(permission)">
+                <input class="mt-1" type="checkbox" [checked]="selectedPermissions.has(permission.name)" [disabled]="editing && editing.isSuperUser || !permissionAllowed(permission)" (change)="togglePermission(permission.name, $event)">
                 <span>
                   <span class="block font-medium text-content break-all">{{ permission.name }}</span>
                   <span class="block text-xs text-content-60 mt-1">{{ permission.description }}</span>
+                  <span *ngIf="!permissionAllowed(permission)" class="inline-block mt-2 px-2 py-1 rounded bg-primary-30 text-primary text-xs font-medium">Requires {{ permission.scopes.join(', ') }} scope</span>
                 </span>
               </label>
               <p *ngIf="!filteredPermissions.length" class="md:col-span-2 xl:col-span-3 py-4 text-center text-content-60">{{ 'No items found' | translate }}</p>
@@ -63,7 +64,7 @@ import { TranslateModule } from '@ngx-translate/core';
 
           <div class="md:col-span-3 flex flex-col sm:flex-row justify-end gap-2">
             <button type="button" class="btn-outline-primary h-9 w-full sm:w-20" (click)="reset()">{{ 'Cancel' | translate }}</button>
-            <button type="submit" class="btn-primary h-9 w-full sm:w-20" [disabled]="form.invalid">
+            <button type="submit" class="btn-primary h-9 w-full sm:w-20" [disabled]="form.invalid || !canManage">
               <div class="flex items-center justify-center gap-2">
                 <img src="assets/icons/check.svg" alt="" class="w-4 h-4">
                 <span>{{ 'Save' | translate }}</span>
@@ -89,13 +90,13 @@ import { TranslateModule } from '@ngx-translate/core';
               <span class="text-sm text-content-60">{{ role.scopeType }}</span>
               <button type="button" class="text-sm text-primary underline" (click)="viewUsers(role)">{{ role.userCount ?? '...' }} {{ 'assigned users' | translate }}</button>
               <div class="flex gap-2">
-                <button class="btn-outline-primary h-9 px-3" type="button" (click)="edit(role)">
+                <button class="btn-outline-primary h-9 px-3" type="button" [disabled]="!canManage" (click)="edit(role)">
                   <div class="flex items-center justify-center gap-2">
                     <img src="assets/icons/edit_primary.svg" alt="" class="w-4 h-4">
                     <span>{{ 'Edit' | translate }}</span>
                   </div>
                 </button>
-                <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSystem" (click)="openDelete(role)">
+                <button class="btn-danger h-9 px-3" type="button" [disabled]="!canManage || role.isSystem || role.userCount !== 0" (click)="openDelete(role)">
                   <div class="flex items-center justify-center gap-2">
                     <img src="assets/icons/delete.svg" alt="" class="w-4 h-4">
                     <span>{{ 'Delete' | translate }}</span>
@@ -135,13 +136,13 @@ import { TranslateModule } from '@ngx-translate/core';
                 </td>
                 <td class="px-4 py-6 text-sm border">
                   <div class="flex items-center justify-center gap-1">
-                    <button class="btn-outline-primary h-9 px-3" type="button" (click)="edit(role)">
+                    <button class="btn-outline-primary h-9 px-3" type="button" [disabled]="!canManage" (click)="edit(role)">
                       <div class="flex items-center justify-center gap-2">
                         <img src="assets/icons/edit_primary.svg" alt="" class="w-4 h-4">
                         <span>{{ 'Edit' | translate }}</span>
                       </div>
                     </button>
-                    <button class="btn-danger h-9 px-3" type="button" [disabled]="role.isSystem" (click)="openDelete(role)">
+                    <button class="btn-danger h-9 px-3" type="button" [disabled]="!canManage || role.isSystem || role.userCount !== 0" (click)="openDelete(role)">
                       <div class="flex items-center justify-center gap-2">
                         <img src="assets/icons/delete.svg" alt="" class="w-4 h-4">
                         <span>{{ 'Delete' | translate }}</span>
@@ -159,8 +160,8 @@ import { TranslateModule } from '@ngx-translate/core';
       </div>
     </div>
 
-    <div *ngIf="selectedRole" class="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-500 bg-opacity-75 p-4" role="dialog" aria-modal="true" aria-labelledby="assigned-users-title">
-      <div class="bg-white rounded shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+    <div *ngIf="selectedRole" class="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-500 bg-opacity-75 p-4" role="dialog" aria-modal="true" aria-labelledby="assigned-users-title" (click)="closeUsers()">
+      <div class="bg-white rounded shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
         <div class="flex items-center justify-between gap-4 p-5 border-b">
           <div>
             <h2 id="assigned-users-title" class="text-xl font-semibold text-content">{{ selectedRole.name }}</h2>
@@ -226,15 +227,20 @@ export class RoleManagementComponent implements OnInit {
   assignedUserPage = 1;
   assignedUserPageSize = 10;
   form = this.fb.group({ name: ['', Validators.required], description: [''], scopeType: ['', Validators.required] });
+  canManage = this.utility.getPermission('role.manage')?.some((grant) => ['GLOBAL', 'UNBOUND'].includes(grant.scopeType)) === true;
   private baseUrl = environment.apiUrl;
 
   constructor(private http: HttpClient, private fb: FormBuilder, private utility: UtilityService) {}
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.load();
+    this.form.controls.scopeType.valueChanges.subscribe(() => this.selectedPermissions.clear());
+  }
   get filteredPermissions() {
     const query = this.permissionSearch.trim().toLowerCase();
     return query ? this.permissions.filter((permission) => `${permission.name} ${permission.description}`.toLowerCase().includes(query)) : this.permissions;
   }
+  permissionAllowed(permission: any) { return permission.scopes.includes(this.form.controls.scopeType.value); }
   load() {
     this.http.get<any>(`${this.baseUrl}/roles`).subscribe((res) => {
       this.roles = res.data.results;

@@ -7,6 +7,7 @@ import { marked } from 'marked';
 import { ClipboardService } from 'ngx-clipboard';
 import { ToastrService } from 'ngx-toastr';
 import { PermissionGrant } from 'src/app/shared/interfaces/permission.interface';
+import { TranslateService } from '@ngx-translate/core';
 
 @Injectable({
   providedIn: 'root',
@@ -21,7 +22,8 @@ export class UtilityService {
     private datePipe: DatePipe,
     private router: Router,
     private domSanitizer:DomSanitizer,
-    private clipboardService:ClipboardService
+    private clipboardService:ClipboardService,
+    private translateService: TranslateService
   ) {
     // constructor
   }
@@ -52,10 +54,14 @@ export class UtilityService {
    * @param err error
    */
   handleError(err: any) {
+    // 5xx text is never written for the user, so do not show it
+    if (err.status >= 500) {
+      return this.showError('Something went wrong on our side. Please try again in a few minutes. If this keeps happening, contact support.');
+    }
     if (Array.isArray(err.error?.error)) return this.showError(err.error.error.join(', '));
     const fallback = err.status === 401
       ? 'Unauthorized. Please login again.'
-      : err.status >= 500 ? 'Server error. Please try again later.' : 'An error occurred. Please try again.';
+      : 'An error occurred. Please try again.';
     this.showError(err.error?.message || err.error?.error || fallback);
   }
 
@@ -359,21 +365,22 @@ formatChapterDropdown(data:any){
   return formattedData    
 }
 
-formatSubjectDropdown(data:any){
+formatSubjectDropdown(data:any, board: string){
   let formattedData = data;
   if(formattedData){
     formattedData.forEach((ele:any)=>{
-      ele.displayName = this.getSubjectDisplayName(ele)
+      ele.displayName = this.getSubjectDisplayName(ele, board)
     })
   }
   return formattedData
 }
 
-getSubjectDisplayName(ele:any){
+getSubjectDisplayName(ele:any, board: string){
+  const displayName = this.translateService.instant(ele?.name, { board });
   if(ele?.sem){
-  return `${ele.name} Sem${ele.sem}`
+  return `${displayName} Sem${ele.sem}`
   }else{
-  return `${ele.name}`
+  return `${displayName}`
   }
 }
 
@@ -427,7 +434,7 @@ intToRoman(num:any) {
   return romanNumeral;
 }
 
-shuffleOptions(arr:any[]) {
+shuffleOptions<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
       const randomIndex = Math.floor(Math.random() * (i + 1));
       [arr[i], arr[randomIndex]] = [arr[randomIndex], arr[i]];

@@ -391,5 +391,348 @@ describe("MasterLessonManager", () => {
     });
   });
 
+  describe("bulkUpload", () => {
+    const validLessonPlan = {
+      name: "Mathematics-CBSE Class10 Algebra",
+      class: 10,
+      board: "CBSE",
+      medium: "English",
+      subject: "Mathematics",
+      chapterId: "507f1f77bcf86cd799439011",
+      isAll: true,
+      subTopics: [],
+      learningOutcomes: ["Understand basics"],
+      sections: [{ title: "Introduction", content: "Some content" }],
+      templateId: "507f1f77bcf86cd799439022",
+    };
+
+    let Chapter;
+    let MasterLesson;
+    let MasterSubject;
+
+    beforeEach(() => {
+      Chapter = require("../../../models/chapter.model");
+      MasterLesson = require("../../../models/master.lesson.model");
+      MasterSubject = require("../../../models/master.subject.model");
+
+      jest.spyOn(Chapter, "find").mockReturnValue({
+        lean: jest.fn().mockResolvedValue([
+          {
+            _id: "507f1f77bcf86cd799439011",
+            topics: "Algebra",
+            standard: 10,
+            board: "CBSE",
+            medium: "English",
+            subjectId: "507f1f77bcf86cd799439055",
+            subTopics: [],
+          },
+        ]),
+      });
+
+      jest.spyOn(MasterSubject, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            {
+              _id: "507f1f77bcf86cd799439055",
+              subjectName: "Mathematics",
+              name: "Mathematics",
+            },
+          ]),
+        }),
+      });
+
+      jest.spyOn(MasterLesson, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([]),
+        }),
+      });
+
+      jest.spyOn(MasterLesson, "insertMany").mockResolvedValue([
+        { _id: "607f1f77bcf86cd799439033" },
+      ]);
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should save valid lesson plans and report the inserted ids", async () => {
+      const result = await manager.bulkUpload([validLessonPlan], false);
+
+      expect(result.success).toBe(true);
+      expect(result.data.inserted).toBe(1);
+      expect(result.data.insertedIds).toEqual(["607f1f77bcf86cd799439033"]);
+      expect(MasterLesson.insertMany).toHaveBeenCalled();
+    });
+
+    it("should validate without saving when dryRun is true", async () => {
+      const result = await manager.bulkUpload([validLessonPlan], true);
+
+      expect(result.success).toBe(true);
+      expect(result.data.dryRun).toBe(true);
+      expect(result.data.inserted).toBe(0);
+      expect(MasterLesson.insertMany).not.toHaveBeenCalled();
+    });
+
+    it("should fail the whole file and save nothing when a row is invalid", async () => {
+      const invalid = { ...validLessonPlan, name: undefined };
+
+      const result = await manager.bulkUpload([invalid], false);
+
+      expect(result.success).toBe(false);
+      expect(result.data.invalid).toBe(1);
+      expect(MasterLesson.insertMany).not.toHaveBeenCalled();
+    });
+
+    it("should flag a chapterId that matches no chapter", async () => {
+      Chapter.find = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
+
+      const result = await manager.bulkUpload([validLessonPlan], false);
+
+      expect(result.success).toBe(false);
+      expect(result.data.rows[0].errors.some((e) => e.includes("matches no chapter"))).toBe(
+        true
+      );
+    });
+
+    it("should resolve a chapterId given as the chapter name, using the row's board/medium/class", async () => {
+      const result = await manager.bulkUpload(
+        [{ ...validLessonPlan, chapterId: "algebra" }],
+        false
+      );
+
+      expect(result.success).toBe(true);
+      expect(MasterLesson.insertMany).toHaveBeenCalledWith(
+        [expect.objectContaining({ chapterId: "507f1f77bcf86cd799439011" })],
+        { ordered: true }
+      );
+    });
+
+    it("should flag a lesson plan that already exists for the same chapter and subtopic set", async () => {
+      MasterLesson.find = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            {
+              _id: "707f1f77bcf86cd799439044",
+              chapterId: "507f1f77bcf86cd799439011",
+              isAll: true,
+              subTopics: [],
+              isDeleted: false,
+            },
+          ]),
+        }),
+      });
+
+      const result = await manager.bulkUpload([validLessonPlan], false);
+
+      expect(result.success).toBe(false);
+      expect(result.data.rows[0].errors.some((e) => e.includes("already exists"))).toBe(true);
+    });
+
+    it("should warn about a soft-deleted lesson plan with the same identity", async () => {
+      MasterLesson.find = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            {
+              _id: "807f1f77bcf86cd799439055",
+              chapterId: "507f1f77bcf86cd799439011",
+              isAll: true,
+              subTopics: [],
+              isDeleted: true,
+              status: "approved",
+            },
+          ]),
+        }),
+      });
+
+      const result = await manager.bulkUpload([validLessonPlan], false);
+
+      expect(result.success).toBe(true);
+      expect(result.data.rows[0].warnings.some((w) => w.includes("deleted lesson plan"))).toBe(
+        true
+      );
+    });
+
+    it("should flag a class mismatch against the chapter", async () => {
+      const mismatched = { ...validLessonPlan, class: 9 };
+
+      const result = await manager.bulkUpload([mismatched], false);
+
+      expect(result.success).toBe(false);
+      expect(result.data.rows[0].errors.some((e) => e.includes("class is"))).toBe(true);
+      expect(MasterLesson.insertMany).not.toHaveBeenCalled();
+    });
+
+    it("should flag a board mismatch against the chapter", async () => {
+      const mismatched = { ...validLessonPlan, board: "ICSE" };
+
+      const result = await manager.bulkUpload([mismatched], false);
+
+      expect(result.success).toBe(false);
+      expect(result.data.rows[0].errors.some((e) => e.includes("board is"))).toBe(true);
+      expect(MasterLesson.insertMany).not.toHaveBeenCalled();
+    });
+
+    it("should flag a medium mismatch against the chapter", async () => {
+      const mismatched = { ...validLessonPlan, medium: "Hindi" };
+
+      const result = await manager.bulkUpload([mismatched], false);
+
+      expect(result.success).toBe(false);
+      expect(result.data.rows[0].errors.some((e) => e.includes("medium is"))).toBe(true);
+      expect(MasterLesson.insertMany).not.toHaveBeenCalled();
+    });
+
+    it("should flag subTopics that are not subtopics of the chapter", async () => {
+      const mismatched = { ...validLessonPlan, subTopics: ["Trigonometry"] };
+
+      const result = await manager.bulkUpload([mismatched], false);
+
+      expect(result.success).toBe(false);
+      expect(
+        result.data.rows[0].errors.some((e) => e.includes("is not a subtopic of the chapter"))
+      ).toBe(true);
+      expect(MasterLesson.insertMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("activate (restore)", () => {
+    let MasterLesson;
+    const deletedLessonPlan = {
+      _id: "lesson-1",
+      chapterId: "507f1f77bcf86cd799439011",
+      isAll: false,
+      subTopics: ["Linear equations"],
+      isDeleted: true,
+      status: "approved",
+    };
+
+    beforeEach(() => {
+      MasterLesson = require("../../../models/master.lesson.model");
+
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue(deletedLessonPlan),
+      });
+
+      manager.dao.activate = jest.fn().mockResolvedValue({ ...deletedLessonPlan, isDeleted: false });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("refuses to restore a lesson plan that is not itself deleted-and-approved, such as a draft", async () => {
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ ...deletedLessonPlan, status: "draft" }),
+      });
+
+      const result = await manager.activate({ params: { id: "lesson-1" } });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/cannot be restored/);
+      expect(manager.dao.activate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("approve", () => {
+    let MasterLesson;
+    const reviewLessonPlan = {
+      _id: "lesson-1",
+      chapterId: "507f1f77bcf86cd799439011",
+      isAll: false,
+      subTopics: ["Linear equations"],
+      isDeleted: true,
+      status: "under_review",
+    };
+
+    beforeEach(() => {
+      MasterLesson = require("../../../models/master.lesson.model");
+
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue(reviewLessonPlan),
+      });
+
+      jest.spyOn(MasterLesson, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
+      });
+
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue({
+        ...reviewLessonPlan,
+        status: "approved",
+        isDeleted: false,
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("refuses to approve a lesson plan that is not ready for review, such as a draft", async () => {
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue({ ...reviewLessonPlan, status: "draft" }),
+      });
+
+      const result = await manager.approve({ params: { id: "lesson-1" } });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/cannot be approved/);
+      expect(MasterLesson.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it("reports a clear failure when the lesson plan's status changed before the update landed", async () => {
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue(null);
+
+      const result = await manager.approve({ params: { id: "lesson-1" } });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/changed before the approval finished/);
+    });
+  });
+
+  describe("adminUpdate", () => {
+    let MasterLesson;
+    const draftLessonPlan = {
+      _id: "lesson-1",
+      chapterId: "507f1f77bcf86cd799439011",
+      isAll: false,
+      subTopics: ["Linear equations"],
+      isDeleted: true,
+      status: "draft",
+    };
+
+    beforeEach(() => {
+      MasterLesson = require("../../../models/master.lesson.model");
+
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({
+        lean: jest.fn().mockResolvedValue(draftLessonPlan),
+      });
+
+      jest.spyOn(MasterLesson, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
+      });
+
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue({
+        ...draftLessonPlan,
+        subTopics: ["Linear equations", "Quadratic equations"],
+      });
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("refuses to edit a lesson plan that is not a draft or under review, such as an approved one", async () => {
+      jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue(null);
+
+      const result = await manager.adminUpdate({
+        params: { id: "lesson-1" },
+        body: { subTopics: ["Linear equations", "Quadratic equations"] },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/not found or has been deleted/);
+    });
+  });
+
   // Removed: _create5ETablePayload test - requires restructureCheckListforLLM helper function mock
 });

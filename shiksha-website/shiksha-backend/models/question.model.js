@@ -1,5 +1,6 @@
 'use strict';
 const mongoose = require('mongoose');
+const { CONTENT_STATUS, CONTENT_STATUSES } = require('../constants/content-status');
 
 // ---- sub-schemas ----
 const OptionSchema = new mongoose.Schema(
@@ -10,11 +11,11 @@ const OptionSchema = new mongoose.Schema(
   { _id: false }
 );
 
+// value1/value2 match MatchingListQuestion in question_paper.py; the pairing itself is the answer.
 const PairSchema = new mongoose.Schema(
   {
-    left: { type: String },
-    right: { type: String },
-    keyAnswer: { type: String },
+    value1: { type: String },
+    value2: { type: String },
   },
   { _id: false }
 );
@@ -46,23 +47,11 @@ function normalizeOptions(arr) {
 function normalizePairs(arr) {
   if (!Array.isArray(arr)) return [];
   return arr
-    .filter((p) => p && (p.left || p.right))
+    .filter((p) => p && (p.value1 || p.value2))
     .map((p) => ({
-      left: String(p.left ?? ''),
-      right: String(p.right ?? ''),
-      keyAnswer: p.keyAnswer ? String(p.keyAnswer) : undefined,
+      value1: String(p.value1 ?? ''),
+      value2: String(p.value2 ?? ''),
     }));
-}
-
-function normalizeItems(arr) {
-  if (!Array.isArray(arr)) return [];
-  return arr
-    .map((x) =>
-      typeof x === 'string'
-        ? x
-        : (x && (x.question || x.text)) ? String(x.question || x.text) : ''
-    )
-    .filter(Boolean);
 }
 
 // ---- main schema ----
@@ -88,10 +77,11 @@ const QuestionSchema = new mongoose.Schema(
 
     options: { type: [OptionSchema], default: [] },
     pairs: { type: [PairSchema], default: [] },
-    items: { type: [String], default: [] },
 
-    correctOrderById: { type: [Number], default: [] },
-    correctOrderIndices: { type: [Number], default: [] },
+    // Soft delete: admin routes set this instead of removing the doc because generated papers still reference it.
+    isDeleted: { type: Boolean, default: false, index: true },
+    status: { type: String, enum: CONTENT_STATUSES, default: CONTENT_STATUS.APPROVED },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true, strict: true }
 );
@@ -104,12 +94,12 @@ QuestionSchema.index({
 QuestionSchema.index({ marksPerQuestion: 1, difficulty: 1, answerType: 1 });
 // Full text search - added groupHeading
 QuestionSchema.index({ text: 'text', 'chapter.title': 'text', groupHeading: 'text' });
+QuestionSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
 
 // Sanitize before save
 QuestionSchema.pre('validate', function (next) {
   this.options = normalizeOptions(this.options);
   this.pairs = normalizePairs(this.pairs);
-  this.items = normalizeItems(this.items);
   next();
 });
 
@@ -124,9 +114,6 @@ QuestionSchema.pre('findOneAndUpdate', function (next) {
   }
   if (setObj.pairs !== undefined) {
     setObj.pairs = normalizePairs(setObj.pairs);
-  }
-  if (setObj.items !== undefined) {
-    setObj.items = normalizeItems(setObj.items);
   }
 
   // push back into update

@@ -16,4 +16,5 @@ module.exports = {
   forceExit: true,
   detectOpenHandles: false,
   testTimeout: 30000,
+  setupFiles: ["<rootDir>/__tests__/setup/disableMongooseBuffering.js"],
 };

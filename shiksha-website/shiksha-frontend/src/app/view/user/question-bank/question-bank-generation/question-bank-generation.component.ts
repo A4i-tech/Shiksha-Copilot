@@ -29,6 +29,56 @@ interface MarksDistributionUnit {
   percentageDistribution: number;
 }
 
+interface RawQuestionBankObjective {
+  objective: string;
+  percentageDistribution: number;
+}
+
+interface QuestionBankObjective extends RawQuestionBankObjective {
+  name: string;
+  description: string;
+}
+
+interface QuestionDistributionEntry {
+  unitName?: string;
+  objective?: string;
+}
+
+/** One row of the question paper template (a "choice group" when answerCount < numberOfQuestions). */
+interface TemplateRow {
+  type: string | null;
+  numberOfQuestions: number | null;
+  marksPerQuestion: number | null;
+  answerCount: number | null;
+  questionDistribution: QuestionDistributionEntry[];
+}
+
+/** A candidate question drawn from the LBA or AI pool for the picker/preview. */
+interface PoolQuestion {
+  _id: string;
+  type: string;
+  marks: number;
+  source?: string;
+  heading?: string;
+  unitName?: string;
+  objective?: string;
+  text?: unknown;
+  options?: unknown;
+  keyAnswer?: string;
+  value1?: string;
+  value2?: string;
+}
+
+/** Grouped questions for one (type, marksPerQuestion) section when building the final paper payload. */
+interface PaperSection {
+  type: string;
+  heading?: string;
+  marksPerQuestion: number;
+  numberOfQuestions: number;
+  answerCount?: number;
+  questions: PoolQuestion[];
+}
+
 @Component({
   selector: 'app-question-bank-generation',
   templateUrl: './question-bank-generation.component.html',
@@ -43,9 +93,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   teacherProfile: any;
   preferredLanguage!: string;
 
-  allAvailableQuestions: any[] = [];
+  allAvailableQuestions: PoolQuestion[] = [];
   isLoadingQuestions: boolean = false;
-  finalSelectedQuestions: any[] = [];
+  finalSelectedQuestions: PoolQuestion[] = [];
 
   boardDropdownOptions: any[] = [];
   mediumDropdownOptions: any[] = [];
@@ -59,6 +109,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   paperQuestionTypes: any[] = [];
   hasSubtopics: boolean = false;
   sourceHelpOpen = false;
+  requiredQuestionsHelpOpen = false;
   pickerOpen = false;
 
   boardDropdownconfig: DropDownConfig = { isBackground: true, placeHolderTxt: 'Board', fieldName: 'Board', bindLabel: 'board', bindValue: 'board', required: true, clearableOff: true };
@@ -71,7 +122,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   questionTypeOptions: { name: string; value: string }[] = [];
   chapterOptions: { name: string }[] = [];
-  objectiveOptions: { objective: string; name: string }[] = [];
+  objectiveOptions: { objective: string; name: string; description: string }[] = [];
+  objectiveLabels: Record<string, string> = {};
   questionTypeConfig: DropDownConfig = {
     isBackground: false, placeHolderTxt: 'Select Type',
     bindLabel: 'name', bindValue: 'value', required: true, clearableOff: true,
@@ -82,7 +134,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   };
   objectiveConfig: DropDownConfig = {
     isBackground: false, placeHolderTxt: 'Objective',
-    bindLabel: 'name', bindValue: 'objective', required: true, clearableOff: true,
+    bindLabel: 'name', bindValue: 'objective', showDescription: true, required: true, clearableOff: true,
   };
 
   questionBankTypes: any = [
@@ -90,8 +142,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     { value: 'multiChapter', name: 'Multiple Chapters' },
   ];
   questionBankTypeValue = 'singleChapter';
-  questionBankObjectives: any[] = [];
-  initialQuestionBankObjectives: any[] = [];
+  questionBankObjectives: QuestionBankObjective[] = [];
+  initialQuestionBankObjectives: QuestionBankObjective[] = [];
 
   totalMarks = 0;
   totalPercentage = 100;
@@ -105,18 +157,18 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   stepNames = ['Configuration', 'Template', 'Blue Print', 'Preview'];
 
   questionBankBluePrintData!: any[];
-  templateData: any[] = [];
+  templateData: TemplateRow[] = [];
   totalTemplateMarks = 0;
 
   selectedQuestionsMarks: number = 0;
-  selectedQuestions: any[] = [];
+  selectedQuestions: PoolQuestion[] = [];
   private previewBlueprint = '';
   stepArray = Array(this.totalSteps).fill(0)
 
   constructor(
     private fb: FormBuilder,
     public utilityservice: UtilityService,
-    private translateService: TranslateService,
+    public translateService: TranslateService,
     private questionBankService: QuestionBankService,
     private router: Router,
     private idleService: IdleService,
@@ -313,7 +365,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         }
       });
       this.subjectDropdownOptions = Array.from(subjectMap.entries())
-        .map(([name, value]) => ({ name, value }))
+        .map(([name, value]) => ({ name: this.translateService.instant(name, { board: this.f.board.value }), value, canonicalName: name }))
         .sort((a, b) => a.name.localeCompare(b.name));
       this.setPreferredLanguage();
     }
@@ -342,6 +394,16 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     return formatted.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()).trim();
   }
 
+  applyObjectiveLabels(objectives: RawQuestionBankObjective[], board: string, subjectName: string): QuestionBankObjective[] {
+    return (objectives || []).map(obj => {
+      return {
+        ...obj,
+        name: this.translateService.instant(obj.objective, { board, subject: subjectName }),
+        description: this.translateService.instant(`${obj.objective} description`, { board, subject: subjectName }),
+      };
+    });
+  }
+
   onSubjectChange(val: any) {
     this.resetSubjectChange();
     if (val) {
@@ -351,7 +413,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
       // Extract details from selection
       const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === val.value);
-      const subjectName = selectedSubjectObj.name;
+      const subjectName = selectedSubjectObj.canonicalName;
       const subjectId = selectedSubjectObj.value;
 
       this.isLoadingQuestions = true;
@@ -364,8 +426,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       ).subscribe({
         next: ({ config, chapters }: any) => {
           this.paperQuestionTypes = config.questionTypes;
-          this.questionBankObjectives = structuredClone(config.objectives);
-          this.initialQuestionBankObjectives = structuredClone(config.objectives);
+          this.questionBankObjectives = this.applyObjectiveLabels(structuredClone(config.objectives), board, subjectName);
+          this.initialQuestionBankObjectives = this.applyObjectiveLabels(structuredClone(config.objectives), board, subjectName);
           this.updateSourceOptions(config.questionSources);
           this.chapterDropdownOptions = chapters.map((ch: any) => ({
             ...ch,
@@ -459,41 +521,71 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     const availableTypes = this.availableQuestionTypes();
     this.questionTypeOptions = availableTypes
       .map((type: any) => ({ name: this.translateService.instant(type.label), value: type.key }));
-    const rows = availableTypes
+    const rows: TemplateRow[] = availableTypes
       .map((type: any) => ({
         type: type.key,
         marksPerQuestion: Number(type.marksPerQuestion[0]),
         numberOfQuestions: 0,
+        answerCount: 0,
         questionDistribution: [],
       }));
     let remaining = this.totalMarks;
     while (true) {
-      const row = rows.filter((item: any) => item.marksPerQuestion <= remaining)
-        .sort((a: any, b: any) => a.numberOfQuestions * a.marksPerQuestion - b.numberOfQuestions * b.marksPerQuestion)[0];
+      const row = rows.filter(item => Number(item.marksPerQuestion) <= remaining)
+        .sort((a, b) => Number(a.numberOfQuestions) * Number(a.marksPerQuestion) - Number(b.numberOfQuestions) * Number(b.marksPerQuestion))[0];
       if (!row) break;
-      row.numberOfQuestions++;
-      remaining -= row.marksPerQuestion;
+      row.numberOfQuestions = this.rowQty(row) + 1;
+      remaining -= this.rowMarks(row);
     }
-    this.templateData = rows.filter((row: any) => row.numberOfQuestions);
+    rows.forEach(row => row.answerCount = row.numberOfQuestions);
+    this.templateData = rows.filter(row => row.numberOfQuestions);
     this.recalculateTemplate();
     this.currentStep = 2;
   }
 
+  /**
+   * `computeGroupAwareMarks`/`pickToTotalMarks` key groups by (type, marksPerQuestion)
+   * since questions aren't tagged with a choiceGroupId yet. Two rows sharing the same
+   * (type, marksPerQuestion) would collide into one group's cap, so block that combo here.
+   */
+  private hasDuplicateRowGroups(): boolean {
+    const seen = new Set<string>();
+    for (const row of this.templateData) {
+      const key = `${row.type}|${this.rowMarks(row)}`;
+      if (seen.has(key)) return true;
+      seen.add(key);
+    }
+    return false;
+  }
+
   createBluePrint(): void {
-    if (!this.templateData.every(row => row.type && Number(row.numberOfQuestions) && Number(row.marksPerQuestion)) || this.totalTemplateMarks !== this.totalMarks) {
+    if (!this.templateData.every(row => row.type && this.rowQty(row) && this.rowMarks(row)) || this.totalTemplateMarks !== this.totalMarks) {
       this.utilityservice.showWarning('Template marks must equal the question paper marks.');
+      return;
+    }
+    if (!this.templateData.every(row => this.rowAns(row) >= 1 && this.rowAns(row) <= this.rowQty(row))) {
+      this.utilityservice.showWarning('Answer Count must be between 1 and the Number of Questions for each row.');
+      return;
+    }
+    if (this.hasDuplicateRowGroups()) {
+      this.utilityservice.showWarning('Each Question Type + Marks combination can only be used in one row. Merge duplicate rows instead of adding another with the same type and marks.');
       return;
     }
     const payload = this.getTemplatePayload();
     payload.template = this.templateData;
-    payload.objectiveDistribution = this.questionBankObjectives;
     this.isLoadingQuestions = true;
     this.questionBankService.generateQuestionBankBluePrint(payload).pipe(
       finalize(() => this.isLoadingQuestions = false)
     ).subscribe({
       next: (response: any) => {
         this.questionBankBluePrintData = response.data;
-        this.objectiveOptions = this.questionBankObjectives.map(item => ({ objective: item.objective, name: this.translateService.instant(item.objective) }));
+        this.objectiveOptions = this.questionBankObjectives.map(item => {
+          return { objective: item.objective, name: item.name, description: item.description };
+        });
+        this.objectiveLabels = this.questionBankObjectives.reduce((acc: Record<string, string>, item) => {
+          acc[item.objective] = item.name;
+          return acc;
+        }, {});
         this.chapterOptions = this.marksDistribution.map(item => ({ name: item.unitName }));
         this.chapterConfig.disabled = this.chapterOptions.length === 1;
         this.currentStep = 3;
@@ -531,21 +623,36 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     });
   }
 
-  private pickToTotalMarks(pool: any[]): any[] {
+  private pickToTotalMarks(pool: PoolQuestion[]): PoolQuestion[] {
     const shuffled = this.utilityservice.shuffleOptions([...pool]);
     const used = new Set<string>();
-    const picked: any[] = [];
+    const picked: PoolQuestion[] = [];
+    let marks = 0;
     for (const row of this.templateData) {
-      let need = row.numberOfQuestions;
+      // Show the full pool (numberOfQuestions) so students can pick alternates,
+      // but only answerCount of them actually count toward the paper's marks.
+      let need = this.rowQty(row);
       for (const q of shuffled) {
         if (!need || used.has(q._id)) continue;
-        if (q.type === row.type && Number(q.marks) === Number(row.marksPerQuestion)) {
+        if (q.type === row.type && Number(q.marks) === this.rowMarks(row)) {
           picked.push(q); used.add(q._id); need--;
         }
       }
+      // Count only the questions actually found. A row whose pool is short must not
+      // claim its full answerCount, or the fallback fill below stops early and the
+      // paper is delivered under-populated.
+      const actualFound = this.rowQty(row) - need;
+      const requiredForRow = Math.min(this.rowAns(row), actualFound);
+      marks += requiredForRow * this.rowMarks(row);
     }
-    let marks = picked.reduce((s, q) => s + Number(q.marks), 0);
+    // Fallback fill: only from questions that don't belong to any template row's
+    // (type, marksPerQuestion) group — those groups are already fully handled above,
+    // and topping them up here would silently exceed that row's numberOfQuestions cap.
     for (const q of shuffled.filter(q => !used.has(q._id))) {
+      const belongsToRow = this.templateData.some(
+        row => row.type === q.type && this.rowMarks(row) === Number(q.marks)
+      );
+      if (belongsToRow) continue;
       if (marks + Number(q.marks) > this.totalMarks) continue;
       picked.push(q); used.add(q._id); marks += Number(q.marks);
       if (marks === this.totalMarks) break;
@@ -554,7 +661,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   /** Default paper order: lower marks first (e.g. 5-mark questions last). */
-  private sortQuestionsByMarks(questions: any[]): any[] {
+  private sortQuestionsByMarks(questions: PoolQuestion[]): PoolQuestion[] {
     return [...questions].sort((a, b) =>
       Number(a.marks) - Number(b.marks)
       || String(a.type || '').localeCompare(String(b.type || ''))
@@ -562,20 +669,41 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     );
   }
 
-  updatePreview(): void {
-    this.finalSelectedQuestions = [...this.selectedQuestions];
-    this.selectedQuestionsMarks = this.selectedQuestions.reduce((total, question) => total + Number(question.marks), 0);
+  /**
+   * Marks contributed by a set of questions, capped per choice-group (template row):
+   * only the first `answerCount` selected questions matching a row's (type, marksPerQuestion)
+   * count toward marks — the rest are alternates shown to students but not marks-bearing.
+   */
+  private computeGroupAwareMarks(questions: PoolQuestion[]): number {
+    const countByRow = new Map<TemplateRow, number>();
+    let total = 0;
+    for (const q of questions) {
+      const row = (this.templateData || []).find(
+        r => r.type === q.type && Number(r.marksPerQuestion) === Number(q.marks)
+      );
+      if (!row) { total += Number(q.marks); continue; }
+      const count = (countByRow.get(row) || 0) + 1;
+      countByRow.set(row, count);
+      const cap = this.rowAns(row);
+      if (count <= cap) total += Number(q.marks);
+    }
+    return total;
   }
 
-  onPickerSelectionChange(questions: any[]): void {
+  updatePreview(): void {
+    this.finalSelectedQuestions = [...this.selectedQuestions];
+    this.selectedQuestionsMarks = this.computeGroupAwareMarks(this.selectedQuestions);
+  }
+
+  onPickerSelectionChange(questions: PoolQuestion[]): void {
     this.selectedQuestions = [...questions];
     this.updatePreview();
   }
 
-  onPreviewReorder(questions: any[]): void {
+  onPreviewReorder(questions: PoolQuestion[]): void {
     this.selectedQuestions = questions;
     this.finalSelectedQuestions = [...questions];
-    this.selectedQuestionsMarks = questions.reduce((total, question) => total + Number(question.marks), 0);
+    this.selectedQuestionsMarks = this.computeGroupAwareMarks(questions);
   }
 
   togglePicker(): void {
@@ -593,7 +721,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
 
   addTemplateRow(): void {
-    this.templateData.push({ type: null, numberOfQuestions: null, marksPerQuestion: null, questionDistribution: [] });
+    this.templateData.push({ type: null, numberOfQuestions: null, marksPerQuestion: null, answerCount: null, questionDistribution: [] });
   }
 
   removeTemplateRow(index: number): void {
@@ -601,9 +729,33 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.recalculateTemplate();
   }
 
+  // Template rows keep numberOfQuestions/marksPerQuestion/answerCount nullable
+  // so a freshly added row renders as an empty input, not "0". These helpers
+  // give every read site a single, named place to coerce that null to a number.
+  rowQty(row: TemplateRow): number {
+    return Number(row.numberOfQuestions) || 0;
+  }
+
+  rowMarks(row: TemplateRow): number {
+    return Number(row.marksPerQuestion) || 0;
+  }
+
+  rowAns(row: TemplateRow): number {
+    return Number(row.answerCount) || 0;
+  }
+
   recalculateTemplate(): void {
-    this.totalTemplateMarks = this.templateData.reduce(
-      (total, row) => total + Number(row.numberOfQuestions || 0) * Number(row.marksPerQuestion || 0), 0);
+    this.totalTemplateMarks = this.templateData.reduce((total, row) => (
+      total + this.rowAns(row) * this.rowMarks(row)
+    ), 0);
+  }
+
+  onNumberOfQuestionsBlur(row: TemplateRow): void {
+    const numberOfQuestions = this.rowQty(row);
+    if (!this.rowAns(row) || this.rowAns(row) > numberOfQuestions) {
+      row.answerCount = numberOfQuestions;
+    }
+    this.recalculateTemplate();
   }
 
   questionTypeLabel(key: string): string {
@@ -634,11 +786,16 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.finalSelectedQuestions.forEach(q => {
       const sectionKey = `${q.type}:${Number(q.marks)}`;
       if (!sectionsMap.has(sectionKey)) {
+        const templateRow = this.templateData.find(row =>
+          row.type === q.type && this.rowMarks(row) === Number(q.marks));
         sectionsMap.set(sectionKey, {
           type: q.type,
           heading: q.heading,
           marksPerQuestion: Number(q.marks),
           numberOfQuestions: 0,
+          // No matching template row means no choice group, so every question in the
+          // section is required; numberOfQuestions is filled in below, once counted.
+          answerCount: templateRow ? Number(templateRow.answerCount) : null,
           questions: []
         });
       }
@@ -658,11 +815,15 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     });
 
     const finalSections = Array.from(sectionsMap.values());
+    // answerCount is mandatory on both the paper and its template now, so a section with
+    // no template row behind it settles at "answer all" once its questions are counted.
+    finalSections.forEach(s => { s.answerCount = s.answerCount ?? s.numberOfQuestions; });
     payload.questions = finalSections;
     payload.template = finalSections.map(s => ({
       type: s.type,
       numberOfQuestions: s.numberOfQuestions,
       marksPerQuestion: s.marksPerQuestion,
+      answerCount: s.answerCount,
       questionDistribution: s.questions.map((q: any) => ({ unitName: q.unitName, objective: q.objective }))
     }));
 
@@ -721,7 +882,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   generateAIQuestionsPool() {
     const slots = this.templateData.flatMap(row => {
       const type = this.paperQuestionTypes.find(t => t.key === row.type);
-      return Array.from({ length: Number(row.numberOfQuestions) || 0 }, () => ({
+      return Array.from({ length: this.rowQty(row) }, () => ({
         key: row.type,
         label: type?.label,
         marksPerQuestion: row.marksPerQuestion,
@@ -733,6 +894,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     payload.template = slots.map(slot => ({
       type: slot.key,
       marksPerQuestion: slot.marksPerQuestion,
+      // One slot is one question, so it is always required; this pool is only a source of
+      // candidates to pick from, the choice groups get decided on the template screen.
+      answerCount: 1,
       questionDistribution: [],
     }));
     payload.isPreview = true;
@@ -782,7 +946,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
       .filter((obj: any) => !!obj.objective);
 
     const selectedSubjectObj = this.subjectDropdownOptions.find(opt => opt.value === formVal.subject);
-    const subjectName = selectedSubjectObj ? selectedSubjectObj.name : formVal.subject;
+    const subjectName = selectedSubjectObj ? selectedSubjectObj.canonicalName : formVal.subject;
 
     let subTopicsPayload: string[] = [];
     const rawSubTopics = formVal.subTopic ? (Array.isArray(formVal.subTopic) ? formVal.subTopic : [formVal.subTopic]) : [];

@@ -3,6 +3,6 @@
   "private": true,
   "dependencies": {
     "axe-core": "^4.10.3",
-    "playwright": "^1.49.1"
+    "playwright": "^1.60.0"
   }
 }

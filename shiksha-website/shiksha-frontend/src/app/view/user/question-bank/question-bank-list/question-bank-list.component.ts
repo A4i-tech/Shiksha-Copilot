@@ -3,6 +3,7 @@ import { QuestionBankService } from '../question-bank.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { Router } from '@angular/router';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
+import { TranslateService } from '@ngx-translate/core';
 import {
   debounceTime,
   distinctUntilChanged,
@@ -84,7 +85,8 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   constructor(
     private questionBankService: QuestionBankService,
     private utilityService: UtilityService,
-    private router: Router
+    private router: Router,
+    private translateService: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -146,7 +148,10 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
         this.classdropdown.selectedItem
       )[0].data;
       this.subjectDropdownOptions =
-        this.utilityService.formatSubjecter(subjectDropdownValue);
+        this.utilityService.formatSubjecter(subjectDropdownValue).map((opt: any) => ({
+          ...opt,
+          name: this.translateService.instant(opt.name, { board: this.selectedBoard }),
+        }));
     }
 
     if (this.subjectDropdownOptions.length === 1) {
@@ -235,7 +240,10 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
         (item) => item.class === this.selectedClass
       );
 
-      this.subjectDropdownOptions = this.utilityService.formatSubjecter(subjectFilter[0].data)
+      this.subjectDropdownOptions = this.utilityService.formatSubjecter(subjectFilter[0].data).map((opt: any) => ({
+        ...opt,
+        name: this.translateService.instant(opt.name, { board: this.selectedBoard }),
+      }));
     }
     const params = this.getListParams();
     this.getAllQuestionPapers(params);
@@ -250,7 +258,10 @@ export class QuestionBankListComponent implements OnInit, AfterViewInit, OnDestr
   getAllQuestionPapers(params: any) {
     this.questionBankService.getAllQuestionBanks(params).subscribe({
       next: (res: any) => {
-        this.list = res.data.results;
+        this.list = res.data.results.map((item: any) => ({
+          ...item,
+          subjectLabel: this.translateService.instant(item.subject, { board: item.board }),
+        }));
       },
       error: (err) => {
         this.utilityService.handleError(err)

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const ChapterController = require("../controllers/chapter.controller.js");
-const MulterUploadMiddleware = require("../middlewares/multerUploadMiddleware.js");
+const jsonUploadMiddleware = require("../middlewares/jsonUploadMiddleware.js");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 
 
@@ -51,7 +51,7 @@ router.post(
 	"/chapter/update",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	MulterUploadMiddleware,
+	jsonUploadMiddleware,
 	asyncMiddleware(chapterController.updateChapter.bind(chapterController))
 )
 

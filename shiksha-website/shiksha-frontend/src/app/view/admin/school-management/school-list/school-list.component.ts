@@ -28,15 +28,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   schoolListData!: [SchoolList];
   users_of_school!: number;
 
-  schoolListTableHeaders = [
-    'DISE Code',
-    'School Name',
-    'District',
-    'Taluk',
-    'Zone',
-    'Status',
-    'Action',
-  ];
+  schoolListTableHeaders = ['DISE Code', 'School Name', 'District', 'Taluk', 'Zone', 'Status', 'Action'];
 
   districtDropdownOptions: any[] = [];
 
@@ -204,6 +196,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
    * @param selectedStateValue
    */
   setZoneDropdownValues(selectedStateValue: any) {
+    this.blockDropdownconfig.translateParams = { state: selectedStateValue };
     if (selectedStateValue) {
       this.selectedStateObj = this.utilityService.filterDropdownValues(
         this.regionsData,
@@ -516,7 +509,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
               this.modalService.showBlukUploadDialog = false;
               this.modalService.showUploadErrorDialog = true;
               }else{
-              this.utilityService.showError(err.error.message);
+              this.utilityService.handleError(err);
               }
             }
           });

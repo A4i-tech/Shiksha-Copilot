@@ -51,9 +51,10 @@
                 class="inline-flex px-3 py-0.5 sm:py-1 rounded-full capitalize"
                 [ngClass]="{
                   'text-success bg-success-50': auditLogData?.status === 'success',
-                  'text-error-a11y bg-error-50': auditLogData?.status === 'failure'
+                  'text-error-a11y bg-error-50': auditLogData?.status === 'failure',
+                  'text-content bg-warn-50': auditLogData?.status === 'in_progress'
                 }"
-              >{{ (auditLogData.status === 'success' ? 'Success' : 'Failure') | translate }}</span>
+              >{{ (auditLogData.status === 'in_progress' ? 'In Progress' : (auditLogData.status | titlecase)) | translate }}</span>
             </div>
           </div>
           <div>
@@ -68,11 +69,15 @@
             <p class="text-xs text-content-60">{{ "Log URL" | translate }}</p>
             <a
               *ngIf="auditLogData?.logUrl"
-              [href]="auditLogData?.logUrl"
+              [href]="auditLogData.logUrl"
               class="block break-all underline text-primary cursor-pointer"
-            >{{ auditLogData?.logUrl }}</a>
-            <p *ngIf="!auditLogData?.logUrl">
+            >{{ auditLogData.logUrl }}</a>
+            <p *ngIf="auditLogData?.status === 'failure'">
               {{ auditLogData?.eventType }} {{ 'Failed' | translate }}
+            </p>
+            <p *ngIf="auditLogData?.status === 'in_progress'">
+              {{ 'In Progress' | translate }}
+              · {{ auditLogData.metadata?.processedRows | number }} {{ 'rows processed' | translate }}
             </p>
           </div>
         </div>
@@ -114,12 +119,16 @@
             <td class="px-4 py-6 text-sm border w-96">
               <a
                 *ngIf="auditLogData?.logUrl"
-                [href]="auditLogData?.logUrl"
-                class="block text-nowrap whitespace-nowrap w-80 overflow-x-hidden text-ellipsis underline text-primary cursor-pointer"
-                >{{ auditLogData?.logUrl }}</a
+                [href]="auditLogData.logUrl"
+                class="block whitespace-nowrap w-80 overflow-hidden text-ellipsis underline text-primary cursor-pointer"
+                >{{ auditLogData.logUrl }}</a
               >
-              <p *ngIf="!auditLogData?.logUrl">
+              <p *ngIf="auditLogData?.status === 'failure'">
                 {{ auditLogData?.eventType }} {{ 'Failed' | translate }}
+              </p>
+              <p *ngIf="auditLogData?.status === 'in_progress'">
+                {{ 'In Progress' | translate }}
+                · {{ auditLogData.metadata?.processedRows | number }} {{ 'rows processed' | translate }}
               </p>
             </td>
             <td class="p-4 text-sm border">
@@ -128,9 +137,10 @@
                 [ngClass]="{
                   'text-success bg-success-50':
                     auditLogData?.status === 'success',
-                  'text-error-a11y bg-error-50': auditLogData?.status === 'failure'
+                  'text-error-a11y bg-error-50': auditLogData?.status === 'failure',
+                  'text-content bg-warn-50': auditLogData?.status === 'in_progress'
                 }"
-                >{{ (auditLogData.status === 'success' ? 'Success' : 'Failure') | translate }}</span
+                >{{ (auditLogData.status === 'in_progress' ? 'In Progress' : (auditLogData.status | titlecase)) | translate }}</span
               >
             </td>
           </tr>

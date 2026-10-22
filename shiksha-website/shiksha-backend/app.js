@@ -6,7 +6,9 @@ if (!globalThis.crypto) {
 const dotenv = require("dotenv");
 dotenv.config();
 
-require("applicationinsights").setup().start();
+const appInsights = require("applicationinsights");
+appInsights.setup().start();
+appInsights.defaultClient.context.tags[appInsights.defaultClient.context.keys.cloudRole] = "shiksha-backend";
 
 const express = require("express");
 const cors = require("cors");
@@ -44,6 +46,8 @@ const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
 const endlineSurveyRoutes = require('./routes/endlineSurvey.routes');
 const systemRoutes = require('./routes/system.routes.js');
 const supersetRoutes = require('./routes/superset.routes.js');
+const adminContentRoutes = require('./routes/admin.content.routes.js');
+const analyticsRoutes = require('./routes/analytics.routes.js');
 
 const app = express();
 app.disable("x-powered-by");
@@ -90,12 +94,19 @@ app.use('/api', teacherAbsentRoutes);
 app.use('/api', baselineSurveyRoutes);
 app.use('/api', endlineSurveyRoutes);
 app.use('/api', supersetRoutes);
+app.use('/api', adminContentRoutes);
+app.use('/api', analyticsRoutes);
 if (process.env.SHIKSHA_DEVTOOLS === "true") app.use("/api/devtools", require("./routes/devtools.routes"));
 
 app.use(errorMiddleware);
 
 process.on('unhandledRejection', (reason, promise) => {
-	console.log(promise, reason);
-	process.exit(1);
+	const client = require("applicationinsights").defaultClient;
+	if (client) {
+		client.trackException({ exception: reason });
+		client.flush({ callback: () => process.exit(1) });
+	} else {
+		process.exit(1);
+	}
 })
 app.listen(PORT, () => console.log(`App listening on port ${PORT}!`));

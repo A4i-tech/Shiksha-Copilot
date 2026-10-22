@@ -93,6 +93,8 @@ async function _processTemplateQuestions(template, cacheDocs, includedQuestionKe
     template.type,
     template.marksPerQuestion
   );
+  questionTypeResponse.answerCount = template.answerCount;
+  questionTypeResponse.choiceGroups = template.choiceGroups;
 
   let notFoundTemplate = { ...template };
   notFoundTemplate.questionDistribution = [];
@@ -373,6 +375,7 @@ class QuestionTypeResponse {
     this.type = type;
     this.marksPerQuestion = marksPerQuestion;
     this.numberOfQuestions = 0;
+    this.answerCount = null;
     this.questions = [];
   }
 
@@ -381,6 +384,8 @@ class QuestionTypeResponse {
       type: this.type,
       marksPerQuestion: this.marksPerQuestion,
       numberOfQuestions: this.numberOfQuestions,
+      answerCount: this.answerCount,
+      choiceGroups: this.choiceGroups,
       questions: this.questions,
     };
   }

@@ -11,18 +11,20 @@ const TestSchema = new mongoose.Schema({
   name: String,
   email: String,
   age: Number,
+  status: String,
   isDeleted: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
 
-const TestModel = mongoose.model("TestDao", TestSchema);
-
 describe("BaseDao", () => {
   let testDao;
+  let TestModel;
 
   beforeAll(async () => {
-    await setupTestDB();
+    // Own connection, not the shared default, so afterAll's close does not break other test files' model calls.
+    const connection = await setupTestDB();
+    TestModel = connection.model("TestDao", TestSchema);
     testDao = new BaseDao(TestModel);
   });
 
@@ -239,6 +241,38 @@ describe("BaseDao", () => {
       // Should now be retrievable
       const retrieved = await testDao.getById(created._id);
       expect(retrieved).toBeDefined();
+    });
+  });
+
+  describe("adminUpdate", () => {
+    it("updates a deleted draft/review row for an allowed status transition", async () => {
+      const created = await testDao.create({
+        name: "Draft",
+        status: "draft",
+        isDeleted: true,
+      });
+
+      const result = await testDao.adminUpdate(
+        created._id,
+        { status: "under_review" },
+        null,
+        true
+      );
+
+      expect(result.status).toBe("under_review");
+      expect(result.isDeleted).toBe(true);
+    });
+
+    it("keeps rejecting ordinary updates to deleted rows", async () => {
+      const created = await testDao.create({
+        name: "Draft",
+        status: "draft",
+        isDeleted: true,
+      });
+
+      await expect(
+        testDao.adminUpdate(created._id, { name: "Changed" }, null, true)
+      ).rejects.toThrow("Record not found or has been deleted");
     });
   });
 
