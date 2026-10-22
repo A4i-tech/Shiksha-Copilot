@@ -31,6 +31,12 @@ jobs:
       publish_staging: ${{ github.event_name == 'push' && github.ref_name == 'a4i/staging' }}
       publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
 
+  ci-workflow:
+    uses: ./.github/workflows/ci-workflow.yaml
+    secrets: inherit
+    with:
+      publish_latest: ${{ github.event_name == 'push' && github.ref_name == 'a4i/main' }}
+
   shiksha-coverage-summary:
     needs: [ci-api, ci-backend]
     if: always()
@@ -142,6 +148,17 @@ jobs:
       image-tag: ${{ needs.ci-backend.outputs['tag_primary'] }}
     secrets:
       AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
+
+  cd-workflow-prod:
+    name: Deploy workflow service
+    needs: ci-workflow
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    uses: ./.github/workflows/deploy-azure-webapp.yml
+    with:
+      azure-webapp-name: ${{ vars.AZURE_WEBAPP_NAME_WORKFLOW }}
+      image-tag: ${{ needs.ci-workflow.outputs['tag_primary'] }}
+    secrets:
+      AZURE_WEBAPP_PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_WORKFLOW }}
 
   cd-frontend-prod:
     needs: cd-backend-prod
@@ -439,7 +456,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, integration-api, regression-tests, performance-tests, accessibility-tests, integration-backend]
+    needs: [cicd-frontend, ci-api, ci-backend, ci-workflow, cd-workflow-prod, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, integration-api, regression-tests, performance-tests, accessibility-tests, integration-backend]
     timeout-minutes: 10
     steps:
       - name: Checkout

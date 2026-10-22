@@ -54,10 +54,14 @@ export class UtilityService {
    * @param err error
    */
   handleError(err: any) {
+    // 5xx text is never written for the user, so do not show it
+    if (err.status >= 500) {
+      return this.showError('Something went wrong on our side. Please try again in a few minutes. If this keeps happening, contact support.');
+    }
     if (Array.isArray(err.error?.error)) return this.showError(err.error.error.join(', '));
     const fallback = err.status === 401
       ? 'Unauthorized. Please login again.'
-      : err.status >= 500 ? 'Server error. Please try again later.' : 'An error occurred. Please try again.';
+      : 'An error occurred. Please try again.';
     this.showError(err.error?.message || err.error?.error || fallback);
   }
 
