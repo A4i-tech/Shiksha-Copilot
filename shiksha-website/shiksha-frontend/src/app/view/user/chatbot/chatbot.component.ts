@@ -369,12 +369,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
         }
       },
       error: (err) => {
-        if (err.status === 404) {
-          this.messages.shift();
-          this.utilityService.handleError(err);
-        } else {
-          this.utilityService.handleError(err);
-        }
+        if (err.status >= 400 && err.status < 500) this.messages.shift();
+        this.utilityService.handleError(err);
         this.isLoading = false;
       },
     });

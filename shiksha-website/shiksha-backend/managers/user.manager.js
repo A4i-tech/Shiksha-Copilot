@@ -30,7 +30,7 @@ const { uploadToStorage } = require("../services/azure.blob.service");
 async function prepareAssignments(input, actor, current, teacher, permission) {
   const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });
   const roleById = new Map(roles.map((role) => [String(role._id), role]));
-  if (roleById.size !== new Set(input.map((assignment) => assignment.roleId)).size) throw new Error("One or more roles do not exist");
+  if (roleById.size !== new Set(input.map((assignment) => assignment.roleId)).size) throw new AppError("One or more selected roles do not exist. Remove the missing role or pick an existing role and save again.", 400);
   const currentById = new Map(current.map((assignment) => [String(assignment._id), assignment]));
   const currentIds = new Set(current.map((assignment) => String(assignment._id)));
   const grants = getRolePermissions(actor.roles);
@@ -39,21 +39,21 @@ async function prepareAssignments(input, actor, current, teacher, permission) {
   const assignments = [];
   let school;
   for (const assignment of input) {
-    if (assignment._id && !currentIds.has(assignment._id)) throw new Error("Role assignment does not belong to this user");
+    if (assignment._id && !currentIds.has(assignment._id)) throw new AppError("One of the role assignments does not belong to this user. Reload the user and save again.", 400);
     const role = roleById.get(assignment.roleId);
     const existing = assignment._id && currentById.get(assignment._id);
     const unchanged = existing && String(existing.role._id) === assignment.roleId
       && (["GLOBAL", "UNBOUND"].includes(role.scopeType) ? assignment.dep == null : dependencyMatches(role.scopeType, existing.dep, assignment.dep));
-    if (superuser && role.scopeType === "GLOBAL" && assignment.dep) throw new Error("GLOBAL scope does not accept a dependency");
+    if (superuser && role.scopeType === "GLOBAL" && assignment.dep) throw new AppError("A role with GLOBAL scope cannot have a school or other dependency. Clear the dependency and save again.", 400);
     const dep = unchanged ? existing.dep : superuser && role.scopeType === "GLOBAL" ? null : await assertCanAssign(grants, role, assignment.dep, permission);
     const key = `${assignment.roleId}:${JSON.stringify(dep)}`;
-    if (seen.has(key)) throw new Error("Duplicate role assignment");
+    if (seen.has(key)) throw new AppError("This user already has that role at that scope. Remove the duplicate and save again.", 409);
     seen.add(key);
     const next = { role: role._id, dep };
     if (assignment._id) next._id = assignment._id;
     assignments.push(next);
     if (role.scopeType === "SCHOOL") {
-      if (teacher && school && String(school) !== String(dep)) throw new Error("A teacher cannot have assignments at different schools");
+      if (teacher && school && String(school) !== String(dep)) throw new AppError("A teacher can have role assignments at one school only. Keep one school and remove the others.", 400);
       if (!school) school = dep;
     }
   }
@@ -118,7 +118,7 @@ class UserManager extends BaseManager {
     const prepared = await prepareAssignments(roles, req.user, [], Boolean(profiles.teacher), "user.create");
 
     if (profiles.teacher) {
-      if (!prepared.school) throw new Error("A teacher must have one school dependency");
+      if (!prepared.school) throw new AppError("A teacher needs a role assignment at one school. Add a school role assignment and save again.", 400);
       await this.validateTeacherClassAssignments(profiles.teacher.classes, prepared.school);
     }
 
@@ -185,7 +185,7 @@ class UserManager extends BaseManager {
   async update(id, payload, actor) {
     const user = await this.dao.getById(id);
     if (!user) return formatApiReponse(false, "User not found", null);
-    if (payload.roles && String(id) === String(actor._id)) throw new Error("You cannot change your own role assignments");
+    if (payload.roles && String(id) === String(actor._id)) throw new AppError("You cannot change your own role assignments. Ask another admin to change them.", 403);
     const action = "user.edit";
     const grants = getRolePermissions(actor.roles);
     const superuser = actor.roles.some((assignment) => !assignment.role.isDeleted && assignment.role.isSuperUser);
@@ -564,7 +564,7 @@ class UserManager extends BaseManager {
   async getAll({ page, limit, filters, sort, status, permissions, permission }) {
     let processedFilters = { ...filters };
     const scopes = getPermission(permissions, permission);
-    if (!scopes) throw new Error("Access denied");
+    if (!scopes) throw new AppError("You do not have permission to do this. Ask an admin to grant the permission.", 403);
     let serverScope;
     if (filters.profileType === "admin") {
       if (scopes.some((scope) => scope.scopeType === "GLOBAL")) {

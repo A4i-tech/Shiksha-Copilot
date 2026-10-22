@@ -10,6 +10,7 @@ const {
   titleRegex,
 } = require("../helper/data.helper");
 const formatApiReponse = require("../helper/response");
+const AppError = require("../helper/app.error");
 const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { formatSubject, getSemester } = require('../helper/formatter');
 const Chapter = require("../models/chapter.model");
@@ -121,22 +122,39 @@ class ChapterManager extends BaseManager {
   async updateChapter(req) {
     let chapters = req.body;
     let updateCounter = 0;
+    const parsed = [];
+    if (!Array.isArray(chapters)) throw new AppError("Send a list of chapters.", 400);
 
     for (let i = 0; i < chapters.length; i++) {
-      let title = chapters[i]._id.match(titleRegex)[1];
-      let medium = chapters[i]._id.match(mediumRegex)[1];
-      let board = chapters[i]._id.match(boardRegex)[1];
-      let standard = chapters[i]._id.match(standardRegex)[1];
-      let orderNumber = chapters[i]._id.match(orderNumberRegex)[1];
+      const _id = chapters[i]?._id;
+      const part = (regex) => (typeof _id === "string" ? _id.match(regex)?.[1] : undefined);
+      const title = part(titleRegex);
+      const medium = part(mediumRegex);
+      const board = part(boardRegex);
+      const standard = part(standardRegex);
+      const orderNumber = part(orderNumberRegex);
+      if ([title, medium, board, standard, orderNumber].some((v) => v === undefined)) {
+        throw new AppError(`Chapter ${i + 1} has an invalid "_id". Use the format from the chapter JSON export (title, medium, board, standard and order number).`, 400);
+      }
 
-      let topicsLearningOutcomes = (chapters[i].topics || []).map(item => {
+      const topics = chapters[i].topics ?? [];
+      if (!Array.isArray(topics) || topics.some((t) => typeof t?.title !== "string")) {
+        throw new AppError(`Chapter ${i + 1} has a topic without a "title". Add a text "title" to every topic.`, 400);
+      }
+
+      parsed.push({ title, medium, board, standard, orderNumber, topics });
+    }
+
+    for (let i = 0; i < parsed.length; i++) {
+      const { title, medium, board, standard, orderNumber, topics } = parsed[i];
+      let topicsLearningOutcomes = topics.map(item => {
         return {
           title: item.title.trim(),
           learningOutcomes: item.learning_outcomes
         };
       })
 
-      let subtopics = (chapters[i].topics || []).map(e => e.title.trim());
+      let subtopics = topics.map(e => e.title.trim());
 
       let updatedChapter = await Chapter.findOneAndUpdate(
         {

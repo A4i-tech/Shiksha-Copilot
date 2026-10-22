@@ -24,6 +24,7 @@ const QuestionBankCacheSummaryDao = require("../dao/question.bank.cache.summary.
 const { addCacheJob } = require("./cache.queue.manager");
 const QuestionBankCacheSummary = require("../models/question.bank.cache.summary.model");
 const logger = require("../config/loggers");
+const AppError = require("../helper/app.error");
 const PAPER_CONFIG = require("../config/question-bank-paper-config.json");
 const { getBlobContent } = require("../services/azure.blob.service");
 const School = require("../models/school.model");
@@ -827,7 +828,7 @@ class QuestionBankManager extends BaseManager {
   async retryFailedJob(jobId) {
     console.log(`Running retry for failed job-${jobId}`);
     let failedJob = await QuestionBankCacheSummary.findById(jobId);
-    if (!failedJob) throw new Error("Job not found");
+    if (!failedJob) throw new AppError("Job not found. Check the job ID and try again.", 404);
     failedJob = failedJob.toObject();
 
     const { notFoundQuestions, processedCache, unitLevel, aiQuestionsForCache, notFoundResponse } =
@@ -860,7 +861,7 @@ class QuestionBankManager extends BaseManager {
   }
 
   async getMedia(className) {
-    if (!className) throw new Error("Class is required");
+    if (!className) throw new AppError("Class is required. Provide a class name and try again.", 400);
     const media = await this.chapterDao.getMedia(
       String(className).trim()
     );
