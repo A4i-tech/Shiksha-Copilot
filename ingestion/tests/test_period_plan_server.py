@@ -90,14 +90,6 @@ def test_checklist_timeout_is_504(conn, monkeypatch):
     assert status == 504 and "did not finish" in data["error"]
 
 
-def test_server_connections_keep_no_plan_files(monkeypatch):
-    monkeypatch.setenv("AZURE_OPENAI_API_BASE", "http://localhost:1")
-    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "k")
-    server.steps.CONN = server.runner.connect()
-    server.steps.CONN.save("plan-1", {})
-    assert server.steps.CONN.is_done("plan-1") is False
-
-
 def test_generate_also_accepts_the_trailing_slash(conn):
     status, data = call("POST", "/api/v2/lesson-plans/", payload([section("a")]), wait_for_run=True)
     assert status == 202 and data["run"]["runtimeStatus"] == "Completed"

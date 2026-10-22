@@ -91,6 +91,7 @@ parameters:
     top_k:
       type: integer
       minimum: 1
+      maximum: 50
       default: 10
       description: Number of Qdrant passages retrieved per RAG section
     force_mode:
@@ -105,6 +106,7 @@ parameters:
     concurrency:
       type: integer
       minimum: 1
+      maximum: 16
       default: 1
       description: Number of lesson plans generated at the same time
   required: [workflow_template]
@@ -439,6 +441,9 @@ steps:
       - mode: after
         expr: '[.metadata.payloads[] | select((.subtopics | length) == 0 or (.learning_outcomes | length) == 0)] | length == 0'
         message: "Payloads with empty subtopics or learning outcomes were generated"
+      - mode: after
+        expr: '([.metadata.payloads[]._id] | length) == ([.metadata.payloads[]._id] | unique | length)'
+        message: "Two payloads have the same _id. Two periods of one chapter have the same topic titles."
   - agent: section_graph
     description: Generate one lesson plan per payload from the section dependency graph
     config:

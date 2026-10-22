@@ -33,7 +33,7 @@ ROWS = [
     (None, None, None, "Christian", "LO b"),
     (None, None, 2, "Sikh", "LO c"),
     (19.0, "Rivers", 1, "Rivers intro", "LO d"),
-    (None, None, 3, "", "LO e"),
+    (None, None, 3, "", None),
 ]
 PAYLOAD_STEP = "Build one API payload per chapter/topic-group, substituting the workflow template"
 SHARED_SHAPE_STEP = "Put the extracted chapters into the shared chapter shape"
@@ -63,6 +63,12 @@ def test_periods_group_topics_and_blank_cells_continue_the_value_above():
     ]
     assert result[1]["topic_groups"] == [{"topics": ["Rivers intro"], "learning_outcomes": ["LO d"]}]
     assert {k: v for k, v in result[0].items() if k != "topic_groups"} == {"board": "BSE-TG", "medium": "english", "grade": "6", "subject": "social", "no": 18, "name": "Devotion"}
+
+
+def test_a_period_with_outcomes_but_no_topic_is_an_error_not_a_silent_drop():
+    rows = [ROWS[0], (18, "Devotion", 1, "Hindu", "LO a"), (None, None, 2, "", "LO with no topic")]
+    with pytest.raises(ValueError, match="Chapter 18, period 2 has learning outcomes but no topic"):
+        chapters(workbook(rows))
 
 
 @pytest.mark.parametrize("grade", ["6", "Grade 6", "grade 6"])

@@ -5,22 +5,37 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import httpx
 import period_plan_steps as steps
 import period_plan_tracing as tracing
 from omni_ingest.core.model import StepStatus
 from omni_ingest.core.pipeline import IngestionContext, create_pipeline_from_config
+import yaml
 from qdrant_client import AsyncQdrantClient
 
 PIPELINE = Path(__file__).with_name("period_plan.yaml")
+PARAMETERS = yaml.safe_load(PIPELINE.read_text(encoding="utf-8"))["parameters"]["properties"]
 
 
-def name_value(arg: str) -> tuple[str, str]:
+def typed(properties: dict, name: str, value: Any) -> Any:
+    """Give a value the type that the yaml declares. A string parameter stays text, so grade 6 becomes "6"."""
+    if properties.get(name, {}).get("type") != "string" or isinstance(value, str):
+        return value
+    return json.dumps(value) if isinstance(value, (dict, list)) else str(value)
+
+
+def name_value(arg: str) -> tuple[str, Any]:
     name, sep, value = arg.partition("=")
     if not sep:
         raise argparse.ArgumentTypeError(f"invalid --param '{arg}'. Use NAME=VALUE, for example top_k=5.")
-    return name, value
+    if PARAMETERS.get(name, {}).get("type") == "string":
+        return name, value
+    try:
+        return name, json.loads(value)
+    except ValueError:
+        return name, value
 
 
 def model_defaults() -> dict[str, str]:
@@ -28,6 +43,9 @@ def model_defaults() -> dict[str, str]:
 
 
 def connect(out_dir: Path | None = None) -> steps.Connections:
+    for var in ("AZURE_OPENAI_API_BASE", "AZURE_OPENAI_API_KEY"):
+        if not os.environ.get(var):
+            sys.exit(f"Environment variable {var} is not set. See the environment variable table in the README.")
     url = os.environ.get("WEBHOOK_URL")
 
     async def post_status(status: dict) -> None:
@@ -54,26 +72,19 @@ def connect(out_dir: Path | None = None) -> steps.Connections:
 
 
 async def main() -> int:
-    for var in ("AZURE_OPENAI_API_BASE", "AZURE_OPENAI_API_KEY"):
-        if not os.environ.get(var):
-            sys.exit(f"Environment variable {var} is not set. See the environment variable table in the README.")
     p = argparse.ArgumentParser()
     p.add_argument("input", type=Path, help="textbook PDF, or a learning-outcome xlsx workbook")
     p.add_argument("--workflow-template", type=Path, required=True, help="workflow template JSON file")
     p.add_argument("--out", type=Path, default=Path("period_plans"), help="folder for finished plans")
     p.add_argument("--concurrency", type=int, default=1, help="plans generated at the same time")
-    p.add_argument("--param", action="append", default=[], metavar="NAME=VALUE", type=name_value, help="override a period_plan.yaml parameter, VALUE is JSON or text")
+    p.add_argument("--param", action="append", default=[], metavar="NAME=VALUE", type=name_value, help="override a period_plan.yaml parameter. A string parameter keeps VALUE as text. Any other parameter reads VALUE as JSON.")
     args = p.parse_args()
 
     template = args.workflow_template.read_text(encoding="utf-8")
     if "_id" not in json.loads(template):
         sys.exit(f"Workflow template {args.workflow_template} has no top-level \"_id\". Add an \"_id\" to the JSON object.")
     config = {"workflow_template": template, "concurrency": args.concurrency}
-    for name, value in args.param:
-        try:
-            config[name] = json.loads(value)
-        except ValueError:
-            config[name] = value
+    config.update(args.param)
     config.setdefault("source", "xlsx" if args.input.suffix.lower() == ".xlsx" else "pdf")
     for name, value in model_defaults().items():
         config.setdefault(name, value)

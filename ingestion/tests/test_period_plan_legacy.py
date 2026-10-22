@@ -22,7 +22,7 @@ BLOB_INDEX = "indices/science/chapter_1"
         ("qdrant-backup/graph-index/x", "graph"),
     ],
 )
-def test_index_kind_follows_the_durable_agent_pool_order(path, expected):
+def test_index_kind_checks_graph_then_qdrant_then_vector(path, expected):
     assert legacy.kind(path) == expected
     assert legacy.is_legacy(path) is (expected != "qdrant")
 
@@ -93,6 +93,39 @@ def test_qdrant_chapter_never_touches_the_blob_index(tmp_path, monkeypatch):
     asyncio.run(go())
 
 
-@pytest.mark.parametrize("text, expected", [('{"a": 1}', {"a": 1}), ('```json\n{"a": 1}\n```', {"a": 1}), ("not json", "not json")])
-def test_parse_matches_the_durable_json_handling(text, expected):
-    assert legacy.parse(text) == expected
+def test_legacy_answer_that_is_not_json_fails_a_section_that_needs_json(conn, monkeypatch):
+    async def answer(path, query):
+        return "plain text answer"
+
+    monkeypatch.setattr(legacy, "answer", answer)
+    raw = payload([section("a", mode="rag", fmt={"type": "object"})])
+    raw["chapter_info"]["index_path"] = BLOB_INDEX
+    result = asyncio.run(graph()._plan(raw))
+    assert result["status"] == "failed" and "not valid JSON" in result["error"]
+
+
+@pytest.mark.parametrize("reply", ["", "504.0 GatewayTimeout"])
+def test_legacy_empty_or_gateway_answer_fails_the_plan(conn, monkeypatch, reply):
+    async def answer(path, query):
+        return reply
+
+    monkeypatch.setattr(legacy, "answer", answer)
+    raw = payload([section("a", mode="rag")])
+    raw["chapter_info"]["index_path"] = BLOB_INDEX
+    result = asyncio.run(graph()._plan(raw))
+    assert result["status"] == "failed" and "empty answer" in result["error"]
+
+
+def test_blob_containers_are_off_until_the_operator_lists_them(monkeypatch):
+    monkeypatch.delenv("LEGACY_INDEX_CONTAINERS", raising=False)
+    with pytest.raises(ValueError, match="Set LEGACY_INDEX_CONTAINERS"):
+        legacy.split_index_path(BLOB_INDEX)
+
+
+def test_only_listed_blob_containers_can_be_read(monkeypatch):
+    monkeypatch.setenv("LEGACY_INDEX_CONTAINERS", "indices, backups")
+    assert legacy.split_index_path("backups/science/chapter_1") == ("backups", "science/chapter_1")
+    with pytest.raises(ValueError, match="container 'secrets', which is not in LEGACY_INDEX_CONTAINERS"):
+        legacy.split_index_path("secrets/anything")
+    with pytest.raises(ValueError, match="must look like <container>/<path>"):
+        legacy.split_index_path("indices")
