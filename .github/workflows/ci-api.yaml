@@ -61,7 +61,15 @@ jobs:
           QDRANT_API_KEY: dummy-qdrant-key
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          poetry install
+          for i in 1 2 3; do
+            poetry install && break
+            if [ "$i" -eq 3 ]; then
+              echo "::error::poetry install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "poetry install failed (attempt $i/3), retrying in 10s..." >&2
+            sleep 10
+          done
           poetry run pytest tests/unit --cov-report=json:coverage.json
 
       - name: Extract metadata

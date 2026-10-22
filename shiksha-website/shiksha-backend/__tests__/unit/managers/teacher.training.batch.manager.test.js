@@ -69,6 +69,17 @@ describe("TeacherTrainingBatchManager.getBatches", () => {
     }));
   });
 
+  it("escapes regex characters in the teacher search", async () => {
+    TeacherTrainingBatch.distinct.mockResolvedValue([]);
+
+    await manager.getAvailableTeachers(1, 10, "a(b", [{ permission: "training.edit" }]);
+
+    const { filters } = UserManager.prototype.getAll.mock.calls.at(-1)[0];
+    const regex = new RegExp(filters.$and[1].$or[0]["identity.name"].$regex, "i");
+    expect(regex.test("a(b")).toBe(true);
+    expect(regex.test("ab")).toBe(false);
+  });
+
   it("queries batches assigned to teachers inside a non-global scope", async () => {
     scopedTeacherIds.mockResolvedValue(["teacher-123"]);
     await manager.getBatches({ _id: "user-123" }, [{ permission: "training.view", scopeType: "DISTRICT", dep: {} }]);

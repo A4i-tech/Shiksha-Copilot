@@ -1,7 +1,8 @@
 from collections import defaultdict
+from collections.abc import Callable, Sequence
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
-from app.utils.utils import local_unique_id
+from app.utils.utils import local_unique_id, validate_tex as validate_tex_string
 from pydantic import Field, create_model
 import yaml
 import asyncio
@@ -10,7 +11,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 # 1. Official OpenAI SDK (For Direct Generation & Chat)
-from langfuse import observe, propagate_attributes
+from langfuse import get_client, observe, propagate_attributes
 from langfuse.openai import AsyncOpenAI
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)
@@ -23,6 +24,7 @@ from llama_index.llms.openai import OpenAIResponses
 from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
+    Content,
     FourOptionsQuestion,
     GeneratedQuestionItem,
     GeneratedTemplate,
@@ -36,6 +38,7 @@ from app.models.question_paper import (
     QuestionTypeResponse,
     GRAMMAR_QUESTION_TYPES,
     TextQuestion,
+    readable_strings,
 )
 from app.config import settings
 
@@ -43,7 +46,18 @@ logger = logging.getLogger(__name__)
 SlotId = tuple[int, int]
 GenerationSlot = tuple[SlotId, GeneratedTemplate, QuestionDistribution]
 GeneratedSlotQuestion = tuple[SlotId, GeneratedQuestionItem]
+PostprocessFeedback = tuple[int, str]  # (index into the paper, defect description)
+QuestionPaperPostprocessor = Callable[[list[GeneratedSlotQuestion]], Sequence[PostprocessFeedback]]
 MATHS_SUBJECTS = {"math", "maths", "mathematics"}
+
+
+def validate_tex(paper: list[GeneratedSlotQuestion]) -> Sequence[PostprocessFeedback]:
+    return [
+        (i, f"TeX error encountered - fix the TeX equation (DO NOT lazily strip out TeX syntax and call it a day):\n{error}")
+        for i, record in enumerate(paper)
+        for s in readable_strings(record[1].item)
+        if (error := validate_tex_string(s)) is not None
+    ]
 
 
 class QuestionPaperService:
@@ -58,6 +72,8 @@ class QuestionPaperService:
         self.prompts = self._load_prompts()
         self.clarity_guide = self.prompts["question_clarity_guide"]
         self.maths_clarity_guide = self.prompts["maths_question_clarity_guide"]
+        self.postprocess_prompt = self.prompts["postprocess"]
+        self.postprocessors: list[QuestionPaperPostprocessor] = [validate_tex]
         self.max_questions_per_slot = 20
         self.concurrency = asyncio.Semaphore(5)
 
@@ -244,10 +260,57 @@ class QuestionPaperService:
             logger.exception(e)
             return []
 
-        return [
+        return await self._postprocess([
             (slot_id, GeneratedQuestionItem(unit_name=record.title, type=template.type, objective=question.objective, marks_per_question=template.marks_per_question, item=getattr(items, k)))
             for k, (slot_id, template, question) in slot_indexed.items()
-        ]
+        ])
+
+
+    async def _postprocess(self, paper: list[GeneratedSlotQuestion], max_iters: int = 3) -> list[GeneratedSlotQuestion]:
+        slot_indexed: dict[str, int] = {local_unique_id(i): i for i, _ in enumerate(paper)}
+        slot_keys = {i: k for k, i in slot_indexed.items()}
+        for _ in range(max_iters):
+            defects = [d for p in self.postprocessors for d in p(paper)]
+            if not defects:
+                break
+            feedback = [f"Question `{slot_keys[i]}`: {message}" for i, message in defects]
+            failing = {i for i, _ in defects}  # only ask the model about questions that still have defects
+            response_format = create_model("QuestionPaper", **{
+                k: (paper[v][1].item.__class__ | None, Field(description=f"Keep none to make no change. Holds the following question:\n{paper[v][1].item.model_dump_json()}", default=None))
+                for k, v in slot_indexed.items() if v in failing
+            })  # type: ignore[call-overload]
+            try:
+                with get_client().start_as_current_observation(as_type="span", name="question_postprocess", input=feedback, level="WARNING", status_message="Some questions underwent post-processing") as span:
+                    response = await self.client.responses.parse(
+                        model=settings.question_paper_model,
+                        instructions=self.postprocess_prompt,
+                        input="## Feedback\n\n" + "\n".join(f"- {f}" for f in feedback),
+                        text_format=response_format,
+                    )
+                    if response.output_parsed is None:
+                        raise RuntimeError("Did not retrieve a valid response from model")
+                    span.update(output={k: v for k, v in response.output_parsed if v is not None})
+                for k, v in response.output_parsed:
+                    if v is None:
+                        continue
+                    assert isinstance(k, str)
+                    assert isinstance(v, QuestionModel)
+                    paper[slot_indexed[k]][1].item = v
+            except Exception:
+                # best-effort: a failed repair attempt must not fail the request; it still counts as an iteration
+                logger.exception("Question postprocessing attempt failed; keeping questions as generated")
+        else:
+            # max_iters exhausted without a clean pass: the last repair was never validated
+            unresolved = [d for p in self.postprocessors for d in p(paper)]
+            if unresolved:
+                bad = {i for i, _ in unresolved}
+                logger.warning(
+                    "Question postprocessing left %d unresolved defect(s) after %d attempt(s); dropping %d question(s): %s",
+                    len(unresolved), max_iters, len(bad), [paper[i][0] for i in sorted(bad)],
+                )
+                paper = [q for i, q in enumerate(paper) if i not in bad]
+        return paper
+
 
     async def _generate_questions_batch_async(self, system_prompt: str, request: QuestionBankPartsGenerationRequest, existing_questions: list[str], record: _LearningRecord, slot: list[GenerationSlot]) -> list[GeneratedSlotQuestion]:
         async with self.concurrency:

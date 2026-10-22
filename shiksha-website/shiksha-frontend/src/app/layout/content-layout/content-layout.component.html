@@ -8,7 +8,9 @@
           <router-outlet></router-outlet>
         </main>
       </div>
+      <!-- zIndex must stay below the sidebar (z-50) so mobile nav stays tappable while loading -->
       <ngx-spinner
+        [zIndex]="10"
         [fullScreen]="false"
         bdColor="rgba(255, 255, 255, 0.92)"
         size="medium"

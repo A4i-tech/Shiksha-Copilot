@@ -18,7 +18,6 @@ describe("MasterResourceController", () => {
     MasterResourceManager.mockImplementation(() => ({
       updateMasterResource: jest.fn(),
       regenerateResourcePlan: jest.fn(),
-      comboScript: jest.fn(),
       getSubtopicResourceList: jest.fn(),
       generateResourcePlan: jest.fn(),
       uploadMasterResources: jest.fn(),
@@ -129,39 +128,6 @@ describe("MasterResourceController", () => {
 
       await expect(controller.regenerate(mockReq, mockRes)).rejects.toThrow("Error");
       expect(mockRes.status).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("comboScript", () => {
-    it("should execute combo script with default values", async () => {
-      const mockResult = { success: true, data: { processed: 100 } };
-      mockManager.comboScript = jest.fn().mockResolvedValue(mockResult);
-
-      await controller.comboScript(mockReq, mockRes);
-
-      expect(mockManager.comboScript).toHaveBeenCalledWith("CBSE", "English");
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-      expect(mockRes.json).toHaveBeenCalledWith(mockResult.data);
-    });
-
-    it("should execute combo script with custom values", async () => {
-      const mockResult = { success: true, data: { processed: 50 } };
-      mockManager.comboScript = jest.fn().mockResolvedValue(mockResult);
-      mockReq.body = { board: "ICSE", medium: "Hindi" };
-
-      await controller.comboScript(mockReq, mockRes);
-
-      expect(mockManager.comboScript).toHaveBeenCalledWith("ICSE", "Hindi");
-      expect(mockRes.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should handle combo script failure", async () => {
-      const mockResult = { success: false, message: "Script failed" };
-      mockManager.comboScript = jest.fn().mockResolvedValue(mockResult);
-
-      await controller.comboScript(mockReq, mockRes);
-
-      expect(handleError).toHaveBeenCalledWith(mockResult, mockRes);
     });
   });
 

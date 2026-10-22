@@ -122,8 +122,8 @@ export class ViewAssignedTeachersComponent implements OnInit, OnDestroy {
       },
       error: (error: HttpErrorResponse) => {
         console.error('Error fetching batch details:', error);
-        
-        if (error.status === 403) {
+
+        if (error.status === 400 || error.status === 403) {
           this.utilityService.handleError(error);
         } else if (error.status === 404) {
           this.utilityService.showError(this.translate.instant('Batch not found.'));
