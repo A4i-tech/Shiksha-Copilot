@@ -33,11 +33,11 @@ jobs:
           python-version: "3.11"
 
       - name: Run unit tests
-        working-directory: shiksha-api/durable-functions
+        working-directory: ingestion
         run: |
-          pip install poetry
-          poetry install
-          poetry run python -m pytest tests
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libmagic1
+          pip install omni-ingest==0.1.2 qdrant-client openai httpx aiohttp openpyxl pyyaml pytest langfuse==3.14.6
+          python -m pytest tests
 
       - name: Extract metadata
         id: meta
@@ -59,7 +59,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: shiksha-api/durable-functions/Dockerfile
+          file: ingestion/Dockerfile
           push: false
           tags: shiksha-workflow-local
           cache-from: type=gha,scope=shiksha-workflow
@@ -90,7 +90,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: shiksha-api/durable-functions/Dockerfile
+          file: ingestion/Dockerfile
           push: true
           tags: ${{ needs.build-test.outputs.image_tags }}
           cache-from: type=gha,scope=shiksha-workflow
