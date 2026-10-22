@@ -3,6 +3,7 @@ const router = express.Router();
 const axios = require("axios");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const { getPermission } = require("../helper/permission.helper.js");
+const { getSupersetAuth, resetSupersetAuth, runAnalyticsSql } = require("../helper/superset.helper.js");
 const AuditLog = require("../models/audit.log.model.js");
 
 const SUPERSET_URL = process.env.SUPERSET_URL;
@@ -12,13 +13,6 @@ const SUPERSET_DASHBOARD_UUID = process.env.SUPERSET_DASHBOARD_UUID;
 const SUPERSET_MOBILE_DASHBOARD_UUID = process.env.SUPERSET_MOBILE_DASHBOARD_UUID;
 
 const AXIOS_TIMEOUT_MS = 10_000;
-
-// In-memory cache for Superset admin session — avoids a full login per request.
-let _authCache = null; // { accessToken, csrfToken, cookieHeader, expiresAt }
-
-function _authCacheValid() {
-  return _authCache && _authCache.expiresAt > Date.now() + 30_000;
-}
 
 function sql(value) {
   return `'${String(value).replaceAll("'", "''")}'`;
@@ -42,43 +36,6 @@ function buildRlsClause(scopes) {
   });
     const validClauses = clauses.filter(Boolean);
   return validClauses.length ? `(${validClauses.join(" OR ")})` : "FALSE";
-}
-
-async function getSupersetAuth() {
-  if (_authCacheValid()) return _authCache;
-
-  const loginResp = await axios.post(`${SUPERSET_URL}/api/v1/security/login`, {
-    username: SUPERSET_ADMIN_USERNAME,
-    password: SUPERSET_ADMIN_PASSWORD,
-    provider: "db",
-    refresh: false,
-  }, { timeout: AXIOS_TIMEOUT_MS });
-  const accessToken = loginResp.data?.access_token;
-  if (!accessToken) throw new Error("Superset admin login failed — no token returned");
-
-  // Carry session cookie so Superset CSRF validation can find the session token
-  const loginCookies = loginResp.headers["set-cookie"] || [];
-  const cookieHeader = loginCookies.map((c) => c.split(";")[0]).join("; ");
-
-  const csrfResp = await axios.get(`${SUPERSET_URL}/api/v1/security/csrf_token/`, {
-    headers: { Authorization: `Bearer ${accessToken}`, Cookie: cookieHeader },
-    timeout: AXIOS_TIMEOUT_MS,
-  });
-  const csrfToken = csrfResp.data?.result;
-  if (!csrfToken) throw new Error("Failed to get CSRF token from Superset");
-
-  // Merge any new cookies set by csrf_token endpoint
-  const csrfCookies = (csrfResp.headers["set-cookie"] || []).map((c) => c.split(";")[0]);
-  const mergedCookies = [...loginCookies.map((c) => c.split(";")[0]), ...csrfCookies].join("; ");
-
-  // Cache for 4 minutes (Superset JWT default expiry is 5 min)
-  _authCache = {
-    accessToken,
-    csrfToken,
-    cookieHeader: mergedCookies,
-    expiresAt: Date.now() + 4 * 60 * 1000,
-  };
-  return _authCache;
 }
 
 // POST /api/superset/guest-token
@@ -120,7 +77,7 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
     } catch (guestErr) {
       // Admin token expired — clear cache and retry once
       if (guestErr?.response?.status === 401) {
-        _authCache = null;
+        resetSupersetAuth();
         const fresh = await getSupersetAuth();
         guestResp = await axios.post(
           `${SUPERSET_URL}/api/v1/security/guest_token/`,
@@ -169,16 +126,6 @@ router.get("/superset/district-drill", isAuthenticated, requirePermission("analy
   if (!/^[\w\s\-()',./]+$/.test(district)) return res.status(400).json({ error: "invalid district name" });
 
   try {
-    const { accessToken: adminToken, csrfToken, cookieHeader } = await getSupersetAuth();
-
-    // Look up Analytics DB id in Superset
-    const dbsResp = await axios.get(`${SUPERSET_URL}/api/v1/database/?q=(page_size:50)`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
-      timeout: AXIOS_TIMEOUT_MS,
-    });
-    const dbId = dbsResp.data.result?.find(d => d.database_name === "Analytics DB")?.id;
-    if (!dbId) throw new Error("Analytics DB not found in Superset");
-
     const analyticsScopes = getPermission(req.permissions, "analytics.view");
     const rlsClause = buildRlsClause(analyticsScopes);
     if (rlsClause === "FALSE") return res.json({ district, blocks: [] });
@@ -198,26 +145,7 @@ router.get("/superset/district-drill", isAuthenticated, requirePermission("analy
       LIMIT 50
     `;
 
-    let sqlResp;
-    try {
-      sqlResp = await axios.post(
-        `${SUPERSET_URL}/api/v1/sqllab/execute/`,
-        { database_id: dbId, sql: sqlQuery, runAsync: false },
-        { headers: { Authorization: `Bearer ${adminToken}`, "X-CSRFToken": csrfToken, Cookie: cookieHeader, Referer: SUPERSET_URL }, timeout: 30_000 },
-      );
-    } catch (e) {
-      if (e?.response?.status === 401) {
-        _authCache = null;
-        const fresh = await getSupersetAuth();
-        sqlResp = await axios.post(
-          `${SUPERSET_URL}/api/v1/sqllab/execute/`,
-          { database_id: dbId, sql: sqlQuery, runAsync: false },
-          { headers: { Authorization: `Bearer ${fresh.accessToken}`, "X-CSRFToken": fresh.csrfToken, Cookie: fresh.cookieHeader, Referer: SUPERSET_URL }, timeout: 30_000 },
-        );
-      } else throw e;
-    }
-
-    const rows = sqlResp.data?.data ?? [];
+    const rows = await runAnalyticsSql(sqlQuery);
     res.json({
       district,
       blocks: rows.map(r => ({ name: r.block_name, lpCount: Number(r.lp_count) })),
