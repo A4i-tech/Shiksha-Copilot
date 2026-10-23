@@ -9,7 +9,7 @@ A Python library for Retrieval-Augmented Generation (RAG) operations using Llama
 - **Metadata Filtering**: Filter results by document attributes across all backend types
 - **Chat Interface**: Conversational interactions with document collections and graph context
 - **OpenAI Integration**: Built-in support for OpenAI-compatible models for embeddings and completions
-- **Multiple Backends**: Support for in-memory, Azure AI Search, and property graph storage backends
+- **Multiple Backends**: Support for in-memory, Qdrant, and property graph storage backends
 - **Flexible Retrieval**: Configurable sub-retrievers for custom retrieval strategies
 - **Graph Traversal**: Follow entity relationships with configurable path depth for richer context
 
@@ -58,65 +58,6 @@ response = await rag_ops.query_index("What does the document explain?")
 chat_response = await rag_ops.chat_with_index(
     curr_message="Explain the main concepts",
     chat_history=[]
-)
-```
-
-### Azure AI Search RAG
-
-```python
-from llama_index.llms.openai import OpenAI
-from llama_index.embeddings.openai import OpenAIEmbedding
-from rag_wrapper.rag_ops.azure_ai_search_rag_ops import AzureAISearchRagOps
-
-# Initialize models
-embedding_model = OpenAIEmbedding(
-    model="text-embedding-ada-002",
-    deployment_name="your-embedding-deployment",
-    api_key="your-api-key",
-)
-
-completion_model = OpenAI(
-    model="gpt-4.1",
-    deployment_name="your-completion-deployment",
-    api_key="your-api-key", 
-)
-
-# Create Azure AI Search RAG instance (using API key)
-rag_ops = AzureAISearchRagOps(
-    search_service_name="your-search-service",
-    index_name="your-index-name",
-    emb_llm=embedding_model,
-    completion_llm=completion_model,
-    api_key="your-search-api-key",
-    use_managed_identity=False,
-    metadata_fields={"source": "documentation"}
-)
-
-# Alternative: Using managed identity (recommended for production)
-rag_ops = AzureAISearchRagOps(
-    search_service_name="your-search-service",
-    index_name="your-index-name",
-    emb_llm=embedding_model,
-    completion_llm=completion_model,
-    use_managed_identity=True,
-    metadata_fields={"source": "documentation"}
-)
-
-# Create index with text chunks
-text_chunks = ["Your Azure documentation content here..."]
-doc_ids = await rag_ops.create_index(text_chunks)
-
-# Query with metadata filtering
-response = await rag_ops.query_index(
-    "How to configure Azure AI Search?",
-    metadata_filter={"source": "documentation"}
-)
-
-# Chat with conversation history
-chat_response = await rag_ops.chat_with_index(
-    curr_message="What are the best practices?",
-    chat_history=[],
-    metadata_filter={"source": "documentation"}
 )
 ```
 
@@ -258,17 +199,6 @@ In-memory vector store implementation extending `BaseVectorIndexRagOps`:
 - Perfect for development, testing, and small-scale deployments
 - Requires `index_path`, `emb_llm`, and `completion_llm` parameters
 
-#### AzureAISearchRagOps
-Azure AI Search implementation extending `BaseVectorIndexRagOps`:
-- Cloud-based vector search with enterprise-grade scalability
-- Managed identity and API key authentication support  
-- Automatic index creation and management
-- Distributed document storage across Azure regions
-- Advanced metadata filtering capabilities with custom metadata fields
-- Production-ready with high availability and security
-- Automatic persistence (no manual `persist_index()` calls needed)
-- Requires `search_service_name`, `index_name`, `emb_llm`, and `completion_llm`
-
 ### Property Graph Implementations
 
 #### InMemGraphRagOps
@@ -408,9 +338,6 @@ class YourCustomGraphRagOps(BaseGraphIndexRagOps):
 ```bash
 # Test in-memory vector RAG operations
 pytest tests/test_in_mem_rag_ops.py -v
-
-# Test Azure AI Search vector RAG operations (requires Azure credentials)
-pytest tests/test_azure_ai_search_rag_ops.py -v
 
 # Test in-memory property graph RAG operations
 pytest tests/test_property_graph_rag_ops.py -v
