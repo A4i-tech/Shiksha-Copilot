@@ -37,68 +37,16 @@ jobs:
     uses: ./.github/workflows/shiksha-coverage-summary.yml
     secrets: inherit
 
-  cd-api:
-    needs: ci-api
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
-    uses: ./.github/workflows/deploy-render.yaml
-    with:
-      deploy-name: shiksha-api-staging
-      service-id: ${{ vars.RENDER_API_SERVICE_ID }}
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-
-  integration-api:
-    name: API Integration Tests
-    needs: [cd-api, health-check]
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install dependencies
-        working-directory: shiksha-api/app-service
-        run: |
-          pip install poetry
-          for i in 1 2 3; do
-            poetry install && break
-            if [ "$i" -eq 3 ]; then
-              echo "::error::poetry install failed after 3 attempts" >&2
-              exit 1
-            fi
-            echo "poetry install failed (attempt $i/3), retrying in 10s..." >&2
-            sleep 10
-          done
-      - name: Run integration tests
-        # --no-cov: tests run against a live deployed service; instrumentation is
-        # unavailable. The coverage badge therefore reflects unit tests only.
-        working-directory: shiksha-api/app-service
-        env:
-          SHIKSHA_BASE_URL: ${{ needs.cd-api.outputs['service-url'] }}
-        run: poetry run pytest tests/integration -m integration --no-cov
-
-  cd-backend:
-    needs: ci-backend
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
-    uses: ./.github/workflows/deploy-render.yaml
-    with:
-      deploy-name: shiksha-backend-staging
-      service-id: ${{ vars.RENDER_BACKEND_SERVICE_ID }}
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-
   cicd-frontend:
     name: Deploy frontend
-    needs: cd-backend
-    if: always() && github.event_name == 'push' && github.ref_name == 'a4i/staging' && needs.cd-backend.result == 'success'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
     with:
       deploy_name: shiksha-frontend-staging
       deploy_target: github-pages
       environment: uat
-      api_url: ${{ format('{0}/api', needs.cd-backend.outputs['service-url']) }}
+      api_url: ${{ format('{0}/api', vars.KUBE_STAGING_FRONTEND_URL) }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
 
   cd-frontend-render:
@@ -158,14 +106,14 @@ jobs:
 
   health-check:
     name: Health Check
-    needs: [cicd-frontend, cd-api, cd-backend, cd-frontend-prod, cd-api-prod, cd-backend-prod]
+    needs: [cicd-frontend, ci-api, ci-backend, cd-frontend-prod, cd-api-prod, cd-backend-prod]
     if: |
       always() &&
       github.event_name == 'push' && ((
         github.ref_name == 'a4i/staging' &&
         needs.cicd-frontend.result == 'success' &&
-        needs.cd-api.result == 'success' &&
-        needs.cd-backend.result == 'success'
+        needs.ci-api.result == 'success' &&
+        needs.ci-backend.result == 'success'
       ) || (
         github.ref_name == 'a4i/main' &&
         needs.cd-frontend-prod.result == 'success' &&
@@ -178,10 +126,9 @@ jobs:
       - name: Resolve URLs
         id: urls
         run: |
+          # Staging only checks the frontend: backend/API aren't exposed outside the cluster yet.
           if [ "${{ github.ref_name }}" = "a4i/staging" ]; then
-            echo "frontend=${{ needs.cicd-frontend.outputs.page_url }}" >> $GITHUB_OUTPUT
-            echo "backend=${{ needs.cd-backend.outputs['service-url'] }}" >> $GITHUB_OUTPUT
-            echo "api=${{ needs.cd-api.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ vars.KUBE_STAGING_FRONTEND_URL }}" >> $GITHUB_OUTPUT
           else
             echo "frontend=${{ needs.cd-frontend-prod.outputs.page_url }}" >> $GITHUB_OUTPUT
             echo "backend=${{ needs.cd-backend-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
@@ -194,11 +141,9 @@ jobs:
           FRONTEND_URL: ${{ steps.urls.outputs.frontend }}
           BACKEND_URL: ${{ steps.urls.outputs.backend }}
           API_URL: ${{ steps.urls.outputs.api }}
-          SKIP_BACKEND_BUILD_CHECK: ${{ github.ref_name == 'a4i/staging' && (vars.SKIP_RENDER_BUILD_CHECK != 'false') || 'false' }}
         run: |
           trap 'echo "Cancelled"; exit 1' TERM INT
 
-          # skip=true still requires the endpoint to answer, just skips Render's unreliable build-SHA field; flip vars.SKIP_RENDER_BUILD_CHECK to "false" once Render reports it reliably or is retired
           check_build() {
             local name=$1 url=$2 skip=${3:-false}
             local resp; resp=$(curl -sf --max-time 30 "$url") || { echo "FAIL $name unreachable"; return 1; }
@@ -213,10 +158,15 @@ jobs:
 
           for ((i=1; i<=30; i++)); do
             echo "--- Attempt $i/30 ---"
-            check_build "Frontend" "$FRONTEND_URL/health.json" && \
-            check_build "Backend"  "$BACKEND_URL/health"     "$SKIP_BACKEND_BUILD_CHECK" && \
-            check_build "API"      "$BACKEND_URL/health-api" "$SKIP_BACKEND_BUILD_CHECK" && \
-            { echo "All services on build $EXPECTED_BUILD"; exit 0; }
+            if [ "$GITHUB_REF_NAME" = "a4i/staging" ]; then
+              check_build "Frontend" "$FRONTEND_URL/health.json" && \
+              { echo "Frontend on build $EXPECTED_BUILD"; exit 0; }
+            else
+              check_build "Frontend" "$FRONTEND_URL/health.json" && \
+              check_build "Backend"  "$BACKEND_URL/health" && \
+              check_build "API"      "$BACKEND_URL/health-api" && \
+              { echo "All services on build $EXPECTED_BUILD"; exit 0; }
+            fi
             sleep 15 & wait $!
           done
 
@@ -252,11 +202,10 @@ jobs:
           path: regression_report.csv
 
   integration-backend:
-    # Required GitHub secrets: SHIKSHA_SU_PHONE (pre-seeded superuser phone number),
-    # SHIKSHA_SU_PIN (superuser PIN). SHIKSHA_BASE_URL is derived automatically from
-    # needs.cd-backend.outputs['service-url'] — not a manually configured secret.
+    # Needs pre-seeded superuser secrets SHIKSHA_SU_PHONE/SHIKSHA_SU_PIN to hit /api/devtools/*.
     name: Backend Integration Tests
-    needs: [cd-backend, health-check]
+    needs: [health-check]
+    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     concurrency:
       group: integration-backend
       cancel-in-progress: false
@@ -266,7 +215,7 @@ jobs:
       - name: Run backend E2E tests against staging
         working-directory: shiksha-website/shiksha-backend
         env:
-          SHIKSHA_BASE_URL: ${{ needs.cd-backend.outputs['service-url'] }}
+          SHIKSHA_BASE_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
           SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
           SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
         run: |
@@ -275,7 +224,7 @@ jobs:
 
   performance-tests:
     name: Performance Tests
-    needs: [cicd-frontend, cd-api, health-check]
+    needs: [cicd-frontend, health-check]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -322,9 +271,7 @@ jobs:
         timeout-minutes: 10
         run: npx --prefix tests/accessibility playwright install chromium --with-deps
 
-      # PR previews hit the pre-existing staging api/backend (cd-api/cd-backend
-      # don't run for PRs); a Render cold-start can outlast the scanner's login
-      # timeouts, so resolve their URLs and ping them awake before the scan.
+      # Render cold-start can outlast the scanner's login timeout, so ping it awake first.
       - name: Warm up backend + api
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -439,7 +386,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, cd-api, cd-backend, cd-api-prod, cd-backend-prod, cd-frontend-prod, integration-api, regression-tests, performance-tests, accessibility-tests, integration-backend]
+    needs: [cicd-frontend, ci-api, ci-backend, health-check, cd-api-prod, cd-backend-prod, cd-frontend-prod, regression-tests, performance-tests, accessibility-tests, integration-backend]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -457,11 +404,11 @@ jobs:
         id: status
         env:
           FE_RES: ${{ (needs.cicd-frontend.result != 'skipped' && needs.cicd-frontend.result) || needs.cd-frontend-prod.result }}
-          API_RES: ${{ (needs.cd-api.result != 'skipped' && needs.cd-api.result) || needs.cd-api-prod.result }}
-          BE_RES: ${{ (needs.cd-backend.result != 'skipped' && needs.cd-backend.result) || needs.cd-backend-prod.result }}
+          API_RES: ${{ needs.cd-api-prod.result }}
+          BE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.health-check.result) || needs.cd-backend-prod.result }}
           FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
-          API_URL: ${{ needs.cd-api.outputs['service-url'] || needs.cd-api-prod.outputs['service-url'] }}
-          BE_URL: ${{ needs.cd-backend.outputs['service-url'] || needs.cd-backend-prod.outputs['service-url'] }}
+          API_URL: ${{ needs.cd-api-prod.outputs['service-url'] }}
+          BE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_FRONTEND_URL) || needs.cd-backend-prod.outputs['service-url'] }}
           E2E_RES: ${{ needs.integration-backend.result }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: |
@@ -529,6 +476,9 @@ jobs:
               {"name": "Performance", "description": perf_desc, "url": os.environ.get('RUN_URL')},
               {"name": "E2E Backend", "description": e2e_desc, "url": os.environ.get('RUN_URL')}
           ]
+          # Staging api is cluster-internal only, so no API row on staging pushes
+          if os.environ.get('GITHUB_REF_NAME') == 'a4i/staging':
+              services = [s for s in services if s["name"] != "API"]
 
           with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
               f.write(f"heading_color={color}\n")
