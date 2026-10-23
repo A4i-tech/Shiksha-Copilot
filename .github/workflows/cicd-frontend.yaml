@@ -21,6 +21,16 @@ on:
         required: false
         type: string
         default: ""
+      umami_url:
+        description: "Umami analytics server base URL; required, build fails if blank"
+        required: false
+        type: string
+        default: ""
+      umami_website_id:
+        description: "Umami website ID; required, build fails if blank"
+        required: false
+        type: string
+        default: ""
       deploy_target:
         description: "Deployment target: 'github-pages' or 'azure-swa'. Leave blank to skip deployment."
         required: false
@@ -61,6 +71,8 @@ jobs:
     env:
       BACKEND_URL: ${{ inputs.api_url }}
       TURNSTILE_SITE_KEY: ${{ inputs.turnstile_site_key }}
+      UMAMI_URL: ${{ inputs.umami_url }}
+      UMAMI_WEBSITE_ID: ${{ inputs.umami_website_id }}
       SHIKSHA_COPILOT_BUILD: ${{ github.sha }}
 
     steps:
@@ -83,12 +95,16 @@ jobs:
             ${{ inputs.deploy_target == 'github-pages' && '--base-href /Shiksha-Copilot/' || '' }}
           : "${BACKEND_URL:?BACKEND_URL is empty}"
           : "${TURNSTILE_SITE_KEY:?TURNSTILE_SITE_KEY is empty}"
-          case "$BACKEND_URL$TURNSTILE_SITE_KEY" in *'"'*|*'\'*|*'$'*|*'`'*) echo "::error::value breaks JS string literal" >&2; exit 1;; esac
+          : "${UMAMI_URL:?UMAMI_URL is empty}"
+          : "${UMAMI_WEBSITE_ID:?UMAMI_WEBSITE_ID is empty}"
+          case "$BACKEND_URL$TURNSTILE_SITE_KEY$UMAMI_URL$UMAMI_WEBSITE_ID" in *'"'*|*'\'*|*'$'*|*'`'*) echo "::error::value breaks JS string literal" >&2; exit 1;; esac
           # No template, no sed, CI already knows the values.
           cat > dist/shiksha-frontend/assets/env.js <<EOF
           window.env = {
             apiUrl: "${BACKEND_URL}",
             turnstileSiteKey: "${TURNSTILE_SITE_KEY}",
+            umamiUrl: "${UMAMI_URL}",
+            umamiWebsiteId: "${UMAMI_WEBSITE_ID}",
           };
           EOF
           node --check dist/shiksha-frontend/assets/env.js
