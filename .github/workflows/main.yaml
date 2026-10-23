@@ -46,7 +46,7 @@ jobs:
       deploy_name: shiksha-frontend-staging
       deploy_target: github-pages
       environment: uat
-      api_url: ${{ format('{0}/api', vars.KUBE_STAGING_BACKEND_URL) }}
+      api_url: ${{ format('{0}/api', vars.KUBE_STAGING_FRONTEND_URL) }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
 
   cd-frontend-render:
@@ -126,10 +126,9 @@ jobs:
       - name: Resolve URLs
         id: urls
         run: |
-          # kube-dev backend /health is only reachable once infra-ops nginx proxies it (companion PR)
+          # Staging only checks the frontend: backend/API aren't exposed outside the cluster yet.
           if [ "${{ github.ref_name }}" = "a4i/staging" ]; then
-            echo "frontend=${{ needs.cicd-frontend.outputs.page_url }}" >> $GITHUB_OUTPUT
-            echo "backend=${{ vars.KUBE_STAGING_BACKEND_URL }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ vars.KUBE_STAGING_FRONTEND_URL }}" >> $GITHUB_OUTPUT
           else
             echo "frontend=${{ needs.cd-frontend-prod.outputs.page_url }}" >> $GITHUB_OUTPUT
             echo "backend=${{ needs.cd-backend-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
@@ -159,10 +158,15 @@ jobs:
 
           for ((i=1; i<=30; i++)); do
             echo "--- Attempt $i/30 ---"
-            check_build "Frontend" "$FRONTEND_URL/health.json" && \
-            check_build "Backend"  "$BACKEND_URL/health" && \
-            { [ "$GITHUB_REF_NAME" = "a4i/staging" ] || check_build "API" "$BACKEND_URL/health-api"; } && \
-            { echo "All services on build $EXPECTED_BUILD"; exit 0; }
+            if [ "$GITHUB_REF_NAME" = "a4i/staging" ]; then
+              check_build "Frontend" "$FRONTEND_URL/health.json" && \
+              { echo "Frontend on build $EXPECTED_BUILD"; exit 0; }
+            else
+              check_build "Frontend" "$FRONTEND_URL/health.json" && \
+              check_build "Backend"  "$BACKEND_URL/health" && \
+              check_build "API"      "$BACKEND_URL/health-api" && \
+              { echo "All services on build $EXPECTED_BUILD"; exit 0; }
+            fi
             sleep 15 & wait $!
           done
 
@@ -198,9 +202,7 @@ jobs:
           path: regression_report.csv
 
   integration-backend:
-    # Required GitHub secrets: SHIKSHA_SU_PHONE (pre-seeded superuser phone number),
-    # SHIKSHA_SU_PIN (superuser PIN). SHIKSHA_BASE_URL comes from the
-    # vars.KUBE_STAGING_BACKEND_URL repo variable (kube-dev staging).
+    # Needs pre-seeded superuser secrets SHIKSHA_SU_PHONE/SHIKSHA_SU_PIN to hit /api/devtools/*.
     name: Backend Integration Tests
     needs: [health-check]
     if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
@@ -213,7 +215,7 @@ jobs:
       - name: Run backend E2E tests against staging
         working-directory: shiksha-website/shiksha-backend
         env:
-          SHIKSHA_BASE_URL: ${{ vars.KUBE_STAGING_BACKEND_URL }}
+          SHIKSHA_BASE_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
           SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
           SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
         run: |
@@ -269,9 +271,7 @@ jobs:
         timeout-minutes: 10
         run: npx --prefix tests/accessibility playwright install chromium --with-deps
 
-      # PR previews hit the old Render staging api/backend (no longer redeployed
-      # by CI); a Render cold-start can outlast the scanner's login
-      # timeouts, so resolve their URLs and ping them awake before the scan.
+      # Render cold-start can outlast the scanner's login timeout, so ping it awake first.
       - name: Warm up backend + api
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -408,7 +408,7 @@ jobs:
           BE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.health-check.result) || needs.cd-backend-prod.result }}
           FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
           API_URL: ${{ needs.cd-api-prod.outputs['service-url'] }}
-          BE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_BACKEND_URL) || needs.cd-backend-prod.outputs['service-url'] }}
+          BE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_FRONTEND_URL) || needs.cd-backend-prod.outputs['service-url'] }}
           E2E_RES: ${{ needs.integration-backend.result }}
           RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         run: |
