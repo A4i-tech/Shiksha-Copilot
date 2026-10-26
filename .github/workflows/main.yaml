@@ -290,8 +290,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Kustomize sources for the shiksha partner stack; kept in a separate,
-      # private repo, hence the PAT instead of GITHUB_TOKEN.
+      # infra-ops is private, needs a PAT not GITHUB_TOKEN.
       - name: Checkout infra-ops
         uses: actions/checkout@v4
         with:
@@ -304,15 +303,15 @@ jobs:
         with:
           node-version: 18
 
-      # Pinned, not latest — see the PR's version-gap note for what to watch on first use.
       - name: Install kind
         run: |
-          curl -fsSL -o /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
-          chmod +x /usr/local/bin/kind
-          kind create cluster --name "$CLUSTER"
+          mkdir -p "$RUNNER_TEMP/tools"
+          curl -fsSL -o "$RUNNER_TEMP/tools/kind" https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+          chmod +x "$RUNNER_TEMP/tools/kind"
+          echo "$RUNNER_TEMP/tools" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/tools/kind" create cluster --name "$CLUSTER"
 
-      # api's Dockerfile COPYs components/rag-wrapper, so its build context has
-      # to be the repo root, not shiksha-api/app-service.
+      # api's Dockerfile COPYs components/rag-wrapper, context must be repo root.
       - name: Build app images
         run: |
           docker build -t "shiksha-copilot/api:$TAG" -f shiksha-api/app-service/Dockerfile .
@@ -326,19 +325,17 @@ jobs:
           kubectl apply -f tests/accessibility/kind/mongo.yaml
           kubectl -n "$NS" rollout status deploy/shiksha-mongo --timeout=120s
 
-      # Throwaway values for a cluster that's deleted at the end of this job, not
-      # real secrets. JWT_SECRET_REMEMBER_ME is left out — grepped the backend,
-      # nothing reads it. OPENAI_API_KEY is a placeholder (decision: no real LLM
-      # key in CI, same tradeoff as the detail-page coverage gap below).
       - name: Create app secrets
         run: |
           kubectl -n "$NS" create secret generic shiksha-api-secret \
             --from-literal=PORT=5000 \
             --from-literal=OPENAI_API_KEY=ci-placeholder \
+            --from-literal=PRES_MONGODB_URL="mongodb://shiksha-mongo.$NS.svc.cluster.local:27017/shiksha_viz" \
             --dry-run=client -o yaml | kubectl apply -f -
           kubectl -n "$NS" create secret generic shiksha-be-secret \
             --from-literal=PORT=8080 \
             --from-literal=MONGO_URL="mongodb://shiksha-mongo.$NS.svc.cluster.local:27017/shiksha" \
+            --from-literal=LLM_API_BASE_URL="http://shiksha-api-svc" \
             --from-literal=JWT_SECRET=ci-test-jwt-secret \
             --from-literal=PIN_SECRET_KEY=ci-test-pin-secret \
             --dry-run=client -o yaml | kubectl apply -f -
@@ -353,8 +350,6 @@ jobs:
           kubectl -n "$NS" rollout status deploy/shiksha-be --timeout=120s
           kubectl -n "$NS" rollout status deploy/shiksha-fe --timeout=120s
 
-      # School/class row is required: the profile page looks up the teacher's
-      # board/medium/standard and 500s without it (see seed-ci-users.js).
       - name: Seed CI users
         env:
           MONGO_URL: mongodb://localhost:27017/shiksha

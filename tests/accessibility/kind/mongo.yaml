@@ -1,5 +1,4 @@
-# Test-only mongod (no auth, emptyDir), ported from A4i-tech/kind-tests shiksha-kind-test/run.sh.
-# The namespace LimitRange defaults containers to 512Mi, too little for mongod.
+# Test-only mongod, no auth, emptyDir — namespace LimitRange defaults to 512Mi, too little here.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

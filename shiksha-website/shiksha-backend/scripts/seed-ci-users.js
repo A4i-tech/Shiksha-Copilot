@@ -1,13 +1,5 @@
 #!/usr/bin/env node
-/**
- * Seed script: throwaway teacher + admin for the CI accessibility scan.
- *
- * Idempotent: upserts by phone/schoolId and resets PIN + lockout state.
- *
- * Usage:
- *   MONGO_URL=... PIN_SECRET_KEY=... TEST_USER_PHONE=... TEST_USER_OTP=... \
- *   TEST_ADMIN_PHONE=... TEST_ADMIN_OTP=... node scripts/seed-ci-users.js
- */
+// Idempotent seed: throwaway teacher + admin for the CI accessibility scan.
 'use strict';
 
 require('dotenv').config();
@@ -57,7 +49,6 @@ async function seed() {
     { upsert: true, new: true },
   );
 
-  // Profile page looks up the teacher's board/medium/standard here and 500s if missing.
   await SchoolClass.updateOne(
     { schoolId: school._id, board: 'KSEEB', medium: 'English' },
     {

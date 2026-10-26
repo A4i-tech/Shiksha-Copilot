@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Filter infra-ops' kustomize output for kind and point it at locally built images.
-
-Usage: kubectl kustomize infra-ops/partners/shiksha | prepare-manifests.py <tag> > out.yaml
-Ported from A4i-tech/kind-tests shiksha-kind-test/run.sh filter_manifests().
-"""
+# Filters infra-ops' kustomize output for kind, points it at locally built images.
 import sys
 
 import yaml
 
-# No CRDs/controller for these in kind; the scan port-forwards instead of using the Ingress.
 SKIP = {"ExternalSecret", "Certificate", "Ingress"}
 IMAGES = {"shiksha-api": "api", "shiksha-be": "backend", "shiksha-fe": "frontend"}
 
