@@ -5,12 +5,16 @@ const { isAuthenticated, requirePermission } = require("../middlewares/auth.js")
 const { getPermission } = require("../helper/permission.helper.js");
 const { getSupersetAuth, resetSupersetAuth, runAnalyticsSql } = require("../helper/superset.helper.js");
 const AuditLog = require("../models/audit.log.model.js");
+const DashboardConfigDao = require("../dao/dashboard.config.dao.js");
+const { grantedChartKeys, resolveDashboard, buildScope } = require("../helper/dashboard.helper.js");
 
 const SUPERSET_URL = process.env.SUPERSET_URL;
 const SUPERSET_ADMIN_USERNAME = process.env.SUPERSET_ADMIN_USERNAME;
 const SUPERSET_ADMIN_PASSWORD = process.env.SUPERSET_ADMIN_PASSWORD;
 const SUPERSET_DASHBOARD_UUID = process.env.SUPERSET_DASHBOARD_UUID;
 const SUPERSET_MOBILE_DASHBOARD_UUID = process.env.SUPERSET_MOBILE_DASHBOARD_UUID;
+
+const dashboardConfigDao = new DashboardConfigDao();
 
 const AXIOS_TIMEOUT_MS = 10_000;
 
@@ -42,7 +46,7 @@ function buildRlsClause(scopes) {
 // Returns a short-lived Superset guest token scoped to the logged-in user.
 router.post("/superset/guest-token", isAuthenticated, requirePermission("analytics.view"), async (req, res) => {
   try {
-    if (!SUPERSET_URL || !SUPERSET_ADMIN_USERNAME || !SUPERSET_ADMIN_PASSWORD || !SUPERSET_DASHBOARD_UUID) {
+    if (!SUPERSET_URL || !SUPERSET_ADMIN_USERNAME || !SUPERSET_ADMIN_PASSWORD) {
       return res.status(503).json({ error: "Superset not configured (missing env vars)" });
     }
 
@@ -50,7 +54,18 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
     if (!mongoUser) return res.status(401).json({ error: "No authenticated user" });
 
     const uid = String(mongoUser._id);
-    const rlsClause = buildRlsClause(getPermission(req.permissions, "analytics.view"));
+    const analyticsGrants = getPermission(req.permissions, "analytics.view");
+    const rlsClause = buildRlsClause(analyticsGrants);
+    const chartKeys = grantedChartKeys(req.permissions);
+    const boards = chartKeys.length ? await dashboardConfigDao.findAllBoards() : [];
+    // Env fallback serves only users with no chart permission.
+    const resolved = resolveDashboard(chartKeys, boards, { desktopUuid: SUPERSET_DASHBOARD_UUID, mobileUuid: SUPERSET_MOBILE_DASHBOARD_UUID });
+    // A holder of chart permissions must never fall back to the env (full) board.
+    if (!resolved) return res.status(503).json({ error: `No dashboard board holds your charts (${chartKeys.join(", ")}). Ask an administrator to add a board that includes them.` });
+    const { desktopUuid, mobileUuid } = resolved;
+    if (!desktopUuid) {
+      return res.status(503).json({ error: "Superset not configured (missing env vars)" });
+    }
 
     const { accessToken: adminToken, csrfToken, cookieHeader } = await getSupersetAuth();
 
@@ -61,8 +76,8 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
         last_name:  (mongoUser.identity.name || "").split(" ").slice(1).join(" "),
       },
       resources: [
-        { type: "dashboard", id: SUPERSET_DASHBOARD_UUID },
-        ...(SUPERSET_MOBILE_DASHBOARD_UUID ? [{ type: "dashboard", id: SUPERSET_MOBILE_DASHBOARD_UUID }] : []),
+        { type: "dashboard", id: desktopUuid },
+        ...(mobileUuid ? [{ type: "dashboard", id: mobileUuid }] : []),
       ],
       rls: rlsClause ? [{ clause: rlsClause }] : [],
     };
@@ -102,9 +117,10 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
 
     res.json({
       token,
-      dashboardUuid: SUPERSET_DASHBOARD_UUID,
-      mobileDashboardUuid: SUPERSET_MOBILE_DASHBOARD_UUID || null,
+      dashboardUuid: desktopUuid,
+      mobileDashboardUuid: mobileUuid,
       supersetUrl: SUPERSET_URL,
+      scope: buildScope(analyticsGrants),
     });
   } catch (err) {
     const isTimeout = err.code === "ECONNABORTED";

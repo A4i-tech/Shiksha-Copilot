@@ -1,0 +1,18 @@
+[
+  {"key": "active_inactive_users", "sliceName": "Active / Inactive Users", "description": "See the Active / Inactive Users chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "avg_feedback_score", "sliceName": "Avg Feedback Score on Generated Content", "description": "See the Avg Feedback Score on Generated Content chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "content_type_mix", "sliceName": "Content Type Mix", "description": "See the Content Type Mix chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "lesson_plans_by_state", "sliceName": "Lesson/Period Plans by State (India)", "description": "See the Lesson/Period Plans by State (India) chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "user_activity_table", "sliceName": "User Activity Table", "description": "See the User Activity Table chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "lesson_plans_by_medium", "sliceName": "Lesson/Period Plans by Medium", "description": "See the Lesson/Period Plans by Medium chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "device_type_distribution", "sliceName": "Device Type Distribution", "description": "See the Device Type Distribution chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "lesson_plans_by_subject", "sliceName": "Lesson/Period Plans by Subject", "description": "See the Lesson/Period Plans by Subject chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "chatbot_requests_by_month", "sliceName": "Chatbot Requests by Month", "description": "See the Chatbot Requests by Month chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "lesson_plans_by_zone", "sliceName": "Lesson/Period Plans by Zone", "description": "See the Lesson/Period Plans by Zone chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "lba_attempts_by_subject", "sliceName": "LBA Attempts by Subject", "description": "See the LBA Attempts by Subject chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "lesson_plans_by_district", "sliceName": "Lesson/Period Plans by District", "description": "See the Lesson/Period Plans by District chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "ai_action_type_breakdown", "sliceName": "AI Action Type Breakdown", "description": "See the AI Action Type Breakdown chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "ai_feature_usage_over_time", "sliceName": "AI Feature Usage Over Time", "description": "See the AI Feature Usage Over Time chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "module_adoption", "sliceName": "Module Adoption — Which Teachers Use What", "description": "See the Module Adoption — Which Teachers Use What chart on the leaders dashboard. Needs analytics.view."},
+  {"key": "lesson_plans_by_district_map", "sliceName": "Lesson/Period Plans by District Map", "description": "See the Lesson/Period Plans by District Map chart on the leaders dashboard. Needs analytics.view."}
+]
