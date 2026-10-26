@@ -312,11 +312,42 @@ jobs:
           "$RUNNER_TEMP/tools/kind" create cluster --name "$CLUSTER"
 
       # api's Dockerfile COPYs components/rag-wrapper, context must be repo root.
-      - name: Build app images
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build api image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: shiksha-api/app-service/Dockerfile
+          tags: shiksha-copilot/api:${{ env.TAG }}
+          load: true
+          cache-from: type=gha,scope=a11y-api
+          cache-to: type=gha,scope=a11y-api,mode=max
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: shiksha-website/shiksha-backend
+          tags: shiksha-copilot/backend:${{ env.TAG }}
+          load: true
+          cache-from: type=gha,scope=a11y-backend
+          cache-to: type=gha,scope=a11y-backend,mode=max
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: shiksha-website/shiksha-frontend
+          build-args: BUILD_CONFIGURATION=production
+          tags: shiksha-copilot/frontend:${{ env.TAG }}
+          load: true
+          cache-from: type=gha,scope=a11y-frontend
+          cache-to: type=gha,scope=a11y-frontend,mode=max
+
+      - name: Load images into kind
         run: |
-          docker build -t "shiksha-copilot/api:$TAG" -f shiksha-api/app-service/Dockerfile .
-          docker build -t "shiksha-copilot/backend:$TAG" shiksha-website/shiksha-backend
-          docker build -t "shiksha-copilot/frontend:$TAG" --build-arg BUILD_CONFIGURATION=production shiksha-website/shiksha-frontend
           kind load docker-image "shiksha-copilot/api:$TAG" "shiksha-copilot/backend:$TAG" "shiksha-copilot/frontend:$TAG" --name "$CLUSTER"
 
       - name: Deploy mongo
