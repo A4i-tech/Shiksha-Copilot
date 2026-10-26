@@ -101,26 +101,6 @@ jobs:
       api_url: ${{ format('{0}/api', needs.cd-backend.outputs['service-url']) }}
       turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
 
-  cd-frontend-render:
-    name: Deploy frontend preview (Render)
-    if: |
-      github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    # One shared preview service, and deploying repoints its branch. Serialise
-    # across PRs so two runs can't repoint it while the other is still
-    # deploying (last writer would otherwise win and the reported branch would
-    # not match what is actually live).
-    concurrency:
-      group: render-frontend-preview
-      cancel-in-progress: false
-    uses: ./.github/workflows/deploy-render.yaml
-    with:
-      deploy-name: shiksha-frontend-preview
-      service-id: ${{ vars.RENDER_FRONTEND_SERVICE_ID }}
-      branch: ${{ github.head_ref }}
-    secrets:
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-
   cd-api-prod:
     name: Deploy api
     needs: ci-api
@@ -295,25 +275,107 @@ jobs:
 
   accessibility-tests:
     name: Accessibility Tests
-    needs: [cd-frontend-render, health-check]
     if: |
-      always() &&
       github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
-      github.event.pull_request.head.repo.full_name == github.repository &&
-      needs.cd-frontend-render.result == 'success' &&
-      (needs.health-check.result == 'success' || needs.health-check.result == 'skipped')
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: write
+    env:
+      CLUSTER: shiksha-a11y-ci
+      NS: shiksha
+      TAG: ci
     steps:
       - uses: actions/checkout@v4
+
+      # Kustomize sources for the shiksha partner stack; kept in a separate,
+      # private repo, hence the PAT instead of GITHUB_TOKEN.
+      - name: Checkout infra-ops
+        uses: actions/checkout@v4
+        with:
+          repository: A4i-tech/infra-ops
+          token: ${{ secrets.INFRA_OPS_PAT }}
+          path: infra-ops
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
+
+      # Pinned, not latest — see the PR's version-gap note for what to watch on first use.
+      - name: Install kind
+        run: |
+          curl -fsSL -o /usr/local/bin/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+          chmod +x /usr/local/bin/kind
+          kind create cluster --name "$CLUSTER"
+
+      - name: Build app images
+        run: |
+          docker build -t "shiksha-copilot/api:$TAG" shiksha-api/app-service
+          docker build -t "shiksha-copilot/backend:$TAG" shiksha-website/shiksha-backend
+          docker build -t "shiksha-copilot/frontend:$TAG" --build-arg BUILD_CONFIGURATION=production shiksha-website/shiksha-frontend
+          kind load docker-image "shiksha-copilot/api:$TAG" "shiksha-copilot/backend:$TAG" "shiksha-copilot/frontend:$TAG" --name "$CLUSTER"
+
+      - name: Deploy mongo
+        run: |
+          kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f tests/accessibility/kind/mongo.yaml
+          kubectl -n "$NS" rollout status deploy/shiksha-mongo --timeout=120s
+
+      # Throwaway values for a cluster that's deleted at the end of this job, not
+      # real secrets. JWT_SECRET_REMEMBER_ME is left out — grepped the backend,
+      # nothing reads it. OPENAI_API_KEY is a placeholder (decision: no real LLM
+      # key in CI, same tradeoff as the detail-page coverage gap below).
+      - name: Create app secrets
+        run: |
+          kubectl -n "$NS" create secret generic shiksha-api-secret \
+            --from-literal=PORT=5000 \
+            --from-literal=OPENAI_API_KEY=ci-placeholder \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n "$NS" create secret generic shiksha-be-secret \
+            --from-literal=PORT=8080 \
+            --from-literal=MONGO_URL="mongodb://shiksha-mongo.$NS.svc.cluster.local:27017/shiksha" \
+            --from-literal=JWT_SECRET=ci-test-jwt-secret \
+            --from-literal=PIN_SECRET_KEY=ci-test-pin-secret \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Render + apply app manifests
+        run: |
+          pip install --quiet pyyaml
+          kubectl kustomize infra-ops/partners/shiksha \
+            | python3 tests/accessibility/kind/prepare-manifests.py "$TAG" \
+            | kubectl apply -f -
+          kubectl -n "$NS" rollout status deploy/shiksha-api --timeout=120s
+          kubectl -n "$NS" rollout status deploy/shiksha-be --timeout=120s
+          kubectl -n "$NS" rollout status deploy/shiksha-fe --timeout=120s
+
+      # School/class row is required: the profile page looks up the teacher's
+      # board/medium/standard and 500s without it (see seed-ci-users.js).
+      - name: Seed CI users
+        env:
+          MONGO_URL: mongodb://localhost:27017/shiksha
+          PIN_SECRET_KEY: ci-test-pin-secret
+          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
+          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
+          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
+          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
+        run: |
+          kubectl -n "$NS" port-forward svc/shiksha-mongo 27017:27017 &
+          sleep 3
+          npm ci --prefix shiksha-website/shiksha-backend
+          node shiksha-website/shiksha-backend/scripts/seed-ci-users.js
+          kill %1
+
+      - name: Port-forward frontend
+        run: |
+          kubectl -n "$NS" port-forward svc/shiksha-fe-svc 8000:80 &
+          for i in $(seq 1 20); do
+            curl -sf -o /dev/null http://localhost:8000/ && break
+            [ "$i" -eq 20 ] && { echo "::error::frontend never came up"; exit 1; }
+            sleep 3
+          done
 
       - name: Install dependencies
         run: npm ci --prefix tests/accessibility
@@ -322,62 +384,12 @@ jobs:
         timeout-minutes: 10
         run: npx --prefix tests/accessibility playwright install chromium --with-deps
 
-      # PR previews hit the pre-existing staging api/backend (cd-api/cd-backend
-      # don't run for PRs); a Render cold-start can outlast the scanner's login
-      # timeouts, so resolve their URLs and ping them awake before the scan.
-      - name: Warm up backend + api
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        run: |
-          AUTH="Authorization: Bearer $RENDER_API_KEY"
-          get_service_url() {
-            curl -fsS -H "$AUTH" -H "Accept: application/json" \
-              "https://api.render.com/v1/services/$1" | jq -r '.serviceDetails.url'
-          }
-          BACKEND_URL=$(get_service_url "${{ vars.RENDER_BACKEND_SERVICE_ID }}")
-          API_URL=$(get_service_url "${{ vars.RENDER_API_SERVICE_ID }}")
-          echo "Backend: $BACKEND_URL"
-          echo "API: $API_URL"
-
-          for ((i=1; i<=30; i++)); do
-            echo "--- Ping attempt $i/30 ---"
-            curl -sf --max-time 30 "$BACKEND_URL/health" >/dev/null && \
-            curl -sf --max-time 30 "$API_URL/health" >/dev/null && \
-            { echo "Backend + API awake"; break; }
-            sleep 15 & wait $!
-          done
-
-          if [ $i -gt 30 ]; then
-            echo "Services did not respond in time"
-            exit 1
-          fi
-
-      # deploy-render.yaml already waits for the Render deploy to hit "live",
-      # but the static site can lag behind that briefly; poll for HTTP 200
-      # before running tests as a safety net.
-      - name: Wait for frontend deployment
-        env:
-          FRONTEND_URL: ${{ needs.cd-frontend-render.outputs['service-url'] }}
-        run: |
-          echo "Waiting for $FRONTEND_URL to become reachable..."
-          for ((i=1; i<=40; i++)); do
-            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$FRONTEND_URL") || true
-            echo "  Attempt $i/40: HTTP $status"
-            if [ "$status" = "200" ]; then
-              echo "Frontend is live!"
-              exit 0
-            fi
-            sleep 15 & wait $!
-          done
-          echo "Frontend at $FRONTEND_URL did not become reachable (last status: $status)"
-          exit 1
-
       # Fails the job (and so the PR check) on any critical violation, any page
       # below the score threshold, or any page that could not be scanned.
       - name: Run Accessibility Tests
         id: a11y
         env:
-          FRONTEND_URL: ${{ needs.cd-frontend-render.outputs['service-url'] }}
+          FRONTEND_URL: http://localhost:8000
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
           TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
@@ -435,6 +447,10 @@ jobs:
               done
 
           gh pr comment "$PR_NUMBER" --body-file "$BODY"
+
+      - name: Delete kind cluster
+        if: always()
+        run: kind delete cluster --name "$CLUSTER"
 
   notify:
     runs-on: ubuntu-latest
