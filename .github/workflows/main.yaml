@@ -39,6 +39,7 @@ jobs:
 
   cicd-frontend:
     name: Deploy frontend
+    needs: [ci-backend]
     if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     uses: ./.github/workflows/cicd-frontend.yaml
     secrets: inherit
@@ -106,34 +107,23 @@ jobs:
 
   health-check:
     name: Health Check
-    needs: [cicd-frontend, ci-api, ci-backend, cd-frontend-prod, cd-api-prod, cd-backend-prod]
+    # Prod only, staging CD notification is separate work.
+    needs: [cd-frontend-prod, cd-api-prod, cd-backend-prod]
     if: |
       always() &&
-      github.event_name == 'push' && ((
-        github.ref_name == 'a4i/staging' &&
-        needs.cicd-frontend.result == 'success' &&
-        needs.ci-api.result == 'success' &&
-        needs.ci-backend.result == 'success'
-      ) || (
-        github.ref_name == 'a4i/main' &&
-        needs.cd-frontend-prod.result == 'success' &&
-        needs.cd-api-prod.result == 'success' &&
-        needs.cd-backend-prod.result == 'success'
-      ))
+      github.event_name == 'push' && github.ref_name == 'a4i/main' &&
+      needs.cd-frontend-prod.result == 'success' &&
+      needs.cd-api-prod.result == 'success' &&
+      needs.cd-backend-prod.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Resolve URLs
         id: urls
         run: |
-          # Staging only checks the frontend: backend/API aren't exposed outside the cluster yet.
-          if [ "${{ github.ref_name }}" = "a4i/staging" ]; then
-            echo "frontend=${{ vars.KUBE_STAGING_FRONTEND_URL }}" >> $GITHUB_OUTPUT
-          else
-            echo "frontend=${{ needs.cd-frontend-prod.outputs.page_url }}" >> $GITHUB_OUTPUT
-            echo "backend=${{ needs.cd-backend-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
-            echo "api=${{ needs.cd-api-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
-          fi
+          echo "frontend=${{ needs.cd-frontend-prod.outputs.page_url }}" >> $GITHUB_OUTPUT
+          echo "backend=${{ needs.cd-backend-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
+          echo "api=${{ needs.cd-api-prod.outputs['service-url'] }}" >> $GITHUB_OUTPUT
 
       - name: Verify Services
         env:
@@ -145,10 +135,10 @@ jobs:
           trap 'echo "Cancelled"; exit 1' TERM INT
 
           check_build() {
-            local name=$1 url=$2 skip=${3:-false}
+            local name=$1 url=$2
             local resp; resp=$(curl -sf --max-time 30 "$url") || { echo "FAIL $name unreachable"; return 1; }
             local build=$(echo "$resp" | jq -r '.build // empty')
-            if [ "$skip" = "true" ] || [ "$build" = "$EXPECTED_BUILD" ]; then
+            if [ "$build" = "$EXPECTED_BUILD" ]; then
               echo "PASS $name"
               return 0
             fi
@@ -158,15 +148,10 @@ jobs:
 
           for ((i=1; i<=30; i++)); do
             echo "--- Attempt $i/30 ---"
-            if [ "$GITHUB_REF_NAME" = "a4i/staging" ]; then
-              check_build "Frontend" "$FRONTEND_URL/health.json" && \
-              { echo "Frontend on build $EXPECTED_BUILD"; exit 0; }
-            else
-              check_build "Frontend" "$FRONTEND_URL/health.json" && \
-              check_build "Backend"  "$BACKEND_URL/health" && \
-              check_build "API"      "$BACKEND_URL/health-api" && \
-              { echo "All services on build $EXPECTED_BUILD"; exit 0; }
-            fi
+            check_build "Frontend" "$FRONTEND_URL/health.json" && \
+            check_build "Backend"  "$BACKEND_URL/health" && \
+            check_build "API"      "$BACKEND_URL/health-api" && \
+            { echo "All services on build $EXPECTED_BUILD"; exit 0; }
             sleep 15 & wait $!
           done
 
@@ -175,7 +160,7 @@ jobs:
 
   regression-tests:
     name: Regression Tests
-    needs: [cicd-frontend, health-check]
+    needs: [cicd-frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -204,7 +189,7 @@ jobs:
   integration-backend:
     # Needs pre-seeded superuser secrets SHIKSHA_SU_PHONE/SHIKSHA_SU_PIN to hit /api/devtools/*.
     name: Backend Integration Tests
-    needs: [health-check]
+    needs: [ci-backend]
     if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
     concurrency:
       group: integration-backend
@@ -224,7 +209,7 @@ jobs:
 
   performance-tests:
     name: Performance Tests
-    needs: [cicd-frontend, health-check]
+    needs: [cicd-frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -405,7 +390,7 @@ jobs:
         env:
           FE_RES: ${{ (needs.cicd-frontend.result != 'skipped' && needs.cicd-frontend.result) || needs.cd-frontend-prod.result }}
           API_RES: ${{ needs.cd-api-prod.result }}
-          BE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.health-check.result) || needs.cd-backend-prod.result }}
+          BE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.ci-backend.result) || needs.cd-backend-prod.result }}
           FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
           API_URL: ${{ needs.cd-api-prod.outputs['service-url'] }}
           BE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_FRONTEND_URL) || needs.cd-backend-prod.outputs['service-url'] }}
