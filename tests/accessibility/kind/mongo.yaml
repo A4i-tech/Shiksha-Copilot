@@ -1,4 +1,4 @@
-# Test-only mongod, no auth, emptyDir — namespace LimitRange defaults to 512Mi, too little here.
+# Test-only mongod, no auth, emptyDir, explicit resources regardless of apply order.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

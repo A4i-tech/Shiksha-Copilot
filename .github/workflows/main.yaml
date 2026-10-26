@@ -280,28 +280,39 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: a11y-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
+    defaults:
+      run:
+        shell: bash
     env:
       CLUSTER: shiksha-a11y-ci
       NS: shiksha
       TAG: ci
+      INFRA_OPS_REF: 8101798156c9d3dea5bfb1e04e46688a825f943e # pinned, bump deliberately
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       # infra-ops is private, needs a PAT not GITHUB_TOKEN.
       - name: Checkout infra-ops
         uses: actions/checkout@v4
         with:
           repository: A4i-tech/infra-ops
+          ref: ${{ env.INFRA_OPS_REF }}
           token: ${{ secrets.INFRA_OPS_PAT }}
           path: infra-ops
+          persist-credentials: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
 
       - name: Install kind
         run: |
@@ -361,25 +372,29 @@ jobs:
           kubectl -n "$NS" rollout status deploy/shiksha-be --timeout=120s
           kubectl -n "$NS" rollout status deploy/shiksha-fe --timeout=120s
 
+      # Hardcoded, not the shared TEST_USER_*/TEST_ADMIN_* secrets, database is fresh every run.
       - name: Seed CI users
         env:
           MONGO_URL: mongodb://localhost:27017/shiksha
           PIN_SECRET_KEY: ci-test-pin-secret
-          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
-          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
-          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
-          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
+          TEST_USER_PHONE: "9000000001"
+          TEST_USER_OTP: "1234"
+          TEST_ADMIN_PHONE: "9000000002"
+          TEST_ADMIN_OTP: "4321"
         run: |
           kubectl -n "$NS" port-forward svc/shiksha-mongo 27017:27017 &
+          pf_pid=$!
           sleep 3
           npm ci --prefix shiksha-website/shiksha-backend
           node shiksha-website/shiksha-backend/scripts/seed-ci-users.js
-          kill %1
+          kill "$pf_pid"
 
       - name: Port-forward frontend
         run: |
           kubectl -n "$NS" port-forward svc/shiksha-fe-svc 8000:80 &
+          pf_pid=$!
           for i in $(seq 1 20); do
+            kill -0 "$pf_pid" 2>/dev/null || { echo "::error::port-forward died"; exit 1; }
             curl -sf -o /dev/null http://localhost:8000/ && break
             [ "$i" -eq 20 ] && { echo "::error::frontend never came up"; exit 1; }
             sleep 3
@@ -398,10 +413,10 @@ jobs:
         id: a11y
         env:
           FRONTEND_URL: http://localhost:8000
-          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
-          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
-          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
-          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
+          TEST_USER_PHONE: "9000000001"
+          TEST_USER_OTP: "1234"
+          TEST_ADMIN_PHONE: "9000000002"
+          TEST_ADMIN_OTP: "4321"
         run: node tests/accessibility/run-accessibility.js
 
       - name: Upload accessibility report
@@ -456,9 +471,18 @@ jobs:
 
           gh pr comment "$PR_NUMBER" --body-file "$BODY"
 
+      - name: Dump cluster state
+        if: failure()
+        run: |
+          kubectl -n "$NS" get pods,events -o wide || true
+          kubectl -n "$NS" describe pods || true
+          for d in shiksha-api shiksha-be shiksha-fe shiksha-mongo; do
+            kubectl -n "$NS" logs "deploy/$d" --tail=100 || true
+          done
+
       - name: Delete kind cluster
         if: always()
-        run: kind delete cluster --name "$CLUSTER"
+        run: command -v kind >/dev/null && kind delete cluster --name "$CLUSTER" || true
 
   notify:
     runs-on: ubuntu-latest
