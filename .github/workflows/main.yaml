@@ -311,9 +311,11 @@ jobs:
           chmod +x /usr/local/bin/kind
           kind create cluster --name "$CLUSTER"
 
+      # api's Dockerfile COPYs components/rag-wrapper, so its build context has
+      # to be the repo root, not shiksha-api/app-service.
       - name: Build app images
         run: |
-          docker build -t "shiksha-copilot/api:$TAG" shiksha-api/app-service
+          docker build -t "shiksha-copilot/api:$TAG" -f shiksha-api/app-service/Dockerfile .
           docker build -t "shiksha-copilot/backend:$TAG" shiksha-website/shiksha-backend
           docker build -t "shiksha-copilot/frontend:$TAG" --build-arg BUILD_CONFIGURATION=production shiksha-website/shiksha-frontend
           kind load docker-image "shiksha-copilot/api:$TAG" "shiksha-copilot/backend:$TAG" "shiksha-copilot/frontend:$TAG" --name "$CLUSTER"
