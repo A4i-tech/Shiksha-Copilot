@@ -1,5 +1,4 @@
 jest.mock("../../../migrations/unify-users", () => jest.fn().mockResolvedValue());
-jest.mock("../../../migrations/seed-dashboard-configs", () => jest.fn().mockResolvedValue());
 
 const Chapter = require("../../../models/chapter.model");
 const MasterLesson = require("../../../models/master.lesson.model");

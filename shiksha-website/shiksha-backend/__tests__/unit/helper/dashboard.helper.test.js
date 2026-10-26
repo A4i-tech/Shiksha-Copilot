@@ -1,7 +1,6 @@
 const { grantedChartKeys, resolveDashboard, buildScope } = require("../../../helper/dashboard.helper");
 
 const board = (boardKey, chartKeys, desktopUuid = boardKey) => ({ boardKey, chartKeys, desktopUuid, mobileUuid: null });
-const env = { desktopUuid: "env-d", mobileUuid: "env-m" };
 
 describe("grantedChartKeys", () => {
   it("extracts unique chart keys and ignores other permissions", () => {
@@ -15,33 +14,32 @@ describe("resolveDashboard", () => {
   afterEach(() => jest.restoreAllMocks());
 
   it("picks the board that exactly matches the grants", () => {
-    expect(resolveDashboard(["a", "b"], [board("x", ["a", "b"]), board("y", ["a"])], env)).toEqual({ desktopUuid: "x", mobileUuid: null });
+    expect(resolveDashboard(["a", "b"], [board("x", ["a", "b"]), board("y", ["a"])])).toEqual({ desktopUuid: "x", mobileUuid: null });
     expect(console.warn).not.toHaveBeenCalled();
   });
 
   it("picks the largest subset and warns about charts the board lacks", () => {
-    const result = resolveDashboard(["a", "b", "c"], [board("small", ["a"]), board("big", ["a", "b"])], env);
+    const result = resolveDashboard(["a", "b", "c"], [board("small", ["a"]), board("big", ["a", "b"])]);
     expect(result.desktopUuid).toBe("big");
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("lacks granted charts: c"));
   });
 
   it("never picks a board that holds a chart the user lacks", () => {
-    const result = resolveDashboard(["a"], [board("full", ["a", "b"]), board("one", ["a"])], env);
+    const result = resolveDashboard(["a"], [board("full", ["a", "b"]), board("one", ["a"])]);
     expect(result.desktopUuid).toBe("one");
   });
 
   it("breaks ties by lowest boardKey", () => {
-    expect(resolveDashboard(["a", "b"], [board("z", ["a"]), board("m", ["b"])], env).desktopUuid).toBe("m");
+    expect(resolveDashboard(["a", "b"], [board("z", ["a"]), board("m", ["b"])]).desktopUuid).toBe("m");
   });
 
-  it("uses the environment board when the user holds no chart permission", () => {
-    expect(resolveDashboard([], [board("full", ["a"])], env)).toEqual({ desktopUuid: "env-d", mobileUuid: "env-m" });
-    expect(resolveDashboard([], [], {})).toEqual({ desktopUuid: null, mobileUuid: null });
+  it("returns null when the user holds no chart permission", () => {
+    expect(resolveDashboard([], [board("full", ["a"])])).toBeNull();
   });
 
   it("returns null when no board qualifies", () => {
-    expect(resolveDashboard(["a"], [board("full", ["a", "b"])], env)).toBeNull();
-    expect(resolveDashboard(["a"], [], env)).toBeNull();
+    expect(resolveDashboard(["a"], [board("full", ["a", "b"])])).toBeNull();
+    expect(resolveDashboard(["a"], [])).toBeNull();
   });
 });
 

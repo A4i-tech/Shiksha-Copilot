@@ -4,9 +4,9 @@ const CHART_PERMISSION_PREFIX = "analytics.chart.";
 
 const grantedChartKeys = (grants) => [...new Set(grants.filter((grant) => grant.permission.startsWith(CHART_PERMISSION_PREFIX)).map((grant) => grant.permission.slice(CHART_PERMISSION_PREFIX.length)))];
 
-// Returns null when the user holds chart permissions but no board qualifies.
-function resolveDashboard(grantedKeys, boards, fallback) {
-  if (!grantedKeys.length) return { desktopUuid: fallback.desktopUuid || null, mobileUuid: fallback.mobileUuid || null };
+// Returns null when the user holds no chart permission or no board qualifies.
+function resolveDashboard(grantedKeys, boards) {
+  if (!grantedKeys.length) return null;
   const granted = new Set(grantedKeys);
   const board = boards
     .filter((candidate) => candidate.chartKeys.every((key) => granted.has(key)))

@@ -15,12 +15,10 @@ const Schools = require("../models/school.model")
 const Question = require("../models/question.model")
 const unifyUsers = require("./unify-users");
 const backfillAnswerCount = require("./answer-count-backfill");
-const seedDashboardConfigs = require("./seed-dashboard-configs");
 
 async function runMigrations() {
     try {
         await unifyUsers();
-        await seedDashboardConfigs();
         await Promise.all([
             backfillAnswerCount(),
             MasterLesson.updateMany(

@@ -7,12 +7,12 @@ const { getSupersetAuth, resetSupersetAuth, runAnalyticsSql } = require("../help
 const AuditLog = require("../models/audit.log.model.js");
 const DashboardConfigDao = require("../dao/dashboard.config.dao.js");
 const { grantedChartKeys, resolveDashboard, buildScope } = require("../helper/dashboard.helper.js");
+const { saveBoard } = require("../helper/dashboard.boards.js");
+const { validateBoardSave } = require("../validations/dashboard.validation.js");
 
 const SUPERSET_URL = process.env.SUPERSET_URL;
 const SUPERSET_ADMIN_USERNAME = process.env.SUPERSET_ADMIN_USERNAME;
 const SUPERSET_ADMIN_PASSWORD = process.env.SUPERSET_ADMIN_PASSWORD;
-const SUPERSET_DASHBOARD_UUID = process.env.SUPERSET_DASHBOARD_UUID;
-const SUPERSET_MOBILE_DASHBOARD_UUID = process.env.SUPERSET_MOBILE_DASHBOARD_UUID;
 
 const dashboardConfigDao = new DashboardConfigDao();
 
@@ -57,10 +57,8 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
     const analyticsGrants = getPermission(req.permissions, "analytics.view");
     const rlsClause = buildRlsClause(analyticsGrants);
     const chartKeys = grantedChartKeys(req.permissions);
-    const boards = chartKeys.length ? await dashboardConfigDao.findAllBoards() : [];
-    // Env fallback serves only users with no chart permission.
-    const resolved = resolveDashboard(chartKeys, boards, { desktopUuid: SUPERSET_DASHBOARD_UUID, mobileUuid: SUPERSET_MOBILE_DASHBOARD_UUID });
-    // A holder of chart permissions must never fall back to the env (full) board.
+    if (!chartKeys.length) return res.status(403).json({ error: "You do not have access to any dashboard charts. Ask an administrator to grant chart permissions." });
+    const resolved = resolveDashboard(chartKeys, await dashboardConfigDao.findAllBoards());
     if (!resolved) return res.status(503).json({ error: `No dashboard board holds your charts (${chartKeys.join(", ")}). Ask an administrator to add a board that includes them.` });
     const { desktopUuid, mobileUuid } = resolved;
     if (!desktopUuid) {
@@ -131,6 +129,17 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
       message: isTimeout ? "timeout" : err.message,
     });
     res.status(isTimeout ? 503 : 500).json({ error: "Failed to generate dashboard token" });
+  }
+});
+
+// PUT /api/superset/boards
+// Creates or updates one board row. The backend reads board ids only from MongoDB.
+router.put("/superset/boards", isAuthenticated, requirePermission("role.manage"), validateBoardSave, async (req, res) => {
+  try {
+    res.json(await saveBoard(req.body));
+  } catch (err) {
+    console.error("[superset] save board failed:", err.message);
+    res.status(500).json({ error: "Failed to save the dashboard board. Try again." });
   }
 });
 
