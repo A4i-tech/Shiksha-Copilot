@@ -48,6 +48,9 @@ const teacherLessonPlan = new Schema(
 		instanceId: {
 			type: String,
 		},
+		error: {
+			type: String,
+		},
 		isGenerated: {
 			type: Boolean,
 			default: false,
