@@ -39,4 +39,4 @@ USER appuser
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "if [ \"$SHIKSHA_ROLE\" = \"presentation-worker\" ]; then exec poetry run python -m app.services.presentation.worker; else exec poetry run python -m app.main --host 0.0.0.0 --port ${PORT:-5000}; fi"]
+CMD ["sh", "-c", "poetry run python -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]

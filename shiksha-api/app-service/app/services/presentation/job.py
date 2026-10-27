@@ -1,44 +1,25 @@
 import asyncio
 import json
 import logging
-import time
 import uuid
-from datetime import datetime, timedelta, timezone
-from collections.abc import Sequence
-from contextvars import ContextVar
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
-
 from app.models.presentation import JobDetail, JobStatus, UserId
 from pymongo import ASCENDING, DESCENDING, AsyncMongoClient, ReturnDocument
-from pymongo.errors import DuplicateKeyError
-
-
-# retries exhausted: never claimed, not counted toward the user cap
-_PERMANENT_ERROR = {"status": "error", "metadata.error.attempting_recovery": False}
-
-lease_owner: ContextVar[str | None] = ContextVar("lease_owner", default=None)
-
-
-def iso_z(dt: datetime) -> str:
-    return dt.astimezone(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
-
-
-def annotate_idle(job: JobDetail):
-    leased = job.lease_expires_at is not None and job.lease_expires_at > datetime.now(timezone.utc)
-    if job.status not in {"complete", "error"} and not leased:
-        job.status = "idle"
-    return job
 
 
 class JobManager:
 
-    def __init__(self, mongo_uri: str, lease_seconds: int):
-        self.client = AsyncMongoClient(mongo_uri, tz_aware=True)
+    def __init__(self, mongo_uri: str):
+        self.client = AsyncMongoClient(mongo_uri)
         self.db = self.client.get_database()
         self.collection = self.db["presentation_jobs"]
         self.log_collection = self.db["presentation_job_logs"]
-        self.lease_seconds = lease_seconds
         self.logger = logging.getLogger(__name__)
+
+        self.queue: asyncio.Queue[uuid.UUID | None] = asyncio.Queue()
+        self.listeners: set[asyncio.Queue[uuid.UUID | None]] = set()
+        self.log_subscribers: set[asyncio.Queue[dict | None]] = set()
 
     async def __aenter__(self):
         await asyncio.gather(
@@ -46,53 +27,33 @@ class JobManager:
             self.collection.create_index([("user_id", ASCENDING), ("creation_time", DESCENDING)]),
             self.collection.create_index([("user_id", ASCENDING), ("status", ASCENDING), ("creation_time", DESCENDING)]),
             self.collection.create_index([("tags", ASCENDING)]),
-            self.collection.create_index([("status", ASCENDING), ("creation_time", ASCENDING)]),
             self.log_collection.create_index([("job_id", ASCENDING), ("timestamp", ASCENDING)]),
-            self.log_collection.create_index([("job_id", ASCENDING), ("seq", ASCENDING)], unique=True, partialFilterExpression={"seq": {"$exists": True}}),  # legacy rows have no seq
         )
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
+        self._drop_queue(self.queue)
+        for listener in list(self.listeners):
+            self._drop_queue(listener)
+        self.listeners.clear()
+        for q in list(self.log_subscribers):
+            self._drop_queue(q)
+        self.log_subscribers.clear()
         await self.client.close()
 
-    def _lease_expiry(self) -> datetime:
-        return datetime.now(timezone.utc) + timedelta(seconds=self.lease_seconds)
+    async def pub(self, job_id: uuid.UUID):
+        await self.queue.put(job_id)
 
-    async def claim_next(self, owner: str) -> JobDetail | None:
-        now = datetime.now(timezone.utc)
-        doc = await self.collection.find_one_and_update(
-            {
-                "status": {"$ne": "complete"},
-                "$and": [
-                    {"$or": [{"lease_expires_at": None}, {"lease_expires_at": {"$lt": now}}]},
-                    {"$or": [{"metadata.error.next_attempt": None}, {"metadata.error.next_attempt": {"$lte": time.time()}}]},
-                    {"$nor": [_PERMANENT_ERROR]},
-                ],
-            },
-            [{"$set": {
-                "lease_owner": owner,
-                "lease_expires_at": self._lease_expiry(),
-                # a lease_owner still set on an expired lease means the last worker died without releasing it
-                "crashes": {"$add": [{"$ifNull": ["$crashes", 0]}, {"$cond": [{"$ifNull": ["$lease_owner", False]}, 1, 0]}]},
-            }}],
-            sort=[("creation_time", ASCENDING)],
-            return_document=ReturnDocument.AFTER,
-        )
-        if not doc:
-            return None
-        return JobDetail(**doc)
-
-    async def renew_lease(self, job_id: uuid.UUID, owner: str) -> bool:
-        result = await self.collection.update_one({"id": str(job_id), "lease_owner": owner}, {"$set": {"lease_expires_at": self._lease_expiry()}})
-        return result.matched_count > 0
-
-    async def release_lease(self, job_id: uuid.UUID, owner: str):
-        await self.collection.update_one({"id": str(job_id), "lease_owner": owner}, {"$unset": {"lease_owner": 1, "lease_expires_at": 1}})
+    async def sub(self) -> AsyncGenerator[uuid.UUID | None, None]:
+        while True:
+            yield await self.queue.get()
 
     async def create(self, user_id: UserId, textbook_file: str, textbook_mime: str, slides: int | None, instruction: str | None, tags: list[str]) -> JobDetail:
         job = JobDetail(user_id=user_id, textbook_file=textbook_file, textbook_mime=textbook_mime, slides=slides, instruction=instruction, tags=set(tags))
         await self.collection.insert_one(job.model_dump(mode="json"))
-        await self.log(job.id, "create", json.loads(job.model_dump_json()))
+        self._notify_listeners(job.id)
+        await self.pub(job.id)
+        await self.log(job.id, "create", json.loads(job.model_dump_json()), False)
         self.logger.info("Created job for %s", textbook_file)
         return job
 
@@ -100,17 +61,12 @@ class JobManager:
         updates = {}
         if fields_set: updates["$set"] = fields_set
         if fields_unset: updates["$unset"] = dict.fromkeys(fields_unset, 1)
-        query = {"id": str(job_id)}
-        # fencing covers Mongo writes only, blob writes are bounded by the heartbeat cancel
-        if (owner := lease_owner.get()) is not None: query["lease_owner"] = owner
-        doc = await self.collection.find_one_and_update(query, updates, return_document=ReturnDocument.AFTER)
-        if doc is None and owner is not None:
-            self.logger.warning("Dropped write to job %s: lease is held by another worker.", job_id)
-        if doc:
-            data = json.loads(JobDetail(**doc).model_dump_json())
-            await self.log(job_id, "update", data)
-            if fields_set and fields_set.get("status") == "complete":
-                await self.log(job_id, "complete", data)
+        doc = await self.collection.find_one_and_update({"id": str(job_id)}, updates, return_document=ReturnDocument.AFTER)
+        self._notify_listeners(job_id)
+        await self.pub(job_id)
+        if doc and fields_set and "status" in fields_set and fields_set["status"] == "complete":
+            job = JobDetail(**doc)
+            await self.log(job.id, "complete", json.loads(job.model_dump_json()), False)
 
     async def get(self, job_id: uuid.UUID) -> JobDetail | None:
         doc = await self.collection.find_one({"id": str(job_id)})
@@ -134,42 +90,30 @@ class JobManager:
         return [JobDetail(**doc) async for doc in cursor]
 
     async def get_pending_count(self, user_id: UserId) -> int:
-        return await self.collection.count_documents({"user_id": user_id, "status": {"$ne": "complete"}, "$nor": [_PERMANENT_ERROR]})
+        return await self.collection.count_documents({"user_id": user_id, "status": {"$ne": "complete"}})
 
     async def delete(self, job: JobDetail) -> bool:
         result = await self.collection.delete_one({"id": str(job.id), "status": {"$ne": "complete"}})
         if result.deleted_count == 0:
             return False
-        await self.log(job.id, "terminate", json.loads(job.model_copy(update={"status": "error"}).model_dump_json()))
-        await self.log_collection.delete_many({"job_id": str(job.id), "type": {"$ne": "terminate"}})  # keeps terminate so seq never restarts
+        await self.log_collection.delete_many({"job_id": str(job.id)})
+        await self.pub(job.id)
+        await self.log(job.id, "terminate", json.loads(job.model_copy(update={"status": "error"}).model_dump_json()), False)
         return True
 
-    async def log(self, job_id: uuid.UUID, type: str, data: dict) -> int:
-        # unique (job_id, seq): a late writer hits a duplicate and retries higher, so readers never skip a seq
-        # check-then-act: shrinks the stale-writer window, the heartbeat cancel bounds the rest
-        if (owner := lease_owner.get()) is not None and not await self.collection.count_documents({"id": str(job_id), "lease_owner": owner}, limit=1):
-            self.logger.warning("Dropped %s log for job %s: lease is held by another worker.", type, job_id)
-            return 0
-        while True:
-            seq = (await self.last_log_seq(job_id) or 0) + 1
+    async def log(self, job_id: uuid.UUID, type: str, data: dict, store: bool = True):
+        dt_now = datetime.now()
+        if store:
+            await self.log_collection.insert_one({"job_id": str(job_id), "type": type, "data": data, "timestamp": dt_now})
+        dead = []
+        for q in self.log_subscribers:
             try:
-                await self.log_collection.insert_one({"job_id": str(job_id), "seq": seq, "type": type, "data": data, "timestamp": datetime.now(timezone.utc)})
-                return seq
-            except DuplicateKeyError:
-                continue
-
-    async def last_log_seq(self, job_id: uuid.UUID) -> int | None:
-        doc = await self.log_collection.find_one({"job_id": str(job_id), "seq": {"$exists": True}}, sort=[("seq", DESCENDING)], projection=["seq"])
-        if not doc:
-            return None
-        return doc.get("seq", 0)
-
-    async def last_snapshot(self, job_id: uuid.UUID) -> dict | None:
-        return await self.log_collection.find_one({"job_id": str(job_id), "seq": {"$exists": True}, "type": {"$in": ["create", "update", "complete", "terminate"]}}, sort=[("seq", DESCENDING)])
-
-    async def logs_after(self, job_id: uuid.UUID, after: int | None) -> Sequence[dict]:
-        query: dict[str, Any] = {"job_id": str(job_id), "seq": {"$gt": after or 0}}  # $gt skips legacy rows that have no seq
-        return [doc async for doc in self.log_collection.find(query, sort=[("seq", ASCENDING)])]
+                q.put_nowait({"id": str(job_id), "type": type, "data": data, "timestamp": dt_now.isoformat()})
+            except asyncio.QueueFull:
+                self._drop_queue(q)
+                dead.append(q)
+        for q in dead:
+            self.log_subscribers.discard(q)
 
     async def get_logs(self, job_id: uuid.UUID) -> AsyncGenerator[dict, None]:
         async for doc in await self.log_collection.aggregate([
@@ -184,3 +128,27 @@ class JobManager:
             }}
         ]):
             yield doc
+
+    def _notify_listeners(self, job_id: uuid.UUID):
+        dead: list[asyncio.Queue[uuid.UUID | None]] = []
+        for listener in list(self.listeners):
+            try:
+                listener.put_nowait(job_id)
+            except asyncio.QueueFull:
+                self._drop_queue(listener)
+                dead.append(listener)
+        for listener in dead:
+            self.listeners.discard(listener)
+
+    def _drop_queue(self, q: asyncio.Queue, attempts: int = 64):
+        while attempts > 0:
+            try:
+                q.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
+            try:
+                q.put_nowait(None)
+                break
+            except asyncio.QueueFull:
+                pass
+            attempts -= 1
