@@ -4,12 +4,11 @@ import io
 import json
 import mimetypes
 import pathlib
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated, AsyncIterator
 import uuid
 import weakref
 from app.config import settings
-from app.services.presentation.job import annotate_idle, iso_z
 from app.services.presentation.service import PresentationService, new_default as new_pres_svc
 from fastapi import APIRouter, Depends, FastAPI, File, Form, Header, Request, status, UploadFile, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
@@ -22,7 +21,7 @@ from app.services.presentation.utils import LibreOffice, LibreOfficeOutputFormat
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.pres_svc = new_pres_svc()
-    async with app.state.pres_svc.jobs:  # jobs run in the separate worker, see services/presentation/worker.py
+    async with app.state.pres_svc.run():
         yield
 
 
@@ -43,6 +42,12 @@ ALLOWED_MIMES = {
 
 def pres(request: Request) -> PresentationService:
     return request.app.state.pres_svc
+
+
+def annotate_idle(service: PresentationService, job: JobDetail):
+    if job.status not in {"complete", "error"} and job.id.bytes not in service.processing:
+        job.status = "idle"
+    return job
 
 
 ja_conversions_sem = asyncio.Semaphore(settings.pres_max_file_conversions)
@@ -88,7 +93,7 @@ async def get_job(user_id: XUserIDHeader, id: uuid.UUID, service: PresentationSe
     if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
     if job is not None:
-        annotate_idle(job)
+        annotate_idle(service, job)
     return job
 
 
@@ -99,7 +104,7 @@ async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentation
     if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
     if job is not None and job.status == "error" and "error" in job.metadata and not job.metadata["error"]["attempting_recovery"]:
-        await service.jobs.update(job.id, {"crashes": 0}, ["metadata.error"])
+        await service.jobs.update(job.id, fields_unset=["metadata.error"])
         return True
     return False
 
@@ -108,7 +113,7 @@ async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentation
 async def list_jobs(user_id: XUserIDHeader, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=100), textbook_file: str | None = Query(None), status: JobStatus | None = Query(None), created_after: datetime | None = Query(None), created_before: datetime | None = Query(None), tags: list[str] | None = Query(None), service: PresentationService = Depends(pres)) -> list[JobDetail]:
     """ List available jobs. """
     jobs = await service.jobs.list(user_id, offset, limit, textbook_file, status, created_after, created_before, tags)
-    list(map(annotate_idle, jobs))
+    list(map(lambda job: annotate_idle(service, job), jobs))
     return jobs
 
 
@@ -151,7 +156,7 @@ async def download_job_artifact(
             stream = [content]
         else:
             size = await service.storage.size(storage_path)
-            stream = service.storage.read_stream(storage_path, settings.pres_download_chunk_size, size)
+            stream = service.storage.read_stream(storage_path, size)
 
     etag = '"%s-%s"' % (job_id, file_format)
     headers = {
@@ -177,10 +182,31 @@ async def get_tools() -> list[ToolInfo]:
     }.values())
 
 
-async def _until_disconnected(request: Request) -> AsyncIterator[None]:
-    while not request.app.state.sigint.done() and not await request.is_disconnected():
-        yield
-        await asyncio.sleep(settings.pres_sse_poll_seconds)
+async def _wait_disconnected(request: Request):
+    while not await request.is_disconnected():
+        await asyncio.sleep(5)
+
+
+async def _safe_stream_job_logs(request: Request, service: PresentationService) -> AsyncIterator[dict]:
+    q = asyncio.Queue(maxsize=settings.pres_sse_buffer_limit)
+    stop = asyncio.create_task(_wait_disconnected(request))
+    get = asyncio.create_task(q.get())
+    service.jobs.log_subscribers.add(q)
+    try:
+        while True:
+            done, _ = await asyncio.wait({get, stop, request.app.state.sigint}, return_when=asyncio.FIRST_COMPLETED)
+            get.cancel()
+            if stop in done or request.app.state.sigint in done:
+                break
+
+            event = get.result()
+            if event is None: break
+            yield event
+            get = asyncio.create_task(q.get())
+    finally:
+        service.jobs.log_subscribers.discard(q)
+        get.cancel()
+        stop.cancel()
 
 
 @router.get("/events/pending/{user_id}")
@@ -190,8 +216,10 @@ async def events_pending(request: Request, user_id: UserId, service: Presentatio
     """
 
     async def stream():
-        count = None
-        async for _ in _until_disconnected(request):
+        count = await service.jobs.get_pending_count(user_id)
+        yield f"data: {count}\n\n"
+        async for e in _safe_stream_job_logs(request, service):
+            if e["type"] not in {"create", "complete", "terminate"} or e["data"]["user_id"] != str(user_id): continue
             new_count = await service.jobs.get_pending_count(user_id)
             if count != new_count:
                 count = new_count
@@ -206,25 +234,15 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
     Subscribe to job events.
     """
 
-    after = await service.jobs.last_log_seq(id)  # read before the job, so no event falls between them
     job = await service.jobs.get(id)
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # the snapshot is a log row, so its seq is the exact cursor: no replay of older rows, no gap
-    last = await service.jobs.last_snapshot(id)
-    if last:
-        after = last["seq"]
-
     async def stream():
-        nonlocal after
-        data = last["data"] if last else json.loads(job.model_dump_json())
-        snapshot = {"id": str(id), "type": "update", "data": data, "timestamp": iso_z(datetime.now(timezone.utc))}
-        yield f"data: {json.dumps(snapshot)}\n\n"
-        async for _ in _until_disconnected(request):
-            for doc in await service.jobs.logs_after(id, after):
-                after = doc["seq"]
-                e = {"id": doc["job_id"], "type": doc["type"], "data": doc["data"], "timestamp": iso_z(doc["timestamp"])}
-                yield f"data: {json.dumps(e)}\n\n"
+        id_ = str(id)
+        await service.jobs.pub(id)
+        async for e in _safe_stream_job_logs(request, service):
+            if e["id"] != id_: continue
+            yield f"data: {json.dumps(e)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
