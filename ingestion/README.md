@@ -53,7 +53,7 @@ Set the environment variables.
 | `AZURE_OPENAI_EMBED_MODEL` | Embedding deployment name. The default is `text-embedding-ada-002`. |
 | `QDRANT_URL` | Qdrant URL. The default is `http://localhost:6333`. |
 | `QDRANT_API_KEY` | Qdrant key. |
-| `WEBHOOK_URL` | Receiver for the PENDING, RUNNING, COMPLETED, and FAILED status posts. Leave it empty to skip the posts. |
+| `WEBHOOK_URL` | Receiver for the PENDING, RUNNING, COMPLETED, and FAILED status posts. The server refuses to start without it. The batch CLI skips the posts when it is empty. |
 
 The textbook steps of the pipeline also need the `omni-ingest` model settings.
 See the omni-ingest documentation for these settings.
@@ -71,7 +71,7 @@ Give the grade and subject. They go into the Qdrant `index_path`.
 
 The runner picks the input type from the file extension.
 Use `--param medium=...` and `--param board=...` to change the defaults `english` and `BSE-TG`.
-The `index_path` starts with the board name. Use `--param collection=...` to read a different Qdrant collection.
+The `index_path` starts with the board name.
 
 Run the pipeline on a textbook PDF.
 
@@ -125,7 +125,7 @@ A batch run posts no webhook status. Add `"webhook": true` to `params` to turn i
 curl -H "x-api-key: $PIPELINE_API_KEY" -X POST http://localhost:8080/api/v2/pipelines/period_plan   -F "file=@Social LOs.xlsx" -F 'params={"grade": "6", "subject": "social", "workflow_template": {...}}'
 ```
 
-Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many pipeline runs go at the same time. `MAX_LESSON_PLAN_RUNS` (default 10) limits how many lesson plan runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size. `MAX_RETAINED_RUNS` (default 200) is how many finished runs the status route keeps. The oldest finished run is dropped first. `LOG_LEVEL` (default `INFO`) sets the log level.
+Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many pipeline runs go at the same time. `MAX_LESSON_PLAN_RUNS` (default 10) limits how many lesson plan runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size. `LOG_LEVEL` (default `INFO`) sets the log level.
 A run may set `concurrency` up to 16 and `top_k` up to 50.
 The service keeps run results in memory. Run one replica that does not scale to zero, and read the result before a restart.
 
@@ -153,7 +153,7 @@ Any other `index_path` is a legacy llama-index index in Azure Blob Storage, in t
 A path that contains `graph-index` loads as a property graph. Any other path loads as a vector index.
 Set `BLOB_STORE_CONNECTION_STRING`, or `BLOB_STORE_URL` with Azure credentials, for these chapters.
 The caller sets `index_path`, so the service reads only the containers that you list in `LEGACY_INDEX_CONTAINERS` (comma separated). Blob chapters fail with a clear error until you set it.
-These chapters need more packages than the Qdrant path: `llama-index-core`, `llama-index-llms-azure-openai`, `llama-index-embeddings-azure-openai`, `azure-storage-blob`, `azure-identity`, `aiofiles` and `components/rag-wrapper`. The Dockerfile installs them.
+These chapters need more packages than the Qdrant path: `llama-index-core`, `llama-index-llms-azure-openai`, `llama-index-embeddings-azure-openai`, `azure-storage-blob`, `azure-identity` and `components/rag-wrapper`. The Dockerfile installs them.
 Set `AZURE_OPENAI_BASE_MODEL` to the base model name, for example `gpt-4.1`. If you do not set it, the service uses the lowercase deployment name.
 The service downloads the index on the first section and deletes it when the last plan that uses it ends.
 

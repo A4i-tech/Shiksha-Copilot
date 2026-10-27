@@ -84,10 +84,6 @@ parameters:
       type: string
       default: text-embedding-ada-002
       description: Azure OpenAI embedding deployment used for retrieval
-    collection:
-      type: string
-      default: ""
-      description: Qdrant collection. Leave empty to read it from each plan's chapter_info.index_path.
     top_k:
       type: integer
       minimum: 1
@@ -417,11 +413,6 @@ steps:
             | ("Board=" + $c.board + "/Medium=" + $c.medium + "/Grade=" + $c.grade + "/Subject=" + $c.subject + "/Number=" + ($c.no | tostring) + "/Level=SUBTOPIC/Topics=" + $t_title) as $doc_id
             | ($template
                | if $topic_counter > 1 then .sections |= map(select(.id != "lesson_mind_mapping")) else . end
-               | .sections |= map(.description |= (
-                    gsub("\\$\\{READING_CONTENT\\}"; $context_str)
-                    | gsub("\\$\\{DISCOURSE_TYPES_MAJOR\\}"; ($discourse_major | join("; ")))
-                    | gsub("\\$\\{DISCOURSE_TYPES\\}"; ($discourse_minor | join("; ")))
-                 ))
               ) as $workflow_payload
             | {
                 _id: $doc_id,
@@ -434,7 +425,12 @@ steps:
                 subtopics: $group_topics,
                 learning_outcomes: $group_los,
                 chapter_info: {id: $chapter_id, chapter_title: $c.name, index_path: $index_path},
-                workflow: $workflow_payload
+                workflow: $workflow_payload,
+                prompt_variables: {
+                  READING_CONTENT: $context_str,
+                  DISCOURSE_TYPES_MAJOR: ($discourse_major | join("; ")),
+                  DISCOURSE_TYPES: ($discourse_minor | join("; "))
+                }
               }
           ]
     validation:
@@ -453,9 +449,7 @@ steps:
       concurrency: "${.config.concurrency}"
       retrieve:
         embed_model: "${.config.embed_model}"
-        collection: "${.config.collection}"
         top_k: "${.config.top_k}"
-        vector_name: text-dense
       prompts:
         system: |-
           You are LessonPlanGPT, an AI tutor specialized in generating lesson-plan segments for real classroom use. When processing any segment-specific prompt, follow these guidelines:
