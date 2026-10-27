@@ -48,7 +48,7 @@ Set the environment variables.
 |----------|-----|
 | `AZURE_OPENAI_API_BASE` | Azure OpenAI endpoint. |
 | `AZURE_OPENAI_API_KEY` | Azure OpenAI key. |
-| `AZURE_OPENAI_API_VERSION` | Azure OpenAI API version. The default is `2023-05-15`. |
+| `AZURE_OPENAI_API_VERSION` | Azure OpenAI API version. Required. Use `2023-12-01-preview` or newer, because JSON mode needs it. |
 | `AZURE_OPENAI_MODEL` | Chat deployment name. The default is `GPT-4.1`. |
 | `AZURE_OPENAI_EMBED_MODEL` | Embedding deployment name. The default is `text-embedding-ada-002`. |
 | `QDRANT_URL` | Qdrant URL. The default is `http://localhost:6333`. |
@@ -104,7 +104,7 @@ The POST routes keep the paths of the old service, so the Shiksha backend needs 
 | Route | Behavior |
 |-------|----------|
 | `POST /api/v2/lesson-plans` | Validates the body and returns `202` with `instance_id` and `status_query_get_uri`. The run continues in the background and posts its statuses to `WEBHOOK_URL` under that `instance_id`. A bad body returns `400`. |
-| `POST /api/v2/lesson-plans/checklist` | Needs `start_from_section_id`. Waits up to 300 seconds and returns the plan in the response. It posts no webhook status. A timeout returns `504`. |
+| `POST /api/v2/lesson-plans/checklist` | Needs `start_from_section_id`. Waits up to 200 seconds and returns the plan in the response. It posts no webhook status. A timeout returns `504`. |
 | `GET /api/v2/lesson-plans/{instance_id}` | Returns `runtimeStatus` (`Running`, `Completed`, `Failed` or `Terminated`) and the output. The server keeps this state in memory only, so a restart clears it. |
 
 ### Run a flow on an uploaded file
@@ -125,7 +125,7 @@ A batch run posts no webhook status. Add `"webhook": true` to `params` to turn i
 curl -H "x-api-key: $PIPELINE_API_KEY" -X POST http://localhost:8080/api/v2/pipelines/period_plan   -F "file=@Social LOs.xlsx" -F 'params={"grade": "6", "subject": "social", "workflow_template": {...}}'
 ```
 
-Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size. `MAX_RETAINED_RUNS` (default 200) is how many finished runs the status route keeps. The oldest finished run is dropped first. `LOG_LEVEL` (default `INFO`) sets the log level.
+Settings: `MAX_PIPELINE_RUNS` (default 2) limits how many pipeline runs go at the same time. `MAX_LESSON_PLAN_RUNS` (default 10) limits how many lesson plan runs go at the same time. `MAX_UPLOAD_MB` (default 25) limits the file size. `MAX_RETAINED_RUNS` (default 200) is how many finished runs the status route keeps. The oldest finished run is dropped first. `LOG_LEVEL` (default `INFO`) sets the log level.
 A run may set `concurrency` up to 16 and `top_k` up to 50.
 The service keeps run results in memory. Run one replica that does not scale to zero, and read the result before a restart.
 

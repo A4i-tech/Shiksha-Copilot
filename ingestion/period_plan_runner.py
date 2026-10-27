@@ -43,15 +43,23 @@ def model_defaults() -> dict[str, str]:
 
 
 def connect(out_dir: Path | None = None) -> steps.Connections:
-    for var in ("AZURE_OPENAI_API_BASE", "AZURE_OPENAI_API_KEY"):
+    for var in ("AZURE_OPENAI_API_BASE", "AZURE_OPENAI_API_KEY", "AZURE_OPENAI_API_VERSION"):
         if not os.environ.get(var):
             sys.exit(f"Environment variable {var} is not set. See the environment variable table in the README.")
     url = os.environ.get("WEBHOOK_URL")
 
     async def post_status(status: dict) -> None:
-        if url:
-            async with httpx.AsyncClient(timeout=30) as http:
-                (await http.post(url, json=status)).raise_for_status()
+        if not url:
+            return
+        async with httpx.AsyncClient(timeout=30) as http:
+            for attempt in range(4):
+                try:
+                    (await http.post(url, json=status)).raise_for_status()
+                    return
+                except httpx.HTTPError:
+                    if attempt == 3:
+                        raise
+                    await asyncio.sleep(2**attempt)  # a brief backend outage must not lose COMPLETED or FAILED
 
     def target(plan_id: str) -> Path:
         return out_dir / f"{hashlib.sha256(plan_id.encode()).hexdigest()[:16]}.json"
@@ -64,7 +72,7 @@ def connect(out_dir: Path | None = None) -> steps.Connections:
 
     return steps.Connections(
         qdrant=AsyncQdrantClient(url=os.environ.get("QDRANT_URL", "http://localhost:6333"), api_key=os.environ.get("QDRANT_API_KEY")),
-        llm=tracing.AsyncAzureOpenAI(azure_endpoint=os.environ["AZURE_OPENAI_API_BASE"], api_key=os.environ["AZURE_OPENAI_API_KEY"], api_version=os.environ.get("AZURE_OPENAI_API_VERSION", "2023-05-15")),
+        llm=tracing.AsyncAzureOpenAI(azure_endpoint=os.environ["AZURE_OPENAI_API_BASE"], api_key=os.environ["AZURE_OPENAI_API_KEY"], api_version=os.environ["AZURE_OPENAI_API_VERSION"]),
         post_status=post_status,
         is_done=lambda plan_id: out_dir is not None and target(plan_id).exists(),
         save=save if out_dir else lambda *_: None,
