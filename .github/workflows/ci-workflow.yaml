@@ -1,0 +1,97 @@
+name: CI Workflow Service
+
+on:
+  workflow_call:
+    inputs:
+      publish_latest:
+        description: "Whether to set 'latest' tag on published image"
+        required: true
+        type: boolean
+    outputs:
+      tag_primary:
+        description: "Pushed image tag (primary)"
+        value: ${{ jobs.build-test.outputs.image_tag_primary }}
+
+env:
+  REGISTRY: ghcr.io
+  WORKFLOW_IMAGE_NAME: ${{ github.repository }}/workflow
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      image_tag_primary: ${{ steps.set_tag_primary.outputs.image_tag_primary }}
+      image_tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run unit tests
+        working-directory: ingestion
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libmagic1
+          pip install -r requirements.txt pytest
+          python -m pytest tests
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.WORKFLOW_IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ inputs.publish_latest }}
+
+      - name: Set image name and tag output
+        id: set_tag_primary
+        run: |
+          IMAGE_NAME=$(echo '${{ env.WORKFLOW_IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')
+          echo "image_tag_primary=${{ env.REGISTRY }}/$IMAGE_NAME:$(echo '${{ steps.meta.outputs.tags }}' | tr ',' '\n' | grep ':sha-' | head -1 | cut -d: -f2)" >> $GITHUB_OUTPUT
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ingestion/Dockerfile
+          push: false
+          tags: shiksha-workflow-local
+          cache-from: type=gha,scope=shiksha-workflow
+          cache-to: type=gha,scope=shiksha-workflow,mode=max
+
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-test
+    if: github.ref == 'refs/heads/a4i/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ingestion/Dockerfile
+          push: true
+          tags: ${{ needs.build-test.outputs.image_tags }}
+          cache-from: type=gha,scope=shiksha-workflow
+          cache-to: type=gha,scope=shiksha-workflow,mode=max

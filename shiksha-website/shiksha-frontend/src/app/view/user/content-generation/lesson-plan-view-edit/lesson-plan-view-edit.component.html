@@ -12,7 +12,7 @@
         {{ (isLesson ? 'Lesson Plan' : "Lesson Resource") | translate }}
       </h1>
     </div>
-    <div class="flex gap-2">
+    <div class="flex gap-2" *ngIf="!isGenerating && !generationFailed">
       <button
         [hasPermission]="['lesson-plan.ai-enhance']"
         *ngIf="isLesson && !planAiMode && !sectionAiActive"
@@ -45,6 +45,24 @@
     </div>
   </div>
   <div
+    *ngIf="isGenerating"
+    role="status"
+    class="mt-4 bg-white rounded-md shadow-sm p-8 flex items-center gap-4"
+  >
+    <img class="animate-spin w-6 h-6" src="assets/icons/running-sm.svg" alt="" />
+    <p class="text-content">
+      {{ "Your plan is being generated. This can take a few minutes. This page updates when it is ready." | translate }}
+    </p>
+  </div>
+  <div
+    *ngIf="generationFailed"
+    role="alert"
+    class="mt-4 bg-white rounded-md shadow-sm p-8 text-content"
+  >
+    {{ "We could not generate this plan. Your original plan is unchanged. Go back and click Regenerate to try again." | translate }}
+  </div>
+  <div
+    *ngIf="!isGenerating && !generationFailed"
     class="flex flex-col md:flex-row main-container mt-4"
     [ngClass]="expandedContainer ? 'gap-0' : 'gap-4'"
   >
@@ -220,7 +238,7 @@
     </div>
   </div>
 
-  <div class="text-content rounded my-3 p-3 bg-white feedback-panel">
+  <div *ngIf="!isGenerating && !generationFailed" class="text-content rounded my-3 p-3 bg-white feedback-panel">
     <div class="flex justify-between items-center flex-wrap gap-2">
       <h2 data-testid="feedback-heading" class="text-lg font-bold text-content-100">
         {{ currentType | translate}} {{ "Feedback" | translate }}

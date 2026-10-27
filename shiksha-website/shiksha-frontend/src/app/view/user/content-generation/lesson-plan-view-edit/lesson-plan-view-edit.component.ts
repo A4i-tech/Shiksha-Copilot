@@ -337,12 +337,20 @@ export class LessonPlanViewEditComponent implements OnInit {
     }
   }
 
+  isGenerating = false;
+  generationFailed = false;
+  private generationPoll?: ReturnType<typeof setTimeout>;
+  private generationStartedAt = Date.now();
+  private readonly MAX_GENERATION_MS = 15 * 60 * 1000;
+  private planSub: Subscription | null = null;
+
   populateViewAndDraft() {
     const subscription = this.isLesson
       ? this.contentGenService.getLessonPlanById(this.planId)
       : this.contentGenService.getResourcePlanById(this.planId);
 
-    subscription.subscribe({
+    this.planSub?.unsubscribe();
+    this.planSub = subscription.subscribe({
       next: (res: any) => {
         const obj = {
           ...res.data,
@@ -366,10 +374,31 @@ export class LessonPlanViewEditComponent implements OnInit {
         if(this.mode === 'view'){
           this.idleService.planId = this.isLesson ? this.planDetails?.lessonId : this.planDetails?.resourceId
         }
+        const unsaved = this.isLesson && this.planDetails?.isGenerated && !this.planDetails?.isCompleted;
+        this.isGenerating = unsaved && this.planDetails?.status === 'running';
+        this.generationFailed = unsaved && this.planDetails?.status === 'failed';
+        clearTimeout(this.generationPoll);
+        if (this.isGenerating) {
+          this.pollGeneration();
+          return;
+        }
         this.setContent();
       },
-      error: (err) => {},
+      error: () => {
+        if (this.isGenerating) {
+          this.pollGeneration();
+        }
+      },
     });
+  }
+
+  private pollGeneration() {
+    if (Date.now() - this.generationStartedAt > this.MAX_GENERATION_MS) {
+      this.isGenerating = false;
+      this.generationFailed = true; // the final webhook was lost, so stop waiting
+      return;
+    }
+    this.generationPoll = setTimeout(() => this.populateViewAndDraft(), 5000);
   }
 
   setContent() {
@@ -850,6 +879,8 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   ngOnDestroy(): void {
+    clearTimeout(this.generationPoll);
+    this.planSub?.unsubscribe();
     this.routerEventsSubscription.unsubscribe();
     this.modeSubscription.unsubscribe();
     this.planAiSub?.unsubscribe();

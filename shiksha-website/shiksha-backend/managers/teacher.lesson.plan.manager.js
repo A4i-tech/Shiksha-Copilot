@@ -21,6 +21,7 @@ const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
+const AppError = require("../helper/app.error");
 
 /** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
@@ -153,10 +154,13 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 		const masterLesson = await this.masterLessonDao.getById(payload.lessonId);
 		if (!masterLesson) {
-			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
+			throw new AppError("This lesson could not be found. Reload the page, select the lesson again, and retry.", 404);
 		  }
 
 		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
+		if (!template) {
+			throw new AppError(`Lesson plan template ${masterLesson.templateId} not found for master lesson ${masterLesson._id}`);
+		}
 
 		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
 		if (!chapter) {
@@ -229,7 +233,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			_version: version,
 		});
 
-		return formatApiReponse(true, "Generation is in progress!",{data: result.data,requestData});
+		return formatApiReponse(true, "Generation is in progress!",{data: result.data,requestData,lessonId: lesson._id});
 	}
 
 	async getResourcePlanById(teacherId, resourcePlanId) {
@@ -366,6 +370,9 @@ class TeacherLessonPlanManager extends BaseManager {
 			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
 		  }
 		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
+		if (!template) {
+			throw new AppError(`Lesson plan template ${masterLesson.templateId} not found for master lesson ${masterLesson._id}`);
+		}
 
 		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
 		if (!chapter) {
@@ -485,24 +492,36 @@ class TeacherLessonPlanManager extends BaseManager {
 
 		const { instance_id , status, output } = webhookData;
 
+		// undefined filter values are dropped by mongoose and would match any plan
+		if (!instance_id || !status) {
+			return formatApiReponse(false, "instance_id and status are required", null);
+		}
+		const state = String(status).toLowerCase();
+
 		const existingLessonPlan = await this.dao.getOne({
 			instanceId: instance_id,
-		});
-
-		const regeneratedLog = await this.regeneratedLessonResource.getOne({
-			genContentId: existingLessonPlan.lessonId,
-			recordId: existingLessonPlan._id
 		});
 
 		if (!existingLessonPlan) {
 			return formatApiReponse(false, "Lesson plan not found", null);
 		}
-		if (status.toLowerCase() === "completed") {
+
+		const regeneratedLog = await this.regeneratedLessonResource.getOne({
+			genContentId: existingLessonPlan.lessonId,
+			recordId: existingLessonPlan._id
+		});
+		if (state === "completed") {
 			const masterLessonPlan = await this.masterLessonDao.getById(
 				existingLessonPlan.lessonId
 			);
 
 			const lessonPlanTemplate = await LessonPlanTemplate.findById(masterLessonPlan?.templateId)
+			if (!Array.isArray(output?.sections)) {
+				return formatApiReponse(false, "output.sections is missing", null);
+			}
+			if (!lessonPlanTemplate) {
+				return formatApiReponse(false, "Lesson plan template not found", null);
+			}
 
 			const sections = formatSections(output.sections,lessonPlanTemplate.sections);
 
@@ -513,8 +532,9 @@ class TeacherLessonPlanManager extends BaseManager {
 
 			await this.masterLessonDao.update(masterLessonUpdate);
 			const updateTeacherLessonPlanData = {
-				status: status.toLowerCase(),
-				sections
+				status: state,
+				sections,
+				...(regeneratedLog ? { isCompleted: true } : {}), // autosave only regenerated plans
 			};
 
 			await this.dao.updatePlan(
@@ -524,13 +544,13 @@ class TeacherLessonPlanManager extends BaseManager {
 			if (regeneratedLog) {
 				await this.regeneratedLessonResource.update(
 					regeneratedLog._id,
-					{ status: status.toLowerCase() }
+					{ status: state }
 				);
 			}
 		}
 		else {
 			const updateTeacherLessonPlanData = {
-				status: status.toLowerCase(),
+				status: state,
 			};
 
 			await this.dao.updatePlan(
@@ -541,7 +561,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			if (regeneratedLog) {
 				await this.regeneratedLessonResource.update(
 					regeneratedLog._id,
-					{ status: status.toLowerCase() }
+					{ status: state }
 				);
 			}
 		}
