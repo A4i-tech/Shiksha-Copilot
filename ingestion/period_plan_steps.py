@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from textwrap import dedent
 from typing import Any, Awaitable, Callable, Literal
@@ -189,6 +189,7 @@ async def run_graph(nodes: dict[str, Node], generate: Callable[[str, dict[str, A
     except BaseException:
         for t in tasks.values():
             t.cancel()
+        await asyncio.gather(*tasks.values(), return_exceptions=True)
         raise
 
 
@@ -279,7 +280,7 @@ class SectionGraph(BaseModel, Step):
         if not self.webhook:
             return
         try:
-            await CONN.post_status({"instance_id": plan_id, "status": status, "timestamp": datetime.now().isoformat(), "input": payload, "output": output})
+            await CONN.post_status({"instance_id": plan_id, "status": status, "timestamp": datetime.now(timezone.utc).isoformat(), "input": payload, "output": output})
         except Exception as e:
             log.error("Webhook post failed for plan %s (%s). Check WEBHOOK_URL and that the receiver is reachable.", plan_id, e)
 
@@ -454,6 +455,14 @@ def whole_number(value: Any) -> Any:
     return int(value) if isinstance(value, float) and value.is_integer() else value
 
 
+def order(value: Any) -> tuple:
+    if value is None:
+        return (2, 0, "")
+    if isinstance(value, (int, float)):
+        return (0, value, "")
+    return (1, 0, str(value))
+
+
 class XlsxChapters(BaseModel, Step):
     grade: str
     subject: str
@@ -499,13 +508,13 @@ class XlsxChapters(BaseModel, Step):
             {
                 "board": self.board,
                 "medium": self.medium.lower(),
-                "grade": str(self.grade).removeprefix("Grade ").strip(),
+                "grade": re.sub(r"(?i)^grade\s*", "", str(self.grade)).strip(),
                 "subject": self.subject,
                 "no": no,
                 "name": name,
-                "topic_groups": [g for _, g in sorted(groups.items(), key=lambda kv: (kv[0] is None, kv[0])) if g["topics"]],
+                "topic_groups": [g for _, g in sorted(groups.items(), key=lambda kv: order(kv[0])) if g["topics"]],
             }
-            for (no, name), groups in sorted(periods.items(), key=lambda kv: kv[0][0])
+            for (no, name), groups in sorted(periods.items(), key=lambda kv: order(kv[0][0]))
         ]
 
     async def run(self, ctx: Any) -> StepResult:

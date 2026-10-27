@@ -493,9 +493,10 @@ class TeacherLessonPlanManager extends BaseManager {
 		const { instance_id , status, output } = webhookData;
 
 		// undefined filter values are dropped by mongoose and would match any plan
-		if (!instance_id) {
-			return formatApiReponse(false, "instance_id is required", null);
+		if (!instance_id || !status) {
+			return formatApiReponse(false, "instance_id and status are required", null);
 		}
+		const state = String(status).toLowerCase();
 
 		const existingLessonPlan = await this.dao.getOne({
 			instanceId: instance_id,
@@ -509,12 +510,18 @@ class TeacherLessonPlanManager extends BaseManager {
 			genContentId: existingLessonPlan.lessonId,
 			recordId: existingLessonPlan._id
 		});
-		if (status.toLowerCase() === "completed") {
+		if (state === "completed") {
 			const masterLessonPlan = await this.masterLessonDao.getById(
 				existingLessonPlan.lessonId
 			);
 
 			const lessonPlanTemplate = await LessonPlanTemplate.findById(masterLessonPlan?.templateId)
+			if (!Array.isArray(output?.sections)) {
+				return formatApiReponse(false, "output.sections is missing", null);
+			}
+			if (!lessonPlanTemplate) {
+				return formatApiReponse(false, "Lesson plan template not found", null);
+			}
 
 			const sections = formatSections(output.sections,lessonPlanTemplate.sections);
 
@@ -525,9 +532,9 @@ class TeacherLessonPlanManager extends BaseManager {
 
 			await this.masterLessonDao.update(masterLessonUpdate);
 			const updateTeacherLessonPlanData = {
-				status: status.toLowerCase(),
+				status: state,
 				sections,
-				isCompleted: true // autosave: a regenerated plan is saved when it completes
+				...(regeneratedLog ? { isCompleted: true } : {}), // autosave only regenerated plans
 			};
 
 			await this.dao.updatePlan(
@@ -537,13 +544,13 @@ class TeacherLessonPlanManager extends BaseManager {
 			if (regeneratedLog) {
 				await this.regeneratedLessonResource.update(
 					regeneratedLog._id,
-					{ status: status.toLowerCase() }
+					{ status: state }
 				);
 			}
 		}
 		else {
 			const updateTeacherLessonPlanData = {
-				status: status.toLowerCase(),
+				status: state,
 			};
 
 			await this.dao.updatePlan(
@@ -554,7 +561,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			if (regeneratedLog) {
 				await this.regeneratedLessonResource.update(
 					regeneratedLog._id,
-					{ status: status.toLowerCase() }
+					{ status: state }
 				);
 			}
 		}

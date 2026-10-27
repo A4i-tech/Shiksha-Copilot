@@ -142,3 +142,38 @@ def test_finished_runs_are_dropped_oldest_first(conn, monkeypatch):
             return [(await client.get(f"/api/v2/lesson-plans/{i}")).status for i in ids]
 
     assert asyncio.run(go()) == [404, 404, 200, 200]
+
+
+def test_mixed_number_and_text_keys_sort_without_error():
+    assert sorted([None, "Review", 2, 1.5, "Unit 2"], key=steps.order) == [1.5, 2, "Review", "Unit 2", None]
+
+
+def test_terminal_status_post_is_retried_then_raised(monkeypatch):
+    calls = []
+
+    class Http:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return False
+
+        async def post(self, url, json):
+            calls.append(url)
+            raise runner.httpx.ConnectError("down")
+
+    sleeps = []
+
+    async def no_sleep(seconds):
+        sleeps.append(seconds)
+
+    monkeypatch.setenv("WEBHOOK_URL", "http://backend/hook")
+    monkeypatch.setenv("AZURE_OPENAI_API_BASE", "http://x")
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "k")
+    monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-06-01")
+    monkeypatch.setattr(runner.httpx, "AsyncClient", lambda **_: Http())
+    monkeypatch.setattr(runner.asyncio, "sleep", no_sleep)
+    post = runner.connect().post_status
+    with pytest.raises(runner.httpx.ConnectError):
+        asyncio.run(post({"status": "COMPLETED"}))
+    assert len(calls) == 4 and sleeps == [1, 2, 4]
