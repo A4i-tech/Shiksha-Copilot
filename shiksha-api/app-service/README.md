@@ -145,6 +145,46 @@ The API will be available at:
 - Swagger Documentation: http://localhost:8000/docs
 - ReDoc Documentation: http://localhost:8000/redoc
 
+### Presentation worker
+
+The API does not generate presentations. It saves the job in MongoDB and publishes a message to NATS JetStream. A separate worker process takes one message at a time and runs the job.
+If a worker stops, NATS sends the message to another worker. The job continues from its last saved step.
+
+Set `SHIKSHA_ROLE` to choose what a container runs:
+
+- `api` (default): runs the API.
+- `worker` or `presentation-worker` (legacy name): runs the worker.
+- `all`: runs the API and the worker in one process. Use it for local work only. Jobs then share the API process.
+
+Start a worker outside a container:
+
+```bash
+poetry run python -m app.worker
+```
+
+Start NATS locally:
+
+```bash
+docker run -d -p 4222:4222 nats:2 -js
+```
+
+Delayed retries need NATS server 2.12 or newer.
+
+Settings:
+
+- `NATS_URL`: address of the NATS server. Default `nats://localhost:4222`.
+- `NATS_CREDS`: path to a NATS credentials file. Default none.
+- `NATS_REPLICAS`: number of stream replicas. Default 1.
+- `SHIKSHA_ROLE`: `api`, `worker` or `all`.
+- `PRES_ACK_WAIT_SECONDS`: time without a sign of life before NATS sends the job again. Default 60.
+- `PRES_MAX_DELIVER`: number of tries before the job fails for good. Default 5.
+- `PRES_DRAIN_SECONDS`: time a stopping worker waits for its job to finish. Default 25.
+- `PRES_STALL_SECONDS`: time without a job write before the worker stops a silent job. Default 300.
+- `PRES_RECONCILE_SECONDS`: time between checks for jobs that need a message or a final error. Default 30.
+
+Set `PRES_MONGODB_URL`, `PRES_STORAGE_FILESYSTEM` and `PRES_STORAGE_OPTIONS` to the same values for the API and the worker. In a deployment, use blob storage. A local disk is not shared between pods.
+Give the worker its own memory limit. A worker out-of-memory kill does not stop the API.
+
 ## API Endpoints
 
 ### Chat Endpoints
