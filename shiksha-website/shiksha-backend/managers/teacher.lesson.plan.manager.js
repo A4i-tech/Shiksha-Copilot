@@ -3,7 +3,7 @@ const formatApiReponse = require("../helper/response");
 const TeacherLessonPlanModel = require("../models/teacher.lesson.plan.model");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const teacherLessonPlanAggregation = require("../aggregation/teacher.lesson.plan.aggregation");
-const { postToCopilotBot, postToSectionEditBot, postToPlanEditBot } = require("../services/copilot.bot.service.js");
+const { postToCopilotBot, postToSectionEditBot, postToPlanEditBot, getWorkflowRun } = require("../services/copilot.bot.service.js");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterLessonDao = require("../dao/master.lesson.dao");
@@ -135,11 +135,71 @@ class TeacherLessonPlanManager extends BaseManager {
 		return !!lessonPlan;
 	}
 
+	async _loadLessonContext(lessonId) {
+		const masterLesson = await this.masterLessonDao.getById(lessonId);
+		if (!masterLesson) {
+			throw new AppError("This lesson could not be found. Reload the page, select the lesson again, and retry.", 404);
+		}
+		const template = await this.lessonPlanTemplateDao.getById(masterLesson.templateId);
+		if (!template) {
+			throw new AppError(`Lesson plan template ${masterLesson.templateId} not found for master lesson ${masterLesson._id}`, 404);
+		}
+		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
+		if (!chapter) {
+			throw new AppError(`Chapter with ID ${masterLesson.chapterId} not found`, 404);
+		}
+		const subject = await this.subjectDao.getById(chapter.subjectId);
+		if (!subject) {
+			throw new AppError(`Subject with ID ${chapter.subjectId} not found`, 404);
+		}
+		return { masterLesson, template, chapter, subject };
+	}
+
+	async _replayCompleted(lessonPlan, output) {
+		try {
+			await this.processWebhookData({ instance_id: lessonPlan.instanceId, status: "COMPLETED", output });
+		} catch (error) {
+			if (error.statusCode !== 400) throw error;
+		}
+	}
+
+	async _failIfRunLost(lessonPlan) {
+		let output;
+		try {
+			const { data } = await getWorkflowRun(lessonPlan.instanceId);
+			const state = String(data?.runtimeStatus ?? data?.status).toLowerCase();
+			if (state === "completed" && data?.output) {
+				await this._replayCompleted(lessonPlan, data.output);
+				return true;
+			}
+			if (state !== "failed" && state !== "terminated") {
+				return;
+			}
+			output = data?.output;
+		} catch (error) {
+			if (error.response?.status !== 404) {
+				logger.warn(`Could not check workflow run ${lessonPlan.instanceId}`, { message: error.message });
+				return;
+			}
+			output = "The workflow run was lost. Retry the generation.";
+		}
+		await this.processWebhookData({ instance_id: lessonPlan.instanceId, status: "failed", output });
+		lessonPlan.status = "failed";
+		if (typeof output === "string") {
+			lessonPlan.error = output;
+		}
+	}
+
 	async getLessonPlanById(teacherId, lessonPlanId) {
-		const lessonPlan = await this.dao.getLessonPlanById(
+		let lessonPlan = await this.dao.getLessonPlanById(
 			teacherId,
 			lessonPlanId
 		);
+		if (lessonPlan?.status === "running" && lessonPlan.instanceId) {
+			if (await this._failIfRunLost(lessonPlan)) {
+				lessonPlan = await this.dao.getLessonPlanById(teacherId, lessonPlanId);
+			}
+		}
 		if (lessonPlan) {
 			return formatApiReponse(true, "", lessonPlan);
 		} else {
@@ -152,24 +212,7 @@ class TeacherLessonPlanManager extends BaseManager {
 		if(regenerationCount >= REGENERATION_LIMIT){
 			return formatApiReponse(false, `Daily regeneration limit of ${REGENERATION_LIMIT} has been reached.`, null);
 		}
-		const masterLesson = await this.masterLessonDao.getById(payload.lessonId);
-		if (!masterLesson) {
-			throw new AppError("This lesson could not be found. Reload the page, select the lesson again, and retry.", 404);
-		  }
-
-		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
-		if (!template) {
-			throw new AppError(`Lesson plan template ${masterLesson.templateId} not found for master lesson ${masterLesson._id}`);
-		}
-
-		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
-		if (!chapter) {
-			throw new Error(`Chapter with ID ${masterLesson.chapterId} not found`);
-		  }
-		const subject = await this.subjectDao.getById(chapter.subjectId);
-		if (!subject) {
-			throw new Error(`Subject with ID ${chapter.subjectId} not found`);
-		  }
+		const { masterLesson, template, chapter, subject } = await this._loadLessonContext(payload.lessonId);
 		const highestVersionEntry = await this.regeneratedLessonResource.getOne({
 			isLoGeneratedContent: true,
 			isMasterContent: true,
@@ -180,13 +223,6 @@ class TeacherLessonPlanManager extends BaseManager {
 			: 1;
 		const requestData = this._createBotPayload(chapter, subject, payload, template);
 		const result = await postToCopilotBot(requestData);
-
-		if (result.status !== 202) {
-			logger.error(`Unexpected status code from Copilot bot: ${result.status}`);
-			throw new Error(`Unexpected status code from Copilot bot: ${result.status}`);
-		  }
-
-		  logger.info(`Successfully received expected response from Copilot bot ${result.data.instance_id}`);
 		const lesson = await this.masterLessonDao.create({
 			name: `Version-${version} ${masterLesson.name}`,
 			isAll: masterLesson.isAll,
@@ -233,7 +269,7 @@ class TeacherLessonPlanManager extends BaseManager {
 			_version: version,
 		});
 
-		return formatApiReponse(true, "Generation is in progress!",{data: result.data,requestData,lessonId: lesson._id});
+		return formatApiReponse(true, "Generation is in progress!",{data: result.data, requestData, lessonId: lesson._id});
 	}
 
 	async getResourcePlanById(teacherId, resourcePlanId) {
@@ -365,23 +401,7 @@ class TeacherLessonPlanManager extends BaseManager {
 		if(regenerationCount >= REGENERATION_LIMIT){
 			return formatApiReponse(false, `Daily regeneration limit of ${REGENERATION_LIMIT} has been reached.`, null);
 		}
-		const masterLesson = await this.masterLessonDao.getById(payload.lessonId);
-		if (!masterLesson) {
-			throw new Error(`Master lesson with ID ${payload.lessonId} not found`);
-		  }
-		const template = await this.lessonPlanTemplateDao.getById(masterLesson?.templateId)
-		if (!template) {
-			throw new AppError(`Lesson plan template ${masterLesson.templateId} not found for master lesson ${masterLesson._id}`);
-		}
-
-		const chapter = await this.chapterDao.getById(masterLesson.chapterId);
-		if (!chapter) {
-			throw new Error(`Chapter with ID ${masterLesson.chapterId} not found`);
-		  }
-		const subject = await this.subjectDao.getById(chapter.subjectId);
-		if (!subject) {
-			throw new Error(`Subject with ID ${chapter.subjectId} not found`);
-		  }
+		const { masterLesson, template, chapter, subject } = await this._loadLessonContext(payload.lessonId);
 		payload.lessonPlan = this._createLessonPlanPayload(
 			masterLesson.sections,
 			payload.regenFeedback
@@ -389,12 +409,6 @@ class TeacherLessonPlanManager extends BaseManager {
 		payload.learningOutcomes = masterLesson.learningOutcomes;
 		let requestData = this._createBotPayload(chapter, subject, payload,template);
 		const result = await postToCopilotBot(requestData);
-
-		  if (result.status !== 202) {
-			logger.error(`Unexpected status code from Copilot bot: ${result.status}`);
-			throw new Error(`Unexpected status code from Copilot bot: ${result.status}`);
-		  }
-		  logger.info(`Successfully received expected response from Copilot bot ${result.data.instance_id}`);
 
 		const lesson = await this.masterLessonDao.create({
 			name: masterLesson.name,
@@ -492,9 +506,8 @@ class TeacherLessonPlanManager extends BaseManager {
 
 		const { instance_id , status, output } = webhookData;
 
-		// undefined filter values are dropped by mongoose and would match any plan
-		if (!instance_id || !status) {
-			return formatApiReponse(false, "instance_id and status are required", null);
+		if (!instance_id) {
+			throw new AppError("instance_id is required", 400);
 		}
 		const state = String(status).toLowerCase();
 
@@ -503,13 +516,15 @@ class TeacherLessonPlanManager extends BaseManager {
 		});
 
 		if (!existingLessonPlan) {
-			return formatApiReponse(false, "Lesson plan not found", null);
+			throw new AppError(`Lesson plan not found for instance ${instance_id}`, 404);
 		}
 
 		const regeneratedLog = await this.regeneratedLessonResource.getOne({
 			genContentId: existingLessonPlan.lessonId,
 			recordId: existingLessonPlan._id
 		});
+		let update = { status: state };
+		let failure;
 		if (state === "completed") {
 			const masterLessonPlan = await this.masterLessonDao.getById(
 				existingLessonPlan.lessonId
@@ -517,53 +532,29 @@ class TeacherLessonPlanManager extends BaseManager {
 
 			const lessonPlanTemplate = await LessonPlanTemplate.findById(masterLessonPlan?.templateId)
 			if (!Array.isArray(output?.sections)) {
-				return formatApiReponse(false, "output.sections is missing", null);
+				failure = "The workflow finished without plan sections. Retry the generation.";
+			} else if (!lessonPlanTemplate) {
+				failure = "The lesson plan template was not found. Retry the generation.";
 			}
-			if (!lessonPlanTemplate) {
-				return formatApiReponse(false, "Lesson plan template not found", null);
+			if (failure) {
+				update = { status: "failed", error: failure };
+			} else {
+				const sections = formatSections(output.sections,lessonPlanTemplate.sections);
+
+				await this.masterLessonDao.update({ id: masterLessonPlan._id, sections });
+				update.sections = sections;
+				if (regeneratedLog) update.isCompleted = true;
 			}
-
-			const sections = formatSections(output.sections,lessonPlanTemplate.sections);
-
-			const masterLessonUpdate = {
-				id: masterLessonPlan._id,
-				sections
-			};
-
-			await this.masterLessonDao.update(masterLessonUpdate);
-			const updateTeacherLessonPlanData = {
-				status: state,
-				sections,
-				...(regeneratedLog ? { isCompleted: true } : {}), // autosave only regenerated plans
-			};
-
-			await this.dao.updatePlan(
-				existingLessonPlan._id,
-				updateTeacherLessonPlanData
-			);
-			if (regeneratedLog) {
-				await this.regeneratedLessonResource.update(
-					regeneratedLog._id,
-					{ status: state }
-				);
-			}
+		} else if (typeof output === "string") {
+			update.error = output;
 		}
-		else {
-			const updateTeacherLessonPlanData = {
-				status: state,
-			};
 
-			await this.dao.updatePlan(
-				existingLessonPlan._id,
-				updateTeacherLessonPlanData
-			);
-
-			if (regeneratedLog) {
-				await this.regeneratedLessonResource.update(
-					regeneratedLog._id,
-					{ status: state }
-				);
-			}
+		await this.dao.updatePlan(existingLessonPlan._id, update);
+		if (regeneratedLog) {
+			await this.regeneratedLessonResource.update(regeneratedLog._id, { status: update.status });
+		}
+		if (failure) {
+			throw new AppError(failure, 400);
 		}
 
 		return formatApiReponse(
@@ -761,20 +752,7 @@ async deleteResourceMedia(teacherId, resourceId, data) {
 		const regeneratedLog = await this.regeneratedLessonResource.getById(regeneratedId);
 		const teacherLessonPlan = await this.dao.getById(recordId);
 
-        const masterLesson = await this.masterLessonDao.getById(teacherLessonPlan.lessonId);
-        if (!masterLesson) {
-            throw new Error(`Master lesson with ID ${teacherLessonPlan.lessonId} not found`);
-        }
-
-        const chapter = await this.chapterDao.getById(masterLesson.chapterId);
-        if (!chapter) {
-            throw new Error(`Chapter with ID ${masterLesson.chapterId} not found`);
-        }
-
-        const subject = await this.subjectDao.getById(chapter.subjectId);
-        if (!subject) {
-            throw new Error(`Subject with ID ${chapter.subjectId} not found`);
-        }
+        const { masterLesson, template, chapter, subject } = await this._loadLessonContext(teacherLessonPlan.lessonId);
 
 		let payload = {
 			subTopics : masterLesson.subTopics,
@@ -793,14 +771,8 @@ async deleteResourceMedia(teacherId, resourceId, data) {
 			);
 		}
 
-		let requestData = this._createBotPayload(chapter, subject, payload);
+		let requestData = this._createBotPayload(chapter, subject, payload, template);
 		const result = await postToCopilotBot(requestData);
-
-		if (result.status !== 202) {
-			logger.error(`Unexpected status code from Copilot bot: ${result.status}`);
-			throw new Error(`Unexpected status code from Copilot bot: ${result.status}`);
-		  }
-		    logger.info(`Successfully received expected response from Copilot bot ${result.data.instance_id}`);
 		regeneratedLog.status="running";
 		teacherLessonPlan.status ="running";
 		teacherLessonPlan.instanceId = result.data.instance_id;
@@ -836,7 +808,7 @@ const payloadSections =[]
 
 	if(isEnglish){
 		const match = chapter.topics.match(/(POEM|PROSE)/);
-		lp_type = match ? match[0] : null;
+		lp_type = match ? match[0] : 'NONE';
 	}
 
 		return {
@@ -851,7 +823,7 @@ const payloadSections =[]
 				index_path: chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`,
 				chapter_title:chapter.topics
 			},
-			subtopics: payload.isAll ? [] : payload?.subTopics,
+			subtopics: payload.isAll ? [] : (payload?.subTopics ?? []),
 			lesson_plan: payload?.lessonPlan || null,
 		};
 	}
