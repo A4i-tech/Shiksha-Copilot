@@ -10,7 +10,8 @@ import { ActivatedRoute, NavigationStart, Router } from '@angular/router';
 import { ContentGenerationService } from '../content-generation.service';
 import { ScheduleService } from '../../schedule/schedule.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { forkJoin, Subscription } from 'rxjs';
+import { EMPTY, forkJoin, Observable, Subject, Subscription, throwError, timer } from 'rxjs';
+import { catchError, exhaustMap, takeUntil, takeWhile, tap } from 'rxjs/operators';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import {
   containerAnimation,
@@ -20,6 +21,30 @@ import {
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { CCE_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { buildDiffParts, toSplitDiff } from 'src/app/shared/utility/ai-diff.util';
+
+enum PlanStatus {
+  Pending = 'pending',
+  Running = 'running',
+  Completed = 'completed',
+  Failed = 'failed',
+}
+
+interface PlanDetails {
+  status?: PlanStatus;
+  error?: string;
+  sections?: any[];
+  isGenerated?: boolean;
+  isCompleted?: boolean;
+  [key: string]: any;
+}
+
+interface PlanResponse {
+  data: PlanDetails;
+}
+
+const POLL_MS = 5000;
+const MAX_GENERATION_MS = 15 * 60 * 1000;
+const MAX_LOAD_FAILURES = 3;
 
 @Component({
   selector: 'app-lesson-plan-view-edit',
@@ -40,7 +65,15 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   activeSectionId: any;
 
-  planDetails: any;
+  planDetails!: PlanDetails;
+
+  generationState: 'running' | 'failed' | null = null;
+
+  private generationStartedAt = Date.now();
+
+  private loadFailures = 0;
+
+  private destroy$ = new Subject<void>();
 
   activeTab = signal('');
 
@@ -61,6 +94,7 @@ export class LessonPlanViewEditComponent implements OnInit {
   routerEventsSubscription: Subscription;
 
   private planAiSub: Subscription | null = null;
+  private pollSub?: Subscription;
 
   nextUrl: any;
 
@@ -337,68 +371,65 @@ export class LessonPlanViewEditComponent implements OnInit {
     }
   }
 
-  isGenerating = false;
-  generationFailed = false;
-  private generationPoll?: ReturnType<typeof setTimeout>;
-  private generationStartedAt = Date.now();
-  private readonly MAX_GENERATION_MS = 15 * 60 * 1000;
-  private planSub: Subscription | null = null;
-
   populateViewAndDraft() {
-    const subscription = this.isLesson
+    const request$ = (this.isLesson
       ? this.contentGenService.getLessonPlanById(this.planId)
-      : this.contentGenService.getResourcePlanById(this.planId);
+      : this.contentGenService.getResourcePlanById(this.planId)) as Observable<PlanResponse>;
 
-    this.planSub?.unsubscribe();
-    this.planSub = subscription.subscribe({
-      next: (res: any) => {
-        const obj = {
-          ...res.data,
-        };
-        this.planDetails = obj;
-        this.subjectDetails = this.isLesson
-          ? this.planDetails?.lesson
-          : this.planDetails?.resource;
-
-        const persistedIsVideoSelected = this.planDetails?.isVideoSelected ?? this.planDetails?.lesson?.isVideoSelected;
-        if (typeof persistedIsVideoSelected === 'boolean') {
-          this.videosSelected = persistedIsVideoSelected;
-        }
-
-        if (this.isLesson && this.subjectDetails?.chapter?.board !== 'KSEEB') {
-          this.docTypeValues = this.docTypeValues.filter(
-          (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
-        );
-        }
-
-        if(this.mode === 'view'){
-          this.idleService.planId = this.isLesson ? this.planDetails?.lessonId : this.planDetails?.resourceId
-        }
-        const unsaved = this.isLesson && this.planDetails?.isGenerated && !this.planDetails?.isCompleted;
-        this.isGenerating = unsaved && this.planDetails?.status === 'running';
-        this.generationFailed = unsaved && this.planDetails?.status === 'failed';
-        clearTimeout(this.generationPoll);
-        if (this.isGenerating) {
-          this.pollGeneration();
-          return;
-        }
-        this.setContent();
-      },
-      error: () => {
-        if (this.isGenerating) {
-          this.pollGeneration();
-        }
-      },
-    });
+    this.generationStartedAt = Date.now();
+    this.loadFailures = 0;
+    this.pollSub?.unsubscribe();
+    this.pollSub = timer(0, POLL_MS)
+      .pipe(
+        exhaustMap(() =>
+          request$.pipe(
+            catchError((err) =>
+              this.generationState && ++this.loadFailures < MAX_LOAD_FAILURES
+                ? EMPTY
+                : throwError(() => err)
+            )
+          )
+        ),
+        tap((res) => this.applyPlan(res.data)),
+        takeWhile(() => this.generationState === 'running', true),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        error: (err: any) => {
+          this.generationState = null;
+          this.utilityService.handleError(err);
+        },
+      });
   }
 
-  private pollGeneration() {
-    if (Date.now() - this.generationStartedAt > this.MAX_GENERATION_MS) {
-      this.isGenerating = false;
-      this.generationFailed = true; // the final webhook was lost, so stop waiting
+  private applyPlan(plan: PlanDetails) {
+    this.planDetails = { ...plan };
+    this.subjectDetails = this.isLesson ? plan.lesson : plan.resource;
+
+    const persistedIsVideoSelected = plan.isVideoSelected ?? plan.lesson?.isVideoSelected;
+    if (typeof persistedIsVideoSelected === 'boolean') {
+      this.videosSelected = persistedIsVideoSelected;
+    }
+
+    if (this.isLesson && this.subjectDetails?.chapter?.board !== 'KSEEB') {
+      this.docTypeValues = this.docTypeValues.filter(
+        (e: any) => !['planChecklist', 'planChecklistPdf'].includes(e.downloadType)
+      );
+    }
+
+    if (this.mode === 'view') {
+      this.idleService.planId = this.isLesson ? plan.lessonId : plan.resourceId;
+    }
+    this.loadFailures = 0;
+    const unsaved = this.isLesson && plan.isGenerated && !plan.isCompleted;
+    const inProgress = plan.status === PlanStatus.Running || plan.status === PlanStatus.Pending;
+    if (unsaved && inProgress) {
+      const timedOut = Date.now() - this.generationStartedAt > MAX_GENERATION_MS;
+      this.generationState = timedOut ? 'failed' : 'running';
       return;
     }
-    this.generationPoll = setTimeout(() => this.populateViewAndDraft(), 5000);
+    this.generationState = unsaved && plan.status !== PlanStatus.Completed ? 'failed' : null;
+    this.setContent();
   }
 
   setContent() {
@@ -879,11 +910,12 @@ export class LessonPlanViewEditComponent implements OnInit {
   }
 
   ngOnDestroy(): void {
-    clearTimeout(this.generationPoll);
-    this.planSub?.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
     this.routerEventsSubscription.unsubscribe();
     this.modeSubscription.unsubscribe();
     this.planAiSub?.unsubscribe();
+    this.pollSub?.unsubscribe();
     window.removeEventListener('beforeunload', this.unloadHandler);
 
     if (!this.isSaved && this.mode !== 'view') {

@@ -5,6 +5,7 @@ const TeacherLessonPlanController = require("../controllers/teacher.lesson.plan.
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 const {
 	validateTeacherLessonPlan,
+	validateWebhook,
 } = require("../validations/teacher.lesson.plan.validation.js");
 
 const teacherLessonPlanController = new TeacherLessonPlanController();
@@ -97,6 +98,7 @@ router.post(
 
 router.post(
     "/teacher-lesson-plan/webhook",
+    validateWebhook,
     asyncMiddleware(
         teacherLessonPlanController.handleWebhook.bind(
             teacherLessonPlanController
