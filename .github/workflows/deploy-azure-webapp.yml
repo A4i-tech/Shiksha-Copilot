@@ -42,12 +42,14 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Validate deployment
-        run: |
-          FULL_IMAGE="${{ inputs.image-tag }}"
-          echo "🚀 Deploying to production: ${FULL_IMAGE}"
-          echo "Deployment confirmed by: ${{ github.actor }}"
-          echo "image=${FULL_IMAGE}" >> $GITHUB_OUTPUT
         id: validate
+        env:
+          FULL_IMAGE: ${{ inputs.image-tag }}
+          DEPLOY_ACTOR: ${{ github.actor }}
+        run: |
+          echo "🚀 Deploying to production: ${FULL_IMAGE}"
+          echo "Deployment confirmed by: ${DEPLOY_ACTOR}"
+          echo "image=${FULL_IMAGE}" >> $GITHUB_OUTPUT
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp

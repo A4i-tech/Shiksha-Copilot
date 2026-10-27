@@ -47,7 +47,7 @@ router.post("/presentation/events/token",
 		const iv = crypto.randomBytes(12);
 		const cipher = crypto.createCipheriv("aes-256-gcm", RUNTIME_TOKEN_SECRET, iv);
 		const encrypted = Buffer.concat([cipher.update(JSON.stringify({path, exp: Date.now() + 60_000}), "utf8"), cipher.final()]);
-		res.send(Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url"));
+		res.send(Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url"));  // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write -- base64url ciphertext, not reflected user input, charset can't carry HTML
 	},
 );
 router.get(
@@ -58,7 +58,7 @@ router.get(
 		const iv = raw.subarray(0, 12);
 		const tag = raw.subarray(12, 28);
 		const encrypted = raw.subarray(28);
-		const decipher = crypto.createDecipheriv("aes-256-gcm", RUNTIME_TOKEN_SECRET, iv);
+		const decipher = crypto.createDecipheriv("aes-256-gcm", RUNTIME_TOKEN_SECRET, iv, { authTagLength: 16 });
 		decipher.setAuthTag(tag);
 		const {path, exp} = JSON.parse(Buffer.concat([decipher.update(encrypted), decipher.final()]).toString("utf8"));
 		if (Date.now() > exp) return res.sendStatus(410);

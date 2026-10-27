@@ -143,11 +143,14 @@ export class ChatbotComponent implements OnInit, OnDestroy {
    */
   transformText(text: string): SafeHtml {
     let transformedText = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
       .replace(/\\n/g, '<br>')
       .replace(/\\"/g, '"')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/###/g, '');
-    return this.sanitizer.bypassSecurityTrustHtml(transformedText);
+    return this.sanitizer.bypassSecurityTrustHtml(transformedText);  // nosemgrep: typescript.angular.security.audit.angular-domsanitizer.angular-bypasssecuritytrust -- text is HTML-escaped above before the markdown-style replacements
   }
 
   /**
