@@ -17,10 +17,11 @@ import period_plan_runner as runner
 import period_plan_steps as steps
 
 log = logging.getLogger(__name__)
-CHECKLIST_TIMEOUT_SECONDS = 300
+CHECKLIST_TIMEOUT_SECONDS = 200  # Azure App Service cuts a request at ~230 s
 APP_DIR = Path(__file__).parent
 GRAPH = web.AppKey("graph", steps.SectionGraph)
 GATE = web.AppKey("gate", asyncio.Semaphore)
+PLAN_GATE = web.AppKey("plan_gate", asyncio.Semaphore)
 RUNS = web.AppKey("runs", dict)
 TASKS = web.AppKey("tasks", dict)
 
@@ -74,7 +75,8 @@ async def generate(request: web.Request) -> web.Response:
     instance_id = uuid.uuid4().hex
 
     async def job() -> tuple[bool, Any]:
-        result = await request.app[GRAPH]._plan(raw, instance_id)
+        async with request.app[PLAN_GATE]:
+            result = await request.app[GRAPH]._plan(raw, instance_id)
         return result["status"] == "completed", result.get("plan") or result.get("error")
 
     launch(request.app, instance_id, job())
@@ -198,6 +200,7 @@ def make_app(graph: steps.SectionGraph) -> web.Application:
     app = web.Application(client_max_size=int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024)
     app[GRAPH], app[RUNS], app[TASKS] = graph, {}, {}
     app[GATE] = asyncio.Semaphore(int(os.environ.get("MAX_PIPELINE_RUNS", "2")))
+    app[PLAN_GATE] = asyncio.Semaphore(int(os.environ.get("MAX_LESSON_PLAN_RUNS", "10")))
     app.router.add_post("/api/v2/lesson-plans", generate)
     app.router.add_post("/api/v2/lesson-plans/", generate)  # callers use both spellings of this path
     app.router.add_post("/api/v2/lesson-plans/checklist", checklist)
