@@ -36,7 +36,7 @@ jobs:
         working-directory: ingestion
         run: |
           sudo apt-get update && sudo apt-get install -y --no-install-recommends libmagic1
-          pip install omni-ingest==0.1.2 qdrant-client openai httpx aiohttp openpyxl pyyaml pytest langfuse==3.14.6
+          pip install -r requirements.txt pytest
           python -m pytest tests
 
       - name: Extract metadata

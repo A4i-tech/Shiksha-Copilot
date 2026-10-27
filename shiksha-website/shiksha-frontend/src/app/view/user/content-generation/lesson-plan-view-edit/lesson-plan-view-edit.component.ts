@@ -340,6 +340,8 @@ export class LessonPlanViewEditComponent implements OnInit {
   isGenerating = false;
   generationFailed = false;
   private generationPoll?: ReturnType<typeof setTimeout>;
+  private generationStartedAt = Date.now();
+  private readonly MAX_GENERATION_MS = 15 * 60 * 1000;
   private planSub: Subscription | null = null;
 
   populateViewAndDraft() {
@@ -377,17 +379,26 @@ export class LessonPlanViewEditComponent implements OnInit {
         this.generationFailed = unsaved && this.planDetails?.status === 'failed';
         clearTimeout(this.generationPoll);
         if (this.isGenerating) {
-          this.generationPoll = setTimeout(() => this.populateViewAndDraft(), 5000);
+          this.pollGeneration();
           return;
         }
         this.setContent();
       },
       error: () => {
         if (this.isGenerating) {
-          this.generationPoll = setTimeout(() => this.populateViewAndDraft(), 5000);
+          this.pollGeneration();
         }
       },
     });
+  }
+
+  private pollGeneration() {
+    if (Date.now() - this.generationStartedAt > this.MAX_GENERATION_MS) {
+      this.isGenerating = false;
+      this.generationFailed = true; // the final webhook was lost, so stop waiting
+      return;
+    }
+    this.generationPoll = setTimeout(() => this.populateViewAndDraft(), 5000);
   }
 
   setContent() {

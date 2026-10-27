@@ -152,7 +152,7 @@ jobs:
   cd-workflow-prod:
     name: Deploy workflow service
     needs: ci-workflow
-    if: github.event_name == 'push' && github.ref_name == 'a4i/main'
+    if: github.event_name == 'push' && github.ref_name == 'a4i/main' && vars.AZURE_WEBAPP_NAME_WORKFLOW != ''
     uses: ./.github/workflows/deploy-azure-webapp.yml
     with:
       azure-webapp-name: ${{ vars.AZURE_WEBAPP_NAME_WORKFLOW }}

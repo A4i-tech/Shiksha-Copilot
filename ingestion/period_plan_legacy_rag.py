@@ -20,7 +20,7 @@ def kind(index_path: str) -> str:
     # Check graph first, then qdrant, then fall back to the vector index.
     if "graph-index" in index_path:
         return "graph"
-    return "qdrant" if "qdrant" in index_path else "vector"
+    return "qdrant" if index_path.startswith("qdrant/") else "vector"
 
 
 def is_legacy(index_path: str) -> bool:
@@ -77,7 +77,7 @@ async def load(index_path: str) -> Any:
 
     env = os.environ
     model, embed_model = env.get("AZURE_OPENAI_MODEL", "GPT-4.1"), env.get("AZURE_OPENAI_EMBED_MODEL", "text-embedding-ada-002")
-    common = {"api_key": env.get("AZURE_OPENAI_API_KEY"), "azure_endpoint": env.get("AZURE_OPENAI_API_BASE"), "api_version": env.get("AZURE_OPENAI_API_VERSION", "2023-05-15")}
+    common = {"api_key": env.get("AZURE_OPENAI_API_KEY"), "azure_endpoint": env.get("AZURE_OPENAI_API_BASE"), "api_version": env["AZURE_OPENAI_API_VERSION"]}
     # llama-index checks the base model name, which is not always the deployment name.
     base_model = env.get("AZURE_OPENAI_BASE_MODEL") or model.lower()
     llm = AzureOpenAI(model=base_model, deployment_name=model, model_kwargs={"response_format": {"type": "json_object"}}, **common)
@@ -85,8 +85,12 @@ async def load(index_path: str) -> Any:
     target = local_dir(index_path)
     ops = (InMemGraphRagOps if kind(index_path) == "graph" else InMemRagOps)(persist_dir=target, completion_llm=llm, emb_llm=embedder)
     if not await ops.index_exists():
-        if not await download(index_path, target):
-            raise RuntimeError(f"No files downloaded for index path: {index_path}")
+        try:
+            if not await download(index_path, target):
+                raise RuntimeError(f"No files downloaded for index path: {index_path}")
+        except BaseException:
+            shutil.rmtree(target, ignore_errors=True)  # the next run must not trust a partial index
+            raise
     await ops.initiate_index()
     return ops
 
