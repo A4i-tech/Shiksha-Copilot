@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from rag_wrapper import InMemRagOps, QdrantRagOps
 from llama_index.core.base.response.schema import RESPONSE_TYPE
 from llama_index.core.chat_engine.types import AgentChatResponse
+from langfuse import get_client
 from llama_index.llms.openai import OpenAIResponses
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.llms import ChatMessage
@@ -87,7 +88,11 @@ class BaseRagAdapter(ABC):
         ...
 
     async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] | None = None) -> AgentChatResponse | RESPONSE_TYPE:
-        return await self.rag_ops.chat_with_index(curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls)
+        with get_client().start_as_current_observation(as_type="span", name="rag_chat", input=curr_message, metadata={"adapter": type(self).__name__, "history": len(chat_history)}) as span:
+            result = await self.rag_ops.chat_with_index(curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls)
+            if hasattr(result, "source_nodes"):
+                span.update(output={"sources": len(result.source_nodes)})
+            return result
 
     async def index_exists(self) -> bool:
         """Check if the index exists."""
@@ -142,7 +147,8 @@ class InMemRagOpsAdapter(BaseRagAdapter):
 
         logger.info(f"Downloading RAG index from blob storage: {self.index_path}")
         try:
-            downloaded_file_paths = await self._blob_store.download_blobs_to_folder(prefix=self.index_path, target_folder=self.persist_dir)
+            with get_client().start_as_current_observation(as_type="span", name="rag_index_download", input=self.index_path):
+                downloaded_file_paths = await self._blob_store.download_blobs_to_folder(prefix=self.index_path, target_folder=self.persist_dir)
         except ValueError as e:
             raise RuntimeError(str(e)) from e
 

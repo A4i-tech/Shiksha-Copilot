@@ -74,6 +74,9 @@ if settings.debug:
     import logfire
     logfire.configure()
     logfire.instrument_pydantic_ai()
+else:
+    from pydantic_ai import Agent, InstrumentationSettings
+    Agent.instrument_all(InstrumentationSettings(include_binary_content=False))  # textbook bytes must not reach Langfuse
 
 root_dir = pathlib.Path(__file__).resolve().parents[1]
 assets_dir = root_dir / "assets"
