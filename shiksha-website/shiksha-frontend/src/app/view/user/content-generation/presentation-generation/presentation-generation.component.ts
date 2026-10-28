@@ -3,9 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { saveAs } from 'file-saver';
-import * as mammoth from 'mammoth';
 import { Subscription } from 'rxjs';
-import TurndownService from 'turndown';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { MAX_FILE_SIZE } from 'src/app/shared/utility/constant.util';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
@@ -42,9 +40,6 @@ interface PresentationTask {
   description: string;
 }
 
-const markdownConverter = new TurndownService();
-markdownConverter.remove('img');
-
 @Component({
   selector: 'app-presentation-generation',
   templateUrl: './presentation-generation.component.html',
@@ -69,7 +64,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   pptxFileSizeLabel = '';
   latestToolText = '';
 
-  readonly acceptedFileTypes = ['.pdf', '.docx', '.txt', '.md'];
+  readonly acceptedFileTypes = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.txt', '.md'];
   readonly slideOptions = [6, 8, 10, 12, 15, 18, 20].map(value => ({ name: `${value} slides`, value }));
   readonly slideDropdownConfig: DropDownConfig = { isBackground: false, placeHolderTxt: 'Select slide count', fieldName: 'Target slide count', required: true, clearableOff: true };
   readonly instructionSuggestions = [
@@ -417,7 +412,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     fileInput.value = '';
   }
 
-  async startGeneration(): Promise<void> {
+  startGeneration(): void {
     this.submitted = true;
     this.presentationForm.markAllAsTouched();
 
@@ -430,29 +425,13 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isCreatingJob = true;
-    this.closeEventStream();
-
-    let textbookFile = this.selectedFile;
-    if (textbookFile.name.toLowerCase().endsWith('.docx')) {
-      try {
-        const result = await mammoth.convertToHtml({ arrayBuffer: await textbookFile.arrayBuffer() });
-        textbookFile = new File(
-          [markdownConverter.turndown(result.value)],
-          textbookFile.name.replace(/\.docx$/i, '.md'),
-          { type: 'text/markdown' }
-        );
-      } catch (error) {
-        this.isCreatingJob = false;
-        this.utilityService.showError(`Unable to convert DOCX: ${String(error)}`);
-        return;
-      }
-    }
-
     const formData = new FormData();
-    formData.append('textbook_file', textbookFile);
+    formData.append('textbook_file', this.selectedFile);
     formData.append('slides', String(this.presentationForm.value.slideCount));
     formData.append('instruction', this.presentationForm.value.instructions || '');
+
+    this.isCreatingJob = true;
+    this.closeEventStream();
 
     const createJobSubscription = this.contentGenerationService
       .createPresentationJob(formData)
