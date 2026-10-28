@@ -120,6 +120,47 @@ async function scanUrl(page, url) {
   return page.evaluate(() => window.axe.run());
 }
 
+// Some inputs on scanned pages only render when a *ngIf-gated section has
+// data (e.g. #/profile's Boys/Girls Strength inputs need isTeacher AND a
+// class row — see profile.component.html). When the fixture account lacks
+// that data, axe never sees those inputs and scans clean instead of failing.
+// Fail loud instead, naming the exact section and row that's missing.
+async function assertFixtureRows(page, { label, headingTestId, rowTestId, hint }) {
+  if (await page.locator(`[data-testid="${headingTestId}"]`).count() === 0) {
+    throw new Error(
+      `Accessibility fixture error: TEST_USER_PHONE can't see the "${label}" ` +
+      `section. Use a teacher test account so ${hint}`
+    );
+  }
+  if (await page.locator(`[data-testid="${rowTestId}"]`).count() === 0) {
+    throw new Error(
+      `Accessibility fixture error: TEST_USER_PHONE's "${label}" section has ` +
+      `0 rows. ${hint} Add one to this account in the staging DB, then re-run.`
+    );
+  }
+}
+
+async function assertProfileFixtures(page) {
+  await page.goto(`${FRONTEND_URL}/#/profile`);
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 12000 });
+  } catch {
+    console.log(`    (networkidle timed out — continuing with domcontentloaded)`);
+  }
+  await assertFixtureRows(page, {
+    label: 'Class Details',
+    headingTestId: 'class-details-heading',
+    rowTestId: 'class-row',
+    hint: 'its Boys/Girls Strength inputs get scanned.',
+  });
+  await assertFixtureRows(page, {
+    label: 'Resources',
+    headingTestId: 'resources-heading',
+    rowTestId: 'resource-row',
+    hint: 'its resource-row inputs get scanned.',
+  });
+}
+
 /**
  * Discovers real detail-page URLs by navigating list pages and clicking items.
  * Returns a map: { 'lesson-plan': url, 'resource-plan': url, 'draft': url,
@@ -141,6 +182,14 @@ async function discoverDetailUrls(page) {
   const cardButtons = page.locator(cardButtonSelector);
   const cardCount = await cardButtons.count();
   console.log(`  Found ${cardCount} content-generation cards`);
+  if (cardCount === 0) {
+    throw new Error(
+      'Accessibility fixture error: TEST_USER_PHONE has 0 generated content items. ' +
+      'The lesson-plan/resource-plan/presentation/draft detail pages never get ' +
+      'scanned without at least one of each. Generate content on this account ' +
+      'in the staging DB, then re-run.'
+    );
+  }
 
   for (let i = 0; i < Math.min(cardCount, 30); i++) {
     if (found['lesson-plan'] && found['resource-plan'] && found['presentation'] && found['draft']) break;
@@ -300,6 +349,8 @@ function buildRunReport(axeResult, url) {
       console.log(`\nLogging in as user...`);
       await performLogin(page, TEST_USER_PHONE, TEST_USER_OTP);
       console.log(`Login successful. Scanning ${USER_URL_PATHS.length} user URLs...`);
+
+      await assertProfileFixtures(page);
 
       for (const urlPath of USER_URL_PATHS) {
         const fullUrl = `${FRONTEND_URL}${urlPath}`;
