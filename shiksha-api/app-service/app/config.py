@@ -2,7 +2,14 @@ import pathlib
 from string import Template
 
 from dotenv import load_dotenv
-from pydantic import Field, PositiveInt, field_validator
+from pydantic import (
+    AnyHttpUrl,
+    Field,
+    PositiveInt,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
@@ -31,11 +38,11 @@ class Settings(BaseSettings):
 
     # Blob Store Configuration
     storage_backend: Literal["azure", "s3"] = "s3"
-    blob_store_connection_string: Optional[str] = None
-    blob_store_url: Optional[str] = None
-    s3_endpoint_url: Optional[str] = None
+    blob_store_connection_string: Optional[SecretStr] = None
+    blob_store_url: Optional[AnyHttpUrl] = None
+    s3_endpoint_url: Optional[AnyHttpUrl] = None
     s3_access_key_id: Optional[str] = None
-    s3_secret_access_key: Optional[str] = None
+    s3_secret_access_key: Optional[SecretStr] = None
     s3_region: str = "us-east-1"
 
     qdrant_url: Optional[str] = None
@@ -71,12 +78,42 @@ class Settings(BaseSettings):
     # Commons
     youtube_api_key: str | None = None
 
+    @field_validator("s3_endpoint_url", "s3_access_key_id", mode="before")
+    @classmethod
+    def _empty_to_none(cls, value):
+        return value or None
+
+    @model_validator(mode="after")
+    def _check_storage(self):
+        if self.storage_backend == "azure":
+            if not (self.blob_store_connection_string or self.blob_store_url):
+                raise ValueError(
+                    "STORAGE_BACKEND=azure needs BLOB_STORE_CONNECTION_STRING or BLOB_STORE_URL. "
+                    "Set one of them, or set STORAGE_BACKEND=s3."
+                )
+        else:
+            has_key, has_secret = bool(self.s3_access_key_id), bool(
+                self.s3_secret_access_key
+            )
+            if has_key != has_secret:
+                raise ValueError(
+                    "S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together. "
+                    "Set both, or leave both empty to use the default AWS credentials."
+                )
+            if self.s3_endpoint_url and not has_key:
+                raise ValueError(
+                    "S3_ENDPOINT_URL needs S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY. "
+                    "Set both keys, or remove S3_ENDPOINT_URL to use AWS."
+                )
+        return self
+
 
 load_dotenv()
 settings = Settings()
 
 if settings.debug:
     import logfire
+
     logfire.configure()
     logfire.instrument_pydantic_ai()
 

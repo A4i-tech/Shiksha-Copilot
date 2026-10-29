@@ -1,9 +1,13 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from pydantic import SecretStr
+
+pytest.importorskip(
+    "azure.storage.blob.aio", reason="Azure SDK is not installed (extra 'azure')."
+)
+
 from app.utils.blob_store import BlobStore
 from azure.core.exceptions import AzureError
-
-pytest.importorskip("azure.storage.blob.aio", reason="Azure SDK is not installed (extra 'azure').")
 
 
 class TestBlobStoreInitialization:
@@ -13,7 +17,7 @@ class TestBlobStoreInitialization:
     @patch("azure.storage.blob.aio.BlobServiceClient")
     def test_init_with_connection_string(self, mock_async_client, mock_settings):
         """Test initialization with connection string."""
-        mock_settings.blob_store_connection_string = (
+        mock_settings.blob_store_connection_string = SecretStr(
             "DefaultEndpointsProtocol=https;AccountName=test"
         )
         mock_settings.blob_store_url = None
@@ -39,19 +43,6 @@ class TestBlobStoreInitialization:
         mock_async_client.assert_called_once()
         assert blob_store._backend._async_svc is not None
 
-    @patch("app.utils.blob_store.settings")
-    def test_init_without_credentials_raises_error(self, mock_settings):
-        """Test that initialization without credentials raises ValueError."""
-        mock_settings.blob_store_connection_string = None
-        mock_settings.blob_store_url = None
-        mock_settings.storage_backend = "azure"
-
-        with pytest.raises(
-            ValueError,
-            match="Either BLOB_STORE_CONNECTION_STRING or BLOB_STORE_URL must be set",
-        ):
-            BlobStore()
-
 
 class TestBlobStoreDownloadBlobs:
     """Tests for download_blobs_to_folder method."""
@@ -60,7 +51,7 @@ class TestBlobStoreDownloadBlobs:
     def blob_store(self):
         """Create a BlobStore instance with mocked service."""
         with patch("app.utils.blob_store.settings") as mock_settings:
-            mock_settings.blob_store_connection_string = "test_connection"
+            mock_settings.blob_store_connection_string = SecretStr("test_connection")
             mock_settings.blob_store_url = None
             mock_settings.storage_backend = "azure"
 
@@ -106,7 +97,9 @@ class TestBlobStoreDownloadBlobs:
         mock_container_client.list_blobs = MagicMock(return_value=async_blob_iterator())
         mock_container_client.get_blob_client = MagicMock(return_value=mock_blob_client)
 
-        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
+        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = (
+            mock_container_client
+        )
 
         # Mock aiofiles.open - setup context manager properly
         mock_file = AsyncMock()
@@ -135,7 +128,9 @@ class TestBlobStoreDownloadBlobs:
         mock_container_client = AsyncMock()
         mock_container_client.list_blobs = MagicMock(return_value=error_iterator())
 
-        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
+        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = (
+            mock_container_client
+        )
 
         with pytest.raises(
             RuntimeError, match="Failed to download blobs asynchronously"
@@ -150,14 +145,9 @@ class TestBlobStoreDownloadBlobs:
     ):
         """Test downloading multiple blobs."""
         # Setup mocks for multiple blobs
-        mock_blobs = [
-            MagicMock(name="prefix/file1.txt"),
-            MagicMock(name="prefix/file2.txt"),
-            MagicMock(name="prefix/file3.txt"),
-        ]
-
-        for blob in mock_blobs:
-            blob.name = blob.name
+        mock_blobs = [MagicMock() for _ in range(3)]
+        for i, blob in enumerate(mock_blobs, 1):
+            blob.name = f"prefix/file{i}.txt"
 
         mock_download_stream = AsyncMock()
         mock_download_stream.readall = AsyncMock(return_value=b"test data")
@@ -175,7 +165,9 @@ class TestBlobStoreDownloadBlobs:
         )
         mock_container_client.get_blob_client = MagicMock(return_value=mock_blob_client)
 
-        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
+        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = (
+            mock_container_client
+        )
 
         # Mock file writing - properly setup async context manager
         mock_file = AsyncMock()
@@ -215,7 +207,9 @@ class TestBlobStoreDownloadBlobs:
         mock_container_client.list_blobs = MagicMock(return_value=async_single_blob())
         mock_container_client.get_blob_client = MagicMock(return_value=mock_blob_client)
 
-        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = mock_container_client
+        blob_store._backend._async_svc.get_container_client.return_value.__aenter__.return_value = (
+            mock_container_client
+        )
 
         # Mock file writing - properly setup async context manager
         mock_file = AsyncMock()

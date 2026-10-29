@@ -57,7 +57,7 @@ curl -sSL https://install.python-poetry.org | python3 -
 poetry install
 ```
 
-To use Azure Blob Storage (`STORAGE_BACKEND=azure`), install the `azure` extra: `poetry install --extras azure`.
+For `STORAGE_BACKEND=azure`: Needs the azure extra: poetry install --extras azure
 
 3. Activate the virtual environment:
 
@@ -89,16 +89,15 @@ AZURE_OPENAI_EMBED_MODEL=your_embedding_model_deployment
 AZURE_PROJECT_ENDPOINT=https://your-project.eastus2.ai.azure.com
 AZURE_BING_GROUNDING_CONNECTION_ID=your_bing_connection_id
 
-# Blob Storage Configuration (Required for RAG). STORAGE_BACKEND is s3 (default) or azure.
+# Azure Blob Storage Configuration (Required for RAG)
+# Blob Storage Configuration (Required for RAG)
 STORAGE_BACKEND=s3
 
-# S3-compatible provider (STORAGE_BACKEND=s3). Leave S3_ENDPOINT_URL empty to use AWS.
 S3_ENDPOINT_URL=http://localhost:9000
 S3_ACCESS_KEY_ID=your_s3_access_key_id
 S3_SECRET_ACCESS_KEY=your_s3_secret_access_key
 S3_REGION=us-east-1
 
-# Azure provider (STORAGE_BACKEND=azure only)
 BLOB_STORE_CONNECTION_STRING=your_azure_storage_connection_string
 BLOB_STORE_URL=https://yourstorageaccount.blob.core.windows.net/
 
@@ -115,7 +114,7 @@ QDRANT_API_KEY=your_qdrant_api_key
 - `AZURE_OPENAI_EMBED_MODEL`: Embedding model deployment name
 - `AZURE_PROJECT_ENDPOINT`: Azure AI Foundry project endpoint URL
 - `STORAGE_BACKEND`: Storage provider for RAG index files, `s3` (default) or `azure`
-- `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`: S3-compatible settings (`STORAGE_BACKEND=s3`). Empty `S3_ENDPOINT_URL` uses AWS.
+- `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`: S3-compatible settings (`STORAGE_BACKEND=s3`). Remove `S3_ENDPOINT_URL` to use AWS.
 - `BLOB_STORE_CONNECTION_STRING`: Azure Storage connection string (`STORAGE_BACKEND=azure` only)
 
 **Optional Environment Variables:**

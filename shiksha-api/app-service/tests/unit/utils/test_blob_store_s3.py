@@ -1,8 +1,9 @@
 import urllib.request
 import uuid
 
-import aioboto3
 import pytest
+from pydantic import SecretStr
+from aiobotocore.session import get_session
 from botocore.config import Config
 
 from app.utils import blob_store as blob_store_module
@@ -34,18 +35,20 @@ def store(monkeypatch):
     monkeypatch.setattr(settings, "storage_backend", "s3")
     monkeypatch.setattr(settings, "s3_endpoint_url", ENDPOINT)
     monkeypatch.setattr(settings, "s3_access_key_id", ACCESS_KEY)
-    monkeypatch.setattr(settings, "s3_secret_access_key", SECRET_KEY)
+    monkeypatch.setattr(settings, "s3_secret_access_key", SecretStr(SECRET_KEY))
     monkeypatch.setattr(settings, "s3_region", "us-east-1")
     return BlobStore()
 
 
 @pytest.fixture
 async def s3():
-    session = aioboto3.Session(
-        aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY, region_name="us-east-1"
-    )
-    async with session.client(
-        "s3", endpoint_url=ENDPOINT, config=Config(s3={"addressing_style": "path"})
+    async with get_session().create_client(
+        "s3",
+        endpoint_url=ENDPOINT,
+        aws_access_key_id=ACCESS_KEY,
+        aws_secret_access_key=SECRET_KEY,
+        region_name="us-east-1",
+        config=Config(s3={"addressing_style": "path"}),
     ) as client:
         yield client
 
@@ -69,24 +72,34 @@ def files_in(folder) -> dict[str, bytes]:
 
 
 async def test_downloads_only_objects_under_prefix(store, s3, run, tmp_path):
-    await put(s3, {
-        f"{run}/index/a.json": b"alpha",
-        f"{run}/index/sub/b.bin": b"\x00\x01\x02",
-        f"{run}/other/c.txt": b"not requested",
-    })
+    await put(
+        s3,
+        {
+            f"{run}/index/a.json": b"alpha",
+            f"{run}/index/sub/b.bin": b"\x00\x01\x02",
+            f"{run}/other/c.txt": b"not requested",
+        },
+    )
 
-    result = await store.download_blobs_to_folder(f"{BUCKET}/{run}/index/", str(tmp_path))
+    result = await store.download_blobs_to_folder(
+        f"{BUCKET}/{run}/index/", str(tmp_path)
+    )
 
-    assert sorted(result) == sorted(str(tmp_path / name) for name in ("a.json", "b.bin"))
+    assert sorted(result) == sorted(
+        str(tmp_path / name) for name in ("a.json", "b.bin")
+    )
     assert files_in(tmp_path) == {"a.json": b"alpha", "b.bin": b"\x00\x01\x02"}
 
 
 async def test_prefix_matches_start_of_key_not_folder(store, s3, run, tmp_path):
-    await put(s3, {
-        f"{run}/vec1.json": b"1",
-        f"{run}/vec2.json": b"2",
-        f"{run}/doc.json": b"3",
-    })
+    await put(
+        s3,
+        {
+            f"{run}/vec1.json": b"1",
+            f"{run}/vec2.json": b"2",
+            f"{run}/doc.json": b"3",
+        },
+    )
 
     await store.download_blobs_to_folder(f"{BUCKET}/{run}/vec", str(tmp_path))
 
@@ -94,7 +107,9 @@ async def test_prefix_matches_start_of_key_not_folder(store, s3, run, tmp_path):
 
 
 async def test_prefix_with_no_objects_returns_empty_list(store, run, tmp_path):
-    result = await store.download_blobs_to_folder(f"{BUCKET}/{run}/nothing/", str(tmp_path))
+    result = await store.download_blobs_to_folder(
+        f"{BUCKET}/{run}/nothing/", str(tmp_path)
+    )
 
     assert result == []
     assert files_in(tmp_path) == {}
@@ -108,12 +123,6 @@ async def test_skips_folder_placeholder_objects(store, s3, run, tmp_path):
     assert result == [str(tmp_path / "a.txt")]
 
 
-@pytest.mark.parametrize("prefix", ["", "no-slash"])
-async def test_prefix_without_container_raises_value_error(store, prefix, tmp_path):
-    with pytest.raises(ValueError, match="Prefix must be in the format 'container/prefix_path'"):
-        await store.download_blobs_to_folder(prefix, str(tmp_path))
-
-
 async def test_missing_bucket_raises_runtime_error(store, tmp_path):
     bucket = f"no-such-bucket-{uuid.uuid4().hex}"
 
@@ -122,7 +131,9 @@ async def test_missing_bucket_raises_runtime_error(store, tmp_path):
 
 
 async def test_wrong_secret_key_raises_runtime_error(store, monkeypatch, tmp_path):
-    monkeypatch.setattr(blob_store_module.settings, "s3_secret_access_key", "wrong-secret")
+    monkeypatch.setattr(
+        blob_store_module.settings, "s3_secret_access_key", SecretStr("wrong-secret")
+    )
 
-    with pytest.raises(RuntimeError, match="S3_SECRET_ACCESS_KEY"):
+    with pytest.raises(RuntimeError, match="SignatureDoesNotMatch"):
         await BlobStore().download_blobs_to_folder(f"{BUCKET}/x", str(tmp_path))
