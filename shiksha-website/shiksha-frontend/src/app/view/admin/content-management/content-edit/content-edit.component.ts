@@ -29,6 +29,7 @@ const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
+  private rawConfig?: ContentEntityConfig;
   recordId = '';
   record: any = null;
   /** true when the route id is `new`, so the form adds a record */
@@ -55,7 +56,13 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     private contentService: ContentManagementService,
     private utilityService: UtilityService,
     private translateService: TranslateService
-  ) {}
+  ) {
+    this.subscriptions.push(
+      translateService.onLangChange.subscribe(() => {
+        if (this.rawConfig) this.config = localizeEntity(this.rawConfig, this.translateService);
+      })
+    );
+  }
 
   ngOnInit(): void {
     this.subscriptions.push(
@@ -68,6 +75,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           return;
         }
 
+        this.rawConfig = entity;
         this.config = localizeEntity(entity, this.translateService);
         this.recordId = id;
         this.isCreate = id === 'new';

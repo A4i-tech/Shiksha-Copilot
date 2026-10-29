@@ -70,6 +70,7 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
 export class ContentListComponent implements OnInit, OnDestroy {
   entities: ContentEntityConfig[];
   config!: ContentEntityConfig;
+  private rawConfig?: ContentEntityConfig;
 
   listData: any[] = [];
   currentPage = 1;
@@ -127,7 +128,17 @@ export class ContentListComponent implements OnInit, OnDestroy {
     public modalService: ModalService,
     private translateService: TranslateService
   ) {
-    this.entities = CONTENT_ENTITIES.map((entity) => localizeEntity(entity, translateService));
+    this.localizeEntities();
+    this.subscriptions.push(
+      translateService.onLangChange.subscribe(() => {
+        this.localizeEntities();
+        if (this.rawConfig) this.config = localizeEntity(this.rawConfig, this.translateService);
+      })
+    );
+  }
+
+  private localizeEntities(): void {
+    this.entities = CONTENT_ENTITIES.map((entity) => localizeEntity(entity, this.translateService));
   }
 
   ngOnInit(): void {
@@ -140,6 +151,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
           return;
         }
 
+        this.rawConfig = entity;
         this.config = localizeEntity(entity, this.translateService);
         this.resetView();
         this.loadRecords();
