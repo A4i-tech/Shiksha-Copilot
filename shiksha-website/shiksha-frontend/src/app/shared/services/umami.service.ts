@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
-import { UmamiEventData, UmamiUser } from '../interfaces/umami.interface';
+import { UmamiConfig, UmamiEventData, UmamiUser } from '../interfaces/umami.interface';
 
 @Injectable({
   providedIn: 'root',
@@ -10,8 +11,18 @@ export class UmamiService {
   private disabled = false;
   private queue: Array<() => void> = [];
 
+  constructor(private http: HttpClient) {}
+
   loadTracker(): void {
-    const { umamiUrl, umamiWebsiteId } = environment;
+    this.http
+      .get<UmamiConfig>(`${environment.apiUrl}/analytics/config`)
+      .subscribe({
+        next: (config) => this.injectScript(config),
+        error: () => this.disable('the backend config endpoint'),
+      });
+  }
+
+  private injectScript({ umamiUrl, umamiWebsiteId }: UmamiConfig): void {
     const script = document.createElement('script');
     script.defer = true;
     script.src = `${umamiUrl}/script.js`;

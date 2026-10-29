@@ -1,4 +1,5 @@
 import { NgIdleModule } from '@ng-idle/core';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { TestBed } from '@angular/core/testing';
 
@@ -11,7 +12,7 @@ describe('IdleService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [NgIdleModule.forRoot(), RouterTestingModule],
+      imports: [NgIdleModule.forRoot(), RouterTestingModule, HttpClientTestingModule],
     });
     service = TestBed.inject(IdleService);
     umamiService = TestBed.inject(UmamiService);

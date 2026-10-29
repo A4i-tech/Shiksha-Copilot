@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
 import { UmamiService } from './umami.service';
 import { UmamiUserSchema } from '../interfaces/umami.interface';
@@ -6,11 +7,18 @@ import { environment } from 'src/environments/environment';
 
 describe('UmamiService', () => {
   let service: UmamiService;
-  let originalUmamiUrl: string;
-  let originalWebsiteId: string;
+  let http: HttpTestingController;
 
   function trackerScript() {
     return document.head.querySelector<HTMLScriptElement>('script[src$="/script.js"]')!;
+  }
+
+  function loadTracker() {
+    service.loadTracker();
+    http.expectOne(`${environment.apiUrl}/analytics/config`).flush({
+      umamiUrl: 'https://umami.test',
+      umamiWebsiteId: 'site-1',
+    });
   }
 
   function fireScriptOnload() {
@@ -18,28 +26,23 @@ describe('UmamiService', () => {
   }
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({ imports: [HttpClientTestingModule] });
     service = TestBed.inject(UmamiService);
+    http = TestBed.inject(HttpTestingController);
     window.umami = {
       identify: jasmine.createSpy('identify'),
       track: jasmine.createSpy('track'),
     };
-    originalUmamiUrl = environment.umamiUrl;
-    originalWebsiteId = environment.umamiWebsiteId;
-    environment.umamiUrl = 'https://umami.test';
-    environment.umamiWebsiteId = 'site-1';
     spyOn(console, 'error');
   });
 
   afterEach(() => {
     delete window.umami;
     document.querySelectorAll('script[src*="umami.test"]').forEach((el) => el.remove());
-    environment.umamiUrl = originalUmamiUrl;
-    environment.umamiWebsiteId = originalWebsiteId;
   });
 
   it('queues events until the tracker script loads, then flushes them in order', () => {
-    service.loadTracker();
+    loadTracker();
     service.track('a');
     service.track('b', { n: 1 });
 
@@ -53,7 +56,7 @@ describe('UmamiService', () => {
   });
 
   it('calls track() directly once the script has loaded', () => {
-    service.loadTracker();
+    loadTracker();
     fireScriptOnload();
 
     service.track('c');
@@ -62,7 +65,7 @@ describe('UmamiService', () => {
   });
 
   it('track() omits empty-string properties', () => {
-    service.loadTracker();
+    loadTracker();
     fireScriptOnload();
 
     service.track('activity-log', { planId: '', moduleName: 'lp', isCompleted: false });
@@ -70,8 +73,26 @@ describe('UmamiService', () => {
     expect(window.umami?.track).toHaveBeenCalledWith('activity-log', { moduleName: 'lp', isCompleted: false });
   });
 
-  it('onerror disables tracking and drops queued events', () => {
+  it('script carries the backend-provided website id', () => {
+    loadTracker();
+
+    expect(trackerScript().src).toBe('https://umami.test/script.js');
+    expect(trackerScript().getAttribute('data-website-id')).toBe('site-1');
+  });
+
+  it('disables tracking and drops queued events when the config request fails', () => {
     service.loadTracker();
+    service.track('queued');
+
+    http.expectOne(`${environment.apiUrl}/analytics/config`).flush('', { status: 404, statusText: 'Not Found' });
+    service.track('after');
+
+    expect(console.error).toHaveBeenCalled();
+    expect(document.head.querySelector('script[src$="/script.js"]')).toBeNull();
+  });
+
+  it('onerror disables tracking and drops queued events', () => {
+    loadTracker();
     service.track('queued');
 
     trackerScript().onerror?.(new Event('error'));
@@ -83,7 +104,7 @@ describe('UmamiService', () => {
   });
 
   it('disables tracking when the script loads but window.umami is missing', () => {
-    service.loadTracker();
+    loadTracker();
     service.track('queued');
     const tracker = window.umami;
     delete window.umami;
@@ -97,7 +118,7 @@ describe('UmamiService', () => {
   });
 
   it('reset() clears the queue so a logged-out user is never identified', () => {
-    service.loadTracker();
+    loadTracker();
     service.identifyUser(UmamiUserSchema.parse({ _id: 'stale-user' }));
 
     service.reset();
@@ -107,7 +128,7 @@ describe('UmamiService', () => {
   });
 
   it('identifyUser() sends segment properties only, never name, phone or email', () => {
-    service.loadTracker();
+    loadTracker();
     fireScriptOnload();
 
     service.identifyUser(
@@ -134,7 +155,7 @@ describe('UmamiService', () => {
   });
 
   it('trackLogin() identifies the user, then tracks login', () => {
-    service.loadTracker();
+    loadTracker();
     fireScriptOnload();
 
     service.trackLogin(UmamiUserSchema.parse({ _id: 'u1' }));
@@ -144,7 +165,7 @@ describe('UmamiService', () => {
   });
 
   it('identifyUser() falls back to the admin state', () => {
-    service.loadTracker();
+    loadTracker();
     fireScriptOnload();
 
     service.identifyUser(UmamiUserSchema.parse({ _id: 'a1', profiles: { admin: { state: 'Telangana' } } }));

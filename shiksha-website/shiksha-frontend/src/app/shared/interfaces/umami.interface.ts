@@ -34,3 +34,8 @@ export const UmamiUserSchema = z.object({
 export type UmamiUser = z.infer<typeof UmamiUserSchema>;
 
 export type UmamiEventData = Record<string, string | number | boolean>;
+
+export interface UmamiConfig {
+  umamiUrl: string;
+  umamiWebsiteId: string;
+}
