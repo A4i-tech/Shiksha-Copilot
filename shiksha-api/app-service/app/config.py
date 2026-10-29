@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
+    allowed_origins: str = "http://localhost:4200"
 
     # Logging Configuration
     log_level: str = "INFO"

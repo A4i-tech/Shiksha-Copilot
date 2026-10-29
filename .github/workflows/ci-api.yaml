@@ -48,9 +48,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"
+        uses: snok/install-poetry@v1
 
       - name: Run unit tests (before build)
         working-directory: shiksha-api/app-service
@@ -60,7 +58,6 @@ jobs:
           QDRANT_URL: http://localhost:6333
           QDRANT_API_KEY: dummy-qdrant-key
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
           for i in 1 2 3; do
             poetry install && break
             if [ "$i" -eq 3 ]; then

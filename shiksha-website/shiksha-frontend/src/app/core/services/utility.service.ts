@@ -391,8 +391,10 @@ private extractVideoId(url: string): string {
   const videoId = this.extractVideoId(videoUrl);
   if(videoId){
     return this.domSanitizer.bypassSecurityTrustResourceUrl(`https://www.youtube.com/embed/${videoId}`);
+  }else if(/^https:\/\//i.test(videoUrl)){
+    return this.domSanitizer.bypassSecurityTrustResourceUrl(videoUrl);  // nosemgrep: typescript.angular.security.audit.angular-domsanitizer.angular-bypasssecuritytrust -- scheme restricted to https above, blocks javascript:/data: URIs
   }else{
-    return this.domSanitizer.bypassSecurityTrustResourceUrl(videoUrl);
+    return this.domSanitizer.bypassSecurityTrustResourceUrl('');
   }
 }
 
