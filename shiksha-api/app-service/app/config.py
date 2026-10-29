@@ -3,6 +3,7 @@ from string import Template
 
 from dotenv import load_dotenv
 from pydantic import Field, PositiveInt, field_validator
+from pydantic_ai import Agent, InstrumentationSettings
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Literal, Optional
 
@@ -75,8 +76,7 @@ if settings.debug:
     logfire.configure()
     logfire.instrument_pydantic_ai()
 else:
-    from pydantic_ai import Agent, InstrumentationSettings
-    Agent.instrument_all(InstrumentationSettings(include_binary_content=False))  # textbook bytes must not reach Langfuse
+    Agent.instrument_all(InstrumentationSettings(include_binary_content=False))
 
 root_dir = pathlib.Path(__file__).resolve().parents[1]
 assets_dir = root_dir / "assets"

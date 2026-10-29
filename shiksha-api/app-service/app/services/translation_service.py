@@ -44,15 +44,13 @@ class TranslationService:
         flat = self.unzip(data)
         texts = [v for _, v in flat]
         metadata = {"backend": type(translator).__name__, "batch_size": self.batch_size}
-        with get_client().start_as_current_observation(as_type="span", name="translation", input={"src": src, "dst": dst, "strings": len(texts), "chars": sum(map(len, texts))}, metadata=metadata) as span:
+        span_input = {"src": src, "dst": dst, "strings": len(texts), "chars": sum(map(len, texts))}
+        with get_client().start_as_current_observation(name="translation", input=span_input, metadata=metadata):
             translated = []
             for i in range(0, len(texts), self.batch_size):
                 translated += await translator.translate_batch_async(texts[i:i+self.batch_size], src, dst)
-            span.update(output={"translated": len(translated)})
             if len(translated) != len(flat):
-                msg = f"Translator returned {len(translated)} results for {len(flat)} inputs"
-                span.update(level="ERROR", status_message=msg)
-                raise TranslationProviderError(msg)
+                raise TranslationProviderError(f"Translator returned {len(translated)} results for {len(flat)} inputs")
             return self.zip(data, zip((p for p, _ in flat), translated))
 
 
