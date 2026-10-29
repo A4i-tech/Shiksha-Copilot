@@ -17,6 +17,8 @@
  *  - chapter-reference maps to { chapterNumber, title }.
  */
 
+import { TranslateService } from '@ngx-translate/core';
+
 export type ContentEntityKey =
   | 'chapters'
   | 'lesson-plans'
@@ -333,6 +335,17 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
     ],
   },
 ];
+
+export function localizeEntity(
+  entity: ContentEntityConfig,
+  translate: TranslateService
+): ContentEntityConfig {
+  return {
+    ...entity,
+    label: translate.instant(entity.label),
+    singular: translate.instant(entity.singular),
+  };
+}
 
 export function getContentEntityConfig(
   key: string | null

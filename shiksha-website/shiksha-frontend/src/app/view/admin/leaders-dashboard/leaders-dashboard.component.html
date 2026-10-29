@@ -27,7 +27,7 @@
         <button class="drill-close" (click)="closeDrillDown()" aria-label="Close drill-down">✕</button>
       </div>
 
-      <div class="drill-subtitle">Blocks — Lesson Plan Coverage</div>
+      <div class="drill-subtitle">{{ 'Blocks — Lesson Plan Coverage' | translate }}</div>
 
       <div *ngIf="drillLoading" class="drill-loading">
         <span class="spinner"></span> Loading blocks...

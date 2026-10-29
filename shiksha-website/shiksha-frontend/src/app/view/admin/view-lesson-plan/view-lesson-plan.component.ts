@@ -8,6 +8,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { ContentActivityService } from '../content-activity/content-activity.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { Subscription } from 'rxjs';
@@ -18,7 +19,7 @@ import { CCE_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 @Component({
   selector: 'app-view-lesson-plan',
   standalone: true,
-  imports: [CommonModule, ContentGenerationModule],
+  imports: [CommonModule, ContentGenerationModule, TranslateModule],
   templateUrl: './view-lesson-plan.component.html',
   styleUrls: [
     './view-lesson-plan.component.scss',

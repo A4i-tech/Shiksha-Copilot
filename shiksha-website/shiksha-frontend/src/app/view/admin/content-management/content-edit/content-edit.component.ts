@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -11,6 +12,7 @@ import {
   ContentField,
   ContentSelectOption,
   getContentEntityConfig,
+  localizeEntity,
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
@@ -51,7 +53,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private contentService: ContentManagementService,
-    private utilityService: UtilityService
+    private utilityService: UtilityService,
+    private translateService: TranslateService
   ) {}
 
   ngOnInit(): void {
@@ -65,7 +68,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           return;
         }
 
-        this.config = entity;
+        this.config = localizeEntity(entity, this.translateService);
         this.recordId = id;
         this.isCreate = id === 'new';
 
