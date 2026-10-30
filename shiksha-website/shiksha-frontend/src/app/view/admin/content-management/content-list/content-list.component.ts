@@ -68,7 +68,7 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
   ],
 })
 export class ContentListComponent implements OnInit, OnDestroy {
-  entities: ContentEntityConfig[];
+  entities!: ContentEntityConfig[];
   config!: ContentEntityConfig;
   private rawConfig?: ContentEntityConfig;
 
