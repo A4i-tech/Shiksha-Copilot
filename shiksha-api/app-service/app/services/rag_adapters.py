@@ -9,6 +9,7 @@ import os
 import shutil
 import logging
 import tempfile
+import uuid
 from abc import ABC, abstractmethod
 from typing import List, Optional, TypeVar, Union, overload
 from app.config import settings
@@ -115,7 +116,7 @@ class InMemRagOpsAdapter(BaseRagAdapter):
         self.index_path = index_path
         self._blob_store = BlobStore()
         self.persist_dir = os.path.join(
-            tempfile.gettempdir(), index_path.replace("/", "_")
+            tempfile.gettempdir(), f"{index_path.replace('/', '_')}_{uuid.uuid4().hex}"
         )
 
     async def initialize(self) -> InMemRagOps:
