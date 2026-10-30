@@ -1,6 +1,8 @@
 from copy import deepcopy
 from typing import Any, Iterable
 
+from langfuse import get_client
+
 from app.services.translation.factory import TranslatorFactory, simple
 import logging
 
@@ -41,12 +43,15 @@ class TranslationService:
         translator = self.factory(dst)
         flat = self.unzip(data)
         texts = [v for _, v in flat]
-        translated = []
-        for i in range(0, len(texts), self.batch_size):
-            translated += await translator.translate_batch_async(texts[i:i+self.batch_size], src, dst)
-        if len(translated) != len(flat):
-            raise TranslationProviderError(f"Translator returned {len(translated)} results for {len(flat)} inputs")
-        return self.zip(data, zip((p for p, _ in flat), translated))
+        metadata = {"backend": type(translator).__name__, "batch_size": self.batch_size}
+        span_input = {"src": src, "dst": dst, "strings": len(texts), "chars": sum(map(len, texts))}
+        with get_client().start_as_current_observation(name="translation", input=span_input, metadata=metadata):
+            translated = []
+            for i in range(0, len(texts), self.batch_size):
+                translated += await translator.translate_batch_async(texts[i:i+self.batch_size], src, dst)
+            if len(translated) != len(flat):
+                raise TranslationProviderError(f"Translator returned {len(translated)} results for {len(flat)} inputs")
+            return self.zip(data, zip((p for p, _ in flat), translated))
 
 
     def _skip(self, data: dict, key: str) -> bool:
