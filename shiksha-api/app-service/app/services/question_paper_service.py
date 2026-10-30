@@ -16,7 +16,7 @@ from llama_index.core.llms import ChatMessage, MessageRole
 from llama_index.core.base.response.schema import PydanticResponse
 
 # 3. Import only the Factory and Base Adapter
-from app.services.llm_factory import make_embedding, make_llm, make_openai_client, parse_structured
+from app.services.llm_factory import chat_api, make_embedding, make_llm, make_openai_client
 from app.services.rag_adapters import BaseRagAdapter
 
 from app.models.question_paper import (
@@ -213,7 +213,26 @@ class QuestionPaperService:
             if not rag_adapter:
                 # No Index -> Direct Generation (Zero-Shot)
                 logger.info("Using Direct LLM Generation (No RAG).")
-                items = await parse_structured(self.client, settings.question_paper_model, system_prompt, user_message, response_format)
+                if chat_api() == "responses":
+                    response = await self.client.responses.parse(
+                        model=settings.question_paper_model,
+                        instructions=system_prompt,
+                        input=user_message,
+                        text_format=response_format,
+                    )
+                    items = response.output_parsed
+                else:
+                    completion = await self.client.chat.completions.parse(
+                        model=settings.question_paper_model,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_message},
+                        ],
+                        response_format=response_format,
+                    )
+                    items = completion.choices[0].message.parsed
+                if items is None:
+                    raise RuntimeError("Did not retrieve a valid response from model")
             else:
                 # Index Available -> RAG Generation
                 logger.info(f"Using RAG Adapter for index: {record.index_path}")

@@ -25,7 +25,7 @@ class GeneralChatService:
             raise ValueError("General chat prompt not found in chat_prompts.yaml")
         self.system_prompt = system_prompt
         self.client = make_openai_client()
-        self.backend = make_chat_backend(self.client, settings.general_chat_model)
+        self.backend = make_chat_backend(settings.general_chat_model, self.client)
 
     async def __aenter__(self):
         return self
