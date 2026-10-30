@@ -111,7 +111,6 @@ QDRANT_API_KEY=your_qdrant_api_key
 - `CHAT_API=chat_completions` uses the chat completions API. This is the default when `CHAT_BASE_URL` or `OPENAI_BASE_URL` is set and `CHAT_API` is empty.
 - `LLM_CONTEXT_WINDOW` sets the context window of a self-hosted chat model that llama-index does not know. The default is 32768.
 - The hosted web search of the general chat exists only on `responses` with public OpenAI. The `chat_completions` backend sends no tools and returns no references.
-- `OPENAI_API_BASE` is accepted as an alias of `OPENAI_BASE_URL`.
 - app-service supports public OpenAI and OpenAI-compatible servers only. It has no Azure OpenAI provider.
 
 **Optional Environment Variables:**
