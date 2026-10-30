@@ -35,7 +35,7 @@ def test_chat_api_default_follows_base_url(monkeypatch, chat_api, chat_base_url,
     assert llm_factory.chat_api() == expected
 
 
-def test_kind_base_url_falls_back_to_shared_url(monkeypatch):
+def test_app_service_kind_base_url_falls_back_to_shared_url(monkeypatch):
     _set(monkeypatch, openai_base_url="http://shared/v1", chat_base_url=None, embedding_base_url="http://embed/v1")
     assert llm_factory.chat_base_url() == "http://shared/v1"
     assert llm_factory.embedding_base_url() == "http://embed/v1"

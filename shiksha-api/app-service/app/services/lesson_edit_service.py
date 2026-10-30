@@ -3,33 +3,32 @@ import json
 import logging
 from pathlib import Path
 
-from app.utils.utils import get_json_value_type, local_unique_id
-from llama_index.core import Response
-from pydantic import Field, JsonValue, create_model
 from langfuse import observe, propagate_attributes
-
-from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.llms.openai import OpenAI, OpenAIResponses
-
-from app.config import settings
-from app.services.llm_factory import make_embedding, make_llm, make_pydantic_model
-from app.models.lesson_plan import PlanEditRequest, PlanEditRecordResponse, SectionEditRequest
-from app.services.rag_adapter_cache import RagAdapterCache
+from llama_index.core import Response
+from llama_index.core.base.embeddings.base import BaseEmbedding
+from llama_index.core.llms import LLM
+from pydantic import Field, JsonValue, create_model
 from pydantic_ai import Agent, ModelSettings, RunContext, UsageLimits
 import yaml
+
+from app.config import settings
+from app.models.lesson_plan import PlanEditRecordResponse, PlanEditRequest, SectionEditRequest
+from app.services.llm_factory import make_embedding, make_llm, make_pydantic_model
+from app.services.rag_adapter_cache import RagAdapterCache
+from app.utils.utils import get_json_value_type, local_unique_id
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class AgentDeps:
-    rag_llm: OpenAIResponses | OpenAI
-    rag_embed: OpenAIEmbedding
+    rag_llm: LLM
+    rag_embed: BaseEmbedding
     rags: RagAdapterCache
     index_path: str | None
 
 
-_agent = Agent(model=make_pydantic_model(settings.lesson_chat_model), name="lesson-plan-editor", deps_type=AgentDeps, retries=3, model_settings=ModelSettings(temperature=0.3, timeout=60.0))
+_agent = Agent(name="lesson-plan-editor", deps_type=AgentDeps, retries=3, model_settings=ModelSettings(temperature=0.3, timeout=60.0))
 
 @_agent.tool(prepare=lambda ctx, tool: tool if ctx.deps.index_path is not None else None)
 async def read_chapter(ctx: RunContext[AgentDeps], query: str) -> str:
@@ -89,7 +88,7 @@ class LessonEditService:
         output_type = create_model("Result", content=(get_json_value_type(current_content), Field(description="Revised content preserving the original structure")))
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
         with propagate_attributes(user_id=body.user_id, tags=["scope:section"]):
-            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps, usage_limits=UsageLimits(request_limit=8))
+            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps, usage_limits=UsageLimits(request_limit=8), model=make_pydantic_model(settings.lesson_chat_model))
         return response.output.content
 
     @observe(name="Shiksha-LP")
@@ -111,7 +110,7 @@ class LessonEditService:
 
         deps = AgentDeps(rag_llm=self._rag_llm, rag_embed=self._rag_embed, rags=self._rags, index_path=body.index_path)
         with propagate_attributes(user_id=body.user_id, tags=["scope:plan"]):
-            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps, usage_limits=UsageLimits(request_limit=8))
+            response = await _agent.run(instructions=instructions, user_prompt=input_text, output_type=output_type, deps=deps, usage_limits=UsageLimits(request_limit=8), model=make_pydantic_model(settings.lesson_chat_model))
 
         return [
             PlanEditRecordResponse(
