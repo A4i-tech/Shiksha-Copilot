@@ -75,7 +75,6 @@ class CreateIndexStep(BasePipelineStep):
     def _embedding_llm(self):
         """Initialize the embedding model for EMBEDDING_PROVIDER (openai or azure)"""
         if _provider("EMBEDDING_PROVIDER") == "openai":
-            # model_name lets a self-hosted model name through, `model` accepts OpenAI names only
             return OpenAIEmbedding(
                 model_name=os.getenv("EMBED_MODEL", "text-embedding-ada-002"),
                 api_key=os.getenv("OPENAI_API_KEY"),

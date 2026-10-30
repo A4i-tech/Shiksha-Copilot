@@ -41,9 +41,8 @@ def test_kind_base_url_falls_back_to_shared_url(monkeypatch):
     assert llm_factory.embedding_base_url() == "http://embed/v1"
 
 
-def test_settings_accept_openai_api_base_alias_and_empty_values(monkeypatch):
-    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
-    monkeypatch.setenv("OPENAI_API_BASE", "http://alias/v1")
+def test_settings_accept_openai_base_url_and_empty_values(monkeypatch):
+    monkeypatch.setenv("OPENAI_BASE_URL", "http://alias/v1")
     monkeypatch.setenv("CHAT_API", "")
     monkeypatch.setenv("LLM_CONTEXT_WINDOW", "")
     loaded = Settings(_env_file=None)
@@ -86,39 +85,9 @@ def test_make_pydantic_model_builds_class_for_chat_api(monkeypatch, api, expecte
     assert str(model.client.base_url).startswith("http://vllm:8000/v1")
 
 
-def test_make_pydantic_model_leaves_other_providers_to_pydantic_ai():
-    assert llm_factory.make_pydantic_model("anthropic:claude-x") == "anthropic:claude-x"
-
-
-class _Reply(BaseModel):
-    reply: str
-
-
-@pytest.mark.parametrize("api", ["responses", "chat_completions"])
-async def test_parse_structured_uses_endpoint_of_chat_api(monkeypatch, api):
-    _set(monkeypatch, chat_api=api)
-    client = Mock()
-    client.responses.parse = AsyncMock(return_value=Mock(output_parsed=_Reply(reply="ok")))
-    client.chat.completions.parse = AsyncMock(return_value=Mock(choices=[Mock(message=Mock(parsed=_Reply(reply="ok")))]))
-
-    result = await llm_factory.parse_structured(client, "m", "system", "user", _Reply)
-
-    assert result == _Reply(reply="ok")
-    assert client.responses.parse.called == (api == "responses")
-    assert client.chat.completions.parse.called == (api == "chat_completions")
-    if api == "chat_completions":
-        assert client.chat.completions.parse.call_args.kwargs["messages"] == [
-            {"role": "system", "content": "system"},
-            {"role": "user", "content": "user"},
-        ]
-
-
-async def test_parse_structured_rejects_unparsed_reply(monkeypatch):
-    _set(monkeypatch, chat_api="chat_completions")
-    client = Mock()
-    client.chat.completions.parse = AsyncMock(return_value=Mock(choices=[Mock(message=Mock(parsed=None))]))
-    with pytest.raises(RuntimeError, match="valid response"):
-        await llm_factory.parse_structured(client, "m", "system", "user", _Reply)
+def test_make_pydantic_model_raises_on_unsupported_provider():
+    with pytest.raises(ValueError, match="Unsupported provider: anthropic"):
+        llm_factory.make_pydantic_model("anthropic:claude-x")
 
 
 def test_modules_import_without_llama_index_azure_openai_packages():

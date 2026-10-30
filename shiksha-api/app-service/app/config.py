@@ -28,8 +28,7 @@ class Settings(BaseSettings):
     general_chat_model: str = "gpt-5.6-luna"
     lesson_chat_model: str = "gpt-5.6-luna"
     question_paper_model: str = "gpt-5.6-luna"
-    # Empty base URL means public OpenAI. OPENAI_API_BASE is the llama-index name for the same value.
-    openai_base_url: Optional[str] = Field(default=None, validation_alias=AliasChoices("OPENAI_BASE_URL", "OPENAI_API_BASE"))
+    openai_base_url: Optional[str] = None
     chat_base_url: Optional[str] = None
     embedding_base_url: Optional[str] = None
     chat_api: Optional[Literal["responses", "chat_completions"]] = None
