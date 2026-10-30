@@ -1,9 +1,8 @@
 import asyncio
-import hmac
 import logging
 import signal
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -51,18 +50,6 @@ app = FastAPI(
 
 
 app.state.MCP_APP = mcp_app
-
-_PUBLIC_PATHS = {"/", "/health"}
-
-
-@app.middleware("http")
-async def require_internal_key(request: Request, call_next):
-    if request.url.path in _PUBLIC_PATHS:
-        return await call_next(request)
-    sent = request.headers.get("X-Internal-Key", "")
-    if not hmac.compare_digest(sent.encode(), settings.internal_api_key.encode()):
-        return JSONResponse(status_code=401, content={"detail": "Missing or invalid X-Internal-Key header. Send the key shared with shiksha-backend."})
-    return await call_next(request)
 
 
 app.add_middleware(

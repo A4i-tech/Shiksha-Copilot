@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-from app.config import settings
 from app.main import app
 
 
@@ -76,11 +75,3 @@ class TestAppConfiguration:
 
         assert hasattr(app.state, "MCP_APP")
         assert app.state.MCP_APP is not None
-
-
-def test_internal_key_required():
-    assert client.get("/health").status_code == 200
-    assert client.post("/chat/general", json={}).status_code == 401
-    assert client.post("/chat/general", json={}, headers={"X-Internal-Key": "wrong"}).status_code == 401
-    ok = client.post("/chat/general", json={}, headers={"X-Internal-Key": settings.internal_api_key})
-    assert ok.status_code != 401

@@ -24,7 +24,6 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     openai_api_key: str = Field(min_length=1)
-    internal_api_key: str = Field(min_length=1)
     embed_model: str = "text-embedding-ada-002"
     general_chat_model: str = "gpt-5.6-luna"
     lesson_chat_model: str = "gpt-5.6-luna"

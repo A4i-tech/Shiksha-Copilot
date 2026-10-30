@@ -15,7 +15,6 @@ A Dockerfile is present in the repository's root directory.
 2. Configure environment variables in a `.env` file:
    ```env
    OPENAI_API_KEY=sk-...
-   INTERNAL_API_KEY=
    BLOB_STORE_CONNECTION_STRING=
    MONGODB_URI=mongodb+srv://
    ```
@@ -56,7 +55,6 @@ To test the MCP server, follow the steps:
 1. Install and run MCP Inspector → https://github.com/modelcontextprotocol/inspector.
 2. Set **Transport Type** to `Streamable HTTP` and **URL** to `http://localhost:8000/mcp?user_id=<uuid>`.  Replace `<uuid>` with a 36-character UUID hex string.
 3. Click **Connect**.
-   Add the header `X-Internal-Key: <INTERNAL_API_KEY>` to the connector. The server rejects requests without it.
 4. Head over to **Tools** tab and click **List tools**. You will see a **shiksha-mcp** connector with 5 tools - General chat endpoint, Lesson-specific chat endpoint, Version, App name, and Health.
 
 ## Setup Continuous Integration (CI)

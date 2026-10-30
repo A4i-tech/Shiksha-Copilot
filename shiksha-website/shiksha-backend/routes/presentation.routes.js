@@ -13,7 +13,6 @@ const createPresentationProxy = target => createProxyMiddleware({
 	timeout: 310_000,
 	on: {
 		proxyReq: (proxyReq, req, res) => {
-			proxyReq.setHeader("X-Internal-Key", process.env.INTERNAL_API_KEY);
 			if (proxyReq.method === "POST" && !hasPermission(req.permissions, "presentation.generate.arbitrary")) {
 				res.statusCode = 403;
 				res.end("Forbidden");
