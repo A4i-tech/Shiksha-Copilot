@@ -1,14 +1,16 @@
-from pathlib import Path
 import logging
+from pathlib import Path
 import re
+
+from langfuse import observe, propagate_attributes
+from llama_index.core.llms import ChatMessage, MessageRole
+from llama_index.core.utils import truncate_text
+
 from app.config import settings
 from app.models.chat import LessonChatRequest, Reference
+from app.services.llm_factory import make_embedding, make_llm
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.prompt_template import PromptTemplate
-from llama_index.core.llms import ChatMessage, MessageRole
-from langfuse import observe, propagate_attributes
-from app.services.llm_factory import make_embedding, make_llm
-from llama_index.core.utils import truncate_text
 
 logger = logging.getLogger(__name__)
 

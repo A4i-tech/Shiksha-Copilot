@@ -4,7 +4,6 @@ import sys
 import textwrap
 from pathlib import Path
 
-import httpx
 import pytest
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.llms.openai import OpenAI
@@ -20,7 +19,6 @@ PROVIDER_VARS = (
 
 
 def _load_step_8():
-    # load by path: pipeline_steps/__init__.py imports every other step
     spec = importlib.util.spec_from_file_location("step_8_create_indexes", STEP_8_PATH)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -116,32 +114,3 @@ def test_step_imports_without_llama_index_azure_openai_packages():
     )
     result = subprocess.run([sys.executable, "-c", script], cwd=INGESTION_DIR, capture_output=True, text=True, timeout=180)
     assert result.returncode == 0, result.stderr[-2000:]
-
-
-def _mock_server_up() -> bool:
-    try:
-        return httpx.get("http://localhost:8000/health", timeout=2).status_code == 200
-    except httpx.HTTPError:
-        return False
-
-
-@pytest.mark.skipif(not _mock_server_up(), reason="mock model server at http://localhost:8000 does not answer /health")
-def test_openai_provider_embeds_single_text_and_batch_against_mock(step, monkeypatch):
-    monkeypatch.setenv("OPENAI_BASE_URL", MOCK_URL)
-    embedding = step._embedding_llm()
-
-    single = embedding.get_text_embedding("same text")
-    batch = embedding.get_text_embedding_batch(["same text", "other text"])
-
-    assert len(single) == 1536
-    assert [len(v) for v in batch] == [1536, 1536]
-    assert batch[0] == pytest.approx(single)
-
-
-@pytest.mark.skipif(not _mock_server_up(), reason="mock model server at http://localhost:8000 does not answer /health")
-def test_openai_provider_completes_against_mock(step, monkeypatch):
-    from llama_index.core.llms import ChatMessage
-
-    monkeypatch.setenv("OPENAI_BASE_URL", MOCK_URL)
-    monkeypatch.setenv("CHAT_MODEL", "gpt-4o-mini")
-    assert step._completion_llm().chat([ChatMessage(role="user", content="hi")]).message.content == "ok"

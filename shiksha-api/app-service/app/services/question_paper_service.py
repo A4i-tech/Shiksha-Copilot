@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 import logging
 
+# 1. Official OpenAI SDK (For Direct Generation & Chat)
 from langfuse import observe, propagate_attributes
 
 # 2. LlamaIndex Imports (Strictly for RAG Adapter Compatibility)

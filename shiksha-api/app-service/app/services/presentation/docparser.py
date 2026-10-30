@@ -17,7 +17,10 @@ from aiofiles.threadpool.binary import AsyncBufferedReader
 
 
 async def _caption(data: IO[bytes], figure_path: str, page_text: str, sem: asyncio.Semaphore) -> FigureInfo | None:
+    from app.config import settings
+    from app.services.llm_factory import make_pydantic_model
     from app.services.presentation.agent import captioner
+    captioner.model = make_pydantic_model(settings.pres_captioner)
     async with sem:
         try:
             data.seek(0)

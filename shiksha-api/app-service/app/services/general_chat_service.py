@@ -7,7 +7,7 @@ import json
 
 from app.models.chat import ConversationMessage
 from app.config import settings
-from app.services.llm_factory import make_chat_backend, make_openai_client
+from app.services.llm_factory import make_chat_backend
 from app.utils.prompt_template import PromptTemplate
 from pydantic import validate_call
 
@@ -24,8 +24,7 @@ class GeneralChatService:
         if not system_prompt:
             raise ValueError("General chat prompt not found in chat_prompts.yaml")
         self.system_prompt = system_prompt
-        self.client = make_openai_client()
-        self.backend = make_chat_backend(settings.general_chat_model, self.client)
+        self.backend = make_chat_backend(settings.general_chat_model)
 
     async def __aenter__(self):
         return self
@@ -64,6 +63,8 @@ class GeneralChatService:
         Cleanup method for the service.
         """
         try:
-            await self.client.close()
+            client = getattr(self.backend, "client", None)
+            if client:
+                await client.close()
         except Exception as e:
             logger.error(f"Error during cleanup: {e}")
