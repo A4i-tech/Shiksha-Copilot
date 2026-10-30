@@ -2,7 +2,7 @@ import json
 import logging
 from typing import List
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
 
 from app.services.translation.base import TranslationProviderError, TranslatorBase
 from app.services.translation.language import LANGUAGE_MAP
@@ -43,15 +43,18 @@ class OpenAITranslator(TranslatorBase):
             "Keep the order and the count. Keep placeholders, markup and numbers unchanged. "
             'Return only JSON in the form {"translations": ["..."]}.'
         )
-        response = await self._client.chat.completions.create(
-            model=self._model,
-            temperature=0,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": json.dumps({"texts": [texts[i] for i in pending]}, ensure_ascii=False)},
-            ],
-        )
+        try:
+            response = await self._client.chat.completions.create(
+                model=self._model,
+                temperature=0,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": json.dumps({"texts": [texts[i] for i in pending]}, ensure_ascii=False)},
+                ],
+            )
+        except OpenAIError as e:
+            raise TranslationProviderError(f"Translation server call failed ({e!r}). Check TRANSLATION_BASE_URL and that the server is running.") from e
         try:
             translations = json.loads(response.choices[0].message.content)["translations"]
         except (TypeError, ValueError, KeyError, IndexError) as e:

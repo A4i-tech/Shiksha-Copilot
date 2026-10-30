@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import httpx
+import openai
 import pytest
 from pydantic import ValidationError
 
@@ -78,6 +79,13 @@ async def test_request_follows_wire_contract():
 async def test_bad_reply_raises(reply):
     with pytest.raises(TranslationProviderError):
         await _stub(reply).translate_batch_async(["a", "b"], "en", "te")
+
+
+async def test_server_error_raises_provider_error():
+    t = _stub("{}")
+    t._client.chat.completions.create.side_effect = openai.APIConnectionError(request=httpx.Request("POST", "http://x"))
+    with pytest.raises(TranslationProviderError):
+        await t.translate_async("a", "en", "te")
 
 
 @pytest.fixture
