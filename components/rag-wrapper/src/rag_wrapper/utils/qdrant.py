@@ -40,21 +40,27 @@ class QdrantUtils:
         self.logger = logger or logging.getLogger(__name__)
         self._sync_client: Optional[QdrantClient] = None
         self._async_client: Optional[AsyncQdrantClient] = None
+        self._closed = False
 
     @property
     def sync_client(self) -> QdrantClient:
+        if self._closed:
+            raise RuntimeError("QdrantUtils is closed. Build a new instance to query.")
         if self._sync_client is None:
             self._sync_client = QdrantClient(url=self.url, api_key=self.api_key)
         return self._sync_client
 
     @property
     def async_client(self) -> AsyncQdrantClient:
+        if self._closed:
+            raise RuntimeError("QdrantUtils is closed. Build a new instance to query.")
         if self._async_client is None:
             self._async_client = AsyncQdrantClient(url=self.url, api_key=self.api_key)
         return self._async_client
 
     async def close(self) -> None:
         """Close both clients. Never raises."""
+        self._closed = True
         aclient, self._async_client = self._async_client, None
         client, self._sync_client = self._sync_client, None
         if aclient is not None:

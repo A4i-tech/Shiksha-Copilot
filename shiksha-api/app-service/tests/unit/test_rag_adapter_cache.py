@@ -97,3 +97,14 @@ async def test_cleanup_closes_retired_adapter_once():
     await cache.cleanup()
     await asyncio.sleep(0.1)
     assert first.rag_ops.closes == 1
+
+
+async def test_retired_adapters_are_capped():
+    cache, _ = make_cache(1)
+    cache.max_retired = 2
+    first = await cache.get("a", None, None)
+    for path in "bcde":
+        await cache.get(path, None, None)
+    assert len(cache._retired) == 2
+    assert first.cleanups == 1
+    await cache.cleanup()

@@ -20,6 +20,7 @@ class RagAdapterCache(Generic[T]):
 
     # ponytail: grace period instead of refcounting, a query running longer than this can hit a closed client
     retire_grace = 60.0
+    max_retired = 8
 
     @classmethod
     async def from_factory(cls, index_path: str, completion_llm: OpenAIResponses, embedding_llm: OpenAIEmbedding):
@@ -56,6 +57,8 @@ class RagAdapterCache(Generic[T]):
             oldest_key = next(iter(self._instances))
             evicted = self._instances.pop(oldest_key)
             self._retired.append(evicted)
+            if len(self._retired) > self.max_retired:
+                await self._retired.pop(0).cleanup()
             task = asyncio.create_task(self._retire(evicted))
             self._retire_tasks.add(task)
             task.add_done_callback(self._retire_tasks.discard)

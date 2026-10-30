@@ -1,3 +1,4 @@
+import pytest
 import asyncio
 
 from rag_wrapper.utils import qdrant as qdrant_module
@@ -29,11 +30,12 @@ def test_clients_are_reused(monkeypatch):
     assert utils.async_client is utils.async_client
 
 
-def test_close_closes_both_clients_and_resets(monkeypatch):
+def test_close_closes_both_clients_and_blocks_reuse(monkeypatch):
     utils = make_utils(monkeypatch)
     sync, aclient = utils.sync_client, utils.async_client
     asyncio.run(utils.close())
     assert (sync.closes, aclient.closes) == (1, 1)
-    assert utils.sync_client is not sync
+    with pytest.raises(RuntimeError):
+        utils.sync_client
     asyncio.run(utils.close())
     assert (sync.closes, aclient.closes) == (1, 1)
