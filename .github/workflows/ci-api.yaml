@@ -56,6 +56,7 @@ jobs:
         working-directory: shiksha-api/app-service
         env:
           OPENAI_API_KEY: dummy-key-for-testing
+          INTERNAL_API_KEY: dummy-internal-key
           BLOB_STORE_CONNECTION_STRING: DefaultEndpointsProtocol=https;AccountName=dummyaccount;AccountKey=dummykey;EndpointSuffix=core.windows.net
           QDRANT_URL: http://localhost:6333
           QDRANT_API_KEY: dummy-qdrant-key

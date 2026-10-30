@@ -98,6 +98,7 @@ QDRANT_API_KEY=your_qdrant_api_key
 
 **Required Environment Variables:**
 
+- `INTERNAL_API_KEY`: shared secret. shiksha-backend sends it as `X-Internal-Key`. Must match the backend value.
 - `AZURE_OPENAI_API_KEY`: Azure OpenAI service API key
 - `AZURE_OPENAI_ENDPOINT`: Azure OpenAI service endpoint URL
 - `AZURE_OPENAI_DEPLOYMENT_NAME`: Completion model deployment name
@@ -696,6 +697,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
       - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
       - BLOB_STORE_CONNECTION_STRING=${BLOB_STORE_CONNECTION_STRING}

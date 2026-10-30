@@ -18,6 +18,7 @@ from llama_index.core.llms import MockLLM
 if not os.getenv("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = "sk-xxxx"
 
+os.environ.setdefault("INTERNAL_API_KEY", "test-internal-key")
 os.environ["DEBUG"] = "false"
 
 

@@ -48,6 +48,8 @@ const supersetRoutes = require('./routes/superset.routes.js');
 const adminContentRoutes = require('./routes/admin.content.routes.js');
 const analyticsRoutes = require('./routes/analytics.routes.js');
 
+require("./config/llm.auth");
+
 const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1); // trust Azure ingress/LB for HTTPS detection
