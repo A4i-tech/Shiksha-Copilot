@@ -66,5 +66,17 @@ describe("dashboard sync", () => {
       await sync.refreshBoards();
       expect(supersetGet).toHaveBeenCalledTimes(1);
     });
+
+    it("lets the retry path run a minute after a failed run, not sooner", async () => {
+      const now = jest.spyOn(Date, "now").mockReturnValue(1_000_000_000);
+      supersetGet.mockRejectedValue(new Error("Superset down"));
+      await sync.refreshBoards();
+      now.mockReturnValue(1_000_000_000 + 30_000);
+      await sync.refreshBoards(true);
+      expect(supersetGet).toHaveBeenCalledTimes(1);
+      now.mockReturnValue(1_000_000_000 + 61_000);
+      await sync.refreshBoards(true);
+      expect(supersetGet).toHaveBeenCalledTimes(2);
+    });
   });
 });

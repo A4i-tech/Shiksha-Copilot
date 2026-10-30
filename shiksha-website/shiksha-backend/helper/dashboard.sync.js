@@ -35,7 +35,7 @@ async function syncBoards() {
       await saveBoard({ boardKey, chartKeys, desktopUuid: await embeddedUuid(desktop), mobileUuid: mobile ? await embeddedUuid(mobile) : null });
       saved.push(boardKey);
     } catch (err) {
-      console.warn(`[superset] board ${boardKey} skipped: ${err.message}`);
+      console.warn(`[superset] board ${boardKey} (dashboard ${desktop.id}) skipped: ${err.message}`);
     }
   }
   return saved;
