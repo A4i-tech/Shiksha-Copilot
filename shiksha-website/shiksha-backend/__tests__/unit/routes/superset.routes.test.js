@@ -146,7 +146,7 @@ describe('superset routes', () => {
       const res = await request(app).post('/api/superset/guest-token');
 
       expect(res.status).toBe(200);
-      expect(refreshBoards).toHaveBeenLastCalledWith(true);
+      expect(refreshBoards.mock.calls).toEqual([[], [true]]);
       expect(resourceIds()).toEqual(['full-d', 'full-m']);
     });
 
