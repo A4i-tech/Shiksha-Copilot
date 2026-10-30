@@ -55,7 +55,7 @@
 
         <!-- Q1: plans -->
         <ng-container *ngIf="currentStep === 0">
-          <h2 class="question">How do you currently prepare your lesson plans?</h2>
+          <h2 class="question">{{ 'How do you currently prepare your lesson plans?' | translate }}</h2>
           <p class="hint">Select all that apply</p>
           <div class="options">
             <div class="opt check" *ngFor="let o of planOptions" [class.selected]="isChecked('plans', o)"
@@ -77,7 +77,7 @@
 
         <!-- Q2: devices -->
         <ng-container *ngIf="currentStep === 1">
-          <h2 class="question">Which of these do you use while preparing lesson plans?</h2>
+          <h2 class="question">{{ 'Which of these do you use while preparing lesson plans?' | translate }}</h2>
           <p class="hint">Select all that apply</p>
           <div class="options">
             <div class="opt check" *ngFor="let o of deviceOptions" [class.selected]="isChecked('devices', o)"
@@ -99,7 +99,7 @@
 
         <!-- Q3: weeklyLessonPlans -->
         <ng-container *ngIf="currentStep === 2">
-          <h2 class="question">How many lesson plans do you create in a week?</h2>
+          <h2 class="question">{{ 'How many lesson plans do you create in a week?' | translate }}</h2>
           <p class="hint">Pick one</p>
           <div class="options grid2">
             <div class="opt radio" *ngFor="let o of weeklyOptions"
@@ -110,13 +110,13 @@
           </div>
           <div class="field-nudge"
             *ngIf="surveyForm.get('weeklyLessonPlans')?.invalid && surveyForm.get('weeklyLessonPlans')?.touched">
-            Please select how many lesson plans you create.
+            {{ 'Please select how many lesson plans you create.' | translate }}
           </div>
         </ng-container>
 
         <!-- Q4: lessonPlanComponents -->
         <ng-container *ngIf="currentStep === 3">
-          <h2 class="question">Which components do you include in your lesson plans?</h2>
+          <h2 class="question">{{ 'Which components do you include in your lesson plans?' | translate }}</h2>
           <p class="hint">Select all that apply</p>
           <div class="exclusive-note" *ngIf="isExclusiveOptionActive('lessonPlanComponents')">
             ℹ️ {{ exclusiveOptionMessage('lessonPlanComponents') | translate }}
@@ -146,7 +146,7 @@
 
         <!-- Q5: timePerLessonPlan -->
         <ng-container *ngIf="currentStep === 4">
-          <h2 class="question">On average, how much time do you spend preparing one lesson plan?</h2>
+          <h2 class="question">{{ 'On average, how much time do you spend preparing one lesson plan?' | translate }}</h2>
           <p class="hint">Pick one</p>
           <div class="options">
             <div class="opt radio" *ngFor="let o of timePerLessonOptions"
@@ -170,7 +170,7 @@
 
         <!-- Q6: resourcesUsed -->
         <ng-container *ngIf="currentStep === 5">
-          <h2 class="question">Which resources do you use while preparing lesson plans?</h2>
+          <h2 class="question">{{ 'Which resources do you use while preparing lesson plans?' | translate }}</h2>
           <p class="hint">Select all that apply</p>
           <div class="options">
             <div class="opt check" *ngFor="let o of resourceOptions" [class.selected]="isChecked('resourcesUsed', o)"
