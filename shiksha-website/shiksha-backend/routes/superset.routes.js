@@ -7,6 +7,7 @@ const { getSupersetAuth, resetSupersetAuth, runAnalyticsSql } = require("../help
 const AuditLog = require("../models/audit.log.model.js");
 const DashboardConfigDao = require("../dao/dashboard.config.dao.js");
 const { grantedChartKeys, resolveDashboard, buildScope } = require("../helper/dashboard.helper.js");
+const { refreshBoards } = require("../helper/dashboard.sync.js");
 const { saveBoard, chartsMismatch, undelegatable } = require("../helper/dashboard.boards.js");
 const { validateBoardSave } = require("../validations/dashboard.validation.js");
 
@@ -58,7 +59,12 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
     const rlsClause = buildRlsClause(analyticsGrants);
     const chartKeys = grantedChartKeys(req.permissions);
     if (!chartKeys.length) return res.status(403).json({ error: "You do not have access to any dashboard charts. Ask an administrator to grant chart permissions." });
-    const resolved = resolveDashboard(chartKeys, await dashboardConfigDao.findAllBoards());
+    await refreshBoards();
+    let resolved = resolveDashboard(chartKeys, await dashboardConfigDao.findAllBoards());
+    if (!resolved) {
+      await refreshBoards(true);
+      resolved = resolveDashboard(chartKeys, await dashboardConfigDao.findAllBoards());
+    }
     if (!resolved) {
       console.warn("[superset] no board holds the charts of user", uid, chartKeys.join(", "));
       return res.status(503).json({ error: "No dashboard board holds your charts. Ask an administrator to add a board that includes them." });

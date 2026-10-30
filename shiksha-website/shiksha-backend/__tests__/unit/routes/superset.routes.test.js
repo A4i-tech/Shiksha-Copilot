@@ -11,6 +11,7 @@ jest.mock('../../../middlewares/auth.js', () => ({
     next();
   },
 }));
+jest.mock('../../../helper/dashboard.sync.js', () => ({ refreshBoards: jest.fn().mockResolvedValue() }));
 jest.mock('../../../dao/dashboard.config.dao.js', () => class {
   findAllBoards() { return Promise.resolve(global.testBoards); }
 });
@@ -130,6 +131,22 @@ describe('superset routes', () => {
 
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({ token: 'guest-token-1', dashboardUuid: 'full-d', mobileDashboardUuid: 'full-m' });
+      expect(resourceIds()).toEqual(['full-d', 'full-m']);
+    });
+
+    it('syncs the boards once more when none holds the charts, then uses the new board', async () => {
+      const { refreshBoards } = require('../../../helper/dashboard.sync.js');
+      global.testBoards = [];
+      refreshBoards.mockImplementation(async (retryNow) => {
+        if (retryNow) global.testBoards = [{ boardKey: 'full', chartKeys: ['a', 'b', 'c'], desktopUuid: 'full-d', mobileUuid: 'full-m' }];
+      });
+      getPermission.mockReturnValue([{ scopeType: 'GLOBAL' }]);
+      axios.post.mockResolvedValue({ data: { token: 'guest-token-1' } });
+
+      const res = await request(app).post('/api/superset/guest-token');
+
+      expect(res.status).toBe(200);
+      expect(refreshBoards.mock.calls).toEqual([[], [true]]);
       expect(resourceIds()).toEqual(['full-d', 'full-m']);
     });
 

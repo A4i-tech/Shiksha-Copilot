@@ -114,8 +114,24 @@ async function runAnalyticsSql(sqlQuery) {
   return resp.data?.data ?? [];
 }
 
+// GET on the Superset REST API as the admin. Retries once if the admin session has expired.
+async function supersetGet(path) {
+  const { url } = config();
+  const get = (auth) => axios.get(`${url}/api/v1${path}`, { headers: { Authorization: `Bearer ${auth.accessToken}` }, timeout: AXIOS_TIMEOUT_MS });
+  let resp;
+  try {
+    resp = await get(await getSupersetAuth());
+  } catch (err) {
+    if (err?.response?.status !== 401) throw err;
+    resetSupersetAuth();
+    resp = await get(await getSupersetAuth());
+  }
+  return resp.data.result;
+}
+
 module.exports = {
   isSupersetConfigured,
+  supersetGet,
   getSupersetAuth,
   resetSupersetAuth,
   runAnalyticsSql,
