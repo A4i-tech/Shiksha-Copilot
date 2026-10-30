@@ -1,16 +1,20 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
-const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
+const { isAuthenticated, requirePermission, requireUnscopedPermission } = require("../middlewares/auth.js");
 const { getPermission } = require("../helper/permission.helper.js");
 const { getSupersetAuth, resetSupersetAuth, runAnalyticsSql } = require("../helper/superset.helper.js");
 const AuditLog = require("../models/audit.log.model.js");
+const DashboardConfigDao = require("../dao/dashboard.config.dao.js");
+const { grantedChartKeys, resolveDashboard, buildScope } = require("../helper/dashboard.helper.js");
+const { saveBoard, chartsMismatch, undelegatable } = require("../helper/dashboard.boards.js");
+const { validateBoardSave } = require("../validations/dashboard.validation.js");
 
 const SUPERSET_URL = process.env.SUPERSET_URL;
 const SUPERSET_ADMIN_USERNAME = process.env.SUPERSET_ADMIN_USERNAME;
 const SUPERSET_ADMIN_PASSWORD = process.env.SUPERSET_ADMIN_PASSWORD;
-const SUPERSET_DASHBOARD_UUID = process.env.SUPERSET_DASHBOARD_UUID;
-const SUPERSET_MOBILE_DASHBOARD_UUID = process.env.SUPERSET_MOBILE_DASHBOARD_UUID;
+
+const dashboardConfigDao = new DashboardConfigDao();
 
 const AXIOS_TIMEOUT_MS = 10_000;
 
@@ -42,7 +46,7 @@ function buildRlsClause(scopes) {
 // Returns a short-lived Superset guest token scoped to the logged-in user.
 router.post("/superset/guest-token", isAuthenticated, requirePermission("analytics.view"), async (req, res) => {
   try {
-    if (!SUPERSET_URL || !SUPERSET_ADMIN_USERNAME || !SUPERSET_ADMIN_PASSWORD || !SUPERSET_DASHBOARD_UUID) {
+    if (!SUPERSET_URL || !SUPERSET_ADMIN_USERNAME || !SUPERSET_ADMIN_PASSWORD) {
       return res.status(503).json({ error: "Superset not configured (missing env vars)" });
     }
 
@@ -50,7 +54,16 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
     if (!mongoUser) return res.status(401).json({ error: "No authenticated user" });
 
     const uid = String(mongoUser._id);
-    const rlsClause = buildRlsClause(getPermission(req.permissions, "analytics.view"));
+    const analyticsGrants = getPermission(req.permissions, "analytics.view");
+    const rlsClause = buildRlsClause(analyticsGrants);
+    const chartKeys = grantedChartKeys(req.permissions);
+    if (!chartKeys.length) return res.status(403).json({ error: "You do not have access to any dashboard charts. Ask an administrator to grant chart permissions." });
+    const resolved = resolveDashboard(chartKeys, await dashboardConfigDao.findAllBoards());
+    if (!resolved) {
+      console.warn("[superset] no board holds the charts of user", uid, chartKeys.join(", "));
+      return res.status(503).json({ error: "No dashboard board holds your charts. Ask an administrator to add a board that includes them." });
+    }
+    const { desktopUuid, mobileUuid } = resolved;
 
     const { accessToken: adminToken, csrfToken, cookieHeader } = await getSupersetAuth();
 
@@ -61,8 +74,8 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
         last_name:  (mongoUser.identity.name || "").split(" ").slice(1).join(" "),
       },
       resources: [
-        { type: "dashboard", id: SUPERSET_DASHBOARD_UUID },
-        ...(SUPERSET_MOBILE_DASHBOARD_UUID ? [{ type: "dashboard", id: SUPERSET_MOBILE_DASHBOARD_UUID }] : []),
+        { type: "dashboard", id: desktopUuid },
+        ...(mobileUuid ? [{ type: "dashboard", id: mobileUuid }] : []),
       ],
       rls: rlsClause ? [{ clause: rlsClause }] : [],
     };
@@ -102,9 +115,10 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
 
     res.json({
       token,
-      dashboardUuid: SUPERSET_DASHBOARD_UUID,
-      mobileDashboardUuid: SUPERSET_MOBILE_DASHBOARD_UUID || null,
+      dashboardUuid: desktopUuid,
+      mobileDashboardUuid: mobileUuid,
       supersetUrl: SUPERSET_URL,
+      scope: buildScope(analyticsGrants),
     });
   } catch (err) {
     const isTimeout = err.code === "ECONNABORTED";
@@ -115,6 +129,45 @@ router.post("/superset/guest-token", isAuthenticated, requirePermission("analyti
       message: isTimeout ? "timeout" : err.message,
     });
     res.status(isTimeout ? 503 : 500).json({ error: "Failed to generate dashboard token" });
+  }
+});
+
+// Superset embedded uuid -> dashboard id -> chart names. A swapped uuid would expose the restricted charts.
+async function assertBoardMatches(uuid, chartKeys) {
+  const { accessToken } = await getSupersetAuth();
+  const config = { headers: { Authorization: `Bearer ${accessToken}` }, timeout: AXIOS_TIMEOUT_MS };
+  let charts;
+  try {
+    const embedded = await axios.get(`${SUPERSET_URL}/api/v1/embedded_dashboard/${uuid}`, config);
+    charts = await axios.get(`${SUPERSET_URL}/api/v1/dashboard/${embedded.data.result.dashboard_id}/charts`, config);
+  } catch (err) {
+    if (err?.response?.status === 404) throw Object.assign(new Error(`UUID ${uuid} is not an embedded Superset dashboard. Check the UUID.`), { status: 422 });
+    throw err;
+  }
+  const message = chartsMismatch(charts.data.result.map((chart) => chart.slice_name), chartKeys);
+  if (message) throw Object.assign(new Error(`UUID ${uuid}: ${message}`), { status: 422 });
+}
+
+// PUT /api/superset/boards
+// Creates or updates one board row. The backend reads board ids only from MongoDB.
+router.put("/superset/boards", isAuthenticated, requireUnscopedPermission("role.manage"), validateBoardSave, async (req, res) => {
+  try {
+    const { chartKeys, desktopUuid, mobileUuid } = req.body;
+    const blocked = undelegatable(chartKeys, req.permissions.map((grant) => grant.permission), Boolean(getPermission(req.permissions, "role.delegate")));
+    if (blocked.length) return res.status(403).json({ error: `You cannot grant permissions you do not hold: ${blocked.join(", ")}. Ask an administrator with role.delegate.` });
+    await assertBoardMatches(desktopUuid, chartKeys);
+    if (mobileUuid) await assertBoardMatches(mobileUuid, chartKeys);
+    const saved = await saveBoard(req.body);
+    AuditLog.create({
+      eventType: "Dashboard Board Save",
+      status: "success",
+      userId: req.user._id,
+      name: req.user.identity.name || "Unknown",
+    }).catch((e) => console.error("[superset] audit log failed:", e.message));
+    res.json(saved);
+  } catch (err) {
+    console.error("[superset] save board failed:", err.message);
+    res.status(err.status || 500).json({ error: err.status ? err.message : "Failed to save the dashboard board. Try again." });
   }
 });
 
