@@ -55,6 +55,14 @@ describe("saveBoard", () => {
     expect(await DashboardConfig.countDocuments()).toBe(1);
     expect(await permissionsOf("CRP")).toEqual(["analytics.chart.lesson_plans_by_subject"]);
   });
+
+  it("logs an error if the board write fails after granting roles", async () => {
+    jest.spyOn(DashboardConfig, "updateOne").mockRejectedValueOnce(new Error("db failure"));
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    await expect(saveBoard(board())).rejects.toThrow("db failure");
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("saveBoard write failed after granting roles"));
+    errorSpy.mockRestore();
+  });
 });
 
 describe("saveBoard revoke", () => {
@@ -69,6 +77,12 @@ describe("saveBoard revoke", () => {
     await saveBoard(board({ chartKeys: keys }));
     await saveBoard(board({ chartKeys: ["lesson_plans_by_subject"] }));
     expect(await permissionsOf("HM")).toEqual(["analytics.chart.content_type_mix", "analytics.chart.lesson_plans_by_subject"]);
+  });
+  it("revokes a dropped chart from all field roles even when save specifies a roles subset", async () => {
+    await saveBoard(board({ chartKeys: keys }));
+    await saveBoard(board({ chartKeys: ["lesson_plans_by_subject"], roles: ["CRP"] }));
+    expect(await permissionsOf("HM")).toEqual(["analytics.chart.lesson_plans_by_subject"]);
+    expect(await permissionsOf("CRP")).toEqual(["analytics.chart.lesson_plans_by_subject"]);
   });
 });
 
@@ -101,6 +115,9 @@ describe("chartsMismatch", () => {
   it("rejects a missing chart", () => {
     expect(chartsMismatch(names.slice(0, 1), keys)).toMatch("Missing: Avg Feedback Score");
   });
+  it("rejects an unknown chart key with an error message instead of throwing", () => {
+    expect(chartsMismatch(names, ["unknown_key"])).toMatch("Unknown chart keys: unknown_key");
+  });
 });
 
 describe("undelegatable", () => {
@@ -124,5 +141,8 @@ describe("saveBoard validation", () => {
 describe("DashboardConfig", () => {
   it("rejects a row with no chart keys", async () => {
     await expect(DashboardConfig.create({ boardKey: "empty", chartKeys: [], desktopUuid: "d1" })).rejects.toThrow();
+  });
+  it("rejects a row when chartKeys is missing", async () => {
+    await expect(DashboardConfig.create({ boardKey: "missing", desktopUuid: "d1" })).rejects.toThrow();
   });
 });

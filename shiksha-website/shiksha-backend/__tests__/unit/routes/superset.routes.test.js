@@ -6,7 +6,10 @@ jest.mock('../../../middlewares/auth.js', () => ({
     next();
   },
   requirePermission: () => (req, res, next) => next(),
-  requireUnscopedPermission: () => (req, res, next) => next(),
+  requireUnscopedPermission: () => (req, res, next) => {
+    if (global.testBlockUnscoped) return res.status(403).json({ success: false, message: 'Access Denied!' });
+    next();
+  },
 }));
 jest.mock('../../../dao/dashboard.config.dao.js', () => class {
   findAllBoards() { return Promise.resolve(global.testBoards); }
@@ -18,6 +21,13 @@ jest.mock('../../../helper/superset.helper.js', () => ({
   runAnalyticsSql: jest.fn(),
 }));
 jest.mock('../../../models/audit.log.model.js', () => ({ create: jest.fn().mockResolvedValue({}) }));
+jest.mock('../../../helper/dashboard.boards.js', () => {
+  const actual = jest.requireActual('../../../helper/dashboard.boards.js');
+  return {
+    ...actual,
+    saveBoard: jest.fn(),
+  };
+});
 
 const express = require('express');
 const request = require('supertest');
@@ -27,12 +37,15 @@ const charts = (...keys) => [{ permission: 'analytics.view' }, ...keys.map((key)
 describe('superset routes', () => {
   let axios;
   let helper;
+  let boardsHelper;
   let getPermission;
+  let AuditLog;
   let app;
   let errorSpy;
 
   beforeEach(() => {
     jest.resetModules();
+    delete global.testBlockUnscoped;
     process.env.SUPERSET_URL = 'http://superset:8088';
     process.env.SUPERSET_ADMIN_USERNAME = 'admin';
     process.env.SUPERSET_ADMIN_PASSWORD = 'test-password';
@@ -43,8 +56,11 @@ describe('superset routes', () => {
     global.testPermissions = charts('a', 'b', 'c');
     axios = require('axios');
     helper = require('../../../helper/superset.helper.js');
+    boardsHelper = require('../../../helper/dashboard.boards.js');
+    AuditLog = require('../../../models/audit.log.model.js');
     ({ getPermission } = require('../../../helper/permission.helper.js'));
     helper.getSupersetAuth.mockResolvedValue({ accessToken: 't', csrfToken: 'c', cookieHeader: 'k' });
+    boardsHelper.saveBoard.mockResolvedValue({ boardKey: 'field', inserted: true, skippedRoles: [] });
     errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     app = express();
     app.use(express.json());
@@ -156,6 +172,72 @@ describe('superset routes', () => {
       expect(res.body.token).toBe('guest-token-2');
       expect(helper.resetSupersetAuth).toHaveBeenCalledTimes(1);
       expect(helper.getSupersetAuth).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('PUT /superset/boards', () => {
+    const validBoard = {
+      boardKey: 'field',
+      chartKeys: ['active_inactive_users'],
+      desktopUuid: '3f2b8c1e-4d5a-4b6c-8d7e-9f0a1b2c3d4e',
+      mobileUuid: '7a1d2c3b-4e5f-4a6b-9c8d-0e1f2a3b4c5d',
+    };
+
+    it('rejects a caller without unscoped role.manage with 403', async () => {
+      global.testBlockUnscoped = true;
+      const res = await request(app).put('/api/superset/boards').send(validBoard);
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ success: false, message: 'Access Denied!' });
+      expect(boardsHelper.saveBoard).not.toHaveBeenCalled();
+    });
+
+    it('rejects with 403 when user grants charts they do not hold and lacks role.delegate', async () => {
+      global.testPermissions = [{ permission: 'analytics.view' }];
+      getPermission.mockReturnValue(null);
+      const res = await request(app).put('/api/superset/boards').send(validBoard);
+      expect(res.status).toBe(403);
+      expect(res.body.error).toContain('You cannot grant permissions you do not hold: analytics.chart.active_inactive_users');
+      expect(boardsHelper.saveBoard).not.toHaveBeenCalled();
+    });
+
+    it('rejects with 422 when UUID is not an embedded dashboard (404 from Superset)', async () => {
+      getPermission.mockReturnValue([{ permission: 'role.delegate' }]);
+      axios.get.mockRejectedValueOnce({ response: { status: 404 } });
+
+      const res = await request(app).put('/api/superset/boards').send(validBoard);
+      expect(res.status).toBe(422);
+      expect(res.body.error).toContain('is not an embedded Superset dashboard');
+      expect(boardsHelper.saveBoard).not.toHaveBeenCalled();
+    });
+
+    it('rejects with 422 when dashboard slice names do not match chartKeys', async () => {
+      getPermission.mockReturnValue([{ permission: 'role.delegate' }]);
+      axios.get
+        .mockResolvedValueOnce({ data: { result: { dashboard_id: 10 } } })
+        .mockResolvedValueOnce({ data: { result: [{ slice_name: 'Mismatched Slice Name' }] } });
+
+      const res = await request(app).put('/api/superset/boards').send(validBoard);
+      expect(res.status).toBe(422);
+      expect(res.body.error).toContain('The Superset dashboard does not match the board charts');
+      expect(boardsHelper.saveBoard).not.toHaveBeenCalled();
+    });
+
+    it('saves board, writes audit log, and returns 200 on happy path', async () => {
+      getPermission.mockReturnValue([{ permission: 'role.delegate' }]);
+      axios.get
+        .mockResolvedValueOnce({ data: { result: { dashboard_id: 10 } } })
+        .mockResolvedValueOnce({ data: { result: [{ slice_name: 'Active / Inactive Users' }] } })
+        .mockResolvedValueOnce({ data: { result: { dashboard_id: 11 } } })
+        .mockResolvedValueOnce({ data: { result: [{ slice_name: 'Active / Inactive Users' }] } });
+
+      const res = await request(app).put('/api/superset/boards').send(validBoard);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ boardKey: 'field', inserted: true, skippedRoles: [] });
+      expect(boardsHelper.saveBoard).toHaveBeenCalledWith(expect.objectContaining({ boardKey: 'field' }));
+      expect(AuditLog.create).toHaveBeenCalledWith(expect.objectContaining({
+        eventType: 'Dashboard Board Save',
+        status: 'success',
+      }));
     });
   });
 });

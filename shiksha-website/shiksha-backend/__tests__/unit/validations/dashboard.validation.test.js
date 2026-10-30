@@ -15,6 +15,12 @@ describe("validateBoardSave", () => {
     expect(run(body({ mobileUuid: "7a1d2c3b-4e5f-4a6b-9c8d-0e1f2a3b4c5d" })).next).toHaveBeenCalled();
   });
 
+  it("accepts a body where mobileUuid is omitted", () => {
+    const payload = body();
+    delete payload.mobileUuid;
+    expect(run(payload).next).toHaveBeenCalled();
+  });
+
   it.each([
     ["desktopUuid", { desktopUuid: "not-a-uuid" }],
     ["mobileUuid", { mobileUuid: "nope" }],
