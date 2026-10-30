@@ -10,6 +10,7 @@ import { ActivatedRoute, NavigationStart, Router } from '@angular/router';
 import { ContentGenerationService } from '../content-generation.service';
 import { ScheduleService } from '../../schedule/schedule.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { TranslateService } from '@ngx-translate/core';
 import { forkJoin, Subscription } from 'rxjs';
 import { IdleService } from 'src/app/shared/services/idle.service';
 import {
@@ -151,7 +152,8 @@ export class LessonPlanViewEditComponent implements OnInit {
     private router: Router,
     private idleService: IdleService,
     public modalService: ModalService,
-    private scheduleService: ScheduleService
+    private scheduleService: ScheduleService,
+    private translateService: TranslateService
   ) {
     this.planId = this.activatedRoute.snapshot.paramMap.get('id');
     this.isLesson =
@@ -294,7 +296,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       goToSchedule();
     } else if (!this.feedback) {
       this.utilityService.showError(
-        'Add feedback for this lesson plan before scheduling it.'
+        this.translateService.instant('Add feedback for this lesson plan before scheduling it.')
       );
       this.onAiAccepted();
     } else {
@@ -364,7 +366,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         }
 
         if(this.mode === 'view'){
-          this.idleService.planId = this.isLesson ? this.planDetails?.lessonId : this.planDetails?.resourceId
+          this.idleService.planId = this.isLesson ? this.planDetails.lessonId : this.planDetails.resourceId
         }
         this.setContent();
       },
@@ -613,7 +615,7 @@ export class LessonPlanViewEditComponent implements OnInit {
           const [lessonPlanResponse, feedbackResponse] = responses;
 
           const lessonPlanMessage =
-            lessonPlanResponse?.message || 'Lesson plan saved successfully';
+            lessonPlanResponse?.message || this.translateService.instant('Lesson plan saved successfully');
           const feedbackMessage =
             feedbackResponse?.message || 'Feedback created successfully';
 

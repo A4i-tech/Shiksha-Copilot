@@ -9,7 +9,9 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     AzureFunctionsJobHost__Logging__Console__IsEnabled=true
 
 # 3) Install Poetry into the container
-RUN pip install --no-cache-dir poetry
+# pyproject.toml declares [tool.poetry.requires-plugins], a Poetry 2.x-only
+# field, so 1.8.3 (the pin used elsewhere, e.g. app-service) rejects it outright.
+RUN pip install --no-cache-dir poetry==2.5.1 poetry-plugin-export
 
 # 4) Set the working directory where the Functions host expects your code
 WORKDIR /home/site
@@ -25,9 +27,20 @@ WORKDIR /home/site/wwwroot
 # 7) Configure Poetry to install into the system Python (not in a venv)
 #    and install only non-dev (runtime) dependencies
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+    && poetry install --only main --no-interaction --no-ansi
 
 # 8) Copy the rest of your function-app code
 COPY shiksha-api/durable-functions ./
 
-# 9) The Functions base image already sets ENTRYPOINT/CMD to launch the host
+# 9) Run as non-root: uid 1000 owns the code and the shared rag-wrapper source
+RUN groupadd --gid 1000 appuser \
+    && useradd --uid 1000 --gid appuser --create-home --shell /bin/bash appuser \
+    && chown -R appuser:appuser /home/site/wwwroot /home/components
+
+# 10) Move off port 80, uid 1000 can't bind it under k8s's default unprivileged-port sysctl
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+USER appuser
+
+# 11) The Functions base image already sets ENTRYPOINT/CMD to launch the host

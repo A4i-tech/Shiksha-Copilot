@@ -2,6 +2,8 @@ const AppError = require("./app.error");
 const permissions = require("../config/permissions.json");
 const { ROLE_SCOPE_TYPES } = require("../config/role.scope");
 if (process.env.SHIKSHA_DEVTOOLS === "true") permissions.push(...require("../config/devtools.permissions.json"));
+const analyticsCharts = require("../config/analytics.charts.json");
+permissions.push(...analyticsCharts.map(({ key, description }) => ({ name: `analytics.chart.${key}`, description, scopes: ["*"] })));
 permissions.forEach((permission) => permission.scopes = permission.scopes.includes("*") ? ROLE_SCOPE_TYPES : permission.scopes);
 
 const ALL_PERMISSIONS = Object.freeze(permissions.map((permission) => permission.name));

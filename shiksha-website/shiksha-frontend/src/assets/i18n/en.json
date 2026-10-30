@@ -782,14 +782,26 @@
   "Send message": "Send message",
   "Previous month": "Previous month",
   "Next month": "Next month",
-  "line chart showing the number of lesson plans and resources generated over time": "Line chart showing lesson plans and resources generated over time",
+  "line chart showing the number of lesson plans and resources generated over time": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Line chart showing period plans and resources generated over time"
+    },
+    "Line chart showing lesson plans and resources generated over time"
+  ],
   "Question paper content — scroll to read all questions": "Question paper content — scroll to read all questions",
   "Telugu Videos": "Telugu Videos",
   "videos": "videos",
   "Endline Survey": "Endline Survey",
   "Takes about 1 minute": "Takes about 1 minute",
   "Your responses help us improve Shiksha Copilot.": "Your responses help us improve Shiksha Copilot.",
-  "How much time do you take to prepare a lesson plan using Shiksha Copilot?": "How much time do you take to prepare a lesson plan using Shiksha Copilot?",
+  "How much time do you take to prepare a lesson plan using Shiksha Copilot?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "How much time do you take to prepare a period plan using Shiksha Copilot?"
+    },
+    "How much time do you take to prepare a lesson plan using Shiksha Copilot?"
+  ],
   "Is content from Shiksha Copilot directly usable?": "Is content from Shiksha Copilot directly usable?",
   "Which benefits have you experienced?": "Which benefits have you experienced?",
   "How do you use the time saved?": "How do you use the time saved?",
@@ -803,7 +815,13 @@
   "Requires some minor modifications": "Requires some minor modifications",
   "Requires significant modifications": "Requires significant modifications",
   "Not very useful": "Not very useful",
-  "Reduced time I spend on lesson planning": "Reduced time I spend on lesson planning",
+  "Reduced time I spend on lesson planning": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Reduced time I spend on period planning"
+    },
+    "Reduced time I spend on lesson planning"
+  ],
   "Provides quality content": "Provides quality content",
   "Helped me to improve my knowledge": "Helped me to improve my knowledge",
   "Still exploring its usefulness": "Still exploring its usefulness",
@@ -834,7 +852,7 @@
   "User Registration (Telugu)": "User Registration (Telugu)",
   "Edu Chatbot (Telugu)": "Edu Chatbot (Telugu)",
   "Content Generation (Telugu)": "Content Generation (Telugu)",
-  "Lesson Plan explanation (Telugu)": "Lesson Plan explanation (Telugu)",
+  "Period Plan explanation (Telugu)": "Period Plan explanation (Telugu)",
   "Lesson Resources (Telugu)": "Lesson Resources (Telugu)",
   "Question Paper Generation (Telugu)": "Question Paper Generation (Telugu)",
   "My Schedules (Telugu)": "My Schedules (Telugu)",
@@ -1136,6 +1154,125 @@
       "value": "Period Plan Type-5E"
     },
     "Lesson Plan Type-5E"
+  ],
+  "You have reached the daily limit of 3 attempts to regenerating the lesson plan. Please try tomorrow": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "You have reached the daily limit of 3 attempts to regenerating the period plan. Please try tomorrow"
+    },
+    "You have reached the daily limit of 3 attempts to regenerating the lesson plan. Please try tomorrow"
+  ],
+  "Add feedback for this lesson plan before scheduling it.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Add feedback for this period plan before scheduling it."
+    },
+    "Add feedback for this lesson plan before scheduling it."
+  ],
+  "Lesson plan saved successfully": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period plan saved successfully"
+    },
+    "Lesson plan saved successfully"
+  ],
+  "Your lesson plan already exists. Please find it from your dashboard.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Your period plan already exists. Please find it from your dashboard."
+    },
+    "Your lesson plan already exists. Please find it from your dashboard."
+  ],
+  "Provides 5E model (Engage, Explore, Explain, Elaborate, Evaluate) based Lesson Plan for effective lesson delivery": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Provides 5E model (Engage, Explore, Explain, Elaborate, Evaluate) based Period Plan for effective lesson delivery"
+    },
+    "Provides 5E model (Engage, Explore, Explain, Elaborate, Evaluate) based Lesson Plan for effective lesson delivery"
+  ],
+  "How do you currently prepare your lesson plans?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "How do you currently prepare your period plans?"
+    },
+    "How do you currently prepare your lesson plans?"
+  ],
+  "Which of these do you use while preparing lesson plans?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Which of these do you use while preparing period plans?"
+    },
+    "Which of these do you use while preparing lesson plans?"
+  ],
+  "How many lesson plans do you create in a week?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "How many period plans do you create in a week?"
+    },
+    "How many lesson plans do you create in a week?"
+  ],
+  "Please select how many lesson plans you create.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Please select how many period plans you create."
+    },
+    "Please select how many lesson plans you create."
+  ],
+  "Which components do you include in your lesson plans?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Which components do you include in your period plans?"
+    },
+    "Which components do you include in your lesson plans?"
+  ],
+  "On average, how much time do you spend preparing one lesson plan?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "On average, how much time do you spend preparing one period plan?"
+    },
+    "On average, how much time do you spend preparing one lesson plan?"
+  ],
+  "Which resources do you use while preparing lesson plans?": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Which resources do you use while preparing period plans?"
+    },
+    "Which resources do you use while preparing lesson plans?"
+  ],
+  "Blocks — Lesson Plan Coverage": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Blocks — Period Plan Coverage"
+    },
+    "Blocks — Lesson Plan Coverage"
+  ],
+  "lesson plans": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "period plans"
+    },
+    "lesson plans"
+  ],
+  "lesson plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "period plan"
+    },
+    "lesson plan"
+  ],
+  "Lesson plans": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period plans"
+    },
+    "Lesson plans"
+  ],
+  "Lesson plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Period plan"
+    },
+    "Lesson plan"
   ],
   "Physics": [
     {

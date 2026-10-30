@@ -27,6 +27,7 @@ export const MEDIUMS = [{ name: 'English', value: 'english' }, { name: 'Kannada'
 export const CLASS_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 export const LOADER_RESTRICTED_URLS = [
+    '/analytics/config',
     '/chapter/list',
     '/master-lesson/list/',
     '/resource-plan/list/',

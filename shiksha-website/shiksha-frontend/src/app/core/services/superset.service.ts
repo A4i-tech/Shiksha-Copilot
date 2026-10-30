@@ -8,6 +8,13 @@ interface GuestTokenResponse {
   dashboardUuid: string;
   mobileDashboardUuid: string | null;
   supersetUrl: string;
+  scope: DashboardScope | null;
+}
+
+export interface DashboardScope {
+  state: string | null;
+  district: string | null;
+  block: string | null;
 }
 
 export interface BlockDrillRow {
@@ -25,6 +32,7 @@ export class SupersetService {
   dashboardUuid = '';
   mobileDashboardUuid: string | null = null;
   supersetUrl = '';
+  scope: DashboardScope | null = null;
 
   constructor(private http: HttpClient) {}
 
@@ -38,6 +46,7 @@ export class SupersetService {
       this.dashboardUuid = res.dashboardUuid;
       this.mobileDashboardUuid = res.mobileDashboardUuid;
       this.supersetUrl = res.supersetUrl;
+      this.scope = res.scope;
       return res.token;
     });
   }
