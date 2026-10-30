@@ -39,7 +39,6 @@ const chatRoutes = require("./routes/chat.routes");
 const auditRoutes = require("./routes/audit.log.route");
 const errorMiddleware = require('./middlewares/error.middleware');
 const conditionalMorganMiddleware = require('./config/morgan');
-const useragent = require('express-useragent');
 const teacherTrainingBatchRoutes = require('./routes/teacher.training.batch.routes.js');
 const teacherAbsentRoutes = require('./routes/teacher.absent.routes.js');
 const baselineSurveyRoutes = require('./routes/baselineSurvey.routes');
@@ -53,14 +52,13 @@ const app = express();
 app.disable("x-powered-by");
 app.set("trust proxy", 1); // trust Azure ingress/LB for HTTPS detection
 
-app.use(express.json());
-
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
 app.use(cors({ origin: allowedOrigins, optionsSuccessStatus: 200 }));
+// after cors, so body-parser errors such as 413 keep their CORS headers
+app.use(express.json());
 
 app.use(logger("dev"));
 app.use(conditionalMorganMiddleware);
-app.use(useragent.express());
 
 const PORT = process.env.PORT;
 dbService.connect().then((data) => console.log(data.message));

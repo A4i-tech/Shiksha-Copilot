@@ -317,4 +317,26 @@ describe("ChapterManager", () => {
       expect(result.message).toMatch(/not found or has been deleted/);
     });
   });
+
+  describe("updateChapter input guards", () => {
+    it.each([
+      ["a non-array body", { not: "a list" }],
+      ["a chapter with a bad _id", [{ _id: "bad-id", topics: [] }]],
+    ])("throws a 400 AppError for %s", async (_name, body) => {
+      await expect(manager.updateChapter({ body })).rejects.toMatchObject({ name: "AppError", statusCode: 400 });
+    });
+
+    it("writes no chapter when a later row is invalid", async () => {
+      const Chapter = require("../../../models/chapter.model");
+      const spy = jest.spyOn(Chapter, "findOneAndUpdate").mockResolvedValue({});
+      const body = [
+        { _id: "Title=Algebra,Medium=English,Board=CBSE,Grade=10,Number=1", topics: [] },
+        { _id: "bad-id", topics: [] },
+      ];
+
+      await expect(manager.updateChapter({ body })).rejects.toMatchObject({ name: "AppError", statusCode: 400 });
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+  });
 });

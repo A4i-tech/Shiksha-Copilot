@@ -151,7 +151,7 @@ export class QuestionBankViewComponent implements OnInit {
             this.questionBankFeedback =
               this.questionBankDetails?.questionBank?.feedback;
           }
-          this.idleService.planId = this.questionBankDetails?.questionBank?._id;
+          this.idleService.planId = this.questionBankDetails.questionBank._id;
           this.questionBankBluePrintData = this.flattenQuestionData(val.data.bluePrintTemplate);
           renderTexMath(this.questionPaperContent.nativeElement);
         },

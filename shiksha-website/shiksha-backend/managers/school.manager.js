@@ -101,6 +101,7 @@ class SchoolManager extends BaseManager {
     const { classes: classesData } = data;
 
     const currentSchool = await this.dao.getById(id);
+    if (!currentSchool) throw new AppError("School not found", 404);
     if (!isResourceAllowed(permissions, "school.edit", currentSchool)) throw new AppError("School is outside your scope", 403);
     if (!isResourceAllowed(permissions, "school.edit", { ...currentSchool.toObject(), ...data })) throw new AppError("School is outside your scope", 403);
 
@@ -123,7 +124,7 @@ class SchoolManager extends BaseManager {
       return formatApiReponse(false, "Failed to update school info", null);
     }
 
-    for (let classData of classesData) {
+    for (let classData of classesData ?? []) {
       let classRecord;
       if (classData._id) {
         const { classDetails, ...classDataWithoutDetails } = classData;
@@ -190,7 +191,7 @@ class SchoolManager extends BaseManager {
     );
 
     if (updatedClasses) {
-      return formatApiReponse(true, "Updated school and class info", {
+      return formatApiReponse(true, classesData ? "Updated school and class info" : "Updated school info. No classes were sent, so the classes are unchanged.", {
         ...updatedSchool.toObject(),
         classes: updatedClasses,
       });
@@ -310,6 +311,7 @@ class SchoolManager extends BaseManager {
   async deactivate(req) {
     const schoolId = req.params.id;
     const currentSchool = await this.dao.getById(schoolId);
+    if (!currentSchool) throw new AppError("School not found", 404);
     if (!isResourceAllowed(req.permissions, "school.delete", currentSchool)) throw new AppError("School is outside your scope", 403);
 
     const school = await this.dao.update(schoolId, { isDeleted: true });
@@ -336,6 +338,7 @@ class SchoolManager extends BaseManager {
 
   async activate(req) {
     const school = await this.dao.getById(req.params.id);
+    if (!school) throw new AppError("School not found", 404);
     if (!isResourceAllowed(req.permissions, "school.delete", school)) throw new AppError("School is outside your scope", 403);
     return formatApiReponse(true, "School activated successfully", await this.dao.activate(req.params.id));
   }

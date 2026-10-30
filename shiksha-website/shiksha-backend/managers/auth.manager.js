@@ -1,7 +1,6 @@
 require("dotenv").config();
 const CryptoJS = require('crypto-js');
 
-const UserAction = require("../models/user.action.logs.model");
 const UserDao = require("../dao/user.dao");
 const formatApiReponse = require("../helper/response");
 const authHelper = require("../helper/auth.helper");
@@ -105,7 +104,7 @@ class AuthManager {
         }
 
         const decryptedOtp = CryptoJS.AES.decrypt(encryptedOtp, process.env.PIN_SECRET_KEY).toString(CryptoJS.enc.Utf8);
-        if (otp === decryptedOtp) return this.completeLogin(req, user);
+        if (otp === decryptedOtp) return this.completeLogin(user);
 
         const attemptCountAfter = reservation.loginAttempts.length;
         if (attemptCountAfter >= MAX_LOGIN_ATTEMPTS) {
@@ -123,7 +122,7 @@ class AuthManager {
         return formatApiReponse(false, "Invalid PIN", null);
     }
 
-    async completeLogin(req, user) {
+    async completeLogin(user) {
         const token = user.generateAuthToken();
         await Promise.all([
             this.userDao.update(user._id, { isLoginAllowed: true }),
@@ -131,16 +130,6 @@ class AuthManager {
             this.userDao.clearRecovery(user._id),
         ]);
         await refreshProfileImageIfExpired(user, (id, updates) => this.userDao.update(id, updates));
-        const agent = req.useragent || {};
-        await UserAction.create({
-            userId: user._id,
-            userName: user.identity.name,
-            actionType: 'login',
-            timestamp: new Date().toISOString(),
-            deviceType: agent.isMobile ? 'mobile' : agent.isTablet ? 'tablet' : 'desktop',
-            browserInfo: agent.browser ? `${agent.browser}/${agent.version}` : 'Unknown',
-            osInfo: agent.os || 'Unknown',
-        });
         return formatApiReponse(true, "PIN verified successfully!", {
             user: await sessionUser(user),
             permissions: getRolePermissions(user.roles),
@@ -169,7 +158,7 @@ class AuthManager {
         }
 
         await this.userDao.update(user._id, { otp: recovery.otp });
-        return this.completeLogin(req, user);
+        return this.completeLogin(user);
     }
 
     async getUserFromToken(req) {
