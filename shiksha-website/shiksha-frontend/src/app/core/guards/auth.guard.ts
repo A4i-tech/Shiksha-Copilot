@@ -1,6 +1,7 @@
 import { inject } from "@angular/core";
 import { ActivatedRouteSnapshot, CanActivateFn, Router, RouterStateSnapshot } from "@angular/router";
 import { AuthorizationService } from "../services/authorization.service";
+import { UmamiService } from "src/app/shared/services/umami.service";
 import { LOGIN_ROUTE } from "src/app/shared/utility/constant.util";
 
 
@@ -9,6 +10,7 @@ export const AuthGuard: CanActivateFn = (route: ActivatedRouteSnapshot, state: R
     const authorizationService = inject(AuthorizationService)
   
     if (authorizationService.isLoggedIn()) return true;
+    inject(UmamiService).reset();
     localStorage.clear();
     return router.parseUrl(LOGIN_ROUTE);
   }

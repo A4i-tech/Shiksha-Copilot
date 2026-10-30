@@ -3,13 +3,13 @@ import { DEFAULT_INTERRUPTSOURCES, Idle } from '@ng-idle/core';
 import { filter, Subject } from 'rxjs';
 import { ActivatedRouteSnapshot, NavigationEnd, Router } from '@angular/router';
 import { TimerService } from './timer.service';
+import { UmamiService } from './umami.service';
+import { ActivityLogPayload } from '../interfaces/activity-log.interface';
 import {
   IDLE_START_THRESHOLD,
   IDLE_WARNING_THRESHOLD,
   INTERACTION_LOG_THRESHOLD,
 } from '../utility/constant.util';
-import { HttpClient } from '@angular/common/http';
-import { environment } from 'src/environments/environment';
 
 @Injectable({
   providedIn: 'root',
@@ -31,9 +31,9 @@ export class IdleService {
 
   isSkip = false;
 
-  draftId: any;
+  draftId = '';
 
-  planId: any;
+  planId = '';
 
   isCompleted = false;
 
@@ -41,7 +41,7 @@ export class IdleService {
     private idle: Idle,
     private router: Router,
     private timerService: TimerService,
-    private httpClient: HttpClient
+    private umamiService: UmamiService
   ) {
     this.initializeIdleTracking();
 
@@ -59,20 +59,7 @@ export class IdleService {
           );
 
           if (this.timerService.getCurrentTime('interaction') && !this.isSkip) {
-            let trackObj: any = {
-              moduleName: this.previousModuleTag,
-              idleTime: this.timerService.getCurrentTime('idle'),
-              interactionTime: this.timerService.getCurrentTime('interaction'),
-            };
-
-            if (this.planId) {
-              trackObj.planId = this.planId;
-            }
-
-            if (this.draftId) {
-              trackObj.draftId = this.draftId;
-              trackObj.isCompleted = this.isCompleted;
-            }
+            const trackObj = this.buildPayload(this.previousModuleTag ?? '');
 
             if (
               trackObj.interactionTime >= INTERACTION_LOG_THRESHOLD &&
@@ -162,20 +149,8 @@ export class IdleService {
     this.timerService.startTimer('interaction');
   }
 
-  stopWatching(moduleName?: any) {
-    let trackObj: any = {
-      moduleName: moduleName ? moduleName : this.getCurrentModuleName(),
-      idleTime: this.timerService.getCurrentTime('idle'),
-      interactionTime: this.timerService.getCurrentTime('interaction'),
-    };
-    if (this.planId) {
-      trackObj.planId = this.planId;
-    }
-
-    if (this.draftId) {
-      trackObj.draftId = this.draftId;
-      trackObj.isCompleted = this.isCompleted;
-    }
+  stopWatching(moduleName = '') {
+    const trackObj = this.buildPayload(moduleName || this.getCurrentModuleName() || '');
     if (
       trackObj.interactionTime >= INTERACTION_LOG_THRESHOLD &&
       trackObj.moduleName
@@ -200,18 +175,21 @@ export class IdleService {
     this.idle.stop();
   }
 
-  logActivity(trackObj: any) {
-    this.httpClient
-      .post(`${environment.apiUrl}/activity-log`, trackObj)
-      .subscribe({
-        next: (val) => {
-          this.draftId = null;
-          this.planId = null;
-          this.isCompleted = false;
-        },
-        error: (err) => {
-          console.log(err);
-        },
-      });
+  private buildPayload(moduleName: string): ActivityLogPayload {
+    return {
+      moduleName,
+      idleTime: this.timerService.getCurrentTime('idle'),
+      interactionTime: this.timerService.getCurrentTime('interaction'),
+      planId: this.planId,
+      draftId: this.draftId,
+      isCompleted: this.isCompleted,
+    };
+  }
+
+  logActivity(trackObj: ActivityLogPayload) {
+    this.umamiService.track('activity-log', { ...trackObj });
+    this.draftId = '';
+    this.planId = '';
+    this.isCompleted = false;
   }
 }

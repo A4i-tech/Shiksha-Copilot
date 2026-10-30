@@ -364,7 +364,7 @@ export class LessonPlanViewEditComponent implements OnInit {
         }
 
         if(this.mode === 'view'){
-          this.idleService.planId = this.isLesson ? this.planDetails?.lessonId : this.planDetails?.resourceId
+          this.idleService.planId = this.isLesson ? this.planDetails.lessonId : this.planDetails.resourceId
         }
         this.setContent();
       },
