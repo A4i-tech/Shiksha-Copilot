@@ -1,7 +1,7 @@
 import asyncio
 
 from app.services.rag_adapter_cache import RagAdapterCache
-from app.services.rag_adapters import BaseRagAdapter
+from app.services.rag_adapters import BaseRagAdapter, QdrantRagOpsAdapter
 
 
 class Adapter(BaseRagAdapter):
@@ -40,10 +40,12 @@ async def test_concurrent_get_builds_once():
 
 async def test_evicts_least_recently_used_adapter():
     cache, _ = make_cache(2)
+    cache.retire_grace = 0.01
     first = await cache.get("a", None, None)
     evicted = await cache.get("b", None, None)
     assert await cache.get("a", None, None) is first
     current = await cache.get("c", None, None)
+    await asyncio.sleep(0.05)
     assert evicted.cleanups == 1
     assert first.cleanups == 0
     assert current.cleanups == 0
@@ -57,3 +59,52 @@ async def test_cleanup_cleans_each_adapter_once():
     await cache.cleanup()
     assert first.cleanups == 1
     assert second.cleanups == 1
+
+
+class FakeRagOps:
+    def __init__(self):
+        self.closes = 0
+
+    async def close(self):
+        self.closes += 1
+
+
+async def test_eviction_closes_qdrant_rag_ops():
+    async def build(path, *_):
+        adapter = QdrantRagOpsAdapter(None, None, path)
+        adapter._rag_ops = FakeRagOps()
+        return adapter
+
+    cache = RagAdapterCache(build, 1)
+    cache.retire_grace = 0.05
+    first = await cache.get("qdrant/c1/k:v", None, None)
+    await cache.get("qdrant/c2/k:v", None, None)
+    assert first.rag_ops.closes == 0  # still usable by in-flight callers
+    await asyncio.sleep(0.1)
+    assert first.rag_ops.closes == 1
+
+
+async def test_cleanup_closes_retired_adapter_once():
+    async def build(path, *_):
+        adapter = QdrantRagOpsAdapter(None, None, path)
+        adapter._rag_ops = FakeRagOps()
+        return adapter
+
+    cache = RagAdapterCache(build, 1)
+    cache.retire_grace = 0.05
+    first = await cache.get("qdrant/c1/k:v", None, None)
+    await cache.get("qdrant/c2/k:v", None, None)
+    await cache.cleanup()
+    await asyncio.sleep(0.1)
+    assert first.rag_ops.closes == 1
+
+
+async def test_retired_adapters_are_capped():
+    cache, _ = make_cache(1)
+    cache.max_retired = 2
+    first = await cache.get("a", None, None)
+    for path in "bcde":
+        await cache.get(path, None, None)
+    assert len(cache._retired) == 2
+    assert first.cleanups == 1
+    await cache.cleanup()
