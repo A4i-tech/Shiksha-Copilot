@@ -2,11 +2,15 @@ jest.mock('axios');
 jest.mock('../../../middlewares/auth.js', () => ({
   isAuthenticated: (req, res, next) => {
     req.user = { _id: 'user-1', identity: { name: 'Test Leader' } };
-    req.permissions = {};
+    req.permissions = global.testPermissions || [];
     next();
   },
   requirePermission: () => (req, res, next) => next(),
+  requireUnscopedPermission: () => (req, res, next) => next(),
 }));
+jest.mock('../../../dao/dashboard.config.dao.js', () => class {
+  findAllBoards() { return Promise.resolve(global.testBoards); }
+});
 jest.mock('../../../helper/permission.helper.js', () => ({ getPermission: jest.fn() }));
 jest.mock('../../../helper/superset.helper.js', () => ({
   getSupersetAuth: jest.fn(),
@@ -17,6 +21,8 @@ jest.mock('../../../models/audit.log.model.js', () => ({ create: jest.fn().mockR
 
 const express = require('express');
 const request = require('supertest');
+
+const charts = (...keys) => [{ permission: 'analytics.view' }, ...keys.map((key) => ({ permission: `analytics.chart.${key}` }))];
 
 describe('superset routes', () => {
   let axios;
@@ -30,8 +36,11 @@ describe('superset routes', () => {
     process.env.SUPERSET_URL = 'http://superset:8088';
     process.env.SUPERSET_ADMIN_USERNAME = 'admin';
     process.env.SUPERSET_ADMIN_PASSWORD = 'test-password';
-    process.env.SUPERSET_DASHBOARD_UUID = 'dash-desktop';
-    process.env.SUPERSET_MOBILE_DASHBOARD_UUID = 'dash-mobile';
+    global.testBoards = [
+      { boardKey: 'full', chartKeys: ['a', 'b', 'c'], desktopUuid: 'full-d', mobileUuid: 'full-m' },
+      { boardKey: 'field', chartKeys: ['a'], desktopUuid: 'field-d', mobileUuid: 'field-m' },
+    ];
+    global.testPermissions = charts('a', 'b', 'c');
     axios = require('axios');
     helper = require('../../../helper/superset.helper.js');
     ({ getPermission } = require('../../../helper/permission.helper.js'));
@@ -95,15 +104,44 @@ describe('superset routes', () => {
   });
 
   describe('POST /superset/guest-token', () => {
-    it('issues a token for both dashboards using the shared admin session', async () => {
+    const resourceIds = () => axios.post.mock.calls[0][1].resources.map((r) => r.id);
+
+    it('lists only the full board for a user who holds every chart, using the shared admin session', async () => {
       getPermission.mockReturnValue([{ scopeType: 'GLOBAL' }]);
       axios.post.mockResolvedValue({ data: { token: 'guest-token-1' } });
 
       const res = await request(app).post('/api/superset/guest-token');
 
       expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({ token: 'guest-token-1', dashboardUuid: 'dash-desktop', mobileDashboardUuid: 'dash-mobile' });
-      expect(axios.post.mock.calls[0][1].resources.map((r) => r.id)).toEqual(['dash-desktop', 'dash-mobile']);
+      expect(res.body).toMatchObject({ token: 'guest-token-1', dashboardUuid: 'full-d', mobileDashboardUuid: 'full-m' });
+      expect(resourceIds()).toEqual(['full-d', 'full-m']);
+    });
+
+    it('lists only the field board for a user who holds one chart', async () => {
+      global.testPermissions = charts('a');
+      getPermission.mockReturnValue([{ scopeType: 'GLOBAL' }]);
+      axios.post.mockResolvedValue({ data: { token: 'guest-token-1' } });
+
+      const res = await request(app).post('/api/superset/guest-token');
+
+      expect(res.status).toBe(200);
+      expect(resourceIds()).toEqual(['field-d', 'field-m']);
+    });
+
+    it('returns 403 and asks Superset for no token when the user holds no chart', async () => {
+      global.testPermissions = charts();
+      getPermission.mockReturnValue([{ scopeType: 'GLOBAL' }]);
+
+      expect((await request(app).post('/api/superset/guest-token')).status).toBe(403);
+      expect(axios.post).not.toHaveBeenCalled();
+    });
+
+    it('returns 503 and asks Superset for no token when no board holds the charts', async () => {
+      global.testPermissions = charts('b');
+      getPermission.mockReturnValue([{ scopeType: 'GLOBAL' }]);
+
+      expect((await request(app).post('/api/superset/guest-token')).status).toBe(503);
+      expect(axios.post).not.toHaveBeenCalled();
     });
 
     it('logs in again and retries once when the admin session has expired', async () => {
