@@ -5,21 +5,35 @@ import inspect
 from io import BytesIO
 import json
 from typing import Annotated, Any, Literal
-from aiofiles.threadpool.binary import AsyncBufferedReader
 
-from app.models.presentation import CaptionerResponse, ImageSearchResults, NextSlideSpec, PresentationOutline, ShikshaAgentEvent, ShikshaCheckpointEvent, SlideSpec, WelcomeSlideInfo, YouTubeVideoResult
-from app.utils.storage import Storage
+from aiofiles.threadpool.binary import AsyncBufferedReader
 from pptx import presentation
 from pptx.util import Length
-
 from pydantic import Field, HttpUrl, PositiveInt
-from pydantic_ai import Agent, AgentRunResultEvent, AgentStreamEvent, BinaryContent, FunctionToolCallEvent, FunctionToolResultEvent, FunctionToolset, ModelRetry, PartEndEvent, RetryPromptPart, RunContext, TextContent, TextPart, ThinkingPart, ToolsetTool, WrapperToolset
+from pydantic_ai import (
+    Agent, AgentRunResultEvent, AgentStreamEvent, BinaryContent,
+    FunctionToolCallEvent, FunctionToolResultEvent, FunctionToolset,
+    ModelRetry, PartEndEvent, RetryPromptPart, RunContext, TextContent,
+    TextPart, ThinkingPart, ToolsetTool, WrapperToolset,
+)
 from pydantic_ai.capabilities import Thinking
 from pydantic_ai.usage import UsageLimits
 
-from app.services.presentation import docparser, template, utils
+from app.config import (
+    CAPTIONER_SYSTEM_PROMPT, DESIGNER_BODY_SLIDE_PROMPT,
+    DESIGNER_FIRST_SLIDE_PROMPT, DESIGNER_SYSTEM_PROMPT,
+    FINALIZER_ADD_SLIDE_PROMPT, FINALIZER_BROWSE_PROMPT,
+    FINALIZER_REVIEW_PROMPT, FINALIZER_SYSTEM_PROMPT,
+    PLANNER_SYSTEM_PROMPT, PLANNER_USER_PROMPT, settings,
+)
+from app.models.presentation import (
+    CaptionerResponse, ImageSearchResults, NextSlideSpec,
+    PresentationOutline, ShikshaAgentEvent, ShikshaCheckpointEvent,
+    SlideSpec, WelcomeSlideInfo, YouTubeVideoResult,
+)
 from app.services.llm_factory import make_pydantic_model
-from app.config import DESIGNER_BODY_SLIDE_PROMPT, DESIGNER_FIRST_SLIDE_PROMPT, FINALIZER_ADD_SLIDE_PROMPT, FINALIZER_REVIEW_PROMPT, FINALIZER_BROWSE_PROMPT, PLANNER_USER_PROMPT, settings, CAPTIONER_SYSTEM_PROMPT, PLANNER_SYSTEM_PROMPT, DESIGNER_SYSTEM_PROMPT, FINALIZER_SYSTEM_PROMPT
+from app.services.presentation import docparser, template, utils
+from app.utils.storage import Storage
 
 
 @dataclass
@@ -271,10 +285,10 @@ class SlideTrackerToolset(WrapperToolset[DesignerDeps]):
         return result
 
 
-captioner = Agent(model=make_pydantic_model(settings.pres_captioner), name="captioner", output_type=CaptionerResponse, retries=3, system_prompt=CAPTIONER_SYSTEM_PROMPT.safe_substitute())
-planner = Agent(model=make_pydantic_model(settings.pres_planner), name="planner", retries=3, output_type=PresentationOutline, system_prompt=PLANNER_SYSTEM_PROMPT.safe_substitute(template_metadata=template.get_metadata()), capabilities=[Thinking()])
-designer = Agent(model=make_pydantic_model(settings.pres_designer), name="designer", deps_type=DesignerDeps, retries=3, system_prompt=DESIGNER_SYSTEM_PROMPT.safe_substitute())
-finalizer = Agent(model=make_pydantic_model(settings.pres_finalizer), name="finalizer", deps_type=FinalizerDeps, retries=3, system_prompt=FINALIZER_SYSTEM_PROMPT.safe_substitute())
+captioner = Agent(name="captioner", output_type=CaptionerResponse, retries=3, system_prompt=CAPTIONER_SYSTEM_PROMPT.safe_substitute())
+planner = Agent(name="planner", retries=3, output_type=PresentationOutline, system_prompt=PLANNER_SYSTEM_PROMPT.safe_substitute(template_metadata=template.get_metadata()), capabilities=[Thinking()])
+designer = Agent(name="designer", deps_type=DesignerDeps, retries=3, system_prompt=DESIGNER_SYSTEM_PROMPT.safe_substitute())
+finalizer = Agent(name="finalizer", deps_type=FinalizerDeps, retries=3, system_prompt=FINALIZER_SYSTEM_PROMPT.safe_substitute())
 
 
 @finalizer.tool(metadata={"action": "Browsing videos"})
@@ -339,6 +353,7 @@ async def plan(textbook_path: str, textbook_mime: str, data: AsyncBufferedReader
     else:
         f = BinaryContent(await data.read(), media_type=textbook_mime)
 
+    planner.model = make_pydantic_model(settings.pres_planner)
     outline = None
     async with planner.run_stream_events([f, PLANNER_USER_PROMPT.safe_substitute(
         slides=slides or "auto",
@@ -389,6 +404,7 @@ async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBu
 
     templates = template.Templates(prs)
     deps = DesignerDeps(storage, prs, templates, figures_dir, outline, None, metadata)
+    designer.model = make_pydantic_model(settings.pres_designer)
     # Create welcome slide
     if metadata["slides_created"] == 0:
         yield ShikshaCheckpointEvent(message="Creating engaging welcome slide")
@@ -437,6 +453,7 @@ async def design(storage: Storage, prs: presentation.Presentation, data: AsyncBu
 async def finalize(prs: presentation.Presentation, metadata: dict[str, Any]):
     slide_content = json.dumps(docparser.list_slide_content(prs))
 
+    finalizer.model = make_pydantic_model(settings.pres_finalizer)
     yield ShikshaCheckpointEvent(message="Finalizing slide content")
     deps = FinalizerDeps(prs, template.Templates(prs), metadata)
     videos = metadata["videos"] if "videos" in metadata else []

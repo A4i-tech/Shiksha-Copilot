@@ -85,7 +85,7 @@ def make_pydantic_model(name: str) -> Model:
     if has_provider and provider != "openai":
         raise ValueError(f"Unsupported provider: {provider}")
     model_cls = OpenAIResponsesModel if chat_api() == "responses" else OpenAIChatModel
-    return model_cls(model_name if has_provider else name, provider=OpenAIProvider(base_url=chat_base_url()))
+    return model_cls(model_name if has_provider else name, provider=OpenAIProvider(base_url=chat_base_url(), api_key=settings.openai_api_key or None))
 
 
 class ChatBackend(Protocol):
