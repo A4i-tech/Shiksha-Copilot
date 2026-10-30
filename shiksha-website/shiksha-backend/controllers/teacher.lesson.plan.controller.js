@@ -4,6 +4,9 @@ const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manage
 const BaseController = require("./base.controller.js");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
+
+const PRESENTATION_USER_ID = "0".repeat(24);
+
 /** @extends {BaseController<TeacherLessonPlanManager>} */
 class TeacherLessonPlanController extends BaseController {
 	constructor() {
@@ -134,9 +137,13 @@ class TeacherLessonPlanController extends BaseController {
 
 	async getLessonPlanPresentation(req, res) {
 		const { lessonPlanId } = req.params;
+		const owned = await this.manager.dao.getLessonPlanById(req.user._id, lessonPlanId);
+		if (!owned) {
+			return res.status(404).json({ message: "Lesson plan not found" });
+		}
 		const pythonUrl = process.env.LLM_API_BASE_URL;
 		const response = await axios.get(`${pythonUrl}/presentation/jobs`, {
-			headers: {"X-User-ID": "0".repeat(24)},
+			headers: {"X-User-ID": PRESENTATION_USER_ID},
 			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
 		});
 		if (response.data.length > 0) {
@@ -150,21 +157,21 @@ class TeacherLessonPlanController extends BaseController {
 		const { lessonPlanId } = req.params;
 		const teacherId = req.user._id;
 
-		const pythonUrl = process.env.LLM_API_BASE_URL;
-		let response = await axios.get(`${pythonUrl}/presentation/jobs`, {
-			headers: {"X-User-ID": "0".repeat(24)},
-			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
-		});
-		if (response.data.length > 0) {
-			return res.status(200).json(response.data[0]);
-		}
-
 		const [authorized, lessonPlan] = await Promise.all([
 			this.manager.dao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
 			this.manager.masterLessonDao.getById(lessonPlanId)
 		]);
 		if (!authorized || !lessonPlan) {
 			return res.status(404).json({ message: "Lesson plan not found" });
+		}
+
+		const pythonUrl = process.env.LLM_API_BASE_URL;
+		let response = await axios.get(`${pythonUrl}/presentation/jobs`, {
+			headers: {"X-User-ID": PRESENTATION_USER_ID},
+			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
+		});
+		if (response.data.length > 0) {
+			return res.status(200).json(response.data[0]);
 		}
 
 		// this prefix is sufficient to evade libmagic's content-based file mime inference
@@ -174,7 +181,7 @@ class TeacherLessonPlanController extends BaseController {
 		formData.append("slides", 16);
 		formData.append("tags", `lesson-plan-${lessonPlanId}`);
 		formData.append("instruction", "");
-		response = await axios.post(`${pythonUrl}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": "0".repeat(24)}});
+		response = await axios.post(`${pythonUrl}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": PRESENTATION_USER_ID}});
 		return res.status(200).json(response.data);
 	}
 
@@ -275,7 +282,10 @@ class TeacherLessonPlanController extends BaseController {
 
 	async handleWebhook(req, res) {
         const data = req.body;
-        await this.manager.processWebhookData(data);
+        const result = await this.manager.processWebhookData(data);
+        if (!result.success) {
+            return res.status(404).json(result);
+        }
         res.status(200).send({ success: true });
     }
 
@@ -335,7 +345,7 @@ class TeacherLessonPlanController extends BaseController {
 	async retryLessonPlan(req, res) {
 		const { regeneratedId, _id } = req.body;
 
-		const result = await this.manager.retryLessonPlan(regeneratedId, _id);
+		const result = await this.manager.retryLessonPlan(req.user._id, regeneratedId, _id);
 
 		if (result.success) {
 			return res.status(200).json(result);

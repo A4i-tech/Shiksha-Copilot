@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const verifyWebhookSignature = require("../middlewares/webhook.signature.js");
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const TeacherLessonPlanController = require("../controllers/teacher.lesson.plan.controller.js");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
@@ -97,6 +98,7 @@ router.post(
 
 router.post(
     "/teacher-lesson-plan/webhook",
+    verifyWebhookSignature,
     asyncMiddleware(
         teacherLessonPlanController.handleWebhook.bind(
             teacherLessonPlanController

@@ -377,6 +377,7 @@ Configure the following environment variables in your Azure Function App:
 | `AZURE_OPENAI_EMBED_MODEL`     | Embedding model                                      | `text-embedding-ada-002`                         |
 | `BLOB_STORE_CONNECTION_STRING` | Blob storage for content artifacts                   | `DefaultEndpointsProtocol=https;AccountName=...` |
 | `WEBHOOK_URL`                  | Webhook endpoint for status updates                  | `None`                                           |
+| `WEBHOOK_SECRET`               | HMAC-SHA256 key that signs status webhook requests   | `None` (webhook not sent if unset)               |
 | `BLOB_STORE_URL`               | Public blob storage URL                              | `None`                                           |
 | `AzureWebJobsFeatureFlags`     | Enable worker indexing                               | `EnableWorkerIndexing`                           |
 

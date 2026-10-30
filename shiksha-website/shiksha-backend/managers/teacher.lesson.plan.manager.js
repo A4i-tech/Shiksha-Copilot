@@ -1,5 +1,6 @@
 const BaseManager = require("./base.manager");
 const formatApiReponse = require("../helper/response");
+const AppError = require("../helper/app.error");
 const TeacherLessonPlanModel = require("../models/teacher.lesson.plan.model");
 const TeacherLessonPlanDao = require("../dao/teacher.lesson.plan.dao");
 const teacherLessonPlanAggregation = require("../aggregation/teacher.lesson.plan.aggregation");
@@ -489,14 +490,14 @@ class TeacherLessonPlanManager extends BaseManager {
 			instanceId: instance_id,
 		});
 
+		if (!existingLessonPlan) {
+			return formatApiReponse(false, "Lesson plan not found", null);
+		}
+
 		const regeneratedLog = await this.regeneratedLessonResource.getOne({
 			genContentId: existingLessonPlan.lessonId,
 			recordId: existingLessonPlan._id
 		});
-
-		if (!existingLessonPlan) {
-			return formatApiReponse(false, "Lesson plan not found", null);
-		}
 		if (status.toLowerCase() === "completed") {
 			const masterLessonPlan = await this.masterLessonDao.getById(
 				existingLessonPlan.lessonId
@@ -721,25 +722,30 @@ async deleteResourceMedia(teacherId, resourceId, data) {
   }
 
 
-	async _checkStatusAndThrowError(regeneratedId, recordId) {
+	async _checkStatusAndThrowError(teacherId, regeneratedId, recordId) {
         const regeneratedLog = await this.regeneratedLessonResource.getById(regeneratedId);
         const teacherLessonPlan = await this.dao.getById(recordId);
 
-        if (!regeneratedLog || regeneratedLog.status.toLowerCase() !== "failed") {
-            throw new Error("Regeneration log is either not found or not in a failed state.");
+        // same error for non-owner and missing, so ids cannot be probed
+        const owned = teacherLessonPlan
+            && String(teacherLessonPlan.teacherId) === String(teacherId)
+            && regeneratedLog
+            && String(regeneratedLog.recordId) === String(recordId);
+        if (!owned) {
+            throw new AppError("Lesson plan or regeneration log not found. Refresh the page and try again.", 404);
         }
-        if (!teacherLessonPlan || teacherLessonPlan.status.toLowerCase() !== "failed") {
-            throw new Error("Teacher lesson plan is either not found or not in a failed state.");
+        if (regeneratedLog.status.toLowerCase() !== "failed") {
+            throw new AppError("Regeneration log is not in a failed state.", 409);
         }
-        return true;
+        if (teacherLessonPlan.status.toLowerCase() !== "failed") {
+            throw new AppError("Teacher lesson plan is not in a failed state.", 409);
+        }
+        return { regeneratedLog, teacherLessonPlan };
     }
 
 
-	async retryLessonPlan(regeneratedId, recordId) {
-        await this._checkStatusAndThrowError(regeneratedId, recordId);
-
-		const regeneratedLog = await this.regeneratedLessonResource.getById(regeneratedId);
-		const teacherLessonPlan = await this.dao.getById(recordId);
+	async retryLessonPlan(teacherId, regeneratedId, recordId) {
+        const { regeneratedLog, teacherLessonPlan } = await this._checkStatusAndThrowError(teacherId, regeneratedId, recordId);
 
         const masterLesson = await this.masterLessonDao.getById(teacherLessonPlan.lessonId);
         if (!masterLesson) {
