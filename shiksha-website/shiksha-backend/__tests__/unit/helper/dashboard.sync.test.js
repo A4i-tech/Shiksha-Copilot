@@ -54,10 +54,17 @@ describe("dashboard sync", () => {
     });
 
     it("saves boards that match, and skips unknown charts and mobile twins with other charts", async () => {
+      saveBoard.mockResolvedValue({ skippedRoles: [] });
       expect(await sync.syncBoards()).toEqual(["ok", "alone"]);
       expect(saveBoard).toHaveBeenCalledWith({ boardKey: "ok", chartKeys: keys, desktopUuid: "ok-d", mobileUuid: "ok-m" });
       expect(saveBoard).toHaveBeenCalledWith({ boardKey: "alone", chartKeys: keys, desktopUuid: "alone-d", mobileUuid: null });
       expect(saveBoard).toHaveBeenCalledTimes(2);
+    });
+
+    it("warns when a field role named by the board does not exist yet, and still saves the board", async () => {
+      saveBoard.mockResolvedValue({ skippedRoles: ["HM", "CRP"] });
+      expect(await sync.syncBoards()).toEqual(["ok", "alone"]);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining("board ok: no role named HM, CRP"));
     });
 
     it("runs once inside the throttle window and does not throw when Superset fails", async () => {

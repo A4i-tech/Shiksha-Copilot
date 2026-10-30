@@ -32,7 +32,8 @@ async function syncBoards() {
       if (chartKeys.includes(undefined)) throw new Error("the dashboard holds a chart that is not in the catalog");
       const mismatch = mobile && chartsMismatch(await sliceNames(mobile), chartKeys);
       if (mismatch) throw new Error(`mobile twin: ${mismatch}`);
-      await saveBoard({ boardKey, chartKeys, desktopUuid: await embeddedUuid(desktop), mobileUuid: mobile ? await embeddedUuid(mobile) : null });
+      const { skippedRoles } = await saveBoard({ boardKey, chartKeys, desktopUuid: await embeddedUuid(desktop), mobileUuid: mobile ? await embeddedUuid(mobile) : null });
+      if (skippedRoles.length) console.warn(`[superset] board ${boardKey}: no role named ${skippedRoles.join(", ")}, so no chart permissions were granted to it. The next sync grants them once the role exists.`);
       saved.push(boardKey);
     } catch (err) {
       console.warn(`[superset] board ${boardKey} (dashboard ${desktop.id}) skipped: ${err.message}`);
