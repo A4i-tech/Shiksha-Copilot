@@ -20,6 +20,13 @@ async def test_count_mismatch_raises():
 
 
 async def test_translates_and_skips_same_language():
-    service = TranslationService(factory=lambda dst: Upper())
+    calls = []
+
+    def factory(dst):
+        calls.append(dst)
+        return Upper()
+
+    service = TranslationService(factory=factory)
     assert await service.translate({"a": "x"}, "en", "hi") == {"a": "X"}
     assert await service.translate({"a": "x"}, "en", "en") == {"a": "x"}
+    assert calls == ["hi"]
