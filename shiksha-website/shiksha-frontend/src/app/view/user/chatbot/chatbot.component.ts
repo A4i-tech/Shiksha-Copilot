@@ -1,6 +1,5 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ChatbotService } from './chatbot.service';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { SidebarService } from 'src/app/layout/sidebar/sidebar.service';
 import { CommonModule } from '@angular/common';
@@ -81,12 +80,10 @@ export class ChatbotComponent implements OnInit, OnDestroy {
   /**
    * Class constructor
    * @param chatbotService
-   * @param sanitizer
    * @param utilityService
    */
   constructor(
     private chatbotService: ChatbotService,
-    private sanitizer: DomSanitizer,
     public utilityService: UtilityService,
     public sidebarService: SidebarService,
     private activatedRoute: ActivatedRoute,
@@ -141,13 +138,13 @@ export class ChatbotComponent implements OnInit, OnDestroy {
    * @param text 
    * @returns 
    */
-  transformText(text: string): SafeHtml {
+  transformText(text: string): string {
     let transformedText = text
       .replace(/\\n/g, '<br>')
       .replace(/\\"/g, '"')
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/###/g, '');
-    return this.sanitizer.bypassSecurityTrustHtml(transformedText);
+    return transformedText;
   }
 
   /**
