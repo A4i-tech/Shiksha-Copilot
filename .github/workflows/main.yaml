@@ -141,6 +141,7 @@ jobs:
   regression-tests:
     name: Regression Tests
     needs: [cicd-frontend]
+    if: false # disabled, tracked in A4i-tech/.github#780
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -170,7 +171,7 @@ jobs:
     # Needs pre-seeded superuser secrets SHIKSHA_SU_PHONE/SHIKSHA_SU_PIN to hit /api/devtools/*.
     name: Backend Integration Tests
     needs: [ci-backend]
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
+    if: false # disabled, tracked in A4i-tech/.github#780
     concurrency:
       group: integration-backend
       cancel-in-progress: false
@@ -190,6 +191,7 @@ jobs:
   performance-tests:
     name: Performance Tests
     needs: [cicd-frontend]
+    if: false # disabled, tracked in A4i-tech/.github#780
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
