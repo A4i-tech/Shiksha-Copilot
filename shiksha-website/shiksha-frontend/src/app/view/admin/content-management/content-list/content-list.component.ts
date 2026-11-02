@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { saveAs } from 'file-saver';
@@ -13,6 +14,7 @@ import { PaginationComponent } from 'src/app/shared/components/pagination/pagina
 import { ActionMenuController } from 'src/app/shared/utility/action-menu-controller.util';
 import {
   CONTENT_ENTITIES,
+  localizeEntity,
   ContentEntityConfig,
   getContentEntityConfig,
 } from '../content-management.config';
@@ -66,8 +68,9 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
   ],
 })
 export class ContentListComponent implements OnInit, OnDestroy {
-  entities = CONTENT_ENTITIES;
+  entities!: ContentEntityConfig[];
   config!: ContentEntityConfig;
+  private rawConfig?: ContentEntityConfig;
 
   listData: any[] = [];
   currentPage = 1;
@@ -122,8 +125,21 @@ export class ContentListComponent implements OnInit, OnDestroy {
     private router: Router,
     private contentService: ContentManagementService,
     private utilityService: UtilityService,
-    public modalService: ModalService
-  ) {}
+    public modalService: ModalService,
+    private translateService: TranslateService
+  ) {
+    this.localizeEntities();
+    this.subscriptions.push(
+      translateService.onLangChange.subscribe(() => {
+        this.localizeEntities();
+        if (this.rawConfig) this.config = localizeEntity(this.rawConfig, this.translateService);
+      })
+    );
+  }
+
+  private localizeEntities(): void {
+    this.entities = CONTENT_ENTITIES.map((entity) => localizeEntity(entity, this.translateService));
+  }
 
   ngOnInit(): void {
     this.subscriptions.push(
@@ -135,7 +151,8 @@ export class ContentListComponent implements OnInit, OnDestroy {
           return;
         }
 
-        this.config = entity;
+        this.rawConfig = entity;
+        this.config = localizeEntity(entity, this.translateService);
         this.resetView();
         this.loadRecords();
       })

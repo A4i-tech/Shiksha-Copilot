@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
@@ -11,6 +12,7 @@ import {
   ContentField,
   ContentSelectOption,
   getContentEntityConfig,
+  localizeEntity,
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
@@ -27,6 +29,7 @@ const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
+  private rawConfig?: ContentEntityConfig;
   recordId = '';
   record: any = null;
   /** true when the route id is `new`, so the form adds a record */
@@ -51,8 +54,15 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private contentService: ContentManagementService,
-    private utilityService: UtilityService
-  ) {}
+    private utilityService: UtilityService,
+    private translateService: TranslateService
+  ) {
+    this.subscriptions.push(
+      translateService.onLangChange.subscribe(() => {
+        if (this.rawConfig) this.config = localizeEntity(this.rawConfig, this.translateService);
+      })
+    );
+  }
 
   ngOnInit(): void {
     this.subscriptions.push(
@@ -65,7 +75,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           return;
         }
 
-        this.config = entity;
+        this.rawConfig = entity;
+        this.config = localizeEntity(entity, this.translateService);
         this.recordId = id;
         this.isCreate = id === 'new';
 

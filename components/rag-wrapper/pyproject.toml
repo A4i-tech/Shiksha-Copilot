@@ -23,10 +23,8 @@ llama-index-core = "*"
 llama-index-embeddings-openai = "*"
 llama-index-instrumentation = "*"
 llama-index-llms-openai = "*"
-llama-index-vector-stores-azureaisearch = "*"
 llama-index-vector-stores-qdrant = "*"
 llama-index-workflows = "*"
-azure-search-documents = "*"
 llama-index-graph-stores-neo4j = "*"
 
 [tool.poetry.group.dev.dependencies]

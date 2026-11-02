@@ -6,7 +6,7 @@
         alt=""
         class="cursor-pointer"
       />
-      <h1 class="text-xl md:text-3xl font-bold text-content">Lesson Plan</h1>
+      <h1 class="text-xl md:text-3xl font-bold text-content">{{ 'Lesson Plan' | translate }}</h1>
     </div>
   </div>
   <div
@@ -24,7 +24,7 @@
         <div
           class="flex items-center justify-between sticky top-0 bg-white z-10 font-semibold text-content p-4"
         >
-          {{ activeTab() }}
+          {{ activeTab() | translate }}
           <button *ngIf="!expandedContainer" (click)="expandedContainer = true">
             <img src="assets/icons/left-arrow.svg" alt="" />
           </button>
@@ -89,7 +89,7 @@
         <button
           class="px-4 py-2 -mb-px border-b-2 border-primary text-primary font-bold"
         >
-          Lesson Plan
+          {{ 'Lesson Plan' | translate }}
         </button>
       </div>
 

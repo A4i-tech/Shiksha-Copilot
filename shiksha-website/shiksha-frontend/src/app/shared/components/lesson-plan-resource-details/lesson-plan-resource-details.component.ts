@@ -821,7 +821,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     if (this.existsLessonId) {
       this.router.navigate([`/content-generation/lesson-plan/${this.existsLessonId}`]);
     } else {
-      this.utilityservice.showError('Your lesson plan already exists. Please find it from your dashboard.');
+      this.utilityservice.showError(this.translateService.instant('Your lesson plan already exists. Please find it from your dashboard.'));
     }
   }
 

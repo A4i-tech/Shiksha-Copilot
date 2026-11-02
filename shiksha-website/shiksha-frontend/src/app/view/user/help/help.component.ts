@@ -19,7 +19,7 @@ export class HelpComponent {
     ['User Registration (Telugu)', 'https://youtu.be/DWhDVAWOWrE'],
     ['Edu Chatbot (Telugu)', 'https://youtu.be/hrqmDiH8f04'],
     ['Content Generation (Telugu)', 'https://youtu.be/T0v9EoG6iSc'],
-    ['Lesson Plan explanation (Telugu)', 'https://youtu.be/UqNXHuBPskA'],
+    ['Period Plan explanation (Telugu)', 'https://youtu.be/UqNXHuBPskA'],
     ['Lesson Resources (Telugu)', 'https://youtu.be/Jft0FU_2j2M'],
     ['Question Paper Generation (Telugu)', 'https://youtu.be/i4v1B6KcSSk'],
     ['My Schedules (Telugu)', 'https://youtu.be/o3eiDeomKHo'],

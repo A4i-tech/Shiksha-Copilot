@@ -3,14 +3,13 @@ RAG Wrapper - A simple RAG wrapper for easy-to-use APIs to create, update or que
 
 This package provides implementations for different vector stores and RAG operations:
 - InMemRagOps: In-memory vector store implementation
-- AzureAISearchRagOps: Azure AI Search vector store implementation
+- QdrantRagOps: Qdrant vector store implementation
 """
 
 from .base.base_vector_index_rag_ops import BaseVectorIndexRagOps
 from .base.base_graph_index_rag_ops import BaseGraphIndexRagOps
 from .base.base_rag_ops import BaseRagOps
 from .rag_ops.in_mem_rag_ops import InMemRagOps
-from .rag_ops.azure_ai_search_rag_ops import AzureAISearchRagOps
 from .rag_ops.in_mem_graph_rag_ops import InMemGraphRagOps
 from .rag_ops.qdrant_rag_ops import QdrantRagOps
 
@@ -20,7 +19,6 @@ __all__ = [
     "BaseGraphIndexRagOps",
     "BaseRagOps",
     "InMemRagOps",
-    "AzureAISearchRagOps",
     "InMemGraphRagOps",
     "QdrantRagOps"
 ]

@@ -4,6 +4,7 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { Subject, Subscription } from 'rxjs';
 import { SupersetService, BlockDrillRow } from 'src/app/core/services/superset.service';
 import { environment } from 'src/environments/environment';
+import { TranslateModule } from '@ngx-translate/core';
 import type { EmbeddedDashboard } from '@superset-ui/embedded-sdk';
 
 const MOBILE_BREAKPOINT = '(max-width: 768px)';
@@ -11,7 +12,7 @@ const MOBILE_BREAKPOINT = '(max-width: 768px)';
 @Component({
   selector: 'app-leaders-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './leaders-dashboard.component.html',
   styleUrls: ['./leaders-dashboard.component.scss'],
 })

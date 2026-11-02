@@ -8,6 +8,7 @@ import { ClipboardService } from 'ngx-clipboard';
 import { ToastrService } from 'ngx-toastr';
 import { PermissionGrant } from 'src/app/shared/interfaces/permission.interface';
 import { TranslateService } from '@ngx-translate/core';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 @Injectable({
   providedIn: 'root',
@@ -23,7 +24,8 @@ export class UtilityService {
     private router: Router,
     private domSanitizer:DomSanitizer,
     private clipboardService:ClipboardService,
-    private translateService: TranslateService
+    private translateService: TranslateService,
+    private umamiService: UmamiService
   ) {
     // constructor
   }
@@ -531,6 +533,7 @@ shuffleOptions<T>(arr: T[]): T[] {
    * Function called on logout
    */
   logout() {
+    this.umamiService.reset();
     localStorage.clear();
     this.router.navigate(['/auth']);
   }  
