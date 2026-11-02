@@ -211,6 +211,7 @@ jobs:
 
   accessibility-tests:
     name: Accessibility Tests
+    needs: [ci-frontend]
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
       github.event.pull_request.head.repo.full_name == github.repository
@@ -229,19 +230,14 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Download frontend image
+        uses: actions/download-artifact@v4
         with:
-          driver: docker-container
+          name: frontend-image
+          path: ${{ runner.temp }}
 
-      - name: Build frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: shiksha-website/shiksha-frontend
-          build-args: BUILD_CONFIGURATION=production
-          tags: shiksha-frontend-a11y:ci
-          load: true
-          cache-from: type=gha,scope=a11y-frontend
-          cache-to: type=gha,scope=a11y-frontend,mode=max
+      - name: Load frontend image
+        run: gunzip -c "$RUNNER_TEMP/frontend-image.tar.gz" | docker load
 
       # The image ships without assets/env.js; /api is proxied to the existing staging backend.
       - name: Host frontend on the runner
@@ -255,7 +251,7 @@ jobs:
           docker run -d --name a11y-fe -p 8000:8000 \
             -v "$RUNNER_TEMP/nginx.conf:/etc/nginx/nginx.conf:ro" \
             -v "$RUNNER_TEMP/env.js:/srv/assets/env.js:ro" \
-            shiksha-frontend-a11y:ci
+            shiksha-frontend-local
           for _ in $(seq 1 20); do
             curl -sf -o /dev/null http://localhost:8000/ && exit 0
             sleep 2

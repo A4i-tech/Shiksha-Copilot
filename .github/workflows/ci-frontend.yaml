@@ -91,6 +91,19 @@ jobs:
           docker rm -f "$CID" >/dev/null
           grep -q '<html' /tmp/index.html
 
+      # The a11y job hosts this exact image instead of rebuilding it.
+      - name: Save image for the accessibility job
+        if: github.event_name == 'pull_request'
+        run: docker save shiksha-frontend-local | gzip > "$RUNNER_TEMP/frontend-image.tar.gz"
+
+      - name: Upload image artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: ${{ runner.temp }}/frontend-image.tar.gz
+          retention-days: 1
+
   push:
     runs-on: ubuntu-latest
     timeout-minutes: 10
