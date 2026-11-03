@@ -794,7 +794,7 @@ class QuestionBankManager extends BaseManager {
 
     setImmediate(() => requeueFailedJobs().catch((err) => logger.error("Cache retry sweep failed", { message: err.message, stack: err.stack })));
 
-    return formatApiReponse(true, "Failed job processing initiated", null);
+    return formatApiReponse(true, "Retry scheduled. Failures are logged. Rows that still fail stay in the list.", null);
   }
 
   async getQuestionTypes(subject) {
