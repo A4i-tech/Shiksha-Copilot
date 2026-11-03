@@ -356,9 +356,10 @@ joserfc = ">=1.6.0"
 name = "azure-ai-translation-text"
 version = "1.0.1"
 description = "Microsoft Azure Ai Translation Text Client Library for Python"
-optional = false
+optional = true
 python-versions = ">=3.8"
 groups = ["main"]
+markers = "extra == \"azure\""
 files = [
     {file = "azure-ai-translation-text-1.0.1.tar.gz", hash = "sha256:8fff37f7ea4f82f25ad6328374859d6bad022d2f30fde9b30b5ee4cf1f7c1769"},
     {file = "azure_ai_translation_text-1.0.1-py3-none-any.whl", hash = "sha256:2c60d1adcda68809dd9f431ec0b8ac1b1977a69037d10751a39c233bc6bc42d8"},
@@ -6041,9 +6042,6 @@ openai = "*"
 python-dotenv = "*"
 tenacity = "*"
 
-[package.extras]
-azure-search = ["azure-search-documents", "llama-index-vector-stores-azureaisearch"]
-
 [package.source]
 type = "directory"
 url = "../../components/rag-wrapper"
@@ -6535,7 +6533,10 @@ enabler = ["pytest-enabler (>=2.2)"]
 test = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more_itertools", "pytest (>=6,!=8.1.*)", "pytest-ignore-flaky"]
 type = ["pytest-mypy"]
 
+[extras]
+azure = ["azure-ai-translation-text"]
+
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "c9bb3bc277b4954383aff37ea69e577473926e078fbea59bbd03b0a322ab0c90"
+content-hash = "45b0c64f51f65303ad719f918ab4c523ba2fcd0e64e3bb2c3822a5d50021b76a"

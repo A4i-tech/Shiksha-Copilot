@@ -2,6 +2,10 @@ from abc import ABC, abstractmethod
 from typing import List
 
 
+class TranslationProviderError(RuntimeError):
+    pass
+
+
 class TranslatorBase(ABC):
     """
     Abstract base class defining the async interface for all text translators.

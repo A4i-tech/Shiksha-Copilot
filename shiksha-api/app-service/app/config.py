@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     # LLM Configuration
     openai_api_key: str = Field(min_length=1)
+    openai_base_url: Optional[str] = None
     embed_model: str = "text-embedding-ada-002"
     general_chat_model: str = "gpt-5.6-luna"
     lesson_chat_model: str = "gpt-5.6-luna"
@@ -40,6 +41,10 @@ class Settings(BaseSettings):
     translator_key: Optional[str] = None
     translator_region: Optional[str] = None
     translator_endpoint: Optional[str] = None
+    translation_provider: Literal["azure", "openai"] = "openai"
+    translation_base_url: Optional[str] = None
+    translation_api_key: Optional[str] = None
+    translation_model: Optional[str] = None
 
     # Presentation Configuration
     pres_captioner: str = "openai:gpt-5-nano"
