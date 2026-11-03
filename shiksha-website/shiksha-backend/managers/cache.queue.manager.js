@@ -149,8 +149,45 @@ const addCacheJob = async (jobData) => {
   return job;
 };
 
+const toCacheJob = (summary) => ({
+  notFoundQuestions: summary.notFoundQuestions,
+  processedCache: summary.processedCache,
+  unitLevel: summary.unitLevel,
+  newResQuestions: summary.aiQuestionsForCache,
+  cacheSummaryId: summary._id.toString(),
+});
+
+const positiveInt = (value, fallback) => {
+  const parsed = parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const requeueFailedJobs = async () => {
+  const batchSize = positiveInt(process.env.CACHE_RETRY_BATCH_SIZE, 20);
+  let lastId = null;
+
+  for (;;) {
+    const filter = { isCacheUpdated: false, inProgress: false };
+    if (lastId) filter._id = { $gt: lastId };
+
+    const batch = await QuestionBankCacheSummary.find(filter)
+      .select("notFoundQuestions processedCache unitLevel aiQuestionsForCache")
+      .sort({ _id: 1 })
+      .limit(batchSize)
+      .lean();
+
+    if (!batch.length) return;
+
+    await Promise.allSettled(batch.map((job) => addCacheJob(toCacheJob(job))));
+
+    lastId = batch[batch.length - 1]._id;
+  }
+};
+
 module.exports = {
   addCacheJob,
   buildCacheAdditions,
   updateQuestionBankCache,
+  requeueFailedJobs,
+  toCacheJob,
 };
