@@ -61,9 +61,8 @@ def test_profile_class_details_table(profile, step):
         assert row_count >= 1, f"Expected at least 1 class row, got {row_count}"
 
     with step("Verify Dropdown Components in Table"):
-        # Each row should have app-form-dropdown components for Board, Medium, Class, Subject
         first_row = profile.class_table_rows.first
-        dropdowns = first_row.locator("app-form-dropdown")
+        dropdowns = first_row.locator("app-dropdown")
         dropdown_count = dropdowns.count()
         assert dropdown_count >= 4, (
             f"Expected at least 4 dropdowns (Board, Medium, Class, Subject) "
@@ -80,9 +79,8 @@ def test_profile_resources_section(profile, step):
         expect(profile.resources_heading).to_be_visible()
 
     with step("Verify Resource Type Dropdowns"):
-        # At least one resource row should exist with app-form-dropdown
         resource_dropdowns = profile.page.locator(
-            "div.resource-block app-form-dropdown"
+            "div.resource-block app-dropdown"
         )
         assert resource_dropdowns.count() >= 1, (
             "Expected at least 1 resource type dropdown"

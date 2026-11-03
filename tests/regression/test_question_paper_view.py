@@ -12,7 +12,7 @@ def _navigate_to_first_paper(logged_in_page) -> Optional[str]:
     Go to question paper list, click first available paper's view/open button,
     return the paper ID extracted from the resulting URL.
     """
-    logged_in_page.goto(f"{BASE_URL}/#/user/question-paper")
+    logged_in_page.goto(f"{BASE_URL}/#/question-papers")
     logged_in_page.wait_for_load_state("networkidle")
     logged_in_page.wait_for_timeout(2000)
 
@@ -28,8 +28,8 @@ def _navigate_to_first_paper(logged_in_page) -> Optional[str]:
 
     logged_in_page.wait_for_load_state("networkidle")
     url = logged_in_page.url
-    if "question-paper/view/" in url:
-        return url.split("question-paper/view/")[-1].split("?")[0].split("#")[0]
+    if "question-papers/view/" in url:
+        return url.split("question-papers/view/")[-1].split("?")[0].split("#")[0]
     return None
 
 

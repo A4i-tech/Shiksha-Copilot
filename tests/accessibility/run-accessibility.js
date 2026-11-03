@@ -43,7 +43,7 @@ const USER_URL_PATHS = [
   '/#/content-generation/inspect/lesson-plan',
   '/#/content-generation/inspect/resource',
   '/#/question-paper',
-  '/#/question-paper/generate',
+  '/#/question-papers/generate',
   '/#/schedule',
 ];
 
