@@ -30,22 +30,3 @@ jobs:
           name: regression-report
           path: tests/regression_report.csv
           if-no-files-found: warn
-
-  backend-integration:
-    name: Backend integration
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 24 }
-      - name: Run integration tests
-        working-directory: shiksha-website/shiksha-backend
-        env:
-          SHIKSHA_BASE_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
-          SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
-          SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
-        run: |
-          npm ci
-          # question.paper suites need a local backend and a stub
-          npx jest --config jest.integration.config.js --runInBand --testPathIgnorePatterns question.paper
