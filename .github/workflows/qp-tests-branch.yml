@@ -44,5 +44,5 @@ jobs:
           SHIKSHA_BASE_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
           SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
           SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
-          DRY_RUN: "true"
+          DRY_RUN: "false"
         run: node .github/scripts/cleanup-e2e-fixtures.js
