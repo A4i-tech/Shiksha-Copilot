@@ -34,6 +34,16 @@ interface PresentationJobDetail {
   metadata: any;
 }
 
+const emptyJob = (): PresentationJobDetail => ({
+  id: '',
+  textbook_file: '',
+  slides: null,
+  instruction: null,
+  status: 'init',
+  message: '',
+  metadata: {},
+});
+
 interface PresentationTask {
   key: PresentationJobStatus;
   title: string;
@@ -52,7 +62,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   totalSteps = 4;
   submitted = false;
   selectedFile: File | null = null;
-  currentJob: PresentationJobDetail | null = null;
+  currentJob: PresentationJobDetail = emptyJob();
   isCreatingJob = false;
   isDownloading = false;
   isRetryingJob = false;
@@ -556,7 +566,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     this.pptxFileSizeLabel = '';
     this.latestToolText = '';
     this.currentRouteJobId = null;
-    this.currentJob = null;
+    this.currentJob = emptyJob();
     this.currentStep = 1;
     this.submitted = false;
     this.isCreatingJob = false;
@@ -767,8 +777,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   }
 
   private getDownloadFileName(): string {
-    const sourceName = this.selectedFile?.name || this.currentJob?.textbook_file || 'presentation-source';
-    return `${sourceName.replace(/\.[^/.]+$/, '')}.pptx`;
+    return `${this.currentJob.metadata.plan.outline.title}.pptx`;
   }
 
   private looksHashedUpload(fileName: string): boolean {
