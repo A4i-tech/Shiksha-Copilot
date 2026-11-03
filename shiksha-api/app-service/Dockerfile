@@ -57,4 +57,4 @@ USER appuser
 
 EXPOSE 5000
 
-CMD ["sh", "-c", "if [ \"$SHIKSHA_ROLE\" = \"presentation-worker\" ]; then exec python -m app.services.presentation.worker; else exec python -m app.main --host 0.0.0.0 --port ${PORT:-5000}; fi"]
+CMD ["sh", "-c", "python -m app.main --host 0.0.0.0 --port ${PORT:-5000}"]
