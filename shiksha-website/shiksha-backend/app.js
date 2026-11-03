@@ -55,7 +55,8 @@ app.set("trust proxy", 1); // trust Azure ingress/LB for HTTPS detection
 const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [/^http:\/\/localhost:\d+$/];
 app.use(cors({ origin: allowedOrigins, optionsSuccessStatus: 200 }));
 // after cors, so body-parser errors such as 413 keep their CORS headers
-app.use(express.json());
+// rawBody feeds webhook HMAC verification
+app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 app.use(logger("dev"));
 app.use(conditionalMorganMiddleware);

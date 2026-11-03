@@ -11,6 +11,12 @@ const jsonUploadMiddleware = require("../middlewares/jsonUploadMiddleware.js");
 
 const masterLessonController = new MasterLessonController();
 
+// Regenerated lessons are per-teacher copies, never listed.
+const hideRegeneratedLessons = (req, res, next) => {
+	req.query.filter = { ...req.query.filter, isRegenerated: { $ne: true } };
+	next();
+};
+
 router.post(
 	"/master-lesson/create",
 	isAuthenticated,
@@ -22,6 +28,7 @@ router.post(
 router.get(
 	"/master-lesson/list",
 	isAuthenticated,
+	hideRegeneratedLessons,
 	asyncMiddleware(masterLessonController.getAll.bind(masterLessonController))
 );
 

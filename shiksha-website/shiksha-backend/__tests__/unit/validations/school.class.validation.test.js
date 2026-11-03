@@ -38,7 +38,7 @@ describe("School Class Validation", () => {
     girls_strength: 20,
     boys_strength: 25,
     total_strength: 45,
-    school_id: "school123",
+    school_id: "aaaaaaaaaaaaaaaaaaaaaaaa",
     medium: "English",
   };
 

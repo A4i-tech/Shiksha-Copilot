@@ -11,8 +11,9 @@ const lessonFeedbackController = new LessonFeedbackController();
 
 router.post(
 	"/lesson-feedback/create",
-	validateFeedbackLesson,
 	isAuthenticated,
+	requirePermission("lesson-plan.edit"),
+	validateFeedbackLesson,
 	asyncMiddleware(
 		lessonFeedbackController.create.bind(lessonFeedbackController)
 	)

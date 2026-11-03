@@ -1,3 +1,5 @@
+const Joi = require("joi");
+
 const validateTeacherLessonPlan = (req, res, next) => {
 	if (req.query.filter) {
 		let filter = req.query.filter;
@@ -13,6 +15,10 @@ const validateTeacherLessonPlan = (req, res, next) => {
 	next();
 };
 
+const objectId = Joi.string().hex().length(24).required();
+const retrySchema = Joi.object({ regeneratedId: objectId, _id: objectId });
+
 module.exports = {
+	retrySchema,
 	validateTeacherLessonPlan,
 };

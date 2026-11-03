@@ -15,6 +15,9 @@ jest.mock("../../../dao/master.subject.dao");
 jest.mock("../../../dao/regenerate.log.dao");
 jest.mock("../../../dao/user.dao");
 jest.mock("../../../models/school.model");
+jest.mock("../../../services/copilot.bot.service", () =>
+  Object.assign(jest.fn(), { post5ETables: jest.fn() })
+);
 jest.mock("../../../helper/formatter", () => ({
   sortDataBySubTopics: jest.fn((data) => data),
 }));
@@ -300,6 +303,100 @@ describe("MasterLessonManager", () => {
   });
 
   describe("generateLessonPlan", () => {
+    beforeEach(() => {
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-123" });
+    });
+
+    it("throws 404 for an unknown lesson id", async () => {
+      mockMasterLessonDao.getById.mockResolvedValue(null);
+
+      await expect(manager.generateLessonPlan("teacher-123", "missing", {})).rejects.toMatchObject({ statusCode: 404 });
+      expect(mockMasterLessonDao.generateLessonPlan).not.toHaveBeenCalled();
+    });
+
+    describe("regenerated lesson ownership", () => {
+      const notFound = "Master lesson with ID regen-1 not found. Check the lesson ID and try again.";
+      const ownerPlan = { _id: "plan-1", isCompleted: false };
+
+      beforeEach(() => {
+        mockTeacherLessonPlanDao.getByTeacherAndLesson.mockImplementation(
+          async (teacherId, lessonId) => (teacherId === "owner-1" && lessonId === "regen-1" ? ownerPlan : null)
+        );
+      });
+
+      it("returns 404 to a teacher who does not own the regenerated lesson", async () => {
+        mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true });
+
+        await expect(
+          manager.generateLessonPlan("intruder-2", "regen-1", {})
+        ).rejects.toMatchObject({ statusCode: 404, message: notFound });
+        expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).toHaveBeenCalledWith("intruder-2", "regen-1");
+        expect(mockMasterLessonDao.generateLessonPlan).not.toHaveBeenCalled();
+      });
+
+      it("returns 404 for 5E tables to a non-owner of the regenerated lesson", async () => {
+        mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true, chapterId: "c-1" });
+
+        await expect(
+          manager.generate5ETables("regen-1", "intruder-2", "Intruder")
+        ).rejects.toMatchObject({ statusCode: 404, message: notFound });
+        expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).toHaveBeenCalledWith("intruder-2", "regen-1");
+        expect(mockChapterDao.getById).not.toHaveBeenCalled();
+      });
+
+      it("lets the owner past the ownership check for 5E tables", async () => {
+        mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true, chapterId: "c-1" });
+        mockChapterDao.getById.mockResolvedValue(null);
+
+        await expect(manager.generate5ETables("regen-1", "owner-1", "Owner")).rejects.toThrow(
+          "Chapter with ID c-1 not found. Check the lesson data and try again."
+        );
+        expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).toHaveBeenCalledWith("owner-1", "regen-1");
+      });
+
+      it("skips the ownership lookup for a lesson that is not regenerated", async () => {
+        mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1", isRegenerated: false, chapterId: "c-1" });
+        mockChapterDao.getById.mockResolvedValue(null);
+
+        await expect(manager.generate5ETables("lesson-1", "intruder-2", "Intruder")).rejects.toThrow(
+          "Chapter with ID c-1 not found"
+        );
+        expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).not.toHaveBeenCalled();
+      });
+
+      it("lets the owner past the ownership check", async () => {
+        mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true });
+        mockRegeneratedDao.getOne.mockResolvedValue(null);
+
+        const result = await manager.generateLessonPlan("owner-1", "regen-1", {});
+
+        expect(result.message).toBe("Draft Exists");
+      });
+
+      it("saveToTeacher refuses to create a plan on a regenerated lesson the caller does not own", async () => {
+        mockUserDao.getById.mockResolvedValue({ _id: "intruder-2" });
+        mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true });
+
+        await expect(
+          manager.saveToTeacher("intruder-2", { lessonId: "regen-1", isCompleted: false })
+        ).rejects.toMatchObject({ statusCode: 404, message: notFound });
+        expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).toHaveBeenCalledWith("intruder-2", "regen-1");
+        expect(mockTeacherLessonPlanDao.saveToTeacher).not.toHaveBeenCalled();
+        expect(mockTeacherLessonPlanDao.updatePlan).not.toHaveBeenCalled();
+      });
+
+      it("saveToTeacher lets the owner update the plan on a regenerated lesson", async () => {
+        mockUserDao.getById.mockResolvedValue({ _id: "owner-1" });
+        mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true });
+        mockTeacherLessonPlanDao.updatePlan.mockResolvedValue({ _id: "plan-1" });
+
+        const result = await manager.saveToTeacher("owner-1", { lessonId: "regen-1", isCompleted: false });
+
+        expect(result.success).toBe(true);
+        expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith("plan-1", expect.any(Object));
+      });
+    });
+
     it("should return error when draft exists", async () => {
       const mockDraft = { _id: "draft-123", isCompleted: false };
       mockTeacherLessonPlanDao.getByTeacherAndLesson.mockResolvedValue(
@@ -348,6 +445,21 @@ describe("MasterLessonManager", () => {
       );
 
       expect(result.success).toBe(true);
+    });
+  });
+
+  describe("regenerateLessonPlan", () => {
+    it("flags the per-teacher copy as regenerated", async () => {
+      const regenerate = require("../../../services/copilot.bot.service");
+      regenerate.mockResolvedValue({});
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1" });
+      mockTeacherLessonPlanDao.getByTeacherAndLesson.mockResolvedValue({ _id: "plan-1" });
+      mockMasterLessonDao.create.mockResolvedValue({ _id: "copy-1" });
+      mockTeacherLessonPlanDao.update = jest.fn();
+
+      await manager.regenerateLessonPlan({ lessonId: "lesson-1", reason: "r", userId: "teacher-1" });
+
+      expect(mockMasterLessonDao.create).toHaveBeenCalledWith(expect.objectContaining({ isRegenerated: true }));
     });
   });
 

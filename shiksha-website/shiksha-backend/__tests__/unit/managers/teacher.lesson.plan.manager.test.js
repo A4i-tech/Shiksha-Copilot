@@ -39,6 +39,7 @@ describe("TeacherLessonPlanManager", () => {
       updateForRegenerate: jest.fn(),
       getOne: jest.fn(),
       getById: jest.fn(),
+      getByTeacherAndLesson: jest.fn(),
       getRegeneratedLessonPlansCount: jest.fn(),
     };
 
@@ -328,6 +329,48 @@ describe("TeacherLessonPlanManager", () => {
     });
 
     // Removed: generateContent success test - requires complex payload creation mocking
+  });
+
+  describe.each(["generateContent", "regenerateContent"])("%s regenerated lesson ownership", (method) => {
+    const notFound = "Master lesson with ID regen-1 not found. Check the lesson ID and try again.";
+
+    beforeEach(() => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockTeacherLessonPlanDao.getByTeacherAndLesson.mockImplementation(
+        async (teacherId, lessonId) => (teacherId === "owner-1" && lessonId === "regen-1" ? { _id: "plan-1" } : null)
+      );
+      mockChapterDao.getById.mockResolvedValue(null);
+    });
+
+    it("returns 404 to a non-owner before any field of the lesson is used", async () => {
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true, chapterId: "c-1" });
+
+      await expect(manager[method]("intruder-2", { lessonId: "regen-1" })).rejects.toMatchObject({
+        statusCode: 404,
+        message: notFound,
+      });
+      expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).toHaveBeenCalledWith("intruder-2", "regen-1");
+      expect(mockChapterDao.getById).not.toHaveBeenCalled();
+      expect(mockMasterLessonDao.create).not.toHaveBeenCalled();
+    });
+
+    it("lets the owner past the check", async () => {
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "regen-1", isRegenerated: true, chapterId: "c-1" });
+
+      await expect(manager[method]("owner-1", { lessonId: "regen-1" })).rejects.toThrow(
+        "Chapter with ID c-1 not found"
+      );
+      expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).toHaveBeenCalledWith("owner-1", "regen-1");
+    });
+
+    it("lets any caller use an original lesson without an ownership lookup", async () => {
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "orig-1", chapterId: "c-1" });
+
+      await expect(manager[method]("intruder-2", { lessonId: "orig-1" })).rejects.toThrow(
+        "Chapter with ID c-1 not found"
+      );
+      expect(mockTeacherLessonPlanDao.getByTeacherAndLesson).not.toHaveBeenCalled();
+    });
   });
 
   // Removed: lessonUploadMedia test - requires complex error handling mocking
