@@ -169,8 +169,11 @@ class QPWizardPage:
 
     def _pick(self, test_id: str, text: str | None = None, index: int = 0):
         dropdown = self.page.get_by_test_id(test_id)
-        select = dropdown.locator("ng-select")
-        expect(select).not_to_have_class(re.compile(r"ng-select-disabled"), timeout=20000)
+        enabled = dropdown.locator("ng-select:not(.ng-select-disabled)")
+        auto_selected = dropdown.locator("ng-select.ng-select-disabled .ng-value")
+        expect(enabled.or_(auto_selected).first).to_be_visible(timeout=20000)
+        if auto_selected.count():
+            return  # The app disables a dropdown that has a single option and selects it.
         panel = self.page.locator("ng-dropdown-panel")
         options = panel.locator(".ng-option")
         for _ in range(10):
