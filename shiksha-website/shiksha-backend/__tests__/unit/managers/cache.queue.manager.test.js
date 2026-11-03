@@ -1,4 +1,4 @@
-const mockState = { docs: [], filter: {}, limit: 0 };
+const mockState = { docs: [], filter: {}, limit: 0, sort: null, projection: null };
 
 jest.mock("../../../models/question.bank.cache.summary.model", () => {
   const matches = (doc, filter) => {
@@ -9,8 +9,14 @@ jest.mock("../../../models/question.bank.cache.summary.model", () => {
   };
 
   const chain = {
-    select: jest.fn(() => chain),
-    sort: jest.fn(() => chain),
+    select: jest.fn((projection) => {
+      mockState.projection = projection;
+      return chain;
+    }),
+    sort: jest.fn((spec) => {
+      mockState.sort = spec;
+      return chain;
+    }),
     limit: jest.fn((size) => {
       mockState.limit = size;
       return chain;
@@ -94,6 +100,7 @@ describe("requeueFailedJobs", () => {
     expect(filters[0]).toEqual({ isCacheUpdated: false, inProgress: false });
     expect(Object.keys(filters[1]._id)).toEqual(["$gt"]);
     expect(mockState.limit).toBe(5);
+    expect(mockState.sort).toEqual({ _id: 1 });
   });
 
   it("falls back to a page size of 20 when the environment value is invalid", async () => {
@@ -110,9 +117,7 @@ describe("requeueFailedJobs", () => {
 
     await requeueFailedJobs();
 
-    const projection = QuestionBankCacheSummary.find.mock.results[0].value.select.mock.calls[0][0];
-    expect(projection).not.toContain("notFoundResponse");
-    expect(projection).toContain("processedCache");
+    expect(mockState.projection).toBe("notFoundQuestions processedCache unitLevel aiQuestionsForCache");
   });
 
   it("does nothing when no summary is pending", async () => {

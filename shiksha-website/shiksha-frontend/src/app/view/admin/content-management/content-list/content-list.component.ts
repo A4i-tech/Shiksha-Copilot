@@ -93,6 +93,10 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   /** file types that the bulk upload popup accepts */
   uploadFileTypes: string[] = ['.json', '.xlsx'];
+  /** largest bulk upload the server accepts for the content package */
+  readonly bulkUploadMaxBytes = 5 * 1024 * 1024;
+  /** hint under the browse button, derived from the limit above */
+  readonly bulkUploadHint = `File supported .json file, up to ${this.bulkUploadMaxBytes / (1024 * 1024)}MB in size`;
   /** file that the popup holds before the check runs */
   selectedFile: File | null = null;
   /** rows of the file that the admin picked */

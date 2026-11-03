@@ -305,9 +305,9 @@
   <app-modal *ngIf="modalService.showBlukUploadDialog">
     <app-upload-popup
       [allowedFileTypes]="uploadFileTypes"
-      [maxFileSize]="5 * 1024 * 1024"
+      [maxFileSize]="bulkUploadMaxBytes"
       [instructions]="uploadInstructions"
-      [fileHint]="'File supported .json file, up to 5MB in size'"
+      [fileHint]="bulkUploadHint"
       [showDownloadTemplate]="false"
       [showSchemaDownload]="true"
       [showSampleDownload]="true"
