@@ -25,11 +25,11 @@ class QuestionBankPage:
         self.preview_sections = page.get_by_test_id("preview-section")
 
     def navigate_to_wizard(self, base_url: str):
-        self.page.goto(f"{base_url}/#/question-paper/generate")
+        self.page.goto(f"{base_url}/#/question-papers/generate")
         self.wizard_step_header.wait_for()
 
     def navigate_to_list(self, base_url: str):
-        self.page.goto(f"{base_url}/#/question-paper")
+        self.page.goto(f"{base_url}/#/question-papers")
         self.page.get_by_test_id("question-papers-heading").wait_for()
 
     def click_create_new_qp(self):
@@ -37,7 +37,7 @@ class QuestionBankPage:
         self.wizard_step_header.wait_for()
 
     # --- Dropdown Helpers ---
-    # Maps wizard formControlName -> the app-form-dropdown's data-testid.
+    # Maps wizard formControlName -> the app-dropdown's data-testid.
     _DROPDOWN_TEST_IDS = {
         "board": "dropdown-board",
         "sourceGeneration": "dropdown-source-generation",

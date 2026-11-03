@@ -1,4 +1,5 @@
 const request = require("supertest");
+const axios = require("axios");
 
 const baseURL = process.env.SHIKSHA_BASE_URL;
 if (!baseURL) {
@@ -35,6 +36,24 @@ async function loginAsSuperUser() {
   return cachedSuperUser;
 }
 
+function firstValidAssignment(curriculum) {
+  for (const board of curriculum) {
+    for (const medium of board.medium.filter((item) => !item.isDeleted)) {
+      for (const { standard } of medium.classDetails) {
+        for (const group of board.subjects) {
+          const subject = group.subjects.find(
+            (item) => !item.isDeleted && (!item.applicableClasses.length || item.applicableClasses.includes(standard))
+          );
+          if (subject) {
+            return { board: board._id, medium: medium.medium, class: standard, name: group._id, subject: subject.subjectName, sem: subject.sem ?? 0 };
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
+
 /**
  * Creates a disposable teacher user with a SCHOOL-scoped role carrying the
  * given permissions, then returns a JWT via /api/devtools/sessions (no OTP).
@@ -42,13 +61,28 @@ async function loginAsSuperUser() {
  */
 async function createEphemeralTeacher(rootToken, permissions) {
   const schoolsRes = await request(baseURL)
-    .get("/api/school/list?limit=1&includeDeleted=0")
+    .get("/api/school/list?limit=50&includeDeleted=0")
     .set("Authorization", rootToken);
   if (!schoolsRes.body.success) {
     throw new Error(`school/list failed: ${JSON.stringify(schoolsRes.body)}`);
   }
-  const school = schoolsRes.body.data.results[0];
-  if (!school) throw new Error("No school found in staging - cannot create ephemeral teacher");
+
+  let school;
+  let classAssignment;
+  for (const candidate of schoolsRes.body.data.results) {
+    const curriculumRes = await request(baseURL)
+      .get(`/api/class/group-by-board/${candidate._id}`)
+      .set("Authorization", rootToken);
+    if (!curriculumRes.body.success) {
+      throw new Error(`class/group-by-board failed: ${JSON.stringify(curriculumRes.body)}`);
+    }
+    classAssignment = firstValidAssignment(curriculumRes.body.data);
+    if (classAssignment) {
+      school = candidate;
+      break;
+    }
+  }
+  if (!school) throw new Error("No school with a board/medium/class/subject combination found - cannot create ephemeral teacher");
 
   const suffix = Date.now();
 
@@ -73,7 +107,7 @@ async function createEphemeralTeacher(rootToken, permissions) {
     .send({
       identity: { name: "E2E Ephemeral Teacher", phone, email: "", address: "" },
       roles: [{ roleId: role._id, dep: school._id }],
-      profiles: { teacher: { facilities: [], classes: [{ class: 6, medium: "English" }], isProfileCompleted: true } },
+      profiles: { teacher: { facilities: [], classes: [classAssignment], isProfileCompleted: true } },
     });
   if (!userRes.body.success) {
     throw new Error(`createUser failed: ${JSON.stringify(userRes.body)}`);
@@ -92,13 +126,31 @@ async function createEphemeralTeacher(rootToken, permissions) {
 }
 
 async function cleanupEphemeralTeacher(rootToken, { userId, roleId, content = [], activities = [] }) {
-  await request(baseURL)
+  const res = await request(baseURL)
     .delete("/api/devtools/fixtures")
     .set("Authorization", rootToken)
     .send({ users: [userId], roles: [roleId], content, activities, schools: [], classes: [], auditLogs: [], batches: [] });
+  if (!res.body.success) {
+    throw new Error(`devtools/fixtures cleanup failed: ${JSON.stringify(res.body)}`);
+  }
+}
+
+// A fresh SAS URL answers 403 until the storage clock reaches its start time.
+async function getBlob(url) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await axios.get(url, { responseType: "arraybuffer" });
+    } catch (error) {
+      if (error.response?.status !== 403 || attempt >= 10) {
+        throw new Error(`blob GET failed: HTTP ${error.response?.status ?? error.code}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
 }
 
 module.exports = {
+  getBlob,
   baseURL,
   superUserPhone,
   superUserPin,
