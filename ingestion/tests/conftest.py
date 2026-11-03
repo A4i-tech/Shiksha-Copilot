@@ -130,6 +130,7 @@ def azure_env(monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_API_BASE", "https://example.invalid")
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "k")
     monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-06-01")
+    monkeypatch.setenv("WEBHOOK_SECRET", "test-secret")
 
 
 def graph(conn=None, **kw):
