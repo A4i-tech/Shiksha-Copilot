@@ -53,6 +53,7 @@ Set the environment variables.
 | `AZURE_OPENAI_EMBED_MODEL` | Embedding deployment name. The default is `text-embedding-ada-002`. |
 | `QDRANT_URL` | Qdrant URL. The default is `http://localhost:6333`. |
 | `QDRANT_API_KEY` | Qdrant key. |
+| `WEBHOOK_SECRET` | Shared secret that signs each status post. Set the same value on shiksha-backend. Required whenever `WEBHOOK_URL` is set. Generate one with `openssl rand -hex 32`. |
 | `WEBHOOK_URL` | Receiver for the PENDING, RUNNING, COMPLETED, and FAILED status posts. The server refuses to start without it. The batch CLI skips the posts when it is empty. |
 
 The textbook steps of the pipeline also need the `omni-ingest` model settings.
