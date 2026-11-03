@@ -22,7 +22,7 @@ class ChatbotPage(BasePage):
 
     def load(self, base_url: str):
         """Navigates to the specific Chatbot route."""
-        self.page.goto(f"{base_url}/#/chatbot")
+        self.page.goto(f"{base_url}/#/chat")
         self.header_title.wait_for()
 
     def send_message(self, text: str):

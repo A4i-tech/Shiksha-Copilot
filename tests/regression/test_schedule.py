@@ -73,7 +73,7 @@ def test_schedule_add_event_form(schedule_page, step):
         # The popup should contain form fields for creating an event
         popup = schedule_page.popup_container
         # Check for input fields or dropdowns inside the popup
-        form_inputs = popup.locator("input, select, app-form-dropdown, textarea")
+        form_inputs = popup.locator("input, select, app-dropdown, textarea")
         input_count = form_inputs.count()
         assert input_count >= 1, (
             f"Expected form inputs in the add-event popup, found {input_count}"
