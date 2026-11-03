@@ -1,9 +1,11 @@
 import argparse
 import asyncio
 import hashlib
+import hmac
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -140,6 +142,12 @@ def connect(out_dir: Path | None = None) -> steps.Connections:
                 "variable table in the README."
             )
     url = os.environ.get("WEBHOOK_URL")
+    secret = os.environ.get("WEBHOOK_SECRET")
+    if url and not secret:
+        raise RuntimeError(
+            "Environment variable WEBHOOK_SECRET is not set. See the "
+            "environment variable table in the README."
+        )
 
     def retryable(e: httpx.HTTPError) -> bool:
         if not isinstance(e, httpx.HTTPStatusError):
@@ -151,10 +159,21 @@ def connect(out_dir: Path | None = None) -> steps.Connections:
     async def post_status(status: dict) -> None:
         if not url:
             return
+        body = json.dumps(status, separators=(",", ":")).encode()
         async with httpx.AsyncClient(timeout=30) as http:
             for attempt in range(4):
+                stamp = str(int(time.time()))
+                sign = hmac.new(
+                    secret.encode(), stamp.encode() + b"." + body, hashlib.sha256
+                )
+                headers = {
+                    "Content-Type": "application/json",
+                    "X-Webhook-Timestamp": stamp,
+                    "X-Webhook-Signature": sign.hexdigest(),
+                }
                 try:
-                    (await http.post(url, json=status)).raise_for_status()
+                    reply = await http.post(url, content=body, headers=headers)
+                    reply.raise_for_status()
                     return
                 except httpx.HTTPError as e:
                     if attempt == 3 or not retryable(e):

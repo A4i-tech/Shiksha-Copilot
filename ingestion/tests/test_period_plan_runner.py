@@ -27,7 +27,7 @@ class FailingHttp:
     async def __aexit__(self, *_):
         return False
 
-    async def post(self, url, json):
+    async def post(self, url, content, headers):
         self.urls.append(url)
         raise httpx.ConnectError("down")
 
@@ -139,7 +139,7 @@ class StatusHttp:
     async def __aexit__(self, *_):
         return False
 
-    async def post(self, url, json):
+    async def post(self, url, content, headers):
         self.urls.append(url)
         return httpx.Response(
             self.codes.pop(0), request=httpx.Request("POST", url)
@@ -178,3 +178,32 @@ def test_status_post_gives_up_after_four_server_errors(azure_env, monkeypatch):
     with pytest.raises(httpx.HTTPStatusError):
         asyncio.run(post({"status": "COMPLETED"}))
     assert len(http.urls) == 4
+
+
+class CapturingHttp(StatusHttp):
+    async def post(self, url, content, headers):
+        self.sent = (content, headers)
+        return await super().post(url, content, headers)
+
+
+def test_status_post_is_signed_over_the_sent_bytes(azure_env, monkeypatch):
+    http = CapturingHttp([200])
+    monkeypatch.setenv("WEBHOOK_URL", "http://backend/hook")
+    monkeypatch.setattr(runner.httpx, "AsyncClient", lambda **_: http)
+    monkeypatch.setattr(runner.time, "time", lambda: 1700000000)
+    post = runner.connect().post_status
+    asyncio.run(post({"instance_id": "abc", "status": "completed"}))
+    body, headers = http.sent
+    assert body == b'{"instance_id":"abc","status":"completed"}'
+    assert headers["X-Webhook-Timestamp"] == "1700000000"
+    # the same vector is pinned in the backend webhook.signature test
+    assert headers["X-Webhook-Signature"] == (
+        "8f7eb16bff536d5c813ae1371c028b205e8612fdfe6bb57e28dacf4a8f61e4fa"
+    )
+
+
+def test_a_webhook_url_without_a_secret_is_refused(azure_env, monkeypatch):
+    monkeypatch.setenv("WEBHOOK_URL", "http://backend/hook")
+    monkeypatch.delenv("WEBHOOK_SECRET")
+    with pytest.raises(RuntimeError, match="WEBHOOK_SECRET"):
+        runner.connect()
