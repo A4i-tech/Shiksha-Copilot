@@ -214,7 +214,7 @@ describe("QuestionBankManager", () => {
       await new Promise(setImmediate);
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain("Failed job processing initiated");
+      expect(result.message).toContain("Retry scheduled");
       expect(requeueFailedJobs).toHaveBeenCalledTimes(1);
     });
 
