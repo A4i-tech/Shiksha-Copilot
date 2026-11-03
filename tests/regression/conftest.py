@@ -1,4 +1,5 @@
 import os
+import re
 import pytest
 from dotenv import load_dotenv
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright, expect
@@ -40,10 +41,10 @@ def browser_context():
         verify_button.dispatch_event("click")
 
         try:
-            page.wait_for_url("**/dashboard", timeout=60000)
+            page.wait_for_url(re.compile(r"#/(dashboard|home)$"), timeout=60000)
         except PlaywrightTimeoutError:
             toasts = page.locator(".toast-message").all_inner_texts()
-            raise AssertionError(f"Login did not reach /dashboard. URL: {page.url}. Toasts: {toasts}") from None
+            raise AssertionError(f"Login did not reach /dashboard or /home. URL: {page.url}. Toasts: {toasts}") from None
 
         yield context
 
