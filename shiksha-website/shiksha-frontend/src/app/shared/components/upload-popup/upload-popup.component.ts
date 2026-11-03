@@ -4,7 +4,7 @@ import { NgxFileDropEntry, NgxFileDropModule } from 'ngx-file-drop';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ModalService } from '../modal/modal.service';
-import { MAX_FILE_SIZE } from '../../utility/constant.util';
+import { MAX_EXCEL_IMPORT_SIZE } from '../../utility/constant.util';
 import { ExcelDownloadService } from '../../services/excel_download.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -54,7 +54,9 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
   ];
 
   /** hint under the browse button */
-  @Input() fileHint: string = 'File supported .xlsx file, up to 5MB in size';
+  @Input() fileHint: string = `File supported .xlsx file, up to ${MAX_EXCEL_IMPORT_SIZE / (1024 * 1024)}MB in size`;
+
+  @Input() maxFileSize: number = MAX_EXCEL_IMPORT_SIZE;
 
   /** false hides the template link for uploads that have no template */
   @Input() showDownloadTemplate: boolean = true;
@@ -113,9 +115,9 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
             return;
           }
 
-          if (file.size > MAX_FILE_SIZE) {
+          if (file.size > this.maxFileSize) {
             this.utilityService.showWarning(
-              `File size exceeds the maximum limit of 5MB.`
+              `File size exceeds the maximum limit of ${this.maxFileSize / (1024 * 1024)}MB.`
             );
             this.files =[]
             return;

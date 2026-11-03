@@ -11,9 +11,14 @@ jest.mock("../../../dao/question.bank.cache.summary.dao");
 jest.mock("../../../services/question.bank.bot.service");
 jest.mock("../../../helper/question.bank.cache.helper");
 jest.mock("../../../aggregation/chapter.aggregation");
-jest.mock("../../../managers/cache.queue.manager", () => ({
-  addCacheJob: jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock("../../../managers/cache.queue.manager", () => {
+  const actual = jest.requireActual("../../../managers/cache.queue.manager");
+  return {
+    ...actual,
+    addCacheJob: jest.fn().mockResolvedValue(undefined),
+    requeueFailedJobs: jest.fn().mockResolvedValue(undefined),
+  };
+});
 
 describe("QuestionBankManager", () => {
   let manager;
@@ -196,32 +201,36 @@ describe("QuestionBankManager", () => {
   });
 
   describe("retryFailedJobs", () => {
-    it("should retry failed cache update jobs", async () => {
+    const mockPending = (value) => ({
+      select: () => ({ lean: () => (value instanceof Error ? Promise.reject(value) : Promise.resolve(value)) }),
+    });
+
+    it("should start a sweep when failed jobs exist", async () => {
       const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
-      QuestionBankCacheSummary.find = jest.fn().mockResolvedValue([
-        {
-          _id: "summary-1",
-          toObject: jest.fn().mockReturnValue({
-            _id: "summary-1",
-            notFoundQuestions: [],
-            processedCache: [],
-            unitLevel: "CHAPTER",
-            notFoundResponse: [],
-          }),
-        },
-      ]);
+      const { requeueFailedJobs } = require("../../../managers/cache.queue.manager");
+      QuestionBankCacheSummary.findOne = jest.fn(() => mockPending({ _id: "summary-1" }));
+
+      const result = await manager.retryFailedJobs();
+      await new Promise(setImmediate);
+
+      expect(result.success).toBe(true);
+      expect(result.message).toContain("Failed job processing initiated");
+      expect(requeueFailedJobs).toHaveBeenCalledTimes(1);
+    });
+
+    it("should report when there is nothing to retry", async () => {
+      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
+      QuestionBankCacheSummary.findOne = jest.fn(() => mockPending(null));
 
       const result = await manager.retryFailedJobs();
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain("Failed job processing initiated");
+      expect(result.message).toContain("No failed jobs to process");
     });
 
     it("should propagate errors instead of swallowing them", async () => {
       const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
-      QuestionBankCacheSummary.find = jest
-        .fn()
-        .mockRejectedValue(new Error("Query failed"));
+      QuestionBankCacheSummary.findOne = jest.fn(() => mockPending(new Error("Query failed")));
 
       await expect(manager.retryFailedJobs()).rejects.toThrow("Query failed");
     });

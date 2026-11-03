@@ -3,6 +3,8 @@ export const SESSION_VERSION = 1;
 
 export const MAX_FILE_SIZE = 16 * 1024 * 1024;
 
+export const MAX_EXCEL_IMPORT_SIZE = 2 * 1024 * 1024;
+
 export const BULK_UPLOAD_FILE_TYPES = [".xlsx"];
 
 export const DEFAULT_LANGUAGE = [{ name: 'English', value: 'en' }];
