@@ -30,17 +30,8 @@ enum PlanStatus {
   Failed = 'failed',
 }
 
-interface PlanDetails {
-  status?: PlanStatus;
-  error?: string;
-  sections?: any[];
-  isGenerated?: boolean;
-  isCompleted?: boolean;
-  [key: string]: any;
-}
-
 interface PlanResponse {
-  data: PlanDetails;
+  data: any;
 }
 
 const POLL_MS = 5000;
@@ -66,7 +57,7 @@ export class LessonPlanViewEditComponent implements OnInit {
 
   activeSectionId: any;
 
-  planDetails!: PlanDetails;
+  planDetails: any;
 
   generationState: 'running' | 'failed' | null = null;
 
@@ -404,7 +395,7 @@ export class LessonPlanViewEditComponent implements OnInit {
       });
   }
 
-  private applyPlan(plan: PlanDetails) {
+  private applyPlan(plan: any) {
     this.planDetails = { ...plan };
     this.subjectDetails = this.isLesson ? plan.lesson : plan.resource;
 
