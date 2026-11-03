@@ -37,12 +37,12 @@ class TranslationService:
         if src == dst:
             return data
 
-        translator = self.factory(dst)
         flat = self.unzip(data)
         texts = [v for _, v in flat]
-        metadata = {"backend": type(translator).__name__, "batch_size": self.batch_size}
         span_input = {"src": src, "dst": dst, "strings": len(texts), "chars": sum(map(len, texts))}
-        with get_client().start_as_current_observation(name="translation", input=span_input, metadata=metadata):
+        with get_client().start_as_current_observation(name="translation", input=span_input) as span:
+            translator = self.factory(dst)
+            span.update(metadata={"backend": type(translator).__name__, "batch_size": self.batch_size})
             translated = []
             for i in range(0, len(texts), self.batch_size):
                 translated += await translator.translate_batch_async(texts[i:i+self.batch_size], src, dst)
