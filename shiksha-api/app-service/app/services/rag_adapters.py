@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, TypeVar, Union, overload
 from app.config import settings
 from app.utils.blob_store import BlobStore
+from langfuse import observe
 from pydantic import BaseModel
 from rag_wrapper import InMemRagOps, QdrantRagOps
 from llama_index.core.base.response.schema import RESPONSE_TYPE
@@ -86,6 +87,7 @@ class BaseRagAdapter(ABC):
     async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] = ...) -> RESPONSE_TYPE:
         ...
 
+    @observe(name="rag_chat", capture_input=False, capture_output=False)
     async def chat_with_index(self, curr_message: str, chat_history: List[ChatMessage], output_cls: type[T] | None = None) -> AgentChatResponse | RESPONSE_TYPE:
         return await self.rag_ops.chat_with_index(curr_message, chat_history, metadata_filter=self.metadata_filter, output_cls=output_cls)
 
