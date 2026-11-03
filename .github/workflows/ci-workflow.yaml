@@ -36,7 +36,7 @@ jobs:
         working-directory: ingestion
         run: |
           sudo apt-get update && sudo apt-get install -y --no-install-recommends libmagic1
-          pip install -r requirements.txt pytest
+          pip install -r requirements.txt ../components/rag-wrapper pytest
           python -m pytest tests
 
       - name: Extract metadata
