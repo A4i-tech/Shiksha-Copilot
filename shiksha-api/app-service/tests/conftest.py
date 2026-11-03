@@ -19,6 +19,7 @@ if not os.getenv("OPENAI_API_KEY"):
     os.environ["OPENAI_API_KEY"] = "sk-xxxx"
 
 os.environ["DEBUG"] = "false"
+os.environ.setdefault("TRANSLATION_MODEL", "mock-chat")
 
 
 @pytest.fixture
