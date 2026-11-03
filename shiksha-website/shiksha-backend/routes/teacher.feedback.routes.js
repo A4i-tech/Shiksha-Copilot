@@ -12,6 +12,7 @@ const teacherResourceFeedbackController = new TeacherResourceFeedbackController(
 router.post(
 	"/teacher-resource-feedback/create",
 	isAuthenticated,
+	requirePermission("lesson-resource.edit"),
 	validateTeacherResourceFeedback,
 	asyncMiddleware(teacherResourceFeedbackController.create.bind(teacherResourceFeedbackController))
 );

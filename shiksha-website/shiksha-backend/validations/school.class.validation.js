@@ -14,7 +14,7 @@ const createSchema = Joi.object({
 	girls_strength: Joi.number().required(),
 	boys_strength: Joi.number().required(),
 	total_strength: Joi.number().required(),
-	school_id: Joi.string().required(),
+	school_id: Joi.string().hex().length(24).required(),
 	medium: Joi.string().required(),
 });
 

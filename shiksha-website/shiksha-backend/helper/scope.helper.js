@@ -109,7 +109,7 @@ function isResourceAllowed(grants, permission, resource) {
   });
 }
 
-function intersectFilters(filter, scope) {
+function intersectFilters(filter = {}, scope) {
   if (!Object.keys(scope).length) return filter;
   return Object.keys(filter).length ? { $and: [filter, scope] } : scope;
 }
