@@ -18,6 +18,7 @@ def service():
             "question_clarity_guide": "clarity guide",
             "maths_question_clarity_guide": "maths clarity guide",
             "grammar_question_types_guide": "grammar guide",
+            "postprocess": "postprocess prompt",
         },
     ):
         svc = QuestionPaperService()

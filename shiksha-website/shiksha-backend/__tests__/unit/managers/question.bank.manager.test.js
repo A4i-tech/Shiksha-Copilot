@@ -252,11 +252,11 @@ describe("QuestionBankManager", () => {
       ]);
 
       expect(result).toEqual([
-        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, questionDistribution: [
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, answerCount: 2, questionDistribution: [
           { unitName: "Unit B", objective: "Knowledge" },
           { unitName: "Unit B", objective: "Mystery" },
         ] },
-        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, questionDistribution: [
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, answerCount: 1, questionDistribution: [
           { unitName: "Unit A", objective: "Mystery" },
         ] },
       ]);
@@ -296,11 +296,11 @@ describe("QuestionBankManager", () => {
       ]);
 
       expect(result).toEqual([
-        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, questionDistribution: [
+        { type: "MCQ", marksPerQuestion: 1, numberOfQuestions: 2, answerCount: 2, questionDistribution: [
           { unitName: "Unit B", objective: "Knowledge" },
           { unitName: "Unit B", objective: "Application" },
         ] },
-        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, questionDistribution: [
+        { type: "ANSWER_LONG", marksPerQuestion: 5, numberOfQuestions: 1, answerCount: 1, questionDistribution: [
           { unitName: "Unit A", objective: "Application" },
         ] },
       ]);
