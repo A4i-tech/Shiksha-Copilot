@@ -33,9 +33,11 @@ async def broker():
         with contextlib.suppress(Exception):
             await nats_broker._js.delete_stream(nats_broker.stream)
 
+OK, RETRY = uuid.UUID(int=2), uuid.UUID(int=3)
+
 
 def job(attempt: int = 0) -> JobMessage:
-    return JobMessage(type="t", job_id="j1", attempt=attempt)
+    return JobMessage(type="t", job_id=uuid.UUID(int=1), attempt=attempt)
 
 
 async def first(gen):
@@ -62,7 +64,7 @@ async def until(condition, timeout: float = 6):
 
 async def test_ack_removes_message(broker):
     queue = broker.test_queue
-    await broker.publish(queue, job())
+    await broker.publish(queue, job(), msg_id="m1")
     delivery = await broker.fetch(queue, 3)
     assert delivery.message == job()
     assert delivery.num_delivered == 1
@@ -72,7 +74,7 @@ async def test_ack_removes_message(broker):
 
 async def test_unacked_message_is_redelivered_with_new_fence(broker):
     queue = broker.test_queue
-    await broker.publish(queue, job())
+    await broker.publish(queue, job(), msg_id="m1")
     first_delivery = await broker.fetch(queue, 3)
     second = await broker.fetch(queue, 6)
     assert second.num_delivered == 2
@@ -82,7 +84,7 @@ async def test_unacked_message_is_redelivered_with_new_fence(broker):
 
 async def test_in_progress_prevents_redelivery(broker):
     queue = broker.test_queue
-    await broker.publish(queue, job())
+    await broker.publish(queue, job(), msg_id="m1")
     delivery = await broker.fetch(queue, 3)
     watcher = asyncio.create_task(broker.fetch(queue, 4.5))
     for _ in range(10):
@@ -98,7 +100,7 @@ async def test_dead_letter_after_max_deliver_is_removed_from_stream(broker):
     dead = broker.dead_letters(queue)
     waiting = asyncio.create_task(first(dead))
     await asyncio.sleep(0.2)
-    await broker.publish(queue, job())
+    await broker.publish(queue, job(), msg_id="m1")
     for expected in (1, 2, 3):
         delivery = await broker.fetch(queue, 5)
         assert delivery.num_delivered == expected
@@ -114,7 +116,7 @@ async def test_dead_letter_after_max_deliver_is_removed_from_stream(broker):
 async def test_delayed_publish_is_not_early(broker):
     queue = broker.test_queue
     start = time.monotonic()
-    await broker.publish(queue, job(), delay=2)
+    await broker.publish(queue, job(), delay=2, msg_id="m1")
     assert await broker.fetch(queue, 1.2) is None
     delivery = await broker.fetch(queue, 5)
     assert delivery.message == job()
@@ -152,6 +154,7 @@ async def consumer(broker, handler):
             stop=stop,
             heartbeat_every=0.5,
             fetch_timeout=0.5,
+            alive=lambda: True,
         )
     )
     try:
@@ -166,19 +169,19 @@ async def test_consumer_acks_and_retries_with_next_attempt(broker):
 
     async def handler(message, fence):
         calls.append((message.job_id, message.attempt))
-        if message.job_id == "retry" and message.attempt == 0:
+        if message.job_id == RETRY and message.attempt == 0:
             raise RetryAfter(1)
 
-    await broker.publish(broker.test_queue, JobMessage(type="t", job_id="ok"))
-    await broker.publish(broker.test_queue, JobMessage(type="t", job_id="retry"))
+    await broker.publish(broker.test_queue, JobMessage(type="t", job_id=OK), msg_id="ok")
+    await broker.publish(broker.test_queue, JobMessage(type="t", job_id=RETRY), msg_id="retry")
     async with consumer(broker, handler):
 
         async def retried():
-            return ("retry", 1) in calls
+            return (RETRY, 1) in calls
 
         await until(retried)
         await until(lambda: queue_idle(broker))
-    assert sorted(calls) == [("ok", 0), ("retry", 0), ("retry", 1)]
+    assert sorted(calls) == [(OK, 0), (RETRY, 0), (RETRY, 1)]
 
 
 async def test_connect_updates_existing_consumer_config():

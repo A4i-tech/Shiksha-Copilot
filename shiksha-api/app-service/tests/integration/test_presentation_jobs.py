@@ -38,8 +38,8 @@ def fenced(fence):
 
 async def test_claim_sets_the_fence_and_refuses_complete_and_permanent_error_jobs(jobs):
     job, done, dead = await create(jobs), await create(jobs), await create(jobs)
-    await jobs.update(done.id, {"status": "complete"})
-    await jobs.update(dead.id, {"status": "error", "metadata.error": {"attempting_recovery": False}})
+    await jobs.update_unfenced(done.id, {"status": "complete"})
+    await jobs.update_unfenced(dead.id, {"status": "error", "metadata.error": {"attempting_recovery": False}})
     assert (await jobs.claim(job.id, "f1")).lease_owner == "f1"
     assert (await jobs.get(job.id)).lease_owner == "f1"
     assert await jobs.claim(done.id, "f1") is None
@@ -59,33 +59,35 @@ async def test_release_only_clears_a_matching_fence(jobs):
 async def test_permanent_error_does_not_count_toward_user_cap(jobs):
     user = "1" * 24
     live, dead = await create(jobs, user), await create(jobs, user)
-    await jobs.update(dead.id, {"status": "error", "metadata.error": {"attempting_recovery": False}})
+    await jobs.update_unfenced(dead.id, {"status": "error", "metadata.error": {"attempting_recovery": False}})
     assert await jobs.get_pending_count(user) == 1
-    await jobs.update(live.id, {"status": "complete"})
+    await jobs.update_unfenced(live.id, {"status": "complete"})
     assert await jobs.get_pending_count(user) == 0
 
 
 async def test_logs_after_returns_only_newer_events_in_order(jobs):
     job = await create(jobs)
     marker = await jobs.last_log_seq(job.id)
-    await jobs.update(job.id, {"message": "one"})
-    await jobs.update(job.id, {"status": "complete"})
+    await jobs.claim(job.id, "a")
+    with fenced("a"):
+        await jobs.update(job.id, {"message": "one"})
+        await jobs.update(job.id, {"status": "complete"})
     events = await jobs.logs_after(job.id, marker)
-    assert [e["type"] for e in events] == ["update", "update", "complete"]
-    assert await jobs.logs_after(job.id, events[-1]["seq"]) == []
+    assert [e.type for e in events] == ["update", "update", "complete"]
+    assert await jobs.logs_after(job.id, events[-1].seq) == []
 
 
 async def test_logs_after_skips_legacy_rows_without_seq(jobs):
     job_id = uuid.uuid4()
     await jobs.log_collection.insert_one({"job_id": str(job_id), "type": "update", "timestamp": time.time()})
-    assert await jobs.last_log_seq(job_id) is None
-    assert await jobs.logs_after(job_id, None) == []
+    assert await jobs.last_log_seq(job_id) == 0
+    assert await jobs.logs_after(job_id, 0) == []
 
 
 async def test_concurrent_logs_get_distinct_increasing_seq(jobs):
     job = await create(jobs)
-    await asyncio.gather(jobs.log(job.id, "x", {}), jobs.log(job.id, "x", {}))
-    seqs = [e["seq"] for e in await jobs.logs_after(job.id, None)]
+    await asyncio.gather(jobs._append(job.id, "x", {}), jobs._append(job.id, "x", {}))
+    seqs = [e.seq for e in await jobs.logs_after(job.id, 0)]
     assert seqs == sorted(set(seqs)) and len(seqs) == 3
 
 
@@ -121,7 +123,7 @@ async def test_cancel_request_makes_update_raise_after_the_write_but_not_on_comp
 async def test_request_cancel_deletes_an_unclaimed_job_and_flags_a_claimed_one(jobs):
     free, held, done = await create(jobs), await create(jobs), await create(jobs)
     await jobs.claim(held.id, "a")
-    await jobs.update(done.id, {"status": "complete"})
+    await jobs.update_unfenced(done.id, {"status": "complete"})
     assert await jobs.request_cancel(free)
     assert await jobs.get(free.id) is None
     assert await jobs.request_cancel(held)
@@ -135,7 +137,7 @@ async def test_unenqueued_returns_old_jobs_that_are_not_marked_enqueued(jobs):
     old, marked, legacy, done = await create(jobs), await create(jobs), await create(jobs), await create(jobs)
     await jobs.mark_enqueued(marked.id)
     await jobs.collection.update_one({"id": str(legacy.id)}, {"$unset": {"enqueued": 1}})
-    await jobs.update(done.id, {"status": "complete"})
+    await jobs.update_unfenced(done.id, {"status": "complete"})
     assert await jobs.unenqueued(60) == []
     await asyncio.sleep(0.05)
     assert {j.id for j in await jobs.unenqueued(0.01)} == {old.id, legacy.id}
@@ -155,20 +157,53 @@ async def test_orphaned_returns_claimed_jobs_with_no_recent_log_row(jobs):
 async def test_fail_crashed_writes_a_permanent_error_without_a_fence(jobs):
     job = await create(jobs)
     await jobs.claim(job.id, "a")
-    await jobs.fail_crashed(job.id, 4)
+    await jobs.fail_crashed(job.id, 4, "Stopped after 4 tries without finishing")
     failed = await jobs.get(job.id)
     assert failed.status == "error" and failed.message == "Stopped after 4 tries without finishing"
     assert failed.metadata["error"]["attempting_recovery"] is False and failed.lease_owner is None
-    assert (await jobs.last_snapshot(job.id))["data"]["status"] == "error"
+    assert (await jobs.last_snapshot(job.id)).data["status"] == "error"
     assert await jobs.get_pending_count(job.user_id) == 0
     assert await jobs.claim(job.id, "b") is None
 
 
+async def test_fail_crashed_deletes_a_cancelled_job(jobs):
+    job = await create(jobs)
+    await jobs.claim(job.id, "a")
+    await jobs.request_cancel(job)
+    await jobs.fail_crashed(job.id, 4, "Stopped")
+    assert await jobs.get(job.id) is None
+
+
+async def test_retry_due_returns_error_jobs_whose_retry_time_passed(jobs):
+    due, future, dead, held = await create(jobs), await create(jobs), await create(jobs), await create(jobs)
+    err = {"status": "error", "metadata.error.attempting_recovery": True, "metadata.error.next_attempt": time.time() - 100}
+    for job in (due, dead, held):
+        await jobs.update_unfenced(job.id, err)
+    await jobs.update_unfenced(future.id, {**err, "metadata.error.next_attempt": time.time() + 100})
+    await jobs.update_unfenced(dead.id, {"metadata.error.attempting_recovery": False})
+    await jobs.claim(held.id, "a")
+    for job in (due, future, dead, held):
+        await jobs.mark_enqueued(job.id)
+    await jobs.collection.update_many({}, {"$set": {"enqueued_at": datetime.now(timezone.utc) - timedelta(seconds=120)}})
+    await jobs.collection.update_one({"id": str(future.id)}, {"$set": {"enqueued_at": datetime.now(timezone.utc)}})
+    assert [j.id for j in await jobs.retry_due(10, 60)] == [due.id]
+
+
+async def test_idle_queued_returns_enqueued_unclaimed_jobs_waiting_longer_than_the_stall_time(jobs):
+    stale, fresh, unmarked, claimed = await create(jobs), await create(jobs), await create(jobs), await create(jobs)
+    for job in (stale, fresh, claimed):
+        await jobs.mark_enqueued(job.id)
+    await jobs.claim(claimed.id, "a")
+    old = datetime.now(timezone.utc) - timedelta(seconds=120)
+    await jobs.collection.update_many({"id": {"$in": [str(stale.id), str(claimed.id)]}}, {"$set": {"enqueued_at": old}})
+    assert [j.id for j in await jobs.idle_queued(60)] == [stale.id]
+
+
 async def test_fail_crashed_leaves_complete_and_missing_jobs_alone(jobs):
     done = await create(jobs)
-    await jobs.update(done.id, {"status": "complete"})
-    await jobs.fail_crashed(done.id, 4)
-    await jobs.fail_crashed(uuid.uuid4(), 4)
+    await jobs.update_unfenced(done.id, {"status": "complete"})
+    await jobs.fail_crashed(done.id, 4, "Stopped")
+    await jobs.fail_crashed(uuid.uuid4(), 4, "Stopped")
     assert (await jobs.get(done.id)).status == "complete"
 
 
@@ -176,24 +211,25 @@ async def test_create_stores_enqueued_false_and_mark_enqueued_sets_it(jobs):
     job = await create(jobs)
     assert (await jobs.collection.find_one({"id": str(job.id)}))["enqueued"] is False
     await jobs.mark_enqueued(job.id)
-    assert (await jobs.collection.find_one({"id": str(job.id)}))["enqueued"] is True
+    doc = await jobs.collection.find_one({"id": str(job.id)})
+    assert doc["enqueued"] is True and doc["enqueued_at"]
 
 
 async def test_last_write_moves_forward_on_writes(jobs):
     job = await create(jobs)
     before = jobs.last_write
     await asyncio.sleep(0.01)
-    await jobs.update(job.id, {"message": "x"})
+    await jobs.update_unfenced(job.id, {"message": "x"})
     assert jobs.last_write > before
 
 
 async def test_last_snapshot_skips_event_rows_and_gives_the_cursor(jobs):
     job = await create(jobs)
-    await jobs.update(job.id, {"message": "x"})
-    await jobs.log(job.id, "event", {})
+    await jobs.update_unfenced(job.id, {"message": "x"})
+    await jobs._append(job.id, "event", {})
     snap = await jobs.last_snapshot(job.id)
-    assert snap["type"] == "update" and snap["data"]["message"] == "x"
-    assert [d["type"] for d in await jobs.logs_after(job.id, snap["seq"])] == ["event"]
+    assert snap.type == "update" and snap.data["message"] == "x"
+    assert [d.type for d in await jobs.logs_after(job.id, snap.seq)] == ["event"]
 
 
 async def test_pending_count_ignores_a_job_with_a_cancel_request(jobs):

@@ -31,12 +31,12 @@ async def _heartbeat(
     delivery: Delivery,
     every: float,
     job: asyncio.Task,
-    alive: Callable[[], bool] | None,
+    alive: Callable[[], bool],
 ) -> None:
     failures = 0
     while True:
         await asyncio.sleep(every)
-        if alive is not None and not alive():
+        if not alive():
             logger.warning(
                 "Job %s made no progress, cancelling handler", delivery.message.job_id
             )
@@ -51,7 +51,7 @@ async def _heartbeat(
             )
             job.cancel()
             return
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             failures += 1
             logger.warning("Heartbeat failed for job %s: %s", delivery.message.job_id, exc)
             if failures >= 3:
@@ -68,6 +68,7 @@ async def _settle(
 ) -> None:
     message = delivery.message
     if job.cancelled():
+        logger.warning("Job %s delivery dropped because the handler was cancelled", message.job_id)
         return
     exc = job.exception()
     if exc is None:
@@ -107,7 +108,7 @@ async def _process(
     stop: asyncio.Event,
     heartbeat_every: float,
     drain_timeout: float,
-    alive: Callable[[], bool] | None = None,
+    alive: Callable[[], bool],
 ) -> None:
     job = asyncio.create_task(handler(delivery.message, delivery.fence))
     beat = asyncio.create_task(_heartbeat(delivery, heartbeat_every, job, alive))
@@ -139,9 +140,9 @@ async def run_consumer(
     *,
     stop: asyncio.Event,
     heartbeat_every: float,
+    alive: Callable[[], bool],
     fetch_timeout: float = 1.0,
     drain_timeout: float = 30.0,
-    alive: Callable[[], bool] | None = None,
 ) -> None:
     while not stop.is_set():
         try:
@@ -159,6 +160,5 @@ async def run_consumer(
                 alive,
             )
         except Exception:
-            # an unacked message stays with the broker and is redelivered
             logger.exception("Consumer loop error, continuing")
             await asyncio.sleep(1)

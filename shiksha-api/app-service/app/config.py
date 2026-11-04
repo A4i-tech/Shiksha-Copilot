@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     pres_max_tasks_planner: PositiveInt = 2
     pres_max_tasks_finalizer: PositiveInt = 2
     pres_mongodb_url: str = "mongodb://localhost:27017/shiksha_viz"
-    pres_sse_poll_seconds: PositiveInt = 1
+    pres_sse_poll_seconds: PositiveInt = 2
     nats_url: str = "nats://localhost:4222"
     nats_creds: str | None = None
     nats_replicas: PositiveInt = 1
@@ -69,7 +69,7 @@ class Settings(BaseSettings):
     pres_ack_wait_seconds: PositiveInt = 60
     pres_max_deliver: PositiveInt = 5
     pres_drain_seconds: PositiveInt = 25
-    pres_stall_seconds: PositiveInt = 300
+    pres_stall_seconds: PositiveInt = 900
     pres_reconcile_seconds: PositiveInt = 30
     pres_storage_filesystem: str = "file"
     pres_storage_root: str = "shiksha-copilot-presentations"

@@ -1,7 +1,10 @@
 import asyncio
 import logging
 import time
+import uuid
 from contextlib import asynccontextmanager
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -9,6 +12,7 @@ from app.messaging.broker import LockLost
 from app.messaging.consumer import PermanentError, RetryAfter, run_consumer
 from app.messaging.memory import MemoryBroker
 from app.messaging.message import JobMessage
+from app.messaging.nats_broker import NatsBroker
 
 QUEUE = "jobs"
 
@@ -60,7 +64,7 @@ class SpyBroker(MemoryBroker):
 
 
 def job(attempt=0):
-    return JobMessage(type="t", job_id="j1", attempt=attempt)
+    return JobMessage(type="t", job_id=uuid.UUID(int=1), attempt=attempt)
 
 
 async def until(condition, timeout=0.5):
@@ -73,6 +77,7 @@ async def until(condition, timeout=0.5):
 @asynccontextmanager
 async def consumer(broker, handler, heartbeat_every=0.02, **kwargs):
     stop = asyncio.Event()
+    kwargs.setdefault("alive", lambda: True)
     task = asyncio.create_task(
         run_consumer(
             broker,
@@ -98,7 +103,7 @@ async def test_handler_return_acks():
     async def handler(message, fence):
         pass
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: broker.acked)
     assert await broker.fetch(QUEUE, 0.3) is None
@@ -114,7 +119,7 @@ async def test_retry_after_publishes_next_attempt():
         if message.attempt == 0:
             raise RetryAfter(0.1)
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: len(broker.acked) == 2)
     assert [attempt for attempt, _ in calls] == [0, 1]
@@ -131,7 +136,7 @@ async def test_permanent_error_acks_without_redelivery():
         calls.append(fence)
         raise PermanentError("bad input")
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: broker.acked)
     assert await broker.fetch(QUEUE, 0.3) is None
@@ -141,7 +146,7 @@ async def test_permanent_error_acks_without_redelivery():
 @pytest.mark.asyncio
 async def test_unacked_message_is_redelivered_after_ack_wait():
     broker = MemoryBroker(ack_wait=0.1)
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     first = await broker.fetch(QUEUE, 0.5)
     second = await broker.fetch(QUEUE, 0.5)
     assert first.num_delivered == 1
@@ -155,7 +160,7 @@ async def test_unacked_message_is_redelivered_after_ack_wait():
 @pytest.mark.asyncio
 async def test_max_deliver_dead_letters_message():
     broker = MemoryBroker(ack_wait=0.05, max_deliver=3)
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     for expected in (1, 2, 3):
         delivery = await broker.fetch(QUEUE, 0.5)
         assert delivery.num_delivered == expected
@@ -176,7 +181,7 @@ async def test_heartbeat_keeps_lock():
         await asyncio.sleep(0.4)
         done.append(fence)
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler, heartbeat_every=0.02):
         await until(lambda: broker.acked, timeout=1)
     assert len(broker.fetched) == 1
@@ -195,7 +200,7 @@ async def test_lock_lost_cancels_handler_without_ack():
             cancelled.append(fence)
             raise
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: cancelled)
     assert broker.acked == []
@@ -211,7 +216,7 @@ async def test_unhandled_exception_is_redelivered():
         if len(calls) == 1:
             raise RuntimeError("boom")
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: broker.acked)
     assert len(calls) == 2
@@ -233,7 +238,7 @@ async def test_drain_hands_job_back_with_same_attempt():
             cancelled.append(fence)
             raise
 
-    await broker.publish(QUEUE, job(attempt=2))
+    await broker.publish(QUEUE, job(attempt=2), msg_id="m1")
     async with consumer(broker, handler, drain_timeout=0.05) as (stop, task):
         await asyncio.wait_for(started.wait(), 0.5)
         stop.set()
@@ -279,7 +284,7 @@ async def test_lock_lost_error_is_not_acked_and_logs_a_warning_without_error(cap
         calls.append(fence)
         raise LockLost("fence moved")
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     with caplog.at_level(logging.INFO):
         async with consumer(broker, handler):
             await until(lambda: calls)
@@ -301,7 +306,7 @@ async def test_alive_false_cancels_handler_without_ack():
             cancelled.append(fence)
             raise
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler, alive=lambda: False):
         await until(lambda: cancelled)
     assert broker.acked == []
@@ -316,7 +321,7 @@ async def test_heartbeat_errors_below_limit_keep_handler_running():
         await asyncio.sleep(0.3)
         done.append(fence)
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: broker.acked, timeout=1)
     assert broker.acked == done == [broker.fetched[0].fence]
@@ -334,7 +339,7 @@ async def test_repeated_heartbeat_errors_cancel_handler_without_ack():
             cancelled.append(fence)
             raise
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: cancelled)
     assert broker.beat_errors == 1000 - 3
@@ -350,7 +355,7 @@ async def test_fetch_error_does_not_stop_consumer():
     async def handler(message, fence):
         calls.append(fence)
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: broker.acked, timeout=2)
     assert len(calls) == 1
@@ -365,8 +370,16 @@ async def test_ack_error_does_not_stop_consumer():
     async def handler(message, fence):
         calls.append(fence)
 
-    await broker.publish(QUEUE, job())
+    await broker.publish(QUEUE, job(), msg_id="m1")
     async with consumer(broker, handler):
         await until(lambda: broker.acked, timeout=3)
     assert len(calls) == 2
     assert broker.acked == [broker.fetched[1].fence]
+
+
+async def test_nats_connect_refuses_a_server_older_than_2_12(monkeypatch):
+    nc = SimpleNamespace(connected_server_version=SimpleNamespace(major=2, minor=10), close=AsyncMock())
+    monkeypatch.setattr("app.messaging.nats_broker.nats.connect", AsyncMock(return_value=nc))
+    with pytest.raises(RuntimeError, match="too old"):
+        await NatsBroker("nats://x", queues=["q"]).connect()
+    nc.close.assert_awaited()

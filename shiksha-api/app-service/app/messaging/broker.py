@@ -34,7 +34,7 @@ class Broker(Protocol):
         message: JobMessage,
         *,
         delay: float = 0,
-        msg_id: str | None = None,
+        msg_id: str,
     ) -> None:
         ...
 

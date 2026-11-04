@@ -128,7 +128,7 @@ async def create_job(
         raise HTTPException(status_code=400, detail=str(e))
     job = await service.jobs.create(user_id, textbook_path, textbook_mime, slides, instruction, tags)
     try:
-        await publish_job(broker, service.jobs, job)
+        await publish_job(broker, service.jobs, job, msg_id=f"{job.id}:0")
     except Exception:
         logger.exception("Could not queue job %s", job.id)
         await service.jobs.delete(job)
@@ -152,7 +152,7 @@ async def retry_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentation
     if job is not None and job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
     if job is not None and job.status == "error" and "error" in job.metadata and not job.metadata["error"]["attempting_recovery"]:
-        await service.jobs.update(job.id, {"status": "init", "message": "Retrying", "enqueued": False}, ["metadata.error"])
+        await service.jobs.update_unfenced(job.id, {"status": "init", "message": "Retrying", "enqueued": False}, ["metadata.error"])
         try:
             await publish_job(broker, service.jobs, job, msg_id=f"{job.id}:retry:{int(time.time())}")
         except Exception:
@@ -268,25 +268,24 @@ async def events_handle(request: Request, user_id: UserId, id: uuid.UUID, servic
     Subscribe to job events.
     """
 
-    after = await service.jobs.last_log_seq(id)  # read before the job, so no event falls between them
+    after: int = await service.jobs.last_log_seq(id)  # read before the job, so no event falls between them
     job = await service.jobs.get(id)
     if job is None or job.user_id not in {user_id, SYSTEM_USER_ID}:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # the snapshot is a log row, so its seq is the exact cursor: no replay of older rows, no gap
     last = await service.jobs.last_snapshot(id)
     if last:
-        after = last["seq"]
+        after = last.seq
 
     async def stream():
         nonlocal after
-        data = last["data"] if last else json.loads(job.model_dump_json())
+        data = last.data if last else json.loads(job.model_dump_json())
         snapshot = {"id": str(id), "type": "update", "data": data, "timestamp": iso_z(datetime.now(timezone.utc))}
         yield f"data: {json.dumps(snapshot)}\n\n"
         async for _ in _until_disconnected(request):
-            for doc in await service.jobs.logs_after(id, after):
-                after = doc["seq"]
-                e = {"id": doc["job_id"], "type": doc["type"], "data": doc["data"], "timestamp": iso_z(doc["timestamp"])}
+            for entry in await service.jobs.logs_after(id, after):
+                after = entry.seq
+                e = {"id": str(id), "type": entry.type, "data": entry.data, "timestamp": iso_z(entry.timestamp)}
                 yield f"data: {json.dumps(e)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
