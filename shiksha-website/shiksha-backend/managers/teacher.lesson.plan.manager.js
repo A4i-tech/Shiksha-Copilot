@@ -23,6 +23,9 @@ const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
 const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
+const axios = require("axios");
+
+const PRESENTATION_USER_ID = "0".repeat(24);
 
 /** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
@@ -146,6 +149,41 @@ class TeacherLessonPlanManager extends BaseManager {
 		} else {
 			return formatApiReponse(false, "Lesson plan not found", null);
 		}
+	}
+
+	async findPresentationJob(lessonPlanId) {
+		const response = await axios.get(`${process.env.LLM_API_BASE_URL}/presentation/jobs`, {
+			headers: {"X-User-ID": PRESENTATION_USER_ID},
+			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
+		});
+		return response.data[0];
+	}
+
+	async getPresentation(teacherId, lessonPlanId) {
+		if (!await this.dao.getLessonPlanById(teacherId, lessonPlanId)) return formatApiReponse(false, "Lesson plan not found", null);
+		const job = await this.findPresentationJob(lessonPlanId);
+		return job ? formatApiReponse(true, "", job) : formatApiReponse(false, "Presentation not found", null);
+	}
+
+	async generatePresentation(teacherId, lessonPlanId) {
+		const [authorized, lessonPlan] = await Promise.all([
+			this.dao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
+			this.masterLessonDao.getById(lessonPlanId)
+		]);
+		if (!authorized || !lessonPlan) return formatApiReponse(false, "Lesson plan not found", null);
+
+		const existingJob = await this.findPresentationJob(lessonPlanId);
+		if (existingJob) return formatApiReponse(true, "", existingJob);
+
+		// this prefix is sufficient to evade libmagic's content-based file mime inference
+		const blob = new Blob(["Lesson plan content:\n", JSON.stringify(lessonPlan)], { type: 'text/plain' });
+		const formData = new FormData();
+		formData.append("textbook_file", blob, `lesson-plan-${lessonPlanId}.json.txt`);
+		formData.append("slides", 16);
+		formData.append("tags", `lesson-plan-${lessonPlanId}`);
+		formData.append("instruction", "");
+		const response = await axios.post(`${process.env.LLM_API_BASE_URL}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": PRESENTATION_USER_ID}});
+		return formatApiReponse(true, "", response.data);
 	}
 
 	async generateContent(teacherId, payload) {

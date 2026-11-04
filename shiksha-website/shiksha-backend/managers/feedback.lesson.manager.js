@@ -4,8 +4,6 @@ const formatApiReponse = require("../helper/response");
 const AppError = require("../helper/app.error");
 const { isTeacherInScope, getScopedFeedback, updateScopedFeedback, OUT_OF_SCOPE } = require("../helper/training.scope.helper");
 
-const UPDATABLE_FIELDS = ["assessment", "feedback", "feedbackPerSets", "overallFeedbackReason", "isCompleted"];
-
 /** @extends {BaseManager<LessonFeedbackDao>} */
 class LessonFeedbackManager extends BaseManager {
 	constructor() {
@@ -54,9 +52,6 @@ class LessonFeedbackManager extends BaseManager {
 	async getByTeacher(teacherId, permissions) {
 		if (!await isTeacherInScope(permissions, "content.manage", teacherId)) throw new AppError(OUT_OF_SCOPE, 403);
 		const feedbacks = await this.dao.getByTeacher(teacherId);
-		if (!feedbacks) {
-			return formatApiReponse(false, "failed to load feedbacks", null);
-		}
 		return formatApiReponse(true, "", feedbacks);
 	}
 
@@ -65,7 +60,7 @@ class LessonFeedbackManager extends BaseManager {
 	}
 
 	update(id, updates, permissions) {
-		return updateScopedFeedback(this.dao, id, updates, permissions, UPDATABLE_FIELDS);
+		return updateScopedFeedback(this.dao, id, updates, permissions);
 	}
 }
 

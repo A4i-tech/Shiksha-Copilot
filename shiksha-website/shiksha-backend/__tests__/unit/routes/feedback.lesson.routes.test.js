@@ -10,6 +10,7 @@ jest.mock('../../../middlewares/auth.js', () => ({
 }));
 jest.mock('../../../validations/feedback.lesson.validation.js', () => ({
   validateFeedbackLesson: (req, res, next) => mockValidate(req, res, next),
+  validateFeedbackLessonUpdate: (req, res, next) => mockValidate(req, res, next),
 }));
 jest.mock('../../../controllers/feedback.lesson.controller.js', () =>
   class {

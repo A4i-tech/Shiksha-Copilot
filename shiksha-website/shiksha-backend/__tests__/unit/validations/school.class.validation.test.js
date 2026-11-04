@@ -43,6 +43,15 @@ describe("School Class Validation", () => {
   };
 
   describe("validateClassCreate", () => {
+    it("renames school_id to schoolId", () => {
+      mockReq.body = { ...validClassData };
+
+      validateClassCreate(mockReq, mockRes, mockNext);
+
+      expect(mockReq.body.schoolId).toBe(validClassData.school_id);
+      expect(mockReq.body).not.toHaveProperty("school_id");
+    });
+
     it("should pass validation with valid class data", () => {
       mockReq.body = { ...validClassData };
 

@@ -1,11 +1,8 @@
-const axios = require("axios");
 const handleError = require("../helper/handleError.js");
 const TeacherLessonPlanManager = require("../managers/teacher.lesson.plan.manager.js");
 const BaseController = require("./base.controller.js");
 const { intersectFilters } = require("../helper/scope.helper");
 const escapeRegExp = require("lodash/escapeRegExp");
-
-const PRESENTATION_USER_ID = "0".repeat(24);
 
 /** @extends {BaseController<TeacherLessonPlanManager>} */
 class TeacherLessonPlanController extends BaseController {
@@ -136,53 +133,13 @@ class TeacherLessonPlanController extends BaseController {
 	}
 
 	async getLessonPlanPresentation(req, res) {
-		const { lessonPlanId } = req.params;
-		const owned = await this.manager.dao.getLessonPlanById(req.user._id, lessonPlanId);
-		if (!owned) {
-			return res.status(404).json({ message: "Lesson plan not found" });
-		}
-		const job = await this.findPresentationJob(lessonPlanId);
-		if (job) {
-			return res.status(200).json(job);
-		} else {
-			return res.status(404).json({ message: "Presentation not found" });
-		}
-	}
-
-	async findPresentationJob(lessonPlanId) {
-		const response = await axios.get(`${process.env.LLM_API_BASE_URL}/presentation/jobs`, {
-			headers: {"X-User-ID": PRESENTATION_USER_ID},
-			params: {tags: `lesson-plan-${lessonPlanId}`, limit: 1}
-		});
-		return response.data[0];
+		const result = await this.manager.getPresentation(req.user._id, req.params.lessonPlanId);
+		return result.success ? res.status(200).json(result.data) : res.status(404).json({ message: result.message });
 	}
 
 	async generateLessonPlanPresentation(req, res) {
-		const { lessonPlanId } = req.params;
-		const teacherId = req.user._id;
-
-		const [authorized, lessonPlan] = await Promise.all([
-			this.manager.dao.getLessonPlanById(teacherId, lessonPlanId), // test whether teacher have access to this lp
-			this.manager.masterLessonDao.getById(lessonPlanId)
-		]);
-		if (!authorized || !lessonPlan) {
-			return res.status(404).json({ message: "Lesson plan not found" });
-		}
-
-		const existingJob = await this.findPresentationJob(lessonPlanId);
-		if (existingJob) {
-			return res.status(200).json(existingJob);
-		}
-
-		// this prefix is sufficient to evade libmagic's content-based file mime inference
-		const blob = new Blob(["Lesson plan content:\n", JSON.stringify(lessonPlan)], { type: 'text/plain' });
-		const formData = new FormData();
-		formData.append("textbook_file", blob, `lesson-plan-${lessonPlanId}.json.txt`);
-		formData.append("slides", 16);
-		formData.append("tags", `lesson-plan-${lessonPlanId}`);
-		formData.append("instruction", "");
-		const response = await axios.post(`${process.env.LLM_API_BASE_URL}/presentation/job`, formData, {headers: {"Content-Type": "multipart/form-data", "X-User-ID": PRESENTATION_USER_ID}});
-		return res.status(200).json(response.data);
+		const result = await this.manager.generatePresentation(req.user._id, req.params.lessonPlanId);
+		return result.success ? res.status(200).json(result.data) : res.status(404).json({ message: result.message });
 	}
 
 	async getResourcePlanById(req, res) {

@@ -69,7 +69,7 @@ describe("ClassManager", () => {
         className: "Class 10A",
       };
 
-      mockClassDao.getById.mockResolvedValue({ _id: "class1" });
+      mockClassDao.getById.mockResolvedValue({ _id: "class1", schoolId: SCHOOL_A });
       mockClassDao.update.mockResolvedValue(mockUpdatedClass);
 
       const result = await classManager.updateClass("class1", updates, GLOBAL);
@@ -100,7 +100,7 @@ describe("ClassManager", () => {
       const updates = { className: "Class 10A" };
       const error = new Error("Database error");
 
-      mockClassDao.getById.mockResolvedValue({ _id: "class1" });
+      mockClassDao.getById.mockResolvedValue({ _id: "class1", schoolId: SCHOOL_A });
       mockClassDao.update.mockRejectedValue(error);
 
       await expect(classManager.updateClass("class1", updates, GLOBAL)).rejects.toThrow("Database error");
@@ -163,14 +163,28 @@ describe("ClassManager", () => {
     });
 
     it("blocks creating a class in another school", async () => {
-      const req = { body: { school_id: SCHOOL_B }, permissions: schoolGrants("content.manage", SCHOOL_A) };
+      const req = { body: { schoolId: SCHOOL_B }, permissions: schoolGrants("content.manage", SCHOOL_A) };
       await expect(classManager.create(req)).rejects.toMatchObject({ statusCode: 403 });
       expect(mockClassDao.create).not.toHaveBeenCalled();
     });
 
+    it("rejects creating a class in a school that does not exist", async () => {
+      School.findById.mockImplementation(() => ({ lean: () => Promise.resolve(null) }));
+      const req = { body: { schoolId: SCHOOL_A }, permissions: GLOBAL };
+      await expect(classManager.create(req)).rejects.toMatchObject({ statusCode: 400 });
+      expect(mockClassDao.create).not.toHaveBeenCalled();
+    });
+
+    it("returns a failure result when deleting a missing class", async () => {
+      mockClassDao.getById.mockResolvedValue(null);
+      const result = await classManager.delete({ params: { id: "class1" }, permissions: GLOBAL });
+      expect(result.success).toBe(false);
+      expect(mockClassDao.delete).not.toHaveBeenCalled();
+    });
+
     it("allows creating a class in the grant's own school", async () => {
       mockClassDao.create.mockResolvedValue({ _id: "class1" });
-      const req = { body: { school_id: SCHOOL_A }, permissions: schoolGrants("content.manage", SCHOOL_A) };
+      const req = { body: { schoolId: SCHOOL_A }, permissions: schoolGrants("content.manage", SCHOOL_A) };
       await classManager.create(req);
       expect(mockClassDao.create).toHaveBeenCalledWith(expect.objectContaining({ schoolId: SCHOOL_A }));
     });

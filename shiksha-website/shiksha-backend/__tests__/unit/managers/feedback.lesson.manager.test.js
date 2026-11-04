@@ -46,12 +46,6 @@ describe('FeedbackLessonManager authorization', () => {
         expect(manager.dao.update).not.toHaveBeenCalled();
     });
 
-    it('drops teacherId and lessonId from the update', async () => {
-        manager.dao.getById.mockResolvedValue({ teacherId: 't2' });
-        await manager.update('f1', { teacherId: 't9', lessonId: 'l9', feedback: 'x' }, permissions);
-        expect(manager.dao.update).toHaveBeenCalledWith('f1', { feedback: 'x' });
-    });
-
     it('answers an out-of-scope feedback id like a missing one', async () => {
         manager.dao.getById = jest.fn().mockResolvedValue({ teacherId: 't1' });
         const outOfScope = await manager.getById({ params: { id: 'f1' }, permissions });

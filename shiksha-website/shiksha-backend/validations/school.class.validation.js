@@ -14,9 +14,9 @@ const createSchema = Joi.object({
 	girls_strength: Joi.number().required(),
 	boys_strength: Joi.number().required(),
 	total_strength: Joi.number().required(),
-	school_id: Joi.string().hex().length(24).required(),
+	schoolId: Joi.string().hex().length(24).required(),
 	medium: Joi.string().required(),
-});
+}).rename("school_id", "schoolId");
 
 const validateClassCreate = validateRequest(createSchema);
 
@@ -49,7 +49,6 @@ const updateSchema = Joi.object({
 	girls_strength: Joi.number(),
 	boys_strength: Joi.number(),
 	total_strength: Joi.number(),
-	school_id: Joi.string(),
 });
 
 const validateClassUpdate = validateRequestForUpdates(updateSchema);
