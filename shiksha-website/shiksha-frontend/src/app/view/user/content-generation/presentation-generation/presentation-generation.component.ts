@@ -34,16 +34,6 @@ interface PresentationJobDetail {
   metadata: any;
 }
 
-const emptyJob = (): PresentationJobDetail => ({
-  id: '',
-  textbook_file: '',
-  slides: null,
-  instruction: null,
-  status: 'init',
-  message: '',
-  metadata: {},
-});
-
 interface PresentationTask {
   key: PresentationJobStatus;
   title: string;
@@ -62,7 +52,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
   totalSteps = 4;
   submitted = false;
   selectedFile: File | null = null;
-  currentJob: PresentationJobDetail = emptyJob();
+  currentJob: PresentationJobDetail | null = null;
   isCreatingJob = false;
   isDownloading = false;
   isRetryingJob = false;
@@ -469,12 +459,13 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     }
 
     this.isDownloading = true;
+    const job = this.currentJob;
     const downloadSubscription = this.contentGenerationService
-      .downloadPresentationFile(this.currentJob.id, "pptx")
+      .downloadPresentationFile(job.id, "pptx")
       .subscribe({
         next: (blob) => {
           this.isDownloading = false;
-          saveAs(blob, this.getDownloadFileName());
+          saveAs(blob, this.getDownloadFileName(job));
         },
         error: (error) => {
           this.isDownloading = false;
@@ -566,7 +557,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     this.pptxFileSizeLabel = '';
     this.latestToolText = '';
     this.currentRouteJobId = null;
-    this.currentJob = emptyJob();
+    this.currentJob = null;
     this.currentStep = 1;
     this.submitted = false;
     this.isCreatingJob = false;
@@ -776,8 +767,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     return this.currentStep === 3 ? 'quality_check' : 'planning_structure';
   }
 
-  private getDownloadFileName(): string {
-    return `${this.currentJob.metadata.plan.outline.title}.pptx`;
+  private getDownloadFileName(job: PresentationJobDetail): string {
+    return `${job.metadata.plan.outline.title}.pptx`;
   }
 
   private looksHashedUpload(fileName: string): boolean {
