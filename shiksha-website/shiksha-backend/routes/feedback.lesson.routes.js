@@ -4,6 +4,7 @@ const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const LessonFeedbackController = require("../controllers/feedback.lesson.controller.js");
 const {
 	validateFeedbackLesson,
+	validateFeedbackLessonUpdate,
 } = require("../validations/feedback.lesson.validation.js");
 const { isAuthenticated, requirePermission } = require("../middlewares/auth.js");
 
@@ -51,7 +52,7 @@ router.put(
 	"/lesson-feedback/update/:id",
 	isAuthenticated,
 	requirePermission("content.manage"),
-	validateFeedbackLesson,
+	validateFeedbackLessonUpdate,
 	asyncMiddleware(
 		lessonFeedbackController.update.bind(lessonFeedbackController)
 	)

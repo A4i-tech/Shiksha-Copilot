@@ -3,8 +3,6 @@ const TeacherResourceFeedbackDao = require("../dao/teacher.feedback.dao");
 const formatApiReponse = require("../helper/response");
 const { getScopedFeedback, updateScopedFeedback } = require("../helper/training.scope.helper");
 
-const UPDATABLE_FIELDS = ["feedback", "feedbackPerSets", "overallFeedbackReason", "isCompleted"];
-
 /** @extends {BaseManager<TeacherResourceFeedbackDao>} */
 class TeacherResourceFeedbackManager extends BaseManager {
 	constructor() {
@@ -60,7 +58,7 @@ class TeacherResourceFeedbackManager extends BaseManager {
 	}
 
 	update(id, updates, permissions) {
-		return updateScopedFeedback(this.dao, id, updates, permissions, UPDATABLE_FIELDS);
+		return updateScopedFeedback(this.dao, id, updates, permissions);
 	}
 }
 

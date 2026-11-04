@@ -22,7 +22,7 @@ describe('master-lesson list route', () => {
 
   it('forces the regenerated-lesson exclusion over a caller supplied isRegenerated filter', async () => {
     const res = await request(app).get('/master-lesson/list?filter[class]=5&filter[isRegenerated]=true');
-    expect(res.body).toEqual({ class: '5', isRegenerated: { $ne: true } });
+    expect(res.body).toEqual({ $and: [{ class: '5', isRegenerated: 'true' }, { isRegenerated: { $ne: true } }] });
   });
 
   it('adds the exclusion when the caller sends no filter', async () => {
