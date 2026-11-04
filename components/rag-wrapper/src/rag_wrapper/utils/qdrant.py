@@ -89,7 +89,7 @@ class QdrantUtils:
             **self.vector_store_kwargs,
         }
 
-    def create_payload_indexes(self, client: QdrantClient) -> None:
+    def create_payload_indexes(self) -> None:
         """Create keyword payload indexes for all configured payload fields.
 
         This is a noop when no payload fields are configured. Any errors are
@@ -101,7 +101,7 @@ class QdrantUtils:
 
         for field_name in self.payload_fields:
             try:
-                client.create_payload_index(
+                self.sync_client.create_payload_index(
                     collection_name=self.collection_name,
                     field_name=field_name,
                     field_schema=PayloadSchemaType.KEYWORD,
@@ -144,7 +144,7 @@ class QdrantUtils:
             },
         )
         # try to create payload indexes (safe to call even if no fields)
-        self.create_payload_indexes(client)
+        self.create_payload_indexes()
         self.logger.info(
             f"Created Qdrant collection: {self.collection_name} (dim={dim})"
         )
