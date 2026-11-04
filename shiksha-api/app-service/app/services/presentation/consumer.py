@@ -28,9 +28,9 @@ def make_broker() -> NatsBroker:
     )
 
 
-async def publish_job(broker, jobs: JobManager, job, *, msg_id: str | None = None) -> None:
-    message = JobMessage(type="presentation.run", job_id=str(job.id))
-    await broker.publish(JOBS_QUEUE, message, msg_id=msg_id or f"{job.id}:0")
+async def publish_job(broker, jobs: JobManager, job, *, msg_id: str) -> None:
+    message = JobMessage(type="presentation.run", job_id=job.id)
+    await broker.publish(JOBS_QUEUE, message, msg_id=msg_id)
     await jobs.mark_enqueued(job.id)
 
 
@@ -45,24 +45,44 @@ async def _cancel_on_signal(broker, job_id: uuid.UUID, run: asyncio.Task, hit: l
         logger.warning("Cancel watcher for job %s stopped. The job stops at its next job write.", job_id, exc_info=True)
 
 
+async def _fence_watch(jobs: JobManager, job_id: uuid.UUID, fence: str, run: asyncio.Task, every: float, lost: list[bool]) -> None:
+    while True:
+        await asyncio.sleep(every)
+        try:
+            held = await jobs.holds(job_id, fence)
+        except Exception:
+            logger.warning("Could not check the fence of job %s. Trying again.", job_id, exc_info=True)
+            continue
+        if not held:
+            logger.warning("Job %s fence %s was taken by another delivery. Cancelling the run.", job_id, fence)
+            lost.append(True)
+            run.cancel()
+            return
+
+
 def make_handler(service: PresentationService, broker) -> Handler:
     async def handle(message: JobMessage, fence: str) -> None:
-        job_id = uuid.UUID(message.job_id)
+        job_id = message.job_id
         token = lease_owner.set(fence)
         try:
             if (job := await service.jobs.claim(job_id, fence)) is None:
+                logger.info("Job %s: claim returned nothing (missing, complete, or failed for good)", job_id)
                 return
             run = asyncio.create_task(service.run_job(job_id))
             hit: list[bool] = []
+            lost: list[bool] = []
             watch = asyncio.create_task(_cancel_on_signal(broker, job_id, run, hit))
+            fence_watch = asyncio.create_task(_fence_watch(service.jobs, job_id, fence, run, settings.pres_ack_wait_seconds / 3, lost))
             try:
                 await run
             except asyncio.CancelledError:
-                if not hit:
+                if hit:
+                    await service.jobs.delete(job)
+                elif not lost:
                     raise
-                await service.jobs.delete(job)
             finally:
                 watch.cancel()
+                fence_watch.cancel()
         finally:
             lease_owner.reset(token)
             try:
@@ -77,9 +97,9 @@ async def reap_dead_letters(broker, jobs: JobManager) -> None:
     while True:
         try:
             async for dead in broker.dead_letters(JOBS_QUEUE):
-                job_id = uuid.UUID(dead.message.job_id)
+                job_id = dead.message.job_id
                 try:
-                    await jobs.fail_crashed(job_id, dead.num_delivered)
+                    await jobs.fail_crashed(job_id, dead.num_delivered, f"Stopped after {dead.num_delivered} tries without finishing")
                 except Exception:
                     logger.exception("Could not mark job %s as failed after a dead letter. The orphan sweep will.", job_id)
         except Exception:
@@ -87,15 +107,23 @@ async def reap_dead_letters(broker, jobs: JobManager) -> None:
             await asyncio.sleep(5)
 
 
+async def _republish(broker, jobs: JobManager, job, msg_id: str) -> None:
+    try:
+        await publish_job(broker, jobs, job, msg_id=msg_id)
+    except Exception:
+        logger.exception("Could not republish job %s. The next pass retries.", job.id)
+
+
 async def reconcile(broker, jobs: JobManager, every: float, older_than: float) -> None:
     while True:
         try:
             for job in await jobs.unenqueued(older_than):
-                await publish_job(broker, jobs, job)
+                await _republish(broker, jobs, job, f"{job.id}:0")
+            for job in [*await jobs.retry_due(settings.pres_ack_wait_seconds, settings.pres_stall_seconds), *await jobs.idle_queued(settings.pres_stall_seconds)]:
+                await _republish(broker, jobs, job, f"{job.id}:resched:{int(job.enqueued_at.timestamp())}")
             stale = settings.pres_stall_seconds + settings.pres_ack_wait_seconds * settings.pres_max_deliver
             for job in await jobs.orphaned(stale):
-                # advisory is at-most-once, this catches a missed one
-                await jobs.fail_crashed(job.id, settings.pres_max_deliver)
+                await jobs.fail_crashed(job.id, settings.pres_max_deliver, "Stopped because the worker stopped responding")
         except Exception:
             logger.exception("Reconcile pass failed. Retrying.")
         await asyncio.sleep(every)

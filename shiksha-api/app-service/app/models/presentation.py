@@ -87,6 +87,13 @@ class ImageSearchResults(BaseModel):
     message: str | None = Field(description="Information about this search operation")
 
 
+class LogEntry(BaseModel):
+    seq: int
+    type: str
+    data: dict[str, Any]
+    timestamp: datetime
+
+
 class JobDetail(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     creation_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -101,6 +108,7 @@ class JobDetail(BaseModel):
     tags: set[str] = Field(default_factory=set)
     lease_owner: str | None = Field(default=None, exclude=True)  # fence of the delivery holding the job
     enqueued: bool = Field(default=False, exclude=True)
+    enqueued_at: datetime | None = Field(default=None, exclude=True)
     cancel_requested: bool = Field(default=False, exclude=True)
 
 
