@@ -62,7 +62,7 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           for i in 1 2 3; do
-            poetry install && break
+            poetry install --extras azure && break
             if [ "$i" -eq 3 ]; then
               echo "::error::poetry install failed after 3 attempts" >&2
               exit 1

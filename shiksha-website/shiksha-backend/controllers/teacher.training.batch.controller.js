@@ -9,7 +9,7 @@ const {
   deleteFromStorage,
   getPreSignedFileUrl,
   uploadToStorage,
-} = require("../services/azure.blob.service");
+} = require("../services/storage.service");
 const { schoolDependency } = require("../helper/permission.helper");
 const { permissionScopeFilter } = require("../helper/scope.helper");
 const { scopedTeacherIds, canAccessBatch } = require("../helper/training.scope.helper");
