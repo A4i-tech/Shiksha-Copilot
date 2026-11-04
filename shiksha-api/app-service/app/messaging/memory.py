@@ -70,14 +70,12 @@ class MemoryBroker:
         message: JobMessage,
         *,
         delay: float = 0,
-        msg_id: str | None = None,
+        msg_id: str,
     ) -> None:
         q = self._queues[queue]
-        if msg_id is not None:
-            if msg_id in q.msg_ids:
-                return
-            # ponytail: no expiry window, the real broker has a duplicate window
-            q.msg_ids.add(msg_id)
+        if msg_id in q.msg_ids:
+            return
+        q.msg_ids.add(msg_id)
         self._seq += 1
         q.pending.append(_Item(self._seq, message, self.clock() + delay))
 

@@ -27,7 +27,6 @@ class _NatsDelivery:
         self.num_delivered = msg.metadata.num_delivered
         self.fence = f"{msg.metadata.sequence.stream}:{self.num_delivered}"
 
-    # NATS never tells a worker its lock expired, so ack and in_progress never raise LockLost
     async def ack(self) -> None:
         await self._msg.ack_sync()
 
@@ -75,6 +74,11 @@ class NatsBroker:
             self.url, user_credentials=self.creds, max_reconnect_attempts=-1
         )
         try:
+            version = self._nc.connected_server_version
+            if (version.major, version.minor) < (2, 12):
+                raise RuntimeError(
+                    f"NATS {version.major}.{version.minor} is too old, message scheduler needs 2.12+"
+                )
             self._js = js = self._nc.jetstream()
             config = StreamConfig(
                 name=self.stream,
@@ -85,15 +89,20 @@ class NatsBroker:
                 duplicate_window=120,
                 allow_msg_ttl=True,
                 allow_msg_schedules=True,
+                max_age=7 * 24 * 3600,
+                max_bytes=512 * 1024**2,
             )
             try:
                 await js.stream_info(self.stream)
-                await js.update_stream(config)
             except NotFoundError:
                 await js.add_stream(config)
+            else:
+                try:
+                    await js.update_stream(config)
+                except Exception as exc:
+                    logger.warning("Keeping existing stream %s config: %s", self.stream, exc)
             for queue in self.queues:
                 name = self._consumer(queue)
-                # add_consumer on an existing durable updates ack_wait and max_deliver
                 await js.add_consumer(
                     self.stream,
                     ConsumerConfig(
@@ -123,10 +132,11 @@ class NatsBroker:
         message: JobMessage,
         *,
         delay: float = 0,
-        msg_id: str | None = None,
+        msg_id: str,
     ) -> None:
-        assert self._js
-        headers = {"Nats-Msg-Id": msg_id} if msg_id is not None else {}
+        if not self._js:
+            raise RuntimeError("NATS not connected")
+        headers = {"Nats-Msg-Id": msg_id}
         subject = queue
         if delay > 0:
             at = datetime.now(UTC) + timedelta(seconds=delay)
@@ -134,7 +144,7 @@ class NatsBroker:
             headers["Nats-Schedule-Target"] = queue
             subject = f"{queue}.sched"
         await self._js.publish(
-            subject, message.model_dump_json().encode(), headers=headers or None
+            subject, message.model_dump_json().encode(), headers=headers
         )
 
     async def fetch(self, queue: str, timeout: float) -> _NatsDelivery | None:
@@ -155,12 +165,13 @@ class NatsBroker:
         return None
 
     async def dead_letters(self, queue: str) -> AsyncIterator[DeadLetter]:
-        assert self._nc and self._js
+        if not (self._nc and self._js):
+            raise RuntimeError("NATS not connected")
         advisory = (
             "$JS.EVENT.ADVISORY.CONSUMER.MAX_DELIVERIES."
             f"{self.stream}.{self._consumer(queue)}"
         )
-        # queue group: with several API pods, one pod gets each advisory
+        # queue group: one API pod gets each advisory
         sub = await self._nc.subscribe(advisory, queue=f"{self.durable}-reapers")
         await self._nc.flush()
         try:
@@ -180,12 +191,14 @@ class NatsBroker:
             await sub.unsubscribe()
 
     async def notify(self, subject: str, data: bytes) -> None:
-        assert self._nc
+        if not self._nc:
+            raise RuntimeError("NATS not connected")
         await self._nc.publish(subject, data)
         await self._nc.flush()
 
     async def subscribe(self, subject: str) -> AsyncIterator[bytes]:
-        assert self._nc
+        if not self._nc:
+            raise RuntimeError("NATS not connected")
         sub = await self._nc.subscribe(subject)
         await self._nc.flush()
         try:
