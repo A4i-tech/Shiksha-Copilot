@@ -13,7 +13,13 @@ if (backend === "s3") {
 }
 
 function getBlobName(blobRef, container) {
-    const pathname = decodeURIComponent(new URL(blobRef).pathname).replace(/^\/+/, "");
+    let url;
+    try {
+        url = new URL(blobRef);
+    } catch {
+        return blobRef;
+    }
+    const pathname = decodeURIComponent(url.pathname).replace(/^\/+/, "");
     return pathname.startsWith(`${container}/`) ? pathname.slice(container.length + 1) : pathname;
 }
 
@@ -33,7 +39,7 @@ async function deleteFromStorage(blobRef) {
 
 async function getBlobContent(blobRef, contentType) {
     const buffer = await provider.download(getBlobName(blobRef, provider.container));
-    return { contentType, content: buffer.toString("base64") };
+    return { contentType: contentType || "application/octet-stream", content: buffer.toString("base64") };
 }
 
 async function getPreSignedProfileImageUrl(userId) {

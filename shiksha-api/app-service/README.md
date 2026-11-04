@@ -115,6 +115,8 @@ QDRANT_API_KEY=your_qdrant_api_key
 - `AZURE_PROJECT_ENDPOINT`: Azure AI Foundry project endpoint URL
 - `STORAGE_BACKEND`: Storage provider for RAG index files, `s3` (default) or `azure`
 - `S3_ENDPOINT_URL`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`: S3-compatible settings (`STORAGE_BACKEND=s3`). Remove `S3_ENDPOINT_URL` to use AWS.
+- The S3 bucket must exist before the first upload. The app does not create it.
+- Presentation storage needs `STORAGE_BACKEND=azure` until the `s3fs` package is added.
 - `BLOB_STORE_CONNECTION_STRING`: Azure Storage connection string (`STORAGE_BACKEND=azure` only)
 
 **Optional Environment Variables:**
