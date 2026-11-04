@@ -25,7 +25,7 @@ const { ORGANISATION_SCOPE_TYPES } = require("../config/role.scope");
 const logger = require("../config/loggers");
 const AuditLog = require("../models/audit.log.model");
 const startAuditJob = require("../helper/audit.job.helper");
-const { uploadToStorage } = require("../services/azure.blob.service");
+const { uploadToStorage } = require("../services/storage.service");
 
 async function prepareAssignments(input, actor, current, teacher, permission) {
   const roles = await Role.find({ _id: { $in: input.map((assignment) => assignment.roleId) }, isDeleted: false });

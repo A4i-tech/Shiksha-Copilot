@@ -1,4 +1,4 @@
-const { getPreSignedProfileImageUrl } = require("../services/azure.blob.service");
+const { getPreSignedProfileImageUrl } = require("../services/storage.service");
 
 const PROFILE_IMAGE_EXPIRY_SECONDS = 5 * 24 * 60 * 60; // 5 days
 
