@@ -10,7 +10,7 @@ describe("storage.service", () => {
     Object.entries(providerPaths).forEach(([name, path]) => {
       jest.doMock(path, () => {
         loaded.push(name);
-        return { container: name, upload: jest.fn(), getPreSignedUrl: jest.fn(async () => name) };
+        return { container: name, upload: jest.fn(), remove: jest.fn(), getPreSignedUrl: jest.fn(async () => name) };
       });
     });
     delete process.env.STORAGE_BACKEND;
@@ -39,5 +39,17 @@ describe("storage.service", () => {
 
     expect(() => require("../../../services/storage.service")).toThrow("STORAGE_BACKEND=gcs is not supported");
     expect(loaded).toEqual([]);
+  });
+
+  it.each([
+    ["raw-blob-name.png", "raw-blob-name.png"],
+    ["https://host/azure/raw%20name.png", "raw name.png"],
+  ])("deleteFromStorage maps %s to blob name %s", async (ref, name) => {
+    process.env.STORAGE_BACKEND = "azure";
+    const provider = require("../../../services/azure.blob.service");
+
+    await require("../../../services/storage.service").deleteFromStorage(ref);
+
+    expect(provider.remove).toHaveBeenCalledWith(name);
   });
 });

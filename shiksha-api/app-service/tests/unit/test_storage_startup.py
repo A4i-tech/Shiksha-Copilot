@@ -16,13 +16,14 @@ def test_s3_backend_builds_without_azure_sdk(monkeypatch):
 
 def test_settings_treat_empty_s3_values_as_unset(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test")
-    for key in ("S3_ENDPOINT_URL", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"):
+    for key in ("S3_ENDPOINT_URL", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "BLOB_STORE_URL"):
         monkeypatch.setenv(key, "")
 
     settings = Settings(_env_file=None)
 
     assert settings.s3_endpoint_url is None
     assert settings.s3_access_key_id is None
+    assert settings.blob_store_url is None
 
 
 @pytest.mark.parametrize(

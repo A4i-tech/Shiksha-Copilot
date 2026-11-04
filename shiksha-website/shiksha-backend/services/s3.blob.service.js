@@ -36,7 +36,7 @@ if (S3_ENDPOINT_URL) {
     endpoint = { endPoint: url.hostname, port: url.port ? Number(url.port) : undefined, useSSL: url.protocol === "https:" };
 }
 
-const client = new Minio.Client({ ...endpoint, accessKey, secretKey, region, partSize: PART_SIZE });
+const client = new Minio.Client({ ...endpoint, accessKey, secretKey, region: region || "us-east-1", partSize: PART_SIZE });
 
 const getPreSignedUrl = (objectName, expirySeconds) => client.presignedGetObject(bucket, objectName, expirySeconds);
 

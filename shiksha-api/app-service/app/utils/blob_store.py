@@ -8,7 +8,11 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import settings
 
-_S3_CONFIG = Config(s3={"addressing_style": "path"})
+_S3_CONFIG = Config(
+    s3={"addressing_style": "path"},
+    request_checksum_calculation="when_required",
+    response_checksum_validation="when_required",
+)
 
 
 class _AzureBackend:

@@ -84,7 +84,7 @@ class Settings(BaseSettings):
     # Commons
     youtube_api_key: str | None = None
 
-    @field_validator("s3_endpoint_url", "s3_access_key_id", mode="before")
+    @field_validator("s3_endpoint_url", "s3_access_key_id", "blob_store_url", "blob_store_connection_string", mode="before")
     @classmethod
     def _empty_to_none(cls, value):
         return value or None
