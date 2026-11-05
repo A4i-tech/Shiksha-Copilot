@@ -16,6 +16,7 @@ interface PresentationListItem {
   slides: number | null;
   instruction: string | null;
   status: string;
+  phase: string;
   message: string;
   metadata: any;
 }
@@ -121,8 +122,8 @@ export class GenerationStatusComponent implements OnInit, OnDestroy {
       isCompleted,
       updatedAt: item.creation_time,
       presentationTitle: item.metadata?.plan?.outline?.title || 'Presentation deck',
-      presentationStatusTone: isCompleted ? 'completed' : isTerminalError ? 'failed' : item.status === 'idle' ? 'idle' : 'running',
-      presentationStatusLabel: isCompleted ? 'Completed' : isTerminalError ? 'Error' : isRecovering ? 'Recovering' : item.status === 'idle' ? 'Idle' : 'In Progress',
+      presentationStatusTone: isCompleted ? 'completed' : isTerminalError ? 'failed' : item.phase === 'queued' ? 'idle' : 'running',
+      presentationStatusLabel: isCompleted ? 'Completed' : isTerminalError ? 'Error' : isRecovering ? 'Recovering' : item.phase === 'queued' ? 'Idle' : 'In Progress',
       presentationStatusMessage: item.message || 'Presentation job created',
       presentationSlideCount: totalSlides,
     };
