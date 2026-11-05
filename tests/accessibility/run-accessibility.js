@@ -116,6 +116,7 @@ async function scanUrl(page, url) {
     console.log(`    (networkidle timed out — continuing with domcontentloaded)`);
   }
   await dismissModals(page);
+  await page.locator('.ngx-spinner-overlay').first().waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
   await page.addScriptTag({ path: require.resolve('axe-core') });
   return page.evaluate(() => window.axe.run());
 }
