@@ -459,12 +459,13 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     }
 
     this.isDownloading = true;
+    const job = this.currentJob;
     const downloadSubscription = this.contentGenerationService
-      .downloadPresentationFile(this.currentJob.id, "pptx")
+      .downloadPresentationFile(job.id, "pptx")
       .subscribe({
         next: (blob) => {
           this.isDownloading = false;
-          saveAs(blob, this.getDownloadFileName());
+          saveAs(blob, this.getDownloadFileName(job));
         },
         error: (error) => {
           this.isDownloading = false;
@@ -766,9 +767,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     return this.currentStep === 3 ? 'quality_check' : 'planning_structure';
   }
 
-  private getDownloadFileName(): string {
-    const sourceName = this.selectedFile?.name || this.currentJob?.textbook_file || 'presentation-source';
-    return `${sourceName.replace(/\.[^/.]+$/, '')}.pptx`;
+  private getDownloadFileName(job: PresentationJobDetail): string {
+    return `${job.metadata.plan.outline.title}.pptx`;
   }
 
   private looksHashedUpload(fileName: string): boolean {
