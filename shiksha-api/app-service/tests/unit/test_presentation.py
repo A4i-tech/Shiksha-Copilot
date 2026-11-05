@@ -45,3 +45,25 @@ def test_image_url_mapping_is_and_reversible():
     assert mapped.endswith(".gif")
     assert resolver.map_url(url) == mapped
     assert resolver.resolve_url(mapped) == url
+
+
+def test_rate_limit_error_backs_off_longer():
+    from types import SimpleNamespace
+    from app.services.presentation.service import PresentationService
+    job = SimpleNamespace(metadata={})
+    svc = object.__new__(PresentationService)
+    other = svc._error_metadata(job, "x", "boom")
+    limited = svc._error_metadata(job, "x", "APIError: exceeded rate limit")
+    assert other["metadata.error.next_attempt"] < limited["metadata.error.next_attempt"] - 20
+
+
+def test_rate_limit_backoff_is_exponential_with_jitter():
+    import time
+    from types import SimpleNamespace
+    from app.services.presentation.service import PresentationService
+    svc = object.__new__(PresentationService)
+    for attempt, low in [(1, 30), (2, 60), (3, 120), (5, 480), (6, 480)]:
+        job = SimpleNamespace(metadata={"error": {"attempt": attempt - 1}})
+        now = time.time()
+        delay = svc._error_metadata(job, "x", "exceeded rate limit")["metadata.error.next_attempt"] - now
+        assert low <= delay < low + 31
