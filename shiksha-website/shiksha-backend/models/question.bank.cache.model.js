@@ -1,6 +1,20 @@
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
+const objectiveSchema = new Schema(
+  {
+    objective: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
 const questionSchema = new Schema({
   question: {
     type: Schema.Types.Mixed,
@@ -15,7 +29,7 @@ const questionSchema = new Schema({
     required: true,
   },
   objective: {
-    type: String,
+    type: objectiveSchema,
     required: true,
     index: true,
   },
