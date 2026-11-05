@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import json
 import logging
 import pathlib
+import random
 from datetime import datetime
 from typing import Any
 
@@ -111,6 +112,7 @@ class PresentationService:
 
     def _error_metadata(self, job: JobDetail, message: str, error_message: str):
         attempt = job.metadata.get("error", {}).get("attempt", 0) + 1
+        base, cap = (30, 480) if "rate limit" in error_message.lower() else (5, 60)  # Azure quota resets per minute
         return {
             "status": "error",
             "message": message,
@@ -118,7 +120,7 @@ class PresentationService:
             "metadata.error.timestamp": datetime.now().isoformat(),
             "metadata.error.error_message": error_message,
             "metadata.error.attempt": attempt,
-            "metadata.error.next_attempt": time.time() + min(60, 5 * (2 ** (attempt - 1))),
+            "metadata.error.next_attempt": time.time() + min(cap, base * 2 ** (attempt - 1)) + random.uniform(0, base),
             "metadata.error.attempting_recovery": True,
         }
 
