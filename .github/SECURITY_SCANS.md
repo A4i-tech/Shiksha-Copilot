@@ -30,7 +30,7 @@ For CodeQL: dismiss the alert in the Security tab with a reason, or add the path
 
 ## Known pre-existing findings (not fixed by this PR)
 
-A full scan at the time this gate lands reports 97 findings (11 `ERROR`, 86 `WARNING`). The diff-aware gate does **not** block on any of these, it only evaluates lines a PR actually changes:
+A full scan when this gate landed (see the `Semgrep full-repo findings` summary of the PR #251 run) reported the findings below. The diff-aware gate does **not** block on any of these, it only evaluates lines a PR actually changes:
 
 - `yaml.github-actions.security.secrets-inherit`, 5 hits in `.github/workflows/main.yaml` (reusable-workflow `secrets: inherit` pattern)
 - `yaml.github-actions.security.run-shell-injection`, 4 hits across `.github/actions/*/action.yml`, `.github/workflows/cicd-frontend.yaml`, `deploy-azure-webapp.yml`, `main.yaml`
@@ -44,7 +44,7 @@ A full scan at the time this gate lands reports 97 findings (11 `ERROR`, 86 `WAR
 
 Locations are tracked in issue #575.
 
-A companion PR addresses the first 8 categories (the 9th is parked per issue #575). Triage for anything still open belongs to issue #575.
+PR #252 addresses the first 8 categories (the 9th is parked per issue #575). Triage for anything still open belongs to issue #575.
 
 ## Making the gate enforceable
 
