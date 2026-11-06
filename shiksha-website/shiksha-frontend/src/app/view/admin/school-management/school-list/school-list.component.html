@@ -384,9 +384,9 @@
 </app-modal>
 
 <app-modal *ngIf="modalService.showBlukUploadDialog">
-  <app-upload-popup context="school-management"
+  <app-upload-popup *ngIf="excelMaxBytes$ | async as maxFileSize" context="school-management"
     [allowedFileTypes]="uploadFileTypes"
-    [maxFileSize]="maxExcelImportSize"
+    [maxFileSize]="maxFileSize"
     (fileUploaded)="uploadedFile($event)"
     (upload)="upload($event)"
   ></app-upload-popup>

@@ -1,11 +1,13 @@
 import { AfterViewInit, Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { inject } from '@angular/core';
+import { UploadLimitsService } from 'src/app/core/services/upload-limits.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, Subject, debounceTime, distinctUntilChanged, Observable, forkJoin } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { UserManagementService } from 'src/app/view/admin/user-management/user-management.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
 import { StaffUserCommonService } from '../../services/staff-user-common.service';
-import { BULK_UPLOAD_FILE_TYPES, MAX_EXCEL_IMPORT_SIZE } from '../../utility/constant.util';
+import { BULK_UPLOAD_FILE_TYPES } from '../../utility/constant.util';
 import { ModalService } from '../modal/modal.service';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -167,7 +169,7 @@ export class UserStaffListComponent implements OnInit,AfterViewInit{
   selectedRole!: string;
   selectedSchool!: string;
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
-  readonly maxExcelImportSize = MAX_EXCEL_IMPORT_SIZE;
+  readonly excelMaxBytes$ = inject(UploadLimitsService).excelMaxBytes$;
   fileToUpload!: File;
   lessonContentType!: string | null;
   contentListConfig:ContentListConfig = {

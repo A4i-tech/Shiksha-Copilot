@@ -3,6 +3,7 @@ const multer = require("multer");
 const imageTypes = new Set(["image/jpeg", "image/jpg", "image/png"]);
 
 const EXCEL_MAX_MB = 2;
+const EXCEL_MAX_BYTES = EXCEL_MAX_MB * 1024 * 1024;
 const IMAGE_MAX_MB = 5;
 
 const storage = multer.memoryStorage();
@@ -21,7 +22,7 @@ function handle(upload, validSignature, tooLargeMessage) {
 
 const excelUpload = handle(multer({
   storage,
-  limits: { ...baseLimits, fileSize: EXCEL_MAX_MB * 1024 * 1024 },
+  limits: { ...baseLimits, fileSize: EXCEL_MAX_BYTES },
   fileFilter: (req, file, callback) => {
     const allowed = file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     callback(allowed ? null : new Error("Only XLSX files are allowed."), allowed);
@@ -41,4 +42,4 @@ const profileImageUpload = handle(multer({
   : file.buffer.subarray(0, 3).equals(Buffer.from("ffd8ff", "hex")),
   `Image is larger than the ${IMAGE_MAX_MB} MB limit. Choose a smaller image and try again.`);
 
-module.exports = { excelUpload, profileImageUpload };
+module.exports = { excelUpload, profileImageUpload, EXCEL_MAX_BYTES };

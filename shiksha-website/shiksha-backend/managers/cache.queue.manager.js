@@ -150,11 +150,15 @@ const addCacheJob = async (jobData) => {
   return job;
 };
 
+const JOB_FIELDS = {
+  notFoundQuestions: "notFoundQuestions",
+  processedCache: "processedCache",
+  unitLevel: "unitLevel",
+  newResQuestions: "aiQuestionsForCache",
+};
+
 const toCacheJob = (summary) => ({
-  notFoundQuestions: summary.notFoundQuestions,
-  processedCache: summary.processedCache,
-  unitLevel: summary.unitLevel,
-  newResQuestions: summary.aiQuestionsForCache,
+  ...Object.fromEntries(Object.entries(JOB_FIELDS).map(([key, field]) => [key, summary[field]])),
   cacheSummaryId: summary._id.toString(),
 });
 
@@ -176,7 +180,7 @@ const requeueFailedJobs = async () => {
     if (lastId) filter._id = { $gt: lastId };
 
     const batch = await QuestionBankCacheSummary.find(filter)
-      .select("notFoundQuestions processedCache unitLevel aiQuestionsForCache")
+      .select(Object.values(JOB_FIELDS).join(" "))
       .sort({ _id: 1 })
       .limit(RETRY_BATCH_SIZE)
       .lean();
