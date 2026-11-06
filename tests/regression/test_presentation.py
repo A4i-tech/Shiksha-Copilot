@@ -1,5 +1,8 @@
+import io
 import pytest
 import os
+import re
+import zipfile
 from typing import Optional
 from playwright.sync_api import expect
 from page_objects.content_generation_page import ContentGenerationPage
@@ -109,3 +112,48 @@ def test_presentation_download_when_complete(presentation, step):
     with step("Verify download button visible and enabled"):
         expect(page_obj.download_btn).to_be_visible(timeout=5000)
         expect(page_obj.download_btn).to_be_enabled()
+
+
+DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def _make_docx(text: str) -> bytes:
+    """Smallest OOXML package LibreOffice opens as a Word document."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("[Content_Types].xml", '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>')
+        z.writestr("_rels/.rels", '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>')
+        z.writestr("word/document.xml", f'<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>{text}</w:t></w:r></w:p></w:body></w:document>')
+    return buf.getvalue()
+
+
+def test_presentation_docx_upload_is_converted(logged_in_page, step):
+    """
+    Regression PRES-03 (#560): a .docx upload is accepted and converted by the backend,
+    instead of failing with "Unsupported binary content type".
+    """
+    page_obj = PresentationPage(logged_in_page)
+
+    with step("Open the presentation page"):
+        page_obj.open_new(BASE_URL)
+
+    with step("Upload a .docx and start generation"):
+        page_obj.upload_document(
+            "photosynthesis.docx",
+            DOCX_MIME,
+            _make_docx("Plants use sunlight, water and carbon dioxide to make food and oxygen."),
+        )
+        page_obj.generate_btn.click()
+        logged_in_page.wait_for_url("**/presentation/*", timeout=30000)
+
+    try:
+        with step("Wait for document conversion to finish"):
+            expect(page_obj.status_indicator).to_be_visible(timeout=30000)
+            expect(page_obj.status_indicator).not_to_have_text(
+                re.compile("extract|simplif", re.IGNORECASE), timeout=120000
+            )
+
+        with step("Verify the job did not fail"):
+            expect(page_obj.error_msg).to_have_count(0)
+    finally:
+        page_obj.terminate_job()
