@@ -4,9 +4,10 @@
 name = "adlfs"
 version = "2026.5.0"
 description = "Access Azure Blobs and Data Lake Storage (ADLS) Gen2 with fsspec and dask"
-optional = false
+optional = true
 python-versions = ">=3.10"
 groups = ["main"]
+markers = "extra == \"azure\""
 files = [
     {file = "adlfs-2026.5.0-py3-none-any.whl", hash = "sha256:7acf1d62eade0c1c0b1b0762b36cb0921a646dd41311af1d261f52fb24fe4e57"},
     {file = "adlfs-2026.5.0.tar.gz", hash = "sha256:abb24e3afba57c6766799514b6f12b65b577d4946254961c15cef71e5b51f374"},
@@ -21,6 +22,32 @@ fsspec = ">=2023.12.0"
 [package.extras]
 docs = ["furo", "myst-parser", "numpydoc", "sphinx"]
 tests = ["arrow", "dask[dataframe]", "docker", "pytest", "pytest-mock"]
+
+[[package]]
+name = "aiobotocore"
+version = "2.26.0"
+description = "Async client for aws services using botocore and aiohttp"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "aiobotocore-2.26.0-py3-none-any.whl", hash = "sha256:a793db51c07930513b74ea7a95bd79aaa42f545bdb0f011779646eafa216abec"},
+    {file = "aiobotocore-2.26.0.tar.gz", hash = "sha256:50567feaf8dfe2b653570b4491f5bc8c6e7fb9622479d66442462c021db4fadc"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.9.2,<4.0.0"
+aioitertools = ">=0.5.1,<1.0.0"
+botocore = ">=1.41.0,<1.41.6"
+jmespath = ">=0.7.1,<2.0.0"
+multidict = ">=6.0.0,<7.0.0"
+python-dateutil = ">=2.1,<3.0.0"
+wrapt = ">=1.10.10,<2.0.0"
+
+[package.extras]
+awscli = ["awscli (>=1.43.0,<1.43.6)"]
+boto3 = ["boto3 (>=1.41.0,<1.41.6)"]
+httpx = ["httpx (>=0.25.1,<0.29)"]
 
 [[package]]
 name = "aiofile"
@@ -202,6 +229,18 @@ yarl = ">=1.17.0,<2.0"
 
 [package.extras]
 speedups = ["Brotli (>=1.2) ; platform_python_implementation == \"CPython\"", "aiodns (>=3.3.0)", "backports.zstd ; platform_python_implementation == \"CPython\" and python_version < \"3.14\"", "brotlicffi (>=1.2) ; platform_python_implementation != \"CPython\""]
+
+[[package]]
+name = "aioitertools"
+version = "0.13.0"
+description = "itertools and builtins for AsyncIO and mixed iterables"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "aioitertools-0.13.0-py3-none-any.whl", hash = "sha256:0be0292b856f08dfac90e31f4739432f4cb6d7520ab9eb73e143f4f2fa5259be"},
+    {file = "aioitertools-0.13.0.tar.gz", hash = "sha256:620bd241acc0bbb9ec819f1ab215866871b4bbd1f73836a55f799200ee86950c"},
+]
 
 [[package]]
 name = "aiosignal"
@@ -414,9 +453,10 @@ typing-extensions = ">=4.0.0"
 name = "azure-storage-blob"
 version = "12.29.0"
 description = "Microsoft Azure Blob Storage Client Library for Python"
-optional = false
+optional = true
 python-versions = ">=3.9"
 groups = ["main"]
+markers = "extra == \"azure\""
 files = [
     {file = "azure_storage_blob-12.29.0-py3-none-any.whl", hash = "sha256:ccf8a1bcd5e49df83ab85aab793b579e5ba2eeea2ad8900b2f62ca3a37dc391f"},
     {file = "azure_storage_blob-12.29.0.tar.gz", hash = "sha256:2824ddd7ebc9056034ebc76b17971a38e9aa5835abb0d565b9700493f2a6c657"},
@@ -549,6 +589,26 @@ colorama = ["colorama (>=0.4.3)"]
 d = ["aiohttp (>=3.7.4) ; sys_platform != \"win32\" or implementation_name != \"pypy\"", "aiohttp (>=3.7.4,!=3.9.0) ; sys_platform == \"win32\" and implementation_name == \"pypy\""]
 jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
+
+[[package]]
+name = "botocore"
+version = "1.41.5"
+description = "Low-level, data-driven core of boto 3."
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "botocore-1.41.5-py3-none-any.whl", hash = "sha256:3fef7fcda30c82c27202d232cfdbd6782cb27f20f8e7e21b20606483e66ee73a"},
+    {file = "botocore-1.41.5.tar.gz", hash = "sha256:0367622b811597d183bfcaab4a350f0d3ede712031ce792ef183cabdee80d3bf"},
+]
+
+[package.dependencies]
+jmespath = ">=0.7.1,<2.0.0"
+python-dateutil = ">=2.1,<3.0.0"
+urllib3 = {version = ">=1.25.4,<2.2.0 || >2.2.0,<3", markers = "python_version >= \"3.10\""}
+
+[package.extras]
+crt = ["awscrt (==0.29.0)"]
 
 [[package]]
 name = "cachetools"
@@ -2110,9 +2170,10 @@ files = [
 name = "isodate"
 version = "0.7.2"
 description = "An ISO 8601 date/time/duration parser and formatter"
-optional = false
+optional = true
 python-versions = ">=3.7"
 groups = ["main"]
+markers = "extra == \"azure\""
 files = [
     {file = "isodate-0.7.2-py3-none-any.whl", hash = "sha256:28009937d8031054830160fce6d409ed342816b543597cece116d966c6d99e15"},
     {file = "isodate-0.7.2.tar.gz", hash = "sha256:4cd1aa0f43ca76f4a6c6c0292a85f40b35ec2e43e315b59f06e6d32171a953e6"},
@@ -2350,6 +2411,18 @@ files = [
     {file = "jiter-0.14.0-graalpy312-graalpy250_312_native-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:432c4db5255d86a259efde91e55cb4c8d18c0521d844c9e2e7efcce3899fb016"},
     {file = "jiter-0.14.0-graalpy312-graalpy250_312_native-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:67f00d94b281174144d6532a04b66a12cb866cbdc47c3af3bfe2973677f9861a"},
     {file = "jiter-0.14.0.tar.gz", hash = "sha256:e8a39e66dac7153cf3f964a12aad515afa8d74938ec5cc0018adcdae5367c79e"},
+]
+
+[[package]]
+name = "jmespath"
+version = "1.1.0"
+description = "JSON Matching Expressions"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64"},
+    {file = "jmespath-1.1.0.tar.gz", hash = "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d"},
 ]
 
 [[package]]
@@ -4999,6 +5072,21 @@ pytest = ">=6.2.5"
 dev = ["pre-commit", "pytest-asyncio", "tox"]
 
 [[package]]
+name = "python-dateutil"
+version = "2.9.0.post0"
+description = "Extensions to the standard Python datetime module"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
+groups = ["main"]
+files = [
+    {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
+    {file = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"},
+]
+
+[package.dependencies]
+six = ">=1.5"
+
+[[package]]
 name = "python-discovery"
 version = "1.3.1"
 description = "Python interpreter discovery"
@@ -6534,9 +6622,9 @@ test = ["big-O", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more_it
 type = ["pytest-mypy"]
 
 [extras]
-azure = ["azure-ai-translation-text"]
+azure = ["adlfs", "azure-ai-translation-text", "azure-identity", "azure-storage-blob"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.11"
-content-hash = "45b0c64f51f65303ad719f918ab4c523ba2fcd0e64e3bb2c3822a5d50021b76a"
+content-hash = "33ba304a01c2630ca6cd10c3613849c44c3cba9f2aaea0f0757419b6f3a6e13d"

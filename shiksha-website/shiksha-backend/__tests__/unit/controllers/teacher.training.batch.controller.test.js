@@ -8,7 +8,7 @@ jest.mock("../../../models/user.model");
 jest.mock("../../../models/teacher.absent.model");
 jest.mock("../../../models/school.model");
 jest.mock("../../../managers/teacher.training.batch.manager");
-jest.mock("../../../services/azure.blob.service");
+jest.mock("../../../services/storage.service");
 
 describe("TeacherTrainingBatchController", () => {
   let teacherTrainingBatchController;
