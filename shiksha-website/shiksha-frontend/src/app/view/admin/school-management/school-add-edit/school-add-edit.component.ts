@@ -1,4 +1,6 @@
 import { AfterViewInit, Component, OnDestroy, OnInit } from '@angular/core';
+import { inject } from '@angular/core';
+import { UploadLimitsService } from 'src/app/core/services/upload-limits.service';
 import {
   AbstractControl,
   FormBuilder,
@@ -203,6 +205,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
+  readonly excelMaxBytes$ = inject(UploadLimitsService).excelMaxBytes$;
 
   fileToUpload!: File;
 

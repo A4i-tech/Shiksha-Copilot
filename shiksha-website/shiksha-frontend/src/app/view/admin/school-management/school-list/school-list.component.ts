@@ -5,6 +5,8 @@ import {
   OnInit,
   ViewChild,
 } from '@angular/core';
+import { inject } from '@angular/core';
+import { UploadLimitsService } from 'src/app/core/services/upload-limits.service';
 import { SchoolList } from 'src/app/shared/interfaces/school-list.interface';
 import { SchoolManagementService } from '../school-management.service';
 import { Router } from '@angular/router';
@@ -84,6 +86,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   readonly actionMenu = new ActionMenuController();
 
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
+  readonly excelMaxBytes$ = inject(UploadLimitsService).excelMaxBytes$;
 
   fileToUpload!: File;
 
