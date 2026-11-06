@@ -125,7 +125,7 @@ def _to_markdown(data: bytes) -> str:
         return pymupdf4llm.to_markdown(doc)
 
 
-# Office formats OpenAI cannot ingest directly. We render them to PDF with LibreOffice and extract markdown from that.
+# Office formats OpenAI cannot ingest directly.
 OFFICE_MIME_SUFFIXES = {
     "application/msword": ".doc",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
@@ -135,10 +135,11 @@ OFFICE_MIME_SUFFIXES = {
 
 
 async def _transform(content: AsyncBufferedReader, mime: str) -> str | None:
-    await content.seek(0)
     if mime == "application/pdf":
+        await content.seek(0)
         return await asyncio.to_thread(_to_markdown, await content.read())
     if mime in OFFICE_MIME_SUFFIXES:
+        await content.seek(0)
         pdf = await LibreOffice().convert(io.BytesIO(await content.read()), "pdf", OFFICE_MIME_SUFFIXES[mime])
         return await asyncio.to_thread(_to_markdown, pdf)
     return None

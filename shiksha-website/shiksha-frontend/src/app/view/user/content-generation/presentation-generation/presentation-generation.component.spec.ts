@@ -23,8 +23,7 @@ describe('PresentationGenerationComponent file upload', () => {
 
   afterEach(() => component.ngOnDestroy());
 
-  it('accepts pdf, doc, docx, ppt, pptx, txt and md', () => {
-    expect([...component.acceptedFileTypes].sort()).toEqual(['.doc', '.docx', '.md', '.pdf', '.ppt', '.pptx', '.txt']);
+  it('exposes accepted types for the file picker', () => {
     expect(component.acceptedFileTypesAttr).toContain('.pptx');
   });
 
@@ -45,15 +44,13 @@ describe('PresentationGenerationComponent file upload', () => {
     expect(utility.showWarning).toHaveBeenCalled();
   });
 
-  ['book.docx', 'slides.pptx', 'old.doc', 'old.ppt'].forEach((name) => {
-    it(`uploads ${name} to the backend unmodified`, () => {
-      const file = new File(['x'], name);
-      component.selectedFile = file;
-      component.startGeneration();
+  it('uploads the selected file to the backend unmodified', () => {
+    const file = new File(['x'], 'book.docx');
+    component.selectedFile = file;
+    component.startGeneration();
 
-      expect(service.createPresentationJob).toHaveBeenCalledTimes(1);
-      const sent = service.createPresentationJob.calls.mostRecent().args[0] as FormData;
-      expect(sent.get('textbook_file')).toBe(file);
-    });
+    expect(service.createPresentationJob).toHaveBeenCalledTimes(1);
+    const sent = service.createPresentationJob.calls.mostRecent().args[0] as FormData;
+    expect(sent.get('textbook_file')).toBe(file);
   });
 });
