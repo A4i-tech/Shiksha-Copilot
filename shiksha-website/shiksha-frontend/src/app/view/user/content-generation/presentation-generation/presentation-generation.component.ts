@@ -9,6 +9,7 @@ import { MAX_FILE_SIZE } from 'src/app/shared/utility/constant.util';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ContentGenerationService } from '../content-generation.service';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 type PresentationJobStatus =
   | 'init'
@@ -164,7 +165,8 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
     private router: Router,
     private sanitizer: DomSanitizer,
     private utilityService: UtilityService,
-    private contentGenerationService: ContentGenerationService
+    private contentGenerationService: ContentGenerationService,
+    private umamiService: UmamiService
   ) {}
 
   ngOnInit(): void {
@@ -440,6 +442,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
           this.isCreatingJob = false;
           this.currentJob = job;
           this.currentStep = 2;
+          this.umamiService.track('artifact-created', { type: 'presentation' });
           this.router.navigate([`/content-generation/presentation/${job.id}`]);
         },
         error: (error) => {
@@ -466,6 +469,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
         next: (blob) => {
           this.isDownloading = false;
           saveAs(blob, this.getDownloadFileName(job));
+          this.umamiService.track('artifact-downloaded', { type: 'presentation', format: 'pptx', kind: 'deck' });
         },
         error: (error) => {
           this.isDownloading = false;

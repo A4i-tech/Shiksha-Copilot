@@ -10,6 +10,7 @@ import { BluePrintExportService } from 'src/app/shared/services/blue-print.expor
 import { formatMarks } from 'src/app/shared/utility/constant.util';
 import { contentItems, isOrDividerAfter, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 @Component({
   selector: 'app-question-bank-view',
@@ -81,7 +82,8 @@ export class QuestionBankViewComponent implements OnInit {
     private idleService: IdleService,
     private questionBankDownloadService: QuestionBankDownloadService,
     private bluePrintExportService: BluePrintExportService,
-    public translateService: TranslateService
+    public translateService: TranslateService,
+    private umamiService: UmamiService
   ) {
     this.route.params.subscribe((params) => {
       this.questionBankId = params['id'];
@@ -195,6 +197,7 @@ export class QuestionBankViewComponent implements OnInit {
     } else {
       this.downloadBluePrint()
     }
+    this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: 'docx', kind: { qp: 'paper', ak: 'answer-key' }[type as string] ?? 'blueprint' });
   }
 
   downloadQp() {

@@ -9,6 +9,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { ToastrModule } from 'ngx-toastr';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 import { QuestionBankViewComponent } from './question-bank-view.component';
 
@@ -36,6 +37,13 @@ describe('QuestionBankViewComponent', () => {
     component = fixture.componentInstance;
     translate = TestBed.inject(TranslateService);
     fixture.detectChanges();
+  });
+
+  it('download should track the document kind after the export runs', () => {
+    const track = spyOn(TestBed.inject(UmamiService), 'track');
+    spyOn(component, 'downloadAnswerKey');
+    component.download('ak');
+    expect(track).toHaveBeenCalledWith('artifact-downloaded', { type: 'question-paper', format: 'docx', kind: 'answer-key' });
   });
 
   it('should create', () => {

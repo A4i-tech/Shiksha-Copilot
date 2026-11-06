@@ -17,6 +17,7 @@ import { concat, distinctUntilChanged, forkJoin, of, Subject } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { map, finalize, toArray, takeUntil } from 'rxjs/operators';
 import { questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 const SOURCE_GENERATION_OPTIONS: DropdownOption[] = [
   { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
@@ -172,6 +173,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     private questionBankService: QuestionBankService,
     private router: Router,
     private idleService: IdleService,
+    private umamiService: UmamiService,
   ) { }
 
   ngOnInit(): void {
@@ -834,6 +836,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const finalId = res.data?._id;
         if (finalId) {
           this.utilityservice.showSuccess('Question Paper Created Successfully!');
+          this.umamiService.track('artifact-created', { type: 'question-paper' });
           this.router.navigate([`/question-papers/view/${finalId}`]);
         } else {
           this.utilityservice.showError("Paper created but ID not found.");
