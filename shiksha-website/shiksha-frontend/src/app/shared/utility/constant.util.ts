@@ -35,6 +35,7 @@ export const LOADER_RESTRICTED_URLS = [
     '/presentation/job',
     '/presentation/jobs',
     '/presentation/list',
+    '/audit/log',
     '/auth/me',
     '/chat/',
     '/lessonchat/'
