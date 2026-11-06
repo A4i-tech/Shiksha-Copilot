@@ -9,6 +9,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ModalComponent } from 'src/app/shared/components/modal/modal.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
@@ -19,7 +20,7 @@ import { ContentManagementService } from '../content-management.service';
   selector: 'app-chapter-picker',
   templateUrl: './chapter-picker.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, ModalComponent, PaginationComponent],
+  imports: [CommonModule, FormsModule, ModalComponent, PaginationComponent, TranslateModule],
 })
 export class ChapterPickerComponent implements OnChanges, OnDestroy {
   @Input() value: string | null = null;
@@ -39,7 +40,10 @@ export class ChapterPickerComponent implements OnChanges, OnDestroy {
   private searchTerms = new Subject<string>();
   private subscription: Subscription;
 
-  constructor(private contentService: ContentManagementService) {
+  constructor(
+    private contentService: ContentManagementService,
+    private translateService: TranslateService
+  ) {
     this.subscription = this.searchTerms
       .pipe(debounceTime(400), distinctUntilChanged())
       .subscribe((term) => {
@@ -137,6 +141,6 @@ export class ChapterPickerComponent implements OnChanges, OnDestroy {
     if (!chapter) return '';
     const subject = chapter.subject?.[0]?.subjectName;
     const subjectSuffix = subject ? ` (${subject})` : '';
-    return `${chapter.board} - ${chapter.medium} - Class ${chapter.standard} - ${chapter.topics}${subjectSuffix}`;
+    return `${chapter.board} - ${chapter.medium} - ${this.translateService.instant('Class')} ${chapter.standard} - ${chapter.topics}${subjectSuffix}`;
   }
 }
