@@ -1,3 +1,6 @@
+const Joi = require("joi");
+const validateRequest = require("./common.validation");
+
 const validateTeacherLessonPlan = (req, res, next) => {
 	if (req.query.filter) {
 		let filter = req.query.filter;
@@ -13,6 +16,17 @@ const validateTeacherLessonPlan = (req, res, next) => {
 	next();
 };
 
+const validateWebhook = validateRequest(
+	Joi.object({
+		instance_id: Joi.string().required(),
+		status: Joi.string()
+			.insensitive()
+			.valid("pending", "running", "completed", "failed")
+			.required(),
+	}).unknown(true)
+);
+
 module.exports = {
 	validateTeacherLessonPlan,
+	validateWebhook,
 };
