@@ -15,6 +15,7 @@ from fastapi.responses import Response, StreamingResponse
 
 from app.models.presentation import SYSTEM_USER_ID, JobDetail, JobStatus, ToolInfo, UserId
 from app.services.presentation.agent import planner, designer, finalizer, designer_toolset
+from app.services.presentation.docparser import OFFICE_MIME_SUFFIXES
 from app.services.presentation.utils import LibreOffice, LibreOfficeOutputFormat, save_file_with_hash
 
 
@@ -80,7 +81,9 @@ async def create_job(
     if not filename: raise HTTPException(status_code=400, detail="Unsupported file type (cannot read filename)")
     if textbook_file.size is not None and textbook_file.size > settings.pres_upload_max_filesize: raise HTTPException(status_code=400, detail="Bad file size")  # bail early
     try:
-        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, ALLOWED_MIMES, settings.pres_download_chunk_size, settings.pres_upload_max_filesize)
+        # office files are only usable after conversion; without it they would reach the planner as raw bytes
+        allowed_mimes = ALLOWED_MIMES if settings.pres_do_transform else ALLOWED_MIMES - OFFICE_MIME_SUFFIXES.keys()
+        textbook_path, textbook_mime = await save_file_with_hash(service.storage, textbook_file, filename, allowed_mimes, settings.pres_download_chunk_size, settings.pres_upload_max_filesize)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return await service.jobs.create(user_id, textbook_path, textbook_mime, slides, instruction, tags)

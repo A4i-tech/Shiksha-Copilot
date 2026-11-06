@@ -227,20 +227,28 @@ class LibreOffice:
         if self.path is None: raise RuntimeError("soffice executable not found in PATH")
         default_args = ["--headless", "--nologo", "--nofirststartwizard", "--nodefault", "--norestore"]
         proc = await asyncio.create_subprocess_exec(self.path, *default_args, *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        stdout, stderr = await proc.communicate()
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), settings.pres_soffice_timeout)
+        except (asyncio.TimeoutError, asyncio.CancelledError) as e:
+            # don't leave a hung/orphaned soffice behind (a corrupt document can hang it)
+            proc.kill()
+            await proc.wait()
+            if isinstance(e, asyncio.TimeoutError): raise RuntimeError("soffice timed out after %ds" % settings.pres_soffice_timeout) from e
+            raise
         code = proc.returncode or 0
-        if code != 0: raise RuntimeError(stderr.decode())
+        if code != 0: raise RuntimeError("soffice exited with code %d: %s" % (code, stderr.decode().strip()))
         return stdout
 
-    async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat) -> bytes:
+    async def convert(self, data: IO[bytes], output_format: LibreOfficeOutputFormat, input_suffix: str = ".pptx") -> bytes:
         with tempfile.TemporaryDirectory() as profile, tempfile.TemporaryDirectory() as tmp:
             tmpdir = pathlib.Path(tmp)
-            in_path = tmpdir / "input.pptx"
+            in_path = tmpdir / ("input" + input_suffix)
             async with aiofiles.open(in_path, "wb") as f:
                 await f.write(data.read())
             await self._call("-env:UserInstallation=file://" + profile, "--convert-to", output_format, "--outdir", str(tmpdir), str(in_path))
 
             # soffice creates 'input.xyz'
             out_path = tmpdir / ("input.%s" % output_format)
+            if not out_path.exists(): raise RuntimeError("soffice produced no %s output for %s input" % (output_format, input_suffix))
             async with aiofiles.open(out_path, "rb") as f:
                 return await f.read()
