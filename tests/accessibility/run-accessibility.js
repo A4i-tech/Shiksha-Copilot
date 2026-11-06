@@ -32,7 +32,7 @@ const SCORE_THRESHOLD = 0.90;
 const USER_URL_PATHS = [
   '/#/home',
   '/#/profile',
-  '/#/chatbot',
+  '/#/chat',
   '/#/help',
   '/#/generation-status',
   '/#/content-generation',
@@ -42,7 +42,7 @@ const USER_URL_PATHS = [
   '/#/content-generation/lesson-chat',
   '/#/content-generation/inspect/lesson-plan',
   '/#/content-generation/inspect/resource',
-  '/#/question-paper',
+  '/#/question-papers',
   '/#/question-papers/generate',
   '/#/schedule',
 ];
@@ -178,7 +178,7 @@ async function discoverDetailUrls(page) {
   }
 
   // --- Question bank list ---
-  const qbListUrl = `${FRONTEND_URL}/#/question-paper`;
+  const qbListUrl = `${FRONTEND_URL}/#/question-papers`;
   await page.goto(qbListUrl);
   try { await page.waitForLoadState('networkidle', { timeout: 12000 }); } catch {}
   await dismissModals(page);

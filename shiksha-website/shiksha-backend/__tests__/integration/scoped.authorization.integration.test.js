@@ -385,7 +385,8 @@ describe("scoped authorisation", () => {
     const logs = [];
     for (let attempt = 0; attempt < 120 && !(logs.length === eventTypes.length && logs.every((log) => log.status !== "in_progress")); attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 500));
-      const found = expectSuccess(await request(`/api/audit/log?limit=1000`, "GET", rootToken)).results
+      const pages = await Promise.all(eventTypes.map((type) => request(`/api/audit/log?limit=1000&filter[eventType]=${encodeURIComponent(type)}`, "GET", rootToken)));
+      const found = pages.flatMap((res) => expectSuccess(res).results)
         .filter((log) => log.userId === actor._id && eventTypes.includes(log.eventType) && new Date(log.createdAt) >= startedAt);
       logs.splice(0, logs.length, ...found);
     }

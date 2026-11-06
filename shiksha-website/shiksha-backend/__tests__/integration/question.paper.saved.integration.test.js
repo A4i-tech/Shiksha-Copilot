@@ -5,9 +5,9 @@ const {
   createEphemeralTeacher,
   cleanupEphemeralTeacher,
 } = require("./superuser.helper");
-const { startStubApi, buildGenerateBody, totalMarksOf, cleanupQuestionPaperData } = require("./question.paper.stub-api");
+const { startStubApi, buildGenerateBody, totalMarksOf, cleanupQuestionPaperData, describeQP } = require("./question.paper.stub-api");
 
-describe("question paper: save, read, list and scope", () => {
+describeQP("question paper: save, read, list and scope", () => {
   const stub = startStubApi();
   let rootToken;
   let owner;

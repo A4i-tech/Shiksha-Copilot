@@ -2,7 +2,9 @@ require("dotenv").config();
 const http = require("http");
 const mongoose = require("mongoose");
 
-const STUB_PORT = Number(process.env.QP_STUB_PORT) || 8000;
+const STUB_PORT = Number(process.env.QP_STUB_PORT);
+// The suites need a local stub port and a Mongo URL for cleanup. Skip them when either is missing.
+const describeQP = STUB_PORT && process.env.MONGO_URL ? describe : (name) => describe.skip(name, () => it("needs QP_STUB_PORT and MONGO_URL", () => {}));
 const RETRY_LIMIT = 3;
 const MAX_CONFIGURED_RETRIES = 5;
 
@@ -133,4 +135,4 @@ async function cleanupQuestionPaperData({ teacherIds }) {
   }
 }
 
-module.exports = { startStubApi, buildGenerateBody, totalMarksOf, cleanupQuestionPaperData, RETRY_LIMIT, MAX_CONFIGURED_RETRIES, STUB_PORT };
+module.exports = { startStubApi, buildGenerateBody, totalMarksOf, cleanupQuestionPaperData, describeQP, RETRY_LIMIT, MAX_CONFIGURED_RETRIES, STUB_PORT };

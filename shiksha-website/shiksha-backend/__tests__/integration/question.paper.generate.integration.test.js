@@ -10,11 +10,12 @@ const {
   buildGenerateBody,
   totalMarksOf,
   cleanupQuestionPaperData,
+  describeQP,
   RETRY_LIMIT,
   MAX_CONFIGURED_RETRIES,
 } = require("./question.paper.stub-api");
 
-describe("question paper: generate against a stub AI service", () => {
+describeQP("question paper: generate against a stub AI service", () => {
   const stub = startStubApi();
   let rootToken;
   let teacher;
