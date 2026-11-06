@@ -5,13 +5,15 @@ import {
   OnInit,
   ViewChild,
 } from '@angular/core';
+import { inject } from '@angular/core';
+import { UploadLimitsService } from 'src/app/core/services/upload-limits.service';
 import { SchoolList } from 'src/app/shared/interfaces/school-list.interface';
 import { SchoolManagementService } from '../school-management.service';
 import { Router } from '@angular/router';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
-import { BULK_UPLOAD_FILE_TYPES, MAX_EXCEL_IMPORT_SIZE } from 'src/app/shared/utility/constant.util';
+import { BULK_UPLOAD_FILE_TYPES } from 'src/app/shared/utility/constant.util';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin } from 'rxjs';
 import { MasterService } from 'src/app/shared/services/master.service';
 import { UserManagementService } from '../../user-management/user-management.service';
@@ -84,7 +86,7 @@ export class SchoolListComponent implements OnInit, OnDestroy {
   readonly actionMenu = new ActionMenuController();
 
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
-  readonly maxExcelImportSize = MAX_EXCEL_IMPORT_SIZE;
+  readonly excelMaxBytes$ = inject(UploadLimitsService).excelMaxBytes$;
 
   fileToUpload!: File;
 
