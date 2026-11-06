@@ -190,7 +190,6 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   download(type: any) {
-    this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: type });
     if (type === 'qp') {
       this.downloadQp()
     } else if (type === 'ak') {
@@ -198,6 +197,7 @@ export class QuestionBankViewComponent implements OnInit {
     } else {
       this.downloadBluePrint()
     }
+    this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: type });
   }
 
   downloadQp() {

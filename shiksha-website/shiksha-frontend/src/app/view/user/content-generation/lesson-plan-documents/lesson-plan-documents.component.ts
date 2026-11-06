@@ -56,7 +56,6 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    this.umamiService.track('artifact-downloaded', { type: this.isLesson ? 'lesson-plan' : 'resource-plan', format: downloadType });
     let headerData;
 
     if (this.isLesson) {
@@ -113,8 +112,9 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
         break;
 
       default:
-        break;
+        return;
     }
+    this.umamiService.track('artifact-downloaded', { type: this.isLesson ? 'lesson-plan' : 'resource-plan', format: downloadType });
   }
 
   loadLessonPlanPresentation(showLoading = true) {
