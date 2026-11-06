@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -30,13 +30,11 @@ jobs:
         run: pip install --quiet semgrep==1.179.0
 
       - name: Semgrep diff scan
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           semgrep scan \
             --config p/security-audit \
             --config p/owasp-top-ten \
-            --baseline-commit "$BASE_SHA" \
+            --baseline-commit "$(git rev-parse HEAD^1)" \
             --severity ERROR \
             --error \
             --sarif --output semgrep.sarif \
