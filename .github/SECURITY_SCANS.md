@@ -35,12 +35,14 @@ A full scan at the time this gate lands reports 97 findings (11 `ERROR`, 86 `WAR
 - `yaml.github-actions.security.secrets-inherit`, 5 hits in `.github/workflows/main.yaml` (reusable-workflow `secrets: inherit` pattern)
 - `yaml.github-actions.security.run-shell-injection`, 4 hits across `.github/actions/*/action.yml`, `.github/workflows/cicd-frontend.yaml`, `deploy-azure-webapp.yml`, `main.yaml`
 - `yaml.github-actions.security.gha-curl-pipe-shell`, 1 hit, `.github/workflows/ci-api.yaml` (`curl | python3` Poetry install)
-- `javascript.node-crypto.security.gcm-no-tag-length`, 1 hit, `shiksha-website/shiksha-backend/routes/presentation.routes.js`
-- `python.fastapi.security.wildcard-cors`, 1 hit (`WARNING`, treated as critical given the prior SEEDS CORS outage), `shiksha-api/app-service/app/main.py`
-- `javascript.express.security.audit.xss.direct-response-write`, 1 hit, `shiksha-website/shiksha-backend/routes/presentation.routes.js`
-- `python.lang.security.audit.logging.logger-credential-leak`, 10 hits (2 real, in `shiksha-ingestion/pipeline_steps/step_5_*.py` and `step_7_*.py`; 8 are test files logging token *counts*, not credentials, false positive)
-- `typescript.angular.security.audit.angular-domsanitizer.angular-bypasssecuritytrust`, 2 hits, `utility.service.ts` and `chatbot.component.ts`
+- `javascript.node-crypto.security.gcm-no-tag-length`, 1 hit
+- `python.fastapi.security.wildcard-cors`, 1 hit (`WARNING`, treated as critical given the prior SEEDS CORS outage)
+- `javascript.express.security.audit.xss.direct-response-write`, 1 hit
+- `python.lang.security.audit.logging.logger-credential-leak`, 10 hits (2 real; 8 are test files logging token *counts*, not credentials, false positive)
+- `typescript.angular.security.audit.angular-domsanitizer.angular-bypasssecuritytrust`, 2 hits
 - `yaml.github-actions.security.github-actions-mutable-action-tag`, 69 hits, parked for a separate ticket (pin every `uses:` to a commit SHA, large mechanical change)
+
+Locations are tracked in issue #575.
 
 A companion PR addresses the first 8 categories (the 9th is parked per issue #575). Triage for anything still open belongs to issue #575.
 
