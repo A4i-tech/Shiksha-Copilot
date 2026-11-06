@@ -15,11 +15,79 @@
     <p *ngIf="isLoading" class="text-content-60">Loading record...</p>
 
     <form class="content-edit-form mt-3" *ngIf="!isLoading && record" (ngSubmit)="save()" novalidate>
-      <p class="text-sm text-content-60 mb-4" *ngIf="!isCreate">
+      <div *ngIf="curatorMode && chapter" class="mb-6 border rounded-lg p-4 bg-primary-30" data-testid="chapter-details">
+        <h2 class="text-sm font-semibold text-content">{{ 'Chapter Details' | translate }}</h2>
+        <dl class="mt-2 grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+          <div class="col-span-2 md:col-span-1">
+            <dt class="text-xs text-content-70">{{ 'Chapter' | translate }}</dt>
+            <dd class="text-content break-words">{{ chapter.orderNumber }}. {{ chapter.topics }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Board' | translate }}</dt>
+            <dd class="text-content">{{ chapter.board }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Medium' | translate }}</dt>
+            <dd class="text-content capitalize">{{ chapter.medium }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Class' | translate }}</dt>
+            <dd class="text-content">{{ chapter.standard }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Subject' | translate }}</dt>
+            <dd class="text-content">{{ chapter.subject[0].subjectName }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <p class="text-sm text-content-60 mb-4" *ngIf="!isCreate && !curatorMode">
         Record id: {{ recordId }}
       </p>
 
-      <p class="text-sm text-content-60 mb-4" *ngIf="isCreate">
+      <p class="text-sm text-warn mb-4" *ngIf="curatorMode && isReadonly">
+        {{ 'The chapter is under review. You can read this record, but you cannot change it.' | translate }}
+      </p>
+
+      <section *ngIf="config.key === 'chapters' && !isCreate" class="mb-6 p-4 rounded border border-content-30">
+        <h2 class="text-lg font-semibold text-content">{{ 'Curation' | translate }}</h2>
+        <p class="mt-2 text-sm text-content">
+          {{ 'Assigned curator' | translate }}:
+          {{ record.assignedTo ? curatorName(record.assignedTo) : ('Not assigned' | translate) }}
+        </p>
+
+        <div *ngIf="record.reviewComment" class="mt-3 text-sm text-content">
+          <p class="font-semibold">{{ 'Admin review comment' | translate }}</p>
+          <p class="whitespace-pre-line break-words">{{ record.reviewComment.text }}</p>
+          <p class="text-content-60">
+            {{ curatorName(record.reviewComment.by) }}, {{ record.reviewComment.at | date: 'medium' }}
+          </p>
+        </div>
+
+        <div *ngIf="record.assignmentHistory?.length" class="mt-3 w-full overflow-x-auto">
+          <table class="min-w-full text-left text-sm">
+            <caption class="text-left font-semibold text-content mb-1">{{ 'Assignment history' | translate }}</caption>
+            <thead>
+              <tr class="bg-primary-60">
+                <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">{{ 'Curator' | translate }}</th>
+                <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">{{ 'Assigned at' | translate }}</th>
+                <th scope="col" class="border-b border-content-50 px-2 py-1 text-content">{{ 'Unassigned at' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let entry of record.assignmentHistory">
+                <td class="border-b border-content-30 px-2 py-1">{{ curatorName(entry.assignedTo) }}</td>
+                <td class="border-b border-content-30 px-2 py-1">{{ entry.assignedAt | date: 'medium' }}</td>
+                <td class="border-b border-content-30 px-2 py-1">
+                  {{ entry.unassignedAt ? (entry.unassignedAt | date: 'medium') : ('Current' | translate) }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p class="text-sm text-content-60 mb-4" *ngIf="isCreate && !curatorMode">
         The new chapter passes the same check that the file upload runs. A chapter
         that repeats a name or an order number of the same subject, board, medium
         and class is refused.
@@ -241,7 +309,7 @@
           Cancel
         </button>
 
-        <ng-container *ngIf="isCreate; else editAction">
+        <ng-container *ngIf="isCreate && !curatorMode; else editAction">
           <button
             type="button"
             class="btn-outline-primary h-9 w-full sm:w-auto"
@@ -272,7 +340,7 @@
             [disabled]="isSaving"
           >
             <div class="flex items-center justify-center gap-2">
-              <span>{{ isSaving ? 'Saving...' : 'Save changes' }}</span>
+              <span>{{ isSaving ? 'Saving...' : (curatorMode ? ('Save as draft' | translate) : 'Save changes') }}</span>
               <img src="assets/icons/check.svg" alt="" />
             </div>
           </button>

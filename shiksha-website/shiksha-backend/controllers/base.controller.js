@@ -5,6 +5,11 @@ const escapeRegExp = require("lodash/escapeRegExp");
 const { CONTENT_STATUS } = require("../constants/content-status");
 const ObjectId = mongoose.Types.ObjectId;
 
+const ASSIGNED_FILTERS = new Map([
+	["assigned", { $ne: null }],
+	["unassigned", null],
+]);
+
 /**
  * @template TManager
  */
@@ -23,7 +28,8 @@ class BaseController {
 		this.hasContentStatus = !!hasContentStatus;
 	}
 
-	async getAll(req, res) {
+	// Returns the manager.getAll arguments for a list request, or { error } for a bad filter.
+	listArgs(req) {
 		const {
 			page = 1,
 			limit,
@@ -50,22 +56,28 @@ class BaseController {
 			searchFilter.$or = regexExpressions;
 		}
 
-		const transformedFilter = { ...filter };
-		if (transformedFilter._id) {
+		const { assigned, ...transformedFilter } = filter;
+		for (const key of this.hasContentStatus ? ["_id", "assignedTo"] : ["_id"]) {
+			if (!transformedFilter[key]) continue;
 			try {
-				transformedFilter._id = new ObjectId(transformedFilter._id);
+				transformedFilter[key] = new ObjectId(transformedFilter[key]);
 			} catch (err) {
-				console.error("Invalid _id format:", transformedFilter._id);
-				return res.status(400).json({ error: "Invalid _id format" });
+				console.error(`Invalid ${key} format`);
+				return { error: `Invalid ${key} format` };
 			}
+		}
+		// An explicit assignedTo wins, so the curator scope cannot be widened by `assigned`.
+		if (this.hasContentStatus && !transformedFilter.assignedTo && ASSIGNED_FILTERS.has(assigned)) {
+			transformedFilter.assignedTo = ASSIGNED_FILTERS.get(assigned);
 		}
 		const mergedFilter = intersectFilters(transformedFilter, searchFilter);
 
 		let status = {};
 
 		if (this.hasContentStatus && includeDeleted === '3') {
-			// Draft tab: content only its own author can see, awaiting a send for review.
-			status = { isDeleted: true, status: CONTENT_STATUS.DRAFT, createdBy: req?.user?._id };
+			// Draft tab: an admin sees own drafts, a curator sees every draft of the assigned chapters.
+			status = { isDeleted: true, status: CONTENT_STATUS.DRAFT };
+			if (!req.curatorScope) status.createdBy = req?.user?._id;
 		} else if (this.hasContentStatus && includeDeleted === '4') {
 			// Ready for review tab: every admin sees this, awaiting approval.
 			status = { isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW };
@@ -77,14 +89,24 @@ class BaseController {
 		} else if (includeDeleted === '0') {
 			status = { isDeleted: { $ne: true } };
 		}
-		const result = await this.manager.getAll(
-			parseInt(page),
-			parseInt(limit),
-			mergedFilter,
-			sortOrderObject,
-			status,
-			req?.user?._id
-		);
+
+		return {
+			args: [
+				parseInt(page),
+				parseInt(limit),
+				mergedFilter,
+				sortOrderObject,
+				status,
+				req?.user?._id,
+			],
+		};
+	}
+
+	async getAll(req, res) {
+		const { args, error } = this.listArgs(req);
+		if (error) return res.status(400).json({ error });
+
+		const result = await this.manager.getAll(...args);
 
 		if (result.success) {
 			return res.status(200).json(result);

@@ -1,20 +1,21 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subscription, of, switchMap } from 'rxjs';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 import {
+  CURATOR_HIDDEN_FIELDS,
   ContentEntityConfig,
   ContentField,
   ContentSelectOption,
   getContentEntityConfig,
   localizeEntity,
 } from '../content-management.config';
-import { ContentManagementService } from '../content-management.service';
+import { ContentManagementService, CurationChapter, Curator } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 import { CONTENT_STATUS } from '../content-status.constants';
 import { UmamiService } from 'src/app/shared/services/umami.service';
@@ -26,7 +27,7 @@ const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
   selector: 'app-content-edit',
   templateUrl: './content-edit.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent],
+  imports: [CommonModule, FormsModule, RouterModule, ChapterPickerComponent, DropdownComponent, TranslateModule],
 })
 export class ContentEditComponent implements OnInit, OnDestroy {
   config!: ContentEntityConfig;
@@ -36,6 +37,9 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   /** true when the route id is `new`, so the form adds a record */
   isCreate = false;
   isReadonly = false;
+  curatorMode = false;
+  chapterId = '';
+  chapter?: CurationChapter;
 
   /** form value of each field, as the control shows it */
   formValues: { [field: string]: any } = {};
@@ -47,9 +51,11 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   /** {value, label} of every board a master subject applies to, for the chapter subject dropdown */
   subjectOptions: ContentSelectOption[] = [];
+  curators: Curator[] = [];
 
   private original: { [field: string]: any } = {};
   private subscriptions: Subscription[] = [];
+  private recordLoad = Subscription.EMPTY;
 
   constructor(
     private route: ActivatedRoute,
@@ -67,6 +73,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.curatorMode = this.route.snapshot.data['curatorMode'] === true;
+
     this.subscriptions.push(
       this.route.paramMap.subscribe((params) => {
         const entity = getContentEntityConfig(params.get('entity'));
@@ -81,9 +89,15 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.config = localizeEntity(entity, this.translateService);
         this.recordId = id;
         this.isCreate = id === 'new';
+        if (this.curatorMode) this.chapterId = params.get('chapterId')!;
 
         if (entity.fields.some((field) => field.type === 'subject-select')) {
           this.loadSubjectOptions();
+        }
+
+        if (this.curatorMode) {
+          this.loadCuratorRecord();
+          return;
         }
 
         if (this.isCreate) {
@@ -97,6 +111,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
           return;
         }
 
+        if (entity.key === 'chapters') this.loadCurators();
         this.loadRecord();
       })
     );
@@ -104,6 +119,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.recordLoad.unsubscribe();
   }
 
   // One option per board a subject applies to, so "Science" under two boards shows twice.
@@ -122,6 +138,17 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadCurators(): void {
+    this.contentService.listCurators().subscribe({
+      next: (curators) => (this.curators = curators),
+      error: (err: any) => this.utilityService.handleError(err),
+    });
+  }
+
+  curatorName(id: string): string {
+    return this.curators.find((curator) => curator._id === id)?.name ?? id;
+  }
+
   loadRecord(): void {
     this.isLoading = true;
 
@@ -130,6 +157,36 @@ export class ContentEditComponent implements OnInit, OnDestroy {
         this.isLoading = false;
         this.record = res?.data ?? res;
         this.isReadonly = this.record?.status !== CONTENT_STATUS.DRAFT;
+        this.fillForm(this.record);
+      },
+      error: (err: any) => {
+        this.isLoading = false;
+        this.utilityService.handleError(err);
+      },
+    });
+  }
+
+  // The chapter decides if the form is open. A record of an assigned chapter has the status of the chapter.
+  private loadCuratorRecord(): void {
+    this.isLoading = true;
+    this.recordLoad.unsubscribe();
+
+    const children = this.isCreate ? [] : [{ segment: this.config.segment, limit: 1, filters: { _id: this.recordId } }];
+
+    this.recordLoad = this.contentService.loadCuratorChapter(this.chapterId, children).subscribe({
+      next: ({ chapter, lists }) => {
+        this.isLoading = false;
+        const record = chapter && !this.isCreate ? lists[0][0] : {};
+        if (!chapter || !record) {
+          this.utilityService.showError(
+            this.translateService.instant('This chapter is not available to you. Open the chapter from your dashboard, then try again.')
+          );
+          this.router.navigate(chapter ? ['/curation/chapters', this.chapterId] : ['/curation']);
+          return;
+        }
+        this.chapter = chapter;
+        this.record = record;
+        this.isReadonly = chapter.status !== CONTENT_STATUS.DRAFT;
         this.fillForm(this.record);
       },
       error: (err: any) => {
@@ -156,6 +213,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   get visibleFields(): ContentField[] {
     return this.config.fields.filter((field) => {
+      if (this.curatorMode && CURATOR_HIDDEN_FIELDS.includes(field.field)) return false;
       if (!this.isCreate && field.createOnly) return false;
       if (field.visibleWhen && !field.visibleWhen.values.includes(this.formValues[field.visibleWhen.field])) {
         return false;
@@ -170,6 +228,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     const body = this.isCreate
       ? this.buildCreateBody()
       : this.buildChangedBody();
+
+    if (body && this.curatorMode && this.isCreate) body['chapterId'] = this.chapterId;
 
     if (Object.keys(this.fieldErrors).length) {
       this.utilityService.showError(
@@ -188,7 +248,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     this.isSaving = true;
 
     const request = this.isCreate
-      ? this.contentService.create(this.config.segment, body).pipe(
+      ? this.contentService.create(this.config.segment, body, this.curatorMode).pipe(
           switchMap((res: any) => {
             if (targetStatus === CONTENT_STATUS.DRAFT) return of(res);
 
@@ -200,7 +260,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
             });
           })
         )
-      : this.contentService.update(this.config.segment, this.recordId, body);
+      : this.contentService.update(this.config.segment, this.recordId, body, this.curatorMode);
 
     request.subscribe({
       next: (res: any) => {
@@ -212,7 +272,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
               ? `${this.config.singular} added successfully`
               : `${this.config.singular} updated successfully`)
         );
-        this.router.navigate(['/content-management', this.config.key]);
+        this.leave();
       },
       error: (err: any) => {
         this.isSaving = false;
@@ -268,7 +328,13 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   cancel(): void {
-    this.router.navigate(['/content-management', this.config.key]);
+    this.leave();
+  }
+
+  private leave(): void {
+    this.router.navigate(
+      this.curatorMode ? ['/curation/chapters', this.chapterId] : ['/content-management', this.config.key]
+    );
   }
 
   onFieldChange(field: ContentField, value: any): void {

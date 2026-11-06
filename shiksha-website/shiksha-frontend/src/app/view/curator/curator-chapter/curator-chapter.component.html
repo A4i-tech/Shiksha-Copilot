@@ -1,0 +1,140 @@
+<div class="p-8 bg-white rounded-sm min-h-[90vh]">
+  <div class="flex gap-2 items-center">
+    <a routerLink="/curation/chapters" [attr.aria-label]="'Back' | translate">
+      <img src="assets/icons/back-arrow.svg" alt="" />
+    </a>
+    <h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">{{ 'Chapter' | translate }}</h1>
+  </div>
+
+  <p *ngIf="isLoading" class="py-4 text-content-60">{{ 'Loading chapters...' | translate }}</p>
+
+  <ng-container *ngIf="!isLoading && chapter">
+    <div class="mt-5 rounded-xl border bg-white px-6 py-6">
+      <div class="flex flex-wrap justify-between items-start gap-2">
+        <h2 class="text-base md:text-xl font-bold text-content break-words">{{ chapter.orderNumber }}. {{ chapter.topics }}</h2>
+        <span class="px-4 py-1 rounded-2xl text-sm" [ngClass]="statusBadgeClasses[chapter.status]">
+          {{ statusLabels[chapter.status] | translate }}
+        </span>
+      </div>
+
+      <div class="mt-4 border rounded-lg p-4 bg-primary-30" data-testid="chapter-details">
+        <h3 class="text-sm font-semibold text-content">{{ 'Chapter Details' | translate }}</h3>
+        <dl class="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Board' | translate }}</dt>
+            <dd class="text-content">{{ chapter.board }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Medium' | translate }}</dt>
+            <dd class="text-content capitalize">{{ chapter.medium }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Class' | translate }}</dt>
+            <dd class="text-content">{{ chapter.standard }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs text-content-70">{{ 'Subject' | translate }}</dt>
+            <dd class="text-content">{{ chapter.subject[0].subjectName }}</dd>
+          </div>
+        </dl>
+        <div class="mt-3">
+          <p class="text-xs text-content-70">{{ 'Subtopics' | translate }}</p>
+          <span
+            *ngFor="let subTopic of subTopics"
+            class="px-2 py-1 my-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] me-2 inline-block"
+          >
+            {{ subTopic.name }}
+          </span>
+        </div>
+      </div>
+
+      <div *ngIf="chapter.reviewComment && isDraft" class="mt-4 p-4 rounded border border-warn bg-warn-50 text-sm text-content">
+        <p class="font-semibold">{{ 'Admin review comment' | translate }}</p>
+        <p class="whitespace-pre-line break-words">{{ chapter.reviewComment.text }}</p>
+      </div>
+
+      <p *ngIf="!isDraft" class="mt-4 text-sm text-warn">
+        {{ 'The chapter is under review. You can read this record, but you cannot change it.' | translate }}
+      </p>
+    </div>
+
+    <div class="mt-5 rounded-xl border bg-white px-6 py-6">
+      <h2 class="text-base md:text-xl font-bold text-content">{{ 'Subtopics' | translate }}</h2>
+      <p class="mt-1 text-xs md:text-sm text-content-60">{{ 'A subtopic is done when a lesson plan of this chapter lists it.' | translate }}</p>
+
+      <p class="mt-3 text-sm font-medium text-content" data-testid="progress">
+        {{ progressText }}
+      </p>
+      <div class="overflow-hidden h-2 mt-2 flex rounded bg-primary-80" aria-hidden="true">
+        <div class="bg-primary" [style.width.%]="subTopics.length ? (doneCount / subTopics.length) * 100 : 0"></div>
+      </div>
+
+      <ul class="mt-4 space-y-2">
+        <li *ngFor="let subTopic of subTopics" class="flex items-center gap-2 text-sm text-content" data-testid="subtopic">
+          <span
+            class="w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0"
+            [ngClass]="subTopic.done ? 'bg-[#3D8248]' : 'bg-[#7B8198]'"
+          >
+            <img class="w-3 h-3" [src]="subTopic.done ? 'assets/icons/completed-sm.svg' : 'assets/icons/draft-light-sm.svg'" alt="" />
+          </span>
+          <span class="break-words">{{ subTopic.name }}</span>
+          <span class="text-xs" [ngClass]="subTopic.done ? 'text-success' : 'text-content-60'">
+            {{ (subTopic.done ? 'Done' : 'Not done') | translate }}
+          </span>
+        </li>
+      </ul>
+
+      <button
+        type="button"
+        class="btn-primary mt-5 w-full md:w-fit text-sm md:text-base"
+        data-testid="submit-chapter"
+        [attr.aria-disabled]="!canSubmit"
+        [attr.aria-describedby]="isDraft && !isComplete ? 'submit-hint' : null"
+        (click)="confirmSubmit()"
+      >
+        {{ (isSubmitting ? 'Submitting...' : 'Submit for approval') | translate }}
+      </button>
+      <p *ngIf="isDraft && !isComplete" id="submit-hint" class="mt-2 text-sm text-content-60">
+        {{ 'Add a lesson plan for every subtopic to turn on the submit button.' | translate }}
+      </p>
+    </div>
+
+    <div *ngFor="let child of children" class="mt-5 rounded-xl border bg-white px-6 py-6">
+      <div class="flex flex-wrap justify-between items-center gap-2">
+        <h2 class="text-base md:text-xl font-bold text-content">{{ child.label | translate }} ({{ child.records.length }})</h2>
+        <a
+          *ngIf="isDraft"
+          class="btn-outline-primary flex gap-2 items-center"
+          [attr.aria-label]="child.addLabel | translate"
+          [routerLink]="['/curation/chapters', chapterId, child.segment, 'new']"
+        >
+          <img src="assets/icons/edit_primary.svg" alt="" />
+          <span class="text-sm md:text-base">{{ child.addLabel | translate }}</span>
+        </a>
+      </div>
+
+      <p *ngIf="!child.records.length" class="mt-3 text-sm text-content-60">{{ 'No records yet.' | translate }}</p>
+
+      <div class="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <a
+          *ngFor="let record of child.records"
+          class="block rounded-lg border px-4 py-3 text-sm text-primary break-words hover:bg-primary-30"
+          [routerLink]="['/curation/chapters', chapterId, child.segment, record._id, 'edit']"
+        >
+          {{ title(record) }}
+        </a>
+      </div>
+    </div>
+  </ng-container>
+
+  <app-modal *ngIf="confirming">
+    <h2 class="text-lg font-semibold mb-2 text-content" id="modal-title">{{ 'Submit for approval' | translate }}</h2>
+    <p class="mb-4 text-content">
+      {{ 'After you submit, you cannot change this chapter until an admin approves it or sends it back.' | translate }}
+    </p>
+    <div class="flex justify-end gap-3">
+      <button type="button" class="btn-outline-primary" (click)="confirming = false">{{ 'Cancel' | translate }}</button>
+      <button type="button" class="btn-primary" data-testid="confirm-submit" (click)="submit()">{{ 'Confirm' | translate }}</button>
+    </div>
+  </app-modal>
+</div>

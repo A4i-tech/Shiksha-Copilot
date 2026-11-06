@@ -1,3 +1,5 @@
+const mongoose = require("mongoose");
+const ExcelJS = require("exceljs");
 const ChapterDao = require("../dao/chapter.dao");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const BaseManager = require("./base.manager");
@@ -15,7 +17,12 @@ const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { formatSubject, getSemester } = require('../helper/formatter');
 const Chapter = require("../models/chapter.model");
 const MasterSubject = require("../models/master.subject.model");
-const { CONTENT_STATUS } = require("../constants/content-status");
+const MasterLesson = require("../models/master.lesson.model");
+const MasterResource = require("../models/master.resource.model");
+const Question = require("../models/question.model");
+const User = require("../models/user.model");
+const { CONTENT_STATUS, CONTENT_CURATOR_ROLE_ID } = require("../constants/content-status");
+const { stateWord } = require("../helper/content.state");
 const {
   buildIndexPath,
   checkBatch,
@@ -23,6 +30,45 @@ const {
   identityKey,
   orderKey,
 } = require("../validations/chapter.bulk.validation");
+
+const EXPORT_LIMIT = 10000;
+const CSV_COLUMNS = ["Board", "Class", "Medium", "Subject", "Chapter", "Assigned curator", "Curation status", "Submission date", "Approval status", "Last updated"];
+
+// Ends the open assignment entry, so one pipeline update can close it and append the next.
+const closeOpenAssignment = (now) => ({
+  $map: {
+    input: { $ifNull: ["$assignmentHistory", []] },
+    as: "entry",
+    in: {
+      $cond: [
+        { $eq: ["$$entry.unassignedAt", null] },
+        { $mergeObjects: ["$$entry", { unassignedAt: now }] },
+        "$$entry",
+      ],
+    },
+  },
+});
+
+const draftOnly = (id) => ({ _id: id, isDeleted: true, status: CONTENT_STATUS.DRAFT });
+const normalize = (text) => String(text).trim().toLowerCase();
+const timestamp = (date) => (date ? new Date(date).toISOString() : "");
+// A leading quote stops Excel from running a cell that starts with = + - or @ as a formula.
+const safeCell = (value) => {
+  const text = String(value ?? "");
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+};
+
+function curationStatus(chapter) {
+  if (chapter.status === CONTENT_STATUS.APPROVED) return "Approved";
+  if (chapter.status === CONTENT_STATUS.UNDER_REVIEW) return "Submitted";
+  if (chapter.reviewComment?.text) return "Changes requested";
+  return chapter.assignedTo ? "Assigned" : "Not assigned";
+}
+
+function approvalStatus(chapter) {
+  if (chapter.status === CONTENT_STATUS.APPROVED) return "Approved";
+  return chapter.status === CONTENT_STATUS.UNDER_REVIEW ? "Pending approval" : "Not submitted";
+}
 
 /** @extends {BaseManager<ChapterDao>} */
 class ChapterManager extends BaseManager {
@@ -500,10 +546,11 @@ class ChapterManager extends BaseManager {
       );
     }
 
-    const data = await Chapter.findOneAndUpdate(
+    const data = await this._moveChapter(
       { _id: chapter._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
       { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
-      { new: true }
+      CONTENT_STATUS.UNDER_REVIEW,
+      { status: CONTENT_STATUS.APPROVED, isDeleted: false }
     );
 
     if (!data) {
@@ -516,8 +563,130 @@ class ChapterManager extends BaseManager {
 
     return formatApiReponse(true, "Chapter approved successfully!", data);
   }
+
+  // One transaction, so a failed child write rolls the chapter back and a retry still passes the state guard.
+  _moveChapter(filter, update, childFrom, childSet) {
+    return mongoose.connection.transaction(async (session) => {
+      const data = await Chapter.findOneAndUpdate(filter, update, { new: true, session });
+      if (data) await this._cascade(filter._id, childFrom, childSet, session);
+      return data;
+    });
+  }
+
+  async _cascade(chapterId, from, set, session) {
+    for (const Model of [MasterLesson, MasterResource, Question]) {
+      await Model.updateMany({ chapterId, isDeleted: true, status: from }, { $set: set }, { session });
+    }
+  }
+
+  async _draftOnlyError(id, action) {
+    const chapter = await Chapter.findById(id).select("status isDeleted").lean();
+    if (!chapter) return new AppError("Chapter not found. Reload the list and try again.", 404);
+    if (chapter.status === CONTENT_STATUS.DRAFT) {
+      return new AppError("The chapter changed before the update finished. Reload the list and try again.", 409);
+    }
+    return new AppError(`Chapter is ${stateWord(chapter)}. Only draft chapters can be ${action}.`, 409);
+  }
+
+  async assign(id, curatorId, adminId) {
+    const isCurator = await User.exists({ _id: curatorId, isDeleted: { $ne: true }, "roles.role": CONTENT_CURATOR_ROLE_ID });
+    if (!isCurator) throw new AppError("The selected user does not hold the Content Curator role. Choose a user from the Content Curator list.", 400);
+
+    const now = new Date();
+    const assignedTo = new mongoose.Types.ObjectId(curatorId);
+    const entry = { assignedTo, assignedBy: adminId, assignedAt: now, unassignedAt: null };
+    const data = await Chapter.findOneAndUpdate(
+      draftOnly(id),
+      [{ $set: { assignedTo, assignmentHistory: { $concatArrays: [closeOpenAssignment(now), [entry]] } } }],
+      { new: true }
+    );
+    if (!data) throw await this._draftOnlyError(id, "assigned or unassigned");
+
+    return formatApiReponse(true, "Chapter assigned successfully!", data);
+  }
+
+  async unassign(id) {
+    const data = await Chapter.findOneAndUpdate(
+      draftOnly(id),
+      [{ $set: { assignedTo: null, assignmentHistory: closeOpenAssignment(new Date()) } }],
+      { new: true }
+    );
+    if (!data) throw await this._draftOnlyError(id, "assigned or unassigned");
+
+    return formatApiReponse(true, "Chapter unassigned successfully!", data);
+  }
+
+  async submit(id, curatorId) {
+    const chapter = await Chapter.findById(id).select("subTopics").lean();
+    if (!chapter) throw new AppError("Chapter not found. Reload the list and try again.", 404);
+
+    const planned = await MasterLesson.distinct("subTopics", { chapterId: id, $nor: [{ isDeleted: true, status: CONTENT_STATUS.APPROVED }] });
+    const covered = new Set(planned.map(normalize));
+    const missing = chapter.subTopics.filter((subTopic) => !covered.has(normalize(subTopic)));
+    if (missing.length) {
+      throw new AppError(`Cannot submit yet. These subtopics have no lesson plan: ${missing.join(", ")}. Add a lesson plan for each, then submit again.`, 409);
+    }
+
+    const data = await this._moveChapter(
+      { ...draftOnly(id), assignedTo: curatorId },
+      { $set: { status: CONTENT_STATUS.UNDER_REVIEW, submittedAt: new Date() }, $unset: { reviewComment: 1 } },
+      CONTENT_STATUS.DRAFT,
+      { status: CONTENT_STATUS.UNDER_REVIEW }
+    );
+    if (!data) throw await this._draftOnlyError(id, "submitted");
+
+    return formatApiReponse(true, "Chapter submitted for review.", data);
+  }
+
+  async requestChanges(id, comment, adminId) {
+    const data = await this._moveChapter(
+      { _id: id, isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW },
+      { $set: { status: CONTENT_STATUS.DRAFT, reviewComment: { text: comment.trim(), by: adminId, at: new Date() } } },
+      CONTENT_STATUS.UNDER_REVIEW,
+      { status: CONTENT_STATUS.DRAFT }
+    );
+    if (!data) throw new AppError("Chapter is not under review. Only chapters under review can be sent back for changes. Reload the list and try again.", 409);
+
+    return formatApiReponse(true, "Chapter sent back for changes.", data);
+  }
+
+  async curators() {
+    const users = await User.find({ "roles.role": CONTENT_CURATOR_ROLE_ID, isDeleted: { $ne: true } })
+      .select("identity.name")
+      .sort({ "identity.name": 1 })
+      .lean();
+    return formatApiReponse(true, "", { results: users.map((user) => ({ _id: user._id, name: user.identity.name })) });
+  }
+
+  // Takes the list filter, sort, and status, so the export honors the list filters.
+  async exportCsv(filters, sort, status) {
+    const chapters = await this.dao.getAllForExport(EXPORT_LIMIT + 1, filters, sort, status);
+    if (chapters.length > EXPORT_LIMIT) {
+      throw new AppError(`The export holds at most ${EXPORT_LIMIT} chapters, and more chapters match. Narrow the filters (board, class, medium, subject, or status), then export again.`, 409);
+    }
+
+    const curators = await User.find({ _id: { $in: chapters.map((chapter) => chapter.assignedTo).filter(Boolean) } })
+      .select("identity.name")
+      .lean();
+    const curatorName = new Map(curators.map((curator) => [String(curator._id), curator.identity.name]));
+
+    const rows = chapters.map((chapter) => [
+      chapter.board,
+      chapter.standard,
+      chapter.medium,
+      chapter.subjectName,
+      chapter.topics,
+      curatorName.get(String(chapter.assignedTo)),
+      curationStatus(chapter),
+      timestamp(chapter.submittedAt),
+      approvalStatus(chapter),
+      timestamp(chapter.updatedAt),
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    workbook.addWorksheet("Chapters").addRows([CSV_COLUMNS, ...rows].map((row) => row.map(safeCell)));
+    return workbook.csv.writeBuffer({ formatterOptions: { rowDelimiter: "\r\n", quoteColumns: true } });
+  }
 }
-
-
 
 module.exports = ChapterManager;
