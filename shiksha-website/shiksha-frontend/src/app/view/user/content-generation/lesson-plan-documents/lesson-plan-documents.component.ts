@@ -56,6 +56,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
       return;
     }
 
+    this.umamiService.track('artifact-downloaded', { type: this.isLesson ? 'lesson-plan' : 'resource-plan', format: downloadType });
     let headerData;
 
     if (this.isLesson) {
@@ -163,6 +164,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     this.contentGenerationService.downloadPresentationFile(presentationId, "pptx").subscribe({
       next: (blob) => {
         saveAs(blob, `lesson-plan-${this.planId}.pptx`);
+        this.umamiService.track('artifact-downloaded', { type: 'presentation', format: 'pptx' });
       },
       error: (err) => {
         this.utilityService.handleError(err);

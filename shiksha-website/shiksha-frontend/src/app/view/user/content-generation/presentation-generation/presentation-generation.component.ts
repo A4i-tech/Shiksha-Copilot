@@ -469,6 +469,7 @@ export class PresentationGenerationComponent implements OnInit, OnDestroy {
         next: (blob) => {
           this.isDownloading = false;
           saveAs(blob, this.getDownloadFileName(job));
+          this.umamiService.track('artifact-downloaded', { type: 'presentation', format: 'pptx' });
         },
         error: (error) => {
           this.isDownloading = false;
