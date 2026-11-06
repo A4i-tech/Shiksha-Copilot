@@ -293,6 +293,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           this.loadingStatus = data.message;
         } else if (data.type === 'content') {
           this.loadingStatus = ''; // Clear status when content starts
+          if (!currentMessage.answer) this.umamiService.track('chat-response-received', { chatType: this.type });
           currentMessage.answer = (currentMessage.answer || '') + data.delta;
         } else if (data.type === 'references') {
           currentMessage.references = data.data;
@@ -368,6 +369,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     this.chatbotService.sendIndexMessage(messageObj, this.recordId, this.chapterId).subscribe({
       next: (res) => {
         if (res.data) {
+          this.umamiService.track('chat-response-received', { chatType: this.type });
           this.getIndexMessages();
         }
       },

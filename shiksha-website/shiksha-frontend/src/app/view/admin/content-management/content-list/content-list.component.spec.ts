@@ -8,6 +8,7 @@ import {
   HttpTestingController,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import * as ExcelJS from 'exceljs';
@@ -68,18 +69,21 @@ describe('ContentListComponent', () => {
   });
 
   it('checkUpload should call the generic bulk-upload route for the current segment', () => {
+    const track = spyOn(TestBed.inject(UmamiService), 'track');
     component.uploadRows = [{ chapterNumber: 1 }];
     component.checkUpload();
 
     const req = httpMock.expectOne(
       (r) => r.url.endsWith('/chapters/bulk-upload') && r.body.dryRun === true
     );
-    req.flush({ total: 1, valid: 1, invalid: 0, inserted: 0, rows: [] });
+    req.flush({ data: { total: 1, valid: 1, invalid: 0, rows: [{}], dryRun: true } });
 
     expect(component.isUploading).toBeFalse();
+    expect(track).toHaveBeenCalledWith('content-upload-validated', { segment: 'chapters', valid: true });
   });
 
   it('saveUpload should call the generic bulk-upload route with dryRun false', () => {
+    const track = spyOn(TestBed.inject(UmamiService), 'track');
     component.uploadRows = [{ chapterNumber: 1 }];
     component.saveUpload();
 
@@ -91,6 +95,7 @@ describe('ContentListComponent', () => {
     httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
 
     expect(component.uploadCanSave).toBeFalse();
+    expect(track).toHaveBeenCalledWith('content-curated', { segment: 'chapters', action: 'bulk-create' });
   });
 
   it('approve should be a single atomic call, since restore-then-update fails for a ready-for-review record', () => {

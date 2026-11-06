@@ -8,6 +8,12 @@ import { ContentGenerationService } from '../content-generation.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { UmamiService } from 'src/app/shared/services/umami.service';
 
+const DOWNLOAD_TRACKING: Record<string, { format: string; kind: string }> = {
+  planDoc: { format: 'docx', kind: 'plan' },
+  planChecklist: { format: 'docx', kind: 'checklist' },
+  planChecklistPdf: { format: 'pdf', kind: 'checklist' },
+};
+
 @Component({
   selector: 'app-lesson-plan-documents',
   templateUrl: './lesson-plan-documents.component.html',
@@ -114,7 +120,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
       default:
         return;
     }
-    this.umamiService.track('artifact-downloaded', { type: this.isLesson ? 'lesson-plan' : 'resource-plan', format: downloadType });
+    this.umamiService.track('artifact-downloaded', { type: this.isLesson ? 'lesson-plan' : 'resource-plan', ...DOWNLOAD_TRACKING[downloadType] });
   }
 
   loadLessonPlanPresentation(showLoading = true) {
@@ -164,7 +170,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     this.contentGenerationService.downloadPresentationFile(presentationId, "pptx").subscribe({
       next: (blob) => {
         saveAs(blob, `lesson-plan-${this.planId}.pptx`);
-        this.umamiService.track('artifact-downloaded', { type: 'presentation', format: 'pptx' });
+        this.umamiService.track('artifact-downloaded', { type: 'presentation', format: 'pptx', kind: 'deck' });
       },
       error: (err) => {
         this.utilityService.handleError(err);

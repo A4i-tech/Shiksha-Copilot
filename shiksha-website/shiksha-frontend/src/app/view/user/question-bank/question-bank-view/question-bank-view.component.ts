@@ -197,7 +197,7 @@ export class QuestionBankViewComponent implements OnInit {
     } else {
       this.downloadBluePrint()
     }
-    this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: type });
+    this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: 'docx', kind: { qp: 'paper', ak: 'answer-key' }[type as string] ?? 'blueprint' });
   }
 
   downloadQp() {
