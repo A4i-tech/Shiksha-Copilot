@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { saveAs } from 'file-saver';
@@ -66,6 +66,7 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
     PaginationComponent,
     ModalComponent,
     UploadPopupComponent,
+    TranslateModule,
   ],
 })
 export class ContentListComponent implements OnInit, OnDestroy {
@@ -303,7 +304,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
       .reduce((current: any, key: string) => current?.[key], record);
 
     if (value === null || value === undefined) return '-';
-    if (field === 'status') return STATUS_LABELS[value] || `${value}`;
+    if (field === 'status') return this.translateService.instant(STATUS_LABELS[value] || `${value}`);
     if (Array.isArray(value)) return value.join(', ');
     if (typeof value === 'object') return JSON.stringify(value);
 
@@ -332,21 +333,21 @@ export class ContentListComponent implements OnInit, OnDestroy {
     switch (action) {
       case 'restore':
         request = this.contentService.restore(segment, id);
-        successMessage = `${this.config.singular} restored successfully`;
+        successMessage = `${this.config.singular} ${this.translateService.instant('restored successfully')}`;
         break;
       case 'approve':
         request = this.contentService.approve(segment, id);
-        successMessage = `${this.config.singular} approved successfully`;
+        successMessage = `${this.config.singular} ${this.translateService.instant('approved successfully')}`;
         break;
       case 'sendForReview':
         // draft -> under_review: both stay soft-deleted, only status moves.
         request = this.contentService.update(segment, id, { status: CONTENT_STATUS.UNDER_REVIEW });
-        successMessage = `${this.config.singular} sent for review`;
+        successMessage = `${this.config.singular} ${this.translateService.instant('sent for review')}`;
         break;
       case 'sendToDraft':
         // under_review -> draft: both stay soft-deleted, only status moves.
         request = this.contentService.update(segment, id, { status: CONTENT_STATUS.DRAFT });
-        successMessage = `${this.config.singular} sent back to draft`;
+        successMessage = `${this.config.singular} ${this.translateService.instant('sent back to draft')}`;
         break;
     }
 
@@ -364,11 +365,11 @@ export class ContentListComponent implements OnInit, OnDestroy {
   }
 
   get uploadInstructions(): string[] {
-    const label = this.config?.label?.toLowerCase() || 'records';
+    const label = this.config.label.toLowerCase();
     return [
-      `The file is a JSON array of ${label} (or an object with a rows array), or an Excel (.xlsx) file with one header row.`,
-      'The upload runs a check first. Nothing is saved until you press Save.',
-      'Every column that the check reports as missing must carry a value.',
+      `${this.translateService.instant('The file is a JSON array of')} ${label} ${this.translateService.instant('(or an object with a rows array), or an Excel (.xlsx) file with one header row.')}`,
+      this.translateService.instant('The upload runs a check first. Nothing is saved until you press Save.'),
+      this.translateService.instant('Every column that the check reports as missing must carry a value.'),
     ];
   }
 
@@ -395,7 +396,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   upload(): void {
     const file = this.selectedFile;
     if (!file) {
-      this.utilityService.showWarning('Pick a file first.');
+      this.utilityService.showWarning(this.translateService.instant('Pick a file first.'));
       return;
     }
     this.uploadReport = [];
@@ -440,7 +441,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   private rejectUploadFile(): void {
     this.uploadRows = [];
     this.utilityService.showError(
-      `The file must hold a JSON array of ${this.config.label.toLowerCase()}, an object with a rows array, or an Excel file with one header row.`
+      `${this.translateService.instant('The file must hold a JSON array of')} ${this.config.label.toLowerCase()}, ${this.translateService.instant('an object with a rows array, or an Excel file with one header row.')}`
     );
   }
 
@@ -565,7 +566,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
           this.umamiService.track('content-curated', { segment: this.config.segment, action: 'bulk-create' });
           this.utilityService.showSuccess(
             this.uploadMessage ||
-              `The ${this.config.label.toLowerCase()} are saved.`
+              `${this.translateService.instant('The')} ${this.config.label.toLowerCase()} ${this.translateService.instant('are saved.')}`
           );
           this.closeUpload();
           this.loadRecords();
