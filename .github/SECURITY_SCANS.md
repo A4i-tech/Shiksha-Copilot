@@ -48,7 +48,7 @@ PR #252 addresses the first 8 categories (the 9th is parked per issue #575). Tri
 
 ## Making the gate enforceable
 
-A repo admin must add a branch protection rule for `a4i/staging` (it currently has none) and mark **`semgrep`** (shown as *Semgrep / semgrep* in PR checks) as a required status check, after watching the false-positive rate for about a week.
+`a4i/staging` already has an active ruleset (2 required approvals, 3 required test checks, no deletion, no force push). Required checks there match by the job id, not the display name, so a repo admin must add **`semgrep`** (shown as *Semgrep / semgrep* in PR checks) to that ruleset's required status checks, after watching the false-positive rate for a tuning window.
 
 Until then the check runs and shows red on a finding, but does not stop a merge.
 
