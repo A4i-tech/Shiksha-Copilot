@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { BULK_UPLOAD_MAX_BYTES } from 'src/app/shared/utility/constant.util';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TranslateService } from '@ngx-translate/core';
@@ -93,10 +94,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   /** file types that the bulk upload popup accepts */
   uploadFileTypes: string[] = ['.json', '.xlsx'];
-  /** largest bulk upload the server accepts for the content package */
-  readonly bulkUploadMaxBytes = 5 * 1024 * 1024;
-  /** hint under the browse button, derived from the limit above */
-  readonly bulkUploadHint = `File supported .json file, up to ${this.bulkUploadMaxBytes / (1024 * 1024)}MB in size`;
+  readonly bulkUploadMaxBytes = BULK_UPLOAD_MAX_BYTES;
   /** file that the popup holds before the check runs */
   selectedFile: File | null = null;
   /** rows of the file that the admin picked */

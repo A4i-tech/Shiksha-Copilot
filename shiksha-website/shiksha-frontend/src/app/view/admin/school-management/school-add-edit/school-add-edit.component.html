@@ -708,6 +708,7 @@
 <app-modal *ngIf="modalService.showBlukUploadDialog">
   <app-upload-popup
     [allowedFileTypes]="uploadFileTypes"
+    [maxFileSize]="maxExcelImportSize"
     (fileUploaded)="uploadedFile($event)"
     (upload)="upload($event)"
   ></app-upload-popup>

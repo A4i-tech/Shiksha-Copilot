@@ -46,6 +46,8 @@ describe("QuestionBankManager", () => {
 
     mockCacheSummaryDao = {
       create: jest.fn(),
+      exists: jest.fn(),
+      getById: jest.fn(),
     };
 
     QuestionBankDao.mockImplementation(() => mockQuestionBankDao);
@@ -201,14 +203,9 @@ describe("QuestionBankManager", () => {
   });
 
   describe("retryFailedJobs", () => {
-    const mockPending = (value) => ({
-      select: () => ({ lean: () => (value instanceof Error ? Promise.reject(value) : Promise.resolve(value)) }),
-    });
-
     it("should start a sweep when failed jobs exist", async () => {
-      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
       const { requeueFailedJobs } = require("../../../managers/cache.queue.manager");
-      QuestionBankCacheSummary.findOne = jest.fn(() => mockPending({ _id: "summary-1" }));
+      mockCacheSummaryDao.exists.mockResolvedValue({ _id: "summary-1" });
 
       const result = await manager.retryFailedJobs();
       await new Promise(setImmediate);
@@ -218,9 +215,25 @@ describe("QuestionBankManager", () => {
       expect(requeueFailedJobs).toHaveBeenCalledTimes(1);
     });
 
+    it("should refuse a second sweep while one is running", async () => {
+      const { requeueFailedJobs } = require("../../../managers/cache.queue.manager");
+      let finish;
+      requeueFailedJobs.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+      mockCacheSummaryDao.exists.mockResolvedValue({ _id: "summary-1" });
+
+      await manager.retryFailedJobs();
+      const second = await manager.retryFailedJobs();
+      finish();
+      await new Promise(setImmediate);
+      const third = await manager.retryFailedJobs();
+
+      expect(second.success).toBe(false);
+      expect(second.message).toContain("already running");
+      expect(third.success).toBe(true);
+    });
+
     it("should report when there is nothing to retry", async () => {
-      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
-      QuestionBankCacheSummary.findOne = jest.fn(() => mockPending(null));
+      mockCacheSummaryDao.exists.mockResolvedValue(null);
 
       const result = await manager.retryFailedJobs();
 
@@ -229,8 +242,7 @@ describe("QuestionBankManager", () => {
     });
 
     it("should propagate errors instead of swallowing them", async () => {
-      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
-      QuestionBankCacheSummary.findOne = jest.fn(() => mockPending(new Error("Query failed")));
+      mockCacheSummaryDao.exists.mockRejectedValue(new Error("Query failed"));
 
       await expect(manager.retryFailedJobs()).rejects.toThrow("Query failed");
     });
@@ -238,22 +250,28 @@ describe("QuestionBankManager", () => {
 
   describe("retryFailedJob", () => {
     it("should retry specific failed job", async () => {
-      const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
-      QuestionBankCacheSummary.findById = jest.fn().mockResolvedValue({
+      const { addCacheJob } = require("../../../managers/cache.queue.manager");
+      mockCacheSummaryDao.getById.mockResolvedValue({
         _id: "summary-1",
-        toObject: jest.fn().mockReturnValue({
-          _id: "summary-1",
-          notFoundQuestions: [],
-          processedCache: [],
-          unitLevel: "CHAPTER",
-          notFoundResponse: [],
-        }),
+        notFoundQuestions: [],
+        processedCache: [],
+        unitLevel: "CHAPTER",
+        aiQuestionsForCache: [],
       });
 
       const result = await manager.retryFailedJob("summary-1");
 
       expect(result.success).toBe(true);
       expect(result.message).toContain("processing initiated");
+      expect(addCacheJob).toHaveBeenCalled();
+    });
+
+    it("should surface an enqueue failure instead of reporting success", async () => {
+      const { addCacheJob } = require("../../../managers/cache.queue.manager");
+      mockCacheSummaryDao.getById.mockResolvedValue({ _id: "summary-1" });
+      addCacheJob.mockRejectedValueOnce(new Error("Mongo write failed"));
+
+      await expect(manager.retryFailedJob("summary-1")).rejects.toThrow("Mongo write failed");
     });
   });
 
