@@ -5,7 +5,7 @@ const {
   createEphemeralTeacher,
   cleanupEphemeralTeacher,
 } = require("./superuser.helper");
-const { startStubApi, buildGenerateBody, cleanupQuestionPaperData } = require("./question.paper.stub-api");
+const { startStubApi, buildGenerateBody, cleanupQuestionPaperData, describeQP } = require("./question.paper.stub-api");
 
 const FAKE_ID = "64b000000000000000000001";
 const ROUTES = [
@@ -28,7 +28,7 @@ const ROUTES = [
   ["post", `/api/question-bank/retry-failed-job/${FAKE_ID}`],
 ];
 
-describe("question paper: auth and input validation", () => {
+describeQP("question paper: auth and input validation", () => {
   const stub = startStubApi();
   let rootToken;
   let noPermission;
