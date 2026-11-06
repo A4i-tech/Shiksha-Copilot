@@ -25,6 +25,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
   const ids = { subjects: [], chapters: [], lessonPlans: [], resources: [], questions: [] };
   let token;
   let subject;
+  let soundChapter;
   let chapter; // the one PASS chapter every downstream entity's PASS/FAIL rows reference
 
   beforeAll(async () => {
@@ -85,11 +86,26 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
       ids.chapters.push(...res.body.data.insertedIds);
 
       const list = await request(baseURL)
-        .get(`/api/admin/content/chapters?search=${encodeURIComponent(`Light ${suffix}`)}`)
+        .get(`/api/admin/content/chapters?limit=10&includeDeleted=3&search=${suffix}`)
         .set("Authorization", token);
       chapter = list.body.data.results.find((row) => row.topics === `Light ${suffix}`);
       expect(chapter).toBeDefined();
       expect(chapter.status).toBe("draft");
+
+      // Lesson plans, resources and questions only resolve a live chapter.
+      soundChapter = list.body.data.results.find((row) => row.topics === `Sound ${suffix}`);
+      expect(soundChapter).toBeDefined();
+      for (const { _id } of [chapter, soundChapter]) {
+        const reviewRes = await request(baseURL)
+          .put(`/api/admin/content/chapters/${_id}`)
+          .set("Authorization", token)
+          .send({ status: "under_review" });
+        expect(reviewRes.body.success).toBe(true);
+        const approveRes = await request(baseURL)
+          .post(`/api/admin/content/chapters/${_id}/approve`)
+          .set("Authorization", token);
+        expect(approveRes.body.success).toBe(true);
+      }
     }, 30000);
 
     it("rejects each invalid row with its own reason, and saves nothing", async () => {
@@ -327,7 +343,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
               medium: "english",
               semester: "1",
               subject: subject.subjectName,
-              chapterId: chapter._id,
+              chapterId: soundChapter._id,
               subTopics: ["Propagation of sound"],
             },
           ],
