@@ -38,11 +38,20 @@ describe("School Class Validation", () => {
     girls_strength: 20,
     boys_strength: 25,
     total_strength: 45,
-    school_id: "school123",
+    school_id: "aaaaaaaaaaaaaaaaaaaaaaaa",
     medium: "English",
   };
 
   describe("validateClassCreate", () => {
+    it("renames school_id to schoolId", () => {
+      mockReq.body = { ...validClassData };
+
+      validateClassCreate(mockReq, mockRes, mockNext);
+
+      expect(mockReq.body.schoolId).toBe(validClassData.school_id);
+      expect(mockReq.body).not.toHaveProperty("school_id");
+    });
+
     it("should pass validation with valid class data", () => {
       mockReq.body = { ...validClassData };
 

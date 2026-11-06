@@ -92,7 +92,6 @@ class TeacherTrainingBatchController extends BaseController {
   async getBatchById(req, res) {
     const { batchId } = req.params;
     const batch = await TeacherTrainingBatch.findById(batchId)
-      .populate(teacherPopulate)
       .select('+permissionLetterPdfPath +attendancePdfPath +photoPaths.path +photoPaths.mimetype'); // Explicitly include photoPaths.path and photoPaths.mimetype
     
     if (!batch) {
@@ -100,6 +99,7 @@ class TeacherTrainingBatchController extends BaseController {
     }
     
     if (!await canAccessBatch(req.permissions, req.user._id, batch, "training.view")) return res.status(403).json({ message: 'Batch is outside your scope.' });
+    await batch.populate(teacherPopulate);
     let currentEpoch = parseInt(Date.now() / 1000);
 		let expireLimit = 5 * 24 * 60 * 60;
     let expiryUpdated = false;
@@ -241,13 +241,14 @@ class TeacherTrainingBatchController extends BaseController {
 
   async submitBatch(req, res) {
     const { batchId } = req.params;
-    const batch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
+    const batch = await TeacherTrainingBatch.findById(batchId);
 
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
     if (!await canAccessBatch(req.permissions, req.user._id, batch, "training.edit")) return res.status(403).json({ message: 'Batch is outside your scope.' });
+    await batch.populate(teacherPopulate);
 
     if (batch.isSubmitted) {
       return res.status(400).json({ message: 'This batch has already been submitted.' });
@@ -319,13 +320,14 @@ class TeacherTrainingBatchController extends BaseController {
 
   async exportBatchReport(req, res) {
     const { batchId } = req.params;
-    const batch = await TeacherTrainingBatch.findById(batchId).populate(teacherPopulate);
+    const batch = await TeacherTrainingBatch.findById(batchId);
 
     if (!batch) {
       return res.status(404).json({ message: 'Batch not found' });
     }
 
     if (!await canAccessBatch(req.permissions, req.user._id, batch, "training.view")) return res.status(403).json({ message: 'Batch is outside your scope.' });
+    await batch.populate(teacherPopulate);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Batch Report');

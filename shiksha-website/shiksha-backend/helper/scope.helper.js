@@ -60,7 +60,7 @@ async function assertCanAssign(grants, role, dep, permission) {
     return school._id;
   }
   const fields = REGION_SCOPE_FIELDS[role.scopeType];
-  if (fields && (typeof dep !== "object" || Object.keys(dep).length !== fields.length || fields.some((field) => !dep[field]))) {
+  if (typeof dep !== "object" || Object.keys(dep).length !== fields.length || fields.some((field) => !dep[field])) {
     throw new AppError("The selected school or region is incomplete. Select every level and save again.", 400);
   }
   const regionQuery = {
@@ -69,7 +69,7 @@ async function assertCanAssign(grants, role, dep, permission) {
     DISTRICT: { state: dep.state, zones: { $elemMatch: { name: dep.zone, districts: { $elemMatch: { name: dep.district } } } } },
     BLOCK: { state: dep.state, zones: { $elemMatch: { name: dep.zone, districts: { $elemMatch: { name: dep.district, blocks: { $elemMatch: { name: dep.block } } } } } } },
   };
-  if (regionQuery[role.scopeType] && !await Region.exists(regionQuery[role.scopeType])) throw new AppError("The selected region does not exist. Select an existing region and save again.", 400);
+  if (!await Region.exists(regionQuery[role.scopeType])) throw new AppError("The selected region does not exist. Select an existing region and save again.", 400);
   if (!hasAssignmentScope(grants, permission, role, dep)) throw new AppError(OUT_OF_SCOPE, 403);
   return dep;
 }
@@ -98,6 +98,14 @@ function permissionScopeFilter(grants, permission, path) {
   return scopeFilter(getPermission(grants, permission), path);
 }
 
+function readableSchools(grants) {
+  const scoped = ["school.read", "school.list"]
+    .filter((permission) => getPermission(grants, permission))
+    .map((permission) => permissionScopeFilter(grants, permission));
+  if (scoped.some((filter) => !Object.keys(filter).length)) return {};
+  return scoped.length ? { $or: scoped } : { _id: { $in: [] } };
+}
+
 function isResourceAllowed(grants, permission, resource) {
   const scopes = getPermission(grants, permission);
   if (!scopes) return false;
@@ -109,9 +117,9 @@ function isResourceAllowed(grants, permission, resource) {
   });
 }
 
-function intersectFilters(filter, scope) {
+function intersectFilters(filter = {}, scope) {
   if (!Object.keys(scope).length) return filter;
   return Object.keys(filter).length ? { $and: [filter, scope] } : scope;
 }
 
-module.exports = { dependencyMatches, assignmentDependencyFilter, isDependencyAllowed, hasAssignmentScope, assertCanAssign, assertCanGrant, scopeFilter, permissionScopeFilter, isResourceAllowed, intersectFilters };
+module.exports = { dependencyMatches, assignmentDependencyFilter, isDependencyAllowed, hasAssignmentScope, assertCanAssign, assertCanGrant, scopeFilter, permissionScopeFilter, readableSchools, isResourceAllowed, intersectFilters };

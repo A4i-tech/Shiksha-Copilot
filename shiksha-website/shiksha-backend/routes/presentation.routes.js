@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { posix } = require("path");
 const express = require("express");
 const router = express.Router();
 const { isAuthenticated } = require("../middlewares/auth.js");
@@ -13,7 +14,7 @@ const createPresentationProxy = target => createProxyMiddleware({
 	timeout: 310_000,
 	on: {
 		proxyReq: (proxyReq, req, res) => {
-			if (proxyReq.method === "POST" && !hasPermission(req.permissions, "presentation.generate.arbitrary")) {
+			if (!["GET", "HEAD"].includes(proxyReq.method) && !hasPermission(req.permissions, "presentation.generate.arbitrary")) {
 				res.statusCode = 403;
 				res.end("Forbidden");
 				proxyReq.destroy();
@@ -68,6 +69,17 @@ router.get(
 	},
 	createPresentationProxy(process.env.LLM_API_BASE_URL)
 );
+// Upstream decodes paths, so guard the decoded path
+router.use("/presentation", (req, res, next) => {
+	let path;
+	try {
+		path = posix.normalize(decodeURIComponent(req.path));
+	} catch {
+		return res.status(400).send("Invalid URL encoding in the request path. Fix the path and try again.");
+	}
+	if (/^\/events(\/|$)/i.test(path)) return res.sendStatus(404);
+	next();
+});
 router.use(
 	"/presentation",
 	isAuthenticated,
