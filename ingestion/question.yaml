@@ -1,0 +1,830 @@
+pipeline_id: question
+parameters:
+  properties:
+    start_page:
+      type: integer
+      minimum: 1
+      default: 1
+    end_page:
+      type: integer
+      minimum: 1
+      default: 16
+    prompt_template:
+      type: string
+      default: Extract the school question-bank metadata from the supplied PDF 
+        pages.
+    toc_start_page:
+      type: integer
+      minimum: 1
+      default: 1
+    toc_end_page:
+      type: integer
+      minimum: 1
+      default: 12
+    page_offset:
+      type: integer
+      default: 0
+      description: Physical PDF page minus the page number listed in the table 
+        of contents
+    chunk_size:
+      type: integer
+      minimum: 1
+      default: 1
+      description: Number of PDF pages sent in each raw extraction call
+    answer_chunk_size:
+      type: integer
+      minimum: 1
+      default: 4
+      description: Number of model-answer pages used for answer routing
+    chapters:
+      type: array
+      items:
+        type: integer
+        minimum: 1
+      uniqueItems: true
+      default: []
+      description: Chapter numbers to ingest; an empty array ingests every chapter
+    mcq_marks:
+      type: number
+      exclusiveMinimum: 0
+      multipleOf: 0.5
+      default: 1
+    fill_blanks_marks:
+      type: number
+      exclusiveMinimum: 0
+      multipleOf: 0.5
+      default: 1
+    answer_very_short_marks:
+      type: number
+      exclusiveMinimum: 0
+      multipleOf: 0.5
+      default: 1
+    answer_short_marks:
+      type: number
+      exclusiveMinimum: 0
+      multipleOf: 0.5
+      default: 2
+    answer_medium_marks:
+      type: number
+      exclusiveMinimum: 0
+      multipleOf: 0.5
+      default: 2
+    answer_long_marks:
+      type: number
+      exclusiveMinimum: 0
+      multipleOf: 0.5
+      default: 3
+    matching_marks:
+      type: number
+      exclusiveMinimum: 0
+      multipleOf: 0.5
+      default: 1
+
+steps:
+- agent: page_chunking
+  description: Split source PDF into physical pages
+  config:
+    mode: pdf
+
+- agent: extract
+  description: Extract question-bank metadata
+  stage: analysis
+  config:
+    concurrency: 2
+    foreach: .
+    input: '[.items[] | select(.metadata.page >= ${.config.start_page} and .metadata.page
+      <= ${.config.end_page}) | .id]'
+    path: .metadata.shiksha_question
+    prompt: ${.config.prompt_template}
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        board:
+          type: string
+          enum: [CBSE, BSE-TG, KSEEB]
+        medium:
+          type: string
+          minLength: 1
+        grade:
+          type: integer
+          minimum: 1
+        subject:
+          type: string
+          minLength: 1
+        subject_norm:
+          type: string
+          minLength: 1
+          description: Short lowercase subject name used by indices
+      required: [board, medium, grade, subject, subject_norm]
+- agent: extract
+  description: Extract question and answer ranges from the table of contents
+  stage: analysis
+  config:
+    retries: 3
+    foreach: .
+    mode: buffered
+    input: '[.items[] | select(.metadata.page >= ${.config.toc_start_page} and .metadata.page
+      <= ${.config.toc_end_page}) | .id]'
+    path: .metadata.toc
+    prompt: |
+      Read pages in order until the page explicitly headed CONTENTS is found. Extract only from that table, then stop without reading later question pages.
+      Return every actual question-bank chapter in printed order and the separate model-answer section.
+      Return page numbers exactly as printed in the table of contents.
+      Ignore front matter, learning-outcome prose, subject-group labels, and other non-chapter entries. Never infer a chapter or answer boundary from question headings outside the CONTENTS table.
+    schema:
+      type: object
+      additionalProperties: false
+      properties:
+        records:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              'no':
+                type: integer
+                minimum: 1
+              name:
+                type: string
+                minLength: 1
+              page_begin:
+                type: integer
+                minimum: 1
+            required: ['no', name, page_begin]
+        answers:
+          type: object
+          additionalProperties: false
+          properties:
+            name:
+              type: string
+              minLength: 1
+            page_begin:
+              type: integer
+              minimum: 1
+          required: [name, page_begin]
+      required: [records, answers]
+    assertions:
+    - expr: |-
+        ([ $item.items[].metadata.page ] | max) as $last_page
+        | .answers.page_begin <= $last_page
+      feedback: The answer-section page must exist within this PDF. Re-read the explicit CONTENTS table and do not invent page numbers.
+    - expr: |-
+        .answers.page_begin as $answer_start
+        | all(.records[]; .page_begin < $answer_start)
+      feedback: Every chapter must begin before the separate answer section. Extract the printed chapter rows and Answers row exactly.
+- agent: page_stitching
+  description: Build zero-overlap question and answer PDF chunks
+  config:
+    foreach: |-
+      . as $doc
+      | (${.config.chunk_size}) as $chunk_size
+      | (${.config.answer_chunk_size}) as $answer_chunk_size
+      | (${.config.chapters}) as $requested_chapters
+      | (${.config.page_offset}) as $offset
+      | ($offset + $doc.metadata.toc.answers.page_begin) as $answer_start
+      | (($doc.items | map(.metadata.page) | max) // 0) as $last_page
+      | $doc.metadata.toc.records as $chapters
+      | [
+          $chapters | to_entries[]
+          | .value + {
+              page_end: (
+                $offset
+                + if (.key + 1) < ($chapters | length)
+                  then $chapters[.key + 1].page_begin - 1
+                  else $doc.metadata.toc.answers.page_begin - 1
+                  end
+              )
+            }
+        ] as $chapter_ranges
+      | [
+          $chapter_ranges[]
+          | select(
+              ($requested_chapters | length) == 0
+              or (.no as $number | $requested_chapters | index($number))
+            )
+        ] as $selected_chapters
+      | if ($selected_chapters | length) == 0 then
+          error("No requested chapters exist in the table of contents")
+        elif $answer_start < 1 or $last_page < $answer_start then
+          error("Invalid questions.pdf or answers.pdf page range")
+        else
+          (
+            $selected_chapters[] as $chapter
+            | ($offset + $chapter.page_begin) as $chapter_start
+            | range($chapter_start; ($chapter.page_end + 1); $chunk_size) as $start
+            | ([($start + $chunk_size - 1), $chapter.page_end] | min) as $end
+            | {
+                kind: "question_chunk",
+                source_pdf: "questions.pdf",
+                chunk_index: $start,
+                page: $start,
+                page_begin: $start,
+                page_end: $end,
+                context: (
+                  "This PDF is a zero-overlap continuation of chapter \($chapter.no): \($chapter.name). "
+                  + "It contains physical pages \($start)-\($end) from questions.pdf. "
+                  + "A later chapter heading may appear inside this chunk."
+                ),
+                ids: [
+                  $doc.items[]
+                  | select(.metadata.page >= $start and .metadata.page <= $end)
+                  | .id
+                ]
+              }
+          ),
+          (
+            range($answer_start; ($last_page + 1); $answer_chunk_size) as $start
+            | ([($start + $answer_chunk_size - 1), $last_page] | min) as $end
+            | {
+                kind: "answer_chunk",
+                source_pdf: "answers.pdf",
+                chunk_index: (((($start - $answer_start) / $answer_chunk_size) | floor) + 1),
+                page: $start,
+                page_begin: $start,
+                page_end: $end,
+                context: (
+                  "This PDF is a zero-overlap continuation of answers.pdf. "
+                  + "It contains physical pages \($start)-\($end). "
+                  + "The first page may continue a numbered answer from the preceding chunk."
+                ),
+                ids: [
+                  $doc.items[]
+                  | select(.metadata.page >= $start and .metadata.page <= $end)
+                  | .id
+                ]
+              }
+          )
+        end
+    input: .ids
+    metadata: '{kind, source_pdf, chunk_index, page, page_begin, page_end, context, content_type:
+      "application/pdf"}'
+    replace: true
+
+- agent: rasterize
+  description: Rasterize PDF chunks into image-only PDFs (KTBS text layers are Nudi-encoded)
+  config:
+    foreach: .items[] | select(.metadata.kind == "question_chunk" or .metadata.kind == "answer_chunk")
+    input: '[.id]'
+    dpi: 180
+
+- agent: extract
+  description: Identify chapters represented in each answer chunk
+  config:
+    retries: 3
+    concurrency: 4
+    foreach: |-
+      . as $doc
+      | [$doc.metadata.toc.records[].no] as $chapter_numbers
+      | [
+          $doc.items[]
+          | select(.metadata.kind == "answer_chunk")
+          | {id, chunk_index: .metadata.chunk_index}
+        ]
+      | sort_by(.chunk_index) as $chunks
+      | $chunks[] as $chunk
+      | (
+          $chunks
+          | map(select(.chunk_index == ($chunk.chunk_index - 1)))
+          | first
+        ) as $previous
+      | {
+          id: $chunk.id,
+          metadata: (
+            $doc.items[]
+            | select(.id == $chunk.id)
+            | .metadata
+          ),
+          inputs: (
+            if $previous == null
+            then [$chunk.id]
+            else [$previous.id, $chunk.id]
+            end
+          ),
+          chapterSchema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              chapters: {
+                type: "array",
+                minItems: 1,
+                uniqueItems: true,
+                items: {
+                  type: "integer",
+                  enum: $chapter_numbers
+                }
+              }
+            },
+            required: ["chapters"]
+          }
+        }
+    input: .inputs
+    path: .metadata.answer_membership
+    prompt: |
+      Identify every chapter whose model-answer content appears in the target answers.pdf chunk.
+
+      The final supplied PDF is the target chunk. When two PDFs are supplied, the first is only the immediately preceding chunk for continuity context and the second is the target.
+
+      Include a chapter when any answer content belonging to that chapter appears in the target chunk, even when its chapter heading appears only in the preceding context PDF. Include all chapters represented in the target chunk and no others.
+    schema: .chapterSchema
+
+- agent: extract
+  description: Extract simple ordered question records
+  stage: raw_extraction
+  config:
+    retries: 3
+    concurrency: 4
+    foreach: |-
+      def content_schema($description):
+        {
+          type: "object",
+          additionalProperties: false,
+          description: $description,
+          properties: {
+            text: {
+              type: "string"
+            }
+          },
+          required: ["text"]
+        };
+
+      . as $doc
+      | [$doc.metadata.toc.records[] | {no, name}] as $chapters
+      | $doc.items[]
+      | select(.metadata.kind == "question_chunk") as $chunk
+      | {
+          id: $chunk.id,
+          metadata: $chunk.metadata,
+          chapters: $chapters,
+          inputs: [$chunk.id],
+          recordSchema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              leading_continuation: {
+                anyOf: [
+                  {type: "null"},
+                  content_schema("Unnumbered question text at the beginning of this chunk that continues the final numbered question from the preceding chunk.")
+                ]
+              },
+              records: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: {
+                    ch_no: {
+                      type: ["integer", "null"],
+                      enum: (([$chapters[].no] + [null]) | unique),
+                      description: "Printed chapter number when visible or supplied by continuation context; null only when it cannot be determined in this chunk."
+                    },
+                    rec_no: {
+                      type: "integer",
+                      minimum: 1,
+                      description: "Outer Arabic question number exactly as printed. Preserve resets and duplicates."
+                    },
+                    content: content_schema("Complete visible question content without the outer number or section heading. Keep MCQ options and matching lists in this text.")
+                  },
+                  required: ["ch_no", "rec_no", "content"]
+                }
+              }
+            },
+            required: ["leading_continuation", "records"]
+          }
+        }
+    input: .inputs
+    context: '{continuation: .metadata.context, chapters: .chapters} | tojson'
+    path: .metadata.raw_questions
+    prompt: |
+      You are given one zero-overlap PDF chunk. Parse all questions from this chunk without rewording them.
+
+      Return one record for every visible outer Arabic question number in an actual question section, in source order. Never turn MCQ option labels, matching-list numbers, bullets, or subparts into separate records. Keep those inside their outer question's content.text. Remove only the outer question number, section heading, and topic name.
+
+      Ignore numbered chapter front matter such as LEARNING OUTCOME, Learning points, Weightage to Objectives, blueprints, and marks tables. Those are not questions. An introductory page with no actual question section must return an empty records array.
+
+      Read the continuation context. If unnumbered text appears before the first visible outer question number because a question began in the preceding chunk, return that text only in leading_continuation. Do not invent its number and do not create a record for it. If the chunk starts directly with a new numbered question, leading_continuation must be null.
+
+      Preserve printed chapter and question numbers. Use the continuation chapter when the chunk begins mid-chapter. A later printed chapter heading overrides it for subsequent records. Use null for ch_no only when neither context nor a visible heading determines it.
+    assertions:
+    - expr: |-
+        .records
+        | group_by(.ch_no)
+        | all(.[];
+            ([.[].rec_no] | unique | sort) as $numbers
+            | ($numbers | length) < 2
+              or (($numbers[-1] - $numbers[0] + 1) == ($numbers | length))
+          )
+      feedback: A printed question number is missing between two returned numbers. Return every intervening outer question and attach its own diagrams to it.
+    schema: .recordSchema
+
+- agent: transform
+  description: Normalize question chunks and assign stable source positions
+  config:
+    value: |
+      def append_content($base; $extra):
+        if $extra == null then
+          $base
+        elif $base == null then
+          $extra
+        else
+          {
+            text: (
+              [($base.text // ""), ($extra.text // "")]
+              | map(select(test("\\S")))
+              | join("\n")
+            )
+          }
+        end;
+
+      def merge_chunks($chunks):
+        reduce ($chunks | sort_by(.chunk_index)[]) as $chunk
+          ([];
+            ($chunk.raw_questions // {leading_continuation: null, records: []}) as $result
+            | if $result.leading_continuation == null then
+                .
+              elif length == 0 then
+                error("The first question chunk unexpectedly begins with a continuation")
+              else
+                .[length - 1].content = append_content(.[length - 1].content; $result.leading_continuation)
+              end
+            | . + [
+                $result.records[]
+                | . + {
+                    __chunk_id: $chunk.id,
+                    __chunk_index: $chunk.chunk_index
+                  }
+              ]
+          );
+
+      def inherit_chapters($records):
+        reduce $records[] as $record
+          ({chapter: null, records: []};
+            ($record.ch_no // .chapter) as $chapter
+            | if $chapter == null then
+                error("Cannot determine chapter for question " + ($record.rec_no | tostring))
+              else
+                {
+                  chapter: $chapter,
+                  records: (.records + [$record + {ch_no: $chapter}])
+                }
+              end
+          )
+        | .records;
+
+      . as $doc
+      | merge_chunks([
+          $doc.items[]
+          | select(.metadata.kind == "question_chunk")
+          | {
+              id,
+              chunk_index: .metadata.chunk_index,
+              raw_questions: (.metadata.raw_questions // {leading_continuation: null, records: []})
+            }
+        ])
+      | inherit_chapters(.)
+      | to_entries
+      | {
+          records: [
+            .[]
+            | .value + {
+                position: (.key + 1),
+                key: ("question_" + ((.key + 1) | tostring))
+              }
+          ]
+        }
+    path: .metadata.questions
+- agent: extract
+  description: Model each question chunk from questions.pdf and chapter-routed answers.pdf chunks
+  config:
+    retries: 3
+    concurrency: 4
+    mode: buffered
+    foreach: |-
+      def intersects($a; $b):
+        any($a[]; . as $x | any($b[]; . == $x));
+
+      def ref($name):
+        {"$ref": ("#/properties/output/$defs/" + $name)};
+
+      def target_description($question):
+        "Required target: chapter " + ($question.ch_no | tostring)
+        + ", printed question " + ($question.rec_no | tostring)
+        + ". Raw extracted question: " + ($question.content.text // "")
+        + ". Locate its model answer in the buffered answers.pdf chunks. Do not answer from general knowledge.";
+
+      def definitions($allow_grammar):
+        {
+          TextContent: {
+            title: "TextContent",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              content_type: {type: "string", const: "text/plain"},
+              content: {type: "string", minLength: 1, pattern: "\\S"}
+            },
+            required: ["content_type", "content"]
+          },
+          Content: ref("TextContent"),
+          ContentList: {
+            type: "array",
+            minItems: 1,
+            items: ref("Content")
+          },
+          Difficulty: {
+            type: "string",
+            enum: ["Easy", "Average", "Difficult"]
+          },
+          TextQuestion: {
+            title: "TextQuestion",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              question: ref("ContentList"),
+              answer: ref("ContentList"),
+              keyAnswer: ref("ContentList"),
+              difficulty: ref("Difficulty")
+            },
+            required: ["question", "answer", "keyAnswer", "difficulty"]
+          },
+          McqOption: {
+            title: "McqOption",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              label: {type: "string", enum: ["A", "B", "C", "D"]},
+              text: ref("ContentList")
+            },
+            required: ["label", "text"]
+          },
+          FourOptionsQuestion: {
+            title: "FourOptionsQuestion",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              question: ref("ContentList"),
+              options: {
+                type: "array",
+                minItems: 4,
+                maxItems: 4,
+                items: ref("McqOption")
+              },
+              answer: ref("ContentList"),
+              keyAnswer: ref("ContentList"),
+              difficulty: ref("Difficulty")
+            },
+            required: ["question", "options", "answer", "keyAnswer", "difficulty"]
+          },
+          MatchingListQuestion: {
+            title: "MatchingListQuestion",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              value1: ref("ContentList"),
+              value2: ref("ContentList"),
+              difficulty: ref("Difficulty")
+            },
+            required: ["value1", "value2", "difficulty"]
+          },
+          TextRecord: {
+            title: "TextRecord",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              type: {
+                type: "string",
+                enum: (
+                  [
+                    "FILL_BLANKS",
+                    "ANSWER_VERY_SHORT",
+                    "ANSWER_SHORT",
+                    "ANSWER_MEDIUM",
+                    "ANSWER_LONG"
+                  ]
+                  + if $allow_grammar then
+                      ["GRAMMAR_FILL_BLANKS", "GRAMMAR_EDITING"]
+                    else [] end
+                )
+              },
+              questions: {
+                type: "array",
+                minItems: 1,
+                maxItems: 1,
+                items: ref("TextQuestion")
+              }
+            },
+            required: ["type", "questions"]
+          },
+          McqRecord: {
+            title: "McqRecord",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              type: {
+                type: "string",
+                enum: (["MCQ"] + if $allow_grammar then ["GRAMMAR_MCQ"] else [] end)
+              },
+              questions: {
+                type: "array",
+                minItems: 1,
+                maxItems: 1,
+                items: ref("FourOptionsQuestion")
+              }
+            },
+            required: ["type", "questions"]
+          },
+          MatchingRecord: {
+            title: "MatchingRecord",
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              type: {type: "string", const: "MATCHING"},
+              questions: {
+                type: "array",
+                minItems: 1,
+                items: ref("MatchingListQuestion")
+              }
+            },
+            required: ["type", "questions"]
+          },
+          QuestionModel: {
+            anyOf: [
+              ref("TextRecord"),
+              ref("McqRecord"),
+              ref("MatchingRecord")
+            ]
+          }
+        };
+
+      . as $doc
+      | $doc.items[]
+      | select(.metadata.kind == "question_chunk") as $chunk
+      | [
+          $doc.metadata.questions.records[]
+          | select(.__chunk_id == $chunk.id)
+        ] as $questions
+      | select(($questions | length) > 0)
+      | ([$questions[].ch_no] | unique) as $target_chapters
+      | [
+          $doc.items[]
+          | select(.metadata.kind == "answer_chunk")
+          | select(
+              intersects(
+                (.metadata.answer_membership.chapters // []);
+                $target_chapters
+              )
+            )
+          | {id, chunk_index: .metadata.chunk_index}
+        ]
+      | sort_by(.chunk_index) as $answer_chunks
+      | if ($answer_chunks | length) == 0 then
+          error(
+            "No answer chunks were routed for chapters "
+            + ($target_chapters | tojson)
+          )
+        else
+          .
+        end
+      | ([$answer_chunks[].id]) as $answer_ids
+      | {
+          chunk_id: $chunk.id,
+          questions: $questions,
+          inputs: ([$chunk.id] + [$answer_chunks[].id]),
+          modelSchema: {
+            type: "object",
+            additionalProperties: false,
+            "$defs": definitions(
+              ($doc.metadata.shiksha_question.subject_norm | ascii_downcase | test("english|language"))
+            ),
+            properties: (
+              reduce $questions[] as $question
+                ({}; . + {
+                  ($question.key): (
+                    ref("QuestionModel")
+                    + {description: target_description($question)}
+                  )
+                })
+            ),
+            required: [$questions[].key]
+          }
+        }
+    input: .inputs
+    path: .metadata.question_models
+    prompt: |
+      Use the buffered PDFs to model every schema-required question.
+
+      Call see_next first. The first buffered PDF is the target questions.pdf chunk. Every later buffered PDF is an answers.pdf chunk routed because it contains one or more target chapters. Continue calling see_next until you have located the printed model answer for every required schema property. Do not stop after finding only some answers, and do not answer from general knowledge.
+
+      The dynamic output schema lists every required target with its chapter number, printed question number, and raw question text. It also enforces the exact QuestionModel shape. Return all required properties in one response.
+
+      Preserve the source words and meaning exactly. Do not paraphrase, shorten, summarize, or add information. Clean only presentation noise:
+      - remove outer question-number prefixes such as `1.`, `1)`, `(1)`, or `Q1`;
+      - remove trailing difficulty labels such as `(Easy)`, `(Average)`, or `(Difficult)` from question text;
+      - normalize obvious ALL-CAPS or incorrect casing into natural sentence case while preserving proper nouns and acronyms;
+      - normalize whitespace and line breaks, and repair clearly accidental joined words only when unambiguous;
+      - preserve blanks, punctuation, option wording, subpart labels, and meaningful formatting.
+
+      For MCQ and GRAMMAR_MCQ, separate the cleaned stem and exactly four A/B/C/D options, put the correct option content in answer, and put only its A/B/C/D label in keyAnswer. For all text-question types, place the complete printed model answer in answer and a concise display answer in keyAnswer. For fill-in-the-blank types, keyAnswer is only the missing word or phrase. For MATCHING, return one MatchingListQuestion per resolved left/right pair and omit unused distractors.
+
+      Use the printed section heading to select the exact QuestionType. The allowed values and their model shapes are enforced by the schema. Use GRAMMAR_MCQ, GRAMMAR_FILL_BLANKS, and GRAMMAR_EDITING only for explicitly grammar-labelled sections.
+
+      Set difficulty from the source's printed Easy, Average, or Difficult label. Do not infer a different difficulty. If a source label is absent, use Average, matching the QuestionModel default.
+
+      Every Content object must use content_type and content. Use text/plain for text.
+    assertions:
+    - expr: |-
+        [
+          .. | objects
+          | select(has("question"))
+          | .question[]
+          | select(.content_type == "text/plain")
+          | .content
+        ]
+        | all(.[]; test("\\s*\\((?:Easy|Average|Difficult)\\)\\s*$"; "i") | not)
+      feedback: Remove trailing difficulty labels from every question text. Preserve all actual question words.
+    - expr: |-
+        [
+          .. | objects
+          | select(has("options"))
+          | [.options[].label]
+        ]
+        | all(.[]; . == ["A", "B", "C", "D"])
+      feedback: Every MCQ must contain exactly one option for each label, ordered A, B, C, D.
+    schema: .modelSchema
+
+- agent: transform
+  description: Build strict chapter JSON from QuestionModel objects
+  config:
+    value: |
+      def marks($type):
+        if $type == "MCQ" then ${.config.mcq_marks}
+        elif $type == "GRAMMAR_MCQ" then ${.config.mcq_marks}
+        elif $type == "MATCHING" then ${.config.matching_marks}
+        elif $type == "FILL_BLANKS" then ${.config.fill_blanks_marks}
+        elif $type == "GRAMMAR_FILL_BLANKS" then ${.config.fill_blanks_marks}
+        elif $type == "GRAMMAR_EDITING" then ${.config.answer_short_marks}
+        elif $type == "ANSWER_VERY_SHORT" then ${.config.answer_very_short_marks}
+        elif $type == "ANSWER_SHORT" then ${.config.answer_short_marks}
+        elif $type == "ANSWER_MEDIUM" then ${.config.answer_medium_marks}
+        elif $type == "ANSWER_LONG" then ${.config.answer_long_marks}
+        else error("Unsupported question type: " + $type)
+        end;
+
+      . as $doc
+      | .metadata.shiksha_question as $metadata
+      | (.metadata.question_models // {}) as $models
+      | [
+          $doc.metadata.questions.records[] as $source
+          | $models[$source.key] as $record
+          | if $record == null then
+              error("Missing QuestionModel output for " + $source.key)
+            else
+              $record.questions[]
+              | {
+                  ch_no: $source.ch_no,
+                  source_no: $source.rec_no,
+                  position: $source.position,
+                  type: $record.type,
+                  marksPerQuestion: marks($record.type),
+                  question: .
+                }
+            end
+        ] as $flat
+      | [
+          $doc.metadata.toc.records[]
+          | select(
+              (${.config.chapters} | length) == 0
+              or (.no as $number | ${.config.chapters} | index($number))
+            ) as $chapter
+          | (
+              $flat
+              | map(select(.ch_no == $chapter.no))
+              | sort_by(.position)
+              | group_by(.type + "|" + (.marksPerQuestion | tostring))
+              | map({
+                  type: .[0].type,
+                  marksPerQuestion: .[0].marksPerQuestion,
+                  numberOfQuestions: length,
+                  questions: map(.question)
+                })
+            ) as $questions
+          | {
+              "_id": (
+                "Board=\($metadata.board),"
+                + "Medium=\($metadata.medium | ascii_downcase),"
+                + "Grade=\($metadata.grade),"
+                + "Subject=\($metadata.subject_norm),"
+                + "Number=\($chapter.no),"
+                + "Title=\($chapter.name)"
+              ),
+              board: $metadata.board,
+              medium: ($metadata.medium | ascii_downcase),
+              grade: $metadata.grade,
+              subject: $metadata.subject_norm,
+              chapterNumber: $chapter.no,
+              chapterTitle: $chapter.name,
+              questions: $questions
+            }
+        ]
+    path: .metadata.shiksha
