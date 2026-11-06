@@ -31,22 +31,16 @@ def test_happy_path_step4_marks_match_config(wizard, step):
         assert paper_marks(stub.final_payloads[0]) == TOTAL_MARKS
 
 
-@pytest.fixture
-def wizard_after_empty_generate(wizard):
-    install_generate_stub(wizard.page, mode="empty")
-    wizard.open()
-    wizard.to_step3()
-    wizard.preview_btn.click()
-    return wizard
-
-
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
     reason="BUG-127 cause 1: empty result shows blank Step 4, A4i-tech/.github#747",
 )
-def test_all_batches_fail_shows_error_not_blank_step4(wizard_after_empty_generate, step):
-    wizard = wizard_after_empty_generate
+def test_all_batches_fail_shows_error_not_blank_step4(wizard, step):
+    install_generate_stub(wizard.page, mode="empty")
+    wizard.open()
+    wizard.to_step3()
+    wizard.preview_btn.click()
     with step("Teacher sees an explicit failure message"):
         expect(wizard.toast.first).to_be_visible(timeout=10000)
 
@@ -86,13 +80,13 @@ def test_generate_failure_shows_error_and_allows_retry(wizard, step, failure):
     assert len(stub.preview_calls) == 2
 
 
-def test_visibility_change_during_pending_generate_still_completes(wizard, step):
+def test_synthetic_visibilitychange_during_pending_generate_still_completes(wizard, step):
     stub = install_generate_stub(wizard.page, hold=True)
     wizard.open()
     wizard.to_step3()
     wizard.preview_btn.click()
     expect(wizard.preview_btn).to_have_text(re.compile("Generating questions"))
-    with step("Tab goes hidden then visible while the call is pending"):
+    with step("Fire synthetic hidden and visible events while the call is pending (headless cannot hide a tab)"):
         for state in ("hidden", "visible"):
             wizard.page.evaluate(
                 """state => {
