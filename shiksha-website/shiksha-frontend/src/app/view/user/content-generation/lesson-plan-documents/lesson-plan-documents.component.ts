@@ -6,6 +6,7 @@ import { ChecklistPdfExportService } from '../../../../shared/services/checklist
 import { DocumentExportService } from 'src/app/shared/services/document-export.service';
 import { ContentGenerationService } from '../content-generation.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 @Component({
   selector: 'app-lesson-plan-documents',
@@ -36,7 +37,8 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     private checkListExportService: CheckListExportService,
     private contentGenerationService: ContentGenerationService,
     private utilityService: UtilityService,
-    private router: Router
+    private router: Router,
+    private umamiService: UmamiService
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -142,6 +144,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
       next: (res) => {
         this.lessonPlanPresentation = res?.data || res;
         this.isGeneratingLessonPlanPresentation = false;
+        this.umamiService.track('artifact-created', { type: 'presentation' });
         this.syncLessonPlanPresentationStream();
       },
       error: (err) => {
