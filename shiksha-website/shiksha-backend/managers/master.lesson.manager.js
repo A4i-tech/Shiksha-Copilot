@@ -12,9 +12,10 @@ const ChapterDao = require("../dao/chapter.dao");
 const AppError = require("../helper/app.error");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const MasterResourceDao = require("../dao/master.resource.dao");
+const mongoose = require("mongoose");
 const Chapter = require("../models/chapter.model");
 const MasterSubject = require("../models/master.subject.model");
-const { CONTENT_STATUS } = require("../constants/content-status");
+const { CONTENT_STATUS, CHAPTER_ACCEPTS_CONTENT } = require("../constants/content-status");
 const { sortDataBySubTopics, restructureCheckListforLLM, getSemester, formatSubject, formatSections, oldFormatStructuredData } = require("../helper/formatter");
 const logger = require("../config/loggers");
 const { post5ETables } = require("../services/copilot.bot.service");
@@ -970,9 +971,11 @@ class MasterLessonManger extends BaseManager {
 			}
 
 			// chapterId can be a chapter _id or its topics, resolved by board, medium and class.
-			const allChapters = await Chapter.find({
-				isDeleted: { $ne: true },
-			}).lean();
+			const givenIds = lessonPlans.map((lessonPlan) => lessonPlan?.chapterId);
+			const byId = givenIds.every((id) => mongoose.Types.ObjectId.isValid(id));
+			const allChapters = await Chapter.find({ ...(byId && { _id: { $in: givenIds } }), ...CHAPTER_ACCEPTS_CONTENT })
+				.select("board medium standard topics subjectId subTopics")
+				.lean();
 
 			const chapterResolver = buildIdOrNameResolver(allChapters, (chapter) => [
 				`${String(chapter.board).toLowerCase()}|${String(chapter.medium).toLowerCase()}|${chapter.standard}|${String(chapter.topics).trim().toLowerCase()}`,

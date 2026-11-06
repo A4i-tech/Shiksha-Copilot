@@ -11,6 +11,17 @@ describe("QuestionManager", () => {
     manager = new QuestionManager();
   });
 
+  describe("adminUpdate", () => {
+    it("updates through the draft-only path, so a live record is never edited", async () => {
+      jest.spyOn(manager, "adminUpdateDraft").mockResolvedValue({ success: true });
+      const req = { params: { id: "r1" }, body: { name: "New" } };
+
+      await manager.adminUpdate(req);
+
+      expect(manager.adminUpdateDraft).toHaveBeenCalledWith(req);
+    });
+  });
+
   describe("bulkUpload", () => {
     let Chapter;
     let Question;
@@ -55,6 +66,15 @@ describe("QuestionManager", () => {
       const result = await manager.bulkUpload([{ text: "What is matter?" }], true);
 
       expect(result.data.invalid).toBe(0);
+    });
+
+    it("looks up live chapters and draft chapters, so a curator can add a question to an assigned draft", async () => {
+      await manager.bulkUpload([{ text: "What is matter?", chapterId: "507f1f77bcf86cd799439011" }], true);
+
+      expect(Chapter.find).toHaveBeenCalledWith({
+        _id: { $in: ["507f1f77bcf86cd799439011"] },
+        $or: [{ isDeleted: { $ne: true } }, { status: "draft" }],
+      });
     });
 
     it("fails the row when chapterId is given but matches no active chapter", async () => {

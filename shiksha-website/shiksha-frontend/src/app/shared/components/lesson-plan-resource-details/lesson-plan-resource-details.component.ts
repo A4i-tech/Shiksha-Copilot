@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import {
   FormGroup,
   FormBuilder,
@@ -185,7 +185,11 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
       type: 'resource',
       inspectUrl: '/content-generation/inspect/resource-plan',
     },
+    '/curation/lesson-plan': { type: 'plan', inspectUrl: '/curation' },
+    '/curation/lesson-resources': { type: 'resource', inspectUrl: '/curation' },
   };
+
+  @Input() curatorMode = false;
 
   learningOutcomes: any;
   combinedLearningOutcomes: any;
@@ -220,11 +224,36 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.initializeForm();
+    this.submitBtnTxt = this.getLessonType()?.type === 'plan' ? 'Generate Lesson Plan':'Generate Lesson Resources'
+
+    if (this.curatorMode) {
+      this.contentGenService.getTopicsSubtopics(undefined, undefined, undefined, undefined, true).subscribe({
+        next: (res: any) => this.getBoardsList(this.curatorClasses(res.data.results)),
+        error: (err) => this.utilityservice.handleError(err),
+      });
+      return;
+    }
+
     const data: string = localStorage.getItem('userData') ?? '';
     const loggedInUser = JSON.parse(data);
-    this.getBoardsList(loggedInUser);
-    this.submitBtnTxt = this.getLessonType()?.type === 'plan' ? 'Generate Lesson Plan':'Generate Lesson Resources'
+    this.getBoardsList(loggedInUser.profiles.teacher.classes);
     this.getRegenrationLimit()
+  }
+
+  // A curator has no teacher classes, so the assigned chapters give the board, medium, class, and subject options.
+  private curatorClasses(chapters: any[]): any[] {
+    const items = new Map<string, any>();
+    chapters.forEach((chapter) => {
+      const subject = chapter.subject[0].subjectName;
+      items.set(`${chapter.board}|${chapter.medium}|${chapter.standard}|${subject}`, {
+        board: chapter.board,
+        medium: chapter.medium,
+        class: chapter.standard,
+        subject,
+        name: subject,
+      });
+    });
+    return [...items.values()];
   }
 
   getRegenrationLimit(){
@@ -244,6 +273,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   getTemplates(){
+    if (this.curatorMode) {
+      this.getTopicsSubtopicsOptions();
+      return;
+    }
     let {board,medium,subject} = this.lessonForm.value;
     let params = new HttpParams()
     params = params.set('filter[boards]', board);
@@ -286,9 +319,9 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
 
   }
 
-  getBoardsList(userDetails: any) {
+  getBoardsList(classes: any[]) {
     let classList = [];
-    classList = this.utilityservice.formatResponse(userDetails.profiles.teacher.classes);
+    classList = this.utilityservice.formatResponse(classes);
     this.boardDropdownOptions = classList;
 
     if (classList.length === 1) {
@@ -406,6 +439,10 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   onTopicSelected(val: any) {
+    if (this.curatorMode) {
+      if (val) this.router.navigate(['/curation/chapters', val._id, this.getLessonType()?.type === 'plan' ? 'lesson-plans' : 'resources', 'new']);
+      return;
+    }
     this.chapterId = val?._id;
     this.resetTopicChange();
 
@@ -535,7 +572,8 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
         this.lessonForm.get('board')?.value,
         this.lessonForm.get('medium')?.value,
         this.lessonForm.get('class')?.value,
-        this.lessonForm.get('subject')?.value
+        this.lessonForm.get('subject')?.value,
+        this.curatorMode
       )
       .subscribe({
         next: (res: any) => {
@@ -789,7 +827,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
   }
 
   backNavigation() {
-    this.router.navigate(['/content-generation']);
+    this.router.navigate([this.curatorMode ? '/curation' : '/content-generation']);
   }
 
   confirm(value: string) {

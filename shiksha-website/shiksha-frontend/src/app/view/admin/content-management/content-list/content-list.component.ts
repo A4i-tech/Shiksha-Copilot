@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { TranslateService } from '@ngx-translate/core';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Observable, Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { saveAs } from 'file-saver';
@@ -13,27 +13,31 @@ import { UploadPopupComponent } from 'src/app/shared/components/upload-popup/upl
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 import { ActionMenuController } from 'src/app/shared/utility/action-menu-controller.util';
 import {
+  BOARD_OPTIONS,
   CONTENT_ENTITIES,
+  MEDIUM_OPTIONS,
   localizeEntity,
   ContentEntityConfig,
   getContentEntityConfig,
 } from '../content-management.config';
-import { ContentManagementService } from '../content-management.service';
-import { CONTENT_STATUS } from '../content-status.constants';
+import { ContentManagementService, Curator } from '../content-management.service';
+import { CONTENT_STATUS, STATUS_BADGE_CLASSES, STATUS_LABELS } from '../content-status.constants';
 import { UmamiService } from 'src/app/shared/services/umami.service';
 
-/** friendly label for the status column; anything not listed here shows as-is */
-const STATUS_LABELS: { [key: string]: string } = {
-  [CONTENT_STATUS.DRAFT]: 'Draft',
-  [CONTENT_STATUS.UNDER_REVIEW]: 'Ready for review',
-  [CONTENT_STATUS.APPROVED]: 'Approved',
-};
+const EXPORT_FAILED = 'Export failed. Check your connection and try again.';
+const EMPTY_FILTERS = { assigned: '', assignedTo: '', board: '', standard: '', medium: '', subject: '' };
+
+const APPROVE_CHAPTER_BODY =
+  'The chapter is marked approved and becomes visible to teachers and students. The lesson plans, resources and questions that are under review also go live.';
 
 type ConfirmAction =
   | 'restore'
   | 'approve'
   | 'sendForReview'
-  | 'sendToDraft';
+  | 'sendToDraft'
+  | 'assign'
+  | 'unassign'
+  | 'requestChanges';
 
 /** title and body of the confirm dialog, one entry per action */
 const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: string } } = {
@@ -53,6 +57,18 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
     title: 'Send back to draft',
     body: 'The record goes back to draft, visible only to the admin who created it.',
   },
+  assign: {
+    title: 'Assign',
+    body: 'Pick the curator who writes the content for this chapter. A curator sees only the chapters assigned to them.',
+  },
+  unassign: {
+    title: 'Unassign',
+    body: 'The chapter has no curator after this. The drafts that the curator saved stay.',
+  },
+  requestChanges: {
+    title: 'Request changes on',
+    body: 'The chapter goes back to its curator as a draft. Tell the curator what to change.',
+  },
 };
 
 @Component({
@@ -66,6 +82,7 @@ const CONFIRM_MODAL_COPY: { [key in ConfirmAction]: { title: string; body: strin
     PaginationComponent,
     ModalComponent,
     UploadPopupComponent,
+    TranslateModule,
   ],
 })
 export class ContentListComponent implements OnInit, OnDestroy {
@@ -84,8 +101,17 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   confirmAction: ConfirmAction | null = null;
   confirmRecord: any = null;
-  /** title/body of the confirm dialog, keyed by action, read from the template */
   confirmModalCopy = CONFIRM_MODAL_COPY;
+  selectedCuratorId = '';
+  reviewComment = '';
+
+  curators: Curator[] = [];
+  filters = { ...EMPTY_FILTERS };
+  readonly boardOptions = BOARD_OPTIONS;
+  readonly mediumOptions = MEDIUM_OPTIONS;
+  readonly classOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}`);
+  readonly statusBadgeClasses = STATUS_BADGE_CLASSES;
+  subjectNames: string[] = [];
 
   /** ids of the rows the admin checked, on the current page */
   selectedIds = new Set<string>();
@@ -120,6 +146,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   private searchTerms = new Subject<string>();
   private subscriptions: Subscription[] = [];
+  private recordsRequest = Subscription.EMPTY;
 
   constructor(
     private route: ActivatedRoute,
@@ -157,6 +184,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
         this.config = localizeEntity(entity, this.translateService);
         this.resetView();
         this.loadRecords();
+        if (entity.key === 'chapters') this.loadCuratorsAndSubjects();
       })
     );
 
@@ -174,6 +202,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subscriptions.forEach((subscription) => subscription.unsubscribe());
+    this.recordsRequest.unsubscribe();
   }
 
   @HostListener('click', ['$event'])
@@ -183,13 +212,15 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
   loadRecords(): void {
     this.isLoading = true;
+    this.recordsRequest.unsubscribe();
 
-    this.contentService
+    this.recordsRequest = this.contentService
       .list(this.config.segment, {
         page: this.currentPage,
         limit: this.pageSize,
         search: this.searchText || undefined,
         includeDeleted: this.recordState,
+        filters: this.filters,
       })
       .subscribe({
         next: (res: any) => {
@@ -215,6 +246,48 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.currentPage = 1;
     this.selectedIds.clear();
     this.loadRecords();
+  }
+
+  onFilterChange(): void {
+    this.currentPage = 1;
+    this.selectedIds.clear();
+    this.loadRecords();
+  }
+
+  private loadCuratorsAndSubjects(): void {
+    this.contentService.listCurators().subscribe({
+      next: (curators) => (this.curators = curators),
+      error: (err: any) => this.utilityService.handleError(err),
+    });
+    this.contentService.listSubjects().subscribe({
+      next: (res: any) => {
+        this.subjectNames = [...new Set<string>(res.data.results.map((subject: any) => subject.subjectName))];
+      },
+      error: (err: any) => this.utilityService.handleError(err),
+    });
+  }
+
+  exportCsv(): void {
+    this.contentService
+      .exportCsv({
+        page: this.currentPage,
+        limit: this.pageSize,
+        search: this.searchText || undefined,
+        includeDeleted: this.recordState,
+        filters: this.filters,
+      })
+      .subscribe({
+        next: (blob) => saveAs(blob, 'chapters.csv'),
+        error: async (err: any) =>
+          this.utilityService.handleError({ ...err, error: await this.exportErrorBody(err.error) }),
+      });
+  }
+
+  // A failed blob download carries its error body as a blob, and a network failure carries none.
+  private exportErrorBody(error: unknown): Promise<{ message: string }> {
+    const fallback = { message: EXPORT_FAILED };
+    if (!(error instanceof Blob)) return Promise.resolve(fallback);
+    return error.text().then((text) => JSON.parse(text)).catch(() => fallback);
   }
 
   onPageChange(page: number): void {
@@ -304,15 +377,33 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
     if (value === null || value === undefined) return '-';
     if (field === 'status') return STATUS_LABELS[value] || `${value}`;
+    if (field === 'assignedTo') return this.curators.find((curator) => curator._id === value)?.name ?? value;
     if (Array.isArray(value)) return value.join(', ');
     if (typeof value === 'object') return JSON.stringify(value);
 
     return `${value}`;
   }
 
+  get confirmBody(): string {
+    if (this.confirmAction === 'approve' && this.config.key === 'chapters') return APPROVE_CHAPTER_BODY;
+    return CONFIRM_MODAL_COPY[this.confirmAction!].body;
+  }
+
+  rowActionsLabel(record: any): string {
+    return `Actions for ${this.config.singular.toLowerCase()} ${this.getColumnValue(record, this.config.columns[0].field)}`;
+  }
+
+  get canConfirm(): boolean {
+    if (this.confirmAction === 'assign') return !!this.selectedCuratorId;
+    if (this.confirmAction === 'requestChanges') return !!this.reviewComment.trim();
+    return true;
+  }
+
   openConfirm(action: ConfirmAction, record: any): void {
     this.confirmAction = action;
     this.confirmRecord = record;
+    this.selectedCuratorId = record.assignedTo ?? '';
+    this.reviewComment = '';
   }
 
   closeConfirm(): void {
@@ -321,7 +412,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   }
 
   runConfirmedAction(): void {
-    if (!this.confirmAction || !this.confirmRecord) return;
+    if (!this.confirmAction || !this.confirmRecord || !this.canConfirm) return;
 
     const action = this.confirmAction;
     const id = this.confirmRecord._id;
@@ -347,6 +438,18 @@ export class ContentListComponent implements OnInit, OnDestroy {
         // under_review -> draft: both stay soft-deleted, only status moves.
         request = this.contentService.update(segment, id, { status: CONTENT_STATUS.DRAFT });
         successMessage = `${this.config.singular} sent back to draft`;
+        break;
+      case 'assign':
+        request = this.contentService.assign(id, this.selectedCuratorId);
+        successMessage = this.translateService.instant('Chapter assigned successfully');
+        break;
+      case 'unassign':
+        request = this.contentService.unassign(id);
+        successMessage = this.translateService.instant('Chapter unassigned successfully');
+        break;
+      case 'requestChanges':
+        request = this.contentService.requestChanges(id, this.reviewComment.trim());
+        successMessage = this.translateService.instant('Chapter sent back to its curator');
         break;
     }
 
@@ -618,6 +721,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.currentPage = 1;
     this.searchText = '';
     this.recordState = '0';
+    this.filters = { ...EMPTY_FILTERS };
     this.selectedIds.clear();
     this.closeConfirm();
   }

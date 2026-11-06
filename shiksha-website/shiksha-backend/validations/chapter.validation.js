@@ -34,10 +34,27 @@ const chapterCreateSchema = Joi.object({
 
 const chapterUpdateSchema = Joi.object(chapterFields).min(1);
 
+const assignSchema = Joi.object({ curatorId: objectId.required() });
+
+const COMMENT_REQUIRED = "Write a comment that tells the curator what to change, then send the chapter back.";
+
+const requestChangesSchema = Joi.object({
+	comment: Joi.string().trim().max(2000).required().messages({
+		"any.required": COMMENT_REQUIRED,
+		"string.base": COMMENT_REQUIRED,
+		"string.empty": COMMENT_REQUIRED,
+		"string.max": "Shorten the comment to 2000 characters or fewer, then send the chapter back.",
+	}),
+});
+
 const validateChapterCreate = validateRequest(chapterCreateSchema);
 const validateChapterUpdate = validateRequestForUpdates(chapterUpdateSchema);
+const validateAssign = validateRequest(assignSchema);
+const validateRequestChanges = validateRequest(requestChangesSchema);
 
 module.exports = {
 	validateChapterCreate,
 	validateChapterUpdate,
+	validateAssign,
+	validateRequestChanges,
 };

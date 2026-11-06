@@ -23,3 +23,17 @@ describe("schoolDependency", () => {
     expect(() => schoolDependency(assignments)).toThrow(expect.objectContaining({ name: "AppError", statusCode: 409 }));
   });
 });
+
+describe("content.curate permission", () => {
+  it("keeps it for a GLOBAL-scope role", () => {
+    expect(names([{ role: { scopeType: "GLOBAL", permissions: ["content.curate"] }, dep: null }])).toEqual(["content.curate"]);
+  });
+
+  it("drops it for a role scoped below GLOBAL", () => {
+    expect(names([{ role: { scopeType: "DISTRICT", permissions: ["content.curate"] }, dep: { district: "d1" } }])).toEqual([]);
+  });
+
+  it("keeps it for Superuser", () => {
+    expect(names([{ role: { isSuperUser: true } }])).toContain("content.curate");
+  });
+});

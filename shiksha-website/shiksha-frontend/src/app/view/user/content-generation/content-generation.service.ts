@@ -219,7 +219,8 @@ export class ContentGenerationService extends BaseRestService {
     board?: string,
     medium?: string,
     standard?: string,
-    subject?: any
+    subject?: any,
+    curatorMode = false
   ) {
     let params = new HttpParams();
 
@@ -238,7 +239,11 @@ export class ContentGenerationService extends BaseRestService {
     params=params.set('limit','999')
     params=params.set('sortBy','orderNumber')
     params=params.set('sortOrder','asc')
-    return this.http.get(`${this.baseUrl}/chapter/list`, { params });
+    if (curatorMode) {
+      // Assigned chapters are drafts until submit, and the Draft tab is the one that lists them.
+      params = params.set('includeDeleted', '3');
+    }
+    return this.http.get(`${this.baseUrl}/${curatorMode ? 'curator/content/chapters' : 'chapter/list'}`, { params });
   }
 
   lessonPlanExists(lessonPlanId: any) {

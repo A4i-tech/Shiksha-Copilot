@@ -89,10 +89,14 @@ export const ANSWER_TYPE_OPTIONS: ContentSelectOption[] = [
   { value: 'GRAMMAR_EDITING', label: 'Grammar: Identify and correct the error' },
 ];
 
+// The backend copies these fields from the chapter, so a curator does not type them.
+export const CURATOR_HIDDEN_FIELDS = ['chapterId', 'chapter', 'class', 'board', 'medium', 'subject'];
+
 export interface ContentColumn {
   /** property of the record, a dot path is allowed */
   field: string;
   label: string;
+  badge?: boolean;
 }
 
 export interface ContentField {
@@ -143,7 +147,8 @@ export const CONTENT_ENTITIES: ContentEntityConfig[] = [
       { field: 'medium', label: 'Medium' },
       { field: 'board', label: 'Board' },
       { field: 'orderNumber', label: 'Order' },
-      { field: 'status', label: 'Status' },
+      { field: 'assignedTo', label: 'Assigned curator' },
+      { field: 'status', label: 'Status', badge: true },
     ],
     fields: [
       {
