@@ -44,6 +44,11 @@ jest.mock("p-queue", () => ({
   },
 }));
 
+jest.mock("../../../config/loggers", () => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() }));
+
+process.env.CACHE_RETRY_BATCH_SIZE = "5";
+
+const logger = require("../../../config/loggers");
 const QuestionBankCacheSummary = require("../../../models/question.bank.cache.summary.model");
 const { requeueFailedJobs } = require("../../../managers/cache.queue.manager");
 
@@ -61,8 +66,6 @@ function summary(index, overrides = {}) {
 }
 
 describe("requeueFailedJobs", () => {
-  const originalBatchSize = process.env.CACHE_RETRY_BATCH_SIZE;
-
   beforeEach(() => {
     mockState.docs = [];
     mockState.filter = {};
@@ -70,12 +73,8 @@ describe("requeueFailedJobs", () => {
     QuestionBankCacheSummary.findByIdAndUpdate.mockReset();
     QuestionBankCacheSummary.findByIdAndUpdate.mockResolvedValue({});
     QuestionBankCacheSummary.find.mockClear();
-    process.env.CACHE_RETRY_BATCH_SIZE = "5";
-  });
-
-  afterEach(() => {
-    if (originalBatchSize === undefined) delete process.env.CACHE_RETRY_BATCH_SIZE;
-    else process.env.CACHE_RETRY_BATCH_SIZE = originalBatchSize;
+    logger.error.mockClear();
+    logger.info.mockClear();
   });
 
   it("requeues every pending summary and nothing else", async () => {
@@ -103,13 +102,15 @@ describe("requeueFailedJobs", () => {
     expect(mockState.sort).toEqual({ _id: 1 });
   });
 
-  it("falls back to a page size of 20 when the environment value is invalid", async () => {
+  it("refuses to load when the batch size is invalid", () => {
     process.env.CACHE_RETRY_BATCH_SIZE = "abc";
-    mockState.docs.push(summary(0));
-
-    await requeueFailedJobs();
-
-    expect(mockState.limit).toBe(20);
+    try {
+      jest.isolateModules(() => {
+        expect(() => require("../../../managers/cache.queue.manager")).toThrow(/CACHE_RETRY_BATCH_SIZE is "abc"/);
+      });
+    } finally {
+      process.env.CACHE_RETRY_BATCH_SIZE = "5";
+    }
   });
 
   it("never loads the full paper payload", async () => {
@@ -135,5 +136,7 @@ describe("requeueFailedJobs", () => {
     const attempted = new Set(QuestionBankCacheSummary.findByIdAndUpdate.mock.calls.map((call) => call[0]));
     expect(attempted).toEqual(new Set(["summary-000", "summary-001"]));
     expect(QuestionBankCacheSummary.find).toHaveBeenCalledTimes(2);
+    expect(logger.error).toHaveBeenCalledWith("Cache retry job failed", expect.objectContaining({ cacheSummaryId: "summary-000" }));
+    expect(logger.info).toHaveBeenCalledWith("Cache retry sweep finished", { rejected: 2 });
   });
 });

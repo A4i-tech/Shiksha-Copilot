@@ -14,6 +14,7 @@ import { SchoolManagementService } from '../school-management.service';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import {
   BULK_UPLOAD_FILE_TYPES,
+  MAX_EXCEL_IMPORT_SIZE,
   CLASS_OPTIONS,
   MEDIUMS,
 } from 'src/app/shared/utility/constant.util';
@@ -203,6 +204,7 @@ export class SchoolAddEditComponent implements OnInit, AfterViewInit, OnDestroy 
   };
 
   uploadFileTypes = BULK_UPLOAD_FILE_TYPES;
+  readonly maxExcelImportSize = MAX_EXCEL_IMPORT_SIZE;
 
   fileToUpload!: File;
 

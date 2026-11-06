@@ -52,6 +52,10 @@ class BaseDao {
 		return this.Model.find(filter);
 	}
 
+	async exists(filter) {
+		return this.Model.exists(filter);
+	}
+
 	async getOne(filter) {
 		return this.Model.findOne(filter);
 	}

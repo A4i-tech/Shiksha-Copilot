@@ -4,7 +4,6 @@ import { NgxFileDropEntry, NgxFileDropModule } from 'ngx-file-drop';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ModalService } from '../modal/modal.service';
-import { MAX_EXCEL_IMPORT_SIZE } from '../../utility/constant.util';
 import { ExcelDownloadService } from '../../services/excel_download.service';
 import { TranslateModule } from '@ngx-translate/core';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -53,10 +52,12 @@ export class UploadPopupComponent implements OnInit, OnDestroy{
     'The DISE Code in your file must be an 11-digit number.',
   ];
 
-  /** hint under the browse button */
-  @Input() fileHint: string = `File supported .xlsx file, up to ${MAX_EXCEL_IMPORT_SIZE / (1024 * 1024)}MB in size`;
+  @Input({ required: true }) maxFileSize!: number;
 
-  @Input() maxFileSize: number = MAX_EXCEL_IMPORT_SIZE;
+  /** hint under the browse button */
+  get fileHint(): string {
+    return `File supported: ${this.allowedFileTypes.join(', ')}, up to ${this.maxFileSize / (1024 * 1024)}MB in size`;
+  }
 
   /** false hides the template link for uploads that have no template */
   @Input() showDownloadTemplate: boolean = true;
