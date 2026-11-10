@@ -407,8 +407,11 @@ export class ContentListComponent implements OnInit, OnDestroy {
     this.confirmRecord = null;
   }
 
+  confirmBusy = false;
+
   runConfirmedAction(): void {
-    if (!this.confirmAction || !this.confirmRecord || !this.canConfirm) return;
+    if (!this.confirmAction || !this.confirmRecord || !this.canConfirm || this.confirmBusy) return;
+    this.confirmBusy = true;
 
     const action = this.confirmAction;
     const id = this.confirmRecord._id;
@@ -451,11 +454,13 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
     request.subscribe({
       next: (res: any) => {
+        this.confirmBusy = false;
         this.utilityService.showSuccess(res?.message || successMessage);
         this.closeConfirm();
         this.loadRecords();
       },
       error: (err: any) => {
+        this.confirmBusy = false;
         this.utilityService.handleError(err);
         this.closeConfirm();
       },

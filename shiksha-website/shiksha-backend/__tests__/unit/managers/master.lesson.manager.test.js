@@ -752,5 +752,22 @@ describe("MasterLessonManager", () => {
     });
   });
 
+  describe("adminUpdate with draftOnly", () => {
+    it("filters on draft status only and answers with a reload message when nothing matches", async () => {
+      const MasterLesson = require("../../../models/master.lesson.model");
+      const plan = { _id: "lesson-1", chapterId: "c1", isAll: false, subTopics: ["a"], isDeleted: true, status: "draft" };
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({ lean: jest.fn().mockResolvedValue(plan) });
+      jest.spyOn(MasterLesson, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
+      });
+      const update = jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue(null);
+
+      const result = await manager.adminUpdate({ params: { id: "lesson-1" }, body: { subTopics: ["b"] }, draftOnly: true });
+
+      expect(update.mock.calls[0][0]).toEqual({ _id: "lesson-1", status: "draft" });
+      expect(result.message).toMatch(/Reload the page/);
+    });
+  });
+
   // Removed: _create5ETablePayload test - requires restructureCheckListforLLM helper function mock
 });

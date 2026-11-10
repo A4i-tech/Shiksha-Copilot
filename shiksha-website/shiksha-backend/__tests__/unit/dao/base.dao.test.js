@@ -276,6 +276,21 @@ describe("BaseDao", () => {
     });
   });
 
+  describe("adminUpdate with draftOnly", () => {
+    it("writes only a deleted draft row and rejects live and under-review rows", async () => {
+      const draft = await testDao.create({ name: "Draft", status: "draft", isDeleted: true });
+      const review = await testDao.create({ name: "Review", status: "under_review", isDeleted: true });
+      const live = await testDao.create({ name: "Live", status: "approved", isDeleted: false });
+
+      expect((await testDao.adminUpdate(draft._id, { name: "B" }, null, true, true)).name).toBe("B");
+      for (const row of [review, live]) {
+        await expect(testDao.adminUpdate(row._id, { name: "C" }, null, true, true)).rejects.toThrow(
+          "changed while you were editing"
+        );
+      }
+    });
+  });
+
   describe("bulkUpload", () => {
     it("should insert multiple documents", async () => {
       const dataArray = [

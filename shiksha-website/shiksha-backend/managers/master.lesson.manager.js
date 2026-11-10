@@ -1180,13 +1180,13 @@ class MasterLessonManger extends BaseManager {
 			}
 
 			const data = await MasterLesson.findOneAndUpdate(
-				{ _id: current._id, status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } },
+				{ _id: current._id, status: req.draftOnly ? CONTENT_STATUS.DRAFT : { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } },
 				{ $set: updates },
 				{ new: true, runValidators: true }
 			);
 
 			if (!data) {
-				return formatApiReponse(false, "Record not found or has been deleted", null);
+				return formatApiReponse(false, req.draftOnly ? "This record changed while you were editing it. Reload the page and try again." : "Record not found or has been deleted", null);
 			}
 
 			return formatApiReponse(true, "Updated successfully!", data);

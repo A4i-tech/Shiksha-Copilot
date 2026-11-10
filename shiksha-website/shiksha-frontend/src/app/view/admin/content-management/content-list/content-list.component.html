@@ -458,7 +458,7 @@
       <button
         type="button"
         class="btn-primary h-9"
-        [attr.aria-disabled]="!canConfirm"
+        [attr.aria-disabled]="!canConfirm || confirmBusy"
         [attr.aria-describedby]="canConfirm ? null : 'confirm-hint'"
         (click)="runConfirmedAction()"
       >

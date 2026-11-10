@@ -219,13 +219,13 @@ describe('ContentEditComponent (curator mode)', () => {
     expect(buttons).toEqual(['Cancel', 'Save as draft']);
   });
 
-  it('shows the chapter details and no admin copy', () => {
+  it('shows one summary line of the chapter and no admin copy', () => {
     setup('new');
     flushChapter('draft');
     fixture.detectChanges();
 
     const details: string = fixture.nativeElement.querySelector('[data-testid="chapter-details"]').textContent;
-    ['2. Forces', 'CBSE', 'english', '8', 'Science'].forEach((text) => expect(details).toContain(text));
+    ['Forces', 'CBSE', 'english', 'Class 8', 'Science'].forEach((text) => expect(details).toContain(text));
     expect(fixture.nativeElement.textContent).not.toContain('passes the same check');
   });
 
