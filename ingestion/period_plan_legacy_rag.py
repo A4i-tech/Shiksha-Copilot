@@ -8,9 +8,11 @@ import os
 import shutil
 import tempfile
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, Literal
+
+from period_plan_settings import settings
 
 
 @dataclass(frozen=True)
@@ -19,6 +21,15 @@ class BlobIndex:
     kind: Literal["graph", "vector"]
     container: str
     prefix: str
+
+    def session(self) -> AbstractAsyncContextManager[None]:
+        return session(self)
+
+    async def answer(self, graph: Any, inp: Any, sec: Any, prompt: str) -> Any:
+        text = await answer(
+            self, prompt, graph.model, graph.retrieve.embed_model
+        )
+        return graph.parse(text, sec)
 
 
 @dataclass
@@ -38,7 +49,7 @@ def local_dir(index: BlobIndex) -> str:
 def check_container(index: BlobIndex) -> None:
     allowed = {
         c.strip()
-        for c in os.environ.get("LEGACY_INDEX_CONTAINERS", "").split(",")
+        for c in settings().legacy_index_containers.split(",")
         if c.strip()
     }
     if not allowed:
@@ -59,15 +70,14 @@ async def download(index: BlobIndex, target: str) -> list[str]:
     from azure.identity.aio import DefaultAzureCredential
     from azure.storage.blob.aio import BlobServiceClient
 
-    connection_string, account_url = (
-        os.environ.get("BLOB_STORE_CONNECTION_STRING"),
-        os.environ.get("BLOB_STORE_URL"),
-    )
-    if connection_string:
-        service = BlobServiceClient.from_connection_string(connection_string)
-    elif account_url:
+    cfg = settings()
+    if cfg.blob_store_connection_string:
+        service = BlobServiceClient.from_connection_string(
+            cfg.blob_store_connection_string
+        )
+    elif cfg.blob_store_url:
         service = BlobServiceClient(
-            account_url=account_url, credential=DefaultAzureCredential()
+            account_url=cfg.blob_store_url, credential=DefaultAzureCredential()
         )
     else:
         raise ValueError(
@@ -94,14 +104,14 @@ async def load(index: BlobIndex, model: str, embed_model: str) -> Any:
     from llama_index.llms.azure_openai import AzureOpenAI
     from rag_wrapper import InMemGraphRagOps, InMemRagOps
 
-    env = os.environ
+    cfg = settings()
     common = {
-        "api_key": env.get("AZURE_OPENAI_API_KEY"),
-        "azure_endpoint": env.get("AZURE_OPENAI_API_BASE"),
-        "api_version": env["AZURE_OPENAI_API_VERSION"],
+        "api_key": cfg.azure_openai_api_key,
+        "azure_endpoint": cfg.azure_openai_api_base,
+        "api_version": cfg.azure_openai_api_version,
     }
     llm = AzureOpenAI(
-        model=env.get("AZURE_OPENAI_BASE_MODEL") or model.lower(),
+        model=cfg.azure_openai_base_model or model.lower(),
         deployment_name=model,
         model_kwargs={"response_format": {"type": "json_object"}},
         **common,

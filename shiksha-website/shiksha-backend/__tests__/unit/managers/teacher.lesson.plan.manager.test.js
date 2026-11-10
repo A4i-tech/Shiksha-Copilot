@@ -7,7 +7,6 @@ const LessonPlanTemplateDao = require("../../../dao/lesson.plan.template.dao");
 const RegeneratedLessonResourceDao = require("../../../dao/regenerate.log.dao");
 const LessonFeedbackDao = require("../../../dao/feedback.lesson.dao");
 const { postToCopilotBot, getWorkflowRun } = require("../../../services/copilot.bot.service");
-const LessonPlanTemplate = require("../../../models/lesson.plan.template.model");
 
 jest.mock("../../../dao/teacher.lesson.plan.dao");
 jest.mock("../../../dao/chapter.dao");
@@ -258,7 +257,7 @@ describe("TeacherLessonPlanManager", () => {
     it("should autosave a regenerated plan when the run completes", async () => {
       mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
       mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1", templateId: "tpl-1" });
-      jest.spyOn(LessonPlanTemplate, "findById").mockResolvedValue({ sections: [{ id: "s1", outputFormat: "plain_text" }] });
+      mockTemplateDao.getById.mockResolvedValue({ sections: [{ id: "s1", outputFormat: "plain_text" }] });
       mockRegeneratedDao.getOne.mockResolvedValue({ _id: "log-1" });
 
       await manager.processWebhookData({
@@ -269,7 +268,8 @@ describe("TeacherLessonPlanManager", () => {
 
       expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
         "plan-1",
-        expect.objectContaining({ status: "completed", isCompleted: true })
+        expect.objectContaining({ status: "completed", isCompleted: true }),
+        {}
       );
     });
 
@@ -281,36 +281,35 @@ describe("TeacherLessonPlanManager", () => {
 
       expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
         "plan-1",
-        { status: "failed", error: "model crashed" }
-      );
-    });
-
-    it("should mark the plan failed and throw 400 when a completed run has no sections", async () => {
-      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
-      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1", templateId: "tpl-1" });
-      jest.spyOn(LessonPlanTemplate, "findById").mockResolvedValue({ sections: [] });
-
-      await expect(
-        manager.processWebhookData({ instance_id: "i-1", status: "COMPLETED", output: {} })
-      ).rejects.toMatchObject({ name: "AppError", statusCode: 400 });
-      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
-        "plan-1",
-        expect.objectContaining({ status: "failed", error: expect.any(String) })
+        { status: "failed", error: "model crashed" },
+        {}
       );
     });
 
     it("should mark the plan failed and throw 400 when the template is missing", async () => {
       mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
       mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-1", templateId: "tpl-1" });
-      jest.spyOn(LessonPlanTemplate, "findById").mockResolvedValue(null);
+      mockTemplateDao.getById.mockResolvedValue(null);
 
       await expect(
         manager.processWebhookData({ instance_id: "i-1", status: "COMPLETED", output: { sections: [] } })
       ).rejects.toMatchObject({ name: "AppError", statusCode: 400 });
       expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith(
         "plan-1",
-        expect.objectContaining({ status: "failed" })
+        expect.objectContaining({ status: "failed" }),
+        {}
       );
+    });
+
+    it("should skip the log write when the plan is no longer running", async () => {
+      mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "plan-1", lessonId: "lesson-1" });
+      mockRegeneratedDao.getOne.mockResolvedValue({ _id: "log-1" });
+      mockTeacherLessonPlanDao.updatePlan.mockResolvedValue(null);
+
+      await manager.processWebhookData({ instance_id: "i-1", status: "failed", output: "x" }, true);
+
+      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith("plan-1", expect.anything(), { status: "running" });
+      expect(mockRegeneratedDao.update).not.toHaveBeenCalled();
     });
 
     it("should throw a 400 AppError without querying when instance_id is missing", async () => {
@@ -326,24 +325,38 @@ describe("TeacherLessonPlanManager", () => {
     const running = () => ({ _id: "p1", status: "running", instanceId: "i-1" });
 
     it("should mark a running plan failed when the workflow run failed", async () => {
-      mockTeacherLessonPlanDao.getLessonPlanById.mockResolvedValue(running());
+      mockTeacherLessonPlanDao.getLessonPlanById
+        .mockResolvedValueOnce(running())
+        .mockResolvedValueOnce({ _id: "p1", status: "failed" });
       getWorkflowRun.mockResolvedValue({ data: { runtimeStatus: "Failed", output: "boom" } });
       mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "p1", lessonId: "l1" });
 
       const result = await manager.getLessonPlanById("t1", "l1");
 
-      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith("p1", { status: "failed", error: "boom" });
+      expect(mockTeacherLessonPlanDao.updatePlan).toHaveBeenCalledWith("p1", { status: "failed", error: "boom" }, { status: "running" });
       expect(result.data.status).toBe("failed");
     });
 
     it("should mark a running plan failed when the workflow run is gone", async () => {
-      mockTeacherLessonPlanDao.getLessonPlanById.mockResolvedValue(running());
-      getWorkflowRun.mockRejectedValue({ response: { status: 404 } });
+      mockTeacherLessonPlanDao.getLessonPlanById
+        .mockResolvedValueOnce(running())
+        .mockResolvedValueOnce({ _id: "p1", status: "failed" });
+      getWorkflowRun.mockRejectedValue({ response: { status: 404, data: { error: "No run with this instance_id. The server keeps runs only until it restarts." } } });
       mockTeacherLessonPlanDao.getOne.mockResolvedValue({ _id: "p1", lessonId: "l1" });
 
       const result = await manager.getLessonPlanById("t1", "l1");
 
       expect(result.data.status).toBe("failed");
+    });
+
+    it("should keep a running plan running on a 404 that is not run-not-found", async () => {
+      mockTeacherLessonPlanDao.getLessonPlanById.mockResolvedValue(running());
+      getWorkflowRun.mockRejectedValue({ response: { status: 404, data: "404: Not Found" } });
+
+      const result = await manager.getLessonPlanById("t1", "l1");
+
+      expect(mockTeacherLessonPlanDao.updatePlan).not.toHaveBeenCalled();
+      expect(result.data.status).toBe("running");
     });
 
     it("should replay the run output as a completed webhook when the run completed", async () => {
@@ -356,18 +369,8 @@ describe("TeacherLessonPlanManager", () => {
 
       const result = await manager.getLessonPlanById("t1", "l1");
 
-      expect(spy).toHaveBeenCalledWith({ instance_id: "i-1", status: "COMPLETED", output });
+      expect(spy).toHaveBeenCalledWith({ instance_id: "i-1", status: "COMPLETED", output }, true);
       expect(result.data.status).toBe("completed");
-    });
-
-    it("should do nothing when the run completed without output", async () => {
-      mockTeacherLessonPlanDao.getLessonPlanById.mockResolvedValue(running());
-      getWorkflowRun.mockResolvedValue({ data: { runtimeStatus: "Completed" } });
-
-      const result = await manager.getLessonPlanById("t1", "l1");
-
-      expect(mockTeacherLessonPlanDao.updatePlan).not.toHaveBeenCalled();
-      expect(result.data.status).toBe("running");
     });
 
     it("should keep a running plan running when the workflow run is still running", async () => {
@@ -494,6 +497,21 @@ describe("TeacherLessonPlanManager", () => {
         manager.generateContent("teacher-123", { lessonId: "lesson-123" })
       ).rejects.toMatchObject({ name: "AppError", message: expect.stringContaining("tpl-1") });
       expect(postToCopilotBot).not.toHaveBeenCalled();
+    });
+
+    it("should delete the new master lesson when starting the run fails", async () => {
+      mockTeacherLessonPlanDao.getRegeneratedLessonPlansCount.mockResolvedValue(0);
+      mockMasterLessonDao.getById.mockResolvedValue({ _id: "lesson-123", templateId: "tpl-1", chapterId: "c1", name: "L" });
+      mockTemplateDao.getById.mockResolvedValue({ sections: [] });
+      mockChapterDao.getById.mockResolvedValue({ _id: "c1", subjectId: "s1", topics: "Algebra" });
+      mockSubjectDao.getById.mockResolvedValue({ name: "Maths", subjectName: "Maths" });
+      mockRegeneratedDao.getOne.mockResolvedValue(null);
+      mockMasterLessonDao.create.mockResolvedValue({ _id: "new-1" });
+      mockMasterLessonDao.delete = jest.fn();
+      postToCopilotBot.mockRejectedValue(new Error("bot down"));
+
+      await expect(manager.generateContent("teacher-123", { lessonId: "lesson-123" })).rejects.toThrow("bot down");
+      expect(mockMasterLessonDao.delete).toHaveBeenCalledWith("new-1");
     });
 
     // Removed: generateContent success test - requires complex payload creation mocking

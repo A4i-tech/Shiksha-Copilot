@@ -51,8 +51,8 @@ Set the environment variables.
 | `AZURE_OPENAI_API_VERSION` | Azure OpenAI API version. Required. Use `2023-12-01-preview` or newer, because JSON mode needs it. |
 | `AZURE_OPENAI_MODEL` | Chat deployment name. The default is `GPT-4.1`. |
 | `AZURE_OPENAI_EMBED_MODEL` | Embedding deployment name. The default is `text-embedding-ada-002`. |
-| `QDRANT_URL` | Qdrant URL. The default is `http://localhost:6333`. |
-| `QDRANT_API_KEY` | Qdrant key. |
+| `QDRANT_URL` | Qdrant URL. Required. |
+| `QDRANT_API_KEY` | Qdrant key. Required. |
 | `WEBHOOK_SECRET` | Shared secret that signs each status post. Set the same value on shiksha-backend. Required whenever `WEBHOOK_URL` is set. Generate one with `openssl rand -hex 32`. |
 | `WEBHOOK_URL` | Receiver for the PENDING, RUNNING, COMPLETED, and FAILED status posts. The server refuses to start without it. The batch CLI skips the posts when it is empty. |
 
@@ -115,7 +115,7 @@ Send a workbook (or a PDF) and name the flow in the URL. The service runs that y
 | Route | Behavior |
 |-------|----------|
 | `GET /api/v2/pipelines` | Lists the flows (the `*.yaml` files in the image) and the parameters of each. |
-| `POST /api/v2/pipelines/{flow}` | Multipart form. The field `file` is the input. The field `params` is a JSON object with the flow parameters, including `workflow_template` as an object. Returns `202` with `instance_id` and `status_query_get_uri`. |
+| `POST /api/v2/pipelines/{flow}` | Multipart form. The field `file` is the input. The field `params` is required. It is a JSON object with the flow parameters, including `workflow_template` as an object. Returns `202` with `instance_id` and `status_query_get_uri`. |
 | `GET /api/v2/pipelines/runs/{instance_id}` | Needs the `x-api-key` header. Returns `runtimeStatus` and `output`. `output.outputs` holds the pipeline metadata. For `period_plan` it has `payloads` and `lesson_plans`, and each finished plan is under `lesson_plans.<id>.plan`. `output.errors` lists every failure. |
 
 The pipeline route is off until you set `PIPELINE_API_KEY`. Send the key in the `x-api-key` header.

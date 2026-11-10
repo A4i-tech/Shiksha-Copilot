@@ -1,5 +1,7 @@
 const {
   validateTeacherLessonPlan,
+  validateWebhook,
+  validateRegenerate,
 } = require("../../../validations/teacher.lesson.plan.validation");
 
 describe("Teacher Lesson Plan Validation", () => {
@@ -107,6 +109,35 @@ describe("Teacher Lesson Plan Validation", () => {
 
       expect(mockRes.status).toHaveBeenCalledWith(400);
       expect(mockNext).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("validateWebhook and validateRegenerate", () => {
+    const run = (validator, body) => {
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+      const next = jest.fn();
+      validator({ body }, res, next);
+      return { res, next };
+    };
+
+    it("rejects a completed webhook without output sections", () => {
+      const { res, next } = run(validateWebhook, { instance_id: "i", status: "COMPLETED", output: {} });
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it("accepts a completed webhook with sections and a failed webhook with text output", () => {
+      expect(run(validateWebhook, { instance_id: "i", status: "completed", output: { sections: [] } }).next).toHaveBeenCalled();
+      expect(run(validateWebhook, { instance_id: "i", status: "failed", output: "boom" }).next).toHaveBeenCalled();
+    });
+
+    it("rejects regenFeedback with an item that has no feedback string", () => {
+      const { res } = run(validateRegenerate, { regenFeedback: [{ type: "Engage" }] });
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it("accepts regenFeedback with empty feedback strings", () => {
+      expect(run(validateRegenerate, { regenFeedback: [{ type: "Engage", feedback: "" }] }).next).toHaveBeenCalled();
     });
   });
 });

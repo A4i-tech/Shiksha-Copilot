@@ -21,7 +21,9 @@ from omni_ingest.core.pipeline import (
 from qdrant_client import AsyncQdrantClient
 
 import period_plan_steps as steps
+from period_plan_settings import settings
 
+STATUS_ATTEMPTS = 6  # waits 1+2+4+8+16 s, long enough for the plan record
 APP_DIR = Path(__file__).parent
 PIPELINE = APP_DIR / "period_plan.yaml"
 
@@ -44,7 +46,11 @@ SECTION_GRAPH = next(
 
 def coerce(properties: dict, name: str, value: Any) -> Any:
     """Give a value the type that the yaml declares."""
-    if properties.get(name, {}).get("type") == "string":
+    if name not in properties:
+        raise ValueError(
+            f"Unknown parameter '{name}'. Use one of: {', '.join(properties)}."
+        )
+    if properties[name]["type"] == "string":
         if isinstance(value, str):
             return value
         return (
@@ -110,76 +116,67 @@ async def run_pipeline(
     pipeline: PipelineRunner, path: Path
 ) -> tuple[list[dict], list[str]]:
     outputs, errors = [], []
+    makes_plans = any(isinstance(s, steps.SectionGraph) for s in pipeline.steps)
     async for ctx in pipeline.flatten(IngestionContext(resource=path)):
         results = await pipeline.run(ctx)
-        errors += [r.error for r in results if r.status == StepStatus.FAILURE]
-        plans = ctx.metadata.get("lesson_plans", {})
-        errors += [
-            f"{plan_id}: {r.error}"
-            for plan_id, r in plans.items()
-            if r.status == steps.PlanStatus.FAILED
-        ]
-        outputs.append(
-            ctx.metadata
-            | {
+        failures = [r.error for r in results if r.status == StepStatus.FAILURE]
+        errors += failures
+        output = ctx.metadata
+        # a failed step stops the run before section_graph sets the plans
+        if makes_plans and not failures:
+            plans = ctx.metadata["lesson_plans"]
+            errors += [
+                f"{plan_id}: {r.error}"
+                for plan_id, r in plans.items()
+                if r.status == steps.PlanStatus.FAILED
+            ]
+            output = output | {
                 "lesson_plans": {
                     k: r.model_dump(mode="json") for k, r in plans.items()
                 }
             }
-        )
+        outputs.append(output)
     return outputs, errors
 
 
+def retryable(e: Exception) -> bool:
+    if not isinstance(e, httpx.HTTPStatusError):
+        return isinstance(e, httpx.TransportError)
+    code = e.response.status_code
+    # 404: the backend has not saved the plan record yet
+    return code in (404, 429) or code >= 500
+
+
 def connect(out_dir: Path | None = None) -> steps.Connections:
-    for var in (
-        "AZURE_OPENAI_API_BASE",
-        "AZURE_OPENAI_API_KEY",
-        "AZURE_OPENAI_API_VERSION",
-    ):
-        if not os.environ.get(var):
-            raise RuntimeError(
-                f"Environment variable {var} is not set. See the environment "
-                "variable table in the README."
-            )
-    url = os.environ.get("WEBHOOK_URL")
-    secret = os.environ.get("WEBHOOK_SECRET")
-    if url and not secret:
-        raise RuntimeError(
-            "Environment variable WEBHOOK_SECRET is not set. See the "
-            "environment variable table in the README."
-        )
+    cfg = settings()
 
-    def retryable(e: httpx.HTTPError) -> bool:
-        if not isinstance(e, httpx.HTTPStatusError):
-            return isinstance(e, httpx.TransportError)
-        code = e.response.status_code
-        # 404: the backend has not saved the plan record yet
-        return code in (404, 429) or code >= 500
-
-    async def post_status(status: dict) -> None:
-        if not url:
+    async def post_status(status: steps.Status) -> None:
+        if not cfg.webhook_url:
             return
-        body = json.dumps(status, separators=(",", ":")).encode()
+        body = status.model_dump_json().encode()
+
+        async def post_once() -> None:
+            stamp = str(int(time.time()))
+            sign = hmac.new(
+                cfg.webhook_secret.encode(),
+                stamp.encode() + b"." + body,
+                hashlib.sha256,
+            )
+            headers = {
+                "Content-Type": "application/json",
+                "X-Webhook-Timestamp": stamp,
+                "X-Webhook-Signature": sign.hexdigest(),
+            }
+            reply = await http.post(
+                cfg.webhook_url, content=body, headers=headers
+            )
+            reply.raise_for_status()
+
         async with httpx.AsyncClient(timeout=30) as http:
-            for attempt in range(4):
-                stamp = str(int(time.time()))
-                sign = hmac.new(
-                    secret.encode(), stamp.encode() + b"." + body, hashlib.sha256
-                )
-                headers = {
-                    "Content-Type": "application/json",
-                    "X-Webhook-Timestamp": stamp,
-                    "X-Webhook-Signature": sign.hexdigest(),
-                }
-                try:
-                    reply = await http.post(url, content=body, headers=headers)
-                    reply.raise_for_status()
-                    return
-                except httpx.HTTPError as e:
-                    if attempt == 3 or not retryable(e):
-                        raise
-                    # a brief outage must not lose COMPLETED or FAILED
-                    await asyncio.sleep(2**attempt)
+            # a brief outage must not lose COMPLETED or FAILED
+            await steps.retry(
+                post_once, STATUS_ATTEMPTS, retryable, "post the plan status"
+            )
 
     def target(plan_id: str) -> Path:
         return (
@@ -197,13 +194,12 @@ def connect(out_dir: Path | None = None) -> steps.Connections:
 
     return steps.Connections(
         qdrant=AsyncQdrantClient(
-            url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
-            api_key=os.environ.get("QDRANT_API_KEY"),
+            url=cfg.qdrant_url, api_key=cfg.qdrant_api_key
         ),
         llm=AsyncAzureOpenAI(
-            azure_endpoint=os.environ["AZURE_OPENAI_API_BASE"],
-            api_key=os.environ["AZURE_OPENAI_API_KEY"],
-            api_version=os.environ["AZURE_OPENAI_API_VERSION"],
+            azure_endpoint=cfg.azure_openai_api_base,
+            api_key=cfg.azure_openai_api_key,
+            api_version=cfg.azure_openai_api_version,
         ),
         post_status=post_status,
         is_done=lambda plan_id: (
@@ -269,7 +265,12 @@ async def main() -> int:
     except (RuntimeError, ValueError) as e:
         sys.exit(str(e))
     outputs, errors = await run_pipeline(pipeline, args.input)
-    plans = [p for o in outputs for p in o.get("lesson_plans", {}).values()]
+    plans = [
+        p
+        for o in outputs
+        if "lesson_plans" in o
+        for p in o["lesson_plans"].values()
+    ]
     ready = sum(
         p["status"] in (steps.PlanStatus.COMPLETED, steps.PlanStatus.SKIPPED)
         for p in plans

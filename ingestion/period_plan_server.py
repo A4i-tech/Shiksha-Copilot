@@ -11,9 +11,11 @@ from pathlib import Path
 from typing import Any
 
 from aiohttp import web
+from pydantic import TypeAdapter, ValidationError
 
 import period_plan_runner as runner
 import period_plan_steps as steps
+from period_plan_settings import settings
 
 log = logging.getLogger(__name__)
 CHECKLIST_TIMEOUT_SECONDS = 200  # Azure App Service cuts a request at ~230 s
@@ -28,6 +30,7 @@ GATE = web.AppKey("gate", asyncio.Semaphore)
 PLAN_GATE = web.AppKey("plan_gate", asyncio.Semaphore)
 RUNS = web.AppKey("runs", dict)
 TASKS = web.AppKey("tasks", dict)
+PARAMS = TypeAdapter(dict[str, Any])
 
 
 def fail(message: str, status: int) -> web.HTTPException:
@@ -109,7 +112,8 @@ async def generate(request: web.Request) -> web.Response:
     async def job() -> tuple[bool, Any]:
         async with request.app[PLAN_GATE]:
             result = await request.app[GRAPH].plan(
-                inp.model_copy(update={"lp_id": instance_id})
+                inp.model_copy(update={"lp_id": instance_id}),
+                request.app[GRAPH].conn.post_status,
             )
         ok = result.status == steps.PlanStatus.COMPLETED
         return ok, result.plan if ok else result.error
@@ -122,10 +126,12 @@ async def checklist(request: web.Request) -> web.Response:
     inp = await read_input(request)
     if not inp.start_from_section_id:
         raise fail("start_from_section_id is required for checklist mode", 400)
-    graph = request.app[GRAPH].model_copy(update={"webhook": False})
     try:
         result = await asyncio.wait_for(
-            graph.plan(inp.model_copy(update={"lp_id": uuid.uuid4().hex})),
+            request.app[GRAPH].plan(
+                inp.model_copy(update={"lp_id": uuid.uuid4().hex}),
+                steps.no_status,
+            ),
             CHECKLIST_TIMEOUT_SECONDS,
         )
     except asyncio.TimeoutError:
@@ -196,17 +202,23 @@ async def run_pipeline(request: web.Request) -> web.Response:
     upload = form.get("file")
     if not hasattr(upload, "file"):
         raise fail("Send the input file in the multipart field 'file'.", 400)
-    text = form.get("params") or "{}"
+    text = form.get("params")
+    if text is None:
+        raise fail(
+            "Send the parameters as a JSON object in the multipart field "
+            "'params'. Send {} to use the defaults.",
+            400,
+        )
     if hasattr(text, "file"):
         text = text.file.read().decode("utf-8", "replace")
     try:
-        params = json.loads(text)
-    except ValueError as e:
+        params = PARAMS.validate_json(text)
+    except ValidationError as e:
         raise fail(
-            f"The multipart field 'params' is not valid JSON: {e}", 400
+            "The multipart field 'params' must be a JSON object: "
+            f"{steps.reason(e)}",
+            400,
         ) from e
-    if not isinstance(params, dict):
-        raise fail("The multipart field 'params' must be a JSON object.", 400)
     properties = runner.FLOWS[flow]
     if "webhook" in properties:
         params.setdefault("webhook", False)
@@ -235,14 +247,11 @@ async def run_pipeline(request: web.Request) -> web.Response:
 
 
 def make_app(graph: steps.SectionGraph) -> web.Application:
-    app = web.Application(
-        client_max_size=int(os.environ.get("MAX_UPLOAD_MB", "25")) * 1024 * 1024
-    )
+    cfg = settings()
+    app = web.Application(client_max_size=cfg.max_upload_mb * 1024 * 1024)
     app[GRAPH], app[RUNS], app[TASKS] = graph, {}, {}
-    app[GATE] = asyncio.Semaphore(int(os.environ.get("MAX_PIPELINE_RUNS", "2")))
-    app[PLAN_GATE] = asyncio.Semaphore(
-        int(os.environ.get("MAX_LESSON_PLAN_RUNS", "10"))
-    )
+    app[GATE] = asyncio.Semaphore(cfg.max_pipeline_runs)
+    app[PLAN_GATE] = asyncio.Semaphore(cfg.max_lesson_plan_runs)
     app.router.add_post("/api/v2/lesson-plans", generate)
     app.router.add_post("/api/v2/lesson-plans/", generate)
     app.router.add_post("/api/v2/lesson-plans/checklist", checklist)
@@ -260,7 +269,7 @@ def make_app(graph: steps.SectionGraph) -> web.Application:
 
 
 def build_graph() -> steps.SectionGraph:
-    if not os.environ.get("WEBHOOK_URL"):
+    if not settings().webhook_url:
         raise RuntimeError(
             "Environment variable WEBHOOK_URL is not set. The server needs it "
             "to report plan status. See the environment variable table in the "
@@ -276,12 +285,13 @@ def build_graph() -> steps.SectionGraph:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=os.environ.get("LOG_LEVEL", "INFO"),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
     try:
+        cfg = settings()
         graph = build_graph()
     except RuntimeError as e:
         sys.exit(str(e))
-    web.run_app(make_app(graph), port=int(os.environ.get("PORT", "8080")))
+    logging.basicConfig(
+        level=cfg.log_level,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    web.run_app(make_app(graph), port=cfg.port)

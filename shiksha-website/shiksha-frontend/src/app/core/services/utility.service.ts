@@ -58,6 +58,7 @@ export class UtilityService {
   handleError(err: any) {
     // 5xx text is never written for the user, so do not show it
     if (err.status >= 500) {
+      console.error(`Server error ${err.status}: ${err.message}`);
       return this.showError('Something went wrong on our side. Please try again in a few minutes. If this keeps happening, contact support.');
     }
     if (Array.isArray(err.error?.error)) return this.showError(err.error.error.join(', '));

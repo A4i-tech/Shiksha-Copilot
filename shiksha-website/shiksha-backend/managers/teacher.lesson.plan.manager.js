@@ -18,10 +18,11 @@ const {
 } = require("../helper/formatter");
 const { REGENERATION_LIMIT } = require("../config/constants.js");
 const LessonPlanTemplateDao = require("../dao/lesson.plan.template.dao.js");
-const LessonPlanTemplate = require("../models/lesson.plan.template.model.js");
 const TeacherLessonPlan = require("../models/teacher.lesson.plan.model");
 const mongoose = require("mongoose");
 const AppError = require("../helper/app.error");
+
+const RUN_NOT_FOUND = "No run with this instance_id";
 
 /** @extends {BaseManager<TeacherLessonPlanDao>} */
 class TeacherLessonPlanManager extends BaseManager {
@@ -37,27 +38,33 @@ class TeacherLessonPlanManager extends BaseManager {
 		this.masterResourceDao = new MasterResourceDao();
 	}
 
+	_indexPath(chapter, subject) {
+		return chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`;
+	}
+
 	async _resolveIndexPath(teacherId, recordId, isLesson) {
-		try {
-			const teacherLessonPlan = isLesson
-				? await this.dao.getByTeacherAndLesson(teacherId, recordId)
-				: await this.dao.getByTeacherAndResource(teacherId, recordId);
-			if (!teacherLessonPlan) return null;
-
-			const chapterId = teacherLessonPlan.lessonId
-				? (await this.masterLessonDao.getById(teacherLessonPlan.lessonId))?.chapterId
-				: (await this.masterResourceDao.getById(teacherLessonPlan.resourceId))?.chapterId;
-			if (!chapterId) return null;
-
-			const chapter = await this.chapterDao.getById(chapterId);
-			if (!chapter) return null;
-
-			const subject = await this.subjectDao.getById(chapter.subjectId);
-			return chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject?.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`;
-		} catch (error) {
-			logger.error('Error resolving index path for AI edit', { message: error.message, stack: error.stack });
-			return null;
+		const teacherLessonPlan = isLesson
+			? await this.dao.getByTeacherAndLesson(teacherId, recordId)
+			: await this.dao.getByTeacherAndResource(teacherId, recordId);
+		if (!teacherLessonPlan) {
+			throw new AppError("This plan could not be found. Reload the page and retry.", 404);
 		}
+
+		const record = teacherLessonPlan.lessonId
+			? await this.masterLessonDao.getById(teacherLessonPlan.lessonId)
+			: await this.masterResourceDao.getById(teacherLessonPlan.resourceId);
+		if (!record) {
+			throw new AppError("The lesson or resource of this plan could not be found. Reload the page and retry.", 404);
+		}
+		const chapter = await this.chapterDao.getById(record.chapterId);
+		if (!chapter) {
+			throw new AppError(`Chapter with ID ${record.chapterId} not found`, 404);
+		}
+		const subject = await this.subjectDao.getById(chapter.subjectId);
+		if (!subject) {
+			throw new AppError(`Subject with ID ${chapter.subjectId} not found`, 404);
+		}
+		return this._indexPath(chapter, subject);
 	}
 
 	async getByTeacherAndPagination(
@@ -157,9 +164,10 @@ class TeacherLessonPlanManager extends BaseManager {
 
 	async _replayCompleted(lessonPlan, output) {
 		try {
-			await this.processWebhookData({ instance_id: lessonPlan.instanceId, status: "COMPLETED", output });
+			await this.processWebhookData({ instance_id: lessonPlan.instanceId, status: "COMPLETED", output }, true);
 		} catch (error) {
 			if (error.statusCode !== 400) throw error;
+			logger.warn(`Completed run ${lessonPlan.instanceId} could not be saved`, { message: error.message });
 		}
 	}
 
@@ -167,27 +175,24 @@ class TeacherLessonPlanManager extends BaseManager {
 		let output;
 		try {
 			const { data } = await getWorkflowRun(lessonPlan.instanceId);
-			const state = String(data?.runtimeStatus ?? data?.status).toLowerCase();
-			if (state === "completed" && data?.output) {
+			const state = data.runtimeStatus.toLowerCase();
+			if (state === "completed") {
 				await this._replayCompleted(lessonPlan, data.output);
 				return true;
 			}
 			if (state !== "failed" && state !== "terminated") {
-				return;
+				return false;
 			}
-			output = data?.output;
+			output = data.output;
 		} catch (error) {
-			if (error.response?.status !== 404) {
-				logger.warn(`Could not check workflow run ${lessonPlan.instanceId}`, { message: error.message });
-				return;
+			if (error.response?.status !== 404 || !String(error.response.data?.error).startsWith(RUN_NOT_FOUND)) {
+				logger.warn(`Could not check workflow run ${lessonPlan.instanceId}`, { message: error.message, body: error.response?.data });
+				return false;
 			}
 			output = "The workflow run was lost. Retry the generation.";
 		}
-		await this.processWebhookData({ instance_id: lessonPlan.instanceId, status: "failed", output });
-		lessonPlan.status = "failed";
-		if (typeof output === "string") {
-			lessonPlan.error = output;
-		}
+		await this.processWebhookData({ instance_id: lessonPlan.instanceId, status: "failed", output }, true);
+		return true;
 	}
 
 	async getLessonPlanById(teacherId, lessonPlanId) {
@@ -207,12 +212,38 @@ class TeacherLessonPlanManager extends BaseManager {
 		}
 	}
 
+	_createRegeneratedLesson({ masterLesson, chapter, subject }, name, learningOutcomes) {
+		return this.masterLessonDao.create({
+			name,
+			isAll: masterLesson.isAll,
+			class: chapter.standard,
+			chapterId: chapter._id,
+			board: chapter.board,
+			subTopics: masterLesson.subTopics,
+			medium: chapter.medium,
+			subject: subject.subjectName,
+			learningOutcomes,
+			isRegenerated: true,
+			templateId: masterLesson.templateId,
+		});
+	}
+
+	async _startRun(requestData, lesson) {
+		try {
+			return await postToCopilotBot(requestData);
+		} catch (error) {
+			await this.masterLessonDao.delete(lesson._id);
+			throw error;
+		}
+	}
+
 	async generateContent(teacherId, payload) {
 		const regenerationCount = await this.regeneratedCount(teacherId);
 		if(regenerationCount >= REGENERATION_LIMIT){
 			return formatApiReponse(false, `Daily regeneration limit of ${REGENERATION_LIMIT} has been reached.`, null);
 		}
-		const { masterLesson, template, chapter, subject } = await this._loadLessonContext(payload.lessonId);
+		const context = await this._loadLessonContext(payload.lessonId);
+		const { masterLesson, template, chapter, subject } = context;
 		const highestVersionEntry = await this.regeneratedLessonResource.getOne({
 			isLoGeneratedContent: true,
 			isMasterContent: true,
@@ -221,24 +252,12 @@ class TeacherLessonPlanManager extends BaseManager {
 		const version = highestVersionEntry
 			? highestVersionEntry._version + 1
 			: 1;
-		const requestData = this._createBotPayload(chapter, subject, payload, template);
-		const result = await postToCopilotBot(requestData);
-		const lesson = await this.masterLessonDao.create({
-			name: `Version-${version} ${masterLesson.name}`,
-			isAll: masterLesson.isAll,
-			class: chapter.standard,
-			chapterId: chapter._id,
-			board: chapter.board,
-			subTopics: masterLesson.subTopics,
-			medium: chapter.medium,
-			subject: subject.subjectName,
-			learningOutcomes: payload.learningOutcomes,
-			isRegenerated: true,
-			templateId:masterLesson?.templateId
-		});
+		const lesson = await this._createRegeneratedLesson(context, `Version-${version} ${masterLesson.name}`, payload.learningOutcomes);
 		if (!lesson) {
 			throw new Error("Failed to create new teacher master lesson");
-		  }
+		}
+		const requestData = this._createBotPayload(chapter, subject, payload, template);
+		const result = await this._startRun(requestData, lesson);
 
 		const teacherLessonPlanData = {
 			teacherId: teacherId,
@@ -401,28 +420,16 @@ class TeacherLessonPlanManager extends BaseManager {
 		if(regenerationCount >= REGENERATION_LIMIT){
 			return formatApiReponse(false, `Daily regeneration limit of ${REGENERATION_LIMIT} has been reached.`, null);
 		}
-		const { masterLesson, template, chapter, subject } = await this._loadLessonContext(payload.lessonId);
+		const context = await this._loadLessonContext(payload.lessonId);
+		const { masterLesson, template, chapter, subject } = context;
 		payload.lessonPlan = this._createLessonPlanPayload(
 			masterLesson.sections,
 			payload.regenFeedback
 		);
 		payload.learningOutcomes = masterLesson.learningOutcomes;
-		let requestData = this._createBotPayload(chapter, subject, payload,template);
-		const result = await postToCopilotBot(requestData);
-
-		const lesson = await this.masterLessonDao.create({
-			name: masterLesson.name,
-			isAll:masterLesson.isAll,
-			class: chapter.standard,
-			chapterId: chapter._id,
-			board: chapter.board,
-			subTopics: masterLesson.subTopics,
-			medium: chapter.medium,
-			subject: subject.subjectName,
-			learningOutcomes: masterLesson.learningOutcomes,
-			isRegenerated: true,
-			templateId:masterLesson.templateId
-		});
+		const lesson = await this._createRegeneratedLesson(context, masterLesson.name, masterLesson.learningOutcomes);
+		const requestData = this._createBotPayload(chapter, subject, payload, template);
+		const result = await this._startRun(requestData, lesson);
 
 		const feedbackPayload = {
 			feedbackPerSets: payload.feedbackPerSets,
@@ -449,22 +456,19 @@ class TeacherLessonPlanManager extends BaseManager {
 				instanceId: result.data.instance_id,
 			};
 
-			const newTeacherLessonPlan = await this.dao.create(
-				newTeacherLessonPlanData
-			);
+			await this.dao.create(newTeacherLessonPlanData);
 			await this.lessonFeedbackDao.create({
 				...feedbackPayload,
 				teacherId: teacherId,
 				lessonId: masterLesson._id,
 			});
 		} else {
-			const existingLessonPlan =
-				await this.dao.updateForRegenerate(
-					teacherId,
-					payload.lessonId,
-					lesson._id,
-					result.data.instance_id
-				);
+			await this.dao.updateForRegenerate(
+				teacherId,
+				payload.lessonId,
+				lesson._id,
+				result.data.instance_id
+			);
 
 			const existingFeedback = await this.lessonFeedbackDao.getOne({
 				teacherId: teacherId,
@@ -502,7 +506,7 @@ class TeacherLessonPlanManager extends BaseManager {
 		return regenerationCount
 	}
 
-	async processWebhookData(webhookData) {
+	async processWebhookData(webhookData, onlyIfRunning = false) {
 
 		const { instance_id , status, output } = webhookData;
 
@@ -530,13 +534,9 @@ class TeacherLessonPlanManager extends BaseManager {
 				existingLessonPlan.lessonId
 			);
 
-			const lessonPlanTemplate = await LessonPlanTemplate.findById(masterLessonPlan?.templateId)
-			if (!Array.isArray(output?.sections)) {
-				failure = "The workflow finished without plan sections. Retry the generation.";
-			} else if (!lessonPlanTemplate) {
+			const lessonPlanTemplate = await this.lessonPlanTemplateDao.getById(masterLessonPlan.templateId);
+			if (!lessonPlanTemplate) {
 				failure = "The lesson plan template was not found. Retry the generation.";
-			}
-			if (failure) {
 				update = { status: "failed", error: failure };
 			} else {
 				const sections = formatSections(output.sections,lessonPlanTemplate.sections);
@@ -549,7 +549,10 @@ class TeacherLessonPlanManager extends BaseManager {
 			update.error = output;
 		}
 
-		await this.dao.updatePlan(existingLessonPlan._id, update);
+		const saved = await this.dao.updatePlan(existingLessonPlan._id, update, onlyIfRunning ? { status: "running" } : {});
+		if (onlyIfRunning && !saved) {
+			return formatApiReponse(true, "Lesson plan already settled", existingLessonPlan);
+		}
 		if (regeneratedLog) {
 			await this.regeneratedLessonResource.update(regeneratedLog._id, { status: update.status });
 		}
@@ -791,7 +794,7 @@ const payloadSections =[]
 				section_id:e.id,
 				section_title:e.title,
 				content:e.content,
-				regen_feedback:phaseFeedback?.feedback ? phaseFeedback.feedback : 'None'
+				regen_feedback:phaseFeedback.feedback || 'None'
 			}
 			payloadSections.push(section)
 
@@ -820,7 +823,7 @@ const payloadSections =[]
 			lp_type_english: isEnglish ? lp_type : 'NONE',
 			chapter_info: {
 				id: `Board=${chapter.board},Medium=${chapter.medium},Grade=${chapter.standard},Subject=${subject.subjectName},Number=${chapter.orderNumber},Title=${chapter.topics}`,
-				index_path: chapter.indexPath ?? `shiksha/data_new_book/${chapter.board}/${chapter.medium}/${chapter.standard}/${subject.subjectName}/pdf/${chapter.orderNumber}/index/pdf_idx`,
+				index_path: this._indexPath(chapter, subject),
 				chapter_title:chapter.topics
 			},
 			subtopics: payload.isAll ? [] : (payload?.subTopics ?? []),

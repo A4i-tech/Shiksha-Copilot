@@ -7,8 +7,6 @@ COPY components/rag-wrapper /tmp/rag-wrapper
 COPY ingestion/requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir uv \
     && uv pip install --system --no-cache -r /tmp/requirements.txt /tmp/rag-wrapper \
-    "llama-index-core>=0.13" "llama-index-llms-azure-openai>=0.4" "llama-index-embeddings-azure-openai>=0.4" \
-    azure-storage-blob azure-identity \
     && rm -rf /tmp/rag-wrapper
 
 WORKDIR /app

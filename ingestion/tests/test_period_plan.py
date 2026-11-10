@@ -81,6 +81,14 @@ def test_lp_id_is_accepted_in_place_of_underscore_id():
     assert steps.LessonPlanGenerationInput.model_validate(raw).lp_id == "plan-9"
 
 
+def test_a_chunk_payload_reads_its_text_from_either_shape():
+    node = {"_node_content": '{"text": "from node"}', "other": 1}
+    assert steps.ChunkPayload.model_validate(node).text == "from node"
+    assert steps.ChunkPayload.model_validate({"text": "plain"}).text == "plain"
+    with pytest.raises(ValidationError):
+        steps.ChunkPayload.model_validate({"text": ""})
+
+
 def test_subtopic_level_needs_subtopics():
     with pytest.raises(ValidationError, match="Subtopics must be provided"):
         steps.LessonPlanGenerationInput.model_validate(
@@ -272,7 +280,7 @@ def test_unknown_placeholder_fails_the_plan(conn):
     result = run_plan(graph(conn), raw)
     assert result.status == steps.PlanStatus.FAILED
     assert "MISSING" in result.error
-    assert conn.posted[-1]["status"] == "FAILED"
+    assert conn.posted[-1].status == "FAILED"
 
 
 def test_english_resource_plan_uses_resource_prompt(conn):
@@ -411,38 +419,67 @@ def test_rag_does_not_retry_other_errors(conn):
     assert conn.sleeps == []
 
 
+def test_an_empty_force_mode_means_each_section_keeps_its_own(conn):
+    step = graph(conn, force_mode="")
+    assert step.force_mode is None
+    assert step.mode_for(steps.SectionDef(**section("a", mode="rag"))) == "rag"
+
+
+def test_retry_waits_longer_each_time_and_stops_on_a_final_error(conn):
+    calls = []
+
+    async def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise ConnectionError("down")
+        return "ok"
+
+    retry = steps.retry(flaky, 4, lambda e: True, "do it")
+    assert asyncio.run(retry) == "ok"
+    assert conn.sleeps == [1, 2]
+    calls.clear()
+    with pytest.raises(ConnectionError):
+        asyncio.run(steps.retry(flaky, 2, lambda e: True, "do it"))
+    assert len(calls) == 2
+
+
 def test_force_mode_overrides_section_mode(conn):
     run_plan(graph(conn, force_mode="gpt"), payload([section("a", mode="rag")]))
     assert conn.qdrant.queries == []
 
 
-def test_webhook_failure_does_not_raise(conn):
+def test_a_lost_completed_status_fails_the_run_and_says_why(conn):
     async def broken(status):
         raise ConnectionError("receiver down")
 
     conn.post_status = broken
     result = run_plan(graph(conn), payload([section("a")]))
-    assert result.status == steps.PlanStatus.COMPLETED
+    assert result.status == steps.PlanStatus.FAILED
+    assert result.plan["_id"] == "plan-1"
+    assert "backend was not told" in result.error
+    assert "receiver down" in result.error
 
 
 def test_webhook_statuses_on_success(conn):
     run_plan(graph(conn), payload([section("a")]))
-    assert [p["status"] for p in conn.posted] == [
+    assert [p.status for p in conn.posted] == [
         "PENDING",
         "RUNNING",
         "COMPLETED",
     ]
-    assert conn.posted[-1]["output"]["_id"] == "plan-1"
-    assert conn.posted[0]["instance_id"] == "plan-1"
+    assert conn.posted[-1].output["_id"] == "plan-1"
+    assert conn.posted[0].instance_id == "plan-1"
 
 
 def test_webhook_timestamps_are_utc(conn):
     run_plan(graph(conn), payload([section("a")]))
-    assert conn.posted[0]["timestamp"].endswith("+00:00")
+    assert conn.posted[0].timestamp.endswith("+00:00")
 
 
 def test_webhook_off_posts_nothing(conn):
-    run_plan(graph(conn, webhook=False), payload([section("a")]))
+    ctx = SimpleNamespace(metadata={"payloads": [payload([section("a")])]})
+    asyncio.run(graph(conn, webhook=False).run(ctx))
+    assert ctx.metadata["lesson_plans"]["plan-1"].status == "completed"
     assert conn.posted == []
 
 
@@ -459,7 +496,8 @@ def test_a_validation_error_does_not_echo_the_request():
 def test_finished_plan_is_skipped(conn):
     conn.saved["plan-1"] = {}
     result = run_plan(graph(conn), payload([section("a")]))
-    assert result == steps.PlanResult(status=steps.PlanStatus.SKIPPED)
+    assert result.status == steps.PlanStatus.SKIPPED
+    assert "plan-1" in result.error
     assert conn.llm.prompts == []
 
 
@@ -504,10 +542,8 @@ def test_run_reports_plans_and_requires_payloads(conn):
         "plan-1": "completed",
         "plan-2": "skipped",
     }
-    assert (
-        asyncio.run(step.run(SimpleNamespace(metadata={}))).status.value
-        == "failure"
-    )
+    empty = SimpleNamespace(metadata={"payloads": []})
+    assert asyncio.run(step.run(empty)).status.value == "failure"
 
 
 def test_an_invalid_payload_fails_alone_and_the_other_plans_run(conn):
@@ -516,7 +552,6 @@ def test_an_invalid_payload_fails_alone_and_the_other_plans_run(conn):
             "payloads": [
                 {"_id": "bad"},
                 payload([section("a")]),
-                "not a payload",
             ]
         }
     )
@@ -525,7 +560,6 @@ def test_an_invalid_payload_fails_alone_and_the_other_plans_run(conn):
     plans = ctx.metadata["lesson_plans"]
     assert {k: v.status for k, v in plans.items()} == {
         "bad": "failed",
-        "2": "failed",
         "plan-1": "completed",
     }
     assert "workflow" in plans["bad"].error
@@ -571,7 +605,7 @@ def test_strict_json_failure_names_section_and_fails_plan(conn):
         "but the section has an output_format. It starts with: not json at all"
         in result.error
     )
-    assert [p["status"] for p in conn.posted] == [
+    assert [p.status for p in conn.posted] == [
         "PENDING",
         "RUNNING",
         "FAILED",

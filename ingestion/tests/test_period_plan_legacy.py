@@ -79,7 +79,7 @@ def test_legacy_failure_fails_the_plan_with_the_reason(conn, monkeypatch):
     result = run_plan(graph(conn), raw)
     assert result.status == "failed"
     assert "BLOB_STORE_CONNECTION_STRING" in result.error
-    assert conn.posted[-1]["status"] == "FAILED"
+    assert conn.posted[-1].status == "FAILED"
 
 
 def test_downloaded_index_is_deleted_only_after_the_last_plan_ends(

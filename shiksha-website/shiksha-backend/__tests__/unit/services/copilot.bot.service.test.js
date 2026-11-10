@@ -1,4 +1,5 @@
 jest.mock("axios", () => ({ post: jest.fn(), get: jest.fn() }));
+jest.mock("axios-retry", () => ({ default: jest.fn() }));
 let axios;
 
 describe("copilot.bot.service", () => {
@@ -22,7 +23,8 @@ describe("copilot.bot.service", () => {
 
     expect(axios.post).toHaveBeenCalledWith(
       "http://workflow/api/v2/lesson-plans",
-      { lesson: 1 }
+      { lesson: 1 },
+      { "axios-retry": { retries: 0 } }
     );
     expect(res.data).toEqual({ ok: true });
   });
@@ -38,14 +40,10 @@ describe("copilot.bot.service", () => {
     );
   });
 
-  it("should log an error at startup when LLM_WORKFLOW_URL is not set", () => {
+  it("should throw at load when LLM_WORKFLOW_URL is not set", () => {
     process.env.LLM_WORKFLOW_URL = "";
-    const logger = require("../../../config/loggers");
-    const spy = jest.spyOn(logger, "error").mockImplementation(() => {});
 
-    require("../../../services/copilot.bot.service");
-
-    expect(spy).toHaveBeenCalledWith(expect.stringContaining("LLM_WORKFLOW_URL is not set"));
+    expect(() => require("../../../services/copilot.bot.service")).toThrow("LLM_WORKFLOW_URL is not set");
   });
 
   it("posts to 5E tables endpoint", async () => {
