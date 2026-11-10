@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from collections.abc import Awaitable, Callable
-from contextlib import nullcontext
+from contextlib import AbstractAsyncContextManager, nullcontext
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -22,6 +22,7 @@ from openpyxl import load_workbook
 from pydantic import (
     AliasChoices,
     BaseModel,
+    ConfigDict,
     Field,
     InstanceOf,
     PrivateAttr,
@@ -47,11 +48,49 @@ QUERY_LIMIT = 500
 CUT_RATIO = 0.8
 
 
+class Status(BaseModel):
+    instance_id: str
+    status: Literal["PENDING", "RUNNING", "COMPLETED", "FAILED"]
+    timestamp: str
+    input: dict[str, Any]
+    output: Any = None
+
+
+StatusSink = Callable[[Status], Awaitable[None]]
+
+
+async def no_status(_: Status) -> None:
+    pass
+
+
+async def retry(
+    call: Callable[[], Awaitable[Any]],
+    attempts: int,
+    retryable: Callable[[Exception], bool],
+    label: str,
+) -> Any:
+    for attempt in range(attempts):
+        try:
+            return await call()
+        except Exception as e:
+            if attempt == attempts - 1 or not retryable(e):
+                raise
+            log.warning(
+                "Attempt %d of %d to %s failed (%s): %s",
+                attempt + 1,
+                attempts,
+                label,
+                type(e).__name__,
+                e,
+            )
+            await asyncio.sleep(2**attempt)
+
+
 @dataclass
 class Connections:
     qdrant: AsyncQdrantClient
     llm: openai.AsyncAzureOpenAI
-    post_status: Callable[[dict], Awaitable[None]]
+    post_status: StatusSink
     is_done: Callable[[str], bool]
     save: Callable[[str, dict], None]
 
@@ -77,7 +116,7 @@ class EnglishLPType(StrEnum):
 class PlanResult(BaseModel):
     status: PlanStatus
     plan: dict | None = None
-    error: str | None = None
+    error: str | None = None  # also the reason of a SKIPPED result
 
 
 class Dependency(BaseModel):
@@ -124,6 +163,18 @@ class QdrantIndex(BaseModel):
     collection: str
     key: str
     value: str
+
+    def session(self) -> AbstractAsyncContextManager[None]:
+        return nullcontext()
+
+    async def answer(
+        self,
+        graph: "SectionGraph",
+        inp: "LessonPlanGenerationInput",
+        sec: SectionDef,
+        prompt: str,
+    ) -> Any:
+        return await graph.rag(inp, sec, prompt, self)
 
 
 def parse_index(path: str) -> QdrantIndex | legacy.BlobIndex:
@@ -385,6 +436,17 @@ def clean_query(query: str, limit: int = QUERY_LIMIT) -> str:
     return truncate(query, limit)
 
 
+class ChunkPayload(BaseModel):
+    text: str = Field(min_length=1)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _unwrap(cls, data: dict) -> dict:
+        if "_node_content" in data:
+            return json.loads(data["_node_content"])
+        return data
+
+
 class QdrantRetrieve(BaseModel):
     embed_model: str
     top_k: int = 10
@@ -425,17 +487,13 @@ class QdrantRetrieve(BaseModel):
             )
         texts = []
         for p in result.points:
-            text = (
-                json.loads(p.payload["_node_content"])["text"]
-                if "_node_content" in p.payload
-                else p.payload.get("text")
-            )
-            if not text:
+            try:
+                texts.append(ChunkPayload.model_validate(p.payload).text)
+            except ValueError as e:
                 raise ValueError(
-                    f"Qdrant point {p.id} has no text payload. Check how the "
-                    "chapter was indexed."
-                )
-            texts.append(text)
+                    f"Qdrant point {p.id} has no text payload ({reason(e)}). "
+                    "Check how the chapter was indexed."
+                ) from e
         return texts
 
 
@@ -483,8 +541,20 @@ class SectionGraph(BaseModel, Step):
     retrieve: QdrantRetrieve
     conn: InstanceOf[Connections] | None = Field(default=None, exclude=True)
     webhook: bool = True
-    force_mode: Literal["", "rag", "gpt"] = ""
+    force_mode: Literal["rag", "gpt"] | None = None
     concurrency: int = 1
+
+    @field_validator("force_mode", mode="before")
+    @classmethod
+    def _no_mode_is_empty(cls, value: str | None) -> str | None:
+        return value or None
+
+    def mode_for(self, sec: SectionDef) -> Literal["rag", "gpt"]:
+        return self.force_mode or sec.mode
+
+    @staticmethod
+    def parse(text: str, sec: SectionDef) -> Any:
+        return parse_reply(text, sec)
 
     async def _chat(
         self, content: str, system: bool = True, **kwargs: Any
@@ -639,7 +709,7 @@ class SectionGraph(BaseModel, Step):
             slots["intro"] = variant_prompts.intro.format(title=sec.title)
         return fill(variant_prompts.template, **slots)
 
-    async def _rag(
+    async def rag(
         self,
         inp: LessonPlanGenerationInput,
         sec: SectionDef,
@@ -658,25 +728,19 @@ class SectionGraph(BaseModel, Step):
         answer_prompt = self.prompts.rag_answer.format(
             context=context, query=prompt
         )
-        for attempt in range(RETRY_ATTEMPTS):
-            try:
-                text = await self._chat(
-                    answer_prompt, system=False, temperature=0.1, **options
-                )
-                return parse_reply(text, sec)
-            except (openai.APIError, ValueError) as e:
-                log.warning(
-                    "Attempt %d of %d failed for section '%s' (%s): %s",
-                    attempt + 1,
-                    RETRY_ATTEMPTS,
-                    sec.id,
-                    type(e).__name__,
-                    e,
-                    exc_info=True,
-                )
-                if attempt == RETRY_ATTEMPTS - 1:
-                    raise
-                await asyncio.sleep(2**attempt)
+
+        async def ask() -> Any:
+            text = await self._chat(
+                answer_prompt, system=False, temperature=0.1, **options
+            )
+            return parse_reply(text, sec)
+
+        return await retry(
+            ask,
+            RETRY_ATTEMPTS,
+            lambda e: isinstance(e, (openai.APIError, ValueError)),
+            f"answer section '{sec.id}'",
+        )
 
     async def _generate(
         self,
@@ -684,18 +748,11 @@ class SectionGraph(BaseModel, Step):
         sec: SectionDef,
         deps: dict[str, Any],
     ) -> Any:
-        mode = self.force_mode or sec.mode
+        mode = self.mode_for(sec)
         prompt = self._synthesis(inp, sec, deps, mode)
-        index = inp.chapter_info.index
         if mode == "gpt":
-            text = await self._chat(prompt, temperature=0)
-        elif isinstance(index, legacy.BlobIndex):
-            text = await legacy.answer(
-                index, prompt, self.model, self.retrieve.embed_model
-            )
-        else:
-            return await self._rag(inp, sec, prompt, index)
-        return parse_reply(text, sec)
+            return parse_reply(await self._chat(prompt, temperature=0), sec)
+        return await inp.chapter_info.index.answer(self, inp, sec, prompt)
 
     async def _section(
         self,
@@ -705,7 +762,7 @@ class SectionGraph(BaseModel, Step):
     ) -> Any:
         with get_client().start_as_current_span(
             name=f"section:{sec.id}",
-            input={"mode": self.force_mode or sec.mode},
+            input={"mode": self.mode_for(sec)},
         ) as span:
             content = await self._generate(inp, sec, deps)
             if content is None:
@@ -716,20 +773,17 @@ class SectionGraph(BaseModel, Step):
             span.update(output=content)
             return content
 
-    async def plan(self, inp: LessonPlanGenerationInput) -> PlanResult:
+    async def plan(
+        self, inp: LessonPlanGenerationInput, post_status: StatusSink
+    ) -> PlanResult:
         if self.conn is None:
             raise RuntimeError(
                 "SectionGraph has no connections. Build it with "
                 "conn=Connections(...)."
             )
-        index = inp.chapter_info.index
         langfuse = get_client()
         try:
-            async with (
-                legacy.session(index)
-                if isinstance(index, legacy.BlobIndex)
-                else nullcontext()
-            ):
+            async with inp.chapter_info.index.session():
                 with langfuse.start_as_current_span(
                     name="Shiksha-LP",
                     input=inp.model_dump(mode="json", by_alias=True),
@@ -737,7 +791,7 @@ class SectionGraph(BaseModel, Step):
                     span.update_trace(
                         user_id=inp.user_id, tags=["flow:lesson-plan"]
                     )
-                    result = await self._run_plan(inp)
+                    result = await self._run_plan(inp, post_status)
                     span.update(
                         output=result.model_dump(
                             mode="json", include={"status", "error"}
@@ -747,22 +801,22 @@ class SectionGraph(BaseModel, Step):
         finally:
             await asyncio.to_thread(langfuse.flush)
 
-    async def _run_plan(self, inp: LessonPlanGenerationInput) -> PlanResult:
+    async def _run_plan(
+        self, inp: LessonPlanGenerationInput, post_status: StatusSink
+    ) -> PlanResult:
         plan_id = inp.lp_id
         request = inp.model_dump(mode="json", by_alias=True)
 
-        async def send(status: str, output: Any = None) -> None:
-            if not self.webhook:
-                return
+        async def send(status: str, output: Any = None) -> str | None:
             try:
-                await self.conn.post_status(
-                    {
-                        "instance_id": plan_id,
-                        "status": status,
-                        "timestamp": datetime.now(timezone.utc).isoformat(),
-                        "input": request,
-                        "output": output,
-                    }
+                await post_status(
+                    Status(
+                        instance_id=plan_id,
+                        status=status,
+                        timestamp=datetime.now(timezone.utc).isoformat(),
+                        input=request,
+                        output=output,
+                    )
                 )
             except Exception as e:
                 log.error(
@@ -773,9 +827,17 @@ class SectionGraph(BaseModel, Step):
                     e,
                     exc_info=True,
                 )
+                return (
+                    f"The backend was not told that the plan is {status}: "
+                    f"{reason(e)}. Check WEBHOOK_URL and that the receiver "
+                    "is reachable."
+                )
 
         if self.conn.is_done(plan_id):
-            return PlanResult(status=PlanStatus.SKIPPED)
+            return PlanResult(
+                status=PlanStatus.SKIPPED,
+                error=f"A saved plan for '{plan_id}' exists. Nothing ran.",
+            )
         await send("PENDING")
         await send("RUNNING")
         try:
@@ -813,13 +875,15 @@ class SectionGraph(BaseModel, Step):
         except Exception as e:
             log.exception("Plan %s failed", plan_id)
             error = reason(e)
-            await send("FAILED", error)
+            if lost := await send("FAILED", error):
+                error = f"{error} {lost}"
             return PlanResult(status=PlanStatus.FAILED, error=error)
-        await send("COMPLETED", plan)
+        if lost := await send("COMPLETED", plan):
+            return PlanResult(status=PlanStatus.FAILED, plan=plan, error=lost)
         return PlanResult(status=PlanStatus.COMPLETED, plan=plan)
 
     async def run(self, ctx: IngestionContext) -> StepResult:
-        payloads = ctx.metadata.get("payloads")
+        payloads = ctx.metadata["payloads"]
         if not payloads:
             return StepResult(
                 status=StepStatus.FAILURE,
@@ -830,20 +894,20 @@ class SectionGraph(BaseModel, Step):
             )
         inputs: list[LessonPlanGenerationInput] = []
         failed: dict[str, PlanResult] = {}
-        for i, raw in enumerate(payloads):
+        for raw in payloads:
             try:
                 inputs.append(LessonPlanGenerationInput.model_validate(raw))
             except ValidationError as e:
-                ids = raw if isinstance(raw, dict) else {}
-                key = ids.get("lp_id") or ids.get("_id") or str(i)
-                failed[key] = PlanResult(
+                failed[raw["_id"]] = PlanResult(
                     status=PlanStatus.FAILED, error=reason(e)
                 )
         gate = asyncio.Semaphore(self.concurrency)
 
+        post_status = self.conn.post_status if self.webhook else no_status
+
         async def one(inp: LessonPlanGenerationInput) -> PlanResult:
             async with gate:
-                return await self.plan(inp)
+                return await self.plan(inp, post_status)
 
         results = await asyncio.gather(*(one(inp) for inp in inputs))
         ctx.metadata["lesson_plans"] = failed | {
@@ -864,14 +928,22 @@ XLSX_HEADERS = (
 )
 
 
-def cell_text(value: Any) -> str:
-    return "" if value is None else str(value).strip()
+class PeriodRow(BaseModel):
+    model_config = ConfigDict(coerce_numbers_to_str=True)
 
+    chapter_number: int | float | str | None
+    chapter_title: str | None
+    period: int | float | str | None
+    topic: str | None
+    learning_outcomes: str | None
 
-def whole_number(value: Any) -> Any:
-    return (
-        int(value) if isinstance(value, float) and value.is_integer() else value
-    )
+    @field_validator("*", mode="before")
+    @classmethod
+    def _clean(cls, value: Any) -> Any:
+        # openpyxl returns floats for numeric cells
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        return (value.strip() or None) if isinstance(value, str) else value
 
 
 def order(value: Any) -> tuple:
@@ -888,7 +960,7 @@ class XlsxChapters(BaseModel, Step):
     medium: str = "english"
     board: str = "BSE-TG"
 
-    def _rows(self, content: bytes) -> list[dict[str, Any]]:
+    def _rows(self, content: bytes) -> list[PeriodRow]:
         book = load_workbook(
             io.BytesIO(content), read_only=True, data_only=True
         )
@@ -906,46 +978,36 @@ class XlsxChapters(BaseModel, Step):
             )
         rows = book[sheet].iter_rows(values_only=True)
         header = [
-            "_".join(cell_text(h).lower().split()) for h in next(rows, ())
+            "_".join(str(h or "").lower().split()) for h in next(rows, ())
         ]
         if missing := [h for h in XLSX_HEADERS if h not in header]:
             raise ValueError(
                 f"Sheet '{sheet}' has no column for {', '.join(missing)}. "
                 f"Columns found: {', '.join(h for h in header if h)}."
             )
-        return [dict(zip(header, row)) for row in rows]
+        return [PeriodRow.model_validate(dict(zip(header, r))) for r in rows]
 
-    def _chapters(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        last: dict[str, Any] = {}
+    def _chapters(self, rows: list[PeriodRow]) -> list[dict[str, Any]]:
+        carried = ("chapter_number", "chapter_title", "period")
+        last = dict.fromkeys(carried)
         periods: dict[tuple, dict[Any, dict[str, list[str]]]] = {}
         stray: list[int] = []
         for position, row in enumerate(rows, start=2):
-            for key in ("chapter_number", "chapter_title", "period"):
-                if cell_text(row[key]) == "":
-                    row[key] = last.get(key)
-                last[key] = row[key]
-            if row["chapter_number"] is None:
-                if cell_text(row["topic"]) or cell_text(
-                    row["learning_outcomes"]
-                ):
+            for key in carried:
+                if getattr(row, key) is None:
+                    setattr(row, key, last[key])
+                last[key] = getattr(row, key)
+            if row.chapter_number is None:
+                if row.topic or row.learning_outcomes:
                     stray.append(position)
                 continue
             group = periods.setdefault(
-                (
-                    whole_number(row["chapter_number"]),
-                    cell_text(row["chapter_title"]),
-                ),
-                {},
-            ).setdefault(
-                whole_number(row["period"]),
-                {"topics": [], "learning_outcomes": []},
-            )
-            for field, key in (
-                ("topics", "topic"),
-                ("learning_outcomes", "learning_outcomes"),
-            ):
-                if text := cell_text(row[key]):
-                    group[field].append(text)
+                (row.chapter_number, row.chapter_title or ""), {}
+            ).setdefault(row.period, {"topics": [], "learning_outcomes": []})
+            if row.topic:
+                group["topics"].append(row.topic)
+            if row.learning_outcomes:
+                group["learning_outcomes"].append(row.learning_outcomes)
         if stray:
             raise ValueError(
                 f"{len(stray)} rows have a topic or learning outcome but come "

@@ -8,10 +8,9 @@ const llmBaseUrl = process.env.LLM_API_BASE_URL
 const CHECKLIST_TIMEOUT_MS = 210000;
 
 if (!workflowUrl) {
-  logger.error("LLM_WORKFLOW_URL is not set. Lesson plan generation will fail.");
+  throw new Error("LLM_WORKFLOW_URL is not set. Set it to the lesson plan workflow service URL and restart the backend.");
 }
 
-try{
 axiosRetry(axios, {
   retries: 5,
   retryDelay: (retryCount) => {
@@ -26,16 +25,13 @@ axiosRetry(axios, {
     return shouldRetry;
   }
 });
-}
-catch (configError) {
-	logger.error('Error configuring axios-retry', { message: configError.message, stack: configError.stack });
-  }
 
+// A retried POST could start a duplicate LLM run
 async function postToCopilotBot(payload) {
   const apiUrl = `${workflowUrl}/api/v2/lesson-plans`;
 
   try {
-    const response = await axios.post(apiUrl, payload);
+    const response = await axios.post(apiUrl, payload, { 'axios-retry': { retries: 0 } });
     if (response.status !== 202) {
       logger.error(`Unexpected status code from Copilot bot: ${response.status}`);
       throw new Error(`Unexpected status code from Copilot bot: ${response.status}`);

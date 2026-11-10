@@ -4,17 +4,35 @@ import json
 import sys
 from pathlib import Path
 
+import hashlib
+import hmac
+
 import httpx
 import pytest
 
 import period_plan_runner as runner
+import period_plan_steps as steps
 from conftest import TEMPLATE
 
 AZURE_VARS = (
     "AZURE_OPENAI_API_BASE",
     "AZURE_OPENAI_API_KEY",
     "AZURE_OPENAI_API_VERSION",
+    "QDRANT_URL",
+    "QDRANT_API_KEY",
 )
+
+
+def status(**kw):
+    return steps.Status(
+        **{
+            "instance_id": "abc",
+            "status": "COMPLETED",
+            "timestamp": "t",
+            "input": {},
+        }
+        | kw
+    )
 
 
 class FailingHttp:
@@ -58,6 +76,13 @@ def test_string_parameters_keep_their_text_on_the_command_line():
 def test_a_non_string_parameter_must_be_json():
     with pytest.raises(argparse.ArgumentTypeError, match="must be valid JSON"):
         runner.name_value("top_k=five")
+
+
+def test_an_unknown_parameter_is_rejected_before_it_reaches_the_config():
+    with pytest.raises(argparse.ArgumentTypeError, match="Unknown parameter"):
+        runner.name_value("topk=5")
+    with pytest.raises(ValueError, match="Use one of: .*top_k"):
+        runner.coerce(runner.PARAMETERS, "topk", 5)
 
 
 def test_a_parameter_needs_a_value():
@@ -124,9 +149,9 @@ def test_terminal_status_post_is_retried_then_raised(azure_env, monkeypatch):
     monkeypatch.setattr(runner.asyncio, "sleep", no_sleep)
     post = runner.connect().post_status
     with pytest.raises(httpx.ConnectError):
-        asyncio.run(post({"status": "COMPLETED"}))
-    assert len(http.urls) == 4
-    assert sleeps == [1, 2, 4]
+        asyncio.run(post(status()))
+    assert len(http.urls) == runner.STATUS_ATTEMPTS
+    assert sleeps == [1, 2, 4, 8, 16]
 
 
 class StatusHttp:
@@ -161,7 +186,7 @@ def post_with(azure_env, monkeypatch, codes):
 def test_status_post_does_not_retry_a_client_error(azure_env, monkeypatch):
     http, post = post_with(azure_env, monkeypatch, [400])
     with pytest.raises(httpx.HTTPStatusError):
-        asyncio.run(post({"status": "COMPLETED"}))
+        asyncio.run(post(status()))
     assert len(http.urls) == 1
 
 
@@ -169,15 +194,19 @@ def test_status_post_retries_a_404_until_the_plan_record_exists(
     azure_env, monkeypatch
 ):
     http, post = post_with(azure_env, monkeypatch, [404, 200])
-    asyncio.run(post({"status": "COMPLETED"}))
+    asyncio.run(post(status()))
     assert len(http.urls) == 2
 
 
-def test_status_post_gives_up_after_four_server_errors(azure_env, monkeypatch):
-    http, post = post_with(azure_env, monkeypatch, [500] * 4)
+def test_status_post_gives_up_after_the_last_server_error(
+    azure_env, monkeypatch
+):
+    http, post = post_with(
+        azure_env, monkeypatch, [500] * runner.STATUS_ATTEMPTS
+    )
     with pytest.raises(httpx.HTTPStatusError):
-        asyncio.run(post({"status": "COMPLETED"}))
-    assert len(http.urls) == 4
+        asyncio.run(post(status()))
+    assert len(http.urls) == runner.STATUS_ATTEMPTS
 
 
 class CapturingHttp(StatusHttp):
@@ -192,14 +221,14 @@ def test_status_post_is_signed_over_the_sent_bytes(azure_env, monkeypatch):
     monkeypatch.setattr(runner.httpx, "AsyncClient", lambda **_: http)
     monkeypatch.setattr(runner.time, "time", lambda: 1700000000)
     post = runner.connect().post_status
-    asyncio.run(post({"instance_id": "abc", "status": "completed"}))
+    asyncio.run(post(status()))
     body, headers = http.sent
-    assert body == b'{"instance_id":"abc","status":"completed"}'
+    assert body == status().model_dump_json().encode()
     assert headers["X-Webhook-Timestamp"] == "1700000000"
-    # the same vector is pinned in the backend webhook.signature test
-    assert headers["X-Webhook-Signature"] == (
-        "8f7eb16bff536d5c813ae1371c028b205e8612fdfe6bb57e28dacf4a8f61e4fa"
-    )
+    expected = hmac.new(
+        b"test-secret", b"1700000000." + body, hashlib.sha256
+    ).hexdigest()
+    assert headers["X-Webhook-Signature"] == expected
 
 
 def test_a_webhook_url_without_a_secret_is_refused(azure_env, monkeypatch):

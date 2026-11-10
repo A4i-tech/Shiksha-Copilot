@@ -23,10 +23,28 @@ const validateWebhook = validateRequest(
 			.insensitive()
 			.valid("pending", "running", "completed", "failed")
 			.required(),
+		output: Joi.when("status", {
+			is: Joi.string().insensitive().valid("completed").required(),
+			then: Joi.object({ sections: Joi.array().required() }).unknown(true).required(),
+		}),
+	}).unknown(true)
+);
+
+const validateRegenerate = validateRequest(
+	Joi.object({
+		regenFeedback: Joi.array()
+			.items(
+				Joi.object({
+					type: Joi.string().required(),
+					feedback: Joi.string().allow("").required(),
+				}).unknown(true)
+			)
+			.required(),
 	}).unknown(true)
 );
 
 module.exports = {
 	validateTeacherLessonPlan,
 	validateWebhook,
+	validateRegenerate,
 };

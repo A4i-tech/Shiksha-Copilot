@@ -123,6 +123,11 @@ def conn(monkeypatch):
 @pytest.fixture(autouse=True)
 def api_key(monkeypatch):
     monkeypatch.setenv("PIPELINE_API_KEY", KEY)
+    monkeypatch.setenv("QDRANT_URL", "http://qdrant.invalid:6333")
+    monkeypatch.setenv("QDRANT_API_KEY", "q")
+    monkeypatch.setenv("AZURE_OPENAI_API_BASE", "https://example.invalid")
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "k")
+    monkeypatch.setenv("AZURE_OPENAI_API_VERSION", "2024-06-01")
 
 
 @pytest.fixture
@@ -175,9 +180,9 @@ def payload(sections, **kw):
     }
 
 
-def run_plan(step, raw):
+def run_plan(step, raw, sink=None):
     inp = steps.LessonPlanGenerationInput.model_validate(raw)
-    return asyncio.run(step.plan(inp))
+    return asyncio.run(step.plan(inp, sink or step.conn.post_status))
 
 
 def workbook(rows=None, sheet="Grade 6") -> bytes:
