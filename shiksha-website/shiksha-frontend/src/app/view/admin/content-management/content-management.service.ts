@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { environment } from 'src/environments/environment';
 import { LIST_TAB_BY_STATUS } from './content-status.constants';
@@ -40,6 +40,8 @@ export interface ContentListQuery {
   providedIn: 'root',
 })
 export class ContentManagementService extends BaseRestService {
+  curators: Curator[] = [];
+
   /**
    * class constructor
    * @param http
@@ -63,10 +65,14 @@ export class ContentManagementService extends BaseRestService {
     return curatorMode ? `${environment.apiUrl}/curator/content/` : this.getUrl();
   }
 
-  // The chapter of the curator decides the list tab of its records, so one call reads the chapter and then its record lists.
+  listByStatus(segment: string, status: string, filters?: { [key: string]: any }): Observable<any> {
+    return this.list(segment, { page: 1, limit: 999, includeDeleted: LIST_TAB_BY_STATUS[status], filters }, true);
+  }
+
+  // Chapter status picks the list tab, so read the chapter first.
   loadCuratorChapter(
     chapterId: string,
-    children: { segment: string; limit: number; filters: { [key: string]: any } }[]
+    children: { segment: string; filters: { [key: string]: any } }[]
   ): Observable<{ chapter?: CurationChapter; lists: any[][] }> {
     return this.list('chapters', { page: 1, limit: 1, filters: { _id: chapterId, isDeleted: 'true' } }, true).pipe(
       switchMap((res) => {
@@ -74,13 +80,7 @@ export class ContentManagementService extends BaseRestService {
         if (!chapter || !children.length) return of({ chapter, lists: [] });
 
         return forkJoin(
-          children.map((child) =>
-            this.list(
-              child.segment,
-              { page: 1, limit: child.limit, includeDeleted: LIST_TAB_BY_STATUS[chapter.status], filters: child.filters },
-              true
-            )
-          )
+          children.map((child) => this.listByStatus(child.segment, chapter.status, child.filters))
         ).pipe(map((responses) => ({ chapter, lists: responses.map((response) => response.data.results) })));
       })
     );
@@ -119,7 +119,14 @@ export class ContentManagementService extends BaseRestService {
   }
 
   listCurators(): Observable<Curator[]> {
-    return this.get<{ data: { results: Curator[] } }>('curators').pipe(map((res) => res.data.results));
+    return this.get<{ data: { results: Curator[] } }>('curators').pipe(
+      map((res) => res.data.results),
+      tap((curators) => (this.curators = curators))
+    );
+  }
+
+  curatorName(id: string): string {
+    return this.curators.find((curator) => curator._id === id)?.name ?? id;
   }
 
   listSubjects(): Observable<any> {

@@ -548,9 +548,7 @@ class ChapterManager extends BaseManager {
 
     const data = await this._moveChapter(
       { _id: chapter._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
-      { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
-      CONTENT_STATUS.UNDER_REVIEW,
-      { status: CONTENT_STATUS.APPROVED, isDeleted: false }
+      { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } }
     );
 
     if (!data) {
@@ -564,19 +562,18 @@ class ChapterManager extends BaseManager {
     return formatApiReponse(true, "Chapter approved successfully!", data);
   }
 
-  // One transaction, so a failed child write rolls the chapter back and a retry still passes the state guard.
-  _moveChapter(filter, update, childFrom, childSet) {
+  // One transaction: a failed child write must roll the chapter back too.
+  _moveChapter(filter, update) {
+    const set = { status: update.$set.status, isDeleted: update.$set.isDeleted ?? true };
     return mongoose.connection.transaction(async (session) => {
       const data = await Chapter.findOneAndUpdate(filter, update, { new: true, session });
-      if (data) await this._cascade(filter._id, childFrom, childSet, session);
+      if (data) {
+        for (const Model of [MasterLesson, MasterResource, Question]) {
+          await Model.updateMany({ chapterId: filter._id, isDeleted: true, status: filter.status }, { $set: set }, { session });
+        }
+      }
       return data;
     });
-  }
-
-  async _cascade(chapterId, from, set, session) {
-    for (const Model of [MasterLesson, MasterResource, Question]) {
-      await Model.updateMany({ chapterId, isDeleted: true, status: from }, { $set: set }, { session });
-    }
   }
 
   async _draftOnlyError(id, action) {
@@ -590,7 +587,7 @@ class ChapterManager extends BaseManager {
 
   async assign(id, curatorId, adminId) {
     const isCurator = await User.exists({ _id: curatorId, isDeleted: { $ne: true }, "roles.role": CONTENT_CURATOR_ROLE_ID });
-    if (!isCurator) throw new AppError("The selected user does not hold the Content Curator role. Choose a user from the Content Curator list.", 400);
+    if (!isCurator) throw new AppError("The selected user is not an active Content Curator. Choose a user from the Content Curator list.", 400);
 
     const now = new Date();
     const assignedTo = new mongoose.Types.ObjectId(curatorId);
@@ -629,9 +626,7 @@ class ChapterManager extends BaseManager {
 
     const data = await this._moveChapter(
       { ...draftOnly(id), assignedTo: curatorId },
-      { $set: { status: CONTENT_STATUS.UNDER_REVIEW, submittedAt: new Date() }, $unset: { reviewComment: 1 } },
-      CONTENT_STATUS.DRAFT,
-      { status: CONTENT_STATUS.UNDER_REVIEW }
+      { $set: { status: CONTENT_STATUS.UNDER_REVIEW, submittedAt: new Date() }, $unset: { reviewComment: 1 } }
     );
     if (!data) throw await this._draftOnlyError(id, "submitted");
 
@@ -641,9 +636,7 @@ class ChapterManager extends BaseManager {
   async requestChanges(id, comment, adminId) {
     const data = await this._moveChapter(
       { _id: id, isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW },
-      { $set: { status: CONTENT_STATUS.DRAFT, reviewComment: { text: comment.trim(), by: adminId, at: new Date() } } },
-      CONTENT_STATUS.UNDER_REVIEW,
-      { status: CONTENT_STATUS.DRAFT }
+      { $set: { status: CONTENT_STATUS.DRAFT, reviewComment: { text: comment.trim(), by: adminId, at: new Date() } } }
     );
     if (!data) throw new AppError("Chapter is not under review. Only chapters under review can be sent back for changes. Reload the list and try again.", 409);
 
@@ -658,11 +651,10 @@ class ChapterManager extends BaseManager {
     return formatApiReponse(true, "", { results: users.map((user) => ({ _id: user._id, name: user.identity.name })) });
   }
 
-  // Takes the list filter, sort, and status, so the export honors the list filters.
   async exportCsv(filters, sort, status) {
     const chapters = await this.dao.getAllForExport(EXPORT_LIMIT + 1, filters, sort, status);
     if (chapters.length > EXPORT_LIMIT) {
-      throw new AppError(`The export holds at most ${EXPORT_LIMIT} chapters, and more chapters match. Narrow the filters (board, class, medium, subject, or status), then export again.`, 409);
+      throw new AppError(`The export holds at most ${EXPORT_LIMIT} chapters, and more chapters match. Narrow the filters (Assigned, Curator, Board, Class, Medium, Subject) or the Records tab, then export again.`, 409);
     }
 
     const curators = await User.find({ _id: { $in: chapters.map((chapter) => chapter.assignedTo).filter(Boolean) } })

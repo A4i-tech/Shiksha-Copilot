@@ -1,9 +1,11 @@
 const BaseController = require("../../../controllers/base.controller");
 const {
-  createMockRequest,
+  createMockRequest: baseMockRequest,
   createMockResponse,
   createMockNext,
 } = require("../../utils/test.helpers");
+
+const createMockRequest = (options) => baseMockRequest({ user: { _id: "u1" }, ...options });
 
 // Mock Manager
 class MockManager {
@@ -328,7 +330,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         { isDeleted: true, status: { $nin: ["draft", "under_review"] } },
-        undefined
+        "u1"
       );
     });
 
@@ -369,7 +371,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         { isDeleted: true, status: "under_review" },
-        undefined
+        "u1"
       );
     });
 
@@ -387,7 +389,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         { isDeleted: true },
-        undefined
+        "u1"
       );
     });
 
@@ -405,7 +407,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         {},
-        undefined
+        "u1"
       );
     });
 
@@ -423,7 +425,7 @@ describe("BaseController", () => {
         {},
         { createdAt: -1 },
         {},
-        undefined
+        "u1"
       );
     });
   });

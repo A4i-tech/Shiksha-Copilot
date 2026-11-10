@@ -61,24 +61,6 @@ class BaseManager {
 		}
 	}
 
-	// Also matches draft and under-review records, which are stored with isDeleted:true.
-	async adminUpdateDraft(req) {
-		try {
-			const data = await this.dao.Model.findOneAndUpdate(
-				{ _id: req.params.id, $or: [{ isDeleted: { $ne: true } }, { status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } }] },
-				{ $set: req.body },
-				{ new: true, runValidators: true }
-			);
-			if (!data) {
-				return formatApiReponse(false, "Record not found or has been deleted. Reload the list and try again.", null);
-			}
-			return formatApiReponse(true, "Updated successfully!", data);
-		} catch (err) {
-			console.error("adminUpdate failed:", err);
-			return formatApiReponse(false, err.message, null);
-		}
-	}
-
 	withDraftMetadata(doc, userId) {
 		return {
 			...doc,

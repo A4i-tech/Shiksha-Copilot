@@ -160,6 +160,9 @@ describe("curator middleware", () => {
     it.each([
       [undefined, 999],
       ["0", 999],
+      ["-1", 999],
+      ["-5", 999],
+      ["0.5", 999],
       ["50", 50],
       ["100000", 999],
     ])("caps the chapter list limit %s at %s", async (limit, expected) => {

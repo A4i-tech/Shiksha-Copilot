@@ -15,7 +15,7 @@ import {
   getContentEntityConfig,
   localizeEntity,
 } from '../content-management.config';
-import { ContentManagementService, CurationChapter, Curator } from '../content-management.service';
+import { ContentManagementService, CurationChapter } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 import { CONTENT_STATUS } from '../content-status.constants';
 import { UmamiService } from 'src/app/shared/services/umami.service';
@@ -51,7 +51,6 @@ export class ContentEditComponent implements OnInit, OnDestroy {
 
   /** {value, label} of every board a master subject applies to, for the chapter subject dropdown */
   subjectOptions: ContentSelectOption[] = [];
-  curators: Curator[] = [];
 
   private original: { [field: string]: any } = {};
   private subscriptions: Subscription[] = [];
@@ -60,7 +59,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private contentService: ContentManagementService,
+    public contentService: ContentManagementService,
     private utilityService: UtilityService,
     private translateService: TranslateService,
     private umamiService: UmamiService
@@ -139,14 +138,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
   }
 
   loadCurators(): void {
-    this.contentService.listCurators().subscribe({
-      next: (curators) => (this.curators = curators),
-      error: (err: any) => this.utilityService.handleError(err),
-    });
-  }
-
-  curatorName(id: string): string {
-    return this.curators.find((curator) => curator._id === id)?.name ?? id;
+    this.contentService.listCurators().subscribe({ error: (err: any) => this.utilityService.handleError(err) });
   }
 
   loadRecord(): void {
@@ -166,12 +158,12 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     });
   }
 
-  // The chapter decides if the form is open. A record of an assigned chapter has the status of the chapter.
+  // Records load from the list tab of the chapter status.
   private loadCuratorRecord(): void {
     this.isLoading = true;
     this.recordLoad.unsubscribe();
 
-    const children = this.isCreate ? [] : [{ segment: this.config.segment, limit: 1, filters: { _id: this.recordId } }];
+    const children = this.isCreate ? [] : [{ segment: this.config.segment, filters: { _id: this.recordId } }];
 
     this.recordLoad = this.contentService.loadCuratorChapter(this.chapterId, children).subscribe({
       next: ({ chapter, lists }) => {

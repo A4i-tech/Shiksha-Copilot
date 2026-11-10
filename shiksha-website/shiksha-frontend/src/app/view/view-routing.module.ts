@@ -135,20 +135,22 @@ const routes: Routes = [
       },
       {
         path: 'curation/chapters',
-        loadComponent: () => import('./curator/curator-dashboard/curator-dashboard.component').then((c) => c.CuratorDashboardComponent),
+        loadComponent: () => import('./curator/curator-chapter/curator-chapter.component').then((c) => c.CuratorChapterComponent),
         data: { permissions: ['content.curate'] },
         canActivate: [PermissionGuard],
       },
       {
         path: 'curation/lesson-plan',
-        loadComponent: () => import('./curator/curator-chapter-pick/curator-chapter-pick.component').then((c) => c.CuratorChapterPickComponent),
-        data: { permissions: ['content.curate'] },
+        loadComponent: () =>
+          import('../shared/components/lesson-plan-resource-details/lesson-plan-resource-details.component').then((c) => c.LessonPlanResourceDetailsComponent),
+        data: { permissions: ['content.curate'], curatorMode: true },
         canActivate: [PermissionGuard],
       },
       {
         path: 'curation/lesson-resources',
-        loadComponent: () => import('./curator/curator-chapter-pick/curator-chapter-pick.component').then((c) => c.CuratorChapterPickComponent),
-        data: { permissions: ['content.curate'] },
+        loadComponent: () =>
+          import('../shared/components/lesson-plan-resource-details/lesson-plan-resource-details.component').then((c) => c.LessonPlanResourceDetailsComponent),
+        data: { permissions: ['content.curate'], curatorMode: true },
         canActivate: [PermissionGuard],
       },
       {

@@ -26,10 +26,6 @@ class MasterResourceManager extends BaseManager {
 		this.chapterDao = new ChapterDao();
 	}
 
-	adminUpdate(req) {
-		return this.adminUpdateDraft(req);
-	}
-
 	async bulkUpload(resources, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(resources) || resources.length === 0) {

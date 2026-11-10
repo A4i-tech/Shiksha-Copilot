@@ -20,7 +20,7 @@ import {
   ContentEntityConfig,
   getContentEntityConfig,
 } from '../content-management.config';
-import { ContentManagementService, Curator } from '../content-management.service';
+import { ContentManagementService } from '../content-management.service';
 import { CONTENT_STATUS, STATUS_BADGE_CLASSES, STATUS_LABELS } from '../content-status.constants';
 import { UmamiService } from 'src/app/shared/services/umami.service';
 
@@ -105,7 +105,6 @@ export class ContentListComponent implements OnInit, OnDestroy {
   selectedCuratorId = '';
   reviewComment = '';
 
-  curators: Curator[] = [];
   filters = { ...EMPTY_FILTERS };
   readonly boardOptions = BOARD_OPTIONS;
   readonly mediumOptions = MEDIUM_OPTIONS;
@@ -151,7 +150,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private contentService: ContentManagementService,
+    public contentService: ContentManagementService,
     private utilityService: UtilityService,
     public modalService: ModalService,
     private translateService: TranslateService,
@@ -255,10 +254,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
   }
 
   private loadCuratorsAndSubjects(): void {
-    this.contentService.listCurators().subscribe({
-      next: (curators) => (this.curators = curators),
-      error: (err: any) => this.utilityService.handleError(err),
-    });
+    this.contentService.listCurators().subscribe({ error: (err: any) => this.utilityService.handleError(err) });
     this.contentService.listSubjects().subscribe({
       next: (res: any) => {
         this.subjectNames = [...new Set<string>(res.data.results.map((subject: any) => subject.subjectName))];
@@ -377,7 +373,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
 
     if (value === null || value === undefined) return '-';
     if (field === 'status') return STATUS_LABELS[value] || `${value}`;
-    if (field === 'assignedTo') return this.curators.find((curator) => curator._id === value)?.name ?? value;
+    if (field === 'assignedTo') return this.contentService.curatorName(value);
     if (Array.isArray(value)) return value.join(', ');
     if (typeof value === 'object') return JSON.stringify(value);
 
