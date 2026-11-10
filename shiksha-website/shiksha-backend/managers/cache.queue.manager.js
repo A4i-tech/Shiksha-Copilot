@@ -5,6 +5,8 @@ const {
   fixObjectIdsInArray,
 } = require("../helper/question.bank.cache.helper");
 
+const UNSPECIFIED_OBJECTIVE = "UNSPECIFIED";
+
 const queue = new PQueue({ concurrency: 1 });
 const getCacheQuestionLimit = () =>
   parseInt(process.env.CACHE_QUESTION_PER_TYPE) || 10;
@@ -17,7 +19,7 @@ const createCacheQuestion = (type, marks, question, objective) => ({
   question,
   marks,
   type,
-  objective: objective || question.objective || "Knowledge",
+  objective: objective || question.objective || UNSPECIFIED_OBJECTIVE,
 });
 
 const updateCache = async (newCache) => {
@@ -153,4 +155,5 @@ module.exports = {
   addCacheJob,
   buildCacheAdditions,
   updateQuestionBankCache,
+  UNSPECIFIED_OBJECTIVE,
 };
