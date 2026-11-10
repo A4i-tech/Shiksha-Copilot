@@ -13,6 +13,7 @@ import { InstructionsPopupComponent } from 'src/app/shared/components/instructio
 import { ModalComponent } from 'src/app/shared/components/modal/modal.component';
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { ChatMarkdownModule } from './chat-markdown.module';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 interface ChatMessages {
   answer?: string;
@@ -92,7 +93,8 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     private activatedRoute: ActivatedRoute,
     private router: Router,
     public modalService: ModalService,
-    private translateService: TranslateService
+    private translateService: TranslateService,
+    private umamiService: UmamiService
   ) {
     this.typeSubscription = this.activatedRoute.data.subscribe((data: any) => {
       this.type = data.type;
@@ -230,6 +232,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
       this.chatValue = null;
       this.textArea.nativeElement.style.height = '36px';
       this.isLoading = true;
+      this.umamiService.track('chat-message-sent', { chatType: this.type });
 
       if (this.type === 'general') {
         this.sendGeneralMessage(messageObj)
@@ -290,6 +293,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
           this.loadingStatus = data.message;
         } else if (data.type === 'content') {
           this.loadingStatus = ''; // Clear status when content starts
+          if (!currentMessage.answer) this.umamiService.track('chat-response-received', { chatType: this.type });
           currentMessage.answer = (currentMessage.answer || '') + data.delta;
         } else if (data.type === 'references') {
           currentMessage.references = data.data;
@@ -365,6 +369,7 @@ export class ChatbotComponent implements OnInit, OnDestroy {
     this.chatbotService.sendIndexMessage(messageObj, this.recordId, this.chapterId).subscribe({
       next: (res) => {
         if (res.data) {
+          this.umamiService.track('chat-response-received', { chatType: this.type });
           this.getIndexMessages();
         }
       },

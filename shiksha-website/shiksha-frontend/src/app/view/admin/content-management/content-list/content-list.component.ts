@@ -20,6 +20,7 @@ import {
 } from '../content-management.config';
 import { ContentManagementService } from '../content-management.service';
 import { CONTENT_STATUS } from '../content-status.constants';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 /** friendly label for the status column; anything not listed here shows as-is */
 const STATUS_LABELS: { [key: string]: string } = {
@@ -126,7 +127,8 @@ export class ContentListComponent implements OnInit, OnDestroy {
     private contentService: ContentManagementService,
     private utilityService: UtilityService,
     public modalService: ModalService,
-    private translateService: TranslateService
+    private translateService: TranslateService,
+    private umamiService: UmamiService
   ) {
     this.localizeEntities();
     this.subscriptions.push(
@@ -539,11 +541,13 @@ export class ContentListComponent implements OnInit, OnDestroy {
         next: (res: any) => {
           this.isUploading = false;
           this.applyUploadResult(res);
+          this.umamiService.track('content-upload-validated', { segment: this.config.segment, valid: this.uploadCanSave });
           this.showUploadReport = true;
         },
         error: (err: any) => {
           this.isUploading = false;
           this.applyUploadResult(err?.error);
+          this.umamiService.track('content-upload-validated', { segment: this.config.segment, valid: false });
           this.showUploadReport = true;
         },
       });
@@ -558,6 +562,7 @@ export class ContentListComponent implements OnInit, OnDestroy {
           this.isUploading = false;
           this.applyUploadResult(res);
           this.uploadCanSave = false;
+          this.umamiService.track('content-curated', { segment: this.config.segment, action: 'bulk-create' });
           this.utilityService.showSuccess(
             this.uploadMessage ||
               `The ${this.config.label.toLowerCase()} are saved.`

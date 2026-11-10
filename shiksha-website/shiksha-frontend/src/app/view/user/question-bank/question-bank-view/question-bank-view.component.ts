@@ -10,6 +10,7 @@ import { BluePrintExportService } from 'src/app/shared/services/blue-print.expor
 import { formatMarks } from 'src/app/shared/utility/constant.util';
 import { contentItems, isOrDividerAfter, questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
 import { renderTexMath } from 'src/app/shared/utility/math-render.util';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 @Component({
   selector: 'app-question-bank-view',
@@ -81,7 +82,8 @@ export class QuestionBankViewComponent implements OnInit {
     private idleService: IdleService,
     private questionBankDownloadService: QuestionBankDownloadService,
     private bluePrintExportService: BluePrintExportService,
-    public translateService: TranslateService
+    public translateService: TranslateService,
+    private umamiService: UmamiService
   ) {
     this.route.params.subscribe((params) => {
       this.questionBankId = params['id'];
@@ -188,23 +190,20 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   download(type: any) {
-    if (type === 'qp') {
-      this.downloadQp()
-    } else if (type === 'ak') {
-      this.downloadAnswerKey()
-    } else {
-      this.downloadBluePrint()
-    }
+    const saved = type === 'qp' ? this.downloadQp() : type === 'ak' ? this.downloadAnswerKey() : this.downloadBluePrint();
+    saved.then(() => this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: 'docx', kind: { qp: 'paper', ak: 'answer-key' }[type as string] ?? 'blueprint' }));
   }
 
   downloadQp() {
-    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
+    const saved = this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Question paper downloaded successfully!');
+    return saved;
   }
 
   downloadAnswerKey() {
-    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
+    const saved = this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Answer key downloaded successfully!');
+    return saved;
   }
 
   toggleAnswerKeys() {
@@ -221,7 +220,7 @@ export class QuestionBankViewComponent implements OnInit {
       examinationName: this.questionBankDetails?.examinationName,
       totalMarks: this.questionBankDetails?.totalMarks
     }
-    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData.map((item: any) => ({
+    return this.bluePrintExportService.exportToWord(this.questionBankBluePrintData.map((item: any) => ({
       ...item,
       type: this.questionTypeLabels[item.type] || item.type,
     })), metaData)

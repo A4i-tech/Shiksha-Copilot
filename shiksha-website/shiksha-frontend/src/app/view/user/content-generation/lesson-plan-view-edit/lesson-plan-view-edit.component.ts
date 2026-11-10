@@ -21,6 +21,7 @@ import {
 import { ModalService } from 'src/app/shared/components/modal/modal.service';
 import { CCE_TYPE_MAPPER } from 'src/app/shared/utility/constant.util';
 import { buildDiffParts, toSplitDiff } from 'src/app/shared/utility/ai-diff.util';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 @Component({
   selector: 'app-lesson-plan-view-edit',
@@ -153,7 +154,8 @@ export class LessonPlanViewEditComponent implements OnInit {
     private idleService: IdleService,
     public modalService: ModalService,
     private scheduleService: ScheduleService,
-    private translateService: TranslateService
+    private translateService: TranslateService,
+    private umamiService: UmamiService
   ) {
     this.planId = this.activatedRoute.snapshot.paramMap.get('id');
     this.isLesson =
@@ -630,6 +632,7 @@ export class LessonPlanViewEditComponent implements OnInit {
           }
 
           this.idleService.stopWatching('lp-generation');
+          if (isCompleted) this.umamiService.track('artifact-created', { type: 'lesson-plan' });
           this.isSaved = true;
           this.utilityService.showSuccess(lessonPlanMessage);
           this.utilityService.showSuccess(feedbackMessage);
@@ -690,6 +693,7 @@ export class LessonPlanViewEditComponent implements OnInit {
             this.idleService.draftId = resourceId;
           }
           this.idleService.stopWatching('lr-generation');
+          if (isCompleted) this.umamiService.track('artifact-created', { type: 'resource-plan' });
           this.isSaved = true;
           this.utilityService.showSuccess(ResPlanMessage);
           this.utilityService.showSuccess(feedbackMessage);

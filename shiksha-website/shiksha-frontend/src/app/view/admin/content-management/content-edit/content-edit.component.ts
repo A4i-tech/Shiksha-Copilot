@@ -17,6 +17,7 @@ import {
 import { ContentManagementService } from '../content-management.service';
 import { ChapterPickerComponent } from '../chapter-picker/chapter-picker.component';
 import { CONTENT_STATUS } from '../content-status.constants';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 /** the fixed A-D option row set an MCQ answer type needs, matching McqOption in question_paper.py */
 const MCQ_OPTION_LABELS = ['A', 'B', 'C', 'D'];
@@ -55,7 +56,8 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     private router: Router,
     private contentService: ContentManagementService,
     private utilityService: UtilityService,
-    private translateService: TranslateService
+    private translateService: TranslateService,
+    private umamiService: UmamiService
   ) {
     this.subscriptions.push(
       translateService.onLangChange.subscribe(() => {
@@ -203,6 +205,7 @@ export class ContentEditComponent implements OnInit, OnDestroy {
     request.subscribe({
       next: (res: any) => {
         this.isSaving = false;
+        this.umamiService.track('content-curated', { segment: this.config.key, action: this.isCreate ? 'create' : 'update' });
         this.utilityService.showSuccess(
           res?.message ||
             (this.isCreate
