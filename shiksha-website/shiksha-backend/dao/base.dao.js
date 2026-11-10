@@ -111,7 +111,8 @@ class BaseDao {
 		id,
 		updates,
 		session = null,
-		allowDeletedStatusUpdate = false
+		allowDeletedStatusUpdate = false,
+		draftOnly = false
 	) {
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
 			throw new Error("Invalid ID for update operation");
@@ -125,7 +126,9 @@ class BaseDao {
 			Object.prototype.hasOwnProperty.call(updates, "status") &&
 			DRAFT_OR_REVIEW.includes(updates.status);
 		const result = await this.Model.findOneAndUpdate(
-			allowDeletedStatusUpdate
+			draftOnly
+				? { _id: id, isDeleted: true, status: CONTENT_STATUS.DRAFT }
+				: allowDeletedStatusUpdate
 				? {
 						_id: id,
 						...(statusOnlyTransition
@@ -143,7 +146,11 @@ class BaseDao {
 			}
 		);
 		if (!result) {
-			throw new Error("Record not found or has been deleted");
+			throw new Error(
+				draftOnly
+					? "This record changed while you were editing it. Reload the page and try again."
+					: "Record not found or has been deleted"
+			);
 		}
 		return result;
 	}

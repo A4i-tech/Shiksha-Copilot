@@ -133,6 +133,19 @@ describe('ContentListComponent', () => {
     httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
   });
 
+  it('ignores a second click while the first request runs', () => {
+    component.confirmRecord = { _id: 'row-1', status: 'under_review' };
+    component.confirmAction = 'approve';
+
+    component.runConfirmedAction();
+    component.runConfirmedAction();
+
+    const reqs = httpMock.match((r) => r.url.endsWith('/row-1/approve'));
+    expect(reqs.length).toBe(1);
+    reqs[0].flush({ success: true });
+    httpMock.match(() => true).forEach((r) => r.flush({ items: [], total: 0 }));
+  });
+
   it('sendForReview should be a single update call, since draft and under_review are both already soft-deleted', () => {
     component.confirmRecord = { _id: 'row-3', status: 'draft' };
     component.confirmAction = 'sendForReview';

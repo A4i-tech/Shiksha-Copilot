@@ -51,7 +51,8 @@ class BaseManager {
 				req.params?.id,
 				req.body,
 				null,
-				allowDeletedStatusUpdate
+				allowDeletedStatusUpdate,
+				req.draftOnly
 			);
 			if (!data) return formatApiReponse(false, "Record not found", null);
 			return formatApiReponse(true, "Updated successfully!", data);

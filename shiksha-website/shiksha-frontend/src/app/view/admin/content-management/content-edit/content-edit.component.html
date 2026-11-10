@@ -15,31 +15,9 @@
     <p *ngIf="isLoading" class="text-content-60">Loading record...</p>
 
     <form class="content-edit-form mt-3" *ngIf="!isLoading && record" (ngSubmit)="save()" novalidate>
-      <div *ngIf="curatorMode && chapter" class="mb-6 border rounded-lg p-4 bg-primary-30" data-testid="chapter-details">
-        <h2 class="text-sm font-semibold text-content">{{ 'Chapter Details' | translate }}</h2>
-        <dl class="mt-2 grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
-          <div class="col-span-2 md:col-span-1">
-            <dt class="text-xs text-content-70">{{ 'Chapter' | translate }}</dt>
-            <dd class="text-content break-words">{{ chapter.orderNumber }}. {{ chapter.topics }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-content-70">{{ 'Board' | translate }}</dt>
-            <dd class="text-content">{{ chapter.board }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-content-70">{{ 'Medium' | translate }}</dt>
-            <dd class="text-content capitalize">{{ chapter.medium }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-content-70">{{ 'Class' | translate }}</dt>
-            <dd class="text-content">{{ chapter.standard }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs text-content-70">{{ 'Subject' | translate }}</dt>
-            <dd class="text-content">{{ chapter.subject[0].subjectName }}</dd>
-          </div>
-        </dl>
-      </div>
+      <p *ngIf="curatorMode && chapter" class="mb-6 text-sm text-content" data-testid="chapter-details">
+        {{ chapter.topics }} · {{ chapter.board }} · {{ chapter.medium }} · {{ 'Class' | translate }} {{ chapter.standard }} · {{ chapter.subject[0].subjectName }}
+      </p>
 
       <p class="text-sm text-content-60 mb-4" *ngIf="!isCreate && !curatorMode">
         Record id: {{ recordId }}

@@ -30,6 +30,7 @@ const requireDraftChild = guard(async (req) => {
 	if (!(req.child.isDeleted === true && req.child.status === CONTENT_STATUS.DRAFT)) {
 		throw new AppError(`This record is ${stateWord(req.child)}. Only draft records can be changed.`, 409);
 	}
+	req.draftOnly = true;
 });
 
 const stampFromChapter = (fieldsOf) =>

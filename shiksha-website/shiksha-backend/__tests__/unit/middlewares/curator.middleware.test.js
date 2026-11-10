@@ -97,6 +97,12 @@ describe("curator middleware", () => {
       expect(await putChain({ chapterId: CHAPTER_ID, isDeleted: true, status: "draft" })).toBeUndefined();
     });
 
+    it("flags the request as draft-only so the write filter carries the state", async () => {
+      const req = { child: { isDeleted: true, status: "draft" } };
+      await run(requireDraftChild, req);
+      expect(req.draftOnly).toBe(true);
+    });
+
     it.each([
       ["live", { isDeleted: false, status: "approved" }],
       ["deleted", { isDeleted: true, status: "approved" }],
