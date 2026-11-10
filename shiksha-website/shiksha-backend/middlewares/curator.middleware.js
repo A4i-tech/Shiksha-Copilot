@@ -32,7 +32,6 @@ const requireDraftChild = guard(async (req) => {
 	}
 });
 
-// Body values for the chapter-owned fields and for status are dropped.
 const stampFromChapter = (fieldsOf) =>
 	guard(async (req) => {
 		const subject = await MasterSubject.findById(req.chapter.subjectId).select("subjectName").lean();
@@ -41,7 +40,8 @@ const stampFromChapter = (fieldsOf) =>
 	});
 
 const capLimit = (req) => {
-	req.query.limit = Math.min(Number(req.query.limit) || 999, 999);
+	const n = Number(req.query.limit);
+	req.query.limit = Number.isInteger(n) && n > 0 ? Math.min(n, 999) : 999;
 };
 
 const scopeChapterList = guard(async (req) => {

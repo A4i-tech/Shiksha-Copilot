@@ -1,20 +1,27 @@
 <div class="p-8 bg-white rounded-sm min-h-[90vh]">
   <div class="flex gap-2 items-center">
-    <a routerLink="/curation/chapters" [attr.aria-label]="'Back' | translate">
+    <a [routerLink]="chapterId ? '/curation/chapters' : '/curation'" [attr.aria-label]="'Back' | translate">
       <img src="assets/icons/back-arrow.svg" alt="" />
     </a>
-    <h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">{{ 'Chapter' | translate }}</h1>
+    <h1 class="text-xl md:text-3xl font-bold text-content leading-[48px]">{{ (chapterId ? 'Chapter' : 'My chapters') | translate }}</h1>
   </div>
+  <p *ngIf="!chapterId" class="text-content-60 text-sm md:text-base mt-2 pb-4 border-b-[3px] border-shade-80">
+    {{ 'The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.' | translate }}
+  </p>
 
   <p *ngIf="isLoading" class="py-4 text-content-60">{{ 'Loading chapters...' | translate }}</p>
 
-  <ng-container *ngIf="!isLoading && chapter">
+  <ng-container *ngIf="!isLoading && !chapterId">
+    <ng-container *ngTemplateOutlet="group; context: { title: 'Changes requested', chapters: returned, id: 'returned' }"></ng-container>
+    <ng-container *ngTemplateOutlet="group; context: { title: 'Draft', chapters: pending, id: 'pending' }"></ng-container>
+    <ng-container *ngTemplateOutlet="group; context: { title: 'Under review', chapters: submitted, id: 'submitted' }"></ng-container>
+  </ng-container>
+
+  <ng-container *ngIf="!isLoading && chapterId && chapter">
     <div class="mt-5 rounded-xl border bg-white px-6 py-6">
       <div class="flex flex-wrap justify-between items-start gap-2">
         <h2 class="text-base md:text-xl font-bold text-content break-words">{{ chapter.orderNumber }}. {{ chapter.topics }}</h2>
-        <span class="px-4 py-1 rounded-2xl text-sm" [ngClass]="statusBadgeClasses[chapter.status]">
-          {{ statusLabels[chapter.status] | translate }}
-        </span>
+        <ng-container *ngTemplateOutlet="badge; context: { status: chapter.status }"></ng-container>
       </div>
 
       <div class="mt-4 border rounded-lg p-4 bg-primary-30" data-testid="chapter-details">
@@ -48,10 +55,9 @@
         </div>
       </div>
 
-      <div *ngIf="chapter.reviewComment && isDraft" class="mt-4 p-4 rounded border border-warn bg-warn-50 text-sm text-content">
-        <p class="font-semibold">{{ 'Admin review comment' | translate }}</p>
-        <p class="whitespace-pre-line break-words">{{ chapter.reviewComment.text }}</p>
-      </div>
+      <ng-container *ngIf="chapter.reviewComment && isDraft">
+        <ng-container *ngTemplateOutlet="reviewComment; context: { comment: chapter.reviewComment, spacing: 'mt-4 p-4' }"></ng-container>
+      </ng-container>
 
       <p *ngIf="!isDraft" class="mt-4 text-sm text-warn">
         {{ 'The chapter is under review. You can read this record, but you cannot change it.' | translate }}
@@ -121,11 +127,66 @@
           class="block rounded-lg border px-4 py-3 text-sm text-primary break-words hover:bg-primary-30"
           [routerLink]="['/curation/chapters', chapterId, child.segment, record._id, 'edit']"
         >
-          {{ title(record) }}
+          {{ recordTitle(child.segment, record) }}
         </a>
       </div>
     </div>
   </ng-container>
+
+  <ng-template #badge let-status="status">
+    <span class="px-4 py-1 rounded-2xl text-sm" [ngClass]="statusBadgeClasses[status]">{{ statusLabels[status] | translate }}</span>
+  </ng-template>
+
+  <ng-template #reviewComment let-comment="comment" let-spacing="spacing">
+    <div class="rounded border border-warn bg-warn-50 text-sm text-content" [ngClass]="spacing">
+      <p class="font-semibold">{{ 'Admin review comment' | translate }}</p>
+      <p class="whitespace-pre-line break-words">{{ comment.text }}</p>
+    </div>
+  </ng-template>
+
+  <ng-template #group let-title="title" let-chapters="chapters" let-id="id">
+    <section class="mt-6" [attr.data-group]="id">
+      <h2 class="text-base md:text-xl font-bold text-content">{{ title | translate }} ({{ chapters.length }})</h2>
+
+      <p *ngIf="!chapters.length" class="mt-3 text-sm text-content-60">{{ 'No chapters in this group.' | translate }}</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3">
+        <div
+          *ngFor="let item of chapters"
+          data-testid="chapter-card"
+          class="card px-6 py-8 rounded-xl bg-white border flex flex-col justify-between"
+        >
+          <div>
+            <div class="flex justify-between items-start gap-2">
+              <div class="w-[52px] h-[52px] rounded-full flex justify-center items-center bg-purple-100 shrink-0">
+                <img src="assets/icons/basil_document-solid.svg" alt="" />
+              </div>
+              <ng-container *ngTemplateOutlet="badge; context: { status: item.status }"></ng-container>
+            </div>
+
+            <h3 class="mt-5 text-base font-medium break-words">{{ item.orderNumber }}. {{ item.topics }}</h3>
+            <div class="flex flex-wrap items-center gap-2 my-2">
+              <p class="px-2 py-1 rounded-full text-primary bg-[#F1F4FD] text-[11px]">{{ 'Class' | translate }} {{ item.standard }}</p>
+              <p class="px-2 py-1 rounded-full text-[#DE3B40] bg-[#FDF2F2] text-[11px]">{{ item.subject[0].subjectName }}</p>
+              <p class="px-2 py-1 rounded-full text-[#3D8248] bg-[#F1FDF3] text-[11px] capitalize">{{ item.medium }}</p>
+              <p class="px-2 py-1 rounded-full text-content bg-shade-80 text-[11px]">{{ item.board }}</p>
+            </div>
+
+            <ng-container *ngIf="item.reviewComment">
+              <ng-container *ngTemplateOutlet="reviewComment; context: { comment: item.reviewComment, spacing: 'mt-3 p-3' }"></ng-container>
+            </ng-container>
+          </div>
+
+          <a
+            class="mt-7 w-full h-10 rounded text-sm flex items-center justify-center text-white font-semibold bg-[#8353E2]"
+            [routerLink]="['/curation/chapters', item._id]"
+          >
+            {{ (item.status === 'draft' ? 'Continue Editing' : 'View Chapter') | translate }}
+          </a>
+        </div>
+      </div>
+    </section>
+  </ng-template>
 
   <app-modal *ngIf="confirming">
     <h2 class="text-lg font-semibold mb-2 text-content" id="modal-title">{{ 'Submit for approval' | translate }}</h2>

@@ -53,14 +53,14 @@
         <h2 class="text-lg font-semibold text-content">{{ 'Curation' | translate }}</h2>
         <p class="mt-2 text-sm text-content">
           {{ 'Assigned curator' | translate }}:
-          {{ record.assignedTo ? curatorName(record.assignedTo) : ('Not assigned' | translate) }}
+          {{ record.assignedTo ? contentService.curatorName(record.assignedTo) : ('Not assigned' | translate) }}
         </p>
 
         <div *ngIf="record.reviewComment" class="mt-3 text-sm text-content">
           <p class="font-semibold">{{ 'Admin review comment' | translate }}</p>
           <p class="whitespace-pre-line break-words">{{ record.reviewComment.text }}</p>
           <p class="text-content-60">
-            {{ curatorName(record.reviewComment.by) }}, {{ record.reviewComment.at | date: 'medium' }}
+            {{ contentService.curatorName(record.reviewComment.by) }}, {{ record.reviewComment.at | date: 'medium' }}
           </p>
         </div>
 
@@ -76,7 +76,7 @@
             </thead>
             <tbody>
               <tr *ngFor="let entry of record.assignmentHistory">
-                <td class="border-b border-content-30 px-2 py-1">{{ curatorName(entry.assignedTo) }}</td>
+                <td class="border-b border-content-30 px-2 py-1">{{ contentService.curatorName(entry.assignedTo) }}</td>
                 <td class="border-b border-content-30 px-2 py-1">{{ entry.assignedAt | date: 'medium' }}</td>
                 <td class="border-b border-content-30 px-2 py-1">
                   {{ entry.unassignedAt ? (entry.unassignedAt | date: 'medium') : ('Current' | translate) }}

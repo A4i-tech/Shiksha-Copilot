@@ -54,7 +54,7 @@ describe('CuratorContentListComponent', () => {
       'resources:3',
       'resources:4',
     ]);
-    requests[0].flush({ data: { results: [plan('a', 'draft'), plan('b', 'draft', { class: 9, subject: 'Maths' })] } });
+    requests[0].flush({ data: { results: [plan('a', 'draft'), plan('b', 'draft', { class: 9, subject: 'Maths' }), plan('e', 'draft', { class: 10 })] } });
     requests[1].flush({ data: { results: [plan('c', 'under_review')] } });
     requests[2].flush({ data: { results: [{ ...plan('d', 'draft'), name: undefined, lessonName: 'Resource d', updatedAt: undefined }] } });
     requests[3].flush({ data: { results: [] } });
@@ -76,26 +76,33 @@ describe('CuratorContentListComponent', () => {
     expect(component.filters.map((f) => f.key)).toEqual(['segment', 'board', 'medium', 'class', 'subject', 'status']);
   });
 
-  it('offers only Draft and Under review in the status filter', () => {
+  it('offers only Draft and Ready for review in the status filter', () => {
     flushLists();
 
     const status = component.filters.find((f) => f.key === 'status')!;
     expect(status.options).toEqual([
       { name: 'Draft', value: 'draft' },
-      { name: 'Under review', value: 'under_review' },
+      { name: 'Ready for review', value: 'under_review' },
     ]);
   });
 
   it('shows each record with a status badge and an edit link of its chapter', () => {
     flushLists();
 
-    expect(cards().length).toBe(4);
+    expect(cards().length).toBe(5);
     const badges = cards().map((card) => card.querySelector('[data-testid="status-badge"]')!.textContent!.trim());
-    expect(badges).toEqual(['Draft', 'Draft', 'Under review', 'Draft']);
+    expect(badges).toEqual(['Draft', 'Draft', 'Draft', 'Ready for review', 'Draft']);
     const link = cards()[0].querySelector('a[data-testid="card-view-button"]')!.getAttribute('href');
     expect(link).toBe('/curation/chapters/ch-1/lesson-plans/a/edit');
-    expect(cards()[3].querySelector('a[data-testid="card-view-button"]')!.getAttribute('href')).toBe('/curation/chapters/ch-1/resources/d/edit');
-    expect(cards()[3].textContent).toContain('Resource d');
+    expect(cards()[4].querySelector('a[data-testid="card-view-button"]')!.getAttribute('href')).toBe('/curation/chapters/ch-1/resources/d/edit');
+    expect(cards()[4].textContent).toContain('Resource d');
+  });
+
+  it('sorts the class options as numbers', () => {
+    flushLists();
+
+    const classes = component.filters.find((f) => f.key === 'class')!;
+    expect(classes.options.map((option) => option.value)).toEqual([8, 9, 10]);
   });
 
   it('filters by status, plan type, class and search text', () => {

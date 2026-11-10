@@ -1,4 +1,4 @@
-import { Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import {
   FormGroup,
   FormBuilder,
@@ -8,7 +8,7 @@ import {
   ReactiveFormsModule,
   FormsModule,
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { UtilityService } from 'src/app/core/services/utility.service';
 import { ContentGenerationService } from 'src/app/view/user/content-generation/content-generation.service';
 import { DropDownConfig } from '../../interfaces/dropdown.interface';
@@ -189,7 +189,7 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     '/curation/lesson-resources': { type: 'resource', inspectUrl: '/curation' },
   };
 
-  @Input() curatorMode = false;
+  readonly curatorMode: boolean;
 
   learningOutcomes: any;
   combinedLearningOutcomes: any;
@@ -215,11 +215,13 @@ export class LessonPlanResourceDetailsComponent implements OnInit, OnDestroy {
     public modalService: ModalService,
     private contentGenService: ContentGenerationService,
     private router: Router,
+    private route: ActivatedRoute,
     private utilityservice: UtilityService,
     private translateService:TranslateService,
     private idleService:IdleService
   ) {
     this.lessonType = this.router.url;
+    this.curatorMode = this.route.snapshot.data['curatorMode'] === true;
   }
 
   ngOnInit(): void {

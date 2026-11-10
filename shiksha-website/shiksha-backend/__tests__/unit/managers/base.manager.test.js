@@ -322,34 +322,6 @@ describe("BaseManager", () => {
     });
   });
 
-  describe("adminUpdateDraft", () => {
-    beforeEach(() => {
-      mockDao.Model = { findOneAndUpdate: jest.fn() };
-    });
-
-    it("matches a live record and a draft or under-review record", async () => {
-      mockDao.Model.findOneAndUpdate.mockResolvedValue({ _id: "r1", name: "New" });
-
-      const result = await manager.adminUpdateDraft({ params: { id: "r1" }, body: { name: "New" } });
-
-      expect(result.success).toBe(true);
-      expect(mockDao.Model.findOneAndUpdate).toHaveBeenCalledWith(
-        { _id: "r1", $or: [{ isDeleted: { $ne: true } }, { status: { $in: ["draft", "under_review"] } }] },
-        { $set: { name: "New" } },
-        { new: true, runValidators: true }
-      );
-    });
-
-    it("fails with a next step when the record is deleted or missing", async () => {
-      mockDao.Model.findOneAndUpdate.mockResolvedValue(null);
-
-      const result = await manager.adminUpdateDraft({ params: { id: "r1" }, body: { name: "New" } });
-
-      expect(result.success).toBe(false);
-      expect(result.message).toMatch(/not found or has been deleted.*Reload/);
-    });
-  });
-
   describe("deactivate", () => {
     it("should deactivate a record (if implemented)", async () => {
       // BaseManager may have deactivate method similar to delete

@@ -138,7 +138,7 @@
             name="assignedTo"
           >
             <option value="">{{ 'All' | translate }}</option>
-            <option *ngFor="let curator of curators" [value]="curator._id">{{ curator.name }}</option>
+            <option *ngFor="let curator of contentService.curators" [value]="curator._id">{{ curator.name }}</option>
           </select>
         </div>
 
@@ -431,7 +431,7 @@
         name="assignCurator"
       >
         <option value="" disabled>{{ 'Select a curator' | translate }}</option>
-        <option *ngFor="let curator of curators" [value]="curator._id">{{ curator.name }}</option>
+        <option *ngFor="let curator of contentService.curators" [value]="curator._id">{{ curator.name }}</option>
       </select>
     </ng-container>
     <ng-container *ngIf="confirmAction === 'requestChanges'">

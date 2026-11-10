@@ -13,10 +13,6 @@ class QuestionManager extends BaseManager {
 		super(new QuestionDao());
 	}
 
-	adminUpdate(req) {
-		return this.adminUpdateDraft(req);
-	}
-
 	async bulkUpload(questions, dryRun = false, userId) {
 		try {
 			if (!Array.isArray(questions) || questions.length === 0) {

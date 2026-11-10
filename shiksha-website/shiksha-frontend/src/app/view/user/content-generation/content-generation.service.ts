@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { BaseRestService } from 'src/app/core/services/base-rest.service';
 import { LOADER_MESSAGE } from 'src/app/core/services/loader-message.service';
 import { environment } from 'src/environments/environment';
+import { CONTENT_STATUS, LIST_TAB_BY_STATUS } from '../../admin/content-management/content-status.constants';
 
 @Injectable({
   providedIn: 'root',
@@ -240,8 +241,7 @@ export class ContentGenerationService extends BaseRestService {
     params=params.set('sortBy','orderNumber')
     params=params.set('sortOrder','asc')
     if (curatorMode) {
-      // Assigned chapters are drafts until submit, and the Draft tab is the one that lists them.
-      params = params.set('includeDeleted', '3');
+      params = params.set('includeDeleted', LIST_TAB_BY_STATUS[CONTENT_STATUS.DRAFT]);
     }
     return this.http.get(`${this.baseUrl}/${curatorMode ? 'curator/content/chapters' : 'chapter/list'}`, { params });
   }

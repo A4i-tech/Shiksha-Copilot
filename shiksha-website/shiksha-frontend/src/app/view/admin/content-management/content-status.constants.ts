@@ -23,8 +23,3 @@ export const STATUS_BADGE_CLASSES: { [key: string]: string } = {
   [CONTENT_STATUS.UNDER_REVIEW]: 'text-warn bg-warn-50',
   [CONTENT_STATUS.APPROVED]: 'text-success bg-success-50',
 };
-
-export const CURATOR_STATUS_LABELS: { [key: string]: string } = {
-  [CONTENT_STATUS.DRAFT]: 'Draft',
-  [CONTENT_STATUS.UNDER_REVIEW]: 'Under review',
-};

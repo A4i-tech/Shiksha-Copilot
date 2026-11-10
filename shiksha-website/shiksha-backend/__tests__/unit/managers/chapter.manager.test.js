@@ -403,7 +403,7 @@ describe("ChapterManager curation", () => {
 
       await expect(manager.assign("c1", CURATOR, ADMIN)).rejects.toMatchObject({
         statusCode: 400,
-        message: expect.stringMatching(/Content Curator role/),
+        message: expect.stringMatching(/not an active Content Curator/),
       });
       expect(User.exists).toHaveBeenCalledWith({ _id: CURATOR, isDeleted: { $ne: true }, "roles.role": CURATOR_ROLE });
       expect(Chapter.findOneAndUpdate).not.toHaveBeenCalled();
@@ -496,7 +496,7 @@ describe("ChapterManager curation", () => {
       updateMany.forEach((spy) =>
         expect(spy).toHaveBeenCalledWith(
           { chapterId: "c1", isDeleted: true, status: "draft" },
-          { $set: { status: "under_review" } },
+          { $set: { status: "under_review", isDeleted: true } },
           { session: SESSION }
         )
       );
@@ -592,7 +592,7 @@ describe("ChapterManager curation", () => {
         { new: true, session: SESSION }
       );
       updateMany.forEach((spy) =>
-        expect(spy).toHaveBeenCalledWith({ chapterId: "c1", isDeleted: true, status: "under_review" }, { $set: { status: "draft" } }, { session: SESSION })
+        expect(spy).toHaveBeenCalledWith({ chapterId: "c1", isDeleted: true, status: "under_review" }, { $set: { status: "draft", isDeleted: true } }, { session: SESSION })
       );
     });
 

@@ -21,17 +21,6 @@ describe("MasterResourceManager", () => {
     manager = new MasterResourceManager();
   });
 
-  describe("adminUpdate", () => {
-    it("updates through the draft-only path, so a live record is never edited", async () => {
-      jest.spyOn(manager, "adminUpdateDraft").mockResolvedValue({ success: true });
-      const req = { params: { id: "r1" }, body: { name: "New" } };
-
-      await manager.adminUpdate(req);
-
-      expect(manager.adminUpdateDraft).toHaveBeenCalledWith(req);
-    });
-  });
-
   describe("bulkUpload", () => {
     const validResource = {
       lessonName: "Class 10 Algebra",

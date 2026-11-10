@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const AppError = require("../helper/app.error");
 const { CONTENT_STATUS } = require("../constants/content-status");
 
+const DRAFT_OR_REVIEW = [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW];
+
 class BaseDao {
 	constructor(model) {
 		this.Model = model;
@@ -121,10 +123,15 @@ class BaseDao {
 			allowDeletedStatusUpdate &&
 			Object.keys(updates).length === 1 &&
 			Object.prototype.hasOwnProperty.call(updates, "status") &&
-			[CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW].includes(updates.status);
+			DRAFT_OR_REVIEW.includes(updates.status);
 		const result = await this.Model.findOneAndUpdate(
-			statusOnlyTransition
-				? { _id: id, status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } }
+			allowDeletedStatusUpdate
+				? {
+						_id: id,
+						...(statusOnlyTransition
+							? { status: { $in: DRAFT_OR_REVIEW } }
+							: { $or: [{ isDeleted: { $ne: true } }, { status: { $in: DRAFT_OR_REVIEW } }] }),
+					}
 				: { _id: id, isDeleted: { $ne: true } },
 			{
 				$set: updates,

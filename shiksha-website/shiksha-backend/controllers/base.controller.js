@@ -28,7 +28,6 @@ class BaseController {
 		this.hasContentStatus = !!hasContentStatus;
 	}
 
-	// Returns the manager.getAll arguments for a list request, or { error } for a bad filter.
 	listArgs(req) {
 		const {
 			page = 1,
@@ -77,7 +76,7 @@ class BaseController {
 		if (this.hasContentStatus && includeDeleted === '3') {
 			// Draft tab: an admin sees own drafts, a curator sees every draft of the assigned chapters.
 			status = { isDeleted: true, status: CONTENT_STATUS.DRAFT };
-			if (!req.curatorScope) status.createdBy = req?.user?._id;
+			if (!req.curatorScope) status.createdBy = req.user._id;
 		} else if (this.hasContentStatus && includeDeleted === '4') {
 			// Ready for review tab: every admin sees this, awaiting approval.
 			status = { isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW };
@@ -97,7 +96,7 @@ class BaseController {
 				mergedFilter,
 				sortOrderObject,
 				status,
-				req?.user?._id,
+				req.user._id,
 			],
 		};
 	}

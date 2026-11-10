@@ -8,13 +8,9 @@ import { UtilityService } from 'src/app/core/services/utility.service';
 import { DropdownComponent } from 'src/app/shared/components/dropdown/dropdown.component';
 import { PaginationComponent } from 'src/app/shared/components/pagination/pagination.component';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
+import { recordTitle } from '../../admin/content-management/content-management.config';
 import { ContentManagementService } from '../../admin/content-management/content-management.service';
-import {
-  CONTENT_STATUS,
-  CURATOR_STATUS_LABELS,
-  LIST_TAB_BY_STATUS,
-  STATUS_BADGE_CLASSES,
-} from '../../admin/content-management/content-status.constants';
+import { CONTENT_STATUS, STATUS_BADGE_CLASSES, STATUS_LABELS } from '../../admin/content-management/content-status.constants';
 
 const SEGMENTS = ['lesson-plans', 'resources'];
 const STATUSES = [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW];
@@ -58,7 +54,7 @@ const filterConfig = (placeHolderTxt: string): DropDownConfig => ({
 })
 export class CuratorContentListComponent implements OnInit {
   readonly pageSize = 6;
-  readonly statusLabels = CURATOR_STATUS_LABELS;
+  readonly statusLabels = STATUS_LABELS;
   readonly statusBadgeClasses = STATUS_BADGE_CLASSES;
 
   cards: CuratorCard[] = [];
@@ -80,12 +76,9 @@ export class CuratorContentListComponent implements OnInit {
   ngOnInit(): void {
     this.isLoading = true;
 
-    // A draft or an under-review record is soft-deleted, so each status has its own list tab.
     forkJoin(
       SEGMENTS.flatMap((segment) =>
-        STATUSES.map((status) =>
-          this.contentService.list(segment, { page: 1, limit: 999, includeDeleted: LIST_TAB_BY_STATUS[status] }, true)
-        )
+        STATUSES.map((status) => this.contentService.listByStatus(segment, status))
       )
     ).subscribe({
       next: (responses) => {
@@ -127,7 +120,7 @@ export class CuratorContentListComponent implements OnInit {
     return {
       _id: record._id,
       segment,
-      name: record.name ?? record.lessonName,
+      name: recordTitle(segment, record),
       chapterId: record.chapterId,
       chapter: `${record.chapter.orderNumber}. ${record.chapter.topics}`,
       board: record.board,
@@ -142,16 +135,17 @@ export class CuratorContentListComponent implements OnInit {
 
   private buildFilters(): void {
     const distinct = (field: 'board' | 'medium' | 'class' | 'subject') =>
-      [...new Set(this.cards.map((card) => card[field]))].sort().map((value) => ({ name: String(value), value }));
-    const translated = (key: string) => this.translateService.instant(key);
+      [...new Set(this.cards.map((card) => card[field]))]
+        .sort((a, b) => (typeof a === 'number' ? a - (b as number) : String(a).localeCompare(String(b))))
+        .map((value) => ({ name: String(value), value }));
 
     this.filters = [
       {
         key: 'segment',
         config: filterConfig('Plan Type'),
         options: [
-          { name: translated('Lesson Plan'), value: 'lesson-plans' },
-          { name: translated('Lesson Resource'), value: 'resources' },
+          { name: this.translateService.instant('Lesson Plan'), value: 'lesson-plans' },
+          { name: this.translateService.instant('Lesson Resource'), value: 'resources' },
         ],
       },
       { key: 'board', config: filterConfig('Board'), options: distinct('board') },
@@ -161,7 +155,7 @@ export class CuratorContentListComponent implements OnInit {
       {
         key: 'status',
         config: filterConfig('Status'),
-        options: STATUSES.map((status) => ({ name: translated(CURATOR_STATUS_LABELS[status]), value: status })),
+        options: STATUSES.map((status) => ({ name: this.translateService.instant(STATUS_LABELS[status]), value: status })),
       },
     ];
   }

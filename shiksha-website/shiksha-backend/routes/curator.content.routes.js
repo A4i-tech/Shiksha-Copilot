@@ -45,8 +45,6 @@ router.use(
 	requirePermission("content.curate")
 );
 
-const createBody = express.json({ limit: "10mb" });
-
 const planFields = (chapter, subject) => ({
 	board: chapter.board,
 	medium: chapter.medium,
@@ -82,7 +80,6 @@ function registerChild(segment, controller, Model, updateValidator, fieldsOf) {
 
 	router.post(
 		`/curator/content/${segment}`,
-		createBody,
 		requireAssignedChapter((req) => req.body.chapterId),
 		stampFromChapter(fieldsOf),
 		asyncMiddleware(controller.adminCreate.bind(controller))
