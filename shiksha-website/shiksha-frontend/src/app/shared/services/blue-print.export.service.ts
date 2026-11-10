@@ -145,7 +145,7 @@ export class BluePrintExportService {
 
     const fileName = `${metadata.subject}_${metadata.class}_${metadata.examinationName}_Blueprint`;
 
-    Packer.toBlob(doc).then((blob) => {
+    return Packer.toBlob(doc).then((blob) => {
       saveAs(blob, fileName);
     });
   }

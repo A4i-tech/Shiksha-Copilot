@@ -39,10 +39,11 @@ describe('QuestionBankViewComponent', () => {
     fixture.detectChanges();
   });
 
-  it('download should track the document kind after the export runs', () => {
+  it('download should track the document kind after the file is saved', async () => {
     const track = spyOn(TestBed.inject(UmamiService), 'track');
-    spyOn(component, 'downloadAnswerKey');
+    spyOn(component, 'downloadAnswerKey').and.returnValue(Promise.resolve());
     component.download('ak');
+    await Promise.resolve();
     expect(track).toHaveBeenCalledWith('artifact-downloaded', { type: 'question-paper', format: 'docx', kind: 'answer-key' });
   });
 

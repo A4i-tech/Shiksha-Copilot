@@ -190,24 +190,20 @@ export class QuestionBankViewComponent implements OnInit {
   }
 
   download(type: any) {
-    if (type === 'qp') {
-      this.downloadQp()
-    } else if (type === 'ak') {
-      this.downloadAnswerKey()
-    } else {
-      this.downloadBluePrint()
-    }
-    this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: 'docx', kind: { qp: 'paper', ak: 'answer-key' }[type as string] ?? 'blueprint' });
+    const saved = type === 'qp' ? this.downloadQp() : type === 'ak' ? this.downloadAnswerKey() : this.downloadBluePrint();
+    saved.then(() => this.umamiService.track('artifact-downloaded', { type: 'question-paper', format: 'docx', kind: { qp: 'paper', ak: 'answer-key' }[type as string] ?? 'blueprint' }));
   }
 
   downloadQp() {
-    this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
+    const saved = this.questionBankDownloadService.downloadQuestionBank({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Question paper downloaded successfully!');
+    return saved;
   }
 
   downloadAnswerKey() {
-    this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
+    const saved = this.questionBankDownloadService.downloadAnswerKey({ ...this.questionBankDetails, subject: this.questionBankDetails.subjectLabel, questionTypeLabels: this.questionTypeLabels });
     this.utilityService.showSuccess('Answer key downloaded successfully!');
+    return saved;
   }
 
   toggleAnswerKeys() {
@@ -224,7 +220,7 @@ export class QuestionBankViewComponent implements OnInit {
       examinationName: this.questionBankDetails?.examinationName,
       totalMarks: this.questionBankDetails?.totalMarks
     }
-    this.bluePrintExportService.exportToWord(this.questionBankBluePrintData.map((item: any) => ({
+    return this.bluePrintExportService.exportToWord(this.questionBankBluePrintData.map((item: any) => ({
       ...item,
       type: this.questionTypeLabels[item.type] || item.type,
     })), metaData)
