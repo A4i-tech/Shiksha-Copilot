@@ -34,7 +34,13 @@ def serving():
     return TestClient(TestServer(server.make_app(graph(ACTIVE["conn"]))))
 
 
-def upload(params=None, content=None, send_file=True, params_filename=None):
+def upload(
+    params=None,
+    content=None,
+    send_file=True,
+    params_filename=None,
+    send_params=True,
+):
     form = FormData()
     if send_file:
         form.add_field(
@@ -43,12 +49,13 @@ def upload(params=None, content=None, send_file=True, params_filename=None):
             filename="social.xlsx",
         )
     text = PARAMS if params is None else params
-    form.add_field(
-        "params",
-        text if isinstance(text, str) else json.dumps(text),
-        filename=params_filename,
-        content_type="application/json" if params_filename else None,
-    )
+    if send_params:
+        form.add_field(
+            "params",
+            text if isinstance(text, str) else json.dumps(text),
+            filename=params_filename,
+            content_type="application/json" if params_filename else None,
+        )
     return form
 
 
@@ -139,25 +146,26 @@ def terminate_flow(conn, start):
 def test_generate_returns_202_then_posts_statuses_under_the_instance_id(conn):
     status, data = call("POST", PLANS, payload([section("a")]), wait=True)
     assert status == 202
-    assert [p["status"] for p in conn.posted] == [
+    assert [p.status for p in conn.posted] == [
         "PENDING",
         "RUNNING",
         "COMPLETED",
     ]
-    assert {p["instance_id"] for p in conn.posted} == {data["instance_id"]}
+    assert {p.instance_id for p in conn.posted} == {data["instance_id"]}
     assert data["instance_id"] != "plan-1"
     assert data["run"]["runtimeStatus"] == "Completed"
     assert data["run"]["output"]["_id"] == data["instance_id"]
 
 
-def test_generate_stays_202_when_the_webhook_receiver_fails(conn):
+def test_a_lost_completed_status_ends_the_run_failed_with_the_reason(conn):
     async def broken(status):
         raise ConnectionError("receiver down")
 
     conn.post_status = broken
     status, data = call("POST", PLANS, payload([section("a")]), wait=True)
     assert status == 202
-    assert data["run"]["runtimeStatus"] == "Completed"
+    assert data["run"]["runtimeStatus"] == "Failed"
+    assert "backend was not told" in data["run"]["output"]
 
 
 def test_generate_also_accepts_the_trailing_slash(conn):
@@ -173,7 +181,7 @@ def test_a_plan_that_fails_while_running_is_reported_by_status_and_webhook(
     status, data = call("POST", PLANS, payload([section("a")]), wait=True)
     assert status == 202
     assert data["run"]["runtimeStatus"] == "Failed"
-    assert conn.posted[-1]["status"] == "FAILED"
+    assert conn.posted[-1].status == "FAILED"
     assert "JSON null" in data["run"]["output"]
 
 
@@ -348,7 +356,7 @@ def test_webhook_is_opt_in_for_a_batch_run(conn):
         form=upload(PARAMS | {"webhook": True}),
         wait=True,
     )
-    assert {p["status"] for p in conn.posted} == {
+    assert {p.status for p in conn.posted} == {
         "PENDING",
         "RUNNING",
         "COMPLETED",
@@ -460,8 +468,7 @@ def test_unknown_parameter_is_400_and_names_the_valid_ones():
         form=upload(PARAMS | {"gradee": "6"}),
     )
     assert status == 400
-    assert "Additional properties are not allowed" in data["error"]
-    assert "'gradee' was unexpected" in data["error"]
+    assert "Unknown parameter 'gradee'" in data["error"]
 
 
 def test_missing_file_and_bad_params_are_400():
@@ -474,7 +481,12 @@ def test_missing_file_and_bad_params_are_400():
         "POST", f"{PIPELINES}/period_plan", form=upload("{not json")
     )
     assert status == 400
-    assert "not valid JSON" in data["error"]
+    assert "must be a JSON object" in data["error"]
+    status, data = call(
+        "POST", f"{PIPELINES}/period_plan", form=upload(send_params=False)
+    )
+    assert status == 400
+    assert "'params'" in data["error"]
     status, data = call("POST", f"{PIPELINES}/period_plan", form=upload("[1]"))
     assert status == 400
     assert "JSON object" in data["error"]
@@ -500,8 +512,8 @@ def test_a_running_plan_can_be_terminated_and_the_backend_hears_about_it(conn):
     assert unknown == 404
     assert body["runtimeStatus"] == "Terminated"
     assert final["runtimeStatus"] == "Terminated"
-    assert conn.posted[-1]["status"] == "FAILED"
-    assert "terminated" in conn.posted[-1]["output"]
+    assert conn.posted[-1].status == "FAILED"
+    assert "terminated" in conn.posted[-1].output
 
 
 def test_a_running_pipeline_can_be_terminated(conn):
