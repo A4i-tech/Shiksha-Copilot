@@ -8,6 +8,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { ToastrModule } from 'ngx-toastr';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 import { LessonPlanDocumentsComponent } from './lesson-plan-documents.component';
 
@@ -28,5 +29,19 @@ describe('LessonPlanDocumentsComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('downloader should track a known download type after the export runs', () => {
+    const track = spyOn(TestBed.inject(UmamiService), 'track');
+    spyOn(component, 'checkListDownloader');
+    component.isLesson = true;
+    component.downloader('planChecklistPdf', [], {}, 'file');
+    expect(track).toHaveBeenCalledWith('artifact-downloaded', { type: 'lesson-plan', format: 'pdf', kind: 'checklist' });
+  });
+
+  it('downloader should not track an unknown download type', () => {
+    const track = spyOn(TestBed.inject(UmamiService), 'track');
+    component.downloader('unknown', [], {}, 'file');
+    expect(track).not.toHaveBeenCalled();
   });
 });

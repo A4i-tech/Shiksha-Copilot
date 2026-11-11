@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -17,6 +17,7 @@ import { concat, distinctUntilChanged, forkJoin, of, Subject } from 'rxjs';
 import { fadeInOutAnimation } from 'src/app/shared/utility/animations.util';
 import { map, finalize, toArray, takeUntil } from 'rxjs/operators';
 import { questionContentItems } from 'src/app/shared/utility/question-bank-display.util';
+import { UmamiService } from 'src/app/shared/services/umami.service';
 
 const SOURCE_GENERATION_OPTIONS: DropdownOption[] = [
   { name: QUESTION_SOURCE.AI, value: 'AI', info: 'These are AI-generated questions based on the selected criteria.' },
@@ -147,6 +148,9 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   totalMarks = 0;
   totalPercentage = 100;
+  editingObjectives = false;
+  openObjectiveInfo = '';
+  @ViewChild('objectivesHeading') objectivesHeading!: ElementRef<HTMLElement>;
   totalDistributedMarks = 0;
   totalDistributedPercentage = 0;
   marksDistribution: MarksDistributionUnit[] = [];
@@ -172,6 +176,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     private questionBankService: QuestionBankService,
     private router: Router,
     private idleService: IdleService,
+    private umamiService: UmamiService,
   ) { }
 
   ngOnInit(): void {
@@ -509,7 +514,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     } else if (this.marksDistribution.some(unit => unit.marks === 0)) {
       this.utilityservice.showError(this.translateService.instant('Increase the total marks or select fewer chapters.'));
       return;
-    } else if (this.questionBankConfigForm.invalid || this.totalPercentage !== 100 || this.totalDistributedMarks !== this.totalMarks) {
+    } else if (this.questionBankConfigForm.invalid || this.totalDistributedMarks !== this.totalMarks) {
       this.utilityservice.showError(this.translateService.instant('Please complete the configuration and distributions.'));
       return;
     }
@@ -834,6 +839,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
         const finalId = res.data?._id;
         if (finalId) {
           this.utilityservice.showSuccess('Question Paper Created Successfully!');
+          this.umamiService.track('artifact-created', { type: 'question-paper' });
           this.router.navigate([`/question-papers/view/${finalId}`]);
         } else {
           this.utilityservice.showError("Paper created but ID not found.");
@@ -1030,12 +1036,37 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.totalDistributedMarks = this.marksDistribution.reduce((acc, c) => acc + c.marks, 0);
     this.totalDistributedPercentage = Math.round((this.totalDistributedMarks * 100) / this.totalMarks);
   }
-  calculateTotalPercentage(i: any) {
+  calculateTotalPercentage() {
     this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentageDistribution), 0);
+  }
+  stepObjective(objective: QuestionBankObjective, delta: number) {
+    this.setObjective(objective, Number(objective.percentageDistribution) + delta);
+  }
+  setObjective(objective: QuestionBankObjective, value: number) {
+    objective.percentageDistribution = Math.min(100, Math.max(0, Math.round(value)));
+    this.calculateTotalPercentage();
+  }
+  get defaultObjectivesLabel(): string {
+    return this.initialQuestionBankObjectives.map(o => o.percentageDistribution).join(' / ');
+  }
+  scrollToObjectives() {
+    this.objectivesHeading.nativeElement.scrollIntoView();
+    this.objectivesHeading.nativeElement.focus({ preventScroll: true });
+  }
+  get objectivesBlockNext(): boolean {
+    return this.currentStep === 1 && this.questionBankObjectives.length > 0 && this.totalPercentage !== 100;
+  }
+  get objectivesBlockMessage(): string {
+    return this.translateService.instant('Objectives Weightage adds up to {{total}}%. Make it 100% to continue.', { total: this.totalPercentage });
+  }
+  get objectiveTotalMessage(): string {
+    const diff = 100 - this.totalPercentage;
+    const key = diff > 0 ? 'Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.' : 'Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.';
+    return this.translateService.instant(key, { total: this.totalPercentage, diff: Math.abs(diff) });
   }
   resetQuestionDistribution() {
     this.questionBankObjectives = structuredClone(this.initialQuestionBankObjectives);
-    this.calculateTotalPercentage(null);
+    this.calculateTotalPercentage();
     this.distributeMarks();
   }
   resetDistribution() {

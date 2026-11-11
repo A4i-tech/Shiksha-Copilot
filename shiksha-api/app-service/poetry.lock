@@ -2746,20 +2746,20 @@ openai = ">=1.108.1,<3"
 
 [[package]]
 name = "llama-index-vector-stores-qdrant"
-version = "0.10.1"
+version = "0.8.8"
 description = "llama-index vector_stores qdrant integration"
 optional = false
-python-versions = "<3.14,>=3.10"
+python-versions = "<3.14,>=3.9"
 groups = ["main"]
 files = [
-    {file = "llama_index_vector_stores_qdrant-0.10.1-py3-none-any.whl", hash = "sha256:90e8c0c0cd96309a9dd84a29cfe77aa6b3ef2f2596f0a0360eaaa8e3a004f1ff"},
-    {file = "llama_index_vector_stores_qdrant-0.10.1.tar.gz", hash = "sha256:fef4ca8411c3e33636aabcf883941fde7a9d6deaa45254ee80627f2d0ffbf551"},
+    {file = "llama_index_vector_stores_qdrant-0.8.8-py3-none-any.whl", hash = "sha256:1ce8c0ba3c0d69fd55963f8021e93b0eb9ce9b31a824a57a48c79d7ebf810c79"},
+    {file = "llama_index_vector_stores_qdrant-0.8.8.tar.gz", hash = "sha256:721a508e7bae9f6483f73124494764858a8024ca5aabe8947f240dbe8449d602"},
 ]
 
 [package.dependencies]
 grpcio = ">=1.60.0,<2"
 llama-index-core = ">=0.13.0,<0.15"
-qdrant-client = ">=1.16.0"
+qdrant-client = ">=1.7.1,<1.16.0"
 
 [[package]]
 name = "llama-index-workflows"
@@ -5292,28 +5292,28 @@ files = [
 
 [[package]]
 name = "qdrant-client"
-version = "1.18.0"
+version = "1.15.1"
 description = "Client library for the Qdrant vector search engine"
 optional = false
-python-versions = ">=3.10"
+python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "qdrant_client-1.18.0-py3-none-any.whl", hash = "sha256:093aa8cf8a420ee3ad2a68b007e1378d7992b2600e0b53c193fc172674f659cd"},
-    {file = "qdrant_client-1.18.0.tar.gz", hash = "sha256:52e8ece1a7d40519801bf0b70713bfa0f6b7ae28c7275bbe0b0286fbed7f6db4"},
+    {file = "qdrant_client-1.15.1-py3-none-any.whl", hash = "sha256:2b975099b378382f6ca1cfb43f0d59e541be6e16a5892f282a4b8de7eff5cb63"},
+    {file = "qdrant_client-1.15.1.tar.gz", hash = "sha256:631f1f3caebfad0fd0c1fba98f41be81d9962b7bf3ca653bed3b727c0e0cbe0e"},
 ]
 
 [package.dependencies]
 grpcio = ">=1.41.0"
 httpx = {version = ">=0.20.0", extras = ["http2"]}
-numpy = {version = ">=1.21", markers = "python_version == \"3.11\""}
+numpy = {version = ">=1.21", markers = "python_version >= \"3.10\" and python_version < \"3.12\""}
 portalocker = ">=2.7.0,<4.0"
 protobuf = ">=3.20.0"
 pydantic = ">=1.10.8,<2.0.dev0 || >2.2.0"
 urllib3 = ">=1.26.14,<3"
 
 [package.extras]
-fastembed = ["fastembed (>=0.8,<0.9)"]
-fastembed-gpu = ["fastembed-gpu (>=0.8,<0.9)"]
+fastembed = ["fastembed (>=0.7,<0.8)"]
+fastembed-gpu = ["fastembed-gpu (>=0.7,<0.8)"]
 
 [[package]]
 name = "referencing"
@@ -6116,6 +6116,7 @@ llama-index-workflows = "*"
 nest-asyncio = "*"
 openai = "*"
 python-dotenv = "*"
+qdrant-client = ">=1.15,<1.16"
 tenacity = "*"
 
 [package.source]

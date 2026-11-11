@@ -3,13 +3,13 @@ from contextlib import asynccontextmanager
 import io
 import json
 import logging
-import mimetypes
 import pathlib
 import time
 from datetime import datetime, timezone
 from typing import Annotated, AsyncIterator
 import uuid
 import weakref
+from urllib.parse import quote
 from app.config import settings
 from app.messaging.nats_broker import NatsBroker
 from app.services.presentation.consumer import CANCEL_SUBJECT, make_broker, publish_job, reap_dead_letters, reconcile, run_jobs
@@ -183,6 +183,19 @@ async def delete_job(user_id: XUserIDHeader, id: uuid.UUID, service: Presentatio
     return cancelled
 
 
+ARTIFACT_MEDIA_TYPES: dict[LibreOfficeOutputFormat, str] = {
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "pdf": "application/pdf",
+    "ppt": "application/vnd.ms-powerpoint",
+    "odp": "application/vnd.oasis.opendocument.presentation",
+}
+
+
+def artifact_disposition(job: JobDetail, file_format: LibreOfficeOutputFormat) -> str:
+    filename = f"{job.metadata['plan']['outline']['title']}.{file_format}"
+    return f"attachment; filename*=UTF-8''{quote(filename, safe='')}"
+
+
 @router.head("/job/{job_id}", include_in_schema=False)
 @router.get("/job/{job_id}")
 async def download_job_artifact(
@@ -199,7 +212,7 @@ async def download_job_artifact(
 
     stem = pathlib.Path(job.textbook_file).stem
     storage_path = service.storage.path("out", stem, "%s.%s" % (job_id, file_format))
-    media_type, _ = mimetypes.guess_type(storage_path)
+    media_type = ARTIFACT_MEDIA_TYPES[file_format]
     async with await _ja_lock((job_id, file_format)):
         if not await service.storage.exists(storage_path):
             if file_format == "pptx":
@@ -219,7 +232,7 @@ async def download_job_artifact(
     headers = {
         "ETag": etag,
         "Cache-Control": "private, max-age=31536000, immutable",
-        "Content-Disposition": "attachment",
+        "Content-Disposition": artifact_disposition(job, file_format),
         "Content-Length": str(size),
         "X-File-Size": str(size)
     }

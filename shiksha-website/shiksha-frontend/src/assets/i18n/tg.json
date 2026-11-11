@@ -923,5 +923,17 @@
   "Reduced time I spend on period planning": "పీరియడ్ ప్రణాళికకు నేను వెచ్చించే సమయం తగ్గింది",
   "Blocks — Period Plan Coverage": "బ్లాక్‌లు — పీరియడ్ ప్రణాళిక కవరేజ్",
   "Period plans": "పీరియడ్ ప్రణాళికలు",
-  "Period plan": "పీరియడ్ ప్రణాళిక"
+  "Period plan": "పీరియడ్ ప్రణాళిక",
+  "Modify": "మార్చండి",
+  "Done": "పూర్తయింది",
+  "How much of the paper tests each type of thinking. Tap Modify to change it.": "ప్రశ్నపత్రంలో ఎంత భాగం ప్రతి రకమైన ఆలోచనను పరీక్షిస్తుంది. మార్చడానికి 'మార్చండి' నొక్కండి.",
+  "Click on the numbers to change them as per your requirements. Total distribution must equal 100%.": "మీ అవసరానికి తగ్గట్టు మార్చడానికి సంఖ్యలపై నొక్కండి. మొత్తం కేటాయింపు 100% ఉండాలి.",
+  "Weightage": "వెయిటేజీ",
+  "Decrease": "తగ్గించండి",
+  "Increase": "పెంచండి",
+  "Restore defaults": "డిఫాల్ట్‌లను పునరుద్ధరించండి",
+  "Go to Objectives Weightage": "లక్ష్యాల మార్కుల కేటాయింపుకు వెళ్లండి",
+  "Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.": "మొత్తం {{total}}% ఉంది. 100% కావడానికి ఇంకా {{diff}}% కలపండి.",
+  "Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.": "మొత్తం {{total}}% ఉంది. 100% కావడానికి {{diff}}% తగ్గించండి.",
+  "Objectives Weightage adds up to {{total}}%. Make it 100% to continue.": "లక్ష్యాల మార్కుల కేటాయింపు మొత్తం {{total}}% ఉంది. కొనసాగడానికి దాన్ని 100% చేయండి."
 }

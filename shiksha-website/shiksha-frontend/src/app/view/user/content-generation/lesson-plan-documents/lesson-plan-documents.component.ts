@@ -6,6 +6,13 @@ import { ChecklistPdfExportService } from '../../../../shared/services/checklist
 import { DocumentExportService } from 'src/app/shared/services/document-export.service';
 import { ContentGenerationService } from '../content-generation.service';
 import { UtilityService } from 'src/app/core/services/utility.service';
+import { UmamiService } from 'src/app/shared/services/umami.service';
+
+const DOWNLOAD_TRACKING: Record<string, { format: string; kind: string }> = {
+  planDoc: { format: 'docx', kind: 'plan' },
+  planChecklist: { format: 'docx', kind: 'checklist' },
+  planChecklistPdf: { format: 'pdf', kind: 'checklist' },
+};
 
 @Component({
   selector: 'app-lesson-plan-documents',
@@ -36,7 +43,8 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     private checkListExportService: CheckListExportService,
     private contentGenerationService: ContentGenerationService,
     private utilityService: UtilityService,
-    private router: Router
+    private router: Router,
+    private umamiService: UmamiService
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -110,8 +118,9 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
         break;
 
       default:
-        break;
+        return;
     }
+    this.umamiService.track('artifact-downloaded', { type: this.isLesson ? 'lesson-plan' : 'resource-plan', ...DOWNLOAD_TRACKING[downloadType] });
   }
 
   loadLessonPlanPresentation(showLoading = true) {
@@ -142,6 +151,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
       next: (res) => {
         this.lessonPlanPresentation = res?.data || res;
         this.isGeneratingLessonPlanPresentation = false;
+        this.umamiService.track('artifact-created', { type: 'presentation' });
         this.syncLessonPlanPresentationStream();
       },
       error: (err) => {
@@ -160,6 +170,7 @@ export class LessonPlanDocumentsComponent implements OnChanges, OnDestroy {
     this.contentGenerationService.downloadPresentationFile(presentationId, "pptx").subscribe({
       next: (blob) => {
         saveAs(blob, `lesson-plan-${this.planId}.pptx`);
+        this.umamiService.track('artifact-downloaded', { type: 'presentation', format: 'pptx', kind: 'deck' });
       },
       error: (err) => {
         this.utilityService.handleError(err);

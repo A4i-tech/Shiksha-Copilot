@@ -4,6 +4,7 @@ import asyncio
 import json
 import logging
 import pathlib
+import random
 import uuid
 from datetime import datetime
 from typing import Any
@@ -54,7 +55,7 @@ class PresentationService:
                     await self.jobs.update(job.id, {**error, "metadata.error.attempting_recovery": not exhausted})
                     if exhausted:
                         return
-                    raise RetryAfter(min(60, 5 * 2 ** (attempt - 1)))
+                    raise RetryAfter(error["metadata.error.next_attempt"] - time.time())
             except JobCancelled:
                 await self.jobs.delete(job)
                 return
@@ -78,7 +79,9 @@ class PresentationService:
 
     def _error_metadata(self, job: JobDetail, message: str, error_message: str):
         attempt = job.metadata.get("error", {}).get("attempt", 0) + 1
-        return error_fields(message, error_message, attempt, time.time() + min(60, 5 * (2 ** (attempt - 1))), True)
+        base, cap = (30, 480) if "rate limit" in error_message.lower() else (5, 60)  # Azure quota resets per minute
+        delay = min(cap, base * 2 ** (attempt - 1)) + random.uniform(0, base)
+        return error_fields(message, error_message, attempt, time.time() + delay, True)
 
 
     async def _run_job(self, job: JobDetail):

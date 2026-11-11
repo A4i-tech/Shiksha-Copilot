@@ -113,7 +113,7 @@ async def test_run_job_step_failure_records_error_and_asks_for_retry(monkeypatch
     with pytest.raises(RetryAfter) as raised:
         await service.run_job(service.jobs.job.id)
     job = service.jobs.job
-    assert raised.value.seconds == seconds
+    assert seconds <= raised.value.seconds < seconds + 5.1
     assert job.status == "error" and job.metadata["error"]["attempt"] == prior + 1
     assert job.metadata["error"]["next_attempt"] > time.time() and job.metadata["error"]["attempting_recovery"] is True
 
@@ -247,3 +247,25 @@ async def test_youtube_error_does_not_carry_the_api_key(monkeypatch, make_error,
     with pytest.raises(RuntimeError) as err:
         await utils.youtube_video_search("cells", 5)
     assert "SECRET" not in str(err.value) and expected in str(err.value)
+
+
+def test_rate_limit_error_backs_off_longer():
+    from types import SimpleNamespace
+    from app.services.presentation.service import PresentationService
+    job = SimpleNamespace(metadata={})
+    svc = object.__new__(PresentationService)
+    other = svc._error_metadata(job, "x", "boom")
+    limited = svc._error_metadata(job, "x", "APIError: exceeded rate limit")
+    assert other["metadata.error.next_attempt"] < limited["metadata.error.next_attempt"] - 20
+
+
+def test_rate_limit_backoff_is_exponential_with_jitter():
+    import time
+    from types import SimpleNamespace
+    from app.services.presentation.service import PresentationService
+    svc = object.__new__(PresentationService)
+    for attempt, low in [(1, 30), (2, 60), (3, 120), (5, 480), (6, 480)]:
+        job = SimpleNamespace(metadata={"error": {"attempt": attempt - 1}})
+        now = time.time()
+        delay = svc._error_metadata(job, "x", "exceeded rate limit")["metadata.error.next_attempt"] - now
+        assert low <= delay < low + 31
