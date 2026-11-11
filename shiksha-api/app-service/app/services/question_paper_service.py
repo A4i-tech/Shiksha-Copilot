@@ -1,5 +1,6 @@
 from collections import defaultdict
 from collections.abc import Callable, Sequence
+from contextlib import AsyncExitStack
 import json
 from app.services.rag_adapter_cache import RagAdapterCache
 from app.utils.utils import local_unique_id, validate_tex as validate_tex_string
@@ -313,19 +314,15 @@ class QuestionPaperService:
 
 
     async def _generate_questions_batch_async(self, system_prompt: str, request: QuestionBankPartsGenerationRequest, existing_questions: list[str], record: _LearningRecord, slot: list[GenerationSlot]) -> list[GeneratedSlotQuestion]:
-        async with self.concurrency:
+        async with self.concurrency, AsyncExitStack() as stack:
+            rag_adapter = None
             if not record.index_path.strip():
-                fut = asyncio.Future()
-                fut.set_result(None)
                 logger.warning(f"Index path is missing for unit '{record.title}'. RAG retrieval will be skipped.")
             else:
-                fut = self._rags.get(record.index_path, self._rag_llm, self._rag_embed)
-
-            try:
-                rag_adapter = await fut
-            except RuntimeError as e:
-                logger.exception(e)
-                rag_adapter = None
+                try:
+                    rag_adapter = await stack.enter_async_context(self._rags.lease(record.index_path, self._rag_llm, self._rag_embed))
+                except RuntimeError as e:
+                    logger.exception(e)
 
             if rag_adapter is None:
                 logger.debug(f"[RAG_ADAPTER] Skipping adapter creation for empty/fallback path: '{record.index_path}'")

@@ -37,6 +37,7 @@ class Settings(BaseSettings):
 
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None
+    rag_adapter_cache_size: PositiveInt = 32
 
     # Translator Configuration
     translator_key: Optional[str] = None
