@@ -62,14 +62,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   resourceColors: any = {
     lesson: {
-      iconColor: 'var(--tertiary-100)',
       btnColor: 'bg-tertiary',
-      iconBackground: 'bg-purple-100',
+      headerBackground: 'bg-purple-100',
     },
     resource: {
-      iconColor: 'var(--success-80)',
       btnColor: 'bg-success',
-      iconBackground: 'bg-green-100',
+      headerBackground: 'bg-green-100',
     },
   };
 
