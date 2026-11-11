@@ -110,6 +110,9 @@ jobs:
       - name: Backend integration
         if: inputs.suite == 'integration'
         working-directory: shiksha-website/shiksha-backend
+        env:
+          SKIP_BLOB_TESTS: '1' # tests that download a blob URL need real Azure storage
+          SKIP_LLM_TESTS: '1' # tests that call the real LLM
         run: |
           npm ci
           npm run test:integration
