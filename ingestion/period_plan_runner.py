@@ -122,9 +122,9 @@ async def run_pipeline(
         failures = [r.error for r in results if r.status == StepStatus.FAILURE]
         errors += failures
         output = ctx.metadata
-        # a failed step stops the run before section_graph sets the plans
-        if makes_plans and not failures:
-            plans = ctx.metadata["lesson_plans"]
+        if makes_plans:
+            # a failed step stops the run before section_graph sets the plans
+            plans = {} if failures else ctx.metadata["lesson_plans"]
             errors += [
                 f"{plan_id}: {r.error}"
                 for plan_id, r in plans.items()
@@ -268,7 +268,6 @@ async def main() -> int:
     plans = [
         p
         for o in outputs
-        if "lesson_plans" in o
         for p in o["lesson_plans"].values()
     ]
     ready = sum(
