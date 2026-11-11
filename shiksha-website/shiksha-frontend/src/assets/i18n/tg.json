@@ -474,6 +474,8 @@
   "You can generate up to 40 questions in the question paper.": "ప్రశ్న పత్రంలో మీరు గరిష్టంగా 40 ప్రశ్నలు రూపొందించవచ్చు.",
   "Copy to clipboard": "క్లిప్‌బోర్డ్‌కు కాపీ చేయండి",
   "Modified On": "సవరించిన తేదీ",
+  "Modified": "సవరించినది:",
+  "Topic {{number}}:": "అంశం {{number}}:",
   "Daily chat limit: 20 messages per day": "రోజువారీ చాట్ పరిమితి: రోజుకు 20 సందేశాలు",
   "Sample Instructions": "నమూనా సూచనలు",
   "Generate customized question paper that assess students' learning": "విద్యార్థుల అభ్యాసాన్ని అంచనా వేసేలా అనుకూలిత ప్రశ్నాపత్రం సృష్టించండి",
