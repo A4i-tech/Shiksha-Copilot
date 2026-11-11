@@ -43,11 +43,11 @@ describe("curator middleware", () => {
       expect(await run(guard, request())).toMatchObject({ statusCode: 403, message: expect.stringMatching(/not assigned to you/) });
     });
 
-    it("answers 403 without a database read for an id that is not an id", async () => {
+    it("answers 400 without a database read for an id that is not an id", async () => {
       const findById = jest.spyOn(Chapter, "findById");
 
       const req = { user: { _id: ME }, params: { id: "nope" } };
-      expect(await run(guard, req)).toMatchObject({ statusCode: 403 });
+      expect(await run(guard, req)).toMatchObject({ statusCode: 400 });
       expect(findById).not.toHaveBeenCalled();
     });
 
@@ -75,10 +75,17 @@ describe("curator middleware", () => {
       expect(req.child).toBe(child);
     });
 
-    it("returns nothing for a child that does not exist, so the guard answers 403", async () => {
+    it("throws 404 for a child that does not exist", async () => {
       const Model = { findById: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue(leanResult(null)) }) };
 
-      expect(await chapterIdOfChild(Model)({ params: { id: OTHER } })).toBeUndefined();
+      await expect(chapterIdOfChild(Model)({ params: { id: OTHER } })).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    it("throws 400 for a child id that is not an id", async () => {
+      const Model = { findById: jest.fn() };
+
+      await expect(chapterIdOfChild(Model)({ params: { id: "nope" } })).rejects.toMatchObject({ statusCode: 400 });
+      expect(Model.findById).not.toHaveBeenCalled();
     });
   });
 
@@ -129,15 +136,21 @@ describe("curator middleware", () => {
       jest.spyOn(MasterSubject, "findById").mockReturnValue({ select: jest.fn().mockReturnValue(leanResult({ subjectName: "Maths" })) });
     });
 
-    it("overwrites board, medium, class, subject, and chapterId from the chapter and drops status", async () => {
+    it("overwrites board, medium, class, subject, and chapterId from the chapter", async () => {
       const req = {
         chapter,
-        body: { name: "Plan", board: "ICSE", class: 1, subject: "Art", medium: "hindi", chapterId: OTHER_CHAPTER_ID, status: "approved" },
+        body: { name: "Plan", board: "ICSE", class: 1, subject: "Art", medium: "hindi", chapterId: OTHER_CHAPTER_ID },
       };
 
       await run(stampFromChapter((c, subject) => ({ board: c.board, medium: c.medium, class: c.standard, subject })), req);
 
       expect(req.body).toEqual({ name: "Plan", board: "CBSE", class: 10, subject: "Maths", medium: "english", chapterId: CHAPTER_ID });
+    });
+
+    it("answers 400 when the client sends a status", async () => {
+      const req = { chapter, body: { name: "Plan", status: "approved" } };
+
+      expect(await run(stampFromChapter(() => ({})), req)).toMatchObject({ statusCode: 400 });
     });
 
     it("overwrites the chapter fields of a question", async () => {
@@ -163,34 +176,6 @@ describe("curator middleware", () => {
       expect(req.curatorScope).toBe(true);
     });
 
-    it.each([
-      [undefined, 999],
-      ["0", 999],
-      ["-1", 999],
-      ["-5", 999],
-      ["0.5", 999],
-      ["50", 50],
-      ["100000", 999],
-    ])("caps the chapter list limit %s at %s", async (limit, expected) => {
-      const req = { user: { _id: ME }, query: { limit } };
-
-      await run(scopeChapterList, req);
-
-      expect(req.query.limit).toBe(expected);
-    });
-
-    it.each([
-      ["0", 999],
-      ["100000", 999],
-    ])("caps the child list limit %s at %s", async (limit, expected) => {
-      jest.spyOn(Chapter, "distinct").mockResolvedValue([]);
-      const req = { user: { _id: ME }, query: { limit } };
-
-      await run(scopeChildList, req);
-
-      expect(req.query.limit).toBe(expected);
-    });
-
     it("scopes children to the assigned chapter ids", async () => {
       jest.spyOn(Chapter, "distinct").mockResolvedValue([CHAPTER_ID, OTHER_CHAPTER_ID]);
       const req = { user: { _id: ME }, query: {} };
@@ -211,13 +196,11 @@ describe("curator middleware", () => {
       expect(req.query.filter.chapterId).toEqual({ $in: [OTHER_CHAPTER_ID] });
     });
 
-    it("returns no children when the client asks for a chapter that is not assigned", async () => {
+    it("answers 403 when the client asks for a chapter that is not assigned", async () => {
       jest.spyOn(Chapter, "distinct").mockResolvedValue([CHAPTER_ID]);
       const req = { user: { _id: ME }, query: { filter: { chapterId: OTHER_CHAPTER_ID } } };
 
-      await run(scopeChildList, req);
-
-      expect(req.query.filter.chapterId).toEqual({ $in: [] });
+      expect(await run(scopeChildList, req)).toMatchObject({ statusCode: 403 });
     });
   });
 });

@@ -1157,45 +1157,6 @@ class MasterLessonManger extends BaseManager {
 		}
 	}
 
-	// Editing runs the same identity check as an upload, and only ever touches a draft or
-	// under-review lesson plan: an approved one is not directly editable (it would let a
-	// change skip review), and a genuinely deleted one is not editable either.
-	async adminUpdate(req) {
-		try {
-			const current = await MasterLesson.findById(req.params.id).lean();
-			if (!current) return formatApiReponse(false, "Record not found", null);
-
-			const updates = req.body;
-			const merged = { ...current, ...updates };
-
-			const existing = await this._liveSiblings(merged);
-			const conflict = this.findLiveConflict(merged, existing, this._conflictKeyFns());
-
-			if (conflict) {
-				return formatApiReponse(
-					false,
-					`Saving this lesson plan would duplicate the lesson plan ${conflict._id} for the same chapter and subtopics. Change the subtopics.`,
-					null
-				);
-			}
-
-			const data = await MasterLesson.findOneAndUpdate(
-				{ _id: current._id, status: req.draftOnly ? CONTENT_STATUS.DRAFT : { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } },
-				{ $set: updates },
-				{ new: true, runValidators: true }
-			);
-
-			if (!data) {
-				return formatApiReponse(false, req.draftOnly ? "This record changed while you were editing it. Reload the page and try again." : "Record not found or has been deleted", null);
-			}
-
-			return formatApiReponse(true, "Updated successfully!", data);
-		} catch (err) {
-			console.error("adminUpdate failed:", err);
-			return formatApiReponse(false, err?.message, null);
-		}
-	}
-
 	// Existing lesson plans that could conflict with `lessonPlan` on chapter/subtopics.
 	async _liveSiblings(lessonPlan) {
 		return MasterLesson.find({
@@ -1210,81 +1171,36 @@ class MasterLessonManger extends BaseManager {
 		return [(r) => identityKey({ ...r, chapterId: String(r.chapterId) })];
 	}
 
-	// Restore runs the same identity check as an upload, because another lesson plan
-	// can take this one's chapter/subtopic combination while it sits deleted.
-	async activate(req) {
-		try {
-			const lessonPlan = await MasterLesson.findById(req.params.id).lean();
-			if (!lessonPlan) return formatApiReponse(false, "Record not found", null);
-
-			if (!this.isGenuinelyDeleted(lessonPlan)) {
-				return formatApiReponse(
-					false,
-					"This lesson plan is not a deleted, approved lesson plan, so it cannot be restored.",
-					null
-				);
-			}
-
-			const existing = await this._liveSiblings(lessonPlan);
-			const conflict = this.findLiveConflict(lessonPlan, existing, this._conflictKeyFns());
-
-			if (conflict) {
-				return formatApiReponse(
-					false,
-					`Restoring this lesson plan would duplicate the lesson plan ${conflict._id} for the same chapter and subtopics. Change or remove that lesson plan first.`,
-					null
-				);
-			}
-
-			const data = await this.dao.activate(req.params.id);
-			return formatApiReponse(true, "Lesson plan restored successfully!", data);
-		} catch (err) {
-			console.error("activate failed:", err);
-			return formatApiReponse(false, err?.message, null);
-		}
+	_model() {
+		return MasterLesson;
 	}
 
-	// Approving a lesson plan that is ready for review is a single atomic transition, because
-	// going through restore + a separate status update fails: restore only accepts an
-	// already-approved lesson plan, which a ready-for-review one is not yet.
-	async approve(req) {
-		const lessonPlan = await MasterLesson.findById(req.params.id).lean();
-		if (!lessonPlan) return formatApiReponse(false, "Record not found", null);
+	get _entityName() {
+		return "lesson plan";
+	}
 
-		if (!(lessonPlan.isDeleted === true && lessonPlan.status === CONTENT_STATUS.UNDER_REVIEW)) {
-			return formatApiReponse(
-				false,
-				"This lesson plan is not ready for review, so it cannot be approved.",
-				null
-			);
-		}
+	get _conflictHint() {
+		return "Change the subtopics.";
+	}
 
-		const existing = await this._liveSiblings(lessonPlan);
-		const conflict = this.findLiveConflict(lessonPlan, existing, this._conflictKeyFns());
+	get _honorsDraftOnly() {
+		return true;
+	}
 
-		if (conflict) {
-			return formatApiReponse(
-				false,
-				`Approving this lesson plan would duplicate the lesson plan ${conflict._id} for the same chapter and subtopics. Change or remove that lesson plan first.`,
-				null
-			);
-		}
+	_describe() {
+		return "this lesson plan";
+	}
 
-		const data = await MasterLesson.findOneAndUpdate(
+	_describeConflict(lessonPlan) {
+		return `the lesson plan ${lessonPlan._id} for the same chapter and subtopics`;
+	}
+
+	_approveTransition(lessonPlan) {
+		return MasterLesson.findOneAndUpdate(
 			{ _id: lessonPlan._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
 			{ $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
 			{ new: true }
 		);
-
-		if (!data) {
-			return formatApiReponse(
-				false,
-				"This lesson plan changed before the approval finished. Reload and try again.",
-				null
-			);
-		}
-
-		return formatApiReponse(true, "Lesson plan approved successfully!", data);
 	}
 
 }
