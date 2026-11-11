@@ -70,7 +70,9 @@ jobs:
           push: false
           tags: shiksha-frontend-local
           load: true
-          build-args: BUILD_CONFIGURATION=production
+          build-args: |
+            SHIKSHA_COPILOT_BUILD=${{ github.sha }}
+            BUILD_CONFIGURATION=production
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -91,13 +93,11 @@ jobs:
           docker rm -f "$CID" >/dev/null
           grep -q '<html' /tmp/index.html
 
-      # The a11y job hosts this exact image instead of rebuilding it.
-      - name: Save image for the accessibility job
-        if: github.event_name == 'pull_request'
+      # The kind test jobs load this exact image instead of rebuilding it.
+      - name: Save image for the kind test jobs
         run: docker save shiksha-frontend-local | gzip > "$RUNNER_TEMP/frontend-image.tar.gz"
 
       - name: Upload image artifact
-        if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: frontend-image

@@ -5,6 +5,9 @@ WORKDIR /app
 
 # Runtime config (BACKEND_URL etc.) is injected by the deployment target, not a build-arg.
 ARG BUILD_CONFIGURATION=development
+# postbuild.js writes this into health.json as the build SHA.
+ARG SHIKSHA_COPILOT_BUILD
+ENV SHIKSHA_COPILOT_BUILD=$SHIKSHA_COPILOT_BUILD
 
 COPY package*.json ./
 RUN npm ci
