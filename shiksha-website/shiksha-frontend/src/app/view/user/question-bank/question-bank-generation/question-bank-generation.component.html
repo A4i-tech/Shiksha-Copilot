@@ -106,9 +106,9 @@
               [config]="subTopicDropdownconfig" [submitted]="submittedConfig"></app-dropdown>
           </div>
 
-          <div class="mt-8" id="objectives-weightage" *ngIf="questionBankObjectives.length">
+          <div class="mt-8" *ngIf="questionBankObjectives.length">
             <div class="flex items-center justify-between gap-2 mb-3">
-              <h2 class="text-base font-bold text-content">{{ 'Objectives Weightage (%)' | translate }}</h2>
+              <h2 #objectivesHeading tabindex="-1" class="text-base font-bold text-content">{{ 'Objectives Weightage (%)' | translate }}</h2>
               <button type="button" data-testid="objectives-edit-toggle" class="min-h-[44px] px-4"
                 [ngClass]="editingObjectives ? 'btn-primary' : 'btn-outline-primary'"
                 (click)="editingObjectives = !editingObjectives">{{ (editingObjectives ? 'Done' : 'Modify') | translate }}</button>
@@ -122,7 +122,7 @@
               <div class="flex justify-between bg-[#edf6fe] px-3 py-2 text-xs font-bold">
                 <span>{{ 'Objective' | translate }}</span><span>{{ 'Weightage' | translate }}</span>
               </div>
-              <div class="flex items-center justify-between gap-2 border-t px-3 py-2 min-h-[56px]" *ngFor="let objective of questionBankObjectives">
+              <div class="flex flex-wrap items-center justify-between gap-2 border-t px-3 py-2 min-h-[56px]" *ngFor="let objective of questionBankObjectives">
                 <span class="inline-flex min-w-0 flex-1 items-center gap-1 text-sm">
                   {{ objective.name }}
                   <button type="button" *ngIf="objective.description" class="p-1" [attr.aria-expanded]="openObjectiveInfo === objective.name"

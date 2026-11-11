@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -150,6 +150,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   totalPercentage = 100;
   editingObjectives = false;
   openObjectiveInfo = '';
+  @ViewChild('objectivesHeading') objectivesHeading!: ElementRef<HTMLElement>;
   totalDistributedMarks = 0;
   totalDistributedPercentage = 0;
   marksDistribution: MarksDistributionUnit[] = [];
@@ -1035,7 +1036,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     this.totalDistributedMarks = this.marksDistribution.reduce((acc, c) => acc + c.marks, 0);
     this.totalDistributedPercentage = Math.round((this.totalDistributedMarks * 100) / this.totalMarks);
   }
-  calculateTotalPercentage(i: any) {
+  calculateTotalPercentage() {
     this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentageDistribution), 0);
   }
   stepObjective(objective: QuestionBankObjective, delta: number) {
@@ -1043,13 +1044,14 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   setObjective(objective: QuestionBankObjective, value: number) {
     objective.percentageDistribution = Math.min(100, Math.max(0, Math.round(value)));
-    this.calculateTotalPercentage(null);
+    this.calculateTotalPercentage();
   }
   get defaultObjectivesLabel(): string {
     return this.initialQuestionBankObjectives.map(o => o.percentageDistribution).join(' / ');
   }
   scrollToObjectives() {
-    document.getElementById('objectives-weightage')!.scrollIntoView();
+    this.objectivesHeading.nativeElement.scrollIntoView();
+    this.objectivesHeading.nativeElement.focus({ preventScroll: true });
   }
   get objectivesBlockNext(): boolean {
     return this.currentStep === 1 && this.questionBankObjectives.length > 0 && this.totalPercentage !== 100;
@@ -1064,7 +1066,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   resetQuestionDistribution() {
     this.questionBankObjectives = structuredClone(this.initialQuestionBankObjectives);
-    this.calculateTotalPercentage(null);
+    this.calculateTotalPercentage();
     this.distributeMarks();
   }
   resetDistribution() {
