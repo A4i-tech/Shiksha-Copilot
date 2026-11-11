@@ -1,0 +1,135 @@
+name: Kind tests
+
+# One suite against a kind cluster created inside this runner, on a seeded throwaway
+# database. Tests the images built for this SHA. Never touches kube-dev or kube-staging.
+on:
+  workflow_call:
+    inputs:
+      suite:
+        description: accessibility, regression, integration or performance
+        type: string
+        required: true
+      mode:
+        description: smoke or full
+        type: string
+        default: full
+
+jobs:
+  run:
+    name: ${{ inputs.suite }} (${{ inputs.mode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/kind-stack
+        with:
+          infra-ops-pat: ${{ secrets.INFRA_OPS_PAT }}
+          be-secret-json: ${{ secrets.KIND_BE_SECRET_JSON }}
+          api-secret-json: ${{ secrets.KIND_API_SECRET_JSON }}
+          su-phone: ${{ secrets.SHIKSHA_SU_PHONE }}
+          su-pin: ${{ secrets.SHIKSHA_SU_PIN }}
+          admin-phone: ${{ secrets.TEST_ADMIN_PHONE }}
+          admin-pin: ${{ secrets.TEST_ADMIN_OTP }}
+          teacher-phone: ${{ secrets.TEST_USER_PHONE }}
+          teacher-pin: ${{ secrets.TEST_USER_OTP }}
+
+      - uses: actions/setup-node@v4
+        if: inputs.suite == 'accessibility' || inputs.suite == 'integration'
+        with:
+          node-version: 24
+
+      - name: Accessibility
+        if: inputs.suite == 'accessibility'
+        run: |
+          npm ci --prefix tests/accessibility
+          npx --prefix tests/accessibility playwright install chromium --with-deps
+          node tests/accessibility/run-accessibility.js
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && inputs.suite == 'accessibility' }}
+        id: report
+        with:
+          name: accessibility-report
+          path: tests/accessibility/results/
+
+      # Delete the old report comment and post fresh so the report always sits at the bottom of the PR.
+      - name: Comment report on PR
+        if: ${{ !cancelled() && inputs.suite == 'accessibility' && github.event_name == 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ARTIFACT_URL: ${{ steps.report.outputs.artifact-url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          BODY=tests/accessibility/results/summary.md
+          if [ ! -f "$BODY" ]; then
+            mkdir -p "$(dirname "$BODY")"
+            printf '## Accessibility (axe-core, WCAG 2.1 AA)\n\n**Scan did not complete**, see the workflow log.\n' > "$BODY"
+          fi
+          {
+            echo
+            if [ -n "${ARTIFACT_URL:-}" ]; then
+              echo "[Download the full HTML report]($ARTIFACT_URL), unzip and open \`accessibility-report-*.html\`."
+            else
+              echo "_Report artifact was not uploaded, see the workflow log._"
+            fi
+            echo
+            echo "<sub>a11y-report</sub>"
+          } >> "$BODY"
+
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]")
+                      | select(.body | contains("<sub>a11y-report</sub>")) | .id' \
+            | while read -r id; do
+                echo "Removing previous report comment $id"
+                gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id"
+              done
+
+          gh pr comment "$PR_NUMBER" --body-file "$BODY"
+
+      - uses: actions/setup-python@v5
+        if: inputs.suite == 'regression'
+        with: { python-version: '3.11' }
+
+      - name: Regression
+        if: inputs.suite == 'regression'
+        run: |
+          pip install -r tests/requirements.txt
+          playwright install chromium --with-deps
+          pytest tests/${{ inputs.mode == 'smoke' && 'smoke' || 'regression' }} --csv regression_report.csv
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && inputs.suite == 'regression' }}
+        with:
+          name: regression-report
+          path: regression_report.csv
+
+      - name: Backend integration
+        if: inputs.suite == 'integration'
+        working-directory: shiksha-website/shiksha-backend
+        run: |
+          npm ci
+          npm run test:integration
+
+      - uses: grafana/setup-k6-action@v1
+        if: inputs.suite == 'performance'
+
+      - name: k6
+        if: inputs.suite == 'performance'
+        env:
+          K6_SMOKE: ${{ inputs.mode == 'smoke' && '1' || '' }}
+        run: k6 run --summary-export=k6_summary.json tests/performance/load_test.js
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && inputs.suite == 'performance' }}
+        with:
+          name: k6-summary
+          path: k6_summary.json
+
+      - uses: ./.github/actions/kind-stack-down
+        if: always()
+        with:
+          name: ${{ inputs.suite }}

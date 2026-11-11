@@ -73,7 +73,7 @@ async function createEphemeralTeacher(rootToken, permissions) {
     .send({
       identity: { name: "E2E Ephemeral Teacher", phone, email: "", address: "" },
       roles: [{ roleId: role._id, dep: school._id }],
-      profiles: { teacher: { facilities: [], classes: [{ class: 6, medium: "English" }], isProfileCompleted: true } },
+      profiles: { teacher: { facilities: [], classes: [{ board: "KSEEB", class: 6, medium: "English", subject: "Science", name: "Science", sem: 1 }], isProfileCompleted: true } },
     });
   if (!userRes.body.success) {
     throw new Error(`createUser failed: ${JSON.stringify(userRes.body)}`);

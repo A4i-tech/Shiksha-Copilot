@@ -1,0 +1,119 @@
+name: Kind stack
+description: Start api, backend and frontend on a kind cluster inside the runner, with a seeded throwaway database. Never touches kube-dev, kube-staging or production.
+
+inputs:
+  infra-ops-pat:
+    description: Token that can read A4i-tech/infra-ops and A4i-tech/kind-tests
+    required: true
+  be-secret-json:
+    description: Flat JSON of the backend secret. Its MONGO_URL is replaced by the local mongo.
+    required: true
+  api-secret-json:
+    description: Flat JSON of the api secret
+    required: true
+  su-phone: { required: true, description: Seeded superuser phone }
+  su-pin: { required: true, description: Seeded superuser PIN }
+  admin-phone: { required: true, description: Seeded admin phone }
+  admin-pin: { required: true, description: Seeded admin PIN }
+  teacher-phone: { required: true, description: Seeded teacher phone }
+  teacher-pin: { required: true, description: Seeded teacher PIN }
+  kind-tests-ref:
+    description: Ref of A4i-tech/kind-tests that has the CI image overrides
+    default: pun-it/780-ci-images
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: "*-image"
+        path: ${{ runner.temp }}/images
+        merge-multiple: true
+
+    - name: Load images
+      shell: bash
+      run: for f in "$RUNNER_TEMP"/images/*.tar.gz; do gunzip -c "$f" | docker load; done
+
+    - uses: actions/checkout@v4
+      with:
+        repository: A4i-tech/infra-ops
+        ref: a4i/main
+        token: ${{ inputs.infra-ops-pat }}
+        path: infra-ops
+
+    - uses: actions/checkout@v4
+      with:
+        repository: A4i-tech/kind-tests
+        ref: ${{ inputs.kind-tests-ref }}
+        token: ${{ inputs.infra-ops-pat }}
+        path: kind-tests
+
+    - name: Start cluster, deploy and seed
+      shell: bash
+      env:
+        BE_SECRET_JSON: ${{ inputs.be-secret-json }}
+        API_SECRET_JSON: ${{ inputs.api-secret-json }}
+        SEED_SU_PHONE: ${{ inputs.su-phone }}
+        SEED_SU_PIN: ${{ inputs.su-pin }}
+        SEED_ADMIN_PHONE: ${{ inputs.admin-phone }}
+        SEED_ADMIN_PIN: ${{ inputs.admin-pin }}
+        SEED_TEACHER_PHONE: ${{ inputs.teacher-phone }}
+        SEED_TEACHER_PIN: ${{ inputs.teacher-pin }}
+      run: |
+        set -euo pipefail
+        python3 -m pip install -q pyyaml
+        secrets="$RUNNER_TEMP/kind-secrets"
+        mkdir -p "$secrets"
+        # Random per-run keys. SHIKSHA_DEVTOOLS turns on /api/devtools/* in this cluster only.
+        jq --arg jwt "$(openssl rand -hex 24)" --arg pin "$(openssl rand -hex 24)" \
+          '. + {JWT_SECRET: $jwt, PIN_SECRET_KEY: $pin, SHIKSHA_DEVTOOLS: "true"}' \
+          <<<"$BE_SECRET_JSON" > "$secrets/shiksha-be-dev-secret.json"
+        printf '%s' "$API_SECRET_JSON" > "$secrets/shiksha-api-dev-secret.json"
+
+        export SHIKSHA_REPO_DIR="$GITHUB_WORKSPACE/infra-ops" SHIKSHA_SECRETS_DIR="$secrets" \
+          SKIP_MONGO_RESTORE=1 SHIKSHA_BE_IMAGE=shiksha-backend-local \
+          SHIKSHA_API_IMAGE=shiksha-api-local SHIKSHA_FE_IMAGE=shiksha-frontend-local
+        run="$GITHUB_WORKSPACE/kind-tests/shiksha-kind-test/run.sh"
+        "$run" all
+        "$run" kubectl -n shiksha exec deploy/shiksha-be -- \
+          env SEED_SU_PHONE="$SEED_SU_PHONE" SEED_SU_PIN="$SEED_SU_PIN" \
+              SEED_ADMIN_PHONE="$SEED_ADMIN_PHONE" SEED_ADMIN_PIN="$SEED_ADMIN_PIN" \
+              SEED_TEACHER_PHONE="$SEED_TEACHER_PHONE" SEED_TEACHER_PIN="$SEED_TEACHER_PIN" \
+          node scripts/seed-ci.js
+        nohup "$run" forward > "$RUNNER_TEMP/forward.log" 2>&1 &
+
+    - name: Wait for the pushed SHA
+      shell: bash
+      env:
+        EXPECTED_BUILD: ${{ github.sha }}
+      run: |
+        run="$GITHUB_WORKSPACE/kind-tests/shiksha-kind-test/run.sh"
+        for _ in $(seq 1 30); do
+          fe=$(curl -sf http://localhost:8000/health.json | jq -r .build || true)
+          be=$("$run" kubectl -n shiksha exec deploy/shiksha-be -- wget -qO- localhost:8080/health | jq -r .build || true)
+          [ "$fe" = "$EXPECTED_BUILD" ] && [ "$be" = "$EXPECTED_BUILD" ] && exit 0
+          sleep 5
+        done
+        echo "::error::cluster does not report build $EXPECTED_BUILD (frontend: '${fe:-}', backend: '${be:-}')"
+        exit 1
+
+    - name: Export test settings
+      shell: bash
+      env:
+        SU_PHONE: ${{ inputs.su-phone }}
+        SU_PIN: ${{ inputs.su-pin }}
+        ADMIN_PHONE: ${{ inputs.admin-phone }}
+        ADMIN_PIN: ${{ inputs.admin-pin }}
+        TEACHER_PHONE: ${{ inputs.teacher-phone }}
+        TEACHER_PIN: ${{ inputs.teacher-pin }}
+      run: |
+        {
+          echo "FRONTEND_URL=http://localhost:8000"
+          echo "SHIKSHA_BASE_URL=http://localhost:8000"
+          echo "SHIKSHA_SU_PHONE=$SU_PHONE"
+          echo "SHIKSHA_SU_PIN=$SU_PIN"
+          echo "TEST_ADMIN_PHONE=$ADMIN_PHONE"
+          echo "TEST_ADMIN_OTP=$ADMIN_PIN"
+          echo "TEST_USER_PHONE=$TEACHER_PHONE"
+          echo "TEST_USER_OTP=$TEACHER_PIN"
+        } >> "$GITHUB_ENV"

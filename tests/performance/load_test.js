@@ -1,22 +1,27 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
+// K6_SMOKE=1: short run with loose thresholds, for every PR.
+const smoke = !!__ENV.K6_SMOKE;
+
 export const options = {
-  stages: [
-    { duration: '30s', target: 20 },
-    { duration: '1m', target: 20 },
-    { duration: '30s', target: 0 },
-  ],
+  stages: smoke
+    ? [{ duration: '15s', target: 5 }]
+    : [
+        { duration: '30s', target: 20 },
+        { duration: '1m', target: 20 },
+        { duration: '30s', target: 0 },
+      ],
   thresholds: {
-    http_req_duration: ['p(95)<=2000'],
-    http_req_failed: ['rate<=0.01'],
+    http_req_duration: [smoke ? 'p(95)<=5000' : 'p(95)<=2000'],
+    http_req_failed: [smoke ? 'rate<=0.05' : 'rate<=0.01'],
   },
 };
 
 export default function () {
   const baseUrl = __ENV.FRONTEND_URL;
 
-  const res = http.get(`${baseUrl}/api/v1/resource`);
+  const res = http.get(`${baseUrl}/health.json`);
 
   check(res, { 'status is 200': (r) => r.status === 200 });
   sleep(1);

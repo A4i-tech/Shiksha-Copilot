@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ "a4i/main", "a4i/staging" ]
   workflow_dispatch:
+  schedule:
+    - cron: "30 21 * * *"
 
 jobs:
   ci-api:
@@ -125,203 +127,118 @@ jobs:
           echo "Timed out waiting for build $EXPECTED_BUILD"
           exit 1
 
-  regression-tests:
-    name: Regression Tests
-    needs: [ci-frontend]
-    if: false # disabled, tracked in A4i-tech/.github#780
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
-        with: { python-version: '3.11' }
-      - run: |
-          python -m pip install --upgrade pip
-          pip install -r tests/requirements.txt
-        name: Install dependencies
-      - name: Install Playwright browsers
-        timeout-minutes: 10
-        run: playwright install chromium
-      - name: Run Regression Tests
-        env:
-          FRONTEND_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
-          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
-          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
-        run: pytest tests/regression --csv regression_report.csv
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: regression-report
-          path: regression_report.csv
-
-  integration-backend:
-    # Needs pre-seeded superuser secrets SHIKSHA_SU_PHONE/SHIKSHA_SU_PIN to hit /api/devtools/*.
-    name: Backend Integration Tests
-    needs: [ci-backend]
-    if: false # disabled, tracked in A4i-tech/.github#780
-    concurrency:
-      group: integration-backend
-      cancel-in-progress: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run backend E2E tests against staging
-        working-directory: shiksha-website/shiksha-backend
-        env:
-          SHIKSHA_BASE_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
-          SHIKSHA_SU_PHONE: ${{ secrets.SHIKSHA_SU_PHONE }}
-          SHIKSHA_SU_PIN: ${{ secrets.SHIKSHA_SU_PIN }}
-        run: |
-          npm ci
-          npm run test:integration
-
-  performance-tests:
-    name: Performance Tests
-    needs: [ci-frontend]
-    if: false # disabled, tracked in A4i-tech/.github#780
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run k6 Load Test
-        uses: grafana/k6-action@v0.3.0
-        env:
-          FRONTEND_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}/#/auth/signin
-        with:
-          filename: tests/performance/load_test.js
-          flags: --summary-export=k6_summary.json
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: k6-summary
-          path: k6_summary.json
-
+  # The kind test jobs run only where secrets exist: not on fork PRs, and on PRs only into staging.
   accessibility-tests:
     name: Accessibility Tests
-    needs: [ci-frontend]
+    needs: [ci-api, ci-backend, ci-frontend]
     if: |
-      github.event_name == 'pull_request' && github.base_ref == 'a4i/staging' &&
-      github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+      github.event_name != 'pull_request' ||
+      (github.base_ref == 'a4i/staging' && github.event.pull_request.head.repo.full_name == github.repository)
     concurrency:
-      group: a11y-${{ github.event.pull_request.number }}
+      group: a11y-${{ github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
-    env:
-      STAGING_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
+    uses: ./.github/workflows/kind-tests.yaml
+    secrets: inherit
+    with:
+      suite: accessibility
+      mode: ${{ github.event_name == 'pull_request' && 'smoke' || 'full' }}
+
+  regression-tests:
+    name: Regression Tests
+    needs: [ci-api, ci-backend, ci-frontend]
+    if: |
+      github.event_name != 'pull_request' ||
+      (github.base_ref == 'a4i/staging' && github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/kind-tests.yaml
+    secrets: inherit
+    with:
+      suite: regression
+      mode: ${{ github.event_name == 'pull_request' && 'smoke' || 'full' }}
+
+  integration-backend:
+    name: Backend Integration Tests
+    needs: [ci-api, ci-backend, ci-frontend]
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/kind-tests.yaml
+    secrets: inherit
+    with:
+      suite: integration
+
+  performance-tests:
+    name: Performance Tests
+    needs: [ci-api, ci-backend, ci-frontend]
+    if: |
+      github.event_name != 'pull_request' ||
+      (github.base_ref == 'a4i/staging' && github.event.pull_request.head.repo.full_name == github.repository)
+    uses: ./.github/workflows/kind-tests.yaml
+    secrets: inherit
+    with:
+      suite: performance
+      mode: smoke
+
+  # Nightly load test against the shared staging cluster, compared with the previous night.
+  performance-nightly:
+    name: Nightly Load Test
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
-
-      - name: Download frontend image
-        uses: actions/download-artifact@v4
+      - uses: grafana/setup-k6-action@v1
+      - uses: actions/cache/restore@v4
         with:
-          name: frontend-image
-          path: ${{ runner.temp }}
-
-      - name: Load frontend image
-        run: gunzip -c "$RUNNER_TEMP/frontend-image.tar.gz" | docker load
-
-      # The image ships without assets/env.js; /api is proxied to the existing staging backend.
-      - name: Host frontend on the runner
+          path: k6_previous.json
+          key: k6-nightly-none
+          restore-keys: k6-nightly-
+      - name: Load test
         env:
-          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          FRONTEND_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
+        run: k6 run --summary-export=k6_summary.json tests/performance/load_test.js
+      - name: Compare p95 with the previous night
         run: |
-          host="${STAGING_URL#https://}"
-          host="${host%%/*}"
-          sed "s/STAGING_HOST/$host/g" tests/accessibility/nginx.conf > "$RUNNER_TEMP/nginx.conf"
-          printf 'window.env = { apiUrl: "/api", turnstileSiteKey: "%s" };\n' "$TURNSTILE_SITE_KEY" > "$RUNNER_TEMP/env.js"
-          docker run -d --name a11y-fe -p 8000:8000 \
-            -v "$RUNNER_TEMP/nginx.conf:/etc/nginx/nginx.conf:ro" \
-            -v "$RUNNER_TEMP/env.js:/srv/assets/env.js:ro" \
-            shiksha-frontend-local
-          for _ in $(seq 1 20); do
-            curl -sf -o /dev/null http://localhost:8000/ && exit 0
-            sleep 2
-          done
-          echo "::error::frontend never came up"
-          docker logs a11y-fe || true
-          exit 1
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+          [ -f k6_previous.json ] || { echo "no previous run to compare"; exit 0; }
+          now=$(jq '.metrics.http_req_duration["p(95)"]' k6_summary.json)
+          before=$(jq '.metrics.http_req_duration["p(95)"]' k6_previous.json)
+          echo "p95 now ${now}ms, previous ${before}ms"
+          awk -v n="$now" -v b="$before" 'BEGIN { exit !(n > b * 1.5) }' && { echo "::error::p95 is more than 1.5x the previous night"; exit 1; } || true
+      - run: cp k6_summary.json k6_previous.json
+        if: success()
+      - uses: actions/cache/save@v4
+        if: success()
         with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm ci --prefix tests/accessibility
-
-      - name: Install Playwright browsers
-        timeout-minutes: 10
-        run: npx --prefix tests/accessibility playwright install chromium --with-deps
-
-      # Fails the job (and so the PR check) on any critical violation, any page
-      # below the score threshold, or any page that could not be scanned.
-      - name: Run Accessibility Tests
-        id: a11y
-        env:
-          FRONTEND_URL: http://localhost:8000
-          TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
-          TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
-          TEST_ADMIN_PHONE: ${{ secrets.TEST_ADMIN_PHONE }}
-          TEST_ADMIN_OTP: ${{ secrets.TEST_ADMIN_OTP }}
-        run: node tests/accessibility/run-accessibility.js
-
-      - name: Upload accessibility report
-        id: report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v4
+          path: k6_previous.json
+          key: k6-nightly-${{ github.run_id }}
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: accessibility-report
-          path: tests/accessibility/results/
+          name: k6-nightly-summary
+          path: k6_summary.json
 
-      # Delete the old report comment and post fresh so the report always sits at the bottom of the PR.
-      - name: Comment report on PR
-        if: ${{ !cancelled() }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ARTIFACT_URL: ${{ steps.report.outputs.artifact-url }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-          BODY=tests/accessibility/results/summary.md
-          if [ ! -f "$BODY" ]; then
-            mkdir -p "$(dirname "$BODY")"
-            printf '## Accessibility (axe-core, WCAG 2.1 AA)\n\n**Scan did not complete**, see the workflow log.\n' > "$BODY"
-          fi
-          {
-            echo
-            if [ -n "${ARTIFACT_URL:-}" ]; then
-              echo "[Download the full HTML report]($ARTIFACT_URL), unzip and open \`accessibility-report-*.html\`."
-            else
-              echo "_Report artifact was not uploaded, see the workflow log._"
-            fi
-            echo
-            echo "<sub>a11y-report</sub>"
-          } >> "$BODY"
-
-          gh api "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --paginate \
-            --jq '.[] | select(.user.login == "github-actions[bot]")
-                      | select(.body | contains("<sub>a11y-report</sub>")) | .id' \
-            | while read -r id; do
-                echo "Removing previous report comment $id"
-                gh api -X DELETE "repos/$GITHUB_REPOSITORY/issues/comments/$id"
-              done
-
-          gh pr comment "$PR_NUMBER" --body-file "$BODY"
-
-      - name: Dump frontend container logs
-        if: failure() || cancelled()
-        run: docker logs a11y-fe --tail 100 || true
+  notify-nightly:
+    name: Notify nightly failure
+    needs: [accessibility-tests, regression-tests, integration-backend, performance-tests, performance-nightly]
+    if: ${{ always() && github.event_name == 'schedule' && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/dispatch-teams-workflow
+        with:
+          workflow-url: ${{ secrets.TEAMS_WORKFLOW_URL }}
+          heading-color: Attention
+          services: '[{"name":"Nightly tests","description":"Failed","url":"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}]'
 
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [ci-frontend, ci-api, ci-backend, health-check, cd-api-prod, cd-backend-prod, cd-frontend-prod, regression-tests, performance-tests, integration-backend]
+    needs: [ci-frontend, ci-api, ci-backend, health-check, cd-api-prod, cd-backend-prod, cd-frontend-prod, accessibility-tests, regression-tests, performance-tests, integration-backend]
     timeout-minutes: 10
     steps:
       - name: Checkout
