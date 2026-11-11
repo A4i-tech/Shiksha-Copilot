@@ -1,8 +1,10 @@
 import asyncio
 from collections import OrderedDict
+from contextlib import asynccontextmanager
 import logging
-from typing import Awaitable, Callable, Generic, TypeVar
+from typing import AsyncIterator, Awaitable, Callable, Generic, TypeVar
 
+from app.config import settings
 from app.services.rag_adapters import BaseRagAdapter, RagAdapterFactory
 from llama_index.llms.openai import OpenAIResponses
 from llama_index.embeddings.openai import OpenAIEmbedding
@@ -25,11 +27,14 @@ class RagAdapterCache(Generic[T]):
         return adapter
 
 
-    def __init__(self, builder: Callable[[str, OpenAIResponses, OpenAIEmbedding], Awaitable[T]], size: int = 32):
+    def __init__(self, builder: Callable[[str, OpenAIResponses, OpenAIEmbedding], Awaitable[T]], size: int = settings.rag_adapter_cache_size):
         self._builder = builder
+        size = size or settings.rag_adapter_cache_size
         self._size = size
         self._instances: OrderedDict[str, T] = OrderedDict()
         self._locks = [asyncio.Lock() for _ in range(size)]
+        self._retired: list[T] = []
+        self._refs: dict[int, int] = {}
 
 
     def _lock_for(self, key: str) -> asyncio.Lock:
@@ -49,13 +54,27 @@ class RagAdapterCache(Generic[T]):
         if len(self._instances) > self._size:
             oldest_key = next(iter(self._instances))
             evicted = self._instances.pop(oldest_key)
-            await evicted.cleanup()
+            if self._refs.get(id(evicted)):
+                self._retired.append(evicted)
+            else:
+                await evicted.cleanup()
         return adapter
 
 
-    async def get(self, index_path: str, completion_llm: OpenAIResponses, embedding_llm: OpenAIEmbedding) -> T:
+    @asynccontextmanager
+    async def lease(self, index_path: str, completion_llm: OpenAIResponses, embedding_llm: OpenAIEmbedding) -> AsyncIterator[T]:
         async with self._lock_for(index_path):
-            return await self._actually_get(index_path, completion_llm, embedding_llm)
+            adapter = await self._actually_get(index_path, completion_llm, embedding_llm)
+            self._refs[id(adapter)] = self._refs.get(id(adapter), 0) + 1
+        try:
+            yield adapter
+        finally:
+            self._refs[id(adapter)] -= 1
+            if not self._refs[id(adapter)]:
+                del self._refs[id(adapter)]
+                if adapter in self._retired:
+                    self._retired.remove(adapter)
+                    await adapter.cleanup()
 
 
     async def _cleanup_one(self, index_path: str):
@@ -68,4 +87,5 @@ class RagAdapterCache(Generic[T]):
     async def cleanup(self):
         paths = list(self._instances.keys())
         await asyncio.gather(*(self._cleanup_one(p) for p in paths))
-        self._instances.clear()
+        retired, self._retired = self._retired, []
+        await asyncio.gather(*(a.cleanup() for a in retired))
