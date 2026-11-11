@@ -70,15 +70,9 @@ def test_backend_payload_is_accepted():
 
 def test_payload_needs_a_plan_id():
     raw = payload([section("a")])
-    del raw["_id"]
+    del raw["lp_id"]
     with pytest.raises(ValidationError, match="lp_id"):
         steps.LessonPlanGenerationInput.model_validate(raw)
-
-
-def test_lp_id_is_accepted_in_place_of_underscore_id():
-    raw = payload([section("a")]) | {"lp_id": "plan-9"}
-    del raw["_id"]
-    assert steps.LessonPlanGenerationInput.model_validate(raw).lp_id == "plan-9"
 
 
 def test_a_chunk_payload_reads_its_text_from_either_shape():
@@ -532,7 +526,7 @@ def test_run_reports_plans_and_requires_payloads(conn):
         metadata={
             "payloads": [
                 payload([section("a")]),
-                payload([section("a")]) | {"_id": "plan-2"},
+                payload([section("a")]) | {"lp_id": "plan-2"},
             ]
         }
     )
@@ -550,7 +544,7 @@ def test_an_invalid_payload_fails_alone_and_the_other_plans_run(conn):
     ctx = SimpleNamespace(
         metadata={
             "payloads": [
-                {"_id": "bad"},
+                {"lp_id": "bad"},
                 payload([section("a")]),
             ]
         }
@@ -726,7 +720,7 @@ def test_each_plan_makes_one_plan_span_and_flushes_once(conn, monkeypatch):
     monkeypatch.setattr(steps, "get_client", lambda: fake)
     step = graph(conn)
     run_plan(step, payload([section("a"), section("b")]))
-    run_plan(step, payload([section("a")], _id="plan-2"))
+    run_plan(step, payload([section("a")], lp_id="plan-2"))
     assert fake.spans.count("Shiksha-LP") == 2
     assert fake.spans.count("section:a") == 2
     assert fake.flushes == 2

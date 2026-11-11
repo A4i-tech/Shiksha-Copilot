@@ -195,7 +195,7 @@ def test_workbook_runs_the_whole_pipeline_to_finished_plans(conn, tmp_path):
         ),
     }
     assert (
-        first["_id"]
+        first["lp_id"]
         == "Board=BSE-TG/Medium=english/Grade=6/Subject=social/Number=18/"
         "Level=SUBTOPIC/Topics=Hindu & Christian"
     )
@@ -285,7 +285,7 @@ def test_pdf_chapters_reach_the_same_payload_shape(conn):
         ["LO m", "LO r"],
     )
     assert (
-        payload["_id"]
+        payload["lp_id"]
         == "Board=BSE-TG/Medium=english/Grade=6/Subject=science/Number=7/"
         "Level=SUBTOPIC/Topics=Reflection & Mirrors"
     )

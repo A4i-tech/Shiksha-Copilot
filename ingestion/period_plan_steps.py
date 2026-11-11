@@ -20,7 +20,6 @@ from omni_ingest.core.model import Step, StepResult, StepStatus
 from omni_ingest.core.pipeline import IngestionContext, register_step
 from openpyxl import load_workbook
 from pydantic import (
-    AliasChoices,
     BaseModel,
     ConfigDict,
     Field,
@@ -229,7 +228,7 @@ class LessonPlanContent(BaseModel):
 class LessonPlanGenerationInput(BaseModel):
     user_id: str = "ADMIN"
     workflow: Workflow
-    lp_id: str = Field(validation_alias=AliasChoices("lp_id", "_id"))
+    lp_id: str
     chapter_info: ChapterInfo
     lp_level: LPLevel
     learning_outcomes: list[str]
@@ -898,7 +897,7 @@ class SectionGraph(BaseModel, Step):
             try:
                 inputs.append(LessonPlanGenerationInput.model_validate(raw))
             except ValidationError as e:
-                failed[raw["_id"]] = PlanResult(
+                failed[raw["lp_id"]] = PlanResult(
                     status=PlanStatus.FAILED, error=reason(e)
                 )
         gate = asyncio.Semaphore(self.concurrency)

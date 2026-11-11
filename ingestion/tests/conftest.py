@@ -166,7 +166,7 @@ def section(sid, deps=(), mode="gpt", fmt=None):
 
 def payload(sections, **kw):
     return {
-        "_id": "plan-1",
+        "lp_id": "plan-1",
         "workflow": {"_id": "wf", "sections": sections},
         "chapter_info": {
             "id": "ch",
