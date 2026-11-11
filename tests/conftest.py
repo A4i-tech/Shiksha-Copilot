@@ -39,7 +39,7 @@ def browser_context():
         verify_button = page.get_by_role("button", name="Verify")
         verify_button.click()
 
-        page.wait_for_url("**/dashboard")
+        page.wait_for_url("**/home")
 
         yield context
 

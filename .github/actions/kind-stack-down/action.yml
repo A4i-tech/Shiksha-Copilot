@@ -1,0 +1,33 @@
+name: Kind stack down
+description: "Dump cluster logs, then delete the kind cluster and its database. Run it with if: always()."
+
+inputs:
+  name:
+    description: Suffix that makes the log artifact name unique in the run
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Dump cluster state
+      shell: bash
+      run: |
+        run="$GITHUB_WORKSPACE/kind-tests/shiksha-kind-test/run.sh"
+        [ -x "$run" ] || exit 0
+        mkdir -p "$RUNNER_TEMP/kind-logs"
+        "$run" kubectl -n shiksha get pods,events > "$RUNNER_TEMP/kind-logs/state.txt" 2>&1 || true
+        for app in be api fe mongo; do
+          "$run" kubectl -n shiksha logs "deploy/shiksha-$app" --all-containers --tail=500 > "$RUNNER_TEMP/kind-logs/$app.log" 2>&1 || true
+        done
+
+    - uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: kind-logs-${{ inputs.name }}
+        path: ${{ runner.temp }}/kind-logs/
+
+    - name: Delete cluster
+      shell: bash
+      run: |
+        run="$GITHUB_WORKSPACE/kind-tests/shiksha-kind-test/run.sh"
+        [ -x "$run" ] && "$run" down || true
