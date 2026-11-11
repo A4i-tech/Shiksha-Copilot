@@ -23,6 +23,23 @@ import { ChartOptions } from 'chart.js';
 import { TranslateService } from '@ngx-translate/core';
 import { DropDownConfig } from 'src/app/shared/interfaces/dropdown.interface';
 
+interface PlanStyle {
+  btnColor: string;
+  headerBackground: string;
+  typeLabel: string;
+  buttonLabel: string;
+}
+
+interface RecentPlanCard extends PlanStyle {
+  isLesson: boolean;
+  id: string;
+  updatedAt: string;
+  class: string;
+  subjects: any;
+  board: any;
+  chapter: { orderNumber: number; topics: string };
+}
+
 @Component({
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
@@ -58,16 +75,20 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   recentResoucePlans: any[] = [];
 
-  recentPlans: any[] = [];
+  recentPlans: RecentPlanCard[] = [];
 
-  resourceColors: any = {
+  resourceColors: Record<'lesson' | 'resource', PlanStyle> = {
     lesson: {
       btnColor: 'bg-tertiary',
       headerBackground: 'bg-purple-100',
+      typeLabel: 'Lesson Plan',
+      buttonLabel: 'View Lesson Plan',
     },
     resource: {
       btnColor: 'bg-success',
       headerBackground: 'bg-green-100',
+      typeLabel: 'Lesson Resource',
+      buttonLabel: 'View Resource Plan',
     },
   };
 
@@ -162,6 +183,20 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.analyticsDropdown.selectedItem = this.selectedAnalytics;
   }
 
+  private toCard(entry: any, kind: 'lesson' | 'resource'): RecentPlanCard {
+    const { _id, class: cls, subjects, board, chapter } = entry[kind];
+    return {
+      ...this.resourceColors[kind],
+      isLesson: kind === 'lesson',
+      id: _id,
+      updatedAt: entry.updatedAt,
+      class: cls,
+      subjects,
+      board,
+      chapter,
+    };
+  }
+
   /**
    * Function to get recent lesson plan
    */
@@ -169,27 +204,17 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.dashboardService.getRecentLessonPlan().subscribe({
       next: (val) => {
         const response = val.data;
-        let lessonObj;
-        let resourceObj;
-        let plans = [];
+        const plans: RecentPlanCard[] = [];
         this.recentLessonPlans = response.filter((ele: any) => ele.isLesson);
         this.recentResoucePlans = response.filter((ele: any) => !ele.isLesson);
 
         if (this.recentLessonPlans.length) {
-          lessonObj = {
-            ...this.recentLessonPlans[0],
-            ...this.resourceColors['lesson'],
-          };
-          plans.push(lessonObj);
+          plans.push(this.toCard(this.recentLessonPlans[0], 'lesson'));
         }
         if (this.recentResoucePlans.length) {
-          resourceObj = {
-            ...this.recentResoucePlans[0],
-            ...this.resourceColors['resource'],
-          };
-          plans.push(resourceObj);
+          plans.push(this.toCard(this.recentResoucePlans[0], 'resource'));
         }
-        this.recentPlans = [...plans];
+        this.recentPlans = plans;
       },
       error: (err) => {
         console.log(err);
@@ -248,11 +273,11 @@ export class DashboardComponent implements OnInit, AfterViewInit {
    * Function called on view
    * @param data
    */
-  onView(data: any) {
+  onView(data: RecentPlanCard) {
     if (data.isLesson) {
-      this.router.navigate([`/content-generation/lesson-plan/${data.lesson._id}`]);
+      this.router.navigate([`/content-generation/lesson-plan/${data.id}`]);
     } else {
-      this.router.navigate([`/content-generation/resource-plan/${data.resource._id}`]);
+      this.router.navigate([`/content-generation/resource-plan/${data.id}`]);
     }
   }
 
