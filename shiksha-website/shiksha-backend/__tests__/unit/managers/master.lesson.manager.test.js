@@ -416,17 +416,19 @@ describe("MasterLessonManager", () => {
       MasterSubject = require("../../../models/master.subject.model");
 
       jest.spyOn(Chapter, "find").mockReturnValue({
-        lean: jest.fn().mockResolvedValue([
-          {
-            _id: "507f1f77bcf86cd799439011",
-            topics: "Algebra",
-            standard: 10,
-            board: "CBSE",
-            medium: "English",
-            subjectId: "507f1f77bcf86cd799439055",
-            subTopics: [],
-          },
-        ]),
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([
+            {
+              _id: "507f1f77bcf86cd799439011",
+              topics: "Algebra",
+              standard: 10,
+              board: "CBSE",
+              medium: "English",
+              subjectId: "507f1f77bcf86cd799439055",
+              subTopics: [],
+            },
+          ]),
+        }),
       });
 
       jest.spyOn(MasterSubject, "find").mockReturnValue({
@@ -454,6 +456,22 @@ describe("MasterLessonManager", () => {
 
     afterEach(() => {
       jest.restoreAllMocks();
+    });
+
+    it("loads only the chapter named by an id, with a projection, from live chapters and drafts", async () => {
+      await manager.bulkUpload([validLessonPlan], true);
+
+      expect(Chapter.find).toHaveBeenCalledWith({
+        _id: { $in: ["507f1f77bcf86cd799439011"] },
+        $or: [{ isDeleted: { $ne: true } }, { status: "draft" }],
+      });
+      expect(Chapter.find.mock.results[0].value.select).toHaveBeenCalledWith("board medium standard topics subjectId subTopics");
+    });
+
+    it("scans the accepting chapters, still with a projection, when a chapter is named by its title", async () => {
+      await manager.bulkUpload([{ ...validLessonPlan, chapterId: "Algebra" }], true);
+
+      expect(Chapter.find).toHaveBeenCalledWith({ $or: [{ isDeleted: { $ne: true } }, { status: "draft" }] });
     });
 
     it("should save valid lesson plans and report the inserted ids", async () => {
@@ -485,7 +503,7 @@ describe("MasterLessonManager", () => {
     });
 
     it("should flag a chapterId that matches no chapter", async () => {
-      Chapter.find = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
+      Chapter.find = jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }) });
 
       const result = await manager.bulkUpload([validLessonPlan], false);
 
@@ -731,6 +749,23 @@ describe("MasterLessonManager", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toMatch(/not found or has been deleted/);
+    });
+  });
+
+  describe("adminUpdate with draftOnly", () => {
+    it("filters on draft status only and answers with a reload message when nothing matches", async () => {
+      const MasterLesson = require("../../../models/master.lesson.model");
+      const plan = { _id: "lesson-1", chapterId: "c1", isAll: false, subTopics: ["a"], isDeleted: true, status: "draft" };
+      jest.spyOn(MasterLesson, "findById").mockReturnValue({ lean: jest.fn().mockResolvedValue(plan) });
+      jest.spyOn(MasterLesson, "find").mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }),
+      });
+      const update = jest.spyOn(MasterLesson, "findOneAndUpdate").mockResolvedValue(null);
+
+      const result = await manager.adminUpdate({ params: { id: "lesson-1" }, body: { subTopics: ["b"] }, draftOnly: true });
+
+      expect(update.mock.calls[0][0]).toEqual({ _id: "lesson-1", status: "draft" });
+      expect(result.message).toMatch(/Reload the page/);
     });
   });
 

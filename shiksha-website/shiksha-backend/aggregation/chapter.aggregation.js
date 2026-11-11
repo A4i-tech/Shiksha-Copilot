@@ -39,6 +39,29 @@ class ChapterAggregation {
     }
   }
 
+  getChapterExport(limit, filter, sort) {
+    return Chapter.aggregate([
+      { $lookup: { from: "mastersubjects", localField: "subjectId", foreignField: "_id", as: "subject" } },
+      { $match: { isDeleted: false, ...filter } },
+      { $sort: sort },
+      { $limit: limit },
+      {
+        $project: {
+          board: 1,
+          standard: 1,
+          medium: 1,
+          topics: 1,
+          assignedTo: 1,
+          status: 1,
+          reviewComment: 1,
+          submittedAt: 1,
+          updatedAt: 1,
+          subjectName: { $arrayElemAt: ["$subject.subjectName", 0] },
+        },
+      },
+    ]);
+  }
+
   async getChapterBySemester(filter) {
     try {
       let pipeline = [

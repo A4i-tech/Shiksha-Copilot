@@ -14,7 +14,7 @@ const MasterLessonController = require("../controllers/master.lesson.controller.
 const MasterResourceController = require("../controllers/master.resource.controller.js");
 const QuestionController = require("../controllers/question.controller.js");
 
-const { validateChapterUpdate } = require("../validations/chapter.validation.js");
+const { validateChapterUpdate, validateAssign, validateRequestChanges } = require("../validations/chapter.validation.js");
 const validateRequest = require("../validations/common.validation.js");
 const {
 	bulkUploadSchema,
@@ -100,7 +100,35 @@ router.post(
 	asyncMiddleware(chapterController.adminCreate.bind(chapterController))
 );
 
+// Registered before the :id routes so "export" is never matched as an :id.
+router.get(
+	"/admin/content/chapters/export",
+	asyncMiddleware(chapterController.exportCsv.bind(chapterController))
+);
+
 registerEntity("chapters", chapterController, validateChapterUpdate);
+
+router.get(
+	"/admin/content/curators",
+	asyncMiddleware(chapterController.curators.bind(chapterController))
+);
+
+router.post(
+	"/admin/content/chapters/:id/assign",
+	validateAssign,
+	asyncMiddleware(chapterController.assign.bind(chapterController))
+);
+
+router.post(
+	"/admin/content/chapters/:id/unassign",
+	asyncMiddleware(chapterController.unassign.bind(chapterController))
+);
+
+router.post(
+	"/admin/content/chapters/:id/request-changes",
+	validateRequestChanges,
+	asyncMiddleware(chapterController.requestChanges.bind(chapterController))
+);
 
 // A record under review approves in one atomic step; going through restore + update
 // would fail, since restore only accepts an approved-then-deleted record.
@@ -146,6 +174,11 @@ router.post(
 registerEntity("resources", masterResourceController, validateMasterResourceUpdate);
 
 router.post(
+	"/admin/content/resources/:id/approve",
+	asyncMiddleware(masterResourceController.approve.bind(masterResourceController))
+);
+
+router.post(
 	"/admin/content/questions/bulk-upload",
 	chapterUploadBody,
 	validateQuestionBulkUpload,
@@ -159,5 +192,10 @@ router.post(
 );
 
 registerEntity("questions", questionController, validateQuestionContentUpdate);
+
+router.post(
+	"/admin/content/questions/:id/approve",
+	asyncMiddleware(questionController.approve.bind(questionController))
+);
 
 module.exports = router;

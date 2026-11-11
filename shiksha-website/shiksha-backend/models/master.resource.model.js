@@ -75,6 +75,7 @@ const lessonResourceMasterSchema = new mongoose.Schema({
 });
 
 lessonResourceMasterSchema.index({ isDeleted: 1, status: 1, createdBy: 1 });
+lessonResourceMasterSchema.index({ chapterId: 1, isDeleted: 1, status: 1 });
 
 // Unique index; autoIndex off, run syncIndexes() during deploy after existing duplicates are cleaned up.
 lessonResourceMasterSchema.index(

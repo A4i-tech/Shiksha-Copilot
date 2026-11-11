@@ -948,6 +948,32 @@
   "User": "User",
   "Phone Number": "Phone Number",
   "Export": "Export",
+  "Export CSV": "Export CSV",
+  "Assigned": "Assigned",
+  "Not assigned": "Not assigned",
+  "Assign to curator": "Assign to curator",
+  "Unassign": "Unassign",
+  "Request changes": "Request changes",
+  "Assigned curator": "Assigned curator",
+  "Curator": "Curator",
+  "Select a curator": "Select a curator",
+  "Comment for the curator": "Comment for the curator",
+  "Curation": "Curation",
+  "Admin review comment": "Admin review comment",
+  "Assignment history": "Assignment history",
+  "Assigned at": "Assigned at",
+  "Unassigned at": "Unassigned at",
+  "Current": "Current",
+  "Ready for review": "Ready for review",
+  "Approved": "Approved",
+  "Chapter assigned successfully": "Chapter assigned successfully",
+  "Chapter unassigned successfully": "Chapter unassigned successfully",
+  "Chapter sent back to its curator": "Chapter sent back to its curator",
+  "Assign": "Assign",
+  "Request changes on": "Request changes on",
+  "Pick the curator who writes the content for this chapter. A curator sees only the chapters assigned to them.": "Pick the curator who writes the content for this chapter. A curator sees only the chapters assigned to them.",
+  "The chapter has no curator after this. The drafts that the curator saved stay.": "The chapter has no curator after this. The drafts that the curator saved stay.",
+  "The chapter goes back to its curator as a draft. Tell the curator what to change.": "The chapter goes back to its curator as a draft. Tell the curator what to change.",
   "Role assignments": "Role assignments",
   "Role": "Role",
   "Select role": "Select role",
@@ -1308,5 +1334,78 @@
       "value": "General Science"
     },
     "Science"
-  ]
+  ],
+  "Content Curation": "Content Curation",
+  "Curate Lesson Plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Curate Period Plan"
+    },
+    "Curate Lesson Plan"
+  ],
+  "Curate Lesson Resource": "Curate Lesson Resource",
+  "Loading chapters...": "Loading chapters...",
+  "No chapters in this group.": "No chapters in this group.",
+  "Back": "Back",
+  "Subtopics": "Subtopics",
+  "A subtopic is done when a lesson plan of this chapter lists it.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "A subtopic is done when a period plan of this chapter lists it."
+    },
+    "A subtopic is done when a lesson plan of this chapter lists it."
+  ],
+  "Done": "Done",
+  "Not done": "Not done",
+  "Submit for approval": "Submit for approval",
+  "Submitting...": "Submitting...",
+  "Add a lesson plan for every subtopic to turn on the submit button.": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Add a period plan for every subtopic to turn on the submit button."
+    },
+    "Add a lesson plan for every subtopic to turn on the submit button."
+  ],
+  "Lesson resources": "Lesson resources",
+  "No records yet.": "No records yet.",
+  "After you submit, you cannot change this chapter until an admin approves it or sends it back.": "After you submit, you cannot change this chapter until an admin approves it or sends it back.",
+  "The chapter is under review. You can read this record, but you cannot change it.": "The chapter is under review. You can read this record, but you cannot change it.",
+  "This chapter is not available to you. Open the chapter from your dashboard, then try again.": "This chapter is not available to you. Open the chapter from your dashboard, then try again.",
+  "Changes requested": "Changes requested",
+  "The chapter is marked approved and becomes visible to teachers and students. The lesson plans, resources and questions that are under review also go live.": "The chapter is marked approved and becomes visible to teachers and students. The lesson plans, resources and questions that are under review also go live.",
+  "Pick a curator to continue": "Pick a curator to continue",
+  "Enter a comment to continue": "Enter a comment to continue",
+  "Add lesson plan": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Add period plan"
+    },
+    "Add lesson plan"
+  ],
+  "Add lesson resource": "Add lesson resource",
+  "Add question": "Add question",
+  "Pick one of your assigned chapters. The curation form opens for it.": "Pick one of your assigned chapters. The curation form opens for it.",
+  "Search content": "Search content",
+  "Under review": "Under review",
+  "Save as draft": "Save as draft",
+  "View Chapter": "View Chapter",
+  "My chapters": "My chapters",
+  "Write the content of the chapters that an admin assigned to you, then send each finished chapter for approval": "Write the content of the chapters that an admin assigned to you, then send each finished chapter for approval",
+  "Write the 5E lesson plan of a period for an assigned chapter": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "Write the 5E period plan for an assigned chapter"
+    },
+    "Write the 5E lesson plan of a period for an assigned chapter"
+  ],
+  "Add activities, real-world scenarios and questions for an assigned chapter": "Add activities, real-world scenarios and questions for an assigned chapter",
+  "See which subtopics still need a lesson plan, and submit a complete chapter for approval": [
+    {
+      "rule": "state == 'Telangana'",
+      "value": "See which subtopics still need a period plan, and submit a complete chapter for approval"
+    },
+    "See which subtopics still need a lesson plan, and submit a complete chapter for approval"
+  ],
+  "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.": "The chapters that an admin assigned to you. Open a chapter to write its content and send it for approval.",
+  "{{done}} of {{total}} subtopics done": "{{done}} of {{total}} subtopics done"
 }

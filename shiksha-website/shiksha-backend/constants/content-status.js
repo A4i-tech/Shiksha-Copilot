@@ -6,4 +6,9 @@ const CONTENT_STATUS = {
 
 const CONTENT_STATUSES = Object.values(CONTENT_STATUS);
 
-module.exports = { CONTENT_STATUS, CONTENT_STATUSES };
+// Bulk upload only. Under-review chapters refuse content.
+const CHAPTER_ACCEPTS_CONTENT = { $or: [{ isDeleted: { $ne: true } }, { status: CONTENT_STATUS.DRAFT }] };
+
+const CONTENT_CURATOR_ROLE_ID = "7368696b7368615f63637572";
+
+module.exports = { CONTENT_STATUS, CONTENT_STATUSES, CONTENT_CURATOR_ROLE_ID, CHAPTER_ACCEPTS_CONTENT };

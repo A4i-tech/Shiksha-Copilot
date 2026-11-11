@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { ToastrModule } from 'ngx-toastr';
+import { ToastrModule, ToastrService } from 'ngx-toastr';
 import {
   HttpClientTestingModule,
   HttpTestingController,
@@ -33,6 +33,7 @@ describe('ContentEditComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
+            snapshot: { data: {} },
             paramMap: of({
               get: (key: string) => (key === 'entity' ? 'chapters' : 'new'),
             }),
@@ -86,6 +87,7 @@ describe('ContentEditComponent (existing record)', () => {
         {
           provide: ActivatedRoute,
           useValue: {
+            snapshot: { data: {} },
             paramMap: of({
               get: (key: string) => (key === 'entity' ? 'chapters' : recordId),
             }),
@@ -148,5 +150,120 @@ describe('ContentEditComponent (existing record)', () => {
     component.save();
 
     httpMock.expectNone((r) => r.method === 'PUT');
+  });
+});
+
+describe('ContentEditComponent (curator mode)', () => {
+  let component: ContentEditComponent;
+  let fixture: ComponentFixture<ContentEditComponent>;
+  let httpMock: HttpTestingController;
+
+  const routeParams: { [key: string]: string } = { entity: 'lesson-plans', chapterId: 'ch-1' };
+
+  function setup(recordId: string) {
+    TestBed.configureTestingModule({
+      imports: [
+        RouterTestingModule,
+        ToastrModule.forRoot(),
+        HttpClientTestingModule,
+        TranslateModule.forRoot(),
+        ContentEditComponent,
+      ],
+      providers: [
+        DatePipe,
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { data: { curatorMode: true } },
+            paramMap: of({ get: (key: string) => (key === 'id' ? recordId : routeParams[key]) }),
+          },
+        },
+      ],
+      schemas: [NO_ERRORS_SCHEMA, CUSTOM_ELEMENTS_SCHEMA],
+    });
+    fixture = TestBed.createComponent(ContentEditComponent);
+    component = fixture.componentInstance;
+    httpMock = TestBed.inject(HttpTestingController);
+    spyOn(TestBed.inject(Router), 'navigate');
+    fixture.detectChanges();
+  }
+
+  function flushChapter(status: string) {
+    const req = httpMock.expectOne((r) => r.url.endsWith('/curator/content/chapters'));
+    expect(req.request.params.get('filter[_id]')).toBe('ch-1');
+    req.flush({
+      data: {
+        results: [
+          { _id: 'ch-1', status, topics: 'Forces', orderNumber: 2, board: 'CBSE', medium: 'english', standard: 8, subject: [{ subjectName: 'Science' }] },
+        ],
+      },
+    });
+  }
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+
+  it('hides the fields that the chapter owns and shows one Save as draft button', () => {
+    setup('new');
+    flushChapter('draft');
+    fixture.detectChanges();
+
+    const fields = component.visibleFields.map((field) => field.field);
+    ['chapterId', 'class', 'board', 'medium', 'subject'].forEach((field) => expect(fields).not.toContain(field));
+    ['name', 'semester', 'teachingModel', 'subTopics', 'sections'].forEach((field) => expect(fields).toContain(field));
+
+    const buttons = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('form button')).map((button) =>
+      button.textContent!.trim()
+    );
+    expect(buttons).toEqual(['Cancel', 'Save as draft']);
+  });
+
+  it('shows one summary line of the chapter and no admin copy', () => {
+    setup('new');
+    flushChapter('draft');
+    fixture.detectChanges();
+
+    const details: string = fixture.nativeElement.querySelector('[data-testid="chapter-details"]').textContent;
+    ['Forces', 'CBSE', 'english', 'Class 8', 'Science'].forEach((text) => expect(details).toContain(text));
+    expect(fixture.nativeElement.textContent).not.toContain('passes the same check');
+  });
+
+  it('adds the chapter of the route to a new record and sends it to the curator route', () => {
+    setup('new');
+    flushChapter('draft');
+    component.formValues['name'] = 'Plan one';
+    component.formValues['semester'] = '1';
+
+    component.save();
+
+    const req = httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'));
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.chapterId).toBe('ch-1');
+    req.flush({ success: true });
+  });
+
+  it('goes back to the chapter page when the record is not in the list of the chapter', () => {
+    setup('lp-gone');
+    const errorSpy = spyOn(TestBed.inject(ToastrService), 'error');
+    flushChapter('draft');
+    httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans')).flush({ data: { results: [] } });
+
+    expect(errorSpy).toHaveBeenCalled();
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/curation/chapters', 'ch-1']);
+    expect(component.record).toBeNull();
+  });
+
+  it('is read-only when the chapter is under review', () => {
+    setup('lp-1');
+    flushChapter('under_review');
+    const recordReq = httpMock.expectOne((r) => r.url.endsWith('/curator/content/lesson-plans'));
+    expect(recordReq.request.params.get('includeDeleted')).toBe('4');
+    expect(recordReq.request.params.get('filter[_id]')).toBe('lp-1');
+    recordReq.flush({ data: { results: [{ _id: 'lp-1', status: 'under_review', name: 'Plan one' }] } });
+    fixture.detectChanges();
+
+    expect(component.isReadonly).toBeTrue();
+    expect(fixture.nativeElement.querySelector('button[type="submit"]')).toBeNull();
   });
 });

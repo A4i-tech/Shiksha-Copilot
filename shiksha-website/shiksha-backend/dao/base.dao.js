@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const AppError = require("../helper/app.error");
 const { CONTENT_STATUS } = require("../constants/content-status");
 
+const DRAFT_OR_REVIEW = [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW];
+
 class BaseDao {
 	constructor(model) {
 		this.Model = model;
@@ -109,7 +111,8 @@ class BaseDao {
 		id,
 		updates,
 		session = null,
-		allowDeletedStatusUpdate = false
+		allowDeletedStatusUpdate = false,
+		draftOnly = false
 	) {
 		if (!id || !mongoose.Types.ObjectId.isValid(id)) {
 			throw new Error("Invalid ID for update operation");
@@ -121,10 +124,17 @@ class BaseDao {
 			allowDeletedStatusUpdate &&
 			Object.keys(updates).length === 1 &&
 			Object.prototype.hasOwnProperty.call(updates, "status") &&
-			[CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW].includes(updates.status);
+			DRAFT_OR_REVIEW.includes(updates.status);
 		const result = await this.Model.findOneAndUpdate(
-			statusOnlyTransition
-				? { _id: id, status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } }
+			draftOnly
+				? { _id: id, isDeleted: true, status: CONTENT_STATUS.DRAFT }
+				: allowDeletedStatusUpdate
+				? {
+						_id: id,
+						...(statusOnlyTransition
+							? { status: { $in: DRAFT_OR_REVIEW } }
+							: { $or: [{ isDeleted: { $ne: true } }, { status: { $in: DRAFT_OR_REVIEW } }] }),
+					}
 				: { _id: id, isDeleted: { $ne: true } },
 			{
 				$set: updates,
@@ -136,7 +146,9 @@ class BaseDao {
 			}
 		);
 		if (!result) {
-			throw new Error("Record not found or has been deleted");
+			throw draftOnly
+				? new AppError("This record changed while you were editing it. Reload the page and try again.", 409)
+				: new AppError("Record not found or has been deleted. Reload the list and try again.", 404);
 		}
 		return result;
 	}

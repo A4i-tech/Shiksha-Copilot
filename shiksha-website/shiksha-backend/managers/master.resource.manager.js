@@ -7,6 +7,7 @@ const Chapter = require("../models/chapter.model");
 const MasterResource = require("../models/master.resource.model");
 const MasterSubjectDao = require("../dao/master.subject.dao");
 const { checkRow } = require("../validations/master.resource.bulk.validation");
+const { CHAPTER_ACCEPTS_CONTENT } = require("../constants/content-status");
 const { buildIdOrNameResolver } = require("../helper/id.or.name.resolver");
 const { subjectRegex, titleRegex, mediumRegex, boardRegex, standardRegex, orderNumberRegex } = require("../helper/data.helper");
 const formatApiReponse = require("../helper/response");
@@ -36,9 +37,7 @@ class MasterResourceManager extends BaseManager {
 			}
 
 			// chapterId can be a chapter _id or its topics, resolved by board, medium and class.
-			const allChapters = await Chapter.find({
-				isDeleted: { $ne: true },
-			})
+			const allChapters = await Chapter.find(CHAPTER_ACCEPTS_CONTENT)
 				.select("board medium standard topics")
 				.lean();
 
