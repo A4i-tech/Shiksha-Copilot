@@ -1,6 +1,8 @@
 const express = require("express");
+const Joi = require("joi");
 const router = express.Router();
 
+const validateRequest = require("../validations/common.validation.js");
 const asyncMiddleware = require("../middlewares/asyncMiddleware.js");
 const {
 	isAuthenticated,
@@ -34,6 +36,8 @@ const {
 	validateQuestionContentUpdate,
 } = require("../validations/question.content.validation.js");
 
+const validateListLimit = validateRequest(Joi.object({ limit: Joi.number().integer().min(1).max(999).required() }).unknown(true), "query");
+
 const chapterController = new ChapterController();
 const masterLessonController = new MasterLessonController();
 const masterResourceController = new MasterResourceController();
@@ -61,6 +65,7 @@ const questionFields = (chapter, subject) => ({
 
 router.get(
 	"/curator/content/chapters",
+	validateListLimit,
 	scopeChapterList,
 	asyncMiddleware(chapterController.getAll.bind(chapterController))
 );
@@ -74,6 +79,7 @@ router.post(
 function registerChild(segment, controller, Model, updateValidator, fieldsOf) {
 	router.get(
 		`/curator/content/${segment}`,
+		validateListLimit,
 		scopeChildList,
 		asyncMiddleware(controller.getAll.bind(controller))
 	);

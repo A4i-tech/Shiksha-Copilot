@@ -46,6 +46,7 @@ class BaseManager {
 	}
 
 	async adminUpdate(req, allowDeletedStatusUpdate = false) {
+		if (typeof this._liveSiblings === "function") return this._checkedAdminUpdate(req);
 		try {
 			let data = await this.dao.adminUpdate(
 				req.params?.id,
@@ -131,6 +132,7 @@ class BaseManager {
 	}
 
 	async approve(req) {
+		if (typeof this._liveSiblings === "function") return this._checkedApprove(req);
 		const data = await this.dao.Model.findOneAndUpdate(
 			{ _id: req.params.id, isDeleted: true, status: CONTENT_STATUS.UNDER_REVIEW },
 			{ $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } },
@@ -149,8 +151,124 @@ class BaseManager {
 	}
 
 	async activate(req) {
+		if (typeof this._liveSiblings === "function") return this._checkedActivate(req);
 		let data = await this.dao.activate(req.params.id);
 		return formatApiReponse(true, "School is activated!", data);
+	}
+
+	// Template for managers that define _liveSiblings. Hooks: _model, _entityName, _describe,
+	// _describeConflict, _conflictHint, _conflictKeyFns, _approveTransition, optional _honorsDraftOnly.
+	async _findConflict(record) {
+		const existing = await this._liveSiblings(record);
+		return this.findLiveConflict(record, existing, this._conflictKeyFns());
+	}
+
+	_capitalize(text) {
+		return text.charAt(0).toUpperCase() + text.slice(1);
+	}
+
+	// Only a draft or under-review record is editable: an approved one would let a change skip review.
+	async _checkedAdminUpdate(req) {
+		try {
+			const current = await this._model().findById(req.params.id).lean();
+			if (!current) return formatApiReponse(false, "Record not found", null);
+
+			const updates = req.body;
+			const merged = { ...current, ...updates };
+			const conflict = await this._findConflict(merged);
+
+			if (conflict) {
+				return formatApiReponse(
+					false,
+					`Saving ${this._describe(merged)} would duplicate ${this._describeConflict(conflict)}. ${this._conflictHint}`,
+					null
+				);
+			}
+
+			const draftOnly = this._honorsDraftOnly && req.draftOnly;
+			const data = await this._model().findOneAndUpdate(
+				{ _id: current._id, status: draftOnly ? CONTENT_STATUS.DRAFT : { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } },
+				{ $set: updates },
+				{ new: true, runValidators: true }
+			);
+
+			if (!data) {
+				return formatApiReponse(false, draftOnly ? "This record changed while you were editing it. Reload the page and try again." : "Record not found or has been deleted", null);
+			}
+
+			return formatApiReponse(true, "Updated successfully!", data);
+		} catch (err) {
+			console.error("adminUpdate failed:", err);
+			return formatApiReponse(false, err?.message, null);
+		}
+	}
+
+	// Another record can take this one's identity while it sits deleted.
+	async _checkedActivate(req) {
+		try {
+			const record = await this._model().findById(req.params.id).lean();
+			if (!record) return formatApiReponse(false, "Record not found", null);
+
+			if (!this.isGenuinelyDeleted(record)) {
+				return formatApiReponse(
+					false,
+					`${this._capitalize(this._describe(record))} is not a deleted, approved ${this._entityName}, so it cannot be restored.`,
+					null
+				);
+			}
+
+			const conflict = await this._findConflict(record);
+
+			if (conflict) {
+				return formatApiReponse(
+					false,
+					`Restoring ${this._describe(record)} would duplicate ${this._describeConflict(conflict)}. Change or remove that ${this._entityName} first.`,
+					null
+				);
+			}
+
+			const data = await this.dao.activate(req.params.id);
+			return formatApiReponse(true, `${this._capitalize(this._entityName)} restored successfully!`, data);
+		} catch (err) {
+			console.error("activate failed:", err);
+			return formatApiReponse(false, err?.message, null);
+		}
+	}
+
+	// A ready-for-review record is approved in one atomic transition: restore only accepts an already-approved record.
+	async _checkedApprove(req) {
+		const record = await this._model().findById(req.params.id).lean();
+		if (!record) return formatApiReponse(false, "Record not found", null);
+
+		if (!(record.isDeleted === true && record.status === CONTENT_STATUS.UNDER_REVIEW)) {
+			return formatApiReponse(
+				false,
+				`${this._capitalize(this._describe(record))} is not ready for review, so it cannot be approved.`,
+				null
+			);
+		}
+
+		const conflict = await this._findConflict(record);
+
+		if (conflict) {
+			return formatApiReponse(
+				false,
+				`Approving ${this._describe(record)} would duplicate ${this._describeConflict(conflict)}. Change or remove that ${this._entityName} first.`,
+				null
+			);
+		}
+
+		const data = await this._approveTransition(record);
+
+		if (!data) {
+			return formatApiReponse(
+				false,
+				`${this._capitalize(this._describe(record))} changed before the approval finished. Reload and try again.`,
+				null
+			);
+		}
+
+		return formatApiReponse(true, `${this._capitalize(this._entityName)} approved successfully!`, data);
 	}
 }
 

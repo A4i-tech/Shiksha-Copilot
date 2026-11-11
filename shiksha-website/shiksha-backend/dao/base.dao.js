@@ -146,11 +146,9 @@ class BaseDao {
 			}
 		);
 		if (!result) {
-			throw new Error(
-				draftOnly
-					? "This record changed while you were editing it. Reload the page and try again."
-					: "Record not found or has been deleted"
-			);
+			throw draftOnly
+				? new AppError("This record changed while you were editing it. Reload the page and try again.", 409)
+				: new AppError("Record not found or has been deleted. Reload the list and try again.", 404);
 		}
 		return result;
 	}

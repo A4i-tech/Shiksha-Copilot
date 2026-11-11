@@ -50,7 +50,7 @@ const closeOpenAssignment = (now) => ({
 });
 
 const draftOnly = (id) => ({ _id: id, isDeleted: true, status: CONTENT_STATUS.DRAFT });
-const normalize = (text) => String(text).trim().toLowerCase();
+const normalize = (text) => text.trim().toLowerCase();
 const timestamp = (date) => (date ? new Date(date).toISOString() : "");
 // A leading quote stops Excel from running a cell that starts with = + - or @ as a formula.
 const safeCell = (value) => {
@@ -58,17 +58,17 @@ const safeCell = (value) => {
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
 };
 
+const CURATION_LABELS = { [CONTENT_STATUS.APPROVED]: "Approved", [CONTENT_STATUS.UNDER_REVIEW]: "Submitted" };
+const APPROVAL_LABELS = { [CONTENT_STATUS.APPROVED]: "Approved", [CONTENT_STATUS.UNDER_REVIEW]: "Pending approval", [CONTENT_STATUS.DRAFT]: "Not submitted" };
+
+// A draft chapter has no status label of its own, so its label comes from the review comment and the assignee.
 function curationStatus(chapter) {
-  if (chapter.status === CONTENT_STATUS.APPROVED) return "Approved";
-  if (chapter.status === CONTENT_STATUS.UNDER_REVIEW) return "Submitted";
+  if (CURATION_LABELS[chapter.status]) return CURATION_LABELS[chapter.status];
   if (chapter.reviewComment?.text) return "Changes requested";
   return chapter.assignedTo ? "Assigned" : "Not assigned";
 }
 
-function approvalStatus(chapter) {
-  if (chapter.status === CONTENT_STATUS.APPROVED) return "Approved";
-  return chapter.status === CONTENT_STATUS.UNDER_REVIEW ? "Pending approval" : "Not submitted";
-}
+const approvalStatus = (chapter) => APPROVAL_LABELS[chapter.status];
 
 /** @extends {BaseManager<ChapterDao>} */
 class ChapterManager extends BaseManager {
@@ -429,45 +429,6 @@ class ChapterManager extends BaseManager {
     }
   }
 
-  // Editing runs the same identity/order check as an upload, and only ever touches a
-  // draft or under-review chapter: an approved chapter is not directly editable (it
-  // would let a change skip review), and a genuinely deleted one is not editable either.
-  async adminUpdate(req) {
-    try {
-      const current = await Chapter.findById(req.params.id).lean();
-      if (!current) return formatApiReponse(false, "Record not found", null);
-
-      const updates = req.body;
-      const merged = { ...current, ...updates };
-
-      const existing = await this._liveSiblings(merged);
-      const conflict = this.findLiveConflict(merged, existing, this._conflictKeyFns());
-
-      if (conflict) {
-        return formatApiReponse(
-          false,
-          `Saving "${merged.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change the name or order number.`,
-          null
-        );
-      }
-
-      const data = await Chapter.findOneAndUpdate(
-        { _id: current._id, status: { $in: [CONTENT_STATUS.DRAFT, CONTENT_STATUS.UNDER_REVIEW] } },
-        { $set: updates },
-        { new: true, runValidators: true }
-      );
-
-      if (!data) {
-        return formatApiReponse(false, "Record not found or has been deleted", null);
-      }
-
-      return formatApiReponse(true, "Updated successfully!", data);
-    } catch (err) {
-      console.error("adminUpdate failed:", err);
-      return formatApiReponse(false, err?.message, null);
-    }
-  }
-
   // Existing chapters that could conflict with `chapter` on name or order number,
   // scoped to the same subject.
   async _liveSiblings(chapter) {
@@ -486,80 +447,31 @@ class ChapterManager extends BaseManager {
     ];
   }
 
-  // Restore runs the same identity/order check as an upload, because another chapter
-  // can take this one's name or order number while it sits deleted.
-  async activate(req) {
-    try {
-      const chapter = await Chapter.findById(req.params.id).lean();
-      if (!chapter) return formatApiReponse(false, "Record not found", null);
-
-      if (!this.isGenuinelyDeleted(chapter)) {
-        return formatApiReponse(
-          false,
-          `"${chapter.topics}" is not a deleted, approved chapter, so it cannot be restored.`,
-          null
-        );
-      }
-
-      const existing = await this._liveSiblings(chapter);
-      const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
-
-      if (conflict) {
-        return formatApiReponse(
-          false,
-          `Restoring "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
-          null
-        );
-      }
-
-      const data = await this.dao.activate(req.params.id);
-      return formatApiReponse(true, "Chapter restored successfully!", data);
-    } catch (err) {
-      console.error("activate failed:", err);
-      return formatApiReponse(false, err?.message, null);
-    }
+  _model() {
+    return Chapter;
   }
 
-  // Approving a chapter that is ready for review is a single atomic transition, because
-  // going through restore + a separate status update fails: restore only accepts an
-  // already-approved chapter, which a ready-for-review chapter is not yet.
-  async approve(req) {
-    const chapter = await Chapter.findById(req.params.id).lean();
-    if (!chapter) return formatApiReponse(false, "Record not found", null);
+  get _entityName() {
+    return "chapter";
+  }
 
-    if (!(chapter.isDeleted === true && chapter.status === CONTENT_STATUS.UNDER_REVIEW)) {
-      return formatApiReponse(
-        false,
-        `"${chapter.topics}" is not ready for review, so it cannot be approved.`,
-        null
-      );
-    }
+  get _conflictHint() {
+    return "Change the name or order number.";
+  }
 
-    const existing = await this._liveSiblings(chapter);
-    const conflict = this.findLiveConflict(chapter, existing, this._conflictKeyFns());
+  _describe(chapter) {
+    return `"${chapter.topics}"`;
+  }
 
-    if (conflict) {
-      return formatApiReponse(
-        false,
-        `Approving "${chapter.topics}" would duplicate the chapter "${conflict.topics}" (${conflict._id}). Change or remove that chapter first.`,
-        null
-      );
-    }
+  _describeConflict(chapter) {
+    return `the chapter "${chapter.topics}" (${chapter._id})`;
+  }
 
-    const data = await this._moveChapter(
+  _approveTransition(chapter) {
+    return this._moveChapter(
       { _id: chapter._id, status: CONTENT_STATUS.UNDER_REVIEW, isDeleted: true },
       { $set: { status: CONTENT_STATUS.APPROVED, isDeleted: false } }
     );
-
-    if (!data) {
-      return formatApiReponse(
-        false,
-        `"${chapter.topics}" changed before the approval finished. Reload and try again.`,
-        null
-      );
-    }
-
-    return formatApiReponse(true, "Chapter approved successfully!", data);
   }
 
   // One transaction: a failed child write must roll the chapter back too.

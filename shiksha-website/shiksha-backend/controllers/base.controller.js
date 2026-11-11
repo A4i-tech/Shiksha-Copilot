@@ -5,11 +5,6 @@ const escapeRegExp = require("lodash/escapeRegExp");
 const { CONTENT_STATUS } = require("../constants/content-status");
 const ObjectId = mongoose.Types.ObjectId;
 
-const ASSIGNED_FILTERS = new Map([
-	["assigned", { $ne: null }],
-	["unassigned", null],
-]);
-
 /**
  * @template TManager
  */
@@ -66,8 +61,8 @@ class BaseController {
 			}
 		}
 		// An explicit assignedTo wins, so the curator scope cannot be widened by `assigned`.
-		if (this.hasContentStatus && !transformedFilter.assignedTo && ASSIGNED_FILTERS.has(assigned)) {
-			transformedFilter.assignedTo = ASSIGNED_FILTERS.get(assigned);
+		if (this.hasContentStatus && !transformedFilter.assignedTo && (assigned === "assigned" || assigned === "unassigned")) {
+			transformedFilter.assignedTo = assigned === "assigned" ? { $ne: null } : null;
 		}
 		const mergedFilter = intersectFilters(transformedFilter, searchFilter);
 
