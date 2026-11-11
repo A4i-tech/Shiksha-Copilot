@@ -12,6 +12,7 @@ const QuestionBankConfiguration = require("../models/question.bank.config.model"
 const Classes = require("../models/school.class.model")
 const Chapters = require("../models/chapter.model")
 const Schools = require("../models/school.model")
+const RegeneratedLessonResource = require("../models/regenerate.lesson.resource.model");
 const Question = require("../models/question.model")
 const unifyUsers = require("./unify-users");
 const backfillAnswerCount = require("./answer-count-backfill");
