@@ -42,7 +42,7 @@ async function loginAsSuperUser() {
  */
 async function createEphemeralTeacher(rootToken, permissions) {
   const schoolsRes = await request(baseURL)
-    .get("/api/school/list?limit=1&includeDeleted=0")
+    .get("/api/school/list?limit=1&sortOrder=asc&includeDeleted=0")
     .set("Authorization", rootToken);
   if (!schoolsRes.body.success) {
     throw new Error(`school/list failed: ${JSON.stringify(schoolsRes.body)}`);
@@ -73,7 +73,7 @@ async function createEphemeralTeacher(rootToken, permissions) {
     .send({
       identity: { name: "E2E Ephemeral Teacher", phone, email: "", address: "" },
       roles: [{ roleId: role._id, dep: school._id }],
-      profiles: { teacher: { facilities: [], classes: [{ board: "KSEEB", class: 6, medium: "English", subject: "Science", name: "Science", sem: 1 }], isProfileCompleted: true } },
+      profiles: { teacher: { facilities: [], classes: [{ board: "KSEEB", class: 6, medium: "english", subject: "Science", name: "Science", sem: 1 }], isProfileCompleted: true } },
     });
   if (!userRes.body.success) {
     throw new Error(`createUser failed: ${JSON.stringify(userRes.body)}`);

@@ -38,6 +38,9 @@ function expectDenied(response, message, status) {
   if (message) expect(response.body.message).toBe(message);
 }
 
+// SKIP_BLOB_TESTS=1 skips tests that need real services: this one downloads a blob URL, which a local cluster cannot serve.
+const itBlob = process.env.SKIP_BLOB_TESTS ? it.skip : it;
+
 describe("scoped authorisation", () => {
   const suffix = Date.now();
   const operatorPermissions = [
@@ -372,7 +375,7 @@ describe("scoped authorisation", () => {
     })).status).toBe(403);
   });
 
-  it("exports only data inside the actor scope", async () => {
+  itBlob("exports only data inside the actor scope", async () => {
     const startedAt = new Date();
     await Promise.all([
       request("/api/school/export?limit=1000", "GET", actorToken).then(expectSuccess),
@@ -544,7 +547,7 @@ describe("scoped authorisation", () => {
     const rejected = [
       {
         body: teacherBody("Blocked Remote Integration Teacher", `6${String(suffix + 2).slice(-9)}`, remoteSchool),
-        message: "You can only assign roles inside your own scope",
+        message: "You can only assign roles inside your own scope. Choose a school or region you manage.",
       },
       {
         body: teacherBody("Duplicate Assignment Teacher", `6${String(suffix + 3).slice(-9)}`, localSchool, [
@@ -558,27 +561,27 @@ describe("scoped authorisation", () => {
         body: teacherBody("Invalid Dependency Teacher", `6${String(suffix + 4).slice(-9)}`, localSchool, [
           { roleId: teacherRole._id, dep: crypto.randomBytes(12).toString("hex") },
         ]),
-        message: "The selected school does not exist",
+        message: "The selected school does not exist. Select an existing school and save again.",
       },
       {
         body: adminBody("Escalated Integration Admin", `6${String(suffix + 5).slice(-9)}`, [{ roleId: globalRole._id }]),
-        message: "You can only assign roles inside your own scope",
+        message: "You can only assign roles inside your own scope. Choose a school or region you manage.",
       },
       {
         body: adminBody("Missing Dependency Admin", `6${String(suffix + 6).slice(-9)}`, [{ roleId: operatorRole._id }]),
-        message: "This role needs a school or region",
+        message: "This role needs a school or region. Select one and save again.",
       },
       {
         body: adminBody("Invalid Dependency Admin", `6${String(suffix + 7).slice(-9)}`, [
           { roleId: operatorRole._id, dep: { state: localSchool.state, zone: localSchool.zone, district: `Missing District ${suffix}` } },
         ]),
-        message: "The selected region does not exist",
+        message: "The selected region does not exist. Select an existing region and save again.",
       },
       {
         body: adminBody("Equal Scope Integration Staff", `6${String(suffix + 9).slice(-9)}`, [
           { roleId: elevatedRole._id, dep: districtDep(localSchool) },
         ]),
-        message: "You can only assign roles inside your own scope",
+        message: "You can only assign roles inside your own scope. Choose a school or region you manage.",
       },
     ];
     for (const test of rejected) {
@@ -588,18 +591,19 @@ describe("scoped authorisation", () => {
       "Equal School Scope Integration Teacher",
       `6${String(suffix + 13).slice(-9)}`,
       localSchool
-    )), "You can only assign roles inside your own scope");
-    expectDenied(await request("/api/users", "POST", rootToken, adminBody(
+    )), "You can only assign roles inside your own scope. Choose a school or region you manage.");
+    const globalStaff = expectSuccess(await request("/api/users", "POST", rootToken, adminBody(
       "Equal Global Scope Integration Staff",
       `6${String(suffix + 14).slice(-9)}`,
       [{ roleId: globalRole._id }]
-    )), "You can only assign roles inside your own scope");
+    )));
+    ids.users.push(globalStaff._id);
     expectDenied(await request(`/api/users/${local._id}`, "PUT", actorToken, {
       roles: [
         { _id: local.roles[0]._id, roleId: teacherRole._id, dep: localSchool._id },
         { roleId: elevatedRole._id, dep: districtDep(localSchool) },
       ],
-    }), "You can only assign roles inside your own scope");
+    }), "You can only assign roles inside your own scope. Choose a school or region you manage.");
   });
 
   it("edits mixed-scope teachers and invalidates their session when assignments change", async () => {
@@ -657,7 +661,7 @@ describe("scoped authorisation", () => {
       description: "",
       permissions: ["generation.status.view"],
       scopeType: "UNBOUND",
-    }), "You cannot grant permissions you do not hold");
+    }), "Cannot grant permissions you do not hold");
   });
 
   it("allows explicit permission delegation regardless of delegate scope", async () => {

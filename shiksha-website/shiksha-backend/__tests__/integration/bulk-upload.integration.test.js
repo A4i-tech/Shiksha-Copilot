@@ -40,6 +40,9 @@ async function upload(path, token, workbook, filename) {
   return { status: response.status, body: response.data };
 }
 
+// SKIP_BLOB_TESTS=1 skips tests that need real services: this one downloads a blob URL, which a local cluster cannot serve.
+const itBlob = process.env.SKIP_BLOB_TESTS ? it.skip : it;
+
 describe("management bulk uploads", () => {
   const suffix = String(Date.now());
   const schoolCode = Number(`8${suffix.slice(-10)}`);
@@ -59,7 +62,7 @@ describe("management bulk uploads", () => {
     token = login.token;
     const [me, schools, roles] = await Promise.all([
       request("/api/auth/me", "GET", token),
-      request("/api/school/list?limit=1000&includeDeleted=0", "GET", token),
+      request("/api/school/list?limit=1000&sortOrder=asc&includeDeleted=0", "GET", token),
       request("/api/roles?limit=1000", "GET", token),
     ]);
     user = expectSuccess(me).user;
@@ -160,7 +163,7 @@ describe("management bulk uploads", () => {
     });
   }, 60000);
 
-  it("imports only teachers inside the operator scope", async () => {
+  itBlob("imports only teachers inside the operator scope", async () => {
     const localPhone = `6${suffix.slice(-9)}`;
     const remotePhone = `8${suffix.slice(-9)}`;
     const elevatedPhone = `7${String(Number(suffix) + 1).slice(-9)}`;
@@ -190,7 +193,7 @@ describe("management bulk uploads", () => {
     ids.users.push(local._id, elevated._id);
   }, 60000);
 
-  it("imports only schools inside the operator scope", async () => {
+  itBlob("imports only schools inside the operator scope", async () => {
     const localCode = Number(`7${suffix.slice(-10)}`);
     const remoteCode = Number(`6${suffix.slice(-10)}`);
     const workbook = new ExcelJS.Workbook();
