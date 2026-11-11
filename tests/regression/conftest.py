@@ -29,11 +29,13 @@ def browser_context():
 
         page.get_by_role("button", name="Continue").click()
 
-        # ng-otp-input hides actual inputs — wait for attachment, focus via JS, fire keyboard events
+        # ng-otp-input needs a per-cell fill and an input event to update Angular's form state
         otp_inputs = page.locator("input.otp-input")
         otp_inputs.first.wait_for(state="attached", timeout=15000)
-        otp_inputs.first.evaluate("el => el.focus()")
-        page.keyboard.type(USER_OTP, delay=100)
+        for i, digit in enumerate(USER_OTP):
+            otp_inputs.nth(i).focus()
+            otp_inputs.nth(i).fill(digit)
+            otp_inputs.nth(i).dispatch_event("input")
 
         verify_button = page.get_by_role("button", name="Verify")
         expect(verify_button).to_be_enabled(timeout=5000)

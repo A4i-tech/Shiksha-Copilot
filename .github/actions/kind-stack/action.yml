@@ -65,10 +65,12 @@ runs:
         secrets="$RUNNER_TEMP/kind-secrets"
         mkdir -p "$secrets"
         # Random per-run keys. SHIKSHA_DEVTOOLS turns on /api/devtools/* in this cluster only.
-        jq --arg jwt "$(openssl rand -hex 24)" --arg pin "$(openssl rand -hex 24)" \
-          '. + {JWT_SECRET: $jwt, PIN_SECRET_KEY: $pin, SHIKSHA_DEVTOOLS: "true"}' \
-          <<<"$BE_SECRET_JSON" > "$secrets/shiksha-be-dev-secret.json"
-        printf '%s' "$API_SECRET_JSON" > "$secrets/shiksha-api-dev-secret.json"
+        # Blob storage and the api's Mongo point at in-cluster emulators, never at live services.
+        blob='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite.shiksha.svc.cluster.local:10000/devstoreaccount1;'
+        jq --arg jwt "$(openssl rand -hex 24)" --arg pin "$(openssl rand -hex 24)" --arg blob "$blob"           '. + {JWT_SECRET: $jwt, PIN_SECRET_KEY: $pin, SHIKSHA_DEVTOOLS: "true",
+                AZURE_STORAGE_CONNECTION_STRING: $blob, AZURE_STORAGE_CONTAINER_NAME: "shiksha"}'           <<<"$BE_SECRET_JSON" > "$secrets/shiksha-be-dev-secret.json"
+        jq --arg blob "$blob"           '. + {BLOB_STORE_CONNECTION_STRING: $blob,
+                PRES_MONGODB_URL: "mongodb://shiksha-mongo.shiksha.svc.cluster.local:27017/shiksha_viz"}'           <<<"$API_SECRET_JSON" > "$secrets/shiksha-api-dev-secret.json"
 
         export SHIKSHA_REPO_DIR="$GITHUB_WORKSPACE/infra-ops" SHIKSHA_SECRETS_DIR="$secrets" \
           SKIP_MONGO_RESTORE=1 SHIKSHA_BE_IMAGE=shiksha-backend-local \

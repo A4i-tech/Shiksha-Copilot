@@ -9,6 +9,9 @@ const { baseURL, loginAsSuperUser, createEphemeralTeacher, cleanupEphemeralTeach
 // REGENERATION_LIMIT (3) per teacher per day — ephemeral teacher resets
 // this counter each run.
 
+// SKIP_LLM_TESTS=1 skips tests that need real services: this one calls the real LLM.
+const itLlm = process.env.SKIP_LLM_TESTS ? it.skip : it;
+
 describe("Lesson plan generation flow (E2E)", () => {
   let token, masterLessonId, rootToken, ephemeralIds;
   const generatedContent = [];
@@ -45,7 +48,7 @@ describe("Lesson plan generation flow (E2E)", () => {
     });
   });
 
-  it("generates lesson content end to end", async () => {
+  itLlm("generates lesson content end to end", async () => {
     const res = await request(baseURL)
       .post("/api/teacher-lesson-plan/generate")
       .set("Authorization", token)

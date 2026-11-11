@@ -24,6 +24,9 @@ async function upload(path, token, fields, files) {
   return { status: response.status, body: response.data };
 }
 
+// SKIP_BLOB_TESTS=1 skips the blob downloads, which a local cluster cannot serve.
+const downloadBlobs = !process.env.SKIP_BLOB_TESTS;
+
 describe("teacher training uploads", () => {
   const ids = { roles: [], users: [], schools: [], classes: [], auditLogs: [], content: [], activities: [], batches: [], blobs: [] };
   const pdf = Buffer.from("%PDF-1.7\n%%EOF");
@@ -54,9 +57,11 @@ describe("teacher training uploads", () => {
     batch = response.body;
     ids.batches.push(batch._id);
     ids.blobs.push(batch.permissionLetterPdfPath);
-    const stored = await axios.get(batch.permissionLetterPdfPath, { responseType: "arraybuffer" });
-    expect(Buffer.from(stored.data)).toEqual(pdf);
-    expect(stored.headers["content-type"]).toBe("application/pdf");
+    if (downloadBlobs) {
+      const stored = await axios.get(batch.permissionLetterPdfPath, { responseType: "arraybuffer" });
+      expect(Buffer.from(stored.data)).toEqual(pdf);
+      expect(stored.headers["content-type"]).toBe("application/pdf");
+    }
     expect(new URL(batch.permissionLetterPdfPath).pathname).toMatch(/\.pdf$/);
   });
 
@@ -69,9 +74,11 @@ describe("teacher training uploads", () => {
 
     expect(response.status).toBe(200);
     ids.blobs.push(response.body.attendancePdfPath, ...response.body.photoPaths.map(({ path }) => path));
-    const stored = await Promise.all(ids.blobs.slice(1).map((url) => axios.get(url, { responseType: "arraybuffer" })));
-    expect(stored.map(({ data }) => Buffer.from(data))).toEqual([pdf, jpeg, png]);
-    expect(stored.map(({ headers }) => headers["content-type"])).toEqual(["application/pdf", "image/jpeg", "image/png"]);
+    if (downloadBlobs) {
+      const stored = await Promise.all(ids.blobs.slice(1).map((url) => axios.get(url, { responseType: "arraybuffer" })));
+      expect(stored.map(({ data }) => Buffer.from(data))).toEqual([pdf, jpeg, png]);
+      expect(stored.map(({ headers }) => headers["content-type"])).toEqual(["application/pdf", "image/jpeg", "image/png"]);
+    }
   });
 
   it.each([

@@ -14,7 +14,10 @@ require("dotenv").config();
 const CryptoJS = require("crypto-js");
 const mongoose = require("mongoose");
 const builtinRoles = require("../config/builtin_roles.json");
+const { getAcademicYear } = require("../helper/academic.year.helper");
+const BaselineSurvey = require("../models/baselineSurvey.model");
 const Chapter = require("../models/chapter.model");
+const LessonPlanTemplate = require("../models/lesson.plan.template.model");
 const MasterLesson = require("../models/master.lesson.model");
 const MasterSubject = require("../models/master.subject.model");
 const Region = require("../models/region.model");
@@ -52,16 +55,16 @@ async function main() {
     state, zones: [{ name: zone, districts: [{ name: district, blocks: blocks.map((name) => ({ name })) }] }],
   })));
   const schools = await School.create(regions.flatMap(({ state, zone, district, blocks }) => blocks.map((block) => ({
-    name: `CI School ${district} ${block}`, schoolId: 0, boards: ["KSEEB"], state, zone, district, block, mediums: ["English"],
-  }))).map((school, index) => ({ ...school, schoolId: index + 1 })));
+    name: `CI School ${district} ${block}`, schoolId: 0, boards: ["KSEEB"], state, zone, district, block, mediums: ["english"],
+  }))).map((school, index) => ({ ...school, schoolId: 29000000001 + index })));
   const school = schools[0];
   await SchoolClass.create(schools.map((item) => ({
-    schoolId: item._id, board: "KSEEB", medium: "English", start: 1, end: 10,
+    schoolId: item._id, board: "KSEEB", medium: "english", start: 1, end: 10,
     classDetails: [6, 8].map((standard) => ({ standard, girlsStrength: 10, boysStrength: 10, totalStrength: 20 })),
   })));
 
   const profile = { facilities: [], isProfileCompleted: true, classes: [{
-    board: "KSEEB", class: 8, medium: "English", subject: "Science", name: "Science 8A", sem: 1,
+    board: "KSEEB", class: 8, medium: "english", subject: "Science", name: "Science 8A", sem: 1,
   }] };
   await User.create([
     { identity: { name: "CI Superuser", phone: need("SEED_SU_PHONE") }, otp: pin(need("SEED_SU_PIN")),
@@ -73,17 +76,20 @@ async function main() {
   ]);
   const teacher = await User.findOne({ "identity.phone": need("SEED_TEACHER_PHONE") });
 
+  await BaselineSurvey.create({ userId: teacher._id, academicYear: getAcademicYear() });
+
   const subject = await MasterSubject.create({
     subjectName: "Science", name: "Science", sem: 1, boards: ["KSEEB"],
     applicableClasses: [{ board: "KSEEB", classes: [6, 8] }],
   });
   const chapter = await Chapter.create({
     subjectId: subject._id, topics: "Matter", subTopics: ["Solids", "Liquids"],
-    medium: "English", standard: 8, board: "KSEEB", orderNumber: 1,
+    medium: "english", standard: 8, board: "KSEEB", orderNumber: 1,
   });
 
+  const template = await LessonPlanTemplate.create({ name: "CI Template", workFlowId: "ci", model: "ci" });
   for (const index of [1, 2, 3]) {
-    const lesson = { class: 8, board: "KSEEB", medium: "English", subject: "Science", chapterId: chapter._id };
+    const lesson = { templateId: template._id, class: 8, board: "KSEEB", medium: "english", subject: "Science", chapterId: chapter._id };
     const [source, generated] = await MasterLesson.create([
       { ...lesson, name: `CI Lesson Plan ${index}` },
       { ...lesson, name: `CI Lesson Plan ${index} (generated)` },

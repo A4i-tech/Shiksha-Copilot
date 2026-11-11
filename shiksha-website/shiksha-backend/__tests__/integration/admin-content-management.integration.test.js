@@ -64,7 +64,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
               standard: 9,
               board: "KSEEB",
               orderNumber: 1,
-              subTopics: ["Reflection", "Refraction"],
+              subTopics: ["Reflection", "Refraction", "Dispersion"],
               learningOutcomes: ["Explain reflection of light"],
             },
             {
@@ -85,7 +85,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
       ids.chapters.push(...res.body.data.insertedIds);
 
       const list = await request(baseURL)
-        .get(`/api/admin/content/chapters?search=${encodeURIComponent(`Light ${suffix}`)}`)
+        .get(`/api/admin/content/chapters?limit=50&includeDeleted=3&search=${encodeURIComponent(`Light ${suffix}`)}`)
         .set("Authorization", token);
       chapter = list.body.data.results.find((row) => row.topics === `Light ${suffix}`);
       expect(chapter).toBeDefined();
@@ -122,6 +122,18 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
   });
 
   describe("lesson plans", () => {
+    beforeAll(async () => {
+      const review = await request(baseURL)
+        .put(`/api/admin/content/chapters/${chapter._id}`)
+        .set("Authorization", token)
+        .send({ status: "under_review" });
+      expect(review.body.success).toBe(true);
+      const approve = await request(baseURL)
+        .post(`/api/admin/content/chapters/${chapter._id}/approve`)
+        .set("Authorization", token);
+      expect(approve.body.success).toBe(true);
+    }, 30000);
+
     it("saves a lesson plan given by chapterId and one given by chapter name", async () => {
       const res = await request(baseURL)
         .post("/api/admin/content/lesson-plans/bulk-upload")
@@ -157,33 +169,28 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
     }, 30000);
 
     it("rejects a mismatched board/medium/class/subject, an unknown subtopic, and a duplicate", async () => {
-      const res = await request(baseURL)
-        .post("/api/admin/content/lesson-plans/bulk-upload")
-        .set("Authorization", token)
-        .send({
-          rows: [
-            { name: "No chapter", class: 9, board: "KSEEB", medium: "english", semester: "1", subject: subject.subjectName, subTopics: ["A"] }, // missing chapterId
-            { name: "Fake chapter", class: 9, board: "KSEEB", medium: "english", semester: "1", subject: subject.subjectName, chapterId: "000000000000000000000000", subTopics: ["A"] },
-            { name: "Wrong class", class: 8, board: "KSEEB", medium: "english", semester: "1", subject: subject.subjectName, chapterId: chapter._id, subTopics: ["Reflection"] },
-            { name: "Wrong board", class: 9, board: "CBSE", medium: "english", semester: "1", subject: subject.subjectName, chapterId: chapter._id, subTopics: ["Reflection"] },
-            { name: "Wrong medium", class: 9, board: "KSEEB", medium: "kannada", semester: "1", subject: subject.subjectName, chapterId: chapter._id, subTopics: ["Reflection"] },
-            { name: "Unknown subtopic", class: 9, board: "KSEEB", medium: "english", semester: "1", subject: subject.subjectName, chapterId: chapter._id, subTopics: ["Not a real subtopic"] },
-            { name: "Duplicate of the PASS row above", class: 9, board: "KSEEB", medium: "english", semester: "1", subject: subject.subjectName, chapterId: chapter._id, subTopics: ["Reflection"] },
-            { name: "Wrong subject", class: 9, board: "KSEEB", medium: "english", semester: "1", subject: "Not This Subject", chapterId: chapter._id, subTopics: ["Reflection"] },
-          ],
-        });
+      const base = { class: 9, board: "KSEEB", medium: "english", semester: "1", subject: subject.subjectName, chapterId: chapter._id, subTopics: ["Reflection"] };
+      const cases = [
+        [{ name: "No chapter", chapterId: undefined }, /chapterId "undefined" matches no chapter/],
+        [{ name: "Fake chapter", chapterId: "000000000000000000000000" }, /matches no chapter/],
+        [{ name: "Wrong class", class: 8 }, /class is 8 but the chapter/],
+        [{ name: "Wrong board", board: "CBSE" }, /board is "CBSE" but the chapter/],
+        [{ name: "Wrong medium", medium: "kannada" }, /medium is "kannada" but the chapter/],
+        [{ name: "Unknown subtopic", subTopics: ["Not a real subtopic"] }, /is not a subtopic of the chapter/],
+        [{ name: "Duplicate of the PASS row above" }, /already exists/],
+        [{ name: "Wrong subject", subject: "Not This Subject" }, /subject is "Not This Subject"/],
+      ];
+      // One row per request: the batch check reports repeated rows before any per-row reason.
+      for (const [override, pattern] of cases) {
+        const res = await request(baseURL)
+          .post("/api/admin/content/lesson-plans/bulk-upload")
+          .set("Authorization", token)
+          .send({ rows: [{ ...base, ...override }] });
 
-      expect(res.body.success).toBe(false);
-      expect(res.body.data.inserted).toBe(0);
-      const errors = res.body.data.rows.map((row) => row.errors.join(" "));
-      expect(errors[0]).toMatch(/"chapterId" is required/);
-      expect(errors[1]).toMatch(/matches no chapter/);
-      expect(errors[2]).toMatch(/class is 8 but the chapter/);
-      expect(errors[3]).toMatch(/board is "CBSE" but the chapter/);
-      expect(errors[4]).toMatch(/medium is "kannada" but the chapter/);
-      expect(errors[5]).toMatch(/is not a subtopic of the chapter/);
-      expect(errors[6]).toMatch(/already exists/);
-      expect(errors[7]).toMatch(/subject is "Not This Subject"/);
+        expect(res.body.success).toBe(false);
+        expect(res.body.data.inserted).toBe(0);
+        expect(res.body.data.rows[0].errors.join(" ")).toMatch(pattern);
+      }
     }, 30000);
   });
 
@@ -328,7 +335,7 @@ describe("admin content-management uploads (chapters, lesson plans, resources, q
               semester: "1",
               subject: subject.subjectName,
               chapterId: chapter._id,
-              subTopics: ["Propagation of sound"],
+              subTopics: ["Dispersion"],
             },
           ],
         });

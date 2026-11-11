@@ -25,11 +25,11 @@ class QuestionBankPage:
         self.preview_sections = page.get_by_test_id("preview-section")
 
     def navigate_to_wizard(self, base_url: str):
-        self.page.goto(f"{base_url}/#/question-paper/generate")
+        self.page.goto(f"{base_url}/#/question-papers/generate")
         self.wizard_step_header.wait_for()
 
     def navigate_to_list(self, base_url: str):
-        self.page.goto(f"{base_url}/#/question-paper")
+        self.page.goto(f"{base_url}/#/question-papers")
         self.page.get_by_test_id("question-papers-heading").wait_for()
 
     def click_create_new_qp(self):
