@@ -869,5 +869,17 @@
   "Reading the text, understanding and interpretation": "ಪಠ್ಯವನ್ನು ಓದುವುದು, ಅರ್ಥಮಾಡಿಕೊಳ್ಳುವುದು ಮತ್ತು ವ್ಯಾಖ್ಯಾನಿಸುವುದು",
   "Information skills": "ಮಾಹಿತಿ ಕೌಶಲ್ಯಗಳು",
   "Reflection on contemporary issues and questioning": "ಸಮಕಾಲೀನ ಸಮಸ್ಯೆಗಳ ಕುರಿತು ಚಿಂತನೆ ಮತ್ತು ಪ್ರಶ್ನಿಸುವಿಕೆ",
-  "Reasoning proof": "ತಾರ್ಕಿಕ ಪುರಾವೆ"
+  "Reasoning proof": "ತಾರ್ಕಿಕ ಪುರಾವೆ",
+  "Modify": "ಬದಲಿಸಿ",
+  "Done": "ಮುಗಿದಿದೆ",
+  "How much of the paper tests each type of thinking. Tap Modify to change it.": "ಪ್ರಶ್ನೆಪತ್ರಿಕೆಯ ಎಷ್ಟು ಭಾಗ ಪ್ರತಿಯೊಂದು ರೀತಿಯ ಚಿಂತನೆಯನ್ನು ಪರೀಕ್ಷಿಸುತ್ತದೆ. ಬದಲಾಯಿಸಲು 'ಬದಲಿಸಿ' ಒತ್ತಿ.",
+  "Click on the numbers to change them as per your requirements. Total distribution must equal 100%.": "ನಿಮ್ಮ ಅಗತ್ಯಕ್ಕೆ ತಕ್ಕಂತೆ ಬದಲಾಯಿಸಲು ಸಂಖ್ಯೆಗಳ ಮೇಲೆ ಒತ್ತಿ. ಒಟ್ಟು ಹಂಚಿಕೆ 100% ಆಗಿರಬೇಕು.",
+  "Weightage": "ಅಂಕ ಭಾರ",
+  "Decrease": "ಕಡಿಮೆ ಮಾಡಿ",
+  "Increase": "ಹೆಚ್ಚಿಸಿ",
+  "Restore defaults": "ಡೀಫಾಲ್ಟ್ ಮರುಸ್ಥಾಪಿಸಿ",
+  "Go to Objectives Weightage": "ಉದ್ದೇಶಗಳ ಅಂಕ ಹಂಚಿಕೆಗೆ ಹೋಗಿ",
+  "Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.": "ಒಟ್ಟು {{total}}% ಆಗಿದೆ. 100% ಆಗಲು ಇನ್ನೂ {{diff}}% ಸೇರಿಸಿ.",
+  "Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.": "ಒಟ್ಟು {{total}}% ಆಗಿದೆ. 100% ಆಗಲು {{diff}}% ಕಡಿಮೆ ಮಾಡಿ.",
+  "Objectives Weightage adds up to {{total}}%. Make it 100% to continue.": "ಉದ್ದೇಶಗಳ ಅಂಕ ಹಂಚಿಕೆ ಒಟ್ಟು {{total}}% ಆಗಿದೆ. ಮುಂದುವರಿಯಲು ಅದನ್ನು 100% ಮಾಡಿ."
 }
