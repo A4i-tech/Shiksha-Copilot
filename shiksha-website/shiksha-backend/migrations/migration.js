@@ -20,6 +20,12 @@ const grantStateAdminCharts = require("./state-admin-chart-grants");
 async function runMigrations() {
     try {
         await unifyUsers();
+        // Copies made before the flag existed took the schema default (false).
+        const copyIds = await RegeneratedLessonResource.distinct("genContentId", { isLesson: true });
+        await MasterLesson.updateMany(
+            { _id: { $in: copyIds }, isRegenerated: { $ne: true } },
+            { $set: { isRegenerated: true } }
+        );
         await Promise.all([
             backfillAnswerCount(),
             grantStateAdminCharts(),

@@ -60,7 +60,7 @@ async function assertCanAssign(grants, role, dep, permission) {
     return school._id;
   }
   const fields = REGION_SCOPE_FIELDS[role.scopeType];
-  if (typeof dep !== "object" || Object.keys(dep).length !== fields.length || fields.some((field) => !dep[field])) {
+  if (typeof dep !== "object" || Object.keys(dep).length !== fields.length || !fields.every((field) => dep[field])) {
     throw new AppError("The selected school or region is incomplete. Select every level and save again.", 400);
   }
   const regionQuery = {
