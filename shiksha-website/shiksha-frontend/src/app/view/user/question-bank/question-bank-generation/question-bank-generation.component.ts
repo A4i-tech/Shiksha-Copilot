@@ -148,6 +148,8 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
 
   totalMarks = 0;
   totalPercentage = 100;
+  editingObjectives = false;
+  openObjectiveInfo = '';
   totalDistributedMarks = 0;
   totalDistributedPercentage = 0;
   marksDistribution: MarksDistributionUnit[] = [];
@@ -511,7 +513,7 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
     } else if (this.marksDistribution.some(unit => unit.marks === 0)) {
       this.utilityservice.showError(this.translateService.instant('Increase the total marks or select fewer chapters.'));
       return;
-    } else if (this.questionBankConfigForm.invalid || this.totalPercentage !== 100 || this.totalDistributedMarks !== this.totalMarks) {
+    } else if (this.questionBankConfigForm.invalid || this.totalDistributedMarks !== this.totalMarks) {
       this.utilityservice.showError(this.translateService.instant('Please complete the configuration and distributions.'));
       return;
     }
@@ -1035,6 +1037,30 @@ export class QuestionBankGenerationComponent implements OnInit, OnDestroy {
   }
   calculateTotalPercentage(i: any) {
     this.totalPercentage = this.questionBankObjectives.reduce((acc, obj) => acc + Number(obj.percentageDistribution), 0);
+  }
+  stepObjective(objective: QuestionBankObjective, delta: number) {
+    this.setObjective(objective, Number(objective.percentageDistribution) + delta);
+  }
+  setObjective(objective: QuestionBankObjective, value: number) {
+    objective.percentageDistribution = Math.min(100, Math.max(0, Math.round(value)));
+    this.calculateTotalPercentage(null);
+  }
+  get defaultObjectivesLabel(): string {
+    return this.initialQuestionBankObjectives.map(o => o.percentageDistribution).join(' / ');
+  }
+  scrollToObjectives() {
+    document.getElementById('objectives-weightage')!.scrollIntoView();
+  }
+  get objectivesBlockNext(): boolean {
+    return this.currentStep === 1 && this.questionBankObjectives.length > 0 && this.totalPercentage !== 100;
+  }
+  get objectivesBlockMessage(): string {
+    return this.translateService.instant('Objectives Weightage adds up to {{total}}%. Make it 100% to continue.', { total: this.totalPercentage });
+  }
+  get objectiveTotalMessage(): string {
+    const diff = 100 - this.totalPercentage;
+    const key = diff > 0 ? 'Total is {{total}}%. Add {{diff}}% more so it adds up to 100%.' : 'Total is {{total}}%. Remove {{diff}}% so it adds up to 100%.';
+    return this.translateService.instant(key, { total: this.totalPercentage, diff: Math.abs(diff) });
   }
   resetQuestionDistribution() {
     this.questionBankObjectives = structuredClone(this.initialQuestionBankObjectives);
