@@ -37,19 +37,6 @@ jobs:
     uses: ./.github/workflows/shiksha-coverage-summary.yml
     secrets: inherit
 
-  cicd-frontend:
-    name: Deploy frontend
-    needs: [ci-backend]
-    if: github.event_name == 'push' && github.ref_name == 'a4i/staging'
-    uses: ./.github/workflows/cicd-frontend.yaml
-    secrets: inherit
-    with:
-      deploy_name: shiksha-frontend-staging
-      deploy_target: github-pages
-      environment: uat
-      api_url: ${{ format('{0}/api', vars.KUBE_STAGING_FRONTEND_URL) }}
-      turnstile_site_key: ${{ vars.TURNSTILE_SITE_KEY }}
-
   cd-api-prod:
     name: Deploy api
     needs: ci-api
@@ -140,7 +127,7 @@ jobs:
 
   regression-tests:
     name: Regression Tests
-    needs: [cicd-frontend]
+    needs: [ci-frontend]
     if: false # disabled, tracked in A4i-tech/.github#780
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -157,7 +144,7 @@ jobs:
         run: playwright install chromium
       - name: Run Regression Tests
         env:
-          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}
+          FRONTEND_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}
           TEST_USER_PHONE: ${{ secrets.TEST_USER_PHONE }}
           TEST_USER_OTP: ${{ secrets.TEST_USER_OTP }}
         run: pytest tests/regression --csv regression_report.csv
@@ -190,7 +177,7 @@ jobs:
 
   performance-tests:
     name: Performance Tests
-    needs: [cicd-frontend]
+    needs: [ci-frontend]
     if: false # disabled, tracked in A4i-tech/.github#780
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -199,7 +186,7 @@ jobs:
       - name: Run k6 Load Test
         uses: grafana/k6-action@v0.3.0
         env:
-          FRONTEND_URL: ${{ needs.cicd-frontend.outputs.page_url }}/#/auth/signin
+          FRONTEND_URL: ${{ vars.KUBE_STAGING_FRONTEND_URL }}/#/auth/signin
         with:
           filename: tests/performance/load_test.js
           flags: --summary-export=k6_summary.json
@@ -334,7 +321,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     if: ${{ always() && github.event_name == 'push' && (github.ref_name == 'a4i/main' || github.ref_name == 'a4i/staging') }}
-    needs: [cicd-frontend, ci-api, ci-backend, health-check, cd-api-prod, cd-backend-prod, cd-frontend-prod, regression-tests, performance-tests, integration-backend]
+    needs: [ci-frontend, ci-api, ci-backend, health-check, cd-api-prod, cd-backend-prod, cd-frontend-prod, regression-tests, performance-tests, integration-backend]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -351,10 +338,10 @@ jobs:
       - name: Generate Status JSON
         id: status
         env:
-          FE_RES: ${{ (needs.cicd-frontend.result != 'skipped' && needs.cicd-frontend.result) || needs.cd-frontend-prod.result }}
+          FE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.ci-frontend.result) || needs.cd-frontend-prod.result }}
           API_RES: ${{ needs.cd-api-prod.result }}
           BE_RES: ${{ (github.ref_name == 'a4i/staging' && needs.ci-backend.result) || needs.cd-backend-prod.result }}
-          FE_URL: ${{ needs.cicd-frontend.outputs.page_url || needs.cd-frontend-prod.outputs.page_url }}
+          FE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_FRONTEND_URL) || needs.cd-frontend-prod.outputs.page_url }}
           API_URL: ${{ needs.cd-api-prod.outputs['service-url'] }}
           BE_URL: ${{ (github.ref_name == 'a4i/staging' && vars.KUBE_STAGING_FRONTEND_URL) || needs.cd-backend-prod.outputs['service-url'] }}
           E2E_RES: ${{ needs.integration-backend.result }}
