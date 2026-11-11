@@ -429,7 +429,7 @@ def test_two_periods_with_the_same_topic_title_fail_the_run_instead_of_overwriti
     )
     assert status == 202
     assert data["run"]["runtimeStatus"] == "Failed"
-    assert any("same _id" in e for e in data["run"]["output"]["errors"])
+    assert any("same lp_id" in e for e in data["run"]["output"]["errors"])
 
 
 def test_runs_are_off_without_an_api_key(monkeypatch):
