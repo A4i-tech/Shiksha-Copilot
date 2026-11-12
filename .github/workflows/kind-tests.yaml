@@ -27,8 +27,8 @@ jobs:
       - uses: ./.github/actions/kind-stack
         with:
           infra-ops-pat: ${{ secrets.INFRA_OPS_PAT }}
-          be-secret-json: ${{ secrets.KIND_BE_SECRET_JSON }}
-          api-secret-json: ${{ secrets.KIND_API_SECRET_JSON }}
+          be-secret-json: ${{ vars.KIND_BE_SECRET_JSON }}
+          api-secret-json: ${{ vars.KIND_API_SECRET_JSON }}
           su-phone: ${{ secrets.SHIKSHA_SU_PHONE }}
           su-pin: ${{ secrets.SHIKSHA_SU_PIN }}
           admin-phone: ${{ secrets.TEST_ADMIN_PHONE }}
