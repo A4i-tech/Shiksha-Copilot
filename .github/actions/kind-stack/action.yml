@@ -3,13 +3,13 @@ description: Start api, backend and frontend on a kind cluster inside the runner
 
 inputs:
   infra-ops-pat:
-    description: Token that can read A4i-tech/infra-ops and A4i-tech/kind-tests
+    description: Token that can read A4i-tech/infra-ops (private)
     required: true
   be-secret-json:
-    description: Flat JSON of the backend secret. Its MONGO_URL is replaced by the local mongo.
+    description: Flat JSON of mock backend settings. Its MONGO_URL is replaced by the local mongo. Never pass live values.
     required: true
   api-secret-json:
-    description: Flat JSON of the api secret
+    description: Flat JSON of mock api settings. Never pass live values.
     required: true
   su-phone: { required: true, description: Seeded superuser phone }
   su-pin: { required: true, description: Seeded superuser PIN }
@@ -45,7 +45,6 @@ runs:
       with:
         repository: A4i-tech/kind-tests
         ref: ${{ inputs.kind-tests-ref }}
-        token: ${{ inputs.infra-ops-pat }}
         path: kind-tests
 
     - name: Start cluster, deploy and seed
