@@ -11,12 +11,13 @@ inputs:
   api-secret-json:
     description: Flat JSON of mock api settings. Never pass live values.
     required: true
-  su-phone: { required: true, description: Seeded superuser phone }
-  su-pin: { required: true, description: Seeded superuser PIN }
-  admin-phone: { required: true, description: Seeded admin phone }
-  admin-pin: { required: true, description: Seeded admin PIN }
-  teacher-phone: { required: true, description: Seeded teacher phone }
-  teacher-pin: { required: true, description: Seeded teacher PIN }
+  # Mock accounts for the throwaway database. They match no real user.
+  su-phone: { default: '9000000001', description: Seeded superuser phone }
+  su-pin: { default: '1111', description: Seeded superuser PIN }
+  admin-phone: { default: '9000000002', description: Seeded admin phone }
+  admin-pin: { default: '2222', description: Seeded admin PIN }
+  teacher-phone: { default: '9000000003', description: Seeded teacher phone }
+  teacher-pin: { default: '3333', description: Seeded teacher PIN }
   kind-tests-ref:
     description: Ref of A4i-tech/kind-tests that has the CI image overrides
     default: pun-it/780-ci-images
