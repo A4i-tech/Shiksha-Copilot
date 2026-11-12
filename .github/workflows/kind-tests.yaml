@@ -29,12 +29,6 @@ jobs:
           infra-ops-pat: ${{ secrets.INFRA_OPS_PAT }}
           be-secret-json: ${{ vars.KIND_BE_SECRET_JSON }}
           api-secret-json: ${{ vars.KIND_API_SECRET_JSON }}
-          su-phone: ${{ secrets.SHIKSHA_SU_PHONE }}
-          su-pin: ${{ secrets.SHIKSHA_SU_PIN }}
-          admin-phone: ${{ secrets.TEST_ADMIN_PHONE }}
-          admin-pin: ${{ secrets.TEST_ADMIN_OTP }}
-          teacher-phone: ${{ secrets.TEST_USER_PHONE }}
-          teacher-pin: ${{ secrets.TEST_USER_OTP }}
 
       - uses: actions/setup-node@v4
         if: inputs.suite == 'accessibility' || inputs.suite == 'integration'
