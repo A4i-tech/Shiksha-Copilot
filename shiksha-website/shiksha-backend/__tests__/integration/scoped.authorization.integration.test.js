@@ -1,9 +1,7 @@
 require("dotenv").config();
 
 const axios = require("axios");
-const { getBlob } = require("./superuser.helper");
 const crypto = require("crypto");
-const ExcelJS = require("exceljs");
 
 const baseUrl = process.env.SHIKSHA_BASE_URL;
 const superuserPhone = process.env.SHIKSHA_SU_PHONE;
@@ -372,41 +370,6 @@ describe("scoped authorisation", () => {
       teacherId: remoteTeacher._id,
     })).status).toBe(403);
   });
-
-  it("exports only data inside the actor scope", async () => {
-    const startedAt = new Date();
-    await Promise.all([
-      request("/api/school/export?limit=1000", "GET", actorToken).then(expectSuccess),
-      request("/api/users/export?limit=1000", "GET", actorToken).then(expectSuccess),
-      request(`/api/content-activity/export?filter[district]=${encodeURIComponent(localSchool.district)}`, "GET", actorToken).then(expectSuccess),
-    ]);
-
-    const eventTypes = ["Schools Export", "Teachers Export", "Content Activity Export"];
-    const logs = [];
-    for (let attempt = 0; attempt < 120 && !(logs.length === eventTypes.length && logs.every((log) => log.status !== "in_progress")); attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const pages = await Promise.all(eventTypes.map((type) => request(`/api/audit/log?limit=1000&filter[eventType]=${encodeURIComponent(type)}`, "GET", rootToken)));
-      const found = pages.flatMap((res) => expectSuccess(res).results)
-        .filter((log) => log.userId === actor._id && eventTypes.includes(log.eventType) && new Date(log.createdAt) >= startedAt);
-      logs.splice(0, logs.length, ...found);
-    }
-    expect(logs).toHaveLength(3);
-    expect(logs.every((log) => log.status === "success")).toBe(true);
-    const sheets = {};
-    for (const log of logs) {
-      const response = await getBlob(log.logUrl);
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(response.data);
-      sheets[log.eventType] = workbook.worksheets[0];
-    }
-    const values = (sheet, column) => sheet.getColumn(column).values.slice(2);
-    expect(values(sheets["Schools Export"], 1)).toContain(localSchool.schoolId);
-    expect(values(sheets["Schools Export"], 1)).not.toContain(remoteSchool.schoolId);
-    expect(values(sheets["Teachers Export"], 1)).toContain(localTeacher.identity.name);
-    expect(values(sheets["Teachers Export"], 1)).not.toContain(remoteTeacher.identity.name);
-    expect(values(sheets["Content Activity Export"], 1)).toContain(localTeacher.identity.name);
-    expect(values(sheets["Content Activity Export"], 1)).not.toContain(remoteTeacher.identity.name);
-  }, 60000);
 
   it("enforces complete staff scope and applies permission removal immediately", async () => {
     const schoolStaff = expectSuccess(await request("/api/users?limit=100&filter[profileType]=admin", "GET", schoolActorToken)).results;

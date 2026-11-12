@@ -139,6 +139,7 @@ async function discoverDetailUrls(page) {
   // only the primary view/edit button per card should be clicked here.
   const cardButtonSelector = '.card button:not([title])';
   const cardButtons = page.locator(cardButtonSelector);
+  await cardButtons.first().waitFor({ timeout: 15000 }).catch(() => {});
   const cardCount = await cardButtons.count();
   console.log(`  Found ${cardCount} content-generation cards`);
 

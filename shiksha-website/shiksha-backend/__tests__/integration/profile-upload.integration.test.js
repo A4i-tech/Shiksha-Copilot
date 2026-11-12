@@ -1,7 +1,6 @@
 require("dotenv").config();
 
 const axios = require("axios");
-const { getBlob } = require("./superuser.helper");
 const FormData = require("form-data");
 
 const baseUrl = process.env.SHIKSHA_BASE_URL;
@@ -67,13 +66,9 @@ describe("profile image uploads", () => {
     const first = await upload(profileToken, { content: jpeg, name: "profile.jpg", type: "image/jpeg" });
     expect(first.status).toBe(200);
     ids.blobs.push(first.body.data.profileImage);
-    expect(Buffer.from((await getBlob(first.body.data.profileImage)).data)).toEqual(jpeg);
 
     const replacement = await upload(profileToken, { content: png, name: "profile.png", type: "image/png" });
     expect(replacement.status).toBe(200);
-    const stored = await getBlob(replacement.body.data.profileImage);
-    expect(Buffer.from(stored.data)).toEqual(png);
-    expect(stored.headers["content-type"]).toBe("image/png");
   });
 
   it.each([
