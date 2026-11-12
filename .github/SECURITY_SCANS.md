@@ -15,7 +15,7 @@ Semgrep runs on every pull request into `a4i/staging`. CodeQL already runs weekl
 
 ## Suppressing a false positive
 
-1. **One line** — add on the flagged line:
+1. **One line**, add on the flagged line:
 
    ```python
    subprocess.run(cmd, shell=True)  # nosemgrep: dangerous-subprocess-use  cmd is a fixed constant
@@ -23,9 +23,9 @@ Semgrep runs on every pull request into `a4i/staging`. CodeQL already runs weekl
 
    Always name the rule id and say why it is safe.
 
-2. **A whole path** (generated code, vendored deps, test fixtures) — add it to `.semgrepignore` with a one-line reason.
+2. **A whole path** (generated code, vendored deps, test fixtures), add it to `.semgrepignore` with a one-line reason.
 
-3. **A rule wrong for this codebase every time** — add `--exclude-rule <rule-id>` to the scan step in `.github/workflows/semgrep.yml`, with a comment, after agreeing it with the security owner.
+3. **A rule wrong for this codebase every time**, add `--exclude-rule <rule-id>` to the scan step in `.github/workflows/semgrep.yml`, with a comment, after agreeing it with the security owner.
 
 For CodeQL: dismiss the alert in the Security tab with a reason, or add the path to the query config.
 
