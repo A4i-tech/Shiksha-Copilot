@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 2
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
 
@@ -43,43 +43,9 @@ jobs:
 
       - name: Upload SARIF to code scanning
         if: always()
+        # fork PRs get a read-only token here, upload would 403; don't fail the job on that
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
         with:
           sarif_file: semgrep.sarif
           category: semgrep
-
-      - name: Semgrep full-repo scan (advisory, not gating)
-        if: always()
-        continue-on-error: true
-        run: |
-          semgrep scan \
-            --config p/security-audit \
-            --config p/owasp-top-ten \
-            --severity ERROR \
-            --severity WARNING \
-            --json --output semgrep-full.json \
-            --metrics off \
-            --oss-only
-
-          {
-            echo "## Semgrep full-repo findings (advisory, pre-existing code, does not gate this PR)"
-            echo
-            echo '```'
-            jq -r '
-              .results
-              | group_by(.check_id + "|" + .extra.severity)
-              | map({count: length, severity: .[0].extra.severity, rule: .[0].check_id})
-              | sort_by(-.count)
-              | (["COUNT","SEVERITY","RULE"], (.[] | [.count, .severity, .rule]))
-              | @tsv
-            ' semgrep-full.json | column -t -s $'\t'
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload full-repo findings
-        if: always() && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-full-report
-          path: semgrep-full.json

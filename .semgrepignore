@@ -2,11 +2,5 @@
 # line-level suppression (`# nosemgrep: <rule-id>`).
 
 node_modules/
-.venv/
-venv/
 **/__pycache__/
-**/migrations/
-**/tests/fixtures/
-**/test_data/
-**/*.test.*
-**/*.spec.*
+**/__tests__/fixtures/

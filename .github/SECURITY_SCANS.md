@@ -9,8 +9,9 @@ Semgrep runs on every pull request into `a4i/staging`. CodeQL already runs weekl
 
 ## Why the gate stays low-noise
 
-- **Diff-aware.** Only findings introduced by the PR are scanned (`--baseline-commit`). Pre-existing findings are not evaluated by the gate. The backlog is tracked in issue #575.
-- **Severity gate.** Only `ERROR` (high/critical) can block the PR's own diff. The full-repo advisory step also reports `WARNING`/`ERROR` for the pre-existing backlog in the run summary (see below); it never fails the check.
+- **Diff-aware.** Only lines a PR actually touches are evaluated (`--baseline-commit`). A pre-existing finding on a line the PR does not touch is not evaluated. The backlog is tracked in issue [A4i-tech/.github#575](https://github.com/A4i-tech/.github/issues/575).
+- **Severity gate.** Only an `ERROR`-level rule (Semgrep's own label, there is no separate "critical" level) can block, and only if the PR's own diff introduces or touches a matching line.
+- **Registry drift.** `p/security-audit` and `p/owasp-top-ten` are fetched live from the Semgrep registry on every run. A rule added or re-graded upstream can turn the gate red with no code change here.
 
 ## Suppressing a false positive
 
@@ -28,43 +29,18 @@ Semgrep runs on every pull request into `a4i/staging`. CodeQL already runs weekl
 
 For CodeQL: dismiss the alert in the Security tab with a reason, or add the path to the query config.
 
-## Known pre-existing findings (not fixed by this PR)
+## Backlog, enforcement status, and roadmap
 
-A full scan when this gate landed (see the `Semgrep full-repo findings` summary of the PR #251 run) reported the findings below. The diff-aware gate does **not** block on any of these, it only evaluates lines a PR actually changes:
+Tracked in issue [A4i-tech/.github#575](https://github.com/A4i-tech/.github/issues/575), not duplicated here, counts and file:line locations go stale the moment someone commits. That issue has the current pre-existing finding list, which PR fixes which category, the admin step to make `semgrep` a required status check on `a4i/staging` once the tuning window is done, and the later-phase tools (Trivy, osv-scanner, Dependabot, DAST) not covered by this PR.
 
-- `yaml.github-actions.security.secrets-inherit`, 5 hits in `.github/workflows/main.yaml` (reusable-workflow `secrets: inherit` pattern)
-- `yaml.github-actions.security.run-shell-injection`, 4 hits across `.github/actions/*/action.yml`, `.github/workflows/cicd-frontend.yaml`, `deploy-azure-webapp.yml`, `main.yaml`
-- `yaml.github-actions.security.gha-curl-pipe-shell`, 1 hit, `.github/workflows/ci-api.yaml` (`curl | python3` Poetry install)
-- `javascript.node-crypto.security.gcm-no-tag-length`, 1 hit
-- `python.fastapi.security.wildcard-cors`, 1 hit (`WARNING`, treated as critical given the prior SEEDS CORS outage)
-- `javascript.express.security.audit.xss.direct-response-write`, 1 hit
-- `python.lang.security.audit.logging.logger-credential-leak`, 10 hits (2 real; 8 are test files logging token *counts*, not credentials, false positive)
-- `typescript.angular.security.audit.angular-domsanitizer.angular-bypasssecuritytrust`, 2 hits
-- `yaml.github-actions.security.github-actions-mutable-action-tag`, 69 hits, parked for a separate ticket (pin every `uses:` to a commit SHA, large mechanical change)
+## Local full-repo scan
 
-Locations are tracked in issue #575.
-
-PR #252 addresses the first 8 categories (the 9th is parked per issue #575). Triage for anything still open belongs to issue #575.
-
-## Making the gate enforceable
-
-`a4i/staging` already has an active ruleset (2 required approvals, 3 required test checks, no deletion, no force push). Required checks there match by the job id, not the display name, so a repo admin must add **`semgrep`** (shown as *Semgrep / semgrep* in PR checks) to that ruleset's required status checks, after watching the false-positive rate for a tuning window.
-
-Until then the check runs and shows red on a finding, but does not stop a merge.
-
-## Not covered yet
-
-- Kotlin / Android, if any — not present in this repo.
-- Trivy, osv-scanner, Dependabot, DAST — later phases in the SAST/DAST rollout plan.
-
-## Local run
-
-Same scan a reviewer can run before pushing, fully sandboxed (no host install):
+Not the gate itself, the gate only evaluates a PR's own diff. This runs the same rulesets against the whole repo, fully sandboxed (no host install), useful for checking the pre-existing backlog above:
 
 ```bash
 docker run --rm -v "$PWD":/src:ro -w /src semgrep/semgrep:1.179.0 \
   semgrep scan --config p/security-audit --config p/owasp-top-ten \
-  --severity ERROR --oss-only --metrics off
+  --oss-only --metrics off
 ```
 
-Drop `--severity ERROR` to also see `WARNING` / `INFO`.
+Add `--severity ERROR --baseline-commit <base-sha>` to reproduce exactly what the gate itself evaluates on a given PR.
